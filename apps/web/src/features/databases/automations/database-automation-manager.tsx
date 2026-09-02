@@ -5,6 +5,7 @@ import type {
   DatabaseAutomationCatalog,
   DatabaseAutomationDefinition,
   DatabaseAutomationEventTriggerClause,
+  DatabaseAutomationSchedule,
   DatabaseAutomationTriggerOperator,
 } from "@zilobase/features/databases/automations";
 import {
@@ -77,8 +78,21 @@ type BuilderDraft = {
   customName: boolean;
   match: "all" | "any";
   name: string;
+  schedule: ScheduleDraft;
   scopeViewId: string;
+  triggerKind: "event" | "schedule";
   triggers: TriggerDraft[];
+};
+type ScheduleDraft = {
+  customPattern: "daily" | "monthly" | "weekly" | "yearly";
+  dayOfMonth: string;
+  endDate: string;
+  frequency: DatabaseAutomationSchedule["frequency"];
+  interval: number;
+  localTime: string;
+  months: number[];
+  startDate: string;
+  weekdays: number[];
 };
 
 const operandless = new Set<DatabaseAutomationTriggerOperator>([
@@ -326,7 +340,7 @@ function ManagerHeader({ onBack, onClose, title }: {
 }
 
 function AutomationList({ data, error, loading, onCreate, onEdit, onLifecycle, onRuns }: {
-  data: Array<{ actionCount: number; id: string; lastRunStatus: string | null; name: string; status: string; triggerSummary: string }>;
+  data: Array<{ actionCount: number; id: string; lastRunStatus: string | null; name: string; nextRunAt: string | null; status: string; triggerSummary: string }>;
   error: boolean;
   loading: boolean;
   onCreate: () => void;
@@ -363,6 +377,7 @@ function AutomationList({ data, error, loading, onCreate, onEdit, onLifecycle, o
                 <span className="text-xs capitalize text-content-secondary">{automation.status}</span>
               </div>
               <p className="mt-1 truncate text-xs text-content-secondary">{automation.triggerSummary}</p>
+              {automation.nextRunAt ? <p className="mt-1 truncate text-xs text-content-secondary">Next run {new Date(automation.nextRunAt).toLocaleString()}</p> : null}
             </button>
             <div className="mt-2 flex items-center gap-1 border-t pt-2">
               <Button onClick={() => onLifecycle(automation.id, automation.status === "active" ? "pause" : "resume")} size="sm" variant="ghost">
@@ -412,24 +427,48 @@ function AutomationBuilder({ catalog, dataSourceName, draft, generatedName, load
       </label>
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-xs font-medium text-content-secondary">When {draft.match} of these occur</span>
-          <select className="h-7 rounded-md border bg-control-background px-2 text-xs" onChange={(event) => patch({ match: event.target.value as "all" | "any" })} value={draft.match}>
-            <option value="any">Any</option><option value="all">All</option>
+          <span className="text-xs font-medium text-content-secondary">Run automation</span>
+          <select
+            aria-label="Automation trigger type"
+            className="h-7 rounded-md border bg-control-background px-2 text-xs"
+            onChange={(event) => {
+              const triggerKind = event.target.value as BuilderDraft["triggerKind"];
+              patch({
+                actions: triggerKind === "schedule"
+                  ? draft.actions.map((action) => action.type === "edit_trigger_page" ? { ...action, type: "edit_pages" } : action)
+                  : draft.actions,
+                triggerKind,
+              });
+            }}
+            value={draft.triggerKind}
+          >
+            <option value="event">When pages change</option><option value="schedule">On a schedule</option>
           </select>
         </div>
-        <div className="space-y-2">
-          {draft.triggers.map((trigger, index) => (
-            <TriggerCard
-              catalog={catalog}
-              key={trigger.id}
-              onChange={(next) => patch({ triggers: draft.triggers.map((item) => item.id === trigger.id ? next : item) })}
-              onRemove={draft.triggers.length > 1 ? () => patch({ triggers: draft.triggers.filter((item) => item.id !== trigger.id) }) : undefined}
-              trigger={trigger}
-              index={index}
-            />
-          ))}
-        </div>
-        <Button className="mt-2 w-full border-dashed" onClick={() => patch({ triggers: [...draft.triggers, newTrigger()] })} variant="outline"><Plus />Add trigger</Button>
+        {draft.triggerKind === "schedule" ? (
+          <ScheduleEditor onChange={(schedule) => patch({ schedule })} schedule={draft.schedule} />
+        ) : (
+          <>
+            <div className="mb-2 flex justify-end">
+              <select aria-label="Event trigger matching" className="h-7 rounded-md border bg-control-background px-2 text-xs" onChange={(event) => patch({ match: event.target.value as "all" | "any" })} value={draft.match}>
+                <option value="any">Any trigger</option><option value="all">All triggers</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              {draft.triggers.map((trigger, index) => (
+                <TriggerCard
+                  catalog={catalog}
+                  key={trigger.id}
+                  onChange={(next) => patch({ triggers: draft.triggers.map((item) => item.id === trigger.id ? next : item) })}
+                  onRemove={draft.triggers.length > 1 ? () => patch({ triggers: draft.triggers.filter((item) => item.id !== trigger.id) }) : undefined}
+                  trigger={trigger}
+                  index={index}
+                />
+              ))}
+            </div>
+            <Button className="mt-2 w-full border-dashed" onClick={() => patch({ triggers: [...draft.triggers, newTrigger()] })} variant="outline"><Plus />Add trigger</Button>
+          </>
+        )}
       </section>
       <section>
         <div className="mb-2 text-xs font-medium text-content-secondary">Do this</div>
@@ -443,6 +482,7 @@ function AutomationBuilder({ catalog, dataSourceName, draft, generatedName, load
               onChange={(next) => patch({ actions: draft.actions.map((item) => item.id === action.id ? next : item) })}
               onMove={(direction) => patch({ actions: move(draft.actions, index, index + direction) })}
               onRemove={draft.actions.length > 1 ? () => patch({ actions: draft.actions.filter((item) => item.id !== action.id) }) : undefined}
+              scheduled={draft.triggerKind === "schedule"}
             />
           ))}
         </div>
@@ -487,13 +527,96 @@ function TriggerCard({ catalog, index, onChange, onRemove, trigger }: {
   );
 }
 
-function ActionCard({ action, catalog, index, onChange, onMove, onRemove }: {
+function ScheduleEditor({ onChange, schedule }: {
+  onChange: (schedule: ScheduleDraft) => void;
+  schedule: ScheduleDraft;
+}) {
+  const patch = (value: Partial<ScheduleDraft>) => onChange({ ...schedule, ...value });
+  const pattern = schedule.frequency === "custom" ? schedule.customPattern : schedule.frequency;
+  return (
+    <div className="grid gap-3 rounded-lg border p-3">
+      <label className="grid gap-1 text-xs font-medium text-content-secondary">
+        Frequency
+        <select aria-label="Schedule frequency" className="h-8 rounded-md border bg-control-background px-2 text-sm text-content-primary" onChange={(event) => patch({ frequency: event.target.value as ScheduleDraft["frequency"] })} value={schedule.frequency}>
+          <option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option><option value="custom">Custom</option>
+        </select>
+      </label>
+      {schedule.frequency === "custom" ? (
+        <label className="grid gap-1 text-xs font-medium text-content-secondary">
+          Repeat unit
+          <select aria-label="Custom schedule unit" className="h-8 rounded-md border bg-control-background px-2 text-sm text-content-primary" onChange={(event) => patch({ customPattern: event.target.value as ScheduleDraft["customPattern"] })} value={schedule.customPattern}>
+            <option value="daily">Days</option><option value="weekly">Weeks</option><option value="monthly">Months</option><option value="yearly">Years</option>
+          </select>
+        </label>
+      ) : null}
+      <div className="grid grid-cols-2 gap-2">
+        <label className="grid gap-1 text-xs font-medium text-content-secondary">
+          Every
+          <Input aria-label="Schedule interval" max={365} min={1} onChange={(event) => patch({ interval: Math.max(1, Math.min(365, Number(event.target.value) || 1)) })} type="number" value={schedule.interval} />
+        </label>
+        <label className="grid gap-1 text-xs font-medium text-content-secondary">
+          Local time
+          <Input aria-label="Schedule local time" onChange={(event) => patch({ localTime: event.target.value })} type="time" value={schedule.localTime} />
+        </label>
+      </div>
+      {pattern === "weekly" ? (
+        <fieldset>
+          <legend className="mb-1 text-xs font-medium text-content-secondary">Weekdays</legend>
+          <div className="flex flex-wrap gap-1">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label, day) => (
+              <Button
+                aria-pressed={schedule.weekdays.includes(day)}
+                key={label}
+                onClick={() => patch({ weekdays: toggleNumber(schedule.weekdays, day) })}
+                size="sm"
+                type="button"
+                variant={schedule.weekdays.includes(day) ? "secondary" : "outline"}
+              >{label}</Button>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+      {pattern === "monthly" || pattern === "yearly" ? (
+        <label className="grid gap-1 text-xs font-medium text-content-secondary">
+          Day of month
+          <select aria-label="Schedule day of month" className="h-8 rounded-md border bg-control-background px-2 text-sm text-content-primary" onChange={(event) => patch({ dayOfMonth: event.target.value })} value={schedule.dayOfMonth}>
+            {Array.from({ length: 31 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}</option>)}
+            <option value="last">Last day</option>
+          </select>
+        </label>
+      ) : null}
+      {pattern === "yearly" ? (
+        <fieldset>
+          <legend className="mb-1 text-xs font-medium text-content-secondary">Months</legend>
+          <div className="grid grid-cols-6 gap-1">
+            {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+              <Button aria-label={`Month ${month}`} aria-pressed={schedule.months.includes(month)} key={month} onClick={() => patch({ months: toggleNumber(schedule.months, month) })} size="sm" type="button" variant={schedule.months.includes(month) ? "secondary" : "outline"}>{month}</Button>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+      <div className="grid grid-cols-2 gap-2">
+        <label className="grid gap-1 text-xs font-medium text-content-secondary">
+          Start date
+          <Input aria-label="Schedule start date" onChange={(event) => patch({ startDate: event.target.value })} type="date" value={schedule.startDate} />
+        </label>
+        <label className="grid gap-1 text-xs font-medium text-content-secondary">
+          End date (optional)
+          <Input aria-label="Schedule end date" min={schedule.startDate} onChange={(event) => patch({ endDate: event.target.value })} type="date" value={schedule.endDate} />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function ActionCard({ action, catalog, index, onChange, onMove, onRemove, scheduled }: {
   action: ActionDraft;
   catalog?: DatabaseAutomationCatalog;
   index: number;
   onChange: (action: ActionDraft) => void;
   onMove: (direction: -1 | 1) => void;
   onRemove?: () => void;
+  scheduled: boolean;
 }) {
   const writable = catalog?.properties.filter((property) => property.writable) ?? [];
   const selectedProperty = catalog?.properties.find((property) => property.id === action.propertyId);
@@ -503,7 +626,7 @@ function ActionCard({ action, catalog, index, onChange, onMove, onRemove }: {
       <div className="mb-2 flex items-center gap-1"><Zap className="size-4" /><span className="text-sm font-medium">Action {index + 1}</span><Button aria-label="Move action up" className="ml-auto" disabled={index === 0} onClick={() => onMove(-1)} size="icon" variant="ghost"><ArrowUp /></Button><Button aria-label="Move action down" onClick={() => onMove(1)} size="icon" variant="ghost"><ArrowDown /></Button>{onRemove ? <Button aria-label="Remove action" onClick={onRemove} size="icon" variant="ghost"><X /></Button> : null}</div>
       <div className="grid gap-2">
         <select className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, type: event.target.value as ActionDraft["type"] })} value={action.type}>
-          <option value="define_variables">Define variables</option><option value="edit_trigger_page">Edit trigger page</option><option value="add_page">Add page</option><option value="edit_pages">Edit pages</option>
+          <option value="define_variables">Define variables</option>{!scheduled ? <option value="edit_trigger_page">Edit trigger page</option> : null}<option value="add_page">Add page</option><option value="edit_pages">Edit pages</option>
         </select>
         {action.type === "define_variables" ? (
           <><Input aria-label="Variable name" onChange={(event) => onChange({ ...action, variableName: event.target.value })} placeholder="Variable name" value={action.variableName} /><Input aria-label="Variable value" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Value" value={action.value} /></>
@@ -552,13 +675,33 @@ function StatusDot({ status }: { status: string }) {
 }
 
 function emptyDraft(): BuilderDraft {
-  return { actions: [newAction()], customName: false, match: "any", name: "", scopeViewId: "", triggers: [newTrigger()] };
+  return {
+    actions: [newAction()],
+    customName: false,
+    match: "any",
+    name: "",
+    schedule: newSchedule(),
+    scopeViewId: "",
+    triggerKind: "event",
+    triggers: [newTrigger()],
+  };
 }
 const newTrigger = (): TriggerDraft => ({ id: crypto.randomUUID(), operand: "", operator: "was_edited", propertyId: "any", type: "page_added" });
 const newAction = (): ActionDraft => ({ id: crypto.randomUUID(), mode: "set", propertyId: "name", type: "define_variables", value: "true", variableName: "value" });
+const newSchedule = (): ScheduleDraft => ({
+  customPattern: "daily",
+  dayOfMonth: "1",
+  endDate: "",
+  frequency: "daily",
+  interval: 1,
+  localTime: "09:00",
+  months: [1],
+  startDate: new Date().toISOString().slice(0, 10),
+  weekdays: [new Date().getDay()],
+});
 
 function buildDefinition(draft: BuilderDraft, dataSourceId: string, timezone: string, catalog?: DatabaseAutomationCatalog): DatabaseAutomationDefinition | null {
-  if (draft.triggers.some((trigger) =>
+  if (draft.triggerKind === "event" && draft.triggers.some((trigger) =>
     trigger.type === "property_edited" &&
     !operandless.has(trigger.operator) &&
     !trigger.operand.trim()
@@ -584,7 +727,10 @@ function buildDefinition(draft: BuilderDraft, dataSourceId: string, timezone: st
     return { id: action.id, operations: [operation], target: { dataSourceId, filter: { conditions: [{ id: `${action.id}-filter`, operator: "is_not_empty", propertyId: "name", type: "condition" }], match: "all" }, type: "filtered_data_source" }, type: "edit_pages" };
   });
   if (actions.some((action) => !action)) return null;
-  return { actions: actions as DatabaseAutomationAction[], definitionVersion: 1, scope: draft.scopeViewId ? { type: "view", viewId: draft.scopeViewId } : { type: "data_source" }, timezone, trigger: { clauses, kind: "event", match: draft.match } };
+  const trigger: DatabaseAutomationDefinition["trigger"] = draft.triggerKind === "event"
+    ? { clauses, kind: "event", match: draft.match }
+    : { kind: "schedule", schedule: scheduleDefinition(draft.schedule, timezone) };
+  return { actions: actions as DatabaseAutomationAction[], definitionVersion: 1, scope: draft.scopeViewId ? { type: "view", viewId: draft.scopeViewId } : { type: "data_source" }, timezone, trigger };
 }
 
 function parseOperand(value: string, propertyType: string | undefined, operator: DatabaseAutomationTriggerOperator): AutomationTriggerOperand {
@@ -623,6 +769,9 @@ function parseLiteral(value: string): null | boolean | number | string {
 }
 
 function generateName(draft: BuilderDraft, catalog?: DatabaseAutomationCatalog) {
+  if (draft.triggerKind === "schedule") {
+    return `${humanize(draft.schedule.frequency)} at ${draft.schedule.localTime} → ${draft.actions[0] ? humanize(draft.actions[0].type) : "Run actions"}`;
+  }
   const trigger = draft.triggers[0];
   const action = draft.actions[0];
   const property = catalog?.properties.find((item) => item.id === trigger?.propertyId)?.name;
@@ -632,7 +781,7 @@ function generateName(draft: BuilderDraft, catalog?: DatabaseAutomationCatalog) 
 }
 
 function draftFromDefinition(name: string, definition: DatabaseAutomationDefinition): BuilderDraft {
-  if (definition.trigger.kind !== "event") return { ...emptyDraft(), customName: true, name };
+  const base = emptyDraft();
   return {
     actions: definition.actions.flatMap((action): ActionDraft[] => {
       if (action.type === "define_variables") return [{ id: action.id, mode: "set", propertyId: "name", type: action.type, value: String(action.variables[0]?.expression.type === "literal" ? action.variables[0].expression.value ?? "" : ""), variableName: action.variables[0]?.name ?? "value" }];
@@ -645,11 +794,48 @@ function draftFromDefinition(name: string, definition: DatabaseAutomationDefinit
       return [{ id: action.id, mode: operation?.mode ?? "set", propertyId: operation?.propertyId ?? "name", type: action.type as ActionDraft["type"], value: operation?.value?.type === "literal" ? String(operation.value.value ?? "") : "", variableName: "value" }];
     }),
     customName: true,
-    match: definition.trigger.match,
+    match: definition.trigger.kind === "event" ? definition.trigger.match : "any",
     name,
+    schedule: definition.trigger.kind === "schedule" ? scheduleDraft(definition.trigger.schedule) : base.schedule,
     scopeViewId: definition.scope.type === "view" ? definition.scope.viewId : "",
-    triggers: definition.trigger.clauses.map((clause): TriggerDraft => clause.type === "page_added" ? { id: clause.id, operand: "", operator: "was_edited", propertyId: "any", type: "page_added" } : { id: clause.id, operand: typeof clause.operand === "string" || typeof clause.operand === "number" || typeof clause.operand === "boolean" ? String(clause.operand) : "", operator: clause.operator, propertyId: clause.propertyId, type: "property_edited" }),
+    triggerKind: definition.trigger.kind,
+    triggers: definition.trigger.kind === "event" ? definition.trigger.clauses.map((clause): TriggerDraft => clause.type === "page_added" ? { id: clause.id, operand: "", operator: "was_edited", propertyId: "any", type: "page_added" } : { id: clause.id, operand: typeof clause.operand === "string" || typeof clause.operand === "number" || typeof clause.operand === "boolean" ? String(clause.operand) : "", operator: clause.operator, propertyId: clause.propertyId, type: "property_edited" }) : base.triggers,
   };
+}
+
+function scheduleDefinition(draft: ScheduleDraft, timezone: string): DatabaseAutomationSchedule {
+  const pattern = draft.frequency === "custom" ? draft.customPattern : draft.frequency;
+  return {
+    frequency: draft.frequency,
+    interval: draft.interval,
+    localTime: draft.localTime,
+    startDate: draft.startDate,
+    timezone,
+    ...(draft.endDate ? { endDate: draft.endDate } : {}),
+    ...(pattern === "weekly" ? { weekdays: draft.weekdays } : {}),
+    ...(pattern === "monthly" || pattern === "yearly" ? { dayOfMonth: draft.dayOfMonth === "last" ? "last" : Number(draft.dayOfMonth) } : {}),
+    ...(pattern === "yearly" ? { months: draft.months } : {}),
+  };
+}
+
+function scheduleDraft(schedule: DatabaseAutomationSchedule): ScheduleDraft {
+  const customPattern = schedule.months?.length ? "yearly" : schedule.dayOfMonth !== undefined ? "monthly" : schedule.weekdays?.length ? "weekly" : "daily";
+  return {
+    customPattern,
+    dayOfMonth: String(schedule.dayOfMonth ?? 1),
+    endDate: schedule.endDate ?? "",
+    frequency: schedule.frequency,
+    interval: schedule.interval,
+    localTime: schedule.localTime,
+    months: schedule.months ?? [1],
+    startDate: schedule.startDate,
+    weekdays: schedule.weekdays ?? [1],
+  };
+}
+
+function toggleNumber(values: number[], value: number) {
+  if (values.includes(value)) return values.length === 1 ? values : values.filter((item) => item !== value);
+  return [...values, value].sort((left, right) => left - right);
 }
 
 function move<T>(items: T[], from: number, to: number) {

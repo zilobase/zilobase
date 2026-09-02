@@ -11,6 +11,7 @@ import {
   databaseAutomationMutationFactSchema,
   databaseAutomationRevisionSchema,
   databaseAutomationRunSchema,
+  databaseAutomationSummarySchema,
 } from "./contracts"
 
 const literal = (value: string) => ({ type: "literal" as const, value })
@@ -80,6 +81,26 @@ test("parses a structurally valid recurring automation", () => {
   })
 
   assert.equal(parsed.trigger.kind, "schedule")
+})
+
+test("publishes the materialized next schedule occurrence", () => {
+  const parsed = databaseAutomationSummarySchema.parse({
+    actionCount: 1,
+    currentRevisionId: "revision-1",
+    dataSourceId: "source-1",
+    id: "automation-1",
+    lastRunAt: null,
+    lastRunStatus: null,
+    name: "Daily review",
+    nextRunAt: "2026-09-03T03:30:00.000Z",
+    scopeSummary: "Entire data source",
+    status: "active",
+    triggerSummary: "daily schedule",
+    updatedAt: "2026-09-02T00:00:00.000Z",
+    version: 1,
+    workspaceId: "workspace-1",
+  })
+  assert.equal(parsed.nextRunAt, "2026-09-03T03:30:00.000Z")
 })
 
 test("rejects invalid schedules and trigger-page behavior", () => {

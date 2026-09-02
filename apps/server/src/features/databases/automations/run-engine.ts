@@ -233,11 +233,27 @@ async function loadExecutionContext(runId: string, workerId: string) {
   if (!record) return null;
   const parsed = databaseAutomationDefinitionSchema.safeParse(record.revision.definition);
   if (!parsed.success) throw new AutomationActionError("Pinned automation revision is invalid", "AUTOMATION_REVISION_INVALID");
-  if (!record.run.triggerRowId || !record.run.triggerPageId) {
+  const scheduled = parsed.data.trigger.kind === "schedule";
+  if (scheduled && !record.run.scheduledFor) {
+    throw new AutomationActionError("Scheduled run has no occurrence", "AUTOMATION_SCHEDULE_MISSING");
+  }
+  if (!scheduled && (!record.run.triggerRowId || !record.run.triggerPageId)) {
     throw new AutomationActionError("Event run has no trigger page", "AUTOMATION_TRIGGER_MISSING");
   }
-  const [row, properties, values, completedSteps] = await Promise.all([
+  const [properties, completedSteps] = await Promise.all([
+    loadProperties(record.run.dataSourceId),
     db
+      .select()
+      .from(databaseAutomationStepRun)
+      .where(
+        and(
+          eq(databaseAutomationStepRun.runId, runId),
+          eq(databaseAutomationStepRun.status, "succeeded"),
+        ),
+      )
+      .orderBy(asc(databaseAutomationStepRun.actionIndex)),
+  ]);
+  const row = scheduled ? null : await db
       .select({
         createdAt: databaseRow.createdAt,
         createdById: databaseRow.createdById,
@@ -253,31 +269,19 @@ async function loadExecutionContext(runId: string, workerId: string) {
       .innerJoin(page, eq(page.id, databaseRow.pageId))
       .where(
         and(
-          eq(databaseRow.id, record.run.triggerRowId),
+          eq(databaseRow.id, record.run.triggerRowId!),
           eq(databaseRow.dataSourceId, record.run.dataSourceId),
           isNull(databaseRow.deletedAt),
           isNull(page.deletedAt),
         ),
       )
       .limit(1)
-      .then((rows) => rows[0]),
-    loadProperties(record.run.dataSourceId),
-    db
+      .then((rows) => rows[0] ?? null);
+  const values = !row ? [] : await db
       .select({ propertyId: pagePropertyValue.propertyId, value: pagePropertyValue.value })
       .from(pagePropertyValue)
-      .where(eq(pagePropertyValue.pageId, record.run.triggerPageId)),
-    db
-      .select()
-      .from(databaseAutomationStepRun)
-      .where(
-        and(
-          eq(databaseAutomationStepRun.runId, runId),
-          eq(databaseAutomationStepRun.status, "succeeded"),
-        ),
-      )
-      .orderBy(asc(databaseAutomationStepRun.actionIndex)),
-  ]);
-  if (!row) throw new AutomationActionError("Trigger page is unavailable", "AUTOMATION_TRIGGER_MISSING");
+      .where(eq(pagePropertyValue.pageId, row.pageId));
+  if (!scheduled && !row) throw new AutomationActionError("Trigger page is unavailable", "AUTOMATION_TRIGGER_MISSING");
   return {
     automation: record.automation,
     completedSteps,
@@ -341,13 +345,14 @@ async function executeAction(
     return { variables };
   }
   if (action.type === "edit_trigger_page") {
+    const row = requireTriggerRow(context);
     const operations = resolveOperations(context, action.operations);
     await applyDatabaseAutomationRowOperations({
       actorId,
       dataSourceId: context.run.dataSourceId,
       env,
       operations,
-      rows: [{ pageId: context.row.pageId, rowId: context.row.id }],
+      rows: [{ pageId: row.pageId, rowId: row.id }],
       runId: context.run.id,
     });
     return { editedRows: 1 };
@@ -400,26 +405,27 @@ async function executeAction(
 function resolveExpression(context: ExecutionContext, expression: AutomationValueExpression): unknown {
   if (expression.type === "literal") return expression.value;
   if (expression.type === "formula") {
+    const row = context.row;
     const result = evaluateDatabaseFormula({
       expression: expression.expression,
       now: context.run.triggerTime,
       properties: context.properties as DatabaseFormulaProperty[],
       propertyValuesByKey: Object.fromEntries(
         Object.entries(context.propertyValues).map(([propertyId, value]) => [
-          `${context.row.pageId}:${propertyId}`,
+          `${row?.pageId ?? "scheduled"}:${propertyId}`,
           formulaPropertyValue(value),
         ]),
       ),
       row: {
-        createdAt: context.row.createdAt.toISOString(),
-        id: context.row.id,
+        createdAt: row?.createdAt.toISOString() ?? context.run.triggerTime.toISOString(),
+        id: row?.id ?? `scheduled:${context.run.id}`,
         page: {
-          createdAt: context.row.pageCreatedAt.toISOString(),
-          name: context.row.title,
-          updatedAt: context.row.pageUpdatedAt.toISOString(),
+          createdAt: row?.pageCreatedAt.toISOString() ?? context.run.triggerTime.toISOString(),
+          name: row?.title ?? "Scheduled automation",
+          updatedAt: row?.pageUpdatedAt.toISOString() ?? context.run.triggerTime.toISOString(),
         },
-        pageId: context.row.pageId,
-        updatedAt: context.row.updatedAt.toISOString(),
+        pageId: row?.pageId ?? `scheduled:${context.run.id}`,
+        updatedAt: row?.updatedAt.toISOString() ?? context.run.triggerTime.toISOString(),
       },
       timezone: context.definition.timezone,
       titlePropertyLabel: "Name",
@@ -429,11 +435,11 @@ function resolveExpression(context: ExecutionContext, expression: AutomationValu
     return result.value;
   }
   switch (expression.reference) {
-    case "trigger_page": return context.row.pageId;
+    case "trigger_page": return requireTriggerRow(context).pageId;
     case "trigger_property": return context.propertyValues[expression.propertyId] ?? null;
     case "trigger_person": return context.run.triggerActorId;
-    case "page_creator": return context.row.createdById;
-    case "page_last_editor": return context.row.lastEditedById;
+    case "page_creator": return requireTriggerRow(context).createdById;
+    case "page_last_editor": return requireTriggerRow(context).lastEditedById;
     case "now": return context.run.triggerTime.toISOString();
     case "today": return zonedDate(context.run.triggerTime, context.definition.timezone);
     case "variable": return context.variables[expression.name] ?? null;
@@ -468,6 +474,7 @@ async function resolveEditTarget(
     };
   }
   if (action.target.type === "related_pages") {
+    requireTriggerRow(context);
     const target = action.target;
     const property = context.properties.find(
       (candidate) => candidate.property.id === target.propertyId,
@@ -486,6 +493,16 @@ async function resolveEditTarget(
     context.run.triggerTime,
   );
   return { dataSourceId: action.target.dataSourceId, rows };
+}
+
+function requireTriggerRow(context: Pick<ExecutionContext, "row">) {
+  if (!context.row) {
+    throw new AutomationActionError(
+      "Scheduled automations have no trigger page",
+      "AUTOMATION_TRIGGER_MISSING",
+    );
+  }
+  return context.row;
 }
 
 async function loadFilterTargetRows(
@@ -667,6 +684,7 @@ async function failClaimedRun(
         erroredAt: now,
         lastRunAt: now,
         lastRunStatus: "failed",
+        nextRunAt: null,
         status: "error",
         updatedAt: now,
       })

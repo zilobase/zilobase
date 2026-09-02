@@ -37,6 +37,7 @@ import { drainMailDatabaseSyncOutbox } from "../../features/mail/mail-database-s
 import { promoteClosedDatabaseAutomationEventWindows } from "../../features/databases/automations/event-capture";
 import { drainDatabaseAutomationEventWindows } from "../../features/databases/automations/evaluator";
 import { drainDatabaseAutomationRuns } from "../../features/databases/automations/run-engine";
+import { scanDueDatabaseAutomationSchedules } from "../../features/databases/automations/scheduler";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -183,11 +184,17 @@ export function createNodeRuntime({
 function startDatabaseAutomationWorker(env: Record<string, unknown>) {
   const workerId = `node-automations:${process.pid}:${crypto.randomUUID()}`;
   let running = false;
+  let nextScheduleScanAt = 0;
   const drain = async () => {
     if (running) return;
     running = true;
     try {
       await runWithDbEnv(env, async () => {
+        const now = Date.now();
+        if (now >= nextScheduleScanAt) {
+          await scanDueDatabaseAutomationSchedules(env, { limit: 50, now: new Date(now) });
+          nextScheduleScanAt = now + 60_000;
+        }
         await drainDatabaseAutomationEventWindows(env, {
           limit: 50,
           workerId: `${workerId}:events`,

@@ -36,4 +36,20 @@ export function register({ assert, readSource, test }) {
     assert.match(settings, /onOpenAutomations/)
     assert.doesNotMatch(settings, /Automation settings/)
   })
+
+  test("builder supports recurring schedules and excludes trigger-page actions", async () => {
+    const manager = await readSource(
+      "/src/features/databases/automations/database-automation-manager.tsx",
+    )
+    for (const behavior of [
+      "On a schedule",
+      "Schedule frequency",
+      "Custom schedule unit",
+      "Schedule local time",
+      "Schedule start date",
+      "Schedule end date",
+      "Last day",
+    ]) assert.match(manager, new RegExp(behavior))
+    assert.match(manager, /!scheduled \? <option value="edit_trigger_page"/)
+  })
 }

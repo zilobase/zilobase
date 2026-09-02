@@ -4,6 +4,7 @@ import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import {
   DATABASE_AUTOMATION_LIMITS,
   databaseAutomationDefinitionSchema,
+  getNextDatabaseAutomationOccurrence,
   type CreateDatabaseAutomationRequest,
   type DatabaseAutomationDefinition,
   type DatabaseAutomationDetail,
@@ -166,6 +167,9 @@ export async function createDatabaseAutomation(input: {
     const now = new Date();
     const automationId = crypto.randomUUID();
     const revisionId = crypto.randomUUID();
+    const nextRunAt = initialStatus === "active"
+      ? nextScheduleRunAt(compilation.definition!, now)
+      : null;
     await tx.insert(databaseAutomation).values({
       createIdempotencyKey: input.body.idempotencyKey,
       createdAt: now,
@@ -175,6 +179,7 @@ export async function createDatabaseAutomation(input: {
       duplicatedFromId: input.duplicatedFromId,
       id: automationId,
       name: input.body.name,
+      nextRunAt,
       ownerUserId: input.userId,
       status: initialStatus,
       updatedAt: now,
@@ -204,7 +209,7 @@ export async function createDatabaseAutomation(input: {
         currentRevisionId: revisionId,
         createIdempotencyKey: input.body.idempotencyKey,
         duplicatedFromId: input.duplicatedFromId ?? null,
-        nextRunAt: null,
+        nextRunAt,
         lastRunAt: null,
         lastRunStatus: null,
         errorCode: null,
@@ -301,9 +306,12 @@ export async function updateDatabaseAutomation(input: {
       version,
     });
     await insertDependencies(tx as Executor, current.automation.id, revisionId, compilation.compiledDefinition!.dependencies);
+    const nextRunAt = current.automation.status === "active"
+      ? nextScheduleRunAt(compilation.definition!, now)
+      : null;
     const [automation] = await tx
       .update(databaseAutomation)
-      .set({ currentRevisionId: revisionId, name: input.body.name, updatedAt: now })
+      .set({ currentRevisionId: revisionId, name: input.body.name, nextRunAt, updatedAt: now })
       .where(eq(databaseAutomation.id, current.automation.id))
       .returning();
     return {
@@ -362,6 +370,7 @@ export async function setDatabaseAutomationPaused(input: {
       errorSummary: null,
       erroredAt: null,
       status: input.paused ? "paused" : "active",
+      nextRunAt: input.paused ? null : nextScheduleRunAt(current.definition, now),
       updatedAt: now,
     })
     .where(and(eq(databaseAutomation.id, input.automationId), isNull(databaseAutomation.deletedAt)))
@@ -430,6 +439,7 @@ export async function deleteDatabaseAutomation(input: {
       errorCode: null,
       errorSummary: null,
       erroredAt: null,
+      nextRunAt: null,
       status: "deleted",
       updatedAt: now,
     })
@@ -519,6 +529,7 @@ export async function invalidateDatabaseAutomationDependencies(input: {
       errorCode: "DEPENDENCY_INVALID",
       errorSummary: input.reason.slice(0, 2_000),
       erroredAt: new Date(),
+      nextRunAt: null,
       status: "error",
       updatedAt: new Date(),
     })
@@ -624,6 +635,7 @@ async function loadCompilationContext(input: {
     loadViews(input.databaseId, input.management.source.id),
   ]);
   return {
+    capabilities: { schedules: true },
     dataSourceIds: targetIds,
     parentDatabaseId: input.management.source.parentDatabaseId,
     propertiesByDataSource,
@@ -754,6 +766,7 @@ function toSummary(automation: AutomationRecord, revision: RevisionRecord): Data
     lastRunAt: automation.lastRunAt?.toISOString() ?? null,
     lastRunStatus: normalizeRunStatus(automation.lastRunStatus),
     name: automation.name,
+    nextRunAt: automation.nextRunAt?.toISOString() ?? null,
     scopeSummary: definition.scope.type === "view" ? "Saved view" : "Entire data source",
     status: automation.status as DatabaseAutomationSummary["status"],
     triggerSummary: definition.trigger.kind === "event"
@@ -763,6 +776,12 @@ function toSummary(automation: AutomationRecord, revision: RevisionRecord): Data
     version: revision.version,
     workspaceId: automation.workspaceId,
   };
+}
+
+function nextScheduleRunAt(definition: DatabaseAutomationDefinition, now: Date) {
+  return definition.trigger.kind === "schedule"
+    ? getNextDatabaseAutomationOccurrence(definition.trigger.schedule, now)
+    : null;
 }
 
 function toDetail(automation: AutomationRecord, revision: RevisionRecord): DatabaseAutomationDetail {

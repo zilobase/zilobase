@@ -811,6 +811,7 @@ export const databaseAutomationSummarySchema = z
     lastRunAt: timestampSchema.nullable(),
     lastRunStatus: databaseAutomationRunStatusSchema.nullable(),
     name: shortTextSchema,
+    nextRunAt: timestampSchema.nullable(),
     scopeSummary: z.string().max(500),
     status: databaseAutomationStatusSchema,
     triggerSummary: z.string().max(500),

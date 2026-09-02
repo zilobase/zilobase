@@ -58,10 +58,10 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 
 | Capability | Pass | Required evidence | Status |
 | --- | ---: | --- | --- |
-| Daily, weekly, monthly, yearly, and custom schedules | 6 | Recurrence table suite | planned |
-| IANA timezone, DST gap/fold, leap year, month end, start/end | 6 | Clock-controlled recurrence fixtures | planned |
-| Unique occurrence, one-minute scan, and bounded missed-run policy | 6 | Concurrent scanner and downtime recovery tests | planned |
-| Schedule excludes trigger-page action and references | 0, 6 | Contract/compiler and builder validation tests | contracted |
+| Daily, weekly, monthly, yearly, and custom schedules | 6 | Recurrence table suite | implemented |
+| IANA timezone, DST gap/fold, leap year, month end, start/end | 6 | Clock-controlled recurrence fixtures | verified |
+| Unique occurrence, one-minute scan, and bounded missed-run policy | 6 | Concurrent scanner and downtime recovery tests | implemented |
+| Schedule excludes trigger-page action and references | 0, 6 | Contract/compiler and builder validation tests | verified |
 | Durable in-product notifications and read state | 7 | Recipient, outbox, realtime, and polling tests | planned |
 | Gmail ownership, durable delivery, retry, and reconnect behavior | 8 | Provider contract and revocation tests | planned |
 | POST-only webhook with selected properties and encrypted headers | 9 | Payload and secret persistence tests | planned |

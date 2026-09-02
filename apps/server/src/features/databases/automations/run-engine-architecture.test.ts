@@ -25,3 +25,10 @@ test("internal actions preserve authority, limits, and automation origin", async
   expect(rows).toContain('origin: input.origin ?? "user"');
 });
 
+test("scheduled runs use the pinned occurrence without requiring a trigger page", async () => {
+  const source = await readFile(new URL("./run-engine.ts", import.meta.url), "utf8");
+  expect(source).toContain('parsed.data.trigger.kind === "schedule"');
+  expect(source).toContain('"AUTOMATION_SCHEDULE_MISSING"');
+  expect(source).toContain("const row = scheduled ? null");
+  expect(source).toContain("Scheduled automations have no trigger page");
+});

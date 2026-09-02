@@ -130,6 +130,7 @@ export {
 } from "../features/databases/automations/event-capture";
 export { drainDatabaseAutomationEventWindows } from "../features/databases/automations/evaluator";
 export { drainDatabaseAutomationRuns } from "../features/databases/automations/run-engine";
+export { scanDueDatabaseAutomationSchedules } from "../features/databases/automations/scheduler";
 export {
   MembershipService,
   type GrantMembershipInput,
