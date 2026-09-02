@@ -696,9 +696,15 @@ async function executeSlackAction(
   )).limit(1);
   if (!connection || connection.status !== "connected") throw new AutomationActionError("Slack connection must be reconnected", "SLACK_CONNECTION_REVOKED");
   const text = action.message.parts.map((part) => {
-    if (part.type === "text") return escapeSlack(part.text);
+    if (part.type === "text") {
+      let formatted = escapeSlack(part.text);
+      if (part.bold) formatted = `*${formatted}*`;
+      if (part.italic) formatted = `_${formatted}_`;
+      return formatted;
+    }
     if (part.type === "value") return escapeSlack(displayValue(resolveExpression(context, part.value)));
     if (part.type === "slack_mention") return part.kind === "user" ? `<@${part.id}>` : `<#${part.id}>`;
+    if (part.type === "slack_broadcast") return `<!${part.kind}>`;
     return `<${part.url}|${escapeSlack(part.label)}>`;
   }).join("");
   if (!text || text.length > 40_000) throw new AutomationActionError("Slack message must contain at most 40,000 characters", "AUTOMATION_MESSAGE_LIMIT");
