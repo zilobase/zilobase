@@ -8,6 +8,11 @@ export {
   type DatabaseMutationCommitResult,
   type SqlExecutor,
 } from "./commit";
+export type {
+  DatabaseAutomationMutationFact,
+  DatabaseAutomationMutationFactCandidate,
+  DatabaseMutationOrigin,
+} from "../automations/event-capture";
 export {
   createDatabasePropertyService,
   createDatabaseRowService,

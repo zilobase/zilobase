@@ -59,11 +59,11 @@ const commit = {
   version: 2,
 };
 
-function appWithUser() {
+function appWithUser(authMethod: "apiKey" | "session" = "session") {
   const app = new Hono<AppBindings>();
   app.use("*", async (c, next) => {
     c.set("user", user as never);
-    c.set("authMethod", "session");
+    c.set("authMethod", authMethod);
     c.set("apiKey", null);
     await next();
   });
@@ -162,11 +162,27 @@ test("cell route returns the service commit response", async () => {
   assert.deepEqual(mocks.cell.mock.calls[0]?.[0], {
     databaseId: "database-1",
     env: undefined,
+    origin: "user",
     pagePropertyId: "property-1",
     rowId: "row-1",
     userId: "user-1",
     value: "Done",
   });
+});
+
+test("API-key row mutations carry the api origin", async () => {
+  mocks.cell.mockResolvedValue({ commit });
+  const response = await appWithUser("apiKey").request(
+    "/databases/database-1/rows/row-1/properties/property-1",
+    {
+      body: JSON.stringify({ value: "Done" }),
+      headers: { "content-type": "application/json" },
+      method: "PUT",
+    },
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(mocks.cell.mock.calls[0]?.[0].origin, "api");
 });
 
 test("duplicate and row routes reject malformed bodies", async () => {

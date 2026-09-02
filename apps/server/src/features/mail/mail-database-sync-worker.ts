@@ -4,6 +4,7 @@ import { evaluateMailFilterExpression, normalizeMailViewConfig, type MailAddress
 import { requireDatabaseEditAccess } from "../databases/access/database-access"
 import { requireDataSourceEditAccess } from "../databases/access/data-source-access"
 import { commitDataSourceMutation } from "../databases/core/commit"
+import { lockDatabaseAutomationFactRows } from "../databases/automations/event-capture"
 import { validateCellValue } from "../databases/properties/config"
 import { fetchDatabaseRowDelta, fetchDatabaseValuesForPage } from "../databases/realtime/delta"
 import { upsertPageItemPlacement } from "../pages/placements"
@@ -326,9 +327,10 @@ async function ensureSyncPage(env: RuntimeEnv, record: SyncRecord, dataSourceId:
   if (existing?.deletedAt) throw new MailDatabaseSyncPausedError("The synced database row was deleted.")
   if (!existing) {
     await commitDataSourceMutation({ actorId: userId, changed: ["rows"], dataSourceId, env }, async (tx) => {
+      await lockDatabaseAutomationFactRows(tx, [{ dataSourceId, rowId: record.databaseRowId }])
       const [position] = await tx.select({ value: max(databaseRow.position) }).from(databaseRow).where(and(eq(databaseRow.dataSourceId, dataSourceId), isNull(databaseRow.deletedAt)))
       const now = new Date()
-      await tx.insert(databaseRow).values({
+      const [inserted] = await tx.insert(databaseRow).values({
         createdAt: now,
         createdById: userId,
         dataSourceId,
@@ -337,7 +339,7 @@ async function ensureSyncPage(env: RuntimeEnv, record: SyncRecord, dataSourceId:
         pageId: record.pageId,
         position: Number(position?.value ?? -1) + 1,
         updatedAt: now,
-      }).onConflictDoNothing()
+      }).onConflictDoNothing().returning({ id: databaseRow.id })
       await upsertPageItemPlacement(tx, {
         id: `mail-sync-placement:${record.id}`,
         itemId: record.pageId,
@@ -349,16 +351,36 @@ async function ensureSyncPage(env: RuntimeEnv, record: SyncRecord, dataSourceId:
         sourceRowId: record.databaseRowId,
         workspaceId,
       })
-      return { delta: await fetchDatabaseRowDelta(record.databaseRowId, tx) ?? { rows: [] } }
+      return {
+        automationFacts: inserted ? [{
+          actorId: userId,
+          changedValues: [{ after: title || "Untitled", before: null, propertyId: "name" }],
+          dataSourceId,
+          origin: "integration" as const,
+          pageId: record.pageId,
+          rowAdded: true,
+          rowId: record.databaseRowId,
+        }] : [],
+        delta: await fetchDatabaseRowDelta(record.databaseRowId, tx) ?? { rows: [] },
+      }
     })
   }
 }
 
 async function writeMappedValues(input: { dataSourceId: string; env: RuntimeEnv; record: SyncRecord; title: string; userId: string; values: Array<{ propertyId: string; value: unknown }> }) {
   await commitDataSourceMutation({ actorId: input.userId, changed: ["rows", "values"], dataSourceId: input.dataSourceId, env: input.env }, async (tx) => {
+    await lockDatabaseAutomationFactRows(tx, [{ dataSourceId: input.dataSourceId, rowId: input.record.databaseRowId }])
     const now = new Date()
-    const [activeRow] = await tx.select({ id: databaseRow.id }).from(databaseRow).where(and(eq(databaseRow.id, input.record.databaseRowId), eq(databaseRow.dataSourceId, input.dataSourceId), isNull(databaseRow.deletedAt))).limit(1)
+    const [activeRow] = await tx.select({ id: databaseRow.id, title: page.name }).from(databaseRow)
+      .innerJoin(page, eq(page.id, databaseRow.pageId))
+      .where(and(eq(databaseRow.id, input.record.databaseRowId), eq(databaseRow.dataSourceId, input.dataSourceId), isNull(databaseRow.deletedAt))).limit(1)
     if (!activeRow) throw new MailDatabaseSyncPausedError("The synced database row is unavailable.")
+    const previousValues = input.values.length
+      ? await tx.select({ propertyId: pagePropertyValue.propertyId, value: pagePropertyValue.value })
+          .from(pagePropertyValue)
+          .where(and(eq(pagePropertyValue.pageId, input.record.pageId), inArray(pagePropertyValue.propertyId, input.values.map((value) => value.propertyId))))
+      : []
+    const previousByPropertyId = new Map(previousValues.map((value) => [value.propertyId, value.value]))
     await tx.update(page).set({ name: input.title || "Untitled", updatedAt: now }).where(and(eq(page.id, input.record.pageId), isNull(page.deletedAt)))
     for (const mapped of input.values) {
       await tx.insert(pagePropertyValue).values({ id: crypto.randomUUID(), pageId: input.record.pageId, propertyId: mapped.propertyId, value: mapped.value })
@@ -369,11 +391,28 @@ async function writeMappedValues(input: { dataSourceId: string; env: RuntimeEnv;
       fetchDatabaseRowDelta(input.record.databaseRowId, tx),
       fetchDatabaseValuesForPage(input.record.pageId, input.values.map((value) => value.propertyId), tx),
     ])
-    return { delta: { ...(rowDelta ?? {}), values: values.map((value) => ({
-      ...value,
-      createdAt: value.createdAt.toISOString(),
-      updatedAt: value.updatedAt.toISOString(),
-    })) } }
+    return {
+      automationFacts: [{
+        actorId: input.userId,
+        changedValues: [
+          { after: input.title || "Untitled", before: activeRow.title, propertyId: "name" },
+          ...input.values.map((value) => ({
+            after: value.value,
+            before: previousByPropertyId.get(value.propertyId) ?? null,
+            propertyId: value.propertyId,
+          })),
+        ],
+        dataSourceId: input.dataSourceId,
+        origin: "integration" as const,
+        pageId: input.record.pageId,
+        rowId: input.record.databaseRowId,
+      }],
+      delta: { ...(rowDelta ?? {}), values: values.map((value) => ({
+        ...value,
+        createdAt: value.createdAt.toISOString(),
+        updatedAt: value.updatedAt.toISOString(),
+      })) },
+    }
   })
 }
 

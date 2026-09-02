@@ -57,6 +57,15 @@ function transactionRecorder() {
   const conflicts: unknown[] = [];
   const updates: unknown[] = [];
   const tx = {
+    async execute() {},
+    select() {
+      const builder = {
+        from() { return builder; },
+        where() { return builder; },
+        async limit() { return [{ value: "Before" }]; },
+      };
+      return builder;
+    },
     insert() {
       return {
         values(value: unknown) {
@@ -135,6 +144,18 @@ test("setDatabaseCellValueService validates and upserts a cell mutation", async 
   const delta = (await mocks.commit.mock.results[0]?.value)?.delta;
   assert.equal(delta.rows[0].lastEditedById, "user-1");
   assert.equal(delta.values[0].value, "Done");
+  assert.deepEqual((await mocks.commit.mock.results[0]?.value)?.automationFacts, [
+    {
+      actorId: "user-1",
+      changedValues: [
+        { after: "Done", before: "Before", propertyId: "property-1" },
+      ],
+      dataSourceId: "database-1",
+      origin: "user",
+      pageId: "page-1",
+      rowId: "row-1",
+    },
+  ]);
 });
 
 test("setDatabaseCellValueService rejects missing rows or properties", async () => {

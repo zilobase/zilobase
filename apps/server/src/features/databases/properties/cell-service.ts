@@ -11,6 +11,10 @@ import {
 } from "../../../infrastructure/database/schema";
 import { requireDataSourceEditAccess } from "../access/data-source-access";
 import { commitDataSourceMutation } from "../core/commit";
+import {
+  lockDatabaseAutomationFactRows,
+  type DatabaseMutationOrigin,
+} from "../automations/event-capture";
 import type { DatabaseDelta } from "../realtime/delta";
 import { validateCellValue } from "./config";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
@@ -18,6 +22,8 @@ import { ServiceMutationError } from "../../../shared/errors/service-mutation-er
 export async function setDatabaseCellValueService(input: {
   databaseId: string;
   env?: RuntimeEnv;
+  automationRunId?: string;
+  origin?: DatabaseMutationOrigin;
   rowId: string;
   userId: string;
   value: unknown;
@@ -74,6 +80,19 @@ export async function setDatabaseCellValueService(input: {
       env: input.env,
     },
     async (tx) => {
+      await lockDatabaseAutomationFactRows(tx, [
+        { dataSourceId: existing.id, rowId: row.id },
+      ]);
+      const [previous] = await tx
+        .select({ value: pagePropertyValue.value })
+        .from(pagePropertyValue)
+        .where(
+          and(
+            eq(pagePropertyValue.pageId, row.pageId),
+            eq(pagePropertyValue.propertyId, input.pagePropertyId),
+          ),
+        )
+        .limit(1);
       await tx
         .insert(pagePropertyValue)
         .values({
@@ -96,6 +115,25 @@ export async function setDatabaseCellValueService(input: {
         .where(eq(page.id, row.pageId));
 
       return {
+        automationFacts: [
+          {
+            actorId: input.userId,
+            ...(input.automationRunId
+              ? { automationRunId: input.automationRunId }
+              : {}),
+            changedValues: [
+              {
+                after: input.value,
+                before: previous?.value ?? null,
+                propertyId: input.pagePropertyId,
+              },
+            ],
+            dataSourceId: existing.id,
+            origin: input.origin ?? "user",
+            pageId: row.pageId,
+            rowId: row.id,
+          },
+        ],
         delta: {
           rows: [
             {

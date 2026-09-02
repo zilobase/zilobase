@@ -117,6 +117,7 @@ function transactionRecorder() {
   const inserts: unknown[] = [];
   const updates: unknown[] = [];
   const tx = {
+    async execute() {},
     delete() {
       return { async where() {} };
     },

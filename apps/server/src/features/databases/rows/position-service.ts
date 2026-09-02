@@ -10,6 +10,10 @@ import {
 } from "../../../infrastructure/database/schema";
 import { requireDataSourceEditAccess } from "../access/data-source-access";
 import { commitDataSourceMutation } from "../core/commit";
+import {
+  lockDatabaseAutomationFactRows,
+  type DatabaseMutationOrigin,
+} from "../automations/event-capture";
 import { rowPositionDelta } from "../realtime/delta";
 import {
   hasDuplicateValues,
@@ -92,6 +96,7 @@ export async function moveDatabaseRowService(input: {
   env?: RuntimeEnv;
   groupPropertyId?: string;
   groupValue?: unknown;
+  origin?: DatabaseMutationOrigin;
   rowId: string;
   rowIds: string[];
   userId: string;
@@ -113,6 +118,9 @@ export async function moveDatabaseRowService(input: {
       env: input.env,
     },
     async (tx) => {
+      await lockDatabaseAutomationFactRows(tx, [
+        { dataSourceId: existing.id, rowId: input.rowId },
+      ]);
       const rows = await tx
         .select({ id: databaseRow.id, pageId: databaseRow.pageId })
         .from(databaseRow)
@@ -169,6 +177,18 @@ export async function moveDatabaseRowService(input: {
       }
 
       const now = new Date();
+      const [previousValue] = property
+        ? await tx
+            .select({ value: pagePropertyValue.value })
+            .from(pagePropertyValue)
+            .where(
+              and(
+                eq(pagePropertyValue.pageId, row.pageId),
+                eq(pagePropertyValue.propertyId, property.id),
+              ),
+            )
+            .limit(1)
+        : [];
       await updateDatabaseRowPositions(tx, existing.id, input.rowIds, now);
       await updateDatabaseRowPlacementPositions(
         tx,
@@ -204,6 +224,26 @@ export async function moveDatabaseRowService(input: {
 
       const positionedRows = rowPositionDelta(input.rowIds).rows ?? [];
       return {
+        ...(property
+          ? {
+              automationFacts: [
+                {
+                  actorId: input.userId,
+                  changedValues: [
+                    {
+                      after: input.groupValue ?? null,
+                      before: previousValue?.value ?? null,
+                      propertyId: property.id,
+                    },
+                  ],
+                  dataSourceId: existing.id,
+                  origin: input.origin ?? "user",
+                  pageId: row.pageId,
+                  rowId: input.rowId,
+                },
+              ],
+            }
+          : {}),
         delta: {
           rows: positionedRows.map((positionedRow) =>
             property && positionedRow.id === input.rowId

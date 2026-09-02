@@ -142,6 +142,8 @@ export async function duplicateDatabasePropertyService(input: {
       }));
 
       if (insertedValues.length > 0) {
+        // automation-origin: system. Duplicating a schema column/backfill does
+        // not represent a user edit to every copied row value.
         await tx.insert(pagePropertyValue).values(
           insertedValues.map((propertyValue) => ({
             ...propertyValue,

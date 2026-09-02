@@ -23,6 +23,10 @@ import {
   commitDataSourceMutationBatch,
   type DatabaseMutationCommitResult,
 } from "../core/commit";
+import {
+  lockDatabaseAutomationFactRows,
+  type DatabaseMutationOrigin,
+} from "../automations/event-capture";
 import { fetchDatabaseRowDelta } from "../realtime/delta";
 import { isDatabaseHostPageId } from "../core/host-page";
 import { getStatusDefaultValue } from "../properties/config";
@@ -37,6 +41,8 @@ import { ServiceMutationError } from "../../../shared/errors/service-mutation-er
 export async function createDatabaseRowService(input: {
   databaseId: string;
   env?: RuntimeEnv;
+  automationRunId?: string;
+  origin?: DatabaseMutationOrigin;
   pageId?: string | null;
   parentRowId?: string | null;
   position?: number;
@@ -236,6 +242,9 @@ export async function createDatabaseRowService(input: {
   const createTargetRow = async (
     tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   ) => {
+    await lockDatabaseAutomationFactRows(tx, [
+      { dataSourceId: existing.id, rowId },
+    ]);
     const now = new Date();
     createdAt = now.toISOString();
     const inherited = sourceDataSource
@@ -375,6 +384,27 @@ export async function createDatabaseRowService(input: {
       }));
 
     return {
+      automationFacts: [
+        {
+          actorId: input.userId,
+          ...(input.automationRunId
+            ? { automationRunId: input.automationRunId }
+            : {}),
+          changedValues: [
+            { after: title, before: null, propertyId: "name" },
+            ...[...insertedValues, ...inherited.values].map((value) => ({
+              after: value.value,
+              before: null,
+              propertyId: value.propertyId,
+            })),
+          ],
+          dataSourceId: existing.id,
+          origin: input.origin ?? "user",
+          pageId,
+          rowAdded: true,
+          rowId,
+        },
+      ],
       delta: {
         ...(sourceDataSource ? { properties: inherited.properties } : {}),
         rows: [...shiftedRows, ...(delta?.rows ?? [])],
@@ -435,6 +465,7 @@ export async function createDatabaseRowService(input: {
         );
 
         return {
+          automationFacts: targetResult.automationFacts,
           mutations: [
             {
               changed: [...targetChanged],

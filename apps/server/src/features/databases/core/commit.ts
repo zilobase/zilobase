@@ -21,6 +21,10 @@ import {
   enqueueNavigationInvalidation,
   publishCommittedNavigationInvalidation,
 } from "../../workspaces/navigation-realtime/outbox";
+import {
+  captureDatabaseAutomationMutationFacts,
+  type DatabaseAutomationMutationFactCandidate,
+} from "../automations/event-capture";
 
 export class DatabaseMutationError extends Error {
   constructor(
@@ -122,11 +126,21 @@ export async function commitDatabaseMutationBatch<T>(
   options: BatchCommitOptions,
   mutate: (
     tx: DatabaseTransaction,
-  ) => Promise<{ mutations: BatchMutation[]; result: T }>,
+  ) => Promise<{
+    automationFacts?: DatabaseAutomationMutationFactCandidate[];
+    mutations: BatchMutation[];
+    result: T;
+  }>,
 ): Promise<DatabaseMutationBatchResult<T>> {
   const committedAt = new Date().toISOString();
   const { commits, navigationEvent, result } = await db.transaction(async (tx) => {
     const mutationResult = await mutate(tx);
+    if (mutationResult.automationFacts?.length) {
+      await captureDatabaseAutomationMutationFacts(
+        tx,
+        mutationResult.automationFacts,
+      );
+    }
     const mutationCountsByDatabase = new Map<string, number>();
 
     for (const mutation of mutationResult.mutations) {
@@ -217,7 +231,10 @@ export async function commitDatabaseMutationBatch<T>(
 
 export async function commitDatabaseMutation(
   options: CommitOptions,
-  mutate: (tx: DatabaseTransaction) => Promise<{ delta: DatabaseDelta }>,
+  mutate: (tx: DatabaseTransaction) => Promise<{
+    automationFacts?: DatabaseAutomationMutationFactCandidate[];
+    delta: DatabaseDelta;
+  }>,
 ): Promise<DatabaseMutationCommitResult> {
   const { commits } = await commitDatabaseMutationBatch(
     {
@@ -228,6 +245,7 @@ export async function commitDatabaseMutation(
     async (tx) => {
       const result = await mutate(tx);
       return {
+        automationFacts: result.automationFacts,
         mutations: [
           {
             changed: options.changed,
@@ -256,7 +274,10 @@ export async function commitDatabaseMutation(
  */
 export async function commitDataSourceMutation(
   options: Omit<CommitOptions, "databaseId"> & { dataSourceId: string },
-  mutate: (tx: DatabaseTransaction) => Promise<{ delta: DatabaseDelta }>,
+  mutate: (tx: DatabaseTransaction) => Promise<{
+    automationFacts?: DatabaseAutomationMutationFactCandidate[];
+    delta: DatabaseDelta;
+  }>,
 ): Promise<DatabaseMutationCommitResult> {
   const { commits, result: metadata } = await commitDatabaseMutationBatch(
     { actorId: options.actorId, env: options.env },
@@ -290,6 +311,7 @@ export async function commitDataSourceMutation(
       ];
 
       return {
+        automationFacts: result.automationFacts,
         mutations: databaseIds.map((databaseId) => ({
           changed: options.changed,
           databaseId,
@@ -319,7 +341,11 @@ export async function commitDataSourceMutationBatch<T>(
   options: Omit<CommitOptions, "databaseId" | "changed">,
   mutate: (
     tx: DatabaseTransaction,
-  ) => Promise<{ mutations: DataSourceBatchMutation[]; result: T }>,
+  ) => Promise<{
+    automationFacts?: DatabaseAutomationMutationFactCandidate[];
+    mutations: DataSourceBatchMutation[];
+    result: T;
+  }>,
 ) {
   const batch = await commitDatabaseMutationBatch(
     { actorId: options.actorId, env: options.env },
@@ -367,6 +393,7 @@ export async function commitDataSourceMutationBatch<T>(
       }
 
       return {
+        automationFacts: mutationResult.automationFacts,
         mutations: containerMutations,
         result: { owners, result: mutationResult.result },
       };

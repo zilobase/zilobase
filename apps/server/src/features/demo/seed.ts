@@ -584,6 +584,8 @@ export async function seedHostedDemo(databaseClient: Database) {
     }
 
     for (const [position, task] of TASKS.entries()) {
+      // automation-origin: system. Demo bootstrap is out-of-band seed state,
+      // never an eligible production row mutation.
       await transaction
         .insert(databaseRow)
         .values({

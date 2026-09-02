@@ -37,6 +37,7 @@ beforeEach(() => {
 function transactionRecorder(selectResults: unknown[][]) {
   const remaining = [...selectResults];
   const tx = {
+    async execute() {},
     insert() {
       return {
         values() {
@@ -88,6 +89,7 @@ test("moveDatabaseRowService updates ordering and a group value", async () => {
   transactionRecorder([
     [{ id: "row-1", pageId: "page-1" }, { id: "row-2", pageId: "page-2" }],
     [{ config: null, id: "property-1", type: "text" }],
+    [{ value: "Group B" }],
   ]);
 
   const result = await moveDatabaseRowService({
@@ -105,6 +107,18 @@ test("moveDatabaseRowService updates ordering and a group value", async () => {
     { id: "row-1", position: 1 },
   ]);
   assert.equal(result.commit.delta.values?.[0]?.value, "Group A");
+  assert.deepEqual((await mocks.commit.mock.results[0]?.value)?.automationFacts, [
+    {
+      actorId: "user-1",
+      changedValues: [
+        { after: "Group A", before: "Group B", propertyId: "property-1" },
+      ],
+      dataSourceId: "database-1",
+      origin: "user",
+      pageId: "page-1",
+      rowId: "row-1",
+    },
+  ]);
 });
 
 test("row position services reject invalid membership and missing records", async () => {

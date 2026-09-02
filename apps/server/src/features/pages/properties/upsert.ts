@@ -6,6 +6,8 @@ import { pagePropertyValue } from "../../../infrastructure/database/schema";
 type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 type PropertyValueInsert = typeof pagePropertyValue.$inferInsert;
 
+// automation-origin: system. This transaction-local helper is used only for
+// schema-derived relation/import backfills; its caller owns any user-equivalent fact.
 export async function upsertPagePropertyValues(
   executor: DatabaseTransaction,
   values: PropertyValueInsert[],

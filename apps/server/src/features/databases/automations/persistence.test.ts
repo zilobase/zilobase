@@ -23,6 +23,7 @@ describe("database automation persistence", () => {
     expect(migration).toContain("database_automation_revision_version_unique");
     expect(migration).toContain("database_automation_step_run_action_unique");
     expect(migration).toContain("database_automation_delivery_destination_unique");
+    expect(migration).toContain("database_automation_event_window_accumulating_unique");
   });
 
   it("stores secrets separately and never adds plaintext definition secret columns", async () => {

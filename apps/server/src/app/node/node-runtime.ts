@@ -34,6 +34,7 @@ import { runAiJobBatch } from "../../features/ai/jobs/ai-jobs";
 import { renewGmailWatches } from "../../features/mail/gmail-watch";
 import { advancePendingMailIndexes } from "../../features/mail/mail-index";
 import { drainMailDatabaseSyncOutbox } from "../../features/mail/mail-database-sync-worker";
+import { promoteClosedDatabaseAutomationEventWindows } from "../../features/databases/automations/event-capture";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -230,6 +231,7 @@ function startMaintenanceDrainer(
           renewGmailWatches(env),
           advancePendingMailIndexes(env),
           drainMailDatabaseSyncOutbox(env, { limit: 50 }),
+          promoteClosedDatabaseAutomationEventWindows(),
         ]),
       );
     } catch (error) {

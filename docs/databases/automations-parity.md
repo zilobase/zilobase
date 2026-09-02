@@ -26,16 +26,16 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 
 | Capability | Pass | Required evidence | Status |
 | --- | ---: | --- | --- |
-| Page added, including move into a source and initial values | 3, 4 | Creation/move fixtures and event evaluator tests | planned |
-| Property edited and any property edited | 3, 4 | Every writable property type and title fixtures | planned |
+| Page added, including move into a source and initial values | 3, 4 | Creation/move fixtures and event evaluator tests | implemented |
+| Property edited and any property edited | 3, 4 | Every writable property type and title fixtures | implemented |
 | Complete type/operator matrix | 4 | Table-driven operator suite with invalid pair rejection | implemented |
 | Type-aware empty handling for null, missing, zero, and false | 1, 4 | Shared predicate fixtures | verified |
 | Case-insensitive trimmed Unicode text comparison | 1, 4 | Browser/server equivalence fixtures | verified |
 | `any` and `all` clauses, maximum 20 clauses | 0, 4 | Contract limit and evaluator truth-table tests | contracted |
-| Fixed three-second aggregation window | 3 | Clock-controlled merge/close tests | planned |
-| First before/final after values and change-then-revert cancellation | 3 | Transaction and normalization fixtures | planned |
-| Concurrent source/row changes open one window | 3 | PostgreSQL locking test | planned |
-| Origin eligibility and automation/system suppression | 3 | Full origin matrix | planned |
+| Fixed three-second aggregation window | 3 | Clock-controlled merge/close tests | verified |
+| First before/final after values and change-then-revert cancellation | 3 | Transaction and normalization fixtures | verified |
+| Concurrent source/row changes open one window | 3 | PostgreSQL locking test | implemented |
+| Origin eligibility and automation/system suppression | 3 | Full origin matrix | verified |
 | Entire-source scope | 4 | Matching automation run integration test | planned |
 | View scope evaluated against final saved filter state | 1, 4 | Shared filter and after-edit membership tests | planned |
 | Deleted or incompatible view pauses the automation | 2, 4 | Dependency invalidation/runtime tests | planned |
@@ -51,7 +51,7 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 | Add a page with atomic initial values and stable receipt | 4 | Crash-before/after-receipt tests | planned |
 | Edit bounded related, variable, or filtered pages atomically | 4 | Authorization, 1,000-row bound, and no-partial-write tests | planned |
 | Sequential actions stop after terminal failure | 4 | Step-order and error-pause tests | planned |
-| Automation action writes cannot trigger automation chaining | 3, 4 | Capture-boundary origin test | planned |
+| Automation action writes cannot trigger automation chaining | 3, 4 | Capture-boundary origin test | implemented |
 | Internal action retries do not duplicate logical effects | 4 | Lease-loss and duplicate-message tests | planned |
 
 ## Schedules and external actions
@@ -83,7 +83,7 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 | In-panel run and sanitized step history | 4, 5 | API redaction and UI drill-in tests | planned |
 | Keyboard operation, focus restoration, labels, announcements, no color-only status | 5 | Accessibility tests and manual audit | planned |
 | Hosted Cloudflare and self-hosted Node parity | 4, 6–11 | Adapter, restart, and deployment tests | planned |
-| Metrics, retention, cleanup, quotas, alerts, runbooks, and global kill switch | 3, 11 | Operational acceptance suite | planned |
+| Metrics, retention, cleanup, quotas, alerts, runbooks, and global kill switch | 3, 11 | Operational acceptance suite | implemented |
 | Hosted canary, self-hosted opt-in, and rollback-safe disabling | 11 | Release checklist | planned |
 
 ## Explicit exclusions

@@ -1015,6 +1015,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
     const result = await createDatabaseRowService({
       databaseId: c.req.param("id"),
       env: c.env,
+      origin: c.get("authMethod") === "apiKey" ? "api" : "user",
       pageId: pageId as string | null,
       parentRowId: parentRowId as string | null,
       position: position as number | undefined,
@@ -1110,6 +1111,7 @@ databaseRoutes.patch("/:id/rows/:rowId/move", async (c) => {
     const result = await moveDatabaseRowService({
       databaseId: c.req.param("id"),
       env: c.env,
+      origin: c.get("authMethod") === "apiKey" ? "api" : "user",
       groupPropertyId: groupPropertyId as string | undefined,
       groupValue,
       rowId: c.req.param("rowId"),
@@ -1136,6 +1138,7 @@ databaseRoutes.put("/:id/rows/:rowId/properties/:propertyId", async (c) => {
     const result = await setDatabaseCellValueService({
       databaseId: c.req.param("id"),
       env: c.env,
+      origin: c.get("authMethod") === "apiKey" ? "api" : "user",
       pagePropertyId: c.req.param("propertyId"),
       rowId: c.req.param("rowId"),
       userId: user.id,

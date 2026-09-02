@@ -60,3 +60,19 @@ added above and covered by either an eligible origin/fact test or an explicit
 suppression test. The audit includes hosted/self-hosted shared server code,
 mail/integration workers, AI tools, imports, templates, forms, and future button
 execution.
+
+## Pass 3 capture result
+
+The canonical commit boundary now validates source-level mutation facts and
+merges them transactionally into one fixed three-second window per source/row.
+Eligible services acquire deterministic PostgreSQL advisory locks before their
+before-value read; a partial unique index is the second concurrency boundary.
+Linked database containers continue to receive independent realtime commits,
+while the source fact is captured once.
+
+The executable audit is
+`apps/server/src/features/databases/automations/mutation-audit.test.ts`. It
+requires every eligible path above to expose a fact and every remaining direct
+write to retain an explicit `automation-origin: system` suppression. Evaluation
+remains absent/disabled; Node maintenance and hosted adapter exports only close
+dark-capture windows and expose aggregate counts/oldest-age metrics.

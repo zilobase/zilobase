@@ -94,6 +94,7 @@ CREATE TABLE "database_automation_event_window" (
 );
 CREATE INDEX "database_automation_event_window_due_idx" ON "database_automation_event_window" ("status", "closes_at", "next_attempt_at");
 CREATE INDEX "database_automation_event_window_source_row_idx" ON "database_automation_event_window" ("data_source_id", "row_id", "status");
+CREATE UNIQUE INDEX "database_automation_event_window_accumulating_unique" ON "database_automation_event_window" ("data_source_id", "row_id") WHERE "status" = 'accumulating';
 
 CREATE TABLE "database_automation_run" (
   "id" text PRIMARY KEY NOT NULL,

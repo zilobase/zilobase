@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  capture: vi.fn(),
   publish: vi.fn(),
   transaction: vi.fn(),
 }));
@@ -11,6 +12,9 @@ vi.mock("../../../infrastructure/database", () => ({
 }));
 vi.mock("../realtime/outbox", () => ({
   publishDatabaseRealtimeEvent: mocks.publish,
+}));
+vi.mock("../automations/event-capture", () => ({
+  captureDatabaseAutomationMutationFacts: mocks.capture,
 }));
 
 import {
@@ -64,6 +68,8 @@ function transactionExecutor(versions: Array<number | null>) {
 }
 
 beforeEach(() => {
+  mocks.capture.mockReset();
+  mocks.capture.mockResolvedValue(0);
   mocks.publish.mockReset();
   mocks.transaction.mockReset();
   vi.restoreAllMocks();
@@ -193,6 +199,37 @@ test("empty batches avoid version and outbox writes", async () => {
   assert.deepEqual(result, { commits: [], result: "unchanged" });
   assert.equal(transaction.updateCalls, 0);
   assert.equal(transaction.insertCalls, 0);
+});
+
+test("automation facts are captured inside the commit transaction and abort atomically", async () => {
+  const transaction = transactionExecutor([2]);
+  const facts = [
+    {
+      actorId: "user-1",
+      changedValues: [{ after: "Done", before: "Todo", propertyId: "status" }],
+      dataSourceId: "source-1",
+      origin: "user" as const,
+      pageId: "page-1",
+      rowId: "row-1",
+    },
+  ];
+  mocks.capture.mockRejectedValueOnce(new Error("capture failed"));
+
+  await assert.rejects(
+    commitDatabaseMutationBatch({ actorId: "user-1" }, async () => ({
+      automationFacts: facts,
+      mutations: [
+        { changed: ["values"], databaseId: "database-1", delta: {} },
+      ],
+      result: undefined,
+    })),
+    /capture failed/,
+  );
+
+  assert.deepEqual(mocks.capture.mock.calls[0], [transaction.tx, facts]);
+  assert.equal(transaction.updateCalls, 0);
+  assert.equal(transaction.insertCalls, 0);
+  assert.equal(mocks.publish.mock.calls.length, 0);
 });
 
 test("large commits persist invalidate-only payloads", async () => {

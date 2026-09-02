@@ -260,6 +260,8 @@ export async function updateDatabasePropertyService(input: {
       const shouldConvertDateToText =
         previousType === "date" && effectiveType === "text";
       const changedValues = shouldClearValues
+        // automation-origin: system. Property-type migration writes invalidate
+        // dependencies but are not user row-property edit triggers.
         ? await tx
             .update(pagePropertyValue)
             .set({ value: null, updatedAt: new Date() })

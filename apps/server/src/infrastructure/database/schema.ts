@@ -1767,6 +1767,9 @@ export const databaseAutomationEventWindow = pgTable(
       table.rowId,
       table.status,
     ),
+    uniqueIndex("database_automation_event_window_accumulating_unique")
+      .on(table.dataSourceId, table.rowId)
+      .where(sql`${table.status} = 'accumulating'`),
     check(
       "database_automation_event_window_status_check",
       sql`${table.status} in ('accumulating', 'ready', 'processing', 'completed', 'discarded')`,

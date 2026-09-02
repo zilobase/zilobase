@@ -584,6 +584,7 @@ async function executeDatabaseBlueprint(
           const createdRow = await createDatabaseRowService({
             databaseId: createdDatabase.dataSourceId,
             env: context.env,
+            origin: "ai",
             title: row.title,
             userId: context.userId,
           });
@@ -597,6 +598,7 @@ async function executeDatabaseBlueprint(
             await setDatabaseCellValueService({
               databaseId: createdDatabase.dataSourceId,
               env: context.env,
+              origin: "ai",
               pagePropertyId: property.pagePropertyId,
               rowId: createdRow.rowId,
               userId: context.userId,
@@ -1158,6 +1160,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         const result = await createDatabaseRowService({
           databaseId: input.dataSourceId,
           env: context.env,
+          origin: "ai",
 
           pageId: input.pageId,
           parentRowId: input.parentRowId,
@@ -1197,6 +1200,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         const result = await setDatabaseCellValueService({
           databaseId: input.dataSourceId,
           env: context.env,
+          origin: "ai",
 
           rowId: input.rowId,
           userId: context.userId,

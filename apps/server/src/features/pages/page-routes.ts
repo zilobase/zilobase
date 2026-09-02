@@ -67,6 +67,7 @@ import {
   commitDatabaseMutationBatch,
   mutationResponse,
 } from "../databases/core";
+import { lockDatabaseAutomationFactRows } from "../databases/automations/event-capture";
 import {
   parseZilobaseAiModes,
   readZilobaseAiMode,
@@ -2115,6 +2116,7 @@ pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
   const candidateMemberships = await db
     .select({
       databaseId: dataSource.parentDatabaseId,
+      dataSourceId: dataSource.id,
       property: pageProperty,
       rowId: databaseRow.id,
     })
@@ -2169,6 +2171,20 @@ pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
   const { commits } = await commitDatabaseMutationBatch(
     { actorId: user.id, env: c.env },
     async (tx) => {
+      await lockDatabaseAutomationFactRows(
+        tx,
+        memberships.map(({ dataSourceId, rowId }) => ({ dataSourceId, rowId })),
+      );
+      const [previousValue] = await tx
+        .select({ value: pagePropertyValue.value })
+        .from(pagePropertyValue)
+        .where(
+          and(
+            eq(pagePropertyValue.pageId, record.id),
+            eq(pagePropertyValue.propertyId, propertyId),
+          ),
+        )
+        .limit(1);
       const [savedValue] = await tx
         .insert(pagePropertyValue)
         .values({
@@ -2199,6 +2215,23 @@ pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
         .where(eq(page.id, record.id));
 
       return {
+        automationFacts: memberships.map(({ dataSourceId, rowId }) => ({
+          actorId: user.id,
+          changedValues: [
+            {
+              after: value,
+              before: previousValue?.value ?? null,
+              propertyId,
+            },
+          ],
+          dataSourceId,
+          origin:
+            c.get("authMethod") === "apiKey"
+              ? "api" as const
+              : "user" as const,
+          pageId: record.id,
+          rowId,
+        })),
         mutations: memberships.map(({ databaseId, rowId }) => ({
           changed: ["rows" as const, "values" as const],
           databaseId,
@@ -2468,6 +2501,19 @@ pageRoutes.patch("/:id", async (c) => {
         await commitDatabaseMutationBatch(
           { actorId: user.id, env: c.env },
           async (tx) => {
+            const rowMemberships = await tx
+              .select({
+                dataSourceId: databaseRow.dataSourceId,
+                rowId: databaseRow.id,
+              })
+              .from(databaseRow)
+              .where(
+                and(
+                  eq(databaseRow.pageId, existing.id),
+                  isNull(databaseRow.deletedAt),
+                ),
+              );
+            await lockDatabaseAutomationFactRows(tx, rowMemberships);
             const [updatedPage] = await tx
               .update(page)
               .set(values)
@@ -2481,6 +2527,7 @@ pageRoutes.patch("/:id", async (c) => {
             const rows = await tx
               .select({
                 databaseId: dataSource.parentDatabaseId,
+                dataSourceId: dataSource.id,
                 row: databaseRow,
               })
               .from(databaseRow)
@@ -2493,6 +2540,26 @@ pageRoutes.patch("/:id", async (c) => {
               );
 
             return {
+              automationFacts:
+                patch.name === undefined
+                  ? []
+                  : rows.map(({ dataSourceId, row }) => ({
+                      actorId: user.id,
+                      changedValues: [
+                        {
+                          after: updatedPage.name,
+                          before: existing.name,
+                          propertyId: "name",
+                        },
+                      ],
+                      dataSourceId,
+                      origin:
+                        c.get("authMethod") === "apiKey"
+                          ? "api" as const
+                          : "user" as const,
+                      pageId: existing.id,
+                      rowId: row.id,
+                    })),
               mutations: rows.map(({ databaseId, row }) => ({
                 changed: ["rows" as const],
                 databaseId,

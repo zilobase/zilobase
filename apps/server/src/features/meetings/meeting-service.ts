@@ -179,6 +179,8 @@ export async function updateMeeting(input: {
       .returning();
 
     if (values.title !== undefined && existing.notesPageId) {
+      // automation-origin: system. Meeting notes remain meeting-owned pages;
+      // attaching one to a database emits only the canonical row-added fact.
       await tx
         .update(page)
         .set({ name: values.title, updatedAt: values.updatedAt })

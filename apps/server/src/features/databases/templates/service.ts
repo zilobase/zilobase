@@ -27,6 +27,7 @@ import {
 } from "../properties/config";
 import { normalizeDatabasePropertyType } from "../properties/types";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
+import { lockDatabaseAutomationFactRows } from "../automations/event-capture";
 
 export type DatabaseTemplateInput = {
   config: unknown;
@@ -214,6 +215,14 @@ export async function applyDatabaseTemplateService(
           }))
         : [];
 
+      await lockDatabaseAutomationFactRows(
+        tx,
+        createdRows.map((row) => ({
+          dataSourceId: existing.id,
+          rowId: row.rowId,
+        })),
+      );
+
       if (createdRows.length > 0) {
         await tx.insert(page).values(
           createdRows.map((row) => ({
@@ -336,6 +345,24 @@ export async function applyDatabaseTemplateService(
       }
 
       return {
+        automationFacts: createdRows.map((row) => ({
+          actorId: input.userId,
+          changedValues: [
+            { after: row.title, before: null, propertyId: "name" },
+            ...createdValues
+              .filter((value) => value.pageId === row.pageId)
+              .map((value) => ({
+                after: value.value,
+                before: null,
+                propertyId: value.propertyId,
+              })),
+          ],
+          dataSourceId: existing.id,
+          origin: "import" as const,
+          pageId: row.pageId,
+          rowAdded: true,
+          rowId: row.rowId,
+        })),
         delta: {
           dataSource: {
             config: input.config,
