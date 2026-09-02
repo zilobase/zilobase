@@ -477,7 +477,7 @@ page link. Removed users, guests outside the workspace, and inaccessible page
 mentions are rejected or omitted according to validation policy. A notification
 outbox supplies realtime delivery; polling remains the recovery path.
 
-### 7.6 Send Gmail
+### 7.6 Send mail to
 
 `send_gmail` references an existing user-owned Gmail connection and supports:
 
@@ -621,7 +621,7 @@ contains resolved stable IDs and validated type metadata, never secrets.
 ### 9.3 `database_automation_dependency`
 
 - `automation_id`, `revision_id`
-- `dependency_type`: `data_source | database | view | property | user | group |
+- `dependency_type`: `data_source | database | view | property | option | user | group |
   gmail_connection | slack_connection | secret`
 - `dependency_id`
 - `usage`: trigger/scope/action field identifier
@@ -883,7 +883,10 @@ Accessibility requirements:
 - Labeled condition/action rows and error associations.
 - Focus restoration when adding/removing nested editors.
 - Screen-reader announcement of validation, save, pause, and connector status.
-- Mobile-width stacked builder and scroll-safe popovers.
+- View-settings-style desktop management dropdown with a responsive mobile
+  drawer.
+- Centered, scroll-safe desktop builder dialog with the responsive mobile
+  dialog/drawer treatment supplied by the shared Zilobase primitives.
 - No color-only status communication.
 
 ## 15. Observability, limits, and retention
@@ -965,8 +968,8 @@ Unicode text, DST, and invalid expressions.
 - Implement definition compiler and complete validation.
 - Implement list/create/read/update/pause/resume/duplicate/delete routes with
   full-access and non-guest enforcement.
-- Implement dependency invalidation hooks for property/view/source deletion and
-  property type changes.
+- Implement dependency invalidation hooks for property/view/source deletion,
+  property type changes, and select/status/multi-select option deletion.
 - Add audit extension events.
 
 Acceptance: invalid definitions never persist; concurrent edits conflict

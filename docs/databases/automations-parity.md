@@ -75,12 +75,17 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 | --- | ---: | --- | --- |
 | Toolbar lightning control for inline/full-page databases | 5 | Browser workflow tests | implemented |
 | Disabled, permission, linked-source, empty, loading, and error states | 5 | Access/state UI matrix | implemented |
-| 448px anchored desktop panel and mobile drawer | 5 | Responsive browser tests | implemented |
+| View-settings-style 18rem desktop dropdown with responsive mobile drawer | 5 | Responsive interaction tests | implemented |
+| Centered tokenized desktop builder dialog with responsive mobile drawer | 5 | Responsive interaction tests | implemented |
 | Live-generated/custom name and entire-source default | 5 | Builder model/UI tests | implemented |
+| Exact Notion action names and ordering for all eight action types | 5 | Action-catalog source contract test | verified |
+| Lossless action edit/save round trip, including multi-value definitions | 5 | Builder definition-model regression test | verified |
+| Editable target-database, property, option, relation, user, and connector catalogs | 5 | Catalog contract, access, and builder tests | verified |
 | Stacked trigger/action cards, search, reorder, and deletion | 5 | Mouse and keyboard workflow tests | implemented |
 | Inline validation and unavailable dependency/connector warnings | 5, 8–10 | Builder and connector-state tests | implemented |
+| Deleted select/status/multi-select options pause dependent automations and require repair | 5, 8–10 | Compiler dependency and property-config mutation tests | implemented |
 | Dirty-builder discard confirmation | 5 | Close/back navigation tests | implemented |
-| In-panel run and sanitized step history | 4, 5 | API redaction and UI drill-in tests | implemented |
+| In-dropdown run and sanitized step history | 4, 5 | API redaction and UI drill-in tests | implemented |
 | Keyboard operation, focus restoration, labels, announcements, no color-only status | 5 | Accessibility tests and manual audit | implemented |
 | Hosted Cloudflare and self-hosted Node parity | 4, 6–11 | Adapter, restart, and deployment tests | implemented |
 | Metrics, retention, cleanup, quotas, alerts, runbooks, and global kill switch | 3, 11 | Operational acceptance suite | implemented |
