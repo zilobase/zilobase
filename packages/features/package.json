@@ -96,6 +96,10 @@
       "types": "./src/meetings/index.ts",
       "default": "./src/meetings/index.ts"
     },
+    "./notifications": {
+      "types": "./src/notifications/index.ts",
+      "default": "./src/notifications/index.ts"
+    },
     "./mail": {
       "types": "./src/mail/index.ts",
       "default": "./src/mail/index.ts"

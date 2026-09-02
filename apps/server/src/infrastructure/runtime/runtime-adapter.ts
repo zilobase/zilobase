@@ -19,6 +19,12 @@ export type OutboundEmailMessage = {
 };
 
 export type ServerRuntimeAdapter = {
+  publishInProductNotification?(input: {
+    env: RuntimeEnv;
+    notificationId: string;
+    userId: string;
+    workspaceId: string;
+  }): Promise<void>;
   enqueueDatabaseAutomationRun?(input: {
     env: RuntimeEnv;
     runId: string;

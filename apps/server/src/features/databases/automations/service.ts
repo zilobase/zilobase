@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNull, or } from "drizzle-orm";
 
 import {
   DATABASE_AUTOMATION_LIMITS,
@@ -25,6 +25,8 @@ import {
   databaseView,
   dataSource,
   pageProperty,
+  member,
+  user,
 } from "../../../infrastructure/database/schema";
 import type { ZilobaseEditionExtension } from "../../../shared/types";
 import { requireDataSourceAccess } from "../access/data-source-access";
@@ -457,9 +459,10 @@ export async function getDatabaseAutomationCatalog(input: {
 }) {
   try {
     const management = await requireManagementContext(input);
-    const [properties, views] = await Promise.all([
+    const [properties, views, users] = await Promise.all([
       loadProperties([input.dataSourceId]),
       loadViews(input.databaseId, input.dataSourceId),
+      loadWorkspaceUsers(management.source.workspaceId),
     ]);
     return {
       actions: [
@@ -467,7 +470,7 @@ export async function getDatabaseAutomationCatalog(input: {
         { available: true, reason: null, type: "edit_trigger_page" as const },
         { available: true, reason: null, type: "add_page" as const },
         { available: true, reason: null, type: "edit_pages" as const },
-        { available: false, reason: "Available in the notifications release", type: "send_notification" as const },
+        { available: true, reason: null, type: "send_notification" as const },
         { available: false, reason: "Available in the Gmail release", type: "send_gmail" as const },
         { available: false, reason: "Available in the webhook release", type: "send_webhook" as const },
         { available: false, reason: "Available in the Slack release", type: "send_slack" as const },
@@ -482,6 +485,7 @@ export async function getDatabaseAutomationCatalog(input: {
         type: property.type,
         writable: property.writable,
       })),
+      users,
       views: [...views.values()].map(({ id, name, type }) => ({ id, name, type })),
     };
   } catch (error) {
@@ -492,6 +496,7 @@ export async function getDatabaseAutomationCatalog(input: {
       dataSourceId: input.dataSourceId,
       manageUnavailableReason: error.message,
       properties: [],
+      users: [],
       views: [],
     };
   }
@@ -630,16 +635,18 @@ async function loadCompilationContext(input: {
     }
     if (target.workspaceId !== input.management.source.workspaceId) targetIds.delete(targetId);
   }
-  const [propertiesByDataSource, views] = await Promise.all([
+  const [propertiesByDataSource, views, users] = await Promise.all([
     loadProperties([...targetIds]),
     loadViews(input.databaseId, input.management.source.id),
+    loadWorkspaceUsers(input.management.source.workspaceId),
   ]);
   return {
-    capabilities: { schedules: true },
+    capabilities: { notifications: true, schedules: true },
     dataSourceIds: targetIds,
     parentDatabaseId: input.management.source.parentDatabaseId,
     propertiesByDataSource,
     sourceDataSourceId: input.management.source.id,
+    userIds: new Set(users.map(({ id }) => id)),
     views,
   };
 }
@@ -690,6 +697,17 @@ async function loadViews(databaseId: string, dataSourceId: string) {
     .from(databaseView)
     .where(and(eq(databaseView.databaseId, databaseId), eq(databaseView.dataSourceId, dataSourceId)));
   return new Map(records.map((view) => [view.id, view]));
+}
+
+async function loadWorkspaceUsers(workspaceId: string) {
+  const now = new Date();
+  return db.select({ id: user.id, name: user.name }).from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(and(
+      eq(member.organizationId, workspaceId),
+      or(isNull(member.accessExpiresAt), gt(member.accessExpiresAt, now)),
+    ))
+    .orderBy(asc(user.name), asc(user.id));
 }
 
 async function getAutomationWithRevision(

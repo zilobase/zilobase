@@ -39,12 +39,18 @@ import {
   pagePropertyValue,
 } from "../../../infrastructure/database/schema";
 import { requireDataSourceAccess } from "../access/data-source-access";
+import { getEffectivePageAccessForUsers } from "../../access";
 import { createDatabaseRowService } from "../rows/service";
 import {
   applyDatabaseAutomationRowOperations,
   type ResolvedAutomationPropertyOperation,
 } from "./internal-mutations";
 import { matchesAutomationFilterDefinition } from "./trigger-evaluator";
+import {
+  accessibleNotificationPageId,
+  activeNotificationRecipientIds,
+  createAutomationNotifications,
+} from "../../notifications/service";
 
 const RUN_LEASE_MS = 2 * 60_000;
 
@@ -399,7 +405,84 @@ async function executeAction(
     });
     return { editedRows: target.rows.length };
   }
+  if (action.type === "send_notification") {
+    const candidates = action.recipients.flatMap((recipient) => {
+      if (recipient.type === "selected_user") return [recipient.userId];
+      if (recipient.type === "trigger_person") return stringList(context.run.triggerActorId);
+      if (recipient.type === "page_creator") return stringList(requireTriggerRow(context).createdById);
+      if (recipient.type === "person_property") return userIds(context.propertyValues[recipient.propertyId]);
+      return userIds(context.variables[recipient.variableName]);
+    });
+    const uniqueCandidates = [...new Set(candidates)];
+    if (uniqueCandidates.length > 20) {
+      throw new AutomationActionError("Notification has more than 20 recipients", "AUTOMATION_NOTIFICATION_RECIPIENT_LIMIT");
+    }
+    let recipientIds = await activeNotificationRecipientIds(
+      context.automation.workspaceId,
+      uniqueCandidates,
+    );
+    if (!recipientIds.length) {
+      throw new AutomationActionError("Notification has no valid workspace recipient", "AUTOMATION_NOTIFICATION_NO_RECIPIENTS");
+    }
+    const message = resolveRichText(context, action.message);
+    if (!message.trim()) {
+      throw new AutomationActionError("Notification message is empty", "AUTOMATION_NOTIFICATION_MESSAGE_EMPTY");
+    }
+    const requestedPageId = action.pageLink ? scalarString(resolveExpression(context, action.pageLink)) : null;
+    const pageId = await accessibleNotificationPageId(context.automation.workspaceId, requestedPageId);
+    if (pageId) {
+      const access = await getEffectivePageAccessForUsers(pageId, context.automation.workspaceId, recipientIds);
+      recipientIds = recipientIds.filter((userId) => (access.get(userId) ?? "none") !== "none");
+      if (!recipientIds.length) {
+        throw new AutomationActionError("No notification recipient can access the linked page", "AUTOMATION_NOTIFICATION_NO_RECIPIENTS");
+      }
+    }
+    const notifications = await createAutomationNotifications({
+      actionId: action.id,
+      automationId: context.automation.id,
+      message,
+      pageId,
+      recipientIds,
+      runId: context.run.id,
+      workspaceId: context.automation.workspaceId,
+    });
+    return { deliveredRecipients: notifications.length };
+  }
   throw new AutomationActionError(`Action ${action.type} is not enabled`, "AUTOMATION_CAPABILITY_DISABLED");
+}
+
+function resolveRichText(
+  context: ExecutionContext,
+  richText: Extract<DatabaseAutomationAction, { type: "send_notification" }>["message"],
+) {
+  const message = richText.parts.map((part) =>
+    part.type === "text" ? part.text : displayValue(resolveExpression(context, part.value))
+  ).join("");
+  if (message.length > 20_000) {
+    throw new AutomationActionError("Notification message exceeds 20,000 characters", "AUTOMATION_NOTIFICATION_MESSAGE_LIMIT");
+  }
+  return message;
+}
+
+function displayValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return value.map(displayValue).filter(Boolean).join(", ");
+  if (typeof value === "object") return scalarString(value) ?? "";
+  return String(value);
+}
+
+function scalarString(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  return typeof record.id === "string" ? record.id : null;
+}
+
+function userIds(value: unknown): string[] {
+  return (Array.isArray(value) ? value : [value]).flatMap((item) => {
+    const id = scalarString(item);
+    return id ? [id] : [];
+  });
 }
 
 function resolveExpression(context: ExecutionContext, expression: AutomationValueExpression): unknown {

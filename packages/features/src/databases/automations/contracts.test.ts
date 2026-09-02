@@ -165,6 +165,25 @@ test("rejects scheduled trigger references inside action values", () => {
   }
 })
 
+test("rejects scheduled notification recipients that require a trigger page", () => {
+  const result = databaseAutomationDefinitionV1Schema.safeParse({
+    actions: [{
+      id: "notify",
+      message: { parts: [{ text: "Review", type: "text" }] },
+      recipients: [{ type: "trigger_person" }],
+      type: "send_notification",
+    }],
+    definitionVersion: 1,
+    scope: { type: "data_source" },
+    timezone: "UTC",
+    trigger: {
+      kind: "schedule",
+      schedule: { frequency: "daily", interval: 1, localTime: "09:00", startDate: "2026-09-02", timezone: "UTC" },
+    },
+  })
+  assert.equal(result.success, false)
+})
+
 test("enforces unique action, clause, and variable identifiers", () => {
   const duplicateActions = databaseAutomationDefinitionV1Schema.safeParse({
     ...eventDefinition,
@@ -272,6 +291,7 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
           writable: true,
         },
       ],
+      users: [{ id: "user-1", name: "Ada" }],
       views: [{ id: "view-1", name: "Open tasks", type: "table" }],
     }).canManage,
     true,

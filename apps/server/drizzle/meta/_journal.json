@@ -519,6 +519,13 @@
       "when": 1788249600000,
       "tag": "0073_database_automations",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1788253200000,
+      "tag": "0074_in_product_notifications",
+      "breakpoints": true
     }
   ]
 }

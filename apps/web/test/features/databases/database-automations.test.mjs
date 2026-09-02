@@ -52,4 +52,14 @@ export function register({ assert, readSource, test }) {
     ]) assert.match(manager, new RegExp(behavior))
     assert.match(manager, /!scheduled \? <option value="edit_trigger_page"/)
   })
+
+  test("builder exposes bounded in-product notification recipients", async () => {
+    const manager = await readSource(
+      "/src/features/databases/automations/database-automation-manager.tsx",
+    )
+    for (const behavior of ["Send notification", "Notification recipient type", "Notification recipient", "Notification message"]) {
+      assert.match(manager, new RegExp(behavior))
+    }
+    assert.match(manager, /catalog\?\.users/)
+  })
 }

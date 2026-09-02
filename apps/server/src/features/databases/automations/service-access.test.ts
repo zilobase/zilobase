@@ -125,6 +125,7 @@ describe("database automation management access", () => {
       canManage: false,
       dataSourceId: "source-1",
       properties: [],
+      users: [],
       views: [],
     }));
   });

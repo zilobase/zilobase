@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type {
   AutomationTriggerOperand,
+  AutomationNotificationRecipient,
   DatabaseAutomationAction,
   DatabaseAutomationCatalog,
   DatabaseAutomationDefinition,
@@ -67,9 +68,12 @@ type TriggerDraft = {
 };
 type ActionDraft = {
   id: string;
+  linkTriggerPage: boolean;
   mode: "add" | "clear" | "remove" | "set";
   propertyId: string;
-  type: "add_page" | "define_variables" | "edit_pages" | "edit_trigger_page";
+  recipientType: "page_creator" | "person_property" | "selected_user" | "trigger_person" | "variable";
+  recipientValue: string;
+  type: "add_page" | "define_variables" | "edit_pages" | "edit_trigger_page" | "send_notification";
   value: string;
   variableName: string;
 };
@@ -435,7 +439,11 @@ function AutomationBuilder({ catalog, dataSourceName, draft, generatedName, load
               const triggerKind = event.target.value as BuilderDraft["triggerKind"];
               patch({
                 actions: triggerKind === "schedule"
-                  ? draft.actions.map((action) => action.type === "edit_trigger_page" ? { ...action, type: "edit_pages" } : action)
+                  ? draft.actions.map((action) => action.type === "edit_trigger_page"
+                    ? { ...action, type: "edit_pages" }
+                    : action.type === "send_notification" && !["selected_user", "variable"].includes(action.recipientType)
+                      ? { ...action, recipientType: "selected_user", recipientValue: "" }
+                      : action)
                   : draft.actions,
                 triggerKind,
               });
@@ -626,9 +634,26 @@ function ActionCard({ action, catalog, index, onChange, onMove, onRemove, schedu
       <div className="mb-2 flex items-center gap-1"><Zap className="size-4" /><span className="text-sm font-medium">Action {index + 1}</span><Button aria-label="Move action up" className="ml-auto" disabled={index === 0} onClick={() => onMove(-1)} size="icon" variant="ghost"><ArrowUp /></Button><Button aria-label="Move action down" onClick={() => onMove(1)} size="icon" variant="ghost"><ArrowDown /></Button>{onRemove ? <Button aria-label="Remove action" onClick={onRemove} size="icon" variant="ghost"><X /></Button> : null}</div>
       <div className="grid gap-2">
         <select className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, type: event.target.value as ActionDraft["type"] })} value={action.type}>
-          <option value="define_variables">Define variables</option>{!scheduled ? <option value="edit_trigger_page">Edit trigger page</option> : null}<option value="add_page">Add page</option><option value="edit_pages">Edit pages</option>
+          <option value="define_variables">Define variables</option>{!scheduled ? <option value="edit_trigger_page">Edit trigger page</option> : null}<option value="add_page">Add page</option><option value="edit_pages">Edit pages</option><option value="send_notification">Send notification</option>
         </select>
-        {action.type === "define_variables" ? (
+        {action.type === "send_notification" ? (
+          <>
+            <select aria-label="Notification recipient type" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientType: event.target.value as ActionDraft["recipientType"], recipientValue: "" })} value={action.recipientType}>
+              <option value="selected_user">Selected user</option>{!scheduled ? <><option value="trigger_person">Trigger person</option><option value="page_creator">Page creator</option><option value="person_property">Person property</option></> : null}<option value="variable">Variable</option>
+            </select>
+            {action.recipientType === "selected_user" ? (
+              <select aria-label="Notification recipient" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} value={action.recipientValue}>
+                <option value="">Choose a user</option>{catalog?.users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+              </select>
+            ) : action.recipientType === "person_property" ? (
+              <select aria-label="Notification person property" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} value={action.recipientValue}>
+                <option value="">Choose a person property</option>{catalog?.properties.filter((property) => property.type === "person").map((property) => <option key={property.id} value={property.id}>{property.name}</option>)}
+              </select>
+            ) : action.recipientType === "variable" ? <Input aria-label="Notification recipient variable" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} placeholder="Variable name" value={action.recipientValue} /> : null}
+            <Input aria-label="Notification message" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Message" value={action.value} />
+            {!scheduled ? <label className="flex items-center gap-2 text-sm"><input checked={action.linkTriggerPage} onChange={(event) => onChange({ ...action, linkTriggerPage: event.target.checked })} type="checkbox" />Link to trigger page</label> : null}
+          </>
+        ) : action.type === "define_variables" ? (
           <><Input aria-label="Variable name" onChange={(event) => onChange({ ...action, variableName: event.target.value })} placeholder="Variable name" value={action.variableName} /><Input aria-label="Variable value" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Value" value={action.value} /></>
         ) : (
           <>
@@ -687,7 +712,7 @@ function emptyDraft(): BuilderDraft {
   };
 }
 const newTrigger = (): TriggerDraft => ({ id: crypto.randomUUID(), operand: "", operator: "was_edited", propertyId: "any", type: "page_added" });
-const newAction = (): ActionDraft => ({ id: crypto.randomUUID(), mode: "set", propertyId: "name", type: "define_variables", value: "true", variableName: "value" });
+const newAction = (): ActionDraft => ({ id: crypto.randomUUID(), linkTriggerPage: true, mode: "set", propertyId: "name", recipientType: "selected_user", recipientValue: "", type: "define_variables", value: "true", variableName: "value" });
 const newSchedule = (): ScheduleDraft => ({
   customPattern: "daily",
   dayOfMonth: "1",
@@ -719,6 +744,20 @@ function buildDefinition(draft: BuilderDraft, dataSourceId: string, timezone: st
     if (action.type === "define_variables") {
       if (!action.variableName.trim()) return null;
       return { id: action.id, type: "define_variables", variables: [{ expression: { type: "literal", value: parseLiteral(action.value) }, name: action.variableName.trim() }] };
+    }
+    if (action.type === "send_notification") {
+      if (!action.value.trim()) return null;
+      const recipient: AutomationNotificationRecipient | null = action.recipientType === "selected_user"
+        ? action.recipientValue ? { type: "selected_user" as const, userId: action.recipientValue } : null
+        : action.recipientType === "person_property"
+          ? action.recipientValue ? { propertyId: action.recipientValue, type: "person_property" as const } : null
+          : action.recipientType === "variable"
+            ? action.recipientValue.trim() ? { type: "variable" as const, variableName: action.recipientValue.trim() } : null
+            : action.recipientType === "trigger_person"
+              ? { type: "trigger_person" }
+              : { type: "page_creator" };
+      if (!recipient) return null;
+      return { id: action.id, message: { parts: [{ text: action.value, type: "text" }] }, ...(draft.triggerKind === "event" && action.linkTriggerPage ? { pageLink: { reference: "trigger_page" as const, type: "reference" as const } } : {}), recipients: [recipient], type: "send_notification" };
     }
     const propertyType = catalog?.properties.find((property) => property.id === action.propertyId)?.type;
     const operation = { mode: action.mode, propertyId: action.propertyId, ...(action.mode === "clear" ? {} : { value: { type: "literal" as const, value: parseActionLiteral(action.value, propertyType) } }) };
@@ -784,14 +823,18 @@ function draftFromDefinition(name: string, definition: DatabaseAutomationDefinit
   const base = emptyDraft();
   return {
     actions: definition.actions.flatMap((action): ActionDraft[] => {
-      if (action.type === "define_variables") return [{ id: action.id, mode: "set", propertyId: "name", type: action.type, value: String(action.variables[0]?.expression.type === "literal" ? action.variables[0].expression.value ?? "" : ""), variableName: action.variables[0]?.name ?? "value" }];
+      if (action.type === "define_variables") return [{ ...newAction(), id: action.id, type: action.type, value: String(action.variables[0]?.expression.type === "literal" ? action.variables[0].expression.value ?? "" : ""), variableName: action.variables[0]?.name ?? "value" }];
+      if (action.type === "send_notification") {
+        const recipient = action.recipients[0];
+        return [{ ...newAction(), id: action.id, linkTriggerPage: action.pageLink?.type === "reference" && action.pageLink.reference === "trigger_page", recipientType: recipient?.type ?? "selected_user", recipientValue: recipient?.type === "selected_user" ? recipient.userId : recipient?.type === "person_property" ? recipient.propertyId : recipient?.type === "variable" ? recipient.variableName : "", type: action.type, value: action.message.parts.map((part) => part.type === "text" ? part.text : "").join("") }];
+      }
       if (
         action.type !== "add_page" &&
         action.type !== "edit_pages" &&
         action.type !== "edit_trigger_page"
       ) return [];
       const operation = action.operations[0];
-      return [{ id: action.id, mode: operation?.mode ?? "set", propertyId: operation?.propertyId ?? "name", type: action.type as ActionDraft["type"], value: operation?.value?.type === "literal" ? String(operation.value.value ?? "") : "", variableName: "value" }];
+      return [{ ...newAction(), id: action.id, mode: operation?.mode ?? "set", propertyId: operation?.propertyId ?? "name", type: action.type as ActionDraft["type"], value: operation?.value?.type === "literal" ? String(operation.value.value ?? "") : "", variableName: "value" }];
     }),
     customName: true,
     match: definition.trigger.kind === "event" ? definition.trigger.match : "any",

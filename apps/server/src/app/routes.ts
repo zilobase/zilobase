@@ -23,6 +23,7 @@ import { workspaceRoutes } from "../features/workspaces/routes";
 import { workspaceSettingsRoutes } from "../features/workspaces/settings/routes";
 import type { AppBindings } from "../shared/types";
 import { demoRoutes } from "../features/demo/routes";
+import { notificationRoutes } from "../features/notifications/routes";
 
 export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/api/ai", aiRoutes);
@@ -40,6 +41,7 @@ export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/mail", mailProviderRoutes);
   app.route("/workspaces/:workspaceId/mail", mailRoutes);
   app.route("/workspaces", workspaceRoutes);
+  app.route("/workspaces", notificationRoutes);
   app.route("/workspaces", teamspaceRoutes);
   app.route("/api/workspace/settings", workspaceSettingsRoutes);
   app.route("/search", searchRoutes);

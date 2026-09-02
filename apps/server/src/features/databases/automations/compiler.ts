@@ -35,6 +35,7 @@ export type DatabaseAutomationCompilationContext = {
   parentDatabaseId: string;
   propertiesByDataSource: Map<string, Map<string, AutomationPropertyMetadata>>;
   sourceDataSourceId: string;
+  userIds?: Set<string>;
   views: Map<string, AutomationViewMetadata>;
 };
 
@@ -255,11 +256,21 @@ export function compileDatabaseAutomationDefinition(
       validateTargetOperations(targetDataSourceId, action.operations, actionPath, action.id, context, addDependency, addError, propertyTypes);
     } else if (action.type === "send_notification") {
       action.recipients.forEach((recipient, recipientIndex) => {
-        if (recipient.type !== "person_property") return;
-        const property = sourceProperties.get(recipient.propertyId);
-        if (!property || property.type !== "person") {
-          addError("invalid_recipient_property", "Notification recipient must use a person property", [...actionPath, "recipients", recipientIndex, "propertyId"]);
-        } else addDependency("property", property.id, `actions.${action.id}.recipients.${recipientIndex}`);
+        if (recipient.type === "person_property") {
+          const property = sourceProperties.get(recipient.propertyId);
+          if (!property || property.type !== "person") {
+            addError("invalid_recipient_property", "Notification recipient must use a person property", [...actionPath, "recipients", recipientIndex, "propertyId"]);
+          } else addDependency("property", property.id, `actions.${action.id}.recipients.${recipientIndex}`);
+        }
+        if (recipient.type === "selected_user") {
+          addDependency("user", recipient.userId, `actions.${action.id}.recipients.${recipientIndex}`);
+          if (context.userIds && !context.userIds.has(recipient.userId)) {
+            addError("recipient_not_found", "Selected notification recipient is not an active workspace member", [...actionPath, "recipients", recipientIndex, "userId"]);
+          }
+        }
+        if (recipient.type === "variable" && !declaredVariables.has(recipient.variableName)) {
+          addError("variable_not_available", `Variable ${recipient.variableName} is not available yet`, [...actionPath, "recipients", recipientIndex, "variableName"]);
+        }
       });
       if (!capabilities.notifications) addError("capability_disabled", "Notifications are not enabled", actionPath);
     } else if (action.type === "send_gmail") {

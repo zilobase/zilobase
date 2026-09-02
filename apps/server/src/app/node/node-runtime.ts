@@ -38,6 +38,7 @@ import { promoteClosedDatabaseAutomationEventWindows } from "../../features/data
 import { drainDatabaseAutomationEventWindows } from "../../features/databases/automations/evaluator";
 import { drainDatabaseAutomationRuns } from "../../features/databases/automations/run-engine";
 import { scanDueDatabaseAutomationSchedules } from "../../features/databases/automations/scheduler";
+import { drainInProductNotificationOutbox } from "../../features/notifications/outbox";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -203,6 +204,7 @@ function startDatabaseAutomationWorker(env: Record<string, unknown>) {
           limit: 10,
           workerId: `${workerId}:runs`,
         });
+        await drainInProductNotificationOutbox(env, { limit: 100 });
       });
     } catch (error) {
       console.error(JSON.stringify({

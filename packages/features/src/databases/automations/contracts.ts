@@ -726,6 +726,17 @@ export const databaseAutomationDefinitionV1Schema = z
           path: ["actions", actionIndex],
         })
       }
+      if (action.type === "send_notification") {
+        action.recipients.forEach((recipient) => {
+          if (["page_creator", "person_property", "trigger_person"].includes(recipient.type)) {
+            context.addIssue({
+              code: "custom",
+              message: "Scheduled notifications cannot use trigger-page or trigger-person recipients",
+              path: ["actions", actionIndex, "recipients"],
+            })
+          }
+        })
+      }
       visitValues(action, (value) => {
         if (
           value &&
@@ -944,6 +955,9 @@ export const databaseAutomationCatalogSchema = z
         type: shortTextSchema,
         writable: z.boolean(),
       }).strict(),
+    ),
+    users: z.array(
+      z.object({ id: stableIdSchema, name: shortTextSchema }).strict(),
     ),
     views: z.array(
       z.object({ id: stableIdSchema, name: shortTextSchema, type: shortTextSchema }).strict(),

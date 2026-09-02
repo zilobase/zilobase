@@ -131,6 +131,7 @@ export {
 export { drainDatabaseAutomationEventWindows } from "../features/databases/automations/evaluator";
 export { drainDatabaseAutomationRuns } from "../features/databases/automations/run-engine";
 export { scanDueDatabaseAutomationSchedules } from "../features/databases/automations/scheduler";
+export { drainInProductNotificationOutbox } from "../features/notifications/outbox";
 export {
   MembershipService,
   type GrantMembershipInput,

@@ -109,6 +109,7 @@ import {
 import { isFeatureEnabled } from "@/shared/config/feature-flags"
 import { withoutMailFeatures } from "./model/sidebar-layout-model"
 import { WorkspaceMailNavigation } from "./components/workspace-mail-navigation"
+import { NotificationCenter } from "@/features/notifications"
 
 const sidebarNavigationIcons: SidebarNavigationIcons = {
   getDatabaseIcon: (database: Parameters<typeof getDatabaseIconNode>[0]) =>
@@ -327,6 +328,7 @@ export function AppSidebar({
       <SidebarHeader
         actions={
           <>
+            {workspaceId ? <NotificationCenter workspaceId={workspaceId} /> : null}
             <ThemeSwitcher />
             <SidebarTrigger className="mr-0.5 shrink-0" />
           </>

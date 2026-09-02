@@ -23,6 +23,7 @@ const expectedFeatureExports = [
   "./databases/queries",
   "./mail",
   "./meetings",
+  "./notifications",
   "./pages",
   "./pages/content-state",
   "./pages/layouts",
