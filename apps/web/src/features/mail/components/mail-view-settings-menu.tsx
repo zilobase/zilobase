@@ -83,7 +83,7 @@ export function MailViewSettingsMenu({
                 <span className="ml-auto text-content-secondary">{right}</span>
               ) : null}
             </DropDrawerSubTrigger>
-            <DropDrawerSubContent className="w-72">
+            <DropDrawerSubContent className={label === "Filter" ? "w-80" : "w-72"}>
               {label === "Group" && groupEditor ? groupEditor : label === "Filter" && filterEditor ? filterEditor : label === "Properties" && propertiesEditor ? propertiesEditor : label === "Database" && databaseEditor ? databaseEditor : (
                 <DropDrawerItem disabled>
                   This panel is enabled in its organization pass.

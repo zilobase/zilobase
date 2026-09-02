@@ -68,3 +68,27 @@ test("mail predicates accept the shared database relative-date editor format", (
     now,
   ), true)
 })
+
+test("disabled mail conditions stay configured without filtering results", () => {
+  const filter: MailFilterExpression = {
+    filters: [
+      { enabled: false, id: "attachments", operator: "is_empty", propertyId: "attachments", type: "condition", values: [] },
+    ],
+    id: "root",
+    operator: "and",
+    type: "group",
+  }
+
+  assert.equal(evaluateMailFilterExpression(record, filter), true)
+})
+
+test("empty text placeholders do not hide mail before a filter value is selected", () => {
+  assert.equal(evaluateMailFilterCondition(
+    record,
+    { id: "from", operator: "does_not_contain", propertyId: "from", type: "condition", values: [""] },
+  ), true)
+  assert.equal(evaluateMailFilterCondition(
+    record,
+    { id: "from", operator: "contains", propertyId: "from", type: "condition", values: [] },
+  ), true)
+})

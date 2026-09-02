@@ -52,6 +52,7 @@ export type MailFilterOperator = (typeof mailFilterOperators)[number]
 export type MailFilterValue = boolean | number | string | null
 
 export type MailFilterCondition = {
+  enabled?: boolean
   id: string
   operator: MailFilterOperator
   propertyId: string
@@ -326,7 +327,7 @@ export const mailQuickFilterCatalog = [
     label: "From",
     propertyId: "from",
     defaultOperator: "contains",
-    defaultValues: [""],
+    defaultValues: [],
   },
   {
     id: "has_attachments",
@@ -374,7 +375,7 @@ export const mailQuickFilterCatalog = [
     id: "categories",
     label: "Categories",
     propertyId: "categories",
-    defaultOperator: "is",
+    defaultOperator: "contains",
     defaultValues: [],
   },
   {
@@ -427,11 +428,11 @@ export const mailQuickFilterCatalog = [
     defaultValues: [true],
   },
   {
-    id: "hide_archived",
-    label: "Hide archived",
+    id: "show_archived",
+    label: "Show archived",
     propertyId: "archived",
     defaultOperator: "is",
-    defaultValues: [false],
+    defaultValues: [true],
   },
   {
     id: "is_read",
@@ -849,6 +850,7 @@ export function normalizeMailFilterExpression(
             .filter((item): item is MailFilterValue => item !== undefined)
         : []
       return {
+        ...(node.enabled === false ? { enabled: false } : {}),
         id: stringValue(node.id, `condition-${generatedId++}`),
         operator: node.operator as MailFilterOperator,
         propertyId,

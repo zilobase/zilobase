@@ -32,7 +32,7 @@ export function MailGroupEditor({
         <label className="text-xs font-medium text-content-secondary" htmlFor="mail-group-property">Group by</label>
         <Select disabled={saving} value={group?.propertyId ?? "none"} onValueChange={(propertyId) => onChange(propertyId === "none" ? null : {
           direction: "descending",
-          hideEmptyGroups: true,
+          hideEmptyGroups: propertyId !== "starred",
           propertyId,
         })}>
           <SelectTrigger id="mail-group-property" className="w-full"><SelectValue /></SelectTrigger>
@@ -42,7 +42,7 @@ export function MailGroupEditor({
           </SelectContent>
         </Select>
       </div>
-      {group ? (
+      {group && group.propertyId !== "starred" ? (
         <>
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-content-secondary" htmlFor="mail-group-direction">Order</label>

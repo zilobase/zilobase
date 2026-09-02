@@ -26,7 +26,11 @@ export function evaluateMailFilterExpression(
   expression: MailFilterExpression,
   now = new Date(),
 ): boolean {
-  const matches = expression.filters.map((filter) => filter.type === "group"
+  const activeFilters = expression.filters.filter((filter) => filter.type === "group"
+    ? hasEnabledConditions(filter)
+    : filter.enabled !== false)
+  if (!activeFilters.length) return true
+  const matches = activeFilters.map((filter) => filter.type === "group"
     ? evaluateMailFilterExpression(record, filter, now)
     : evaluateMailFilterCondition(record, filter, now))
   return expression.operator === "or" ? matches.some(Boolean) : matches.every(Boolean)
@@ -37,17 +41,19 @@ export function evaluateMailFilterCondition(
   condition: MailFilterCondition,
   now = new Date(),
 ) {
+  if (condition.enabled === false) return true
   const actual = propertyValue(record, condition.propertyId)
   const expected = condition.values
+  const textExpected = expected.filter((value) => typeof value !== "string" || Boolean(value.trim()))
   switch (condition.operator) {
     case "is_empty": return isEmpty(actual)
     case "is_not_empty": return !isEmpty(actual)
     case "is": return compareAny(actual, expected, valuesEqual)
     case "is_not": return !compareAny(actual, expected, valuesEqual)
-    case "contains": return compareAny(actual, expected, containsValue)
-    case "does_not_contain": return !compareAny(actual, expected, containsValue)
-    case "starts_with": return compareAny(actual, expected, (left, right) => text(left).startsWith(text(right)))
-    case "ends_with": return compareAny(actual, expected, (left, right) => text(left).endsWith(text(right)))
+    case "contains": return !textExpected.length || compareAny(actual, textExpected, containsValue)
+    case "does_not_contain": return !textExpected.length || !compareAny(actual, textExpected, containsValue)
+    case "starts_with": return !textExpected.length || compareAny(actual, textExpected, (left, right) => text(left).startsWith(text(right)))
+    case "ends_with": return !textExpected.length || compareAny(actual, textExpected, (left, right) => text(left).endsWith(text(right)))
     case "greater_than": return compareScalar(actual, expected[0], (left, right) => left > right)
     case "greater_than_or_equal": return compareScalar(actual, expected[0], (left, right) => left >= right)
     case "less_than": return compareScalar(actual, expected[0], (left, right) => left < right)
@@ -68,6 +74,12 @@ export function evaluateMailFilterCondition(
       return value !== null && range !== null && value >= range[0] && value < range[1]
     }
   }
+}
+
+function hasEnabledConditions(expression: MailFilterExpression): boolean {
+  return expression.filters.some((filter) => filter.type === "group"
+    ? hasEnabledConditions(filter)
+    : filter.enabled !== false)
 }
 
 export function mailFilterRecordFromThreadSummary(
