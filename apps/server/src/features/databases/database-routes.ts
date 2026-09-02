@@ -48,6 +48,7 @@ import {
 } from "./views/service";
 import { normalizeDatabasePropertyType } from "./properties/types";
 import { databaseReadRoutes } from "./database-read-routes";
+import { databaseAutomationRoutes } from "./automations/routes";
 import {
   requireDatabaseRouteUser as requireUser,
   serviceMutationErrorResponse,
@@ -162,6 +163,7 @@ databaseRoutes.post("/", async (c) => {
 });
 
 databaseRoutes.route("/", databaseReadRoutes);
+databaseRoutes.route("/", databaseAutomationRoutes);
 
 databaseRoutes.get("/:id/access", async (c) => {
   const user = requireUser(c);

@@ -12,15 +12,15 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 | Capability | Pass | Required evidence | Status |
 | --- | ---: | --- | --- |
 | Versioned definition, trigger, action, expression, dependency, run, step, and delivery contracts | 0 | Shared contract tests parse every public variant and reject cross-definition limit violations | contracted |
-| Canonical data-source ownership across linked containers | 2 | CRUD and linked-source integration tests resolve one owner/source | planned |
-| Immutable revisions and pinned runs | 2, 4 | Concurrent-edit and queued-run revision tests | planned |
-| Active, paused, error, and soft-deleted lifecycle | 2, 4 | Transition table tests, including repair without implicit resume | planned |
-| Active-on-create and paused duplicate without history/secrets | 2 | CRUD integration tests | planned |
-| Full-access, non-guest management | 2 | Access-level and page-guest route matrix | planned |
+| Canonical data-source ownership across linked containers | 2 | CRUD and linked-source integration tests resolve one owner/source | verified |
+| Immutable revisions and pinned runs | 2, 4 | Concurrent-edit and queued-run revision tests | implemented |
+| Active, paused, error, and soft-deleted lifecycle | 2, 4 | Transition table tests, including repair without implicit resume | implemented |
+| Active-on-create and paused duplicate without history/secrets | 2 | CRUD integration tests | verified |
+| Full-access, non-guest management | 2 | Access-level and page-guest route matrix | verified |
 | Owner authority rechecked at execution | 4 | Revoked membership/source/target access tests | planned |
-| Dependency invalidation after delete, unlink, or type change | 2 | Property/view/source mutation integration tests | planned |
-| Stable field-addressed validation and optimistic concurrency | 2 | Invalid definition and stale `If-Match` API tests | planned |
-| Source-owned list, detail, catalog, lifecycle, and run APIs | 2, 4 | Route contract and secret-redaction tests | planned |
+| Dependency invalidation after delete, unlink, or type change | 2 | Property/view/source mutation integration tests | verified |
+| Stable field-addressed validation and optimistic concurrency | 2 | Invalid definition and stale `If-Match` API tests | verified |
+| Source-owned list, detail, catalog, lifecycle, and run APIs | 2, 4 | Route contract and secret-redaction tests | implemented |
 
 ## Event triggers and scope
 
@@ -28,7 +28,7 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 | --- | ---: | --- | --- |
 | Page added, including move into a source and initial values | 3, 4 | Creation/move fixtures and event evaluator tests | planned |
 | Property edited and any property edited | 3, 4 | Every writable property type and title fixtures | planned |
-| Complete type/operator matrix | 4 | Table-driven operator suite with invalid pair rejection | planned |
+| Complete type/operator matrix | 4 | Table-driven operator suite with invalid pair rejection | implemented |
 | Type-aware empty handling for null, missing, zero, and false | 1, 4 | Shared predicate fixtures | verified |
 | Case-insensitive trimmed Unicode text comparison | 1, 4 | Browser/server equivalence fixtures | verified |
 | `any` and `all` clauses, maximum 20 clauses | 0, 4 | Contract limit and evaluator truth-table tests | contracted |

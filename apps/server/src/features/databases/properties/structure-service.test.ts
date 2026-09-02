@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  invalidateAutomationDependencies: vi.fn(),
   access: vi.fn(),
   commit: vi.fn(),
   updatePositions: vi.fn(),
+}));
+
+vi.mock("../automations/service", () => ({
+  invalidateDatabaseAutomationDependencies: mocks.invalidateAutomationDependencies,
 }));
 
 vi.mock("../access/database-access", () => ({
@@ -161,6 +166,12 @@ test("deleteDatabasePropertyService soft deletes and compacts positions", async 
     "database-1",
     ["column-1", "column-3"],
   ]);
+  expect(mocks.invalidateAutomationDependencies).toHaveBeenCalledWith(
+    expect.objectContaining({
+      dependencyId: "column-2",
+      dependencyType: "property",
+    }),
+  );
 });
 
 test("deleteDatabasePropertyService rejects a missing active property", async () => {

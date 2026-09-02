@@ -512,6 +512,13 @@
       "when": 1788246000000,
       "tag": "0072_workspace_mail_rollout",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1788249600000,
+      "tag": "0073_database_automations",
+      "breakpoints": true
     }
   ]
 }

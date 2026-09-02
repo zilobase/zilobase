@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  invalidateAutomationDependencies: vi.fn(),
   access: vi.fn(),
   commit: vi.fn(),
   fetchDelta: vi.fn(),
   fetchPropertyDelta: vi.fn(),
   selectResults: [] as unknown[][],
   upsertValues: vi.fn(),
+}));
+
+vi.mock("../automations/service", () => ({
+  invalidateDatabaseAutomationDependencies: mocks.invalidateAutomationDependencies,
 }));
 
 vi.mock("../access/database-access", () => ({
@@ -339,6 +344,12 @@ test("deleteDatabaseViewService deletes a view while preserving one remaining vi
     env: { ENV: "test" },
     navigationWorkspaceId: "workspace-1",
   });
+  expect(mocks.invalidateAutomationDependencies).toHaveBeenCalledWith(
+    expect.objectContaining({
+      dependencyId: "view-1",
+      dependencyType: "view",
+    }),
+  );
 });
 
 test("deleteDatabaseViewService rejects missing and last views", async () => {

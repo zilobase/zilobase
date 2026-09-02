@@ -1,6 +1,8 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
+import type { Database } from "../../../infrastructure/database";
+import { invalidateDatabaseAutomationDependencies } from "../automations/service";
 import { db } from "../../../infrastructure/database";
 import {
   databaseProperty,
@@ -561,6 +563,12 @@ export async function deleteDatabaseViewService(input: {
     },
     async (tx) => {
       await tx.delete(databaseView).where(eq(databaseView.id, existingView.id));
+      await invalidateDatabaseAutomationDependencies({
+        dependencyId: existingView.id,
+        dependencyType: "view",
+        executor: tx as unknown as Database,
+        reason: "The saved view used by this automation was deleted",
+      });
 
       return { delta: { removedViewIds: [existingView.id] } };
     },

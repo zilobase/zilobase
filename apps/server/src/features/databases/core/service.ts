@@ -21,6 +21,7 @@ import {
 } from "../../../infrastructure/database/schema";
 import { upsertPageItemPlacement } from "../../pages/placements";
 import { softDeleteDatabaseTree } from "../../pages/mutations/soft-delete-nav-items";
+import { invalidateDatabaseAutomationDependencies } from "../automations/service";
 import {
   getDatabaseRecord,
   requireDatabaseEditAccess,
@@ -275,6 +276,13 @@ export async function deleteDatabaseService(input: {
     workspaceId: existing.workspaceId,
     userId: input.userId,
   });
+  for (const databaseId of deleted.deletedDatabaseIds) {
+    await invalidateDatabaseAutomationDependencies({
+      dependencyId: databaseId,
+      dependencyType: "database",
+      reason: "The source database used by this automation was deleted",
+    });
+  }
 
   return {
     database: {

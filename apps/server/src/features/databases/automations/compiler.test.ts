@@ -1,0 +1,275 @@
+import { describe, expect, it } from "vitest";
+
+import type {
+  AutomationTriggerOperand,
+  DatabaseAutomationDefinition,
+} from "@zilobase/features/databases/automations";
+import { databaseAutomationTriggerOperators } from "@zilobase/features/databases/automations";
+import {
+  compileDatabaseAutomationDefinition,
+  operatorsForPropertyType,
+  type AutomationPropertyMetadata,
+  type DatabaseAutomationCompilationContext,
+} from "./compiler";
+
+const properties = [
+  ["text", "text"],
+  ["number", "number"],
+  ["select", "select"],
+  ["multi", "multi_select"],
+  ["person", "person"],
+  ["relation", "relation"],
+  ["date", "date"],
+  ["checkbox", "checkbox"],
+  ["files", "files"],
+  ["formula", "formula"],
+].map(([id, type]) => ({
+  dataSourceId: "source-1",
+  id,
+  name: id,
+  type,
+  writable: type !== "formula",
+}) satisfies AutomationPropertyMetadata);
+
+const context: DatabaseAutomationCompilationContext = {
+  dataSourceIds: new Set(["source-1", "source-2"]),
+  parentDatabaseId: "database-1",
+  propertiesByDataSource: new Map([
+    ["source-1", new Map(properties.map((property) => [property.id, property]))],
+    ["source-2", new Map([
+      ["target-text", {
+        dataSourceId: "source-2",
+        id: "target-text",
+        name: "Target text",
+        type: "text",
+        writable: true,
+      }],
+    ])],
+  ]),
+  sourceDataSourceId: "source-1",
+  views: new Map([["view-1", {
+    dataSourceId: "source-1",
+    id: "view-1",
+    name: "Table",
+    type: "table",
+  }]]),
+};
+
+function definition(
+  overrides: Partial<DatabaseAutomationDefinition> = {},
+): DatabaseAutomationDefinition {
+  return {
+    actions: [{
+      id: "action-1",
+      operations: [{
+        mode: "set",
+        propertyId: "text",
+        value: { type: "literal", value: "Done" },
+      }],
+      type: "edit_trigger_page",
+    }],
+    definitionVersion: 1,
+    scope: { type: "data_source" },
+    timezone: "UTC",
+    trigger: {
+      clauses: [{ id: "trigger-1", type: "page_added" }],
+      kind: "event",
+      match: "any",
+    },
+    ...overrides,
+  } as DatabaseAutomationDefinition;
+}
+
+describe("database automation compiler", () => {
+  it("compiles stable IDs, type metadata, dependencies, and a canonical hash", () => {
+    const first = compileDatabaseAutomationDefinition(definition({
+      scope: { type: "view", viewId: "view-1" },
+    }), context);
+    const second = compileDatabaseAutomationDefinition({
+      ...definition({ scope: { type: "view", viewId: "view-1" } }),
+      timezone: "UTC",
+    }, context);
+
+    expect(first.validation).toEqual({ errors: [], valid: true, warnings: [] });
+    expect(first.definitionHash).toBe(second.definitionHash);
+    expect(first.compiledDefinition?.propertyTypes).toEqual({ text: "text" });
+    expect(first.compiledDefinition?.dependencies).toEqual(expect.arrayContaining([
+      { dependencyId: "source-1", dependencyType: "data_source", usage: "source" },
+      { dependencyId: "database-1", dependencyType: "database", usage: "source.parentDatabase" },
+      { dependencyId: "view-1", dependencyType: "view", usage: "scope.viewId" },
+      { dependencyId: "text", dependencyType: "property", usage: "actions.action-1.operations.0" },
+    ]));
+  });
+
+  it("publishes the complete trigger operator matrix", () => {
+    expect([...operatorsForPropertyType("text")]).toEqual([
+      "was_edited", "is", "is_not", "contains", "does_not_contain",
+      "starts_with", "ends_with", "is_empty", "is_not_empty",
+    ]);
+    expect([...operatorsForPropertyType("number")]).toContain("greater_than_or_equal");
+    expect([...operatorsForPropertyType("select")]).not.toContain("contains");
+    expect([...operatorsForPropertyType("multi_select")]).toContain("contains");
+    expect([...operatorsForPropertyType("date")]).toContain("is_relative_to_today");
+    expect([...operatorsForPropertyType("checkbox")]).toEqual([
+      "was_edited", "is_checked", "is_unchecked",
+    ]);
+    expect([...operatorsForPropertyType("files")]).toEqual([
+      "was_edited", "is_empty", "is_not_empty",
+    ]);
+    expect([...operatorsForPropertyType("formula")]).toEqual([]);
+    expect([...operatorsForPropertyType("button")]).toEqual([]);
+  });
+
+  it("validates every property and trigger-operator pairing", () => {
+    const operands: Record<string, AutomationTriggerOperand | undefined> = {
+      checkbox: undefined,
+      date: { precision: "date", type: "date", value: "2026-09-02T00:00:00.000Z" },
+      files: undefined,
+      formula: "x",
+      multi_select: { entityType: "option", id: "option-1", type: "entity" },
+      number: 4,
+      person: { entityType: "user", id: "user-1", type: "entity" },
+      relation: { entityType: "page", id: "page-1", type: "entity" },
+      select: { entityType: "option", id: "option-1", type: "entity" },
+      text: "value",
+    };
+
+    for (const property of properties) {
+      const allowed = operatorsForPropertyType(property.type);
+      for (const operator of databaseAutomationTriggerOperators) {
+        const operand: AutomationTriggerOperand | undefined = ["was_edited", "is_empty", "is_not_empty", "is_checked", "is_unchecked"].includes(operator)
+          ? undefined
+          : operator === "is_between"
+            ? { end: "2026-09-03T00:00:00.000Z", start: "2026-09-02T00:00:00.000Z", type: "date_range" }
+            : operator === "is_relative_to_today"
+              ? { amount: 0, direction: "this", type: "relative_date", unit: "day" }
+              : operands[property.type];
+        const result = compileDatabaseAutomationDefinition(definition({
+          trigger: {
+            clauses: [{
+              id: "trigger-1",
+              ...(operand === undefined ? {} : { operand }),
+              operator,
+              propertyId: property.id,
+              type: "property_edited",
+            }],
+            kind: "event",
+            match: "any",
+          },
+        }), context);
+        const hasOperatorError = result.validation.errors.some(({ code }) =>
+          code === "invalid_operator" || code === "invalid_operand" || code === "operand_required"
+        );
+        expect(hasOperatorError, `${property.type}/${operator}`).toBe(!allowed.has(operator));
+      }
+    }
+
+    for (const operator of databaseAutomationTriggerOperators) {
+      const result = compileDatabaseAutomationDefinition(definition({
+        trigger: {
+          clauses: [{ id: "trigger-any", operator, propertyId: "any", type: "property_edited" }],
+          kind: "event",
+          match: "any",
+        },
+      }), context);
+      expect(result.validation.valid, `any/${operator}`).toBe(operator === "was_edited");
+    }
+  });
+
+  it("returns stable field-addressed schema and semantic errors", () => {
+    const result = compileDatabaseAutomationDefinition(definition({
+      actions: [{
+        id: "action-1",
+        operations: [{ mode: "add", propertyId: "number", value: { type: "literal", value: 1 } }],
+        type: "edit_trigger_page",
+      }],
+      timezone: "Not/AZone",
+      trigger: {
+        clauses: [{
+          id: "trigger-1",
+          operand: 2,
+          operator: "contains",
+          propertyId: "number",
+          type: "property_edited",
+        }],
+        kind: "event",
+        match: "all",
+      },
+    }), context);
+
+    expect(result.validation.valid).toBe(false);
+    expect(result.validation.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "invalid_timezone", path: ["timezone"] }),
+      expect.objectContaining({ code: "invalid_operator", path: ["trigger", "clauses", 0, "operator"] }),
+      expect.objectContaining({ code: "invalid_operation", path: ["actions", 0, "operations", 0, "mode"] }),
+    ]));
+    expect(result.compiledDefinition).toBeNull();
+  });
+
+  it("validates nested filters, relation targets, formulas, and reference order", () => {
+    const result = compileDatabaseAutomationDefinition(definition({
+      actions: [
+        {
+          id: "variables",
+          type: "define_variables",
+          variables: [{
+            expression: { reference: "variable", name: "later", type: "reference" },
+            name: "first",
+          }],
+        },
+        {
+          id: "edit",
+          operations: [{ mode: "set", propertyId: "target-text", value: { expression: "if(", type: "formula" } }],
+          target: {
+            dataSourceId: "source-2",
+            filter: {
+              conditions: [{
+                id: "condition-1",
+                operand: "x",
+                operator: "greater_than",
+                propertyId: "target-text",
+                type: "condition",
+              }],
+              match: "all",
+            },
+            type: "filtered_data_source",
+          },
+          type: "edit_pages",
+        },
+      ],
+    }), context);
+
+    expect(result.validation.errors.map(({ code }) => code)).toEqual(expect.arrayContaining([
+      "variable_not_available",
+      "invalid_formula",
+      "invalid_operator",
+    ]));
+  });
+
+  it("keeps future capabilities independently gated", () => {
+    const scheduled = definition({
+      trigger: {
+        kind: "schedule",
+        schedule: {
+          frequency: "daily",
+          interval: 1,
+          localTime: "09:00",
+          startDate: "2026-09-02",
+          timezone: "UTC",
+        },
+      },
+      actions: [{
+        id: "add",
+        dataSourceId: "source-2",
+        operations: [{ mode: "set", propertyId: "target-text", value: { type: "literal", value: "x" } }],
+        type: "add_page",
+      }],
+    });
+    expect(compileDatabaseAutomationDefinition(scheduled, context).validation.errors)
+      .toContainEqual(expect.objectContaining({ code: "capability_disabled", path: ["trigger"] }));
+    expect(compileDatabaseAutomationDefinition(scheduled, {
+      ...context,
+      capabilities: { schedules: true },
+    }).validation.valid).toBe(true);
+  });
+});

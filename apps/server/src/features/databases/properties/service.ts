@@ -19,6 +19,8 @@ import {
   shouldClearValuesForPropertyTypeChange,
 } from "./types";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
+import { invalidateDatabaseAutomationDependencies } from "../automations/service";
+import type { Database } from "../../../infrastructure/database";
 
 export async function createDatabasePropertyService(input: {
   config?: unknown;
@@ -321,6 +323,15 @@ export async function updateDatabasePropertyService(input: {
               eq(pageProperty.workspaceId, existing.workspaceId),
             ),
           );
+      }
+
+      if (input.type !== undefined && effectiveType !== previousType) {
+        await invalidateDatabaseAutomationDependencies({
+          dependencyId: column.id,
+          dependencyType: "property",
+          executor: tx as unknown as Database,
+          reason: `A property used by this automation changed from ${previousType} to ${effectiveType}`,
+        });
       }
 
       const delta = await fetchDatabasePropertyDelta(

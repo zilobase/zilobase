@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  invalidateAutomationDependencies: vi.fn(),
   access: vi.fn(),
   commit: vi.fn(),
   fetchDelta: vi.fn(),
   selectResults: [] as unknown[][],
+}));
+
+vi.mock("../automations/service", () => ({
+  invalidateDatabaseAutomationDependencies: mocks.invalidateAutomationDependencies,
 }));
 
 vi.mock("../access/database-access", () => ({
@@ -215,6 +220,12 @@ test("updateDatabasePropertyService updates supplied metadata", async () => {
   assert.equal((updates[1] as Record<string, unknown>).name, "Stage");
   assert.equal((updates[1] as Record<string, unknown>).type, "status");
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0].changed, ["properties"]);
+  expect(mocks.invalidateAutomationDependencies).toHaveBeenCalledWith(
+    expect.objectContaining({
+      dependencyId: "column-1",
+      dependencyType: "property",
+    }),
+  );
 });
 
 test("updateDatabasePropertyService normalizes retained status config", async () => {

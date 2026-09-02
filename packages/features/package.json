@@ -64,6 +64,10 @@
       "types": "./src/databases/index.ts",
       "default": "./src/databases/index.ts"
     },
+    "./databases/automations": {
+      "types": "./src/databases/automations/index.ts",
+      "default": "./src/databases/automations/index.ts"
+    },
     "./databases/property-types": {
       "types": "./src/databases/property-types.ts",
       "default": "./src/databases/property-types.ts"
@@ -75,6 +79,10 @@
     "./databases/formula": {
       "types": "./src/databases/formula/index.ts",
       "default": "./src/databases/formula/index.ts"
+    },
+    "./databases/formula/syntax": {
+      "types": "./src/databases/formula/syntax.ts",
+      "default": "./src/databases/formula/syntax.ts"
     },
     "./databases/queries": {
       "types": "./src/databases/queries.ts",

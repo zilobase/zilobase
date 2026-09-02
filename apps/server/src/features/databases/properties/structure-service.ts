@@ -10,6 +10,8 @@ import {
   updateDatabasePropertyPositions,
 } from "../core/position-service";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
+import { invalidateDatabaseAutomationDependencies } from "../automations/service";
+import type { Database } from "../../../infrastructure/database";
 
 export async function reorderDatabasePropertiesService(input: {
   databaseId: string;
@@ -149,6 +151,12 @@ export async function deleteDatabasePropertyService(input: {
         .update(databaseProperty)
         .set({ updatedAt: now })
         .where(eq(databaseProperty.id, source.columnId));
+      await invalidateDatabaseAutomationDependencies({
+        dependencyId: source.columnId,
+        dependencyType: "property",
+        executor: tx as unknown as Database,
+        reason: "A property used by this automation was deleted",
+      });
       await updateDatabasePropertyPositions(
         tx,
         existing.id,

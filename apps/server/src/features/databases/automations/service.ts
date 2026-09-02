@@ -1,0 +1,837 @@
+import { createHash } from "node:crypto";
+import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
+
+import {
+  DATABASE_AUTOMATION_LIMITS,
+  databaseAutomationDefinitionSchema,
+  type CreateDatabaseAutomationRequest,
+  type DatabaseAutomationDefinition,
+  type DatabaseAutomationDetail,
+  type DatabaseAutomationSummary,
+  type DatabaseAutomationValidationResult,
+  type UpdateDatabaseAutomationRequest,
+} from "@zilobase/features/databases/automations";
+
+import { getMembership } from "../../access";
+import { db, type Database } from "../../../infrastructure/database";
+import {
+  database,
+  databaseAutomation,
+  databaseAutomationDependency,
+  databaseAutomationRevision,
+  databaseDataSource,
+  databaseProperty,
+  databaseView,
+  dataSource,
+  pageProperty,
+} from "../../../infrastructure/database/schema";
+import type { ZilobaseEditionExtension } from "../../../shared/types";
+import { requireDataSourceAccess } from "../access/data-source-access";
+import { requireDatabaseAccess } from "../access/database-access";
+import {
+  compileDatabaseAutomationDefinition,
+  operatorsForPropertyType,
+  type AutomationPropertyMetadata,
+  type DatabaseAutomationCompilationContext,
+} from "./compiler";
+
+type Executor = Database;
+type AutomationRecord = typeof databaseAutomation.$inferSelect;
+type RevisionRecord = typeof databaseAutomationRevision.$inferSelect;
+
+export class DatabaseAutomationError extends Error {
+  constructor(
+    message: string,
+    readonly status: 400 | 403 | 404 | 409 = 400,
+    readonly code = "AUTOMATION_INVALID_REQUEST",
+    readonly validation?: DatabaseAutomationValidationResult,
+  ) {
+    super(message);
+    this.name = "DatabaseAutomationError";
+  }
+}
+
+export async function listDatabaseAutomations(input: {
+  databaseId: string;
+  dataSourceId: string;
+  userId: string;
+}) {
+  await requireManagementContext(input);
+  const records = await db
+    .select({ automation: databaseAutomation, revision: databaseAutomationRevision })
+    .from(databaseAutomation)
+    .innerJoin(
+      databaseAutomationRevision,
+      eq(databaseAutomation.currentRevisionId, databaseAutomationRevision.id),
+    )
+    .where(
+      and(
+        eq(databaseAutomation.dataSourceId, input.dataSourceId),
+        isNull(databaseAutomation.deletedAt),
+      ),
+    )
+    .orderBy(desc(databaseAutomation.updatedAt), asc(databaseAutomation.id));
+
+  return { automations: records.map(({ automation, revision }) => toSummary(automation, revision)) };
+}
+
+export async function getDatabaseAutomation(input: {
+  automationId: string;
+  databaseId: string;
+  userId: string;
+}) {
+  const record = await getAutomationWithRevision(input.automationId);
+  if (!record || record.automation.deletedAt) throw notFound();
+  await requireManagementContext({
+    databaseId: input.databaseId,
+    dataSourceId: record.automation.dataSourceId,
+    userId: input.userId,
+  });
+  return toDetail(record.automation, record.revision);
+}
+
+export async function validateDatabaseAutomation(input: {
+  databaseId: string;
+  dataSourceId: string;
+  definition: unknown;
+  userId: string;
+}) {
+  const management = await requireManagementContext(input);
+  const compilationContext = await loadCompilationContext({
+    databaseId: input.databaseId,
+    definition: input.definition,
+    management,
+    userId: input.userId,
+  });
+  return compileDatabaseAutomationDefinition(input.definition, compilationContext).validation;
+}
+
+export async function createDatabaseAutomation(input: {
+  body: CreateDatabaseAutomationRequest;
+  databaseId: string;
+  duplicatedFromId?: string;
+  editionExtension?: ZilobaseEditionExtension;
+  initialStatus?: "active" | "paused";
+  userId: string;
+}) {
+  const management = await requireManagementContext({
+    databaseId: input.databaseId,
+    dataSourceId: input.body.dataSourceId,
+    userId: input.userId,
+  });
+  const context = await loadCompilationContext({
+    databaseId: input.databaseId,
+    definition: input.body.definition,
+    management,
+    userId: input.userId,
+  });
+  const compilation = compileDatabaseAutomationDefinition(input.body.definition, context);
+  assertValidCompilation(compilation.validation, compilation.compiledDefinition, compilation.definitionHash);
+
+  const createInTransaction = () => db.transaction(async (tx) => {
+    await tx
+      .select({ id: dataSource.id })
+      .from(dataSource)
+      .where(eq(dataSource.id, input.body.dataSourceId))
+      .for("update");
+    const existing = await findIdempotentAutomation(
+      tx as Executor,
+      input.userId,
+      input.body.dataSourceId,
+      input.body.idempotencyKey,
+    );
+    if (existing) return { created: false, ...existing };
+
+    const initialStatus = input.initialStatus ?? "active";
+    if (initialStatus === "active") {
+      const [{ activeCount }] = await tx
+        .select({ activeCount: count() })
+        .from(databaseAutomation)
+        .where(
+          and(
+            eq(databaseAutomation.dataSourceId, input.body.dataSourceId),
+            eq(databaseAutomation.status, "active"),
+            isNull(databaseAutomation.deletedAt),
+          ),
+        );
+      if ((activeCount ?? 0) >= DATABASE_AUTOMATION_LIMITS.activePerDataSource) {
+        throw new DatabaseAutomationError(
+          "This data source has reached its active automation limit",
+          409,
+          "AUTOMATION_ACTIVE_LIMIT",
+        );
+      }
+    }
+
+    const now = new Date();
+    const automationId = crypto.randomUUID();
+    const revisionId = crypto.randomUUID();
+    await tx.insert(databaseAutomation).values({
+      createIdempotencyKey: input.body.idempotencyKey,
+      createdAt: now,
+      createdById: input.userId,
+      currentRevisionId: revisionId,
+      dataSourceId: input.body.dataSourceId,
+      duplicatedFromId: input.duplicatedFromId,
+      id: automationId,
+      name: input.body.name,
+      ownerUserId: input.userId,
+      status: initialStatus,
+      updatedAt: now,
+      workspaceId: management.source.workspaceId,
+    });
+    await tx.insert(databaseAutomationRevision).values({
+      automationId,
+      compiledDefinition: compilation.compiledDefinition!,
+      createdAt: now,
+      createdById: input.userId,
+      definition: compilation.definition!,
+      definitionHash: compilation.definitionHash!,
+      definitionVersion: compilation.definition!.definitionVersion,
+      id: revisionId,
+      version: 1,
+    });
+    await insertDependencies(tx as Executor, automationId, revisionId, compilation.compiledDefinition!.dependencies);
+    return {
+      automation: {
+        id: automationId,
+        workspaceId: management.source.workspaceId,
+        dataSourceId: input.body.dataSourceId,
+        createdById: input.userId,
+        ownerUserId: input.userId,
+        name: input.body.name,
+        status: initialStatus,
+        currentRevisionId: revisionId,
+        createIdempotencyKey: input.body.idempotencyKey,
+        duplicatedFromId: input.duplicatedFromId ?? null,
+        nextRunAt: null,
+        lastRunAt: null,
+        lastRunStatus: null,
+        errorCode: null,
+        errorSummary: null,
+        errorActionId: null,
+        erroredAt: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      } satisfies AutomationRecord,
+      created: true,
+      revision: {
+        automationId,
+        compiledDefinition: compilation.compiledDefinition!,
+        createdAt: now,
+        createdById: input.userId,
+        definition: compilation.definition!,
+        definitionHash: compilation.definitionHash!,
+        definitionVersion: compilation.definition!.definitionVersion,
+        id: revisionId,
+        version: 1,
+      } satisfies RevisionRecord,
+    };
+  });
+  let result: Awaited<ReturnType<typeof createInTransaction>>;
+  try {
+    result = await createInTransaction();
+  } catch (error) {
+    if (!isIdempotencyConflict(error)) throw error;
+    const existing = await findIdempotentAutomation(
+      db,
+      input.userId,
+      input.body.dataSourceId,
+      input.body.idempotencyKey,
+    );
+    if (!existing) throw error;
+    result = { created: false, ...existing };
+  }
+
+  if (result.created && !input.duplicatedFromId) {
+    await audit(input.editionExtension, "database_automation.created", input.userId, result.automation, {
+      revision: result.revision.version,
+    });
+  }
+  return { automation: toDetail(result.automation, result.revision), created: result.created };
+}
+
+export async function updateDatabaseAutomation(input: {
+  automationId: string;
+  body: UpdateDatabaseAutomationRequest;
+  databaseId: string;
+  editionExtension?: ZilobaseEditionExtension;
+  expectedVersion: number;
+  userId: string;
+}) {
+  const existing = await getAutomationWithRevision(input.automationId);
+  if (!existing || existing.automation.deletedAt) throw notFound();
+  const management = await requireManagementContext({
+    databaseId: input.databaseId,
+    dataSourceId: existing.automation.dataSourceId,
+    userId: input.userId,
+  });
+  const context = await loadCompilationContext({
+    databaseId: input.databaseId,
+    definition: input.body.definition,
+    management,
+    userId: input.userId,
+  });
+  const compilation = compileDatabaseAutomationDefinition(input.body.definition, context);
+  assertValidCompilation(compilation.validation, compilation.compiledDefinition, compilation.definitionHash);
+
+  const result = await db.transaction(async (tx) => {
+    const current = await getAutomationWithRevision(input.automationId, tx as Executor, true);
+    if (!current || current.automation.deletedAt) throw notFound();
+    if (current.revision.version !== input.expectedVersion) {
+      throw new DatabaseAutomationError(
+        "The automation was changed by another editor",
+        409,
+        "AUTOMATION_REVISION_CONFLICT",
+      );
+    }
+    const now = new Date();
+    const revisionId = crypto.randomUUID();
+    const version = current.revision.version + 1;
+    await tx.insert(databaseAutomationRevision).values({
+      automationId: current.automation.id,
+      compiledDefinition: compilation.compiledDefinition!,
+      createdAt: now,
+      createdById: input.userId,
+      definition: compilation.definition!,
+      definitionHash: compilation.definitionHash!,
+      definitionVersion: compilation.definition!.definitionVersion,
+      id: revisionId,
+      version,
+    });
+    await insertDependencies(tx as Executor, current.automation.id, revisionId, compilation.compiledDefinition!.dependencies);
+    const [automation] = await tx
+      .update(databaseAutomation)
+      .set({ currentRevisionId: revisionId, name: input.body.name, updatedAt: now })
+      .where(eq(databaseAutomation.id, current.automation.id))
+      .returning();
+    return {
+      automation: automation!,
+      revision: {
+        automationId: current.automation.id,
+        compiledDefinition: compilation.compiledDefinition!,
+        createdAt: now,
+        createdById: input.userId,
+        definition: compilation.definition!,
+        definitionHash: compilation.definitionHash!,
+        definitionVersion: compilation.definition!.definitionVersion,
+        id: revisionId,
+        version,
+      } satisfies RevisionRecord,
+    };
+  });
+  await audit(input.editionExtension, "database_automation.updated", input.userId, result.automation, {
+    revision: result.revision.version,
+  });
+  return toDetail(result.automation, result.revision);
+}
+
+export async function setDatabaseAutomationPaused(input: {
+  automationId: string;
+  databaseId: string;
+  editionExtension?: ZilobaseEditionExtension;
+  paused: boolean;
+  userId: string;
+}) {
+  const current = await getDatabaseAutomation({
+    automationId: input.automationId,
+    databaseId: input.databaseId,
+    userId: input.userId,
+  });
+  if (!input.paused) {
+    const validation = await validateDatabaseAutomation({
+      databaseId: input.databaseId,
+      dataSourceId: current.dataSourceId,
+      definition: current.definition,
+      userId: input.userId,
+    });
+    if (!validation.valid) throw new DatabaseAutomationError(
+      "The automation must be repaired before it can resume",
+      409,
+      "AUTOMATION_REPAIR_REQUIRED",
+      validation,
+    );
+  }
+  const now = new Date();
+  const [automation] = await db
+    .update(databaseAutomation)
+    .set({
+      errorActionId: null,
+      errorCode: null,
+      errorSummary: null,
+      erroredAt: null,
+      status: input.paused ? "paused" : "active",
+      updatedAt: now,
+    })
+    .where(and(eq(databaseAutomation.id, input.automationId), isNull(databaseAutomation.deletedAt)))
+    .returning();
+  if (!automation) throw notFound();
+  await audit(
+    input.editionExtension,
+    input.paused ? "database_automation.paused" : "database_automation.resumed",
+    input.userId,
+    automation,
+    {},
+  );
+  const detail = await getAutomationWithRevision(input.automationId);
+  return toDetail(detail!.automation, detail!.revision);
+}
+
+export async function duplicateDatabaseAutomation(input: {
+  automationId: string;
+  databaseId: string;
+  editionExtension?: ZilobaseEditionExtension;
+  idempotencyKey: string;
+  userId: string;
+}) {
+  const source = await getDatabaseAutomation({
+    automationId: input.automationId,
+    databaseId: input.databaseId,
+    userId: input.userId,
+  });
+  const created = await createDatabaseAutomation({
+    body: {
+      dataSourceId: source.dataSourceId,
+      definition: source.definition,
+      idempotencyKey: createHash("sha256")
+        .update(`duplicate:${source.id}:${input.idempotencyKey}`)
+        .digest("hex"),
+      name: `${source.name} copy`.slice(0, 200),
+    },
+    databaseId: input.databaseId,
+    duplicatedFromId: source.id,
+    editionExtension: input.editionExtension,
+    initialStatus: "paused",
+    userId: input.userId,
+  });
+  const detail = await getAutomationWithRevision(created.automation.id);
+  if (created.created) {
+    await audit(input.editionExtension, "database_automation.duplicated", input.userId, detail!.automation, {
+      sourceAutomationId: source.id,
+    });
+  }
+  return { automation: toDetail(detail!.automation, detail!.revision), created: created.created };
+}
+
+export async function deleteDatabaseAutomation(input: {
+  automationId: string;
+  databaseId: string;
+  editionExtension?: ZilobaseEditionExtension;
+  userId: string;
+}) {
+  const current = await getDatabaseAutomation(input);
+  const now = new Date();
+  const [automation] = await db
+    .update(databaseAutomation)
+    .set({
+      deletedAt: now,
+      errorActionId: null,
+      errorCode: null,
+      errorSummary: null,
+      erroredAt: null,
+      status: "deleted",
+      updatedAt: now,
+    })
+    .where(and(eq(databaseAutomation.id, current.id), isNull(databaseAutomation.deletedAt)))
+    .returning();
+  if (!automation) throw notFound();
+  await audit(input.editionExtension, "database_automation.deleted", input.userId, automation, {});
+  return { deleted: true, id: automation.id };
+}
+
+export async function getDatabaseAutomationCatalog(input: {
+  databaseId: string;
+  dataSourceId: string;
+  userId: string;
+}) {
+  try {
+    const management = await requireManagementContext(input);
+    const [properties, views] = await Promise.all([
+      loadProperties([input.dataSourceId]),
+      loadViews(input.databaseId, input.dataSourceId),
+    ]);
+    return {
+      actions: [
+        { available: true, reason: null, type: "define_variables" as const },
+        { available: true, reason: null, type: "edit_trigger_page" as const },
+        { available: true, reason: null, type: "add_page" as const },
+        { available: true, reason: null, type: "edit_pages" as const },
+        { available: false, reason: "Available in the notifications release", type: "send_notification" as const },
+        { available: false, reason: "Available in the Gmail release", type: "send_gmail" as const },
+        { available: false, reason: "Available in the webhook release", type: "send_webhook" as const },
+        { available: false, reason: "Available in the Slack release", type: "send_slack" as const },
+      ],
+      canManage: true,
+      dataSourceId: management.source.id,
+      manageUnavailableReason: null,
+      properties: [...(properties.get(input.dataSourceId)?.values() ?? [])].map((property) => ({
+        id: property.id,
+        name: property.name,
+        operators: [...operatorsForPropertyType(property.type)],
+        type: property.type,
+        writable: property.writable,
+      })),
+      views: [...views.values()].map(({ id, name, type }) => ({ id, name, type })),
+    };
+  } catch (error) {
+    if (!(error instanceof DatabaseAutomationError) || error.status !== 403) throw error;
+    return {
+      actions: [],
+      canManage: false,
+      dataSourceId: input.dataSourceId,
+      manageUnavailableReason: error.message,
+      properties: [],
+      views: [],
+    };
+  }
+}
+
+export async function invalidateDatabaseAutomationDependencies(input: {
+  dependencyId: string;
+  dependencyType: "data_source" | "database" | "property" | "view";
+  reason: string;
+  executor?: Executor;
+}) {
+  const executor = input.executor ?? db;
+  const rows = await executor
+    .select({ automationId: databaseAutomationDependency.automationId })
+    .from(databaseAutomationDependency)
+    .innerJoin(
+      databaseAutomation,
+      and(
+        eq(databaseAutomation.id, databaseAutomationDependency.automationId),
+        eq(databaseAutomation.currentRevisionId, databaseAutomationDependency.revisionId),
+      ),
+    )
+    .where(
+      and(
+        eq(databaseAutomationDependency.dependencyType, input.dependencyType),
+        eq(databaseAutomationDependency.dependencyId, input.dependencyId),
+      ),
+    );
+  const automationIds = [...new Set(rows.map(({ automationId }) => automationId))];
+  if (automationIds.length === 0) return 0;
+  await executor
+    .update(databaseAutomation)
+    .set({
+      errorActionId: null,
+      errorCode: "DEPENDENCY_INVALID",
+      errorSummary: input.reason.slice(0, 2_000),
+      erroredAt: new Date(),
+      status: "error",
+      updatedAt: new Date(),
+    })
+    .where(and(inArray(databaseAutomation.id, automationIds), eq(databaseAutomation.status, "active")));
+  return automationIds.length;
+}
+
+async function requireManagementContext(input: {
+  databaseId: string;
+  dataSourceId: string;
+  userId: string;
+}) {
+  let source: Awaited<ReturnType<typeof requireDataSourceAccess>>;
+  try {
+    source = await requireDataSourceAccess(input.dataSourceId, input.userId, "full");
+  } catch (error) {
+    throw new DatabaseAutomationError(
+      error instanceof Error ? error.message : "Forbidden",
+      error instanceof Error && "status" in error && error.status === 404 ? 404 : 403,
+      "AUTOMATION_MANAGE_FORBIDDEN",
+    );
+  }
+  const membership = await getMembership(source.workspaceId, input.userId);
+  if (!membership) {
+    throw new DatabaseAutomationError(
+      "Only active workspace members with full access can manage automations",
+      403,
+      "AUTOMATION_MEMBER_REQUIRED",
+    );
+  }
+  try {
+    await requireDatabaseAccess(input.databaseId, input.userId, "view");
+  } catch {
+    throw new DatabaseAutomationError(
+      "The database containing this linked source is not accessible",
+      403,
+      "AUTOMATION_HOST_FORBIDDEN",
+    );
+  }
+  const [link, parent] = await Promise.all([
+    db
+      .select({ databaseId: databaseDataSource.databaseId })
+      .from(databaseDataSource)
+      .where(
+        and(
+          eq(databaseDataSource.databaseId, input.databaseId),
+          eq(databaseDataSource.dataSourceId, input.dataSourceId),
+        ),
+      )
+      .limit(1),
+    db
+      .select()
+      .from(database)
+      .where(and(eq(database.id, source.parentDatabaseId), isNull(database.deletedAt)))
+      .limit(1),
+  ]);
+  if (!link[0]) throw new DatabaseAutomationError("Data source is not linked to this database", 404, "AUTOMATION_SOURCE_NOT_LINKED");
+  if (!parent[0]) throw new DatabaseAutomationError("Source database not found", 404, "AUTOMATION_SOURCE_NOT_FOUND");
+  if (isDatabaseLocked(parent[0]) || isDatabaseLocked(source)) {
+    throw new DatabaseAutomationError("Unlock the source database before managing automations", 409, "AUTOMATION_SOURCE_LOCKED");
+  }
+  return { membership, parent: parent[0], source };
+}
+
+async function loadCompilationContext(input: {
+  databaseId: string;
+  definition: unknown;
+  management: Awaited<ReturnType<typeof requireManagementContext>>;
+  userId: string;
+}): Promise<DatabaseAutomationCompilationContext> {
+  const parsed = databaseAutomationDefinitionSchema.safeParse(input.definition);
+  const targetIds = new Set([input.management.source.id]);
+  const sourcePropertiesByDataSource = await loadProperties([input.management.source.id]);
+  const sourceProperties = sourcePropertiesByDataSource.get(input.management.source.id) ?? new Map();
+  if (parsed.success) {
+    for (const action of parsed.data.actions) {
+      if (action.type === "add_page") targetIds.add(action.dataSourceId);
+      if (action.type === "edit_pages" && action.target.type === "filtered_data_source") {
+        targetIds.add(action.target.dataSourceId);
+      }
+      if (action.type === "edit_pages" && action.target.type === "related_pages") {
+        const relatedDataSourceId = sourceProperties.get(action.target.propertyId)?.relatedDataSourceId;
+        if (relatedDataSourceId) targetIds.add(relatedDataSourceId);
+      }
+    }
+  }
+  for (const targetId of targetIds) {
+    let target: Awaited<ReturnType<typeof requireDataSourceAccess>>;
+    try {
+      target = await requireDataSourceAccess(
+        targetId,
+        input.userId,
+        targetId === input.management.source.id ? "full" : "edit",
+      );
+    } catch {
+      targetIds.delete(targetId);
+      continue;
+    }
+    if (target.workspaceId !== input.management.source.workspaceId) targetIds.delete(targetId);
+  }
+  const [propertiesByDataSource, views] = await Promise.all([
+    loadProperties([...targetIds]),
+    loadViews(input.databaseId, input.management.source.id),
+  ]);
+  return {
+    dataSourceIds: targetIds,
+    parentDatabaseId: input.management.source.parentDatabaseId,
+    propertiesByDataSource,
+    sourceDataSourceId: input.management.source.id,
+    views,
+  };
+}
+
+async function loadProperties(dataSourceIds: string[]) {
+  const result = new Map<string, Map<string, AutomationPropertyMetadata>>();
+  if (dataSourceIds.length === 0) return result;
+  const records = await db
+    .select({
+      dataSourceId: databaseProperty.dataSourceId,
+      config: pageProperty.config,
+      id: databaseProperty.id,
+      name: pageProperty.name,
+      type: pageProperty.type,
+    })
+    .from(databaseProperty)
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
+    .where(
+      and(
+        inArray(databaseProperty.dataSourceId, dataSourceIds),
+        isNull(pageProperty.deletedAt),
+      ),
+    )
+    .orderBy(asc(databaseProperty.position));
+  for (const record of records) {
+    const properties = result.get(record.dataSourceId) ?? new Map();
+    properties.set(record.id, {
+      dataSourceId: record.dataSourceId,
+      id: record.id,
+      name: record.name,
+      relatedDataSourceId: getRelatedDataSourceId(record.config),
+      type: record.type,
+      writable: !["button", "created_time", "edited_time", "formula", "id", "rollup"].includes(record.type),
+    });
+    result.set(record.dataSourceId, properties);
+  }
+  return result;
+}
+
+async function loadViews(databaseId: string, dataSourceId: string) {
+  const records = await db
+    .select({
+      dataSourceId: databaseView.dataSourceId,
+      id: databaseView.id,
+      name: databaseView.name,
+      type: databaseView.type,
+    })
+    .from(databaseView)
+    .where(and(eq(databaseView.databaseId, databaseId), eq(databaseView.dataSourceId, dataSourceId)));
+  return new Map(records.map((view) => [view.id, view]));
+}
+
+async function getAutomationWithRevision(
+  automationId: string,
+  executor: Executor = db,
+  lock = false,
+) {
+  let query = executor
+    .select({ automation: databaseAutomation, revision: databaseAutomationRevision })
+    .from(databaseAutomation)
+    .innerJoin(databaseAutomationRevision, eq(databaseAutomation.currentRevisionId, databaseAutomationRevision.id))
+    .where(eq(databaseAutomation.id, automationId))
+    .limit(1);
+  if (lock) query = query.for("update") as typeof query;
+  const [record] = await query;
+  return record;
+}
+
+async function findIdempotentAutomation(
+  executor: Executor,
+  userId: string,
+  dataSourceId: string,
+  idempotencyKey: string,
+) {
+  const [record] = await executor
+    .select({ automation: databaseAutomation, revision: databaseAutomationRevision })
+    .from(databaseAutomation)
+    .innerJoin(databaseAutomationRevision, eq(databaseAutomation.currentRevisionId, databaseAutomationRevision.id))
+    .where(
+      and(
+        eq(databaseAutomation.createdById, userId),
+        eq(databaseAutomation.dataSourceId, dataSourceId),
+        eq(databaseAutomation.createIdempotencyKey, idempotencyKey),
+      ),
+    )
+    .limit(1);
+  return record;
+}
+
+async function insertDependencies(
+  executor: Executor,
+  automationId: string,
+  revisionId: string,
+  dependencies: Array<{ dependencyId: string; dependencyType: any; usage: string }>,
+) {
+  if (dependencies.length === 0) return;
+  await executor.insert(databaseAutomationDependency).values(
+    dependencies.map((dependency) => ({ automationId, revisionId, ...dependency })),
+  );
+}
+
+function assertValidCompilation(
+  validation: DatabaseAutomationValidationResult,
+  compiledDefinition: unknown,
+  definitionHash: string | null,
+): asserts compiledDefinition {
+  if (!validation.valid || !compiledDefinition || !definitionHash) {
+    throw new DatabaseAutomationError(
+      "Automation definition is invalid",
+      400,
+      "AUTOMATION_VALIDATION_FAILED",
+      validation,
+    );
+  }
+}
+
+function toSummary(automation: AutomationRecord, revision: RevisionRecord): DatabaseAutomationSummary {
+  const definition = databaseAutomationDefinitionSchema.parse(revision.definition);
+  return {
+    actionCount: definition.actions.length,
+    currentRevisionId: automation.currentRevisionId,
+    dataSourceId: automation.dataSourceId,
+    id: automation.id,
+    lastRunAt: automation.lastRunAt?.toISOString() ?? null,
+    lastRunStatus: normalizeRunStatus(automation.lastRunStatus),
+    name: automation.name,
+    scopeSummary: definition.scope.type === "view" ? "Saved view" : "Entire data source",
+    status: automation.status as DatabaseAutomationSummary["status"],
+    triggerSummary: definition.trigger.kind === "event"
+      ? `${definition.trigger.match === "all" ? "All" : "Any"} of ${definition.trigger.clauses.length} event trigger${definition.trigger.clauses.length === 1 ? "" : "s"}`
+      : `${definition.trigger.schedule.frequency} schedule`,
+    updatedAt: automation.updatedAt.toISOString(),
+    version: revision.version,
+    workspaceId: automation.workspaceId,
+  };
+}
+
+function toDetail(automation: AutomationRecord, revision: RevisionRecord): DatabaseAutomationDetail {
+  return {
+    ...toSummary(automation, revision),
+    createdAt: automation.createdAt.toISOString(),
+    createdById: automation.createdById,
+    definition: databaseAutomationDefinitionSchema.parse(revision.definition),
+    errorActionId: automation.errorActionId,
+    errorCode: automation.errorCode,
+    errorSummary: automation.errorSummary,
+    erroredAt: automation.erroredAt?.toISOString() ?? null,
+    ownerUserId: automation.ownerUserId,
+  };
+}
+
+function normalizeRunStatus(value: string | null) {
+  return ["queued", "running", "succeeded", "failed", "skipped", "cancelled"].includes(value ?? "")
+    ? value as DatabaseAutomationSummary["lastRunStatus"]
+    : null;
+}
+
+function notFound() {
+  return new DatabaseAutomationError("Automation not found", 404, "AUTOMATION_NOT_FOUND");
+}
+
+async function audit(
+  editionExtension: ZilobaseEditionExtension | undefined,
+  type: string,
+  userId: string,
+  automation: AutomationRecord,
+  details: Record<string, boolean | number | string | null>,
+) {
+  await editionExtension?.recordSecurityEvent({
+    actorUserId: userId,
+    database: db,
+    details: { automationId: automation.id, dataSourceId: automation.dataSourceId, ...details },
+    occurredAt: new Date(),
+    type,
+    userId,
+    workspaceId: automation.workspaceId,
+  });
+}
+
+function isDatabaseLocked(record: { config: unknown }) {
+  return Boolean(
+    record.config &&
+    typeof record.config === "object" &&
+    !Array.isArray(record.config) &&
+    (record.config as { locked?: unknown }).locked === true,
+  );
+}
+
+function isIdempotencyConflict(error: unknown) {
+  return Boolean(
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === "23505" &&
+    (!("constraint" in error) ||
+      typeof error.constraint !== "string" ||
+      error.constraint === "database_automation_create_idempotency_unique"),
+  );
+}
+
+function getRelatedDataSourceId(config: unknown) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return undefined;
+  const relation = (config as { relation?: unknown }).relation;
+  if (!relation || typeof relation !== "object" || Array.isArray(relation)) return undefined;
+  const dataSourceId = (relation as { relatedDataSourceId?: unknown }).relatedDataSourceId;
+  return typeof dataSourceId === "string" && dataSourceId ? dataSourceId : undefined;
+}

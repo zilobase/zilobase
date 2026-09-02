@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { beforeEach, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   canAccessDatabase: vi.fn(),
@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getRecord: vi.fn(),
   getMembership: vi.fn(),
   getTeamspaceAccess: vi.fn(),
+  invalidateAutomationDependencies: vi.fn(),
   payload: vi.fn(),
   placement: vi.fn(),
   requireAccess: vi.fn(),
@@ -38,6 +39,9 @@ vi.mock("../../pages/placements", () => ({
 }));
 vi.mock("../../pages/mutations/soft-delete-nav-items", () => ({
   softDeleteDatabaseTree: mocks.softDelete,
+}));
+vi.mock("../automations/service", () => ({
+  invalidateDatabaseAutomationDependencies: mocks.invalidateAutomationDependencies,
 }));
 vi.mock("./payload", () => ({
   getDatabasePayload: mocks.payload,
@@ -471,6 +475,14 @@ test("deleteDatabaseService returns the deleted record without reloading it", as
     deletedDatabaseIds: ["database-1", "database-2"],
     deletedPageIds: ["page-1"],
   });
+  expect(mocks.invalidateAutomationDependencies).toHaveBeenCalledTimes(2);
+  expect(mocks.invalidateAutomationDependencies).toHaveBeenNthCalledWith(
+    1,
+    expect.objectContaining({
+      dependencyId: "database-1",
+      dependencyType: "database",
+    }),
+  );
 });
 
 test("deleteDatabaseService rejects missing and forbidden databases", async () => {
