@@ -946,6 +946,13 @@ export const databaseAutomationCatalogSchema = z
     ),
     canManage: z.boolean(),
     dataSourceId: stableIdSchema,
+    gmailConnections: z.array(
+      z.object({
+        email: z.string().email(),
+        id: stableIdSchema,
+        status: z.enum(["connected", "reconnect_required"]),
+      }).strict(),
+    ),
     manageUnavailableReason: z.string().nullable(),
     properties: z.array(
       z.object({

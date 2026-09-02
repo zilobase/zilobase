@@ -5,6 +5,7 @@ import type {
   CreateDatabaseAutomationRequest,
   DatabaseAutomationDefinition,
   DatabaseAutomationDetail,
+  DatabaseAutomationSummary,
   DatabaseAutomationValidationResult,
   UpdateDatabaseAutomationRequest,
 } from "./contracts"
@@ -88,7 +89,7 @@ export function useUpdateDatabaseAutomation(databaseId: string, automationId: st
 
 export function useDatabaseAutomationLifecycle(databaseId: string, dataSourceId: string) {
   const { apiFetch, queryClient } = useZilobaseFeatures()
-  return useMutation<DatabaseAutomationDetail | { deleted: boolean }, Error, {
+  return useMutation<DatabaseAutomationDetail | DatabaseAutomationSummary | { deleted: boolean }, Error, {
     action: "delete" | "duplicate" | "pause" | "resume"
     automationId: string
   }>({
@@ -99,7 +100,7 @@ export function useDatabaseAutomationLifecycle(databaseId: string, dataSourceId:
       const path = `/databases/${encoded(databaseId)}/automations/${encoded(automationId)}`
       if (action === "delete") return apiFetch<{ deleted: boolean }>(path, { method: "DELETE" })
       const idempotencyKey = crypto.randomUUID()
-      return apiFetch<DatabaseAutomationDetail>(`${path}/${action}`, {
+      return apiFetch<DatabaseAutomationDetail | DatabaseAutomationSummary>(`${path}/${action}`, {
         headers: action === "duplicate" ? { "Idempotency-Key": idempotencyKey } : undefined,
         method: "POST",
       })

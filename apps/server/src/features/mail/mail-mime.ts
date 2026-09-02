@@ -1,5 +1,5 @@
 import type { MailAddress, MailComposeRequest } from "@zilobase/features/mail"
-import { createMimeMessage } from "mimetext/browser"
+import { createMimeMessage, Mailbox } from "mimetext/browser"
 
 export const MAX_MAIL_ATTACHMENT_BYTES = 20 * 1024 * 1024
 
@@ -39,6 +39,10 @@ export function parseMailComposeRequest(value: unknown, options: { requireRecipi
     : Array.isArray(input.references) && input.references.length <= 100
       ? input.references.map((value) => requiredMessageId(value))
       : fail("The References header is invalid.")
+  const replyTo = input.replyTo === undefined ? undefined : parseAddress(input.replyTo)
+  const senderName = input.senderName === undefined
+    ? undefined
+    : safeHeader(input.senderName, "sender name", 200)
   return {
     attachments,
     bcc,
@@ -48,6 +52,8 @@ export function parseMailComposeRequest(value: unknown, options: { requireRecipi
     ...(draftId ? { draftId } : {}),
     ...(inReplyTo ? { inReplyTo } : {}),
     ...(references ? { references } : {}),
+    ...(replyTo ? { replyTo } : {}),
+    ...(senderName ? { senderName } : {}),
     subject,
     ...(threadId ? { threadId } : {}),
     to,
@@ -58,7 +64,8 @@ export function buildMailMime(input: MailComposeRequest, senderEmail: string, da
   const sender = parseAddress({ address: senderEmail, name: null })
   const rfcMessageId = `<zilobase.${input.clientOperationId}@${sender.address.split("@")[1]}>`
   const message = createMimeMessage()
-  message.setSender({ addr: sender.address })
+  message.setSender({ addr: sender.address, ...(input.senderName ? { name: input.senderName } : {}) })
+  if (input.replyTo) message.setHeader("Reply-To", new Mailbox(mailbox(input.replyTo)))
   if (input.to.length) message.setTo(input.to.map(mailbox))
   if (input.cc.length) message.setCc(input.cc.map(mailbox))
   if (input.bcc.length) message.setBcc(input.bcc.map(mailbox))

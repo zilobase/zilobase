@@ -102,6 +102,17 @@ describe("database automation routes", () => {
     expect((await app().request("/database-1/automations")).status).toBe(400);
   });
 
+  it("forwards the shared hosted and self-hosted Gmail capability gate", async () => {
+    mocks.catalog.mockResolvedValue({ actions: [], canManage: true, dataSourceId: "source-1" });
+    const response = await app().request(
+      "/database-1/automation-catalog?dataSourceId=source-1",
+      undefined,
+      { MAIL_ENABLED: "true" },
+    );
+    expect(response.status).toBe(200);
+    expect(mocks.catalog).toHaveBeenCalledWith(expect.objectContaining({ gmailEnabled: true }));
+  });
+
   it("requires matching creation idempotency keys", async () => {
     const body = JSON.stringify({
       dataSourceId: "source-1",

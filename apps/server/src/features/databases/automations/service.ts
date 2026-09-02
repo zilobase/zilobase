@@ -7,6 +7,7 @@ import {
   getNextDatabaseAutomationOccurrence,
   type CreateDatabaseAutomationRequest,
   type DatabaseAutomationDefinition,
+  type DatabaseAutomationDependency,
   type DatabaseAutomationDetail,
   type DatabaseAutomationSummary,
   type DatabaseAutomationValidationResult,
@@ -24,6 +25,8 @@ import {
   databaseProperty,
   databaseView,
   dataSource,
+  gmailAccount,
+  gmailWorkspaceConnection,
   pageProperty,
   member,
   user,
@@ -90,6 +93,7 @@ export async function getDatabaseAutomation(input: {
     dataSourceId: record.automation.dataSourceId,
     userId: input.userId,
   });
+  assertProtectedDefinitionOwner(record.automation, record.revision, input.userId);
   return toDetail(record.automation, record.revision);
 }
 
@@ -97,12 +101,14 @@ export async function validateDatabaseAutomation(input: {
   databaseId: string;
   dataSourceId: string;
   definition: unknown;
+  gmailEnabled?: boolean;
   userId: string;
 }) {
   const management = await requireManagementContext(input);
   const compilationContext = await loadCompilationContext({
     databaseId: input.databaseId,
     definition: input.definition,
+    gmailEnabled: input.gmailEnabled,
     management,
     userId: input.userId,
   });
@@ -115,6 +121,7 @@ export async function createDatabaseAutomation(input: {
   duplicatedFromId?: string;
   editionExtension?: ZilobaseEditionExtension;
   initialStatus?: "active" | "paused";
+  gmailEnabled?: boolean;
   userId: string;
 }) {
   const management = await requireManagementContext({
@@ -125,6 +132,7 @@ export async function createDatabaseAutomation(input: {
   const context = await loadCompilationContext({
     databaseId: input.databaseId,
     definition: input.body.definition,
+    gmailEnabled: input.gmailEnabled,
     management,
     userId: input.userId,
   });
@@ -265,6 +273,7 @@ export async function updateDatabaseAutomation(input: {
   databaseId: string;
   editionExtension?: ZilobaseEditionExtension;
   expectedVersion: number;
+  gmailEnabled?: boolean;
   userId: string;
 }) {
   const existing = await getAutomationWithRevision(input.automationId);
@@ -277,11 +286,16 @@ export async function updateDatabaseAutomation(input: {
   const context = await loadCompilationContext({
     databaseId: input.databaseId,
     definition: input.body.definition,
+    gmailEnabled: input.gmailEnabled,
     management,
     userId: input.userId,
   });
   const compilation = compileDatabaseAutomationDefinition(input.body.definition, context);
   assertValidCompilation(compilation.validation, compilation.compiledDefinition, compilation.definitionHash);
+  const transfersProtectedOwnership = containsGmailAction(input.body.definition) && existing.automation.ownerUserId !== input.userId;
+  if (containsGmailAction(existing.revision.definition) && existing.automation.ownerUserId !== input.userId && !transfersProtectedOwnership) {
+    throw protectedConfigurationError();
+  }
 
   const result = await db.transaction(async (tx) => {
     const current = await getAutomationWithRevision(input.automationId, tx as Executor, true);
@@ -313,7 +327,13 @@ export async function updateDatabaseAutomation(input: {
       : null;
     const [automation] = await tx
       .update(databaseAutomation)
-      .set({ currentRevisionId: revisionId, name: input.body.name, nextRunAt, updatedAt: now })
+      .set({
+        currentRevisionId: revisionId,
+        name: input.body.name,
+        nextRunAt,
+        ...(transfersProtectedOwnership ? { ownerUserId: input.userId } : {}),
+        updatedAt: now,
+      })
       .where(eq(databaseAutomation.id, current.automation.id))
       .returning();
     return {
@@ -341,19 +361,18 @@ export async function setDatabaseAutomationPaused(input: {
   automationId: string;
   databaseId: string;
   editionExtension?: ZilobaseEditionExtension;
+  gmailEnabled?: boolean;
   paused: boolean;
   userId: string;
 }) {
-  const current = await getDatabaseAutomation({
-    automationId: input.automationId,
-    databaseId: input.databaseId,
-    userId: input.userId,
-  });
+  const record = await getLifecycleAutomation(input);
+  const current = toDetail(record.automation, record.revision);
   if (!input.paused) {
     const validation = await validateDatabaseAutomation({
       databaseId: input.databaseId,
       dataSourceId: current.dataSourceId,
       definition: current.definition,
+      gmailEnabled: input.gmailEnabled,
       userId: input.userId,
     });
     if (!validation.valid) throw new DatabaseAutomationError(
@@ -386,7 +405,7 @@ export async function setDatabaseAutomationPaused(input: {
     {},
   );
   const detail = await getAutomationWithRevision(input.automationId);
-  return toDetail(detail!.automation, detail!.revision);
+  return protectedLifecycleResponse(detail!.automation, detail!.revision, input.userId);
 }
 
 export async function duplicateDatabaseAutomation(input: {
@@ -394,6 +413,7 @@ export async function duplicateDatabaseAutomation(input: {
   databaseId: string;
   editionExtension?: ZilobaseEditionExtension;
   idempotencyKey: string;
+  gmailEnabled?: boolean;
   userId: string;
 }) {
   const source = await getDatabaseAutomation({
@@ -414,6 +434,7 @@ export async function duplicateDatabaseAutomation(input: {
     duplicatedFromId: source.id,
     editionExtension: input.editionExtension,
     initialStatus: "paused",
+    gmailEnabled: input.gmailEnabled,
     userId: input.userId,
   });
   const detail = await getAutomationWithRevision(created.automation.id);
@@ -431,7 +452,8 @@ export async function deleteDatabaseAutomation(input: {
   editionExtension?: ZilobaseEditionExtension;
   userId: string;
 }) {
-  const current = await getDatabaseAutomation(input);
+  const record = await getLifecycleAutomation(input);
+  const current = toDetail(record.automation, record.revision);
   const now = new Date();
   const [automation] = await db
     .update(databaseAutomation)
@@ -455,14 +477,18 @@ export async function deleteDatabaseAutomation(input: {
 export async function getDatabaseAutomationCatalog(input: {
   databaseId: string;
   dataSourceId: string;
+  gmailEnabled?: boolean;
   userId: string;
 }) {
   try {
     const management = await requireManagementContext(input);
-    const [properties, views, users] = await Promise.all([
+    const [properties, views, users, gmailConnections] = await Promise.all([
       loadProperties([input.dataSourceId]),
       loadViews(input.databaseId, input.dataSourceId),
       loadWorkspaceUsers(management.source.workspaceId),
+      input.gmailEnabled === false
+        ? Promise.resolve([])
+        : loadOwnedGmailConnections(management.source.workspaceId, input.userId),
     ]);
     return {
       actions: [
@@ -471,12 +497,21 @@ export async function getDatabaseAutomationCatalog(input: {
         { available: true, reason: null, type: "add_page" as const },
         { available: true, reason: null, type: "edit_pages" as const },
         { available: true, reason: null, type: "send_notification" as const },
-        { available: false, reason: "Available in the Gmail release", type: "send_gmail" as const },
+        {
+          available: gmailConnections.some((connection) => connection.status === "connected"),
+          reason: gmailConnections.some((connection) => connection.status === "connected")
+            ? null
+            : gmailConnections.length
+              ? "Reconnect Gmail to use this action"
+              : "Connect Gmail to use this action",
+          type: "send_gmail" as const,
+        },
         { available: false, reason: "Available in the webhook release", type: "send_webhook" as const },
         { available: false, reason: "Available in the Slack release", type: "send_slack" as const },
       ],
       canManage: true,
       dataSourceId: management.source.id,
+      gmailConnections,
       manageUnavailableReason: null,
       properties: [...(properties.get(input.dataSourceId)?.values() ?? [])].map((property) => ({
         id: property.id,
@@ -494,6 +529,7 @@ export async function getDatabaseAutomationCatalog(input: {
       actions: [],
       canManage: false,
       dataSourceId: input.dataSourceId,
+      gmailConnections: [],
       manageUnavailableReason: error.message,
       properties: [],
       users: [],
@@ -504,9 +540,10 @@ export async function getDatabaseAutomationCatalog(input: {
 
 export async function invalidateDatabaseAutomationDependencies(input: {
   dependencyId: string;
-  dependencyType: "data_source" | "database" | "property" | "view";
+  dependencyType: DatabaseAutomationDependency["dependencyType"];
   reason: string;
   executor?: Executor;
+  workspaceId?: string;
 }) {
   const executor = input.executor ?? db;
   const rows = await executor
@@ -523,6 +560,7 @@ export async function invalidateDatabaseAutomationDependencies(input: {
       and(
         eq(databaseAutomationDependency.dependencyType, input.dependencyType),
         eq(databaseAutomationDependency.dependencyId, input.dependencyId),
+        input.workspaceId ? eq(databaseAutomation.workspaceId, input.workspaceId) : undefined,
       ),
     );
   const automationIds = [...new Set(rows.map(({ automationId }) => automationId))];
@@ -602,6 +640,7 @@ async function requireManagementContext(input: {
 async function loadCompilationContext(input: {
   databaseId: string;
   definition: unknown;
+  gmailEnabled?: boolean;
   management: Awaited<ReturnType<typeof requireManagementContext>>;
   userId: string;
 }): Promise<DatabaseAutomationCompilationContext> {
@@ -635,14 +674,16 @@ async function loadCompilationContext(input: {
     }
     if (target.workspaceId !== input.management.source.workspaceId) targetIds.delete(targetId);
   }
-  const [propertiesByDataSource, views, users] = await Promise.all([
+  const [propertiesByDataSource, views, users, gmailConnections] = await Promise.all([
     loadProperties([...targetIds]),
     loadViews(input.databaseId, input.management.source.id),
     loadWorkspaceUsers(input.management.source.workspaceId),
+    loadOwnedGmailConnections(input.management.source.workspaceId, input.userId),
   ]);
   return {
-    capabilities: { notifications: true, schedules: true },
+    capabilities: { gmail: input.gmailEnabled !== false, notifications: true, schedules: true },
     dataSourceIds: targetIds,
+    gmailConnectionIds: new Set(gmailConnections.filter(({ status }) => status === "connected").map(({ id }) => id)),
     parentDatabaseId: input.management.source.parentDatabaseId,
     propertiesByDataSource,
     sourceDataSourceId: input.management.source.id,
@@ -684,6 +725,78 @@ async function loadProperties(dataSourceIds: string[]) {
     result.set(record.dataSourceId, properties);
   }
   return result;
+}
+
+async function loadOwnedGmailConnections(workspaceId: string, userId: string) {
+  return db
+    .select({ email: gmailAccount.email, id: gmailAccount.id, status: gmailAccount.status })
+    .from(gmailWorkspaceConnection)
+    .innerJoin(
+      gmailAccount,
+      and(
+        eq(gmailAccount.id, gmailWorkspaceConnection.gmailAccountId),
+        eq(gmailAccount.userId, userId),
+      ),
+    )
+    .where(
+      and(
+        eq(gmailWorkspaceConnection.workspaceId, workspaceId),
+        eq(gmailWorkspaceConnection.userId, userId),
+      ),
+    )
+    .then((connections) => connections.flatMap((connection) =>
+      connection.status === "connected" || connection.status === "reconnect_required"
+        ? [{ ...connection, status: connection.status as "connected" | "reconnect_required" }]
+        : []
+    ));
+}
+
+async function getLifecycleAutomation(input: {
+  automationId: string;
+  databaseId: string;
+  userId: string;
+}) {
+  const record = await getAutomationWithRevision(input.automationId);
+  if (!record || record.automation.deletedAt) throw notFound();
+  await requireManagementContext({
+    databaseId: input.databaseId,
+    dataSourceId: record.automation.dataSourceId,
+    userId: input.userId,
+  });
+  return record;
+}
+
+function containsGmailAction(definition: unknown) {
+  const parsed = databaseAutomationDefinitionSchema.safeParse(definition);
+  return parsed.success && parsed.data.actions.some((action) => action.type === "send_gmail");
+}
+
+function assertProtectedDefinitionOwner(
+  automation: AutomationRecord,
+  revision: RevisionRecord,
+  userId: string,
+) {
+  if (containsGmailAction(revision.definition) && automation.ownerUserId !== userId) {
+    throw protectedConfigurationError();
+  }
+}
+
+function protectedLifecycleResponse(
+  automation: AutomationRecord,
+  revision: RevisionRecord,
+  userId: string,
+) {
+  return containsGmailAction(revision.definition) && automation.ownerUserId !== userId
+    ? toSummary(automation, revision)
+    : toDetail(automation, revision);
+}
+
+function protectedConfigurationError() {
+  return new DatabaseAutomationError(
+    "This automation contains protected Gmail configuration owned by another user",
+    403,
+    "AUTOMATION_PROTECTED_CONFIGURATION",
+  );
 }
 
 async function loadViews(databaseId: string, dataSourceId: string) {

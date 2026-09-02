@@ -26,6 +26,7 @@ import {
 } from "../../shared/config/config"
 import type { AppBindings } from "../../shared/types"
 import { getZilobaseDiscoveryDocument } from "../instance/service"
+import { invalidateDatabaseAutomationDependencies } from "../databases/automations/service"
 import {
   beginGmailOauth,
   completeGmailOauth,
@@ -238,6 +239,12 @@ mailRoutes.delete("/connection", async (c) => {
     ))
     .limit(1)
   if (binding) {
+    await invalidateDatabaseAutomationDependencies({
+      dependencyId: binding.account.id,
+      dependencyType: "gmail_connection",
+      reason: "The automation owner's Gmail account was disconnected",
+      workspaceId,
+    })
     await db
       .delete(gmailWorkspaceConnection)
       .where(eq(gmailWorkspaceConnection.id, binding.binding.id))
@@ -1015,6 +1022,11 @@ async function runMailOperation(
       clearGmailAccessTokenCache(connection.id)
       const update = { lastErrorCode: error.code, status: "reconnect_required", updatedAt: new Date() }
       await db.update(gmailAccount).set(update).where(eq(gmailAccount.id, connection.id))
+      await invalidateDatabaseAutomationDependencies({
+        dependencyId: connection.id,
+        dependencyType: "gmail_connection",
+        reason: "Reconnect the automation owner's Gmail account",
+      })
     }
     const status = error instanceof GmailApiError || error instanceof MailConcurrencyError
       ? error.status

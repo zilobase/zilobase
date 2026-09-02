@@ -8,7 +8,7 @@ import {
 
 import type { AppBindings } from "../../../shared/types";
 import { getMembership } from "../../access";
-import { isDatabaseAutomationsFeatureEnabled } from "../../../shared/config/config";
+import { isDatabaseAutomationsFeatureEnabled, isMailFeatureEnabled } from "../../../shared/config/config";
 import { requireDatabaseRouteUser } from "../route-support";
 import {
   createDatabaseAutomation,
@@ -65,6 +65,7 @@ databaseAutomationRoutes.post("/:databaseId/automations/validate", async (c) => 
     databaseId: c.req.param("databaseId"),
     dataSourceId: parsed.data.dataSourceId,
     definition: parsed.data.definition,
+    gmailEnabled: mailEnabled(c),
     userId: user.id,
   }));
 });
@@ -82,6 +83,7 @@ databaseAutomationRoutes.post("/:databaseId/automations", async (c) => {
       body: { ...parsed.data, idempotencyKey: idempotencyKey.value },
       databaseId: c.req.param("databaseId"),
       editionExtension: c.get("editionExtension") ?? undefined,
+      gmailEnabled: mailEnabled(c),
       userId: user.id,
     });
     return c.json(result.automation, result.created ? 201 : 200);
@@ -136,6 +138,7 @@ databaseAutomationRoutes.patch("/:databaseId/automations/:automationId", async (
     databaseId: c.req.param("databaseId"),
     editionExtension: c.get("editionExtension") ?? undefined,
     expectedVersion,
+    gmailEnabled: mailEnabled(c),
     userId: user.id,
   }));
 });
@@ -148,6 +151,7 @@ for (const [path, paused] of [["pause", true], ["resume", false]] as const) {
       automationId: c.req.param("automationId"),
       databaseId: c.req.param("databaseId"),
       editionExtension: c.get("editionExtension") ?? undefined,
+      gmailEnabled: mailEnabled(c),
       paused,
       userId: user.id,
     }));
@@ -167,6 +171,7 @@ databaseAutomationRoutes.post("/:databaseId/automations/:automationId/duplicate"
       databaseId: c.req.param("databaseId"),
       editionExtension: c.get("editionExtension") ?? undefined,
       idempotencyKey,
+      gmailEnabled: mailEnabled(c),
       userId: user.id,
     });
     return c.json(result.automation, result.created ? 201 : 200);
@@ -192,9 +197,14 @@ databaseAutomationRoutes.get("/:databaseId/automation-catalog", async (c) => {
   return handle(c, () => getDatabaseAutomationCatalog({
     databaseId: c.req.param("databaseId"),
     dataSourceId,
+    gmailEnabled: mailEnabled(c),
     userId: user.id,
   }));
 });
+
+function mailEnabled(c: Context<AppBindings>) {
+  return isMailFeatureEnabled(c.env ?? {});
+}
 
 async function handle(
   c: Context<AppBindings>,

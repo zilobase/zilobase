@@ -62,4 +62,22 @@ export function register({ assert, readSource, test }) {
     }
     assert.match(manager, /catalog\?\.users/)
   })
+
+  test("builder exposes protected Gmail fields and dynamic recipient sources", async () => {
+    const manager = await readSource(
+      "/src/features/databases/automations/database-automation-manager.tsx",
+    )
+    for (const behavior of [
+      "Send Gmail",
+      "Gmail connection",
+      "Gmail recipient type",
+      "Gmail subject",
+      "Gmail message",
+      "Gmail sender name",
+      "Gmail reply-to",
+    ]) assert.match(manager, new RegExp(behavior))
+    assert.match(manager, /selected_person/)
+    assert.match(manager, /trigger_property/)
+    assert.match(manager, /page_creator/)
+  })
 }

@@ -67,13 +67,20 @@ type TriggerDraft = {
   type: "page_added" | "property_edited";
 };
 type ActionDraft = {
+  bcc: string;
+  cc: string;
+  connectionId: string;
+  displayName: string;
   id: string;
   linkTriggerPage: boolean;
   mode: "add" | "clear" | "remove" | "set";
   propertyId: string;
-  recipientType: "page_creator" | "person_property" | "selected_user" | "trigger_person" | "variable";
+  recipientType: "email" | "page_creator" | "person_property" | "selected_user" | "trigger_person" | "variable";
   recipientValue: string;
-  type: "add_page" | "define_variables" | "edit_pages" | "edit_trigger_page" | "send_notification";
+  replyTo: string;
+  subject: string;
+  to: string;
+  type: "add_page" | "define_variables" | "edit_pages" | "edit_trigger_page" | "send_gmail" | "send_notification";
   value: string;
   variableName: string;
 };
@@ -633,10 +640,39 @@ function ActionCard({ action, catalog, index, onChange, onMove, onRemove, schedu
     <div className="rounded-lg border p-3">
       <div className="mb-2 flex items-center gap-1"><Zap className="size-4" /><span className="text-sm font-medium">Action {index + 1}</span><Button aria-label="Move action up" className="ml-auto" disabled={index === 0} onClick={() => onMove(-1)} size="icon" variant="ghost"><ArrowUp /></Button><Button aria-label="Move action down" onClick={() => onMove(1)} size="icon" variant="ghost"><ArrowDown /></Button>{onRemove ? <Button aria-label="Remove action" onClick={onRemove} size="icon" variant="ghost"><X /></Button> : null}</div>
       <div className="grid gap-2">
-        <select className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, type: event.target.value as ActionDraft["type"] })} value={action.type}>
-          <option value="define_variables">Define variables</option>{!scheduled ? <option value="edit_trigger_page">Edit trigger page</option> : null}<option value="add_page">Add page</option><option value="edit_pages">Edit pages</option><option value="send_notification">Send notification</option>
+        <select className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => {
+          const type = event.target.value as ActionDraft["type"];
+          onChange({
+            ...action,
+            ...(type === "send_notification" && action.recipientType === "email"
+              ? { recipientType: "selected_user" as const, recipientValue: "" }
+              : {}),
+            type,
+          });
+        }} value={action.type}>
+          <option value="define_variables">Define variables</option>{!scheduled ? <option value="edit_trigger_page">Edit trigger page</option> : null}<option value="add_page">Add page</option><option value="edit_pages">Edit pages</option><option value="send_notification">Send notification</option>{catalog?.actions.find((item) => item.type === "send_gmail")?.available ? <option value="send_gmail">Send Gmail</option> : null}
         </select>
-        {action.type === "send_notification" ? (
+        {action.type === "send_gmail" ? (
+          <>
+            <select aria-label="Gmail connection" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, connectionId: event.target.value })} value={action.connectionId}>
+              <option value="">Choose Gmail account</option>{catalog?.gmailConnections.filter((connection) => connection.status === "connected").map((connection) => <option key={connection.id} value={connection.id}>{connection.email}</option>)}
+            </select>
+            <select aria-label="Gmail recipient type" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientType: event.target.value as ActionDraft["recipientType"], recipientValue: "", to: "" })} value={action.recipientType}>
+              <option value="email">Email addresses</option><option value="selected_user">Selected user</option>{!scheduled ? <><option value="trigger_person">Trigger person</option><option value="page_creator">Page creator</option><option value="person_property">Person property</option></> : null}<option value="variable">Variable</option>
+            </select>
+            {action.recipientType === "email" ? <Input aria-label="Gmail recipients" onChange={(event) => onChange({ ...action, to: event.target.value })} placeholder="To (emails, comma-separated)" value={action.to} /> : action.recipientType === "selected_user" ? (
+              <select aria-label="Gmail selected user" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} value={action.recipientValue}><option value="">Choose a user</option>{catalog?.users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select>
+            ) : action.recipientType === "person_property" ? (
+              <select aria-label="Gmail person property" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} value={action.recipientValue}><option value="">Choose a person property</option>{catalog?.properties.filter((property) => property.type === "person").map((property) => <option key={property.id} value={property.id}>{property.name}</option>)}</select>
+            ) : action.recipientType === "variable" ? <Input aria-label="Gmail recipient variable" onChange={(event) => onChange({ ...action, recipientValue: event.target.value })} placeholder="Variable name" value={action.recipientValue} /> : null}
+            <Input aria-label="Gmail CC recipients" onChange={(event) => onChange({ ...action, cc: event.target.value })} placeholder="CC (optional)" value={action.cc} />
+            <Input aria-label="Gmail BCC recipients" onChange={(event) => onChange({ ...action, bcc: event.target.value })} placeholder="BCC (optional)" value={action.bcc} />
+            <Input aria-label="Gmail subject" onChange={(event) => onChange({ ...action, subject: event.target.value })} placeholder="Subject" value={action.subject} />
+            <Input aria-label="Gmail message" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Message" value={action.value} />
+            <Input aria-label="Gmail sender name" onChange={(event) => onChange({ ...action, displayName: event.target.value })} placeholder="Display name (optional)" value={action.displayName} />
+            <Input aria-label="Gmail reply-to" onChange={(event) => onChange({ ...action, replyTo: event.target.value })} placeholder="Reply-to (optional)" type="email" value={action.replyTo} />
+          </>
+        ) : action.type === "send_notification" ? (
           <>
             <select aria-label="Notification recipient type" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, recipientType: event.target.value as ActionDraft["recipientType"], recipientValue: "" })} value={action.recipientType}>
               <option value="selected_user">Selected user</option>{!scheduled ? <><option value="trigger_person">Trigger person</option><option value="page_creator">Page creator</option><option value="person_property">Person property</option></> : null}<option value="variable">Variable</option>
@@ -712,7 +748,7 @@ function emptyDraft(): BuilderDraft {
   };
 }
 const newTrigger = (): TriggerDraft => ({ id: crypto.randomUUID(), operand: "", operator: "was_edited", propertyId: "any", type: "page_added" });
-const newAction = (): ActionDraft => ({ id: crypto.randomUUID(), linkTriggerPage: true, mode: "set", propertyId: "name", recipientType: "selected_user", recipientValue: "", type: "define_variables", value: "true", variableName: "value" });
+const newAction = (): ActionDraft => ({ bcc: "", cc: "", connectionId: "", displayName: "", id: crypto.randomUUID(), linkTriggerPage: true, mode: "set", propertyId: "name", recipientType: "selected_user", recipientValue: "", replyTo: "", subject: "", to: "", type: "define_variables", value: "true", variableName: "value" });
 const newSchedule = (): ScheduleDraft => ({
   customPattern: "daily",
   dayOfMonth: "1",
@@ -758,6 +794,22 @@ function buildDefinition(draft: BuilderDraft, dataSourceId: string, timezone: st
               : { type: "page_creator" };
       if (!recipient) return null;
       return { id: action.id, message: { parts: [{ text: action.value, type: "text" }] }, ...(draft.triggerKind === "event" && action.linkTriggerPage ? { pageLink: { reference: "trigger_page" as const, type: "reference" as const } } : {}), recipients: [recipient], type: "send_notification" };
+    }
+    if (action.type === "send_gmail") {
+      const to = gmailRecipientExpressions(action);
+      if (!action.connectionId || !to.length || !action.subject.trim() || !action.value.trim()) return null;
+      return {
+        bcc: literalAddressExpressions(action.bcc),
+        cc: literalAddressExpressions(action.cc),
+        connectionId: action.connectionId,
+        ...(action.displayName.trim() ? { displayName: { type: "literal" as const, value: action.displayName.trim() } } : {}),
+        id: action.id,
+        message: { parts: [{ text: action.value, type: "text" }] },
+        ...(action.replyTo.trim() ? { replyTo: { type: "literal" as const, value: action.replyTo.trim() } } : {}),
+        subject: { parts: [{ text: action.subject, type: "text" }] },
+        to,
+        type: "send_gmail",
+      };
     }
     const propertyType = catalog?.properties.find((property) => property.id === action.propertyId)?.type;
     const operation = { mode: action.mode, propertyId: action.propertyId, ...(action.mode === "clear" ? {} : { value: { type: "literal" as const, value: parseActionLiteral(action.value, propertyType) } }) };
@@ -807,6 +859,49 @@ function parseLiteral(value: string): null | boolean | number | string {
   return value;
 }
 
+function literalAddressExpressions(value: string) {
+  return value
+    .split(",")
+    .map((address) => address.trim())
+    .filter(Boolean)
+    .map((address) => ({ type: "literal" as const, value: address }));
+}
+
+function gmailRecipientExpressions(action: ActionDraft) {
+  if (action.recipientType === "email") return literalAddressExpressions(action.to);
+  if (action.recipientType === "selected_user") return action.recipientValue
+    ? [{ reference: "selected_person" as const, type: "reference" as const, userId: action.recipientValue }]
+    : [];
+  if (action.recipientType === "person_property") return action.recipientValue
+    ? [{ propertyId: action.recipientValue, reference: "trigger_property" as const, type: "reference" as const }]
+    : [];
+  if (action.recipientType === "variable") return action.recipientValue.trim()
+    ? [{ name: action.recipientValue.trim(), reference: "variable" as const, type: "reference" as const }]
+    : [];
+  return [{ reference: action.recipientType, type: "reference" as const }];
+}
+
+function gmailRecipientDraft(
+  expressions: Array<{ name?: string; propertyId?: string; reference?: string; type: string; userId?: string; value?: unknown }>,
+): Pick<ActionDraft, "recipientType" | "recipientValue" | "to"> {
+  const first = expressions[0];
+  if (first?.type === "reference") {
+    if (first.reference === "selected_person") return { recipientType: "selected_user", recipientValue: first.userId ?? "", to: "" };
+    if (first.reference === "trigger_property") return { recipientType: "person_property", recipientValue: first.propertyId ?? "", to: "" };
+    if (first.reference === "variable") return { recipientType: "variable", recipientValue: first.name ?? "", to: "" };
+    if (first.reference === "trigger_person" || first.reference === "page_creator") return { recipientType: first.reference, recipientValue: "", to: "" };
+  }
+  return { recipientType: "email", recipientValue: "", to: literalExpressionText(expressions) };
+}
+
+function literalExpressionText(expressions: Array<{ type: string; value?: unknown }>) {
+  return expressions.flatMap((expression) =>
+    expression.type === "literal" && typeof expression.value === "string"
+      ? [expression.value]
+      : []
+  ).join(", ");
+}
+
 function generateName(draft: BuilderDraft, catalog?: DatabaseAutomationCatalog) {
   if (draft.triggerKind === "schedule") {
     return `${humanize(draft.schedule.frequency)} at ${draft.schedule.localTime} → ${draft.actions[0] ? humanize(draft.actions[0].type) : "Run actions"}`;
@@ -827,6 +922,24 @@ function draftFromDefinition(name: string, definition: DatabaseAutomationDefinit
       if (action.type === "send_notification") {
         const recipient = action.recipients[0];
         return [{ ...newAction(), id: action.id, linkTriggerPage: action.pageLink?.type === "reference" && action.pageLink.reference === "trigger_page", recipientType: recipient?.type ?? "selected_user", recipientValue: recipient?.type === "selected_user" ? recipient.userId : recipient?.type === "person_property" ? recipient.propertyId : recipient?.type === "variable" ? recipient.variableName : "", type: action.type, value: action.message.parts.map((part) => part.type === "text" ? part.text : "").join("") }];
+      }
+      if (action.type === "send_gmail") {
+        const recipient = gmailRecipientDraft(action.to);
+        return [{
+          ...newAction(),
+          bcc: literalExpressionText(action.bcc),
+          cc: literalExpressionText(action.cc),
+          connectionId: action.connectionId,
+          displayName: action.displayName?.type === "literal" ? String(action.displayName.value ?? "") : "",
+          id: action.id,
+          recipientType: recipient.recipientType,
+          recipientValue: recipient.recipientValue,
+          replyTo: action.replyTo?.type === "literal" ? String(action.replyTo.value ?? "") : "",
+          subject: action.subject.parts.map((part) => part.type === "text" ? part.text : "").join(""),
+          to: recipient.to,
+          type: action.type,
+          value: action.message.parts.map((part) => part.type === "text" ? part.text : "").join(""),
+        }];
       }
       if (
         action.type !== "add_page" &&

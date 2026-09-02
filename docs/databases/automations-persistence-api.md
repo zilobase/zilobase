@@ -32,7 +32,8 @@ The compiler returns stable error codes and field paths, validates the full
 trigger property/operator/operand matrix, writable operation modes, nested
 filters, target sources, view ownership, reference ordering, formula syntax,
 IANA timezones, and independent capability gates. Schedules, notifications,
-Gmail, webhooks, and Slack remain disabled until their owning passes.
+and Gmail are enabled; webhooks and Slack remain disabled until their owning
+passes.
 
 ## Routes
 

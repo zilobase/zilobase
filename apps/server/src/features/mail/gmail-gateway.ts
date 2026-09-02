@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import { db } from "../../infrastructure/database"
 import { gmailAccount } from "../../infrastructure/database/schema"
 import { getRequiredStringEnv, type RuntimeEnv } from "../../shared/config/config"
+import { invalidateDatabaseAutomationDependencies } from "../databases/automations/service"
 import { decryptMailSecret } from "./security/mail-credentials"
 
 const GMAIL_API_ORIGIN = "https://gmail.googleapis.com"
@@ -132,6 +133,11 @@ export async function createGmailGateway(
             .update(gmailAccount)
             .set({ lastErrorCode: "authorization_revoked", status: "reconnect_required", updatedAt: new Date() })
             .where(eq(gmailAccount.id, connection.id))
+          await invalidateDatabaseAutomationDependencies({
+            dependencyId: connection.id,
+            dependencyType: "gmail_connection",
+            reason: "Reconnect the automation owner's Gmail account",
+          })
         }
         throw error
       }

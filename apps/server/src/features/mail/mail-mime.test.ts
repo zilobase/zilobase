@@ -49,6 +49,24 @@ test("composition validation rejects malformed addresses and header injection", 
   assert.doesNotThrow(() => parseMailComposeRequest({ ...base, bcc: [], cc: [], to: [] }, { requireRecipient: false }))
 })
 
+test("automation compositions support a safe sender display name and reply-to", () => {
+  const compose = parseMailComposeRequest({
+    ...base,
+    replyTo: { address: "replies@example.com", name: "Support" },
+    senderName: "Zilobase Automations",
+  }, { requireRecipient: true })
+  const raw = Buffer.from(
+    buildMailMime(compose, "sender@example.com", new Date("2026-08-30T10:00:00Z")).raw,
+    "base64url",
+  ).toString("utf8")
+  assert.match(raw, /From: =\?utf-8\?B\?Wmlsb2Jhc2UgQXV0b21hdGlvbnM=\?= <sender@example\.com>/)
+  assert.match(raw, /Reply-To: =\?utf-8\?B\?U3VwcG9ydA==\?= <replies@example\.com>/)
+  assert.throws(
+    () => parseMailComposeRequest({ ...base, senderName: "Bad\r\nBcc: x@example.com" }, { requireRecipient: true }),
+    MailComposeError,
+  )
+})
+
 test("binary attachments are capped before MIME expansion", () => {
   const tooLarge = Buffer.alloc(MAX_MAIL_ATTACHMENT_BYTES + 1).toString("base64")
   assert.throws(

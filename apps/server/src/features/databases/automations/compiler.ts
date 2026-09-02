@@ -32,6 +32,7 @@ export type AutomationViewMetadata = {
 export type DatabaseAutomationCompilationContext = {
   capabilities?: Partial<DatabaseAutomationCapabilities>;
   dataSourceIds: Set<string>;
+  gmailConnectionIds?: Set<string>;
   parentDatabaseId: string;
   propertiesByDataSource: Map<string, Map<string, AutomationPropertyMetadata>>;
   sourceDataSourceId: string;
@@ -275,6 +276,9 @@ export function compileDatabaseAutomationDefinition(
       if (!capabilities.notifications) addError("capability_disabled", "Notifications are not enabled", actionPath);
     } else if (action.type === "send_gmail") {
       addDependency("gmail_connection", action.connectionId, `actions.${action.id}.connectionId`);
+      if (context.gmailConnectionIds && !context.gmailConnectionIds.has(action.connectionId)) {
+        addError("gmail_connection_not_owned", "Choose a connected Gmail account that you own in this workspace", [...actionPath, "connectionId"]);
+      }
       if (!capabilities.gmail) addError("capability_disabled", "Gmail actions are not enabled", actionPath);
     } else if (action.type === "send_webhook") {
       action.headers.forEach((header) => addDependency("secret", header.secretId, `actions.${action.id}.headers`));

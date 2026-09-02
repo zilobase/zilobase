@@ -272,4 +272,32 @@ describe("database automation compiler", () => {
       capabilities: { schedules: true },
     }).validation.valid).toBe(true);
   });
+
+  it("requires Gmail actions to use a connected account owned by the editor", () => {
+    const gmail = definition({
+      actions: [{
+        bcc: [],
+        cc: [],
+        connectionId: "gmail-1",
+        id: "gmail-action",
+        message: { parts: [{ text: "Body", type: "text" }] },
+        subject: { parts: [{ text: "Subject", type: "text" }] },
+        to: [{ type: "literal", value: "person@example.com" }],
+        type: "send_gmail",
+      }],
+    });
+    expect(compileDatabaseAutomationDefinition(gmail, {
+      ...context,
+      capabilities: { gmail: true },
+      gmailConnectionIds: new Set(["gmail-2"]),
+    }).validation.errors).toContainEqual(expect.objectContaining({
+      code: "gmail_connection_not_owned",
+      path: ["actions", 0, "connectionId"],
+    }));
+    expect(compileDatabaseAutomationDefinition(gmail, {
+      ...context,
+      capabilities: { gmail: true },
+      gmailConnectionIds: new Set(["gmail-1"]),
+    }).validation.valid).toBe(true);
+  });
 });

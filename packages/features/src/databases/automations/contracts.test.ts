@@ -281,6 +281,7 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       actions: [{ available: true, reason: null, type: "edit_trigger_page" }],
       canManage: true,
       dataSourceId: "source-1",
+      gmailConnections: [{ email: "ada@example.com", id: "gmail-1", status: "connected" }],
       manageUnavailableReason: null,
       properties: [
         {
@@ -361,4 +362,23 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
     }).kind,
     "webhook",
   )
+})
+
+test("automation catalogs expose only opaque Gmail connection metadata", () => {
+  const result = databaseAutomationCatalogSchema.safeParse({
+    actions: [{ available: true, reason: null, type: "send_gmail" }],
+    canManage: true,
+    dataSourceId: "source-1",
+    gmailConnections: [{
+      email: "ada@example.com",
+      id: "gmail-1",
+      refreshTokenCiphertext: "must-not-leak",
+      status: "connected",
+    }],
+    manageUnavailableReason: null,
+    properties: [],
+    users: [],
+    views: [],
+  })
+  assert.equal(result.success, false)
 })

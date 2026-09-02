@@ -63,11 +63,11 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 | Unique occurrence, one-minute scan, and bounded missed-run policy | 6 | Concurrent scanner and downtime recovery tests | implemented |
 | Schedule excludes trigger-page action and references | 0, 6 | Contract/compiler and builder validation tests | verified |
 | Durable in-product notifications and read state | 7 | Recipient, outbox, realtime, and polling tests | implemented |
-| Gmail ownership, durable delivery, retry, and reconnect behavior | 8 | Provider contract and revocation tests | planned |
+| Gmail ownership, durable delivery, retry, and reconnect behavior | 8 | Provider contract and revocation tests | implemented |
 | POST-only webhook with selected properties and encrypted headers | 9 | Payload and secret persistence tests | planned |
 | Webhook SSRF, DNS pinning, redirect, timeout, size, and retry controls | 9 | Controlled network security suite | planned |
 | Slack OAuth, authorized channels, formatting, mentions, and rate limits | 10 | OAuth/provider contract tests | planned |
-| External attempts are at-least-once with a stable delivery ID | 8–10 | Duplicate queue and provider retry tests | planned |
+| External attempts are at-least-once with a stable delivery ID | 8–10 | Duplicate queue and provider retry tests | partial (Gmail) |
 
 ## Management UI and operations
 

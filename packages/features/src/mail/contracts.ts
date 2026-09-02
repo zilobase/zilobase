@@ -172,6 +172,8 @@ export type MailComposeRequest = {
   draftId?: string
   inReplyTo?: string
   references?: string[]
+  replyTo?: MailAddress
+  senderName?: string
   subject: string
   threadId?: string
   to: MailAddress[]
