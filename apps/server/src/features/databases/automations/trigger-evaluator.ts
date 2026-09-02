@@ -103,20 +103,30 @@ function matchesOperator(input: {
   }
 
   const leftValues = list(value).map(normalizeText);
-  const right = normalizeText(operand);
+  const rightValues = list(operand).map(normalizeText);
   if (operator === "contains") {
-    return leftValues.some((item) => item.includes(right));
+    return rightValues.some((right) =>
+      leftValues.some((item) => item.includes(right))
+    );
   }
   if (operator === "does_not_contain") {
-    return !leftValues.some((item) => item.includes(right));
+    return !rightValues.some((right) =>
+      leftValues.some((item) => item.includes(right))
+    );
   }
   if (operator === "starts_with") {
-    return leftValues.some((item) => item.startsWith(right));
+    return rightValues.some((right) =>
+      leftValues.some((item) => item.startsWith(right))
+    );
   }
   if (operator === "ends_with") {
-    return leftValues.some((item) => item.endsWith(right));
+    return rightValues.some((right) =>
+      leftValues.some((item) => item.endsWith(right))
+    );
   }
-  const equal = leftValues.some((item) => item === right);
+  const equal = rightValues.some((right) =>
+    leftValues.some((item) => item === right)
+  );
   return operator === "is_not" ? !equal : equal;
 }
 
@@ -145,17 +155,20 @@ function normalizeOperand(
   if (!operand || typeof operand !== "object" || !("type" in operand)) {
     return operand;
   }
-  if (operand.type !== "entity") return operand;
-  if (!property.config || typeof property.config !== "object") return operand.id;
+  if (operand.type !== "entity" && operand.type !== "entity_list") return operand;
+  const ids = operand.type === "entity_list" ? operand.ids : [operand.id];
+  if (!property.config || typeof property.config !== "object") return ids;
   const options = (property.config as { options?: unknown }).options;
-  if (!Array.isArray(options)) return operand.id;
-  const option = options.find(
-    (candidate) =>
-      candidate &&
-      typeof candidate === "object" &&
-      (candidate as { id?: unknown }).id === operand.id,
-  ) as { name?: unknown } | undefined;
-  return typeof option?.name === "string" ? option.name : operand.id;
+  if (!Array.isArray(options)) return ids;
+  return ids.map((id) => {
+    const option = options.find(
+      (candidate) =>
+        candidate &&
+        typeof candidate === "object" &&
+        (candidate as { id?: unknown }).id === id,
+    ) as { name?: unknown } | undefined;
+    return typeof option?.name === "string" ? option.name : id;
+  });
 }
 
 function matchesDate(

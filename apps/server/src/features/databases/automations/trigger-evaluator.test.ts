@@ -22,7 +22,7 @@ const input = {
     ["done", { id: "done", type: "checkbox" }],
     ["name", { id: "name", type: "title" }],
     ["score", { id: "score", type: "number" }],
-    ["status", { config: { options: [{ id: "done-id", name: "Done" }] }, id: "status", type: "status" }],
+    ["status", { config: { options: [{ id: "doing-id", name: "Doing" }, { id: "done-id", name: "Done" }] }, id: "status", type: "status" }],
   ]),
   rowAdded: false,
   timezone: "America/New_York",
@@ -37,6 +37,28 @@ describe("automation event trigger evaluation", () => {
       { id: "status", operand: { entityType: "option" as const, id: "done-id", type: "entity" as const }, operator: "is" as const, propertyId: "status", type: "property_edited" as const },
     ];
     expect(matchesDatabaseAutomationEvent(definition(clauses), input)).toBe(true);
+  });
+
+  it("matches any checked option and excludes all checked options for is not", () => {
+    const operand = {
+      entityType: "option" as const,
+      ids: ["doing-id", "done-id"],
+      type: "entity_list" as const,
+    };
+    expect(matchesDatabaseAutomationEvent(definition([{
+      id: "status-is",
+      operand,
+      operator: "is",
+      propertyId: "status",
+      type: "property_edited",
+    }]), input)).toBe(true);
+    expect(matchesDatabaseAutomationEvent(definition([{
+      id: "status-is-not",
+      operand,
+      operator: "is_not",
+      propertyId: "status",
+      type: "property_edited",
+    }]), input)).toBe(false);
   });
 
   it("requires real edits and applies any/all semantics", () => {
