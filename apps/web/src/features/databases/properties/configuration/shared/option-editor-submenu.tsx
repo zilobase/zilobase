@@ -1,5 +1,17 @@
 import { Check, Flag, GripVertical, Trash2 } from "@/shared/components/icons";
 import { Reorder, useDragControls } from "framer-motion";
+import { useState } from "react";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/shared/ui/alert-dialog";
 
 import {
   DropDrawerItem,
@@ -22,7 +34,9 @@ import type { DatabaseSelectOption } from "../../../views/model/database-view-co
 
 export function OptionEditorSubmenu({
   defaultOptionId,
+  deleteDisabled = false,
   draggable = false,
+  onDeleteOption,
   onDragEnd,
   onSetDefaultOption,
   onUpdateOption,
@@ -30,7 +44,9 @@ export function OptionEditorSubmenu({
   showDot = false,
 }: {
   defaultOptionId?: string;
+  deleteDisabled?: boolean;
   draggable?: boolean;
+  onDeleteOption?: (optionId: string) => void;
   onDragEnd?: () => void;
   onSetDefaultOption?: (optionId: string) => void;
   onUpdateOption: (
@@ -40,8 +56,9 @@ export function OptionEditorSubmenu({
   option: DatabaseSelectOption;
   showDot?: boolean;
 }) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const dragControls = useDragControls();
-  const content = (
+  const content = (<>
     <DropDrawerSub title={option.name}>
       <DropDrawerSubTrigger>
         <span
@@ -95,7 +112,13 @@ export function OptionEditorSubmenu({
             }}
           />
         </div>
-        <DropDrawerItem disabled>
+        <DropDrawerItem
+          disabled={!onDeleteOption || deleteDisabled}
+          onSelect={(event) => {
+            event.preventDefault();
+            setDeleteDialogOpen(true);
+          }}
+        >
           <Trash2 />
           <span>Delete</span>
         </DropDrawerItem>
@@ -137,6 +160,27 @@ export function OptionEditorSubmenu({
         ))}
       </DropDrawerSubContent>
     </DropDrawerSub>
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete “{option.name}”?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This option will be removed from the property. Automations that use
+            it will be paused and must be repaired before they can run again.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => onDeleteOption?.(option.id)}
+            variant="destructive"
+          >
+            Delete option
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 
   if (!draggable) {

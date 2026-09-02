@@ -1,13 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  canAccessDatabase: vi.fn(),
   databaseAccess: vi.fn(),
   membership: vi.fn(),
   selectResults: [] as unknown[][],
   sourceAccess: vi.fn(),
 }));
 
-vi.mock("../../access", () => ({ getMembership: mocks.membership }));
+vi.mock("../../access", () => ({
+  canAccessDatabaseRecord: mocks.canAccessDatabase,
+  getMembership: mocks.membership,
+}));
 vi.mock("../access/data-source-access", () => ({
   requireDataSourceAccess: mocks.sourceAccess,
 }));
@@ -51,6 +55,7 @@ describe("database automation management access", () => {
     vi.clearAllMocks();
     mocks.sourceAccess.mockResolvedValue(source);
     mocks.databaseAccess.mockResolvedValue({ id: "host-database" });
+    mocks.canAccessDatabase.mockResolvedValue(true);
     mocks.membership.mockResolvedValue({ id: "member-1" });
   });
 
@@ -124,6 +129,7 @@ describe("database automation management access", () => {
       actions: [],
       canManage: false,
       dataSourceId: "source-1",
+      dataSources: [],
       properties: [],
       users: [],
       views: [],

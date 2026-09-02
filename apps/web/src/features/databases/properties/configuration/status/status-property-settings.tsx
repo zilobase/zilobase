@@ -212,8 +212,21 @@ export function StatusPropertySettings({
               {renderedOptions.map((option) => (
                 <OptionEditorSubmenu
                   defaultOptionId={resolvedDefaultOptionId}
+                  deleteDisabled={options.length <= 1}
                   draggable
                   key={option.id}
+                  onDeleteOption={(optionId) => {
+                    const nextOptions = options.filter(
+                      (item) => item.id !== optionId,
+                    );
+                    onUpdateConfig({
+                      defaultOptionId:
+                        optionId === resolvedDefaultOptionId
+                          ? nextOptions[0]?.id
+                          : resolvedDefaultOptionId,
+                      options: nextOptions,
+                    });
+                  }}
                   onDragEnd={() =>
                     commitGroupOptionReorder(group.name, group.options)
                   }

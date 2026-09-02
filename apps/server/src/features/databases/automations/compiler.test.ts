@@ -27,6 +27,9 @@ const properties = [
   dataSourceId: "source-1",
   id,
   name: id,
+  ...(["select", "multi_select"].includes(type)
+    ? { options: [{ id: "option-1", name: "First" }, { id: "option-2", name: "Second" }] }
+    : {}),
   type,
   writable: type !== "formula",
 }) satisfies AutomationPropertyMetadata);
@@ -126,11 +129,11 @@ describe("database automation compiler", () => {
       date: { precision: "date", type: "date", value: "2026-09-02T00:00:00.000Z" },
       files: undefined,
       formula: "x",
-      multi_select: { entityType: "option", id: "option-1", type: "entity" },
+      multi_select: { entityType: "option", ids: ["option-1", "option-2"], type: "entity_list" },
       number: 4,
       person: { entityType: "user", id: "user-1", type: "entity" },
       relation: { entityType: "page", id: "page-1", type: "entity" },
-      select: { entityType: "option", id: "option-1", type: "entity" },
+      select: { entityType: "option", ids: ["option-1", "option-2"], type: "entity_list" },
       text: "value",
     };
 
@@ -204,6 +207,54 @@ describe("database automation compiler", () => {
       expect.objectContaining({ code: "invalid_operation", path: ["actions", 0, "operations", 0, "mode"] }),
     ]));
     expect(result.compiledDefinition).toBeNull();
+  });
+
+  it("tracks existing option IDs and rejects deleted options", () => {
+    const valid = compileDatabaseAutomationDefinition(definition({
+      actions: [{
+        id: "action-1",
+        operations: [{
+          mode: "set",
+          propertyId: "select",
+          value: { type: "literal", value: { entityType: "option", id: "option-1", type: "entity" } },
+        }],
+        type: "edit_trigger_page",
+      }],
+      trigger: {
+        clauses: [{
+          id: "trigger-1",
+          operand: { entityType: "option", id: "option-2", type: "entity" },
+          operator: "is",
+          propertyId: "select",
+          type: "property_edited",
+        }],
+        kind: "event",
+        match: "any",
+      },
+    }), context);
+
+    expect(valid.validation.valid).toBe(true);
+    expect(valid.compiledDefinition?.dependencies).toEqual(expect.arrayContaining([
+      { dependencyId: "option-1", dependencyType: "option", usage: "actions.action-1.operations.0.value" },
+      { dependencyId: "option-2", dependencyType: "option", usage: "trigger.clauses.trigger-1.operand" },
+    ]));
+
+    const invalid = compileDatabaseAutomationDefinition(definition({
+      actions: [{
+        id: "action-1",
+        operations: [{
+          mode: "set",
+          propertyId: "select",
+          value: { type: "literal", value: { entityType: "option", id: "deleted-option", type: "entity" } },
+        }],
+        type: "edit_trigger_page",
+      }],
+    }), context);
+
+    expect(invalid.validation.errors).toContainEqual(expect.objectContaining({
+      code: "option_not_found",
+      path: ["actions", 0, "operations", 0, "value"],
+    }));
   });
 
   it("validates nested filters, relation targets, formulas, and reference order", () => {
@@ -311,6 +362,14 @@ describe("database automation compiler", () => {
       url: "https://hooks.example.com/automations",
     }] });
     expect(compileDatabaseAutomationDefinition(webhook, {
+      ...context,
+      capabilities: { webhooks: true },
+      secretIds: new Set(["secret-1"]),
+    }).validation.valid).toBe(true);
+    expect(compileDatabaseAutomationDefinition({
+      ...webhook,
+      actions: [{ ...webhook.actions[0] as any, selectedPropertyIds: ["name"] }],
+    }, {
       ...context,
       capabilities: { webhooks: true },
       secretIds: new Set(["secret-1"]),

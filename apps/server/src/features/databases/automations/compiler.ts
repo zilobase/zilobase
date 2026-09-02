@@ -16,7 +16,9 @@ import {
 export type AutomationPropertyMetadata = {
   dataSourceId: string;
   id: string;
+  icon?: string;
   name: string;
+  options?: Array<{ id: string; name: string }>;
   relatedDataSourceId?: string;
   type: string;
   writable: boolean;
@@ -185,7 +187,7 @@ export function compileDatabaseAutomationDefinition(
         return;
       }
       const property = clause.propertyId === "name"
-        ? { dataSourceId: context.sourceDataSourceId, id: "name", name: "Name", type: "title", writable: true }
+        ? { dataSourceId: context.sourceDataSourceId, id: "name", name: "Name", options: [], type: "title", writable: true }
         : sourceProperties.get(clause.propertyId);
       if (!property) {
         addError("property_not_found", "Trigger property was not found", [...path, "propertyId"]);
@@ -203,6 +205,14 @@ export function compileDatabaseAutomationDefinition(
         addError("operand_not_allowed", "This trigger operator does not accept an operand", [...path, "operand"]);
       }
       validateTriggerOperand(property.type, clause.operator, clause.operand, [...path, "operand"], addError);
+      validateOptionReferences(
+        clause.operand,
+        property,
+        [...path, "operand"],
+        `trigger.clauses.${clause.id}.operand`,
+        addDependency,
+        addError,
+      );
     });
   }
 
@@ -319,6 +329,7 @@ export function compileDatabaseAutomationDefinition(
         addError("invalid_webhook_url", "Webhook URL is invalid", [...actionPath, "url"]);
       }
       action.selectedPropertyIds.forEach((propertyId, propertyIndex) => {
+        if (propertyId === "name") return;
         const property = sourceProperties.get(propertyId);
         if (!property) addError("property_not_found", "Webhook property was not found", [...actionPath, "selectedPropertyIds", propertyIndex]);
         else addDependency("property", property.id, `actions.${action.id}.selectedPropertyIds.${propertyIndex}`);
@@ -397,12 +408,18 @@ function validateTriggerOperand(
 }
 
 function isEntityOperand(value: unknown, entityType: string) {
-  return Boolean(
-    value &&
-    typeof value === "object" &&
-    (value as { type?: unknown }).type === "entity" &&
-    (value as { entityType?: unknown }).entityType === entityType,
-  );
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as {
+    entityType?: unknown;
+    ids?: unknown;
+    type?: unknown;
+  };
+  if (candidate.entityType !== entityType) return false;
+  if (candidate.type === "entity") return true;
+  return candidate.type === "entity_list" &&
+    Array.isArray(candidate.ids) &&
+    candidate.ids.length > 0 &&
+    candidate.ids.every((id) => typeof id === "string" && id.trim());
 }
 
 function isObjectType(value: unknown, type: string) {
@@ -447,7 +464,7 @@ function validateOperations(
   operations.forEach((operation, operationIndex) => {
     const path = [...actionPath, "operations", operationIndex];
     const property = operation.propertyId === "name"
-      ? { dataSourceId: "", id: "name", name: "Name", type: "title", writable: true }
+      ? { dataSourceId: "", id: "name", name: "Name", options: [], type: "title", writable: true }
       : properties.get(operation.propertyId);
     if (!property) {
       addError("property_not_found", "Action property was not found", [...path, "propertyId"]);
@@ -469,6 +486,26 @@ function validateOperations(
     if (!validModes.has(operation.mode)) {
       addError("invalid_operation", `${operation.mode} is not valid for ${property.type}`, [...path, "mode"]);
     }
+    if (
+      ["select", "status", "multi_select"].includes(property.type) &&
+      operation.mode !== "clear" &&
+      isObjectType(operation.value, "literal") &&
+      optionReferenceIds(operation.value).length === 0
+    ) {
+      addError(
+        "invalid_option_value",
+        "Choose an available property option",
+        [...path, "value"],
+      );
+    }
+    validateOptionReferences(
+      operation.value,
+      property,
+      [...path, "value"],
+      `actions.${actionId}.operations.${operationIndex}.value`,
+      addDependency,
+      addError,
+    );
   });
 }
 
@@ -488,7 +525,7 @@ function validateFilterDefinition(
       return;
     }
     const property = condition.propertyId === "name"
-      ? { dataSourceId: "", id: "name", name: "Name", type: "title", writable: true }
+      ? { dataSourceId: "", id: "name", name: "Name", options: [], type: "title", writable: true }
       : properties.get(condition.propertyId);
     if (!property) {
       addError("property_not_found", "Filter property was not found", [...conditionPath, "propertyId"]);
@@ -499,7 +536,62 @@ function validateFilterDefinition(
     if (!operatorsForPropertyType(property.type).has(condition.operator)) {
       addError("invalid_operator", `Operator ${condition.operator} is not valid for ${property.type}`, [...conditionPath, "operator"]);
     }
+    if (!operandlessOperators.has(condition.operator) && condition.operand === undefined) {
+      addError("operand_required", "This filter operator requires an operand", [...conditionPath, "operand"]);
+    }
+    if (operandlessOperators.has(condition.operator) && condition.operand !== undefined) {
+      addError("operand_not_allowed", "This filter operator does not accept an operand", [...conditionPath, "operand"]);
+    }
+    validateTriggerOperand(
+      property.type,
+      condition.operator,
+      condition.operand,
+      [...conditionPath, "operand"],
+      addError,
+    );
+    validateOptionReferences(
+      condition.operand,
+      property,
+      [...conditionPath, "operand"],
+      `actions.${actionId}.filter.${condition.id}.operand`,
+      addDependency,
+      addError,
+    );
   });
+}
+
+function validateOptionReferences(
+  value: unknown,
+  property: AutomationPropertyMetadata,
+  path: Array<string | number>,
+  usage: string,
+  addDependency: (type: DatabaseAutomationDependency["dependencyType"], id: string, usage: string) => void,
+  addError: (code: string, message: string, path: Array<string | number>) => void,
+) {
+  if (!["select", "status", "multi_select"].includes(property.type)) return;
+  const availableOptionIds = new Set((property.options ?? []).map(({ id }) => id));
+  for (const optionId of optionReferenceIds(value)) {
+    if (!availableOptionIds.has(optionId)) {
+      addError("option_not_found", "Selected option was deleted or is no longer available", path);
+      continue;
+    }
+    addDependency("option", optionId, usage);
+  }
+}
+
+function optionReferenceIds(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return [...new Set(value.flatMap(optionReferenceIds))];
+  }
+  if (!value || typeof value !== "object") return [];
+  const record = value as Record<string, unknown>;
+  if (record.entityType === "option" && record.type === "entity" && typeof record.id === "string") {
+    return [record.id];
+  }
+  if (record.entityType === "option" && record.type === "entity_list" && Array.isArray(record.ids)) {
+    return [...new Set(record.ids.filter((id): id is string => typeof id === "string"))];
+  }
+  return Object.values(record).flatMap(optionReferenceIds);
 }
 
 function visitReferences(

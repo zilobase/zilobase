@@ -232,6 +232,25 @@ export async function updateDatabasePropertyService(input: {
     );
   }
 
+  const removedAutomationOptions =
+    input.config !== undefined &&
+    effectiveType === previousType &&
+    ["select", "status", "multi_select"].includes(effectiveType)
+      ? removedPropertyOptions(
+          pagePropertyRecord.config,
+          propertyValues.config,
+        )
+      : [];
+  const optionValueChanges =
+    input.config !== undefined &&
+    effectiveType === previousType &&
+    ["select", "status", "multi_select"].includes(effectiveType)
+      ? changedPropertyOptions(
+          pagePropertyRecord.config,
+          propertyValues.config,
+        )
+      : [];
+
   if (input.position !== undefined) {
     columnValues.position = input.position;
   }
@@ -240,11 +259,12 @@ export async function updateDatabasePropertyService(input: {
     {
       actorId: input.userId,
       changed:
-        input.type !== undefined &&
-        previousType &&
-        effectiveType !== previousType &&
-        (shouldClearValuesForPropertyTypeChange(previousType, effectiveType) ||
-          (previousType === "date" && effectiveType === "text"))
+        (input.type !== undefined &&
+          previousType &&
+          effectiveType !== previousType &&
+          (shouldClearValuesForPropertyTypeChange(previousType, effectiveType) ||
+            (previousType === "date" && effectiveType === "text"))) ||
+        optionValueChanges.length > 0
           ? ["properties", "values"]
           : ["properties"],
       dataSourceId: existing.id,
@@ -304,6 +324,40 @@ export async function updateDatabasePropertyService(input: {
                 return updatedValue;
               }),
             )
+          : optionValueChanges.length > 0
+            ? await Promise.all(
+                (
+                  await tx
+                    .select({
+                      id: pagePropertyValue.id,
+                      value: pagePropertyValue.value,
+                    })
+                    .from(pagePropertyValue)
+                    .where(eq(pagePropertyValue.propertyId, column.propertyId))
+                ).flatMap((propertyValue) => {
+                  const nextValue = migrateOptionValue(
+                    effectiveType,
+                    propertyValue.value,
+                    optionValueChanges,
+                  );
+                  if (JSON.stringify(nextValue) === JSON.stringify(propertyValue.value)) {
+                    return [];
+                  }
+                  return [tx
+                    .update(pagePropertyValue)
+                    .set({ value: nextValue, updatedAt: new Date() })
+                    .where(eq(pagePropertyValue.id, propertyValue.id))
+                    .returning({
+                      createdAt: pagePropertyValue.createdAt,
+                      id: pagePropertyValue.id,
+                      pageId: pagePropertyValue.pageId,
+                      propertyId: pagePropertyValue.propertyId,
+                      updatedAt: pagePropertyValue.updatedAt,
+                      value: pagePropertyValue.value,
+                    })
+                    .then(([updatedValue]) => updatedValue)];
+                }),
+              )
           : [];
 
       await tx
@@ -333,6 +387,15 @@ export async function updateDatabasePropertyService(input: {
           dependencyType: "property",
           executor: tx as unknown as Database,
           reason: `A property used by this automation changed from ${previousType} to ${effectiveType}`,
+        });
+      }
+      for (const option of removedAutomationOptions) {
+        await invalidateDatabaseAutomationDependencies({
+          dependencyId: option.id,
+          dependencyType: "option",
+          executor: tx as unknown as Database,
+          reason: `The ${option.name} option used by this automation was deleted`,
+          workspaceId: existing.workspaceId,
         });
       }
 
@@ -366,4 +429,48 @@ export async function updateDatabasePropertyService(input: {
     databasePropertyId: column.id,
     pagePropertyId: column.propertyId,
   };
+}
+
+function removedPropertyOptions(previousConfig: unknown, nextConfig: unknown) {
+  const nextIds = new Set(propertyOptions(nextConfig).map(({ id }) => id));
+  return propertyOptions(previousConfig).filter(({ id }) => !nextIds.has(id));
+}
+
+function changedPropertyOptions(previousConfig: unknown, nextConfig: unknown) {
+  const nextOptions = new Map(propertyOptions(nextConfig).map((option) => [option.id, option]));
+  return propertyOptions(previousConfig).flatMap((option) => {
+    const nextOption = nextOptions.get(option.id);
+    return nextOption?.name === option.name
+      ? []
+      : [{ oldName: option.name, newName: nextOption?.name ?? null }];
+  });
+}
+
+function migrateOptionValue(
+  propertyType: string,
+  value: unknown,
+  changes: Array<{ oldName: string; newName: string | null }>,
+) {
+  const replacements = new Map(changes.map(({ oldName, newName }) => [oldName, newName]));
+  if (propertyType === "multi_select") {
+    if (!Array.isArray(value)) return value;
+    return [...new Set(value.flatMap((item) => {
+      if (typeof item !== "string" || !replacements.has(item)) return [item];
+      const replacement = replacements.get(item);
+      return replacement === null || replacement === undefined ? [] : [replacement];
+    }))];
+  }
+  if (typeof value !== "string" || !replacements.has(value)) return value;
+  return replacements.get(value) ?? null;
+}
+
+function propertyOptions(config: unknown): Array<{ id: string; name: string }> {
+  if (!config || typeof config !== "object" || !Array.isArray((config as { options?: unknown }).options)) {
+    return [];
+  }
+  return (config as { options: unknown[] }).options.flatMap((option) => {
+    if (!option || typeof option !== "object") return [];
+    const { id, name } = option as { id?: unknown; name?: unknown };
+    return typeof id === "string" && typeof name === "string" ? [{ id, name }] : [];
+  });
 }

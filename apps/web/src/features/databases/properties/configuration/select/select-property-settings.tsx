@@ -184,6 +184,12 @@ export function SelectPropertySettings({
             <OptionEditorSubmenu
               draggable
               key={option.id}
+              onDeleteOption={(optionId) =>
+                onUpdateConfig({
+                  options: options.filter((item) => item.id !== optionId),
+                  selectOptionSort: sort,
+                })
+              }
               onDragEnd={commitOptionReorder}
               onUpdateOption={updateOption}
               option={option}

@@ -15,7 +15,7 @@ import {
   type UpdateDatabaseAutomationRequest,
 } from "@zilobase/features/databases/automations";
 
-import { getMembership } from "../../access";
+import { canAccessDatabaseRecord, getMembership } from "../../access";
 import { db, type Database } from "../../../infrastructure/database";
 import {
   database,
@@ -609,7 +609,7 @@ export async function getDatabaseAutomationCatalog(input: {
 }) {
   try {
     const management = await requireManagementContext(input);
-    const [properties, views, users, gmailConnections, slackConnections] = await Promise.all([
+    const [properties, views, users, gmailConnections, slackConnections, dataSources] = await Promise.all([
       loadProperties([input.dataSourceId]),
       loadViews(input.databaseId, input.dataSourceId),
       loadWorkspaceUsers(management.source.workspaceId),
@@ -619,6 +619,7 @@ export async function getDatabaseAutomationCatalog(input: {
       input.slackEnabled === false
         ? Promise.resolve([])
         : loadOwnedSlackConnections(management.source.workspaceId, input.userId),
+      loadAutomationTargetCatalog(management.source.workspaceId, input.userId),
     ]);
     return {
       actions: [
@@ -649,13 +650,17 @@ export async function getDatabaseAutomationCatalog(input: {
       ],
       canManage: true,
       dataSourceId: management.source.id,
+      dataSources,
       gmailConnections,
       slackConnections,
       manageUnavailableReason: null,
       properties: [...(properties.get(input.dataSourceId)?.values() ?? [])].map((property) => ({
         id: property.id,
+        ...(property.icon ? { icon: property.icon } : {}),
         name: property.name,
+        options: property.options ?? [],
         operators: [...operatorsForPropertyType(property.type)],
+        ...(property.relatedDataSourceId ? { relatedDataSourceId: property.relatedDataSourceId } : {}),
         type: property.type,
         writable: property.writable,
       })),
@@ -668,6 +673,7 @@ export async function getDatabaseAutomationCatalog(input: {
       actions: [],
       canManage: false,
       dataSourceId: input.dataSourceId,
+      dataSources: [],
       gmailConnections: [],
       slackConnections: [],
       manageUnavailableReason: error.message,
@@ -703,7 +709,31 @@ export async function invalidateDatabaseAutomationDependencies(input: {
         input.workspaceId ? eq(databaseAutomation.workspaceId, input.workspaceId) : undefined,
       ),
     );
-  const automationIds = [...new Set(rows.map(({ automationId }) => automationId))];
+  const legacyOptionRows = input.dependencyType === "option"
+    ? await executor
+        .select({
+          automationId: databaseAutomation.id,
+          definition: databaseAutomationRevision.definition,
+        })
+        .from(databaseAutomation)
+        .innerJoin(
+          databaseAutomationRevision,
+          eq(databaseAutomationRevision.id, databaseAutomation.currentRevisionId),
+        )
+        .where(
+          and(
+            eq(databaseAutomation.status, "active"),
+            isNull(databaseAutomation.deletedAt),
+            input.workspaceId ? eq(databaseAutomation.workspaceId, input.workspaceId) : undefined,
+          ),
+        )
+    : [];
+  const automationIds = [...new Set([
+    ...rows.map(({ automationId }) => automationId),
+    ...legacyOptionRows
+      .filter(({ definition }) => hasOptionReference(definition, input.dependencyId))
+      .map(({ automationId }) => automationId),
+  ])];
   if (automationIds.length === 0) return 0;
   await executor
     .update(databaseAutomation)
@@ -718,6 +748,19 @@ export async function invalidateDatabaseAutomationDependencies(input: {
     })
     .where(and(inArray(databaseAutomation.id, automationIds), eq(databaseAutomation.status, "active")));
   return automationIds.length;
+}
+
+function hasOptionReference(value: unknown, optionId: string): boolean {
+  if (Array.isArray(value)) return value.some((item) => hasOptionReference(item, optionId));
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  if (record.entityType === "option" && record.type === "entity") {
+    return record.id === optionId;
+  }
+  if (record.entityType === "option" && record.type === "entity_list") {
+    return Array.isArray(record.ids) && record.ids.includes(optionId);
+  }
+  return Object.values(record).some((item) => hasOptionReference(item, optionId));
 }
 
 async function requireManagementContext(input: {
@@ -870,10 +913,13 @@ async function loadProperties(dataSourceIds: string[]) {
     .orderBy(asc(databaseProperty.position));
   for (const record of records) {
     const properties = result.get(record.dataSourceId) ?? new Map();
+    const icon = getAutomationPropertyIcon(record.config);
     properties.set(record.id, {
       dataSourceId: record.dataSourceId,
       id: record.id,
+      ...(icon ? { icon } : {}),
       name: record.name,
+      options: getAutomationPropertyOptions(record.config),
       relatedDataSourceId: getRelatedDataSourceId(record.config),
       type: record.type,
       writable: !["button", "created_time", "edited_time", "formula", "id", "rollup"].includes(record.type),
@@ -881,6 +927,57 @@ async function loadProperties(dataSourceIds: string[]) {
     result.set(record.dataSourceId, properties);
   }
   return result;
+}
+
+async function loadAutomationTargetCatalog(workspaceId: string, userId: string) {
+  const records = await db
+    .select({ parent: database, source: dataSource })
+    .from(dataSource)
+    .innerJoin(database, eq(database.id, dataSource.parentDatabaseId))
+    .where(
+      and(
+        eq(dataSource.workspaceId, workspaceId),
+        isNull(dataSource.deletedAt),
+        isNull(database.deletedAt),
+      ),
+    )
+    .orderBy(asc(dataSource.name), asc(dataSource.id));
+  const accessible = (await Promise.all(records.map(async (record) => {
+    if (isDatabaseLocked(record.parent) || isDatabaseLocked(record.source)) return null;
+    return await canAccessDatabaseRecord(record.parent, userId, "edit") ? record.source : null;
+  }))).filter((source): source is typeof dataSource.$inferSelect => source !== null);
+  const propertiesBySource = await loadProperties(accessible.map(({ id }) => id));
+  return accessible.map((source) => ({
+    id: source.id,
+    name: source.name,
+    properties: [...(propertiesBySource.get(source.id)?.values() ?? [])].map((property) => ({
+      id: property.id,
+      ...(property.icon ? { icon: property.icon } : {}),
+      name: property.name,
+      options: property.options ?? [],
+      operators: [...operatorsForPropertyType(property.type)],
+      ...(property.relatedDataSourceId ? { relatedDataSourceId: property.relatedDataSourceId } : {}),
+      type: property.type,
+      writable: property.writable,
+    })),
+  }));
+}
+
+function getAutomationPropertyOptions(config: unknown) {
+  if (!config || typeof config !== "object" || !Array.isArray((config as { options?: unknown }).options)) return [];
+  return (config as { options: unknown[] }).options.flatMap((option) => {
+    if (!option || typeof option !== "object") return [];
+    const { color, id, name } = option as { color?: unknown; id?: unknown; name?: unknown };
+    return typeof id === "string" && id.trim() && typeof name === "string" && name.trim()
+      ? [{ ...(typeof color === "string" ? { color } : {}), id, name }]
+      : [];
+  });
+}
+
+function getAutomationPropertyIcon(config: unknown) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return "";
+  const icon = (config as { icon?: unknown }).icon;
+  return typeof icon === "string" ? icon : "";
 }
 
 async function loadOwnedGmailConnections(workspaceId: string, userId: string) {

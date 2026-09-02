@@ -59,6 +59,7 @@ beforeEach(() => {
   });
   mocks.commit.mockReset();
   mocks.fetchDelta.mockReset();
+  mocks.invalidateAutomationDependencies.mockReset();
   mocks.selectResults.length = 0;
   vi.restoreAllMocks();
 });
@@ -282,6 +283,78 @@ test("updateDatabasePropertyService merges glyph patches without removing option
     icon: "safe-new-icon",
     options: [{ id: "todo", name: "Todo", color: "gray" }],
   });
+});
+
+test("updateDatabasePropertyService invalidates only removed option dependencies", async () => {
+  transactionRecorder();
+  mocks.selectResults.push(
+    [{ id: "column-1", propertyId: "property-1" }],
+    [{
+      config: {
+        options: [
+          { id: "keep", name: "Keep", color: "blue" },
+          { id: "remove", name: "Remove me", color: "red" },
+        ],
+      },
+      type: "multi_select",
+    }],
+  );
+  mocks.fetchDelta.mockResolvedValue({ properties: [{ id: "column-1" }] });
+
+  await updateDatabasePropertyService({
+    config: { options: [{ id: "keep", name: "Renamed", color: "green" }] },
+    databaseId: "database-1",
+    databasePropertyId: "column-1",
+    userId: "user-1",
+  });
+
+  expect(mocks.invalidateAutomationDependencies).toHaveBeenCalledTimes(1);
+  expect(mocks.invalidateAutomationDependencies).toHaveBeenCalledWith(
+    expect.objectContaining({
+      dependencyId: "remove",
+      dependencyType: "option",
+      reason: "The Remove me option used by this automation was deleted",
+      workspaceId: "workspace-1",
+    }),
+  );
+});
+
+test("updateDatabasePropertyService migrates renamed options and removes deleted values", async () => {
+  const now = new Date("2026-09-03T00:00:00.000Z");
+  const { updates } = transactionRecorder({
+    selectResults: [[{ id: "value-1", value: ["Keep", "Remove me"] }]],
+    updateReturningResults: [[{
+      createdAt: now,
+      id: "value-1",
+      pageId: "page-1",
+      propertyId: "property-1",
+      updatedAt: now,
+      value: ["Renamed"],
+    }]],
+  });
+  mocks.selectResults.push(
+    [{ id: "column-1", propertyId: "property-1" }],
+    [{
+      config: {
+        options: [
+          { id: "keep", name: "Keep", color: "blue" },
+          { id: "remove", name: "Remove me", color: "red" },
+        ],
+      },
+      type: "multi_select",
+    }],
+  );
+  mocks.fetchDelta.mockResolvedValue({ properties: [{ id: "column-1" }] });
+
+  await updateDatabasePropertyService({
+    config: { options: [{ id: "keep", name: "Renamed", color: "green" }] },
+    databaseId: "database-1",
+    databasePropertyId: "column-1",
+    userId: "user-1",
+  });
+
+  expect(updates).toContainEqual(expect.objectContaining({ value: ["Renamed"] }));
+  expect(mocks.commit.mock.calls[0]?.[0].changed).toEqual(["properties", "values"]);
 });
 
 test("updateDatabasePropertyService rejects missing records and invalid types", async () => {

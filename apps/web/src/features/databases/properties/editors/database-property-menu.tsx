@@ -493,11 +493,7 @@ export function DatabasePropertyMenu({
               </DropDrawerItem>
               <DropDrawerItem
                 disabled={deleteProperty.isPending}
-                onSelect={() =>
-                  type === "relation"
-                    ? setDeleteDialogOpen(true)
-                    : deleteDatabaseProperty()
-                }
+                onSelect={() => setDeleteDialogOpen(true)}
                 variant="destructive"
               >
                 <Trash2 />
@@ -533,12 +529,16 @@ export function DatabasePropertyMenu({
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete relation property?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {type === "relation" ? "Delete relation property?" : `Delete “${name}”?`}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Choose what should happen to the related property.
+              {type === "relation"
+                ? "Choose what should happen to the related property. Automations using either deleted property will be paused."
+                : "This property and its values will be deleted. Automations using it will be paused and must be repaired before they can run again."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <RadioGroup
+          {type === "relation" ? <RadioGroup
             className="grid gap-2"
             onValueChange={(value) =>
               setRelationDeleteMode(value === "related" ? "related" : "this")
@@ -572,13 +572,13 @@ export function DatabasePropertyMenu({
                 </span>
               </span>
             </label>
-          </RadioGroup>
+          </RadioGroup> : null}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                deleteRelationProperties(relationDeleteMode === "related")
-              }
+              onClick={() => type === "relation"
+                ? deleteRelationProperties(relationDeleteMode === "related")
+                : deleteDatabaseProperty()}
               variant="destructive"
             >
               Delete
