@@ -261,7 +261,7 @@
   [role="switch"],
   [role="tab"],
   [data-slot$="-trigger"]
-):not(:disabled):not([aria-disabled="true"]):not([data-disabled]) {
+):not(:disabled):not([aria-disabled="true"]):not([data-disabled="true"]):not([data-disabled=""]) {
   cursor: pointer;
 }
 
@@ -278,7 +278,12 @@
   [role="radio"],
   [role="switch"],
   [role="tab"]
-):is(:disabled, [aria-disabled="true"], [data-disabled]) {
+):is(
+  :disabled,
+  [aria-disabled="true"],
+  [data-disabled="true"],
+  [data-disabled=""]
+) {
   cursor: not-allowed;
 }
 
