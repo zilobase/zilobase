@@ -7,6 +7,8 @@ import {
 } from "@zilobase/features/databases/automations";
 
 import type { AppBindings } from "../../../shared/types";
+import { getMembership } from "../../access";
+import { isDatabaseAutomationsFeatureEnabled } from "../../../shared/config/config";
 import { requireDatabaseRouteUser } from "../route-support";
 import {
   createDatabaseAutomation,
@@ -26,6 +28,19 @@ import {
 } from "./run-history";
 
 export const databaseAutomationRoutes = new Hono<AppBindings>();
+
+databaseAutomationRoutes.get("/:databaseId/automation-capability", async (c) => {
+  const user = requireDatabaseRouteUser(c);
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  const workspaceId = c.req.query("workspaceId")?.trim();
+  if (!workspaceId) return c.json({ error: "workspaceId is required" }, 400);
+  if (!(await getMembership(workspaceId, user.id))) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  return c.json({
+    enabled: isDatabaseAutomationsFeatureEnabled(c.env, workspaceId),
+  });
+});
 
 databaseAutomationRoutes.get("/:databaseId/automations", async (c) => {
   const user = requireDatabaseRouteUser(c);

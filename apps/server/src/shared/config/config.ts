@@ -4,6 +4,23 @@ export function isMailFeatureEnabled(env: RuntimeEnv) {
   return getStringEnv(env, "MAIL_ENABLED")?.trim().toLowerCase() === "true";
 }
 
+export function isDatabaseAutomationsFeatureEnabled(
+  env: RuntimeEnv,
+  workspaceId: string,
+) {
+  if (
+    getStringEnv(env, "DATABASE_AUTOMATIONS_ENABLED")
+      ?.trim()
+      .toLowerCase() === "true"
+  ) {
+    return true;
+  }
+  return (getStringEnv(env, "DATABASE_AUTOMATIONS_ENABLED_WORKSPACE_IDS") ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .some((id) => id === "*" || id === workspaceId);
+}
+
 const DESKTOP_CLIENT_ORIGINS = [
   "tauri://localhost",
   "http://tauri.localhost",

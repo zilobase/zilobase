@@ -10,10 +10,13 @@ const mocks = vi.hoisted(() => ({
   duplicate: vi.fn(),
   catalog: vi.fn(),
   list: vi.fn(),
+  membership: vi.fn(),
   pause: vi.fn(),
   update: vi.fn(),
   validate: vi.fn(),
 }));
+
+vi.mock("../../access", () => ({ getMembership: mocks.membership }));
 
 vi.mock("./service", () => {
   class DatabaseAutomationError extends Error {
@@ -72,7 +75,27 @@ function app(authenticated = true) {
 }
 
 describe("database automation routes", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.membership.mockResolvedValue({ id: "member-1" });
+  });
+
+  it("reports the server-owned workspace capability", async () => {
+    const enabled = await app().request(
+      "/database-1/automation-capability?workspaceId=workspace-1",
+      undefined,
+      { DATABASE_AUTOMATIONS_ENABLED_WORKSPACE_IDS: "workspace-1" },
+    );
+    expect(enabled.status).toBe(200);
+    expect(await enabled.json()).toEqual({ enabled: true });
+
+    const disabled = await app().request(
+      "/database-1/automation-capability?workspaceId=workspace-2",
+      undefined,
+      {},
+    );
+    expect(await disabled.json()).toEqual({ enabled: false });
+  });
 
   it("requires authentication and a source-scoped list query", async () => {
     expect((await app(false).request("/database-1/automations?dataSourceId=source-1")).status).toBe(401);

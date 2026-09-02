@@ -67,6 +67,8 @@ export type AppBindings = {
     COLLABORATION_SECRET?: string;
     COLLABORATION_WEBSOCKET_URL?: string;
     DATABASE_REALTIME_WEBSOCKET_URL?: string;
+    DATABASE_AUTOMATIONS_ENABLED?: string;
+    DATABASE_AUTOMATIONS_ENABLED_WORKSPACE_IDS?: string;
     DATABASE_URL?: string;
     EMAIL_FROM?: string;
     GOOGLE_CLIENT_ID?: string;

@@ -68,6 +68,10 @@
       "types": "./src/databases/automations/index.ts",
       "default": "./src/databases/automations/index.ts"
     },
+    "./databases/automations/react": {
+      "types": "./src/databases/automations/react/index.ts",
+      "default": "./src/databases/automations/react/index.ts"
+    },
     "./databases/property-types": {
       "types": "./src/databases/property-types.ts",
       "default": "./src/databases/property-types.ts"

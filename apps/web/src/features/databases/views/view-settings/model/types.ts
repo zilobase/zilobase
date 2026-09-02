@@ -76,6 +76,7 @@ export type DatabaseViewSettingsMenuProps = {
   onAddDataSource?: () => void;
   onCopyDatabaseViewLink: () => void;
   onOpenChange?: (open: boolean) => void;
+  onOpenAutomations?: () => void;
   onReplaceActiveViewSource: (view: DatabaseSourceViewSelection) => void;
   onClearDatabaseFilter: () => void;
   onClearDatabaseSort: () => void;

@@ -100,6 +100,8 @@ import { DatabaseFormShareMenu } from "../form/view/database-form-share-menu";
 import { DatabaseFormView } from "../form/view/database-form-view";
 import { ViewTypeOptionGrid } from "../view-settings/view/view-type-option-grid";
 import type { DatabaseViewType } from "../view-settings/model/view-type-options";
+import { DatabaseAutomationManager } from "../../automations";
+import { useDatabaseAutomationCapability } from "@zilobase/features/databases/automations/react";
 
 function ToolbarMenuRow({
   icon,
@@ -147,6 +149,7 @@ export function DatabaseViewToolbar() {
   const [localViewSettingsOpen, setLocalViewSettingsOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [formPreviewOpen, setFormPreviewOpen] = useState(false);
+  const [automationManagerOpen, setAutomationManagerOpen] = useState(false);
   const {
     activeConditionalColors,
     activeDatabaseFilters,
@@ -269,6 +272,15 @@ export function DatabaseViewToolbar() {
     }
   };
   const activeViewTab = viewTabs.find((view) => view.id === activeViewTabId);
+  const automationDatabaseId = hostDatabaseId ?? databaseId ?? "";
+  const automationDataSourceId = activeViewTab?.dataSourceId ?? "";
+  const automationWorkspaceId =
+    hostDatabaseWorkspaceId ?? databaseWorkspaceId ?? workspaceId ?? "";
+  const automationCapability = useDatabaseAutomationCapability(
+    automationDatabaseId,
+    automationWorkspaceId,
+  );
+  const automationsEnabled = automationCapability.data?.enabled === true;
   const clampedVisibleViewCount = Math.min(visibleViewCount, viewTabs.length);
   const visibleViewIds = new Set(
     viewTabs.slice(0, clampedVisibleViewCount).map((view) => view.id),
@@ -1312,6 +1324,16 @@ export function DatabaseViewToolbar() {
                   <ArrowDownUp />
                 </Button>
               )}
+              {automationsEnabled && automationDatabaseId && automationDataSourceId ? (
+                <DatabaseAutomationManager
+                  dataSourceId={automationDataSourceId}
+                  databaseId={automationDatabaseId}
+                  dataSourceName={activeViewTab?.dataSourceName ?? hostDisplayTitle}
+                  onOpenChange={setAutomationManagerOpen}
+                  open={automationManagerOpen}
+                  timezone={Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"}
+                />
+              ) : null}
               <DatabaseViewSettingsMenu
                 activeConditionalColors={activeConditionalColors}
                 allContentWrapped={allContentWrapped}
@@ -1372,6 +1394,7 @@ export function DatabaseViewToolbar() {
                 onCreateDatabaseSort={createDatabaseSort}
                 onDraftViewTitleChange={setDraftViewTitle}
                 onOpenChange={setViewSettingsOpen}
+                onOpenAutomations={automationsEnabled ? () => setAutomationManagerOpen(true) : undefined}
                 onRemoveDatabaseFilter={removeDatabaseFilter}
                 onRemoveDatabaseSort={removeDatabaseSort}
                 onReorderDatabaseFilters={reorderDatabaseFilters}

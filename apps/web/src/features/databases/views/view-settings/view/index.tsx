@@ -82,6 +82,7 @@ export function DatabaseViewSettingsMenu({
   onAddDataSource,
   onCopyDatabaseViewLink,
   onOpenChange,
+  onOpenAutomations,
   onReplaceActiveViewSource,
   onClearDatabaseFilter,
   onClearDatabaseSort,
@@ -414,6 +415,7 @@ export function DatabaseViewSettingsMenu({
         onReplaceActiveViewSource={onReplaceActiveViewSource}
         onUpdateDatabaseSubItemsSettings={onUpdateDatabaseSubItemsSettings}
         onCloseSettings={() => setOpen(false)}
+        onOpenAutomations={onOpenAutomations}
         open={open}
         properties={properties}
         hostDatabaseId={hostDatabaseId}

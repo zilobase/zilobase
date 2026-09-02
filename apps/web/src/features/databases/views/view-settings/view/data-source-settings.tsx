@@ -65,6 +65,7 @@ type DataSourceSettingsSectionProps = Pick<
   | "onAddDataSource"
   | "onAddDataSourceView"
   | "onLinkDataSourceView"
+  | "onOpenAutomations"
   | "onReplaceActiveViewSource"
   | "onUnlinkDataSource"
   | "onUpdateDatabaseSubItemsSettings"
@@ -286,6 +287,7 @@ export function DataSourceSettingsSection({
   onAddDataSource,
   onAddDataSourceView,
   onLinkDataSourceView,
+  onOpenAutomations,
   onReplaceActiveViewSource,
   onUnlinkDataSource,
   onUpdateDatabaseSubItemsSettings,
@@ -488,15 +490,17 @@ export function DataSourceSettingsSection({
           />
         </DropDrawerSubContent>
       </DropDrawerSub>
-      <DropDrawerSub title="Automations">
-        <DropDrawerSubTrigger>
+      {onOpenAutomations ? (
+        <DropDrawerItem
+          onSelect={() => {
+            onCloseSettings();
+            onOpenAutomations();
+          }}
+        >
           <Sparkles />
           <span>Automations</span>
-        </DropDrawerSubTrigger>
-        <DropDrawerSubContent className="w-72">
-          <DropDrawerItem disabled>Automation settings</DropDrawerItem>
-        </DropDrawerSubContent>
-      </DropDrawerSub>
+        </DropDrawerItem>
+      ) : null}
       <DropDrawerSub title="AI Autofill">
         <DropDrawerSubTrigger>
           <Sparkles />

@@ -73,15 +73,15 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 
 | Capability | Pass | Required evidence | Status |
 | --- | ---: | --- | --- |
-| Toolbar lightning control for inline/full-page databases | 5 | Browser workflow tests | planned |
-| Disabled, permission, linked-source, empty, loading, and error states | 5 | Access/state UI matrix | planned |
-| 448px anchored desktop panel and mobile drawer | 5 | Responsive browser tests | planned |
-| Live-generated/custom name and entire-source default | 5 | Builder model/UI tests | planned |
-| Stacked trigger/action cards, search, reorder, and deletion | 5 | Mouse and keyboard workflow tests | planned |
-| Inline validation and unavailable dependency/connector warnings | 5, 8–10 | Builder and connector-state tests | planned |
-| Dirty-builder discard confirmation | 5 | Close/back navigation tests | planned |
+| Toolbar lightning control for inline/full-page databases | 5 | Browser workflow tests | implemented |
+| Disabled, permission, linked-source, empty, loading, and error states | 5 | Access/state UI matrix | implemented |
+| 448px anchored desktop panel and mobile drawer | 5 | Responsive browser tests | implemented |
+| Live-generated/custom name and entire-source default | 5 | Builder model/UI tests | implemented |
+| Stacked trigger/action cards, search, reorder, and deletion | 5 | Mouse and keyboard workflow tests | implemented |
+| Inline validation and unavailable dependency/connector warnings | 5, 8–10 | Builder and connector-state tests | implemented |
+| Dirty-builder discard confirmation | 5 | Close/back navigation tests | implemented |
 | In-panel run and sanitized step history | 4, 5 | API redaction and UI drill-in tests | implemented |
-| Keyboard operation, focus restoration, labels, announcements, no color-only status | 5 | Accessibility tests and manual audit | planned |
+| Keyboard operation, focus restoration, labels, announcements, no color-only status | 5 | Accessibility tests and manual audit | implemented |
 | Hosted Cloudflare and self-hosted Node parity | 4, 6–11 | Adapter, restart, and deployment tests | implemented |
 | Metrics, retention, cleanup, quotas, alerts, runbooks, and global kill switch | 3, 11 | Operational acceptance suite | implemented |
 | Hosted canary, self-hosted opt-in, and rollback-safe disabling | 11 | Release checklist | planned |
