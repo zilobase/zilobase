@@ -70,3 +70,16 @@ test("webhook delivery encrypts headers, pins egress, and reuses stable retry ID
   expect(service).toContain("definitionForDuplicate(source.definition)");
   expect(service).toContain("? { ...action, headers: [] }");
 });
+
+test("Slack delivery is owner-scoped, channel-authorized, receipt-backed, and revocation-aware", async () => {
+  const [engine, provider] = await Promise.all([
+    readFile(new URL("./run-engine.ts", import.meta.url), "utf8"),
+    readFile(new URL("./slack-provider.ts", import.meta.url), "utf8"),
+  ]);
+  expect(engine).toContain("const authorizedChannels = await listSlackChannels(env, connection)");
+  expect(engine).toContain('kind: "slack"');
+  expect(engine).toContain('status: "retrying"');
+  expect(engine).toContain("invalidateDatabaseAutomationDependencies");
+  expect(provider).toContain("public_channel,private_channel");
+  expect(provider).toContain("client_msg_id: input.deliveryId");
+});

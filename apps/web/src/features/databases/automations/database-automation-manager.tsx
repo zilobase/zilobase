@@ -18,6 +18,8 @@ import {
   useDatabaseAutomationRun,
   useDatabaseAutomationRuns,
   useDatabaseAutomations,
+  useSlackAutomationChannels,
+  useStartSlackAutomationOauth,
   useUpdateDatabaseAutomation,
   useValidateDatabaseAutomation,
 } from "@zilobase/features/databases/automations/react";
@@ -81,13 +83,18 @@ type ActionDraft = {
   replyTo: string;
   subject: string;
   to: string;
-  type: "add_page" | "define_variables" | "edit_pages" | "edit_trigger_page" | "send_gmail" | "send_notification" | "send_webhook";
+  type: "add_page" | "define_variables" | "edit_pages" | "edit_trigger_page" | "send_gmail" | "send_notification" | "send_slack" | "send_webhook";
   value: string;
   variableName: string;
   webhookHeaderName: string;
   webhookHeaderValue: string;
   webhookSecretId: string;
   webhookUrl: string;
+  slackChannelId: string;
+  slackLinkLabel: string;
+  slackLinkUrl: string;
+  slackMentionId: string;
+  slackMentionKind: "channel" | "user";
 };
 type BuilderDraft = {
   actions: ActionDraft[];
@@ -148,6 +155,7 @@ export function DatabaseAutomationManager({
   const run = useDatabaseAutomationRun(databaseId, selectedAutomationId ?? "", selectedRunId ?? "");
   const create = useCreateDatabaseAutomation(databaseId, dataSourceId);
   const createSecret = useCreateDatabaseAutomationSecret(databaseId, dataSourceId);
+  const startSlackOauth = useStartSlackAutomationOauth(databaseId, dataSourceId);
   const update = useUpdateDatabaseAutomation(databaseId, selectedAutomationId ?? "");
   const lifecycle = useDatabaseAutomationLifecycle(databaseId, dataSourceId);
   const validate = useValidateDatabaseAutomation(databaseId);
@@ -283,11 +291,14 @@ export function DatabaseAutomationManager({
             ) : screen === "builder" ? (
               <AutomationBuilder
                 catalog={catalog.data}
+                databaseId={databaseId}
+                dataSourceId={dataSourceId}
                 dataSourceName={dataSourceName}
                 draft={draft}
                 generatedName={generatedName}
                 loading={Boolean(selectedAutomationId && detail.isLoading)}
                 onChange={setDraft}
+                onConnectSlack={() => void startSlackOauth.mutateAsync().then(({ authorizationUrl }) => window.open(authorizationUrl, "_blank", "noopener,noreferrer"))}
               />
             ) : screen === "runs" ? (
               <RunList
@@ -426,13 +437,16 @@ function AutomationList({ data, error, loading, onCreate, onEdit, onLifecycle, o
   );
 }
 
-function AutomationBuilder({ catalog, dataSourceName, draft, generatedName, loading, onChange }: {
+function AutomationBuilder({ catalog, databaseId, dataSourceId, dataSourceName, draft, generatedName, loading, onChange, onConnectSlack }: {
   catalog?: DatabaseAutomationCatalog;
+  databaseId: string;
+  dataSourceId: string;
   dataSourceName: string;
   draft: BuilderDraft;
   generatedName: string;
   loading: boolean;
   onChange: (draft: BuilderDraft) => void;
+  onConnectSlack: () => void;
 }) {
   if (loading) return <PanelMessage icon={<Loader2 className="animate-spin" />} title="Loading automation…" />;
   const patch = (value: Partial<BuilderDraft>) => onChange({ ...draft, ...value });
@@ -507,11 +521,14 @@ function AutomationBuilder({ catalog, dataSourceName, draft, generatedName, load
       </section>
       <section>
         <div className="mb-2 text-xs font-medium text-content-secondary">Do this</div>
+        {catalog?.actions.find((item) => item.type === "send_slack")?.reason === "Connect Slack to use this action" ? <Button className="mb-2 w-full" onClick={onConnectSlack} variant="outline">Connect Slack</Button> : null}
         <div className="space-y-2">
           {draft.actions.map((action, index) => (
             <ActionCard
               action={action}
               catalog={catalog}
+              databaseId={databaseId}
+              dataSourceId={dataSourceId}
               index={index}
               key={action.id}
               onChange={(next) => patch({ actions: draft.actions.map((item) => item.id === action.id ? next : item) })}
@@ -644,9 +661,11 @@ function ScheduleEditor({ onChange, schedule }: {
   );
 }
 
-function ActionCard({ action, catalog, index, onChange, onMove, onRemove, scheduled }: {
+function ActionCard({ action, catalog, databaseId, dataSourceId, index, onChange, onMove, onRemove, scheduled }: {
   action: ActionDraft;
   catalog?: DatabaseAutomationCatalog;
+  databaseId: string;
+  dataSourceId: string;
   index: number;
   onChange: (action: ActionDraft) => void;
   onMove: (direction: -1 | 1) => void;
@@ -670,9 +689,11 @@ function ActionCard({ action, catalog, index, onChange, onMove, onRemove, schedu
             type,
           });
         }} value={action.type}>
-          <option value="define_variables">Define variables</option>{!scheduled ? <option value="edit_trigger_page">Edit trigger page</option> : null}<option value="add_page">Add page</option><option value="edit_pages">Edit pages</option><option value="send_notification">Send notification</option>{catalog?.actions.find((item) => item.type === "send_gmail")?.available ? <option value="send_gmail">Send Gmail</option> : null}{catalog?.actions.find((item) => item.type === "send_webhook")?.available ? <option value="send_webhook">Send webhook</option> : null}
+          <option value="define_variables">Define variables</option>{!scheduled ? <option value="edit_trigger_page">Edit trigger page</option> : null}<option value="add_page">Add page</option><option value="edit_pages">Edit pages</option><option value="send_notification">Send notification</option>{catalog?.actions.find((item) => item.type === "send_gmail")?.available ? <option value="send_gmail">Send Gmail</option> : null}{catalog?.actions.find((item) => item.type === "send_webhook")?.available ? <option value="send_webhook">Send webhook</option> : null}{catalog?.actions.find((item) => item.type === "send_slack")?.available ? <option value="send_slack">Send Slack message</option> : null}
         </select>
-        {action.type === "send_webhook" ? (
+        {action.type === "send_slack" ? (
+          <SlackActionFields action={action} catalog={catalog} dataSourceId={dataSourceId} databaseId={databaseId} onChange={onChange} />
+        ) : action.type === "send_webhook" ? (
           <>
             <Input aria-label="Webhook URL" onChange={(event) => onChange({ ...action, webhookUrl: event.target.value })} placeholder="https://example.com/webhook" type="url" value={action.webhookUrl} />
             <select aria-label="Webhook selected property" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, propertyId: event.target.value })} value={action.propertyId}>
@@ -746,6 +767,37 @@ function ActionCard({ action, catalog, index, onChange, onMove, onRemove, schedu
   );
 }
 
+function SlackActionFields({ action, catalog, databaseId, dataSourceId, onChange }: {
+  action: ActionDraft;
+  catalog?: DatabaseAutomationCatalog;
+  databaseId: string;
+  dataSourceId: string;
+  onChange: (action: ActionDraft) => void;
+}) {
+  const channels = useSlackAutomationChannels(databaseId, dataSourceId, action.connectionId);
+  return (
+    <>
+      <select aria-label="Slack connection" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, connectionId: event.target.value, slackChannelId: "" })} value={action.connectionId}>
+        <option value="">Choose Slack workspace</option>{catalog?.slackConnections.filter((connection) => connection.status === "connected").map((connection) => <option key={connection.id} value={connection.id}>{connection.teamName}</option>)}
+      </select>
+      <select aria-label="Slack channel" className="h-8 rounded-md border bg-control-background px-2 text-sm" disabled={!action.connectionId || channels.isLoading} onChange={(event) => onChange({ ...action, slackChannelId: event.target.value })} value={action.slackChannelId}>
+        <option value="">{channels.isLoading ? "Loading channels…" : "Choose a channel"}</option>{channels.data?.channels.map((channel) => <option key={channel.id} value={channel.id}>{channel.isPrivate ? "🔒 " : "#"}{channel.name}</option>)}
+      </select>
+      <Input aria-label="Slack message" onChange={(event) => onChange({ ...action, value: event.target.value })} placeholder="Message" value={action.value} />
+      <Input aria-label="Slack variable" onChange={(event) => onChange({ ...action, variableName: event.target.value })} placeholder="Append variable (optional)" value={action.variableName} />
+      <div className="grid grid-cols-[8rem_1fr] gap-2">
+        <select aria-label="Slack mention type" className="h-8 rounded-md border bg-control-background px-2 text-sm" onChange={(event) => onChange({ ...action, slackMentionKind: event.target.value as "channel" | "user" })} value={action.slackMentionKind}><option value="user">Mention user</option><option value="channel">Mention channel</option></select>
+        <Input aria-label="Slack mention ID" onChange={(event) => onChange({ ...action, slackMentionId: event.target.value })} placeholder="Mention ID (optional)" value={action.slackMentionId} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Input aria-label="Slack link label" onChange={(event) => onChange({ ...action, slackLinkLabel: event.target.value })} placeholder="Link label (optional)" value={action.slackLinkLabel} />
+        <Input aria-label="Slack link URL" onChange={(event) => onChange({ ...action, slackLinkUrl: event.target.value })} placeholder="https://…" type="url" value={action.slackLinkUrl} />
+      </div>
+      {channels.isError ? <p className="text-xs text-action-danger-text" role="alert">Slack channels could not be loaded. Reconnect the workspace.</p> : null}
+    </>
+  );
+}
+
 function RunList({ loading, onSelect, runs }: { loading: boolean; onSelect: (id: string) => void; runs: Array<{ durationMs: number | null; id: string; status: string; triggerTime: string }> }) {
   if (loading) return <PanelMessage icon={<Loader2 className="animate-spin" />} title="Loading runs…" />;
   if (!runs.length) return <PanelMessage icon={<Clock />} title="No runs yet" description="Runs will appear here after a trigger matches." />;
@@ -779,7 +831,7 @@ function emptyDraft(): BuilderDraft {
   };
 }
 const newTrigger = (): TriggerDraft => ({ id: crypto.randomUUID(), operand: "", operator: "was_edited", propertyId: "any", type: "page_added" });
-const newAction = (): ActionDraft => ({ bcc: "", cc: "", connectionId: "", displayName: "", id: crypto.randomUUID(), linkTriggerPage: true, mode: "set", propertyId: "name", recipientType: "selected_user", recipientValue: "", replyTo: "", subject: "", to: "", type: "define_variables", value: "true", variableName: "value", webhookHeaderName: "", webhookHeaderValue: "", webhookSecretId: "", webhookUrl: "" });
+const newAction = (): ActionDraft => ({ bcc: "", cc: "", connectionId: "", displayName: "", id: crypto.randomUUID(), linkTriggerPage: true, mode: "set", propertyId: "name", recipientType: "selected_user", recipientValue: "", replyTo: "", slackChannelId: "", slackLinkLabel: "", slackLinkUrl: "", slackMentionId: "", slackMentionKind: "user", subject: "", to: "", type: "define_variables", value: "true", variableName: "value", webhookHeaderName: "", webhookHeaderValue: "", webhookSecretId: "", webhookUrl: "" });
 const newSchedule = (): ScheduleDraft => ({
   customPattern: "daily",
   dayOfMonth: "1",
@@ -855,6 +907,21 @@ function buildDefinition(draft: BuilderDraft, dataSourceId: string, timezone: st
         selectedPropertyIds: [action.propertyId],
         type: "send_webhook",
         url: action.webhookUrl.trim(),
+      };
+    }
+    if (action.type === "send_slack") {
+      if (!action.connectionId || !action.slackChannelId || !action.value.trim()) return null;
+      return {
+        channelId: action.slackChannelId,
+        connectionId: action.connectionId,
+        id: action.id,
+        message: { parts: [
+          { text: action.value, type: "text" as const },
+          ...(action.variableName.trim() ? [{ type: "value" as const, value: { name: action.variableName.trim(), reference: "variable" as const, type: "reference" as const } }] : []),
+          ...(action.slackMentionId.trim() ? [{ id: action.slackMentionId.trim(), kind: action.slackMentionKind, type: "slack_mention" as const }] : []),
+          ...(action.slackLinkUrl.trim() && action.slackLinkLabel.trim() ? [{ label: action.slackLinkLabel.trim(), type: "link" as const, url: action.slackLinkUrl.trim() }] : []),
+        ] },
+        type: "send_slack",
       };
     }
     const propertyType = catalog?.properties.find((property) => property.id === action.propertyId)?.type;
@@ -1000,6 +1067,18 @@ function draftFromDefinition(name: string, definition: DatabaseAutomationDefinit
           webhookHeaderName: header?.name ?? "",
           webhookSecretId: header?.secretId ?? "",
           webhookUrl: action.url,
+        }];
+      }
+      if (action.type === "send_slack") {
+        const text = action.message.parts.find((part) => part.type === "text");
+        const variable = action.message.parts.find((part) => part.type === "value" && part.value.type === "reference" && part.value.reference === "variable");
+        const mention = action.message.parts.find((part) => part.type === "slack_mention");
+        const link = action.message.parts.find((part) => part.type === "link");
+        return [{
+          ...newAction(), connectionId: action.connectionId, id: action.id,
+          slackChannelId: action.channelId, slackLinkLabel: link?.label ?? "", slackLinkUrl: link?.url ?? "",
+          slackMentionId: mention?.id ?? "", slackMentionKind: mention?.kind ?? "user", type: action.type,
+          value: text?.text ?? "", variableName: variable?.type === "value" && variable.value.type === "reference" && variable.value.reference === "variable" ? variable.value.name : "",
         }];
       }
       if (

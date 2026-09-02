@@ -331,4 +331,29 @@ describe("database automation compiler", () => {
       "webhook_secret_not_owned",
     ]));
   });
+
+  it("requires owned Slack connections, rejects DMs, and routes formulas through variables", () => {
+    const slack = definition({ actions: [{
+      channelId: "D123",
+      connectionId: "slack-1",
+      id: "slack-action",
+      message: { parts: [{ type: "value", value: { expression: "1 + 1", type: "formula" } }] },
+      type: "send_slack",
+    }] });
+    const invalid = compileDatabaseAutomationDefinition(slack, {
+      ...context, capabilities: { slack: true }, slackConnectionIds: new Set(["slack-other"]),
+    });
+    expect(invalid.validation.errors.map(({ code }) => code)).toEqual(expect.arrayContaining([
+      "slack_connection_not_owned", "slack_direct_message_forbidden", "slack_formula_requires_variable",
+    ]));
+    const valid = compileDatabaseAutomationDefinition({
+      ...slack,
+      actions: [{
+        ...slack.actions[0] as any,
+        channelId: "C123",
+        message: { parts: [{ text: "Message", type: "text" }] },
+      }],
+    }, { ...context, capabilities: { slack: true }, slackConnectionIds: new Set(["slack-1"]) });
+    expect(valid.validation.valid).toBe(true);
+  });
 });

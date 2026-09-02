@@ -16,6 +16,7 @@ import {
   isLoopbackHost,
   isMailFeatureEnabled,
   isAutomationWebhooksEnabled,
+  isAutomationSlackEnabled,
   getAutomationWebhookHttpDomains,
   resolvePublicRequestUrl,
 } from "./config";
@@ -33,6 +34,11 @@ test("automation webhooks and self-hosted HTTP domains are explicit", () => {
     [...getAutomationWebhookHttpDomains({ AUTOMATION_WEBHOOK_HTTP_DOMAINS: " hooks.example.test,local.example.test " })],
     ["hooks.example.test", "local.example.test"],
   );
+});
+
+test("automation Slack is disabled unless explicitly enabled", () => {
+  assert.equal(isAutomationSlackEnabled({}), false);
+  assert.equal(isAutomationSlackEnabled({ AUTOMATION_SLACK_ENABLED: "true" }), true);
 });
 
 test("public request URLs prefer the local Host over a rewritten production origin", () => {

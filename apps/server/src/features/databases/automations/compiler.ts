@@ -38,6 +38,7 @@ export type DatabaseAutomationCompilationContext = {
   parentDatabaseId: string;
   propertiesByDataSource: Map<string, Map<string, AutomationPropertyMetadata>>;
   secretIds?: Set<string>;
+  slackConnectionIds?: Set<string>;
   sourceDataSourceId: string;
   userIds?: Set<string>;
   views: Map<string, AutomationViewMetadata>;
@@ -325,6 +326,15 @@ export function compileDatabaseAutomationDefinition(
       if (!capabilities.webhooks) addError("capability_disabled", "Webhook actions are not enabled", actionPath);
     } else if (action.type === "send_slack") {
       addDependency("slack_connection", action.connectionId, `actions.${action.id}.connectionId`);
+      if (action.channelId.startsWith("D")) addError("slack_direct_message_forbidden", "Slack direct messages are not supported", [...actionPath, "channelId"]);
+      if (context.slackConnectionIds && !context.slackConnectionIds.has(action.connectionId)) {
+        addError("slack_connection_not_owned", "Slack connection is unavailable", [...actionPath, "connectionId"]);
+      }
+      action.message.parts.forEach((part, partIndex) => {
+        if (part.type === "value" && part.value.type === "formula") {
+          addError("slack_formula_requires_variable", "Slack formulas must be defined as variables first", [...actionPath, "message", "parts", partIndex]);
+        }
+      });
       if (!capabilities.slack) addError("capability_disabled", "Slack actions are not enabled", actionPath);
     }
     completedActions.add(action.id);

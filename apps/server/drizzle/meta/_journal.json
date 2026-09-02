@@ -526,6 +526,13 @@
       "when": 1788253200000,
       "tag": "0074_in_product_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1788256800000,
+      "tag": "0075_automation_slack_connections",
+      "breakpoints": true
     }
   ]
 }

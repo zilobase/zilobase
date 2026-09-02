@@ -97,4 +97,15 @@ export function register({ assert, readSource, test }) {
     assert.match(manager, /useCreateDatabaseAutomationSecret/)
     assert.doesNotMatch(manager, /headers:.*webhookHeaderValue/)
   })
+
+  test("builder discovers Slack channels and exposes variables, mentions, and links", async () => {
+    const manager = await readSource(
+      "/src/features/databases/automations/database-automation-manager.tsx",
+    )
+    assert.match(manager, /useStartSlackAutomationOauth/)
+    assert.match(manager, /useSlackAutomationChannels/)
+    assert.match(manager, /Slack mention ID/)
+    assert.match(manager, /Slack link URL/)
+    assert.match(manager, /reference: "variable"/)
+  })
 }

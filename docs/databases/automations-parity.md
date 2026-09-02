@@ -66,8 +66,8 @@ Status values: `contracted`, `planned`, `implemented`, `verified`.
 | Gmail ownership, durable delivery, retry, and reconnect behavior | 8 | Provider contract and revocation tests | implemented |
 | POST-only webhook with selected properties and encrypted headers | 9 | Payload and secret persistence tests | implemented |
 | Webhook SSRF, DNS pinning, redirect, timeout, size, and retry controls | 9 | Controlled network security suite | implemented |
-| Slack OAuth, authorized channels, formatting, mentions, and rate limits | 10 | OAuth/provider contract tests | planned |
-| External attempts are at-least-once with a stable delivery ID | 8–10 | Duplicate queue and provider retry tests | partial (Gmail, webhook) |
+| Slack OAuth, authorized channels, formatting, mentions, and rate limits | 10 | OAuth/provider contract tests | implemented |
+| External attempts are at-least-once with a stable delivery ID | 8–10 | Duplicate queue and provider retry tests | implemented |
 
 ## Management UI and operations
 

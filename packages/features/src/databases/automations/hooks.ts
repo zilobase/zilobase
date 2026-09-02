@@ -8,6 +8,7 @@ import type {
   DatabaseAutomationSummary,
   DatabaseAutomationValidationResult,
   UpdateDatabaseAutomationRequest,
+  SlackAutomationChannel,
 } from "./contracts"
 import {
   databaseAutomationCapabilityQueryOptions,
@@ -132,5 +133,27 @@ export function useCreateDatabaseAutomationSecret(databaseId: string, dataSource
         `/databases/${encoded(databaseId)}/automation-secrets`,
         { body: JSON.stringify({ ...body, dataSourceId }), method: "POST" },
       ),
+  })
+}
+
+export function useStartSlackAutomationOauth(databaseId: string, dataSourceId: string) {
+  const { apiFetch } = useZilobaseFeatures()
+  return useMutation({
+    mutationFn: () => apiFetch<{ authorizationUrl: string }>(
+      `/databases/${encoded(databaseId)}/automation-slack/oauth/start`,
+      { body: JSON.stringify({ dataSourceId }), method: "POST" },
+    ),
+  })
+}
+
+export function useSlackAutomationChannels(databaseId: string, dataSourceId: string, connectionId: string) {
+  const { apiFetch } = useZilobaseFeatures()
+  return useQuery({
+    enabled: Boolean(databaseId && dataSourceId && connectionId),
+    queryFn: () => apiFetch<{ channels: SlackAutomationChannel[] }>(
+      `/databases/${encoded(databaseId)}/automation-slack/connections/${encoded(connectionId)}/channels?dataSourceId=${encoded(dataSourceId)}`,
+    ),
+    queryKey: [...databaseAutomationKeys.all, "slack-channels", databaseId, dataSourceId, connectionId],
+    staleTime: 60_000,
   })
 }

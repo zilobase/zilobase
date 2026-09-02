@@ -30,6 +30,7 @@ import {
   gmailAccount,
   gmailWorkspaceConnection,
   pageProperty,
+  slackConnection,
   member,
   user,
 } from "../../../infrastructure/database/schema";
@@ -108,6 +109,7 @@ export async function validateDatabaseAutomation(input: {
   dataSourceId: string;
   definition: unknown;
   gmailEnabled?: boolean;
+  slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   userId: string;
 }) {
@@ -117,6 +119,7 @@ export async function validateDatabaseAutomation(input: {
     databaseId: input.databaseId,
     definition: input.definition,
     gmailEnabled: input.gmailEnabled,
+    slackEnabled: input.slackEnabled,
     webhooksEnabled: input.webhooksEnabled,
     management,
     userId: input.userId,
@@ -132,6 +135,7 @@ export async function createDatabaseAutomation(input: {
   editionExtension?: ZilobaseEditionExtension;
   initialStatus?: "active" | "paused";
   gmailEnabled?: boolean;
+  slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   userId: string;
 }) {
@@ -145,6 +149,7 @@ export async function createDatabaseAutomation(input: {
     databaseId: input.databaseId,
     definition: input.body.definition,
     gmailEnabled: input.gmailEnabled,
+    slackEnabled: input.slackEnabled,
     webhooksEnabled: input.webhooksEnabled,
     management,
     userId: input.userId,
@@ -288,6 +293,7 @@ export async function updateDatabaseAutomation(input: {
   editionExtension?: ZilobaseEditionExtension;
   expectedVersion: number;
   gmailEnabled?: boolean;
+  slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   userId: string;
 }) {
@@ -303,14 +309,15 @@ export async function updateDatabaseAutomation(input: {
     databaseId: input.databaseId,
     definition: input.body.definition,
     gmailEnabled: input.gmailEnabled,
+    slackEnabled: input.slackEnabled,
     webhooksEnabled: input.webhooksEnabled,
     management,
     userId: input.userId,
   });
   const compilation = compileDatabaseAutomationDefinition(input.body.definition, context);
   assertValidCompilation(compilation.validation, compilation.compiledDefinition, compilation.definitionHash);
-  const transfersProtectedOwnership = containsGmailAction(input.body.definition) && existing.automation.ownerUserId !== input.userId;
-  if (containsGmailAction(existing.revision.definition) && existing.automation.ownerUserId !== input.userId && !transfersProtectedOwnership) {
+  const transfersProtectedOwnership = containsProtectedConnectorAction(input.body.definition) && existing.automation.ownerUserId !== input.userId;
+  if (containsProtectedConnectorAction(existing.revision.definition) && existing.automation.ownerUserId !== input.userId && !transfersProtectedOwnership) {
     throw protectedConfigurationError();
   }
 
@@ -380,6 +387,7 @@ export async function setDatabaseAutomationPaused(input: {
   databaseId: string;
   editionExtension?: ZilobaseEditionExtension;
   gmailEnabled?: boolean;
+  slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   paused: boolean;
   userId: string;
@@ -393,6 +401,7 @@ export async function setDatabaseAutomationPaused(input: {
       dataSourceId: current.dataSourceId,
       definition: current.definition,
       gmailEnabled: input.gmailEnabled,
+      slackEnabled: input.slackEnabled,
       webhooksEnabled: input.webhooksEnabled,
       userId: input.userId,
     });
@@ -436,6 +445,7 @@ export async function duplicateDatabaseAutomation(input: {
   editionExtension?: ZilobaseEditionExtension;
   idempotencyKey: string;
   gmailEnabled?: boolean;
+  slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   userId: string;
 }) {
@@ -459,6 +469,7 @@ export async function duplicateDatabaseAutomation(input: {
     editionExtension: input.editionExtension,
     initialStatus: "paused",
     gmailEnabled: input.gmailEnabled,
+    slackEnabled: input.slackEnabled,
     webhooksEnabled: input.webhooksEnabled,
     userId: input.userId,
   });
@@ -541,18 +552,22 @@ export async function getDatabaseAutomationCatalog(input: {
   databaseId: string;
   dataSourceId: string;
   gmailEnabled?: boolean;
+  slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   userId: string;
 }) {
   try {
     const management = await requireManagementContext(input);
-    const [properties, views, users, gmailConnections] = await Promise.all([
+    const [properties, views, users, gmailConnections, slackConnections] = await Promise.all([
       loadProperties([input.dataSourceId]),
       loadViews(input.databaseId, input.dataSourceId),
       loadWorkspaceUsers(management.source.workspaceId),
       input.gmailEnabled === false
         ? Promise.resolve([])
         : loadOwnedGmailConnections(management.source.workspaceId, input.userId),
+      input.slackEnabled === false
+        ? Promise.resolve([])
+        : loadOwnedSlackConnections(management.source.workspaceId, input.userId),
     ]);
     return {
       actions: [
@@ -571,11 +586,20 @@ export async function getDatabaseAutomationCatalog(input: {
           type: "send_gmail" as const,
         },
         { available: input.webhooksEnabled !== false, reason: input.webhooksEnabled === false ? "Webhooks are disabled by the server administrator" : null, type: "send_webhook" as const },
-        { available: false, reason: "Available in the Slack release", type: "send_slack" as const },
+        {
+          available: input.slackEnabled !== false && slackConnections.some((connection) => connection.status === "connected"),
+          reason: input.slackEnabled === false
+            ? "Slack is disabled by the server administrator"
+            : slackConnections.some((connection) => connection.status === "connected")
+            ? null
+            : slackConnections.length ? "Reconnect Slack to use this action" : "Connect Slack to use this action",
+          type: "send_slack" as const,
+        },
       ],
       canManage: true,
       dataSourceId: management.source.id,
       gmailConnections,
+      slackConnections,
       manageUnavailableReason: null,
       properties: [...(properties.get(input.dataSourceId)?.values() ?? [])].map((property) => ({
         id: property.id,
@@ -594,6 +618,7 @@ export async function getDatabaseAutomationCatalog(input: {
       canManage: false,
       dataSourceId: input.dataSourceId,
       gmailConnections: [],
+      slackConnections: [],
       manageUnavailableReason: error.message,
       properties: [],
       users: [],
@@ -706,6 +731,7 @@ async function loadCompilationContext(input: {
   databaseId: string;
   definition: unknown;
   gmailEnabled?: boolean;
+  slackEnabled?: boolean;
   webhooksEnabled?: boolean;
   management: Awaited<ReturnType<typeof requireManagementContext>>;
   userId: string;
@@ -747,22 +773,24 @@ async function loadCompilationContext(input: {
     }
     if (target.workspaceId !== input.management.source.workspaceId) targetIds.delete(targetId);
   }
-  const [propertiesByDataSource, views, users, gmailConnections, secrets] = await Promise.all([
+  const [propertiesByDataSource, views, users, gmailConnections, secrets, slackConnections] = await Promise.all([
     loadProperties([...targetIds]),
     loadViews(input.databaseId, input.management.source.id),
     loadWorkspaceUsers(input.management.source.workspaceId),
     loadOwnedGmailConnections(input.management.source.workspaceId, input.userId),
     loadOwnedAutomationSecrets(input.management.source.workspaceId, input.userId),
+    loadOwnedSlackConnections(input.management.source.workspaceId, input.userId),
   ]);
   return {
     allowHttpWebhookDomains: input.allowHttpWebhookDomains,
-    capabilities: { gmail: input.gmailEnabled !== false, notifications: true, schedules: true, webhooks: input.webhooksEnabled !== false },
+    capabilities: { gmail: input.gmailEnabled !== false, notifications: true, schedules: true, slack: input.slackEnabled !== false, webhooks: input.webhooksEnabled !== false },
     dataSourceIds: targetIds,
     gmailConnectionIds: new Set(gmailConnections.filter(({ status }) => status === "connected").map(({ id }) => id)),
     invalidWebhookActionIds,
     parentDatabaseId: input.management.source.parentDatabaseId,
     propertiesByDataSource,
     secretIds: new Set(secrets.map(({ id }) => id)),
+    slackConnectionIds: new Set(slackConnections.filter(({ status }) => status === "connected").map(({ id }) => id)),
     sourceDataSourceId: input.management.source.id,
     userIds: new Set(users.map(({ id }) => id)),
     views,
@@ -841,6 +869,18 @@ async function loadOwnedAutomationSecrets(workspaceId: string, userId: string) {
     );
 }
 
+async function loadOwnedSlackConnections(workspaceId: string, userId: string) {
+  return db.select({
+    id: slackConnection.id,
+    status: slackConnection.status,
+    teamId: slackConnection.teamId,
+    teamName: slackConnection.teamName,
+  }).from(slackConnection).where(and(
+    eq(slackConnection.workspaceId, workspaceId),
+    eq(slackConnection.ownerUserId, userId),
+  ));
+}
+
 async function getLifecycleAutomation(input: {
   automationId: string;
   databaseId: string;
@@ -856,9 +896,9 @@ async function getLifecycleAutomation(input: {
   return record;
 }
 
-function containsGmailAction(definition: unknown) {
+function containsProtectedConnectorAction(definition: unknown) {
   const parsed = databaseAutomationDefinitionSchema.safeParse(definition);
-  return parsed.success && parsed.data.actions.some((action) => action.type === "send_gmail");
+  return parsed.success && parsed.data.actions.some((action) => action.type === "send_gmail" || action.type === "send_slack");
 }
 
 function definitionForDuplicate(definition: DatabaseAutomationDefinition): DatabaseAutomationDefinition {
@@ -875,7 +915,7 @@ function assertProtectedDefinitionOwner(
   revision: RevisionRecord,
   userId: string,
 ) {
-  if (containsGmailAction(revision.definition) && automation.ownerUserId !== userId) {
+  if (containsProtectedConnectorAction(revision.definition) && automation.ownerUserId !== userId) {
     throw protectedConfigurationError();
   }
 }
@@ -885,14 +925,14 @@ function protectedLifecycleResponse(
   revision: RevisionRecord,
   userId: string,
 ) {
-  return containsGmailAction(revision.definition) && automation.ownerUserId !== userId
+  return containsProtectedConnectorAction(revision.definition) && automation.ownerUserId !== userId
     ? toSummary(automation, revision)
     : toDetail(automation, revision);
 }
 
 function protectedConfigurationError() {
   return new DatabaseAutomationError(
-    "This automation contains protected Gmail configuration owned by another user",
+    "This automation contains protected connector configuration owned by another user",
     403,
     "AUTOMATION_PROTECTED_CONFIGURATION",
   );

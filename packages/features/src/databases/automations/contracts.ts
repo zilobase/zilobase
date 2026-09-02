@@ -422,6 +422,16 @@ export type AutomationRichTextExpression = z.infer<
   typeof automationRichTextExpressionSchema
 >
 
+export const slackAutomationRichTextExpressionSchema = z.object({
+  parts: z.array(z.discriminatedUnion("type", [
+    z.object({ text: z.string().max(20_000), type: z.literal("text") }).strict(),
+    z.object({ type: z.literal("value"), value: automationValueExpressionSchema }).strict(),
+    z.object({ id: stableIdSchema, kind: z.enum(["channel", "user"]), type: z.literal("slack_mention") }).strict(),
+    z.object({ label: shortTextSchema, type: z.literal("link"), url: z.string().url().max(2_048) }).strict(),
+  ])).min(1).max(1_000),
+}).strict()
+export type SlackAutomationRichTextExpression = z.infer<typeof slackAutomationRichTextExpressionSchema>
+
 export const automationPropertyOperationSchema = z
   .object({
     mode: z.enum(["set", "add", "remove", "clear"]),
@@ -626,7 +636,7 @@ export const databaseAutomationActionSchema = z.discriminatedUnion("type", [
       ...actionIdShape,
       channelId: stableIdSchema,
       connectionId: stableIdSchema,
-      message: automationRichTextExpressionSchema,
+      message: slackAutomationRichTextExpressionSchema,
       type: z.literal("send_slack"),
     })
     .strict(),
@@ -953,6 +963,14 @@ export const databaseAutomationCatalogSchema = z
         status: z.enum(["connected", "reconnect_required"]),
       }).strict(),
     ),
+    slackConnections: z.array(
+      z.object({
+        id: stableIdSchema,
+        status: z.enum(["connected", "revoked"]),
+        teamId: stableIdSchema,
+        teamName: shortTextSchema,
+      }).strict(),
+    ),
     manageUnavailableReason: z.string().nullable(),
     properties: z.array(
       z.object({
@@ -974,6 +992,13 @@ export const databaseAutomationCatalogSchema = z
 export type DatabaseAutomationCatalog = z.infer<
   typeof databaseAutomationCatalogSchema
 >
+
+export const slackAutomationChannelSchema = z.object({
+  id: stableIdSchema,
+  isPrivate: z.boolean(),
+  name: shortTextSchema,
+}).strict()
+export type SlackAutomationChannel = z.infer<typeof slackAutomationChannelSchema>
 
 export const createDatabaseAutomationSecretRequestSchema = z.object({
   dataSourceId: stableIdSchema,

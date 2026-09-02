@@ -8,6 +8,10 @@ export function isAutomationWebhooksEnabled(env: RuntimeEnv) {
   return getStringEnv(env, "AUTOMATION_WEBHOOKS_ENABLED")?.trim().toLowerCase() === "true";
 }
 
+export function isAutomationSlackEnabled(env: RuntimeEnv) {
+  return getStringEnv(env, "AUTOMATION_SLACK_ENABLED")?.trim().toLowerCase() === "true";
+}
+
 export function getAutomationWebhookHttpDomains(env: RuntimeEnv) {
   return new Set((getStringEnv(env, "AUTOMATION_WEBHOOK_HTTP_DOMAINS") ?? "")
     .split(",")

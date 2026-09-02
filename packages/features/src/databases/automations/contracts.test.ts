@@ -283,6 +283,7 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       canManage: true,
       dataSourceId: "source-1",
       gmailConnections: [{ email: "ada@example.com", id: "gmail-1", status: "connected" }],
+      slackConnections: [{ id: "slack-1", status: "connected", teamId: "team-1", teamName: "Example" }],
       manageUnavailableReason: null,
       properties: [
         {
@@ -376,6 +377,7 @@ test("automation catalogs expose only opaque Gmail connection metadata", () => {
       refreshTokenCiphertext: "must-not-leak",
       status: "connected",
     }],
+    slackConnections: [],
     manageUnavailableReason: null,
     properties: [],
     users: [],

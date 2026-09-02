@@ -24,8 +24,10 @@ import { workspaceSettingsRoutes } from "../features/workspaces/settings/routes"
 import type { AppBindings } from "../shared/types";
 import { demoRoutes } from "../features/demo/routes";
 import { notificationRoutes } from "../features/notifications/routes";
+import { automationSlackProviderRoutes } from "../features/databases/automations/slack-routes";
 
 export function registerRoutes(app: Hono<AppBindings>) {
+  app.route("/", automationSlackProviderRoutes);
   app.route("/api/ai", aiRoutes);
   app.route("/api/ai", aiThreadRoutes);
   app.route("/api/keys", apiKeyRoutes);
