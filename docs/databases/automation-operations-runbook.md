@@ -15,7 +15,7 @@ Roll out in this order: dark capture, internal workspaces, internal actions, sch
 ## Required configuration
 
 - Core: `DATABASE_URL`, the workspace capability gate, and the normal queue/worker adapter.
-- Operational health: a high-entropy `AUTOMATION_OPERATIONS_TOKEN` for `GET /health/automations`.
+- Operational health: a high-entropy `ZILOBASE_OPERATIONS_TOKEN` for the deployment-wide `GET /health/background` endpoint.
 - Retention: `DATABASE_AUTOMATION_STEP_RETENTION_DAYS` defaults to 7 (range 1–90); `DATABASE_AUTOMATION_RUN_RETENTION_DAYS` defaults to 30 (range 1–365).
 - Webhooks: `AUTOMATION_SECRET_ENCRYPTION_KEY`; self-hosted HTTP additionally requires exact `AUTOMATION_WEBHOOK_HTTP_DOMAINS` entries.
 - Slack: `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET`, and the automation encryption key.
@@ -23,9 +23,9 @@ Roll out in this order: dark capture, internal workspaces, internal actions, sch
 
 ## Metrics and alerts
 
-Self-hosted workers log a `database_automation_operational_snapshot` every minute. Hosted adapters must call `getDatabaseAutomationOperationalSnapshot` on the same cadence and publish its status counts and `oldestBacklogAgeMs`. A targeted hosted queue delivery that receives `AUTOMATION_WORKSPACE_CAPACITY` must be retried instead of acknowledged; the workspace advisory lock prevents the retry from exceeding the ten-run cap. Alert when backlog age exceeds five minutes, any workspace remains at ten running leases for five minutes, terminal failures rise above the workspace baseline, a provider’s retrying deliveries grow for ten minutes, or the worker heartbeat is absent for two scan intervals.
+Both runtimes emit one bounded `background.heartbeat` per minute. The protected snapshot reports per-lane ready counts and oldest-due age, active/stale leases, leased-maintenance status, cell/runtime identity, and coordinator/listener readiness. A targeted hosted queue delivery that receives `AUTOMATION_WORKSPACE_CAPACITY` is delayed instead of acknowledged; the workspace advisory lock prevents the retry from exceeding the ten-run cap. Alert when any lane is more than two minutes late, an event window is five seconds late at p99, a workspace remains at ten automation leases for five minutes, any DLQ receives a message, or two heartbeats are missed.
 
-The protected health endpoint returns 503 with `Retry-After: 30` when durable backlog age exceeds five minutes. Dashboard event windows by status, runs by status, deliveries by status/provider, execution latency percentiles, failure codes, active automations per source, cleanup deletions, and worker errors. Metrics and logs must contain IDs/hashes and bounded error codes only—never definitions, property values, messages, headers, OAuth tokens, or provider response bodies.
+The protected health endpoint returns 503 with `Retry-After: 30` when durable backlog age exceeds two minutes, stale leases exist, maintenance repeatedly fails, or the coordinator is unavailable. Metrics and logs may contain runtime, cell, lane, task kind, outcome, bounded error codes, and opaque IDs only—never definitions, property values, messages, email addresses, headers, OAuth tokens, or provider response bodies.
 
 ## Incident response
 
@@ -38,7 +38,7 @@ The protected health endpoint returns 503 with `Retry-After: 30` when durable ba
 
 ## Maintenance and recovery
 
-Node runs bounded retention cleanup every five minutes. Hosted deployments must schedule `cleanupDatabaseAutomationHistory` at least hourly until it returns zero deletions. Cleanup deletes at most 1,000 terminal records of each class per invocation, never queued/running work. Detailed steps and delivery receipts use the detail window; terminal run summaries, closed event windows, and deleted automations use the summary window.
+The leased maintenance table schedules retention hourly and reruns it after one minute while deletions remain. Cleanup deletes at most 1,000 terminal records of each class per invocation, never queued/running work. Detailed steps and delivery receipts use the detail window; terminal run summaries, closed event windows, and deleted automations use the summary window.
 
 Before and after upgrades, run clean-install and upgrade-from-`0072` migrations, the full server/features/web suites, hosted adapter tests, and a self-hosted worker restart test. During failover, start only workers sharing the same PostgreSQL database; advisory workspace locks, row leases, unique occurrences, action receipts, and stable delivery IDs provide recovery boundaries.
 

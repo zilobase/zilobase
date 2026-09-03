@@ -741,19 +741,19 @@ Realtime behavior remains independent and unchanged.
 
 ### 10.2 Worker contracts
 
-Add runtime-adapter hooks:
+The runtime adapter exposes one versioned background dispatcher:
 
-- `enqueueDatabaseAutomationRun`
+- `dispatchBackgroundTasks({ env, tasks })`
 - optional `publishNotification`
 - optional `sendAutomationWebhook` only if an edition needs custom egress;
   core retains URL validation and policy
 - Slack connector methods or a provider-neutral outbound connector interface
 
-Hosted Cloudflare adds a dedicated queue producer/consumer for automation runs.
-The cron changes to at least every minute and scans due schedules and recovery
-leases in addition to the existing five-minute maintenance work. Self-hosted
-Node adds a short polling automation worker and a one-minute schedule scanner,
-both with `unref`, overlap guards, structured errors, and clean shutdown.
+Hosted Cloudflare routes automation windows and runs through the fast and
+automation queues owned by the dedicated background Worker. Minute cron only
+claims leased maintenance tasks. Self-hosted Node uses PostgreSQL LISTEN/NOTIFY,
+one precise timer per lane, and a jittered 30-second recovery sweep; it performs
+no one-second polling.
 
 ### 10.3 Concurrency and idempotency
 
