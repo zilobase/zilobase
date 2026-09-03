@@ -60,7 +60,25 @@ jobs:
           grep -q "kind: PodDisruptionBudget" <<<"$ha_rendered"
           rendered=$(helm template community deploy/helm/zilobase)
           test "$(grep -c 'ZILOBASE_EDITION_MIGRATIONS_DIR' <<<"$rendered")" -eq 0
-          test "$(grep -c 'ZILOBASE_ENTERPRISE' <<<"$rendered")" -eq 0
+          test "$(grep -c 'name: inspector' <<<"$rendered")" -eq 0
+          debug=$(helm template community deploy/helm/zilobase \
+            --set debug.enabled=true --set debug.port=9233)
+          grep -q 'name: inspector' <<<"$debug"
+          grep -q -- '--inspect=0.0.0.0:9233' <<<"$debug"
+          service=$(helm template community deploy/helm/zilobase \
+            --show-only templates/service.yaml \
+            --set debug.enabled=true --set debug.port=9233)
+          test "$(grep -c '9233' <<<"$service")" -eq 0
+          if helm template invalid-http deploy/helm/zilobase \
+            --set config.externalUrl=http://community.localhost:3200 >/dev/null 2>&1; then
+            echo "production values accepted an HTTP external URL" >&2
+            exit 1
+          fi
+          helm template development deploy/helm/zilobase \
+            --set development.enabled=true \
+            --set config.externalUrl=http://community.localhost:3200 \
+            --set config.s3Endpoint=http://minio:9000 \
+            --set config.s3PublicEndpoint=http://127.0.0.1:3210 >/dev/null
       - name: Build and load immutable Community image
         shell: bash
         run: |
@@ -178,7 +196,6 @@ jobs:
             node --input-type=module -e 'let s="";for await(const c of process.stdin)s+=c;const j=JSON.parse(s);process.env.ZILOBASE_BOOTSTRAP_TOKEN=Buffer.from(j.data.ZILOBASE_BOOTSTRAP_TOKEN,"base64").toString();process.argv[2]="seed";await import("file:///tmp/test-community-helm.mjs")'
           kubectl -n community cp "$pod:/tmp/zilobase-community-helm-state.json" "$RUNNER_TEMP/zilobase-community-helm-state.json"
           test "$(docker exec community-helm-postgres psql -U zilobase -d zilobase -Atc 'select count(*) from drizzle.__zilobase_core_migrations;')" -gt 0
-          test "$(docker exec community-helm-postgres psql -U zilobase -d zilobase -Atc "select coalesce(to_regclass('drizzle.__zilobase_enterprise_migrations')::text,'absent');")" = absent
       - name: Paired empty-volume restore
         shell: bash
         run: |

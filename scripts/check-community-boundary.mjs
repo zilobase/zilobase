@@ -20,7 +20,7 @@ const { stdout } = await execFileAsync(
 for (const file of stdout.toString("utf8").split("\0")) {
   if (
     !file
-    || file.includes(".test.")
+    || file === "scripts/community-boundary.test.mjs"
     || path.basename(file) === "package-lock.json"
   ) continue;
 

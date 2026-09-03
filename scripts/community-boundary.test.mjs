@@ -38,6 +38,31 @@ test("community boundary rejects private runtime dependencies", () => {
     ),
     ["zilobase-cloud-adapter"],
   );
+  assert.deepEqual(
+    findPrivateRuntimeReferences(
+      "src/runtime.ts",
+      'import { runtime } from "@zilobase/enterprise"',
+    ),
+    ["@zilobase/enterprise"],
+  );
+  assert.deepEqual(
+    findPrivateRuntimeReferences(
+      "scripts/dev/private-profile.mjs",
+      'const directory = "../zilobase-enterprise";',
+    ),
+    ["private-edition repository marker"],
+  );
+  assert.deepEqual(
+    findPrivateRuntimeReferences("scripts/dev/enterprise-profile.mjs", "export {}"),
+    ["private-edition repository marker"],
+  );
+  assert.deepEqual(
+    findPrivateRuntimeReferences(
+      "apps/web/src/routes.ts",
+      'const path = "/enterprise/audit";',
+    ),
+    ["private-edition repository marker"],
+  );
 });
 
 test("community boundary skips files deleted from the working tree", () => {
