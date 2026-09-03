@@ -54,7 +54,7 @@ test("normalizes legacy title filters and bounds untrusted trees", () => {
     propertyId: "name",
     values: ["7", "true"],
   })
-  let cursor = normalized[1]
+  let cursor: (typeof normalized)[number] | undefined = normalized[1]
   for (let depth = 0; depth < 6; depth += 1) {
     assert.equal(cursor && "type" in cursor ? cursor.type : null, "group")
     cursor = cursor && "type" in cursor ? cursor.filters[0] : undefined

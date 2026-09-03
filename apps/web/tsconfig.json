@@ -13,8 +13,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "ignoreDeprecations": "5.0",
-"paths": {
+    "ignoreDeprecations": "6.0",
+    "paths": {
       "@zilobase/ai-conversation-adapter": [
         "./src/features/ai/conversation/use-agent-conversation.ts"
       ],
@@ -33,8 +33,8 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

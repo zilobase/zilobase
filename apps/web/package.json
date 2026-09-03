@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node ../../scripts/colors/sync-color-tokens.mjs --check && tsc && vite build",
+    "build": "node ../../scripts/colors/sync-color-tokens.mjs --check && npm run typecheck && vite build",
     "test": "node ../../scripts/colors/sync-color-tokens.mjs --check && node test/support/run-tests.mjs",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -106,7 +107,6 @@
     "esbuild": "^0.28.2",
     "fake-indexeddb": "^6.2.5",
     "linkedom": "^0.18.12",
-    "typescript": "~5.8.3",
     "vite": "^8.2.1"
   }
 }

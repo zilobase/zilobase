@@ -773,7 +773,7 @@ fn run_capture(
             let elapsed_ms = elapsed_samples * 1_000 / TARGET_SAMPLE_RATE as u64;
             update_elapsed(&status, elapsed_ms);
             emit_level(&app, &frame);
-            if elapsed_samples % (TARGET_SAMPLE_RATE as u64 * 5) == 0 {
+            if elapsed_samples.is_multiple_of(TARGET_SAMPLE_RATE as u64 * 5) {
                 let checkpoint = RecoverableMeetingCapture {
                     meeting_id: config.meeting_id.clone(),
                     started_at_epoch_ms: started_at,
@@ -963,7 +963,7 @@ fn build_input_stream(
     .map_err(|error| format!("Could not configure {}: {error}", description.name()))?;
     let sample_rate = config.sample_rate();
     let channels = config.channels() as usize;
-    let stream_config = config.clone().into();
+    let stream_config = config.into();
     let error_name = description.name().to_string();
     let error_callback = move |error| {
         log::error!(target: "zilobase::meeting_capture", "Audio stream error for {error_name}: {error}");
@@ -1777,7 +1777,7 @@ mod tests {
     fn transport_replay_keeps_the_unacknowledged_tail_of_a_batch() {
         let mut bytes = Vec::from(20_u64.to_le_bytes());
         bytes.push(meeting_audio_source_code(AudioSource::Microphone));
-        bytes.extend(std::iter::repeat(1_u8).take(FRAME_SAMPLES * 2 * 5));
+        bytes.extend(std::iter::repeat_n(1_u8, FRAME_SAMPLES * 2 * 5));
         let packet = MeetingAudioPacket {
             bytes,
             end_sequence: 24,

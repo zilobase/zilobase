@@ -43,7 +43,7 @@ test("system and quick filter catalogs include the full mailbox fields", () => {
     "labels",
     "categories",
     "priority",
-  ]) {
+  ] as const) {
     assert.equal(systemIds.has(id), true, `missing system property ${id}`)
   }
 
@@ -54,7 +54,7 @@ test("system and quick filter catalogs include the full mailbox fields", () => {
     "promotions",
     "updates",
     "forums",
-  ]) {
+  ] as const) {
     assert.equal(quickIds.has(`show_${category}`), true)
     assert.equal(quickIds.has(`hide_${category}`), true)
   }
@@ -67,7 +67,7 @@ test("system and quick filter catalogs include the full mailbox fields", () => {
     "is_unread",
     "show_sent",
     "show_archived",
-  ]) {
+  ] as const) {
     assert.equal(quickIds.has(id), true, `missing quick filter ${id}`)
   }
 })

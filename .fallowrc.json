@@ -8,9 +8,9 @@
     "apps/web/test/**/*.test.mjs",
     // Workspace package tests run directly through Node or Vitest.
     "packages/**/*.test.ts",
-    // Runtime and developer entry points invoked outside package scripts.
-    "scripts/desktop/run-signed-macos-debug.mjs",
-    "scripts/selfhost/test.mjs"
+    // Root scripts are not npm workspace packages, so list them explicitly.
+    "scripts/**/*.mjs",
+    "apps/desktop/e2e/**/*.mjs"
   ],
   "workspaces": {
     "patterns": [

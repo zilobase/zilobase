@@ -55,10 +55,7 @@ export async function appendBrowserMeetingRecoveryChunk(
   index: number,
   samples: Int16Array,
 ) {
-  const copy = samples.buffer.slice(
-    samples.byteOffset,
-    samples.byteOffset + samples.byteLength,
-  )
+  const copy = new Int16Array(samples).buffer
   await put(CHUNKS, {
     index,
     meetingId,

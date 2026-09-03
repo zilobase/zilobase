@@ -134,7 +134,9 @@ test("add-page actions can create an untitled page without property edits", () =
     },
   })
 
-  assert.deepEqual(parsed.actions[0]?.operations, [])
+  const action = parsed.actions[0]
+  assert.equal(action?.type, "add_page")
+  assert.deepEqual(action?.type === "add_page" ? action.operations : null, [])
 })
 
 test("parses Notion-compatible Slack formatting and broadcast mentions", () => {
@@ -155,7 +157,9 @@ test("parses Notion-compatible Slack formatting and broadcast mentions", () => {
     }],
   })
 
-  assert.deepEqual(parsed.actions[0]?.message.parts, [
+  const action = parsed.actions[0]
+  assert.equal(action?.type, "send_slack")
+  assert.deepEqual(action?.type === "send_slack" ? action.message.parts : null, [
     { bold: true, italic: true, text: "Important", type: "text" },
     { kind: "channel", type: "slack_broadcast" },
     { kind: "here", type: "slack_broadcast" },

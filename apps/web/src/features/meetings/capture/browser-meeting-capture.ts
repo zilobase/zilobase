@@ -997,7 +997,7 @@ export class BrowserMeetingTransport {
       && (force || socket.bufferedAmount < 1_048_576)
     ) {
       const frame = this.queue.shift()!
-      socket.send(frame)
+      socket.send(Uint8Array.from(frame))
       this.inFlight.push(frame)
       if (this.inFlight.length > MAX_TRANSPORT_FRAMES) this.inFlight.shift()
     }

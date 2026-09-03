@@ -40,10 +40,7 @@ test("full width uses the published owner preference when provided", () => {
 })
 
 test("full width preference mode remains on for legacy page metadata", () => {
-  assert.equal(
-    usesUserFullWidthPreference({ useUserFullWidthPreference: false }),
-    true,
-  )
+  assert.equal(usesUserFullWidthPreference(), true)
 })
 
 test("embedded page opening always uses the viewer preference", () => {
@@ -62,10 +59,5 @@ test("embedded page opening always uses the viewer preference", () => {
 })
 
 test("embedded page opening preference mode remains on for legacy metadata", () => {
-  assert.equal(
-    usesUserEmbeddedItemsPreference({
-      useUserEmbeddedItemsPreference: false,
-    }),
-    true,
-  )
+  assert.equal(usesUserEmbeddedItemsPreference(), true)
 })

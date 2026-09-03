@@ -7,7 +7,8 @@ export type PageContextLogMeta = {
 }
 
 function shouldLogPageContext() {
-  if (typeof import.meta !== "undefined" && import.meta.env?.DEV) {
+  const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env
+  if (env?.DEV) {
     return true
   }
 

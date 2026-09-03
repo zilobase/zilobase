@@ -6,6 +6,7 @@ import {
   databaseAutomationKeys,
   databaseAutomationListQueryOptions,
 } from "./queries"
+import type { ApiFetcher } from "../../shared/context"
 
 test("automation query keys are isolated from database payload caches", () => {
   assert.deepEqual(databaseAutomationKeys.list("database-1", "source-1"), [
@@ -22,9 +23,9 @@ test("automation query keys are isolated from database payload caches", () => {
 
 test("automation queries address source-aware and capability APIs", async () => {
   const paths: string[] = []
-  const apiFetch = async (path: string) => {
+  const apiFetch: ApiFetcher = async <T>(path: string) => {
     paths.push(path)
-    return { automations: [] }
+    return { automations: [] } as T
   }
   await databaseAutomationListQueryOptions(apiFetch, "database 1", "source 1").queryFn!({} as never)
   await databaseAutomationCapabilityQueryOptions(apiFetch, "database 1", "workspace 1").queryFn!({} as never)
@@ -33,4 +34,3 @@ test("automation queries address source-aware and capability APIs", async () => 
     "/databases/database%201/automation-capability?workspaceId=workspace%201",
   ])
 })
-

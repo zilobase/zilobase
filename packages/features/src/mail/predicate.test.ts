@@ -63,7 +63,11 @@ test("mail predicates implement relative dates, empty custom values, categories,
 test("mail predicates accept the shared database relative-date editor format", () => {
   const now = new Date("2026-09-01T12:00:00Z")
   assert.equal(evaluateMailFilterCondition(
-    { internalDate: new Date("2026-08-28T12:00:00Z").getTime(), labelIds: [] },
+    {
+      ...record,
+      internalDate: new Date("2026-08-28T12:00:00Z").getTime(),
+      labelIds: [],
+    },
     { id: "relative", operator: "is_relative_to_today", propertyId: "date", type: "condition", values: ["relative:past:week"] },
     now,
   ), true)

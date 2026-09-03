@@ -152,6 +152,23 @@ Run the architecture gate before submitting structural changes:
 npm run quality:fallow -- --gate all --production
 ```
 
+Run the repository verification commands from the workspace root:
+
+```sh
+npm run verify:core         # TypeScript packages, web, server, and changed code
+npm run verify:desktop      # Rust formatting, clippy, and tests
+npm run verify:architecture # Complete production Fallow report
+npm run verify:consumers    # Adjacent cloud-adapter and enterprise checkouts
+npm run verify              # All of the above
+```
+
+The verified cleanup baseline at commit `20d0a822` is 680 server tests, 138
+shared-feature tests, 42 desktop tests, 40.63% server line coverage, 4.39%
+production duplication, and a 4.5 MB initial web JavaScript chunk. The web and
+server builds pass; the verification baseline also closes the previously
+unchecked shared-package TypeScript errors. Full-repository Fallow reporting
+runs on `main` and nightly, while pull requests block newly introduced issues.
+
 New and changed functions should remain within normal Fallow health targets. A
 suppression must name the exception and explain why it cannot be reduced in the
 same change; do not raise repository ceilings to accommodate one function.

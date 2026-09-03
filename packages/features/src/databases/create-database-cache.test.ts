@@ -28,9 +28,13 @@ test("applyCreatedDatabaseToPageNav adds embedded database and placement", () =>
   const payload = createTestDatabasePayload({
     database: {
       config: {},
+      createdAt,
       id: "database-2",
       name: "New database",
       pageId: "page-root",
+      updatedAt: createdAt,
+      version: 0,
+      workspaceId: "org-1",
     },
     rows: [],
     values: [],
@@ -58,9 +62,13 @@ test("applyCreatedDatabaseToPageNav adds standalone database without placement",
   const payload = createTestDatabasePayload({
     database: {
       config: {},
+      createdAt,
       id: "database-standalone",
       name: "Standalone",
       pageId: null,
+      updatedAt: createdAt,
+      version: 0,
+      workspaceId: "org-1",
     },
     rows: [],
     values: [],

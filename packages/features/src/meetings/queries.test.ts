@@ -6,6 +6,7 @@ import {
   meetingQueryOptions,
   workspaceMeetingsQueryOptions,
 } from "./queries"
+import type { ApiFetcher } from "../shared/context"
 
 test("meeting query keys are hierarchical and scoped by meeting", () => {
   assert.deepEqual(meetingKeys.list("workspace-1"), [
@@ -51,10 +52,14 @@ test("meeting detail queries never poll for live state", () => {
 
 test("workspace meeting queries request the canonical response shape", async () => {
   const calls: unknown[] = []
-  const options = workspaceMeetingsQueryOptions(async (path, init) => {
+  const apiFetch: ApiFetcher = async <T>(
+    path: string,
+    init?: RequestInit,
+  ) => {
     calls.push({ init, path })
-    return { meetings: [] }
-  }, "workspace-1")
+    return { meetings: [] } as T
+  }
+  const options = workspaceMeetingsQueryOptions(apiFetch, "workspace-1")
   const controller = new AbortController()
 
   assert.deepEqual(

@@ -243,7 +243,7 @@ fn recent_log_files(log_dir: &Path) -> Vec<PathBuf> {
 fn default_log_dir() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
-        return dirs::home_dir().map(|path| path.join("Library/Logs").join(APP_IDENTIFIER));
+        dirs::home_dir().map(|path| path.join("Library/Logs").join(APP_IDENTIFIER))
     }
 
     #[cfg(not(target_os = "macos"))]
