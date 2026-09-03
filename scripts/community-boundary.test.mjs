@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { findPrivateRuntimeReferences } from "./community-boundary.mjs";
+import {
+  findPrivateRuntimeReferences,
+  isMissingWorkingTreeFile,
+} from "./community-boundary.mjs";
 
 test("community boundary ignores documentation and public service URLs", () => {
   assert.deepEqual(
@@ -34,5 +37,16 @@ test("community boundary rejects private runtime dependencies", () => {
       JSON.stringify({ dependencies: { "zilobase-cloud-adapter": "workspace:*" } }),
     ),
     ["zilobase-cloud-adapter"],
+  );
+});
+
+test("community boundary skips files deleted from the working tree", () => {
+  assert.equal(
+    isMissingWorkingTreeFile(Object.assign(new Error("missing"), { code: "ENOENT" })),
+    true,
+  );
+  assert.equal(
+    isMissingWorkingTreeFile(Object.assign(new Error("denied"), { code: "EACCES" })),
+    false,
   );
 });

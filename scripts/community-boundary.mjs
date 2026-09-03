@@ -27,6 +27,10 @@ export function findPrivateRuntimeReferences(file, content) {
     .filter((specifier) => specifier && isPrivatePackage(specifier));
 }
 
+export function isMissingWorkingTreeFile(error) {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
 function pathBasename(file) {
   return file.slice(Math.max(file.lastIndexOf("/"), file.lastIndexOf("\\")) + 1);
 }

@@ -3,7 +3,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 
-import { findPrivateRuntimeReferences } from "./community-boundary.mjs";
+import {
+  findPrivateRuntimeReferences,
+  isMissingWorkingTreeFile,
+} from "./community-boundary.mjs";
 
 const root = process.cwd();
 const execFileAsync = promisify(execFile);
@@ -21,7 +24,13 @@ for (const file of stdout.toString("utf8").split("\0")) {
     || path.basename(file) === "package-lock.json"
   ) continue;
 
-  const content = await readFile(path.join(root, file));
+  let content;
+  try {
+    content = await readFile(path.join(root, file));
+  } catch (error) {
+    if (isMissingWorkingTreeFile(error)) continue;
+    throw error;
+  }
   if (content.includes(0)) continue;
 
   for (const reference of findPrivateRuntimeReferences(file, content.toString("utf8"))) {
