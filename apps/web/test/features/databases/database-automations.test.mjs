@@ -1,9 +1,18 @@
 export function register({ assert, readSource, test }) {
+  const readAutomationManager = async () =>
+    (await Promise.all([
+      readSource("/src/features/databases/automations/database-automation-manager.tsx"),
+      readSource("/src/features/databases/automations/database-automation-screens.tsx"),
+      readSource("/src/features/databases/automations/automation-schedule.tsx"),
+    ])).join("\n")
+  const readNotionActions = async () =>
+    (await Promise.all([
+      readSource("/src/features/databases/automations/notion-action-builder.tsx"),
+      readSource("/src/features/databases/automations/notion-action-model.ts"),
+    ])).join("\n")
   test("database automation release is server-capability gated and source scoped", async () => {
     const [manager, toolbar] = await Promise.all([
-      readSource(
-        "/src/features/databases/automations/database-automation-manager.tsx"
-      ),
+      readAutomationManager(),
       readSource("/src/features/databases/views/view/database-view-toolbar.tsx")
     ])
     assert.match(toolbar, /useDatabaseAutomationCapability/)
@@ -25,9 +34,7 @@ export function register({ assert, readSource, test }) {
   })
 
   test("automation manager includes builder, lifecycle, history, and discard flows", async () => {
-    const manager = await readSource(
-      "/src/features/databases/automations/database-automation-manager.tsx"
-    )
+    const manager = await readAutomationManager()
     for (const behavior of [
       "Create and activate",
       "Discard automation changes?",
@@ -45,9 +52,7 @@ export function register({ assert, readSource, test }) {
   })
 
   test("new automations start empty and use matching add trigger and action cards", async () => {
-    const manager = await readSource(
-      "/src/features/databases/automations/database-automation-manager.tsx"
-    )
+    const manager = await readAutomationManager()
 
     assert.match(manager, /function emptyDraft\(\)[\s\S]*?actions: \[\][\s\S]*?triggers: \[\]/)
     assert.match(manager, /label="Add trigger"/)
@@ -63,12 +68,8 @@ export function register({ assert, readSource, test }) {
 
   test("automation manager uses the View settings dropdown pattern and opens the builder in a dialog", async () => {
     const [manager, actions] = await Promise.all([
-      readSource(
-        "/src/features/databases/automations/database-automation-manager.tsx"
-      ),
-      readSource(
-        "/src/features/databases/automations/notion-action-builder.tsx"
-      )
+      readAutomationManager(),
+      readNotionActions()
     ])
 
     assert.match(manager, /<DropDrawer[\s\S]*?defaultSubDisplayMode="inline"/)
@@ -191,12 +192,8 @@ export function register({ assert, readSource, test }) {
 
   test("builder supports recurring schedules and excludes trigger-page actions", async () => {
     const [manager, actions] = await Promise.all([
-      readSource(
-        "/src/features/databases/automations/database-automation-manager.tsx"
-      ),
-      readSource(
-        "/src/features/databases/automations/notion-action-builder.tsx"
-      )
+      readAutomationManager(),
+      readNotionActions()
     ])
     for (const behavior of [
       "Every…",
@@ -249,9 +246,7 @@ export function register({ assert, readSource, test }) {
       readSource(
         "/src/features/databases/views/view/database-condition-editor.tsx"
       ),
-      readSource(
-        "/src/features/databases/automations/database-automation-manager.tsx"
-      )
+      readAutomationManager()
     ])
 
     assert.match(
@@ -279,9 +274,7 @@ export function register({ assert, readSource, test }) {
   })
 
   test("builder uses Notion's exact action names and ordering", async () => {
-    const actions = await readSource(
-      "/src/features/databases/automations/notion-action-builder.tsx"
-    )
+    const actions = await readNotionActions()
     const labels = [
       "Edit property",
       "Add page to",
@@ -302,12 +295,8 @@ export function register({ assert, readSource, test }) {
 
   test("automation builder uses the shared select component for every dropdown", async () => {
     const [manager, actions] = await Promise.all([
-      readSource(
-        "/src/features/databases/automations/database-automation-manager.tsx"
-      ),
-      readSource(
-        "/src/features/databases/automations/notion-action-builder.tsx"
-      )
+      readAutomationManager(),
+      readNotionActions()
     ])
     const source = `${manager}\n${actions}`
 
@@ -320,9 +309,7 @@ export function register({ assert, readSource, test }) {
   })
 
   test("builder exposes bounded in-product notification recipients", async () => {
-    const actions = await readSource(
-      "/src/features/databases/automations/notion-action-builder.tsx"
-    )
+    const actions = await readNotionActions()
     for (const behavior of [
       "Send notification to",
       "Notification recipient",
@@ -336,9 +323,7 @@ export function register({ assert, readSource, test }) {
   })
 
   test("builder exposes protected Gmail fields and dynamic recipient sources", async () => {
-    const actions = await readSource(
-      "/src/features/databases/automations/notion-action-builder.tsx"
-    )
+    const actions = await readNotionActions()
     for (const behavior of [
       "Send mail to",
       "Send mail from",
@@ -358,12 +343,8 @@ export function register({ assert, readSource, test }) {
 
   test("builder stores webhook headers separately from definitions", async () => {
     const [manager, actions] = await Promise.all([
-      readSource(
-        "/src/features/databases/automations/database-automation-manager.tsx"
-      ),
-      readSource(
-        "/src/features/databases/automations/notion-action-builder.tsx"
-      )
+      readAutomationManager(),
+      readNotionActions()
     ])
     for (const behavior of [
       "Send webhook",
@@ -379,9 +360,7 @@ export function register({ assert, readSource, test }) {
   })
 
   test("builder discovers Slack channels and exposes variables, mentions, and links", async () => {
-    const actions = await readSource(
-      "/src/features/databases/automations/notion-action-builder.tsx"
-    )
+    const actions = await readNotionActions()
     assert.match(actions, /useSlackAutomationChannels/)
     assert.match(actions, /Slack mention/)
     assert.match(actions, /Slack link/)
@@ -397,9 +376,7 @@ export function register({ assert, readSource, test }) {
   })
 
   test("actions expose Notion's multi-value and nested editing controls", async () => {
-    const actions = await readSource(
-      "/src/features/databases/automations/notion-action-builder.tsx"
-    )
+    const actions = await readNotionActions()
     for (const behavior of [
       "Edit another property",
       "Add variable",
@@ -417,12 +394,8 @@ export function register({ assert, readSource, test }) {
 
   test("editing existing actions keeps the complete runtime definition", async () => {
     const [manager, actions] = await Promise.all([
-      readSource(
-        "/src/features/databases/automations/database-automation-manager.tsx"
-      ),
-      readSource(
-        "/src/features/databases/automations/notion-action-builder.tsx"
-      )
+      readAutomationManager(),
+      readNotionActions()
     ])
     assert.match(
       actions,

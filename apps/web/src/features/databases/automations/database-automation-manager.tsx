@@ -5,7 +5,6 @@ import type {
   DatabaseAutomationCatalog,
   DatabaseAutomationDefinition,
   DatabaseAutomationEventTriggerClause,
-  DatabaseAutomationSchedule,
   DatabaseAutomationTriggerOperator,
 } from "@zilobase/features/databases/automations";
 import {
@@ -27,11 +26,8 @@ import {
   Check,
   ChevronDownIcon,
   Clock,
-  Copy,
   Loader2,
-  Pause,
   Pencil,
-  Play,
   Plus,
   Sparkles,
   Trash2,
@@ -51,8 +47,6 @@ import {
   CommandSeparator,
 } from "@/shared/ui/command";
 import { Input } from "@/shared/ui/input";
-import { DatePicker } from "@/shared/ui/date-picker";
-import { TimePicker } from "@/shared/ui/time-picker";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,8 +60,6 @@ import {
 import {
   DropDrawer,
   DropDrawerContent,
-  DropDrawerItem,
-  DropDrawerSeparator,
   DropDrawerTrigger,
 } from "@/shared/ui/dropdrawer";
 import {
@@ -82,13 +74,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
 import { cn } from "@/shared/lib/utils";
 import { getColorTokenBadgeClassName } from "@/shared/lib/color-tokens";
 import { PageIconDisplay } from "@/features/pages/index";
@@ -111,6 +96,22 @@ import {
   type NotionActionDraft,
 } from "./notion-action-builder";
 
+import {
+  AutomationList,
+  ManagerHeader,
+  PanelMessage,
+  RunDetail,
+  RunList,
+} from "./database-automation-screens"
+
+import { AutomationSelect } from "./automation-select"
+import {
+  ScheduleEditor,
+  scheduleDefinition,
+  scheduleDraft,
+  scheduleTriggerLabel,
+  type ScheduleDraft,
+} from "./automation-schedule"
 type Screen = "builder" | "list" | "run" | "runs";
 const automationMenuItemClassName = "min-h-9 px-2 py-2 text-[13px]";
 type TriggerDraft = {
@@ -140,17 +141,7 @@ type BuilderDraft = {
   triggerKind: "event" | "schedule";
   triggers: TriggerDraft[];
 };
-type ScheduleDraft = {
-  customPattern: "daily" | "monthly" | "weekly" | "yearly";
-  dayOfMonth: string;
-  endDate: string;
-  frequency: DatabaseAutomationSchedule["frequency"];
-  interval: number;
-  localTime: string;
-  months: number[];
-  startDate: string;
-  weekdays: number[];
-};
+
 
 const operandless = new Set<DatabaseAutomationTriggerOperator>([
   "is_checked",
@@ -432,112 +423,6 @@ export function DatabaseAutomationManager({
         </AlertDialogContent>
       </AlertDialog>
     </>
-  );
-}
-
-function ManagerHeader({ onBack, title }: {
-  onBack?: () => void;
-  title: string;
-}) {
-  return (
-    <div className="flex min-h-10 shrink-0 items-center gap-2 px-2 py-1.5">
-      {onBack ? (
-        <Button aria-label="Back" onClick={onBack} size="icon-sm" variant="ghost"><ArrowLeft /></Button>
-      ) : <Zap className="size-4 text-content-secondary" />}
-      <h2 className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</h2>
-    </div>
-  );
-}
-
-function AutomationList({ data, error, loading, onCreate, onEdit, onLifecycle, onRuns }: {
-  data: Array<{ actionCount: number; id: string; lastRunStatus: string | null; name: string; nextRunAt: string | null; status: string; triggerSummary: string }>;
-  error: boolean;
-  loading: boolean;
-  onCreate: () => void;
-  onEdit: (id: string) => void;
-  onLifecycle: (id: string, action: "delete" | "duplicate" | "pause" | "resume") => void;
-  onRuns: (id: string) => void;
-}) {
-  if (loading) {
-    return <div className="flex items-center gap-2 px-2 py-4 text-xs text-content-secondary"><Loader2 className="size-4 animate-spin" />Loading automations…</div>;
-  }
-  if (error) {
-    return <div className="flex items-center gap-2 px-2 py-4 text-xs text-action-danger-text"><TriangleAlertIcon className="size-4" />Automations could not be loaded</div>;
-  }
-  return (
-    <div className="pb-1">
-      <DropDrawerItem className="font-medium" onSelect={onCreate}>
-        <Plus />
-        <span>New automation</span>
-      </DropDrawerItem>
-      <DropDrawerSeparator />
-      {!data.length ? (
-        <div className="px-2 py-4 text-xs/relaxed text-content-secondary">
-          No automations yet. Create one to update pages or notify people when this database changes.
-        </div>
-      ) : data.map((automation) => (
-        <div className="group/automation rounded-md" key={automation.id}>
-          <DropDrawerItem className="min-h-12 items-start py-2" onSelect={() => onEdit(automation.id)}>
-            <StatusDot status={automation.status} />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-2">
-                <span className="min-w-0 flex-1 truncate font-medium">{automation.name}</span>
-                <span className="shrink-0 text-[11px] capitalize text-content-secondary">{automation.status}</span>
-              </span>
-              <span className="mt-0.5 block truncate text-[11px] text-content-secondary">{automation.triggerSummary}</span>
-            </span>
-          </DropDrawerItem>
-          <div className="-mt-1 mb-1 flex items-center gap-0.5 px-2 pl-7">
-            <Button aria-label={automation.status === "active" ? "Pause automation" : "Resume automation"} onClick={() => onLifecycle(automation.id, automation.status === "active" ? "pause" : "resume")} size="icon-sm" type="button" variant="ghost">
-              {automation.status === "active" ? <Pause /> : <Play />}
-            </Button>
-            <Button aria-label="View automation runs" onClick={() => onRuns(automation.id)} size="icon-sm" type="button" variant="ghost"><Clock /></Button>
-            <Button aria-label="Duplicate automation" onClick={() => onLifecycle(automation.id, "duplicate")} size="icon-sm" type="button" variant="ghost"><Copy /></Button>
-            <Button aria-label="Delete automation" className="ml-auto text-action-danger-text" onClick={() => onLifecycle(automation.id, "delete")} size="icon-sm" type="button" variant="ghost"><Trash2 /></Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-const emptySelectValue = "__automation_select_empty__";
-
-function AutomationSelect({
-  ariaLabel,
-  className,
-  disabled,
-  onValueChange,
-  options,
-  value,
-}: {
-  ariaLabel: string;
-  className?: string;
-  disabled?: boolean;
-  onValueChange: (value: string) => void;
-  options: Array<{ label: string; value: string }>;
-  value: string;
-}) {
-  return (
-    <Select
-      disabled={disabled}
-      onValueChange={(nextValue) => onValueChange(nextValue === emptySelectValue ? "" : nextValue)}
-      value={value || emptySelectValue}
-    >
-      <SelectTrigger aria-label={ariaLabel} className={cn("w-full min-w-0", className)}>
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent align="start" position="popper">
-        {options.map((option) => (
-          <SelectItem
-            key={option.value || emptySelectValue}
-            value={option.value || emptySelectValue}
-          >
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
   );
 }
 
@@ -1496,139 +1381,6 @@ function triggerOperatorLabel(operator: DatabaseAutomationTriggerOperator) {
   return humanize(operator);
 }
 
-function scheduleTriggerLabel(schedule: ScheduleDraft) {
-  const unit = schedule.frequency === "custom" ? schedule.customPattern : schedule.frequency;
-  const labels = { daily: "day", monthly: "month", weekly: "week", yearly: "year" } as const;
-  return schedule.interval === 1 ? `Every ${labels[unit]}` : `Every ${schedule.interval} ${labels[unit]}s`;
-}
-
-function ScheduleEditor({ onChange, schedule }: {
-  onChange: (schedule: ScheduleDraft) => void;
-  schedule: ScheduleDraft;
-}) {
-  const patch = (value: Partial<ScheduleDraft>) => onChange({ ...schedule, ...value });
-  const pattern = schedule.frequency === "custom" ? schedule.customPattern : schedule.frequency;
-  return (
-    <div className="grid gap-2">
-      <label className="grid gap-1 text-xs font-medium text-content-secondary">
-        Frequency
-        <AutomationSelect
-          ariaLabel="Schedule frequency"
-          className="h-8 text-sm text-content-primary"
-          onValueChange={(frequency) => patch({ frequency: frequency as ScheduleDraft["frequency"] })}
-          options={[
-            { label: "Daily", value: "daily" },
-            { label: "Weekly", value: "weekly" },
-            { label: "Monthly", value: "monthly" },
-            { label: "Yearly", value: "yearly" },
-            { label: "Custom", value: "custom" },
-          ]}
-          value={schedule.frequency}
-        />
-      </label>
-      {schedule.frequency === "custom" ? (
-        <label className="grid gap-1 text-xs font-medium text-content-secondary">
-          Repeat unit
-          <AutomationSelect
-            ariaLabel="Custom schedule unit"
-            className="h-8 text-sm text-content-primary"
-            onValueChange={(customPattern) => patch({ customPattern: customPattern as ScheduleDraft["customPattern"] })}
-            options={[
-              { label: "Days", value: "daily" },
-              { label: "Weeks", value: "weekly" },
-              { label: "Months", value: "monthly" },
-              { label: "Years", value: "yearly" },
-            ]}
-            value={schedule.customPattern}
-          />
-        </label>
-      ) : null}
-      <div className="grid grid-cols-2 gap-2">
-        <label className="grid gap-1 text-xs font-medium text-content-secondary">
-          Every
-          <Input aria-label="Schedule interval" inputMode="numeric" onChange={(event) => patch({ interval: Math.max(1, Math.min(365, Number(event.target.value.replace(/\D/g, "")) || 1)) })} pattern="[0-9]*" value={schedule.interval} />
-        </label>
-        <label className="grid gap-1 text-xs font-medium text-content-secondary">
-          Local time
-          <TimePicker aria-label="Schedule local time" onValueChange={(localTime) => patch({ localTime })} value={schedule.localTime} />
-        </label>
-      </div>
-      {pattern === "weekly" ? (
-        <fieldset>
-          <legend className="mb-1 text-xs font-medium text-content-secondary">Weekdays</legend>
-          <div className="flex flex-wrap gap-1">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((label, day) => (
-              <Button
-                aria-pressed={schedule.weekdays.includes(day)}
-                key={label}
-                onClick={() => patch({ weekdays: toggleNumber(schedule.weekdays, day) })}
-                size="sm"
-                type="button"
-                variant={schedule.weekdays.includes(day) ? "secondary" : "outline"}
-              >{label}</Button>
-            ))}
-          </div>
-        </fieldset>
-      ) : null}
-      {pattern === "monthly" || pattern === "yearly" ? (
-        <label className="grid gap-1 text-xs font-medium text-content-secondary">
-          Day of month
-          <AutomationSelect
-            ariaLabel="Schedule day of month"
-            className="h-8 text-sm text-content-primary"
-            onValueChange={(dayOfMonth) => patch({ dayOfMonth })}
-            options={[
-              ...Array.from({ length: 31 }, (_, index) => ({ label: String(index + 1), value: String(index + 1) })),
-              { label: "Last day", value: "last" },
-            ]}
-            value={schedule.dayOfMonth}
-          />
-        </label>
-      ) : null}
-      {pattern === "yearly" ? (
-        <fieldset>
-          <legend className="mb-1 text-xs font-medium text-content-secondary">Months</legend>
-          <div className="grid grid-cols-6 gap-1">
-            {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-              <Button aria-label={`Month ${month}`} aria-pressed={schedule.months.includes(month)} key={month} onClick={() => patch({ months: toggleNumber(schedule.months, month) })} size="sm" type="button" variant={schedule.months.includes(month) ? "secondary" : "outline"}>{month}</Button>
-            ))}
-          </div>
-        </fieldset>
-      ) : null}
-      <div className="grid grid-cols-2 gap-2">
-        <label className="grid gap-1 text-xs font-medium text-content-secondary">
-          Start date
-          <DatePicker aria-label="Schedule start date" onValueChange={(startDate) => patch({ startDate, ...(schedule.endDate && schedule.endDate < startDate ? { endDate: "" } : {}) })} value={schedule.startDate} />
-        </label>
-        <label className="grid gap-1 text-xs font-medium text-content-secondary">
-          End date (optional)
-          <DatePicker aria-label="Schedule end date" clearable minValue={schedule.startDate} onValueChange={(endDate) => patch({ endDate })} placeholder="No end date" value={schedule.endDate} />
-        </label>
-      </div>
-    </div>
-  );
-}
-
-function RunList({ loading, onSelect, runs }: { loading: boolean; onSelect: (id: string) => void; runs: Array<{ durationMs: number | null; id: string; status: string; triggerTime: string }> }) {
-  if (loading) return <div className="flex items-center gap-2 px-2 py-4 text-xs text-content-secondary"><Loader2 className="size-4 animate-spin" />Loading runs…</div>;
-  if (!runs.length) return <div className="px-2 py-4 text-xs/relaxed text-content-secondary">No runs yet. Runs appear here after a trigger matches.</div>;
-  return <div className="p-1">{runs.map((item) => <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left hover:bg-action-neutral-hover active:bg-action-neutral-pressed" key={item.id} onClick={() => onSelect(item.id)} type="button"><StatusDot status={item.status} /><span className="min-w-0 flex-1"><span className="block text-xs font-medium capitalize">{item.status}</span><span className="block truncate text-[11px] text-content-secondary">{new Date(item.triggerTime).toLocaleString()}</span></span><span className="text-[11px] text-content-secondary">{item.durationMs == null ? "—" : `${item.durationMs}ms`}</span></button>)}</div>;
-}
-
-function RunDetail({ loading, run }: { loading: boolean; run?: { errorSummary: string | null; status: string; steps?: Array<{ actionId: string; durationMs: number | null; errorSummary: string | null; status: string }> } }) {
-  if (loading) return <div className="flex items-center gap-2 px-2 py-4 text-xs text-content-secondary"><Loader2 className="size-4 animate-spin" />Loading run…</div>;
-  if (!run) return <div className="flex items-center gap-2 px-2 py-4 text-xs text-content-secondary"><TriangleAlertIcon className="size-4" />Run unavailable</div>;
-  return <div className="space-y-1 p-1"><div className="flex items-center gap-2 rounded-md px-2 py-2"><StatusDot status={run.status} /><span className="text-xs font-semibold capitalize">{run.status}</span></div>{run.errorSummary ? <p className="rounded-md bg-feedback-error-subtle p-2 text-xs text-action-danger-text">{run.errorSummary}</p> : null}{run.steps?.map((step, index) => <div className="rounded-md px-2 py-2 hover:bg-action-neutral-hover" key={`${step.actionId}:${index}`}><div className="flex items-center gap-2"><StatusDot status={step.status} /><span className="text-xs font-medium">Step {index + 1}</span><span className="ml-auto text-[11px] text-content-secondary">{step.durationMs == null ? "—" : `${step.durationMs}ms`}</span></div>{step.errorSummary ? <p className="mt-1 text-[11px] text-action-danger-text">{step.errorSummary}</p> : null}</div>)}</div>;
-}
-
-function PanelMessage({ description, icon, title }: { description?: string; icon: ReactNode; title: string }) {
-  return <div className="flex min-h-72 flex-col items-center justify-center px-8 text-center"><span className="mb-3 text-content-secondary [&_svg]:size-7">{icon}</span><h3 className="text-sm font-semibold">{title}</h3>{description ? <p className="mt-2 max-w-72 text-sm text-content-secondary">{description}</p> : null}</div>;
-}
-
-function StatusDot({ status }: { status: string }) {
-  return <span aria-label={status} className={cn("size-2 shrink-0 rounded-full", status === "active" || status === "succeeded" ? "bg-feedback-success" : status === "error" || status === "failed" ? "bg-feedback-error" : status === "running" || status === "queued" ? "bg-feedback-warning" : "bg-indicator-muted")} />;
-}
-
 function emptyDraft(): BuilderDraft {
   return {
     actions: [],
@@ -1780,41 +1532,6 @@ function triggerOperandValues(operand: AutomationTriggerOperand | undefined): st
   if (operand.type === "date") return [operand.value.slice(0, 10)];
   if (operand.type === "date_range") return [operand.start.slice(0, 10), operand.end.slice(0, 10)];
   return [`relative:${operand.direction}:${operand.unit}`];
-}
-
-function scheduleDefinition(draft: ScheduleDraft, timezone: string): DatabaseAutomationSchedule {
-  const pattern = draft.frequency === "custom" ? draft.customPattern : draft.frequency;
-  return {
-    frequency: draft.frequency,
-    interval: draft.interval,
-    localTime: draft.localTime,
-    startDate: draft.startDate,
-    timezone,
-    ...(draft.endDate ? { endDate: draft.endDate } : {}),
-    ...(pattern === "weekly" ? { weekdays: draft.weekdays } : {}),
-    ...(pattern === "monthly" || pattern === "yearly" ? { dayOfMonth: draft.dayOfMonth === "last" ? "last" : Number(draft.dayOfMonth) } : {}),
-    ...(pattern === "yearly" ? { months: draft.months } : {}),
-  };
-}
-
-function scheduleDraft(schedule: DatabaseAutomationSchedule): ScheduleDraft {
-  const customPattern = schedule.months?.length ? "yearly" : schedule.dayOfMonth !== undefined ? "monthly" : schedule.weekdays?.length ? "weekly" : "daily";
-  return {
-    customPattern,
-    dayOfMonth: String(schedule.dayOfMonth ?? 1),
-    endDate: schedule.endDate ?? "",
-    frequency: schedule.frequency,
-    interval: schedule.interval,
-    localTime: schedule.localTime,
-    months: schedule.months ?? [1],
-    startDate: schedule.startDate,
-    weekdays: schedule.weekdays ?? [1],
-  };
-}
-
-function toggleNumber(values: number[], value: number) {
-  if (values.includes(value)) return values.length === 1 ? values : values.filter((item) => item !== value);
-  return [...values, value].sort((left, right) => left - right);
 }
 
 function move<T>(items: T[], from: number, to: number) {

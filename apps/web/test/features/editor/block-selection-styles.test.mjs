@@ -5,7 +5,10 @@ export function register({ readSource, assert, test }) {
         readSource("/src/features/editor/styles/editor.css"),
         readSource("/src/features/editor/styles/editor-chrome.css"),
         readSource("/src/features/editor/composition/editor-chrome.tsx"),
-        readSource("/src/features/databases/styles/database.css"),
+        Promise.all([
+          readSource("/src/features/databases/styles/database.css"),
+          readSource("/src/features/databases/styles/database-table.css"),
+        ]).then((sources) => sources.join("\n")),
         readSource("/src/shared/styles/color-tokens.css"),
       ])
     const css = `${editorCss}\n${editorChromeCss}\n${databaseCss}`
@@ -71,7 +74,10 @@ export function register({ readSource, assert, test }) {
   test("task list selection uses the shared overlay with even first-row geometry", async () => {
     const [editorCss, databaseCss] = await Promise.all([
       readSource("/src/features/editor/styles/editor.css"),
-      readSource("/src/features/databases/styles/database.css"),
+      Promise.all([
+        readSource("/src/features/databases/styles/database.css"),
+        readSource("/src/features/databases/styles/database-table.css"),
+      ]).then((sources) => sources.join("\n")),
     ])
     const css = `${editorCss}\n${databaseCss}`
 
@@ -100,7 +106,10 @@ export function register({ readSource, assert, test }) {
   test("database selection does not restyle any database content", async () => {
     const [editorCss, databaseCss] = await Promise.all([
       readSource("/src/features/editor/styles/editor.css"),
-      readSource("/src/features/databases/styles/database.css"),
+      Promise.all([
+        readSource("/src/features/databases/styles/database.css"),
+        readSource("/src/features/databases/styles/database-table.css"),
+      ]).then((sources) => sources.join("\n")),
     ])
     const css = `${editorCss}\n${databaseCss}`
 

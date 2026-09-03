@@ -6,6 +6,7 @@ export function register({ assert, readSource, test }) {
       featureEntry,
       editorStyles,
       databaseStyles,
+      databaseTableStyles,
       editorChromeStyles,
       meetingStyles,
       editorCommentStyles,
@@ -16,6 +17,7 @@ export function register({ assert, readSource, test }) {
         readSource("/src/app/styles.css"),
         readSource("/src/features/editor/styles/editor.css"),
         readSource("/src/features/databases/styles/database.css"),
+        readSource("/src/features/databases/styles/database-table.css"),
         readSource("/src/features/editor/styles/editor-chrome.css"),
         readSource("/src/features/meetings/styles/meeting.css"),
         readSource("/src/features/editor/styles/editor-comments.css"),
@@ -25,12 +27,13 @@ export function register({ assert, readSource, test }) {
     assert.ok(main.indexOf("shared/styles/global.css") < main.indexOf("./styles.css"))
     assert.match(
       featureEntry,
-      /@import "\.\.\/features\/editor\/styles\/editor\.css";\s*@import "\.\.\/features\/databases\/styles\/database\.css";\s*@import "\.\.\/features\/editor\/styles\/editor-chrome\.css";\s*@import "\.\.\/features\/meetings\/styles\/meeting\.css";\s*@import "\.\.\/features\/editor\/styles\/editor-comments\.css";/,
+      /@import "\.\.\/features\/editor\/styles\/editor\.css";\s*@import "\.\.\/features\/databases\/styles\/database\.css";\s*@import "\.\.\/features\/databases\/styles\/database-table\.css";\s*@import "\.\.\/features\/editor\/styles\/editor-chrome\.css";\s*@import "\.\.\/features\/meetings\/styles\/meeting\.css";\s*@import "\.\.\/features\/editor\/styles\/editor-comments\.css";/,
     )
 
     for (const styles of [
       editorStyles,
       databaseStyles,
+      databaseTableStyles,
       editorChromeStyles,
       meetingStyles,
       editorCommentStyles,

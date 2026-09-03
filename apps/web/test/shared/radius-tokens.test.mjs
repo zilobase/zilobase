@@ -64,7 +64,7 @@ export function register({ readSource, assert, test }) {
       await Promise.all(
         [
           "shared/ui/badge.tsx",
-          "features/databases/styles/database.css",
+          "features/databases/styles/database-table.css",
           "features/comments/components/discussions-sidebar.tsx",
           "features/ai/components/elements/context-attach-chips.tsx",
           "features/databases/views/view/database-view-toolbar.tsx",

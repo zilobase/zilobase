@@ -1,5 +1,6 @@
 @import "../features/editor/styles/editor.css";
 @import "../features/databases/styles/database.css";
+@import "../features/databases/styles/database-table.css";
 @import "../features/editor/styles/editor-chrome.css";
 @import "../features/meetings/styles/meeting.css";
 @import "../features/editor/styles/editor-comments.css";

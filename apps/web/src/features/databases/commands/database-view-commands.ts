@@ -76,10 +76,8 @@ import {
   getNewRowGroupSetup,
   getTimelineGroupPropertyId,
 } from "./database-row-plans";
-import {
-  createAddDatabaseRowMutation,
-  type DatabaseMutations,
-} from "./database-mutation-adapters";
+import type { DatabaseMutations } from "./database-mutation-adapters";
+import { createAddDatabaseRowMutation } from "./database-row-mutations";
 
 export type DatabaseViewCommands = ReturnType<typeof getDatabaseViewCommands>;
 

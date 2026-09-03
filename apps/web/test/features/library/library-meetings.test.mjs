@@ -2,6 +2,11 @@ import { readFile } from "node:fs/promises"
 const sidebarConfigPath = "/packages/features/src/user-settings/sidebar-config.ts"
 
 export function register({ readSource, assert, loadModule, test }) {
+  const readToolbarSource = async () =>
+    (await Promise.all([
+      readSource("/src/features/databases/views/view/database-view-toolbar.tsx"),
+      readSource("/src/features/databases/views/view/database-view-toolbar-dialogs.tsx"),
+    ])).join("\n")
   test("Library Teamspaces uses a dedicated teamspace directory", async () => {
     const source = await readSource("/src/features/library/pages/recents.tsx")
     assert.match(source, /activeViewId === "teamspaces"[\s\S]*<TeamspacesLibraryTable[\s\S]*rows=\{rows\}[\s\S]*teamspaces=\{teamspaces\}/)
@@ -47,7 +52,7 @@ export function register({ readSource, assert, loadModule, test }) {
     )
     const customizeSource = await readSource("/src/features/sidebar/components/sidebar-customize-panel.tsx")
     const iconSource = await readSource("/src/features/sidebar/components/sidebar-layout-icons.tsx")
-    const toolbarSource = await readSource("/src/features/databases/views/view/database-view-toolbar.tsx")
+    const toolbarSource = await readToolbarSource()
 
     assert.match(librarySource, /id: "meetings", label: libraryViewLabels\.meetings/)
     assert.match(librarySource, /useWorkspaceMeetings\(/)

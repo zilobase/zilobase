@@ -6,32 +6,17 @@ import {
   useMemo,
   useRef,
   useState,
-  type ButtonHTMLAttributes,
-  type ReactNode,
   type CSSProperties,
   type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
-  type RefObject,
 } from "react"
 import { createPortal } from "react-dom"
-import { Reorder, useDragControls } from "framer-motion"
+import { Reorder } from "framer-motion"
 import {
-  defaultRangeExtractor,
-  useVirtualizer,
-  type Range,
-} from "@tanstack/react-virtual"
-import {
-  Check,
   ChevronDown,
   ChevronRight,
-  GripVertical,
-  Link2,
-  List,
   Loader2,
-  Minus,
-  MoreHorizontal,
   Plus,
-  X,
 } from "@/shared/components/icons"
 import { toast } from "sonner"
 import {
@@ -48,30 +33,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog"
-import { Checkbox } from "@/shared/ui/checkbox"
-import { Input } from "@/shared/ui/input"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
-import {
-  DropDrawer,
-  DropDrawerContent,
-  DropDrawerItem,
-  DropDrawerLabel,
-  DropDrawerSeparator,
-  DropDrawerSub,
-  DropDrawerSubContent,
-  DropDrawerSubTrigger,
-  DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
 import { useOptionalPageSidePane } from "@/features/pages/context/index"
 import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
 import { cn } from "@/shared/lib/utils"
 import { useUndoHistory } from "@/shared/shortcuts"
 import {
-  getColorToken,
   getColorTokenBadgeClassName,
   getColorTokenDotClassName,
 } from "@/shared/lib/color-tokens"
@@ -91,12 +57,7 @@ import {
   DatabasePropertyMenu,
 } from "../../../properties/editors/database-property-menu"
 import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
-import { DatabasePropertyDate } from "../../../properties/editors/database-property-date"
-import { DatabasePropertySelect } from "../../../properties/editors/database-property-select"
 import {
-  defaultStatusOption,
-  defaultStatusOptions,
-  getDatabasePropertyCellKind,
   getDatabasePropertyType,
 } from "../../../core/database-property-types"
 import {
@@ -106,27 +67,21 @@ import {
 import {
   getDatabasePropertyIcon,
   getDatabasePropertyOrder,
-  getPersonLimit,
   getNameColumnWrapContent,
   getPropertyWrapContent,
 } from "../../model/database-view-config"
 import {
-  useDatabaseRealtimeState,
-  useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext,
+  useDatabaseActionsContext,
+  useDatabaseDataContext,
+  useDatabaseUiContext,
 } from "../../model/database-view-context"
 import {
   getDatabaseSubItemLineParentRowId,
   getDatabaseSubItemRelationChanges,
   getSubItemCreateRowsAfterRow,
 } from "../../model/database-sub-items"
-import {
-  useActiveDatabaseCellKey,
-  useDatabaseCellIsActive,
-  useSetActiveDatabaseCell,
-} from "../../model/database-cell-state"
 import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll"
 import { useInlineDatabaseScroll } from "../../../interactions/use-inline-database-scroll"
-import { getDatabaseHorizontalScrollSync } from "../../../interactions/database-wheel-scroll"
 import {
   areSerializedPropertyValuesEqual,
   databaseItemMatchesFilter,
@@ -158,14 +113,7 @@ import {
   canUpdateKanbanGroupProperty,
   type DatabasePropertyListItem,
 } from "../../kanban/model/database-kanban-config"
-import {
-  isVerticalScrollContainer,
-  shouldRenderVirtualizedDatabaseRows,
-} from "../../controller/database-view-scroll"
-import {
-  getSharedDatabaseSelectionValue,
-  splitDatabaseSelectionProperties,
-} from "../model/database-table-selection"
+import { getSharedDatabaseSelectionValue } from "../model/database-table-selection"
 import {
   ADD_PROPERTY_COLUMN_ID,
   DATABASE_NAME_COLUMN_ID,
@@ -192,875 +140,24 @@ import {
   type TableRow,
   type TableRowDropTarget,
 } from "../model/database-table-model"
-function DatabaseHeaderReorderItem({
-  children,
-  canReorder,
-  className,
-  headerScope,
-  isDragging,
-  columnId,
-  onDragEnd,
-  onDragStart,
-}: {
-  canReorder: boolean
-  children: (
-    onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => void
-  ) => ReactNode
-  className?: string
-  headerScope: string
-  isDragging: boolean
-  columnId: string
-  onDragEnd: () => void
-  onDragStart: () => void
-}) {
-  const dragControls = useDragControls()
-  const startDrag = (event: ReactPointerEvent<HTMLElement>) => {
-    if (!canReorder) {
-      return
-    }
-
-    event.stopPropagation()
-    dragControls.start(event)
-  }
-
-  return (
-    <Reorder.Item
-      as="th"
-      className={cn("database-reorderable-header", className)}
-      data-column-dragging={isDragging ? "true" : undefined}
-      data-column-reorderable={canReorder ? "true" : undefined}
-      data-header-scope={headerScope}
-      data-property-id={columnId}
-      dragControls={dragControls}
-      dragListener={false}
-      transition={{ layout: { duration: 0.18, ease: "easeOut" } }}
-      value={columnId}
-      whileDrag={{ scale: 0.995 }}
-      onDragEnd={onDragEnd}
-      onDragStart={onDragStart}
-    >
-      {children(startDrag)}
-    </Reorder.Item>
-  )
-}
-
-function DatabaseSelectionPropertyTrigger({
-  className,
-  disabled = false,
-  property,
-  ...buttonProps
-}: {
-  property: DatabasePropertyListItem
-} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "property">) {
-  const PropertyIcon = getDatabasePropertyType(property.property.type).icon
-
-  return (
-    <button
-      aria-label={`Edit ${property.property.name} for selected rows`}
-      className={cn("database-selection-property-action", className)}
-      disabled={disabled}
-      title={disabled ? "This property can't be edited in bulk" : undefined}
-      type="button"
-      {...buttonProps}
-    >
-      <PropertyIcon />
-      <span>{property.property.name}</span>
-    </button>
-  )
-}
-
-function DatabaseSelectionPropertyAction({
-  mixed,
-  onApply,
-  onOpenChange,
-  onUpdateConfig,
-  open,
-  personOptions,
-  property,
-  trigger: customTrigger,
-  value,
-}: {
-  mixed: boolean
-  onApply: (value: DatabasePropertyValueType) => void
-  onOpenChange?: (open: boolean) => void
-  onUpdateConfig: (databasePropertyId: string, config: unknown) => Promise<unknown>
-  open?: boolean
-  personOptions: Array<{ id: string; name: string; suffix?: string }>
-  property: DatabasePropertyListItem
-  trigger?: ReactNode
-  value: DatabasePropertyValueType
-}) {
-  const [inputOpen, setInputOpen] = useState(false)
-  const [draftValue, setDraftValue] = useState("")
-  const pageProperty = property.property
-  const cellKind = getDatabasePropertyCellKind(pageProperty.type)
-  const scalarValue = Array.isArray(value) ? value[0] ?? "" : value
-  const resolvedInputOpen = open ?? inputOpen
-  const trigger =
-    customTrigger ?? <DatabaseSelectionPropertyTrigger property={property} />
-
-  if (cellKind === "select" || cellKind === "person") {
-    const multiple =
-      pageProperty.type === "multi_select" ||
-      (cellKind === "person" &&
-        getPersonLimit(pageProperty.config) !== "one_person")
-    const selectionValue =
-      pageProperty.type === "status" && !mixed && !value
-        ? defaultStatusOption.name
-        : value
-
-    return (
-      <DatabasePropertySelect
-        allowCreate={cellKind !== "person"}
-        defaultOptions={
-          pageProperty.type === "status"
-            ? defaultStatusOptions
-            : cellKind === "person"
-              ? personOptions
-              : undefined
-        }
-        label={pageProperty.name}
-        multiple={multiple}
-        open={open}
-        onOpenChange={onOpenChange}
-        onPropertyConfigChange={(config) =>
-          onUpdateConfig(property.id, config)
-        }
-        onSelect={onApply}
-        propertyConfig={pageProperty.config}
-        showStatusDot={pageProperty.type === "status"}
-        trigger={trigger}
-        value={selectionValue}
-        valueKey={cellKind === "person" ? "id" : "name"}
-      />
-    )
-  }
-
-  if (cellKind === "date") {
-    return (
-      <DatabasePropertyDate
-        label={pageProperty.name}
-        open={open}
-        onOpenChange={onOpenChange}
-        onPropertyConfigChange={(config) =>
-          onUpdateConfig(property.id, config)
-        }
-        onSelect={onApply}
-        propertyConfig={pageProperty.config}
-        trigger={trigger}
-        value={value}
-      />
-    )
-  }
-
-  if (cellKind === "checkbox") {
-    return (
-      <Popover open={open} onOpenChange={onOpenChange}>
-        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-        <PopoverContent align="start" className="w-48 p-1" sideOffset={4}>
-          {[
-            { icon: Check, label: "Checked", value: "true" },
-            { icon: Minus, label: "Unchecked", value: "false" },
-          ].map((option) => {
-            const OptionIcon = option.icon
-            const isCurrent = !mixed && scalarValue === option.value
-
-            return (
-              <button
-                className="database-selection-value-option"
-                key={option.value}
-                onClick={() => onApply(option.value)}
-                type="button"
-              >
-                <OptionIcon />
-                <span>{option.label}</span>
-                {isCurrent ? <Check className="ml-auto" /> : null}
-              </button>
-            )
-          })}
-        </PopoverContent>
-      </Popover>
-    )
-  }
-
-  if (cellKind !== "input") {
-    return customTrigger ?? (
-      <DatabaseSelectionPropertyTrigger disabled property={property} />
-    )
-  }
-
-  return (
-    <Popover
-      open={resolvedInputOpen}
-      onOpenChange={(nextOpen) => {
-        if (open === undefined) setInputOpen(nextOpen)
-        onOpenChange?.(nextOpen)
-
-        if (nextOpen) {
-          setDraftValue(mixed ? "" : scalarValue)
-        }
-      }}
-    >
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-2" sideOffset={4}>
-        <form
-          className="flex gap-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            onApply(draftValue)
-            if (open === undefined) setInputOpen(false)
-            onOpenChange?.(false)
-          }}
-        >
-          <Input
-            aria-label={`${pageProperty.name} value for selected rows`}
-            autoFocus
-            onChange={(event) => setDraftValue(event.target.value)}
-            placeholder={mixed ? "Replace mixed values" : "Enter a value"}
-            type={pageProperty.type === "number" ? "number" : "text"}
-            value={draftValue}
-          />
-          <button className="database-selection-apply" type="submit">
-            Apply
-          </button>
-        </form>
-      </PopoverContent>
-    </Popover>
-  )
-}
-
-function DatabaseTableSelectionToolbar({
-  clearSelection,
-  copyLinks,
-  getSelectionValue,
-  onApply,
-  onUpdateConfig,
-  personOptions,
-  properties,
-  selectedCount,
-}: {
-  clearSelection: () => void
-  copyLinks: () => void
-  getSelectionValue: (property: DatabasePropertyListItem) => {
-    mixed: boolean
-    value: DatabasePropertyValueType
-  }
-  onApply: (
-    property: DatabasePropertyListItem,
-    value: DatabasePropertyValueType
-  ) => void
-  onUpdateConfig: (databasePropertyId: string, config: unknown) => Promise<unknown>
-  personOptions: Array<{ id: string; name: string; suffix?: string }>
-  properties: DatabasePropertyListItem[]
-  selectedCount: number
-}) {
-  const [menuPropertyId, setMenuPropertyId] = useState<string | null>(null)
-  const [moreOpen, setMoreOpen] = useState(false)
-  const [moreSearch, setMoreSearch] = useState("")
-  const ignoreMenuPropertyCloseUntilRef = useRef(0)
-  const { primary } = splitDatabaseSelectionProperties(properties)
-  const normalizedSearch = moreSearch.trim().toLowerCase()
-  const filteredProperties = normalizedSearch
-    ? properties.filter((property) =>
-        property.property.name.toLowerCase().includes(normalizedSearch)
-      )
-    : properties
-  const showEditProperty =
-    filteredProperties.length > 0 &&
-    (!normalizedSearch ||
-      "edit property".includes(normalizedSearch) ||
-      filteredProperties.length > 0)
-  const showCopyLinks =
-    !normalizedSearch || "copy links to all".includes(normalizedSearch)
-  const showClearSelection =
-    !normalizedSearch || "clear selection".includes(normalizedSearch)
-  const menuProperty = menuPropertyId
-    ? properties.find((property) => property.id === menuPropertyId) ?? null
-    : null
-  const menuSelectionValue = menuProperty
-    ? getSelectionValue(menuProperty)
-    : null
-  const renderAction = (property: DatabasePropertyListItem) => {
-    const selectionValue = getSelectionValue(property)
-
-    return (
-      <DatabaseSelectionPropertyAction
-        key={property.id}
-        mixed={selectionValue.mixed}
-        onApply={(value) => onApply(property, value)}
-        onUpdateConfig={onUpdateConfig}
-        personOptions={personOptions}
-        property={property}
-        value={selectionValue.value}
-      />
-    )
-  }
-  const renderMenuAction = (property: DatabasePropertyListItem) => {
-    const PropertyIcon = getDatabasePropertyType(property.property.type).icon
-    const cellKind = getDatabasePropertyCellKind(property.property.type)
-    const canEdit = ![
-      "button",
-      "files",
-      "formula",
-      "read_only_time",
-      "relation",
-      "rollup",
-    ].includes(cellKind)
-
-    return (
-      <DropDrawerItem
-        disabled={!canEdit}
-        key={`menu:${property.id}`}
-        onSelect={() => {
-          setMoreOpen(false)
-          window.setTimeout(() => {
-            ignoreMenuPropertyCloseUntilRef.current = performance.now() + 250
-            setMenuPropertyId(property.id)
-          }, 100)
-        }}
-      >
-        <PropertyIcon />
-        <span className="truncate">{property.property.name}</span>
-      </DropDrawerItem>
-    )
-  }
-
-  return (
-    <div
-      aria-label="Selected row actions"
-      className="database-selection-toolbar"
-      role="toolbar"
-    >
-      <button
-        aria-label={`Clear selection of ${selectedCount} rows`}
-        className="database-selection-count"
-        onClick={clearSelection}
-        type="button"
-      >
-        {selectedCount} selected
-      </button>
-      <div className="database-selection-property-group">
-        {primary.map(renderAction)}
-        <DropDrawer
-          open={moreOpen}
-          onOpenChange={(open) => {
-            setMoreOpen(open)
-            if (!open) setMoreSearch("")
-          }}
-        >
-          <DropDrawerTrigger asChild>
-            <button
-              aria-label="More selected row actions"
-              className="database-selection-more"
-              type="button"
-            >
-              <MoreHorizontal />
-            </button>
-          </DropDrawerTrigger>
-          <DropDrawerContent align="start" className="w-72">
-            <div className="p-1">
-              <Input
-                aria-label="Search selected row actions"
-                autoFocus
-                className="h-8"
-                onChange={(event) => setMoreSearch(event.target.value)}
-                onKeyDown={(event) => event.stopPropagation()}
-                placeholder="Search actions..."
-                value={moreSearch}
-              />
-            </div>
-            <DropDrawerLabel>Page</DropDrawerLabel>
-            {showEditProperty ? (
-              <DropDrawerSub>
-                <DropDrawerSubTrigger>
-                  <List />
-                  <span>Edit property</span>
-                </DropDrawerSubTrigger>
-                <DropDrawerSubContent className="w-64">
-                  {filteredProperties.map(renderMenuAction)}
-                </DropDrawerSubContent>
-              </DropDrawerSub>
-            ) : null}
-            {showCopyLinks ? (
-              <DropDrawerItem onSelect={copyLinks}>
-                <Link2 />
-                <span>Copy links to all</span>
-              </DropDrawerItem>
-            ) : null}
-            {showClearSelection ? (
-              <>
-                <DropDrawerSeparator />
-                <DropDrawerItem onSelect={clearSelection}>
-                  <X />
-                  <span>Clear selection</span>
-                </DropDrawerItem>
-              </>
-            ) : null}
-            {!showEditProperty && !showCopyLinks && !showClearSelection ? (
-              <div className="px-2 py-2 text-sm text-content-secondary">
-                No actions found.
-              </div>
-            ) : null}
-          </DropDrawerContent>
-        </DropDrawer>
-        {menuProperty && menuSelectionValue ? (
-          <DatabaseSelectionPropertyAction
-            mixed={menuSelectionValue.mixed}
-            onApply={(value) => onApply(menuProperty, value)}
-            onOpenChange={(open) => {
-              if (
-                !open &&
-                performance.now() >= ignoreMenuPropertyCloseUntilRef.current
-              ) {
-                setMenuPropertyId(null)
-              }
-            }}
-            onUpdateConfig={onUpdateConfig}
-            open
-            personOptions={personOptions}
-            property={menuProperty}
-            trigger={
-              <button
-                aria-hidden="true"
-                className="database-selection-menu-anchor"
-                tabIndex={-1}
-                type="button"
-              />
-            }
-            value={menuSelectionValue.value}
-          />
-        ) : null}
-      </div>
-    </div>
-  )
-}
-
-function getTableColumnKeys({
-  canEditStructure,
-  columnIds,
-  pendingInsert,
-}: {
-  canEditStructure: boolean
-  columnIds: string[]
-  pendingInsert: PendingInsertProperty | null
-}) {
-  const dataColumnKeys = columnIds.flatMap((columnId) => {
-    if (!pendingInsert || columnId !== pendingInsert.sourceColumnKey) {
-      return [columnId]
-    }
-
-    const insertKey = getInsertPropertyColumnKey(columnId, pendingInsert.side)
-
-    return pendingInsert.side === "left"
-      ? [insertKey, columnId]
-      : [columnId, insertKey]
-  })
-
-  return [
-    ...dataColumnKeys,
-    ...(canEditStructure ? [ADD_PROPERTY_COLUMN_ID] : []),
-  ]
-}
-
-function getConditionalColorClassName(color?: string) {
-  return color ? getColorToken(color).backgroundClass : undefined
-}
-
-function getTableMinWidthStyle(tableMinWidth: number) {
-  return {
-    "--database-table-min-width": `${tableMinWidth}px`,
-  } as CSSProperties
-}
-
-function DatabaseTable({
-  children,
-  columnKeys,
-  columnWidths,
-  tableMinWidth,
-}: {
-  children: ReactNode
-  columnKeys: string[]
-  columnWidths: Record<string, number>
-  tableMinWidth: number
-}) {
-  return (
-    <table
-      className="database-table"
-      style={getTableMinWidthStyle(tableMinWidth)}
-    >
-      <colgroup>
-        {columnKeys.map((key) => (
-          <col
-            data-column-id={key}
-            key={key}
-            style={key === ADD_PROPERTY_COLUMN_ID
-              ? undefined
-              : { width: getColumnWidth(columnWidths, key) }}
-          />
-        ))}
-      </colgroup>
-      {children}
-    </table>
-  )
-}
-
-function DatabaseVirtualizedTable({
-  columnKeys,
-  columnWidths,
-  footerRow,
-  measurementKey,
-  renderRow,
-  rows,
-  tableMinWidth,
-  virtualizationEnabled,
-}: {
-  columnKeys: string[]
-  columnWidths: Record<string, number>
-  footerRow?: ReactNode
-  measurementKey: string
-  renderRow: (
-    row: TableRow,
-    index: number,
-    measureElement: (node: Element | null) => void
-  ) => ReactNode
-  rows: TableRow[]
-  tableMinWidth: number
-  virtualizationEnabled: boolean
-}) {
-  const tableRef = useRef<HTMLDivElement | null>(null)
-  const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null)
-  const [scrollMargin, setScrollMargin] = useState(0)
-  const activeCellKey = useActiveDatabaseCellKey()
-  const activeRowIndex = activeCellKey
-    ? rows.findIndex((row) => activeCellKey.startsWith(`${row.pageId}:`))
-    : -1
-  const rangeExtractor = useCallback(
-    (range: Range) => {
-      const indexes = defaultRangeExtractor(range)
-
-      if (activeRowIndex < 0 || indexes.includes(activeRowIndex)) {
-        return indexes
-      }
-
-      return [...indexes, activeRowIndex].sort((left, right) => left - right)
-    },
-    [activeRowIndex]
-  )
-  const virtualizer = useVirtualizer({
-    count: rows.length,
-    estimateSize: () => 32,
-    getScrollElement: () => scrollElement,
-    getItemKey: (index) => rows[index]?.id ?? index,
-    overscan: 8,
-    rangeExtractor,
-    scrollMargin,
-  })
-
-  useLayoutEffect(() => {
-    virtualizer.measure()
-  }, [measurementKey, virtualizer])
-
-  useLayoutEffect(() => {
-    const element = tableRef.current
-
-    if (!element) {
-      return
-    }
-
-    let parent = element.parentElement
-    let nextScrollElement: HTMLElement | null = null
-
-    while (parent) {
-      const overflowY = window.getComputedStyle(parent).overflowY
-
-      if (
-        isVerticalScrollContainer({
-          clientHeight: parent.clientHeight,
-          overflowY,
-          scrollHeight: parent.scrollHeight,
-        })
-      ) {
-        nextScrollElement = parent
-        break
-      }
-
-      parent = parent.parentElement
-    }
-
-    nextScrollElement ??= document.scrollingElement as HTMLElement | null
-    setScrollElement(nextScrollElement)
-
-    const measureOffset = () => {
-      const elementRect = element.getBoundingClientRect()
-      const scrollRect = nextScrollElement?.getBoundingClientRect()
-      const scrollTop = nextScrollElement?.scrollTop ?? window.scrollY
-
-      setScrollMargin(
-        elementRect.top - (scrollRect?.top ?? 0) + scrollTop
-      )
-    }
-
-    measureOffset()
-    const observer = new ResizeObserver(measureOffset)
-    observer.observe(element)
-    if (nextScrollElement) {
-      observer.observe(nextScrollElement)
-    }
-    window.addEventListener("resize", measureOffset)
-
-    return () => {
-      observer.disconnect()
-      window.removeEventListener("resize", measureOffset)
-    }
-  }, [])
-
-  const virtualRows = virtualizer.getVirtualItems()
-  const renderVirtualRows = shouldRenderVirtualizedDatabaseRows({
-    hasScrollElement: scrollElement !== null,
-    virtualRowCount: virtualRows.length,
-    virtualizationEnabled,
-  })
-  const getLocalVirtualStart = (start: number) => start - scrollMargin
-  const getLocalVirtualEnd = (end: number) => end - scrollMargin
-  const paddingBottom =
-    virtualRows.length > 0
-      ? virtualizer.getTotalSize() -
-        getLocalVirtualEnd(virtualRows[virtualRows.length - 1].end)
-      : 0
-
-  return (
-    <div ref={tableRef}>
-      <DatabaseTable
-        columnKeys={columnKeys}
-        columnWidths={columnWidths}
-        tableMinWidth={tableMinWidth}
-      >
-        <tbody>
-          {renderVirtualRows
-            ? virtualRows.map((virtualRow, virtualIndex) => {
-                const previousEnd =
-                  virtualIndex === 0
-                    ? 0
-                    : getLocalVirtualEnd(virtualRows[virtualIndex - 1].end)
-                const gap =
-                  getLocalVirtualStart(virtualRow.start) - previousEnd
-
-                return (
-                  <Fragment key={virtualRow.key}>
-                    {gap > 0 ? (
-                      <tr aria-hidden="true">
-                        <td
-                          className="database-virtual-spacer"
-                          colSpan={columnKeys.length}
-                          style={{ height: gap }}
-                        />
-                      </tr>
-                    ) : null}
-                    {renderRow(
-                      rows[virtualRow.index],
-                      virtualRow.index,
-                      virtualizer.measureElement
-                    )}
-                  </Fragment>
-                )
-              })
-            : rows.map((row, index) =>
-                renderRow(row, index, virtualizer.measureElement)
-              )}
-          {renderVirtualRows && paddingBottom > 0 ? (
-            <tr aria-hidden="true">
-              <td
-                className="database-virtual-spacer"
-                colSpan={columnKeys.length}
-                style={{ height: paddingBottom }}
-              />
-            </tr>
-          ) : null}
-          {footerRow}
-        </tbody>
-      </DatabaseTable>
-    </div>
-  )
-}
-
-function useSyncedHorizontalScroll(
-  headerRef: RefObject<HTMLElement | null>,
-  bodyRef: RefObject<HTMLElement | null>,
-  syncVersion: unknown
-) {
-  useLayoutEffect(() => {
-    const header = headerRef.current
-    const body = bodyRef.current
-
-    if (!header || !body) {
-      return
-    }
-
-    const syncScroll = (source: HTMLElement, target: HTMLElement) => {
-      const syncState = getDatabaseHorizontalScrollSync(
-        source,
-        target.scrollLeft
-      )
-
-      source.style.removeProperty("--database-horizontal-rubber-band-offset")
-      delete source.dataset.databaseRubberBand
-
-      if (syncState.isRubberBanding) {
-        target.style.setProperty(
-          "--database-horizontal-rubber-band-offset",
-          `${syncState.rubberBandOffset}px`
-        )
-        target.dataset.databaseRubberBand = "true"
-        return
-      }
-
-      target.style.removeProperty("--database-horizontal-rubber-band-offset")
-      delete target.dataset.databaseRubberBand
-
-      if (target.scrollLeft !== syncState.scrollLeft) {
-        target.scrollLeft = syncState.scrollLeft
-      }
-    }
-    const syncHeaderToBody = () => syncScroll(body, header)
-    const syncBodyToHeader = () => syncScroll(header, body)
-
-    syncHeaderToBody()
-    body.addEventListener("scroll", syncHeaderToBody, { passive: true })
-    header.addEventListener("scroll", syncBodyToHeader, { passive: true })
-
-    return () => {
-      body.removeEventListener("scroll", syncHeaderToBody)
-      header.removeEventListener("scroll", syncBodyToHeader)
-      body.style.removeProperty("--database-horizontal-rubber-band-offset")
-      header.style.removeProperty("--database-horizontal-rubber-band-offset")
-      delete body.dataset.databaseRubberBand
-      delete header.dataset.databaseRubberBand
-    }
-  }, [bodyRef, headerRef, syncVersion])
-}
-
-function DatabaseActiveTableCell({
-  cellKey,
-  children,
-  className,
-  isFillTarget,
-  isSelected,
-  onFillStart,
-  onSelect,
-  presenceKey,
-  selectOnPointerDown,
-  wrapContent,
-}: {
-  cellKey: string
-  children: (setActive: (active: boolean) => void) => ReactNode
-  className?: string
-  isFillTarget?: boolean
-  isSelected: boolean
-  onFillStart?: (event: ReactPointerEvent<HTMLButtonElement>) => void
-  onSelect: () => void
-  presenceKey: string
-  selectOnPointerDown?: boolean
-  wrapContent?: boolean
-}) {
-  const isActive = useDatabaseCellIsActive(cellKey)
-  const setActiveCell = useSetActiveDatabaseCell()
-  const { cellPresenceByKey } = useDatabaseRealtimeState()
-  const presence = cellPresenceByKey[presenceKey] ?? []
-
-  return (
-    <td
-      className={className}
-      data-active={isActive ? "true" : undefined}
-      data-fill-target={isFillTarget ? "true" : undefined}
-      data-presence={presence.length > 0 ? "true" : undefined}
-      data-selected={isSelected ? "true" : undefined}
-      data-wrap-content={wrapContent ? "true" : undefined}
-      onClick={onSelect}
-      onPointerDownCapture={
-        selectOnPointerDown
-          ? (event) => {
-              if (
-                (event.target as Element).closest(
-                  ".database-page-open, .database-sub-item-toggle"
-                )
-              ) {
-                return
-              }
-
-              onSelect()
-            }
-          : undefined
-      }
-    >
-      {presence.length > 0 ? (
-        <div
-          aria-hidden="true"
-          className="database-cell-presence"
-          title={presence.map((item) => item.user.name).join(", ")}
-        >
-          <span
-            className="database-cell-presence-border"
-            style={{
-              "--database-presence-color": presence[0]?.color,
-            } as CSSProperties}
-          />
-          <span className="database-cell-presence-stack">
-            {presence.slice(0, 3).map((collaborator) => (
-              <span
-                className="database-cell-presence-dot"
-                key={collaborator.sessionId}
-                style={{
-                  "--database-presence-color": collaborator.color,
-                } as CSSProperties}
-              />
-            ))}
-          </span>
-        </div>
-      ) : null}
-      {children((active) => setActiveCell(active ? cellKey : null))}
-      {isSelected && onFillStart ? (
-        <button
-          aria-label="Drag vertically to fill value"
-          className="database-cell-fill-handle"
-          onClick={(event) => event.stopPropagation()}
-          onPointerDown={onFillStart}
-          title="Drag vertically to fill value"
-          type="button"
-        />
-      ) : null}
-    </td>
-  )
-}
-
-function CreateDatabaseRowButton({
-  columnCount,
-  disabled,
-  onClick,
-}: {
-  columnCount: number
-  disabled: boolean
-  onClick: () => void
-}) {
-  return (
-    <tr
-      className="database-table-create-row"
-      data-database-row-drop-footer
-    >
-      <td colSpan={columnCount}>
-        <button
-          className="database-table-create"
-          disabled={disabled}
-          onClick={onClick}
-          type="button"
-        >
-          <Plus />
-          <span>New page</span>
-        </button>
-      </td>
-    </tr>
-  )
-}
-
+import {
+  DatabaseTable,
+  DatabaseVirtualizedTable,
+  getConditionalColorClassName,
+  getTableColumnKeys,
+  getTableMinWidthStyle,
+  useSyncedHorizontalScroll,
+} from "./database-table-shell"
+import {
+  CreateDatabaseRowButton,
+  DatabaseActiveTableCell,
+} from "./database-table-cell"
+import { DatabaseTableSelectionToolbar } from "./database-table-selection-toolbar"
+import {
+  DatabaseHeaderReorderItem,
+  DatabaseRowDragControls,
+  DatabaseRowDropLine,
+} from "./database-table-drag-controls"
 function areRowLayoutsEqual(left: RowLayout, right: RowLayout) {
   const leftCenterKeys = Object.keys(left.centers)
   const rightCenterKeys = Object.keys(right.centers)
@@ -3352,85 +2449,6 @@ export function DatabaseTableView() {
         )
   }
 
-  const renderRowDragRail = () =>
-    editable ? (
-      <div className="database-row-drag-rail">
-        {visibleRows.map((row) => {
-          const rowCenter = rowLayout.centers[row.id]
-
-          if (rowCenter === undefined) {
-            return null
-          }
-
-          const isRowHandleVisible =
-            hoveredRowId === row.id ||
-            draggedRowId === row.id ||
-            selectedRowIds.has(row.id)
-
-          return (
-            <div
-              className="database-row-controls"
-              data-visible={isRowHandleVisible ? "true" : undefined}
-              key={row.id}
-              onMouseEnter={() => {
-                setHoveredRowId(row.id)
-              }}
-              onMouseLeave={() => {
-                if (!draggedRowId) {
-                  setHoveredRowId(null)
-                }
-              }}
-              style={
-                {
-                  "--database-row-hit-height": `${rowLayout.heights[row.id] ?? 28}px`,
-                  top: rowCenter,
-                } as CSSProperties
-              }
-            >
-              <button
-                aria-label={`Drag ${getRowTitle(row)}`}
-                className="database-row-drag-handle"
-                data-database-row-drag-handle
-                data-dragging={draggedRowId === row.id ? "true" : undefined}
-                disabled={!canReorderRows}
-                draggable={canReorderRows}
-                onClick={(event) => event.preventDefault()}
-                onDragEnd={clearRowDrag}
-                onDragStart={(event) => startRowDrag(row, event)}
-                title={rowDragTitle}
-                type="button"
-              >
-                <GripVertical />
-              </button>
-              <Checkbox
-                aria-label={`Select ${getRowTitle(row)}`}
-                checked={selectedRowIds.has(row.id)}
-                className="database-row-checkbox"
-                onCheckedChange={(checked) =>
-                  toggleSelectedRow(row.id, checked === true)
-                }
-              />
-            </div>
-          )
-        })}
-      </div>
-    ) : null
-
-  const renderRowDropLine = () =>
-    rowDropLineTop !== null ? (
-      <div
-        aria-hidden="true"
-        className="drag-drop-line database-row-drop-line"
-        data-orientation="horizontal"
-        style={
-          {
-            "--database-row-drop-depth": rowDropLineDepth,
-            top: rowDropLineTop,
-          } as CSSProperties
-        }
-      />
-    ) : null
-
   return (
     <>
       {selectedRows.length > 0 ? (
@@ -3567,8 +2585,25 @@ export function DatabaseTableView() {
           clearRowDrag()
         }}
       >
-        {!isInlineTableScrollEnabled ? renderRowDragRail() : null}
-        {!isInlineTableScrollEnabled ? renderRowDropLine() : null}
+        {!isInlineTableScrollEnabled ? (
+          <DatabaseRowDragControls
+            canReorderRows={canReorderRows}
+            draggedRowId={draggedRowId}
+            editable={editable}
+            hoveredRowId={hoveredRowId}
+            onDragEnd={clearRowDrag}
+            onDragStart={startRowDrag}
+            onHoveredRowChange={setHoveredRowId}
+            onSelectedRowChange={toggleSelectedRow}
+            rowDragTitle={rowDragTitle}
+            rowLayout={rowLayout}
+            selectedRowIds={selectedRowIds}
+            visibleRows={visibleRows}
+          />
+        ) : null}
+        {!isInlineTableScrollEnabled ? (
+          <DatabaseRowDropLine depth={rowDropLineDepth} top={rowDropLineTop} />
+        ) : null}
         <div
           className="database-table-sticky-header database-inline-scroll"
           ref={stickyHeaderScrollRef}
@@ -3588,8 +2623,25 @@ export function DatabaseTableView() {
           ref={tableScrollRef}
         >
           <div className="database-table-scroll-content database-inline-scroll-content">
-            {isInlineTableScrollEnabled ? renderRowDragRail() : null}
-            {isInlineTableScrollEnabled ? renderRowDropLine() : null}
+            {isInlineTableScrollEnabled ? (
+          <DatabaseRowDragControls
+            canReorderRows={canReorderRows}
+            draggedRowId={draggedRowId}
+            editable={editable}
+            hoveredRowId={hoveredRowId}
+            onDragEnd={clearRowDrag}
+            onDragStart={startRowDrag}
+            onHoveredRowChange={setHoveredRowId}
+            onSelectedRowChange={toggleSelectedRow}
+            rowDragTitle={rowDragTitle}
+            rowLayout={rowLayout}
+            selectedRowIds={selectedRowIds}
+            visibleRows={visibleRows}
+          />
+        ) : null}
+            {isInlineTableScrollEnabled ? (
+          <DatabaseRowDropLine depth={rowDropLineDepth} top={rowDropLineTop} />
+        ) : null}
             {isTableGrouped ? (
               <div className="database-table-groups">
                 {groupedSections.map((section) => {

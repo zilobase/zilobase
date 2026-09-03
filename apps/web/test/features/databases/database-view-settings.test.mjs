@@ -1,6 +1,11 @@
 import { readFile } from "node:fs/promises";
 
 export function register({ readSource, assert, loadModule, test }) {
+  const readToolbarSource = async () =>
+    (await Promise.all([
+      readSource("/src/features/databases/views/view/database-view-toolbar.tsx"),
+      readSource("/src/features/databases/views/view/database-view-toolbar-dialogs.tsx"),
+    ])).join("\n")
   test("link existing data source owns its nested picker state", async () => {
     const settings = await readSource("/src/features/databases/views/view-settings/view/data-source-settings.tsx");
 
@@ -132,7 +137,7 @@ export function register({ readSource, assert, loadModule, test }) {
   test("deleting a view never deletes its linked data source", async () => {
     const [controller, toolbar] = await Promise.all([
       readSource("/src/features/databases/views/controller/use-database-view-controller.tsx"),
-      readSource("/src/features/databases/views/view/database-view-toolbar.tsx"),
+      readToolbarSource(),
     ]);
 
     assert.match(controller, /deleteDatabaseView\.mutate/);
@@ -142,7 +147,7 @@ export function register({ readSource, assert, loadModule, test }) {
   });
 
   test("embedded database expand links use the host database id", async () => {
-    const toolbar = await readSource("/src/features/databases/views/view/database-view-toolbar.tsx");
+    const toolbar = await readToolbarSource();
 
     assert.match(toolbar, /const expandDatabaseId = hostDatabaseId \?\? databaseId/);
     assert.match(
@@ -163,7 +168,7 @@ export function register({ readSource, assert, loadModule, test }) {
         readSource("/src/features/databases/views/view-settings/view/index.tsx"),
         readSource("/src/features/databases/views/view-settings/view/data-source-settings.tsx"),
         readSource("/src/features/databases/views/view-settings/view/sub-items-settings.tsx"),
-        readSource("/src/features/databases/views/view/database-view-toolbar.tsx"),
+        readToolbarSource(),
       ]);
 
     assert.match(toolbar, /activeDataSourceId=/);

@@ -10,7 +10,6 @@ import {
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   ArrowDownUp,
-  ArrowRight,
   ArrowUpRightIcon,
   Check,
   Copy,
@@ -40,23 +39,6 @@ import {
 
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
 import { PageIconDisplay } from "@/features/pages/index";
@@ -97,7 +79,7 @@ import {
   getPropertyWrapContent,
 } from "../model/database-view-config";
 import { DatabaseFormShareMenu } from "../form/view/database-form-share-menu";
-import { DatabaseFormView } from "../form/view/database-form-view";
+import { DatabaseViewToolbarDialogs } from "./database-view-toolbar-dialogs";
 import { ViewTypeOptionGrid } from "../view-settings/view/view-type-option-grid";
 import type { DatabaseViewType } from "../view-settings/model/view-type-options";
 import { DatabaseAutomationManager } from "../../automations";
@@ -1495,99 +1477,29 @@ export function DatabaseViewToolbar() {
           ) : null}
         </div>
       </div>
-      <AlertDialog
-        onOpenChange={(open) => {
+      <DatabaseViewToolbarDialogs
+        formDialogOpen={formDialogOpen}
+        formPreviewOpen={formPreviewOpen}
+        formQuestionCount={formQuestionCount}
+        isAddingDatabaseView={isAddingDatabaseView}
+        onCreateForm={(includeExistingProperties) => {
+          setFormDialogOpen(false);
+          addFormView(
+            includeExistingProperties
+              ? []
+              : properties.map((property) => property.id),
+          );
+        }}
+        onDeleteView={() => {
+          if (pendingDeleteView) deleteDatabaseView(pendingDeleteView);
+        }}
+        onFormDialogOpenChange={setFormDialogOpen}
+        onFormPreviewOpenChange={setFormPreviewOpen}
+        onPendingDeleteOpenChange={(open) => {
           if (!open) setPendingDeleteView(null);
         }}
-        open={pendingDeleteView !== null}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete this view?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {`“${pendingDeleteView?.name}” will be removed. Its data source remains linked and can be used to create another view later.`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="sm:flex-col-reverse">
-            <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="w-full"
-              onClick={() => {
-                if (pendingDeleteView) {
-                  deleteDatabaseView(pendingDeleteView);
-                }
-              }}
-              variant="destructive"
-            >
-              Delete view
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <Dialog open={formDialogOpen} onOpenChange={setFormDialogOpen}>
-        <DialogContent
-          className="gap-5 p-5 sm:max-w-sm"
-          showCloseButton={false}
-        >
-          <DialogHeader className="items-center gap-3 text-center">
-            <div
-              aria-hidden
-              className="flex items-center justify-center gap-3 text-content-secondary"
-            >
-              <Table2 className="size-7" />
-              <ArrowRight className="size-5" />
-              <FilePenLine className="size-7" />
-            </div>
-            <div className="space-y-2">
-              <DialogTitle className="text-base font-semibold">
-                Auto-create form questions based on existing properties?
-              </DialogTitle>
-              <DialogDescription className="text-sm">
-                Every database property will be added as a form question.
-              </DialogDescription>
-            </div>
-          </DialogHeader>
-          <div className="flex flex-col gap-2">
-            <Button
-              className="w-full"
-              disabled={isAddingDatabaseView}
-              onClick={() => {
-                setFormDialogOpen(false);
-                addFormView([]);
-              }}
-              type="button"
-            >
-              Create {formQuestionCount}{" "}
-              {formQuestionCount === 1 ? "question" : "questions"}
-            </Button>
-            <Button
-              className="w-full text-content-secondary"
-              disabled={isAddingDatabaseView}
-              onClick={() => {
-                setFormDialogOpen(false);
-                addFormView(properties.map((property) => property.id));
-              }}
-              type="button"
-              variant="ghost"
-            >
-              Start from scratch
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={formPreviewOpen} onOpenChange={setFormPreviewOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto p-0 sm:max-w-3xl">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Form preview</DialogTitle>
-            <DialogDescription>
-              Preview how this form appears to respondents.
-            </DialogDescription>
-          </DialogHeader>
-          <DatabaseFormView preview />
-        </DialogContent>
-      </Dialog>
+        pendingDeleteViewName={pendingDeleteView?.name ?? null}
+      />
     </div>
   );
 }
