@@ -3,12 +3,13 @@
   "version": "0.0.55",
   "license": "MIT",
   "scripts": {
-    "dev": "node --env-file-if-exists=../../.env.development --run tauri -- dev",
-    "build": "npm run tokens:check --prefix ../.. && node --env-file-if-exists=../../.env.development --run tauri -- build",
+    "dev": "dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tauri dev",
+    "build": "npm run tokens:check --prefix ../.. && dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tauri build",
     "test:selfhost": "node e2e/selfhost.mjs",
     "tauri": "tauri"
   },
   "devDependencies": {
+    "@dotenvx/dotenvx": "1.75.1",
     "@tauri-apps/cli": "^2"
   }
 }
