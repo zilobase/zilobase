@@ -2,17 +2,21 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { test } from "vitest"
 
+const readMailRouteSources = async () => (await Promise.all([
+  "routes.ts", "connection-routes.ts", "route-support.ts",
+].map((file) => readFile(new URL(file, import.meta.url), "utf8")))).join("\n")
+
 test("workspace rollout has no unscoped authenticated mail compatibility path", async () => {
   const [appRoutes, mailRoutes, config, types] = await Promise.all([
     readFile(new URL("../../app/routes.ts", import.meta.url), "utf8"),
-    readFile(new URL("./routes.ts", import.meta.url), "utf8"),
+    readMailRouteSources(),
     readFile(new URL("../../shared/config/config.ts", import.meta.url), "utf8"),
     readFile(new URL("../../shared/types.ts", import.meta.url), "utf8"),
   ])
   assert.match(appRoutes, /app\.route\("\/mail", mailProviderRoutes\)/)
   assert.match(appRoutes, /app\.route\("\/workspaces\/:workspaceId\/mail", mailRoutes\)/)
-  assert.match(mailRoutes, /mailProviderRoutes\.get\("\/oauth\/google\/callback"/)
-  assert.match(mailRoutes, /mailProviderRoutes\.post\("\/google\/pubsub"/)
+  assert.match(mailRoutes, /mailProviderCallbackRoutes\.get\("\/oauth\/google\/callback"/)
+  assert.match(mailRoutes, /mailProviderCallbackRoutes\.post\("\/google\/pubsub"/)
   assert.doesNotMatch(mailRoutes, /gmailConnection/)
   assert.doesNotMatch(config, /LegacyMailRoutes|MAIL_LEGACY_ROUTES_ENABLED/)
   assert.doesNotMatch(types, /MAIL_LEGACY_ROUTES_ENABLED/)
@@ -20,7 +24,7 @@ test("workspace rollout has no unscoped authenticated mail compatibility path", 
 
 test("workspace ownership gates every mailbox and permits identity reuse only through private bindings", async () => {
   const [routes, oauth, schema] = await Promise.all([
-    readFile(new URL("./routes.ts", import.meta.url), "utf8"),
+    readMailRouteSources(),
     readFile(new URL("./google-oauth.ts", import.meta.url), "utf8"),
     readFile(new URL("../../infrastructure/database/schema.ts", import.meta.url), "utf8"),
   ])

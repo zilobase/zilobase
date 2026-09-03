@@ -4,7 +4,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
       readSource("/src/features/mail/components/mail-group-editor.tsx"),
       readWorkspace("/packages/features/src/mail/queries.ts"),
       readSource("/src/features/mail/pages/mail.tsx"),
-      readWorkspace("/apps/server/src/features/mail/routes.ts"),
+      readWorkspace("/apps/server/src/features/mail/query-routes.ts"),
     ])
 
     for (const label of ["Date", "Starred", "Important", "Email", "Email domain", "Priority", "Label", "Unread"]) {

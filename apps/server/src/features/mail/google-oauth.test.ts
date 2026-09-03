@@ -2,6 +2,10 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { test } from "vitest"
 
+const readMailRouteSources = async () => (await Promise.all([
+  "connection-routes.ts", "route-support.ts",
+].map((file) => readFile(new URL(file, import.meta.url), "utf8")))).join("\n")
+
 import {
   buildGmailAuthorizationUrl,
   gmailOauthCallbackUrl,
@@ -66,8 +70,8 @@ test("public Gmail OAuth completion establishes its own database context", async
 })
 
 test("successful public Gmail callbacks keep watch setup in database context", async () => {
-  const source = await readFile(new URL("./routes.ts", import.meta.url), "utf8")
-  const callback = source.slice(source.indexOf('mailProviderRoutes.get("/oauth/google/callback"'), source.indexOf('mailRoutes.delete("/connection"'))
+  const source = await readMailRouteSources()
+  const callback = source.slice(source.indexOf('mailProviderCallbackRoutes.get("/oauth/google/callback"'), source.indexOf('mailConnectionRoutes.delete("/connection"'))
 
   assert.match(callback, /runWithDbEnv\(c\.env, async \(\) =>/)
   assert.match(callback, /completeGmailOauth[\s\S]*db[\s\S]*initializeGmailWatch/)

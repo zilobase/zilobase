@@ -2,6 +2,10 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { test } from "vitest"
 
+const readMailRouteSources = async () => (await Promise.all([
+  "organization-routes.ts", "query-routes.ts",
+].map((file) => readFile(new URL(file, import.meta.url), "utf8")))).join("\n")
+
 import { mailDatabaseSyncBackoffMs } from "./mail-database-sync-worker"
 
 test("database sync retry backoff grows exponentially and is bounded", () => {
@@ -52,7 +56,7 @@ test("database sync is wired to index, custom-property, route, and runtime paths
   const [index, properties, routes, runtime, adapter] = await Promise.all([
     readFile(new URL("./mail-index.ts", import.meta.url), "utf8"),
     readFile(new URL("./mail-properties.ts", import.meta.url), "utf8"),
-    readFile(new URL("./routes.ts", import.meta.url), "utf8"),
+    readMailRouteSources(),
     readFile(new URL("../../app/node/node-runtime.ts", import.meta.url), "utf8"),
     readFile(new URL("../../public/adapter-api.ts", import.meta.url), "utf8"),
   ])

@@ -4,7 +4,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
       readSource("/src/features/mail/pages/mail.tsx"),
       readSource("/src/features/mail/components/mail-row-action-dialog.tsx"),
       readWorkspace("/packages/features/src/mail/hooks.ts"),
-      readWorkspace("/apps/server/src/features/mail/routes.ts"),
+      readWorkspace("/apps/server/src/features/mail/query-routes.ts"),
     ])
     assert.match(dialog, /Mail commands/)
     assert.match(dialog, /Apply a label/)

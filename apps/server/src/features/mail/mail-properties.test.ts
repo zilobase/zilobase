@@ -2,6 +2,10 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { test } from "vitest"
 
+const readMailRouteSources = async () => (await Promise.all([
+  "organization-routes.ts", "route-support.ts",
+].map((file) => readFile(new URL(file, import.meta.url), "utf8")))).join("\n")
+
 test("mail property service validates all supported types and binding ownership", async () => {
   const source = await readFile(new URL("./mail-properties.ts", import.meta.url), "utf8")
 
@@ -24,7 +28,7 @@ test("person property choices and values use active workspace members", async ()
 })
 
 test("workspace routes expose property definition and thread-value CRUD", async () => {
-  const source = await readFile(new URL("./routes.ts", import.meta.url), "utf8")
+  const source = await readMailRouteSources()
   for (const route of [
     'get("/properties"',
     'post("/properties"',

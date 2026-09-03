@@ -2,6 +2,10 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { test } from "vitest"
 
+const readMailRouteSources = async () => (await Promise.all([
+  "organization-routes.ts", "route-support.ts",
+].map((file) => readFile(new URL(file, import.meta.url), "utf8")))).join("\n")
+
 import { seededMailViewId } from "./mail-views"
 
 test("seed view IDs are deterministic per binding", () => {
@@ -27,7 +31,7 @@ test("mail view service seeds protected Inbox plus Unread and Starred", async ()
 })
 
 test("workspace routes expose view bootstrap and mutation operations", async () => {
-  const source = await readFile(new URL("./routes.ts", import.meta.url), "utf8")
+  const source = await readMailRouteSources()
 
   for (const route of [
     'get("/views"',

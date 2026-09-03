@@ -2,6 +2,10 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import { test } from "vitest"
 
+const readMailRouteSources = async () => (await Promise.all([
+  "routes.ts", "connection-routes.ts", "message-routes.ts", "route-support.ts",
+].map((file) => readFile(new URL(file, import.meta.url), "utf8")))).join("\n")
+
 import {
   parseMailActionRequest,
   parseMailBatchModifyRequest,
@@ -57,7 +61,7 @@ test("custom label writes validate names, visibility, and sanitized Gmail colors
 })
 
 test("mail mutation routes always resolve the authenticated workspace binding", async () => {
-  const source = await readFile(new URL("./routes.ts", import.meta.url), "utf8")
+  const source = await readMailRouteSources()
   for (const route of ["batch-modify", "/modify", "/action", "patch(\"/labels", "delete(\"/labels"]) {
     assert.ok(source.includes(route))
   }

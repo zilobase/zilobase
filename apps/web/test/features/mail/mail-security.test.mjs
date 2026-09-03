@@ -7,7 +7,11 @@ export function register({ assert, loadModule, readSource, readWorkspace, test }
   })
 
   test("mail responses and OAuth result pages use strict cache, referrer, and CSP controls", async () => {
-    const routes = await readWorkspace("/apps/server/src/features/mail/routes.ts")
+    const routes = (await Promise.all([
+      "/apps/server/src/features/mail/routes.ts",
+      "/apps/server/src/features/mail/connection-routes.ts",
+      "/apps/server/src/features/mail/message-routes.ts",
+    ].map(readWorkspace))).join("\n")
     assert.match(routes, /Cache-Control[^\n]*private, no-store, max-age=0/)
     assert.match(routes, /Referrer-Policy[^\n]*no-referrer/)
     assert.match(routes, /Content-Security-Policy[^\n]*default-src 'none'/)
