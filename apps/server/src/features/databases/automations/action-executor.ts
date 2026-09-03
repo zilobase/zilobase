@@ -125,6 +125,7 @@ export async function executeAction(
       recipientIds,
       runId: context.run.id,
       workspaceId: context.automation.workspaceId,
+      env,
     });
     return { deliveredRecipients: notifications.length };
   }

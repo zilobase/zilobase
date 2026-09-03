@@ -9,9 +9,10 @@ import { createGmailGateway, clearGmailAccessTokenCache, GmailApiError } from ".
 import { sendGmailComposition } from "../../mail/mail-compose";
 import { parseMailComposeRequest } from "../../mail/mail-mime";
 import { withMailUserConcurrency } from "../../mail/user-concurrency";
-import { AutomationActionError } from "./action-error";
+import { AutomationActionError, RetryableAutomationActionError } from "./action-error";
 import { type ExecutionContext } from "./execution-context";
 import { resolveRichText, scalarString, userIds, resolveExpression, requireOwner } from "./action-support";
+import { measureBackgroundProvider } from "../../../infrastructure/background/telemetry";
 export async function executeGmailAction(
   context: ExecutionContext,
   action: Extract<DatabaseAutomationAction, { type: "send_gmail" }>,
@@ -97,29 +98,26 @@ export async function executeGmailAction(
   if (receipt?.status === "succeeded") {
     return { deliveryId, providerReference: receipt.providerReference, reused: true };
   }
+  if (receipt?.status === "retrying" && receipt.nextAttemptAt && receipt.nextAttemptAt > now) {
+    throw new RetryableAutomationActionError(
+      receipt.errorSummary ?? "Gmail delivery is waiting to retry",
+      receipt.errorCode ?? "AUTOMATION_GMAIL_RETRY",
+      receipt.nextAttemptAt,
+    );
+  }
+  const attempt = (receipt?.attempts ?? 0) + 1;
   await db
     .update(databaseAutomationDelivery)
     .set({ attempts: sql`${databaseAutomationDelivery.attempts} + 1`, status: "sending", updatedAt: new Date() })
     .where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
 
   try {
-    const result = await withMailUserConcurrency(ownerUserId, async () => {
-      const gateway = await createGmailGateway(env, owned.connection);
-      let lastError: unknown;
-      for (let attempt = 1; attempt <= 3; attempt += 1) {
-        try {
-          return await sendGmailComposition({ compose, connection: owned.connection, gateway, userId: ownerUserId });
-        } catch (error) {
-          lastError = error;
-          if (!(error instanceof GmailApiError) || !error.retryable || attempt === 3) throw error;
-          await db
-            .update(databaseAutomationDelivery)
-            .set({ attempts: sql`${databaseAutomationDelivery.attempts} + 1`, status: "retrying", updatedAt: new Date() })
-            .where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
-        }
-      }
-      throw lastError;
-    });
+    const result = await measureBackgroundProvider(env, "automation.run", () =>
+      withMailUserConcurrency(ownerUserId, async () => {
+        const gateway = await createGmailGateway(env, owned.connection);
+        return sendGmailComposition({ compose, connection: owned.connection, gateway, userId: ownerUserId });
+      })
+    );
     await db
       .update(databaseAutomationDelivery)
       .set({
@@ -144,6 +142,21 @@ export async function executeGmailAction(
         dependencyType: "gmail_connection",
         reason: "Reconnect the automation owner's Gmail account",
       });
+    }
+    if (error instanceof GmailApiError && error.retryable && attempt < 3) {
+      const delay = Math.min(
+        error.retryAfterMs ?? (error.code === "quota_exceeded" ? 60_000 : 1_000 * 2 ** (attempt - 1)),
+        15 * 60_000,
+      );
+      const nextAttemptAt = new Date(Date.now() + delay);
+      await db.update(databaseAutomationDelivery).set({
+        errorCode: code,
+        errorSummary: error.message.slice(0, 2_000),
+        nextAttemptAt,
+        status: "retrying",
+        updatedAt: new Date(),
+      }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
+      throw new RetryableAutomationActionError(error.message, code, nextAttemptAt);
     }
     await db
       .update(databaseAutomationDelivery)

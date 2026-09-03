@@ -47,7 +47,8 @@ describe("database automation operations", () => {
     expect(operations).toContain('["succeeded", "failed", "skipped", "cancelled"]');
     expect(operations).toContain('["completed", "discarded"]');
     expect(operations).not.toContain("definition:");
-    expect(health).toContain("AUTOMATION_OPERATIONS_TOKEN");
+    expect(health).toContain("ZILOBASE_OPERATIONS_TOKEN");
+    expect(health).toContain("/health/background");
     expect(health).toContain("equalSecret");
     expect(service).toContain("exportDatabaseAutomationAudit");
     expect(service).toContain("dependencyCounts");

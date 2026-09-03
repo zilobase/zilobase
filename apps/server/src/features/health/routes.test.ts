@@ -20,8 +20,8 @@ test("root and health probes return the stable service contract", async () => {
   }
 });
 
-test("automation operations health is hidden without its bearer token", async () => {
-  const response = await healthRoutes.request("/health/automations");
+test("deployment background health is hidden without its bearer token", async () => {
+  const response = await healthRoutes.request("/health/background");
   assert.equal(response.status, 404);
 });
 

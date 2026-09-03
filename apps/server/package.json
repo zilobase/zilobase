@@ -57,6 +57,8 @@
     "@hocuspocus/extension-redis": "^4.6.0",
     "@hocuspocus/server": "^4.3.0",
     "@hocuspocus/transformer": "^4.3.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.221.0",
     "@tiptap/pm": "^3.23.6",
     "@zilobase/features": "file:../../packages/features",
     "@zilobase/page-context": "file:../../packages/page-context",

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, lt, lte, max, or } from "drizzle-orm"
+import { and, asc, eq, inArray, isNull, lt, lte, max, or, sql } from "drizzle-orm"
 import { evaluateMailFilterExpression, normalizeMailViewConfig, type MailAddress, type MailFilterRecord } from "@zilobase/features/mail"
 
 import { requireDatabaseEditAccess } from "../databases/access/database-access"
@@ -33,6 +33,9 @@ import type { RuntimeEnv } from "../../shared/config/config"
 import { createGmailGateway, type GmailGateway } from "./gmail-gateway"
 import { normalizeGmailThread } from "./mail-normalize"
 import { recordMailMetric } from "./mail-metrics"
+import { createBackgroundTask } from "../../infrastructure/background/contracts"
+import { dispatchBackgroundTasks } from "../../infrastructure/background/dispatch"
+import { recordRecoveredBackgroundLease } from "../../infrastructure/background/telemetry"
 
 const LEASE_MS = 2 * 60 * 1_000
 const MAX_ATTEMPTS = 8
@@ -42,15 +45,15 @@ type IndexedRow = typeof mailThreadIndex.$inferSelect
 type SyncRecord = typeof mailDatabaseSyncRecord.$inferSelect
 type SourceProperty = { options: Array<{ id: string; name: string }> }
 
-export async function enqueueMailDatabaseSyncForThread(gmailAccountId: string, gmailThreadId: string) {
+export async function enqueueMailDatabaseSyncForThread(gmailAccountId: string, gmailThreadId: string, env?: RuntimeEnv) {
   const [row] = await db.select().from(mailThreadIndex).where(and(
     eq(mailThreadIndex.gmailAccountId, gmailAccountId),
     eq(mailThreadIndex.gmailThreadId, gmailThreadId),
   )).limit(1)
-  if (row) await enqueueMailDatabaseSyncForIndexedThread(row)
+  if (row) await enqueueMailDatabaseSyncForIndexedThread(row, env)
 }
 
-export async function enqueueMailDatabaseSyncForIndexedThread(row: IndexedRow) {
+export async function enqueueMailDatabaseSyncForIndexedThread(row: IndexedRow, env?: RuntimeEnv) {
   const candidates = await db.select({
     bindingId: gmailWorkspaceConnection.id,
     config: mailView.config,
@@ -67,6 +70,7 @@ export async function enqueueMailDatabaseSyncForIndexedThread(row: IndexedRow) {
     ))
   const existingViewIds = new Set(existingRecords.map((record) => record.viewId))
   let enqueued = 0
+  const outboxIds: string[] = []
   for (const candidate of candidates) {
     const config = normalizeMailViewConfig(candidate.config)
     const activatedAt = config.databaseSync.activatedAt ? Date.parse(config.databaseSync.activatedAt) : Number.NaN
@@ -78,7 +82,7 @@ export async function enqueueMailDatabaseSyncForIndexedThread(row: IndexedRow) {
       if (!evaluateMailFilterExpression(filterRecord(row, customValues), config.filter)) continue
     }
     const now = new Date()
-    await db.insert(mailDatabaseSyncOutbox).values({
+    const [outbox] = await db.insert(mailDatabaseSyncOutbox).values({
       attempts: 0,
       bindingId: candidate.bindingId,
       createdAt: now,
@@ -102,9 +106,13 @@ export async function enqueueMailDatabaseSyncForIndexedThread(row: IndexedRow) {
         updatedAt: now,
         workerId: null,
       },
-    })
+    }).returning({ id: mailDatabaseSyncOutbox.id })
+    if (outbox) outboxIds.push(outbox.id)
     enqueued += 1
   }
+  if (env) await dispatchBackgroundTasks(env, outboxIds.map((id) =>
+    createBackgroundTask({ env, kind: "mail.database_sync", resourceId: id })
+  ))
   return enqueued
 }
 
@@ -125,17 +133,17 @@ export async function getMailDatabaseSyncViewStatus(bindingId: string, viewId: s
   }
 }
 
-export async function drainMailDatabaseSyncOutbox(env: RuntimeEnv, options: { bindingId?: string; limit?: number; workerId?: string } = {}) {
+export async function drainMailDatabaseSyncOutbox(env: RuntimeEnv, options: { bindingId?: string; limit?: number; outboxId?: string; workerId?: string } = {}) {
   const startedAt = Date.now()
   const limit = Math.max(1, Math.min(options.limit ?? 20, 100))
   const workerId = options.workerId ?? `mail-sync:${crypto.randomUUID()}`
-  const now = new Date()
   const candidates = await db.select().from(mailDatabaseSyncOutbox).where(and(
+    ...(options.outboxId ? [eq(mailDatabaseSyncOutbox.id, options.outboxId)] : []),
     ...(options.bindingId ? [eq(mailDatabaseSyncOutbox.bindingId, options.bindingId)] : []),
-    lte(mailDatabaseSyncOutbox.nextAttemptAt, now),
+    lte(mailDatabaseSyncOutbox.nextAttemptAt, sql`current_timestamp`),
     or(
       inArray(mailDatabaseSyncOutbox.status, ["pending", "retry"]),
-      and(eq(mailDatabaseSyncOutbox.status, "processing"), or(isNull(mailDatabaseSyncOutbox.leaseExpiresAt), lt(mailDatabaseSyncOutbox.leaseExpiresAt, now))),
+      and(eq(mailDatabaseSyncOutbox.status, "processing"), or(isNull(mailDatabaseSyncOutbox.leaseExpiresAt), lt(mailDatabaseSyncOutbox.leaseExpiresAt, sql`current_timestamp`))),
     ),
   )).orderBy(asc(mailDatabaseSyncOutbox.nextAttemptAt), asc(mailDatabaseSyncOutbox.createdAt)).limit(limit * 2)
   let completed = 0
@@ -144,18 +152,21 @@ export async function drainMailDatabaseSyncOutbox(env: RuntimeEnv, options: { bi
   for (const candidate of candidates) {
     if (completed + paused + retried >= limit) break
     const [claimed] = await db.update(mailDatabaseSyncOutbox).set({
-      leaseExpiresAt: new Date(Date.now() + LEASE_MS),
+      leaseExpiresAt: sql`current_timestamp + (${LEASE_MS} * interval '1 millisecond')`,
       status: "processing",
-      updatedAt: new Date(),
+      updatedAt: sql`current_timestamp`,
       workerId,
     }).where(and(
       eq(mailDatabaseSyncOutbox.id, candidate.id),
       or(
         inArray(mailDatabaseSyncOutbox.status, ["pending", "retry"]),
-        and(eq(mailDatabaseSyncOutbox.status, "processing"), or(isNull(mailDatabaseSyncOutbox.leaseExpiresAt), lt(mailDatabaseSyncOutbox.leaseExpiresAt, now))),
+        and(eq(mailDatabaseSyncOutbox.status, "processing"), or(isNull(mailDatabaseSyncOutbox.leaseExpiresAt), lt(mailDatabaseSyncOutbox.leaseExpiresAt, sql`current_timestamp`))),
       ),
     )).returning()
     if (!claimed) continue
+    if (candidate.status === "processing") {
+      recordRecoveredBackgroundLease(env, "mail.database_sync")
+    }
     try {
       await processClaimedMailDatabaseSync(env, claimed)
       await db.update(mailDatabaseSyncOutbox).set({

@@ -3,12 +3,11 @@ import { and, eq, sql } from "drizzle-orm"
 import { db, runWithDbEnv } from "../../infrastructure/database"
 import {
   gmailAccount,
-  gmailWorkspaceConnection,
 } from "../../infrastructure/database/schema"
 import { getStringEnv, type RuntimeEnv } from "../../shared/config/config"
-import { publishMailNotification } from "../../infrastructure/runtime/runtime-adapter"
+import { createBackgroundTask } from "../../infrastructure/background/contracts"
+import { dispatchBackgroundTasks } from "../../infrastructure/background/dispatch"
 import { verifyGoogleOidcToken } from "./security/google-oidc-token"
-import { advanceMailIndex } from "./mail-index"
 
 const MAX_PUSH_BYTES = 64 * 1024
 
@@ -53,26 +52,14 @@ export async function processGmailPubsubRequest(
         revision: gmailAccount.mailboxRevision,
         userId: gmailAccount.userId,
       })
-    const events = []
     for (const account of updated) {
-      await advanceMailIndex(env, account.connectionId).catch(() => undefined)
-      const bindings = await db
-        .select({
-          bindingId: gmailWorkspaceConnection.id,
-          workspaceId: gmailWorkspaceConnection.workspaceId,
-        })
-        .from(gmailWorkspaceConnection)
-        .where(and(
-          eq(gmailWorkspaceConnection.gmailAccountId, account.connectionId),
-          eq(gmailWorkspaceConnection.userId, account.userId),
-        ))
-      for (const binding of bindings) {
-        const event = { ...account, ...binding }
-        events.push(event)
-        await publishMailNotification(env, event)
-      }
+      await dispatchBackgroundTasks(env, [createBackgroundTask({
+        env,
+        kind: "mail.index",
+        resourceId: account.connectionId,
+      })])
     }
-    return events
+    return updated
   })
 }
 

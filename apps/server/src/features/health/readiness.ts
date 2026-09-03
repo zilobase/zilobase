@@ -4,12 +4,14 @@ import type { RuntimeEnv } from "../../shared/config/config";
 import { db, runWithDbEnv } from "../../infrastructure/database";
 import { createImageStorage } from "../../infrastructure/storage/image-storage";
 import { isRealtimeReady } from "../../infrastructure/realtime/readiness";
+import { isBackgroundCoordinatorReady } from "../../infrastructure/background/health";
 
 export type ReadinessResult = {
   checks: {
     database: "ok" | "unavailable";
     objectStorage: "ok" | "unavailable";
     realtime: "ok" | "unavailable";
+    background?: "unavailable";
   };
   ok: boolean;
   service: "zilobase-server";
@@ -52,6 +54,7 @@ export async function checkReadiness(
       objectStorage.status === "fulfilled" ? "ok" : "unavailable",
     realtime: isRealtimeReady(env) ? "ok" : "unavailable",
   };
+  if (!isBackgroundCoordinatorReady()) checks.background = "unavailable";
 
   return {
     checks,

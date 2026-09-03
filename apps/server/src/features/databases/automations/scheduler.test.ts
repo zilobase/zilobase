@@ -45,6 +45,7 @@ describe("database automation schedule claims", () => {
     expect(source).toContain("occurrenceKey: plan.occurrenceKey");
     expect(source).toContain(".onConflictDoNothing()");
     expect(source).toContain("nextRunAt: plan.nextRunAt");
-    expect(source).toContain("enqueueDatabaseAutomationRun");
+    expect(source).toContain('kind: "automation.run"');
+    expect(source).toContain("dispatchBackgroundTasks");
   });
 });

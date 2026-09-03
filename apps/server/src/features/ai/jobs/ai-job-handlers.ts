@@ -4,21 +4,25 @@ import { generateMeetingSummary } from "../../meetings/meeting-summary-service";
 import { PermanentAiJobError } from "./ai-jobs";
 import { compactAiThreadJob } from "../chat/ai-thread-summary-job";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
+import { measureBackgroundProvider } from "../../../infrastructure/background/telemetry";
 
-const meetingSummaryJob: AiJobHandler = async ({ env, job, reportProgress }) => {
+const meetingSummaryJob: AiJobHandler = async ({ assertLease, env, job, reportProgress }) => {
   if (!job.userId) throw new PermanentAiJobError("Meeting summary job has no owner.");
   const input = job.input as { meetingId?: unknown };
   if (typeof input.meetingId !== "string" || !input.meetingId) {
     throw new PermanentAiJobError("Meeting summary job input is invalid.");
   }
+  const meetingId = input.meetingId;
+  const userId = job.userId;
   await reportProgress(10);
+  await assertLease();
   let result;
   try {
-    result = await generateMeetingSummary({
+    result = await measureBackgroundProvider(env, "ai.job", () => generateMeetingSummary({
       env,
-      meetingId: input.meetingId,
-      userId: job.userId,
-    });
+      meetingId,
+      userId,
+    }));
   } catch (error) {
     if (error instanceof ServiceMutationError) {
       throw new PermanentAiJobError(error.message);
@@ -26,7 +30,7 @@ const meetingSummaryJob: AiJobHandler = async ({ env, job, reportProgress }) => 
     throw error;
   }
   return {
-    meetingId: result.meeting?.id ?? input.meetingId,
+    meetingId: result.meeting?.id ?? meetingId,
     status: "ready",
   };
 };

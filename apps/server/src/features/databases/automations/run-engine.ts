@@ -3,10 +3,14 @@ import { isDatabaseAutomationExecutionEnabled, type RuntimeEnv } from "../../../
 import { db } from "../../../infrastructure/database";
 import { database, databaseAutomation, databaseAutomationRun, databaseAutomationStepRun, dataSource } from "../../../infrastructure/database/schema";
 import { requireDataSourceAccess } from "../access/data-source-access";
-import { AutomationActionError, actionFailure } from "./action-error";
+import { AutomationActionError, RetryableAutomationActionError, actionFailure } from "./action-error";
 import { type ExecutionContext, loadExecutionContext } from "./execution-context";
 import { restoreStepOutput, toJson, requireOwner } from "./action-support";
 import { executeAction } from "./action-executor";
+import { createBackgroundTask } from "../../../infrastructure/background/contracts";
+import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import { recordRecoveredBackgroundLease } from "../../../infrastructure/background/telemetry";
+
 const RUN_LEASE_MS = 2 * 60_000;
 const WORKSPACE_RUN_LIMIT = 10;
 
@@ -44,18 +48,26 @@ export async function drainDatabaseAutomationRuns(
   options: { limit?: number; runId?: string; workerId?: string } = {},
 ) {
   if (!isDatabaseAutomationExecutionEnabled(env)) return { claimed: 0, failed: 0, succeeded: 0 };
-  const now = new Date();
   const workerId = options.workerId ?? `automation-runner:${crypto.randomUUID()}`;
   const limit = Math.max(1, Math.min(options.limit ?? 10, 50));
   const claimed = await db.transaction(async (tx) => {
+    const clock = await tx.execute(sql<{ now: Date }>`select current_timestamp as now`);
+    const now = new Date(clock.rows[0]!.now as Date | string);
     const rows = await tx
-      .select({ id: databaseAutomationRun.id, workspaceId: databaseAutomationRun.workspaceId })
+      .select({
+        id: databaseAutomationRun.id,
+        status: databaseAutomationRun.status,
+        workspaceId: databaseAutomationRun.workspaceId,
+      })
       .from(databaseAutomationRun)
       .where(
         and(
           options.runId ? eq(databaseAutomationRun.id, options.runId) : undefined,
           or(
-            eq(databaseAutomationRun.status, "queued"),
+            and(
+              eq(databaseAutomationRun.status, "queued"),
+              lte(databaseAutomationRun.availableAt, now),
+            ),
             and(
               eq(databaseAutomationRun.status, "running"),
               lte(databaseAutomationRun.leaseExpiresAt, now),
@@ -66,7 +78,9 @@ export async function drainDatabaseAutomationRuns(
       .orderBy(asc(databaseAutomationRun.createdAt))
       .limit(250)
       .for("update", { skipLocked: true });
-    if (!rows.length) return { claims: [] as Array<{ id: string }>, deferred: false };
+    if (!rows.length) {
+      return { claims: [] as Array<{ id: string; recoveredLease?: boolean }>, deferred: false };
+    }
     const workspaceIds = [...new Set(rows.map(({ workspaceId }) => workspaceId))].sort();
     for (const workspaceId of workspaceIds) {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`database-automation:${workspaceId}`}))`);
@@ -80,8 +94,13 @@ export async function drainDatabaseAutomationRuns(
       gt(databaseAutomationRun.leaseExpiresAt, now),
     )).groupBy(databaseAutomationRun.workspaceId);
     const selected = selectWorkspaceRunClaims(rows, running, limit);
-    if (!selected.length) return { claims: [] as Array<{ id: string }>, deferred: Boolean(options.runId) };
-    const claims = await tx
+    if (!selected.length) {
+      return {
+        claims: [] as Array<{ id: string; recoveredLease?: boolean }>,
+        deferred: Boolean(options.runId),
+      };
+    }
+    const claimedRows = await tx
       .update(databaseAutomationRun)
       .set({
         attempts: sql`${databaseAutomationRun.attempts} + 1`,
@@ -93,21 +112,88 @@ export async function drainDatabaseAutomationRuns(
       })
       .where(inArray(databaseAutomationRun.id, selected))
       .returning({ id: databaseAutomationRun.id });
+    const claims = claimedRows.map((claim) => ({
+      ...claim,
+      recoveredLease: rows.find((row) => row.id === claim.id)?.status === "running",
+    }));
     return { claims, deferred: false };
   });
   if (claimed.deferred) throw new AutomationRunCapacityError();
 
   let failed = 0;
+  let retried = 0;
   let succeeded = 0;
   for (const run of claimed.claims) {
+    if (run.recoveredLease) recordRecoveredBackgroundLease(env, "automation.run");
     const result = await executeRun(run.id, workerId, env);
     if (result === "succeeded") succeeded += 1;
+    else if (result === "retry") retried += 1;
     else failed += 1;
   }
-  return { claimed: claimed.claims.length, failed, succeeded };
+  return { claimed: claimed.claims.length, failed, retried, succeeded };
+}
+
+export async function processDatabaseAutomationRun(
+  env: RuntimeEnv,
+  input: { runId: string; workerId: string },
+) {
+  if (!isDatabaseAutomationExecutionEnabled(env)) return { outcome: "noop" as const };
+  try {
+    const result = await drainDatabaseAutomationRuns(env, {
+      limit: 1,
+      runId: input.runId,
+      workerId: input.workerId,
+    });
+    if (result.succeeded) return { outcome: "completed" as const };
+    if (result.failed) return { errorCode: "AUTOMATION_RUN_FAILED", outcome: "terminal" as const };
+  } catch (error) {
+    if (!(error instanceof AutomationRunCapacityError)) throw error;
+  }
+  const [run] = await db.select({
+    availableAt: databaseAutomationRun.availableAt,
+    status: databaseAutomationRun.status,
+  }).from(databaseAutomationRun).where(eq(databaseAutomationRun.id, input.runId)).limit(1);
+  if (!run || ["succeeded", "failed", "skipped", "cancelled"].includes(run.status)) {
+    return { outcome: "noop" as const };
+  }
+  return {
+    availableAt: new Date(Math.max(run.availableAt.getTime(), Date.now() + 5_000)).toISOString(),
+    outcome: "retry" as const,
+  };
 }
 
 async function executeRun(runId: string, workerId: string, env: RuntimeEnv) {
+  let leaseLost = false;
+  let renewing = false;
+  const heartbeat = setInterval(() => {
+    if (renewing || leaseLost) return;
+    renewing = true;
+    void renewRunLease(runId, workerId).then((renewed) => {
+      leaseLost ||= !renewed;
+    }).catch(() => {
+      leaseLost = true;
+    }).finally(() => {
+      renewing = false;
+    });
+  }, 30_000);
+  try {
+    return await executeRunWithLease(runId, workerId, env, async () => {
+      if (leaseLost || !(await renewRunLease(runId, workerId))) {
+        leaseLost = true;
+        throw new AutomationActionError("Automation run lease was lost", "AUTOMATION_LEASE_LOST");
+      }
+    });
+  } finally {
+    clearInterval(heartbeat);
+  }
+}
+
+async function executeRunWithLease(
+  runId: string,
+  workerId: string,
+  env: RuntimeEnv,
+  assertLease: () => Promise<void>,
+) {
   let loaded: Awaited<ReturnType<typeof loadExecutionContext>>;
   try {
     loaded = await loadExecutionContext(runId, workerId);
@@ -154,9 +240,12 @@ async function executeRun(runId: string, workerId: string, env: RuntimeEnv) {
 
     for (const [actionIndex, action] of context.definition.actions.entries()) {
       if (context.completedSteps.some((step) => step.actionId === action.id)) continue;
+      await assertLease();
       const step = await startStep(context.run.id, action.id, actionIndex);
       try {
+        await assertLease();
         const output = await executeAction(context, action, env);
+        await assertLease();
         await db
           .update(databaseAutomationStepRun)
           .set({
@@ -168,7 +257,38 @@ async function executeRun(runId: string, workerId: string, env: RuntimeEnv) {
           .where(eq(databaseAutomationStepRun.id, step.id));
         restoreStepOutput(context, action.id, output);
       } catch (error) {
+        if (isLeaseLost(error)) return "retry" as const;
         const failure = actionFailure(error, action.id);
+        if (failure instanceof RetryableAutomationActionError) {
+          await db.transaction(async (tx) => {
+            await tx.update(databaseAutomationStepRun).set({
+              errorCode: failure.code,
+              errorSummary: failure.message,
+              finishedAt: null,
+              status: "queued",
+              updatedAt: new Date(),
+            }).where(eq(databaseAutomationStepRun.id, step.id));
+            await tx.update(databaseAutomationRun).set({
+              availableAt: failure.availableAt,
+              errorCode: failure.code,
+              errorSummary: failure.message,
+              leaseExpiresAt: null,
+              leaseOwner: null,
+              status: "queued",
+              updatedAt: new Date(),
+            }).where(and(
+              eq(databaseAutomationRun.id, runId),
+              eq(databaseAutomationRun.leaseOwner, workerId),
+            ));
+          });
+          await dispatchBackgroundTasks(env, [createBackgroundTask({
+            availableAt: failure.availableAt,
+            env,
+            kind: "automation.run",
+            resourceId: runId,
+          })]);
+          return "retry" as const;
+        }
         await db
           .update(databaseAutomationStepRun)
           .set({
@@ -202,10 +322,28 @@ async function executeRun(runId: string, workerId: string, env: RuntimeEnv) {
     });
     return "succeeded" as const;
   } catch (error) {
+    if (isLeaseLost(error)) return "retry" as const;
+    if (error instanceof RetryableAutomationActionError) return "retry" as const;
     const failure = actionFailure(error);
     await failClaimedRun(runId, workerId, failure, context.automation.id);
     return "failed" as const;
   }
+}
+
+function isLeaseLost(error: unknown) {
+  return error instanceof AutomationActionError && error.code === "AUTOMATION_LEASE_LOST";
+}
+
+async function renewRunLease(runId: string, workerId: string) {
+  const [renewed] = await db.update(databaseAutomationRun).set({
+    leaseExpiresAt: sql`current_timestamp + (${RUN_LEASE_MS} * interval '1 millisecond')`,
+    updatedAt: sql`current_timestamp`,
+  }).where(and(
+    eq(databaseAutomationRun.id, runId),
+    eq(databaseAutomationRun.status, "running"),
+    eq(databaseAutomationRun.leaseOwner, workerId),
+  )).returning({ id: databaseAutomationRun.id });
+  return Boolean(renewed);
 }
 
 async function startStep(runId: string, actionId: string, actionIndex: number) {

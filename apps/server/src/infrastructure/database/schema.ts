@@ -12,6 +12,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  varchar,
 } from "drizzle-orm/pg-core";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({
@@ -156,7 +157,7 @@ export const gmailAccount = pgTable(
     mailboxRevision: integer("mailbox_revision").notNull().default(0),
     watchExpiresAt: timestamp("watch_expires_at", { withTimezone: true }),
     lastWatchAt: timestamp("last_watch_at", { withTimezone: true }),
-    lastErrorCode: text("last_error_code"),
+    lastErrorCode: varchar("last_error_code", { length: 80 }),
     ...timestampColumns(),
   },
   (table) => [
@@ -582,29 +583,40 @@ export const mailDatabaseSyncOutbox = pgTable(
     uniqueIndex("mail_database_sync_outbox_view_thread_unique").on(table.viewId, table.gmailThreadId),
     index("mail_database_sync_outbox_ready_idx").on(table.status, table.nextAttemptAt),
     index("mail_database_sync_outbox_binding_idx").on(table.bindingId, table.updatedAt),
+    index("mail_database_sync_outbox_active_due_idx")
+      .on(table.nextAttemptAt, table.leaseExpiresAt, table.createdAt)
+      .where(sql`${table.status} in ('pending', 'processing', 'retry')`),
     check("mail_database_sync_outbox_status_check", sql`${table.status} in ('pending', 'processing', 'retry', 'completed', 'paused')`),
   ],
 );
 
-export const mailIndexState = pgTable("mail_index_state", {
-  gmailAccountId: text("gmail_account_id")
-    .primaryKey()
-    .references(() => gmailAccount.id, { onDelete: "cascade" }),
-  status: text("status").notNull().default("pending"),
-  generation: integer("generation").notNull().default(0),
-  indexedThreadCount: integer("indexed_thread_count").notNull().default(0),
-  resultSizeEstimate: integer("result_size_estimate"),
-  historyId: text("history_id"),
-  historyStartId: text("history_start_id"),
-  historyPageToken: text("history_page_token"),
-  nextPageToken: text("next_page_token"),
-  lastErrorCode: text("last_error_code"),
-  leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
-  leaseToken: text("lease_token"),
-  startedAt: timestamp("started_at", { withTimezone: true }),
-  completedAt: timestamp("completed_at", { withTimezone: true }),
-  ...timestampColumns(),
-});
+export const mailIndexState = pgTable(
+  "mail_index_state",
+  {
+    gmailAccountId: text("gmail_account_id")
+      .primaryKey()
+      .references(() => gmailAccount.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"),
+    generation: integer("generation").notNull().default(0),
+    indexedThreadCount: integer("indexed_thread_count").notNull().default(0),
+    resultSizeEstimate: integer("result_size_estimate"),
+    historyId: text("history_id"),
+    historyStartId: text("history_start_id"),
+    historyPageToken: text("history_page_token"),
+    nextPageToken: text("next_page_token"),
+    lastErrorCode: text("last_error_code"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    leaseToken: text("lease_token"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestampColumns(),
+  },
+  (table) => [
+    index("mail_index_state_active_due_idx")
+      .on(table.status, table.leaseExpiresAt, table.updatedAt)
+      .where(sql`${table.status} in ('pending', 'backfilling', 'syncing', 'error')`),
+  ],
+);
 
 export const mailThreadIndex = pgTable(
   "mail_thread_index",
@@ -1806,6 +1818,9 @@ export const databaseAutomationEventWindow = pgTable(
       table.closesAt,
       table.nextAttemptAt,
     ),
+    index("database_automation_event_window_active_due_idx")
+      .on(table.closesAt, table.nextAttemptAt, table.leaseExpiresAt)
+      .where(sql`${table.status} in ('accumulating', 'ready', 'processing')`),
     index("database_automation_event_window_source_row_idx").on(
       table.dataSourceId,
       table.rowId,
@@ -1850,6 +1865,7 @@ export const databaseAutomationRun = pgTable(
     inputSnapshot: jsonb("input_snapshot").notNull().default({}),
     definitionHash: text("definition_hash").notNull(),
     status: text("status").notNull().default("queued"),
+    availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow(),
     attempts: integer("attempts").notNull().default(0),
     leaseOwner: text("lease_owner"),
     leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
@@ -1872,9 +1888,11 @@ export const databaseAutomationRun = pgTable(
     ),
     index("database_automation_run_claim_idx").on(
       table.status,
+      table.availableAt,
       table.leaseExpiresAt,
+      table.workspaceId,
       table.createdAt,
-    ),
+    ).where(sql`${table.status} in ('queued', 'running')`),
     index("database_automation_run_history_idx").on(
       table.automationId,
       table.createdAt,
@@ -2029,6 +2047,9 @@ export const inProductNotificationOutbox = pgTable(
   (table) => [
     uniqueIndex("in_product_notification_outbox_notification_unique").on(table.notificationId),
     index("in_product_notification_outbox_due_idx").on(table.status, table.nextAttemptAt),
+    index("in_product_notification_outbox_pending_due_idx")
+      .on(table.nextAttemptAt, table.createdAt)
+      .where(sql`${table.status} = 'pending'`),
     check(
       "in_product_notification_outbox_status_check",
       sql`${table.status} in ('pending', 'published')`,
@@ -2523,12 +2544,37 @@ export const aiJob = pgTable(
       table.dedupeKey,
     ),
     index("ai_job_claim_idx").on(table.status, table.availableAt, table.leaseExpiresAt),
+    index("ai_job_active_due_idx")
+      .on(table.availableAt, table.leaseExpiresAt, table.createdAt)
+      .where(sql`${table.status} in ('queued', 'running')`),
     index("ai_job_owner_created_idx").on(table.workspaceId, table.userId, table.createdAt),
     check(
       "ai_job_status_check",
       sql`${table.status} in ('queued', 'running', 'succeeded', 'failed', 'cancelled')`,
     ),
     check("ai_job_progress_check", sql`${table.progress} between 0 and 100`),
+  ],
+);
+
+export const backgroundMaintenanceTask = pgTable(
+  "background_maintenance_task",
+  {
+    taskKey: text("task_key").primaryKey(),
+    nextRunAt: timestamp("next_run_at", { withTimezone: true }).notNull(),
+    leaseOwner: text("lease_owner"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    lastStartedAt: timestamp("last_started_at", { withTimezone: true }),
+    lastSucceededAt: timestamp("last_succeeded_at", { withTimezone: true }),
+    lastFailedAt: timestamp("last_failed_at", { withTimezone: true }),
+    lastErrorCode: text("last_error_code"),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    ...timestampColumns(),
+  },
+  (table) => [
+    index("background_maintenance_task_due_idx").on(
+      table.nextRunAt,
+      table.leaseExpiresAt,
+    ),
   ],
 );
 

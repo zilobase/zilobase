@@ -173,7 +173,10 @@ export async function lockDatabaseAutomationFactRows(
 export async function captureDatabaseAutomationMutationFacts(
   tx: DatabaseTransaction,
   candidates: readonly DatabaseAutomationMutationFactCandidate[],
-  options: { clock?: () => Date } = {},
+  options: {
+    capturedWindows?: Array<{ availableAt: Date; id: string }>;
+    clock?: () => Date;
+  } = {},
 ) {
   const facts = candidates.map((fact) =>
     databaseAutomationMutationFactSchema.parse(fact),
@@ -272,6 +275,7 @@ export async function captureDatabaseAutomationMutationFacts(
       const closesAt = new Date(
         now.getTime() + DATABASE_AUTOMATION_EVENT_WINDOW_MS,
       );
+      const id = crypto.randomUUID();
       await tx.insert(databaseAutomationEventWindow).values({
         actorIds: state.actorIds,
         afterValues: state.afterValues,
@@ -279,7 +283,7 @@ export async function captureDatabaseAutomationMutationFacts(
         changedPropertyIds: state.changedPropertyIds,
         closesAt,
         dataSourceId: first.dataSourceId,
-        id: crypto.randomUUID(),
+        id,
         lastFactAt: now,
         nextAttemptAt: closesAt,
         openedAt: now,
@@ -291,6 +295,7 @@ export async function captureDatabaseAutomationMutationFacts(
         triggerActorId: state.triggerActorId,
         workspaceId: await resolveFactWorkspaceId(tx, first.dataSourceId),
       });
+      options.capturedWindows?.push({ availableAt: closesAt, id });
     }
     captured += 1;
   }
@@ -317,16 +322,20 @@ async function resolveFactWorkspaceId(
 }
 
 export async function promoteClosedDatabaseAutomationEventWindows(
-  options: { clock?: () => Date; limit?: number } = {},
+  options: { clock?: () => Date; limit?: number; windowId?: string } = {},
 ) {
-  const now = options.clock?.() ?? new Date();
   const limit = Math.max(1, Math.min(options.limit ?? 1_000, 1_000));
   return db.transaction(async (tx) => {
+    const clock = options.clock
+      ? null
+      : await tx.execute(sql<{ now: Date }>`select current_timestamp as now`);
+    const now = options.clock?.() ?? new Date(clock!.rows[0]!.now as Date | string);
     const due = await tx
       .select({ id: databaseAutomationEventWindow.id })
       .from(databaseAutomationEventWindow)
       .where(
         and(
+          options.windowId ? eq(databaseAutomationEventWindow.id, options.windowId) : undefined,
           eq(databaseAutomationEventWindow.status, "accumulating"),
           lte(databaseAutomationEventWindow.closesAt, now),
         ),

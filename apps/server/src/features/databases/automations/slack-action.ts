@@ -6,9 +6,10 @@ import { db } from "../../../infrastructure/database";
 import { databaseAutomationDelivery, slackConnection } from "../../../infrastructure/database/schema";
 import { invalidateDatabaseAutomationDependencies } from "./service";
 import { listSlackChannels, sendSlackMessage, SlackProviderError } from "./slack-provider";
-import { AutomationActionError } from "./action-error";
+import { AutomationActionError, RetryableAutomationActionError } from "./action-error";
 import { type ExecutionContext } from "./execution-context";
 import { displayValue, resolveExpression, requireOwner } from "./action-support";
+import { measureBackgroundProvider } from "../../../infrastructure/background/telemetry";
 export async function executeSlackAction(
   context: ExecutionContext,
   action: Extract<DatabaseAutomationAction, { type: "send_slack" }>,
@@ -45,40 +46,53 @@ export async function executeSlackAction(
   }).onConflictDoNothing();
   const [receipt] = await db.select().from(databaseAutomationDelivery).where(eq(databaseAutomationDelivery.deliveryId, deliveryId)).limit(1);
   if (receipt?.status === "succeeded") return { deliveryId, messageTs: receipt.providerReference, reused: true };
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= 4; attempt += 1) {
-    await db.update(databaseAutomationDelivery).set({
-      attempts: sql`${databaseAutomationDelivery.attempts} + 1`, nextAttemptAt: null, status: "sending", updatedAt: new Date(),
-    }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
-    try {
-      const authorizedChannels = await listSlackChannels(env, connection);
-      if (!authorizedChannels.some(({ id }) => id === action.channelId)) {
-        throw new SlackProviderError("Slack channel is unavailable or is a direct message", "SLACK_CHANNEL_UNAVAILABLE", 409);
-      }
-      const result = await sendSlackMessage(env, connection, { channelId: action.channelId, deliveryId, text });
-      await db.update(databaseAutomationDelivery).set({
-        errorCode: null, errorSummary: null, providerReference: result.messageTs,
-        status: "succeeded", updatedAt: new Date(),
-      }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
-      return { deliveryId, messageTs: result.messageTs, reused: false };
-    } catch (error) {
-      lastError = error;
-      if (error instanceof SlackProviderError && error.code === "SLACK_CONNECTION_REVOKED") await markSlackConnectionRevoked(connection.id, error);
-      if (!(error instanceof SlackProviderError) || !error.retryable || attempt === 4) break;
-      const jitter = Number.parseInt(suffix.slice(attempt * 2, attempt * 2 + 2), 16) % 100;
-      const delay = Math.min(error.retryAfterMs ?? 250 * 2 ** (attempt - 1) + jitter, 2_000);
-      await db.update(databaseAutomationDelivery).set({
-        errorCode: error.code, nextAttemptAt: new Date(Date.now() + delay), status: "retrying", updatedAt: new Date(),
-      }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
+  if (receipt?.status === "retrying" && receipt.nextAttemptAt && receipt.nextAttemptAt > now) {
+    throw new RetryableAutomationActionError(
+      receipt.errorSummary ?? "Slack delivery is waiting to retry",
+      receipt.errorCode ?? "SLACK_RETRY",
+      receipt.nextAttemptAt,
+    );
   }
-  const failure = lastError instanceof SlackProviderError ? lastError : new SlackProviderError("Slack delivery failed", "SLACK_DELIVERY_FAILED", 502, true);
+  const attempt = (receipt?.attempts ?? 0) + 1;
+  await db.update(databaseAutomationDelivery).set({
+    attempts: sql`${databaseAutomationDelivery.attempts} + 1`, nextAttemptAt: null, status: "sending", updatedAt: new Date(),
+  }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
+  try {
+    const authorizedChannels = await measureBackgroundProvider(
+      env,
+      "automation.run",
+      () => listSlackChannels(env, connection),
+    );
+    if (!authorizedChannels.some(({ id }) => id === action.channelId)) {
+      throw new SlackProviderError("Slack channel is unavailable or is a direct message", "SLACK_CHANNEL_UNAVAILABLE", 409);
+    }
+    const result = await measureBackgroundProvider(env, "automation.run", () =>
+      sendSlackMessage(env, connection, { channelId: action.channelId, deliveryId, text })
+    );
+    await db.update(databaseAutomationDelivery).set({
+      errorCode: null, errorSummary: null, providerReference: result.messageTs,
+      status: "succeeded", updatedAt: new Date(),
+    }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
+    return { deliveryId, messageTs: result.messageTs, reused: false };
+  } catch (error) {
+    if (error instanceof SlackProviderError && error.code === "SLACK_CONNECTION_REVOKED") await markSlackConnectionRevoked(connection.id, error);
+    const failure = error instanceof SlackProviderError ? error : new SlackProviderError("Slack delivery failed", "SLACK_DELIVERY_FAILED", 502, true);
+    if (failure.retryable && attempt < 4) {
+      const jitter = Number.parseInt(suffix.slice(attempt * 2, attempt * 2 + 2), 16) % 100;
+      const delay = Math.min(failure.retryAfterMs ?? 1_000 * 2 ** (attempt - 1) + jitter, 15 * 60_000);
+      const nextAttemptAt = new Date(Date.now() + delay);
+      await db.update(databaseAutomationDelivery).set({
+        errorCode: failure.code, errorSummary: failure.message.slice(0, 2_000), nextAttemptAt,
+        status: "retrying", updatedAt: new Date(),
+      }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
+      throw new RetryableAutomationActionError(failure.message, failure.code, nextAttemptAt);
+    }
   await db.update(databaseAutomationDelivery).set({
     errorCode: failure.code, errorSummary: failure.message.slice(0, 2_000), nextAttemptAt: null,
     status: "failed", updatedAt: new Date(),
   }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
   throw new AutomationActionError(failure.message, failure.code);
+  }
 }
 
 

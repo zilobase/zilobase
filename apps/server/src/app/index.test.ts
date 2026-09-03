@@ -51,10 +51,10 @@ test("createApp keeps global middleware ahead of feature routes", () => {
   const routes = createApp().routes;
   const firstFeatureRoute = routes.findIndex(({ path }) => path !== "/*");
 
-  assert.equal(firstFeatureRoute, 5);
+  assert.equal(firstFeatureRoute, 6);
   assert.deepEqual(
     routes.slice(0, firstFeatureRoute).map(({ path }) => path),
-    ["/*", "/*", "/*", "/*", "/*"],
+    ["/*", "/*", "/*", "/*", "/*", "/*"],
   );
 });
 

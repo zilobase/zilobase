@@ -7,9 +7,10 @@ import { db } from "../../../infrastructure/database";
 import { databaseAutomationDelivery, automationSecret, page } from "../../../infrastructure/database/schema";
 import { decryptAutomationSecret } from "./secret-crypto";
 import { sendPinnedWebhook, validateWebhookHeaderName, WebhookEgressError } from "./webhook-egress";
-import { AutomationActionError } from "./action-error";
+import { AutomationActionError, RetryableAutomationActionError } from "./action-error";
 import { type ExecutionContext } from "./execution-context";
 import { resolveExpression, toJson, requireOwner } from "./action-support";
+import { measureBackgroundProvider } from "../../../infrastructure/background/telemetry";
 export async function executeWebhookAction(
   context: ExecutionContext,
   action: Extract<DatabaseAutomationAction, { type: "send_webhook" }>,
@@ -85,6 +86,13 @@ export async function executeWebhookAction(
   if (receipt?.status === "succeeded") {
     return { deliveryId, responseStatus: receipt.responseStatus, reused: true };
   }
+  if (receipt?.status === "retrying" && receipt.nextAttemptAt && receipt.nextAttemptAt > now) {
+    throw new RetryableAutomationActionError(
+      receipt.errorSummary ?? "Webhook delivery is waiting to retry",
+      receipt.errorCode ?? "AUTOMATION_WEBHOOK_RETRY",
+      receipt.nextAttemptAt,
+    );
+  }
   const headers = {
     ...customHeaders,
     "content-type": "application/json",
@@ -94,44 +102,43 @@ export async function executeWebhookAction(
     "x-zilobase-schema-version": "1",
   };
   const allowHttpDomains = isSelfHostedRuntime() ? getAutomationWebhookHttpDomains(env) : new Set<string>();
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= 4; attempt += 1) {
+  const attempt = (receipt?.attempts ?? 0) + 1;
+  await db.update(databaseAutomationDelivery).set({
+    attempts: sql`${databaseAutomationDelivery.attempts} + 1`,
+    nextAttemptAt: null,
+    status: "sending",
+    updatedAt: new Date(),
+  }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
+  try {
+    const result = await measureBackgroundProvider(env, "automation.run", () =>
+      sendPinnedWebhook({ allowHttpDomains, body, headers, url: action.url })
+    );
     await db.update(databaseAutomationDelivery).set({
-      attempts: sql`${databaseAutomationDelivery.attempts} + 1`,
-      nextAttemptAt: null,
-      status: "sending",
+      errorCode: null,
+      errorSummary: null,
+      responseStatus: result.status,
+      status: "succeeded",
       updatedAt: new Date(),
     }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
-    try {
-      const result = await sendPinnedWebhook({ allowHttpDomains, body, headers, url: action.url });
-      await db.update(databaseAutomationDelivery).set({
-        errorCode: null,
-        errorSummary: null,
-        responseStatus: result.status,
-        status: "succeeded",
-        updatedAt: new Date(),
-      }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
-      return { deliveryId, responseStatus: result.status, reused: false };
-    } catch (error) {
-      lastError = error;
-      const retryable = error instanceof WebhookEgressError && error.retryable;
-      if (!retryable || attempt === 4) break;
+    return { deliveryId, responseStatus: result.status, reused: false };
+  } catch (error) {
+    const failure = error instanceof WebhookEgressError
+      ? error
+      : new WebhookEgressError("Webhook delivery failed", "AUTOMATION_WEBHOOK_NETWORK_FAILED", true);
+    if (failure.retryable && attempt < 4) {
       const jitter = Number.parseInt(suffix.slice(attempt * 2, attempt * 2 + 2), 16) % 100;
-      const retryDelay = Math.min(error.retryAfterMs ?? 250 * 2 ** (attempt - 1) + jitter, 2_000);
+      const retryDelay = Math.min(failure.retryAfterMs ?? 1_000 * 2 ** (attempt - 1) + jitter, 15 * 60_000);
       const nextAttemptAt = new Date(Date.now() + retryDelay);
       await db.update(databaseAutomationDelivery).set({
-        errorCode: error.code,
+        errorCode: failure.code,
+        errorSummary: failure.message.slice(0, 2_000),
         nextAttemptAt,
-        responseStatus: error.responseStatus,
+        responseStatus: failure.responseStatus,
         status: "retrying",
         updatedAt: new Date(),
       }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
-      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      throw new RetryableAutomationActionError(failure.message, failure.code, nextAttemptAt);
     }
-  }
-  const failure = lastError instanceof WebhookEgressError
-    ? lastError
-    : new WebhookEgressError("Webhook delivery failed", "AUTOMATION_WEBHOOK_NETWORK_FAILED", true);
   await db.update(databaseAutomationDelivery).set({
     errorCode: failure.code,
     errorSummary: failure.message.slice(0, 2_000),
@@ -141,6 +148,7 @@ export async function executeWebhookAction(
     updatedAt: new Date(),
   }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
   throw new AutomationActionError(failure.message, failure.code);
+  }
 }
 
 

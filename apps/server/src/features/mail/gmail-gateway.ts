@@ -79,6 +79,7 @@ export class GmailApiError extends Error {
     readonly status: number,
     readonly code: "authorization_revoked" | "history_cursor_invalid" | "provider_error" | "quota_exceeded",
     readonly retryable = false,
+    readonly retryAfterMs: number | null = null,
   ) {
     super(message)
     this.name = "GmailApiError"
@@ -447,7 +448,7 @@ export class GmailGateway {
     } catch (error) {
       throw normalizeGmailTransportError(error)
     }
-    if (!response.ok) throw normalizeGmailError(response.status)
+    if (!response.ok) throw normalizeGmailError(response.status, undefined, response.headers.get("retry-after"))
     if (response.status === 204) return undefined as T
     return (await response.json()) as T
   }
@@ -467,7 +468,7 @@ export class GmailGateway {
         throw lastError
       }
       if (response.ok) return response
-      const error = normalizeGmailError(response.status, operation)
+      const error = normalizeGmailError(response.status, operation, response.headers.get("retry-after"))
       if (!error.retryable || attempt === SAFE_READ_RETRIES) throw error
       lastError = error
     }
@@ -512,7 +513,7 @@ export class GmailGateway {
         throw lastError
       }
       if (!response.ok) {
-        lastError = normalizeGmailError(response.status)
+        lastError = normalizeGmailError(response.status, undefined, response.headers.get("retry-after"))
       } else {
         try {
           return parseGmailBatchThreads(await response.text(), response.headers.get("content-type"))
@@ -656,7 +657,11 @@ export const MAIL_METADATA_HEADERS = [
   "To",
 ] as const
 
-function normalizeGmailError(status: number, operation?: "history") {
+function normalizeGmailError(
+  status: number,
+  operation?: "history",
+  retryAfter?: string | null,
+) {
   if (status === 401 || status === 403) {
     return new GmailApiError("Gmail authorization is no longer valid.", 401, "authorization_revoked")
   }
@@ -664,7 +669,13 @@ function normalizeGmailError(status: number, operation?: "history") {
     return new GmailApiError("The Gmail history cursor expired.", 409, "history_cursor_invalid")
   }
   if (status === 429) {
-    return new GmailApiError("Gmail quota is temporarily exhausted.", 429, "quota_exceeded", true)
+    return new GmailApiError(
+      "Gmail quota is temporarily exhausted.",
+      429,
+      "quota_exceeded",
+      true,
+      boundedGmailRetryAfter(retryAfter),
+    )
   }
   const retryable = status >= 500
   return new GmailApiError(
@@ -673,6 +684,13 @@ function normalizeGmailError(status: number, operation?: "history") {
     "provider_error",
     retryable,
   )
+}
+
+function boundedGmailRetryAfter(value: string | null | undefined) {
+  const seconds = Number(value)
+  return Number.isFinite(seconds)
+    ? Math.max(0, Math.min(seconds * 1_000, 15 * 60_000))
+    : null
 }
 
 function base64UrlToBytes(value: string) {

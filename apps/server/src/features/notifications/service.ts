@@ -10,6 +10,9 @@ import {
   page,
 } from "../../infrastructure/database/schema";
 import { getMembership } from "../access";
+import type { RuntimeEnv } from "../../shared/config/config";
+import { createBackgroundTask } from "../../infrastructure/background/contracts";
+import { dispatchBackgroundTasks } from "../../infrastructure/background/dispatch";
 
 export class NotificationError extends Error {
   constructor(message: string, readonly status: 400 | 403 | 404 = 400) {
@@ -101,6 +104,7 @@ export async function createAutomationNotifications(input: {
   recipientIds: string[];
   runId: string;
   workspaceId: string;
+  env?: RuntimeEnv;
 }) {
   const now = new Date();
   const results: Array<{ notificationId: string; userId: string }> = [];
@@ -148,6 +152,15 @@ export async function createAutomationNotifications(input: {
       results.push({ notificationId, userId });
     }
   });
+  if (input.env) {
+    await dispatchBackgroundTasks(input.env, results.map(({ notificationId }) =>
+      createBackgroundTask({
+        env: input.env!,
+        kind: "notification.publish",
+        resourceId: stableId("outbox", notificationId),
+      })
+    ));
+  }
   return results;
 }
 

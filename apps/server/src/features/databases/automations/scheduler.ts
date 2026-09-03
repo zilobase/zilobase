@@ -13,7 +13,8 @@ import {
   databaseAutomationRevision,
   databaseAutomationRun,
 } from "../../../infrastructure/database/schema";
-import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { createBackgroundTask } from "../../../infrastructure/background/contracts";
+import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 
 export type DatabaseAutomationScheduleClaimPlan = {
   nextRunAt: Date | null;
@@ -113,7 +114,8 @@ export async function scanDueDatabaseAutomationSchedules(
     return { claimed: due.length, runIds: createdRunIds };
   });
 
-  const enqueue = getRuntimeAdapter().enqueueDatabaseAutomationRun;
-  if (enqueue) await Promise.all(result.runIds.map((runId) => enqueue({ env, runId })));
+  await dispatchBackgroundTasks(env, result.runIds.map((runId) =>
+    createBackgroundTask({ env, kind: "automation.run", resourceId: runId })
+  ));
   return result;
 }

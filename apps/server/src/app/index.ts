@@ -13,11 +13,16 @@ import { registerAppEditionExtension } from "../shared/edition-extension-registr
 import type { AppBindings } from "../shared/types";
 import type { EditionExtensionOptions } from "../shared/types";
 import { demoWriteGuard } from "../features/demo/write-guard";
+import { runWithBackgroundTraceContext } from "../infrastructure/background/contracts";
 
 export function createApp(options: EditionExtensionOptions = {}) {
   const app = new Hono<AppBindings>();
   registerAppEditionExtension(app, options.editionExtension);
 
+  app.use("*", (c, next) => runWithBackgroundTraceContext({
+    traceparent: c.req.header("traceparent"),
+    tracestate: c.req.header("tracestate"),
+  }, next));
   app.use("*", async (c, next) => {
     c.set("editionExtension", options.editionExtension ?? null);
     await next();

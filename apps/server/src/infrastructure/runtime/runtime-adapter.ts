@@ -10,6 +10,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { getRequiredStringEnv, getStringEnv, type RuntimeEnv } from "../../shared/config/config";
 import { requestSignal } from "../../shared/http/request";
 import type { ImageStorage } from "../storage/image-storage";
+import type { BackgroundTaskV1 } from "../background/contracts";
 
 export type OutboundEmailMessage = {
   from: string;
@@ -33,13 +34,9 @@ export type ServerRuntimeAdapter = {
     userId: string;
     workspaceId: string;
   }): Promise<void>;
-  enqueueDatabaseAutomationRun?(input: {
+  dispatchBackgroundTasks?(input: {
     env: RuntimeEnv;
-    runId: string;
-  }): Promise<void>;
-  enqueueAiJob?(input: {
-    env: RuntimeEnv;
-    jobId: string;
+    tasks: BackgroundTaskV1[];
   }): Promise<void>;
   scanAiFile?(input: {
     bytes: Uint8Array;

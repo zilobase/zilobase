@@ -1,9 +1,10 @@
-import { and, asc, count, eq, isNull, lt, ne, or } from "drizzle-orm"
+import { and, asc, count, eq, isNull, lt, ne, or, sql } from "drizzle-orm"
 import type { MailAddress, MailIndexProgress } from "@zilobase/features/mail"
 
 import { db } from "../../infrastructure/database"
 import {
   gmailAccount,
+  gmailWorkspaceConnection,
   mailIndexState,
   mailThreadIndex,
 } from "../../infrastructure/database/schema"
@@ -19,6 +20,8 @@ import {
 import { normalizeGmailThread } from "./mail-normalize"
 import { enqueueMailDatabaseSyncForIndexedThread } from "./mail-database-sync-worker"
 import { recordMailMetric } from "./mail-metrics"
+import { publishMailNotification } from "../../infrastructure/runtime/runtime-adapter"
+import { recordRecoveredBackgroundLease } from "../../infrastructure/background/telemetry"
 
 const BACKFILL_PAGE_SIZE = 100
 const MAX_HISTORY_PAGES_PER_ADVANCE = 5
@@ -60,32 +63,32 @@ export async function advanceMailIndex(
     throw new Error("A connected Gmail account is required.")
   }
   let state = await ensureMailIndexState(gmailAccountId)
-  const now = new Date()
   const leaseToken = crypto.randomUUID()
   const [claimed] = await db
     .update(mailIndexState)
     .set({
-      leaseExpiresAt: new Date(now.getTime() + INDEX_LEASE_MS),
+      leaseExpiresAt: sql`current_timestamp + (${INDEX_LEASE_MS} * interval '1 millisecond')`,
       leaseToken,
-      updatedAt: now,
+      updatedAt: sql`current_timestamp`,
     })
     .where(and(
       eq(mailIndexState.gmailAccountId, gmailAccountId),
       or(
         isNull(mailIndexState.leaseExpiresAt),
-        lt(mailIndexState.leaseExpiresAt, now),
+        lt(mailIndexState.leaseExpiresAt, sql`current_timestamp`),
       ),
     ))
     .returning()
   if (!claimed) return serializeProgress(state)
+  if (state.leaseExpiresAt) recordRecoveredBackgroundLease(env, "mail.index")
   state = claimed
   try {
     try {
       const gateway = await createGmailGateway(env, account)
       if (state.status === "ready" || state.status === "syncing") {
-        state = await advanceHistory(gateway, state)
+        state = await advanceHistory(env, gateway, state)
       } else {
-        state = await advanceBackfill(gateway, state)
+        state = await advanceBackfill(env, gateway, state)
       }
       return serializeProgress(state)
     } catch (error) {
@@ -154,6 +157,7 @@ export async function advancePendingMailIndexes(
     }
     try {
       await advanceMailIndex(env, account.id)
+      await publishMailIndexUpdate(env, account.id)
       advanced += 1
     } catch {
       advanced += 1
@@ -171,7 +175,29 @@ export async function advancePendingMailIndexes(
   return { advanced, failed }
 }
 
+export async function publishMailIndexUpdate(
+  env: RuntimeEnv,
+  gmailAccountId: string,
+) {
+  const rows = await db
+    .select({
+      bindingId: gmailWorkspaceConnection.id,
+      connectionId: gmailAccount.id,
+      revision: gmailAccount.mailboxRevision,
+      userId: gmailAccount.userId,
+      workspaceId: gmailWorkspaceConnection.workspaceId,
+    })
+    .from(gmailAccount)
+    .innerJoin(
+      gmailWorkspaceConnection,
+      eq(gmailWorkspaceConnection.gmailAccountId, gmailAccount.id),
+    )
+    .where(eq(gmailAccount.id, gmailAccountId))
+  await Promise.all(rows.map((event) => publishMailNotification(env, event)))
+}
+
 async function advanceBackfill(
+  env: RuntimeEnv,
   gateway: Pick<GmailGateway, "getProfile" | "getThreads" | "listThreads">,
   existing: typeof mailIndexState.$inferSelect,
 ) {
@@ -212,7 +238,7 @@ async function advanceBackfill(
   })
   const threadIds = (page.threads ?? []).flatMap((thread) => thread.id ? [thread.id] : [])
   const threads = await gateway.getThreads(threadIds, "metadata")
-  await upsertIndexedThreads(state.gmailAccountId, state.generation, threads)
+  await upsertIndexedThreads(env, state.gmailAccountId, state.generation, threads)
   const indexedThreadCount = state.indexedThreadCount + threads.length
   if (page.nextPageToken) {
     const [continued] = await db
@@ -257,6 +283,7 @@ async function advanceBackfill(
 }
 
 async function advanceHistory(
+  env: RuntimeEnv,
   gateway: Pick<GmailGateway, "getThread" | "listHistory">,
   existing: typeof mailIndexState.$inferSelect,
 ) {
@@ -275,6 +302,7 @@ async function advanceHistory(
     const page = await gateway.listHistory({ pageToken, startHistoryId })
     const touchedThreadIds = collectTouchedThreadIds(page.history ?? [])
     await refreshTouchedThreads(
+      env,
       gateway,
       existing.gmailAccountId,
       existing.generation,
@@ -308,6 +336,7 @@ async function advanceHistory(
 }
 
 async function refreshTouchedThreads(
+  env: RuntimeEnv,
   gateway: Pick<GmailGateway, "getThread">,
   gmailAccountId: string,
   generation: number,
@@ -316,7 +345,7 @@ async function refreshTouchedThreads(
   for (const threadId of threadIds) {
     try {
       const thread = await gateway.getThread(threadId, "metadata")
-      await upsertIndexedThreads(gmailAccountId, generation, [thread])
+      await upsertIndexedThreads(env, gmailAccountId, generation, [thread])
     } catch (error) {
       if (!(error instanceof GmailApiError) || error.status !== 404) throw error
       await db
@@ -330,6 +359,7 @@ async function refreshTouchedThreads(
 }
 
 async function upsertIndexedThreads(
+  env: RuntimeEnv,
   gmailAccountId: string,
   generation: number,
   threads: GmailThread[],
@@ -363,7 +393,7 @@ async function upsertIndexedThreads(
         },
         target: [mailThreadIndex.gmailAccountId, mailThreadIndex.gmailThreadId],
       })
-    await enqueueMailDatabaseSyncForIndexedThread(row)
+    await enqueueMailDatabaseSyncForIndexedThread(row, env)
   }
 }
 

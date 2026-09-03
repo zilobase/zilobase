@@ -40,13 +40,14 @@ test("workspace ownership gates every mailbox and permits identity reuse only th
 })
 
 test("workspace rollout exposes maintenance for Node and alternate deployment adapters", async () => {
-  const [nodeRuntime, adapter, realtime] = await Promise.all([
-    readFile(new URL("../../app/node/node-runtime.ts", import.meta.url), "utf8"),
+  const [coordinator, maintenance, adapter, realtime] = await Promise.all([
+    readFile(new URL("../../app/node/background-coordinator.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../infrastructure/background/maintenance.ts", import.meta.url), "utf8"),
     readFile(new URL("../../public/adapter-api.ts", import.meta.url), "utf8"),
     readFile(new URL("../../public/realtime-api.ts", import.meta.url), "utf8"),
   ])
   for (const operation of ["renewGmailWatches", "advancePendingMailIndexes", "drainMailDatabaseSyncOutbox"]) {
-    assert.match(nodeRuntime, new RegExp(`${operation}\\(env`))
+    assert.match(`${coordinator}\n${maintenance}`, new RegExp(`${operation}\\(env`))
     assert.match(adapter, new RegExp(operation))
   }
   assert.match(realtime, /verifyMailRealtimeTicket/)

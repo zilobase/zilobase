@@ -1,10 +1,12 @@
-import { asc, eq, inArray, lte, sql } from "drizzle-orm"
+import { and, asc, eq, inArray, lte, sql } from "drizzle-orm"
 import type { NavigationRealtimeInvalidateEvent } from "@zilobase/features/pages/navigation-realtime"
 
 import { db } from "../../../infrastructure/database"
 import { navigationRealtimeOutbox } from "../../../infrastructure/database/schema"
 import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter"
 import type { RuntimeEnv } from "../../../shared/config/config"
+import { createBackgroundTask } from "../../../infrastructure/background/contracts"
+import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch"
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 const MAX_ATTEMPTS = 8
@@ -41,6 +43,12 @@ export async function publishNavigationInvalidation(
       lastAttemptAt: attemptedAt,
       nextAttemptAt: retryAt(1, attemptedAt),
     }).where(eq(navigationRealtimeOutbox.id, event.eventId))
+    await dispatchBackgroundTasks(env, [createBackgroundTask({
+      availableAt: retryAt(1, attemptedAt),
+      env,
+      kind: "realtime.navigation",
+      resourceId: event.eventId,
+    })])
     throw error
   }
   return true
@@ -48,7 +56,7 @@ export async function publishNavigationInvalidation(
 
 export async function drainNavigationRealtimeOutbox(
   env: RuntimeEnv,
-  options?: { database?: typeof db; limit?: number },
+  options?: { database?: typeof db; limit?: number; outboxId?: string },
 ) {
   const executor = options?.database ?? db
   const publish = getRuntimeAdapter().publishNavigationInvalidation
@@ -56,7 +64,10 @@ export async function drainNavigationRealtimeOutbox(
   const attemptedAt = new Date()
   const entries = await executor.transaction(async (tx) => {
     const ready = await tx.select().from(navigationRealtimeOutbox)
-      .where(lte(navigationRealtimeOutbox.nextAttemptAt, sql`CURRENT_TIMESTAMP`))
+      .where(and(
+        options?.outboxId ? eq(navigationRealtimeOutbox.id, options.outboxId) : undefined,
+        lte(navigationRealtimeOutbox.nextAttemptAt, sql`CURRENT_TIMESTAMP`),
+      ))
       .orderBy(asc(navigationRealtimeOutbox.committedAt))
       .limit(Math.min(Math.max(options?.limit ?? 100, 1), 500))
       .for("update", { skipLocked: true })

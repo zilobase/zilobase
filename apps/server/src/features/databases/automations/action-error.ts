@@ -10,8 +10,28 @@ export class AutomationActionError extends Error {
   }
 }
 
+export class RetryableAutomationActionError extends AutomationActionError {
+  constructor(
+    message: string,
+    code: string,
+    readonly availableAt: Date,
+    actionId: string | null = null,
+  ) {
+    super(message, code, actionId);
+    this.name = "RetryableAutomationActionError";
+  }
+}
+
 
 export function actionFailure(error: unknown, actionId: string | null = null) {
+  if (error instanceof RetryableAutomationActionError) {
+    return new RetryableAutomationActionError(
+      error.message,
+      error.code,
+      error.availableAt,
+      error.actionId ?? actionId,
+    );
+  }
   if (error instanceof AutomationActionError) {
     return new AutomationActionError(error.message, error.code, error.actionId ?? actionId);
   }

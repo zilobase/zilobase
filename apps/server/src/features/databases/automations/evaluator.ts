@@ -6,6 +6,7 @@ import {
   isNull,
   lte,
   or,
+  sql,
 } from "drizzle-orm";
 import {
   evaluateDatabaseFilters,
@@ -32,7 +33,9 @@ import {
   pageProperty,
   pagePropertyValue,
 } from "../../../infrastructure/database/schema";
-import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { createBackgroundTask } from "../../../infrastructure/background/contracts";
+import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import { recordRecoveredBackgroundLease } from "../../../infrastructure/background/telemetry";
 import { requireDataSourceAccess } from "../access/data-source-access";
 import { promoteClosedDatabaseAutomationEventWindows } from "./event-capture";
 import { matchesDatabaseAutomationEvent } from "./trigger-evaluator";
@@ -41,19 +44,25 @@ const EVENT_LEASE_MS = 60_000;
 
 export async function drainDatabaseAutomationEventWindows(
   env: RuntimeEnv,
-  options: { limit?: number; workerId?: string } = {},
+  options: { limit?: number; windowId?: string; workerId?: string } = {},
 ) {
   if (!isDatabaseAutomationExecutionEnabled(env)) return { claimed: 0, completed: 0, retried: 0, runsCreated: 0 };
-  await promoteClosedDatabaseAutomationEventWindows({ limit: options.limit });
-  const now = new Date();
+  await promoteClosedDatabaseAutomationEventWindows({ limit: options.limit, windowId: options.windowId });
   const workerId = options.workerId ?? `automation-evaluator:${crypto.randomUUID()}`;
   const limit = Math.max(1, Math.min(options.limit ?? 50, 100));
   const claimed = await db.transaction(async (tx) => {
+    const clock = await tx.execute(sql<{ now: Date }>`select current_timestamp as now`);
+    const now = new Date(clock.rows[0]!.now as Date | string);
     const rows = await tx
-      .select({ id: databaseAutomationEventWindow.id })
+      .select({
+        id: databaseAutomationEventWindow.id,
+        status: databaseAutomationEventWindow.status,
+      })
       .from(databaseAutomationEventWindow)
       .where(
-        or(
+        and(
+          options.windowId ? eq(databaseAutomationEventWindow.id, options.windowId) : undefined,
+          or(
           and(
             eq(databaseAutomationEventWindow.status, "ready"),
             lte(databaseAutomationEventWindow.nextAttemptAt, now),
@@ -62,13 +71,14 @@ export async function drainDatabaseAutomationEventWindows(
             eq(databaseAutomationEventWindow.status, "processing"),
             lte(databaseAutomationEventWindow.leaseExpiresAt, now),
           ),
+          ),
         ),
       )
       .orderBy(asc(databaseAutomationEventWindow.closesAt))
       .limit(limit)
       .for("update", { skipLocked: true });
     if (!rows.length) return [];
-    return tx
+    const claimedRows = await tx
       .update(databaseAutomationEventWindow)
       .set({
         attempts: databaseAutomationEventWindow.attempts,
@@ -79,29 +89,36 @@ export async function drainDatabaseAutomationEventWindows(
       })
       .where(inArray(databaseAutomationEventWindow.id, rows.map((row) => row.id)))
       .returning();
+    return claimedRows.map((window) => ({
+      ...window,
+      recoveredLease: rows.find((row) => row.id === window.id)?.status === "processing",
+    }));
   });
 
   let completed = 0;
   let retried = 0;
   let runsCreated = 0;
   for (const window of claimed) {
+    if (window.recoveredLease) {
+      recordRecoveredBackgroundLease(env, "automation.event_window");
+    }
     try {
       const runIds = await evaluateWindow(window.id, workerId);
       runsCreated += runIds.length;
       completed += 1;
-      const enqueue = getRuntimeAdapter().enqueueDatabaseAutomationRun;
-      if (enqueue) {
-        await Promise.all(runIds.map((runId) => enqueue({ env, runId })));
-      }
+      await dispatchBackgroundTasks(env, runIds.map((runId) =>
+        createBackgroundTask({ env, kind: "automation.run", resourceId: runId })
+      ));
     } catch (error) {
       const attempts = window.attempts + 1;
+      const availableAt = new Date(Date.now() + Math.min(60_000, 1_000 * 2 ** attempts));
       await db
         .update(databaseAutomationEventWindow)
         .set({
           attempts,
           leaseExpiresAt: null,
           leaseOwner: null,
-          nextAttemptAt: new Date(Date.now() + Math.min(60_000, 1_000 * 2 ** attempts)),
+          nextAttemptAt: availableAt,
           status: "ready",
           terminalReason: error instanceof Error ? error.message.slice(0, 500) : "Evaluation failed",
           updatedAt: new Date(),
@@ -113,9 +130,40 @@ export async function drainDatabaseAutomationEventWindows(
           ),
         );
       retried += 1;
+      await dispatchBackgroundTasks(env, [createBackgroundTask({
+        availableAt,
+        env,
+        kind: "automation.event_window",
+        resourceId: window.id,
+      })]);
     }
   }
   return { claimed: claimed.length, completed, retried, runsCreated };
+}
+
+export async function processDatabaseAutomationEventWindow(
+  env: RuntimeEnv,
+  input: { windowId: string; workerId: string },
+) {
+  if (!isDatabaseAutomationExecutionEnabled(env)) return { outcome: "noop" as const };
+  const result = await drainDatabaseAutomationEventWindows(env, {
+    limit: 1,
+    windowId: input.windowId,
+    workerId: input.workerId,
+  });
+  if (result.completed) return { outcome: "completed" as const };
+  const [window] = await db.select({
+    closesAt: databaseAutomationEventWindow.closesAt,
+    nextAttemptAt: databaseAutomationEventWindow.nextAttemptAt,
+    status: databaseAutomationEventWindow.status,
+  }).from(databaseAutomationEventWindow)
+    .where(eq(databaseAutomationEventWindow.id, input.windowId))
+    .limit(1);
+  if (!window || ["completed", "discarded"].includes(window.status)) {
+    return { outcome: "noop" as const };
+  }
+  const availableAt = window.status === "accumulating" ? window.closesAt : window.nextAttemptAt;
+  return { availableAt: availableAt.toISOString(), outcome: "retry" as const };
 }
 
 async function evaluateWindow(windowId: string, workerId: string) {

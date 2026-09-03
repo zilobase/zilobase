@@ -10,8 +10,9 @@ import { aiChatUpload } from "../../../infrastructure/database/schema";
 import { createImageStorage } from "../../../infrastructure/storage/image-storage";
 import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
 import { PermanentAiJobError, type AiJobHandler } from "../jobs/ai-jobs";
+import { measureBackgroundProvider } from "../../../infrastructure/background/telemetry";
 
-export const extractAiUploadJob: AiJobHandler = async ({ env, job, reportProgress }) => {
+export const extractAiUploadJob: AiJobHandler = async ({ assertLease, env, job, reportProgress }) => {
   const uploadId = readStringField(job.input, "uploadId");
   const [record] = await db
     .select()
@@ -27,6 +28,7 @@ export const extractAiUploadJob: AiJobHandler = async ({ env, job, reportProgres
   }
 
   const storage = createImageStorage(env);
+  await assertLease();
   const { bytes, metadata } = await readAiStoredObject(
     storage,
     record.objectKey,
@@ -45,14 +47,17 @@ export const extractAiUploadJob: AiJobHandler = async ({ env, job, reportProgres
     throw new PermanentAiJobError("Uploaded content type does not match the reservation.");
   }
 
-  const scan = getRuntimeAdapter().scanAiFile
-    ? await getRuntimeAdapter().scanAiFile!({
-        bytes,
-        contentType: record.contentType,
-        filename: record.filename,
-        workspaceId: record.workspaceId,
-      })
-    : { clean: true, scanner: "not-configured" };
+  let scan = { clean: true, scanner: "not-configured" };
+  const scanAiFile = getRuntimeAdapter().scanAiFile;
+  if (scanAiFile) {
+    await assertLease();
+    scan = await measureBackgroundProvider(env, "ai.job", () => scanAiFile({
+      bytes,
+      contentType: record.contentType,
+      filename: record.filename,
+      workspaceId: record.workspaceId,
+    }));
+  }
   if (!scan.clean) {
     await rejectUpload(record.id, storage, record.objectKey);
     throw new PermanentAiJobError("The uploaded file failed malware scanning.");
@@ -74,6 +79,7 @@ export const extractAiUploadJob: AiJobHandler = async ({ env, job, reportProgres
   }
   await reportProgress(85);
   const now = new Date();
+  await assertLease();
   await db.update(aiChatUpload).set({
     checksum: await sha256Hex(bytes),
     contentType: contentTypeForAiFileKind(extraction.kind, record.contentType),

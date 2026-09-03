@@ -25,6 +25,8 @@ import {
   captureDatabaseAutomationMutationFacts,
   type DatabaseAutomationMutationFactCandidate,
 } from "../automations/event-capture";
+import { createBackgroundTask } from "../../../infrastructure/background/contracts";
+import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 
 export class DatabaseMutationError extends Error {
   constructor(
@@ -133,13 +135,19 @@ export async function commitDatabaseMutationBatch<T>(
   }>,
 ): Promise<DatabaseMutationBatchResult<T>> {
   const committedAt = new Date().toISOString();
+  const automationWindows: Array<{ availableAt: Date; id: string }> = [];
   const { commits, navigationEvent, result } = await db.transaction(async (tx) => {
     const mutationResult = await mutate(tx);
     if (mutationResult.automationFacts?.length) {
-      await captureDatabaseAutomationMutationFacts(
-        tx,
-        mutationResult.automationFacts,
-      );
+      if (options.env) {
+        await captureDatabaseAutomationMutationFacts(
+          tx,
+          mutationResult.automationFacts,
+          { capturedWindows: automationWindows },
+        );
+      } else {
+        await captureDatabaseAutomationMutationFacts(tx, mutationResult.automationFacts);
+      }
     }
     const mutationCountsByDatabase = new Map<string, number>();
 
@@ -220,6 +228,17 @@ export async function commitDatabaseMutationBatch<T>(
 
     return { commits, navigationEvent, result: mutationResult.result };
   });
+
+  if (options.env) {
+    await dispatchBackgroundTasks(options.env, automationWindows.map((window) =>
+      createBackgroundTask({
+        availableAt: window.availableAt,
+        env: options.env!,
+        kind: "automation.event_window",
+        resourceId: window.id,
+      })
+    ));
+  }
 
   await publishCommits(commits, options.env);
   if (navigationEvent) {

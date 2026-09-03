@@ -20,7 +20,7 @@ export {
 } from "../features/ai/chat/chat-persistence";
 export { createAuth } from "../features/auth";
 export { AI_JOB_HANDLERS } from "../features/ai/jobs/ai-job-handlers";
-export { runAiJobBatch, type AiJobHandler } from "../features/ai/jobs/ai-jobs";
+export { runAiJobBatch, runAiJobById, type AiJobHandler } from "../features/ai/jobs/ai-jobs";
 export {
   appendMeetingTranscriptSegment,
   heartbeatMeetingRecorder,
@@ -128,8 +128,8 @@ export {
   getDatabaseAutomationEventCaptureMetrics,
   promoteClosedDatabaseAutomationEventWindows,
 } from "../features/databases/automations/event-capture";
-export { drainDatabaseAutomationEventWindows } from "../features/databases/automations/evaluator";
-export { drainDatabaseAutomationRuns } from "../features/databases/automations/run-engine";
+export { drainDatabaseAutomationEventWindows, processDatabaseAutomationEventWindow } from "../features/databases/automations/evaluator";
+export { drainDatabaseAutomationRuns, processDatabaseAutomationRun } from "../features/databases/automations/run-engine";
 export { scanDueDatabaseAutomationSchedules } from "../features/databases/automations/scheduler";
 export {
   cleanupDatabaseAutomationHistory,
@@ -180,4 +180,23 @@ export {
   type PageCollaborationTicketClaims,
 } from "../features/collaboration/service";
 export type { MeetingTranscriptYjsSegment } from "../infrastructure/runtime/runtime-adapter";
+export {
+  BACKGROUND_TASK_KINDS,
+  backgroundTaskLane,
+  createBackgroundTask,
+  getBackgroundCellId,
+  parseBackgroundTask,
+  runWithBackgroundTraceContext,
+  type BackgroundLane,
+  type BackgroundTaskKind,
+  type BackgroundTaskResult,
+  type BackgroundTaskV1,
+} from "../infrastructure/background/contracts";
+export { processBackgroundTask } from "../infrastructure/background/processor";
+export {
+  BACKGROUND_MAINTENANCE_TASKS,
+  ensureBackgroundMaintenanceTasks,
+  runDueBackgroundMaintenance,
+} from "../infrastructure/background/maintenance";
+export { getBackgroundOperationalSnapshot } from "../infrastructure/background/health";
 export type { AppBindings } from "../shared/types";

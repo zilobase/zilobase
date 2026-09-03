@@ -100,7 +100,8 @@ test("Slack delivery is owner-scoped, channel-authorized, receipt-backed, and re
     readRunEngine(),
     readFile(new URL("./slack-provider.ts", import.meta.url), "utf8"),
   ]);
-  expect(engine).toContain("const authorizedChannels = await listSlackChannels(env, connection)");
+  expect(engine).toContain("const authorizedChannels = await measureBackgroundProvider(");
+  expect(engine).toContain("() => listSlackChannels(env, connection)");
   expect(engine).toContain('kind: "slack"');
   expect(engine).toContain('status: "retrying"');
   expect(engine).toContain("invalidateDatabaseAutomationDependencies");

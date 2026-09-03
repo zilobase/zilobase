@@ -7,11 +7,12 @@ import { getRuntimeAdapter } from "../../infrastructure/runtime/runtime-adapter"
 
 export async function drainInProductNotificationOutbox(
   env: RuntimeEnv,
-  options: { limit?: number; now?: Date } = {},
+  options: { limit?: number; now?: Date; outboxId?: string } = {},
 ) {
   const now = options.now ?? new Date();
   const limit = Math.max(1, Math.min(options.limit ?? 100, 200));
   const rows = await db.select().from(inProductNotificationOutbox).where(and(
+    options.outboxId ? eq(inProductNotificationOutbox.id, options.outboxId) : undefined,
     eq(inProductNotificationOutbox.status, "pending"),
     lte(inProductNotificationOutbox.nextAttemptAt, now),
   )).orderBy(asc(inProductNotificationOutbox.createdAt)).limit(limit);

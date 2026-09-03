@@ -1,9 +1,11 @@
-import { asc, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import { databaseRealtimeOutbox } from "../../../infrastructure/database/schema";
 import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { createBackgroundTask } from "../../../infrastructure/background/contracts";
+import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 import type {
   DatabaseChangedArea,
   DatabaseDelta,
@@ -48,6 +50,12 @@ export async function publishDatabaseRealtimeEvent(
         nextAttemptAt: retryAt(1, attemptedAt),
       })
       .where(eq(databaseRealtimeOutbox.id, event.mutationId));
+    await dispatchBackgroundTasks(env, [createBackgroundTask({
+      availableAt: retryAt(1, attemptedAt),
+      env,
+      kind: "realtime.database",
+      resourceId: event.mutationId,
+    })]);
     throw error;
   }
 
@@ -56,7 +64,7 @@ export async function publishDatabaseRealtimeEvent(
 
 export async function drainDatabaseRealtimeOutbox(
   env: RuntimeEnv,
-  options?: { database?: typeof db; limit?: number },
+  options?: { database?: typeof db; limit?: number; outboxId?: string },
 ) {
   const executor = options?.database ?? db;
   const publish = getRuntimeAdapter().publishDatabaseMutation;
@@ -77,7 +85,10 @@ export async function drainDatabaseRealtimeOutbox(
     const ready = await tx
       .select()
       .from(databaseRealtimeOutbox)
-      .where(lte(databaseRealtimeOutbox.nextAttemptAt, sql`CURRENT_TIMESTAMP`))
+      .where(and(
+        options?.outboxId ? eq(databaseRealtimeOutbox.id, options.outboxId) : undefined,
+        lte(databaseRealtimeOutbox.nextAttemptAt, sql`CURRENT_TIMESTAMP`),
+      ))
       .orderBy(asc(databaseRealtimeOutbox.committedAt))
       .limit(Math.min(Math.max(options?.limit ?? 100, 1), 500))
       .for("update", { skipLocked: true });

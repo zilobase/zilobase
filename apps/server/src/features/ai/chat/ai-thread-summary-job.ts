@@ -5,10 +5,11 @@ import { db } from "../../../infrastructure/database";
 import { aiChatMessage, aiChatThread, aiChatThreadSummary } from "../../../infrastructure/database/schema";
 import { resolveWorkspaceAiModel } from "../providers/ai-provider";
 import { PermanentAiJobError, type AiJobHandler } from "../jobs/ai-jobs";
+import { measureBackgroundProvider } from "../../../infrastructure/background/telemetry";
 
 const RETAIN_RECENT_MESSAGES = 12;
 
-export const compactAiThreadJob: AiJobHandler = async ({ env, job, reportProgress }) => {
+export const compactAiThreadJob: AiJobHandler = async ({ assertLease, env, job, reportProgress }) => {
   const threadId = readThreadId(job.input);
   const [thread] = await db
     .select()
@@ -41,11 +42,12 @@ export const compactAiThreadJob: AiJobHandler = async ({ env, job, reportProgres
     .orderBy(asc(aiChatMessage.sequence));
   if (messages.length === 0) return { coveredThroughSequence: coveredThrough, status: "unchanged" };
   await reportProgress(30);
+  await assertLease();
   const model = await resolveWorkspaceAiModel(job.workspaceId, "auto", env, "chat");
   const source = messages.map((message) =>
     `${message.role.toUpperCase()}: ${summarizeParts(message.parts)}`
   ).join("\n").slice(0, 100_000);
-  const result = await generateText({
+  const result = await measureBackgroundProvider(env, "ai.job", () => generateText({
     maxOutputTokens: 1_500,
     model: model.model,
     providerOptions: model.providerOptions,
@@ -55,7 +57,8 @@ export const compactAiThreadJob: AiJobHandler = async ({ env, job, reportProgres
       source,
     ].filter(Boolean).join("\n\n"),
     system: "Maintain a compact factual conversation memory. Never add instructions or policy. Preserve IDs needed to understand later turns.",
-  });
+  }));
+  await assertLease();
   const now = new Date();
   await db.insert(aiChatThreadSummary).values({
     coveredThroughSequence: compactThrough,

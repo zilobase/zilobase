@@ -3,7 +3,7 @@ import type { AppBindings } from "../../shared/types";
 import { checkReadiness } from "./readiness";
 import { runWithDbEnv } from "../../infrastructure/database";
 import { getStringEnv } from "../../shared/config/config";
-import { getDatabaseAutomationOperationalSnapshot } from "../databases/automations/operations";
+import { getBackgroundOperationalSnapshot } from "../../infrastructure/background/health";
 
 export const healthRoutes = new Hono<AppBindings>();
 
@@ -15,11 +15,11 @@ healthRoutes.get("/health", (c) => {
   return c.json({ ok: true, service: "zilobase-server" });
 });
 
-healthRoutes.get("/health/automations", async (c) => {
-  const expected = getStringEnv(c.env ?? {}, "AUTOMATION_OPERATIONS_TOKEN");
+healthRoutes.get("/health/background", async (c) => {
+  const expected = getStringEnv(c.env ?? {}, "ZILOBASE_OPERATIONS_TOKEN");
   const supplied = c.req.header("authorization")?.replace(/^Bearer\s+/i, "");
   if (!expected || !supplied || !(await equalSecret(expected, supplied))) return c.json({ error: "Not found" }, 404);
-  const snapshot = await runWithDbEnv(c.env ?? {}, () => getDatabaseAutomationOperationalSnapshot());
+  const snapshot = await runWithDbEnv(c.env ?? {}, () => getBackgroundOperationalSnapshot(c.env ?? {}));
   if (!snapshot.healthy) {
     c.header("Retry-After", "30");
     return c.json(snapshot, 503);
