@@ -6,6 +6,8 @@ import { useLiveQuery } from "dexie-react-hooks"
 import { useSession } from "@zilobase/features/auth"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
+  mailConnectionQueryOptions,
+  mailApiBasePath,
   mailSystemFolderIds,
   mailSystemPropertyCatalog,
   type MailAddress,
@@ -26,6 +28,14 @@ import {
   type MailUnsubscribeResponse,
   type MailView,
 } from "@zilobase/features/mail"
+import {
+  useIndexedMailView,
+  useMailGroups,
+  useMailProperties,
+  useMailReminders,
+  useMailThreadProperties,
+  useMailViews,
+} from "@zilobase/features/mail/react"
 import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 import { toast } from "sonner"
 import { useTheme } from "next-themes"
@@ -99,12 +109,6 @@ import { MailDatabaseSyncPanel } from "../components/mail-database-sync-panel"
 import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
-import { mailApiBasePath } from "../model/mail-api-path"
-import { useMailViews } from "../model/use-mail-views"
-import { useIndexedMailView } from "../model/use-indexed-mail-view"
-import { useMailGroups } from "../model/use-mail-groups"
-import { useMailProperties, useMailThreadProperties } from "../model/use-mail-properties"
-import { useMailReminders } from "../model/use-mail-reminders"
 
 const messageGroups = ["Today", "Yesterday", "Earlier"] as const
 const organizationFolderDetails = {
@@ -117,13 +121,9 @@ const organizationFolderDetails = {
 
 export default function MailPage() {
   const activeWorkspaceId = useActiveWorkspaceId()
-  const mailBasePath = mailApiBasePath(activeWorkspaceId)
-  const connectionQuery = useQuery({
-    enabled: Boolean(activeWorkspaceId),
-    queryKey: ["mail", "connection", activeWorkspaceId],
-    queryFn: ({ signal }) => apiFetch<MailConnection>(`${mailBasePath}/connection`, { signal }),
-    staleTime: 15_000,
-  })
+  const connectionQuery = useQuery(
+    mailConnectionQueryOptions(apiFetch, activeWorkspaceId),
+  )
 
   if (!connectionQuery.data || connectionQuery.data.status !== "connected") {
     return (

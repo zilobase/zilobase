@@ -1,5 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query"
 import { createContext, useContext } from "react"
+import type { ApiFetcher } from "./api-fetcher"
+
+export type { ApiFetcher } from "./api-fetcher"
 
 import type {
   SessionResponse,
@@ -8,8 +11,6 @@ import type {
   SignUpInput,
   VerifyEmailOtpInput,
 } from "../auth/queries"
-
-export type ApiFetcher = <T>(path: string, init?: RequestInit) => Promise<T>
 
 export type ZilobaseAuthClient = {
   getSession: () => Promise<SessionResponse>

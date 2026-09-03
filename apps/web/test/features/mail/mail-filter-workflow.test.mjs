@@ -1,10 +1,10 @@
-export function register({ assert, readSource, test }) {
+export function register({ assert, readSource, readWorkspace, test }) {
   test("mail filter drafts preview without persistence and expose explicit save actions", async () => {
     const [editor, page, viewsHook, queryHook] = await Promise.all([
       readSource("/src/features/mail/components/mail-filter-editor.tsx"),
       readSource("/src/features/mail/pages/mail.tsx"),
-      readSource("/src/features/mail/model/use-mail-views.ts"),
-      readSource("/src/features/mail/model/use-indexed-mail-view.ts"),
+      readWorkspace("/packages/features/src/mail/hooks.ts"),
+      readWorkspace("/packages/features/src/mail/queries.ts"),
     ])
 
     assert.match(page, /const \[draftFilter, setDraftFilter\]/)
@@ -54,7 +54,7 @@ export function register({ assert, readSource, test }) {
     assert.match(page, /senders=\{filterSenders\}/)
     assert.match(viewsHook, /method: "PATCH"/)
     assert.match(viewsHook, /method: "POST"/)
-    assert.match(queryHook, /filter: input\.filter/)
+    assert.match(queryHook, /filter: scope\.filter/)
   })
 
   test("mail filter picker exposes quick and searchable full catalogs", async () => {

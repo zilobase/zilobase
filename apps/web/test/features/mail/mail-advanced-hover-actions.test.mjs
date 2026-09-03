@@ -3,7 +3,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
     const [page, dialog, reminders, routes] = await Promise.all([
       readSource("/src/features/mail/pages/mail.tsx"),
       readSource("/src/features/mail/components/mail-row-action-dialog.tsx"),
-      readSource("/src/features/mail/model/use-mail-reminders.ts"),
+      readWorkspace("/packages/features/src/mail/hooks.ts"),
       readWorkspace("/apps/server/src/features/mail/routes.ts"),
     ])
     assert.match(dialog, /Mail commands/)

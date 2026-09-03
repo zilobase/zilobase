@@ -16,6 +16,7 @@ import type {
 } from "@zilobase/features/mail"
 import {
   evaluateMailFilterExpression,
+  mailApiBasePath,
   mailFilterRecordFromThreadSummary,
 } from "@zilobase/features/mail"
 
@@ -40,7 +41,6 @@ import {
 } from "../cache/mail-database"
 import { safeMailDownloadFilename } from "./mail-attachment"
 import { loadMailThreadOnce } from "./mail-thread-loader"
-import { mailApiBasePath } from "./mail-api-path"
 
 export function useMailController(input: {
   connection: MailConnection

@@ -5,7 +5,10 @@ import { invoke } from "@tauri-apps/api/core"
 import { Trash2Icon, UploadIcon } from "@/shared/components/icons"
 import { toast } from "sonner"
 import { useSession } from "@zilobase/features/auth"
-import type { MailConnection } from "@zilobase/features/mail"
+import {
+  mailApiBasePath,
+  mailConnectionQueryOptions,
+} from "@zilobase/features/mail"
 
 import { SettingsHeader } from "@/features/settings"
 import { isFeatureEnabled } from "@/shared/config/feature-flags"
@@ -37,7 +40,6 @@ import {
   destroyMailDatabase,
   mailDatabaseName,
 } from "@/features/mail/cache/mail-database"
-import { mailApiBasePath } from "@/features/mail/model/mail-api-path"
 import { useNotionImport } from "@/features/notion-import/index"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
 import {
@@ -93,15 +95,9 @@ function WorkspaceMailConnectionSection({
   const [disconnectOpen, setDisconnectOpen] = React.useState(false)
   const [disconnecting, setDisconnecting] = React.useState(false)
   const mailBasePath = mailApiBasePath(workspaceId)
-  const connectionQuery = useQuery({
-    enabled: Boolean(workspaceId),
-    queryKey: ["mail", "connection", workspaceId],
-    queryFn: ({ signal }) => apiFetch<MailConnection>(
-      `${mailBasePath}/connection`,
-      { signal },
-    ),
-    staleTime: 15_000,
-  })
+  const connectionQuery = useQuery(
+    mailConnectionQueryOptions(apiFetch, workspaceId),
+  )
   const connection = connectionQuery.data ?? null
   const connected = connection?.status === "connected"
 

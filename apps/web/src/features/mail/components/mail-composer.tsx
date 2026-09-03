@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import type {
-  MailComposeAttachment,
-  MailComposeRequest,
-  MailDraftResponse,
-  MailSendResponse,
+import {
+  mailApiBasePath,
+  type MailComposeAttachment,
+  type MailComposeRequest,
+  type MailDraftResponse,
+  type MailSendResponse,
 } from "@zilobase/features/mail"
 import { toast } from "sonner"
 
@@ -20,7 +21,6 @@ import {
   parseComposerAddresses,
   type MailComposeSeed,
 } from "../model/mail-compose"
-import { mailApiBasePath } from "../model/mail-api-path"
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 

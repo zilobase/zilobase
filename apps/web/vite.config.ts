@@ -126,6 +126,10 @@ export default defineConfig(async () => ({
         replacement: `${featuresDir}/ai-chat/conversation-adapter.ts`,
       },
       {
+        find: "@zilobase/features/mail/react",
+        replacement: `${featuresDir}/mail/react.ts`,
+      },
+      {
         find: /^@zilobase\/features\/(.+)$/,
         replacement: `${featuresDir}/$1/index.ts`,
       },

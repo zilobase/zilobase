@@ -2,7 +2,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
   test("mail grouping persists configuration and renders full-index group counts", async () => {
     const [editor, groupsHook, page, routes] = await Promise.all([
       readSource("/src/features/mail/components/mail-group-editor.tsx"),
-      readSource("/src/features/mail/model/use-mail-groups.ts"),
+      readWorkspace("/packages/features/src/mail/queries.ts"),
       readSource("/src/features/mail/pages/mail.tsx"),
       readWorkspace("/apps/server/src/features/mail/routes.ts"),
     ])

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
 import {
+  mailDatabaseSyncStatusQueryOptions,
   mailSystemPropertyCatalog,
   type MailCustomPropertyType,
   type MailDatabaseFieldMapping,
-  type MailDatabaseSyncViewStatus,
   type MailPersistedView,
   type MailPropertyDefinition,
 } from "@zilobase/features/mail"
@@ -18,7 +18,6 @@ import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
 import { Input } from "@/shared/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
-import { mailApiBasePath } from "../model/mail-api-path"
 
 type SourceProperty = { id: string; label: string; type: string }
 
@@ -42,12 +41,11 @@ export function MailDatabaseSyncPanel({ config, onChange, properties, saving, vi
   const createDatabase = useCreateDatabase()
   const createDataSource = useCreateDatabaseDataSource()
   const addProperty = useAddDatabaseProperty()
-  const syncStatus = useQuery({
+  const syncStatus = useQuery(mailDatabaseSyncStatusQueryOptions(apiFetch, {
     enabled: config.databaseSync.enabled,
-    queryFn: ({ signal }) => apiFetch<MailDatabaseSyncViewStatus>(`${mailApiBasePath(workspaceId)}/views/${encodeURIComponent(viewId)}/database-sync-status`, { signal }),
-    queryKey: ["mail", "database-sync-status", workspaceId, viewId],
-    refetchInterval: 15_000,
-  })
+    viewId,
+    workspaceId,
+  }))
   const sources = useMemo<SourceProperty[]>(() => [
     ...mailSystemPropertyCatalog.map((property) => ({ id: property.id, label: property.label, type: property.type })),
     ...properties.map((property) => ({ id: property.id, label: property.name, type: property.type })),

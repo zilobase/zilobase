@@ -16,19 +16,23 @@ import { CSS } from "@dnd-kit/utilities"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useLocation, useNavigate } from "@tanstack/react-router"
 import type {
-  MailConnection,
   MailLabelRecord,
   MailPersistedView,
   MailSystemFolderId,
   MailViewsBootstrap,
 } from "@zilobase/features/mail"
-import { mailSystemFolderIds } from "@zilobase/features/mail"
+import {
+  mailApiBasePath,
+  mailConnectionQueryOptions,
+  mailKeys,
+  mailLabelsQueryOptions,
+  mailSystemFolderIds,
+} from "@zilobase/features/mail"
+import { useMailViews } from "@zilobase/features/mail/react"
 import * as React from "react"
 import { toast } from "sonner"
 
 import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
-import { mailApiBasePath } from "@/features/mail/model/mail-api-path"
-import { useMailViews } from "@/features/mail/model/use-mail-views"
 import {
   BanIcon,
   ChevronDownIcon,
@@ -70,23 +74,22 @@ export function WorkspaceMailNavigation({ workspaceId }: {
   const queryClient = useQueryClient()
   const [expanded, setExpanded] = React.useState(true)
   const mailBasePath = mailApiBasePath(workspaceId)
-  const connectionQuery = useQuery({
-    enabled: Boolean(workspaceId),
-    queryFn: ({ signal }) => apiFetch<MailConnection>(`${mailBasePath}/connection`, { signal }),
-    queryKey: ["mail", "connection", workspaceId],
-    staleTime: 15_000,
-  })
+  const connectionQuery = useQuery(
+    mailConnectionQueryOptions(apiFetch, workspaceId),
+  )
   const connection = connectionQuery.data
   const viewsQuery = useMailViews({
     bindingId: connection?.bindingId,
     enabled: connection?.status === "connected",
     workspaceId,
   })
+  const labelOptions = mailLabelsQueryOptions(apiFetch, {
+    bindingId: connection?.bindingId,
+    workspaceId,
+  })
   const labelsQuery = useQuery({
-    enabled: connection?.status === "connected",
-    queryFn: ({ signal }) => apiFetch<{ labels: MailLabelRecord[] }>(`${mailBasePath}/labels`, { signal }),
-    queryKey: ["mail", "labels", workspaceId, connection?.bindingId],
-    staleTime: 30_000,
+    ...labelOptions,
+    enabled: connection?.status === "connected" && labelOptions.enabled,
   })
   const views = viewsQuery.data?.views ?? []
   const requestedView = typeof location.search.view === "string"
@@ -95,7 +98,10 @@ export function WorkspaceMailNavigation({ workspaceId }: {
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: { distance: 4 },
   }))
-  const queryKey = ["mail", "views", workspaceId, connection?.bindingId]
+  const queryKey = mailKeys.views({
+    bindingId: connection?.bindingId,
+    workspaceId,
+  })
 
   const createView = useMutation({
     mutationFn: () => apiFetch<{ view: MailPersistedView }>(`${mailBasePath}/views`, {

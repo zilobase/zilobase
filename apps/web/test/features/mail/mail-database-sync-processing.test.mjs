@@ -1,8 +1,11 @@
-export function register({ assert, readSource, test }) {
+export function register({ assert, readSource, readWorkspace, test }) {
   test("database sync shows processing state and locks an active destination", async () => {
-    const panel = await readSource("/src/features/mail/components/mail-database-sync-panel.tsx")
-    assert.match(panel, /database-sync-status/)
-    assert.match(panel, /refetchInterval: 15_000/)
+    const [panel, queries] = await Promise.all([
+      readSource("/src/features/mail/components/mail-database-sync-panel.tsx"),
+      readWorkspace("/packages/features/src/mail/queries.ts"),
+    ])
+    assert.match(queries, /database-sync-status/)
+    assert.match(queries, /refetchInterval: 15_000/)
     assert.match(panel, /synced} synced/)
     assert.match(panel, /pending} pending/)
     assert.match(panel, /paused/)

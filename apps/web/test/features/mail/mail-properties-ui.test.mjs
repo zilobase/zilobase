@@ -1,4 +1,4 @@
-export function register({ assert, readSource, test }) {
+export function register({ assert, readSource, readWorkspace, test }) {
   test("mail reuses data-source-neutral property controls", async () => {
     const [databaseAdd, picker, valueControl, panel] = await Promise.all([
       readSource("/src/features/databases/properties/editors/add-database-property-menu.tsx"),
@@ -20,7 +20,7 @@ export function register({ assert, readSource, test }) {
     const [panel, page, hook] = await Promise.all([
       readSource("/src/features/mail/components/mail-properties-panel.tsx"),
       readSource("/src/features/mail/pages/mail.tsx"),
-      readSource("/src/features/mail/model/use-mail-properties.ts"),
+      readWorkspace("/packages/features/src/mail/hooks.ts"),
     ])
 
     assert.match(panel, /Search for a property/)

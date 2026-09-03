@@ -106,6 +106,10 @@
       "types": "./src/mail/index.ts",
       "default": "./src/mail/index.ts"
     },
+    "./mail/react": {
+      "types": "./src/mail/react.ts",
+      "default": "./src/mail/react.ts"
+    },
     "./workspaces": {
       "types": "./src/workspaces/index.ts",
       "default": "./src/workspaces/index.ts"

@@ -1,13 +1,13 @@
-export function register({ assert, readSource, test }) {
+export function register({ assert, readSource, readWorkspace, test }) {
   test("Mail bootstraps persisted views for the active workspace binding", async () => {
     const [hook, page] = await Promise.all([
-      readSource("/src/features/mail/model/use-mail-views.ts"),
+      readWorkspace("/packages/features/src/mail/hooks.ts"),
       readSource("/src/features/mail/pages/mail.tsx"),
     ])
 
     assert.match(hook, /mailApiBasePath\(input\.workspaceId\)/)
-    assert.match(hook, /\$\{mailBasePath\}\/views/)
-    assert.match(hook, /input\.workspaceId, input\.bindingId/)
+    assert.match(hook, /\$\{basePath\}\/views/)
+    assert.match(hook, /mailKeys\.views\(input\)/)
     assert.match(page, /useMailViews\(\{/)
     assert.match(page, /enabled: true/)
     assert.doesNotMatch(page, /mailOrganization/)

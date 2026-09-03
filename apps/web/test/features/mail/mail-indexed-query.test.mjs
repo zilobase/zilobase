@@ -1,15 +1,15 @@
-export function register({ assert, readSource, test }) {
+export function register({ assert, readSource, readWorkspace, test }) {
   test("Mail uses opaque indexed pagination for persisted and system routes", async () => {
     const [hook, page] = await Promise.all([
-      readSource("/src/features/mail/model/use-indexed-mail-view.ts"),
+      readWorkspace("/packages/features/src/mail/queries.ts"),
       readSource("/src/features/mail/pages/mail.tsx"),
     ])
 
-    assert.match(hook, /useInfiniteQuery/)
+    assert.match(hook, /infiniteQueryOptions/)
     assert.match(hook, /lastPage\.nextCursor/)
-    assert.match(hook, /\$\{mailBasePath\}\/query/)
-    assert.match(hook, /routeId: input\.routeId/)
-    assert.match(hook, /search: input\.search/)
+    assert.match(hook, /mailApiBasePath\(scope\.workspaceId\)\}\/query/)
+    assert.match(hook, /routeId: scope\.routeId/)
+    assert.match(hook, /search: scope\.search/)
     assert.match(page, /useIndexedMailView\(\{/)
     assert.match(page, /indexedMailQuery\.fetchNextPage\(\)/)
     assert.match(page, /page\.threads\.map\(\(indexed\) => indexed\.thread\)/)
