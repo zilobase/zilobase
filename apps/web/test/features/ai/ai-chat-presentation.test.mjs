@@ -1,3 +1,5 @@
+import { readChatbotSource } from "./ai-chatbot-source.mjs"
+
 export function register({ readSource, assert, test }) {
   test("Ask AI supports persistent docked and floating desktop modes", async () => {
     const layoutSource = await readSource("/src/app/shell/content/app-layout.tsx")
@@ -39,7 +41,7 @@ export function register({ readSource, assert, test }) {
 
   test("full-page Ask AI uses the page viewport and hides the duplicate launcher", async () => {
     const aiPageSource = await readSource("/src/features/ai/pages/ai.tsx")
-    const chatbotSource = await readSource("/src/features/ai/components/elements/chatbot.tsx")
+    const chatbotSource = await readChatbotSource(readSource)
     const layoutSource = await readSource("/src/app/shell/content/app-layout.tsx")
     const sidePaneSource = await readSource("/src/features/pages/context/page-side-pane.tsx")
 

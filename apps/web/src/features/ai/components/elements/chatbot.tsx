@@ -1,33 +1,7 @@
 "use client";
 
 import {
-  Conversation,
-  ConversationContent,
-} from "./conversation";
-import {
-  Message,
-  MessageAction,
-  MessageActions,
-  MessageContent,
-  MessageResponse,
-} from "./message";
-import {
-  ModelSelector,
-  ModelSelectorContent,
-  ModelSelectorEmpty,
-  ModelSelectorGroup,
-  ModelSelectorInput,
-  ModelSelectorItem,
-  ModelSelectorList,
-  ModelSelectorLogo,
-  ModelSelectorLogoGroup,
-  ModelSelectorName,
-  ModelSelectorTrigger,
-} from "./model-selector";
-import { ContextAttachChips } from "./context-attach-chips";
-import {
   buildPrimaryAttachment,
-  ContextAttachMenu,
   getAttachmentKey,
   parseMentionState,
   type ContextAttachMenuEntry,
@@ -43,61 +17,27 @@ import {
   usePageEditAutoApply,
 } from "../../cache/use-page-edit-auto-apply";
 import { usePageEditApplier } from "../../cache/use-page-edit-applier";
-import { DatabaseToolStepsGroup } from "./database-tool-steps";
-import {
-  AgentProgressOnlyTask,
-  AgentToolTaskGroup,
-  buildMessagePartGroups,
-} from "./agent-tool-task";
-import { resolveAgentToolPresentation } from "./agent-tool-presentation";
-import { AgentActionReviews } from "./agent-action-review";
 import {
   AgentLiveDebugger,
   useAgentLiveDebugger,
 } from "./agent-live-debugger";
-import { PageEditCard } from "./page-edit-card";
-import {
-  PromptInput,
-  PromptInputActionAddAttachments,
-  PromptInputActionMenu,
-  PromptInputActionMenuContent,
-  PromptInputActionMenuTrigger,
-  PromptInputAttachments,
-  PromptInputButton,
-  PromptInputFooter,
-  PromptInputSubmit,
-  PromptInputTextarea,
-  PromptInputTools,
-  type PromptInputMessage,
-} from "./prompt-input";
-import { Shimmer } from "./shimmer";
-import type { ToolPart } from "./tool";
-import { Button } from "@/shared/ui/button";
+import type { PromptInputMessage } from "./prompt-input";
 import {
   isHostedDemoRuntime,
   requestDemoGuard,
 } from "@/features/demo";
-import { Input } from "@/shared/ui/input";
 import {
   aiChatThreadMessagesQueryKey,
   aiChatThreadMessagesQueryOptions,
   aiChatThreadsQueryKey,
   buildPageEditSnapshotMap,
   dedupeChatMessagesById,
-  isProposePageContentUpdateToolName,
   isPageEditBaselineCurrent,
   isPageEditReviewAvailable,
   logPageEdit,
-  readAgentCitations,
-  readAgentResultTable,
-  readDatabaseConfigToolIds,
-  getAgentToolDescriptor,
   isAgentProgressPart,
-  type AgentProgressSnapshot,
   type AiChatFeedback,
   type AiChatThreadMessagesResponse,
-  type WorkspaceAiChatModel,
-  type ProposePageContentUpdateOutput,
   type PageEditSnapshotPart,
   useCreateAiChatThread,
   useSubmitAiChatFeedback,
@@ -117,12 +57,9 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getApiRequestHeaders,
   resolveApiBaseUrl,
-  toApiUrl,
 } from "@/features/desktop/network/api";
 import {
-  type ChatStatus,
   type UIMessage,
-  getToolName,
   isToolUIPart,
 } from "ai";
 import {
@@ -133,651 +70,19 @@ import {
   type ContextAttachment,
   type ContextSourceRef,
 } from "@zilobase/page-context";
-import {
-  ArrowDownIcon,
-  CheckIcon,
-  FileTextIcon,
-  InboxIcon,
-  PlusIcon,
-  SparklesIcon,
-  ThumbsDownIcon,
-  ThumbsUpIcon,
-} from "@/shared/components/icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { AgentResultTable } from "./agent-result-table";
-import { AgentResourceBadges } from "./agent-resource-badges";
-import {
-  AI_FILE_ACCEPT,
-  MAX_AI_FILE_BYTES,
-  MAX_AI_FILES,
-  uploadAiChatFile,
-} from "../../lib/ai-file-upload";
+import { ChatbotComposer } from "./chatbot-composer";
+import { ChatbotMessages } from "./chatbot-messages";
+import { AI_SCROLL_SHELL_SELECTOR } from "./chatbot-scroll-control";
+import { uploadAiChatFile } from "../../lib/ai-file-upload";
 import {
   areMessagesEquivalent,
   emptyAgentChatMessages,
   fallbackModels,
-  getProviderLogoSlug,
   logAiChatError,
-  pendingPhrases,
   summarizeMessagesForDebug,
 } from "../../model/chat-runtime-model";
-
-const AI_SCROLL_SHELL_SELECTOR =
-  "[data-ai-scroll-shell], [data-page-scroll-viewport]";
-
-const ShellScrollButton = ({
-  targetRef,
-}: {
-  targetRef: React.RefObject<HTMLDivElement | null>;
-}) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const scrollShell = targetRef.current?.closest(
-      AI_SCROLL_SHELL_SELECTOR,
-    ) as HTMLElement | null;
-
-    if (!scrollShell) {
-      return;
-    }
-
-    const updateVisibility = () => {
-      const distanceFromBottom =
-        scrollShell.scrollHeight -
-        scrollShell.scrollTop -
-        scrollShell.clientHeight;
-
-      setIsVisible(distanceFromBottom > 160);
-    };
-
-    updateVisibility();
-    scrollShell.addEventListener("scroll", updateVisibility, { passive: true });
-    window.addEventListener("resize", updateVisibility);
-
-    return () => {
-      scrollShell.removeEventListener("scroll", updateVisibility);
-      window.removeEventListener("resize", updateVisibility);
-    };
-  }, [targetRef]);
-
-  const handleClick = useCallback(() => {
-    const scrollShell = targetRef.current?.closest(
-      AI_SCROLL_SHELL_SELECTOR,
-    ) as HTMLElement | null;
-
-    scrollShell?.scrollTo({
-      behavior: "smooth",
-      top: scrollShell.scrollHeight,
-    });
-  }, [targetRef]);
-
-  if (!isVisible) {
-    return null;
-  }
-
-  return (
-    <Button
-      className="absolute top-3 left-1/2 z-20 size-8 -translate-x-1/2 -translate-y-full rounded-full bg-surface-canvas shadow-sm"
-      onClick={handleClick}
-      size="icon"
-      type="button"
-      variant="outline"
-    >
-      <ArrowDownIcon className="size-4" />
-      <span className="sr-only">Scroll to bottom</span>
-    </Button>
-  );
-};
-
-const ModelItem = ({
-  m,
-  isSelected,
-  onSelect,
-}: {
-  m: WorkspaceAiChatModel;
-  isSelected: boolean;
-  onSelect: (id: string) => void;
-}) => {
-  const handleSelect = useCallback(() => {
-    onSelect(m.id);
-  }, [onSelect, m.id]);
-
-  return (
-    <ModelSelectorItem
-      onSelect={handleSelect}
-      title={m.description}
-      value={m.id}
-    >
-      <ModelSelectorLogo provider={getProviderLogoSlug(m.chefSlug)} />
-      <ModelSelectorName>{m.name}</ModelSelectorName>
-      <ModelSelectorLogoGroup>
-        {m.providers.map((provider) => (
-          <ModelSelectorLogo
-            key={provider}
-            provider={getProviderLogoSlug(provider)}
-          />
-        ))}
-      </ModelSelectorLogoGroup>
-      {isSelected ? (
-        <CheckIcon className="ml-auto size-4" />
-      ) : (
-        <div className="ml-auto size-4" />
-      )}
-    </ModelSelectorItem>
-  );
-};
-
-const PendingAssistantStatus = ({ status }: { status: ChatStatus }) => {
-  const [phraseIndex, setPhraseIndex] = useState(0);
-  const phrase = status === "submitted"
-    ? "Preparing context"
-    : pendingPhrases[phraseIndex % pendingPhrases.length];
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setPhraseIndex((index) => (index + 1) % pendingPhrases.length);
-    }, 1500);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, []);
-
-  return (
-    <Message from="assistant">
-      <MessageContent>
-        <div className="not-prose flex w-fit max-w-full items-center gap-2 text-content-secondary">
-          <SparklesIcon aria-hidden="true" className="size-4 shrink-0" />
-          <Shimmer
-            as="span"
-            className="truncate font-medium text-sm"
-            duration={1.25}
-            spread={1.1}
-          >
-            {phrase}
-          </Shimmer>
-        </div>
-      </MessageContent>
-    </Message>
-  );
-};
-
-function shouldShowPendingAssistant(messages: UIMessage[], status: ChatStatus) {
-  if (!(status === "submitted" || status === "streaming")) {
-    return false;
-  }
-
-  const lastMessage = messages.at(-1);
-
-  if (!lastMessage) {
-    return true;
-  }
-
-  if (lastMessage.role !== "assistant") {
-    return true;
-  }
-
-  return !lastMessage.parts.some(
-    (part) =>
-      part.type === "text" || isToolUIPart(part) || isAgentProgressPart(part),
-  );
-}
-
-const PageEditToolPart = ({
-  isApplying,
-  isBaselineCurrent,
-  isDiffVisible,
-  isReviewAvailable,
-  onApply,
-  onDiscard,
-  onToggleChanges,
-  onUndo,
-  part,
-  snapshot,
-}: {
-  isApplying: boolean;
-  isBaselineCurrent: boolean;
-  isDiffVisible: boolean;
-  isReviewAvailable: boolean;
-  onApply: (toolCallId: string) => void | Promise<void>;
-  onDiscard: (toolCallId: string) => void | Promise<void>;
-  onToggleChanges: (toolCallId: string) => void;
-  onUndo: (toolCallId: string) => void | Promise<void>;
-  part: ToolPart;
-  snapshot: PageEditSnapshotPart | null;
-}) => {
-  const output = part.output as ProposePageContentUpdateOutput | undefined;
-  const summary =
-    output?.summary ??
-    (typeof part.input === "object" &&
-    part.input &&
-    "summary" in part.input &&
-    typeof part.input.summary === "string"
-      ? part.input.summary
-      : "Updated the page in page context.");
-  const toolError =
-    part.state === "output-error" || part.errorText
-      ? (part.errorText ?? "The page update tool failed.")
-      : null;
-
-  if (
-    part.state !== "output-available" &&
-    part.state !== "output-error" &&
-    !snapshot &&
-    !isApplying
-  ) {
-    return null;
-  }
-
-  return (
-    <PageEditCard
-      isApplying={isApplying}
-      isBaselineCurrent={isBaselineCurrent}
-      isDiffVisible={isDiffVisible}
-      isReviewAvailable={isReviewAvailable}
-      onApply={() => onApply(part.toolCallId)}
-      onDiscard={() => onDiscard(part.toolCallId)}
-      onToggleChanges={() => onToggleChanges(part.toolCallId)}
-      onUndo={() => onUndo(part.toolCallId)}
-      snapshot={snapshot}
-      summary={summary}
-      toolError={toolError}
-    />
-  );
-};
-
-function collectMessageCitations(message: UIMessage) {
-  const citations = message.parts.flatMap((part) => {
-    if (!isToolUIPart(part)) {
-      return [];
-    }
-
-    const explicitCitations = readAgentCitations(part.output);
-
-    if (explicitCitations.length > 0) {
-      return explicitCitations;
-    }
-
-    const toolName = getToolName(part);
-    const ids = readDatabaseConfigToolIds(part.output);
-    const input =
-      part.input && typeof part.input === "object" && !Array.isArray(part.input)
-        ? (part.input as Record<string, unknown>)
-        : null;
-
-    if (toolName === "createPage" && ids?.pageId) {
-      return [{
-        id: ids.pageId,
-        source: "page" as const,
-        title:
-          typeof input?.name === "string" && input.name.trim()
-            ? input.name.trim()
-            : "Created page",
-        url: `/p/${encodeURIComponent(ids.pageId)}`,
-      }];
-    }
-
-    if (toolName === "createDatabase" && ids?.databaseId) {
-      return [{
-        id: ids.databaseId,
-        source: "database" as const,
-        title:
-          typeof input?.name === "string" && input.name.trim()
-            ? input.name.trim()
-            : "Created database",
-        url: `/d/${encodeURIComponent(ids.databaseId)}`,
-      }];
-    }
-
-    if (toolName === "createDatabaseRow" && ids?.rowPageId) {
-      return [{
-        id: ids.rowPageId,
-        source: "page" as const,
-        title:
-          typeof input?.title === "string" && input.title.trim()
-            ? input.title.trim()
-            : "Created database page",
-        url: `/p/${encodeURIComponent(ids.rowPageId)}`,
-      }];
-    }
-
-    return [];
-  });
-  const seen = new Set<string>();
-
-  return citations.filter((citation) => {
-    const key = `${citation.source}:${citation.id}`;
-
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
-}
-
-const AssistantFeedback = ({
-  isPending,
-  onSubmit,
-  rating,
-}: {
-  isPending: boolean;
-  onSubmit: (rating: -1 | 1, reason?: string) => void | Promise<void>;
-  rating?: -1 | 1;
-}) => {
-  const [showReason, setShowReason] = useState(false);
-  const [reason, setReason] = useState("");
-
-  const submitNegative = useCallback(async () => {
-    await onSubmit(-1, reason.trim() || undefined);
-    setShowReason(false);
-    setReason("");
-  }, [onSubmit, reason]);
-
-  return (
-    <div className="not-prose mt-1 grid w-fit gap-2">
-      <MessageActions className="opacity-70 transition-opacity hover:opacity-100">
-        <MessageAction
-          aria-pressed={rating === 1}
-          disabled={isPending}
-          label="Helpful response"
-          onClick={() => void onSubmit(1)}
-          tooltip="Helpful"
-          variant={rating === 1 ? "secondary" : "ghost"}
-        >
-          <ThumbsUpIcon className="size-3.5" />
-        </MessageAction>
-        <MessageAction
-          aria-pressed={rating === -1}
-          disabled={isPending}
-          label="Unhelpful response"
-          onClick={() => setShowReason(true)}
-          tooltip="Not helpful"
-          variant={rating === -1 ? "secondary" : "ghost"}
-        >
-          <ThumbsDownIcon className="size-3.5" />
-        </MessageAction>
-      </MessageActions>
-      {showReason ? (
-        <div className="flex max-w-md items-center gap-2">
-          <Input
-            aria-label="Optional feedback reason"
-            autoFocus
-            className="h-8 text-xs"
-            maxLength={500}
-            onChange={(event) => setReason(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") void submitNegative();
-              if (event.key === "Escape") setShowReason(false);
-            }}
-            placeholder="What could be better? (optional)"
-            value={reason}
-          />
-          <Button
-            disabled={isPending}
-            onClick={() => void submitNegative()}
-            size="sm"
-            type="button"
-          >
-            Send
-          </Button>
-        </div>
-      ) : null}
-    </div>
-  );
-};
-
-const ChatMessage = ({
-  applyingToolCallIds,
-  getPageEditBaselineCurrent,
-  getPageEditReviewAvailable,
-  isSidebar,
-  message,
-  feedbackRating,
-  feedbackPending,
-  showFeedback,
-  onApplyPageEdit,
-  onDiscardPageEdit,
-  onRetryIncompleteDatabase,
-  onTogglePageEditChanges,
-  onUndoPageEdit,
-  onSubmitFeedback,
-  snapshotByToolCallId,
-  threadId,
-  visibleDiffToolCallId,
-  workspaceId,
-}: {
-  applyingToolCallIds: readonly string[];
-  getPageEditBaselineCurrent: (snapshot: PageEditSnapshotPart) => boolean;
-  getPageEditReviewAvailable: (snapshot: PageEditSnapshotPart) => boolean;
-  isSidebar: boolean;
-  message: UIMessage;
-  feedbackRating?: -1 | 1;
-  feedbackPending: boolean;
-  showFeedback: boolean;
-  onApplyPageEdit: (toolCallId: string) => void | Promise<void>;
-  onDiscardPageEdit: (toolCallId: string) => void | Promise<void>;
-  onRetryIncompleteDatabase: (prompt: string) => void | Promise<void>;
-  onTogglePageEditChanges: (toolCallId: string) => void;
-  onUndoPageEdit: (toolCallId: string) => void | Promise<void>;
-  onSubmitFeedback: (
-    messageId: string,
-    rating: -1 | 1,
-    reason?: string,
-  ) => void | Promise<void>;
-  snapshotByToolCallId: Map<string, PageEditSnapshotPart>;
-  threadId: string | null;
-  visibleDiffToolCallId: string | null;
-  workspaceId: string | null;
-}) => {
-  if (message.role === "system" || (message.role as string) === "data") {
-    return null;
-  }
-
-  const partGroups = buildMessagePartGroups(message.parts);
-  const progressByToolCallId = new Map<string, AgentProgressSnapshot>(
-    message.parts.flatMap((part) =>
-      isAgentProgressPart(part)
-        ? [[part.data.toolCallId, part.data] as const]
-        : [],
-    ),
-  );
-  const citations = collectMessageCitations(message);
-  const tables = message.parts.flatMap((part) => {
-    if (!isToolUIPart(part)) return [];
-    const table = readAgentResultTable(part.output);
-    return table ? [{ table, toolCallId: part.toolCallId }] : [];
-  });
-
-  return (
-    <Message from={message.role}>
-      <MessageContent>
-        {partGroups.map((group) => {
-          if (group.type === "database-tools") {
-            return (
-              <DatabaseToolStepsGroup
-                key={`${message.id}-db-${group.startIndex}`}
-                onRetryIncomplete={onRetryIncompleteDatabase}
-                parts={group.parts}
-                progressByToolCallId={progressByToolCallId}
-              />
-            );
-          }
-
-          if (group.type === "agent-tools") {
-            return (
-              <AgentToolTaskGroup
-                getToolPresentation={(part, toolName) =>
-                  resolveAgentToolPresentation({
-                    part,
-                    title: getAgentToolDescriptor(toolName)?.title,
-                    toolName,
-                  })
-                }
-                key={`${message.id}-agent-${group.startIndex}`}
-                parts={group.parts}
-                progressByToolCallId={progressByToolCallId}
-              />
-            );
-          }
-
-          const { index, part } = group;
-
-          if (part.type === "text") {
-            return (
-              <MessageResponse key={`${message.id}-${index}`}>
-                {part.text}
-              </MessageResponse>
-            );
-          }
-
-          if (part.type === "reasoning") {
-            return null;
-          }
-
-          if (isAgentProgressPart(part)) {
-            const hasMatchingToolPart = message.parts.some(
-              (candidate) =>
-                isToolUIPart(candidate) &&
-                candidate.toolCallId === part.data.toolCallId,
-            );
-            return hasMatchingToolPart
-              ? null
-              : (
-                  <AgentProgressOnlyTask
-                    key={`${message.id}-progress-${part.data.toolCallId}`}
-                    progress={part.data}
-                  />
-                );
-          }
-
-          if (part.type === "file") {
-            return (
-              <a
-                className="not-prose flex w-fit max-w-full items-center gap-2 rounded-md border bg-surface-canvas px-2.5 py-2 text-xs hover:bg-action-neutral-hover"
-                href={toApiUrl(part.url)}
-                key={`${message.id}-${index}`}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <FileTextIcon className="size-4 shrink-0 text-content-secondary" />
-                <span className="truncate">{part.filename ?? "Attached file"}</span>
-              </a>
-            );
-          }
-
-          if (isToolUIPart(part)) {
-            const toolName = getToolName(part);
-
-            if (isProposePageContentUpdateToolName(toolName)) {
-              const snapshot =
-                snapshotByToolCallId.get(part.toolCallId) ?? null;
-
-              return (
-                <PageEditToolPart
-                  isApplying={
-                    applyingToolCallIds.includes(part.toolCallId) &&
-                    !snapshotByToolCallId.has(part.toolCallId)
-                  }
-                  isBaselineCurrent={
-                    snapshot ? getPageEditBaselineCurrent(snapshot) : false
-                  }
-                  isDiffVisible={visibleDiffToolCallId === part.toolCallId}
-                  isReviewAvailable={
-                    snapshot ? getPageEditReviewAvailable(snapshot) : false
-                  }
-                  key={`${message.id}-${index}`}
-                  onApply={onApplyPageEdit}
-                  onDiscard={onDiscardPageEdit}
-                  onToggleChanges={onTogglePageEditChanges}
-                  onUndo={onUndoPageEdit}
-                  part={part}
-                  snapshot={snapshot}
-                />
-              );
-            }
-
-            return null;
-          }
-
-          return null;
-        })}
-        {tables.map(({ table, toolCallId }) => (
-          <AgentResultTable key={toolCallId} table={table} />
-        ))}
-        {threadId && workspaceId ? (
-          <AgentActionReviews
-            message={message}
-            threadId={threadId}
-            workspaceId={workspaceId}
-          />
-        ) : null}
-        <AgentResourceBadges
-          citations={citations}
-          openInMainPage={isSidebar}
-        />
-        {message.role === "assistant" && showFeedback ? (
-          <AssistantFeedback
-            isPending={feedbackPending}
-            onSubmit={(rating, reason) =>
-              onSubmitFeedback(message.id, rating, reason)
-            }
-            rating={feedbackRating}
-          />
-        ) : null}
-      </MessageContent>
-    </Message>
-  );
-};
-
-const EmptyState = ({
-  isSidebar,
-  onSuggestion,
-}: {
-  isSidebar: boolean;
-  onSuggestion: (value: string) => void;
-}) => (
-  <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-5 px-4 pb-6 text-center">
-    <div className="flex size-12 items-center justify-center rounded-md border bg-surface-canvas shadow-sm">
-      <InboxIcon className="size-6 text-content-secondary" />
-    </div>
-    <div className="space-y-2">
-      <h2 className="font-semibold text-xl">
-        {isSidebar ? "What should I do with this page?" : "What can I help you build?"}
-      </h2>
-      <p className="mx-auto max-w-xl text-content-secondary text-sm">
-        Describe the outcome in ordinary language. Ask AI will infer the setup,
-        use your workspace context, and complete the supported steps.
-      </p>
-    </div>
-    <div className="flex max-w-2xl flex-wrap justify-center gap-2">
-      {(isSidebar
-        ? [
-            "Summarize this page and list open questions",
-            "Turn this page into an action plan",
-            "Find related pages in this workspace",
-          ]
-        : [
-            "Find the latest decisions in this workspace",
-            "Create a 1:1 meeting notes database with useful properties and a This week view",
-            "Analyze an uploaded file and show the key trends",
-          ]
-      ).map((suggestion) => (
-        <Button
-          key={suggestion}
-          onClick={() => onSuggestion(suggestion)}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          {suggestion}
-        </Button>
-      ))}
-    </div>
-  </div>
-);
 
 type ChatbotProps = {
   databaseId?: string | null;
@@ -834,7 +139,7 @@ const Chatbot = (props: ChatbotProps) => {
 
   if (!props.threadId) {
     return (
-      <ChatbotInner
+      <ChatbotConversationController
         {...props}
         initialMessages={emptyAgentChatMessages}
         initialFeedback={[]}
@@ -856,7 +161,7 @@ const Chatbot = (props: ChatbotProps) => {
   }
 
   return (
-    <ChatbotInner
+    <ChatbotConversationController
       {...props}
       initialMessages={seededInitialMessages.messages}
       initialFeedback={queriedInitialFeedback}
@@ -865,7 +170,7 @@ const Chatbot = (props: ChatbotProps) => {
   );
 };
 
-const ChatbotInner = ({
+const ChatbotConversationController = ({
   databaseId = null,
   initialFeedback,
   initialMessages,
@@ -1915,8 +1220,6 @@ const ChatbotInner = ({
   );
 
   const hasMessages = visibleMessages.length > 0;
-  const showPendingAssistant = shouldShowPendingAssistant(messages, status);
-
   useEffect(() => {
     const previousMessageCount = previousMessageCountRef.current;
     previousMessageCountRef.current = visibleMessages.length;
@@ -1948,194 +1251,78 @@ const ChatbotInner = ({
       }
       ref={rootRef}
     >
-      <Conversation
-        className={isSidebar ? "min-h-0" : "flex-none overflow-visible"}
-      >
-        <ConversationContent
-          className={
-            hasMessages || isSidebar
-              ? "px-0 pb-10 md:px-4"
-              : "px-0 pb-0 md:px-4"
-          }
-          scrollClassName={
-            isSidebar
-              ? undefined
-              : "h-auto! overflow-visible! [scrollbar-gutter:auto]!"
-          }
-        >
-          {!hasMessages ? (
-            <EmptyState isSidebar={isSidebar} onSuggestion={setText} />
-          ) : (
-            visibleMessages.map((message) => (
-              <ChatMessage
-                applyingToolCallIds={applyingToolCallIds}
-                feedbackPending={
-                  submitFeedback.isPending &&
-                  submitFeedback.variables?.messageId === message.id
-                }
-                feedbackRating={
-                  feedbackByMessageId.get(message.id)?.rating
-                }
-                getPageEditBaselineCurrent={getPageEditBaselineCurrent}
-                getPageEditReviewAvailable={getPageEditReviewAvailable}
-                isSidebar={isSidebar}
-                key={message.id}
-                message={message}
-                showFeedback={feedbackReadyMessageIds.has(message.id)}
-                onApplyPageEdit={handleApplyPageEdit}
-                onDiscardPageEdit={handleDiscardPageEdit}
-                onRetryIncompleteDatabase={handleRetryIncompleteDatabase}
-                onSubmitFeedback={handleSubmitFeedback}
-                onTogglePageEditChanges={handleTogglePageEditChanges}
-                onUndoPageEdit={handleUndoPageEdit}
-                snapshotByToolCallId={snapshotByToolCallId}
-                threadId={threadId}
-                visibleDiffToolCallId={visibleDiffToolCallId}
-                workspaceId={workspaceId}
-              />
-            ))
-          )}
-          {import.meta.env.DEV ? (
-            <AgentLiveDebugger
-              events={liveDebugger.events}
-              status={status}
-              turnStartedAt={liveDebugger.turnStartedAt}
-            />
-          ) : null}
-          {showPendingAssistant ? <PendingAssistantStatus status={status} /> : null}
-        </ConversationContent>
-      </Conversation>
-      <div
-        className={
-          hasMessages || isSidebar
-            ? "sticky bottom-0 z-10 -mx-4 mt-auto grid shrink-0 gap-3 bg-gradient-to-t from-surface-canvas via-effect-backdrop to-transparent px-4 pb-4 pt-16 md:mx-0 md:px-4 md:pb-6 md:pt-20"
-            : "z-10 -mx-4 grid shrink-0 gap-3 px-4 pb-4 md:mx-0 md:px-4"
+      <ChatbotMessages
+        applyingToolCallIds={applyingToolCallIds}
+        debuggerContent={import.meta.env.DEV ? (
+          <AgentLiveDebugger
+            events={liveDebugger.events}
+            status={status}
+            turnStartedAt={liveDebugger.turnStartedAt}
+          />
+        ) : null}
+        feedbackByMessageId={feedbackByMessageId}
+        feedbackPendingMessageId={
+          submitFeedback.isPending
+            ? submitFeedback.variables?.messageId
+            : undefined
         }
-      >
-        <ShellScrollButton targetRef={rootRef} />
-        <div className="mx-auto w-full max-w-3xl">
-          {isSidebar ? (
-            <div className="mb-2 px-1 text-xs text-content-secondary">
-              {isContextLoading
-                ? "Loading page context..."
-                : contextError
-                  ? "Page context failed"
-                  : pageContext
-                    ? "Page context ready"
-                    : null}
-            </div>
-          ) : null}
-          <PromptInput
-            accept={AI_FILE_ACCEPT}
-            globalDrop
-            inputGroupClassName="h-auto items-stretch overflow-visible focus-within:border-control-border focus-within:ring-0 has-[[data-slot=input-group-control]:focus-visible]:border-control-border has-[[data-slot=input-group-control]:focus-visible]:ring-0"
-            maxFileSize={MAX_AI_FILE_BYTES}
-            maxFiles={MAX_AI_FILES}
-            multiple
-            onError={(attachmentError) => toast.error("Cannot attach file", {
-              description: attachmentError.message,
-            })}
-            onSubmit={handleSubmit}
-          >
-            <PromptInputAttachments />
-            <ContextAttachChips
-              attachments={attachments}
-              onRemove={handleRemoveAttachment}
-              onRemovePrimary={handleRemovePrimary}
-              primaryAttachment={primaryAttachment}
-            />
-            <div className="relative w-full min-w-0 flex-1 self-stretch">
-              {mentionMenuOpen ? (
-                <ContextAttachMenu
-                  currentDatabaseId={databaseId}
-                  currentPageId={pageId}
-                  existingAttachmentKeys={existingAttachmentKeys}
-                  onEntriesChange={setMentionMenuEntries}
-                  onSelect={handleAttachContext}
-                  open={mentionMenuOpen}
-                  query={activeMentionTrigger?.mentionQuery ?? ""}
-                  ref={mentionMenuRef}
-                  selectedIndex={selectedMentionIndex}
-                  setSelectedIndex={setSelectedMentionIndex}
-                />
-              ) : null}
-              <PromptInputTextarea
-                className="w-full px-2 focus-visible:border-transparent focus-visible:ring-0"
-                onChange={handleTextChange}
-                onClick={syncTextCursor}
-                onKeyDown={handleTextareaKeyDown}
-                onSelect={syncTextCursor}
-                placeholder={isSidebar
-                  ? "Ask AI to update this page, or type @ to add context..."
-                  : "Ask AI to find, create, or update anything..."}
-                ref={textareaRef}
-                value={text}
-              />
-            </div>
-            <PromptInputFooter>
-              <PromptInputTools>
-                <PromptInputActionMenu>
-                  <PromptInputActionMenuTrigger tooltip="Attach files">
-                    <PlusIcon className="size-4" />
-                  </PromptInputActionMenuTrigger>
-                  <PromptInputActionMenuContent>
-                    <PromptInputActionAddAttachments />
-                  </PromptInputActionMenuContent>
-                </PromptInputActionMenu>
-                <ModelSelector
-                  onOpenChange={setModelSelectorOpen}
-                  open={modelSelectorOpen}
-                >
-                  <ModelSelectorTrigger asChild>
-                    <PromptInputButton>
-                      {selectedModelData?.chefSlug && (
-                        <ModelSelectorLogo
-                          provider={getProviderLogoSlug(
-                            selectedModelData.chefSlug,
-                          )}
-                        />
-                      )}
-                      {selectedModelData?.name && (
-                        <ModelSelectorName>
-                          {selectedModelData.name}
-                        </ModelSelectorName>
-                      )}
-                    </PromptInputButton>
-                  </ModelSelectorTrigger>
-                  <ModelSelectorContent>
-                    <ModelSelectorInput placeholder="Search models..." />
-                    <ModelSelectorList>
-                      <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-                      {chefs.map((chef) => (
-                        <ModelSelectorGroup heading={chef} key={chef}>
-                          {models
-                            .filter((m) => m.chef === chef)
-                            .map((m) => (
-                              <ModelItem
-                                isSelected={model === m.id}
-                                key={m.id}
-                                m={m}
-                                onSelect={handleModelSelect}
-                              />
-                            ))}
-                        </ModelSelectorGroup>
-                      ))}
-                    </ModelSelectorList>
-                  </ModelSelectorContent>
-                </ModelSelector>
-              </PromptInputTools>
-              <PromptInputSubmit
-                status={
-                  createThread.isPending
-                    ? "submitted"
-                    : (status as ChatStatus)
-                }
-                onStop={stop}
-              />
-            </PromptInputFooter>
-          </PromptInput>
-        </div>
-      </div>
+        feedbackReadyMessageIds={feedbackReadyMessageIds}
+        getPageEditBaselineCurrent={getPageEditBaselineCurrent}
+        getPageEditReviewAvailable={getPageEditReviewAvailable}
+        isSidebar={isSidebar}
+        messages={messages}
+        onApplyPageEdit={handleApplyPageEdit}
+        onDiscardPageEdit={handleDiscardPageEdit}
+        onRetryIncompleteDatabase={handleRetryIncompleteDatabase}
+        onSubmitFeedback={handleSubmitFeedback}
+        onSuggestion={setText}
+        onTogglePageEditChanges={handleTogglePageEditChanges}
+        onUndoPageEdit={handleUndoPageEdit}
+        snapshotByToolCallId={snapshotByToolCallId}
+        status={status}
+        threadId={threadId}
+        visibleDiffToolCallId={visibleDiffToolCallId}
+        visibleMessages={visibleMessages}
+        workspaceId={workspaceId}
+      />
+      <ChatbotComposer
+        activeMentionQuery={activeMentionTrigger?.mentionQuery ?? ""}
+        attachments={attachments}
+        chefs={chefs}
+        contextError={contextError}
+        createThreadPending={createThread.isPending}
+        currentDatabaseId={databaseId}
+        currentPageId={pageId}
+        existingAttachmentKeys={existingAttachmentKeys}
+        hasMessages={hasMessages}
+        isContextLoading={isContextLoading}
+        isSidebar={isSidebar}
+        mentionMenuOpen={mentionMenuOpen}
+        mentionMenuRef={mentionMenuRef}
+        model={model}
+        modelSelectorOpen={modelSelectorOpen}
+        models={models}
+        onAttachContext={handleAttachContext}
+        onEntriesChange={setMentionMenuEntries}
+        onModelSelect={handleModelSelect}
+        onModelSelectorOpenChange={setModelSelectorOpen}
+        onRemoveAttachment={handleRemoveAttachment}
+        onRemovePrimary={handleRemovePrimary}
+        onStop={stop}
+        onSubmit={handleSubmit}
+        onTextChange={handleTextChange}
+        onTextareaKeyDown={handleTextareaKeyDown}
+        pageContextReady={Boolean(pageContext)}
+        primaryAttachment={primaryAttachment}
+        rootRef={rootRef}
+        selectedMentionIndex={selectedMentionIndex}
+        selectedModel={selectedModelData}
+        setSelectedMentionIndex={setSelectedMentionIndex}
+        status={status}
+        syncTextCursor={syncTextCursor}
+        text={text}
+        textareaRef={textareaRef}
+      />
     </div>
   );
 };

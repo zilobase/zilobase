@@ -1,3 +1,5 @@
+import { readChatbotSource } from "./ai-chatbot-source.mjs"
+
 export function register({ readSource, assert, loadModule, test }) {
   test("AI page citations resolve only local page and database routes", async () => {
     const { getAgentCitationSidePaneTarget } = await loadModule(
@@ -36,7 +38,7 @@ export function register({ readSource, assert, loadModule, test }) {
   })
 
   test("AI resource badges use the shared side-pane controller and renderers", async () => {
-    const chatbotSource = await readSource("/src/features/ai/components/elements/chatbot.tsx")
+    const chatbotSource = await readChatbotSource(readSource)
     const badgeSource = await readSource(
       "/src/features/ai/components/elements/agent-resource-badges.tsx"
     )

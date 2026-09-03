@@ -1,4 +1,27 @@
-export function register({ assert, readSource, test }) {
+import { readChatbotSource } from "./ai-chatbot-source.mjs"
+
+export function register({ assert, loadModule, readSource, test }) {
+  test("pending assistant state stops once visible streamed output arrives", async () => {
+    const { shouldShowPendingAssistant } = await loadModule(
+      "/src/features/ai/model/chat-message-visibility.ts",
+    )
+    const userMessage = {
+      id: "user-1",
+      role: "user",
+      parts: [{ type: "text", text: "Hi" }],
+    }
+    const assistantText = {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [{ type: "text", text: "Hello" }],
+    }
+
+    assert.equal(shouldShowPendingAssistant([], "submitted"), true)
+    assert.equal(shouldShowPendingAssistant([userMessage], "streaming"), true)
+    assert.equal(shouldShowPendingAssistant([userMessage, assistantText], "streaming"), false)
+    assert.equal(shouldShowPendingAssistant([userMessage], "ready"), false)
+  })
+
   test("streaming database progress can be the final message part", async () => {
     const toolTasks = await readSource(
       "/src/features/ai/components/elements/agent-tool-task.tsx",
@@ -22,7 +45,7 @@ export function register({ assert, readSource, test }) {
     ] = await Promise.all([
       readSource("/src/features/ai/cache/use-agent-live-effects.ts"),
       readSource("/src/features/ai/components/elements/agent-live-debugger.tsx"),
-      readSource("/src/features/ai/components/elements/chatbot.tsx"),
+      readChatbotSource(readSource),
       readSource("/src/features/ai/components/elements/database-tool-steps.tsx"),
       readSource("/src/features/ai/components/elements/agent-tool-task.tsx"),
       readSource("/src/features/ai/conversation/use-agent-conversation.ts"),
