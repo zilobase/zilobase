@@ -25,7 +25,7 @@ import {
   getStatusDefaultOptionId,
   type DatabasePropertyConfig,
 } from "../../views/model/database-view-config";
-import { useDatabaseViewContext } from "../../views/model/database-view-context";
+import { useDatabaseActionsContext } from "../../views/model/database-view-context";
 import { DatePropertySettings } from "./date/date-property-settings";
 import {
   FilesPropertySettings,
@@ -95,7 +95,9 @@ function DatabasePropertySettings({
   type,
   workspaceId,
 }: PropertySettingsProps) {
-  const { updateDatabasePropertyConfig } = useDatabaseViewContext();
+  const {
+    updateDatabasePropertyConfig,
+  } = useDatabaseActionsContext()
   const updatePropertyConfig = (nextConfig: DatabasePropertyConfig) => {
     void updateDatabasePropertyConfig(databasePropertyId, nextConfig);
   };

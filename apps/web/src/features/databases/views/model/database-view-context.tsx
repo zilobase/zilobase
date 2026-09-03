@@ -2,7 +2,9 @@ import {
   createContext,
   useContext,
   useMemo,
+  useRef,
   type ComponentType,
+  type Context,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
@@ -93,7 +95,7 @@ export type DatabaseSourceViewSelection = {
   viewType: string
 }
 
-export type DatabaseViewContextValue = {
+export type DatabaseViewProviderValue = {
   activeConditionalColors: DatabaseActiveConditionalColor[]
   activeDatabaseFilters: DatabaseActiveFilter[]
   activeDatabaseSorts: DatabaseActiveSort[]
@@ -311,7 +313,75 @@ export type DatabaseViewContextValue = {
   views: DatabaseView[]
 }
 
-const DatabaseViewContext = createContext<DatabaseViewContextValue | null>(null)
+const databaseDataKeys = [
+  "activeConditionalColors", "activeDatabaseFilters", "activeDatabaseSorts",
+  "addableFilterFieldOptions", "addableSortFieldOptions", "canAddDatabaseFilter",
+  "canAddDatabaseProperties", "canAddDatabaseRows", "canAddDatabaseViews",
+  "canAddDatabaseSort", "dataSources", "databaseConfig", "databaseId",
+  "databaseName", "databasePageId", "databaseWorkspaceId", "editable",
+  "filteredItems", "filterFieldOptions", "filterValueOptionsByField", "groupOptions",
+  "groupProperty", "groupableProperties", "hasNextPage", "hostDatabaseId",
+  "hostDatabaseName", "hostDatabaseWorkspaceId", "hostViews",
+  "isAddingDatabaseProperty", "isAddingDatabaseRow", "isAddingDataSource",
+  "isAddingDatabaseView", "isFetchingNextPage", "items", "options",
+  "personOptions", "properties", "propertyValuesByKey", "realtimeEnabled",
+  "sortFieldOptions", "sortedItems", "subItemChildRowIdsByParentId",
+  "subItemDepthByRowId", "subItemParentRowIdsByRowId", "timelineDateProperties",
+  "timelineDateProperty", "visibleProperties", "visiblePropertyCount", "views",
+  "workspaceId",
+] as const satisfies readonly (keyof DatabaseViewProviderValue)[]
+
+const databaseUiKeys = [
+  "activeView", "activeViewTabId", "activeVisibilityConfig", "chartSettings",
+  "draftDatabaseTitle", "draftViewTitle", "filterPickerOpen", "fullPage",
+  "headerMenusEnabled", "isTimelineView", "layoutSettings", "newRowLabel",
+  "showExpandButton", "showFilterPill", "showPageIconInTitle", "showPropertyTitles",
+  "showSortPill", "showTitle", "sortPickerOpen", "subItemsSettings",
+  "titlePropertyLabel", "viewTabs",
+] as const satisfies readonly (keyof DatabaseViewProviderValue)[]
+
+const databaseActionKeys = [
+  "addDataSource", "addDatabaseProperty", "addDatabaseRow", "addChartView",
+  "addGalleryView", "addFormView", "addDraggedPageRow", "addKanbanView",
+  "addListView", "linkDataSourceView", "unlinkDataSource", "addDataSourceView",
+  "replaceActiveViewSource", "addTableView", "addTimelineRow", "addTimelineView",
+  "clearDatabaseFilter", "clearDatabaseSort", "configureDataSources",
+  "copyDatabaseViewLink", "createDatabaseFilter", "createDatabaseSort",
+  "deleteDatabaseView", "duplicateDatabaseView", "fetchNextPage",
+  "getDatabasePageDragPayload", "hasDatabasePageDragPayload", "isRowComplete",
+  "onOpenPage", "removeDatabaseFilter", "removeDatabaseSort",
+  "renameDatabaseProperty", "reorderDatabaseFilters", "saveDatabaseTitle",
+  "saveDatabaseEmoji", "saveDatabaseViewIcon", "saveDatabaseViewTitle",
+  "saveDatabaseConditionalColors", "saveDatabaseFilters", "saveDatabasePropertyOrder",
+  "saveDatabaseSorts", "savePropertyValue", "setActiveViewId",
+  "setDraftDatabaseTitle", "setDraftViewTitle", "setFilterPickerOpen",
+  "setRowComplete", "setViewDateProperty", "setupTimelineDateProperty",
+  "setViewGroupProperty", "setViewType", "setSortPickerOpen", "onShowTitleChange",
+  "toggleFilterPillVisibility", "togglePropertyTitles", "togglePropertyVisibility",
+  "toggleSortPillVisibility", "updateDatabasePropertyConfig",
+  "updateDatabaseChartSettings", "updateDatabaseLayoutSettings",
+  "updateNameColumnConfig", "updateDatabaseFilter", "updateDatabaseFormHeaderSettings",
+  "updateDatabaseFormQuestionSettings", "updateDatabaseFormShareSettings",
+  "updateDatabaseSort", "updateDatabaseSubItemsSettings",
+] as const satisfies readonly (keyof DatabaseViewProviderValue)[]
+
+type DatabaseDataKey = (typeof databaseDataKeys)[number]
+type DatabaseUiKey = (typeof databaseUiKeys)[number]
+type DatabaseActionKey = (typeof databaseActionKeys)[number]
+type UnassignedDatabaseViewKey = Exclude<
+  keyof DatabaseViewProviderValue,
+  DatabaseDataKey | DatabaseUiKey | DatabaseActionKey
+>
+const unassignedDatabaseViewKeys: Record<UnassignedDatabaseViewKey, never> = {}
+void unassignedDatabaseViewKeys
+
+type DatabaseDataContextValue = Pick<DatabaseViewProviderValue, DatabaseDataKey>
+type DatabaseUiContextValue = Pick<DatabaseViewProviderValue, DatabaseUiKey>
+type DatabaseActionsContextValue = Pick<DatabaseViewProviderValue, DatabaseActionKey>
+
+const DatabaseDataContext = createContext<DatabaseDataContextValue | null>(null)
+const DatabaseUiContext = createContext<DatabaseUiContextValue | null>(null)
+const DatabaseActionsContext = createContext<DatabaseActionsContextValue | null>(null)
 const DatabaseRealtimeContext = createContext<{
   cellPresenceByKey: Record<string, DatabasePresenceCollaborator[]>
   status: "connected" | "connecting" | "disconnected" | "offline" | "unavailable"
@@ -322,7 +392,7 @@ export function DatabaseViewProvider({
   value,
 }: {
   children: ReactNode
-  value: DatabaseViewContextValue
+  value: DatabaseViewProviderValue
 }) {
   const parentUndoHistory = useOptionalUndoHistory()
 
@@ -352,10 +422,10 @@ function UndoableDatabaseViewProvider({
   value,
 }: {
   children: ReactNode
-  value: DatabaseViewContextValue
+  value: DatabaseViewProviderValue
 }) {
   const undoHistory = useUndoHistory()
-  const undoableValue = useMemo<DatabaseViewContextValue>(
+  const undoableValue = useMemo<DatabaseViewProviderValue>(
     () => ({
       ...value,
       renameDatabaseProperty: (databasePropertyId, name) => {
@@ -468,14 +538,22 @@ function UndoableDatabaseViewProvider({
     [undoHistory, value]
   )
 
+  const dataValue = useStableContextSlice(undoableValue, databaseDataKeys)
+  const uiValue = useStableContextSlice(undoableValue, databaseUiKeys)
+  const actionsValue = useStableContextSlice(undoableValue, databaseActionKeys)
+
   return (
-    <DatabaseViewContext.Provider value={undoableValue}>
-      <DatabaseCellStateProvider>
-        <DatabaseRealtimeStateProvider value={undoableValue}>
-          {children}
-        </DatabaseRealtimeStateProvider>
-      </DatabaseCellStateProvider>
-    </DatabaseViewContext.Provider>
+    <DatabaseDataContext.Provider value={dataValue}>
+      <DatabaseUiContext.Provider value={uiValue}>
+        <DatabaseActionsContext.Provider value={actionsValue}>
+          <DatabaseCellStateProvider>
+            <DatabaseRealtimeStateProvider value={undoableValue}>
+              {children}
+            </DatabaseRealtimeStateProvider>
+          </DatabaseCellStateProvider>
+        </DatabaseActionsContext.Provider>
+      </DatabaseUiContext.Provider>
+    </DatabaseDataContext.Provider>
   )
 }
 
@@ -484,7 +562,7 @@ function DatabaseRealtimeStateProvider({
   value,
 }: {
   children: ReactNode
-  value: DatabaseViewContextValue
+  value: DatabaseViewProviderValue
 }) {
   const { data: session } = useSession()
   const activeKey = useActiveDatabaseCellKey()
@@ -521,14 +599,47 @@ function DatabaseRealtimeStateProvider({
   )
 }
 
-export function useDatabaseViewContext() {
-  const value = useContext(DatabaseViewContext)
+function useStableContextSlice<
+  Value extends object,
+  Key extends keyof Value,
+>(value: Value, keys: readonly Key[]): Pick<Value, Key> {
+  const previous = useRef<Pick<Value, Key> | null>(null)
+  const changed = !previous.current || keys.some(
+    (key) => previous.current![key] !== value[key],
+  )
+
+  if (changed) {
+    previous.current = Object.fromEntries(
+      keys.map((key) => [key, value[key]]),
+    ) as Pick<Value, Key>
+  }
+
+  return previous.current!
+}
+
+function useRequiredDatabaseContext<Value>(
+  context: Context<Value | null>,
+  hookName: string,
+) {
+  const value = useContext(context)
 
   if (!value) {
-    throw new Error("useDatabaseViewContext must be used inside DatabaseViewProvider")
+    throw new Error(`${hookName} must be used inside DatabaseViewProvider`)
   }
 
   return value
+}
+
+export function useDatabaseDataContext() {
+  return useRequiredDatabaseContext(DatabaseDataContext, "useDatabaseDataContext")
+}
+
+export function useDatabaseUiContext() {
+  return useRequiredDatabaseContext(DatabaseUiContext, "useDatabaseUiContext")
+}
+
+export function useDatabaseActionsContext() {
+  return useRequiredDatabaseContext(DatabaseActionsContext, "useDatabaseActionsContext")
 }
 
 export function useDatabaseRealtimeState() {

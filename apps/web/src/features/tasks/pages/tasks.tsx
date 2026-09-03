@@ -24,7 +24,6 @@ import {
   createSampleRowContent,
   DatabaseListView,
   DatabaseSetupCard,
-  DatabaseViewProvider,
   DatabaseViewSkeleton,
   DatabaseViewToolbar,
   defaultStatusOptions,
@@ -46,6 +45,7 @@ import {
   type DatabaseSortUpdatePatch,
   type DatabaseSubItemsSettings,
 } from "@/features/databases"
+import { TaskDatabaseListAdapter } from "../components/task-database-list-adapter"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
 import {
   databaseQueryOptions,
@@ -468,23 +468,12 @@ function TasksDatabaseView({
   }
 
   return (
-    <DatabaseViewProvider
+    <TaskDatabaseListAdapter
       value={{
         ...viewModel,
         activeViewTabId: activeViewId,
         addDataSource: () => setDataSourceSetupOpen(true),
-        addChartView: () => {},
-        addDatabaseProperty: () => {},
         addDatabaseRow: createTask,
-        addDraggedPageRow: () => {},
-        addFormView: () => {},
-        addGalleryView: () => {},
-        addKanbanView: () => {},
-        linkDataSourceView: () => {},
-        addListView: () => {},
-        addTableView: () => {},
-        addTimelineRow: () => {},
-        addTimelineView: () => {},
         canAddDatabaseProperties: false,
         canAddDatabaseRows: payloads.length > 0,
         canAddDatabaseViews: false,
@@ -541,16 +530,12 @@ function TasksDatabaseView({
         databaseId: payloads.length > 0 ? TASKS_DATA_SOURCE_ID : null,
         databaseName: "My Tasks",
         databaseWorkspaceId: workspaceId ?? undefined,
-        deleteDatabaseView: () => {},
         draftDatabaseTitle: "My Tasks",
         draftViewTitle: "My Tasks",
-        duplicateDatabaseView: () => {},
         editable: true,
         fetchNextPage: emptyAsync,
         filterPickerOpen,
         fullPage: true,
-        getDatabasePageDragPayload: () => null,
-        hasDatabasePageDragPayload: () => false,
         hasNextPage: false,
         headerMenusEnabled: true,
         hostDatabaseId: TASKS_DATABASE_ID,
@@ -590,7 +575,6 @@ function TasksDatabaseView({
                 sortIndex === index ? [] : [{ column, direction }]
             )
           ),
-        renameDatabaseProperty: () => {},
         reorderDatabaseFilters: (filterIds) => {
           const filters = plainFilters()
           const byId = new Map(filters.map((filter) => [filter.id, filter]))
@@ -609,18 +593,12 @@ function TasksDatabaseView({
             conditionalColors:
               conditionalColors.length > 0 ? conditionalColors : undefined,
           }),
-        saveDatabaseEmoji: () => {},
         saveDatabaseFilters,
         saveDatabasePropertyOrder: (propertyOrder) =>
           updateViewConfig({ propertyOrder }),
         saveDatabaseSorts,
-        saveDatabaseTitle: () => {},
-        saveDatabaseViewIcon: () => {},
-        saveDatabaseViewTitle: () => {},
         savePropertyValue,
         setActiveViewId,
-        setDraftDatabaseTitle: () => {},
-        setDraftViewTitle: () => {},
         setFilterPickerOpen,
         setRowComplete: (row, complete) => {
           const task = rowsBySyntheticId.get(row.id)
@@ -661,11 +639,8 @@ function TasksDatabaseView({
           )
         },
         setSortPickerOpen,
-        setViewDateProperty: () => {},
         setViewGroupProperty: (groupPropertyId) =>
           updateViewConfig({ groupPropertyId: groupPropertyId ?? undefined }),
-        setViewType: () => {},
-        setupTimelineDateProperty: () => {},
         showExpandButton: false,
         showFilterPill,
         showPropertyTitles,
@@ -739,7 +714,7 @@ function TasksDatabaseView({
           ) : null}
         </div>
       </div>
-    </DatabaseViewProvider>
+    </TaskDatabaseListAdapter>
   )
 }
 

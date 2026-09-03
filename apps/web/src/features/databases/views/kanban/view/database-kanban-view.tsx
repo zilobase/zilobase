@@ -59,7 +59,7 @@ import {
   canCreateRowInKanbanGroup,
   isOptionBackedKanbanGroupProperty,
 } from "../model/database-kanban-config"
-import { useDatabaseViewContext } from "../../model/database-view-context"
+import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../model/database-view-context"
 import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll"
 import { NameColumnGlyph } from "../../../interactions/name-column-glyph"
 import { useDatabaseKanbanCardDrag } from "../controller/use-database-kanban-card-drag"
@@ -79,6 +79,18 @@ const NEW_KANBAN_GROUP_TRIGGER_SELECTOR =
 
 export function DatabaseKanbanView() {
   const {
+    fetchNextPage,
+    addDatabaseRow,
+    addDraggedPageRow,
+    onOpenPage,
+    savePropertyValue,
+    setViewGroupProperty,
+    saveDatabaseSorts,
+    renameDatabaseProperty,
+    updateDatabasePropertyConfig,
+    addDatabaseProperty,
+  } = useDatabaseActionsContext()
+  const {
     activeDatabaseSorts,
     propertyValuesByKey,
     canAddDatabaseProperties,
@@ -87,34 +99,26 @@ export function DatabaseKanbanView() {
     databaseName,
     databaseWorkspaceId,
     editable,
-    fetchNextPage,
     groupProperty,
     groupableProperties,
-    headerMenusEnabled,
     hasNextPage,
     isAddingDatabaseRow,
     isFetchingNextPage,
-    layoutSettings,
-    showPageIconInTitle,
-    showPropertyTitles,
-    addDatabaseRow,
-    addDraggedPageRow,
-    onOpenPage,
     personOptions,
     properties,
     items: allRows,
-    savePropertyValue,
-    setViewGroupProperty,
-    saveDatabaseSorts,
     sortedItems: items,
-    titlePropertyLabel,
-    renameDatabaseProperty,
-    updateDatabasePropertyConfig,
     visibleProperties,
     workspaceId,
     options,
-    addDatabaseProperty,
-  } = useDatabaseViewContext()
+  } = useDatabaseDataContext()
+  const {
+    headerMenusEnabled,
+    layoutSettings,
+    showPageIconInTitle,
+    showPropertyTitles,
+    titlePropertyLabel,
+  } = useDatabaseUiContext()
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const boardRef = useRef<HTMLDivElement | null>(null)

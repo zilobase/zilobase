@@ -5,37 +5,41 @@ import { Checkbox } from "@/shared/ui/checkbox"
 import { DatabasePageLink } from "../../../interactions/database-page-link"
 import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
 import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll"
-import { useDatabaseViewContext } from "../../model/database-view-context"
+import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../model/database-view-context"
 import { useDatabaseListRowDrag } from "../controller/use-database-list-row-drag"
 
 export function DatabaseListView() {
   const {
-    activeDatabaseFilters,
-    activeDatabaseSorts,
     addDraggedPageRow,
     addDatabaseRow,
+    fetchNextPage,
+    isRowComplete,
+    onOpenPage,
+    savePropertyValue,
+    setRowComplete,
+    updateDatabasePropertyConfig,
+  } = useDatabaseActionsContext()
+  const {
+    activeDatabaseFilters,
+    activeDatabaseSorts,
     databaseId,
     editable,
-    fetchNextPage,
     hasNextPage,
     isAddingDatabaseRow,
     isFetchingNextPage,
-    isRowComplete,
     items,
-    layoutSettings,
-    newRowLabel,
-    onOpenPage,
     personOptions,
     properties,
     propertyValuesByKey,
-    savePropertyValue,
-    setRowComplete,
-    showPageIconInTitle,
     sortedItems,
-    titlePropertyLabel,
-    updateDatabasePropertyConfig,
     visibleProperties,
-  } = useDatabaseViewContext()
+  } = useDatabaseDataContext()
+  const {
+    layoutSettings,
+    newRowLabel,
+    showPageIconInTitle,
+    titlePropertyLabel,
+  } = useDatabaseUiContext()
   const rows = useMemo(() => {
     const rowsById = new Map(items.map((row) => [row.id, row]))
 

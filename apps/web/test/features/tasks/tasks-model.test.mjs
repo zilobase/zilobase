@@ -9,7 +9,8 @@ export function register({ readSource, assert, loadModule, test }) {
       readSource("/src/features/databases/styles/database.css"),
     ]);
 
-    assert.match(source, /<DatabaseViewProvider/);
+    assert.match(source, /<TaskDatabaseListAdapter/);
+    assert.doesNotMatch(source, /addChartView: \(\) => \{\}/);
     assert.match(source, /<DatabaseViewToolbar/);
     assert.match(source, /<DatabaseListView/);
     assert.match(source, /newRowLabel: "New task"/);

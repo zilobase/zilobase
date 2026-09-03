@@ -46,7 +46,7 @@ import {
   getReadOnlyTimePropertyRawValue,
 } from "../model/read-only-time-property"
 import { DatabaseRollupPropertySettings } from "../configuration";
-import { useDatabaseViewContext } from "../../views/model/database-view-context"
+import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../views/model/database-view-context"
 import {
   useDatabaseCellDraft,
   useSetActiveDatabaseCell,
@@ -145,7 +145,14 @@ export function DatabasePropertyValue({
   titlePropertyLabel,
   wrapContent: wrapContentOverride,
 }: DatabasePropertyValueProps) {
-  const databaseContext = useDatabaseViewContext()
+  const { layoutSettings } = useDatabaseUiContext()
+  const {
+    databaseId,
+    databaseWorkspaceId,
+    hostDatabaseWorkspaceId,
+    workspaceId,
+  } = useDatabaseDataContext()
+  const { onOpenPage } = useDatabaseActionsContext()
   const pageProperty = property.property
   const key = `${row.pageId}:${pageProperty.id}`
   const draftValue = useDatabaseCellDraft(key)
@@ -190,7 +197,7 @@ export function DatabasePropertyValue({
     (cellKind === "person" && getPersonLimit(pageProperty.config) !== "one_person")
   const wrapContent =
     wrapContentOverride ??
-    (databaseContext.layoutSettings.wrapAllContent ||
+    (layoutSettings.wrapAllContent ||
       getPropertyWrapContent(pageProperty.config))
   const displayValue =
     pageProperty.type === "status" && !persistedValue
@@ -292,7 +299,7 @@ export function DatabasePropertyValue({
     />
   ) : cellKind === "files" ? (
     <DatabasePropertyFiles
-      databaseId={databaseContext.databaseId}
+      databaseId={databaseId}
       editable={editable}
       label={pageProperty.name}
       onOpenChange={(open) => onActiveValueChange(open ? key : null)}
@@ -306,9 +313,7 @@ export function DatabasePropertyValue({
         )
       }
       workspaceId={
-        databaseContext.workspaceId ??
-        databaseContext.databaseWorkspaceId ??
-        databaseContext.hostDatabaseWorkspaceId
+        workspaceId ?? databaseWorkspaceId ?? hostDatabaseWorkspaceId
       }
       propertyConfig={pageProperty.config}
       value={value}
@@ -318,7 +323,7 @@ export function DatabasePropertyValue({
     <DatabaseRelationPropertyValue
       editable={editable}
       label={pageProperty.name}
-      onOpen={databaseContext.onOpenPage}
+      onOpen={onOpenPage}
       onOpenChange={(open) => onActiveValueChange(open ? key : null)}
       onPropertyConfigChange={(config) =>
         onPropertyConfigChange(property.id, config)
@@ -339,9 +344,9 @@ export function DatabasePropertyValue({
     />
   ) : cellKind === "rollup" ? (
     <DatabaseRollupPropertyValue
-      databaseId={databaseContext.databaseId}
+      databaseId={databaseId}
       editable={editable}
-      onOpen={databaseContext.onOpenPage}
+      onOpen={onOpenPage}
       onOpenChange={(open) => onActiveValueChange(open ? key : null)}
       onPropertyConfigChange={(config) =>
         onPropertyConfigChange(property.id, config)

@@ -29,7 +29,7 @@ import {
   type ChartConfig,
 } from "@/shared/ui/chart"
 import { getPaletteColor } from "@/shared/lib/color-tokens"
-import { useDatabaseViewContext } from "../../model/database-view-context"
+import { useDatabaseDataContext, useDatabaseUiContext } from "../../model/database-view-context"
 import {
   shouldSplitDatabaseChartSeries,
   type DatabaseChartReferenceLine,
@@ -48,12 +48,14 @@ import {
 
 export function DatabaseChartView() {
   const {
-    chartSettings,
     filteredItems,
     personOptions,
     properties,
     propertyValuesByKey,
-  } = useDatabaseViewContext()
+  } = useDatabaseDataContext()
+  const {
+    chartSettings,
+  } = useDatabaseUiContext()
   const gradientId = useIdWithoutColons()
   const personNamesById = useMemo(
     () => new Map(personOptions.map((person) => [person.id, person.name])),

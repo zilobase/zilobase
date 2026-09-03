@@ -44,7 +44,7 @@ import {
 } from "../../interactions/database-page-drop"
 import type {
   DatabaseSourceViewSelection,
-  DatabaseViewContextValue,
+  DatabaseViewProviderValue,
 } from "../model/database-view-context"
 import { getDatabaseViewCommands } from "../../commands/database-view-commands"
 import { getDatabaseViewModel } from "../../model/database-view-model"
@@ -203,7 +203,7 @@ export function useDatabaseViewController({
   )
   const activeViewTabId = resolvedActiveViewId
   const setSelectedActiveViewId = useCallback<
-    DatabaseViewContextValue["setActiveViewId"]
+    DatabaseViewProviderValue["setActiveViewId"]
   >(
     (value) => {
       setActiveViewId((currentViewId) => {
@@ -652,7 +652,7 @@ export function useDatabaseViewController({
     }
   }
 
-  const saveDatabaseViewIcon: DatabaseViewContextValue["saveDatabaseViewIcon"] = (
+  const saveDatabaseViewIcon: DatabaseViewProviderValue["saveDatabaseViewIcon"] = (
     view,
     nextIcon,
   ) => {
@@ -676,7 +676,7 @@ export function useDatabaseViewController({
   }
 
   const duplicateDatabaseView = (
-    view: DatabaseViewContextValue["viewTabs"][number],
+    view: DatabaseViewProviderValue["viewTabs"][number],
   ) => {
     if (!databaseId || addDatabaseView.isPending || updateDatabase.isPending) {
       return
@@ -716,7 +716,7 @@ export function useDatabaseViewController({
   }
 
   const deleteDatabaseViewByTab = (
-    view: DatabaseViewContextValue["viewTabs"][number],
+    view: DatabaseViewProviderValue["viewTabs"][number],
   ) => {
     if (
       !databaseId ||
@@ -806,7 +806,7 @@ export function useDatabaseViewController({
     commands.addDraggedPageRow(dragPayload, items.length)
   }
 
-  const databaseViewContext: DatabaseViewContextValue = {
+  const databaseViewContext: DatabaseViewProviderValue = {
     activeConditionalColors,
     activeDatabaseFilters,
     activeDatabaseSorts,

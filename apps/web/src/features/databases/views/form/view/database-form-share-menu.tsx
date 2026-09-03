@@ -25,7 +25,7 @@ import { Input } from "@/shared/ui/input"
 import { Switch } from "@/shared/ui/switch"
 import { cn } from "@/shared/lib/utils"
 
-import { useDatabaseViewContext } from "../../model/database-view-context"
+import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../model/database-view-context"
 import {
   getDatabaseFormShareSettings,
   type DatabaseFormFillAccess,
@@ -55,10 +55,14 @@ const submissionAccessValues: DatabaseFormSubmissionAccess[] = [
 
 export function DatabaseFormShareMenu() {
   const {
-    activeView,
-    databaseId,
     updateDatabaseFormShareSettings,
-  } = useDatabaseViewContext()
+  } = useDatabaseActionsContext()
+  const {
+    databaseId,
+  } = useDatabaseDataContext()
+  const {
+    activeView,
+  } = useDatabaseUiContext()
   const [settings, setSettings] = useState(() =>
     getDatabaseFormShareSettings(activeView?.config),
   )

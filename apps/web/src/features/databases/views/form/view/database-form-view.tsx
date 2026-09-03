@@ -56,7 +56,7 @@ import {
   getPersonLimit,
   getViewHiddenPropertyIds,
 } from "../../model/database-view-config"
-import { useDatabaseViewContext } from "../../model/database-view-context"
+import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../model/database-view-context"
 import { getDatabaseFormHeaderSettings } from "../model/database-form-header-config"
 import {
   getDatabaseFormQuestionSettings,
@@ -81,23 +81,27 @@ type FormQuestionEntry = {
 
 export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
   const {
-    activeView,
+    renameDatabaseProperty,
+    saveDatabasePropertyOrder,
+    togglePropertyVisibility,
+    updateDatabaseFormHeaderSettings,
+    updateDatabaseFormQuestionSettings,
+    updateDatabasePropertyConfig,
+    updateNameColumnConfig,
+  } = useDatabaseActionsContext()
+  const {
     databaseId,
     databasePageId,
     databaseWorkspaceId,
     editable,
     personOptions,
     properties,
-    renameDatabaseProperty,
-    saveDatabasePropertyOrder,
-    titlePropertyLabel,
-    togglePropertyVisibility,
-    updateDatabaseFormHeaderSettings,
-    updateDatabaseFormQuestionSettings,
-    updateDatabasePropertyConfig,
-    updateNameColumnConfig,
     visibleProperties,
-  } = useDatabaseViewContext()
+  } = useDatabaseDataContext()
+  const {
+    activeView,
+    titlePropertyLabel,
+  } = useDatabaseUiContext()
   const [previewTitle, setPreviewTitle] = useState("")
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
     null,

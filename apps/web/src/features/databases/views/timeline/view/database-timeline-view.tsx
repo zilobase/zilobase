@@ -21,7 +21,7 @@ import {
 
 import { getRawDatabaseGroupValue } from "../../../interactions/database-group-values"
 import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections"
-import { useDatabaseViewContext } from "../../model/database-view-context"
+import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../model/database-view-context"
 import {
   buildTimelineRowItem,
   getGanttStatusForValue,
@@ -46,32 +46,36 @@ import { useTimelineRowLayout } from "../controller/use-timeline-row-layout"
 
 export function DatabaseTimelineView() {
   const {
-    activeDatabaseFilters,
-    activeDatabaseSorts,
-    activeView,
     addDraggedPageRow,
     addDatabaseRow,
+    onOpenPage,
+    savePropertyValue,
+    saveDatabaseSorts,
+    setViewDateProperty,
+    setupTimelineDateProperty,
+    addTimelineRow,
+  } = useDatabaseActionsContext()
+  const {
+    activeDatabaseFilters,
+    activeDatabaseSorts,
     editable,
     databaseId,
     groupProperty,
     isAddingDatabaseProperty,
     isAddingDatabaseRow,
     items,
-    onOpenPage,
     personOptions,
     properties,
     propertyValuesByKey,
-    savePropertyValue,
-    saveDatabaseSorts,
-    setViewDateProperty,
-    setupTimelineDateProperty,
-    showPageIconInTitle,
     sortedItems,
     timelineDateProperties,
     timelineDateProperty,
+  } = useDatabaseDataContext()
+  const {
+    activeView,
+    showPageIconInTitle,
     titlePropertyLabel,
-    addTimelineRow,
-  } = useDatabaseViewContext()
+  } = useDatabaseUiContext()
 
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(
     {}

@@ -112,7 +112,7 @@ import {
 } from "../../model/database-view-config"
 import {
   useDatabaseRealtimeState,
-  useDatabaseViewContext,
+  useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext,
 } from "../../model/database-view-context"
 import {
   getDatabaseSubItemLineParentRowId,
@@ -1088,50 +1088,54 @@ function areRowLayoutsEqual(left: RowLayout, right: RowLayout) {
 export function DatabaseTableView() {
   const sidePane = useOptionalPageSidePane()
   const {
+    addDatabaseProperty,
+    addDraggedPageRow,
+    fetchNextPage,
+    getDatabasePageDragPayload,
+    hasDatabasePageDragPayload,
+    addDatabaseRow,
+    onOpenPage,
+    savePropertyValue,
+    saveDatabaseSorts,
+    setViewGroupProperty,
+    renameDatabaseProperty,
+    updateDatabasePropertyConfig,
+    updateNameColumnConfig,
+    saveDatabasePropertyOrder,
+  } = useDatabaseActionsContext()
+  const {
     activeConditionalColors,
     activeDatabaseFilters,
     activeDatabaseSorts,
     canAddDatabaseProperties,
-    addDatabaseProperty,
-    addDraggedPageRow,
     propertyValuesByKey,
     databaseConfig,
     databaseId,
     databaseName,
     databaseWorkspaceId,
     editable,
-    fetchNextPage,
-    getDatabasePageDragPayload,
     groupProperty,
-    headerMenusEnabled,
-    hasDatabasePageDragPayload,
     hasNextPage,
     isAddingDatabaseProperty,
     isAddingDatabaseRow,
     isFetchingNextPage,
-    layoutSettings,
-    titlePropertyLabel: nameColumnLabel,
-    showPageIconInTitle: nameColumnShowPageIcon,
-    addDatabaseRow,
-    onOpenPage,
     personOptions,
     properties,
     items: rows,
-    savePropertyValue,
-    saveDatabaseSorts,
-    setViewGroupProperty,
     sortedItems: sortedRows,
     subItemChildRowIdsByParentId,
     subItemDepthByRowId,
     subItemParentRowIdsByRowId,
-    subItemsSettings,
-    renameDatabaseProperty,
-    updateDatabasePropertyConfig,
-    updateNameColumnConfig,
-    saveDatabasePropertyOrder,
     visibleProperties,
     workspaceId,
-  } = useDatabaseViewContext()
+  } = useDatabaseDataContext()
+  const {
+    headerMenusEnabled,
+    layoutSettings,
+    titlePropertyLabel: nameColumnLabel,
+    showPageIconInTitle: nameColumnShowPageIcon,
+    subItemsSettings,
+  } = useDatabaseUiContext()
   const moveRow = useMoveDatabaseRow()
   const reorderRows = useReorderDatabaseRows()
   const undoHistory = useUndoHistory()

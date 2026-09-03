@@ -35,7 +35,7 @@ import { Textarea } from "@/shared/ui/textarea"
 import { cn } from "@/shared/lib/utils"
 
 import { getDatabasePropertyType } from "../../../core/database-property-types"
-import { useDatabaseViewContext } from "../../../views/model/database-view-context"
+import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../../views/model/database-view-context"
 import {
   escapeFormulaString,
   getFormulaExpression,
@@ -68,12 +68,16 @@ export function DatabaseFormulaDialog({
   open: boolean
 }) {
   const {
+    updateDatabasePropertyConfig,
+  } = useDatabaseActionsContext()
+  const {
     items,
     properties,
     propertyValuesByKey,
+  } = useDatabaseDataContext()
+  const {
     titlePropertyLabel,
-    updateDatabasePropertyConfig,
-  } = useDatabaseViewContext()
+  } = useDatabaseUiContext()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const [debugMode, setDebugMode] = useState(false)
   const [draftFormula, setDraftFormula] = useState("")

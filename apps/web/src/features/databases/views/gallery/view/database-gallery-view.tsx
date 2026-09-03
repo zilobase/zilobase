@@ -19,7 +19,7 @@ import {
 import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections"
 import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll"
 import { canCreateRowInKanbanGroup } from "../../kanban/model/database-kanban-config"
-import { useDatabaseViewContext } from "../../model/database-view-context"
+import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../model/database-view-context"
 import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
 import { DatabaseCellContent } from "../../view/database-cell-content"
 import { useDatabaseGalleryCardDrag } from "../controller/use-database-gallery-card-drag"
@@ -28,26 +28,30 @@ export function DatabaseGalleryView() {
   const {
     addDraggedPageRow,
     addDatabaseRow,
+    fetchNextPage,
+    onOpenPage,
+    savePropertyValue,
+    updateDatabasePropertyConfig,
+  } = useDatabaseActionsContext()
+  const {
     databaseId,
     editable,
-    fetchNextPage,
     groupProperty,
     hasNextPage,
     isAddingDatabaseRow,
     isFetchingNextPage,
     items,
-    layoutSettings,
-    onOpenPage,
     personOptions,
     properties,
     propertyValuesByKey,
-    savePropertyValue,
-    showPageIconInTitle,
     sortedItems,
-    titlePropertyLabel,
-    updateDatabasePropertyConfig,
     visibleProperties,
-  } = useDatabaseViewContext()
+  } = useDatabaseDataContext()
+  const {
+    layoutSettings,
+    showPageIconInTitle,
+    titlePropertyLabel,
+  } = useDatabaseUiContext()
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     () => new Set(),
   )
