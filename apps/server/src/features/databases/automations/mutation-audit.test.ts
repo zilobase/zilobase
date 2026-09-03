@@ -56,7 +56,7 @@ describe("database automation mutation-path audit", () => {
   });
 
   it("uses canonical page-property IDs in automation definitions", async () => {
-    const service = await read("databases/automations/service.ts");
+    const service = await read("databases/automations/service-support.ts");
 
     expect(service).toContain("id: pageProperty.id");
     expect(service).not.toContain("id: databaseProperty.id");

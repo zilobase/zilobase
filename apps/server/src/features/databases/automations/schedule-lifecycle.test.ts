@@ -3,7 +3,9 @@ import { expect, test } from "vitest";
 
 test("schedule lifecycle materializes and clears nextRunAt at every state boundary", async () => {
   const [service, engine] = await Promise.all([
-    readFile(new URL("./service.ts", import.meta.url), "utf8"),
+    Promise.all(["lifecycle-service.ts", "catalog-service.ts", "service-support.ts"].map((name) =>
+      readFile(new URL(`./${name}`, import.meta.url), "utf8")
+    )).then((sources) => sources.join("\n")),
     readFile(new URL("./run-engine.ts", import.meta.url), "utf8"),
   ]);
   expect(service).toContain("nextScheduleRunAt(compilation.definition!, now)");

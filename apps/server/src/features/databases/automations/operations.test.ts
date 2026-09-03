@@ -39,7 +39,9 @@ describe("database automation operations", () => {
     const [operations, health, service] = await Promise.all([
       readFile(new URL("./operations.ts", import.meta.url), "utf8"),
       readFile(new URL("../../health/routes.ts", import.meta.url), "utf8"),
-      readFile(new URL("./service.ts", import.meta.url), "utf8"),
+      Promise.all(["service.ts", "run-history-service.ts"].map((name) =>
+        readFile(new URL(`./${name}`, import.meta.url), "utf8")
+      )).then((sources) => sources.join("\n")),
     ]);
     expect(operations).toContain("CLEANUP_BATCH = 1_000");
     expect(operations).toContain('["succeeded", "failed", "skipped", "cancelled"]');

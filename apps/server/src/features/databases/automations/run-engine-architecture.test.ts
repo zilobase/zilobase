@@ -1,8 +1,32 @@
 import { expect, test } from "vitest";
 import { readFile } from "node:fs/promises";
 
+const readSources = async (...files: string[]) => (await Promise.all(
+  files.map((file) => readFile(new URL(file, import.meta.url), "utf8")),
+)).join("\n");
+
+const readRunEngine = () => readSources(
+  "./run-engine.ts",
+  "./execution-context.ts",
+  "./action-executor.ts",
+  "./action-support.ts",
+  "./gmail-action.ts",
+  "./slack-action.ts",
+  "./webhook-action.ts",
+);
+
+const readAutomationService = () => readSources(
+  "./service.ts",
+  "./read-service.ts",
+  "./run-history-service.ts",
+  "./validation-service.ts",
+  "./lifecycle-service.ts",
+  "./catalog-service.ts",
+  "./service-support.ts",
+);
+
 test("run engine pins revisions, leases work, and receipts every action", async () => {
-  const source = await readFile(new URL("./run-engine.ts", import.meta.url), "utf8");
+  const source = await readRunEngine();
   expect(source).toContain("databaseAutomationRun.revisionId");
   expect(source).toContain('eq(databaseAutomationRun.status, "running")');
   expect(source).toContain("databaseAutomationRun.leaseExpiresAt");
@@ -13,7 +37,7 @@ test("run engine pins revisions, leases work, and receipts every action", async 
 
 test("internal actions preserve authority, limits, and automation origin", async () => {
   const [engine, mutations, rows] = await Promise.all([
-    readFile(new URL("./run-engine.ts", import.meta.url), "utf8"),
+    readRunEngine(),
     readFile(new URL("./internal-mutations.ts", import.meta.url), "utf8"),
     readFile(new URL("../rows/service.ts", import.meta.url), "utf8"),
   ]);
@@ -26,7 +50,7 @@ test("internal actions preserve authority, limits, and automation origin", async
 });
 
 test("scheduled runs use the pinned occurrence without requiring a trigger page", async () => {
-  const source = await readFile(new URL("./run-engine.ts", import.meta.url), "utf8");
+  const source = await readRunEngine();
   expect(source).toContain('parsed.data.trigger.kind === "schedule"');
   expect(source).toContain('"AUTOMATION_SCHEDULE_MISSING"');
   expect(source).toContain("const row = scheduled ? null");
@@ -35,8 +59,8 @@ test("scheduled runs use the pinned occurrence without requiring a trigger page"
 
 test("Gmail delivery reuses owned connections, stable receipts, and reconnect handling", async () => {
   const [engine, service] = await Promise.all([
-    readFile(new URL("./run-engine.ts", import.meta.url), "utf8"),
-    readFile(new URL("./service.ts", import.meta.url), "utf8"),
+    readRunEngine(),
+    readAutomationService(),
   ]);
   expect(engine).toContain("sendGmailComposition");
   expect(engine).toContain("isMailFeatureEnabled(env)");
@@ -54,10 +78,10 @@ test("Gmail delivery reuses owned connections, stable receipts, and reconnect ha
 
 test("webhook delivery encrypts headers, pins egress, and reuses stable retry IDs", async () => {
   const [engine, egress, nodeTransport, service] = await Promise.all([
-    readFile(new URL("./run-engine.ts", import.meta.url), "utf8"),
+    readRunEngine(),
     readFile(new URL("./webhook-egress.ts", import.meta.url), "utf8"),
     readFile(new URL("../../../app/node/pinned-webhook.ts", import.meta.url), "utf8"),
-    readFile(new URL("./service.ts", import.meta.url), "utf8"),
+    readAutomationService(),
   ]);
   expect(engine).toContain("decryptAutomationSecret");
   expect(engine).toContain('kind: "webhook"');
@@ -73,7 +97,7 @@ test("webhook delivery encrypts headers, pins egress, and reuses stable retry ID
 
 test("Slack delivery is owner-scoped, channel-authorized, receipt-backed, and revocation-aware", async () => {
   const [engine, provider] = await Promise.all([
-    readFile(new URL("./run-engine.ts", import.meta.url), "utf8"),
+    readRunEngine(),
     readFile(new URL("./slack-provider.ts", import.meta.url), "utf8"),
   ]);
   expect(engine).toContain("const authorizedChannels = await listSlackChannels(env, connection)");

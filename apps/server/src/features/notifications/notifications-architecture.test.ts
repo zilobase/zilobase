@@ -18,7 +18,7 @@ test("notifications use a durable inbox, delivery receipt, and polling-safe outb
 });
 
 test("notification actions deduplicate, bound, and access-filter recipients", async () => {
-  const engine = await readFile(new URL("../databases/automations/run-engine.ts", import.meta.url), "utf8");
+  const engine = await readFile(new URL("../databases/automations/action-executor.ts", import.meta.url), "utf8");
   expect(engine).toContain("new Set(candidates)");
   expect(engine).toContain("uniqueCandidates.length > 20");
   expect(engine).toContain("activeNotificationRecipientIds");
