@@ -2,8 +2,16 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import { selectWorkspaceRunClaims } from "./run-engine";
+import { oldestAcross } from "./operations";
 
 describe("database automation operations", () => {
+  it("normalizes database timestamp strings when measuring queued work", () => {
+    expect(oldestAcross([
+      { oldestAt: "2026-09-03T02:07:40.000Z" },
+      { oldestAt: new Date("2026-09-03T02:07:41.000Z") },
+    ])).toEqual(new Date("2026-09-03T02:07:40.000Z"));
+  });
+
   it("enforces ten concurrent runs per workspace while filling other workspace capacity", () => {
     const candidates = [
       ...Array.from({ length: 12 }, (_, index) => ({ id: `a-${index}`, workspaceId: "workspace-a" })),

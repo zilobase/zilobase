@@ -54,4 +54,11 @@ describe("database automation mutation-path audit", () => {
     expect(capture).toContain("DATABASE_AUTOMATION_EVENT_WINDOW_MS = 3_000");
     expect(realtime).not.toContain("DatabaseAutomationMutationFact");
   });
+
+  it("uses canonical page-property IDs in automation definitions", async () => {
+    const service = await read("databases/automations/service.ts");
+
+    expect(service).toContain("id: pageProperty.id");
+    expect(service).not.toContain("id: databaseProperty.id");
+  });
 });

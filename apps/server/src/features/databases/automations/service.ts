@@ -898,7 +898,7 @@ async function loadProperties(dataSourceIds: string[]) {
     .select({
       dataSourceId: databaseProperty.dataSourceId,
       config: pageProperty.config,
-      id: databaseProperty.id,
+      id: pageProperty.id,
       name: pageProperty.name,
       type: pageProperty.type,
     })

@@ -81,11 +81,16 @@ async function groupedStatus(table: any, status: any, createdAt: any) {
     count: sql<number>`count(*)::integer`,
     oldestAt: sql<Date | null>`min(${createdAt})`,
     status,
-  }).from(table).groupBy(status) as Promise<Array<{ count: number; oldestAt: Date | null; status: string }>>;
+  }).from(table).groupBy(status) as Promise<Array<{ count: number; oldestAt: Date | string | null; status: string }>>;
 }
 
-function oldestAcross(rows: Array<{ oldestAt: Date | null }>) {
-  return rows.reduce<Date | null>((oldest, row) => !row.oldestAt || oldest && oldest <= row.oldestAt ? oldest : row.oldestAt, null);
+export function oldestAcross(rows: Array<{ oldestAt: Date | string | null }>) {
+  return rows.reduce<Date | null>((oldest, row) => {
+    if (!row.oldestAt) return oldest;
+    const candidate = row.oldestAt instanceof Date ? row.oldestAt : new Date(row.oldestAt);
+    if (Number.isNaN(candidate.getTime())) return oldest;
+    return oldest && oldest <= candidate ? oldest : candidate;
+  }, null);
 }
 
 function withoutDates(rows: Array<{ count: number; status: string }>) {
