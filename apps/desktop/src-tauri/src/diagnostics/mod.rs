@@ -284,10 +284,10 @@ fn linux_distribution() -> Option<String> {
         let release = fs::read_to_string("/etc/os-release").ok()?;
         let id = os_release_value(&release, "ID")?;
         let version = os_release_value(&release, "VERSION_ID");
-        return Some(match version {
+        Some(match version {
             Some(version) => format!("{id}-{version}"),
             None => id,
-        });
+        })
     }
 
     #[cfg(not(target_os = "linux"))]
