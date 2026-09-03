@@ -688,7 +688,7 @@ export async function invalidateDatabaseAutomationDependencies(input: {
   dependencyId: string;
   dependencyType: DatabaseAutomationDependency["dependencyType"];
   reason: string;
-  executor?: Executor;
+  executor?: Database;
   workspaceId?: string;
 }) {
   const executor = input.executor ?? db;
@@ -1151,7 +1151,7 @@ async function insertDependencies(
   executor: Executor,
   automationId: string,
   revisionId: string,
-  dependencies: Array<{ dependencyId: string; dependencyType: any; usage: string }>,
+  dependencies: DatabaseAutomationDependency[],
 ) {
   if (dependencies.length === 0) return;
   await executor.insert(databaseAutomationDependency).values(

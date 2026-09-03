@@ -366,9 +366,13 @@ describe("database automation compiler", () => {
       capabilities: { webhooks: true },
       secretIds: new Set(["secret-1"]),
     }).validation.valid).toBe(true);
+    const webhookAction = webhook.actions[0];
+    if (webhookAction?.type !== "send_webhook") {
+      throw new Error("Expected a webhook action fixture");
+    }
     expect(compileDatabaseAutomationDefinition({
       ...webhook,
-      actions: [{ ...webhook.actions[0] as any, selectedPropertyIds: ["name"] }],
+      actions: [{ ...webhookAction, selectedPropertyIds: ["name"] }],
     }, {
       ...context,
       capabilities: { webhooks: true },
@@ -376,7 +380,7 @@ describe("database automation compiler", () => {
     }).validation.valid).toBe(true);
     const invalid = compileDatabaseAutomationDefinition({
       ...webhook,
-      actions: [{ ...webhook.actions[0] as any, headers: [{ name: "Host", secretId: "secret-other" }], url: "http://127.0.0.1/hook" }],
+      actions: [{ ...webhookAction, headers: [{ name: "Host", secretId: "secret-other" }], url: "http://127.0.0.1/hook" }],
     }, {
       ...context,
       capabilities: { webhooks: true },
@@ -405,10 +409,14 @@ describe("database automation compiler", () => {
     expect(invalid.validation.errors.map(({ code }) => code)).toEqual(expect.arrayContaining([
       "slack_connection_not_owned", "slack_direct_message_forbidden", "slack_formula_requires_variable",
     ]));
+    const slackAction = slack.actions[0];
+    if (slackAction?.type !== "send_slack") {
+      throw new Error("Expected a Slack action fixture");
+    }
     const valid = compileDatabaseAutomationDefinition({
       ...slack,
       actions: [{
-        ...slack.actions[0] as any,
+        ...slackAction,
         channelId: "C123",
         message: { parts: [{ text: "Message", type: "text" }] },
       }],

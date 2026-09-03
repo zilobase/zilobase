@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
 import type { AppBindings } from "../../shared/types";
+import { responseJson } from "../../test-support/response";
 
 const mocks = vi.hoisted(() => {
   class BootstrapAlreadyCompletedError extends Error {}
@@ -144,7 +145,7 @@ test("the owner can read and update registration mode", async () => {
 
   assert.equal(read.status, 200);
   assert.equal(
-    ((await read.json()) as any).settings.registrationMode,
+    (await responseJson<{ settings: { registrationMode: string } }>(read)).settings.registrationMode,
     "invite-only",
   );
   assert.equal(update.status, 200);

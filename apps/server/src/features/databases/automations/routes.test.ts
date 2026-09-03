@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AppBindings } from "../../../shared/types";
+import { responseJson } from "../../../test-support/response";
 
 const mocks = vi.hoisted(() => ({
   audit: vi.fn(),
@@ -200,7 +201,10 @@ describe("database automation routes", () => {
       method: "POST",
     });
     expect(response.status).toBe(400);
-    const body = await response.json() as any;
+    const body = await responseJson<{
+      code: string;
+      validation: { valid: boolean };
+    }>(response);
     expect(body.code).toBe("AUTOMATION_INVALID_REQUEST");
     expect(body.validation.valid).toBe(false);
     expect(mocks.validate).not.toHaveBeenCalled();

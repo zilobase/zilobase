@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm";
 import {
   databaseAutomationDefinitionSchema,
+  type AutomationJsonValue,
   type AutomationFilterDefinition,
   type AutomationValueExpression,
   type DatabaseAutomationAction,
@@ -1190,13 +1191,13 @@ function assertBoundedValue(value: unknown) {
   }
 }
 
-function toJson(value: unknown): any {
+function toJson(value: unknown): AutomationJsonValue {
   if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map(toJson);
   if (value && typeof value === "object") {
     return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, toJson(item)]));
   }
-  return value ?? null;
+  return (value ?? null) as AutomationJsonValue;
 }
 
 const stableActionSuffix = (runId: string, actionId: string) =>

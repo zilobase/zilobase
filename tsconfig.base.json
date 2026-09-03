@@ -3,6 +3,7 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "strict": true
   }

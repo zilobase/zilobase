@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 
 import {
   databaseAutomationDefinitionSchema,
+  type AutomationFilterDefinition,
+  type AutomationReference,
   type DatabaseAutomationDefinition,
   type DatabaseAutomationDependency,
   type DatabaseAutomationTriggerOperator,
@@ -510,7 +512,7 @@ function validateOperations(
 }
 
 function validateFilterDefinition(
-  filter: { match: "all" | "any"; conditions: Array<any> },
+  filter: AutomationFilterDefinition,
   properties: Map<string, AutomationPropertyMetadata>,
   path: Array<string | number>,
   actionId: string,
@@ -520,7 +522,7 @@ function validateFilterDefinition(
 ) {
   filter.conditions.forEach((condition, index) => {
     const conditionPath = [...path, "conditions", index];
-    if (!("type" in condition) || condition.type !== "condition") {
+    if ("conditions" in condition) {
       validateFilterDefinition(condition, properties, conditionPath, actionId, addDependency, addError, propertyTypes);
       return;
     }
@@ -596,7 +598,7 @@ function optionReferenceIds(value: unknown): string[] {
 
 function visitReferences(
   value: unknown,
-  visitor: (reference: Record<string, any>, path: Array<string | number>) => void,
+  visitor: (reference: AutomationReference, path: Array<string | number>) => void,
   path: Array<string | number> = [],
 ) {
   if (Array.isArray(value)) {
@@ -605,7 +607,9 @@ function visitReferences(
   }
   if (!value || typeof value !== "object") return;
   const record = value as Record<string, unknown>;
-  if (record.type === "reference" && typeof record.reference === "string") visitor(record as Record<string, any>, path);
+  if (record.type === "reference" && typeof record.reference === "string") {
+    visitor(record as AutomationReference, path);
+  }
   for (const [key, item] of Object.entries(record)) visitReferences(item, visitor, [...path, key]);
 }
 

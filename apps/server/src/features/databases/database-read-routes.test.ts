@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
 import type { AppBindings } from "../../shared/types";
+import { responseJson } from "../../test-support/response";
 
 const mocks = vi.hoisted(() => ({
   access: vi.fn(),
@@ -94,11 +95,11 @@ test("database read route serves published and schema-only payloads", async () =
   mocks.published.mockResolvedValue(true);
   const published = await databaseReadRoutes.request("/database-1");
   assert.equal(published.status, 200);
-  assert.equal((await published.json() as any).database.accessLevel, null);
+  assert.equal((await responseJson<{ database: { accessLevel: null } }>(published)).database.accessLevel, null);
 
   const response = await sessionApp().request("/database-1?schemaOnly=1");
   assert.equal(response.status, 200);
-  assert.equal((await response.json() as any).database.accessLevel, "full");
+  assert.equal((await responseJson<{ database: { accessLevel: string } }>(response)).database.accessLevel, "full");
   assert.equal(mocks.schemaPayload.mock.calls.length, 1);
 });
 
@@ -106,7 +107,7 @@ test("database read route authorizes deleted records through membership", async 
   mocks.getRecord.mockResolvedValue({ ...record, deletedAt: new Date() });
   const response = await sessionApp().request("/database-1?includeDeleted=1");
   assert.equal(response.status, 200);
-  assert.equal((await response.json() as any).database.accessLevel, "none");
+  assert.equal((await responseJson<{ database: { accessLevel: string } }>(response)).database.accessLevel, "none");
   assert.equal(mocks.membership.mock.calls.length, 1);
 });
 
@@ -139,7 +140,11 @@ test("realtime ticket route creates and refreshes scoped tickets", async () => {
       method: "POST",
     },
   );
-  const body = await response.json() as any;
+  const body = await responseJson<{
+    databaseId: string;
+    websocketProtocols: string[];
+    websocketUrl: string;
+  }>(response);
   assert.equal(response.status, 200);
   assert.equal(body.databaseId, "database-1");
   assert.equal(body.websocketUrl, "ws://localhost/realtime?database=database-1");

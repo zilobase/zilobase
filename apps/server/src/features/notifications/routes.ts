@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 
 import type { AppBindings } from "../../shared/types";
 import {
@@ -29,7 +29,7 @@ notificationRoutes.post("/:workspaceId/notifications/:notificationId/read", asyn
   }));
 });
 
-async function handle(c: any, action: () => Promise<unknown>) {
+async function handle(c: Context<AppBindings>, action: () => Promise<object>) {
   try {
     return c.json(await action());
   } catch (error) {

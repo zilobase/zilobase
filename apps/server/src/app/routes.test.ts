@@ -7,6 +7,7 @@ import {
 } from "@zilobase/features/user-settings/sidebar-config";
 
 import type { AppBindings } from "../shared/types";
+import { responseJson } from "../test-support/response";
 
 const mocks = vi.hoisted(() => ({
   insertResults: [] as unknown[][],
@@ -109,7 +110,7 @@ test("session route returns an explicit anonymous response", async () => {
 test("session route reports password capability and timing", async () => {
   mocks.selectResults.push([{ id: "credential-account" }]);
   const response = await appFor(sessionRoutes).request("/");
-  const body = await response.json() as any;
+  const body = await responseJson<{ user: { hasPassword: boolean }; workspacePinned: boolean }>(response);
   assert.equal(response.status, 200);
   assert.equal(body.user.hasPassword, true);
   assert.equal(body.workspacePinned, false);
@@ -170,7 +171,7 @@ test("workspace access targets return scoped members and teams", async () => {
   );
   const response = await appFor(workspaceRoutes)
     .request("/workspace-1/access-targets");
-  const body = await response.json() as any;
+  const body = await responseJson<{ members: Array<{ memberId: string }>; teams: Array<{ id: string }> }>(response);
   assert.equal(response.status, 200);
   assert.equal(body.members[0].memberId, "member-1");
   assert.equal(body.teams[0].id, "team-1");
@@ -300,7 +301,7 @@ test("API key routes require sessions and validate create input", async () => {
     method: "POST",
   });
   assert.equal(invalid.status, 400);
-  assert.equal((await invalid.json() as any).error, "Invalid API key input");
+  assert.equal((await responseJson<{ error: string }>(invalid)).error, "Invalid API key input");
 });
 
 test("API key list filters records to the requested workspace", async () => {
@@ -337,7 +338,7 @@ test("API key list filters records to the requested workspace", async () => {
   ]);
   const response = await appFor(apiKeyRoutes)
     .request("/?workspaceId=workspace-1");
-  const body = await response.json() as any;
+  const body = await responseJson<{ keys: Array<{ id: string }> }>(response);
   assert.equal(response.status, 200);
-  assert.deepEqual(body.keys.map((key: any) => key.id), ["key-1"]);
+  assert.deepEqual(body.keys.map((key) => key.id), ["key-1"]);
 });

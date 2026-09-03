@@ -257,12 +257,22 @@ function webhookHttpDomains(c: Context<AppBindings>) {
 
 async function handle(
   c: Context<AppBindings>,
-  callback: () => Promise<unknown>,
+  callback: () => Promise<Response>,
+  callbackReturnsResponse: true,
+): Promise<Response>;
+async function handle<T extends object>(
+  c: Context<AppBindings>,
+  callback: () => Promise<T>,
+  callbackReturnsResponse?: false,
+): Promise<Response>;
+async function handle(
+  c: Context<AppBindings>,
+  callback: () => Promise<object | Response>,
   callbackReturnsResponse = false,
-) {
+): Promise<Response> {
   try {
     const result = await callback();
-    return callbackReturnsResponse ? result as any : c.json(result as any);
+    return callbackReturnsResponse ? result as Response : c.json(result);
   } catch (error) {
     if (error instanceof DatabaseAutomationError) {
       return c.json(

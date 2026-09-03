@@ -1,4 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
+import type { Database } from "../../../infrastructure/database";
 import { pageItemPlacement } from "../../../infrastructure/database/schema";
 export type NavItemKind = "page" | "database";
 
@@ -34,10 +35,7 @@ type PlacementRecord = {
   position: number;
 };
 
-type PlacementExecutor = {
-  insert: (table: typeof pageItemPlacement) => any;
-  update: (table: typeof pageItemPlacement) => any;
-};
+type PlacementExecutor = Pick<Database, "insert" | "update">;
 
 export function buildNavigationPlacements({
   placementRecords,

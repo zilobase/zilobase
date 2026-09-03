@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 
 import { db } from "../../../infrastructure/database";
 import {
@@ -76,7 +77,11 @@ export async function getDatabaseAutomationOperationalSnapshot(options: { now?: 
   };
 }
 
-async function groupedStatus(table: any, status: any, createdAt: any) {
+async function groupedStatus(
+  table: PgTable,
+  status: AnyPgColumn,
+  createdAt: AnyPgColumn,
+) {
   return db.select({
     count: sql<number>`count(*)::integer`,
     oldestAt: sql<Date | null>`min(${createdAt})`,

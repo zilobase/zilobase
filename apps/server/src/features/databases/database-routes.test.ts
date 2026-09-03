@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
 import type { AppBindings } from "../../shared/types";
+import { responseJson } from "../../test-support/response";
 
 const mocks = vi.hoisted(() => ({
   cell: vi.fn(),
@@ -155,7 +156,7 @@ test("cell route returns the service commit response", async () => {
       method: "PUT",
     },
   );
-  const body = await response.json() as any;
+  const body = await responseJson<{ mutationId: string; version: number }>(response);
   assert.equal(response.status, 200);
   assert.equal(body.mutationId, "mutation-1");
   assert.equal(body.version, 2);

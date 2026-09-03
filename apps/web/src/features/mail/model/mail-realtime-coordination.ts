@@ -1,4 +1,4 @@
-type LockManagerLike = {
+export type LockManagerLike = {
   request<T>(
     name: string,
     options: { ifAvailable: true; mode: "exclusive" },
@@ -6,7 +6,7 @@ type LockManagerLike = {
   ): Promise<T>
 }
 
-type StorageLike = Pick<Storage, "getItem" | "setItem">
+export type StorageLike = Pick<Storage, "getItem" | "setItem">
 
 const MAX_RECONNECT_MS = 30_000
 
