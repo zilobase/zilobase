@@ -1,3 +1,5 @@
+import { readMailFeatureSource } from "./mail-feature-source.mjs"
+
 export function register({ assert, readSource, readWorkspace, test }) {
   test("database sync shows processing state and locks an active destination", async () => {
     const [panel, queries] = await Promise.all([
@@ -13,7 +15,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
   })
 
   test("mail page supplies the persisted view identity to sync status", async () => {
-    const page = await readSource("/src/features/mail/pages/mail.tsx")
+    const page = await readMailFeatureSource(readSource)
     assert.match(page, /viewId=\{activePersistedView\.id\}/)
   })
 }

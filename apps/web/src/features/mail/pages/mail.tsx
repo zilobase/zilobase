@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate, useSearch } from "@tanstack/react-router"
-import { invoke } from "@tauri-apps/api/core"
 import { useLiveQuery } from "dexie-react-hooks"
 import { useSession } from "@zilobase/features/auth"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
@@ -15,18 +14,12 @@ import {
   type MailFilterExpression,
   type MailGroupConfig,
   type MailHoverAction,
-  type MailLabelRecord,
-  type MailLabelWriteRequest,
-  type MailMessageRecord,
   type MailModifyRequest,
-  type MailQueryGroup,
   type MailSendResponse,
   type MailThreadSummary,
   type MailPersistedView,
-  type MailPropertyDefinition,
   type MailThreadPropertyValue,
   type MailUnsubscribeResponse,
-  type MailView,
 } from "@zilobase/features/mail"
 import {
   useIndexedMailView,
@@ -38,55 +31,19 @@ import {
 } from "@zilobase/features/mail/react"
 import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
 import { toast } from "sonner"
-import { useTheme } from "next-themes"
 
 import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
-import { isDesktopApp } from "@/features/desktop/platform"
 import {
-  ArchiveIcon,
   BanIcon,
-  ChevronDown,
-  ChevronUp,
-  ChevronsRightIcon,
-  DownloadIcon,
   FilePenLineIcon,
   InboxIcon,
-  Loader2Icon,
   MailIcon,
-  MoreHorizontalIcon,
-  Paperclip,
-  RefreshCwIcon,
-  SearchIcon,
   SendIcon,
   StarIcon,
-  TagIcon,
-  TrashIcon,
   Trash2Icon,
-  TriangleAlertIcon,
-  WifiOffIcon,
-  XIcon,
 } from "@/shared/components/icons"
-import { GoogleIcon } from "@/shared/components/google-icon"
-import { Button } from "@/shared/ui/button"
-import { Checkbox } from "@/shared/ui/checkbox"
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog"
 import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu"
-import { Input } from "@/shared/ui/input"
-import { Separator } from "@/shared/ui/separator"
-import { useThemeFamily } from "@/shared/providers/theme-family-provider"
-import {
-  EmbeddedItemPresentationDropdown,
   MainPaneHeaderLeadingControl,
   PagePaneHeader,
 } from "@/features/pages/components"
@@ -96,21 +53,39 @@ import {
   PageSidePaneShell,
 } from "@/features/pages/context"
 
-import { sanitizeMailHtml } from "../model/mail-html"
-import { applyMailDocumentTheme } from "../model/mail-document-theme"
+import { MailLabelMenu, showMailError } from "../components/mail-actions"
 import { MailComposer } from "../components/mail-composer"
+import {
+  ConversationBody,
+  ConversationToolbar,
+  ConversationViewer,
+  type ConversationProps,
+} from "../components/mail-conversation-viewer"
+import {
+  MailboxLoading,
+  MailCenteredState,
+  MailConnectionState,
+} from "../components/mail-connection-state"
 import { MailViewSettingsMenu } from "../components/mail-view-settings-menu"
 import { cloneMailFilter, MailFilterEditor, mailFiltersEqual, MailFilterToolbar } from "../components/mail-filter-editor"
-import { isMutableMailGroup, MailGroupEditor } from "../components/mail-group-editor"
-import { formatMailPropertyValue, MailPropertiesPanel, MailThreadPropertyBar } from "../components/mail-properties-panel"
-import { mailHoverActionCatalog, MailHoverActionIcon, MailHoverActionsPanel } from "../components/mail-hover-actions-panel"
+import { MailGroupEditor } from "../components/mail-group-editor"
+import { MailPropertiesPanel, MailThreadPropertyBar } from "../components/mail-properties-panel"
+import { MailHoverActionsPanel } from "../components/mail-hover-actions-panel"
 import { MailRowActionDialog } from "../components/mail-row-action-dialog"
 import { MailDatabaseSyncPanel } from "../components/mail-database-sync-panel"
-import { forwardSeed, replySeed, type MailComposeSeed } from "../model/mail-compose"
+import { MailboxThreadList } from "../components/mailbox-thread-list"
+import { MailboxTopbar } from "../components/mailbox-topbar"
+import { replySeed, type MailComposeSeed } from "../model/mail-compose"
 import { useMailRealtime } from "../model/mail-realtime"
 import { useMailController } from "../model/mail-sync-controller"
+import {
+  countMailFilterConditions,
+  groupMailThreads,
+  isMutableMailGroup,
+  orderedVisibleCustomProperties,
+  providerViewForOrganizationRoute,
+} from "../model/mail-view-model"
 
-const messageGroups = ["Today", "Yesterday", "Earlier"] as const
 const organizationFolderDetails = {
   all_mail: { icon: MailIcon, label: "All Mail" },
   bin: { icon: Trash2Icon, label: "Bin" },
@@ -142,10 +117,10 @@ export default function MailPage() {
 function ConnectedMailbox({ connection }: { connection: MailConnection }) {
   const { data: session } = useSession()
   if (!session?.user?.id) return <MailCenteredState><MailboxLoading /></MailCenteredState>
-  return <MailboxContent connection={connection} userId={session.user.id} />
+  return <MailboxController connection={connection} userId={session.user.id} />
 }
 
-function MailboxContent({ connection, userId }: { connection: MailConnection; userId: string }) {
+function MailboxController({ connection, userId }: { connection: MailConnection; userId: string }) {
   const { compose, view } = useSearch({ from: "/app/mail" })
   const navigate = useNavigate()
   const [query, setQuery] = useState("")
@@ -533,37 +508,28 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                 <section className="animate-in fade-in-0 duration-300">
                   <div className="px-4 pb-8 pt-5 sm:px-6 md:px-10 lg:px-12">
                     <div className="mx-auto w-full max-w-[96rem]">
-                      <div className="flex min-w-0 items-center justify-between gap-3 max-sm:flex-wrap">
-                        <div className="flex shrink-0 items-center gap-2">
-                          <ActiveViewIcon className="size-5 shrink-0 text-action-link" />
-                          <h1 className="text-xl font-semibold leading-7 tracking-normal text-content-primary">
-                            {activeViewLabel}
-                          </h1>
-                          {!controller.online ? <WifiOffIcon className="size-4 text-content-secondary" aria-label="Offline" /> : null}
-                        </div>
-                        <div className="flex min-w-0 flex-1 items-center justify-end gap-1 max-sm:basis-full">
-                          <Button disabled={!controller.online} onClick={() => setComposerSeed({})} size="sm" type="button">Compose</Button>
-                          <div className="relative min-w-0 flex-1 sm:max-w-72">
-                            <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-content-secondary" />
-                            <Input
-                              aria-label="Search mail"
-                              className="h-8 bg-transparent pl-8"
-                              onChange={(event) => setQuery(event.target.value)}
-                              placeholder={controller.online ? "Search Gmail" : "Search downloaded mail"}
-                              value={query}
-                            />
-                          </div>
-                          <Button
-                            aria-label="Refresh mail"
-                            disabled={!controller.online || controller.syncing}
-                            onClick={() => void controller.refresh()}
-                            size="icon-lg"
-                            title="Refresh mail"
-                            type="button"
-                            variant="ghost"
-                          >
-                            <RefreshCwIcon className={controller.syncing ? "animate-spin" : undefined} />
-                          </Button>
+                      <MailboxTopbar
+                        activeViewIcon={ActiveViewIcon}
+                        activeViewLabel={activeViewLabel}
+                        batchCount={batchSelection.size}
+                        filterToolbar={activePersistedView && effectiveFilter ? (
+                          <MailFilterToolbar
+                            dirty={filterDirty}
+                            expression={effectiveFilter}
+                            hideImplicitInbox={activePersistedView.templateId === "inbox"}
+                            labels={controller.labels}
+                            members={propertyMembers}
+                            onChange={setDraftFilter}
+                            onReset={() => setDraftFilter(cloneMailFilter(activePersistedView.config.filter))}
+                            onSave={() => void saveFilters()}
+                            onSaveAsNew={() => void saveFiltersAsNewView()}
+                            properties={customProperties}
+                            saving={persistedViewsQuery.savingView}
+                            senders={filterSenders}
+                          />
+                        ) : undefined}
+                        indexProgress={indexProgress}
+                        labelMenu={(
                           <MailLabelMenu
                             labels={controller.labels}
                             mutating={controller.mutating}
@@ -572,6 +538,17 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                             onUpdate={controller.updateLabel}
                             online={controller.online}
                           />
+                        )}
+                        mutating={controller.mutating}
+                        onBatchModify={runBatch}
+                        onClearBatch={() => setBatchSelection(new Set())}
+                        onCompose={() => setComposerSeed({})}
+                        onQueryChange={setQuery}
+                        onRefresh={() => void controller.refresh()}
+                        online={controller.online}
+                        query={query}
+                        syncing={controller.syncing}
+                        viewSettings={(
                           <MailViewSettingsMenu
                             databaseEditor={activePersistedView ? (
                               <MailDatabaseSyncPanel
@@ -614,139 +591,34 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
                             ) : undefined}
                             visiblePropertyCount={activePersistedView ? new Set([...mailSystemPropertyCatalog.map((property) => property.id), ...customProperties.map((property) => property.id)].filter((id) => !activePersistedView.config.hiddenPropertyIds.includes(id))).size : 0}
                           />
-                        </div>
-                      </div>
-
-                      {activePersistedView && effectiveFilter ? (
-                        <MailFilterToolbar
-                          dirty={filterDirty}
-                          expression={effectiveFilter}
-                          hideImplicitInbox={activePersistedView.templateId === "inbox"}
-                          labels={controller.labels}
-                          members={propertyMembers}
-                          onChange={setDraftFilter}
-                          onReset={() => setDraftFilter(cloneMailFilter(activePersistedView.config.filter))}
-                          onSave={() => void saveFilters()}
-                          onSaveAsNew={() => void saveFiltersAsNewView()}
-                          properties={customProperties}
-                          saving={persistedViewsQuery.savingView}
-                          senders={filterSenders}
-                        />
-                      ) : null}
-
-                      {indexProgress && indexProgress.status !== "ready" ? (
-                        <div aria-live="polite" className="mt-3 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary" role="status">
-                          {indexProgress.status === "error"
-                            ? "Mail indexing paused. It will retry automatically."
-                            : `Indexing full mailbox… ${indexProgress.indexedThreadCount}${indexProgress.resultSizeEstimate ? ` of about ${indexProgress.resultSizeEstimate}` : ""} threads`}
-                        </div>
-                      ) : null}
-
-                      {batchSelection.size ? (
-                        <div className="mt-3 flex items-center gap-1 rounded-md border border-stroke-default bg-surface-raised px-2 py-1">
-                          <span className="mr-2 text-xs font-medium text-content-secondary">{batchSelection.size} selected</span>
-                          <MailActionButton disabled={!controller.online || controller.mutating} icon={<MailIcon />} label="Mark selected read" onClick={() => runBatch({ removeLabelIds: ["UNREAD"] })} />
-                          <MailActionButton disabled={!controller.online || controller.mutating} icon={<StarIcon />} label="Star selected" onClick={() => runBatch({ addLabelIds: ["STARRED"] })} />
-                          <MailActionButton disabled={!controller.online || controller.mutating} icon={<ArchiveIcon />} label="Archive selected" onClick={() => runBatch({ removeLabelIds: ["INBOX"] })} />
-                          <MailActionButton disabled={!controller.online || controller.mutating} icon={<TriangleAlertIcon />} label="Move selected to spam" onClick={() => runBatch({ addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] })} />
-                          <Button className="ml-auto" onClick={() => setBatchSelection(new Set())} size="sm" type="button" variant="ghost">Clear</Button>
-                        </div>
-                      ) : null}
-
-                      {indexedMailQuery.isLoading ? <MailboxLoading /> : groupedThreads.length ? (
-                        <div>
-                          {groupedThreads.map(({ count, key, label, mutable, threads }) => (
-                            <section
-                              aria-labelledby={`mail-group-${key}`}
-                              className="pt-3"
-                              key={key}
-                              onDragOver={(event) => {
-                                if (mutable) event.preventDefault()
-                              }}
-                              onDrop={(event) => {
-                                if (!mutable) return
-                                event.preventDefault()
-                                const threadId = event.dataTransfer.getData("application/x-zilobase-mail-thread")
-                                if (threadId) void moveThreadToGroup(threadId, key)
-                              }}
-                            >
-                              <button
-                                aria-expanded={!collapsedGroups.has(key)}
-                                className="flex w-full items-center gap-1.5 px-2 pb-1.5 text-left text-xs font-semibold text-content-secondary"
-                                id={`mail-group-${key}`}
-                                onClick={() => setCollapsedGroups((current) => {
-                                  const next = new Set(current)
-                                  if (next.has(key)) next.delete(key)
-                                  else next.add(key)
-                                  return next
-                                })}
-                                type="button"
-                              >
-                                {collapsedGroups.has(key) ? <ChevronDown className="size-3 -rotate-90" /> : <ChevronDown className="size-3" />}
-                                <span>{label}</span>
-                                <span className="font-normal">{count}</span>
-                              </button>
-                              {!collapsedGroups.has(key) ? <div className="border-t border-stroke-default">
-                                {threads.map((thread) => (
-                                  <MailThreadRow
-                                    key={thread.id}
-                                    mutating={controller.mutating}
-                                    batchSelected={batchSelection.has(thread.id)}
-                                    onAction={(action) => controller.actOnThread(thread.id, action)}
-                                    onHoverAction={(action) => runHoverAction(thread, action)}
-                                    onModify={(modification) => controller.modifyThread(thread.id, modification)}
-                                    onBatchToggle={(checked) => setBatchSelection((current) => {
-                                      const next = new Set(current)
-                                      if (checked) next.add(thread.id)
-                                      else next.delete(thread.id)
-                                      return next
-                                    })}
-                                    onOpen={() => setSelection(thread.id)}
-                                    onPrefetch={() => void controller.prefetchThread(thread.id)}
-                                    online={controller.online}
-                                    groupDraggable={mutable}
-                                    hoverActions={activePersistedView?.config.hoverActions}
-                                    labels={controller.labels}
-                                    customProperties={visibleCustomProperties}
-                                    customValues={customValuesByThread.get(thread.id) ?? {}}
-                                    propertyMembers={propertyMembers}
-                                    selected={selection === thread.id}
-                                    thread={thread}
-                                  />
-                                ))}
-                              </div> : null}
-                            </section>
-                          ))}
-                          {indexedMailQuery.hasNextPage ? (
-                            <div className="flex justify-center pt-5">
-                              <Button
-                                disabled={!controller.online || indexedMailQuery.isFetchingNextPage}
-                                onClick={() => void indexedMailQuery.fetchNextPage()}
-                                type="button"
-                                variant="outline"
-                              >
-                                {indexedMailQuery.isFetchingNextPage ? "Loading…" : "Load more"}
-                              </Button>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : (
-                        <div>
-                          <MailEmptyState offline={!controller.online} query={query} />
-                          {indexedMailQuery.hasNextPage ? (
-                            <div className="flex justify-center pt-5">
-                              <Button
-                                disabled={!controller.online || indexedMailQuery.isFetchingNextPage}
-                                onClick={() => void indexedMailQuery.fetchNextPage()}
-                                type="button"
-                                variant="outline"
-                              >
-                                {indexedMailQuery.isFetchingNextPage ? "Searching…" : "Continue searching"}
-                              </Button>
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
+                        )}
+                      />
+                      <MailboxThreadList
+                        batchSelection={batchSelection}
+                        collapsedGroups={collapsedGroups}
+                        customProperties={visibleCustomProperties}
+                        customValuesByThread={customValuesByThread}
+                        fetchingNextPage={indexedMailQuery.isFetchingNextPage}
+                        groupedThreads={groupedThreads}
+                        hasNextPage={indexedMailQuery.hasNextPage}
+                        hoverActions={activePersistedView?.config.hoverActions}
+                        labels={controller.labels}
+                        loading={indexedMailQuery.isLoading}
+                        mutating={controller.mutating}
+                        onActOnThread={controller.actOnThread}
+                        onBatchSelectionChange={setBatchSelection}
+                        onCollapsedGroupsChange={setCollapsedGroups}
+                        onHoverAction={runHoverAction}
+                        onLoadMore={() => void indexedMailQuery.fetchNextPage()}
+                        onModifyThread={controller.modifyThread}
+                        onMoveThreadToGroup={moveThreadToGroup}
+                        onOpenThread={setSelection}
+                        onPrefetchThread={(threadId) => void controller.prefetchThread(threadId)}
+                        online={controller.online}
+                        propertyMembers={propertyMembers}
+                        query={query}
+                        selection={selection}
+                      />
                     </div>
                   </div>
                 </section>
@@ -813,671 +685,8 @@ function MailboxContent({ connection, userId }: { connection: MailConnection; us
   )
 }
 
-function MailThreadRow({ batchSelected, customProperties = [], customValues = {}, groupDraggable = false, hoverActions, labels = [], mutating, onAction, onBatchToggle, onHoverAction, onModify, onOpen, onPrefetch, online, propertyMembers = [], selected, thread }: {
-  batchSelected: boolean
-  customProperties?: MailPropertyDefinition[]
-  customValues?: Record<string, MailThreadPropertyValue["value"]>
-  groupDraggable?: boolean
-  hoverActions?: MailHoverAction[]
-  labels?: MailLabelRecord[]
-  mutating: boolean
-  onAction: (action: "restore" | "trash") => Promise<void>
-  onBatchToggle: (checked: boolean) => void
-  onHoverAction?: (action: MailHoverAction) => Promise<void>
-  onModify: (modification: MailModifyRequest) => Promise<void>
-  onOpen: () => void
-  onPrefetch: () => void
-  online: boolean
-  propertyMembers?: Parameters<typeof formatMailPropertyValue>[2]
-  selected: boolean
-  thread: MailThreadSummary
-}) {
-  const participant = thread.participants[0]
-  return (
-    <div
-      className={`group/mail-row flex h-9 w-full items-center hover:bg-action-neutral-hover ${selected ? "bg-action-neutral-hover text-action-on-neutral" : ""}`}
-      data-selected={selected ? "true" : undefined}
-      draggable={groupDraggable}
-      onDragStart={(event) => {
-        if (!groupDraggable) return
-        event.dataTransfer.effectAllowed = "move"
-        event.dataTransfer.setData("application/x-zilobase-mail-thread", thread.id)
-      }}
-    >
-      <Checkbox aria-label={`Select ${thread.subject}`} checked={batchSelected} className="ml-2 shrink-0" onCheckedChange={(checked) => onBatchToggle(checked === true)} />
-      <button className="grid min-w-0 flex-1 grid-cols-[minmax(8rem,0.8fr)_minmax(12rem,2fr)_minmax(0,auto)_auto] items-center gap-3 px-2 text-left text-sm" onClick={onOpen} onFocus={onPrefetch} onPointerEnter={onPrefetch} type="button">
-        <span className={`truncate ${thread.unread ? "font-semibold text-content-primary" : "text-content-secondary"}`}>
-          {participant?.name || participant?.address || "Unknown sender"}
-          {thread.messageCount > 1 ? ` (${thread.messageCount})` : ""}
-        </span>
-        <span className="min-w-0 truncate">
-          <span className={thread.unread ? "font-semibold text-content-primary" : "text-content-primary"}>{thread.subject}</span>
-          <span className="text-content-secondary"> — {thread.snippet}</span>
-        </span>
-        {customProperties.length ? (
-          <span className="hidden min-w-0 items-center gap-1 xl:flex">
-            {customProperties.slice(0, 2).map((property) => {
-              const label = formatMailPropertyValue(property, customValues[property.id], propertyMembers)
-              return label ? <span className="max-w-28 truncate rounded bg-surface-subtle px-1.5 py-0.5 text-xs text-content-secondary" key={property.id}>{label}</span> : null
-            })}
-          </span>
-        ) : null}
-        <span className="flex items-center gap-2 text-xs text-content-secondary group-hover/mail-row:hidden">
-          {thread.attachmentCount ? <Paperclip className="size-3.5" /> : null}
-          {thread.starred ? <StarIcon className="size-3.5 text-feedback-warning-text" weight="fill" /> : null}
-          {formatThreadDate(thread.internalDate)}
-        </span>
-      </button>
-      <div className="hidden shrink-0 items-center pr-1 group-hover/mail-row:flex">
-        {hoverActions && onHoverAction ? hoverActions.filter((action) => !action.hidden).map((action) => (
-          <MailActionButton
-            disabled={!online || mutating}
-            icon={<MailHoverActionIcon action={action} />}
-            key={action.id}
-            label={hoverActionLabel(action, labels, thread)}
-            onClick={() => onHoverAction(action)}
-          />
-        )) : <>
-          <MailActionButton disabled={!online || mutating} icon={<StarIcon weight={thread.starred ? "fill" : "regular"} />} label={thread.starred ? "Unstar thread" : "Star thread"} onClick={() => onModify(thread.starred ? { removeLabelIds: ["STARRED"] } : { addLabelIds: ["STARRED"] })} />
-          <MailActionButton disabled={!online || mutating} icon={<MailIcon />} label={thread.unread ? "Mark thread read" : "Mark thread unread"} onClick={() => onModify(thread.unread ? { removeLabelIds: ["UNREAD"] } : { addLabelIds: ["UNREAD"] })} />
-          <MailActionButton disabled={!online || mutating} icon={thread.labelIds.includes("TRASH") ? <ArchiveIcon /> : <TrashIcon />} label={thread.labelIds.includes("TRASH") ? "Restore thread" : "Move thread to trash"} onClick={() => onAction(thread.labelIds.includes("TRASH") ? "restore" : "trash")} />
-        </>}
-      </div>
-    </div>
-  )
-}
-
-function hoverActionLabel(action: MailHoverAction, labels: MailLabelRecord[], thread: MailThreadSummary) {
-  if (action.kind === "specific_label") return `Apply ${labels.find((label) => label.id === action.labelId)?.name ?? "label"}`
-  if (action.kind === "star") return thread.starred ? "Unstar thread" : "Star thread"
-  if (action.kind === "read_unread") return thread.unread ? "Mark thread read" : "Mark thread unread"
-  if (action.kind === "bin") return thread.labelIds.includes("TRASH") ? "Restore thread" : "Move thread to bin"
-  return mailHoverActionCatalog[action.kind].label
-}
-
-type ConversationProps = {
-  labels: MailLabelRecord[]
-  messages: MailMessageRecord[]
-  mode: EmbeddedItemsOpenAs
-  mutating: boolean
-  nextDisabled: boolean
-  onActOnMessage: (messageId: string, action: "restore" | "trash") => Promise<void>
-  onActOnThread: (threadId: string, action: "restore" | "trash") => Promise<void>
-  onClose: () => void
-  onDownload: (messageId: string, attachmentId: string, filename: string) => Promise<void>
-  onLoadInlineAttachment: (messageId: string, attachmentId: string) => Promise<string>
-  onModeChange: (mode: EmbeddedItemsOpenAs) => void
-  onCompose: (seed: MailComposeSeed) => void
-  onModifyMessage: (messageId: string, modification: MailModifyRequest) => Promise<void>
-  onModifyThread: (threadId: string, modification: MailModifyRequest) => Promise<void>
-  onNext: () => void
-  onPrevious: () => void
-  online: boolean
-  ownEmail: string
-  previousDisabled: boolean
-  propertyBar?: ReactNode
-  thread: MailThreadSummary
-}
-
-function ConversationViewer(props: ConversationProps) {
-  return (
-    <div className="h-full min-h-0 overflow-y-auto bg-surface-canvas dark:bg-surface-navigation">
-      <header className="sticky top-0 z-10 flex h-12 bg-surface-canvas dark:bg-surface-navigation"><ConversationToolbar {...props} /></header>
-      <ConversationBody {...props} />
-    </div>
-  )
-}
-
-function ConversationToolbar({ labels, mode, mutating, nextDisabled, onActOnThread, onClose, onModifyThread, onModeChange, onNext, onPrevious, online, previousDisabled, thread }: ConversationProps) {
-  const CloseIcon = mode === "sidepanel" ? ChevronsRightIcon : XIcon
-  return (
-    <div className="flex h-full min-w-0 flex-1 items-center gap-1 px-2">
-      <Button aria-label="Close message" onClick={onClose} size="icon" title="Close" type="button" variant="ghost"><CloseIcon /></Button>
-      <EmbeddedItemPresentationDropdown itemLabel="mail" mode={mode} onSelect={onModeChange} />
-      <Separator className="mx-1 data-[orientation=vertical]:h-4" orientation="vertical" />
-      <Button aria-label="Open previous message" disabled={previousDisabled} onClick={onPrevious} size="icon" title="Previous message" type="button" variant="ghost"><ChevronUp /></Button>
-      <Button aria-label="Open next message" disabled={nextDisabled} onClick={onNext} size="icon" title="Next message" type="button" variant="ghost"><ChevronDown /></Button>
-      <Separator className="mx-1 data-[orientation=vertical]:h-4" orientation="vertical" />
-      <MailActionButton disabled={!online || mutating} icon={<MailIcon />} label={thread.unread ? "Mark read" : "Mark unread"} onClick={() => onModifyThread(thread.id, thread.unread ? { removeLabelIds: ["UNREAD"] } : { addLabelIds: ["UNREAD"] })} />
-      <MailActionButton disabled={!online || mutating} icon={<StarIcon weight={thread.starred ? "fill" : "regular"} />} label={thread.starred ? "Unstar" : "Star"} onClick={() => onModifyThread(thread.id, thread.starred ? { removeLabelIds: ["STARRED"] } : { addLabelIds: ["STARRED"] })} />
-      <MailActionButton disabled={!online || mutating} icon={<ArchiveIcon />} label="Archive" onClick={() => onModifyThread(thread.id, { removeLabelIds: ["INBOX"] })} />
-      <MailLabelMenu labels={labels} modificationTarget={thread} mutating={mutating} onToggle={(labelId, active) => onModifyThread(thread.id, active ? { removeLabelIds: [labelId] } : { addLabelIds: [labelId] })} online={online} />
-      <MailActionButton disabled={!online || mutating} icon={<TriangleAlertIcon />} label="Move to spam" onClick={() => onModifyThread(thread.id, { addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] })} />
-      <MailActionButton disabled={!online || mutating} icon={thread.labelIds.includes("TRASH") ? <ArchiveIcon /> : <TrashIcon />} label={thread.labelIds.includes("TRASH") ? "Restore" : "Move to trash"} onClick={() => onActOnThread(thread.id, thread.labelIds.includes("TRASH") ? "restore" : "trash")} />
-    </div>
-  )
-}
-
-function ConversationBody({ labels, messages, mutating, onActOnMessage, onCompose, onDownload, onLoadInlineAttachment, onModifyMessage, online, ownEmail, propertyBar, thread }: ConversationProps) {
-  const latestMessageId = messages.at(-1)?.id ?? null
-  const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(() => latestMessageId ? new Set([latestMessageId]) : new Set())
-
-  useEffect(() => {
-    setExpandedMessageIds(latestMessageId ? new Set([latestMessageId]) : new Set())
-  }, [latestMessageId, thread.id])
-
-  const toggleMessage = (messageId: string) => {
-    setExpandedMessageIds((current) => {
-      const next = new Set(current)
-      if (next.has(messageId)) next.delete(messageId)
-      else next.add(messageId)
-      return next
-    })
-  }
-
-  return (
-    <div className="w-full bg-surface-canvas dark:bg-surface-navigation">
-      <article className="mx-auto w-full max-w-3xl px-5 py-6 sm:px-7">
-        <h2 className="text-xl font-semibold leading-7 text-content-primary">{thread.subject}</h2>
-        {propertyBar}
-        {!messages.length ? <MailboxLoading /> : messages.map((message) => (
-          <MailThreadMessage
-            expanded={expandedMessageIds.has(message.id)}
-            key={message.id}
-            labels={labels}
-            message={message}
-            mutating={mutating}
-            onActOnMessage={onActOnMessage}
-            onCompose={onCompose}
-            onDownload={onDownload}
-            onLoadInlineAttachment={onLoadInlineAttachment}
-            onModifyMessage={onModifyMessage}
-            onToggle={() => toggleMessage(message.id)}
-            online={online}
-            ownEmail={ownEmail}
-          />
-        ))}
-      </article>
-    </div>
-  )
-}
-
-function MailThreadMessage({ expanded, labels, message, mutating, onActOnMessage, onCompose, onDownload, onLoadInlineAttachment, onModifyMessage, onToggle, online, ownEmail }: {
-  expanded: boolean
-  labels: MailLabelRecord[]
-  message: MailMessageRecord
-  mutating: boolean
-  onActOnMessage: ConversationProps["onActOnMessage"]
-  onCompose: ConversationProps["onCompose"]
-  onDownload: ConversationProps["onDownload"]
-  onLoadInlineAttachment: ConversationProps["onLoadInlineAttachment"]
-  onModifyMessage: ConversationProps["onModifyMessage"]
-  onToggle: () => void
-  online: boolean
-  ownEmail: string
-}) {
-  const sender = message.from?.name || message.from?.address || "Unknown sender"
-  const recipients = message.to.map((address) => address.name || address.address).join(", ") || "me"
-  return (
-    <section className="mt-3 rounded-xl border border-stroke-default bg-surface-canvas px-4 py-3 first:mt-5 dark:bg-surface-navigation" data-mail-message-expanded={expanded ? "true" : "false"}>
-      <div className="flex min-w-0 items-start gap-2">
-        <button
-          aria-expanded={expanded}
-          aria-label={`${expanded ? "Collapse" : "Expand"} message from ${sender}`}
-          className="flex min-w-0 flex-1 items-start gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus-ring"
-          onClick={onToggle}
-          type="button"
-        >
-          <ChevronDown className={`mt-0.5 size-4 shrink-0 text-content-secondary transition-transform ${expanded ? "rotate-180" : ""}`} />
-          <span className="min-w-0 flex-1">
-            <span className="flex min-w-0 items-baseline gap-3">
-              <span className="max-w-40 shrink-0 truncate text-sm font-medium text-content-primary">{sender}</span>
-              {!expanded ? <span className="min-w-0 flex-1 truncate text-sm text-content-secondary">{message.snippet || "No message preview"}</span> : null}
-              {!expanded && message.attachments.length ? <Paperclip className="size-3.5 shrink-0 text-content-secondary" /> : null}
-            </span>
-            {expanded ? <span className="block truncate text-xs text-content-secondary">to {recipients}</span> : null}
-          </span>
-        </button>
-        <div className="flex shrink-0 items-center gap-1">
-          <time className="whitespace-nowrap text-xs text-content-secondary">{formatMessageDate(message.internalDate)}</time>
-          <MailMessageActions labels={labels} message={message} mutating={mutating} onAction={onActOnMessage} onModify={onModifyMessage} online={online} />
-        </div>
-      </div>
-      {expanded ? (
-        <div>
-          <MailMessageBody message={message} onLoadInlineAttachment={onLoadInlineAttachment} online={online} />
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button disabled={!online} onClick={() => onCompose(replySeed(message, ownEmail))} size="sm" type="button" variant="outline">Reply</Button>
-            <Button disabled={!online} onClick={() => onCompose(replySeed(message, ownEmail, true))} size="sm" type="button" variant="outline">Reply all</Button>
-            <Button disabled={!online} onClick={() => onCompose(forwardSeed(message))} size="sm" type="button" variant="outline">Forward</Button>
-          </div>
-          {message.attachments.length ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {message.attachments.map((attachment) => (
-                <Button
-                  disabled={!online}
-                  key={attachment.attachmentId}
-                  onClick={() => void onDownload(message.id, attachment.attachmentId, attachment.filename).catch((error) => toast.error(getApiErrorMessage(error)))}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  <DownloadIcon /> {attachment.filename} <span className="text-content-secondary">{formatBytes(attachment.size)}</span>
-                </Button>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </section>
-  )
-}
-
-function MailMessageActions({ labels, message, mutating, onAction, onModify, online }: {
-  labels: MailLabelRecord[]
-  message: MailMessageRecord
-  mutating: boolean
-  onAction: (messageId: string, action: "restore" | "trash") => Promise<void>
-  onModify: (messageId: string, modification: MailModifyRequest) => Promise<void>
-  online: boolean
-}) {
-  const run = (operation: Promise<unknown>) => void operation.catch(showMailError)
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button aria-label="Message actions" disabled={!online || mutating} size="icon-sm" type="button" variant="ghost"><MoreHorizontalIcon /></Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => run(onModify(message.id, message.labelIds.includes("UNREAD") ? { removeLabelIds: ["UNREAD"] } : { addLabelIds: ["UNREAD"] }))}>{message.labelIds.includes("UNREAD") ? "Mark read" : "Mark unread"}</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => run(onModify(message.id, message.labelIds.includes("STARRED") ? { removeLabelIds: ["STARRED"] } : { addLabelIds: ["STARRED"] }))}>{message.labelIds.includes("STARRED") ? "Unstar" : "Star"}</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => run(onModify(message.id, { removeLabelIds: ["INBOX"] }))}>Archive</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => run(onModify(message.id, { addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] }))}>Move to spam</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>Labels</DropdownMenuLabel>
-        {labels.filter((label) => label.type === "user").map((label) => (
-          <DropdownMenuCheckboxItem
-            checked={message.labelIds.includes(label.id)}
-            key={label.id}
-            onCheckedChange={() => run(onModify(message.id, message.labelIds.includes(label.id) ? { removeLabelIds: [label.id] } : { addLabelIds: [label.id] }))}
-          >
-            {label.name}
-          </DropdownMenuCheckboxItem>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => run(onAction(message.id, message.labelIds.includes("TRASH") ? "restore" : "trash"))}>{message.labelIds.includes("TRASH") ? "Restore from trash" : "Move to trash"}</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-function MailLabelMenu({ labels, modificationTarget, mutating, onCreate, onDelete, onToggle, onUpdate, online }: {
-  labels: MailLabelRecord[]
-  modificationTarget?: Pick<MailThreadSummary, "labelIds">
-  mutating: boolean
-  onCreate?: (input: MailLabelWriteRequest) => Promise<MailLabelRecord>
-  onDelete?: (labelId: string) => Promise<void>
-  onToggle?: (labelId: string, active: boolean) => Promise<void>
-  onUpdate?: (label: MailLabelRecord, input: MailLabelWriteRequest) => Promise<MailLabelRecord>
-  online: boolean
-}) {
-  const userLabels = labels.filter((label) => label.type === "user")
-  const run = (operation: Promise<unknown>) => void operation.catch(showMailError)
-  const create = () => {
-    const name = window.prompt("New Gmail label name")?.trim()
-    if (name && onCreate) run(onCreate({ labelListVisibility: "labelShow", messageListVisibility: "show", name }))
-  }
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button aria-label={modificationTarget ? "Apply labels" : "Manage Gmail labels"} disabled={!online || mutating} size="icon-lg" title={modificationTarget ? "Labels" : "Manage labels"} type="button" variant="ghost"><TagIcon /></Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-56">
-        {modificationTarget && onToggle ? <>
-          <DropdownMenuLabel>Apply labels</DropdownMenuLabel>
-          {userLabels.length ? userLabels.map((label) => (
-            <DropdownMenuCheckboxItem
-              checked={modificationTarget.labelIds.includes(label.id)}
-              key={label.id}
-              onCheckedChange={() => run(onToggle(label.id, modificationTarget.labelIds.includes(label.id)))}
-            >
-              {label.name}
-            </DropdownMenuCheckboxItem>
-          )) : <DropdownMenuItem disabled>No custom labels</DropdownMenuItem>}
-          <DropdownMenuSeparator />
-        </> : null}
-        {onCreate ? <DropdownMenuItem onClick={create}>Create label…</DropdownMenuItem> : null}
-        {onUpdate || onDelete ? userLabels.map((label) => (
-          <DropdownMenuSub key={label.id}>
-            <DropdownMenuSubTrigger>{label.name}</DropdownMenuSubTrigger>
-            <DropdownMenuSubContent>
-              {onUpdate ? <>
-                <DropdownMenuItem onClick={() => {
-                  const name = window.prompt("Rename Gmail label", label.name)?.trim()
-                  if (name) run(onUpdate(label, { name }))
-                }}>Rename…</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => run(onUpdate(label, { labelListVisibility: label.labelListVisibility === "labelHide" ? "labelShow" : "labelHide" }))}>{label.labelListVisibility === "labelHide" ? "Show in label list" : "Hide from label list"}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => run(onUpdate(label, { messageListVisibility: label.messageListVisibility === "hide" ? "show" : "hide" }))}>{label.messageListVisibility === "hide" ? "Show in message list" : "Hide from message list"}</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  const backgroundColor = window.prompt("Gmail label background color (#RRGGBB)", label.color?.backgroundColor ?? "")?.trim()
-                  if (!backgroundColor) return
-                  const textColor = window.prompt("Gmail label text color (#RRGGBB)", label.color?.textColor ?? "")?.trim()
-                  if (textColor) run(onUpdate(label, { color: { backgroundColor, textColor } }))
-                }}>Recolor…</DropdownMenuItem>
-              </> : null}
-              {onDelete ? <DropdownMenuItem variant="destructive" onClick={() => {
-                if (window.confirm(`Delete Gmail label “${label.name}”?`)) run(onDelete(label.id))
-              }}>Delete label</DropdownMenuItem> : null}
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-function MailActionButton({ disabled, icon, label, onClick }: {
-  disabled: boolean
-  icon: React.ReactNode
-  label: string
-  onClick: () => Promise<void>
-}) {
-  return <Button aria-label={label} disabled={disabled} onClick={() => void onClick().catch(showMailError)} size="icon" title={label} type="button" variant="ghost">{icon}</Button>
-}
-
-function showMailError(error: unknown) {
-  toast.error(getApiErrorMessage(error))
-}
-
-function MailMessageBody({ message, onLoadInlineAttachment, online }: {
-  message: MailMessageRecord
-  onLoadInlineAttachment: (messageId: string, attachmentId: string) => Promise<string>
-  online: boolean
-}) {
-  const frameObserver = useRef<ResizeObserver | null>(null)
-  const frameRef = useRef<HTMLIFrameElement | null>(null)
-  const { resolvedTheme } = useTheme()
-  const { themeFamily } = useThemeFamily()
-  const [inlineImageUrls, setInlineImageUrls] = useState<Record<string, string>>({})
-  const inlineAttachments = useMemo(
-    () => message.attachments.filter((attachment) => attachment.inline && attachment.contentId),
-    [message.attachments],
-  )
-  const inlineAttachmentKey = inlineAttachments
-    .map((attachment) => `${attachment.attachmentId}:${attachment.contentId}`)
-    .join("|")
-  const renderedHtml = useMemo(
-    () => message.bodyHtml ? sanitizeMailHtml(message.bodyHtml, { inlineImageUrls, loadExternalImages: true }) : "",
-    [inlineImageUrls, message.bodyHtml],
-  )
-  const applyFrameTheme = useCallback((frame: HTMLIFrameElement) => {
-    const document = frame.contentDocument
-    if (!document) return
-    const frameStyle = window.getComputedStyle(frame)
-    applyMailDocumentTheme(document, {
-      backgroundColor: frameStyle.backgroundColor,
-      textColor: frameStyle.color,
-    })
-  }, [])
-  useEffect(() => () => frameObserver.current?.disconnect(), [])
-  useEffect(() => {
-    const frame = frameRef.current
-    if (!frame?.contentDocument) return
-    applyFrameTheme(frame)
-    const animationFrame = window.requestAnimationFrame(() => applyFrameTheme(frame))
-    return () => window.cancelAnimationFrame(animationFrame)
-  }, [applyFrameTheme, resolvedTheme, themeFamily])
-  useEffect(() => {
-    setInlineImageUrls({})
-    if (!online || !inlineAttachments.length) return
-    let active = true
-    const objectUrls: string[] = []
-    void Promise.all(inlineAttachments.map(async (attachment) => {
-      const url = await onLoadInlineAttachment(message.id, attachment.attachmentId)
-      objectUrls.push(url)
-      return [attachment.contentId!, url] as const
-    })).then((entries) => {
-      if (active) setInlineImageUrls(Object.fromEntries(entries))
-      else for (const url of objectUrls) URL.revokeObjectURL(url)
-    }).catch((error) => {
-      for (const url of objectUrls) URL.revokeObjectURL(url)
-      if (active) toast.error(getApiErrorMessage(error), { id: `mail-inline-images-${message.id}` })
-    })
-    return () => {
-      active = false
-      for (const url of objectUrls) URL.revokeObjectURL(url)
-    }
-  }, [inlineAttachmentKey, message.id, onLoadInlineAttachment, online])
-
-  if (!message.hasFullBody) return <p className="mt-4 text-sm text-content-secondary">Connect to load this message.</p>
-  if (message.bodyHtml) {
-    return (
-      <div className="mt-4">
-        <iframe
-          className="block h-px w-full overflow-hidden border-0 bg-surface-canvas text-content-primary dark:bg-surface-navigation"
-          onLoad={(event) => {
-            frameObserver.current?.disconnect()
-            const frame = event.currentTarget
-            const document = frame.contentDocument
-            if (!document) return
-            applyFrameTheme(frame)
-            const resize = () => {
-              frame.style.height = "1px"
-              const height = `${Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 1)}px`
-              if (frame.style.height !== height) frame.style.height = height
-            }
-            resize()
-            window.requestAnimationFrame(resize)
-            frameObserver.current = new ResizeObserver(resize)
-            frameObserver.current.observe(document.body)
-          }}
-          referrerPolicy="no-referrer"
-          ref={frameRef}
-          sandbox="allow-popups allow-popups-to-escape-sandbox allow-same-origin"
-          scrolling="no"
-          srcDoc={renderedHtml}
-          title={`Message from ${message.from?.name || message.from?.address || "sender"}`}
-        />
-      </div>
-    )
-  }
-  return <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-6 text-content-primary">{message.bodyText || message.snippet}</div>
-}
-
-function providerViewForOrganizationRoute(
-  view: MailPersistedView | null,
-  folder: (typeof mailSystemFolderIds)[number] | null,
-): MailView {
-  if (folder) return folder
-  if (
-    view?.templateId === "inbox" ||
-    view?.templateId === "starred" ||
-    view?.templateId === "unread"
-  ) {
-    return view.templateId
-  }
-  return "inbox"
-}
-
 function persistedViewIcon(view: MailPersistedView) {
   if (view.templateId === "inbox") return InboxIcon
   if (view.templateId === "starred") return StarIcon
   return MailIcon
-}
-
-function MailConnectionState({ connection, error, loading, onConnected, workspaceId }: {
-  connection: MailConnection | null
-  error: unknown
-  loading: boolean
-  onConnected: () => void
-  workspaceId: string | null | undefined
-}) {
-  const [pending, setPending] = useState(false)
-  const [connectError, setConnectError] = useState<unknown>(null)
-  const connect = async () => {
-    setPending(true)
-    setConnectError(null)
-    try {
-      const result = await apiFetch<{ authorizationUrl: string }>(`${mailApiBasePath(workspaceId)}/oauth/start`, {
-        body: JSON.stringify({ client: isDesktopApp() ? "desktop" : "web" }),
-        method: "POST",
-      })
-      if (isDesktopApp()) {
-        await invoke("open_mail_authorization_url", { authorizationUrl: result.authorizationUrl })
-        toast.info("Finish connecting Gmail in your browser.")
-        setPending(false)
-      } else window.location.assign(result.authorizationUrl)
-    } catch (connectionError) {
-      setConnectError(connectionError)
-      setPending(false)
-    }
-  }
-  return (
-    <MailCenteredState>
-      <GoogleIcon className="size-7" />
-      <div className="space-y-1 text-center">
-        <h1 className="text-lg font-semibold text-content-primary">
-          {connection?.status === "reconnect_required" ? "Reconnect Gmail" : "Connect your Gmail account"}
-        </h1>
-        <p className="max-w-sm text-sm leading-6 text-content-secondary">Read, organize, draft, and send Gmail from Zilobase. Gmail remains authoritative.</p>
-      </div>
-      <Button disabled={!workspaceId || loading || pending || connection?.providerConfigured === false} onClick={() => void connect()} type="button">
-        <GoogleIcon /> {pending ? "Opening Google…" : "Connect Google account"}
-      </Button>
-      {connection?.providerConfigured === false ? <p className="text-center text-xs text-feedback-danger-text">Gmail is not configured on this Zilobase server.</p> : null}
-      {error || connectError ? (
-        <div className="space-y-2 text-center">
-          <p className="text-xs text-feedback-danger-text">{getApiErrorMessage(connectError ?? error)}</p>
-          <Button onClick={onConnected} size="sm" type="button" variant="outline">Try again</Button>
-        </div>
-      ) : null}
-    </MailCenteredState>
-  )
-}
-
-function MailCenteredState({ children }: { children: React.ReactNode }) {
-  return (
-    <PageSidePaneShell
-      body={<main className="grid min-h-0 flex-1 place-items-center bg-surface-canvas px-6"><section className="flex max-w-md flex-col items-center gap-5 py-12">{children}</section></main>}
-      className="h-full bg-surface-canvas"
-      header={<PageSidePaneHeaderCell className="z-10" side="main" splitActive={false}><PagePaneHeader className="min-w-0 flex-1" leadingControl={<MainPaneHeaderLeadingControl />} pathname="/mail" showActions={false} /></PageSidePaneHeaderCell>}
-      open={false}
-      visible={false}
-    />
-  )
-}
-
-function MailboxLoading() {
-  return <div className="flex items-center justify-center gap-2 py-16 text-sm text-content-secondary"><Loader2Icon className="size-4 animate-spin" /> Preparing your mailbox</div>
-}
-
-function MailEmptyState({ offline, query }: { offline: boolean; query: string }) {
-  return <div className="py-16 text-center text-sm text-content-secondary">{query ? `No ${offline ? "downloaded " : ""}mail matches your search.` : "No mail in this folder."}</div>
-}
-
-function countMailFilterConditions(filter: MailFilterExpression, hideImplicitInbox = false): number {
-  return filter.filters.reduce(
-    (count, node) => count + (node.type === "condition"
-      ? hideImplicitInbox && node.propertyId === "mailbox" && node.operator === "is" && node.values.length === 1 && node.values[0] === "inbox" ? 0 : 1
-      : countMailFilterConditions(node, hideImplicitInbox)),
-    0,
-  )
-}
-
-function groupMailThreads(
-  threads: MailThreadSummary[],
-  group: MailGroupConfig | null,
-  labels: MailLabelRecord[],
-  serverGroups: MailQueryGroup[],
-  customProperties: MailPropertyDefinition[],
-  customValuesByThread: Map<string, Record<string, MailThreadPropertyValue["value"]>>,
-) {
-  if (!group) return messageGroups
-    .map((label) => ({
-      count: threads.filter((thread) => dateGroup(thread.internalDate) === label).length,
-      key: label.toLowerCase(),
-      label,
-      mutable: false,
-      threads: threads.filter((thread) => dateGroup(thread.internalDate) === label),
-    }))
-    .filter((entry) => entry.threads.length > 0)
-
-  const buckets = new Map<string, MailThreadSummary[]>()
-  for (const thread of threads) {
-    for (const key of clientGroupKeys(thread, group.propertyId, customValuesByThread.get(thread.id))) {
-      buckets.set(key, [...buckets.get(key) ?? [], thread])
-    }
-  }
-  const descriptors = serverGroups.length
-    ? serverGroups
-    : [...buckets.keys()].map((key) => ({
-      count: buckets.get(key)?.length ?? 0,
-      cursor: "",
-      key,
-      label: clientGroupLabel(key, group.propertyId, labels, customProperties),
-      mutable: isMutableMailGroup(group.propertyId),
-    }))
-  const hideEmptyGroups = group.propertyId === "starred" ? false : group.hideEmptyGroups
-
-  return descriptors
-    .filter((descriptor) => !hideEmptyGroups || descriptor.count > 0)
-    .sort((left, right) => group.propertyId === "starred"
-      ? Number(right.key === "true") - Number(left.key === "true")
-      : 0)
-    .map((descriptor) => ({
-      ...descriptor,
-      label: clientGroupLabel(descriptor.key, group.propertyId, labels, customProperties, descriptor.label),
-      threads: group.direction === "ascending"
-        ? [...buckets.get(descriptor.key) ?? []].reverse()
-        : buckets.get(descriptor.key) ?? [],
-    }))
-}
-
-function clientGroupKeys(thread: MailThreadSummary, propertyId: string, customValues?: Record<string, MailThreadPropertyValue["value"]>): string[] {
-  if (propertyId === "date" || propertyId === "received_date") return [dateGroup(thread.internalDate).toLowerCase()]
-  if (propertyId === "starred") return [String(thread.starred)]
-  if (propertyId === "unread") return [String(thread.unread)]
-  if (propertyId === "important" || propertyId === "priority") return [String(thread.labelIds.includes("IMPORTANT"))]
-  if (propertyId === "labels") return thread.labelIds.length ? thread.labelIds : ["empty"]
-  const address = thread.participants[0]?.address ?? ""
-  if (propertyId === "from") return [address.toLowerCase() || "empty"]
-  if (propertyId === "email_domain") return [address.split("@")[1]?.toLowerCase() || "empty"]
-  const customValue = customValues?.[propertyId]
-  if (Array.isArray(customValue)) {
-    const keys = customValue.map((item) => typeof item === "string" || typeof item === "number" || typeof item === "boolean" ? String(item) : "").filter(Boolean)
-    return keys.length ? keys : ["empty"]
-  }
-  return customValue === null || customValue === undefined || customValue === "" ? ["empty"] : [String(customValue)]
-}
-
-function clientGroupLabel(key: string, propertyId: string, labels: MailLabelRecord[], customProperties: MailPropertyDefinition[], fallback?: string) {
-  if (propertyId === "labels") return labels.find((label) => label.id === key)?.name ?? (key === "empty" ? "No label" : fallback ?? key)
-  if (propertyId === "starred") return key === "true" ? "Starred" : "Everything else"
-  if (propertyId === "unread") return key === "true" ? "Unread" : "Read"
-  if (propertyId === "important" || propertyId === "priority") return key === "true" ? "Important" : "Not important"
-  const customProperty = customProperties.find((property) => property.id === propertyId)
-  if (customProperty) return customProperty.options.find((option) => option.id === key)?.name ?? fallback ?? (key === "empty" ? `No ${customProperty.name}` : key)
-  return fallback ?? (key === "empty" ? "Empty" : key)
-}
-
-function orderedVisibleCustomProperties(view: MailPersistedView, properties: MailPropertyDefinition[]) {
-  const byId = new Map(properties.map((property) => [property.id, property]))
-  const ordered = view.config.propertyOrder.map((id) => byId.get(id)).filter((property): property is MailPropertyDefinition => Boolean(property))
-  return [...ordered, ...properties.filter((property) => !view.config.propertyOrder.includes(property.id))]
-    .filter((property) => !view.config.hiddenPropertyIds.includes(property.id))
-}
-
-function dateGroup(timestamp: number): (typeof messageGroups)[number] {
-  const date = new Date(timestamp)
-  const today = new Date()
-  if (date.toDateString() === today.toDateString()) return "Today"
-  const yesterday = new Date(today)
-  yesterday.setDate(today.getDate() - 1)
-  return date.toDateString() === yesterday.toDateString() ? "Yesterday" : "Earlier"
-}
-
-function formatThreadDate(timestamp: number) {
-  const date = new Date(timestamp)
-  return dateGroup(timestamp) === "Today"
-    ? date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-    : date.toLocaleDateString([], { day: "numeric", month: "short" })
-}
-
-function formatMessageDate(timestamp: number) {
-  return new Date(timestamp).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${Math.ceil(bytes / 1024)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }

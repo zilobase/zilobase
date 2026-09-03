@@ -1,3 +1,5 @@
+import { readMailFeatureSource } from "./mail-feature-source.mjs"
+
 export function register({ assert, loadModule, readSource, test }) {
   test("Mail is a fixed default sidebar tab with complete folder shortcuts", async () => {
     const { defaultSidebarWorkspaceLayout, mailViewIds, normalizeSidebarWorkspaceLayout } = await loadModule(
@@ -21,7 +23,7 @@ export function register({ assert, loadModule, readSource, test }) {
   test("Mail route uses grouped list rows and compact page spacing", async () => {
     const [routeSource, mailSource] = await Promise.all([
       readSource("/src/app/routing/route-groups/app-routes.tsx"),
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
     ])
 
     assert.match(routeSource, /isFeatureEnabled\("mail"\)[\s\S]*path: "\/mail"[\s\S]*validateSearch: validateMailSearch[\s\S]*component: MailPage/)
@@ -62,7 +64,7 @@ export function register({ assert, loadModule, readSource, test }) {
   })
 
   test("disconnected mail offers Google connection and desktop uses the system browser", async () => {
-    const mailSource = await readSource("/src/features/mail/pages/mail.tsx")
+    const mailSource = await readMailFeatureSource(readSource)
 
     assert.match(mailSource, /Connect your Gmail account/)
     assert.match(mailSource, /method: "POST"/)
@@ -74,7 +76,7 @@ export function register({ assert, loadModule, readSource, test }) {
   test("Mail messages open in the shared side pane with dialog and row navigation controls", async () => {
     const [appLayoutSource, mailSource, paneSource, presentationSource] = await Promise.all([
       readSource("/src/app/shell/content/app-layout.tsx"),
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
       readSource("/src/features/pages/context/page-side-pane.tsx"),
       readSource("/src/features/pages/components/embedded-item-presentation-dropdown.tsx"),
     ])
@@ -82,8 +84,8 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(mailSource, /<PageSidePaneShell[\s\S]*<PageSidePaneLayout/)
     assert.match(mailSource, /<PageSidePaneHeaderCell[\s\S]*side="main"[\s\S]*<PagePaneHeader[\s\S]*leadingControl=\{<MainPaneHeaderLeadingControl \/>\}[\s\S]*showActions=\{false\}/)
     assert.match(mailSource, /<PageSidePaneHeaderCell side="side"[\s\S]*<ConversationToolbar/)
-    assert.match(mailSource, /onOpen=\{\(\) => setSelection\(thread\.id\)\}/)
-    assert.match(mailSource, /onPrefetch=\{\(\) => void controller\.prefetchThread\(thread\.id\)\}/)
+    assert.match(mailSource, /onOpenThread=\{setSelection\}[\s\S]*onOpen=\{\(\) => onOpenThread\(thread\.id\)\}/)
+    assert.match(mailSource, /onPrefetchThread=\{\(threadId\) => void controller\.prefetchThread\(threadId\)\}[\s\S]*onPrefetch=\{\(\) => onPrefetchThread\(thread\.id\)\}/)
     assert.match(mailSource, /onFocus=\{onPrefetch\}[\s\S]*onPointerEnter=\{onPrefetch\}/)
     assert.match(mailSource, /Promise\.all\(\[worker\(\), worker\(\)\]\)/)
     assert.match(mailSource, /requestIdleCallback/)
@@ -101,7 +103,7 @@ export function register({ assert, loadModule, readSource, test }) {
 
   test("mail renders live Dexie threads, lazy bodies, and scriptless sanitized HTML", async () => {
     const [mailSource, controllerSource, htmlSource] = await Promise.all([
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
       readSource("/src/features/mail/model/mail-sync-controller.ts"),
       readSource("/src/features/mail/model/mail-html.ts"),
     ])
@@ -129,7 +131,7 @@ export function register({ assert, loadModule, readSource, test }) {
   })
 
   test("background mail failures use a deduplicated toast instead of mailbox text", async () => {
-    const mailSource = await readSource("/src/features/mail/pages/mail.tsx")
+    const mailSource = await readMailFeatureSource(readSource)
 
     assert.match(mailSource, /controller\.error[\s\S]*toast\.error\(getApiErrorMessage\(controller\.error\), \{ id: "mail-background-error" \}\)/)
     assert.doesNotMatch(mailSource, /controller\.error \? \(/)
@@ -137,7 +139,7 @@ export function register({ assert, loadModule, readSource, test }) {
 
   test("mail organization controls are online-only and available at thread, message, and batch scope", async () => {
     const [mailSource, controllerSource] = await Promise.all([
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
       readSource("/src/features/mail/model/mail-sync-controller.ts"),
     ])
 

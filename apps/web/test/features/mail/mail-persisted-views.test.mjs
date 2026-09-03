@@ -1,8 +1,10 @@
+import { readMailFeatureSource } from "./mail-feature-source.mjs"
+
 export function register({ assert, readSource, readWorkspace, test }) {
   test("Mail bootstraps persisted views for the active workspace binding", async () => {
     const [hook, page] = await Promise.all([
       readWorkspace("/packages/features/src/mail/hooks.ts"),
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
     ])
 
     assert.match(hook, /mailApiBasePath\(input\.workspaceId\)/)
@@ -14,7 +16,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
   })
 
   test("Mail advances bounded index work and reports progress", async () => {
-    const page = await readSource("/src/features/mail/pages/mail.tsx")
+    const page = await readMailFeatureSource(readSource)
 
     assert.match(page, /\/index\/advance/)
     assert.match(page, /Indexing full mailbox…/)

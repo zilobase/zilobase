@@ -1,3 +1,5 @@
+import { readMailFeatureSource } from "./mail-feature-source.mjs"
+
 export function register({ assert, readSource, test }) {
   test("Workspace settings owns mail connect, reconnect, and confirmed disconnect", async () => {
     const source = await readSource(
@@ -12,7 +14,7 @@ export function register({ assert, readSource, test }) {
   })
 
   test("Mail uses the active workspace API and replaces toolbar disconnect with view settings", async () => {
-    const page = await readSource("/src/features/mail/pages/mail.tsx")
+    const page = await readMailFeatureSource(readSource)
     const controller = await readSource(
       "/src/features/mail/model/mail-sync-controller.ts",
     )

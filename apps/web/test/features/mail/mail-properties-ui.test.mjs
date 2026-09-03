@@ -1,3 +1,5 @@
+import { readMailFeatureSource } from "./mail-feature-source.mjs"
+
 export function register({ assert, readSource, readWorkspace, test }) {
   test("mail reuses data-source-neutral property controls", async () => {
     const [databaseAdd, picker, valueControl, panel] = await Promise.all([
@@ -19,7 +21,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
   test("mail properties support search, visibility, ordering, CRUD, cells, and thread editing", async () => {
     const [panel, page, hook] = await Promise.all([
       readSource("/src/features/mail/components/mail-properties-panel.tsx"),
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
       readWorkspace("/packages/features/src/mail/hooks.ts"),
     ])
 
@@ -42,7 +44,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
     const [filter, group, page] = await Promise.all([
       readSource("/src/features/mail/components/mail-filter-editor.tsx"),
       readSource("/src/features/mail/components/mail-group-editor.tsx"),
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
     ])
 
     assert.match(filter, /customProperties\.map/)

@@ -3,6 +3,8 @@ import type { MailGroupConfig, MailPropertyDefinition } from "@zilobase/features
 import { Checkbox } from "@/shared/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
 
+import { isMutableMailGroup } from "../model/mail-view-model"
+
 const groupProperties = [
   { label: "None", value: "none" },
   { label: "Date", value: "date" },
@@ -62,10 +64,6 @@ export function MailGroupEditor({
       ) : null}
     </div>
   )
-}
-
-export function isMutableMailGroup(propertyId: string) {
-  return !["date", "received_date", "from", "email_domain"].includes(propertyId)
 }
 
 function isGroupableCustomProperty(property: MailPropertyDefinition) {

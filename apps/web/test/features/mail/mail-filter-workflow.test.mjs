@@ -1,8 +1,10 @@
+import { readMailFeatureSource } from "./mail-feature-source.mjs"
+
 export function register({ assert, readSource, readWorkspace, test }) {
   test("mail filter drafts preview without persistence and expose explicit save actions", async () => {
     const [editor, page, viewsHook, queryHook] = await Promise.all([
       readSource("/src/features/mail/components/mail-filter-editor.tsx"),
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
       readWorkspace("/packages/features/src/mail/hooks.ts"),
       readWorkspace("/packages/features/src/mail/queries.ts"),
     ])

@@ -1,8 +1,10 @@
+import { readMailFeatureSource } from "./mail-feature-source.mjs"
+
 export function register({ assert, readSource, readWorkspace, test }) {
   test("Mail uses opaque indexed pagination for persisted and system routes", async () => {
     const [hook, page] = await Promise.all([
       readWorkspace("/packages/features/src/mail/queries.ts"),
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
     ])
 
     assert.match(hook, /infiniteQueryOptions/)

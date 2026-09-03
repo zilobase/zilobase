@@ -1,7 +1,9 @@
+import { readMailFeatureSource } from "./mail-feature-source.mjs"
+
 export function register({ assert, readSource, readWorkspace, test }) {
   test("advanced hover actions connect reminders, commands, labels, reply, and unsubscribe", async () => {
     const [page, dialog, reminders, routes] = await Promise.all([
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
       readSource("/src/features/mail/components/mail-row-action-dialog.tsx"),
       readWorkspace("/packages/features/src/mail/hooks.ts"),
       readWorkspace("/apps/server/src/features/mail/query-routes.ts"),

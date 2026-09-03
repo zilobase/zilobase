@@ -1,9 +1,11 @@
+import { readMailFeatureSource } from "./mail-feature-source.mjs"
+
 export function register({ assert, readSource, test }) {
   test("mail hover actions have preview, reorder, hide, remove, and add flows", async () => {
     const [panel, settings, page] = await Promise.all([
       readSource("/src/features/mail/components/mail-hover-actions-panel.tsx"),
       readSource("/src/features/mail/components/mail-view-settings-menu.tsx"),
-      readSource("/src/features/mail/pages/mail.tsx"),
+      readMailFeatureSource(readSource),
     ])
 
     assert.match(panel, /Preview/)
