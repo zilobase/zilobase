@@ -3,7 +3,7 @@ import { fileURLToPath, URL } from "node:url";
 import { defineConfig, searchForWorkspaceRoot, type ProxyOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import { aiDevTracePlugin } from "./vite/ai-dev-trace-plugin.ts";
+import { aiDevTracePlugin } from "./vite/ai-dev-trace-plugin";
 
 const host = process.env.TAURI_DEV_HOST;
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
