@@ -17,7 +17,6 @@ import {
 import {
   usePageSidePaneState,
   PageSidePaneContext,
-  PageSidePaneHeaderCell,
   PageSidePaneShell,
 } from "@/features/pages/context/index"
 import { DiscussionsSidebarPanel } from "@/features/comments/index"
@@ -31,21 +30,11 @@ import {
   type SidebarResizeIntent,
 } from "@/features/sidebar"
 
+import { getDatabaseId, useRoutePageId } from "@/features/pages/components/index"
 import {
-  getDatabaseId,
-  MainPaneHeaderLeadingControl,
-  PagePaneHeader,
-  useRoutePageId,
-} from "@/features/pages/components/index"
-import {
-  ApiKeysSettingsPage,
   getSettingsSection,
-  PreferencesSettingsPage,
-  ProfileSettingsPage,
-  SecuritySettingsPage,
   SettingsDialog,
   type SettingsSection,
-  ZilobaseAiSettingsPage,
 } from "@/features/settings"
 import { ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable"
 import {
@@ -86,9 +75,8 @@ import {
 } from "@/features/pages/context/index"
 import { Button } from "@/shared/ui/button"
 import { FloatingWidget } from "@/shared/components/floating-widget"
-import { TeamSettingsPage, TeamspacesSettingsPage } from "@/features/teamspaces"
-import { WorkspaceSettingsPage } from "@/features/workspaces"
-import { editionWebModule } from "@zilobase/edition-web"
+import { SettingsSectionContent } from "./settings-section-content"
+import { AppHeader } from "./app-header"
 
 const CHAT_PRESENTATION_MODE_STORAGE_KEY = "zilobase:ai-chat-presentation-mode"
 
@@ -652,37 +640,6 @@ function readChatPresentationMode(): ChatPresentationMode {
   }
 }
 
-function SettingsSectionContent({ section }: { section: SettingsSection }) {
-  const editionSection = editionWebModule.settingsSections.find(
-    (candidate) => candidate.id === section,
-  )
-
-  if (editionSection) {
-    const EditionSettings = editionSection.component
-    return <EditionSettings />
-  }
-
-  switch (section) {
-    case "preferences":
-      return <PreferencesSettingsPage />
-    case "workspace":
-      return <WorkspaceSettingsPage />
-    case "security":
-      return <SecuritySettingsPage />
-    case "zilobase-ai":
-      return <ZilobaseAiSettingsPage />
-    case "api-keys":
-      return <ApiKeysSettingsPage />
-    case "team":
-      return <TeamSettingsPage />
-    case "teamspaces":
-      return <TeamspacesSettingsPage />
-    case "profile":
-    default:
-      return <ProfileSettingsPage />
-  }
-}
-
 function PageLayoutOverlayDrawer() {
   const pageLayoutSidebar = useOptionalPageLayoutSidebar()
   const open = Boolean(pageLayoutSidebar?.overlayPageId)
@@ -733,91 +690,5 @@ function EmbeddedPageDialogHost({
       onOpenPage={openPage}
       pageRenderer={PageEditorPane}
     />
-  )
-}
-
-function AppHeader({
-  discussionsOpen,
-  isSettingsPage,
-  onToggleDiscussions,
-  onTogglePageSidebar,
-  pageSidebarOpen,
-  onCloseSidePane,
-  pathname,
-  renderedSidePaneDatabaseId,
-  renderedSidePanePageId,
-  sidePaneAnimatedOpen,
-  sidePaneDatabaseId,
-}: {
-  discussionsOpen: boolean
-  isSettingsPage: boolean
-  onToggleDiscussions?: () => void
-  onTogglePageSidebar?: () => void
-  pageSidebarOpen?: boolean
-  onCloseSidePane: () => void
-  pathname: string
-  renderedSidePaneDatabaseId: string | null
-  renderedSidePanePageId: string | null
-  sidePaneAnimatedOpen: boolean
-  sidePaneDatabaseId: string | null
-}) {
-  const pageLayoutSidebar = useOptionalPageLayoutSidebar()
-  const showSidePaneHeader = Boolean(
-    renderedSidePanePageId || renderedSidePaneDatabaseId,
-  )
-  const splitActive = showSidePaneHeader && sidePaneAnimatedOpen
-  const sidePanePathname = renderedSidePaneDatabaseId
-    ? `/d/${encodeURIComponent(renderedSidePaneDatabaseId)}`
-    : `/p/${encodeURIComponent(renderedSidePanePageId ?? "")}`
-  const routeDatabaseId = getDatabaseId(pathname)
-  const rowNavigationDatabaseId = renderedSidePanePageId
-    ? (sidePaneDatabaseId ?? routeDatabaseId)
-    : null
-  const sidePaneHasLayoutSidebar =
-    pageLayoutSidebar?.hasOverlaySidebar(renderedSidePanePageId) ?? false
-
-  return (
-    <>
-      <PageSidePaneHeaderCell
-        className="z-10"
-        side="main"
-        splitActive={splitActive}
-      >
-        <PagePaneHeader
-          className="min-w-0 flex-1"
-          leadingControl={
-            <MainPaneHeaderLeadingControl />
-          }
-          discussionsOpen={discussionsOpen}
-          pathname={pathname}
-          onToggleDiscussions={onToggleDiscussions}
-          onTogglePageSidebar={onTogglePageSidebar}
-          pageSidebarOpen={pageSidebarOpen}
-          showActions={!isSettingsPage}
-        />
-      </PageSidePaneHeaderCell>
-      {showSidePaneHeader ? (
-        <PageSidePaneHeaderCell
-          side="side"
-          splitActive={splitActive}
-        >
-          <PagePaneHeader
-            className="min-w-0 flex-1"
-            onClose={onCloseSidePane}
-            onTogglePageSidebar={
-              renderedSidePanePageId && sidePaneHasLayoutSidebar
-                ? () => pageLayoutSidebar?.toggleOverlay(renderedSidePanePageId)
-                : undefined
-            }
-            pageSidebarOpen={
-              pageLayoutSidebar?.overlayPageId === renderedSidePanePageId
-            }
-            pathname={sidePanePathname}
-            rowNavigationDatabaseId={rowNavigationDatabaseId}
-            showBreadcrumb={false}
-          />
-        </PageSidePaneHeaderCell>
-      ) : null}
-    </>
   )
 }

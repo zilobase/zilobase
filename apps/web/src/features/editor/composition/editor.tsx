@@ -36,28 +36,11 @@ import {
   canMoveDatabaseBlockToPage,
   dropCrossEditorBlock,
   getBlockDragDatabaseId,
-  type BlockDragPayload,
 } from "@/packages/editor/components/editor/block-drag"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
 import { cn } from "@/shared/lib/utils"
 import { UndoHistoryScope } from "@/shared/shortcuts"
 import { toast } from "sonner"
-
-type PendingDatabaseBlockDrop = {
-  canMove: boolean
-  databaseId: string
-  payload: BlockDragPayload
-  pos: number
-}
+import { DatabaseBlockDropDialog, type PendingDatabaseBlockDrop } from "./database-block-drop-dialog"
 
 export function Editor({
   afterMetadata,
@@ -723,45 +706,12 @@ export function Editor({
   return (
     <UndoHistoryScope resetKey={pageId ?? editorId}>
       {editorBody}
-      <AlertDialog
-        onOpenChange={(open) => {
-          if (!open) setPendingDatabaseBlockDrop(null)
-        }}
-        open={pendingDatabaseBlockDrop !== null}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {pendingDatabaseBlockDrop?.canMove
-                ? "Move database or create a linked view?"
-                : "This database can’t be moved here"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingDatabaseBlockDrop?.canMove
-                ? "Move the database into this page, or leave the original where it is and create a linked view here."
-                : "This page is part of the database. Moving the database here would create a circular hierarchy, but you can create a linked view instead."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => void completeDatabaseBlockDrop("copy")}
-              variant={
-                pendingDatabaseBlockDrop?.canMove ? "outline" : "default"
-              }
-            >
-              Create linked view
-            </AlertDialogAction>
-            {pendingDatabaseBlockDrop?.canMove ? (
-              <AlertDialogAction
-                onClick={() => void completeDatabaseBlockDrop("move")}
-              >
-                Move
-              </AlertDialogAction>
-            ) : null}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DatabaseBlockDropDialog
+        onClose={() => setPendingDatabaseBlockDrop(null)}
+        onCopy={() => void completeDatabaseBlockDrop("copy")}
+        onMove={() => void completeDatabaseBlockDrop("move")}
+        pending={pendingDatabaseBlockDrop}
+      />
     </UndoHistoryScope>
   )
 }

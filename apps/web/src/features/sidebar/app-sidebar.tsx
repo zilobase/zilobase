@@ -13,14 +13,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { isDesktopApp } from "@/features/desktop/index"
-import { useTheme } from "next-themes"
 import { useLocation, useNavigate, useRouterState } from "@tanstack/react-router"
 import {
-  MonitorIcon,
   MonitorUpIcon,
-  MoonIcon,
   SlidersHorizontalIcon,
-  SunIcon,
 } from "@/shared/components/icons"
 import * as React from "react"
 import { toast } from "sonner"
@@ -57,14 +53,6 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/shared/ui/sidebar"
-import { Button } from "@/shared/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu"
 import { WorkspaceSwitcher } from "./workspace-switcher"
 import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
 import { clearPromotedFullPagePath, usePromotedFullPagePath } from "@/features/pages/context/index"
@@ -110,6 +98,7 @@ import { isFeatureEnabled } from "@/shared/config/feature-flags"
 import { withoutMailFeatures } from "./model/sidebar-layout-model"
 import { WorkspaceMailNavigation } from "./components/workspace-mail-navigation"
 import { NotificationCenter } from "@/features/notifications"
+import { SidebarThemeSwitcher } from "./components/sidebar-theme-switcher"
 
 const sidebarNavigationIcons: SidebarNavigationIcons = {
   getDatabaseIcon: (database: Parameters<typeof getDatabaseIconNode>[0]) =>
@@ -329,7 +318,7 @@ export function AppSidebar({
         actions={
           <>
             {workspaceId ? <NotificationCenter workspaceId={workspaceId} /> : null}
-            <ThemeSwitcher />
+            <SidebarThemeSwitcher />
             <SidebarTrigger className="mr-0.5 shrink-0" />
           </>
         }
@@ -368,45 +357,6 @@ export function AppSidebar({
         <div className="border-t border-stroke-default px-2 py-2"><WorkspaceSwitcher onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} /></div>
       </SidebarFooter>
     </Sidebar>
-  )
-}
-
-function ThemeSwitcher() {
-  const { setTheme, theme = "system" } = useTheme()
-  const ThemeIcon =
-    theme === "light" ? SunIcon : theme === "dark" ? MoonIcon : MonitorIcon
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          aria-label="Change theme"
-          className="size-7 text-content-secondary [&_svg]:size-4!"
-          size="icon-lg"
-          title="Theme"
-          type="button"
-          variant="ghost"
-        >
-          <ThemeIcon />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-36" side="bottom">
-        <DropdownMenuRadioGroup onValueChange={setTheme} value={theme}>
-          <DropdownMenuRadioItem value="light">
-            <SunIcon />
-            <span>Light</span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark">
-            <MoonIcon />
-            <span>Dark</span>
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system">
-            <MonitorIcon />
-            <span>System</span>
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }
 
