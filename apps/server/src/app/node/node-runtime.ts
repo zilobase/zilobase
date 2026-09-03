@@ -17,10 +17,7 @@ import {
   setRuntimeAdapter,
   type ServerRuntimeAdapter,
 } from "../../infrastructure/runtime/runtime-adapter";
-import { drainDatabaseRealtimeOutbox } from "../../features/databases/realtime/outbox";
-import { drainNavigationRealtimeOutbox } from "../../features/workspaces/navigation-realtime/outbox";
 import { attachNodeNavigationRealtimeRuntime } from "./navigation-realtime-runtime";
-import { expireTemporaryMemberships } from "../../features/memberships";
 import type { AppBindings } from "../../shared/types";
 import { getAppEditionExtension } from "../../shared/edition-extension-registry";
 import { isNodeApiPath } from "../../infrastructure/node/api-routing";
@@ -28,19 +25,10 @@ import { runMigrationSets, type MigrationSet } from "../../infrastructure/node/m
 import { createNodeRealtimeBus } from "../../infrastructure/node/realtime-bus";
 import { createNodeCollaborationExtensions } from "../../infrastructure/node/collaboration-redis";
 import { setRealtimeReadinessProbe } from "../../infrastructure/realtime/readiness";
-import { cleanupExpiredAiAgentData } from "../../features/ai/actions/agent-operations";
-import { AI_JOB_HANDLERS } from "../../features/ai/jobs/ai-job-handlers";
-import { runAiJobBatch } from "../../features/ai/jobs/ai-jobs";
-import { renewGmailWatches } from "../../features/mail/gmail-watch";
-import { advancePendingMailIndexes } from "../../features/mail/mail-index";
-import { drainMailDatabaseSyncOutbox } from "../../features/mail/mail-database-sync-worker";
-import { promoteClosedDatabaseAutomationEventWindows } from "../../features/databases/automations/event-capture";
-import { drainDatabaseAutomationEventWindows } from "../../features/databases/automations/evaluator";
-import { drainDatabaseAutomationRuns } from "../../features/databases/automations/run-engine";
-import { scanDueDatabaseAutomationSchedules } from "../../features/databases/automations/scheduler";
-import { drainInProductNotificationOutbox } from "../../features/notifications/outbox";
 import { fetchPinnedNodeWebhook } from "./pinned-webhook";
-import { cleanupDatabaseAutomationHistory, getDatabaseAutomationOperationalSnapshot } from "../../features/databases/automations/operations";
+import { createNodeBackgroundCoordinator, publishNodeBackgroundNotification } from "./background-coordinator";
+import { setBackgroundReadinessProbe, getBackgroundOperationalSnapshot } from "../../infrastructure/background/health";
+import { renderPrometheusBackgroundMetrics } from "../../infrastructure/background/telemetry";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -56,6 +44,7 @@ export function createNodeRuntime({
   webDistDir,
 }: NodeRuntimeOptions) {
   const env = process.env as Record<string, unknown>;
+  const processRole = readProcessRole(process.env.ZILOBASE_PROCESS_ROLE);
   const port = readPort(process.env.PORT) ?? 3000;
   const hostname = process.env.HOST ?? "0.0.0.0";
   const server = createServer(async (incoming, outgoing) => {
@@ -101,6 +90,9 @@ export function createNodeRuntime({
   const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
   const mailRealtime = attachNodeMailRealtimeRuntime(server, env, { realtimeBus });
   const navigationRealtime = attachNodeNavigationRealtimeRuntime(server, env, { realtimeBus });
+  const backgroundCoordinator = processRole === "api"
+    ? null
+    : createNodeBackgroundCoordinator(env);
   const effectiveRuntimeAdapter: ServerRuntimeAdapter = {
     ...runtimeAdapter,
     fetchAutomationWebhook: runtimeAdapter.fetchAutomationWebhook ?? fetchPinnedNodeWebhook,
@@ -108,12 +100,20 @@ export function createNodeRuntime({
       databaseRealtime.publishMutation(event),
     publishMailNotification: ({ event }) => mailRealtime.publishNotification(event),
     publishNavigationInvalidation: ({ event }) => navigationRealtime.publish(event),
+    dispatchBackgroundTasks: ({ env: dispatchEnv, tasks }) =>
+      backgroundCoordinator
+        ? backgroundCoordinator.dispatch(tasks)
+        : publishNodeBackgroundNotification(dispatchEnv, tasks),
   };
-  let stopMaintenanceDrainer: (() => void) | null = null;
-  let stopAiJobWorker: (() => void) | null = null;
-  let stopDatabaseAutomationWorker: (() => void) | null = null;
+  const backgroundAdminServer = backgroundCoordinator
+    ? createBackgroundAdminServer(env, backgroundCoordinator)
+    : null;
 
   setRuntimeAdapter(effectiveRuntimeAdapter);
+  setBackgroundReadinessProbe(() => backgroundCoordinator?.readiness() ?? {
+    coordinatorReady: null,
+    listenerReady: null,
+  });
   assertSelfHostedProductionConfiguration(env);
 
   return {
@@ -136,16 +136,13 @@ export function createNodeRuntime({
       }
     },
     async start() {
+      await backgroundCoordinator?.start();
+      await backgroundAdminServer?.start();
+      if (processRole === "worker") {
+        console.log("Zilobase background worker started");
+        return;
+      }
       await realtimeBus?.connect();
-      if (!stopMaintenanceDrainer) {
-        stopMaintenanceDrainer = startMaintenanceDrainer(env);
-      }
-      if (!stopAiJobWorker) {
-        stopAiJobWorker = startAiJobWorker(env);
-      }
-      if (!stopDatabaseAutomationWorker) {
-        stopDatabaseAutomationWorker = startDatabaseAutomationWorker(env);
-      }
 
       await new Promise<void>((resolve, reject) => {
         server.once("error", reject);
@@ -160,12 +157,8 @@ export function createNodeRuntime({
       });
     },
     async close() {
-      stopMaintenanceDrainer?.();
-      stopMaintenanceDrainer = null;
-      stopAiJobWorker?.();
-      stopAiJobWorker = null;
-      stopDatabaseAutomationWorker?.();
-      stopDatabaseAutomationWorker = null;
+      await backgroundCoordinator?.stop();
+      await backgroundAdminServer?.stop();
       await databaseRealtime.destroy();
       await meetingAudio.destroy();
       await mailRealtime.destroy();
@@ -173,6 +166,7 @@ export function createNodeRuntime({
       await collaboration.destroy();
       await realtimeBus?.close();
       setRealtimeReadinessProbe(null);
+      setBackgroundReadinessProbe(null);
       await new Promise<void>((resolve, reject) => {
         if (!server.listening) {
           resolve();
@@ -185,144 +179,58 @@ export function createNodeRuntime({
   };
 }
 
-function startDatabaseAutomationWorker(env: Record<string, unknown>) {
-  const workerId = `node-automations:${process.pid}:${crypto.randomUUID()}`;
-  let running = false;
-  let nextScheduleScanAt = 0;
-  let nextCleanupAt = 0;
-  let nextMetricsAt = 0;
-  const drain = async () => {
-    if (running) return;
-    running = true;
-    try {
-      await runWithDbEnv(env, async () => {
-        const now = Date.now();
-        if (now >= nextScheduleScanAt) {
-          await scanDueDatabaseAutomationSchedules(env, { limit: 50, now: new Date(now) });
-          nextScheduleScanAt = now + 60_000;
-        }
-        if (now >= nextCleanupAt) {
-          const cleanup = await cleanupDatabaseAutomationHistory(env, { now: new Date(now) });
-          if (Object.entries(cleanup).some(([key, value]) => key !== "retention" && typeof value === "number" && value > 0)) {
-            console.info(JSON.stringify({ cleanup, event: "database_automation_retention_cleanup" }));
-          }
-          nextCleanupAt = now + 5 * 60_000;
-        }
-        await drainDatabaseAutomationEventWindows(env, {
-          limit: 50,
-          workerId: `${workerId}:events`,
-        });
-        await drainDatabaseAutomationRuns(env, {
-          limit: 10,
-          workerId: `${workerId}:runs`,
-        });
-        await drainInProductNotificationOutbox(env, { limit: 100 });
-        if (now >= nextMetricsAt) {
-          console.info(JSON.stringify({ event: "database_automation_operational_snapshot", snapshot: await getDatabaseAutomationOperationalSnapshot({ now: new Date(now) }) }));
-          nextMetricsAt = now + 60_000;
-        }
-      });
-    } catch (error) {
-      console.error(JSON.stringify({
-        event: "database_automation_worker_failed",
-        message: error instanceof Error ? error.message : String(error),
-      }));
-    } finally {
-      running = false;
-    }
-  };
-  const startupTimer = setTimeout(() => void drain(), 0);
-  const interval = setInterval(() => void drain(), 1_000);
-  startupTimer.unref();
-  interval.unref();
-  return () => {
-    clearTimeout(startupTimer);
-    clearInterval(interval);
-  };
+type ProcessRole = "all" | "api" | "worker";
+
+function readProcessRole(value: string | undefined): ProcessRole {
+  if (!value || value === "all") return "all";
+  if (value === "api" || value === "worker") return value;
+  throw new Error("ZILOBASE_PROCESS_ROLE must be all, api, or worker");
 }
 
-function startAiJobWorker(env: Record<string, unknown>) {
-  const workerId = `node:${process.pid}:${crypto.randomUUID()}`;
-  let running = false;
-  const drain = async () => {
-    if (running) return;
-    running = true;
-    try {
-      await runWithDbEnv(env, () => runAiJobBatch({
-        env,
-        handlers: AI_JOB_HANDLERS,
-        limit: 5,
-        workerId,
-      }));
-    } catch (error) {
-      console.error(JSON.stringify({
-        event: "ai_job_worker_failed",
-        message: error instanceof Error ? error.message : String(error),
-      }));
-    } finally {
-      running = false;
-    }
-  };
-  const startupTimer = setTimeout(() => void drain(), 0);
-  const interval = setInterval(() => void drain(), 1_000);
-  startupTimer.unref();
-  interval.unref();
-  return () => {
-    clearTimeout(startupTimer);
-    clearInterval(interval);
-  };
-}
-
-function startMaintenanceDrainer(
+function createBackgroundAdminServer(
   env: Record<string, unknown>,
+  coordinator: ReturnType<typeof createNodeBackgroundCoordinator>,
 ) {
-  let draining = false;
-
-  const drain = async () => {
-    if (draining) return;
-    draining = true;
-
-    try {
-      await runWithDbEnv(env, () =>
-        Promise.all([
-          cleanupExpiredAiAgentData(env).catch((error) => {
-            console.error(
-              JSON.stringify({
-                code: "ai_agent_cleanup_failed",
-                event: "background_maintenance_task_failed",
-                message: error instanceof Error ? error.message : String(error),
-              }),
-            );
-          }),
-          drainDatabaseRealtimeOutbox(env, { limit: 250 }),
-          drainNavigationRealtimeOutbox(env, { limit: 250 }),
-          expireTemporaryMemberships(),
-          renewGmailWatches(env),
-          advancePendingMailIndexes(env),
-          drainMailDatabaseSyncOutbox(env, { limit: 50 }),
-          promoteClosedDatabaseAutomationEventWindows(),
-        ]),
-      );
-    } catch (error) {
-      console.error(
-        JSON.stringify({
-          error: error instanceof Error ? error.message : String(error),
-          event: "background_maintenance_failed",
-        }),
-      );
-    } finally {
-      draining = false;
+  const port = readPort(process.env.BACKGROUND_HEALTH_PORT) ?? 3001;
+  const admin = createServer(async (request, response) => {
+    if (request.url === "/metrics") {
+      response.statusCode = 200;
+      response.setHeader("content-type", "text/plain; version=0.0.4");
+      response.end(renderPrometheusBackgroundMetrics());
+      return;
     }
-  };
-
-  const startupTimer = setTimeout(() => void drain(), 0);
-  const interval = setInterval(() => void drain(), 5 * 60 * 1000);
-  startupTimer.unref();
-  interval.unref();
-
-  return () => {
-    clearTimeout(startupTimer);
-    clearInterval(interval);
+    if (request.url !== "/health" && request.url !== "/ready") {
+      response.statusCode = 404;
+      response.end("Not Found");
+      return;
+    }
+    try {
+      const snapshot = await runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env));
+      const ready = coordinator.readiness();
+      response.statusCode = request.url === "/ready" && (!snapshot.healthy || !ready.listenerReady)
+        ? 503
+        : 200;
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify(snapshot));
+    } catch {
+      response.statusCode = 503;
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify({ healthy: false }));
+    }
+  });
+  return {
+    start: () => new Promise<void>((resolve, reject) => {
+      admin.once("error", reject);
+      admin.listen(port, "127.0.0.1", () => {
+        admin.off("error", reject);
+        console.log(`Zilobase background health listening on http://127.0.0.1:${port}`);
+        resolve();
+      });
+    }),
+    stop: () => new Promise<void>((resolve, reject) => {
+      if (!admin.listening) return resolve();
+      admin.close((error) => error ? reject(error) : resolve());
+    }),
   };
 }
 

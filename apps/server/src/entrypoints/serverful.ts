@@ -1,2 +1,5 @@
 // Node process entrypoint for self-hosted and serverful deployments.
-import "../app/node/server";
+import { startNodeTelemetry } from "../infrastructure/background/node-telemetry";
+
+startNodeTelemetry();
+await import("../app/node/server");
