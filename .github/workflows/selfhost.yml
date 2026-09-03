@@ -182,8 +182,23 @@ jobs:
             set -euo pipefail
             unset GNOME_KEYRING_CONTROL
             keyring_control=$(mktemp -d)
-            keyring_env=$(printf "%s" "zilobase-ci-keyring" | gnome-keyring-daemon --unlock --components=secrets --control-directory="$keyring_control")
+            keyring_env=$(printf "%s" "zilobase-ci-keyring" | gnome-keyring-daemon --login --components=secrets --control-directory="$keyring_control")
             eval "$keyring_env"
+            keyring_env=$(gnome-keyring-daemon --start --components=secrets --control-directory="$keyring_control")
+            eval "$keyring_env"
+            export GNOME_KEYRING_CONTROL
+            secret_service_ready=false
+            for _ in {1..50}; do
+              if gdbus call --session --dest org.freedesktop.DBus --object-path /org/freedesktop/DBus --method org.freedesktop.DBus.NameHasOwner org.freedesktop.secrets | grep -q true; then
+                secret_service_ready=true
+                break
+              fi
+              sleep 0.1
+            done
+            if [ "$secret_service_ready" != true ]; then
+              echo "Secret Service did not become ready." >&2
+              exit 1
+            fi
             printf "%s" "ready" | secret-tool store --label="Zilobase CI" application zilobase-ci purpose readiness
             test "$(secret-tool lookup application zilobase-ci purpose readiness)" = "ready"
             secret-tool clear application zilobase-ci purpose readiness
