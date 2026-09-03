@@ -47,7 +47,7 @@ export type SecurityEvent = {
 };
 
 export type ZilobaseEditionExtension = {
-  readonly id: "enterprise";
+  readonly id: string;
   readonly capabilities: readonly string[];
   readonly authPlugins: readonly BetterAuthPlugin[];
   registerRoutes(app: Hono<AppBindings>): void;

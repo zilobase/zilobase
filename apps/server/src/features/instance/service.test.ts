@@ -42,7 +42,7 @@ test("discovery publishes canonical identity, versions, and desktop endpoints", 
   });
 });
 
-test("enterprise discovery adds only the edition and declared capabilities", async () => {
+test("edition discovery adds only the edition and declared capabilities", async () => {
   const document = await getZilobaseDiscoveryDocument(
     productionEnv,
     {
@@ -52,7 +52,7 @@ test("enterprise discovery adds only the edition and declared capabilities", asy
     },
     {
       editionExtension: {
-        id: "enterprise",
+        id: "test-edition",
         authPlugins: [],
         capabilities: ["sso", "audit"],
         async beforeMembershipGrant() {},
@@ -62,7 +62,7 @@ test("enterprise discovery adds only the edition and declared capabilities", asy
     },
   );
 
-  assert.equal(document.edition, "enterprise");
+  assert.equal(document.edition, "test-edition");
   assert.deepEqual(document.capabilities, ["sso", "audit"]);
   assert.equal("license" in document, false);
 });

@@ -11,9 +11,9 @@ import {
 test("migration sets run core first and keep separate journals", async () => {
   const calls: Array<{ folder: string; table: string }> = [];
   const statements: unknown[] = [];
-  const enterprise = {
-    id: "enterprise",
-    journalTable: "__zilobase_enterprise_migrations",
+  const extension = {
+    id: "test-edition",
+    journalTable: "__zilobase_test_edition_migrations",
     migrationsFolder: "/private/migrations",
   };
 
@@ -24,7 +24,7 @@ test("migration sets run core first and keep separate journals", async () => {
         return [];
       },
     } as unknown as Database,
-    [CORE_MIGRATION_SET, enterprise],
+    [CORE_MIGRATION_SET, extension],
     async (_database, config) => {
       calls.push({
         folder: config.migrationsFolder,
@@ -35,7 +35,7 @@ test("migration sets run core first and keep separate journals", async () => {
 
   assert.deepEqual(calls.map((call) => call.table), [
     "__zilobase_core_migrations",
-    "__zilobase_enterprise_migrations",
+    "__zilobase_test_edition_migrations",
   ]);
   assert.equal(calls[1]?.folder, "/private/migrations");
   assert.equal(statements.length, 3);
@@ -46,8 +46,8 @@ test("migration sets reject private-first and shared-journal configurations", ()
     () =>
       assertMigrationSets([
         {
-          id: "enterprise",
-          journalTable: "__zilobase_enterprise_migrations",
+          id: "test-edition",
+          journalTable: "__zilobase_test_edition_migrations",
           migrationsFolder: "/private",
         },
       ]),
@@ -58,7 +58,7 @@ test("migration sets reject private-first and shared-journal configurations", ()
       assertMigrationSets([
         CORE_MIGRATION_SET,
         {
-          id: "enterprise",
+          id: "test-edition",
           journalTable: CORE_MIGRATION_SET.journalTable,
           migrationsFolder: "/private",
         },

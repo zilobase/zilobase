@@ -5,6 +5,7 @@ export type EditionLoginMethodProps = {
 }
 
 export type EditionWebModule = {
+  routePrefix: string
   additionalLoginMethods: readonly ComponentType<EditionLoginMethodProps>[]
   components: Readonly<Record<string, ComponentType>>
   navigation: readonly {

@@ -6,7 +6,7 @@ import * as adapterApi from "@zilobase/server/adapter-api";
 import * as nodeAdapterApi from "@zilobase/server/node-adapter-api";
 import * as realtimeApi from "@zilobase/server/realtime-api";
 
-test("cloud and enterprise consumer entrypoints retain their runtime exports", () => {
+test("external consumer entrypoints retain their runtime exports", () => {
   assertExports(rootApi, [
     "createApp",
     "createAuth",

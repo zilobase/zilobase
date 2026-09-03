@@ -1,4 +1,5 @@
 import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
+import { editionWebModule } from "@zilobase/edition-web";
 import { appRoute } from "../route-roots";
 import {
   validateTeamSettingsSearch,
@@ -57,7 +58,7 @@ export const settingsRoutes = [
   }),
   createRoute({
     getParentRoute: () => appRoute,
-    path: "/enterprise/$",
+    path: `${editionWebModule.routePrefix}/$`,
     component: lazyRouteComponent(() => import("../edition-route-host")),
   }),
 ];

@@ -7,14 +7,14 @@ export default function EditionRouteHost() {
   });
   const route = editionWebModule.routes.find(
     (candidate) =>
-      `/enterprise/${candidate.path.replace(/^\/+/, "")}` === pathname,
+      `${editionWebModule.routePrefix}/${candidate.path.replace(/^\/+/, "")}` === pathname,
   );
 
   if (!route) {
     return (
       <main className="flex min-h-full items-center justify-center p-6">
         <p className="text-sm text-content-secondary">
-          Enterprise page not found.
+          Edition page not found.
         </p>
       </main>
     );

@@ -11,7 +11,7 @@ test("membership grants run edition policy and audit inside the transaction", as
   const rows: Array<Record<string, unknown>> = [];
   const database = createMembershipDatabase(rows, events);
   const extension: ZilobaseEditionExtension = {
-    id: "enterprise",
+    id: "test-edition",
     authPlugins: [],
     capabilities: [],
     async beforeMembershipGrant(input) {

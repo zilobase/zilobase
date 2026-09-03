@@ -31,7 +31,7 @@ export type ZilobaseDiscoveryDocument = DesktopServer & {
     authorizationEndpoint: string;
     tokenEndpoint: string;
   };
-  edition?: "enterprise";
+  edition?: string;
 };
 
 export type InstanceSettingsRecord = {

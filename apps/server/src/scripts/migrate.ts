@@ -13,16 +13,6 @@ const migrationsFolder =
 const migrationSets: MigrationSet[] = [
   { ...CORE_MIGRATION_SET, migrationsFolder },
 ];
-const editionMigrationsFolder = process.env.ZILOBASE_EDITION_MIGRATIONS_DIR;
-
-if (editionMigrationsFolder) {
-  migrationSets.push({
-    id: "enterprise",
-    journalTable: "__zilobase_enterprise_migrations",
-    migrationsFolder: editionMigrationsFolder,
-  });
-}
-
 main().catch((error) => {
   console.error("Zilobase database migrations failed", error);
   process.exit(1);

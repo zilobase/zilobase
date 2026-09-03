@@ -51,7 +51,7 @@ test("subsequent default membership preserves the teamspace and adds a member", 
 
 function createExtension(events: string[]): ZilobaseEditionExtension {
   return {
-    id: "enterprise",
+    id: "test-edition",
     authPlugins: [],
     capabilities: [],
     async beforeMembershipGrant() {},

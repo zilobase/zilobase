@@ -64,22 +64,22 @@ test("createApp registers a compile-time edition after public routes", () => {
     ({ method, path }) => `${method} ${path}`,
   );
 
-  assert.ok(routes.includes("GET /api/enterprise/license"));
+  assert.ok(routes.includes("GET /api/edition/example"));
   assert.ok(
-    routes.indexOf("GET /api/enterprise/license") >
+    routes.indexOf("GET /api/edition/example") >
       routes.indexOf("GET /.well-known/zilobase"),
   );
 });
 
 function createTestEditionExtension(): ZilobaseEditionExtension {
   return {
-    id: "enterprise",
+    id: "test-edition",
     authPlugins: [],
     capabilities: ["sso"],
     async beforeMembershipGrant() {},
     async recordSecurityEvent() {},
     registerRoutes(app) {
-      app.get("/api/enterprise/license", (c) => c.json({ status: "valid" }));
+      app.get("/api/edition/example", (c) => c.json({ status: "valid" }));
     },
   };
 }
