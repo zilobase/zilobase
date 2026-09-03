@@ -5,7 +5,8 @@
   "license": "MIT",
   "overrides": {
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "shiki": "4.1.0"
   },
   "workspaces": [
     "apps/*",
@@ -31,6 +32,7 @@
     "build:server": "npm run build --workspace @zilobase/server",
     "quality:fallow": "fallow audit",
     "quality:fallow:full": "fallow audit --production",
+    "quality:web-bundle": "node scripts/web/check-bundle-budget.mjs",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test:packages": "npm test --workspace @zilobase/features && npm test --workspace @zilobase/page-context",
     "verify:core": "npm run tokens:check && npm run test:community-boundary && npm run typecheck && npm run test:packages && npm run test:web && npm run build:web && npm run test:server && npm run quality:fallow -- --gate all --production",

@@ -1,17 +1,7 @@
-import { createRoute, redirect } from "@tanstack/react-router";
+import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { isDesktopApp } from "@/features/desktop/index";
 
-import { AcceptWorkspaceInvitationPage } from "@/features/workspaces";
-import { AcceptPageInvitationPage } from "@/features/pages/invitations/index";
-import { ConnectPage } from "@/features/desktop/pages/index";
-import {
-  getAuthReturnPath,
-  LoginPage,
-  OnboardingPage,
-  OtpPage,
-  SetupPage,
-  SignupPage,
-} from "@/features/auth";
+import { getAuthReturnPath } from "@/features/auth/lib/google-auth";
 import { getConnectivityState } from "@/features/offline/index";
 import { getDefaultAppPath, getFreshSession, getWorkspaces } from "../guards";
 import { rootRoute } from "../route-roots";
@@ -59,7 +49,7 @@ const loginRoute = createRoute({
     const workspaces = await getWorkspaces();
     throw redirect({ to: workspaces.length > 0 ? "/recents" : "/onboarding" });
   },
-  component: LoginPage,
+  component: lazyRouteComponent(() => import("@/features/auth/pages/login")),
 });
 
 const connectRoute = createRoute({
@@ -74,7 +64,7 @@ const connectRoute = createRoute({
     const workspaces = await getWorkspaces();
     throw redirect({ to: workspaces.length > 0 ? "/recents" : "/onboarding" });
   },
-  component: ConnectPage,
+  component: lazyRouteComponent(() => import("@/features/desktop/pages/connect")),
 });
 
 const signupRoute = createRoute({
@@ -97,7 +87,7 @@ const signupRoute = createRoute({
     const workspaces = await getWorkspaces();
     throw redirect({ to: workspaces.length > 0 ? "/recents" : "/onboarding" });
   },
-  component: SignupPage,
+  component: lazyRouteComponent(() => import("@/features/auth/pages/signup")),
 });
 
 const onboardingRoute = createRoute({
@@ -110,7 +100,7 @@ const onboardingRoute = createRoute({
     const workspaces = await getWorkspaces();
     if (workspaces.length > 0) throw redirect({ to: "/recents" });
   },
-  component: OnboardingPage,
+  component: lazyRouteComponent(() => import("@/features/auth/pages/onboarding")),
 });
 
 const otpRoute = createRoute({
@@ -119,7 +109,7 @@ const otpRoute = createRoute({
   beforeLoad: async () => {
     if (isDesktopApp()) throw redirect({ to: "/login" });
   },
-  component: OtpPage,
+  component: lazyRouteComponent(() => import("@/features/auth/pages/otp")),
 });
 
 export const publicRoutes = [
@@ -132,16 +122,20 @@ export const publicRoutes = [
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/accept-invitation",
-    component: AcceptWorkspaceInvitationPage,
+    component: lazyRouteComponent(
+      () => import("@/features/workspaces/pages/accept-invitation"),
+    ),
   }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/accept-page-invitation",
-    component: AcceptPageInvitationPage,
+    component: lazyRouteComponent(
+      () => import("@/features/pages/invitations/accept-page-invitation"),
+    ),
   }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/setup",
-    component: SetupPage,
+    component: lazyRouteComponent(() => import("@/features/auth/pages/setup")),
   }),
 ];

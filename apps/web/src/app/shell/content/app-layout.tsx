@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, ReactNode, SetStateAction } from "react"
 import { Outlet, useNavigate, useRouterState } from "@tanstack/react-router"
 import { ChevronsRightIcon, SidebarSimpleIcon } from "@/shared/components/icons"
@@ -9,11 +9,8 @@ import {
   DesktopTabs,
   getDesktopTabTitle,
 } from "@/features/desktop/components/index"
-import {
-  ChatSidebarPanel,
-  ChatSidebarTrigger,
-  type ChatPresentationMode,
-} from "@/features/ai/components/index"
+import { ChatSidebarTrigger } from "@/features/ai/components/chat-sidebar-trigger"
+import type { ChatPresentationMode } from "@/features/ai/components/chat-sidebar"
 import {
   usePageSidePaneState,
   PageSidePaneContext,
@@ -33,9 +30,8 @@ import {
 import { getDatabaseId, useRoutePageId } from "@/features/pages/components/index"
 import {
   getSettingsSection,
-  SettingsDialog,
   type SettingsSection,
-} from "@/features/settings"
+} from "@/features/settings/components/settings-sidebar"
 import { ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable"
 import {
   Sheet,
@@ -63,9 +59,6 @@ import {
   defaultUserSettings,
   useUserSettings,
 } from "@zilobase/features/user-settings"
-import { EmbeddedPageDialog } from "@/features/pages/components/index"
-import { PageEditorPane } from "@/features/pages/pages/index"
-import { useOpenEmbeddedPage } from "@/features/pages/hooks/index"
 import { LayoutEditorProvider } from "@/features/pages/layout/index"
 import { usePageEditorComments } from "@/features/comments/index"
 import { usePageCommentController } from "@/features/comments/index"
@@ -75,8 +68,23 @@ import {
 } from "@/features/pages/context/index"
 import { Button } from "@/shared/ui/button"
 import { FloatingWidget } from "@/shared/components/floating-widget"
-import { SettingsSectionContent } from "./settings-section-content"
 import { AppHeader } from "./app-header"
+
+const EmbeddedPageDialogHost = lazy(() =>
+  import("./embedded-page-dialog-host").then((module) => ({
+    default: module.EmbeddedPageDialogHost,
+  })),
+)
+const SettingsDialogSurface = lazy(() =>
+  import("./settings-dialog-surface").then((module) => ({
+    default: module.SettingsDialogSurface,
+  })),
+)
+const ChatSidebarPanel = lazy(() =>
+  import("@/features/ai/components/chat-sidebar").then((module) => ({
+    default: module.ChatSidebarPanel,
+  })),
+)
 
 const CHAT_PRESENTATION_MODE_STORAGE_KEY = "zilobase:ai-chat-presentation-mode"
 
@@ -239,6 +247,7 @@ function AppLayoutContent({
   )
   const {
     closeSidePane,
+    dialogPageId,
     openDatabaseSidePane: openDatabaseSidePaneBase,
     openSidePane: openSidePaneBase,
     renderedSidePaneDatabaseId,
@@ -486,16 +495,24 @@ function AppLayoutContent({
       />
     </div>
   ) : undefined
-  const chatPanel = (
-    <ChatSidebarPanel
-      databaseId={databaseId}
-      onClose={() => setChatSidebarOpen(false)}
-      onPresentationModeChange={isMobile ? undefined : setChatPresentationMode}
-      open={chatSidebarOpen}
-      pageId={pageId}
-      presentationMode={isMobile ? "sidebar" : chatPresentationMode}
-    />
-  )
+  const chatPanel = chatSidebarOpen ? (
+    <Suspense
+      fallback={
+        <div className="flex h-full items-center justify-center text-content-secondary text-sm">
+          Loading chat...
+        </div>
+      }
+    >
+      <ChatSidebarPanel
+        databaseId={databaseId}
+        onClose={() => setChatSidebarOpen(false)}
+        onPresentationModeChange={isMobile ? undefined : setChatPresentationMode}
+        open
+        pageId={pageId}
+        presentationMode={isMobile ? "sidebar" : chatPresentationMode}
+      />
+    </Suspense>
+  ) : null
   const dockedChatOpen =
     chatSidebarOpen && (isMobile || chatPresentationMode === "sidebar")
   const discussionsPanel = discussionsEnabled ? (
@@ -508,20 +525,25 @@ function AppLayoutContent({
 
   return (
     <PageSidePaneContext.Provider value={sidePaneContext}>
-      <EmbeddedPageDialogHost
-        contextPageId={hostPageId}
-        databaseId={databaseId}
-        hostPage={hostPage}
-      />
+      {dialogPageId ? (
+        <Suspense fallback={null}>
+          <EmbeddedPageDialogHost
+            contextPageId={hostPageId}
+            databaseId={databaseId}
+            hostPage={hostPage}
+          />
+        </Suspense>
+      ) : null}
       <PageLayoutOverlayDrawer />
-      <SettingsDialog
-        activeSection={activeSettingsSection}
-        onOpenChange={onSettingsOpenChange}
-        onSectionChange={setActiveSettingsSection}
-        open={settingsDialogOpen}
-      >
-        <SettingsSectionContent section={activeSettingsSection} />
-      </SettingsDialog>
+      {settingsDialogOpen ? (
+        <Suspense fallback={null}>
+          <SettingsDialogSurface
+            activeSection={activeSettingsSection}
+            onOpenChange={onSettingsOpenChange}
+            onSectionChange={setActiveSettingsSection}
+          />
+        </Suspense>
+      ) : null}
       <ResizablePanelGroup
         className="relative min-h-0 min-w-0 flex-1 overflow-hidden has-data-[desktop-tabs]:pt-9"
         orientation="horizontal"
@@ -667,28 +689,5 @@ function PageLayoutOverlayDrawer() {
         />
       </SheetContent>
     </Sheet>
-  )
-}
-
-function EmbeddedPageDialogHost({
-  contextPageId,
-  databaseId,
-  hostPage,
-}: {
-  contextPageId: string | null
-  databaseId: string | null
-  hostPage: ReturnType<typeof usePage>["data"]
-}) {
-  const { openPage } = useOpenEmbeddedPage({
-    contextPageId,
-    databaseId,
-    page: hostPage,
-  })
-
-  return (
-    <EmbeddedPageDialog
-      onOpenPage={openPage}
-      pageRenderer={PageEditorPane}
-    />
   )
 }

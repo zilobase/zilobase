@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { lazy, Suspense, useEffect, useMemo, useState } from "react"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useQueries } from "@tanstack/react-query"
 import {
@@ -22,29 +22,30 @@ import {
 } from "@/shared/ui/dialog"
 import {
   createSampleRowContent,
-  DatabaseListView,
-  DatabaseSetupCard,
-  DatabaseViewSkeleton,
-  DatabaseViewToolbar,
-  defaultStatusOptions,
+  type DatabaseSetupSelection,
+} from "@/features/databases/setup/view/database-setup-card"
+import { getDatabaseSetupTemplate } from "@/features/databases/setup/model/database-setup-templates"
+import { DatabaseViewSkeleton } from "@/features/databases/views/view/database-view-skeleton"
+import { getDatabaseViewModel } from "@/features/databases/model/database-view-model"
+import {
   getDatabaseFilterOperatorsForType,
-  getDatabaseSetupTemplate,
-  getDatabaseViewModel,
   getMergedDatabaseConfig,
   getMergedNameColumnConfig,
   getMergedPropertyConfig,
   getValidDatabaseFilterOperator,
-  serializePropertyValue,
   type DatabaseConditionalColorConfig,
   type DatabaseFilterItemConfig,
-  type DatabaseFilterUpdatePatch,
-  type DatabasePropertyValue,
   type DatabasePropertyConfig,
-  type DatabaseSetupSelection,
   type DatabaseSortConfig,
-  type DatabaseSortUpdatePatch,
   type DatabaseSubItemsSettings,
-} from "@/features/databases"
+} from "@/features/databases/views/model/database-view-config"
+import type { DatabaseFilterUpdatePatch } from "@/features/databases/views/view/database-filter-menu"
+import type { DatabaseSortUpdatePatch } from "@/features/databases/views/view/database-sort-menu"
+import {
+  serializePropertyValue,
+  type DatabasePropertyValue,
+} from "@/features/databases/core/database-property-values"
+import { defaultStatusOptions } from "@/features/databases/core/database-property-types"
 import { TaskDatabaseListAdapter } from "../components/task-database-list-adapter"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
 import {
@@ -79,6 +80,22 @@ import {
   getTaskStatusForCompletion,
   type TaskRow,
 } from "../model/tasks-model"
+
+const DatabaseListView = lazy(() =>
+  import("@/features/databases/views/list/view/database-list-view").then(
+    (module) => ({ default: module.DatabaseListView }),
+  ),
+)
+const DatabaseSetupCard = lazy(() =>
+  import("@/features/databases/setup/view/database-setup-card").then(
+    (module) => ({ default: module.DatabaseSetupCard }),
+  ),
+)
+const DatabaseViewToolbar = lazy(() =>
+  import("@/features/databases/views/view/database-view-toolbar").then(
+    (module) => ({ default: module.DatabaseViewToolbar }),
+  ),
+)
 
 const TASKS_DATABASE_ID = "my-tasks"
 const TASKS_DATA_SOURCE_ID = "my-tasks:source"
@@ -693,26 +710,28 @@ function TasksDatabaseView({
       }}
     >
       <div className="database-block-shell database-block-shell-full">
-        <div className="database-toolbar-section">
-          <DatabaseViewToolbar />
-        </div>
-        <div className="database-scroll-section">
-          {isLoading ? (
-            <DatabaseViewSkeleton viewType="list" />
-          ) : (
-            <DatabaseListView />
-          )}
-          {dataSourceSetupOpen && payloads[0] ? (
-            <DatabaseSetupCard
-              databaseId={payloads[0].database.id}
-              excludedDatabaseIds={payloads.map((source) => source.database.id)}
-              onComplete={() => setDataSourceSetupOpen(false)}
-              onDismiss={() => setDataSourceSetupOpen(false)}
-              onSelectDataSource={onSelectDataSource}
-              workspaceId={workspaceId}
-            />
-          ) : null}
-        </div>
+        <Suspense fallback={<DatabaseViewSkeleton viewType="list" />}>
+          <div className="database-toolbar-section">
+            <DatabaseViewToolbar />
+          </div>
+          <div className="database-scroll-section">
+            {isLoading ? (
+              <DatabaseViewSkeleton viewType="list" />
+            ) : (
+              <DatabaseListView />
+            )}
+            {dataSourceSetupOpen && payloads[0] ? (
+              <DatabaseSetupCard
+                databaseId={payloads[0].database.id}
+                excludedDatabaseIds={payloads.map((source) => source.database.id)}
+                onComplete={() => setDataSourceSetupOpen(false)}
+                onDismiss={() => setDataSourceSetupOpen(false)}
+                onSelectDataSource={onSelectDataSource}
+                workspaceId={workspaceId}
+              />
+            ) : null}
+          </div>
+        </Suspense>
       </div>
     </TaskDatabaseListAdapter>
   )

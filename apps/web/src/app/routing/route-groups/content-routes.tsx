@@ -1,8 +1,4 @@
-import { createRoute } from "@tanstack/react-router";
-
-import { DatabasePage } from "@/features/databases/pages/index";
-import { MeetingPage } from "@/features/meetings/pages/index";
-import { Page } from "@/features/pages/pages/index";
+import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
 import {
   applyDatabaseShareAccess,
   applyPageShareAccess,
@@ -20,7 +16,7 @@ export const contentRoutes = [
     beforeLoad: async ({ params }) => ({
       publishedShare: await applyPageShareAccess(params.pageId),
     }),
-    component: Page,
+    component: lazyRouteComponent(() => import("@/features/pages/pages/page")),
     pendingComponent: PendingPage,
   }),
   createRoute({
@@ -31,7 +27,7 @@ export const contentRoutes = [
         (await getFreshSession({ optional: true })).user,
       ),
     }),
-    component: MeetingPage,
+    component: lazyRouteComponent(() => import("@/features/meetings/pages/meeting")),
     pendingComponent: PendingPage,
   }),
   createRoute({
@@ -41,7 +37,7 @@ export const contentRoutes = [
     beforeLoad: async ({ params }) => ({
       publishedShare: await applyDatabaseShareAccess(params.databaseId),
     }),
-    component: DatabasePage,
+    component: lazyRouteComponent(() => import("@/features/databases/pages/database")),
     pendingComponent: PendingPage,
   }),
 ];

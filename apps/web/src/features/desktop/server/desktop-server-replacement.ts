@@ -20,7 +20,7 @@ import type {
   DesktopServerReplacementRequest,
 } from "./desktop-server-replacement-core";
 import { useAppStore } from "@/features/desktop/state/app-store";
-import { useAuthFlowStore } from "@/features/auth";
+import { useAuthFlowStore } from "@/features/auth/state/auth-flow-store";
 
 export type { DesktopServerReplacementRequest };
 

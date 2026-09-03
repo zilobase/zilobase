@@ -1,8 +1,18 @@
 import { Outlet, useRouterState } from "@tanstack/react-router";
-import { useRef } from "react";
+import { lazy, Suspense, useRef } from "react";
 
-import { AppLayout } from "@/app/shell/content/app-layout";
-import { DocumentFavicon } from "@/app/shell/document-favicon";
+import { PendingPage } from "./pending-page";
+
+const DocumentFavicon = lazy(() =>
+  import("@/app/shell/document-favicon").then((module) => ({
+    default: module.DocumentFavicon,
+  })),
+);
+const AppLayout = lazy(() =>
+  import("@/app/shell/content/app-layout").then((module) => ({
+    default: module.AppLayout,
+  })),
+);
 
 export function RootRouteShell() {
   const matches = useRouterState({ select: (state) => state.matches });
@@ -32,11 +42,15 @@ export function RootRouteShell() {
 
   return (
     <>
-      <DocumentFavicon />
+      <Suspense fallback={null}>
+        <DocumentFavicon />
+      </Suspense>
       {showAppShell ? (
-        <AppLayout>
-          <Outlet />
-        </AppLayout>
+        <Suspense fallback={<PendingPage />}>
+          <AppLayout>
+            <Outlet />
+          </AppLayout>
+        </Suspense>
       ) : (
         <Outlet />
       )}

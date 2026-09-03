@@ -8,7 +8,7 @@ import {
   listDesktopServerProfiles,
 } from "@/features/desktop/server/index";
 import { useAppStore } from "@/features/desktop/state/app-store";
-import { useAuthFlowStore } from "@/features/auth";
+import { useAuthFlowStore } from "@/features/auth/state/auth-flow-store";
 import {
   installDesktopDiagnostics,
   markDesktopAppReady,

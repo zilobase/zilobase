@@ -1,15 +1,4 @@
-import { createRoute, redirect } from "@tanstack/react-router";
-
-import {
-  ApiKeysSettingsPage,
-  PreferencesSettingsPage,
-  ProfileSettingsPage,
-  SecuritySettingsPage,
-  ZilobaseAiSettingsPage,
-} from "@/features/settings";
-import { TeamSettingsPage, TeamspacesSettingsPage } from "@/features/teamspaces";
-import { WorkspaceSettingsPage } from "@/features/workspaces";
-import { EditionRouteHost } from "../edition-route-host";
+import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { appRoute } from "../route-roots";
 import {
   validateTeamSettingsSearch,
@@ -27,48 +16,51 @@ export const settingsRoutes = [
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings/preferences",
-    component: PreferencesSettingsPage,
+    component: lazyRouteComponent(() => import("@/features/settings/pages/preferences")),
   }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings/profile",
-    component: ProfileSettingsPage,
+    component: lazyRouteComponent(() => import("@/features/settings/pages/profile")),
   }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings/security",
-    component: SecuritySettingsPage,
+    component: lazyRouteComponent(() => import("@/features/settings/pages/security")),
   }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings/workspace",
-    component: WorkspaceSettingsPage,
+    component: lazyRouteComponent(() => import("@/features/workspaces/pages/workspace-settings")),
   }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings/api-keys",
-    component: ApiKeysSettingsPage,
+    component: lazyRouteComponent(() => import("@/features/settings/pages/api-keys")),
   }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings/zilobase-ai",
-    component: ZilobaseAiSettingsPage,
+    component: lazyRouteComponent(() => import("@/features/settings/pages/zilobase-ai")),
   }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings/team",
     validateSearch: validateTeamSettingsSearch,
-    component: TeamSettingsPage,
+    component: lazyRouteComponent(() => import("@/features/teamspaces/pages/team")),
   }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings/teamspaces",
     validateSearch: validateTeamspaceSettingsSearch,
-    component: TeamspacesSettingsPage,
+    component: lazyRouteComponent(() => import("@/features/teamspaces/pages/teamspaces")),
   }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/enterprise/$",
-    component: EditionRouteHost,
+    component: lazyRouteComponent(
+      () => import("../edition-route-host"),
+      "EditionRouteHost",
+    ),
   }),
 ];

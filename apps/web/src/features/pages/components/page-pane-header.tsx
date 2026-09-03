@@ -66,6 +66,13 @@ import {
   readPublishedEmbeddedItemsOpenAs,
   writePublishedEmbeddedItemsOpenAs,
 } from "../publication/published-page-preferences";
+import {
+  getDatabaseId,
+  getMeetingId,
+  getPageId,
+} from "../navigation/route-item-id";
+
+export { getDatabaseId } from "../navigation/route-item-id";
 
 export function useRoutePageId(pathname: string) {
   const routePageId = getPageId(pathname)
@@ -717,22 +724,4 @@ function getSettingsPageTitle(pathname: string) {
   };
 
   return titles[page] ?? null;
-}
-
-export function getPageId(pathname: string) {
-  const match = pathname.match(/^\/p\/([^/]+)/);
-
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
-export function getDatabaseId(pathname: string) {
-  const match = pathname.match(/^\/d\/([^/]+)/);
-
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
-}
-
-export function getMeetingId(pathname: string) {
-  const match = pathname.match(/^\/m\/([^/]+)/);
-
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
 }

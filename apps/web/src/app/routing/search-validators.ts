@@ -1,6 +1,6 @@
 import { libraryViewIds } from "@zilobase/features/user-settings";
 
-import { normalizeTeamSettingsTab } from "@/features/teamspaces";
+import { normalizeTeamSettingsTab } from "@/features/teamspaces/model/team-settings-tabs";
 
 export function validateLoginSearch(search: Record<string, unknown>) {
   return typeof search.returnTo === "string" ? { returnTo: search.returnTo } : {};

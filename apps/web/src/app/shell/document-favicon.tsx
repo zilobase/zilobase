@@ -6,19 +6,19 @@ import {
   getDatabaseId,
   getMeetingId,
   getPageId,
-} from "@/features/pages/components/index"
+} from "@/features/pages/navigation/route-item-id"
 import {
   createFaviconHref,
   DEFAULT_DOCUMENT_TITLE,
   getFaviconColor,
   getRouteDocumentTitle,
   getRouteFaviconIcon,
-} from "@/features/pages/index"
+} from "@/features/pages/icons/favicon"
 import {
   DEFAULT_DATABASE_ITEM_ICON,
   DEFAULT_MEETING_ITEM_ICON,
   DEFAULT_PAGE_ITEM_ICON,
-} from "@/features/pages/index"
+} from "@/features/pages/icons/item-icons"
 import { getDatabaseEmoji, useDatabase } from "@zilobase/features/databases"
 import { useMeeting } from "@zilobase/features/meetings"
 import { getPageEmoji, usePage } from "@zilobase/features/pages"
