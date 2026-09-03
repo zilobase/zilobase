@@ -5,7 +5,6 @@ import type { UserSettings } from "@zilobase/features/user-settings"
 import { installDemoTransport } from "./transport"
 
 export const DEMO_SIGNUP_URL = "https://app.zilobase.com/signup"
-export const DEMO_START_PATH = "/p/demo-page-start-here"
 export const DEMO_GUARD_EVENT = "zilobase:demo-guard"
 
 const databaseSnapshots = new Map<string, DatabasePayload>()
@@ -15,7 +14,6 @@ let settingsSnapshot: UserSettings | null = null
 let mutationSequence = 1
 
 type DemoCache = {
-  clear: () => void
   getQueriesData: <T>(filters: {
     queryKey: readonly unknown[]
   }) => Array<[readonly unknown[], T | undefined]>
@@ -23,7 +21,6 @@ type DemoCache = {
 }
 
 let demoCache: DemoCache = {
-  clear: () => undefined,
   getQueriesData: () => [],
   getQueryData: () => undefined,
 }
@@ -32,7 +29,7 @@ export function installDemoCache(cache: DemoCache) {
   demoCache = cache
 }
 
-export class DemoGuardError extends Error {
+class DemoGuardError extends Error {
   readonly body = {
     code: "DEMO_READ_ONLY",
     error: "Changes are disabled in the hosted demo.",
@@ -79,7 +76,7 @@ export function requestDemoGuard() {
   return new DemoGuardError()
 }
 
-export function interceptDemoMutation<T>(
+function interceptDemoMutation<T>(
   path: string,
   method: string,
   body: BodyInit | null | undefined,
@@ -186,7 +183,7 @@ export function interceptDemoMutation<T>(
   throw requestDemoGuard()
 }
 
-export function applyDemoReadOverlay<T>(path: string, value: T): T {
+function applyDemoReadOverlay<T>(path: string, value: T): T {
   if (!isHostedDemoRuntime() || !value || typeof value !== "object") {
     return value
   }
@@ -226,16 +223,6 @@ export function applyDemoReadOverlay<T>(path: string, value: T): T {
   }
 
   return applyPagePatches(value)
-}
-
-export function resetHostedDemo() {
-  databaseSnapshots.clear()
-  pageSnapshots.clear()
-  pagePatches.clear()
-  settingsSnapshot = null
-  mutationSequence = 1
-  demoCache.clear()
-  if (typeof window !== "undefined") window.location.assign(DEMO_START_PATH)
 }
 
 function readAllowedDatabaseMutation(

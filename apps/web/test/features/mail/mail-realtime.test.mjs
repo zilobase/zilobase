@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("mail realtime deduplicates a revision across tabs", async () => {
     const { coordinateMailRevision } = await loadModule(
-      "/src/features/mail/model/mail-realtime.ts",
+      "/src/features/mail/model/mail-realtime-coordination.ts",
     )
     const values = new Map()
     const storage = {
@@ -27,7 +27,7 @@ export function register({ assert, loadModule, test }) {
 
   test("mail realtime recovery uses the same cross-tab sync lock", async () => {
     const { coordinateMailRecovery } = await loadModule(
-      "/src/features/mail/model/mail-realtime.ts",
+      "/src/features/mail/model/mail-realtime-coordination.ts",
     )
     const locks = new TestLocks()
     let synchronizations = 0
@@ -46,7 +46,7 @@ export function register({ assert, loadModule, test }) {
 
   test("mail realtime does not acknowledge a revision after a failed sync", async () => {
     const { coordinateMailRevision } = await loadModule(
-      "/src/features/mail/model/mail-realtime.ts",
+      "/src/features/mail/model/mail-realtime-coordination.ts",
     )
     const values = new Map()
     const storage = {
@@ -67,7 +67,7 @@ export function register({ assert, loadModule, test }) {
 
   test("mail realtime reconnect uses bounded exponential backoff", async () => {
     const { mailReconnectDelay } = await loadModule(
-      "/src/features/mail/model/mail-realtime.ts",
+      "/src/features/mail/model/mail-realtime-coordination.ts",
     )
     assert.deepEqual(
       [0, 1, 2, 5, 20].map(mailReconnectDelay),

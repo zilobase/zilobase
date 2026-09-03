@@ -1,14 +1,4 @@
 export function register({ assert, loadModule, test }) {
-  test("mail HTML contrast correction preserves readable sender colors", async () => {
-    const { needsMailTextContrastCorrection } = await loadModule(
-      "/src/features/mail/model/mail-document-theme.ts",
-    )
-
-    assert.equal(needsMailTextContrastCorrection("rgb(20, 20, 20)", "rgb(24, 24, 27)", "rgb(244, 244, 245)"), true)
-    assert.equal(needsMailTextContrastCorrection("#18181b", "#fff", "#f4f4f5"), false)
-    assert.equal(needsMailTextContrastCorrection("rgb(244 244 245)", "rgb(24 24 27)", "rgb(244 244 245)"), false)
-  })
-
   test("mail HTML removes scripts, active links, and external image requests", async () => {
     const { parseHTML } = await import("linkedom")
     const previous = {

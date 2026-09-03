@@ -54,21 +54,6 @@ export function applyMailDocumentTheme(
   }
 }
 
-export function needsMailTextContrastCorrection(
-  textColor: string,
-  backgroundColor: string,
-  fallbackTextColor: string,
-) {
-  const text = parseCssColor(textColor)
-  const background = parseCssColor(backgroundColor)
-  const fallback = parseCssColor(fallbackTextColor)
-  if (!text || !background || !fallback) return false
-
-  const textContrast = contrastRatio(composite(text, background), background)
-  const fallbackContrast = contrastRatio(composite(fallback, background), background)
-  return textContrast < MIN_TEXT_CONTRAST && fallbackContrast > textContrast
-}
-
 function effectiveBackground(view: Window, element: HTMLElement, base: RgbaColor) {
   const ancestors: HTMLElement[] = []
   let current: HTMLElement | null = element

@@ -166,7 +166,7 @@ export function register({ assert, loadModule, test }) {
   })
 
   test("incompatible mail cache identity is rebuilt without retaining message data", async () => {
-    const { closeMailDatabase, destroyMailDatabase, openMailDatabase } = await loadModule(
+    const { destroyMailDatabase, openMailDatabase } = await loadModule(
       "/src/features/mail/cache/mail-database.ts",
     )
     const identity = {
@@ -179,7 +179,7 @@ export function register({ assert, loadModule, test }) {
     const first = await openMailDatabase(identity)
     await first.syncState.update("primary", { schemaVersion: -1 })
     await first.messages.put(mutationFixture().messages[0])
-    closeMailDatabase(first.name)
+    first.close()
     const rebuilt = await openMailDatabase(identity)
     assert.equal((await rebuilt.syncState.get("primary")).schemaVersion, 3)
     assert.equal(await rebuilt.messages.count(), 0)

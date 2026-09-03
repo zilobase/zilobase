@@ -4,7 +4,7 @@ import {
   getSubItemRelationRole,
 } from "../../model/database-view-config";
 
-export const defaultKanbanVisiblePropertyCount = 3;
+const defaultKanbanVisiblePropertyCount = 3;
 
 export function getDefaultKanbanHiddenPropertyIds(
   properties: DatabasePropertyListItem[],

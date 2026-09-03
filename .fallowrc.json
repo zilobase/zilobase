@@ -12,6 +12,9 @@
     "scripts/**/*.mjs",
     "apps/desktop/e2e/**/*.mjs"
   ],
+  // This fixture factory is intentionally outside the published package graph
+  // and is imported by eight colocated database cache tests.
+  "ignoreFindings": ["packages/features/src/databases/test-helpers.ts"],
   "workspaces": {
     "patterns": [
       "apps/*",

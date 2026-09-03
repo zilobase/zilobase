@@ -48,7 +48,7 @@ export function forwardSeed(message: MailMessageRecord): MailComposeSeed {
   }
 }
 
-export function replySubject(subject: string) {
+function replySubject(subject: string) {
   return /^re:/i.test(subject) ? subject : `Re: ${subject}`
 }
 

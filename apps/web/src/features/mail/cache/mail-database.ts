@@ -335,7 +335,7 @@ async function mergeMessages(
   )
 }
 
-export function modifyLabelIds(labelIds: string[], modification: MailModifyRequest) {
+function modifyLabelIds(labelIds: string[], modification: MailModifyRequest) {
   const next = new Set(labelIds)
   for (const id of modification.removeLabelIds ?? []) next.delete(id)
   for (const id of modification.addLabelIds ?? []) next.add(id)
@@ -362,7 +362,7 @@ function recalculateThreadLabels(thread: MailThreadSummary, messages: MailMessag
   }
 }
 
-export function closeMailDatabase(name: string) {
+function closeMailDatabase(name: string) {
   const database = openDatabases.get(name)
   database?.close()
   openDatabases.delete(name)
@@ -373,14 +373,6 @@ export async function destroyMailDatabase(name: string) {
   await deleteMailDatabaseWithTimeout(name)
 }
 
-export async function destroyMailDatabasesForPrefix(prefix: string) {
-  await prepareMailDatabasesForDeletion(prefix)
-  const names = await Dexie.getDatabaseNames()
-  await Promise.all(
-    names.filter((name) => name.startsWith(prefix)).map(destroyMailDatabase),
-  )
-}
-
 export async function prepareMailDatabasesForDeletion(prefix: string) {
   closeMailDatabasesForPrefix(prefix)
   const channel = initializeLifecycleChannel()
@@ -388,7 +380,7 @@ export async function prepareMailDatabasesForDeletion(prefix: string) {
   if (channel) await new Promise((resolve) => globalThis.setTimeout(resolve, 75))
 }
 
-export function mailDatabasePrefix(input: {
+function mailDatabasePrefix(input: {
   apiOrigin: string
   userId?: string
   workspaceId?: string
@@ -401,7 +393,7 @@ export function mailDatabasePrefix(input: {
   return `zilobase:v2:${origin}:${user}:workspace:${workspace}:mail:`
 }
 
-export class MailCacheError extends Error {
+class MailCacheError extends Error {
   constructor(message: string, readonly code: "delete_blocked" | "schema_incompatible") {
     super(message)
     this.name = "MailCacheError"

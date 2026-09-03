@@ -68,6 +68,6 @@ export function isMutableMailGroup(propertyId: string) {
   return !["date", "received_date", "from", "email_domain"].includes(propertyId)
 }
 
-export function isGroupableCustomProperty(property: MailPropertyDefinition) {
+function isGroupableCustomProperty(property: MailPropertyDefinition) {
   return !["files", "url"].includes(property.type)
 }

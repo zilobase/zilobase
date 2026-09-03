@@ -2,14 +2,12 @@ export function register({ assert, loadModule, test }) {
   test("hosted demo keeps supported page and database edits local", async () => {
     const originalWindow = globalThis.window
     const demoWindow = new EventTarget()
-    let resetPath = null
     demoWindow.location = {
-      assign: (path) => { resetPath = path },
       hostname: "demo.zilobase.com",
     }
     globalThis.window = demoWindow
 
-    const runtime = await loadModule("/src/features/demo/runtime.ts")
+    const runtime = await loadModule("/apps/web/test/support/demo-transport.ts")
     assert.equal(runtime.isHostedDemoRuntime({ hostname: "demo.localhost" }), true)
     assert.equal(
       runtime.isAllowedDemoParent(
@@ -25,7 +23,6 @@ export function register({ assert, loadModule, test }) {
       ),
       false,
     )
-    let cleared = false
     const database = {
       activeDataSource: null,
       dataSources: [],
@@ -37,7 +34,6 @@ export function register({ assert, loadModule, test }) {
     }
 
     runtime.installDemoCache({
-      clear: () => { cleared = true },
       getQueriesData: () => [[ ["database", "demo-db"], database ]],
       getQueryData: (key) => key[0] === "page" ? page : undefined,
     })
@@ -80,10 +76,6 @@ export function register({ assert, loadModule, test }) {
       assert.equal(titleResult.handled, true)
       const pageOverlay = runtime.applyDemoReadOverlay("/pages/demo-page", page)
       assert.equal(pageOverlay.page.name, "Edited locally")
-
-      runtime.resetHostedDemo()
-      assert.equal(cleared, true)
-      assert.equal(resetPath, runtime.DEMO_START_PATH)
     } finally {
       if (originalWindow === undefined) delete globalThis.window
       else globalThis.window = originalWindow
@@ -95,7 +87,7 @@ export function register({ assert, loadModule, test }) {
     const demoWindow = new EventTarget()
     demoWindow.location = { hostname: "demo.zilobase.com" }
     globalThis.window = demoWindow
-    const runtime = await loadModule("/src/features/demo/runtime.ts")
+    const runtime = await loadModule("/apps/web/test/support/demo-transport.ts")
 
     try {
       assert.throws(
@@ -104,7 +96,8 @@ export function register({ assert, loadModule, test }) {
           "POST",
           JSON.stringify({ prompt: "Run the model" }),
         ),
-        (error) => error instanceof runtime.DemoGuardError &&
+        (error) => error instanceof Error &&
+          error.name === "DemoGuardError" &&
           error.status === 403 &&
           error.body.code === "DEMO_READ_ONLY",
       )

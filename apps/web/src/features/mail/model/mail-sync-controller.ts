@@ -461,11 +461,11 @@ export function useMailController(input: {
   }
 }
 
-export function isDefiniteMailMutationFailure(error: unknown) {
+function isDefiniteMailMutationFailure(error: unknown) {
   return error instanceof ApiError && error.status >= 400 && error.status < 500
 }
 
-export function threadMatchesView(thread: MailThreadSummary, view: MailView) {
+function threadMatchesView(thread: MailThreadSummary, view: MailView) {
   switch (view) {
     case "all_mail": return !["SPAM", "TRASH"].some((label) => thread.labelIds.includes(label))
     case "archive": return !["INBOX", "SENT", "DRAFT", "SPAM", "TRASH"].some((label) => thread.labelIds.includes(label))
