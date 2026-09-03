@@ -1,6 +1,6 @@
 import type { DatabaseProperty } from "@zilobase/features/databases"
 
-import type { DatabasePropertyValue } from "../../../core/utils"
+import type { DatabasePropertyValue } from "../../../core/database-property-values"
 import { getFormulaExpression } from "../model/formula-config"
 import {
   evaluateDatabaseFormula,

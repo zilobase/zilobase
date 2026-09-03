@@ -12,7 +12,7 @@ import {
 } from "@/shared/lib/color-tokens"
 import { getNextDatabaseOptionColor } from "../../core/database-property-types"
 import type { DatabaseSelectOption } from "../../views/model/database-view-config"
-import { toStringArray } from "../../core/utils"
+import { toStringArray } from "../../core/database-property-values"
 
 type DatabasePropertySelectOption = DatabaseSelectOption & {
   suffix?: string

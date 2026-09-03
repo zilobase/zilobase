@@ -65,7 +65,7 @@ import {
   type DesktopServerProfile,
 } from "@/features/desktop/server/index"
 import { executeDesktopServerSwitch } from "@/features/desktop/server/index"
-import { queryClient } from "@/shared/lib/query-client"
+import { queryClient } from "@/app/query-client"
 import { useAppStore } from "@/features/desktop/state/app-store"
 import { useOfflineManifest } from "@/features/offline/index"
 import { useSession } from "@zilobase/features/auth"

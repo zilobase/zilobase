@@ -62,7 +62,7 @@ import {
   type DatabasePropertyValue,
   parsePropertyValue,
   serializePropertyValue,
-} from "../core/utils"
+} from "../core/database-property-values"
 import { CollaborationPresence } from "@/features/editor/collaboration/collaboration-presence"
 import type { CollaborationPresenceUser } from "@/features/editor/collaboration/collaboration-presence"
 

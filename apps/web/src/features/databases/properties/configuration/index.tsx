@@ -12,7 +12,10 @@ import {
   isDateLikePropertyType,
   isSelectLikePropertyType,
 } from "../../core/database-property-types";
-import { getNumberPropertyConfig, NumberPropertySettings } from "./number";
+import {
+  getNumberPropertyConfig,
+  NumberPropertySettings,
+} from "./number/number-property-settings";
 import {
   getDateFormatConfig,
   getTimeFormatConfig,
@@ -23,18 +26,27 @@ import {
   type DatabasePropertyConfig,
 } from "../../views/model/database-view-config";
 import { useDatabaseViewContext } from "../../views/model/database-view-context";
-import { DatePropertySettings } from "./date";
-import { FilesPropertySettings, getFilesPropertyConfig } from "./files";
-import { getPersonPropertyConfig, PersonPropertySettings } from "./person";
-import { RelationPropertySettings } from "./relation";
-import { DatabaseRollupPropertySettings } from "./rollup";
+import { DatePropertySettings } from "./date/date-property-settings";
+import {
+  FilesPropertySettings,
+  getFilesPropertyConfig,
+} from "./files/files-property-settings";
+import {
+  getPersonPropertyConfig,
+  PersonPropertySettings,
+} from "./person/person-property-settings";
+import { RelationPropertySettings } from "./relation/relation-property-settings";
+import { DatabaseRollupPropertySettings } from "./rollup/rollup-property-settings";
 import {
   getSelectOptions,
   getSelectOptionSort,
   SelectPropertySettings,
-} from "./select";
-import { getStatusOptions, StatusPropertySettings } from "./status";
-import { UrlPropertySettings } from "./url";
+} from "./select/select-property-settings";
+import {
+  getStatusOptions,
+  StatusPropertySettings,
+} from "./status/status-property-settings";
+import { UrlPropertySettings } from "./url/url-property-settings";
 
 type PropertySettingsProps = {
   config?: unknown;
@@ -195,4 +207,4 @@ function getPropertySettingsContentClassName(type: string) {
     : undefined;
 }
 
-export { DatabaseRollupPropertySettings } from "./rollup";
+export { DatabaseRollupPropertySettings } from "./rollup/rollup-property-settings";

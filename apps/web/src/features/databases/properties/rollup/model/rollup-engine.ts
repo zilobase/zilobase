@@ -7,7 +7,7 @@ import {
   getPropertyValue,
   toStringArray,
   type DatabasePropertyValue,
-} from "../../../core/utils"
+} from "../../../core/database-property-values"
 import {
   getReadOnlyTimePropertyRawValue,
   isReadOnlyTimeProperty,

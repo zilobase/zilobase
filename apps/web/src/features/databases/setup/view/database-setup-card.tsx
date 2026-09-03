@@ -63,7 +63,7 @@ import {
   getDatabaseViewTypePresentation,
   type DatabaseViewType,
 } from "../../views/view-settings/model/view-type-options";
-import { serializePropertyValue } from "../../core/utils";
+import { serializePropertyValue } from "../../core/database-property-values";
 
 type SetupView = "main" | "link";
 

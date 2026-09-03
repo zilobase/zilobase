@@ -2,7 +2,7 @@ import { Bell, CircleUserRound, Hash, UserRound } from "@/shared/components/icon
 import type { ReactNode } from "react";
 
 import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
-import { PropertySettingSubmenu } from "../shared";
+import { PropertySettingSubmenu } from "../shared/property-setting-submenu";
 
 type PersonDefaultValue = "no_default" | "created_by";
 type PersonLimitValue = "one_person" | "no_limit";

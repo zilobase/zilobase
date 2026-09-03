@@ -8,7 +8,7 @@ import { PageEditorRegistryProvider } from "@/features/editor/runtime/page-edito
 import { PageCommentsRegistryProvider } from "@/features/comments/index"
 import { DesktopUpdater } from "@/features/desktop/components/index"
 import { WebFeaturesProvider } from "@/app/providers/features-provider"
-import { queryClient } from "@/shared/lib/query-client"
+import { queryClient } from "@/app/query-client"
 import { ShortcutProvider } from "@/shared/shortcuts"
 import { OfflineQueryProvider } from "@/features/offline/index"
 import { getThemeColorScheme, selectableThemeIds } from "@/shared/lib/themes"

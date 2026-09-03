@@ -1,18 +1,9 @@
 export function register({ assert, loadModule, test }) {
   test("database block helpers preserve normal and setup attributes", async () => {
     const utils = await loadModule(
-      "/src/features/databases/core/utils.ts"
+      "/src/features/databases/core/database-block-content.ts"
     )
 
-    assert.deepEqual(utils.createDatabaseBlockAttrs("database-1"), {
-      databaseId: "database-1",
-      setupMode: false,
-    })
-    assert.deepEqual(utils.createDatabaseSetupBlockAttrs("database-1"), {
-      databaseId: "database-1",
-      setupMode: true,
-      showTitle: true,
-    })
     assert.deepEqual(utils.createDatabaseSetupBlockContent("database-1"), [
       {
         type: "databaseBlock",

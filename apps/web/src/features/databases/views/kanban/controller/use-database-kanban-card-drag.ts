@@ -12,7 +12,7 @@ import {
 } from "@zilobase/features/databases"
 import { useUpdatePage } from "@zilobase/features/pages"
 
-import { serializePropertyValue } from "../../../core/utils"
+import { serializePropertyValue } from "../../../core/database-property-values"
 import { getDatabaseGroupMoveValue } from "../../../interactions/database-group-values"
 import {
   getDatabasePageDragPayload,

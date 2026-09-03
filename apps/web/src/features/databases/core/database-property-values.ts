@@ -18,41 +18,6 @@ export function firstScalarValue(
   return value ?? fallback
 }
 
-export function createDatabaseBlockContent(databaseId: string) {
-  return createDatabaseContent(createDatabaseBlockAttrs(databaseId))
-}
-
-export function createDatabaseSetupBlockContent(databaseId: string) {
-  return createDatabaseContent(createDatabaseSetupBlockAttrs(databaseId))
-}
-
-function createDatabaseContent(
-  attrs: ReturnType<typeof createDatabaseBlockAttrs>,
-) {
-  return [
-    {
-      type: "databaseBlock",
-      attrs,
-    },
-    { type: "paragraph" },
-  ]
-}
-
-export function createDatabaseBlockAttrs(databaseId: string) {
-  return {
-    databaseId,
-    setupMode: false,
-  }
-}
-
-export function createDatabaseSetupBlockAttrs(databaseId: string) {
-  return {
-    ...createDatabaseBlockAttrs(databaseId),
-    setupMode: true,
-    showTitle: true,
-  }
-}
-
 export function getPropertyValue(
   values: PagePropertyValue[],
   pageId: string,

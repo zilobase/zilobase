@@ -31,7 +31,7 @@ import {
   type DatabaseSetupSelection,
 } from "../../setup/view/database-setup-card"
 import { getDatabaseSetupTemplate } from "../../setup/model/database-setup-templates"
-import { serializePropertyValue } from "../../core/utils"
+import { serializePropertyValue } from "../../core/database-property-values"
 import {
   usePage,
   usePagePersonAccessTargets,

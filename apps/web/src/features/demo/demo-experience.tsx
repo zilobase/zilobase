@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 
 import { Button } from "@/shared/ui/button"
-import { queryClient } from "@/shared/lib/query-client"
+import { queryClient } from "@/app/query-client"
 import {
   Dialog,
   DialogContent,

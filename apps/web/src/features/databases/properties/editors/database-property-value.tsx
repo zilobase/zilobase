@@ -32,7 +32,7 @@ import {
 import { DatabasePropertySelect } from "./database-property-select"
 import { getDatabasePropertyCellKind } from "../../core/database-property-types"
 import { DatabaseFormulaValue } from "../formula/view/database-formula-value"
-import { toStringArray, type DatabasePropertyValue } from "../../core/utils"
+import { toStringArray, type DatabasePropertyValue } from "../../core/database-property-values"
 import { formatDatabaseDateValue } from "../model/database-date-config"
 import { DatabasePageLink } from "../../interactions/database-page-link"
 import {

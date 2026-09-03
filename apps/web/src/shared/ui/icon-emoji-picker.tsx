@@ -18,7 +18,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
 import type { PhosphorPickerWeight } from "@/shared/ui/phosphor-icon-picker"
 import { cn } from "@/shared/lib/utils"
-import type { PageIconPosition } from "@zilobase/features/pages"
+
+type IconPosition = "inline" | "top"
 
 const PhosphorIconPicker = React.lazy(() =>
   import("@/shared/ui/phosphor-icon-picker").then((module) => ({
@@ -29,10 +30,10 @@ const PhosphorIconPicker = React.lazy(() =>
 type IconEmojiPickerProps = {
   allowUpload?: boolean
   className?: string
-  iconPosition?: PageIconPosition
+  iconPosition?: IconPosition
   onEmojiSelect: (emoji: string) => void
   onIconSelect: (svg: string) => void
-  onIconPositionChange?: (position: PageIconPosition) => void
+  onIconPositionChange?: (position: IconPosition) => void
 }
 
 export function IconEmojiPicker({

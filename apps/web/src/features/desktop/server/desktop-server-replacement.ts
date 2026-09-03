@@ -9,7 +9,7 @@ import {
   desktopNetworkFetch,
 } from "../network/desktop-network";
 import { clearDesktopServerIndexedData } from "@/features/offline/index";
-import { queryClient } from "@/shared/lib/query-client";
+import { queryClient } from "@/app/query-client";
 import {
   commitDesktopServerCandidate,
   getSelectedDesktopServer,

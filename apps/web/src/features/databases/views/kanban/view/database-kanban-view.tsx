@@ -45,7 +45,7 @@ import { DatabaseCellContent } from "../../view/database-cell-content"
 import {
   firstScalarValue,
   type DatabasePropertyValue as DatabaseCellValue,
-} from "../../../core/utils"
+} from "../../../core/database-property-values"
 import {
   getMergedPropertyConfig,
   getPropertyWrapContent,

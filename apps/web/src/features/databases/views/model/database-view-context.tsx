@@ -19,7 +19,7 @@ import {
 } from "@zilobase/features/databases"
 import { useSession } from "@zilobase/features/auth"
 
-import type { DatabasePropertyValue } from "../../core/utils"
+import type { DatabasePropertyValue } from "../../core/database-property-values"
 import type {
   DatabasePropertyListItem,
   DatabaseSelectOption,

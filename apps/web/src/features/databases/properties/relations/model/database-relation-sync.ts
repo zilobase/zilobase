@@ -1,7 +1,7 @@
 import {
   parsePropertyValue,
   toStringArray,
-} from "../../../core/utils"
+} from "../../../core/database-property-values"
 
 type RelationRow = {
   id: string

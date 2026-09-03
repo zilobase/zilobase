@@ -2,7 +2,7 @@ import { defaultStatusOption } from "../../../core/database-property-types"
 import {
   toStringArray,
   type DatabasePropertyValue as DatabaseCellValue,
-} from "../../../core/utils"
+} from "../../../core/database-property-values"
 import { formatDatabaseDateValue } from "../../../properties/model/database-date-config"
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
 import type { DatabasePropertyConfig } from "../../model/database-view-config"

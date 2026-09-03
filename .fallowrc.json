@@ -305,6 +305,8 @@
         "from": "web-editor",
         "allow": [
           "package-features",
+          "package-page-context",
+          "package-comment-extension",
           "web-ai",
           "web-comments",
           "web-databases",
@@ -359,11 +361,17 @@
       },
       {
         "from": "web-notion-import",
-        "allow": ["web-notion-import", "web-shared"]
+        "allow": ["package-features", "web-notion-import", "web-shared"]
       },
       {
         "from": "web-tasks",
-        "allow": ["web-databases", "web-editor", "web-shared", "web-tasks"]
+        "allow": [
+          "package-features",
+          "web-databases",
+          "web-editor",
+          "web-shared",
+          "web-tasks"
+        ]
       },
       {
         "from": "web-desktop",
@@ -402,11 +410,12 @@
       },
       {
         "from": "server-shared",
-        "allow": ["server-bindings", "server-shared"]
+        "allow": ["package-features", "server-bindings", "server-shared"]
       },
       {
         "from": "server-runtime-contract",
         "allow": [
+          "package-features",
           "server-bindings",
           "server-features",
           "server-infrastructure",
@@ -439,6 +448,7 @@
       {
         "from": "server-public",
         "allow": [
+          "package-features",
           "server-app",
           "server-bindings",
           "server-features",
@@ -519,7 +529,7 @@
     "apps/web/src/shared/lib/drag-drop.ts",
     "apps/web/src/features/editor/extensions/block-selection.ts",
     "apps/web/src/features/databases/core/database-property-types.ts",
-    "apps/web/src/features/databases/core/utils.ts",
+    "apps/web/src/features/databases/core/database-property-values.ts",
     "apps/web/src/features/databases/interactions/database-card-drag-target.ts",
     "apps/web/src/features/databases/interactions/database-cell-fill.ts",
     "apps/web/src/features/databases/interactions/database-page-drop.ts",

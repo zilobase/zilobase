@@ -21,7 +21,7 @@ import {
   describeDesktopError,
   recordDesktopDiagnostic,
 } from "@/features/desktop/diagnostics/index"
-import { queryClient } from "@/shared/lib/query-client"
+import { queryClient } from "@/app/query-client"
 import { useAppStore } from "@/features/desktop/state/app-store"
 import { isFeatureEnabled } from "@/shared/config/feature-flags"
 import {

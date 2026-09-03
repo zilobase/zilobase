@@ -6,7 +6,7 @@ import { toast } from "sonner"
 import { clearApiAuthToken, getApiErrorMessage } from "@/features/desktop/network/api"
 import { useAppStore } from "@/features/desktop/state/app-store"
 import { clearAllOfflineData } from "@/features/offline"
-import { queryClient } from "@/shared/lib/query-client"
+import { queryClient } from "@/app/query-client"
 import {
   AlertDialog,
   AlertDialogCancel,

@@ -24,7 +24,7 @@ import {
   type DatabasePropertyConfig,
   type NumberDecimalPlacesValue,
 } from "../../../views/model/database-view-config";
-import { PropertySettingSubmenu } from "../shared";
+import { PropertySettingSubmenu } from "../shared/property-setting-submenu";
 
 type NumberPropertyConfig = {
   numberDecimalPlaces: NumberDecimalPlacesValue;

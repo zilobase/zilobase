@@ -4,9 +4,11 @@ export { DatabaseBlock } from "./core/database-extension"
 export type { DatabaseBlockEditorRuntime } from "./core/database-contracts"
 export {
   createDatabaseSetupBlockContent,
+} from "./core/database-block-content"
+export {
   serializePropertyValue,
-} from "./core/utils"
-export type { DatabasePropertyValue } from "./core/utils"
+} from "./core/database-property-values"
+export type { DatabasePropertyValue } from "./core/database-property-values"
 export { defaultStatusOptions } from "./core/database-property-types"
 export {
   getDatabasePageDragPayload,

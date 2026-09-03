@@ -18,7 +18,7 @@ import {
 } from "../views/timeline/model/database-timeline-config"
 import { getDatabaseChartSettings } from "../views/chart/model/database-chart-config"
 import { getDatabasePropertyType } from "../core/database-property-types"
-import { getPropertyValue, type DatabasePropertyValue } from "../core/utils"
+import { getPropertyValue, type DatabasePropertyValue } from "../core/database-property-values"
 import {
   getDatabaseFilterOperatorLabel,
   getDatabaseConditionalColors,

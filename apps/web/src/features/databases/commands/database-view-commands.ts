@@ -25,7 +25,7 @@ import {
 import {
   serializePropertyValue,
   type DatabasePropertyValue,
-} from "../core/utils";
+} from "../core/database-property-values";
 import {
   areSerializedPropertyValuesEqual,
   hasViewHiddenPropertyIds,

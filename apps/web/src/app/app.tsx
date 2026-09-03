@@ -1,9 +1,9 @@
 import { RouterProvider } from "@tanstack/react-router"
 
-import { DesktopDeepLinkHandler } from "@/features/desktop/components/index"
-import { DesktopServerReplacementController } from "@/features/desktop/components/index"
-import { DesktopServerSwitchOverlay } from "@/features/desktop/components/index"
 import {
+  DesktopDeepLinkHandler,
+  DesktopServerReplacementController,
+  DesktopServerSwitchOverlay,
   DesktopWindowTitlebar,
   isLinuxDesktopApp,
 } from "@/features/desktop/components/index"

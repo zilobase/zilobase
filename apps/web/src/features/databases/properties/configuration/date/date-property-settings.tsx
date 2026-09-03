@@ -7,7 +7,7 @@ import {
   type TimeFormatValue,
 } from "../../model/database-date-config";
 import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
-import { PropertySettingSubmenu } from "../shared";
+import { PropertySettingSubmenu } from "../shared/property-setting-submenu";
 
 export function DatePropertySettings({
   dateFormat,

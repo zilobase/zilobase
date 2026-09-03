@@ -102,7 +102,7 @@ import {
 import {
   serializePropertyValue,
   type DatabasePropertyValue as DatabasePropertyValueType,
-} from "../../../core/utils"
+} from "../../../core/database-property-values"
 import {
   getDatabasePropertyIcon,
   getDatabasePropertyOrder,

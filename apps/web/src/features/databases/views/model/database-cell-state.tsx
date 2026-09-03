@@ -7,7 +7,7 @@ import {
 import { useStore } from "zustand"
 import { createStore, type StoreApi } from "zustand/vanilla"
 
-import type { DatabasePropertyValue } from "../../core/utils"
+import type { DatabasePropertyValue } from "../../core/database-property-values"
 
 type DatabaseCellState = {
   activeKey: string | null

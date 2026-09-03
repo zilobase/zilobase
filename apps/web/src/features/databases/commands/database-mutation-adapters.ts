@@ -14,7 +14,7 @@ import type { useUpdatePage } from "@zilobase/features/pages"
 import {
   toStringArray,
   type DatabasePropertyValue,
-} from "../core/utils"
+} from "../core/database-property-values"
 import {
   findAddedDatabaseRow,
   type NewRowSetup,

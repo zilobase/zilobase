@@ -1,4 +1,4 @@
-import type { DatabasePropertyValue } from "../../../core/utils"
+import type { DatabasePropertyValue } from "../../../core/database-property-values"
 
 export const DATABASE_SELECTION_PRIMARY_PROPERTY_LIMIT = 5
 

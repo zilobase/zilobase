@@ -33,9 +33,9 @@ import {
   type DatabaseRollupConfig,
 } from "../../rollup/model/rollup-config";
 import { getRollupRelationProperty } from "../../rollup/model/rollup-engine";
-import { NumberPropertySettings } from "../number";
-import { getRelationConfig } from "../relation";
-import { PropertySettingSubmenu } from "../shared";
+import { NumberPropertySettings } from "../number/number-property-settings";
+import { getRelationConfig } from "../relation/relation-property-settings";
+import { PropertySettingSubmenu } from "../shared/property-setting-submenu";
 
 type RollupCalculation = NonNullable<DatabaseRollupConfig["calculation"]>;
 type RollupCalculationOption = {
