@@ -1,0 +1,108 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach: Node API",
+      "type": "pwa-node",
+      "request": "attach",
+      "address": "127.0.0.1",
+      "port": 9229,
+      "restart": true,
+      "localRoot": "${workspaceFolder:zilobase}",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Attach: Worker API",
+      "type": "pwa-node",
+      "request": "attach",
+      "address": "127.0.0.1",
+      "port": 9231,
+      "restart": true,
+      "localRoot": "${workspaceFolder:zilobase-cloud-adapter}",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Attach: Worker background",
+      "type": "pwa-node",
+      "request": "attach",
+      "address": "127.0.0.1",
+      "port": 9232,
+      "restart": true,
+      "localRoot": "${workspaceFolder:zilobase-cloud-adapter}",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Attach: Kubernetes Community",
+      "type": "pwa-node",
+      "request": "attach",
+      "address": "127.0.0.1",
+      "port": 9233,
+      "localRoot": "${workspaceFolder:zilobase}",
+      "remoteRoot": "/app",
+      "sourceMapPathOverrides": {
+        "../../*": "${workspaceFolder:zilobase}/*",
+        "/workspace/zilobase/*": "${workspaceFolder:zilobase}/*"
+      },
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Browser: Node",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://node.zilobase.localhost:1420",
+      "webRoot": "${workspaceFolder:zilobase}/apps/web"
+    },
+    {
+      "name": "Browser: Worker",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://worker.zilobase.localhost:1422",
+      "webRoot": "${workspaceFolder:zilobase}/apps/web"
+    },
+    {
+      "name": "Browser: Kubernetes Community",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://community.zilobase.localhost:3200",
+      "webRoot": "${workspaceFolder:zilobase}/apps/web"
+    },
+    {
+      "name": "Tauri: Node backend",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev:desktop:node",
+      "cwd": "${workspaceFolder:zilobase}"
+    },
+    {
+      "name": "Tauri: Worker backend",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev:desktop:worker",
+      "cwd": "${workspaceFolder:zilobase}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug: Node + Worker parity",
+      "configurations": [
+        "Attach: Node API",
+        "Attach: Worker API",
+        "Attach: Worker background",
+        "Browser: Node",
+        "Browser: Worker"
+      ]
+    },
+    {
+      "name": "Debug: Kubernetes Community",
+      "configurations": ["Attach: Kubernetes Community", "Browser: Kubernetes Community"]
+    },
+    {
+      "name": "Debug: Node desktop",
+      "configurations": ["Attach: Node API", "Tauri: Node backend"]
+    },
+    {
+      "name": "Debug: Worker desktop",
+      "configurations": ["Attach: Worker API", "Attach: Worker background", "Tauri: Worker backend"]
+    }
+  ]
+}

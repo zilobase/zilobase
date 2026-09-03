@@ -6,18 +6,23 @@ Thanks for your interest in improving Zilobase. This guide explains how to set u
 
 Prerequisites:
 
-- Node.js 22 or newer
-- npm
-- Docker, if you want to test the self-hosted stack
+- Node.js 24
+- npm 11
+- Docker
 
 Install the workspace dependencies from the repository root:
 
 ```sh
 npm install
+npm run dev:doctor
+npm run dev:setup
+npm run dev:local
 ```
 
-Development commands load server and Vite variables from the ignored root
-`.env.development` file.
+Development commands load server and Vite variables from the root
+`.env.development` file through dotenvx. Encrypted env files are committed;
+`.env.keys` is gitignored. Keep that private-key file in a password manager,
+never in git. Re-encrypt after edits with `npm run env:encrypt`.
 
 Useful commands:
 
@@ -28,6 +33,11 @@ npm run test:web
 npm run dev:server
 npm run build:server
 ```
+
+The root supervisor can run the sibling Cloudflare adapter at the same time as
+the Node runtime, with isolated databases, storage, origins, and debuggers. See
+[Unified local development](./docs/development-workflows.md) for the complete
+command, Kubernetes, editor, environment, and reset contract.
 
 For local self-hosting:
 
@@ -158,7 +168,6 @@ Run the repository verification commands from the workspace root:
 npm run verify:core         # TypeScript packages, web, server, and changed code
 npm run verify:desktop      # Rust formatting, clippy, and tests
 npm run verify:architecture # Complete production Fallow report
-npm run verify:consumers    # Adjacent cloud-adapter and enterprise checkouts
 npm run verify              # All of the above
 ```
 

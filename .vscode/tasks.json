@@ -1,0 +1,124 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev: doctor",
+      "type": "npm",
+      "script": "dev:doctor",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: setup",
+      "type": "npm",
+      "script": "dev:setup",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: Node + Worker",
+      "type": "npm",
+      "script": "dev:local",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: Node only",
+      "type": "npm",
+      "script": "dev:local:node",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: Worker only",
+      "type": "npm",
+      "script": "dev:local:worker",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: status",
+      "type": "npm",
+      "script": "dev:status",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: stop",
+      "type": "npm",
+      "script": "dev:down",
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: logs",
+      "type": "npm",
+      "script": "dev:logs",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev: reset selected data (destructive)",
+      "type": "shell",
+      "command": "npm run dev:reset -- --target ${input:resetTarget} --yes",
+      "problemMatcher": []
+    },
+    {
+      "label": "Kubernetes: Community",
+      "type": "npm",
+      "script": "dev:k8s:community",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Kubernetes: rebuild selected",
+      "type": "shell",
+      "command": "npm run dev:k8s:rebuild -- --target ${input:kubernetesTarget}",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Kubernetes: logs",
+      "type": "shell",
+      "command": "npm run dev:k8s:logs -- --target ${input:kubernetesTarget}",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Kubernetes: stop and delete cluster",
+      "type": "npm",
+      "script": "dev:k8s:down",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: runtime parity",
+      "type": "npm",
+      "script": "test:runtime-parity",
+      "problemMatcher": []
+    },
+    {
+      "label": "Desktop: Node",
+      "type": "npm",
+      "script": "dev:desktop:node",
+      "problemMatcher": []
+    },
+    {
+      "label": "Desktop: Worker",
+      "type": "npm",
+      "script": "dev:desktop:worker",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "kubernetesTarget",
+      "type": "pickString",
+      "description": "Kubernetes profile",
+      "options": ["community"],
+      "default": "community"
+    },
+    {
+      "id": "resetTarget",
+      "type": "pickString",
+      "description": "Permanently delete only this local development state",
+      "options": ["node", "worker", "community", "all"],
+      "default": "node"
+    }
+  ]
+}

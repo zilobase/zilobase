@@ -1,0 +1,13 @@
+{
+  "folders": [
+    { "name": "zilobase", "path": ".." },
+    { "name": "zilobase-cloud-adapter", "path": "../../zilobase-cloud-adapter" }
+  ],
+  "settings": {
+    "git.autoRepositoryDetection": "subFolders",
+    "debug.javascript.autoAttachFilter": "disabled",
+    "debug.javascript.terminalOptions": {
+      "skipFiles": ["<node_internals>/**"]
+    }
+  }
+}

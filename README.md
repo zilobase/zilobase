@@ -106,9 +106,9 @@ Permissions and tool availability are resolved on the server. See the
 
 Prerequisites:
 
-- Node.js 22 or newer
-- npm
-- Docker, for self-hosting checks
+- Node.js 24
+- npm 11
+- Docker
 
 Install dependencies:
 
@@ -116,15 +116,22 @@ Install dependencies:
 npm install
 ```
 
-Local server and web commands load the ignored root `.env.development` file.
-It contains the PostgreSQL, authentication, image-storage, and Vite settings
-for development; production and Docker self-hosting continue to use their own
-environment files.
+Local server and web commands load the root `.env.development` file through
+dotenvx. Encrypted env files are safe to commit; `.env.keys` is gitignored and
+must stay private. Production and Docker self-hosting continue to use their own
+environment files and do not read `.env.keys`. Re-encrypt after editing with
+`npm run env:encrypt`. Never commit `.env.keys` or plaintext `.env` files.
 
 Common commands:
 
 | Command | Purpose |
 | --- | --- |
+| `npm run dev:doctor` | Validate source and optional Kubernetes tooling. |
+| `npm run dev:setup` | Create missing private development files without overwriting. |
+| `npm run dev:local` | Run Node and Worker profiles with two web clients. |
+| `npm run dev:local:node` | Run only the Node source profile. |
+| `npm run dev:local:worker` | Run only the Cloudflare source profile. |
+| `npm run dev:status` | Inspect dependency and runtime health. |
 | `npm run dev:web` | Start the web client. |
 | `npm run build:web` | Type-check and build the web client. |
 | `npm run test:web` | Run web tests. |
@@ -137,6 +144,11 @@ Common commands:
 | `npm run selfhost:reset` | Explicitly delete local self-hosted data volumes. |
 | `npm run test:selfhost` | Run the isolated end-to-end Compose smoke test. |
 | `npm run mail:config:check` | Validate Gmail OAuth, encryption, and Pub/Sub configuration. |
+| `npm run env:encrypt` | Encrypt local runtime env files at rest. |
+
+See the [unified local-development guide](./docs/development-workflows.md) for
+runtime URLs, debugger profiles, Kubernetes workflows, dotenvx precedence,
+failure recovery, and safe target-scoped resets.
 
 `npm run dev:desktop` talks to the local API at `http://localhost:3000`. Packaged
 releases default to Zilobase Cloud at `https://api.zilobase.com`. On the server

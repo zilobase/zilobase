@@ -24,4 +24,4 @@ We aim to acknowledge reports within 72 hours. After triage, maintainers will co
 
 ## Secrets
 
-Never commit real secrets, tokens, API keys, database URLs, OAuth credentials, private keys, or production `.env` files. Use the committed `.env.example` files as templates.
+Never commit plaintext secrets, tokens, API keys, database URLs, OAuth credentials, private keys, production `.env` files, or `.env.keys`. Encrypted dotenvx env files are safe to commit. The private decryption key in `.env.keys` is not: keep it in a password manager. Use the committed `.env.example` files as templates.
