@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
+import { getAuthenticatedUser as requireUser } from "../../shared/http/auth";
 import { AiProviderConfigError } from "../ai/providers/ai-provider";
 import { enqueueAiJob } from "../ai/jobs/ai-jobs";
 
@@ -18,6 +19,7 @@ import { getMeetingCollaborationWebSocketUrl } from "../../infrastructure/runtim
 import { getMeetingAudioWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 import {
   claimMeetingRecorder,
   createMeeting,
@@ -74,8 +76,6 @@ meetingRoutes.use("*", async (c, next) => {
   await next();
 });
 
-const requireUser = (c: Context<AppBindings>) => c.get("user") ?? null;
-
 function serviceError(c: Context<AppBindings>, error: unknown) {
   if (error instanceof AiProviderConfigError) {
     return c.json({ error: error.message }, error.status === 503 ? 503 : 400);
@@ -124,7 +124,7 @@ meetingRoutes.post("/", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
 
-  const parsed = createMeetingSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = createMeetingSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) {
     return c.json({ error: "Invalid meeting payload", issues: parsed.error.issues }, 400);
   }
@@ -237,7 +237,7 @@ meetingRoutes.post("/:id/recorder/claim", async (c) => {
 meetingRoutes.post("/:id/consent", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const parsed = consentSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = consentSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) return c.json({ error: "Invalid consent event" }, 400);
   try {
     return c.json({
@@ -255,7 +255,7 @@ meetingRoutes.post("/:id/consent", async (c) => {
 meetingRoutes.post("/:id/recorder/release", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const parsed = recorderLeaseSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = recorderLeaseSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) return c.json({ error: "Invalid recorder lease" }, 400);
 
   try {
@@ -304,7 +304,7 @@ meetingRoutes.patch("/:id", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
 
-  const parsed = updateMeetingSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = updateMeetingSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) {
     return c.json({ error: "Invalid meeting patch", issues: parsed.error.issues }, 400);
   }
@@ -327,7 +327,7 @@ for (const action of meetingLifecycleActions) {
     const user = requireUser(c);
     if (!user) return c.json({ error: "Unauthorized" }, 401);
 
-    const parsed = lifecycleSchema.safeParse(await c.req.json().catch(() => ({})));
+    const parsed = lifecycleSchema.safeParse(await readJsonBody(c.req, {}));
     if (!parsed.success) {
       return c.json({ error: "Invalid lifecycle payload", issues: parsed.error.issues }, 400);
     }

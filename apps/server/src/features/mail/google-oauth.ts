@@ -12,6 +12,7 @@ import {
   getStringEnv,
   type RuntimeEnv,
 } from "../../shared/config/config"
+import { requestSignal } from "../../shared/http/request"
 import {
   decryptMailSecret,
   encryptMailSecret,
@@ -299,7 +300,7 @@ export async function revokeGmailConnection(
       body: new URLSearchParams({ token }),
       headers: { "content-type": "application/x-www-form-urlencoded" },
       method: "POST",
-      signal: AbortSignal.timeout(5_000),
+      signal: requestSignal(5_000),
     })
   } catch {
     // Local deletion must not depend on Google's availability.
@@ -327,7 +328,7 @@ async function exchangeGoogleCode(
     }),
     headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
     method: "POST",
-    signal: AbortSignal.timeout(10_000),
+    signal: requestSignal(10_000),
   })
   const body = (await response.json().catch(() => ({}))) as GoogleTokenResponse
   if (!response.ok) throw new GmailOauthError("Google rejected the Gmail connection.", 400)
@@ -337,7 +338,7 @@ async function exchangeGoogleCode(
 async function fetchGmailProfile(accessToken: string, fetcher: typeof fetch) {
   const response = await fetcher(GMAIL_PROFILE_URL, {
     headers: { accept: "application/json", authorization: `Bearer ${accessToken}` },
-    signal: AbortSignal.timeout(10_000),
+    signal: requestSignal(10_000),
   })
   const body = (await response.json().catch(() => ({}))) as { emailAddress?: string }
   if (!response.ok || !body.emailAddress) {

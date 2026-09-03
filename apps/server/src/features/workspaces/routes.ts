@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import { z } from "zod";
+import { getAuthenticatedUser as requireUser } from "../../shared/http/auth";
 import { getMembership, getWorkspaceRealtimeAccessExpiration, isPrivilegedOrgRole } from "../access";
 import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import { db } from "../../infrastructure/database";
@@ -18,6 +19,7 @@ import {
   user,
 } from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 import {
   activeMembershipCondition,
   expireTemporaryMemberships,
@@ -41,7 +43,7 @@ workspaceRoutes.post("/:workspaceId/navigation-realtime-ticket", async (c) => {
   if (!requestUser || c.get("authMethod") !== "session") return c.json({ error: "Unauthorized" }, 401);
   const workspaceId = c.req.param("workspaceId");
   if (!(await getMembership(workspaceId, requestUser.id))) return c.json({ error: "Forbidden" }, 403);
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   const refreshToken = body && typeof body === "object" && "token" in body && typeof body.token === "string" ? body.token : undefined;
   let sessionId: string | undefined;
   if (refreshToken) {
@@ -60,7 +62,6 @@ workspaceRoutes.post("/:workspaceId/navigation-realtime-ticket", async (c) => {
   return c.json({ ...ticket, workspaceId, websocketProtocols: [NAVIGATION_REALTIME_PROTOCOL, `${NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket.token}`], websocketUrl: websocketUrl.toString() });
 });
 
-const requireUser = (c: Context<AppBindings>) => c.get("user") ?? null;
 const memberInvitationSchema = z
   .object({
     accessExpiresAt: z.string().datetime({ offset: true }).nullable().optional(),
@@ -175,7 +176,7 @@ workspaceRoutes.post("/:workspaceId/member-invitations", async (c) => {
   }
 
   const parsed = memberInvitationSchema.safeParse(
-    await c.req.json().catch(() => null),
+    await readJsonBody(c.req),
   );
 
   if (!parsed.success) {
@@ -298,7 +299,7 @@ workspaceRoutes.patch("/:workspaceId/members/:memberId", async (c) => {
   }
 
   const parsed = memberUpdateSchema.safeParse(
-    await c.req.json().catch(() => null),
+    await readJsonBody(c.req),
   );
 
   if (!parsed.success) {
@@ -529,7 +530,7 @@ workspaceRoutes.patch("/:workspaceId", async (c) => {
     return c.json({ error: "Only workspace admins can update settings." }, 403);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   const parsed = updateWorkspaceSchema.safeParse(body);
 
   if (!parsed.success) {
@@ -598,7 +599,7 @@ workspaceRoutes.delete("/:workspaceId", async (c) => {
   const parsed = z
     .object({ confirmationName: z.string() })
     .strict()
-    .safeParse(await c.req.json().catch(() => null));
+    .safeParse(await readJsonBody(c.req));
 
   if (!parsed.success) {
     return c.json({ error: "Enter the workspace name to confirm deletion." }, 400);

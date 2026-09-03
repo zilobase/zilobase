@@ -1,10 +1,11 @@
 import type { Context } from "hono";
 
 import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
+import { getAuthenticatedUser } from "../../shared/http/auth";
 import type { AppBindings } from "../../shared/types";
 
 export function requireDatabaseRouteUser(c: Context<AppBindings>) {
-  return c.get("user") ?? null;
+  return getAuthenticatedUser(c);
 }
 
 export function serviceMutationErrorResponse(

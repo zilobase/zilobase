@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
+import { getAuthenticatedUser as requireUser } from "../../shared/http/auth";
 import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
 import {
   canAccessDatabaseInWorkspace,
@@ -43,6 +44,7 @@ import {
   workspaceGuest,
 } from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 import { activeMembershipCondition } from "../memberships";
 import {
   buildNavigationPlacements,
@@ -81,16 +83,6 @@ const getPageIncludingDeleted = async (id: string) => {
   const [record] = await db.select().from(page).where(eq(page.id, id)).limit(1);
 
   return record ?? null;
-};
-
-const requireUser = (c: Context<AppBindings>) => {
-  const user = c.get("user");
-
-  if (!user) {
-    return null;
-  }
-
-  return user;
 };
 
 const enforceActiveWorkspace = (
@@ -658,7 +650,7 @@ pageRoutes.post("/item-visits", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -742,7 +734,7 @@ pageRoutes.post("/", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -958,7 +950,7 @@ pageRoutes.post("/:id/move-teamspace", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   const destinationId =
     body && typeof body === "object"
       ? (body as { teamspaceId?: unknown }).teamspaceId
@@ -1045,7 +1037,7 @@ pageRoutes.post("/:id/convert-to-teamspace", async (c) => {
   ) {
     return c.json({ error: "Forbidden" }, 403);
   }
-  const body = await c.req.json().catch(() => ({}));
+  const body = await readJsonBody(c.req, {});
   const accessMode =
     body && typeof body === "object" &&
     ["open", "closed", "private"].includes(
@@ -1116,7 +1108,7 @@ pageRoutes.post("/:id/embed-item", async (c) => {
   }
 
   const hostId = c.req.param("id");
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -1309,7 +1301,7 @@ pageRoutes.delete("/:id/embed-item", async (c) => {
   }
 
   const hostId = c.req.param("id");
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -1796,7 +1788,7 @@ pageRoutes.put("/:id/access", async (c) => {
     return putAccessOrgMismatch;
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -2105,7 +2097,7 @@ pageRoutes.put("/:id/properties/:propertyId/value", async (c) => {
     return propertyValueOrgMismatch;
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -2358,7 +2350,7 @@ pageRoutes.patch("/:id/content", async (c) => {
     return patchOrgMismatch;
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -2447,7 +2439,7 @@ pageRoutes.patch("/:id", async (c) => {
     return patchOrgMismatch;
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);

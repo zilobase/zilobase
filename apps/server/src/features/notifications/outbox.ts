@@ -29,7 +29,12 @@ export async function drainInProductNotificationOutbox(
       });
       publishedIds.push(row.id);
       published += 1;
-    } catch {
+    } catch (error) {
+      console.warn(JSON.stringify({
+        error: error instanceof Error ? error.name : "UnknownError",
+        event: "notification.publish_failed",
+        notification_id: row.notificationId,
+      }));
       await db.update(inProductNotificationOutbox).set({
         attempts: row.attempts + 1,
         nextAttemptAt: new Date(now.getTime() + Math.min(60_000, 1_000 * 2 ** row.attempts)),

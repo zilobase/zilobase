@@ -8,6 +8,7 @@ import type {
 import { AsyncLocalStorage } from "node:async_hooks";
 
 import { getRequiredStringEnv, getStringEnv, type RuntimeEnv } from "../../shared/config/config";
+import { requestSignal } from "../../shared/http/request";
 import type { ImageStorage } from "../storage/image-storage";
 
 export type OutboundEmailMessage = {
@@ -332,7 +333,7 @@ export async function fetchAutomationWebhook(input: {
     headers: input.headers,
     method: "POST",
     redirect: "manual",
-    signal: AbortSignal.timeout(input.timeoutMs),
+    signal: requestSignal(input.timeoutMs),
     ...({ cf: { resolveOverride: input.pinnedAddress } } as Record<string, unknown>),
   });
 }

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { Context } from "hono";
+import { getAuthenticatedUser as requireUser } from "../../shared/http/auth";
 
 import {
   getMembership,
@@ -11,8 +11,6 @@ import { searchWorkspaceItems } from "./service";
 export const searchRoutes = new Hono<AppBindings>();
 
 const maxSearchResults = 50;
-
-const requireUser = (c: Context<AppBindings>) => c.get("user") ?? null;
 
 searchRoutes.get("/", async (c) => {
   const user = requireUser(c);

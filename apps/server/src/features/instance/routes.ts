@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getMembership } from "../access";
 import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 import {
   BootstrapAlreadyCompletedError,
   BootstrapStateConflictError,
@@ -49,7 +50,7 @@ instanceRoutes.post("/api/instance/bootstrap", async (c) => {
     return c.json({ error: "Not found" }, 404);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   const parsed = bootstrapSchema.safeParse(body);
 
   if (!parsed.success) {
@@ -101,7 +102,7 @@ instanceRoutes.patch("/api/instance/settings", async (c) => {
     return access;
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   const parsed = instanceSettingsUpdateSchema.safeParse(body);
 
   if (!parsed.success) {

@@ -3,6 +3,7 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { db, runWithDbEnv } from "../../../infrastructure/database";
 import { slackConnection, slackOauthAttempt } from "../../../infrastructure/database/schema";
 import { getCanonicalApiOrigin, getRequiredStringEnv, getStringEnv, isAutomationSlackEnabled, type RuntimeEnv } from "../../../shared/config/config";
+import { requestSignal } from "../../../shared/http/request";
 import { decryptAutomationSecret, encryptAutomationSecret } from "./secret-crypto";
 
 const AUTHORIZATION_URL = "https://slack.com/oauth/v2/authorize";
@@ -104,7 +105,7 @@ export async function completeSlackOauth(
       }),
       headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
       method: "POST",
-      signal: AbortSignal.timeout(10_000),
+      signal: requestSignal(10_000),
     });
     const body = await response.json().catch(() => ({})) as {
       access_token?: string; bot_user_id?: string; error?: string; ok?: boolean; scope?: string;
@@ -222,7 +223,7 @@ async function slackApi<T>(url: string, token: string, payload?: unknown, fetche
     response = await fetcher(url, {
       ...(payload === undefined ? {} : { body: JSON.stringify(payload), method: "POST" }),
       headers: { accept: "application/json", authorization: `Bearer ${token}`, ...(payload === undefined ? {} : { "content-type": "application/json" }) },
-      signal: AbortSignal.timeout(10_000),
+      signal: requestSignal(10_000),
     });
   } catch {
     throw new SlackProviderError("Slack request failed", "SLACK_NETWORK_ERROR", 502, true);

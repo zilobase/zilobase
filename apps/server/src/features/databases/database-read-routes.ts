@@ -20,6 +20,7 @@ import {
   getDatabaseSchemaPayload,
 } from "./core/payload";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 
 export const databaseReadRoutes = new Hono<AppBindings>();
 
@@ -91,11 +92,11 @@ databaseReadRoutes.post("/:id/realtime-ticket", async (c) => {
   const accessLevel = await getEffectiveDatabaseAccessForRecord(record, user.id);
   if (accessLevel === "none") return c.json({ error: "Forbidden" }, 403);
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   const hasRefreshToken = Boolean(body && typeof body === "object" && "token" in body);
   const refreshToken =
     hasRefreshToken && typeof (body as { token?: unknown }).token === "string"
-      ? body.token
+      ? (body as { token: string }).token
       : undefined;
   let sessionId: string | undefined;
 

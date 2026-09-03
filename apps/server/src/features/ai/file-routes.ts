@@ -10,6 +10,7 @@ import { db } from "../../infrastructure/database";
 import { aiChatArtifact, aiChatUpload } from "../../infrastructure/database/schema";
 import { createImageStorage, resolveImageStorageMode } from "../../infrastructure/storage/image-storage";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 import { requireActiveWorkspace } from "../workspaces";
 import { getAiChatThreadForUser } from "./chat/chat-persistence";
 import {
@@ -34,7 +35,7 @@ aiFileRoutes.post("/files/uploads", async (c) => {
   const auth = await requireActiveWorkspace(c);
   if ("response" in auth) return auth.response;
 
-  const parsed = uploadInputSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = uploadInputSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) return c.json({ error: "Invalid file upload request" }, 400);
 
   const thread = await getAiChatThreadForUser({

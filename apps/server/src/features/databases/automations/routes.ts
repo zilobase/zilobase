@@ -8,6 +8,7 @@ import {
 } from "@zilobase/features/databases/automations";
 
 import type { AppBindings } from "../../../shared/types";
+import { readJsonBody } from "../../../shared/http/request";
 import { getMembership } from "../../access";
 import { getAutomationWebhookHttpDomains, isAutomationSlackEnabled, isAutomationWebhooksEnabled, isDatabaseAutomationsFeatureEnabled, isMailFeatureEnabled } from "../../../shared/config/config";
 import { isSelfHostedRuntime } from "../../../infrastructure/runtime/runtime-adapter";
@@ -62,7 +63,7 @@ databaseAutomationRoutes.get("/:databaseId/automations", async (c) => {
 databaseAutomationRoutes.post("/:databaseId/automations/validate", async (c) => {
   const user = requireDatabaseRouteUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const parsed = validateDatabaseAutomationRequestSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = validateDatabaseAutomationRequestSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) return invalidBody(c, parsed.error.issues);
 
   return handle(c, () => validateDatabaseAutomation({
@@ -80,7 +81,7 @@ databaseAutomationRoutes.post("/:databaseId/automations/validate", async (c) => 
 databaseAutomationRoutes.post("/:databaseId/automation-secrets", async (c) => {
   const user = requireDatabaseRouteUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const parsed = createDatabaseAutomationSecretRequestSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = createDatabaseAutomationSecretRequestSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) return invalidBody(c, parsed.error.issues);
   return handle(c, () => createDatabaseAutomationSecret({
     body: parsed.data,
@@ -94,7 +95,7 @@ databaseAutomationRoutes.post("/:databaseId/automation-secrets", async (c) => {
 databaseAutomationRoutes.post("/:databaseId/automations", async (c) => {
   const user = requireDatabaseRouteUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const parsed = createDatabaseAutomationRequestSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = createDatabaseAutomationRequestSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) return invalidBody(c, parsed.error.issues);
   const idempotencyKey = requireIdempotencyKey(c.req.header("Idempotency-Key"), parsed.data.idempotencyKey);
   if (!idempotencyKey.ok) return c.json(idempotencyKey.error, 400);
@@ -164,7 +165,7 @@ databaseAutomationRoutes.patch("/:databaseId/automations/:automationId", async (
   if (expectedVersion === null) {
     return c.json({ code: "AUTOMATION_IF_MATCH_REQUIRED", error: "If-Match must contain the current revision version" }, 428);
   }
-  const parsed = updateDatabaseAutomationRequestSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = updateDatabaseAutomationRequestSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) return invalidBody(c, parsed.error.issues);
   return handle(c, () => updateDatabaseAutomation({
     allowHttpWebhookDomains: webhookHttpDomains(c),

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 import { mutationResponse } from "./core/commit";
 import { getDatabasePayload } from "./core/payload";
 import { updateDataSourceService } from "./data-sources/data-source-service";
@@ -64,7 +65,7 @@ databaseRoutes.post("/", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -190,7 +191,7 @@ databaseRoutes.get("/:id/access", async (c) => {
 databaseRoutes.put("/:id/access", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   try {
     return c.json(
@@ -356,7 +357,7 @@ databaseRoutes.patch("/:id", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -391,7 +392,7 @@ databaseRoutes.patch("/:id", async (c) => {
 databaseRoutes.patch("/data-sources/:dataSourceId", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
@@ -424,7 +425,7 @@ databaseRoutes.patch("/:id/views/:viewId", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -468,7 +469,7 @@ databaseRoutes.post("/:id/views", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => ({}));
+  const body = await readJsonBody(c.req, {});
   const {
     config = null,
     dataSourceId,
@@ -512,7 +513,7 @@ databaseRoutes.post("/:id/views", async (c) => {
 databaseRoutes.post("/:id/data-sources/new", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
@@ -549,7 +550,7 @@ databaseRoutes.post("/:id/data-sources/new", async (c) => {
 databaseRoutes.post("/:id/data-sources", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
@@ -586,7 +587,7 @@ databaseRoutes.post("/:id/data-sources", async (c) => {
 databaseRoutes.put("/:id/views/:viewId/source", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   const dataSourceId =
     body && typeof body === "object"
       ? (body as { dataSourceId?: unknown }).dataSourceId
@@ -664,7 +665,7 @@ databaseRoutes.post("/:id/apply-template", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -750,7 +751,7 @@ databaseRoutes.post("/:id/properties", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => ({}));
+  const body = await readJsonBody(c.req, {});
 
   const {
     name = "Property",
@@ -803,7 +804,7 @@ databaseRoutes.patch("/:id/properties/reorder", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -849,7 +850,7 @@ databaseRoutes.patch("/:id/properties/:databasePropertyId", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -921,7 +922,7 @@ databaseRoutes.post(
       return c.json({ error: "Unauthorized" }, 401);
     }
 
-    const body = await c.req.json().catch(() => ({}));
+    const body = await readJsonBody(c.req, {});
 
     const { includeValues = false } = body as { includeValues?: unknown };
 
@@ -981,7 +982,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => ({}));
+  const body = await readJsonBody(c.req, {});
   const {
     pageId = null,
     parentRowId = null,
@@ -1060,7 +1061,7 @@ databaseRoutes.post("/:id/rows", async (c) => {
 databaseRoutes.patch("/:id/rows/reorder", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
@@ -1089,7 +1090,7 @@ databaseRoutes.patch("/:id/rows/reorder", async (c) => {
 databaseRoutes.patch("/:id/rows/:rowId/move", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }
@@ -1131,7 +1132,7 @@ databaseRoutes.patch("/:id/rows/:rowId/move", async (c) => {
 databaseRoutes.put("/:id/rows/:rowId/properties/:propertyId", async (c) => {
   const user = requireUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
   }

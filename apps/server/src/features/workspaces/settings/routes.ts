@@ -8,6 +8,7 @@ import { encryptAiProviderCredential } from "../../ai/providers/ai-provider-cred
 import { AiProviderConfigError, validateAiProviderBaseUrl } from "../../ai/providers/ai-provider";
 import { getStringEnv } from "../../../shared/config/config";
 import type { AppBindings } from "../../../shared/types";
+import { readJsonBody } from "../../../shared/http/request";
 import {
   getAiProviderConfig,
   getCatalogItem,
@@ -96,7 +97,7 @@ workspaceSettingsRoutes.put("/ai/providers/:providerId", async (c) => {
     return c.json({ message: "Unknown AI provider." }, 404);
   }
 
-  const body = (await c.req.json().catch(() => ({}))) as {
+  const body = (await readJsonBody(c.req, {})) as {
     apiKey?: string;
     baseUrl?: string;
     enabled?: boolean;

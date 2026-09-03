@@ -304,6 +304,29 @@ test("API key routes require sessions and validate create input", async () => {
   assert.equal((await responseJson<{ error: string }>(invalid)).error, "Invalid API key input");
 });
 
+test("malformed JSON keeps each route's established error contract", async () => {
+  const apiKeyResponse = await appFor(apiKeyRoutes).request("/", {
+    body: "{",
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  assert.equal(apiKeyResponse.status, 400);
+  assert.equal(
+    (await responseJson<{ error: string }>(apiKeyResponse)).error,
+    "Invalid API key input",
+  );
+
+  const settingsResponse = await appFor(pageSettingsRoutes).request("/", {
+    body: "{",
+    headers: { "content-type": "application/json" },
+    method: "PATCH",
+  });
+  assert.equal(settingsResponse.status, 400);
+  assert.deepEqual(await settingsResponse.json(), {
+    error: "A JSON body is required",
+  });
+});
+
 test("API key list filters records to the requested workspace", async () => {
   const now = new Date("2026-08-03T00:00:00.000Z");
   mocks.selectResults.push([

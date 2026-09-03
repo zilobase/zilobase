@@ -25,6 +25,7 @@ import {
   updateWorkspaceGuestInvitePolicy,
 } from "./service";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 import { getPageTeamspaceSecurityPolicy } from "../teamspaces";
 
 export const pageGuestRoutes = new Hono<AppBindings>();
@@ -40,7 +41,7 @@ pageGuestRoutes.post("/pages/:pageId/guest-invitations", async (c) => {
   const requestUser = c.get("user");
 
   if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
-  const parsed = invitationSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = invitationSchema.safeParse(await readJsonBody(c.req));
 
   if (!parsed.success) {
     return c.json(
@@ -227,7 +228,7 @@ pageGuestRoutes.patch("/workspaces/:workspaceId/guest-policy", async (c) => {
   const parsed = z
     .object({ mode: z.enum(["direct", "request", "owners_only"]) })
     .strict()
-    .safeParse(await c.req.json().catch(() => null));
+    .safeParse(await readJsonBody(c.req));
   if (!parsed.success) return c.json({ error: "Invalid guest policy." }, 400);
   try {
     return c.json({

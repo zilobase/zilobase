@@ -1,4 +1,5 @@
 import { fetchAutomationWebhook } from "../../../infrastructure/runtime/runtime-adapter";
+import { requestSignal } from "../../../shared/http/request";
 
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 const TOTAL_TIMEOUT_MS = 10_000;
@@ -118,7 +119,7 @@ async function resolveWithDoh(hostname: string) {
   for (const type of ["A", "AAAA"] as const) {
     const response = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=${type}`, {
       headers: { accept: "application/dns-json" },
-      signal: AbortSignal.timeout(5_000),
+      signal: requestSignal(5_000),
     });
     if (!response.ok) throw new WebhookEgressError("Webhook DNS lookup failed", "AUTOMATION_WEBHOOK_DNS_FAILED", true);
     const payload = await response.json() as { Answer?: Array<{ data?: string; type?: number }> };

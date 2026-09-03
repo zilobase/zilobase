@@ -9,6 +9,7 @@ import {
 } from "../instance/registration";
 import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 import { expireTemporaryMemberships } from "../memberships";
 
 export const authRoutes = new Hono<AppBindings>();
@@ -131,7 +132,7 @@ function renameOrganizationFields(value: unknown): unknown {
 }
 
 authRoutes.post("/api/auth/set-password", async (c) => {
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   return runWithDbEnv(c.env, async () => {
     const auth = createAuth(c.env, c.req.raw, undefined, {
       editionExtension: c.get("editionExtension") ?? undefined,
@@ -139,7 +140,7 @@ authRoutes.post("/api/auth/set-password", async (c) => {
 
     return auth.api.setPassword({
       asResponse: true,
-      body,
+      body: body as { newPassword: string },
       headers: await getAuthHeaders(auth, c.req.raw.headers),
     });
   });

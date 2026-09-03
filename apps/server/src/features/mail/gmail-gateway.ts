@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import { db } from "../../infrastructure/database"
 import { gmailAccount } from "../../infrastructure/database/schema"
 import { getRequiredStringEnv, type RuntimeEnv } from "../../shared/config/config"
+import { requestSignal } from "../../shared/http/request"
 import { invalidateDatabaseAutomationDependencies } from "../databases/automations/service"
 import { decryptMailSecret } from "./security/mail-credentials"
 
@@ -115,7 +116,7 @@ export async function createGmailGateway(
         }),
         headers: { accept: "application/json", "content-type": "application/x-www-form-urlencoded" },
         method: "POST",
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: requestSignal(REQUEST_TIMEOUT_MS),
       })
       const token = (await tokenResponse.json().catch(() => ({}))) as {
         access_token?: string
@@ -441,7 +442,7 @@ export class GmailGateway {
           ...(body === undefined ? {} : { "content-type": "application/json" }),
         },
         method,
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: requestSignal(REQUEST_TIMEOUT_MS),
       })
     } catch (error) {
       throw normalizeGmailTransportError(error)
@@ -458,7 +459,7 @@ export class GmailGateway {
       try {
         response = await this.fetcher(new URL(path, GMAIL_API_ORIGIN).toString(), {
           headers: { accept: "application/json", authorization: `Bearer ${this.accessToken}` },
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          signal: requestSignal(REQUEST_TIMEOUT_MS),
         })
       } catch (error) {
         lastError = normalizeGmailTransportError(error)
@@ -503,7 +504,7 @@ export class GmailGateway {
             "content-type": `multipart/mixed; boundary=${boundary}`,
           },
           method: "POST",
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          signal: requestSignal(REQUEST_TIMEOUT_MS),
         })
       } catch (error) {
         lastError = normalizeGmailTransportError(error)

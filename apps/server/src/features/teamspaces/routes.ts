@@ -2,6 +2,7 @@ import { Hono, type Context } from "hono";
 import { z } from "zod";
 
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 import {
   TeamspaceManagementError,
   TeamspaceManagementService,
@@ -59,7 +60,7 @@ teamspaceRoutes.patch("/:workspaceId/teamspace-settings", async (c) => {
       creationPolicy: z.enum(["workspace_owners", "workspace_members"]),
     })
     .strict()
-    .safeParse(await c.req.json().catch(() => null));
+    .safeParse(await readJsonBody(c.req));
   if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
   return handle(c, (service, userId, workspaceId) =>
     service.updateWorkspaceSettings({ ...parsed.data, userId, workspaceId }),
@@ -70,7 +71,7 @@ teamspaceRoutes.patch("/:workspaceId/teamspace-defaults", async (c) => {
   const parsed = z
     .object({ defaultTeamspaceIds: z.array(z.string().min(1)).min(1) })
     .strict()
-    .safeParse(await c.req.json().catch(() => null));
+    .safeParse(await readJsonBody(c.req));
   if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
   return handle(c, (service, userId, workspaceId) =>
     service.updateDefaults({ ...parsed.data, userId, workspaceId }),
@@ -88,7 +89,7 @@ teamspaceRoutes.get("/:workspaceId/teamspaces", async (c) =>
 );
 
 teamspaceRoutes.post("/:workspaceId/teamspaces", async (c) => {
-  const parsed = createSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = createSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
   return handle(
     c,
@@ -109,7 +110,7 @@ teamspaceRoutes.get("/:workspaceId/teamspaces/:teamspaceId", async (c) =>
 );
 
 teamspaceRoutes.patch("/:workspaceId/teamspaces/:teamspaceId", async (c) => {
-  const parsed = updateSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = updateSchema.safeParse(await readJsonBody(c.req));
   if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
   return handle(c, (service, userId, workspaceId) =>
     service.update({
@@ -157,7 +158,7 @@ teamspaceRoutes.patch(
     const parsed = z
       .object({ enabled: z.boolean() })
       .strict()
-      .safeParse(await c.req.json().catch(() => null));
+      .safeParse(await readJsonBody(c.req));
     if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
     return handle(c, (service, userId, workspaceId) =>
       service.updateInviteLink({
@@ -197,7 +198,7 @@ teamspaceRoutes.get(
 teamspaceRoutes.post(
   "/:workspaceId/teamspaces/:teamspaceId/principals",
   async (c) => {
-    const parsed = principalSchema.safeParse(await c.req.json().catch(() => null));
+    const parsed = principalSchema.safeParse(await readJsonBody(c.req));
     if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
     return handle(c, (service, userId, workspaceId) =>
       service.addPrincipal({
@@ -216,7 +217,7 @@ teamspaceRoutes.post(
 teamspaceRoutes.patch(
   "/:workspaceId/teamspaces/:teamspaceId/principals/:principalId",
   async (c) => {
-    const parsed = roleSchema.safeParse(await c.req.json().catch(() => null));
+    const parsed = roleSchema.safeParse(await readJsonBody(c.req));
     if (!parsed.success) return c.json({ error: parsed.error.issues[0]?.message }, 400);
     return handle(c, (service, userId, workspaceId) =>
       service.updatePrincipal({

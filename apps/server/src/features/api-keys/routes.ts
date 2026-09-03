@@ -13,6 +13,7 @@ import { getMembership } from "../access";
 import { db } from "../../infrastructure/database";
 import { apikey } from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 
 export const apiKeyRoutes = new Hono<AppBindings>();
 
@@ -67,7 +68,7 @@ apiKeyRoutes.post("/", async (c) => {
     return authContext.response;
   }
 
-  const parsed = createApiKeySchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = createApiKeySchema.safeParse(await readJsonBody(c.req));
 
   if (!parsed.success) {
     return c.json(
@@ -135,7 +136,7 @@ apiKeyRoutes.patch("/:id", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const parsed = updateApiKeySchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = updateApiKeySchema.safeParse(await readJsonBody(c.req));
 
   if (!parsed.success) {
     return c.json(

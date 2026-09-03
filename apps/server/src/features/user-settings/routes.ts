@@ -8,6 +8,7 @@ import {
 import { db } from "../../infrastructure/database";
 import { account, user, pageSettings } from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
+import { readJsonBody } from "../../shared/http/request";
 
 export const pageSettingsRoutes = new Hono<AppBindings>();
 
@@ -46,7 +47,7 @@ pageSettingsRoutes.patch("/", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
 
   if (!body || typeof body !== "object") {
     return c.json({ error: "A JSON body is required" }, 400);
@@ -120,7 +121,7 @@ pageSettingsRoutes.patch("/profile", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const body = await c.req.json().catch(() => null);
+  const body = await readJsonBody(c.req);
   const parsed = updateProfileSchema.safeParse(body);
 
   if (!parsed.success) {

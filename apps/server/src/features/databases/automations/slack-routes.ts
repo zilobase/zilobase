@@ -5,6 +5,7 @@ import { db } from "../../../infrastructure/database";
 import { slackConnection } from "../../../infrastructure/database/schema";
 import { getCanonicalWebOrigin, isAutomationSlackEnabled } from "../../../shared/config/config";
 import type { AppBindings } from "../../../shared/types";
+import { readJsonBody } from "../../../shared/http/request";
 import { requireDatabaseRouteUser } from "../route-support";
 import { requireDataSourceAccess } from "../access/data-source-access";
 import { getDatabaseAutomationCatalog, invalidateDatabaseAutomationDependencies } from "./service";
@@ -16,7 +17,7 @@ export const automationSlackProviderRoutes = new Hono<AppBindings>();
 automationSlackRoutes.post("/:databaseId/automation-slack/oauth/start", async (c) => {
   const user = requireDatabaseRouteUser(c);
   if (!user) return c.json({ error: "Unauthorized" }, 401);
-  const body = await c.req.json().catch(() => null) as { dataSourceId?: unknown } | null;
+  const body = await readJsonBody(c.req) as { dataSourceId?: unknown } | null;
   if (!body || typeof body.dataSourceId !== "string") return c.json({ error: "dataSourceId is required" }, 400);
   try {
     const catalog = await getDatabaseAutomationCatalog({

@@ -25,6 +25,7 @@ import {
   isMailFeatureEnabled,
 } from "../../shared/config/config"
 import type { AppBindings } from "../../shared/types"
+import { readJsonBody } from "../../shared/http/request";
 import { getZilobaseDiscoveryDocument } from "../instance/service"
 import { invalidateDatabaseAutomationDependencies } from "../databases/automations/service"
 import {
@@ -153,7 +154,7 @@ mailRoutes.post("/oauth/start", async (c) => {
   if (!gmailProviderConfigured(c.env)) {
     return c.json({ message: "Gmail is not configured on this server." }, 503)
   }
-  const body = (await c.req.json().catch(() => ({}))) as { client?: unknown }
+  const body = (await readJsonBody(c.req, {})) as { client?: unknown }
   if (body.client !== "web" && body.client !== "desktop") {
     return c.json({ message: "A valid Gmail client is required." }, 400)
   }
@@ -324,7 +325,7 @@ mailRoutes.post("/threads/:threadId/remind", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
   const threadId = safeGmailId(c.req.param("threadId"))
-  const body = (await c.req.json().catch(() => null)) as { remindAt?: unknown } | null
+  const body = (await readJsonBody(c.req)) as { remindAt?: unknown } | null
   if (!threadId || !body || typeof body.remindAt !== "string") return c.json({ message: "A valid mail reminder is required." }, 400)
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     try {
@@ -395,7 +396,7 @@ mailRoutes.post("/index/advance", async (c) => {
 mailRoutes.post("/query", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
-  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+  const body = (await readJsonBody(c.req)) as Record<string, unknown> | null
   if (
     !body ||
     typeof body.routeId !== "string" ||
@@ -432,7 +433,7 @@ mailRoutes.post("/query", async (c) => {
 mailRoutes.post("/query/groups", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
-  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+  const body = (await readJsonBody(c.req)) as Record<string, unknown> | null
   if (
     !body ||
     typeof body.routeId !== "string" ||
@@ -468,7 +469,7 @@ mailRoutes.post("/properties", async (c) => {
   try {
     const property = await createMailProperty({
       bindingId: owned.bindingId,
-      value: await c.req.json().catch(() => null),
+      value: await readJsonBody(c.req),
     })
     return c.json({ property }, 201)
   } catch (error) {
@@ -483,7 +484,7 @@ mailRoutes.patch("/properties/:propertyId", async (c) => {
     return c.json({ property: await updateMailProperty({
       bindingId: owned.bindingId,
       propertyId: c.req.param("propertyId"),
-      value: await c.req.json().catch(() => null),
+      value: await readJsonBody(c.req),
     }) })
   } catch (error) {
     return mailPropertyError(c, error)
@@ -517,7 +518,7 @@ mailRoutes.get("/threads/:threadId/properties", async (c) => {
 mailRoutes.put("/threads/:threadId/properties/:propertyId", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
-  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+  const body = (await readJsonBody(c.req)) as Record<string, unknown> | null
   if (!body || !Object.hasOwn(body, "value")) return c.json({ message: "A property value is required." }, 400)
   try {
     return c.json({ value: await setMailThreadPropertyValue({
@@ -536,7 +537,7 @@ mailRoutes.put("/threads/:threadId/properties/:propertyId", async (c) => {
 mailRoutes.post("/views", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
-  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+  const body = (await readJsonBody(c.req)) as Record<string, unknown> | null
   if (
     !body ||
     !optionalMailViewName(body.name) ||
@@ -572,7 +573,7 @@ mailRoutes.post("/views", async (c) => {
 mailRoutes.put("/views/reorder", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
-  const body = (await c.req.json().catch(() => null)) as { viewIds?: unknown } | null
+  const body = (await readJsonBody(c.req)) as { viewIds?: unknown } | null
   if (
     !body ||
     !Array.isArray(body.viewIds) ||
@@ -612,7 +613,7 @@ mailRoutes.post("/views/:viewId/duplicate", async (c) => {
 mailRoutes.patch("/views/:viewId", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
-  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null
+  const body = (await readJsonBody(c.req)) as Record<string, unknown> | null
   if (
     !body ||
     !optionalMailViewName(body.name) ||
@@ -655,7 +656,7 @@ mailRoutes.delete("/views/:viewId", async (c) => {
 mailRoutes.post("/sync", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
-  const body = (await c.req.json().catch(() => null)) as Partial<MailSyncRequest> | null
+  const body = (await readJsonBody(c.req)) as Partial<MailSyncRequest> | null
   if (!body || body.connectionId !== owned.connection.id || !isMailView(body.view)) {
     return c.json({ message: "A valid mail synchronization request is required." }, 400)
   }
@@ -737,7 +738,7 @@ mailRoutes.get("/labels", async (c) => {
 mailRoutes.post("/labels", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
-  const body = parseMailLabelWriteRequest(await c.req.json().catch(() => null), true)
+  const body = parseMailLabelWriteRequest(await readJsonBody(c.req), true)
   if (!body) return c.json({ message: "A valid Gmail label is required." }, 400)
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     const label = normalizeGmailLabels([await gateway.createLabel(body)])[0]
@@ -750,7 +751,7 @@ mailRoutes.patch("/labels/:labelId", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
   const labelId = safeUserLabelId(c.req.param("labelId"))
-  const body = parseMailLabelWriteRequest(await c.req.json().catch(() => null), false)
+  const body = parseMailLabelWriteRequest(await readJsonBody(c.req), false)
   if (!labelId || !body) return c.json({ message: "A valid Gmail label update is required." }, 400)
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     const label = normalizeGmailLabels([await gateway.updateLabel(labelId, body)])[0]
@@ -773,7 +774,7 @@ mailRoutes.delete("/labels/:labelId", async (c) => {
 mailRoutes.post("/threads/batch-modify", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
-  const body = parseMailBatchModifyRequest(await c.req.json().catch(() => null), 50)
+  const body = parseMailBatchModifyRequest(await readJsonBody(c.req), 50)
   if (!body) return c.json({ message: "A valid thread batch modification is required." }, 400)
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     await gateway.batchModifyThreads(body.ids, body)
@@ -784,7 +785,7 @@ mailRoutes.post("/threads/batch-modify", async (c) => {
 mailRoutes.post("/messages/batch-modify", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
-  const body = parseMailBatchModifyRequest(await c.req.json().catch(() => null), 1_000)
+  const body = parseMailBatchModifyRequest(await readJsonBody(c.req), 1_000)
   if (!body) return c.json({ message: "A valid message batch modification is required." }, 400)
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     await gateway.batchModifyMessages(body.ids, body)
@@ -796,7 +797,7 @@ mailRoutes.post("/threads/:threadId/modify", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
   const threadId = safeGmailId(c.req.param("threadId"))
-  const body = parseMailModifyRequest(await c.req.json().catch(() => null))
+  const body = parseMailModifyRequest(await readJsonBody(c.req))
   if (!threadId || !body) return c.json({ message: "A valid thread modification is required." }, 400)
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     await gateway.modifyThread(threadId, body)
@@ -809,7 +810,7 @@ mailRoutes.post("/messages/:messageId/modify", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
   const messageId = safeGmailId(c.req.param("messageId"))
-  const body = parseMailModifyRequest(await c.req.json().catch(() => null))
+  const body = parseMailModifyRequest(await readJsonBody(c.req))
   if (!messageId || !body) return c.json({ message: "A valid message modification is required." }, 400)
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     await gateway.modifyMessage(messageId, body)
@@ -821,7 +822,7 @@ mailRoutes.post("/threads/:threadId/action", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
   const threadId = safeGmailId(c.req.param("threadId"))
-  const body = parseMailActionRequest(await c.req.json().catch(() => null))
+  const body = parseMailActionRequest(await readJsonBody(c.req))
   if (!threadId || !body) return c.json({ message: "A valid thread action is required." }, 400)
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     if (body.action === "trash") await gateway.trashThread(threadId)
@@ -835,7 +836,7 @@ mailRoutes.post("/messages/:messageId/action", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
   const messageId = safeGmailId(c.req.param("messageId"))
-  const body = parseMailActionRequest(await c.req.json().catch(() => null))
+  const body = parseMailActionRequest(await readJsonBody(c.req))
   if (!messageId || !body) return c.json({ message: "A valid message action is required." }, 400)
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     if (body.action === "trash") await gateway.trashMessage(messageId)
@@ -847,7 +848,7 @@ mailRoutes.post("/messages/:messageId/action", async (c) => {
 mailRoutes.post("/drafts", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
-  const compose = parseCompose(c, await c.req.json().catch(() => null), false)
+  const compose = parseCompose(c, await readJsonBody(c.req), false)
   if (compose instanceof Response) return compose
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
     c.json(await createGmailDraft(gateway, owned.connection, compose), 201),
@@ -858,7 +859,7 @@ mailRoutes.put("/drafts/:draftId", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
   const draftId = safeGmailId(c.req.param("draftId"))
-  const compose = parseCompose(c, await c.req.json().catch(() => null), false)
+  const compose = parseCompose(c, await readJsonBody(c.req), false)
   if (!draftId || compose instanceof Response) {
     return compose instanceof Response ? compose : c.json({ message: "A valid Gmail draft ID is required." }, 400)
   }
@@ -883,7 +884,7 @@ mailRoutes.post("/drafts/:draftId/send", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
   const draftId = safeGmailId(c.req.param("draftId"))
-  const compose = parseCompose(c, await c.req.json().catch(() => null), true)
+  const compose = parseCompose(c, await readJsonBody(c.req), true)
   if (!draftId || compose instanceof Response) {
     return compose instanceof Response ? compose : c.json({ message: "A valid Gmail draft ID is required." }, 400)
   }
@@ -903,7 +904,7 @@ mailRoutes.post("/drafts/:draftId/send", async (c) => {
 mailRoutes.post("/send", async (c) => {
   const owned = await requireOwnedConnection(c)
   if (owned instanceof Response) return owned
-  const compose = parseCompose(c, await c.req.json().catch(() => null), true)
+  const compose = parseCompose(c, await readJsonBody(c.req), true)
   if (compose instanceof Response) return compose
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
     c.json(await sendGmailComposition({

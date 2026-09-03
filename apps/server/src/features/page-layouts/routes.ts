@@ -26,6 +26,7 @@ import {
   pageLayout,
 } from "../../infrastructure/database/schema"
 import type { AppBindings } from "../../shared/types"
+import { readJsonBody } from "../../shared/http/request";
 
 export const pageLayoutRoutes = new Hono<AppBindings>()
 
@@ -241,7 +242,7 @@ pageLayoutRoutes.put("/:scope/:scopeId", async (c) => {
   const user = c.get("user")
   if (!user) return c.json({ error: "Unauthorized" }, 401)
   const scopeResult = scopeSchema.safeParse(c.req.param("scope"))
-  const bodyResult = saveSchema.safeParse(await c.req.json().catch(() => null))
+  const bodyResult = saveSchema.safeParse(await readJsonBody(c.req))
   if (!scopeResult.success || !bodyResult.success) return c.json({ error: "Invalid layout." }, 400)
 
   const scope = scopeResult.data
