@@ -2,6 +2,12 @@
 
 ## Release controls
 
+Database automations are intentionally disabled in production while the builder
+and execution model are being reworked. Production web builds do not request the
+capability or render automation entry points. Compose and Helm deployments set
+`DATABASE_AUTOMATIONS_ENABLED=false` and
+`DATABASE_AUTOMATIONS_EXECUTION_DISABLED=true` explicitly.
+
 Management UI access is controlled by `DATABASE_AUTOMATIONS_ENABLED` or `DATABASE_AUTOMATIONS_ENABLED_WORKSPACE_IDS`. Provider actions have independent `MAIL_ENABLED`, `AUTOMATION_WEBHOOKS_ENABLED`, and `AUTOMATION_SLACK_ENABLED` gates. `DATABASE_AUTOMATIONS_EXECUTION_DISABLED=true` is the global execution kill switch: event capture continues for diagnosis, while event evaluation, schedule materialization, and run claiming stop. Re-enabling execution drains the existing durable backlog through normal leases and receipts.
 
 Roll out in this order: dark capture, internal workspaces, internal actions, schedules, Gmail, webhooks, Slack, hosted canary, self-hosted opt-in, then general availability. Roll back by disabling the affected connector first, then the execution kill switch if internal actions are also unsafe. Do not roll back migration `0073`–`0075` while definitions or runs remain; disabling capabilities is schema-compatible and rollback-safe.

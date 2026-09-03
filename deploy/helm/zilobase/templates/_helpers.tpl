@@ -65,6 +65,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 - { name: HOST, value: "0.0.0.0" }
 - { name: PORT, value: "3000" }
 - { name: NODE_ENV, value: "production" }
+- { name: DATABASE_AUTOMATIONS_ENABLED, value: "false" }
+- { name: DATABASE_AUTOMATIONS_EXECUTION_DISABLED, value: "true" }
 - { name: BETTER_AUTH_URL, value: {{ .Values.config.externalUrl | quote }} }
 - { name: CLIENT_URL, value: {{ .Values.config.externalUrl | quote }} }
 - { name: IMAGE_STORAGE_MODE, value: "s3" }

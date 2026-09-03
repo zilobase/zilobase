@@ -276,11 +276,13 @@ export function DatabaseViewToolbar() {
   const automationDataSourceId = activeViewTab?.dataSourceId ?? "";
   const automationWorkspaceId =
     hostDatabaseWorkspaceId ?? databaseWorkspaceId ?? workspaceId ?? "";
+  const automationUiAvailable = import.meta.env.DEV;
   const automationCapability = useDatabaseAutomationCapability(
-    automationDatabaseId,
-    automationWorkspaceId,
+    automationUiAvailable ? automationDatabaseId : null,
+    automationUiAvailable ? automationWorkspaceId : null,
   );
-  const automationsEnabled = automationCapability.data?.enabled === true;
+  const automationsEnabled =
+    automationUiAvailable && automationCapability.data?.enabled === true;
   const clampedVisibleViewCount = Math.min(visibleViewCount, viewTabs.length);
   const visibleViewIds = new Set(
     viewTabs.slice(0, clampedVisibleViewCount).map((view) => view.id),

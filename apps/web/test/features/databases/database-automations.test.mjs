@@ -7,8 +7,20 @@ export function register({ assert, readSource, test }) {
       readSource("/src/features/databases/views/view/database-view-toolbar.tsx")
     ])
     assert.match(toolbar, /useDatabaseAutomationCapability/)
+    assert.match(toolbar, /const automationUiAvailable = import\.meta\.env\.DEV/)
+    assert.match(
+      toolbar,
+      /automationUiAvailable \? automationDatabaseId : null/
+    )
     assert.match(toolbar, /activeViewTab\?\.dataSourceId/)
-    assert.match(toolbar, /automationsEnabled/)
+    assert.match(
+      toolbar,
+      /automationsEnabled && automationDatabaseId && automationDataSourceId/
+    )
+    assert.match(
+      toolbar,
+      /onOpenAutomations=\{automationsEnabled \? \(\) => setAutomationManagerOpen\(true\) : undefined\}/
+    )
     assert.match(manager, /useDatabaseAutomations\(databaseId, dataSourceId\)/)
   })
 
