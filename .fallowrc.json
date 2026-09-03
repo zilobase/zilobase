@@ -707,8 +707,9 @@
       "exports": ["PageProperty", "PagePropertyValue"]
     }
   ],
-  // The self-host test runner loads ws at runtime from a dev-only script.
-  "ignoreDependencies": ["ws"],
+  // These root dev tools are invoked by scripts rather than imported by an
+  // application workspace.
+  "ignoreDependencies": ["postcss", "ws"],
   "duplicates": {
     // Hide pair-only clones; focus on widespread copy-paste
     // worth refactoring. Lower to 2 to report every duplicate pair.
