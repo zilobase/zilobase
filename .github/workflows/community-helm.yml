@@ -193,8 +193,8 @@ jobs:
 
           postgres_password=$(docker inspect community-helm-postgres --format '{{range .Config.Env}}{{println .}}{{end}}' | awk -F= '$1=="POSTGRES_PASSWORD"{sub(/^[^=]*=/,"");print}')
           minio_password=$(docker inspect community-helm-minio --format '{{range .Config.Env}}{{println .}}{{end}}' | awk -F= '$1=="MINIO_ROOT_PASSWORD"{sub(/^[^=]*=/,"");print}')
-          old_postgres_volume=$(docker inspect community-helm-postgres --format '{{range .Mounts}}{{if eq .Destination "/var/lib/postgresql/data"}}{{.Name}}{{end}}{{end}}')
-          old_minio_volume=$(docker inspect community-helm-minio --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}')
+          old_postgres_volume=$(docker inspect community-helm-postgres | jq -r '.[0].Mounts[] | select(.Destination == "/var/lib/postgresql/data") | .Name')
+          old_minio_volume=$(docker inspect community-helm-minio | jq -r '.[0].Mounts[] | select(.Destination == "/data") | .Name')
           docker rm -f community-helm-postgres community-helm-minio
           docker volume rm "$old_postgres_volume" "$old_minio_volume"
 

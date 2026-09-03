@@ -3,8 +3,8 @@
   "version": "0.0.55",
   "license": "MIT",
   "scripts": {
-    "dev": "node --env-file-if-exists=../../.env.development ../../node_modules/@tauri-apps/cli/tauri.js dev",
-    "build": "node ../../scripts/colors/sync-color-tokens.mjs --check && node --env-file-if-exists=../../.env.development ../../node_modules/@tauri-apps/cli/tauri.js build",
+    "dev": "node --env-file-if-exists=../../.env.development --run tauri -- dev",
+    "build": "npm run tokens:check --prefix ../.. && node --env-file-if-exists=../../.env.development --run tauri -- build",
     "test:selfhost": "node e2e/selfhost.mjs",
     "tauri": "tauri"
   },

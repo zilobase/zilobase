@@ -24,8 +24,8 @@
   "scripts": {
     "dev": "AI_DEV_TOOLS_ENABLED=true AI_AGENT_DAILY_USAGE_LIMITS_ENABLED=false ZILOBASE_ENV_FILE=../../.env.development tsx src/entrypoints/serverful.ts",
     "dev:node": "AI_DEV_TOOLS_ENABLED=true AI_AGENT_DAILY_USAGE_LIMITS_ENABLED=false ZILOBASE_ENV_FILE=../../.env.development tsx src/entrypoints/serverful.ts",
-    "build": "node ../../scripts/colors/sync-color-tokens.mjs --check && npm run typecheck",
-    "build:node": "node ../../scripts/colors/sync-color-tokens.mjs --check && npm run typecheck",
+    "build": "npm run tokens:check --prefix ../.. && npm run typecheck",
+    "build:node": "npm run tokens:check --prefix ../.. && npm run typecheck",
     "typecheck": "tsc --noEmit",
     "test:insert-database-block": "vitest run src/features/databases/setup/insert-database-block.test.ts",
     "test:database-property-config": "vitest run src/features/databases/properties/config.test.ts",

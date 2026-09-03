@@ -1,7 +1,7 @@
 import { useRouterState } from "@tanstack/react-router";
 import { editionWebModule } from "@zilobase/edition-web";
 
-export function EditionRouteHost() {
+export default function EditionRouteHost() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });

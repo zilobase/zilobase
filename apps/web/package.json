@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node ../../scripts/colors/sync-color-tokens.mjs --check && npm run typecheck && vite build && node ../../scripts/web/check-bundle-budget.mjs",
-    "test": "node ../../scripts/colors/sync-color-tokens.mjs --check && node test/support/run-tests.mjs",
+    "build": "npm run tokens:check --prefix ../.. && npm run typecheck && vite build && npm run quality:web-bundle --prefix ../..",
+    "test": "npm run tokens:check --prefix ../.. && node test/support/run-tests.mjs",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },

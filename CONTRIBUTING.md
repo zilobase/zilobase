@@ -149,7 +149,7 @@ enforces the current approved graph in `.fallowrc.json`.
 Run the architecture gate before submitting structural changes:
 
 ```sh
-npm run quality:fallow -- --gate all --production
+npm run verify:architecture
 ```
 
 Run the repository verification commands from the workspace root:
@@ -162,16 +162,24 @@ npm run verify:consumers    # Adjacent cloud-adapter and enterprise checkouts
 npm run verify              # All of the above
 ```
 
-The verified cleanup baseline at commit `20d0a822` is 680 server tests, 138
-shared-feature tests, 42 desktop tests, 40.63% server line coverage, 4.39%
-production duplication, and a 4.5 MB initial web JavaScript chunk. The web and
-server builds pass; the verification baseline also closes the previously
-unchecked shared-package TypeScript errors. Full-repository Fallow reporting
-runs on `main` and nightly, while pull requests block newly introduced issues.
+The post-refactor verification baseline is 701 server tests, 140 shared-feature
+tests, and 42 desktop tests. Server coverage is 45.15% statements, 40.12%
+branches, 49.05% functions, and 46.47% lines. Production duplication is 2.15%,
+the initial web JavaScript chunk is approximately 0.49 MB, all 25 ordinary
+route chunks remain below 1 MB, and the lockfile contains one Shiki
+installation. Every TypeScript workspace typechecks independently.
 
-New and changed functions should remain within normal Fallow health targets. A
-suppression must name the exception and explain why it cannot be reduced in the
-same change; do not raise repository ceilings to accommodate one function.
+`verify:architecture` requires zero production unresolved imports, dependency
+cycles, boundary violations, unused files, unused exports, and dependency
+ownership findings. It also enforces the duplication ceiling and the
+identity-based legacy health baseline. Full-repository reporting runs on
+`main` and nightly, while pull requests block newly introduced changed-file
+findings.
+
+New and changed units must remain at or below 25 cyclomatic complexity, 40
+cognitive complexity, 100 CRAP, and 400 lines. Do not regenerate the health
+baseline to accommodate a change. An inline suppression must name the exception
+and explain why it cannot be reduced in the same change.
 
 ## License
 

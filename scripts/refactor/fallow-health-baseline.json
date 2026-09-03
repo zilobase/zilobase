@@ -1,0 +1,5364 @@
+{
+  "finding_counts": {
+    "apps/server/src/app/node/collaboration-runtime.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/app/node/database-realtime-runtime.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/app/node/meeting-audio-runtime.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/app/node/node-runtime.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/access/access.ts": {
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/server/src/features/ai/actions/agent-operations.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/ai/actions/agent-tool-registry.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/artifacts/ai-artifact-generator.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/chat-routes.ts": {
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/server/src/features/ai/chat/ai-thread-summary-job.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/chat/chat-request.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/ai/chat/chat-service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/conversion/markdown-to-page-content.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/files/ai-file-context.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/files/ai-file-extraction.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/ai/files/ai-file-jobs.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/providers/ai-provider.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/ai/tools/ask-ai-database-tools.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/tools/ask-ai-workspace-action-tools.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/tools/database/blueprint/view-config.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/auth/routes.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/auth/session-guard.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/auth/session-middleware.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/collaboration/ticket-security.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/action-executor.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/action-support.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/catalog-service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/compiler-references.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/compiler.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/server/src/features/databases/automations/evaluator.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/event-capture.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/databases/automations/execution-context.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/gmail-action.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/internal-mutations.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/databases/automations/run-engine.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/service-support.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/databases/automations/slack-action.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/slack-provider.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/databases/automations/slack-routes.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/trigger-evaluator.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/databases/automations/webhook-action.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/webhook-egress.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/databases/core/commit.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/core/payload.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/core/service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/database-core-routes.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/database-properties-routes.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/database-read-routes.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/databases/database-rows-routes.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/databases/database-sources-routes.ts": {
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/server/src/features/databases/properties/config.ts": {
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/server/src/features/databases/properties/import.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/databases/properties/service.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/databases/realtime/outbox.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/rows/import-service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/rows/position-service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/rows/service.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/databases/sharing/service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/templates/service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/views/service.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/demo/seed.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/desktop-auth/routes.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/desktop-auth/service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/images/routes.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/instance/routes.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/instance/service.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/mail/connection-routes.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/gmail-gateway.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/mail/gmail-watch.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/google-oauth.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-compose.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-database-sync-worker.ts": {
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/server/src/features/mail/mail-database-sync.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/mail/mail-index.ts": {
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/server/src/features/mail/mail-mime.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/mail/mail-normalize.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/mail/mail-properties.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/mail/mail-query.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/mail/mail-realtime-ticket.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/mail/mail-sync.ts": {
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/server/src/features/mail/mail-views.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/organization-routes.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/mail/query-routes.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/mail/route-support.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/safe-unsubscribe.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/mail/security/google-id-token.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/security/google-oidc-token.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/meetings/meeting-audio-ticket.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/meetings/meeting-realtime-transcription.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/meetings/meeting-service.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/meetings/meeting-summary-service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/memberships/temporary-membership.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/metadata/routes.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/pages/mutations/page-mutations.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/pages/page-browse-routes.ts": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/pages/page-content-routes.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/pages/page-hierarchy-routes.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/server/src/features/pages/page-sharing-routes.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/search/service.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/teamspaces/management.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/user-settings/profile-image-routes.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/user-settings/routes.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/workspaces/navigation-realtime/outbox.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/workspaces/routes.ts": {
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/server/src/features/workspaces/settings/ai-providers.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/workspaces/settings/routes.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/infrastructure/node/collaboration-redis.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/shared/config/config.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/shared/security/database-realtime-ticket.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/shared/security/navigation-realtime-ticket.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/routing/guards.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/app/shell/content/app-header.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/shell/content/app-layout.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/app/shell/content/settings-section-content.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/shell/document-favicon.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/shell/side-panel/right-sidebars.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/ai/cache/use-database-embed-auto-apply.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/ai/cache/use-database-tool-cache-sync.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/ai/cache/use-page-edit-auto-apply.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/chat-sidebar.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-action-review.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-live-debugger.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-resource-badges.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-tool-task.tsx": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot-composer.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot-messages.tsx": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/web/src/features/ai/components/elements/context-attach-menu.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/ai/components/elements/database-tool-steps.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 6
+      }
+    },
+    "apps/web/src/features/ai/components/elements/page-edit-card.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/prompt-input.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/ai/context/use-page-ai-context.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/ai/conversation/use-ai-chat-thread-state.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/ai/debug/use-ai-dev-trace.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/transport/prompt-attachments.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/auth/components/login-form.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/auth/components/otp-form.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/auth/components/signup-form.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/auth/lib/google-auth.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/canvas/components/arrow-edge.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/canvas/components/flow-canvas.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/components/discussions-sidebar.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/components/page-comment-mentions.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/components/page-comments.tsx": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/web/src/features/comments/model/yjs-comments.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/automation-schedule.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 9
+      }
+    },
+    "apps/web/src/features/databases/automations/notion-action-builder.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 6
+      }
+    },
+    "apps/web/src/features/databases/automations/notion-action-model.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/commands/database-view-commands.ts": {
+      "crap_critical": {
+        "count": 8
+      }
+    },
+    "apps/web/src/features/databases/components/page-metadata-properties.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/components/page-metadata.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/core/database-property-values.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/interactions/database-item-utils.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/interactions/database-page-link.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/interactions/database-table-group-sections.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/model/database-view-model.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/pages/database.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/databases/properties/configuration/index.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/configuration/relation/relation-property-settings.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/properties/configuration/rollup/rollup-property-settings.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-derived-property-value.tsx": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-name-property-menu.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-date.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-files.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-input.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-menu.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-select.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-value.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/formula/model/formula-reference-catalog.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/formula/view/database-formula-dialog.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/relations/model/database-relation-sync.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/databases/properties/rollup/model/rollup-config.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/rollup/model/rollup-engine.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/shared/property-value-control.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/setup/view/database-setup-card.tsx": {
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/web/src/features/databases/views/chart/model/database-chart-config.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/views/chart/model/database-chart-data.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/views/chart/view/database-chart-view.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/views/controller/use-database-view-controller.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/web/src/features/databases/views/form/model/database-form-header-config.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/form/model/database-form-options.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/form/model/database-form-question-config.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/form/view/database-form-view.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/web/src/features/databases/views/gallery/controller/use-database-gallery-card-drag.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/gallery/view/database-gallery-view.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/views/kanban/model/database-kanban-group-model.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/kanban/view/database-kanban-view.tsx": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/databases/views/list/controller/use-database-list-row-drag.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/list/view/database-list-view.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/model/database-sub-items.ts": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/databases/views/model/database-view-config.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/databases/views/model/database-view-context.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-cell.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-selection-toolbar.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-view.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 11
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/controller/database-timeline-row-drag.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/controller/use-timeline-breakout.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/gantt/gantt-interactions.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/layout/database-timeline-grid.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/model/database-timeline-config.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/model/database-timeline-row-move.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view-settings/view/chart-settings.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view-settings/view/data-source-settings.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/views/view-settings/view/index.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view-settings/view/layout-settings.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view/database-condition-editor.tsx": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/databases/views/view/database-view-toolbar.tsx": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/databases/views/view/database-view.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view/linked-data-source-picker.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/demo/runtime.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/desktop/auth/desktop-browser-auth-screen.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/components/desktop-connect-server-dialog.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/components/desktop-server-replacement-controller.tsx": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/desktop/components/desktop-tabs.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/desktop/deep-links/desktop-deep-link.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/desktop/diagnostics/desktop-diagnostics.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/desktop/network/api.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/desktop/server/desktop-server.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/collaboration/use-page-collaboration.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/editor/commands/editor-ai-utils.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/commands/use-mobile-node-actions.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drag-controller.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drag-geometry.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drag-session.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drop.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-insert.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/components/editor/column-controls.tsx": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/editor/components/editor/drag-block-menu.tsx": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/editor/components/editor/page-layout-module-canvas.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/table-controls.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/components/editor/table-drag.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/composition/editor-chrome.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/composition/editor.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/extensions/ask-ai-block.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/extensions/block-selection.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/bookmark-block.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/embed-block.tsx": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/web/src/features/editor/extensions/meeting/meeting-view.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/extensions/page-block.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/paste/protected-structural-blocks.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/runtime/use-editor-instance.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/selection/selection-ai-menu.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/library/pages/recents.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/mail/cache/mail-database.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-actions.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-composer.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/mail/components/mail-connection-state.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-conversation-viewer.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/mail/components/mail-database-sync-panel.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-filter-editor.tsx": {
+      "crap_critical": {
+        "count": 6
+      }
+    },
+    "apps/web/src/features/mail/components/mail-properties-panel.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/mail/components/mail-thread-row.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/mail/components/mail-view-settings-menu.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mailbox-topbar.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-document-theme.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/mail/model/mail-html.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-realtime.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-sync-controller.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/mail/model/mail-view-model.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/mail/pages/mail.tsx": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/meetings/capture/browser-meeting-capture.ts": {
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/web/src/features/meetings/pages/meeting.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/notion-import/hooks/use-notion-import.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/notion-import/lib/notion-html-blocks.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/offline/components/offline-availability-action.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/offline/documents/offline-recovery.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/offline/model/offline-store.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/offline/providers/offline-provider.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/components/layout-editor.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/components/page-pane-header.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/hooks/use-open-embedded-page.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/invitations/accept-page-invitation.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/pages/page.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/web/src/features/settings/pages/api-keys.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/settings/pages/profile.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/settings/pages/security.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/settings/pages/zilobase-ai/components/zilobase-ai-create-menu.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/app-sidebar.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/sidebar/components/nav-actions.tsx": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/web/src/features/sidebar/components/nav-favorites.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/nav-pages.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-customize-panel.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-database-view-section.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-layout-tabs.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-nav-list.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-shortcut-list.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/sidebar/components/workspace-mail-navigation.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/sidebar/model/sidebar-layout-model.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/sidebar/model/sidebar-navigation-model.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/workspace-switcher.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/tasks/pages/tasks.tsx": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/teamspaces/model/teamspace-filters.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/teamspaces/pages/team.tsx": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/teamspaces/pages/teamspaces.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/features/workspaces/components/page-workspace-gate.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/workspaces/pages/accept-invitation.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/workspaces/pages/workspace-settings.tsx": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/shared/config/feature-flags.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/shortcuts/editor-history.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/ui/chart.tsx": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/web/src/shared/ui/dropdown-menu.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/ui/dropdrawer.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/ui/icon-emoji-picker.tsx": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/vite/ai-dev-trace-plugin.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "packages/features/src/ai-chat/agent-contract.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "packages/features/src/ai-chat/agent-icons.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/apply-page-content-patch.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/conversation-adapter.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/live-agent/debug-contract.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/live-agent/effect-contract.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/add-row-cache.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "packages/features/src/databases/apply-delta.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "packages/features/src/databases/automations/contracts.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/automations/schedule.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/filter.ts": {
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "packages/features/src/databases/formula/evaluator.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "packages/features/src/databases/formula/functions.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "packages/features/src/databases/formula/parser.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/tokenizer.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/mutation-cache.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/mutation-hooks.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "packages/features/src/databases/queries.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "packages/features/src/databases/realtime.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "packages/features/src/databases/row-snapshot.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/mail/organization.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "packages/features/src/mail/predicate.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "packages/features/src/pages/content-state.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/database-realtime-cache.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "packages/features/src/pages/mutation-hooks.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/nav-delta.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/navigation-realtime-contract.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/page-layouts.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "packages/features/src/pages/queries.ts": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "packages/features/src/shared/api-errors.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/user-settings/sidebar-config.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "packages/features/src/workspaces/hooks.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/markdown-text-splitter/src/character.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/context/extract-page-markdown-from-context.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/database/build-database-markdown.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/database/database-view-schema.ts": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "packages/page-context/src/database/format-property-value.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/database/insert-database-block.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/markdown/prosemirror-to-markdown.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/markdown/restore-structural-blocks-from-markdown.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "scripts/mail/gmail-deployment-config.mjs": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/selfhost/test.mjs": {
+      "crap_critical": {
+        "count": 1
+      }
+    }
+  },
+  "identity_finding_counts": {
+    "apps/server/src/app/node/collaboration-runtime.ts\u0000handleUpgrade": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/app/node/database-realtime-runtime.ts\u0000isPresence": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/app/node/database-realtime-runtime.ts\u0000receiveRealtimeBusMessage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/app/node/database-realtime-runtime.ts\u0000upgrade": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/app/node/meeting-audio-runtime.ts\u0000handleAudioControlMessage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/app/node/meeting-audio-runtime.ts\u0000message": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/app/node/node-runtime.ts\u0000getContentType": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/app/node/node-runtime.ts\u0000toRequest": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/access/access.ts\u0000getAccessiblePageIds": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/access/access.ts\u0000getEffectivePageAccessForUsers": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/access/access.ts\u0000getEffectivePageAccessInWorkspace": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/access/access.ts\u0000resolveEffectiveDatabaseAccessForRecord": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/actions/agent-operations.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/actions/agent-operations.ts\u0000normalizeAiAgentErrorCode": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/actions/agent-operations.ts\u0000resolveTurnQuotaRejection": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/actions/agent-tool-registry.ts\u0000execute": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/artifacts/ai-artifact-generator.ts\u0000render": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/chat-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/server/src/features/ai/chat-routes.ts\u0000serializeSkillBlock": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/chat/ai-thread-summary-job.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/chat/chat-request.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/chat/chat-request.ts\u0000coerceAiChatRequestBody": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/chat/chat-service.ts\u0000runAiChatTurn": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/conversion/markdown-to-page-content.ts\u0000markdownToPageContent": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/files/ai-file-context.ts\u0000collectAiFileIds": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/files/ai-file-extraction.ts\u0000detectAiFileKind": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/files/ai-file-extraction.ts\u0000extractZip": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/files/ai-file-extraction.ts\u0000parseCsv": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/files/ai-file-jobs.ts\u0000extractAiUploadJob": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/providers/ai-provider.ts\u0000resolveWorkspaceAiModel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/providers/ai-provider.ts\u0000validateAiProviderBaseUrl": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/tools/ask-ai-database-tools.ts\u0000executeDatabaseBlueprint": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/tools/ask-ai-workspace-action-tools.ts\u0000expandTaskSectionSearch": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/tools/database/blueprint/view-config.ts\u0000resolveDatabaseBlueprintViewConfig": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/auth/routes.ts\u0000getWorkspaceAuthRequest": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/auth/session-guard.ts\u0000authenticatedSessionMiddleware": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/auth/session-middleware.ts\u0000<arrow>": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/collaboration/ticket-security.ts\u0000isTicketClaims": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/action-executor.ts\u0000executeAction": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/action-support.ts\u0000resolveExpression": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/catalog-service.ts\u0000getDatabaseAutomationCatalog": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/compiler-references.ts\u0000optionReferenceIds": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/compiler.ts\u0000<arrow>": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/server/src/features/databases/automations/compiler.ts\u0000validateTriggerOperand": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/evaluator.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/event-capture.ts\u0000captureDatabaseAutomationMutationFacts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/event-capture.ts\u0000mergeDatabaseAutomationEventWindowState": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/execution-context.ts\u0000loadExecutionContext": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/gmail-action.ts\u0000executeGmailAction": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/internal-mutations.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/internal-mutations.ts\u0000applyDatabaseAutomationPropertyOperation": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/internal-mutations.ts\u0000normalizeEntityValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/run-engine.ts\u0000executeRun": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/service-support.ts\u0000loadCompilationContext": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/service-support.ts\u0000requireManagementContext": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/slack-action.ts\u0000executeSlackAction": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/slack-provider.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/slack-provider.ts\u0000listSlackChannels": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/slack-provider.ts\u0000slackApi": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/slack-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/trigger-evaluator.ts\u0000matchesDate": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/trigger-evaluator.ts\u0000matchesOperator": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/trigger-evaluator.ts\u0000normalizeOperand": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/webhook-action.ts\u0000executeWebhookAction": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/webhook-egress.ts\u0000isBlockedAddress": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/webhook-egress.ts\u0000resolvePublicWebhookTarget": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/automations/webhook-egress.ts\u0000sendPinnedWebhook": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/core/commit.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/core/payload.ts\u0000loadDatabasePayload": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/core/service.ts\u0000createDatabaseService": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/database-core-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/database-properties-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/database-read-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/databases/database-rows-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/databases/database-sources-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/server/src/features/databases/properties/config.ts\u0000formatDatePropertyValueAsText": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/properties/config.ts\u0000normalizePropertyConfig": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/properties/config.ts\u0000normalizeSelectOption": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/properties/config.ts\u0000validateCellValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/properties/import.ts\u0000getOptionValueNames": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/properties/import.ts\u0000normalizeValueForPropertyType": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/properties/service.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/properties/service.ts\u0000updateDatabasePropertyService": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/realtime/outbox.ts\u0000drainDatabaseRealtimeOutbox": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/rows/import-service.ts\u0000inheritDatabaseRowProperties": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/rows/position-service.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/rows/service.ts\u0000createDatabaseRowService": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/rows/service.ts\u0000createTargetRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/rows/service.ts\u0000normalizeAutomationValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/sharing/service.ts\u0000upsertDatabaseAccessRuleService": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/templates/service.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/views/service.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/databases/views/service.ts\u0000updateDatabaseViewService": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/demo/seed.ts\u0000assertHostedDemoSeed": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/desktop-auth/routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/desktop-auth/routes.ts\u0000readBoundedBody": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/desktop-auth/service.ts\u0000isValidDesktopRedirectUri": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/images/routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/instance/routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/instance/service.ts\u0000comparePrerelease": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/instance/service.ts\u0000isDesktopVersionCompatible": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/connection-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/gmail-gateway.ts\u0000batchGetThreads": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/gmail-gateway.ts\u0000parseGmailBatchThreads": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/gmail-gateway.ts\u0000transform": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/gmail-watch.ts\u0000renewGmailWatches": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/google-oauth.ts\u0000completeGmailOauthWithDatabase": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-compose.ts\u0000sendGmailComposition": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-database-sync-worker.ts\u0000coerceDestinationValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-database-sync-worker.ts\u0000drainMailDatabaseSyncOutbox": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-database-sync-worker.ts\u0000enqueueMailDatabaseSyncForIndexedThread": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-database-sync-worker.ts\u0000processClaimedMailDatabaseSync": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-database-sync-worker.ts\u0000sourceValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-database-sync.ts\u0000prepareMailDatabaseSyncConfig": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-database-sync.ts\u0000validateMappings": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-index.ts\u0000advanceBackfill": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-index.ts\u0000advanceHistory": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-index.ts\u0000advanceMailIndex": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-index.ts\u0000advancePendingMailIndexes": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-index.ts\u0000collectTouchedThreadIds": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-mime.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-mime.ts\u0000buildMailMime": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-mime.ts\u0000parseMailComposeRequest": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-normalize.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-normalize.ts\u0000normalizeGmailMessage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-normalize.ts\u0000walk": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-properties.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-properties.ts\u0000normalizeThreadValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-query.ts\u0000groupEntries": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-query.ts\u0000queryIndexedMail": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-query.ts\u0000queryIndexedMailGroups": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-realtime-ticket.ts\u0000isClaims": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-realtime-ticket.ts\u0000verifyMailRealtimeTicket": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-sync.ts\u0000collectHistory": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-sync.ts\u0000fullSync": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-sync.ts\u0000incrementalSync": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-sync.ts\u0000viewFilter": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/mail-views.ts\u0000createMailView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/organization-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/mail/query-routes.ts\u0000<arrow>": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 3
+      }
+    },
+    "apps/server/src/features/mail/route-support.ts\u0000parseMailLabelWriteRequest": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/safe-unsubscribe.ts\u0000assertPublicUrl": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/safe-unsubscribe.ts\u0000isPrivateHostname": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/safe-unsubscribe.ts\u0000safeFetchWithRedirects": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/security/google-id-token.ts\u0000verifyGoogleIdToken": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/mail/security/google-oidc-token.ts\u0000verifyGoogleOidcToken": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/meetings/meeting-audio-ticket.ts\u0000isClaims": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/meetings/meeting-realtime-transcription.ts\u0000appendFrame": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/meetings/meeting-realtime-transcription.ts\u0000onProviderMessage": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/meetings/meeting-service.ts\u0000claimMeetingRecorder": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/meetings/meeting-service.ts\u0000transitionMeeting": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/meetings/meeting-summary-service.ts\u0000generateMeetingSummary": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/memberships/temporary-membership.ts\u0000parseMembershipAccessExpiry": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/metadata/routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/metadata/routes.ts\u0000isBlockedHostname": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/pages/mutations/page-mutations.ts\u0000embedDatabaseInPageService": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/pages/page-browse-routes.ts\u0000<arrow>": {
+      "complexity_critical": {
+        "count": 2
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/pages/page-content-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/pages/page-hierarchy-routes.ts\u0000<arrow>": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 5
+      }
+    },
+    "apps/server/src/features/pages/page-sharing-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/search/service.ts\u0000searchWorkspaceItems": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/teamspaces/management.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/teamspaces/management.ts\u0000addPrincipal": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/user-settings/profile-image-routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/user-settings/routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/server/src/features/workspaces/navigation-realtime/outbox.ts\u0000drainNavigationRealtimeOutbox": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/workspaces/routes.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "apps/server/src/features/workspaces/settings/ai-providers.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/workspaces/settings/routes.ts\u0000<arrow>": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/infrastructure/node/collaboration-redis.ts\u0000createNodeCollaborationExtensions": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/shared/config/config.ts\u0000getCanonicalHttpOrigin": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/shared/config/config.ts\u0000isLocalDevelopmentHost": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/shared/config/config.ts\u0000resolvePublicRequestUrl": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/shared/security/database-realtime-ticket.ts\u0000isTicketClaims": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/shared/security/navigation-realtime-ticket.ts\u0000verifyNavigationRealtimeTicket": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/routing/guards.ts\u0000applyPageShareAccess": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/routing/guards.ts\u0000getDefaultAppPath": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/routing/guards.ts\u0000getFreshSession": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/shell/content/app-header.tsx\u0000AppHeader": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/shell/content/app-layout.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/shell/content/app-layout.tsx\u0000AppLayoutContent": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/shell/content/settings-section-content.tsx\u0000SettingsSectionContent": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/shell/document-favicon.tsx\u0000DocumentFavicon": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/shell/side-panel/right-sidebars.tsx\u0000ResizableRightSidebarPanel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/app/shell/side-panel/right-sidebars.tsx\u0000RightSidebars": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/cache/use-database-embed-auto-apply.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/cache/use-database-embed-auto-apply.ts\u0000readEmbedShowTitle": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/cache/use-database-tool-cache-sync.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/cache/use-database-tool-cache-sync.ts\u0000collectInvalidationTargets": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/cache/use-page-edit-auto-apply.ts\u0000<arrow>": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/chat-sidebar.tsx\u0000ChatSidebarPanel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-action-review.tsx\u0000getApprovalStatusDescription": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-action-review.tsx\u0000readApproval": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-live-debugger.tsx\u0000AgentLiveDebugger": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-live-debugger.tsx\u0000eventText": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-resource-badges.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-tool-task.tsx\u0000AgentProgressOnlyTask": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-tool-task.tsx\u0000AgentToolTaskItem": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/agent-tool-task.tsx\u0000buildMessagePartGroups": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot-composer.tsx\u0000ChatbotComposer": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot-messages.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot-messages.tsx\u0000PageEditToolPart": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot-messages.tsx\u0000citations": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot.tsx\u0000Chatbot": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot.tsx\u0000ChatbotConversationController": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot.tsx\u0000primaryAttachment": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/chatbot.tsx\u0000submitText": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/context-attach-menu.tsx\u0000ContextAttachMenu": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/context-attach-menu.tsx\u0000buildAttachMenuItems": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/database-tool-steps.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/database-tool-steps.tsx\u0000DatabaseToolStep": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/database-tool-steps.tsx\u0000buildDatabaseToolInputDescription": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/database-tool-steps.tsx\u0000describeDatabaseToolError": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/database-tool-steps.tsx\u0000getDatabaseToolStepLabel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/database-tool-steps.tsx\u0000readBlueprintOutputDetails": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/page-edit-card.tsx\u0000PageEditCard": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/prompt-input.tsx\u0000addWithProviderValidation": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/components/elements/prompt-input.tsx\u0000handleKeyDown": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/context/use-page-ai-context.ts\u0000buildContext": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/context/use-page-ai-context.ts\u0000resolveDatabaseContext": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/context/use-page-ai-context.ts\u0000trackedDatabaseIds": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/conversation/use-ai-chat-thread-state.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/conversation/use-ai-chat-thread-state.ts\u0000useAiChatThreadState": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/debug/use-ai-dev-trace.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/ai/transport/prompt-attachments.ts\u0000captureScreenshot": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/auth/components/login-form.tsx\u0000LoginForm": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/auth/components/otp-form.tsx\u0000OtpForm": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/auth/components/signup-form.tsx\u0000SignupForm": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/auth/lib/google-auth.ts\u0000getAuthReturnPath": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/canvas/components/arrow-edge.tsx\u0000ArrowEdge": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/canvas/components/flow-canvas.tsx\u0000finishDrawing": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/components/discussions-sidebar.tsx\u0000DiscussionsSidebarPanel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/components/page-comment-mentions.ts\u0000tokenizeCommentMentions": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/components/page-comments.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/components/page-comments.tsx\u0000CommentItem": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/components/page-comments.tsx\u0000CommentItemComponent": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/components/page-comments.tsx\u0000PageCommentThread": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/components/page-comments.tsx\u0000renderCommentItem": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/comments/model/yjs-comments.ts\u0000getRootMessageId": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/automation-schedule.tsx\u0000scheduleDraft": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx\u0000DatabaseAutomationManager": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx\u0000TriggerPicker": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx\u0000actionLiteralFromValues": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx\u0000generateName": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx\u0000openProperty": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx\u0000parseOperand": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx\u0000propertyActionLabel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx\u0000save": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx\u0000triggerOperandValues": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/notion-action-builder.tsx\u0000NotionActionEditor": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/notion-action-builder.tsx\u0000PropertyValueEditor": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/notion-action-builder.tsx\u0000ReferenceEditor": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/notion-action-builder.tsx\u0000automationOperandFromValues": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/notion-action-builder.tsx\u0000automationOperandValues": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/notion-action-builder.tsx\u0000parseLiteral": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/automations/notion-action-model.ts\u0000createNotionActionDraft": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/commands/database-view-commands.ts\u0000addDatabaseRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/commands/database-view-commands.ts\u0000addDraggedPageRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/commands/database-view-commands.ts\u0000addKanbanView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/commands/database-view-commands.ts\u0000setViewGroupProperty": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/commands/database-view-commands.ts\u0000setViewType": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/commands/database-view-commands.ts\u0000togglePropertyVisibility": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/commands/database-view-commands.ts\u0000updateDatabaseFormHeaderSettings": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/commands/database-view-commands.ts\u0000updateDatabaseFormQuestionSettings": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/components/page-metadata-properties.tsx\u0000<arrow>": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/components/page-metadata.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/components/page-metadata.tsx\u0000PageMetadata": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/core/database-property-values.ts\u0000parsePropertyValue": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/core/database-property-values.ts\u0000serializePropertyValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/interactions/database-item-utils.ts\u0000getComparablePropertyValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/interactions/database-page-link.tsx\u0000DatabasePageLink": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/interactions/database-table-group-sections.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/model/database-view-model.tsx\u0000getDatabaseViewModel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/pages/database.tsx\u0000AuthenticatedDatabasePage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/pages/database.tsx\u0000DatabaseMainPane": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/pages/database.tsx\u0000DatabasePagePreview": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/configuration/index.tsx\u0000DatabasePropertySettings": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/configuration/relation/relation-property-settings.tsx\u0000RelationPropertySettings": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/configuration/relation/relation-property-settings.tsx\u0000getRelationConfig": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/configuration/rollup/rollup-property-settings.tsx\u0000DatabaseRollupPropertySettings": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-derived-property-value.tsx\u0000DatabaseRelationPropertyValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-derived-property-value.tsx\u0000DatabaseRollupPropertyValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-derived-property-value.tsx\u0000getRelationPageSummary": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-name-property-menu.tsx\u0000DatabaseNamePropertyMenu": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-date.tsx\u0000DatabasePropertyDate": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-files.tsx\u0000DatabasePropertyFiles": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-input.tsx\u0000DatabaseInputCell": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-menu.tsx\u0000DatabasePropertyMenu": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-select.tsx\u0000DatabasePropertySelect": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/editors/database-property-value.tsx\u0000DatabasePropertyValue": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/formula/model/formula-reference-catalog.ts\u0000getPropertyReferenceDescription": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/formula/view/database-formula-dialog.tsx\u0000DatabaseFormulaDialog": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/relations/model/database-relation-sync.ts\u0000getRelationLimit": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/relations/model/database-relation-sync.ts\u0000getRelationReciprocalUpdate": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/relations/model/database-relation-sync.ts\u0000getRelationRepairMutationPlan": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/rollup/model/rollup-config.ts\u0000getRollupConfig": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/rollup/model/rollup-engine.ts\u0000calculateRollupValue": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/properties/shared/property-value-control.tsx\u0000DataSourcePropertyValueControl": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/setup/view/database-setup-card.tsx\u0000createSampleRowContent": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/setup/view/database-setup-card.tsx\u0000finishSetup": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/setup/view/database-setup-card.tsx\u0000getSampleHeadingEmoji": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/setup/view/database-setup-card.tsx\u0000parseCsv": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/setup/view/database-setup-card.tsx\u0000renderLinkPicker": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/chart/model/database-chart-config.ts\u0000getDatabaseChartSettings": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/chart/model/database-chart-config.ts\u0000referenceLines": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/chart/model/database-chart-data.ts\u0000createChartData": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/chart/model/database-chart-data.ts\u0000createSplitChartData": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/chart/view/database-chart-view.tsx\u0000DatabaseChartView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/chart/view/database-chart-view.tsx\u0000renderChart": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/controller/use-database-view-controller.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/controller/use-database-view-controller.tsx\u0000addDataSourceView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/controller/use-database-view-controller.tsx\u0000handleDataSourceSetupSelection": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/controller/use-database-view-controller.tsx\u0000unlinkDataSource": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/controller/use-database-view-controller.tsx\u0000useDatabaseViewController": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/form/model/database-form-header-config.ts\u0000getDatabaseFormHeaderSettings": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/form/model/database-form-options.ts\u0000getFormQuestionDescription": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/form/model/database-form-question-config.ts\u0000getDatabaseFormQuestionSettings": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/form/view/database-form-view.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/form/view/database-form-view.tsx\u0000DatabaseFormPropertyControl": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/form/view/database-form-view.tsx\u0000DatabaseFormView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/form/view/database-form-view.tsx\u0000FormQuestion": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/gallery/controller/use-database-gallery-card-drag.ts\u0000drop": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/gallery/view/database-gallery-view.tsx\u0000renderCard": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts\u0000drop": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts\u0000getMove": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/kanban/model/database-kanban-group-model.ts\u0000getKanbanGroupValues": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/kanban/view/database-kanban-view.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/kanban/view/database-kanban-view.tsx\u0000DatabaseKanbanView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/kanban/view/database-kanban-view.tsx\u0000renderCardProperty": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/list/controller/use-database-list-row-drag.ts\u0000drop": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/list/view/database-list-view.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/model/database-sub-items.ts\u0000getDatabaseSubItemLineParentRowId": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/model/database-sub-items.ts\u0000getDatabaseSubItemRelationChanges": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/model/database-sub-items.ts\u0000getDatabaseSubItemsView": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/model/database-view-config.ts\u0000getDatabaseLayoutSettings": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/model/database-view-config.ts\u0000getDatabaseSubItemsSettings": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/model/database-view-config.ts\u0000normalizeDatabaseConditionalColor": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/model/database-view-context.tsx\u0000DatabaseRealtimeStateProvider": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-cell.tsx\u0000DatabaseActiveTableCell": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-selection-toolbar.tsx\u0000DatabaseSelectionPropertyAction": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-selection-toolbar.tsx\u0000DatabaseTableSelectionToolbar": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-view.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 7
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-view.tsx\u0000DatabaseTableView": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-view.tsx\u0000applyRowMove": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-view.tsx\u0000getDraggedRowMove": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/table/view/database-table-view.tsx\u0000renderTableRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/controller/database-timeline-row-drag.tsx\u0000handleDrop": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/controller/use-timeline-breakout.ts\u0000measure": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/gantt/gantt-interactions.tsx\u0000GanttFeatureItem": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/gantt/gantt-interactions.tsx\u0000handlePointerMove": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/layout/database-timeline-grid.tsx\u0000TimelineGridRowCell": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/model/database-timeline-config.ts\u0000parseRowDateRange": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/timeline/model/database-timeline-row-move.ts\u0000getTimelineRowMove": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view-settings/view/chart-settings.tsx\u0000DatabaseChartSettingsSection": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view-settings/view/data-source-settings.tsx\u0000DataSourceSettingsSection": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view-settings/view/data-source-settings.tsx\u0000LinkExistingDataSourcePicker": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view-settings/view/index.tsx\u0000DatabaseViewSettingsMenu": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view-settings/view/layout-settings.tsx\u0000LayoutSettingsSection": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view/database-condition-editor.tsx\u0000DatabaseConditionEditor": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view/database-condition-editor.tsx\u0000DatabaseConditionValueControl": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view/database-condition-editor.tsx\u0000DatabaseDateBetweenConditionEditor": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view/database-view-toolbar.tsx\u0000<arrow>": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/databases/views/view/database-view-toolbar.tsx\u0000DatabaseViewToolbar": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view/database-view.tsx\u0000DatabaseView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/databases/views/view/linked-data-source-picker.tsx\u0000LinkedDataSourcePicker": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/demo/runtime.ts\u0000applyDemoReadOverlay": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/demo/runtime.ts\u0000interceptDemoMutation": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/demo/runtime.ts\u0000readAllowedDatabaseMutation": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/auth/desktop-browser-auth-screen.tsx\u0000DesktopBrowserAuthScreen": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/components/desktop-connect-server-dialog.tsx\u0000connect": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/components/desktop-server-replacement-controller.tsx\u0000DesktopServerReplacementController": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/components/desktop-server-replacement-controller.tsx\u0000replacementDescription": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/components/desktop-server-replacement-controller.tsx\u0000replacementTitle": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/components/desktop-tabs.tsx\u0000getDesktopTabTitle": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/components/desktop-tabs.tsx\u0000handleOpenInNewTab": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/deep-links/desktop-deep-link.ts\u0000normalizeServerOrigin": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/deep-links/desktop-deep-link.ts\u0000parseDesktopDeepLink": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/diagnostics/desktop-diagnostics.ts\u0000describeDesktopError": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/diagnostics/desktop-diagnostics.ts\u0000safeDiagnosticField": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/network/api.ts\u0000apiFetch": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/network/api.ts\u0000readErrorMessage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/server/desktop-server.ts\u0000resolveRuntimeApiOrigin": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/desktop/server/desktop-server.ts\u0000validateDesktopServer": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/collaboration/use-page-collaboration.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/collaboration/use-page-collaboration.ts\u0000prepare": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/commands/editor-ai-utils.ts\u0000sanitizeMarkdownNode": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/commands/use-mobile-node-actions.ts\u0000moveMobileTarget": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drag-controller.ts\u0000onDragOver": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drag-controller.ts\u0000onDrop": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drag-geometry.ts\u0000blockElementAtPoint": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drag-geometry.ts\u0000blockFromDOM": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drag-geometry.ts\u0000getBlockDragHandleRect": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drag-session.ts\u0000isBlockDragPayload": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drag-session.ts\u0000startBlockDrag": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drop.ts\u0000dropCrossEditorBlock": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drop.ts\u0000dropEditorBlock": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-drop.ts\u0000dropEditorBlockSlice": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-insert.ts\u0000blockContentForItem": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/block-insert.ts\u0000insertBlockFromPlus": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/column-controls.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/column-controls.tsx\u0000ColumnControls": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/column-controls.tsx\u0000updateRect": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/drag-block-menu.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/drag-block-menu.tsx\u0000DragBlockMenu": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/drag-block-menu.tsx\u0000deleteTarget": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/page-layout-module-canvas.tsx\u0000PageLayoutModuleCanvas": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/table-controls.tsx\u0000TableControls": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/table-controls.tsx\u0000createTableControlRect": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/components/editor/table-drag.ts\u0000getHoveredTableCell": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/composition/editor-chrome.tsx\u0000EditorChrome": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/composition/editor.tsx\u0000Editor": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/composition/editor.tsx\u0000renderLayoutModule": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/ask-ai-block.tsx\u0000submitPrompt": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/editor/extensions/block-selection.ts\u0000shouldBlockBlockSelectionKeydown": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/bookmark-block.tsx\u0000BookmarkBlockView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/embed-block.tsx\u0000EmbedBlockView": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/embed-block.tsx\u0000normalizeEmbedUrl": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/embed-block.tsx\u0000normalizeYouTubeEmbedUrl": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/embed-block.tsx\u0000submitEmbed": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/meeting/meeting-view.tsx\u0000MeetingView": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/meeting/meeting-view.tsx\u0000runLifecycle": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/extensions/page-block.tsx\u0000PageBlockView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/paste/protected-structural-blocks.ts\u0000getProtectedStructuralBlockForDelete": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/paste/protected-structural-blocks.ts\u0000handleProtectedStructuralBlockDeleteKey": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/runtime/use-editor-instance.ts\u0000keydown": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/editor/selection/selection-ai-menu.tsx\u0000submitPrompt": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/library/pages/recents.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/library/pages/recents.tsx\u0000RecentsPage": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/cache/mail-database.ts\u0000openMailDatabase": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-actions.tsx\u0000MailLabelMenu": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-composer.tsx\u0000MailComposer": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-composer.tsx\u0000saveDraft": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-connection-state.tsx\u0000MailConnectionState": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-conversation-viewer.tsx\u0000ConversationToolbar": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-conversation-viewer.tsx\u0000MailThreadMessage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-database-sync-panel.tsx\u0000MailDatabaseSyncPanel": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-filter-editor.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-filter-editor.tsx\u0000MailFilterPill": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-filter-editor.tsx\u0000MailFilterPropertyList": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-filter-editor.tsx\u0000MailQuickFilterPicker": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-filter-editor.tsx\u0000toggleLabel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-filter-editor.tsx\u0000toggleQuickFilter": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-properties-panel.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-properties-panel.tsx\u0000formatMailPropertyValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-thread-row.tsx\u0000MailThreadRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-thread-row.tsx\u0000hoverActionLabel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mail-view-settings-menu.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/components/mailbox-topbar.tsx\u0000MailboxTopbar": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-document-theme.ts\u0000applyMailDocumentTheme": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-document-theme.ts\u0000parseCssColor": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-html.ts\u0000sanitizeMailHtml": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-realtime.ts\u0000parseMailRealtimeMessage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-sync-controller.ts\u0000reconcilePending": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-sync-controller.ts\u0000runSync": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-sync-controller.ts\u0000threadMatchesView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-view-model.ts\u0000clientGroupKeys": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/model/mail-view-model.ts\u0000clientGroupLabel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/pages/mail.tsx\u0000MailboxController": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/pages/mail.tsx\u0000moveThreadToGroup": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/mail/pages/mail.tsx\u0000runHoverAction": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/meetings/capture/browser-meeting-capture.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/meetings/capture/browser-meeting-capture.ts\u0000prepare": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/meetings/capture/browser-meeting-capture.ts\u0000processFrame": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/meetings/capture/browser-meeting-capture.ts\u0000readNextMeetingAudioSequences": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/meetings/capture/browser-meeting-capture.ts\u0000start": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/meetings/pages/meeting.tsx\u0000MeetingMainPane": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/notion-import/hooks/use-notion-import.ts\u0000handleImportFile": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/notion-import/lib/notion-html-blocks.ts\u0000blockNodeToJson": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/notion-import/lib/notion-html-blocks.ts\u0000inlineNodeToJson": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/notion-import/lib/notion-html-blocks.ts\u0000normalizeBody": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/offline/components/offline-availability-action.tsx\u0000OfflineAvailabilityAction": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/offline/components/offline-availability-action.tsx\u0000run": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/offline/documents/offline-recovery.ts\u0000importRecoveryArchive": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/offline/documents/offline-recovery.ts\u0000validateRecoveryManifest": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/offline/model/offline-store.ts\u0000shouldPersistOfflineQueryForManifest": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/offline/providers/offline-provider.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/components/layout-editor.tsx\u0000LayoutEditor": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/components/page-pane-header.tsx\u0000AppBreadcrumbs": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/hooks/use-open-embedded-page.ts\u0000openPage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/invitations/accept-page-invitation.tsx\u0000AcceptPageInvitationPage": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/pages/page.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "apps/web/src/features/pages/pages/page.tsx\u0000PageEditorPane": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/pages/page.tsx\u0000commentController": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/pages/pages/page.tsx\u0000updateContent": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/settings/pages/api-keys.tsx\u0000ApiKeyRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/settings/pages/profile.tsx\u0000ProfileDetailsCard": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/settings/pages/profile.tsx\u0000ProfileSettingsPage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/settings/pages/security.tsx\u0000PasswordCard": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/settings/pages/zilobase-ai/components/zilobase-ai-create-menu.tsx\u0000ZilobaseAiCreateMenu": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/app-sidebar.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/app-sidebar.tsx\u0000AppSidebar": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/app-sidebar.tsx\u0000renderSection": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/nav-actions.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/nav-actions.tsx\u0000ItemShareDropdownContent": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/nav-actions.tsx\u0000NavActions": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/nav-actions.tsx\u0000duplicatePage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/nav-favorites.tsx\u0000NavFavorites": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/nav-pages.tsx\u0000NavPageSection": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/nav-pages.tsx\u0000PageItemMenu": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-customize-panel.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-database-view-section.tsx\u0000SidebarDatabaseViewSection": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-layout-tabs.tsx\u0000SidebarLayoutTab": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-nav-list.tsx\u0000SidebarNavRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-shortcut-list.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/sidebar-shortcut-list.tsx\u0000activate": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/workspace-mail-navigation.tsx\u0000WorkspaceMailNavigation": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/components/workspace-mail-navigation.tsx\u0000unreadCountForView": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/model/sidebar-layout-model.ts\u0000getShortcutLabel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/model/sidebar-layout-model.ts\u0000isShortcutActive": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/model/sidebar-navigation-model.tsx\u0000pages": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/sidebar/workspace-switcher.tsx\u0000MultiWorkspaceSwitcher": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/tasks/pages/tasks.tsx\u0000TasksPage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/tasks/pages/tasks.tsx\u0000createTaskDatabase": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/teamspaces/model/teamspace-filters.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/teamspaces/pages/team.tsx\u0000InviteMemberSection": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/teamspaces/pages/team.tsx\u0000MemberRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/teamspaces/pages/team.tsx\u0000TeamSettingsPage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/teamspaces/pages/teamspaces.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/teamspaces/pages/teamspaces.tsx\u0000ManageTeamspaceDialog": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/teamspaces/pages/teamspaces.tsx\u0000TeamspacesSettingsPage": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/workspaces/components/page-workspace-gate.tsx\u0000PageWorkspaceGate": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/workspaces/pages/accept-invitation.tsx\u0000AcceptInvitationPage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/workspaces/pages/workspace-settings.tsx\u0000WorkspaceDetailsSection": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/features/workspaces/pages/workspace-settings.tsx\u0000WorkspaceMailConnectionSection": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/config/feature-flags.ts\u0000readBooleanFeatureFlag": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/shortcuts/editor-history.ts\u0000getEditorHistoryDepths": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/ui/chart.tsx\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/ui/chart.tsx\u0000getPayloadConfigFromPayload": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/ui/chart.tsx\u0000tooltipLabel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/ui/dropdown-menu.tsx\u0000DropdownMenuContent": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/ui/dropdrawer.tsx\u0000MobileDropDrawerContent": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/src/shared/ui/icon-emoji-picker.tsx\u0000IconEmojiPicker": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/vite/ai-dev-trace-plugin.ts\u0000events": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/web/vite/ai-dev-trace-plugin.ts\u0000parseTraceRequest": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/agent-contract.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/agent-contract.ts\u0000readAgentResultTable": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/agent-icons.ts\u0000resolveAgentGlyphName": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/apply-page-content-patch.ts\u0000resolvePatchEdit": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/conversation-adapter.ts\u0000prepareAgentTurnRequest": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/live-agent/debug-contract.ts\u0000isAgentDebugEvent": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/ai-chat/live-agent/effect-contract.ts\u0000isAgentLiveEffect": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/add-row-cache.ts\u0000applyConfirmedAddedDatabaseRow": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/add-row-cache.ts\u0000applyOptimisticAddedDatabaseRow": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/apply-delta.ts\u0000applyDatabaseDelta": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/apply-delta.ts\u0000findMatchingOptimisticRowIndex": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/apply-delta.ts\u0000mergeProperty": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/automations/contracts.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/automations/schedule.ts\u0000datesForPeriod": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/filter.ts\u0000compareDate": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/filter.ts\u0000evaluateDatabasePropertyFilter": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/filter.ts\u0000normalizeDatabaseFilter": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/filter.ts\u0000relativeDateRange": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/evaluator.ts\u0000callFormulaFunction": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/evaluator.ts\u0000callFormulaMethod": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/evaluator.ts\u0000evaluateBinaryExpression": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/evaluator.ts\u0000evaluateFormulaAst": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/evaluator.ts\u0000normalizePropertyValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/functions.ts\u0000callEagerFormulaFunction": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/functions.ts\u0000normalizeDate": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/functions.ts\u0000numberValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/parser.ts\u0000parsePrimary": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/formula/tokenizer.ts\u0000tokenizeFormula": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/mutation-cache.ts\u0000applyVersionedDatabaseMutation": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/mutation-hooks.ts\u0000formatDatePropertyValueAsText": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/mutation-hooks.ts\u0000mutationFn": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/mutation-hooks.ts\u0000onError": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/queries.ts\u0000databaseQueryKey": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/queries.ts\u0000queryFn": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/realtime.ts\u0000connect": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/realtime.ts\u0000parseMessage": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/realtime.ts\u0000useDatabaseRealtime": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/databases/row-snapshot.ts\u0000createSnapshot": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/mail/organization.ts\u0000hoverActions": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/mail/organization.ts\u0000normalizeMailViewConfig": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/mail/organization.ts\u0000normalizeNode": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/mail/predicate.ts\u0000evaluateMailFilterCondition": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/mail/predicate.ts\u0000propertyValue": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/mail/predicate.ts\u0000relativeDateRange": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/content-state.ts\u0000isPageBodyEmpty": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/database-realtime-cache.ts\u0000applyDatabaseMutationToPageProperties": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/database-realtime-cache.ts\u0000applyMutationToPageProperties": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/mutation-hooks.ts\u0000onSuccess": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/nav-delta.ts\u0000applyNavDelta": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/navigation-realtime-contract.ts\u0000isNavigationRealtimeEvent": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/page-layouts.ts\u0000modules": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/page-layouts.ts\u0000movePageLayoutModule": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/page-layouts.ts\u0000normalizePageLayoutConfig": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/pages/queries.ts\u0000queryFn": {
+      "crap_critical": {
+        "count": 2
+      }
+    },
+    "packages/features/src/shared/api-errors.ts\u0000parseActiveWorkspaceMismatchError": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/user-settings/sidebar-config.ts\u0000normalizeSection": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/user-settings/sidebar-config.ts\u0000normalizeShortcut": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/user-settings/sidebar-config.ts\u0000normalizeSidebarIcon": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/features/src/workspaces/hooks.ts\u0000useActiveWorkspaceId": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/markdown-text-splitter/src/character.ts\u0000splitTextRecursive": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/context/extract-page-markdown-from-context.ts\u0000extractPageMarkdownFromContext": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/database/build-database-markdown.ts\u0000buildViewSection": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/database/database-view-schema.ts\u0000getActiveVisibilityConfig": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/database/database-view-schema.ts\u0000getNameColumnLabel": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/database/database-view-schema.ts\u0000getPropertyTypeHint": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/database/format-property-value.ts\u0000parsePropertyValue": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/database/insert-database-block.ts\u0000insertDatabaseBlockInContent": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/markdown/prosemirror-to-markdown.ts\u0000<arrow>": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/markdown/restore-structural-blocks-from-markdown.ts\u0000matchStructuralBlockText": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/markdown/restore-structural-blocks-from-markdown.ts\u0000matchStructuralLinkParagraph": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "packages/page-context/src/markdown/restore-structural-blocks-from-markdown.ts\u0000structuralBlockToHtml": {
+      "complexity_critical": {
+        "count": 1
+      },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/mail/gmail-deployment-config.mjs\u0000canonicalApiOrigin": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/selfhost/test.mjs\u0000waitForMessage": {
+      "crap_critical": {
+        "count": 1
+      }
+    }
+  },
+  "runtime_coverage_findings": [],
+  "target_keys": [
+    "apps/server/src/features/mail/safe-unsubscribe.ts:untested risk",
+    "apps/web/src/features/sidebar/app-sidebar.tsx:complexity",
+    "apps/server/src/features/mail/route-support.ts:high impact",
+    "packages/features/src/ai-chat/agent-contract.ts:high impact",
+    "apps/web/src/features/mail/pages/mail.tsx:complexity",
+    "apps/web/src/features/mail/model/mail-html.ts:complexity",
+    "apps/server/src/features/databases/automations/action-support.ts:high impact",
+    "apps/web/src/features/mail/components/mail-composer.tsx:complexity",
+    "apps/web/src/features/databases/properties/editors/database-property-value.tsx:complexity",
+    "apps/server/src/features/mail/query-routes.ts:untested risk",
+    "apps/web/src/features/mail/model/mail-sync-controller.ts:complexity",
+    "apps/web/src/app/routing/guards.ts:high impact",
+    "apps/web/src/features/mail/components/mail-conversation-viewer.tsx:untested risk",
+    "apps/web/src/features/mail/components/mail-actions.tsx:high impact",
+    "apps/web/src/features/mail/components/mail-thread-row.tsx:complexity",
+    "apps/server/src/features/mail/mail-database-sync-worker.ts:high impact",
+    "packages/page-context/src/markdown/prosemirror-to-markdown.ts:high impact",
+    "apps/server/src/features/databases/automations/webhook-egress.ts:untested risk",
+    "apps/server/src/features/mail/mail-sync.ts:untested risk",
+    "apps/web/src/features/databases/interactions/database-page-link.tsx:complexity",
+    "apps/web/src/app/routing/search-validators.ts:high impact",
+    "apps/web/src/features/databases/core/database-property-values.ts:high impact",
+    "apps/web/src/features/mail/components/mail-database-sync-panel.tsx:complexity",
+    "apps/web/src/features/mail/model/mail-view-model.ts:high impact",
+    "apps/server/src/features/databases/automations/trigger-evaluator.ts:untested risk",
+    "apps/web/src/features/mail/model/mail-compose.ts:high impact",
+    "packages/page-context/src/database/format-property-value.ts:high impact",
+    "apps/web/src/features/mail/components/mail-properties-panel.tsx:high impact",
+    "apps/web/src/features/mail/components/mail-hover-actions-panel.tsx:high impact",
+    "apps/web/src/features/desktop/diagnostics/desktop-diagnostics.ts:high impact",
+    "apps/server/src/features/databases/properties/config.ts:high impact",
+    "packages/features/src/databases/apply-delta.ts:high impact",
+    "apps/web/src/features/editor/extensions/page-block.tsx:complexity",
+    "apps/web/src/features/databases/automations/notion-action-builder.tsx:complexity",
+    "apps/web/src/features/databases/automations/database-automation-manager.tsx:complexity",
+    "apps/web/src/features/teamspaces/pages/teamspaces.tsx:complexity",
+    "apps/server/src/shared/security/navigation-realtime-ticket.ts:high impact",
+    "apps/server/src/features/mail/mail-properties.ts:complexity",
+    "apps/web/src/features/comments/context/page-comments-registry.tsx:high impact",
+    "apps/web/src/features/demo/runtime.ts:untested risk",
+    "apps/server/src/features/mail/mail-normalize.ts:high impact",
+    "apps/web/src/features/databases/components/page-metadata.tsx:complexity",
+    "apps/server/src/features/mail/mail-query.ts:complexity",
+    "apps/server/src/features/mail/mail-realtime-ticket.ts:untested risk",
+    "apps/web/src/features/pages/components/layout-editor.tsx:complexity",
+    "apps/web/src/features/databases/components/page-metadata-properties.tsx:complexity",
+    "apps/server/src/features/mail/mail-database-sync.ts:untested risk",
+    "apps/web/src/features/databases/properties/editors/database-derived-property-value.tsx:complexity",
+    "apps/web/src/features/databases/properties/editors/database-property-select.tsx:complexity",
+    "apps/web/src/features/pages/pages/page.tsx:complexity",
+    "apps/web/src/features/library/pages/recents.tsx:complexity",
+    "apps/web/src/features/mail/components/mail-filter-editor.tsx:untested risk",
+    "apps/web/src/features/offline/model/offline-store.ts:high impact",
+    "apps/web/src/features/databases/views/table/view/database-table-selection-toolbar.tsx:complexity",
+    "packages/features/src/mail/predicate.ts:untested risk",
+    "apps/web/src/features/databases/views/timeline/view/database-timeline-view.tsx:complexity",
+    "apps/web/src/features/pages/invitations/accept-page-invitation.tsx:complexity",
+    "apps/web/src/features/databases/views/view/database-view-toolbar.tsx:complexity",
+    "packages/page-context/src/database/database-view-schema.ts:untested risk",
+    "apps/web/src/app/shell/content/app-layout.tsx:complexity",
+    "apps/web/src/features/comments/components/page-comments.tsx:complexity",
+    "apps/server/src/features/ai/files/ai-file-extraction.ts:high impact",
+    "apps/server/src/features/databases/properties/import.ts:untested risk",
+    "apps/web/src/features/databases/views/view-settings/view/index.tsx:complexity",
+    "apps/server/src/features/mail/mail-mime.ts:high impact",
+    "apps/server/src/features/databases/automations/evaluator.ts:complexity",
+    "apps/web/src/features/databases/views/table/view/database-table-view.tsx:complexity",
+    "apps/web/src/features/editor/extensions/meeting/meeting-view.tsx:complexity",
+    "apps/server/src/features/databases/rows/service.ts:complexity",
+    "apps/web/src/features/ai/components/elements/chatbot.tsx:complexity",
+    "apps/server/src/features/databases/templates/service.ts:complexity",
+    "apps/web/src/features/ai/components/elements/agent-tool-task.tsx:complexity",
+    "apps/web/src/features/databases/pages/database.tsx:complexity",
+    "apps/web/src/features/editor/composition/editor.tsx:complexity",
+    "apps/web/src/app/shell/document-favicon.tsx:complexity",
+    "apps/web/src/features/ai/cache/use-database-embed-auto-apply.ts:complexity",
+    "apps/web/src/features/ai/components/elements/agent-action-review.tsx:untested risk",
+    "apps/web/src/features/ai/components/elements/agent-live-debugger.tsx:complexity",
+    "apps/web/src/features/databases/properties/rollup/model/rollup-engine.ts:complexity",
+    "apps/web/src/features/databases/views/model/database-sub-items.ts:complexity",
+    "apps/web/src/features/desktop/deep-links/desktop-deep-link.ts:untested risk",
+    "packages/features/src/databases/add-row-cache.ts:complexity",
+    "apps/web/src/features/mail/model/mail-document-theme.ts:untested risk",
+    "apps/web/src/features/databases/views/form/view/database-form-view.tsx:complexity",
+    "apps/web/src/features/sidebar/components/nav-actions.tsx:complexity",
+    "apps/server/src/features/databases/automations/compiler.ts:complexity",
+    "apps/web/src/features/databases/views/controller/use-database-view-controller.tsx:complexity",
+    "apps/web/src/features/databases/properties/editors/database-property-date.tsx:complexity",
+    "apps/server/src/features/ai/chat/chat-request.ts:untested risk",
+    "apps/web/src/features/ai/components/elements/page-edit-card.tsx:complexity",
+    "packages/features/src/pages/database-realtime-cache.ts:untested risk",
+    "apps/web/src/features/databases/properties/editors/database-property-menu.tsx:complexity",
+    "apps/web/src/features/sidebar/components/nav-pages.tsx:complexity",
+    "apps/web/src/features/mail/components/mailbox-thread-list.tsx:complexity",
+    "apps/web/src/features/ai/components/elements/prompt-input.tsx:complexity",
+    "apps/web/src/features/databases/properties/formula/view/database-formula-dialog.tsx:complexity",
+    "apps/web/src/features/databases/views/kanban/view/database-kanban-view.tsx:complexity",
+    "apps/web/src/features/editor/components/editor/drag-block-menu.tsx:complexity",
+    "apps/web/src/features/ai/components/elements/database-tool-steps.tsx:complexity",
+    "apps/web/src/features/ai/context/use-page-ai-context.ts:complexity",
+    "apps/web/src/features/editor/components/editor/page-layout-module-canvas.tsx:complexity",
+    "apps/web/src/features/databases/properties/configuration/relation/relation-property-settings.tsx:complexity",
+    "packages/features/src/databases/formula/tokenizer.ts:complexity",
+    "apps/server/src/features/databases/views/service.ts:complexity",
+    "apps/web/src/features/databases/views/view-settings/view/chart-settings.tsx:complexity",
+    "apps/server/src/features/pages/page-hierarchy-routes.ts:complexity",
+    "apps/web/src/features/ai/components/elements/chatbot-composer.tsx:complexity",
+    "packages/features/src/databases/formula/functions.ts:untested risk",
+    "apps/server/src/features/ai/conversion/markdown-to-page-content.ts:complexity",
+    "apps/web/src/features/ai/cache/use-page-edit-auto-apply.ts:complexity",
+    "apps/web/src/features/editor/extensions/embed-block.tsx:complexity",
+    "apps/server/src/features/meetings/meeting-realtime-transcription.ts:complexity",
+    "apps/web/src/features/databases/automations/notion-action-model.ts:complexity",
+    "packages/features/src/databases/formula/evaluator.ts:complexity",
+    "apps/server/src/features/pages/page-browse-routes.ts:complexity",
+    "apps/web/src/features/ai/components/elements/context-attach-menu.tsx:complexity",
+    "apps/web/src/features/databases/views/view-settings/view/layout-settings.tsx:complexity",
+    "apps/web/src/features/editor/components/editor/table-controls.tsx:complexity"
+  ]
+}

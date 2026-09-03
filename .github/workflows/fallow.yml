@@ -35,4 +35,4 @@ jobs:
 
       - name: Report complete production health
         if: github.event_name != 'pull_request'
-        run: npm run quality:fallow:full -- --type-aware --format github-annotations
+        run: npm run verify:architecture

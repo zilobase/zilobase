@@ -12,6 +12,9 @@
     "scripts/**/*.mjs",
     "apps/desktop/e2e/**/*.mjs"
   ],
+  // CI workflow shell fragments are not JavaScript entrypoints. In particular,
+  // Docker's {{...}} format strings are not filesystem globs.
+  "ignorePatterns": [".github/**/*.yml", ".github/**/*.yaml"],
   // Test-only decoders and fixture factories are intentionally outside their
   // published package graphs and are imported by colocated tests.
   "ignoreFindings": [
@@ -730,25 +733,20 @@
     // Hide pair-only clones; focus on widespread copy-paste
     // worth refactoring. Lower to 2 to report every duplicate pair.
     "minOccurrences": 3,
-    // Post-refactor production measurement is 0.776%. Keep a narrow margin for
-    // parser drift while blocking material duplication growth.
-    "threshold": 0.8
-    // Common additions (uncomment to enable):
-    // "ignore": [
-    //   "**/lib/**",          // for repos that publish transpiled output to lib/
-    //   "**/legacy/**",       // for repos with legacy-build artifacts
-    //   "**/__generated__/**", // Relay, GraphQL Code Generator
-    //   "**/generated/**"     // OpenAPI, Protobuf codegen
-    // ]
+    // Ignore short framework registration patterns and gate substantive clones.
+    "minTokens": 75,
+    // The canonical Drizzle schema intentionally repeats concrete column
+    // declarations; abstracting them would obscure persistence contracts.
+    "ignore": ["apps/server/src/infrastructure/database/schema.ts"],
+    "threshold": 3
   },
   "health": {
-    // Post-refactor ceilings are one unit above the measured repo maxima. The
-    // new-only audit blocks increases; named legacy hotspots are documented in
-    // ARCHITECTURE.md and must shrink when touched.
-    "maxCyclomatic": 102,
-    "maxCognitive": 171,
-    "maxCrap": 10303,
-    "maxUnitSize": 2663
+    // Existing findings are identity-baselined. New or moved functions must
+    // satisfy these limits instead of inheriting a repository-wide exemption.
+    "maxCyclomatic": 25,
+    "maxCognitive": 40,
+    "maxCrap": 100,
+    "maxUnitSize": 400
   },
   "rules": {
     "unused-dependencies": "warn"

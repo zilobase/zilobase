@@ -15,7 +15,7 @@ import {
 import { executeDesktopServerSwitch } from "@/features/desktop/server/index";
 import { Button } from "@/shared/ui/button";
 
-export function RouteErrorPage({ error }: ErrorComponentProps) {
+export default function RouteErrorPage({ error }: ErrorComponentProps) {
   const selectedServer = getSelectedDesktopServer();
   const copy = describeRouteError(error, {
     isDesktop: isDesktopApp() || Boolean(selectedServer),

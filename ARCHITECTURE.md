@@ -74,15 +74,18 @@ relative imports. A direct subpath is acceptable only for an established,
 documented subdomain contract where importing the feature root would create a
 cycle.
 
-Fallow enforces every production source zone, disallowed dependency directions,
-cycles, unresolved imports, and dead code. The post-refactor ceilings are
-recorded in `.fallowrc.json`: duplication is capped at 0.8%, and complexity
-ceilings are one unit above the measured legacy maxima. The named legacy
-hotspots are `PageMetadata` for cyclomatic/cognitive/CRAP and `page-routes.ts`
-for unit size. New functions should stay within Fallow's normal health targets;
-a hotspot exception requires a named inline suppression, a reason, and an issue
-to reduce or remove it. Touching an existing hotspot must not increase its
-metric.
+Fallow enforces every production source zone, disallowed dependency direction,
+cycle, unresolved import, unused file, unused export, and dependency ownership
+issue. Production duplication is capped below 3%; pair-only and short framework
+clones are ignored, and the canonical Drizzle schema is excluded because its
+explicit repeated columns are part of the persistence contract.
+
+Health limits are 25 cyclomatic complexity, 40 cognitive complexity, 100 CRAP,
+and 400 lines per unit. Remaining legacy findings are tracked by exact identity
+in `scripts/refactor/fallow-health-baseline.json`: a new or moved violation
+fails the architecture gate rather than inheriting a repository-wide exemption.
+Do not refresh that baseline to accommodate a change. Remove entries as legacy
+units are simplified.
 
 ## Canonical Sources of Truth
 
@@ -94,15 +97,24 @@ metric.
   database feature.
 - Query keys, API contracts, cache updates, and shared mutations live in
   `packages/features`.
+- Database web state is partitioned into data, UI, action, and realtime
+  contexts. Narrow hooks are the supported consumption seam; a synthetic full
+  database context is not a reusable list-view API.
 - `apps/server/src/infrastructure/database/schema.ts` is the only server schema
   declaration.
 - Page and ProseMirror conversion lives in `packages/page-context`.
 - Web route declarations and guards are owned by `apps/web/src/app/routing`.
+- Top-level web route groups are lazy-loaded through explicit loading and error
+  boundaries. The production build enforces an initial-JavaScript budget of
+  1.5 MB, a 1 MB ordinary-route budget, and prevents Shiki from entering
+  unrelated route graphs.
 - `apps/web/src/edition/community.ts` is the type-only compatibility contract
   consumed by edition implementations; community runtime wiring remains under
   `apps/web/src/app/edition`.
 - Public server specifiers and symbol sets are compatibility contracts:
   `@zilobase/server`, `/adapter-api`, `/node-adapter-api`, and `/realtime-api`.
+  The server suite imports these exact specifiers, and the adjacent cloud and
+  enterprise repositories provide the end-to-end consumer compatibility gate.
 
 ## Data Flow
 

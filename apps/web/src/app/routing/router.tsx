@@ -15,10 +15,7 @@ const routeTree = rootRoute.addChildren([
 
 export const router = createRouter({
   routeTree,
-  defaultErrorComponent: lazyRouteComponent(
-    () => import("./route-error-page"),
-    "RouteErrorPage",
-  ),
+  defaultErrorComponent: lazyRouteComponent(() => import("./route-error-page")),
   defaultPendingComponent: PendingPage,
   defaultPendingMinMs: 300,
   defaultPendingMs: 250,

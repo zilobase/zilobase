@@ -58,9 +58,6 @@ export const settingsRoutes = [
   createRoute({
     getParentRoute: () => appRoute,
     path: "/enterprise/$",
-    component: lazyRouteComponent(
-      () => import("../edition-route-host"),
-      "EditionRouteHost",
-    ),
+    component: lazyRouteComponent(() => import("../edition-route-host")),
   }),
 ];
