@@ -9,6 +9,10 @@ apps/desktop/src-tauri/target
 coverage
 .env.selfhost
 .env.selfhost.development
+.env.keys
+.env.keys.*
+**/.env.keys
+**/.env.keys.*
 Dockerfile
 docker-compose*.yml
 docs

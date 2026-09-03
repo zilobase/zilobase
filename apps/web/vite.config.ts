@@ -6,6 +6,8 @@ import tailwindcss from "@tailwindcss/vite";
 import { aiDevTracePlugin } from "./vite/ai-dev-trace-plugin";
 
 const host = process.env.TAURI_DEV_HOST;
+const devPort = readPort(process.env.VITE_DEV_PORT, 1420);
+const hmrPort = readPort(process.env.VITE_HMR_PORT, devPort + 1);
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
 const editorDir = fileURLToPath(new URL("./src/features/editor", import.meta.url));
 const featuresDir = fileURLToPath(
@@ -150,7 +152,7 @@ export default defineConfig(async () => ({
   },
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {
-    port: 1420,
+    port: devPort,
     strictPort: true,
     host: host || process.env.VITE_DEV_HOST || "0.0.0.0",
     proxy: {
@@ -180,9 +182,14 @@ export default defineConfig(async () => ({
       ? {
           protocol: "ws",
           host,
-          port: 1421,
+          port: hmrPort,
         }
-      : undefined,
+      : process.env.VITE_HMR_PORT
+        ? {
+            port: hmrPort,
+            clientPort: hmrPort,
+          }
+        : undefined,
     watch: {
       // 3. tell Vite to ignore watching the desktop shell
       ignored: ["**/src-tauri/**", "../desktop/src-tauri/**"],
@@ -197,3 +204,10 @@ export default defineConfig(async () => ({
       : undefined,
   },
 }));
+
+function readPort(value: string | undefined, fallback: number) {
+  const port = Number(value);
+  return Number.isSafeInteger(port) && port > 0 && port <= 65_535
+    ? port
+    : fallback;
+}

@@ -1,5 +1,12 @@
-import "dotenv/config";
+import { config as loadEnv } from "@dotenvx/dotenvx";
 import { desc, eq } from "drizzle-orm";
+
+loadEnv({
+  path: process.env.ZILOBASE_ENV_FILE ?? "../../.env.development",
+  quiet: true,
+  ignore: ["MISSING_ENV_FILE"],
+  noOps: true,
+});
 
 import { createApp } from "../app";
 import { createAuth } from "../features/auth";

@@ -15,7 +15,12 @@ dist/
 node_modules/
 
 # env
+# dotenvx: commit encrypted env files; never commit private keys
+.env.keys
+.env.keys.*
 .env
+.env.local
+.env*.local
 .env.production
 .dev.vars
 

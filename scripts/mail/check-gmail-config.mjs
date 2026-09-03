@@ -1,10 +1,19 @@
 #!/usr/bin/env node
 
+import { config as loadEnv } from "@dotenvx/dotenvx"
+
 import { validateGmailDeploymentConfig } from "./gmail-deployment-config.mjs"
 
 try {
   const envFile = process.argv.find((argument) => argument.startsWith("--env-file="))?.slice("--env-file=".length)
-  if (envFile) process.loadEnvFile(envFile)
+  if (envFile) {
+    loadEnv({
+      path: envFile,
+      quiet: true,
+      ignore: ["MISSING_ENV_FILE"],
+      noOps: true,
+    })
+  }
   const result = validateGmailDeploymentConfig(process.env)
   if (!result.enabled) {
     console.info("Gmail deployment: disabled")

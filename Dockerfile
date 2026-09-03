@@ -15,6 +15,7 @@ ENV VITE_FEATURE_MAIL=${VITE_FEATURE_MAIL}
 RUN npm run build:web
 RUN ./apps/web/node_modules/.bin/esbuild apps/server/src/entrypoints/serverful.ts apps/server/src/scripts/migrate.ts \
   --bundle \
+  --sourcemap \
   --platform=node \
   --target=node22 \
   --format=cjs \

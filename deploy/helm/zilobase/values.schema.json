@@ -1,9 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["replicaCount", "realtime", "gmail", "image", "existingSecret", "config", "networkPolicy", "trustedCa"],
+  "required": ["replicaCount", "development", "debug", "realtime", "gmail", "image", "existingSecret", "config", "networkPolicy", "trustedCa"],
   "properties": {
     "replicaCount": { "type": "integer", "minimum": 1 },
+    "development": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": { "enabled": { "type": "boolean" } }
+    },
+    "debug": {
+      "type": "object",
+      "required": ["enabled", "port"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "port": { "type": "integer", "minimum": 1024, "maximum": 65535 }
+      }
+    },
     "realtime": {
       "type": "object",
       "required": ["enabled", "existingSecret", "secretKey", "networkCIDR", "port"],
@@ -42,9 +55,9 @@
       "type": "object",
       "required": ["externalUrl", "s3Endpoint", "s3PublicEndpoint", "s3Bucket", "smtpHost"],
       "properties": {
-        "externalUrl": { "type": "string", "pattern": "^https://" },
-        "s3Endpoint": { "type": "string", "pattern": "^https://" },
-        "s3PublicEndpoint": { "type": "string", "pattern": "^https://" },
+        "externalUrl": { "type": "string", "pattern": "^https?://" },
+        "s3Endpoint": { "type": "string", "pattern": "^https?://" },
+        "s3PublicEndpoint": { "type": "string", "pattern": "^https?://" },
         "s3Bucket": { "type": "string", "minLength": 1 },
         "smtpHost": { "type": "string", "minLength": 1 }
       }
@@ -74,6 +87,19 @@
     }
   },
   "allOf": [{
+    "if": { "properties": { "development": { "properties": { "enabled": { "const": false } } } } },
+    "then": {
+      "properties": {
+        "config": {
+          "properties": {
+            "externalUrl": { "pattern": "^https://" },
+            "s3Endpoint": { "pattern": "^https://" },
+            "s3PublicEndpoint": { "pattern": "^https://" }
+          }
+        }
+      }
+    }
+  }, {
     "if": { "properties": { "replicaCount": { "minimum": 2 } } },
     "then": {
       "properties": {

@@ -1,4 +1,4 @@
-import { config as loadEnv } from "dotenv";
+import { config as loadEnv } from "@dotenvx/dotenvx";
 import path from "node:path";
 
 import { createApp } from "../../app";
@@ -8,6 +8,9 @@ import { shutdownNodeTelemetry } from "../../infrastructure/background/node-tele
 
 loadEnv({
   path: process.env.ZILOBASE_ENV_FILE ?? path.resolve("apps/server/.env"),
+  quiet: true,
+  ignore: ["MISSING_ENV_FILE"],
+  noOps: true,
 });
 
 const runtime = createNodeRuntime({

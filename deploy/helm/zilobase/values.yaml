@@ -1,5 +1,12 @@
 replicaCount: 1
 
+development:
+  enabled: false
+
+debug:
+  enabled: false
+  port: 9229
+
 realtime:
   enabled: false
   existingSecret: ""

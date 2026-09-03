@@ -65,6 +65,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 - { name: HOST, value: "0.0.0.0" }
 - { name: PORT, value: "3000" }
 - { name: NODE_ENV, value: "production" }
+{{ if .Values.debug.enabled }}
+- { name: NODE_OPTIONS, value: "--enable-source-maps --inspect=0.0.0.0:{{ .Values.debug.port }}" }
+{{ end }}
 - { name: DATABASE_AUTOMATIONS_ENABLED, value: "false" }
 - { name: DATABASE_AUTOMATIONS_EXECUTION_DISABLED, value: "true" }
 - { name: BETTER_AUTH_URL, value: {{ .Values.config.externalUrl | quote }} }

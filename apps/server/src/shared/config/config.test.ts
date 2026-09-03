@@ -173,6 +173,7 @@ test("trusted origins add development clients only for local requests", () => {
 test("local host classification covers loopback and private IPv4 ranges", () => {
   for (const hostname of [
     "localhost",
+    "node.zilobase.localhost",
     "0.0.0.0",
     "192.0.0.2",
     "127.0.0.1",
@@ -195,6 +196,7 @@ test("local host classification covers loopback and private IPv4 ranges", () => 
   }
 
   assert.equal(isLoopbackHost("localhost"), true);
+  assert.equal(isLoopbackHost("worker.zilobase.localhost"), true);
   assert.equal(isLoopbackHost("127.0.0.1"), true);
   assert.equal(isLoopbackHost("::1"), true);
   assert.equal(isLoopbackHost("192.168.1.2"), false);

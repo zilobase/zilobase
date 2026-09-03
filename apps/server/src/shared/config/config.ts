@@ -253,6 +253,7 @@ export function isLocalRequestOrigin(url: URL | null) {
 export function isLocalDevelopmentHost(hostname: string) {
   if (
     hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
     hostname === "0.0.0.0" ||
     hostname === "192.0.0.2" ||
     hostname === "127.0.0.1" ||
@@ -283,6 +284,7 @@ export function isLocalDevelopmentHost(hostname: string) {
 export function isLoopbackHost(hostname: string) {
   return (
     hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
     hostname === "127.0.0.1" ||
     hostname === "::1"
   );

@@ -18,6 +18,9 @@ target
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/zilobase.code-workspace
 .idea
 .DS_Store
 *.suo
@@ -26,9 +29,16 @@ target
 *.sln
 *.sw?
 .aura/
-.env.production
-.env.development
+
+# dotenvx: commit encrypted env files; never commit private keys
+.env.keys
+.env.keys.*
+
+# plaintext secrets and machine-local overlays
 .env
+.env.local
+.env*.local
+.env.production
 .env.selfhost
 .env.selfhost.development
 .dev.vars
@@ -37,3 +47,4 @@ target
 .grok/
 .fallow/
 .dev/ai-thread-logs/
+.dev/local/
