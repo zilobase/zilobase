@@ -36,6 +36,7 @@ import { getIconSolidClassName } from "@/shared/lib/color-tokens";
 import { DEFAULT_DATABASE_ITEM_ICON } from "@/features/pages/index";
 import { getDatabaseIconNode, PageIconDisplay } from "@/features/pages/index";
 import { cn } from "@/shared/lib/utils";
+import posthog from "@/shared/lib/posthog";
 import {
   useApplyDatabaseTemplate,
   useDatabase,
@@ -66,6 +67,18 @@ import {
 import { serializePropertyValue } from "../../core/database-property-values";
 
 type SetupView = "main" | "link";
+
+function captureDatabaseSetupCompleted(selection: DatabaseSetupSelection) {
+  posthog?.capture("database_setup_completed", {
+    setup_method: selection.sourceView
+      ? "linked_data_source"
+      : selection.csvImport
+        ? "csv_import"
+        : selection.templateId
+          ? "template"
+          : "guided",
+  });
+}
 
 type DatabaseSetupCardProps = {
   databaseId: string;
@@ -492,6 +505,12 @@ export function DatabaseSetupCard({
             sourceView,
             templateId,
           });
+          captureDatabaseSetupCompleted({
+            csvImport,
+            databaseName,
+            sourceView,
+            templateId,
+          });
           onComplete();
           return;
         }
@@ -616,6 +635,12 @@ export function DatabaseSetupCard({
           });
         }
 
+        captureDatabaseSetupCompleted({
+          csvImport,
+          databaseName,
+          sourceView,
+          templateId,
+        });
         if (setupDismissedPersisted) {
           onDismiss();
         } else {

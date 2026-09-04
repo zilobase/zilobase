@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { Hono } from "hono";
 
-import { appErrorHandler, createApp } from "./";
+import { appErrorHandler, createApp, createAppErrorHandler } from "./";
 import type { AppBindings } from "../shared/types";
 import type { ZilobaseEditionExtension } from "../shared/types";
 
 test("createApp registers every public feature route group", () => {
-  const routes = createApp().routes.map(({ method, path }) => `${method} ${path}`);
+  const routes = createApp().routes.map(
+    ({ method, path }) => `${method} ${path}`,
+  );
 
   for (const expected of [
     "GET /.well-known/zilobase",
@@ -130,4 +132,34 @@ test("unexpected failures use a private stable 500 response", async () => {
     route: "/failure",
   });
   log.mockRestore();
+});
+
+test("configured error reporter receives safe request context", async () => {
+  const reporter = vi.fn();
+  const app = new Hono<AppBindings>();
+  app.use("*", async (c, next) => {
+    c.set("requestId", "request-3");
+    c.set("user", null);
+    c.set("session", null);
+    await next();
+  });
+  app.get("/failure", () => {
+    throw new Error("captured failure");
+  });
+  app.onError(createAppErrorHandler(reporter));
+
+  const response = await app.request("/failure");
+
+  assert.equal(response.status, 500);
+  assert.equal(reporter.mock.calls.length, 1);
+  assert.deepEqual(reporter.mock.calls[0]?.[0], {
+    code: "UNHANDLED_REQUEST_ERROR",
+    error: new Error("captured failure"),
+    method: "GET",
+    requestId: "request-3",
+    route: "/failure",
+    status: 500,
+    userId: null,
+    workspaceId: null,
+  });
 });

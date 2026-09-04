@@ -10,6 +10,7 @@ import {
   useCreatePage,
   useUpdatePage,
 } from "@zilobase/features/pages"
+import posthog from "@/shared/lib/posthog"
 
 export function useNotionImport({
   navigateToEntry = true,
@@ -52,6 +53,10 @@ export function useNotionImport({
           file,
           updatePage: (input) => updatePage.mutateAsync(input),
           workspaceId,
+        })
+        posthog?.capture("notion_import_completed", {
+          imported_page_count: result.createdPageIds.length,
+          skipped_asset_count: result.skippedAssets,
         })
         const suffix =
           result.skippedAssets > 0

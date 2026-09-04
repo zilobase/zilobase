@@ -21,7 +21,7 @@ import {
   navigationRealtimeOutbox,
 } from "../../infrastructure/database/schema";
 import { getDatabaseUrl } from "../../infrastructure/runtime/runtime-adapter";
-import { runDueBackgroundMaintenance } from "../../infrastructure/background/maintenance";
+import { runDueBackgroundMaintenance } from "../background/maintenance";
 import { backgroundTaskLane, type BackgroundLane, type BackgroundTaskV1 } from "../../infrastructure/background/contracts";
 import { boundedErrorCode } from "../../infrastructure/background/dispatch";
 

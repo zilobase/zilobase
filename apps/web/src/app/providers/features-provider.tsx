@@ -28,6 +28,7 @@ import {
   isHostedDemoRuntime,
   requestDemoGuard,
 } from "@/features/demo"
+import posthog from "@/shared/lib/posthog"
 
 export const webAuthClient: ZilobaseAuthClient = {
   getSession: async () => {
@@ -95,6 +96,7 @@ export const webAuthClient: ZilobaseAuthClient = {
   signOut: async () => {
     if (isHostedDemoRuntime()) throw requestDemoGuard()
     const result = await authFetch("/sign-out", {})
+    posthog?.reset()
     await clearApiAuthToken()
     useAppStore.getState().resetAccountState()
     return result

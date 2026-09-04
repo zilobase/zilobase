@@ -16,10 +16,10 @@ import { cleanupExpiredGmailSendOperations } from "../../features/mail/mail-comp
 import { drainInProductNotificationOutbox } from "../../features/notifications/outbox";
 import { drainNavigationRealtimeOutbox } from "../../features/workspaces/navigation-realtime/outbox";
 import type { RuntimeEnv } from "../../shared/config/config";
-import { db } from "../database";
-import { backgroundMaintenanceTask } from "../database/schema";
-import { boundedErrorCode } from "./dispatch";
-import { getBackgroundOperationalSnapshot } from "./health";
+import { boundedErrorCode } from "../../infrastructure/background/dispatch";
+import { getBackgroundOperationalSnapshot } from "../../infrastructure/background/health";
+import { db } from "../../infrastructure/database";
+import { backgroundMaintenanceTask } from "../../infrastructure/database/schema";
 
 export const BACKGROUND_MAINTENANCE_TASKS = {
   "ai.cleanup": 5 * 60_000,
@@ -126,9 +126,17 @@ async function executeMaintenanceTask(
   task: MaintenanceTaskKey,
   workerId: string,
 ) {
-  switch (task) {
-    case "background.reconcile":
-      await runIndependentMaintenanceOperations("background.reconcile", [
+  return MAINTENANCE_TASK_HANDLERS[task](env, workerId);
+}
+
+type MaintenanceTaskHandler = (
+  env: RuntimeEnv,
+  workerId: string,
+) => Promise<number | void>;
+
+const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandler> = {
+  "background.reconcile": async (env, workerId) => {
+    await runIndependentMaintenanceOperations("background.reconcile", [
         drainDatabaseAutomationEventWindows(env, { limit: 50, workerId: `${workerId}:events` }),
         drainDatabaseAutomationRuns(env, { limit: 10, workerId: `${workerId}:runs` }),
         runAiJobBatch({ env, handlers: AI_JOB_HANDLERS, limit: 5, workerId: `${workerId}:ai` }),
@@ -136,39 +144,37 @@ async function executeMaintenanceTask(
         drainNavigationRealtimeOutbox(env, { limit: 100 }),
         drainInProductNotificationOutbox(env, { limit: 100 }),
         drainMailDatabaseSyncOutbox(env, { limit: 20, workerId: `${workerId}:mail` }),
-      ]);
-      return;
-    case "automation.schedules":
-      await scanDueDatabaseAutomationSchedules(env, { limit: 50 });
-      return;
-    case "membership.expiry":
-      await expireTemporaryMemberships();
-      return;
-    case "mail.index_recovery":
-      await advancePendingMailIndexes(env);
-      return;
-    case "gmail.watch_renewal":
-      await renewGmailWatches(env);
-      return;
-    case "ai.cleanup":
-      await cleanupExpiredAiAgentData(env);
-      return;
-    case "automation.retention": {
-      const result = await cleanupDatabaseAutomationHistory(env);
-      return Object.entries(result).some(([key, value]) => key !== "retention" && typeof value === "number" && value > 0)
-        ? 60_000
-        : undefined;
-    }
-    case "gmail.send_receipt_cleanup":
-      await cleanupExpiredGmailSendOperations();
-      return;
-    case "background.snapshot": {
-      const snapshot = await getBackgroundOperationalSnapshot(env);
-      console.info(JSON.stringify({ event: "background.heartbeat", snapshot }));
-      return;
-    }
-  }
-}
+    ]);
+  },
+  "automation.schedules": async (env) => {
+    await scanDueDatabaseAutomationSchedules(env, { limit: 50 });
+  },
+  "membership.expiry": async () => {
+    await expireTemporaryMemberships();
+  },
+  "mail.index_recovery": async (env) => {
+    await advancePendingMailIndexes(env);
+  },
+  "gmail.watch_renewal": async (env) => {
+    await renewGmailWatches(env);
+  },
+  "ai.cleanup": async (env) => {
+    await cleanupExpiredAiAgentData(env);
+  },
+  "automation.retention": async (env) => {
+    const result = await cleanupDatabaseAutomationHistory(env);
+    return Object.entries(result).some(([key, value]) =>
+      key !== "retention" && typeof value === "number" && value > 0
+    ) ? 60_000 : undefined;
+  },
+  "gmail.send_receipt_cleanup": async () => {
+    await cleanupExpiredGmailSendOperations();
+  },
+  "background.snapshot": async (env) => {
+    const snapshot = await getBackgroundOperationalSnapshot(env);
+    console.info(JSON.stringify({ event: "background.heartbeat", snapshot }));
+  },
+};
 
 async function runIndependentMaintenanceOperations(
   task: MaintenanceTaskKey,

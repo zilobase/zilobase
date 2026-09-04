@@ -10,7 +10,7 @@ import {
   isDatabaseUnavailableError,
 } from "../shared/errors/database-errors";
 import { registerAppEditionExtension } from "../shared/edition-extension-registry";
-import type { AppBindings } from "../shared/types";
+import type { AppBindings, AppErrorReporter } from "../shared/types";
 import type { EditionExtensionOptions } from "../shared/types";
 import { demoWriteGuard } from "../features/demo/write-guard";
 import { runWithBackgroundTraceContext } from "../infrastructure/background/contracts";
@@ -19,10 +19,15 @@ export function createApp(options: EditionExtensionOptions = {}) {
   const app = new Hono<AppBindings>();
   registerAppEditionExtension(app, options.editionExtension);
 
-  app.use("*", (c, next) => runWithBackgroundTraceContext({
-    traceparent: c.req.header("traceparent"),
-    tracestate: c.req.header("tracestate"),
-  }, next));
+  app.use("*", (c, next) =>
+    runWithBackgroundTraceContext(
+      {
+        traceparent: c.req.header("traceparent"),
+        tracestate: c.req.header("tracestate"),
+      },
+      next,
+    ),
+  );
   app.use("*", async (c, next) => {
     c.set("editionExtension", options.editionExtension ?? null);
     await next();
@@ -33,35 +38,88 @@ export function createApp(options: EditionExtensionOptions = {}) {
   app.use("*", demoWriteGuard);
   registerRoutes(app);
   options.editionExtension?.registerRoutes(app);
-  app.onError(appErrorHandler);
+  app.onError(createAppErrorHandler(options.errorReporter));
 
   return app;
 }
 
-export const appErrorHandler: ErrorHandler<AppBindings> = (error, c) => {
-  if (isDatabaseUnavailableError(error)) {
-    console.error(JSON.stringify({
-      code: getDatabaseErrorCode(error),
-      error: error.message,
-      event: "database_connection_failed",
-      requestId: c.get("requestId"),
-      route: c.req.path,
-    }));
-    c.header("Retry-After", "5");
-    return c.json(
+export function createAppErrorHandler(
+  errorReporter?: AppErrorReporter,
+): ErrorHandler<AppBindings> {
+  return async (error, c) => {
+    if (isDatabaseUnavailableError(error)) {
+      const code = getDatabaseErrorCode(error) ?? DATABASE_UNAVAILABLE_CODE;
+      console.error(
+        JSON.stringify({
+          code,
+          error: error.message,
+          event: "database_connection_failed",
+          requestId: c.get("requestId"),
+          route: c.req.path,
+        }),
+      );
+      await reportAppError(errorReporter, error, c, code, 503);
+      c.header("Retry-After", "5");
+      return c.json(
+        {
+          code: DATABASE_UNAVAILABLE_CODE,
+          message: DATABASE_UNAVAILABLE_MESSAGE,
+        },
+        503,
+      );
+    }
+
+    console.error(
+      JSON.stringify({
+        error: error.message,
+        event: "unhandled_request_error",
+        requestId: c.get("requestId"),
+        route: c.req.path,
+      }),
+    );
+    await reportAppError(
+      errorReporter,
+      error,
+      c,
+      "UNHANDLED_REQUEST_ERROR",
+      500,
+    );
+    return c.json({ error: "Internal server error" }, 500);
+  };
+}
+
+export const appErrorHandler = createAppErrorHandler();
+
+async function reportAppError(
+  reporter: AppErrorReporter | undefined,
+  error: Error,
+  c: Parameters<ErrorHandler<AppBindings>>[1],
+  code: string,
+  status: 500 | 503,
+) {
+  if (!reporter) return;
+
+  try {
+    await reporter(
       {
-        code: DATABASE_UNAVAILABLE_CODE,
-        message: DATABASE_UNAVAILABLE_MESSAGE,
+        code,
+        error,
+        method: c.req.method,
+        requestId: c.get("requestId"),
+        route: c.req.routePath || c.req.path,
+        status,
+        userId: c.get("user")?.id ?? null,
+        workspaceId: c.get("session")?.activeWorkspaceId ?? null,
       },
-      503,
+      c.env,
+    );
+  } catch {
+    console.error(
+      JSON.stringify({
+        event: "error_report_failed",
+        requestId: c.get("requestId"),
+        route: c.req.routePath || c.req.path,
+      }),
     );
   }
-
-  console.error(JSON.stringify({
-    error: error.message,
-    event: "unhandled_request_error",
-    requestId: c.get("requestId"),
-    route: c.req.path,
-  }));
-  return c.json({ error: "Internal server error" }, 500);
-};
+}

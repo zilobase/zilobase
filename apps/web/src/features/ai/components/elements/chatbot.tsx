@@ -72,6 +72,7 @@ import {
 } from "@zilobase/page-context";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import posthog from "@/shared/lib/posthog";
 import { ChatbotComposer } from "./chatbot-composer";
 import { ChatbotMessages } from "./chatbot-messages";
 import { AI_SCROLL_SHELL_SELECTOR } from "./chatbot-scroll-control";
@@ -1010,6 +1011,10 @@ const ChatbotConversationController = ({
           text: content.trim() || "Review the attached file(s).",
         }, targetThreadId);
         devTrace.record("turn-start", { clientTurnId }, targetThreadId);
+        posthog?.capture("ai_chat_message_submitted", {
+          has_attachments: uploadedFiles.length > 0,
+          has_page_context: requestBody.contextRefs.length > 0,
+        });
         await sendMessage(
           {
             files: uploadedFiles.map((file) => file.part),

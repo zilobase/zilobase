@@ -4,7 +4,7 @@ import { test, expect } from "vitest";
 test("Node maintenance promotes closed dark-capture windows", async () => {
   const [coordinator, maintenance] = await Promise.all([
     readFile(new URL("./background-coordinator.ts", import.meta.url), "utf8"),
-    readFile(new URL("../../infrastructure/background/maintenance.ts", import.meta.url), "utf8"),
+    readFile(new URL("../background/maintenance.ts", import.meta.url), "utf8"),
   ]);
   expect(coordinator).toContain("drainDatabaseAutomationEventWindows(env");
   expect(coordinator).toContain("drainDatabaseAutomationRuns(env");

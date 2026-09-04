@@ -25,8 +25,7 @@ const MEMBERSHIP_GRANT_SOURCES = [
   "scim",
 ] as const;
 
-export type MembershipGrantSource =
-  (typeof MEMBERSHIP_GRANT_SOURCES)[number];
+export type MembershipGrantSource = (typeof MEMBERSHIP_GRANT_SOURCES)[number];
 
 export type MembershipGrantInput = {
   database: Database;
@@ -57,7 +56,24 @@ export type ZilobaseEditionExtension = {
 
 export type EditionExtensionOptions = {
   editionExtension?: ZilobaseEditionExtension;
+  errorReporter?: AppErrorReporter;
 };
+
+export type AppErrorReport = {
+  code: string;
+  error: Error;
+  method: string;
+  requestId: string;
+  route: string;
+  status: 500 | 503;
+  userId: string | null;
+  workspaceId: string | null;
+};
+
+export type AppErrorReporter = (
+  report: AppErrorReport,
+  env: AppBindings["Bindings"],
+) => Promise<void> | void;
 
 export type AppBindings = {
   Bindings: {
@@ -104,6 +120,8 @@ export type AppBindings = {
     AI_PROVIDER_ALLOWED_BASE_URLS?: string;
     AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY?: string;
     OPENAI_API_KEY?: string;
+    POSTHOG_HOST?: string;
+    POSTHOG_PROJECT_TOKEN?: string;
     SMTP_HOST?: string;
     SMTP_PASSWORD?: string;
     SMTP_PORT?: string;
@@ -120,6 +138,7 @@ export type AppBindings = {
     REALTIME_REDIS_URL?: string;
     ZILOBASE_DEMO_ENABLED?: string;
     ZILOBASE_INSTANCE_NAME?: string;
+    ZILOBASE_ENVIRONMENT?: string;
     ZILOBASE_BOOTSTRAP_TOKEN?: string;
     ZILOBASE_MINIMUM_DESKTOP_VERSION?: string;
     S3_ACCESS_KEY_ID?: string;

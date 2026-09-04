@@ -1,5 +1,10 @@
 {
   "finding_counts": {
+    "apps/server/src/app/node/background-coordinator.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "apps/server/src/app/node/collaboration-runtime.ts": {
       "crap_critical": {
         "count": 1
@@ -79,6 +84,11 @@
       }
     },
     "apps/server/src/features/ai/files/ai-file-jobs.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/features/ai/jobs/ai-jobs.ts": {
       "crap_critical": {
         "count": 1
       }
@@ -173,6 +183,9 @@
       }
     },
     "apps/server/src/features/databases/automations/gmail-action.ts": {
+      "complexity_critical": {
+        "count": 1
+      },
       "crap_critical": {
         "count": 1
       }
@@ -504,6 +517,11 @@
         "count": 2
       }
     },
+    "apps/server/src/features/notifications/outbox.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "apps/server/src/features/pages/mutations/page-mutations.ts": {
       "crap_critical": {
         "count": 1
@@ -574,6 +592,16 @@
       "complexity_critical": {
         "count": 1
       },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/infrastructure/background/contracts.ts": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/infrastructure/background/health.ts": {
       "crap_critical": {
         "count": 1
       }
@@ -1952,6 +1980,31 @@
         "count": 3
       }
     },
+    "scripts/community-boundary.mjs": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/dev/env.mjs": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/dev/k8s.mjs": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/dev/local.mjs": {
+      "crap_critical": {
+        "count": 4
+      }
+    },
+    "scripts/dev/parity.mjs": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "scripts/mail/gmail-deployment-config.mjs": {
       "crap_critical": {
         "count": 1
@@ -1964,6 +2017,11 @@
     }
   },
   "identity_finding_counts": {
+    "apps/server/src/app/node/background-coordinator.ts\u0000nextLaneDueAt": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "apps/server/src/app/node/collaboration-runtime.ts\u0000handleUpgrade": {
       "crap_critical": {
         "count": 1
@@ -2112,6 +2170,11 @@
         "count": 1
       }
     },
+    "apps/server/src/features/ai/jobs/ai-jobs.ts\u0000executeClaimedJob": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "apps/server/src/features/ai/providers/ai-provider.ts\u0000resolveWorkspaceAiModel": {
       "crap_critical": {
         "count": 1
@@ -2217,6 +2280,9 @@
       }
     },
     "apps/server/src/features/databases/automations/gmail-action.ts\u0000executeGmailAction": {
+      "complexity_critical": {
+        "count": 1
+      },
       "crap_critical": {
         "count": 1
       }
@@ -2236,7 +2302,7 @@
         "count": 1
       }
     },
-    "apps/server/src/features/databases/automations/run-engine.ts\u0000executeRun": {
+    "apps/server/src/features/databases/automations/run-engine.ts\u0000executeRunWithLease": {
       "crap_critical": {
         "count": 1
       }
@@ -2778,6 +2844,11 @@
         "count": 1
       }
     },
+    "apps/server/src/features/notifications/outbox.ts\u0000drainInProductNotificationOutbox": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "apps/server/src/features/pages/mutations/page-mutations.ts\u0000embedDatabaseInPageService": {
       "crap_critical": {
         "count": 1
@@ -2853,6 +2924,16 @@
       "complexity_critical": {
         "count": 1
       },
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/infrastructure/background/contracts.ts\u0000parseBackgroundTask": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "apps/server/src/infrastructure/background/health.ts\u0000getBackgroundOperationalSnapshot": {
       "crap_critical": {
         "count": 1
       }
@@ -5229,6 +5310,46 @@
         "count": 1
       }
     },
+    "scripts/community-boundary.mjs\u0000findPrivateRuntimeReferences": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/dev/env.mjs\u0000migrateGeneratedPortDefaults": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/dev/k8s.mjs\u0000stopPortForwards": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/dev/local.mjs\u0000followLocalLogs": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/dev/local.mjs\u0000resetLocal": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/dev/local.mjs\u0000showStatus": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/dev/local.mjs\u0000startLocal": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
+    "scripts/dev/parity.mjs\u0000testRuntimeParity": {
+      "crap_critical": {
+        "count": 1
+      }
+    },
     "scripts/mail/gmail-deployment-config.mjs\u0000canonicalApiOrigin": {
       "crap_critical": {
         "count": 1
@@ -5245,96 +5366,100 @@
     "apps/server/src/features/mail/safe-unsubscribe.ts:untested risk",
     "apps/web/src/features/sidebar/app-sidebar.tsx:complexity",
     "apps/server/src/features/mail/route-support.ts:high impact",
-    "packages/features/src/ai-chat/agent-contract.ts:high impact",
     "apps/web/src/features/mail/pages/mail.tsx:complexity",
+    "apps/server/src/features/databases/properties/config.ts:high impact",
+    "packages/features/src/ai-chat/agent-contract.ts:high impact",
     "apps/web/src/features/mail/model/mail-html.ts:complexity",
     "apps/server/src/features/databases/automations/action-support.ts:high impact",
     "apps/web/src/features/mail/components/mail-composer.tsx:complexity",
-    "apps/web/src/features/databases/properties/editors/database-property-value.tsx:complexity",
     "apps/server/src/features/mail/query-routes.ts:untested risk",
+    "apps/web/src/features/databases/properties/editors/database-property-value.tsx:complexity",
     "apps/web/src/features/mail/model/mail-sync-controller.ts:complexity",
     "apps/web/src/app/routing/guards.ts:high impact",
     "apps/web/src/features/mail/components/mail-conversation-viewer.tsx:untested risk",
+    "apps/server/src/features/mail/mail-database-sync-worker.ts:high impact",
     "apps/web/src/features/mail/components/mail-actions.tsx:high impact",
     "apps/web/src/features/mail/components/mail-thread-row.tsx:complexity",
-    "apps/server/src/features/mail/mail-database-sync-worker.ts:high impact",
+    "apps/server/src/features/mail/mail-sync.ts:untested risk",
     "packages/page-context/src/markdown/prosemirror-to-markdown.ts:high impact",
     "apps/server/src/features/databases/automations/webhook-egress.ts:untested risk",
-    "apps/server/src/features/mail/mail-sync.ts:untested risk",
-    "apps/web/src/features/databases/interactions/database-page-link.tsx:complexity",
     "apps/web/src/app/routing/search-validators.ts:high impact",
     "apps/web/src/features/databases/core/database-property-values.ts:high impact",
+    "apps/web/src/features/databases/interactions/database-page-link.tsx:complexity",
     "apps/web/src/features/mail/components/mail-database-sync-panel.tsx:complexity",
-    "apps/web/src/features/mail/model/mail-view-model.ts:high impact",
+    "apps/server/src/features/databases/automations/evaluator.ts:complexity",
     "apps/server/src/features/databases/automations/trigger-evaluator.ts:untested risk",
+    "apps/web/src/features/mail/model/mail-view-model.ts:high impact",
+    "apps/web/src/features/mail/components/mail-properties-panel.tsx:high impact",
     "apps/web/src/features/mail/model/mail-compose.ts:high impact",
     "packages/page-context/src/database/format-property-value.ts:high impact",
-    "apps/web/src/features/mail/components/mail-properties-panel.tsx:high impact",
     "apps/web/src/features/mail/components/mail-hover-actions-panel.tsx:high impact",
-    "apps/web/src/features/desktop/diagnostics/desktop-diagnostics.ts:high impact",
-    "apps/server/src/features/databases/properties/config.ts:high impact",
-    "packages/features/src/databases/apply-delta.ts:high impact",
-    "apps/web/src/features/editor/extensions/page-block.tsx:complexity",
+    "apps/server/src/features/databases/automations/gmail-action.ts:complexity",
+    "apps/server/src/features/mail/mail-compose.ts:high impact",
     "apps/web/src/features/databases/automations/notion-action-builder.tsx:complexity",
+    "packages/features/src/databases/apply-delta.ts:high impact",
+    "apps/server/src/infrastructure/background/contracts.ts:high impact",
+    "apps/web/src/features/desktop/diagnostics/desktop-diagnostics.ts:high impact",
+    "apps/web/src/features/editor/extensions/page-block.tsx:complexity",
     "apps/web/src/features/databases/automations/database-automation-manager.tsx:complexity",
     "apps/web/src/features/teamspaces/pages/teamspaces.tsx:complexity",
     "apps/server/src/shared/security/navigation-realtime-ticket.ts:high impact",
     "apps/server/src/features/mail/mail-properties.ts:complexity",
-    "apps/web/src/features/comments/context/page-comments-registry.tsx:high impact",
-    "apps/web/src/features/demo/runtime.ts:untested risk",
-    "apps/server/src/features/mail/mail-normalize.ts:high impact",
-    "apps/web/src/features/databases/components/page-metadata.tsx:complexity",
     "apps/server/src/features/mail/mail-query.ts:complexity",
-    "apps/server/src/features/mail/mail-realtime-ticket.ts:untested risk",
+    "apps/web/src/features/demo/runtime.ts:untested risk",
+    "apps/web/src/features/databases/components/page-metadata.tsx:complexity",
+    "apps/web/src/features/comments/context/page-comments-registry.tsx:high impact",
+    "apps/server/src/features/mail/mail-normalize.ts:high impact",
     "apps/web/src/features/pages/components/layout-editor.tsx:complexity",
     "apps/web/src/features/databases/components/page-metadata-properties.tsx:complexity",
     "apps/server/src/features/mail/mail-database-sync.ts:untested risk",
+    "apps/server/src/features/mail/mail-realtime-ticket.ts:untested risk",
     "apps/web/src/features/databases/properties/editors/database-derived-property-value.tsx:complexity",
-    "apps/web/src/features/databases/properties/editors/database-property-select.tsx:complexity",
+    "scripts/dev/process.mjs:high impact",
     "apps/web/src/features/pages/pages/page.tsx:complexity",
-    "apps/web/src/features/library/pages/recents.tsx:complexity",
+    "apps/web/src/features/databases/properties/editors/database-property-select.tsx:complexity",
     "apps/web/src/features/mail/components/mail-filter-editor.tsx:untested risk",
-    "apps/web/src/features/offline/model/offline-store.ts:high impact",
-    "apps/web/src/features/databases/views/table/view/database-table-selection-toolbar.tsx:complexity",
-    "packages/features/src/mail/predicate.ts:untested risk",
-    "apps/web/src/features/databases/views/timeline/view/database-timeline-view.tsx:complexity",
+    "apps/web/src/features/library/pages/recents.tsx:complexity",
     "apps/web/src/features/pages/invitations/accept-page-invitation.tsx:complexity",
+    "apps/web/src/features/databases/views/table/view/database-table-selection-toolbar.tsx:complexity",
+    "apps/web/src/features/databases/views/timeline/view/database-timeline-view.tsx:complexity",
+    "packages/features/src/mail/predicate.ts:untested risk",
+    "apps/web/src/features/offline/model/offline-store.ts:high impact",
     "apps/web/src/features/databases/views/view/database-view-toolbar.tsx:complexity",
-    "packages/page-context/src/database/database-view-schema.ts:untested risk",
     "apps/web/src/app/shell/content/app-layout.tsx:complexity",
+    "packages/page-context/src/database/database-view-schema.ts:untested risk",
     "apps/web/src/features/comments/components/page-comments.tsx:complexity",
-    "apps/server/src/features/ai/files/ai-file-extraction.ts:high impact",
-    "apps/server/src/features/databases/properties/import.ts:untested risk",
     "apps/web/src/features/databases/views/view-settings/view/index.tsx:complexity",
     "apps/server/src/features/mail/mail-mime.ts:high impact",
-    "apps/server/src/features/databases/automations/evaluator.ts:complexity",
-    "apps/web/src/features/databases/views/table/view/database-table-view.tsx:complexity",
-    "apps/web/src/features/editor/extensions/meeting/meeting-view.tsx:complexity",
-    "apps/server/src/features/databases/rows/service.ts:complexity",
-    "apps/web/src/features/ai/components/elements/chatbot.tsx:complexity",
+    "apps/server/src/features/ai/files/ai-file-extraction.ts:high impact",
+    "apps/server/src/features/databases/properties/import.ts:untested risk",
     "apps/server/src/features/databases/templates/service.ts:complexity",
     "apps/web/src/features/ai/components/elements/agent-tool-task.tsx:complexity",
+    "apps/web/src/features/databases/views/table/view/database-table-view.tsx:complexity",
+    "apps/web/src/features/editor/extensions/meeting/meeting-view.tsx:complexity",
+    "apps/web/src/features/ai/components/elements/chatbot.tsx:complexity",
+    "apps/server/src/features/databases/rows/service.ts:complexity",
     "apps/web/src/features/databases/pages/database.tsx:complexity",
     "apps/web/src/features/editor/composition/editor.tsx:complexity",
     "apps/web/src/app/shell/document-favicon.tsx:complexity",
     "apps/web/src/features/ai/cache/use-database-embed-auto-apply.ts:complexity",
     "apps/web/src/features/ai/components/elements/agent-action-review.tsx:untested risk",
     "apps/web/src/features/ai/components/elements/agent-live-debugger.tsx:complexity",
-    "apps/web/src/features/databases/properties/rollup/model/rollup-engine.ts:complexity",
+    "packages/features/src/databases/add-row-cache.ts:complexity",
     "apps/web/src/features/databases/views/model/database-sub-items.ts:complexity",
     "apps/web/src/features/desktop/deep-links/desktop-deep-link.ts:untested risk",
-    "packages/features/src/databases/add-row-cache.ts:complexity",
+    "apps/web/src/features/databases/properties/rollup/model/rollup-engine.ts:complexity",
     "apps/web/src/features/mail/model/mail-document-theme.ts:untested risk",
-    "apps/web/src/features/databases/views/form/view/database-form-view.tsx:complexity",
     "apps/web/src/features/sidebar/components/nav-actions.tsx:complexity",
-    "apps/server/src/features/databases/automations/compiler.ts:complexity",
+    "apps/web/src/features/databases/views/form/view/database-form-view.tsx:complexity",
     "apps/web/src/features/databases/views/controller/use-database-view-controller.tsx:complexity",
-    "apps/web/src/features/databases/properties/editors/database-property-date.tsx:complexity",
     "apps/server/src/features/ai/chat/chat-request.ts:untested risk",
+    "apps/server/src/features/databases/automations/compiler.ts:complexity",
     "apps/web/src/features/ai/components/elements/page-edit-card.tsx:complexity",
     "packages/features/src/pages/database-realtime-cache.ts:untested risk",
-    "apps/web/src/features/databases/properties/editors/database-property-menu.tsx:complexity",
+    "apps/web/src/features/databases/properties/editors/database-property-date.tsx:complexity",
     "apps/web/src/features/sidebar/components/nav-pages.tsx:complexity",
+    "apps/web/src/features/databases/properties/editors/database-property-menu.tsx:complexity",
     "apps/web/src/features/mail/components/mailbox-thread-list.tsx:complexity",
     "apps/web/src/features/ai/components/elements/prompt-input.tsx:complexity",
     "apps/web/src/features/databases/properties/formula/view/database-formula-dialog.tsx:complexity",
@@ -5344,14 +5469,14 @@
     "apps/web/src/features/ai/context/use-page-ai-context.ts:complexity",
     "apps/web/src/features/editor/components/editor/page-layout-module-canvas.tsx:complexity",
     "apps/web/src/features/databases/properties/configuration/relation/relation-property-settings.tsx:complexity",
-    "packages/features/src/databases/formula/tokenizer.ts:complexity",
-    "apps/server/src/features/databases/views/service.ts:complexity",
     "apps/web/src/features/databases/views/view-settings/view/chart-settings.tsx:complexity",
+    "apps/server/src/features/databases/views/service.ts:complexity",
     "apps/server/src/features/pages/page-hierarchy-routes.ts:complexity",
+    "packages/features/src/databases/formula/tokenizer.ts:complexity",
     "apps/web/src/features/ai/components/elements/chatbot-composer.tsx:complexity",
     "packages/features/src/databases/formula/functions.ts:untested risk",
-    "apps/server/src/features/ai/conversion/markdown-to-page-content.ts:complexity",
     "apps/web/src/features/ai/cache/use-page-edit-auto-apply.ts:complexity",
+    "apps/server/src/features/ai/conversion/markdown-to-page-content.ts:complexity",
     "apps/web/src/features/editor/extensions/embed-block.tsx:complexity",
     "apps/server/src/features/meetings/meeting-realtime-transcription.ts:complexity",
     "apps/web/src/features/databases/automations/notion-action-model.ts:complexity",

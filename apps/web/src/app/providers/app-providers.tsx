@@ -20,12 +20,16 @@ import { AppIconProvider } from "@/shared/components/app-icon-provider"
 import { DemoExperience } from "@/features/demo"
 import { useNavigationRealtime } from "@zilobase/features/pages"
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces"
+import { useSession } from "@zilobase/features/auth"
+
+import posthog from "@/shared/lib/posthog"
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
     <AppIconProvider>
       <OfflineQueryProvider client={queryClient}>
         <WebFeaturesProvider>
+          <PostHogIdentitySync />
           <NavigationRealtimeSync />
           <ShortcutProvider>
             <ThemeProvider
@@ -57,6 +61,65 @@ export function AppProviders({ children }: React.PropsWithChildren) {
       </OfflineQueryProvider>
     </AppIconProvider>
   )
+}
+
+function PostHogIdentitySync() {
+  const { data: session } = useSession()
+  const workspaceId = useActiveWorkspaceId()
+  const previousUserId = React.useRef<string | null | undefined>(undefined)
+  const user = session?.user
+
+  React.useEffect(() => {
+    if (!posthog || session === undefined) return
+
+    if (!user) {
+      resetSignedOutPostHogIdentity(posthog, previousUserId)
+      return
+    }
+
+    syncSignedInPostHogIdentity(posthog, previousUserId, user.id)
+    syncPostHogWorkspace(posthog, workspaceId)
+  }, [session, user, workspaceId])
+
+  return null
+}
+
+type ConfiguredPostHog = NonNullable<typeof posthog>
+
+function resetSignedOutPostHogIdentity(
+  client: ConfiguredPostHog,
+  previousUserId: React.MutableRefObject<string | null | undefined>,
+) {
+  if (
+    previousUserId.current &&
+    client.get_distinct_id() === previousUserId.current
+  ) {
+    client.reset()
+  }
+  previousUserId.current = null
+}
+
+function syncSignedInPostHogIdentity(
+  client: ConfiguredPostHog,
+  previousUserId: React.MutableRefObject<string | null | undefined>,
+  userId: string,
+) {
+  if (previousUserId.current !== userId) {
+    if (previousUserId.current) client.reset()
+    client.identify(userId)
+    previousUserId.current = userId
+    return
+  }
+
+  if (client.get_distinct_id() !== userId) client.identify(userId)
+}
+
+function syncPostHogWorkspace(
+  client: ConfiguredPostHog,
+  workspaceId: string | null | undefined,
+) {
+  if (workspaceId) client.group("workspace", workspaceId)
+  else client.resetGroups()
 }
 
 function NavigationRealtimeSync() {

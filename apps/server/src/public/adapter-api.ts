@@ -1,6 +1,8 @@
 export { getMembership, getWorkspaceMemberships } from "../features/access";
 export { createApp } from "../app";
 export type {
+  AppErrorReport,
+  AppErrorReporter,
   EditionExtensionOptions,
   MembershipGrantInput,
   MembershipGrantSource,
@@ -20,7 +22,11 @@ export {
 } from "../features/ai/chat/chat-persistence";
 export { createAuth } from "../features/auth";
 export { AI_JOB_HANDLERS } from "../features/ai/jobs/ai-job-handlers";
-export { runAiJobBatch, runAiJobById, type AiJobHandler } from "../features/ai/jobs/ai-jobs";
+export {
+  runAiJobBatch,
+  runAiJobById,
+  type AiJobHandler,
+} from "../features/ai/jobs/ai-jobs";
 export {
   appendMeetingTranscriptSegment,
   heartbeatMeetingRecorder,
@@ -59,7 +65,11 @@ export {
   isLoopbackHost,
   type RuntimeEnv,
 } from "../shared/config/config";
-export { createDbClient, runWithDbClient, runWithDbEnv } from "../infrastructure/database";
+export {
+  createDbClient,
+  runWithDbClient,
+  runWithDbEnv,
+} from "../infrastructure/database";
 export type { Database, DatabaseClient } from "../infrastructure/database";
 export {
   DATABASE_UNAVAILABLE_CODE,
@@ -128,8 +138,14 @@ export {
   getDatabaseAutomationEventCaptureMetrics,
   promoteClosedDatabaseAutomationEventWindows,
 } from "../features/databases/automations/event-capture";
-export { drainDatabaseAutomationEventWindows, processDatabaseAutomationEventWindow } from "../features/databases/automations/evaluator";
-export { drainDatabaseAutomationRuns, processDatabaseAutomationRun } from "../features/databases/automations/run-engine";
+export {
+  drainDatabaseAutomationEventWindows,
+  processDatabaseAutomationEventWindow,
+} from "../features/databases/automations/evaluator";
+export {
+  drainDatabaseAutomationRuns,
+  processDatabaseAutomationRun,
+} from "../features/databases/automations/run-engine";
 export { scanDueDatabaseAutomationSchedules } from "../features/databases/automations/scheduler";
 export {
   cleanupDatabaseAutomationHistory,
@@ -192,11 +208,11 @@ export {
   type BackgroundTaskResult,
   type BackgroundTaskV1,
 } from "../infrastructure/background/contracts";
-export { processBackgroundTask } from "../infrastructure/background/processor";
+export { processBackgroundTask } from "../app/background/processor";
 export {
   BACKGROUND_MAINTENANCE_TASKS,
   ensureBackgroundMaintenanceTasks,
   runDueBackgroundMaintenance,
-} from "../infrastructure/background/maintenance";
+} from "../app/background/maintenance";
 export { getBackgroundOperationalSnapshot } from "../infrastructure/background/health";
 export type { AppBindings } from "../shared/types";

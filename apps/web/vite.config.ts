@@ -10,7 +10,9 @@ const devPort = readPort(process.env.VITE_DEV_PORT, 1420);
 const hmrPort = readPort(process.env.VITE_HMR_PORT, devPort + 1);
 const viteCacheDir = process.env.ZILOBASE_VITE_CACHE_DIR?.trim();
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
-const editorDir = fileURLToPath(new URL("./src/features/editor", import.meta.url));
+const editorDir = fileURLToPath(
+  new URL("./src/features/editor", import.meta.url),
+);
 const featuresDir = fileURLToPath(
   new URL("../../packages/features/src", import.meta.url),
 );
@@ -26,7 +28,8 @@ const aiConversationModule = externalAiConversationModule
 const adapterWebSocketPaths = readAdapterWebSocketPaths(
   process.env.ZILOBASE_WEB_ADAPTER_WEBSOCKET_PATHS,
 );
-const backendTarget = process.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:3000";
+const backendTarget =
+  process.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:3000";
 const expectedWsProxyErrorCodes = new Set(["ECONNRESET", "EPIPE"]);
 
 function createBackendProxy(options: { ws?: boolean } = {}): ProxyOptions {
@@ -37,7 +40,10 @@ function createBackendProxy(options: { ws?: boolean } = {}): ProxyOptions {
     configure(proxy) {
       if (options.ws) suppressExpectedWsProxyErrors(proxy);
       proxy.on("proxyReq", (proxyRequest, request) => {
-        if (request.headers.host?.split(":", 1)[0]?.toLowerCase() !== "demo.localhost") {
+        if (
+          request.headers.host?.split(":", 1)[0]?.toLowerCase() !==
+          "demo.localhost"
+        ) {
           proxyRequest.removeHeader("x-zilobase-demo");
           return;
         }
@@ -94,9 +100,14 @@ function isExpectedWsProxyError(error: unknown) {
 function readAdapterWebSocketPaths(value: string | undefined) {
   if (!value?.trim()) return [];
 
-  return [...new Set(value.split(",").map((path) => path.trim()).filter(
-    (path) => /^\/[a-z0-9/_-]+$/i.test(path),
-  ))];
+  return [
+    ...new Set(
+      value
+        .split(",")
+        .map((path) => path.trim())
+        .filter((path) => /^\/[a-z0-9/_-]+$/i.test(path)),
+    ),
+  ];
 }
 
 // https://vite.dev/config/
@@ -151,6 +162,7 @@ export default defineConfig(async () => ({
   clearScreen: false,
   build: {
     manifest: true,
+    sourcemap: process.env.POSTHOG_SOURCEMAPS === "true" ? "hidden" : false,
   },
   // 2. tauri expects a fixed port, fail if that port is not available
   server: {

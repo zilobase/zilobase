@@ -28,6 +28,7 @@ import {
 } from "@zilobase/features/auth"
 import { useAuthFlowStore } from "../state/auth-flow-store"
 import { editionWebModule } from "@zilobase/edition-web"
+import posthog from "@/shared/lib/posthog"
 
 export function LoginForm({
   className,
@@ -72,6 +73,7 @@ export function LoginForm({
         email: submittedEmail,
         password,
       })
+      posthog?.capture("signed_in", { method: "password" })
       window.location.assign(returnTo)
     } catch {
       // React Query owns the visible error state.
@@ -84,6 +86,7 @@ export function LoginForm({
 
     try {
       await requestSignInOtp.mutateAsync(normalizedEmail)
+      posthog?.capture("sign_in_otp_requested")
       setAuthFlow({
         email: normalizedEmail,
         purpose: "sign-in",

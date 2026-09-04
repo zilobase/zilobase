@@ -44,6 +44,7 @@ import { clearApiAuthToken } from "@/features/desktop/network/api"
 import { queryClient } from "@/app/query-client"
 import { useAppStore } from "@/features/desktop/state/app-store"
 import { useOfflineManifest } from "@/features/offline/index"
+import posthog from "@/shared/lib/posthog"
 import {
   sessionQueryKey,
   type SessionResponse,
@@ -69,6 +70,7 @@ export default function ProfileSettingsPage() {
 
   const finishSignOut = async () => {
     if (getConnectivityState() !== "online") {
+      posthog?.reset()
       await clearApiAuthToken()
       await clearAllOfflineData()
       queryClient.clear()

@@ -4,6 +4,7 @@ import {
   describeDesktopError,
   recordDesktopDiagnostic,
 } from "@/features/desktop/diagnostics/index"
+import { captureProductException } from "@/shared/lib/posthog"
 
 type FallbackErrorBoundaryProps = {
   children: ReactNode
@@ -26,6 +27,9 @@ export class FallbackErrorBoundary extends Component<
   }
 
   componentDidCatch(error: unknown) {
+    captureProductException(error, {
+      error_boundary: this.props.name ?? "route.render_error",
+    })
     recordDesktopDiagnostic(
       this.props.name ?? "route.render_error",
       describeDesktopError(error),

@@ -15,6 +15,7 @@ import { Input } from "@/shared/ui/input"
 import { getApiErrorMessage } from "@/features/desktop/network/api"
 import { cn } from "@/shared/lib/utils"
 import { useCreateWorkspace } from "@zilobase/features/workspaces"
+import posthog from "@/shared/lib/posthog"
 
 export function OnboardingForm({
   className,
@@ -31,6 +32,7 @@ export function OnboardingForm({
 
     try {
       await createWorkspace.mutateAsync(workspaceName)
+      posthog?.capture("workspace_created")
       void navigate({ to: "/recents" })
     } catch {
       // React Query owns the visible error state.

@@ -10,7 +10,10 @@ import { drainMailDatabaseSyncOutbox } from "../../features/mail/mail-database-s
 import { drainInProductNotificationOutbox } from "../../features/notifications/outbox";
 import { drainNavigationRealtimeOutbox } from "../../features/workspaces/navigation-realtime/outbox";
 import type { RuntimeEnv } from "../../shared/config/config";
-import { db } from "../database";
+import { backgroundTaskLane, getBackgroundCellId, type BackgroundTaskResult, type BackgroundTaskV1 } from "../../infrastructure/background/contracts";
+import { boundedErrorCode } from "../../infrastructure/background/dispatch";
+import { recordBackgroundCounter, recordBackgroundHistogram, runBackgroundTaskSpan } from "../../infrastructure/background/telemetry";
+import { db } from "../../infrastructure/database";
 import {
   databaseRealtimeOutbox,
   gmailAccount,
@@ -18,10 +21,7 @@ import {
   mailDatabaseSyncOutbox,
   mailIndexState,
   navigationRealtimeOutbox,
-} from "../database/schema";
-import { backgroundTaskLane, getBackgroundCellId, type BackgroundTaskResult, type BackgroundTaskV1 } from "./contracts";
-import { boundedErrorCode } from "./dispatch";
-import { recordBackgroundCounter, recordBackgroundHistogram, runBackgroundTaskSpan } from "./telemetry";
+} from "../../infrastructure/database/schema";
 
 export async function processBackgroundTask(input: {
   env: RuntimeEnv;
@@ -73,41 +73,62 @@ async function processBackgroundTaskInner(input: {
       return processDatabaseAutomationRun(env, { runId: task.resourceId, workerId });
     case "ai.job":
       return runAiJobById({ env, handlers: AI_JOB_HANDLERS, jobId: task.resourceId, workerId });
-    case "mail.index": {
-      const [account] = await db.select({ id: gmailAccount.id, status: gmailAccount.status }).from(gmailAccount)
-        .where(eq(gmailAccount.id, task.resourceId)).limit(1);
-      if (!account || account.status !== "connected") return { outcome: "noop" };
-      await advanceMailIndex(env, account.id);
-      await publishMailIndexUpdate(env, account.id);
-      const [state] = await db.select({ status: mailIndexState.status }).from(mailIndexState)
-        .where(eq(mailIndexState.gmailAccountId, account.id)).limit(1);
-      return state?.status === "ready"
-        ? { outcome: "completed" }
-        : { availableAt: new Date(Date.now() + 5_000).toISOString(), outcome: "retry" };
-    }
+    case "mail.index":
+      return processMailIndexTask(env, task.resourceId);
     case "mail.database_sync":
-      await drainMailDatabaseSyncOutbox(env, { limit: 1, outboxId: task.resourceId, workerId });
-      return resultForDueRow(async () => (await db.select({
-        nextAttemptAt: mailDatabaseSyncOutbox.nextAttemptAt,
-        status: mailDatabaseSyncOutbox.status,
-      })
-        .from(mailDatabaseSyncOutbox).where(eq(mailDatabaseSyncOutbox.id, task.resourceId)).limit(1))[0]);
+      return processMailDatabaseSyncTask(env, task.resourceId, workerId);
     case "realtime.database":
-      await drainDatabaseRealtimeOutbox(env, { limit: 1, outboxId: task.resourceId });
-      return resultForDueRow(async () => (await db.select({ nextAttemptAt: databaseRealtimeOutbox.nextAttemptAt })
-        .from(databaseRealtimeOutbox).where(eq(databaseRealtimeOutbox.id, task.resourceId)).limit(1))[0]);
+      return processDatabaseRealtimeTask(env, task.resourceId);
     case "realtime.navigation":
-      await drainNavigationRealtimeOutbox(env, { limit: 1, outboxId: task.resourceId });
-      return resultForDueRow(async () => (await db.select({ nextAttemptAt: navigationRealtimeOutbox.nextAttemptAt })
-        .from(navigationRealtimeOutbox).where(eq(navigationRealtimeOutbox.id, task.resourceId)).limit(1))[0]);
+      return processNavigationRealtimeTask(env, task.resourceId);
     case "notification.publish":
-      await drainInProductNotificationOutbox(env, { limit: 1, outboxId: task.resourceId });
-      return resultForDueRow(async () => (await db.select({
-        nextAttemptAt: inProductNotificationOutbox.nextAttemptAt,
-        status: inProductNotificationOutbox.status,
-      })
-        .from(inProductNotificationOutbox).where(eq(inProductNotificationOutbox.id, task.resourceId)).limit(1))[0]);
+      return processNotificationTask(env, task.resourceId);
   }
+}
+
+async function processMailIndexTask(env: RuntimeEnv, resourceId: string): Promise<BackgroundTaskResult> {
+  const [account] = await db.select({ id: gmailAccount.id, status: gmailAccount.status }).from(gmailAccount)
+    .where(eq(gmailAccount.id, resourceId)).limit(1);
+  if (!account || account.status !== "connected") return { outcome: "noop" };
+  await advanceMailIndex(env, account.id);
+  await publishMailIndexUpdate(env, account.id);
+  const [state] = await db.select({ status: mailIndexState.status }).from(mailIndexState)
+    .where(eq(mailIndexState.gmailAccountId, account.id)).limit(1);
+  return state?.status === "ready"
+    ? { outcome: "completed" }
+    : { availableAt: new Date(Date.now() + 5_000).toISOString(), outcome: "retry" };
+}
+
+async function processMailDatabaseSyncTask(
+  env: RuntimeEnv,
+  resourceId: string,
+  workerId: string,
+) {
+  await drainMailDatabaseSyncOutbox(env, { limit: 1, outboxId: resourceId, workerId });
+  return resultForDueRow(async () => (await db.select({
+    nextAttemptAt: mailDatabaseSyncOutbox.nextAttemptAt,
+    status: mailDatabaseSyncOutbox.status,
+  }).from(mailDatabaseSyncOutbox).where(eq(mailDatabaseSyncOutbox.id, resourceId)).limit(1))[0]);
+}
+
+async function processDatabaseRealtimeTask(env: RuntimeEnv, resourceId: string) {
+  await drainDatabaseRealtimeOutbox(env, { limit: 1, outboxId: resourceId });
+  return resultForDueRow(async () => (await db.select({ nextAttemptAt: databaseRealtimeOutbox.nextAttemptAt })
+    .from(databaseRealtimeOutbox).where(eq(databaseRealtimeOutbox.id, resourceId)).limit(1))[0]);
+}
+
+async function processNavigationRealtimeTask(env: RuntimeEnv, resourceId: string) {
+  await drainNavigationRealtimeOutbox(env, { limit: 1, outboxId: resourceId });
+  return resultForDueRow(async () => (await db.select({ nextAttemptAt: navigationRealtimeOutbox.nextAttemptAt })
+    .from(navigationRealtimeOutbox).where(eq(navigationRealtimeOutbox.id, resourceId)).limit(1))[0]);
+}
+
+async function processNotificationTask(env: RuntimeEnv, resourceId: string) {
+  await drainInProductNotificationOutbox(env, { limit: 1, outboxId: resourceId });
+  return resultForDueRow(async () => (await db.select({
+    nextAttemptAt: inProductNotificationOutbox.nextAttemptAt,
+    status: inProductNotificationOutbox.status,
+  }).from(inProductNotificationOutbox).where(eq(inProductNotificationOutbox.id, resourceId)).limit(1))[0]);
 }
 
 async function resultForDueRow(

@@ -17,6 +17,7 @@ import {
 } from "@/features/desktop/diagnostics/index";
 import { AppProviders } from "@/app/providers/app-providers";
 import { initializeDesktopTranslucency } from "@/features/desktop/window/index";
+import { captureProductException } from "@/shared/lib/posthog";
 import "../shared/styles/global.css";
 import "./styles.css";
 
@@ -60,7 +61,7 @@ async function bootstrap() {
     applyActiveDesktopProfileWorkspace(
       await listDesktopServerProfiles(),
       (workspaceId) => useAppStore.getState().setActiveWorkspaceId(workspaceId),
-    )
+    );
   } catch {
     // Profiles are optional until the native list command is available.
   }
@@ -77,6 +78,7 @@ async function bootstrap() {
 }
 
 function renderStartupFailure(error: unknown) {
+  captureProductException(error, { error_boundary: "startup" });
   const message =
     error instanceof Error
       ? error.message
@@ -100,9 +102,9 @@ function renderStartupFailure(error: unknown) {
 
 function DesktopStartupMarker({ phase }: { phase: "app" | "root" }) {
   React.useEffect(() => {
-    if (phase === "root") markDesktopRootMounted()
-    else markDesktopAppReady()
-  }, [phase])
+    if (phase === "root") markDesktopRootMounted();
+    else markDesktopAppReady();
+  }, [phase]);
 
-  return null
+  return null;
 }

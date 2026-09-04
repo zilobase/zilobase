@@ -28,6 +28,7 @@ import {
   useAcceptPageGuestInvitation,
   usePageGuestInvitation,
 } from "@zilobase/features/pages"
+import posthog from "@/shared/lib/posthog"
 
 export default function AcceptPageInvitationPage() {
   const navigate = useNavigate()
@@ -46,6 +47,14 @@ export default function AcceptPageInvitationPage() {
 
   const signIn = () => {
     void navigate({ to: "/login", search: { returnTo } })
+  }
+
+  const acceptPageInvitation = () => {
+    if (!invitationId) return
+
+    acceptInvitation.mutate(invitationId, {
+      onSuccess: () => posthog?.capture("page_invitation_accepted"),
+    })
   }
 
   return (
@@ -129,9 +138,7 @@ export default function AcceptPageInvitationPage() {
                     isUnavailable ||
                     acceptInvitation.isPending
                   }
-                  onClick={() =>
-                    invitationId && acceptInvitation.mutate(invitationId)
-                  }
+                  onClick={acceptPageInvitation}
                   type="button"
                 >
                   {acceptInvitation.isPending ? <Spinner /> : <SendIcon />}

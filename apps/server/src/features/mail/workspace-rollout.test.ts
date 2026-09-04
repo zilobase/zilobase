@@ -42,7 +42,7 @@ test("workspace ownership gates every mailbox and permits identity reuse only th
 test("workspace rollout exposes maintenance for Node and alternate deployment adapters", async () => {
   const [coordinator, maintenance, adapter, realtime] = await Promise.all([
     readFile(new URL("../../app/node/background-coordinator.ts", import.meta.url), "utf8"),
-    readFile(new URL("../../infrastructure/background/maintenance.ts", import.meta.url), "utf8"),
+    readFile(new URL("../../app/background/maintenance.ts", import.meta.url), "utf8"),
     readFile(new URL("../../public/adapter-api.ts", import.meta.url), "utf8"),
     readFile(new URL("../../public/realtime-api.ts", import.meta.url), "utf8"),
   ])

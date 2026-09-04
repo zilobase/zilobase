@@ -14,6 +14,7 @@ import {
 } from "@/features/desktop/server/index";
 import { executeDesktopServerSwitch } from "@/features/desktop/server/index";
 import { Button } from "@/shared/ui/button";
+import { captureProductException } from "@/shared/lib/posthog";
 
 export default function RouteErrorPage({ error }: ErrorComponentProps) {
   const selectedServer = getSelectedDesktopServer();
@@ -21,9 +22,12 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
     isDesktop: isDesktopApp() || Boolean(selectedServer),
     selectedServer,
   });
-  const [otherProfiles, setOtherProfiles] = useState<DesktopServerProfile[]>([]);
+  const [otherProfiles, setOtherProfiles] = useState<DesktopServerProfile[]>(
+    [],
+  );
 
   useEffect(() => {
+    captureProductException(error, { error_boundary: "router.error" });
     recordDesktopDiagnostic(
       "router.error",
       describeDesktopError(error),
@@ -37,7 +41,9 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
     void listDesktopServerProfiles()
       .then((result) => {
         if (!disposed) {
-          setOtherProfiles(result.profiles.filter((profile) => !profile.active));
+          setOtherProfiles(
+            result.profiles.filter((profile) => !profile.active),
+          );
         }
       })
       .catch(() => {
