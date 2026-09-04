@@ -313,6 +313,7 @@ function spawnWeb(name, profile, env, color) {
       logFile: path.join(stateDir, "logs", `${name}.log`),
       env: {
         ...env,
+        ZILOBASE_VITE_CACHE_DIR: webCacheDirectory(profile),
         VITE_API_URL: process.env.VITE_API_URL ?? apiUrl(profile),
         VITE_DEV_HOST: "0.0.0.0",
         VITE_DEV_PORT: String(profile.appPort),
@@ -432,6 +433,10 @@ export function effectiveProfile(name, env) {
     );
   }
   return profile;
+}
+
+export function webCacheDirectory(profile, rootDir = stateDir) {
+  return path.join(rootDir, "vite", profile.name);
 }
 
 function runtimeEnvironment(profile, env) {

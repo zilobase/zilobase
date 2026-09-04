@@ -10,7 +10,11 @@ import { config as loadDotenvx, parse } from "@dotenvx/dotenvx";
 
 import { coreDir, localProfiles } from "./config.mjs";
 import { createFromTemplateIfMissing } from "./env.mjs";
-import { effectiveProfile, resetLocal } from "./local.mjs";
+import {
+  effectiveProfile,
+  resetLocal,
+  webCacheDirectory,
+} from "./local.mjs";
 import { assertPortsAvailable, redact, stopChildren } from "./process.mjs";
 
 test("runtime profiles have isolated ports, databases, and identities", () => {
@@ -35,6 +39,16 @@ test("runtime profiles have isolated ports, databases, and identities", () => {
   assert.equal(worker.appHost, "127.0.0.1");
   assert.equal(worker.apiHost, "127.0.0.1");
   assert.notEqual(node.appHost, worker.appHost);
+});
+
+test("dual web clients use separate Vite dependency caches", () => {
+  const rootDir = path.join(os.tmpdir(), "zilobase-vite-test");
+  const nodeCache = webCacheDirectory(localProfiles.node, rootDir);
+  const workerCache = webCacheDirectory(localProfiles.worker, rootDir);
+
+  assert.equal(nodeCache, path.join(rootDir, "vite", "node"));
+  assert.equal(workerCache, path.join(rootDir, "vite", "worker"));
+  assert.notEqual(nodeCache, workerCache);
 });
 
 test("shell profile overrides select validated ports", () => {

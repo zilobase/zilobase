@@ -8,6 +8,7 @@ import { aiDevTracePlugin } from "./vite/ai-dev-trace-plugin";
 const host = process.env.TAURI_DEV_HOST;
 const devPort = readPort(process.env.VITE_DEV_PORT, 1420);
 const hmrPort = readPort(process.env.VITE_HMR_PORT, devPort + 1);
+const viteCacheDir = process.env.ZILOBASE_VITE_CACHE_DIR?.trim();
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
 const editorDir = fileURLToPath(new URL("./src/features/editor", import.meta.url));
 const featuresDir = fileURLToPath(
@@ -100,6 +101,7 @@ function readAdapterWebSocketPaths(value: string | undefined) {
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
+  ...(viteCacheDir ? { cacheDir: resolve(viteCacheDir) } : {}),
   envDir: fileURLToPath(new URL("../..", import.meta.url)),
   plugins: [aiDevTracePlugin(repoRoot), react(), tailwindcss()],
   resolve: {
