@@ -52,6 +52,8 @@ export async function ensureDevelopmentEnvironment(options = {}) {
     }),
   );
 
+  await migrateGeneratedNodeEnvironment();
+
   const nodeEnvironment = await ensureGeneratedFile(
     generatedEnvironmentFiles.node,
     () => profileEnvironment(localProfiles.node, dependencies),
@@ -138,7 +140,7 @@ export function environmentFilesForEncryption() {
   }));
 }
 
-function profileEnvironment(profile, dependencies) {
+export function profileEnvironment(profile, dependencies) {
   const apiOrigin = apiUrl(profile);
   const clientOrigin = runtimeUrl(profile);
   const databaseUrl =
@@ -152,7 +154,7 @@ function profileEnvironment(profile, dependencies) {
     BETTER_AUTH_URL: apiOrigin,
     CLIENT_URL: clientOrigin,
     ZILOBASE_CELL_ID: profile.cellId,
-    ZILOBASE_DEMO_ENABLED: "true",
+    ZILOBASE_DEMO_ENABLED: profile.name === "worker" ? "true" : "false",
     DATABASE_AUTOMATIONS_ENABLED: "true",
     DATABASE_AUTOMATIONS_EXECUTION_DISABLED: "false",
     AUTOMATION_WEBHOOKS_ENABLED: "false",
@@ -194,6 +196,19 @@ function profileEnvironment(profile, dependencies) {
     SMTP_USER: "",
     SMTP_PASSWORD: "",
   };
+}
+
+export async function migrateGeneratedNodeEnvironment(
+  filename = generatedEnvironmentFiles.node,
+) {
+  if (!(await exists(filename))) return false;
+
+  const values = await readSimpleEnv(filename);
+  if (values.ZILOBASE_DEMO_ENABLED !== "true") return false;
+
+  values.ZILOBASE_DEMO_ENABLED = "false";
+  await writeFile(filename, serializeEnv(values), { mode: 0o600 });
+  return true;
 }
 
 async function ensureGeneratedFile(filename, values, options = {}) {

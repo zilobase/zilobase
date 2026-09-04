@@ -341,11 +341,22 @@ async function dependencies(args, options = {}) {
 
 async function recreateDatabase(database) {
   const env = await loadGeneratedEnvironment(generatedEnvironmentFiles.dependencies);
-  const sql = `DROP DATABASE IF EXISTS ${database} WITH (FORCE); CREATE DATABASE ${database};`;
-  await dependencies([
-    "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1",
-    "-U", env.POSTGRES_USER, "-d", "postgres", "-c", sql,
-  ]);
+  for (const sql of databaseResetStatements(database)) {
+    await dependencies([
+      "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1",
+      "-U", env.POSTGRES_USER, "-d", "postgres", "-c", sql,
+    ]);
+  }
+}
+
+export function databaseResetStatements(database) {
+  if (!/^[a-z][a-z0-9_]*$/.test(database)) {
+    throw new Error("Development database name is invalid.");
+  }
+  return [
+    `DROP DATABASE IF EXISTS ${database} WITH (FORCE);`,
+    `CREATE DATABASE ${database};`,
+  ];
 }
 
 async function resetNodeBucket() {

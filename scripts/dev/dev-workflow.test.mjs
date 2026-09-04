@@ -9,8 +9,13 @@ import test from "node:test";
 import { config as loadDotenvx, parse } from "@dotenvx/dotenvx";
 
 import { coreDir, localProfiles } from "./config.mjs";
-import { createFromTemplateIfMissing } from "./env.mjs";
 import {
+  createFromTemplateIfMissing,
+  migrateGeneratedNodeEnvironment,
+  profileEnvironment,
+} from "./env.mjs";
+import {
+  databaseResetStatements,
   effectiveProfile,
   resetLocal,
   webCacheDirectory,
@@ -39,6 +44,44 @@ test("runtime profiles have isolated ports, databases, and identities", () => {
   assert.equal(worker.appHost, "127.0.0.1");
   assert.equal(worker.apiHost, "127.0.0.1");
   assert.notEqual(node.appHost, worker.appHost);
+});
+
+test("only the hosted Worker profile enables demo seeding", () => {
+  const dependencies = {
+    MAILPIT_SMTP_PORT: "11025",
+    MINIO_API_PORT: "19100",
+    MINIO_ROOT_PASSWORD: "minio-password",
+    MINIO_ROOT_USER: "minio-user",
+    POSTGRES_HOST_PORT: "15432",
+    POSTGRES_PASSWORD: "postgres-password",
+    POSTGRES_USER: "postgres-user",
+  };
+
+  assert.equal(
+    profileEnvironment(localProfiles.node, dependencies).ZILOBASE_DEMO_ENABLED,
+    "false",
+  );
+  assert.equal(
+    profileEnvironment(localProfiles.worker, dependencies).ZILOBASE_DEMO_ENABLED,
+    "true",
+  );
+});
+
+test("setup migrates the obsolete generated Node demo default", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "zilobase-node-env-test-"));
+  const filename = path.join(directory, "node.env");
+  await writeFile(
+    filename,
+    'ZILOBASE_DEMO_ENABLED="true"\nPRESERVED_VALUE="yes"\n',
+    { mode: 0o600 },
+  );
+
+  assert.equal(await migrateGeneratedNodeEnvironment(filename), true);
+  const migrated = parse(await readFile(filename, "utf8"));
+  assert.equal(migrated.ZILOBASE_DEMO_ENABLED, "false");
+  assert.equal(migrated.PRESERVED_VALUE, "yes");
+  assert.equal((await stat(filename)).mode & 0o777, 0o600);
+  assert.equal(await migrateGeneratedNodeEnvironment(filename), false);
 });
 
 test("dual web clients use separate Vite dependency caches", () => {
@@ -139,4 +182,15 @@ test("process cleanup terminates supervised children", async () => {
 test("reset requires an explicit target confirmation", async () => {
   await assert.rejects(() => resetLocal("node", false), /--yes/);
   await assert.rejects(() => resetLocal("not-a-runtime", true), /target must be/);
+});
+
+test("database reset runs drop and create outside a shared transaction", () => {
+  assert.deepEqual(databaseResetStatements("zilobase_node"), [
+    "DROP DATABASE IF EXISTS zilobase_node WITH (FORCE);",
+    "CREATE DATABASE zilobase_node;",
+  ]);
+  assert.throws(
+    () => databaseResetStatements("zilobase_node; DROP DATABASE postgres"),
+    /name is invalid/,
+  );
 });

@@ -106,6 +106,10 @@ The default workflow performs these operations in order:
 8. Waits for readiness and prints the runtime URLs.
 9. Triggers the local Worker scheduled handler every minute.
 
+The self-hosted Node database stays empty until you complete `/setup`. Only the
+hosted Worker profile receives the optional demo seed; bootstrap and demo seed
+must never run against the same database.
+
 All foreground processes are supervised together and their output is prefixed
 with the service name. If a required child exits unexpectedly, the supervisor
 stops the remaining foreground children instead of leaving a partial stack.
