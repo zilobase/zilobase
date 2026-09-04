@@ -16,8 +16,8 @@
     "packages/tiptap-comment-extension"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace @zilobase/web",
-    "build": "npm run build --workspace @zilobase/web",
+    "dev": "npm run dev:web",
+    "build": "npm run build:web",
     "dev:web": "npm run dev --workspace @zilobase/web",
     "build:web": "npm run build --workspace @zilobase/web",
     "test:web": "npm run test --workspace @zilobase/web",
@@ -28,7 +28,6 @@
     "dev:desktop": "node scripts/desktop/dev.mjs",
     "dev:desktop:node": "node scripts/desktop/profile.mjs node",
     "dev:desktop:worker": "node scripts/desktop/profile.mjs worker",
-    "dev:desktop:app": "npm run dev --workspace @zilobase/desktop",
     "build:desktop": "npm run build --workspace @zilobase/desktop",
     "dev:server": "npm run dev --workspace @zilobase/server",
     "dev:doctor": "node scripts/dev/cli.mjs doctor",
@@ -40,9 +39,6 @@
     "dev:logs": "node scripts/dev/cli.mjs logs",
     "dev:down": "node scripts/dev/cli.mjs down",
     "dev:reset": "node scripts/dev/cli.mjs reset",
-    "dev:env:check": "node scripts/dev/cli.mjs env-check",
-    "dev:env:encrypt": "node scripts/dev/cli.mjs env-encrypt",
-    "dev:env:decrypt": "node scripts/dev/cli.mjs env-decrypt",
     "env:check": "node scripts/dev/cli.mjs env-check",
     "env:encrypt": "node scripts/dev/cli.mjs env-encrypt",
     "env:decrypt": "node scripts/dev/cli.mjs env-decrypt",

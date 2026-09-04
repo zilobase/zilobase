@@ -125,7 +125,7 @@ export async function startLocal(target = "all") {
       children.push(spawnService(
         "worker-stack",
         process.execPath,
-        [path.join(adapterDir, "scripts", "dev-stack.mjs"), "--worker-only"],
+        [path.join(adapterDir, "scripts", "dev-workers.mjs")],
         {
           cwd: adapterDir,
           logFile: path.join(logDir, "worker-stack.log"),
@@ -362,7 +362,7 @@ async function stopRuntimeProcesses() {
     const result = await runResult("ps", ["-p", String(pid), "-o", "command="], {
       reject: false,
     });
-    if (!/(serverful\.ts|dev-stack\.mjs|vite(?:\.js)?)/.test(result.stdout)) {
+    if (!/(serverful\.ts|dev-workers\.mjs|vite(?:\.js)?)/.test(result.stdout)) {
       console.warn(`Skipped PID ${pid}: it no longer belongs to the Zilobase supervisor.`);
       continue;
     }
