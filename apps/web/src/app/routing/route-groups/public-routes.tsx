@@ -2,6 +2,7 @@ import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-route
 import { isDesktopApp } from "@/features/desktop/index";
 
 import { getAuthReturnPath } from "@/features/auth/lib/google-auth";
+import { isBootstrapRequiredAuthError } from "@/features/auth/lib/bootstrap-redirect";
 import { getConnectivityState } from "@/features/offline/index";
 import { getDefaultAppPath, getFreshSession, getWorkspaces } from "../guards";
 import { rootRoute } from "../route-roots";
@@ -34,6 +35,10 @@ const loginRoute = createRoute({
   path: "/login",
   validateSearch: validateLoginSearch,
   beforeLoad: async ({ search }) => {
+    if (isBootstrapRequiredAuthError(search.error)) {
+      throw redirect({ to: "/setup" });
+    }
+
     const session = await getFreshSession({ optional: true });
     if (!session.user) return;
 
