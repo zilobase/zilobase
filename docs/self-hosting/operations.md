@@ -67,6 +67,10 @@ schema; otherwise restore the matching backup.
 
 Production requires a working SMTP service for OTP, verification, and
 invitation delivery. Mailpit exists only in the development/test override.
+Bootstrap itself does not send an OTP: the one-time bootstrap token authorizes
+creation of the verified owner, and the web setup flow immediately signs that
+owner in with the password they supplied. Subsequent OTP sign-ins, account
+verification, and invitations use SMTP normally.
 After bootstrap, registration defaults to invite-only. The pinned workspace
 owner can switch registration mode under **Settings → Team**.
 

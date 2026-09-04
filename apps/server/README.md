@@ -15,7 +15,10 @@ in the `Authorization: Bearer` or `X-Zilobase-Bootstrap-Token` header to
 `POST /api/instance/bootstrap`; query-string and request-body tokens are not
 accepted. Bootstrap transactionally creates one verified owner, one pinned
 workspace, and an owner membership, then permanently marks the instance as
-initialized.
+initialized. The bootstrap token is the initial proof of operator control, so
+the owner does not complete an email OTP challenge during setup. The web setup
+flow signs that owner in through the normal password endpoint immediately after
+bootstrap succeeds.
 
 When upgrading an older self-hosted database, the migration pins its earliest
 workspace and treats that installation as already bootstrapped; it does not

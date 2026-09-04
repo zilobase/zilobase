@@ -16,10 +16,15 @@ import {
   FieldLabel,
 } from "@/shared/ui/field"
 import { Input } from "@/shared/ui/input"
-import { apiFetch, getApiErrorMessage } from "@/features/desktop/network/api"
+import {
+  apiFetch,
+  authFetch,
+  getApiErrorMessage,
+} from "@/features/desktop/network/api"
 
 export default function SetupPage() {
   const [error, setError] = useState<unknown>(null)
+  const [bootstrapCompleted, setBootstrapCompleted] = useState(false)
   const [isPending, setIsPending] = useState(false)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -28,14 +33,16 @@ export default function SetupPage() {
     setIsPending(true)
 
     const form = new FormData(event.currentTarget)
+    const email = String(form.get("email") ?? "").trim().toLowerCase()
+    const password = String(form.get("password") ?? "")
 
     try {
       await apiFetch("/api/instance/bootstrap", {
         auth: false,
         body: JSON.stringify({
-          email: String(form.get("email") ?? "").trim().toLowerCase(),
+          email,
           name: String(form.get("name") ?? "").trim(),
-          password: String(form.get("password") ?? ""),
+          password,
           workspaceName: String(form.get("workspaceName") ?? "").trim(),
         }),
         headers: {
@@ -46,7 +53,9 @@ export default function SetupPage() {
         method: "POST",
       })
 
-      window.location.assign("/login")
+      setBootstrapCompleted(true)
+      await authFetch("/sign-in/email", { email, password })
+      window.location.assign("/recents")
     } catch (error) {
       setError(error)
       setIsPending(false)
@@ -118,6 +127,10 @@ export default function SetupPage() {
                   required
                   type="email"
                 />
+                <FieldDescription>
+                  The bootstrap token verifies the initial owner, so no OTP is
+                  sent during setup.
+                </FieldDescription>
               </Field>
 
               <Field>
@@ -134,11 +147,23 @@ export default function SetupPage() {
                 />
               </Field>
 
-              {error != null && <FieldError>{getApiErrorMessage(error)}</FieldError>}
+              {error != null && (
+                <FieldError>
+                  {bootstrapCompleted
+                    ? `Setup completed, but automatic sign-in failed: ${getApiErrorMessage(error)}`
+                    : getApiErrorMessage(error)}
+                </FieldError>
+              )}
 
-              <Button disabled={isPending} type="submit">
-                {isPending ? "Creating server owner..." : "Complete setup"}
-              </Button>
+              {bootstrapCompleted ? (
+                <Button asChild>
+                  <a href="/login">Sign in manually</a>
+                </Button>
+              ) : (
+                <Button disabled={isPending} type="submit">
+                  {isPending ? "Creating server owner..." : "Complete setup"}
+                </Button>
+              )}
             </FieldGroup>
           </form>
         </CardContent>

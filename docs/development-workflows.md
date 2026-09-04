@@ -110,6 +110,11 @@ The self-hosted Node database stays empty until you complete `/setup`. Only the
 hosted Worker profile receives the optional demo seed; bootstrap and demo seed
 must never run against the same database.
 
+Bootstrap creates a verified owner and signs that owner in with the submitted
+password; it does not send an OTP. Later local OTP and invitation messages are
+delivered to Mailpit at `http://127.0.0.1:18025`. `MAIL_ENABLED` controls the
+workspace Gmail product and does not disable authentication email delivery.
+
 All foreground processes are supervised together and their output is prefixed
 with the service name. If a required child exits unexpectedly, the supervisor
 stops the remaining foreground children instead of leaving a partial stack.

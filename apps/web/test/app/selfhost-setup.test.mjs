@@ -8,6 +8,16 @@ export function register({ loadModule, readSource, assert, test }) {
     assert.match(router, /path: "\/setup"/)
     assert.match(page, /"x-zilobase-bootstrap-token"/)
     assert.match(page, /\/api\/instance\/bootstrap/)
+    assert.match(page, /authFetch\("\/sign-in\/email"/)
+    assert.match(page, /window\.location\.assign\("\/recents"\)/)
+    assert.match(page, /setBootstrapCompleted\(true\)/)
+    assert.match(page, /Setup completed, but automatic sign-in failed/)
+    assert.match(page, /href="\/login">Sign in manually/)
+    assert.ok(
+      page.indexOf('apiFetch("/api/instance/bootstrap"') <
+        page.indexOf('authFetch("/sign-in/email"'),
+    )
+    assert.match(page, /no OTP is\s+sent during setup/)
     assert.doesNotMatch(page, /localStorage|sessionStorage|URLSearchParams/)
   })
 
