@@ -49,14 +49,14 @@
       "name": "Browser: Node",
       "type": "pwa-chrome",
       "request": "launch",
-      "url": "http://node.zilobase.localhost:1420",
+      "url": "http://localhost:1420",
       "webRoot": "${workspaceFolder:zilobase}/apps/web"
     },
     {
       "name": "Browser: Worker",
       "type": "pwa-chrome",
       "request": "launch",
-      "url": "http://worker.zilobase.localhost:1422",
+      "url": "http://127.0.0.1:1422",
       "webRoot": "${workspaceFolder:zilobase}/apps/web"
     },
     {

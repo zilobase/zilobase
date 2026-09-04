@@ -30,6 +30,11 @@ test("runtime profiles have isolated ports, databases, and identities", () => {
   assert.equal(new Set(ports).size, ports.length);
   assert.notEqual(node.database, worker.database);
   assert.notEqual(node.cellId, worker.cellId);
+  assert.equal(node.appHost, "localhost");
+  assert.equal(node.apiHost, "localhost");
+  assert.equal(worker.appHost, "127.0.0.1");
+  assert.equal(worker.apiHost, "127.0.0.1");
+  assert.notEqual(node.appHost, worker.appHost);
 });
 
 test("shell profile overrides select validated ports", () => {

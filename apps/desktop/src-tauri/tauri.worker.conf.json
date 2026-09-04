@@ -1,6 +1,6 @@
 {
   "build": {
     "beforeDevCommand": "",
-    "devUrl": "http://worker.zilobase.localhost:1422"
+    "devUrl": "http://127.0.0.1:1422"
   }
 }

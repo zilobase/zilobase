@@ -34,9 +34,9 @@ export const generatedEnvironmentFiles = {
 export const localProfiles = {
   node: {
     name: "node",
-    appHost: "node.zilobase.localhost",
+    appHost: "localhost",
     appPort: 1420,
-    apiHost: "node.zilobase.localhost",
+    apiHost: "localhost",
     apiPort: 3000,
     healthPort: 3001,
     inspectorPort: 9229,
@@ -46,9 +46,9 @@ export const localProfiles = {
   },
   worker: {
     name: "worker",
-    appHost: "worker.zilobase.localhost",
+    appHost: "127.0.0.1",
     appPort: 1422,
-    apiHost: "worker.zilobase.localhost",
+    apiHost: "127.0.0.1",
     apiPort: 3010,
     backgroundPort: 3012,
     inspectorPort: 9231,

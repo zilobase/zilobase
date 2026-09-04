@@ -78,6 +78,21 @@ test("public request URLs prefer the local Host over a rewritten production orig
   );
   assert.equal(
     resolvePublicRequestUrl(
+      new Request("http://localhost:3010/api/auth/sign-in/social", {
+        headers: {
+          "x-forwarded-host": "127.0.0.1:1422",
+          referer: "http://127.0.0.1:1422/login",
+        },
+      }),
+      {
+        BETTER_AUTH_URL: "http://127.0.0.1:3010",
+        ZILOBASE_ADAPTER_PORT: "3010",
+      },
+    ).href,
+    "http://127.0.0.1:3010/api/auth/sign-in/social",
+  );
+  assert.equal(
+    resolvePublicRequestUrl(
       new Request(
         "https://api.zilobase.com/desktop/authorize?client_id=zilobase-desktop",
         { headers: { host: "api.zilobase.com" } },
