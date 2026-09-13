@@ -19,9 +19,18 @@ const pageContextDir = fileURLToPath(
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
 const externalAiConversationModule =
   process.env.ZILOBASE_WEB_AI_CONVERSATION_MODULE?.trim();
+const externalEditionWebModule =
+  process.env.ZILOBASE_WEB_EDITION_MODULE?.trim();
 const aiConversationModule = externalAiConversationModule
   ? resolve(externalAiConversationModule)
   : `${srcDir}/features/ai/conversations/use-agent-conversation.ts`;
+const editionWebModule = externalEditionWebModule
+  ? resolve(externalEditionWebModule)
+  : `${srcDir}/edition/community-module.ts`;
+const externalModuleDirectories = [
+  externalAiConversationModule ? dirname(aiConversationModule) : null,
+  externalEditionWebModule ? dirname(editionWebModule) : null,
+].filter((directory): directory is string => directory !== null);
 const adapterWebSocketPaths = readAdapterWebSocketPaths(
   process.env.ZILOBASE_WEB_ADAPTER_WEBSOCKET_PATHS,
 );
@@ -121,7 +130,7 @@ export default defineConfig(async () => ({
       },
       {
         find: "@zilobase/edition-web",
-        replacement: `${srcDir}/edition/community-module.ts`,
+        replacement: editionWebModule,
       },
       { find: "@/packages/editor", replacement: editorDir },
       { find: "@", replacement: srcDir },
@@ -157,7 +166,7 @@ export default defineConfig(async () => ({
     strictPort: true,
     ...(process.env.VITE_DEV_PUBLIC_ORIGIN ? { allowedHosts: [new URL(process.env.VITE_DEV_PUBLIC_ORIGIN).hostname] } : {}),
     host: host || process.env.VITE_DEV_HOST || "0.0.0.0",
-    // Local Node and private profiles reuse stable cache directories. Prevent a
+    // Local runtime profiles reuse stable cache directories. Prevent a
     // browser from retaining an optimized-dependency response across a Vite
     // cache regeneration, which otherwise leaves old chunk URLs returning
     // `504 Outdated Optimize Dep` until that browser's site cache is cleared.
@@ -210,11 +219,11 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching the desktop shell
       ignored: ["**/src-tauri/**", "../desktop/src-tauri/**"],
     },
-    fs: externalAiConversationModule
+    fs: externalModuleDirectories.length > 0
       ? {
           allow: [
             searchForWorkspaceRoot(process.cwd()),
-            dirname(aiConversationModule),
+            ...externalModuleDirectories,
           ],
         }
       : undefined,

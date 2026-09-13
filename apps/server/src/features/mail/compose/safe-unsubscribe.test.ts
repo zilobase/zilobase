@@ -11,7 +11,7 @@ function thread(headers: Array<{ name: string; value: string }>): GmailThread {
 function publicDnsOr(handler: (url: string, init?: RequestInit) => Response | Promise<Response>): typeof fetch {
   return (async (input, init) => {
     const url = String(input)
-    if (url.startsWith("https://cloudflare-dns.com/")) return Response.json({ Answer: [{ data: "93.184.216.34" }] })
+    if (url.startsWith("https://dns.google/")) return Response.json({ Answer: [{ data: "93.184.216.34" }] })
     return handler(url, init)
   }) as typeof fetch
 }

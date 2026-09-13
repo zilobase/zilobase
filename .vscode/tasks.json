@@ -73,12 +73,6 @@
       "problemMatcher": []
     },
     {
-      "label": "Test: runtime parity",
-      "type": "npm",
-      "script": "test:runtime-parity",
-      "problemMatcher": []
-    },
-    {
       "label": "Desktop: Node",
       "type": "npm",
       "script": "dev:desktop:node",
@@ -97,7 +91,7 @@
       "id": "resetTarget",
       "type": "pickString",
       "description": "Permanently delete only this local development state",
-      "options": ["node", "worker", "community", "all"],
+      "options": ["node", "community", "all"],
       "default": "node"
     }
   ]

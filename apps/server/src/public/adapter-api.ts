@@ -66,7 +66,9 @@ export {
   type RuntimeEnv,
 } from "../shared/config/config";
 export {
+  createAuthTransactionDatabase,
   createDbClient,
+  getCurrentExtensionTransactionDatabase,
   runWithDbClient,
   runWithDbEnv,
 } from "../infrastructure/database";
@@ -154,8 +156,17 @@ export {
 export { drainInProductNotificationOutbox } from "../features/notifications/outbox";
 export {
   MembershipService,
+  TransactionalAdmissionError,
+  admitTransactionalMembership,
+  findActiveMembershipForAdmission,
+  listWorkspaceReadinessMembers,
+  lockWorkspaceAdmission,
+  revokeWorkspaceSessions,
   type GrantMembershipInput,
   type GrantMembershipResult,
+  type TransactionalAdmissionCode,
+  type TransactionalAdmissionResult,
+  type ReadinessMember,
 } from "../features/memberships";
 export {
   TeamspaceService,

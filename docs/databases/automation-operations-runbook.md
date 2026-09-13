@@ -40,6 +40,6 @@ The protected health endpoint returns 503 with `Retry-After: 30` when durable ba
 
 The leased maintenance table schedules retention hourly and reruns it after one minute while deletions remain. Cleanup deletes at most 1,000 terminal records of each class per invocation, never queued/running work. Detailed steps and delivery receipts use the detail window; terminal run summaries, closed event windows, and deleted automations use the summary window.
 
-Before and after upgrades, run clean-install and upgrade-from-`0072` migrations, the full server/features/web suites, hosted adapter tests, and a self-hosted background restart test. During failover, start only background processors sharing the same PostgreSQL database; advisory workspace locks, row leases, unique occurrences, action receipts, and stable delivery IDs provide recovery boundaries.
+Before and after upgrades, run clean-install and upgrade-from-`0072` migrations, the full server/features/web suites, external adapter tests, and a self-hosted background restart test. During failover, start only background processors sharing the same PostgreSQL database; advisory workspace locks, row leases, unique occurrences, action receipts, and stable delivery IDs provide recovery boundaries.
 
 The authenticated source audit endpoint is `GET /databases/:databaseId/automations/audit?dataSourceId=...`. It exports lifecycle/version/hash, action types, aggregate dependencies, and run counts. It deliberately excludes definitions, values, recipients, connector metadata, and secrets.

@@ -61,8 +61,8 @@ test("edition discovery adds only the edition and declared capabilities", async 
     {
       editionExtension: {
         id: "test-edition",
-        authPlugins: [],
-        capabilities: ["sso", "audit"],
+        capabilities: ["custom-auth", "audit"],
+        async createAuthPlugins() { return []; },
         async beforeMembershipGrant() {},
         async recordSecurityEvent() {},
         registerRoutes() {},
@@ -71,7 +71,7 @@ test("edition discovery adds only the edition and declared capabilities", async 
   );
 
   assert.equal(document.edition, "test-edition");
-  assert.deepEqual(document.capabilities, ["sso", "audit"]);
+  assert.deepEqual(document.capabilities, ["custom-auth", "audit"]);
   assert.equal("license" in document, false);
 });
 

@@ -4,7 +4,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import {
-  findPrivateRuntimeReferences,
+  findRestrictedRuntimeReferences,
   isMissingWorkingTreeFile,
   isVendoredReferenceTree,
 } from "./community-boundary.mjs";
@@ -35,7 +35,7 @@ for (const file of stdout.toString("utf8").split("\0")) {
   }
   if (content.includes(0)) continue;
 
-  for (const reference of findPrivateRuntimeReferences(file, content.toString("utf8"))) {
+  for (const reference of findRestrictedRuntimeReferences(file, content.toString("utf8"))) {
     violations.push({ file, reference });
   }
 }
@@ -43,7 +43,7 @@ for (const file of stdout.toString("utf8").split("\0")) {
 if (violations.length > 0) {
   throw new Error(
     `Community boundary violation:\n${violations
-      .map(({ file, reference }) => `- ${file}: private runtime dependency ${reference}`)
+      .map(({ file, reference }) => `- ${file}: restricted runtime dependency ${reference}`)
       .join("\n")}`,
   );
 }

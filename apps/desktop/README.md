@@ -8,7 +8,7 @@ Desktop authentication uses the selected Zilobase server's authorization-code
 flow with PKCE. The native app opens `/desktop/authorize` in the system browser
 and receives the result on an ephemeral loopback address such as
 `http://127.0.0.1:43123/oauth/callback`. The browser can use the server's normal
-password, email-code, Google, or configured SSO path. Authentication never runs
+password, email-code, Google, or configured organization-provider path. Authentication never runs
 in an embedded WebView or returns through a custom deep link.
 
 The server stores only a SHA-256 hash of each five-minute authorization code and

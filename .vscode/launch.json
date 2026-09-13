@@ -12,26 +12,6 @@
       "skipFiles": ["<node_internals>/**"]
     },
     {
-      "name": "Attach: Worker API",
-      "type": "pwa-node",
-      "request": "attach",
-      "address": "127.0.0.1",
-      "port": 9231,
-      "restart": true,
-      "localRoot": "${workspaceFolder:zilobase-cloud-adapter}",
-      "skipFiles": ["<node_internals>/**"]
-    },
-    {
-      "name": "Attach: Worker background",
-      "type": "pwa-node",
-      "request": "attach",
-      "address": "127.0.0.1",
-      "port": 9232,
-      "restart": true,
-      "localRoot": "${workspaceFolder:zilobase-cloud-adapter}",
-      "skipFiles": ["<node_internals>/**"]
-    },
-    {
       "name": "Attach: Kubernetes Community",
       "type": "pwa-node",
       "request": "attach",
@@ -53,13 +33,6 @@
       "webRoot": "${workspaceFolder:zilobase}/apps/web"
     },
     {
-      "name": "Browser: Worker",
-      "type": "pwa-chrome",
-      "request": "launch",
-      "url": "http://127.0.0.1:1422",
-      "webRoot": "${workspaceFolder:zilobase}/apps/web"
-    },
-    {
       "name": "Browser: Kubernetes Community",
       "type": "pwa-chrome",
       "request": "launch",
@@ -72,26 +45,9 @@
       "request": "launch",
       "command": "npm run dev:desktop:node",
       "cwd": "${workspaceFolder:zilobase}"
-    },
-    {
-      "name": "Tauri: Worker backend",
-      "type": "node-terminal",
-      "request": "launch",
-      "command": "npm run dev:desktop:worker",
-      "cwd": "${workspaceFolder:zilobase}"
     }
   ],
   "compounds": [
-    {
-      "name": "Debug: Node + Worker parity",
-      "configurations": [
-        "Attach: Node API",
-        "Attach: Worker API",
-        "Attach: Worker background",
-        "Browser: Node",
-        "Browser: Worker"
-      ]
-    },
     {
       "name": "Debug: Kubernetes Community",
       "configurations": ["Attach: Kubernetes Community", "Browser: Kubernetes Community"]
@@ -99,10 +55,6 @@
     {
       "name": "Debug: Node desktop",
       "configurations": ["Attach: Node API", "Tauri: Node backend"]
-    },
-    {
-      "name": "Debug: Worker desktop",
-      "configurations": ["Attach: Worker API", "Attach: Worker background", "Tauri: Worker backend"]
     }
   ]
 }

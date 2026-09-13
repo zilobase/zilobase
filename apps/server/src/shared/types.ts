@@ -21,7 +21,7 @@ const MEMBERSHIP_GRANT_SOURCES = [
   "open-registration",
   "invitation",
   "admin",
-  "sso-jit",
+  "extension",
   "scim",
 ] as const;
 
@@ -35,6 +35,13 @@ export type MembershipGrantInput = {
   workspaceId: string;
 };
 
+export type InvitationPolicyInput = {
+  database: Database;
+  email: string;
+  role: string;
+  workspaceId: string;
+};
+
 export type SecurityEvent = {
   actorUserId?: string | null;
   database: Database;
@@ -45,12 +52,30 @@ export type SecurityEvent = {
   workspaceId?: string | null;
 };
 
+export type SessionPolicyDenial = {
+  code: string;
+  message: string;
+  status: 401 | 403;
+};
+
 export type ZilobaseEditionExtension = {
   readonly id: string;
   readonly capabilities: readonly string[];
-  readonly authPlugins: readonly BetterAuthPlugin[];
+  createAuthPlugins(input: {
+    database: Database;
+    env: Record<string, unknown>;
+    request: Request;
+  }): Promise<readonly BetterAuthPlugin[]>;
   registerRoutes(app: Hono<AppBindings>): void;
   beforeMembershipGrant(input: MembershipGrantInput): Promise<void>;
+  beforeInvitationCreate?(input: InvitationPolicyInput): Promise<void>;
+  assertSession?(input: {
+    authMethod: "session";
+    database: Database;
+    request: Request;
+    session: { activeWorkspaceId?: string | null; id: string };
+    user: { email?: string | null; id: string };
+  }): Promise<SessionPolicyDenial | void>;
   recordSecurityEvent(event: SecurityEvent): Promise<void>;
 };
 

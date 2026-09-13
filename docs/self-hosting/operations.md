@@ -83,11 +83,11 @@ the former unscoped credential table and cannot be rolled back by an older
 application image without restoring the matching database backup.
 
 The bundled Node server runs Gmail watch renewal, full-mailbox indexing, and the
-database-sync outbox in its maintenance loop. Custom and Cloudflare adapters
+database-sync outbox in its maintenance loop. Custom runtime adapters
 must schedule the exported `renewGmailWatches`, `advancePendingMailIndexes`, and
 `drainMailDatabaseSyncOutbox` functions at least once per minute. Multi-replica
 deployments require the shared realtime broker so workspace/binding-scoped mail
-events reach the correct Node or Cloudflare realtime room.
+events reach the correct realtime room.
 
 Monitor the non-PII `mail.watch_health`, `mail.index`, `mail.database_sync`,
 `mail.webhook_rejection`, `mail.quota_failure`, `mail.cursor_reset`, and

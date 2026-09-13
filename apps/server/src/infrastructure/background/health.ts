@@ -113,6 +113,6 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
       stale: Number(lease?.stale_count ?? 0),
     },
     maintenance,
-    runtime: env.HYPERDRIVE ? "cloudflare" : "node",
+    runtime: env.ZILOBASE_RUNTIME_KIND === "edge" ? "edge" : "node",
   };
 }

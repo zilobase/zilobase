@@ -4,7 +4,6 @@ import net from "node:net";
 import path from "node:path";
 
 import {
-  adapterDir,
   composeFile,
   composeProject,
   coreDir,
@@ -35,12 +34,12 @@ import {
   waitForUrl,
 } from "./process.mjs";
 
-export function resolveLocalProfileNames({ adapterAvailable } = {}) {
-  return adapterAvailable ? ["node", "worker"] : ["node"];
+export function resolveLocalProfileNames() {
+  return ["node"];
 }
 
 export function resolveStudioServices() {
-  return Object.values(localProfiles).map((profile) => ({
+  return [localProfiles.node].map((profile) => ({
     name: profile.name,
     port: profile.studioPort,
     database: profile.database,
@@ -65,9 +64,7 @@ export async function startPreview() {
 }
 
 async function startRuntime({ spawnWeb: spawnWebFn, printSummary, processLabel }) {
-  const adapterAvailable = await exists(path.join(adapterDir, "package.json"));
-  const names = resolveLocalProfileNames({ adapterAvailable });
-  await validateAdapterPrerequisites(names);
+  const names = resolveLocalProfileNames();
   await ensureDevelopmentEnvironment();
 
   const { environments, profiles } = await resolveRuntimeProfiles(names);
@@ -99,12 +96,6 @@ async function startRuntime({ spawnWeb: spawnWebFn, printSummary, processLabel }
       children.push(...spawned.children);
       color = spawned.color;
     }
-    if (names.includes("worker")) {
-      const spawned = await spawnWorkerProfile(profiles.worker, environments.worker, logDir, spawnWebFn, color);
-      children.push(...spawned.children);
-      color = spawned.color;
-    }
-
     await mkdir(stateDir, { recursive: true });
     await writeFile(runtimeStateFile, `${JSON.stringify({
       profiles: Object.fromEntries(names.map((name) => [name, profiles[name]])),
@@ -128,19 +119,6 @@ async function startRuntime({ spawnWeb: spawnWebFn, printSummary, processLabel }
     }
   } finally {
     await stop();
-  }
-}
-
-async function validateAdapterPrerequisites(names) {
-  if (!names.includes("worker")) {
-    console.info("Cloud adapter repository not found; running node profile only.");
-    return;
-  }
-  const wranglerBin = path.join(adapterDir, "node_modules", "wrangler", "bin", "wrangler.js");
-  if (!(await exists(wranglerBin))) {
-    throw new Error(
-      `Cloud adapter dependencies are not installed. Run npm install in ${adapterDir}.`,
-    );
   }
 }
 
@@ -204,47 +182,6 @@ async function spawnNodeProfile(profile, environment, logDir, spawnWebFn, color)
       color++,
     ),
     spawnWebFn("node-web", profile, env, color++),
-  ];
-  return { children, color };
-}
-
-async function spawnWorkerProfile(profile, environment, logDir, spawnWebFn, color) {
-  const env = runtimeEnvironment(profile, environment);
-  const persistDir = path.join(stateDir, "wrangler", "worker");
-  await mkdir(persistDir, { recursive: true });
-  const children = [
-    spawnService(
-      "worker-stack",
-      process.execPath,
-      [path.join(adapterDir, "scripts", "dev-workers.mjs")],
-      {
-        cwd: adapterDir,
-        logFile: path.join(logDir, "worker-stack.log"),
-        env: {
-          ...env,
-          ZILOBASE_APP_DIR: coreDir,
-          ZILOBASE_WRANGLER_PERSIST_DIR: persistDir,
-          ZILOBASE_ADAPTER_PORT: String(profile.apiPort),
-          ZILOBASE_BACKGROUND_PORT: String(profile.backgroundPort),
-          ZILOBASE_INSPECTOR_PORT: String(profile.inspectorPort),
-          ZILOBASE_BACKGROUND_INSPECTOR_PORT: String(profile.backgroundInspectorPort),
-        },
-      },
-      color++,
-    ),
-    spawnWebFn(
-      "worker-web",
-      profile,
-      {
-        ...env,
-        ZILOBASE_WEB_AI_CONVERSATION_MODULE: path.join(
-          adapterDir,
-          "src/web/use-agent-conversation.ts",
-        ),
-        ZILOBASE_WEB_ADAPTER_WEBSOCKET_PATHS: "/agents",
-      },
-      color++,
-    ),
   ];
   return { children, color };
 }
@@ -397,8 +334,8 @@ export async function stopLocal() {
 }
 
 export async function resetLocal(target, confirmed) {
-  if (!["node", "worker", "community", "all"].includes(target)) {
-    throw new Error("Reset target must be node, worker, community, or all.");
+  if (!["node", "community", "all"].includes(target)) {
+    throw new Error("Reset target must be node, community, or all.");
   }
   if (!confirmed) {
     throw new Error(`Reset deletes ${target} development data. Re-run with --yes to confirm.`);
@@ -408,21 +345,17 @@ export async function resetLocal(target, confirmed) {
 
   if (target === "all") {
     await dependencies(["down", "--volumes", "--remove-orphans"]);
-    await rm(path.join(stateDir, "wrangler"), { force: true, recursive: true });
     const kind = runResult("kind", ["delete", "cluster", "--name", kindCluster]);
     if (kind.status !== 0 && kind.error?.code !== "ENOENT") process.stderr.write(kind.stderr ?? "");
     console.info("All local runtime data was removed.");
     return;
   }
 
-  if (target === "node" || target === "worker") {
+  if (target === "node") {
     await dependencies(["up", "-d", "postgres", "minio", "mailpit", "--wait"]);
     await dependencies(["run", "--rm", "-T", "minio-init"]);
     await recreateDatabase(localProfiles[target].database);
     if (target === "node") await resetNodeBucket();
-    if (target === "worker") {
-      await rm(path.join(stateDir, "wrangler", "worker"), { force: true, recursive: true });
-    }
     console.info(`Reset isolated ${target} development data.`);
     return;
   }
@@ -532,7 +465,7 @@ async function stopRuntimeProcesses() {
     const result = await runResult("ps", ["-p", String(pid), "-o", "command="], {
       reject: false,
     });
-    if (!/(serverful\.ts|dev-workers\.mjs|vite(?:\.js)?)/.test(result.stdout)) {
+    if (!/(serverful\.ts|vite(?:\.js)?)/.test(result.stdout)) {
       console.warn(`Skipped PID ${pid}: it no longer belongs to the Zilobase supervisor.`);
       continue;
     }
@@ -571,13 +504,12 @@ async function probe(url) {
 }
 
 function printStudioSummary(services) {
-  console.info("\nDrizzle Studio is ready for isolated local databases:\n");
+  console.info("\nDrizzle Studio is ready for the local database:\n");
   for (const service of services) {
     console.info(
       `${service.name.padEnd(7)} ${studioBrowserUrl(service.port)}  ${service.database}  127.0.0.1:${service.port}`,
     );
   }
-  console.info("\nNode and worker databases stay separate. Worker tables that are not in Node remain only in zilobase_worker.");
   console.info("Keep npm run dev in another terminal. Ctrl-C stops Studio and preserves data.\n");
 }
 
@@ -604,25 +536,15 @@ function printPreviewSummary(names, profiles = localProfiles) {
 }
 
 export function effectiveProfile(name, env) {
+  if (name !== "node") throw new Error(`Unknown local profile: ${name}`);
   const profile = { ...localProfiles[name] };
-  if (name === "node") {
-    profile.apiPort = readPort(env.PORT, profile.apiPort);
-    profile.healthPort = readPort(env.BACKGROUND_HEALTH_PORT, profile.healthPort);
-    profile.appPort = readPort(env.ZILOBASE_NODE_WEB_PORT, profile.appPort);
-    profile.inspectorPort = readPort(
-      env.ZILOBASE_NODE_INSPECTOR_PORT,
-      profile.inspectorPort,
-    );
-  } else {
-    profile.apiPort = readPort(env.ZILOBASE_ADAPTER_PORT, profile.apiPort);
-    profile.backgroundPort = readPort(env.ZILOBASE_BACKGROUND_PORT, profile.backgroundPort);
-    profile.appPort = readPort(env.ZILOBASE_WORKER_WEB_PORT, profile.appPort);
-    profile.inspectorPort = readPort(env.ZILOBASE_INSPECTOR_PORT, profile.inspectorPort);
-    profile.backgroundInspectorPort = readPort(
-      env.ZILOBASE_BACKGROUND_INSPECTOR_PORT,
-      profile.backgroundInspectorPort,
-    );
-  }
+  profile.apiPort = readPort(env.PORT, profile.apiPort);
+  profile.healthPort = readPort(env.BACKGROUND_HEALTH_PORT, profile.healthPort);
+  profile.appPort = readPort(env.ZILOBASE_NODE_WEB_PORT, profile.appPort);
+  profile.inspectorPort = readPort(
+    env.ZILOBASE_NODE_INSPECTOR_PORT,
+    profile.inspectorPort,
+  );
   return profile;
 }
 

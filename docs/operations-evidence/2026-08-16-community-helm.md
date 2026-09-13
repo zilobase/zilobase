@@ -18,8 +18,8 @@ Helm `v3.18.6` linted the chart. `helm template ... --set replicaCount=2`
 failed schema validation with `value must be 1`. Revision 1 installed with the
 digest above and `Recreate`, using a pre-install Job that exposed only
 `DATABASE_URL` and `DRIZZLE_MIGRATIONS_DIR`. The database contained 39 public
-migration entries, no Enterprise migration journal, and the Enterprise license
-route returned 404.
+migration entries and no unexpected extension-owned migration journals or
+routes.
 
 The live smoke at `2026-08-16T05:20:02Z` verified:
 
@@ -30,8 +30,7 @@ The live smoke at `2026-08-16T05:20:02Z` verified:
 - a presigned TLS MinIO upload and authenticated byte-for-byte read succeeded;
 - Calico allowed PostgreSQL and MinIO but denied an unlisted
   `1.1.1.1:443` connection;
-- no Enterprise, activation, Console, or Enterprise-metrics variable was in the
-  Community pod environment.
+- no extension-owned variable was in the Community pod environment.
 
 The reusable `scripts/selfhost/test-community-helm.mjs` gate then repeated the smoke and
 wrote private restore state. With the app scaled to zero, a custom-format dump
@@ -48,12 +47,12 @@ loaded immutable test digest
 `sha256:0bf2285f773ca3f88a35bd3799f3ab6a2afab8d32e199965fa79c200a7cd31e1`,
 installed into kind against external PostgreSQL/TLS MinIO, passed readiness,
 single-use bootstrap, page edit, authenticated WebSocket and object checks,
-asserted that the Enterprise journal was absent, then destroyed and recreated
+asserted that extension journals were absent, then destroyed and recreated
 both storage members and passed exact session/page/object restore verification.
 No diagnostic failure step ran.
 
 The operator docs state that PostgreSQL/S3 are external, Community is always
-one replica and not HA, Console Downloads does not carry this chart, Ingress
+one replica and not HA, release downloads do not carry this chart, Ingress
 must preserve WebSocket upgrades with a timeout of at least 65 seconds, and
 database/object backup must be paired with the image digest.
 

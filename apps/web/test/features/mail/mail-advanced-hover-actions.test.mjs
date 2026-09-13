@@ -21,7 +21,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
 
   test("unsubscribe validation checks DNS, redirects, credentials, and private networks", async () => {
     const source = await readWorkspace("/apps/server/src/features/mail/compose/safe-unsubscribe.ts")
-    assert.match(source, /cloudflare-dns\.com\/dns-query/)
+    assert.match(source, /dns\.google\/resolve/)
     assert.match(source, /redirect: "manual"/)
     assert.match(source, /MAX_REDIRECTS/)
     assert.match(source, /url\.username \|\| url\.password/)

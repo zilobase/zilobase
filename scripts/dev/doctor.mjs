@@ -1,8 +1,5 @@
-import { adapterDir } from "./config.mjs";
 import { composeCheck } from "./docker.mjs";
 import { runResult } from "./process.mjs";
-import { access } from "node:fs/promises";
-import path from "node:path";
 
 export async function doctor() {
   const checks = await collectDependencyChecks();
@@ -30,18 +27,6 @@ export async function collectDependencyChecks() {
     versionCheck("Helm (Kubernetes only)", "helm", ["version", "--short"]),
     gitHooksCheck(),
   ];
-  const repositories = [
-    ["Cloud adapter", adapterDir],
-  ];
-  for (const [label, directory] of repositories) {
-    checks.push({
-      label,
-      required: false,
-      ok: await exists(path.join(directory, "package.json")),
-      detail: directory,
-    });
-  }
-
   return checks;
 }
 
@@ -74,8 +59,4 @@ function nodeVersionOk(value) {
 
 function majorAtLeast(minimum) {
   return (value) => Number(value.match(/(\d+)/)?.[1]) >= minimum;
-}
-
-async function exists(filename) {
-  try { await access(filename); return true; } catch { return false; }
 }

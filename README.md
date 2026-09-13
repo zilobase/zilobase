@@ -129,8 +129,8 @@ Common commands:
 | `npm run setup:check` | Check prerequisites and optional tooling without running bootstrap steps. |
 | `npm run dev:doctor` | Validate source and optional Kubernetes tooling. |
 | `npm run dev:setup` | Create missing private development files without overwriting. |
-| `npm run dev` | Run Node and, if the sibling adapter repo is present, the adapter profile. |
-| `npm run db:studio` | Open isolated Drizzle Studio windows for the Node and worker databases. |
+| `npm run dev` | Run the local Node development profile. |
+| `npm run db:studio` | Open Drizzle Studio for the local development database. |
 | `npm run dev:status` | Inspect dependency and runtime health. |
 | `npm run build` | Type-check and build the web client and server. |
 | `npm run test:web` | Run web tests. |
@@ -149,9 +149,6 @@ Common commands:
 See the [unified local-development guide](./docs/development-workflows.md) for
 runtime URLs, debugger profiles, Kubernetes workflows, dotenvx precedence,
 failure recovery, and safe target-scoped resets.
-
-If the private adapter repository is a sibling of this repo, `npm run dev`
-starts that profile too.
 
 `npm run dev:desktop` talks to the local API at `http://localhost:3000`. Packaged
 releases default to Zilobase Cloud at `https://api.zilobase.com`. On the server
@@ -203,9 +200,9 @@ The public self-hosted deployment uses Docker Compose with:
 - Postgres for relational data
 - MinIO for S3-compatible image storage
 
-Hosted Zilobase Cloud may use private deployment infrastructure. The open-source
-server exports runtime extension surfaces from `@zilobase/server/adapter-api`;
-hosted deployment extensions are outside the public self-hosting path.
+The open-source server exports edition-neutral runtime extension surfaces from
+`@zilobase/server/adapter-api`. This repository documents and supports the
+public self-hosted deployment only.
 
 ## Community
 

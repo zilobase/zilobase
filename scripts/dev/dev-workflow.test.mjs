@@ -28,33 +28,23 @@ import {
 } from "./local.mjs";
 import { assertPortsAvailable, redact, stopChildren } from "./process.mjs";
 
-test("runtime profiles have isolated ports, databases, and identities", () => {
+test("the Node profile uses stable local ports and identity", () => {
   const node = localProfiles.node;
-  const worker = localProfiles.worker;
   const ports = [
     node.appPort,
     node.apiPort,
     node.healthPort,
     node.inspectorPort,
     node.studioPort,
-    worker.appPort,
-    worker.apiPort,
-    worker.backgroundPort,
-    worker.inspectorPort,
-    worker.backgroundInspectorPort,
-    worker.studioPort,
   ];
   assert.equal(new Set(ports).size, ports.length);
-  assert.notEqual(node.database, worker.database);
-  assert.notEqual(node.cellId, worker.cellId);
   assert.equal(node.appHost, "localhost");
   assert.equal(node.apiHost, "localhost");
-  assert.equal(worker.appHost, "127.0.0.1");
-  assert.equal(worker.apiHost, "127.0.0.1");
-  assert.notEqual(node.appHost, worker.appHost);
+  assert.equal(node.database, "zilobase_node");
+  assert.equal(node.cellId, "local-node");
 });
 
-test("only the hosted private profile enables demo seeding", () => {
+test("the Node profile disables demo seeding", () => {
   const dependencies = {
     MAILPIT_SMTP_PORT: "11025",
     MINIO_API_PORT: "19100",
@@ -70,15 +60,7 @@ test("only the hosted private profile enables demo seeding", () => {
     "false",
   );
   assert.equal(
-    profileEnvironment(localProfiles.worker, dependencies).ZILOBASE_DEMO_ENABLED,
-    "true",
-  );
-  assert.equal(
     profileEnvironment(localProfiles.node, dependencies).MEETING_BLOCK_ENABLED,
-    "true",
-  );
-  assert.equal(
-    profileEnvironment(localProfiles.worker, dependencies).MEETING_BLOCK_ENABLED,
     "true",
   );
 });
@@ -100,56 +82,43 @@ test("setup migrates the obsolete generated Node demo default", async () => {
   assert.equal(await migrateGeneratedNodeEnvironment(filename), false);
 });
 
-test("studio always inspects isolated node and worker databases", () => {
+test("studio inspects the Node development database", () => {
   const services = resolveStudioServices();
-  assert.deepEqual(services.map((service) => service.name), ["node", "worker"]);
+  assert.deepEqual(services.map((service) => service.name), ["node"]);
   assert.deepEqual(
     services.map((service) => service.database),
-    ["zilobase_node", "zilobase_worker"],
+    ["zilobase_node"],
   );
-  assert.deepEqual(services.map((service) => service.port), [4983, 4984]);
+  assert.deepEqual(services.map((service) => service.port), [4983]);
   assert.equal(studioBrowserUrl(4983), "https://local.drizzle.studio");
-  assert.equal(studioBrowserUrl(4984), "https://local.drizzle.studio/?port=4984");
 });
 
-test("local starts the adapter when the sibling repository is present", () => {
-  assert.deepEqual(
-    resolveLocalProfileNames({ adapterAvailable: true }),
-    ["node", "worker"],
-  );
-  assert.deepEqual(
-    resolveLocalProfileNames({ adapterAvailable: false }),
-    ["node"],
-  );
+test("local starts only the public Node profile", () => {
+  assert.deepEqual(resolveLocalProfileNames(), ["node"]);
 });
 
-test("dual web clients use separate Vite dependency caches", () => {
+test("the web client uses a stable Vite dependency cache", () => {
   const rootDir = path.join(os.tmpdir(), "zilobase-vite-test");
   const nodeCache = webCacheDirectory(localProfiles.node, rootDir);
-  const workerCache = webCacheDirectory(localProfiles.worker, rootDir);
 
   assert.equal(nodeCache, path.join(rootDir, "vite", "node"));
-  assert.equal(workerCache, path.join(rootDir, "vite", "worker"));
-  assert.notEqual(nodeCache, workerCache);
 });
 
 test("shell profile overrides select validated ports", () => {
-  const profile = effectiveProfile("worker", {
-    ZILOBASE_ADAPTER_PORT: "4010",
-    ZILOBASE_BACKGROUND_PORT: "4012",
-    ZILOBASE_WORKER_WEB_PORT: "4020",
-    ZILOBASE_INSPECTOR_PORT: "4031",
-    ZILOBASE_BACKGROUND_INSPECTOR_PORT: "4032",
+  const profile = effectiveProfile("node", {
+    PORT: "4010",
+    BACKGROUND_HEALTH_PORT: "4012",
+    ZILOBASE_NODE_WEB_PORT: "4020",
+    ZILOBASE_NODE_INSPECTOR_PORT: "4031",
   });
   assert.deepEqual(
     [
       profile.apiPort,
-      profile.backgroundPort,
+      profile.healthPort,
       profile.appPort,
       profile.inspectorPort,
-      profile.backgroundInspectorPort,
     ],
-    [4010, 4012, 4020, 4031, 4032],
+    [4010, 4012, 4020, 4031],
   );
   assert.equal(effectiveProfile("node", { PORT: "invalid" }).apiPort, 3000);
 });
@@ -267,7 +236,7 @@ test("public mail development uses one origin without proxying back into its tun
 });
 
 test("mail readiness uses launcher origins rather than obsolete generated hostnames", () => {
-  for (const name of ["node", "worker"]) {
+  for (const name of ["node"]) {
     const env = { BETTER_AUTH_URL: "http://obsolete.zilobase.localhost:3000" };
     const profile = effectiveProfile(name, env);
     assert.equal(runtimeEnvironment(profile, env).BETTER_AUTH_URL, `http://${profile.apiHost}:${profile.apiPort}`);

@@ -195,8 +195,7 @@ subscription only when push delivery itself must be tested.
 ## 6. Operations and recovery
 
 Zilobase renews watches, advances full-mailbox indexes, and drains the database
-sync outbox from the Node maintenance loop. Alternate deployment adapters,
-including Cloudflare scheduled handlers, must invoke the exported
+sync outbox from the Node maintenance loop. Alternate runtime adapters must invoke the exported
 `renewGmailWatches`, `advancePendingMailIndexes`, and
 `drainMailDatabaseSyncOutbox` operations at least once per minute. These
 operations are bounded and safe to overlap across replicas. Alert on these
@@ -265,34 +264,27 @@ The production release owner must record the verification approval, assessment
 status, staging canary evidence, configuration-check output, and watch-health
 dashboard link before enabling Gmail for general users.
 
-## Source development profiles
+## Source development profile
 
-Put the flags and Gmail credentials in the core `.env.development` for Node,
-or the adjacent cloud adapter `.env.development` for the optional private adapter.
-Generated local
-infrastructure does not override `MAIL_ENABLED`. Set both `MAIL_ENABLED=true`
-and `VITE_FEATURE_MAIL=true`, then run `npm run dev:setup` and
-`npm run dev` for Node. If the private adapter repository is present,
-that same command also starts the adapter profile.
-Validate the profile with `npm run mail:config:check -- --profile=node` (or the
-matching private profile setting). The checker prints readiness and URLs, never
-secrets.
-The exact source callbacks are `http://localhost:3000/mail/oauth/google/callback`
-and `http://127.0.0.1:3010/mail/oauth/google/callback` for the optional private
-profile.
+Put the flags and Gmail credentials in the core `.env.development` for Node.
+Generated local infrastructure does not override `MAIL_ENABLED`. Set both
+`MAIL_ENABLED=true` and `VITE_FEATURE_MAIL=true`, then run `npm run dev:setup`
+and `npm run dev`. Validate the profile with
+`npm run mail:config:check -- --profile=node`. The checker prints readiness and
+URLs, never secrets. The source callback is
+`http://localhost:3000/mail/oauth/google/callback`.
 
 ### Same-origin local push canary
 
 Set `ZILOBASE_DEV_PUBLIC_ORIGIN=https://YOUR_DEV_HOST` in the selected profile's
-development file, and forward your HTTPS tunnel to the **web** port (Node 1420,
-private adapter 1422). Open Zilobase through that HTTPS URL. The profile sets API, OAuth,
+development file, and forward your HTTPS tunnel to the **web** port (1420).
+Open Zilobase through that HTTPS URL. The profile sets API, OAuth,
 web and realtime origins consistently, while Vite proxies API traffic to the local
 backend. Add `https://YOUR_DEV_HOST/mail/oauth/google/callback` to Google's Web
 client and set the Pub/Sub audience/endpoint to
 `https://YOUR_DEV_HOST/mail/google/pubsub`. Configure all four push variables.
-Run `npm run mail:config:check -- --profile=node` (or the optional private profile)
-before connecting.
-Use one profile/test account at a time or separate accounts and subscriptions.
+Run `npm run mail:config:check -- --profile=node` before connecting.
+Use one test account at a time or separate accounts and subscriptions.
 Desktop started with the selected profile uses the same configured API origin.
 Remove the public-origin value to return to ordinary loopback testing.
 
@@ -328,8 +320,8 @@ not. Clients should reconcile through normal sync instead of offering a fresh se
 
 ### Real-Google acceptance matrix
 
-Run each scenario on Node web and the optional private profile web, plus desktop
-variants, with two controlled accounts. Record results without OAuth codes, tokens
+Run each scenario on Node web and desktop variants with two controlled accounts.
+Record results without OAuth codes, tokens
 or mail content.
 
 | Scenario | Required evidence |

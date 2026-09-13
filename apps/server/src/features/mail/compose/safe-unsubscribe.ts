@@ -68,7 +68,7 @@ export async function assertPublicUrl(url: URL, fetcher: typeof fetch) {
   if (isPrivateHostname(hostname)) throw new MailUnsubscribeError("Private unsubscribe destinations are not allowed.", 400)
   if (!isIpAddress(hostname)) {
     for (const type of ["A", "AAAA"] as const) {
-      const dns = await fetcher(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=${type}`, { headers: { accept: "application/dns-json" }, signal: requestSignal(5_000) })
+      const dns = await fetcher(`https://dns.google/resolve?name=${encodeURIComponent(hostname)}&type=${type}`, { headers: { accept: "application/dns-json" }, signal: requestSignal(5_000) })
       if (!dns.ok) throw new MailUnsubscribeError("The unsubscribe host could not be verified.", 502)
       const payload = await dns.json() as { Answer?: Array<{ data?: string }> }
       for (const answer of payload.Answer ?? []) if (answer.data && isPrivateHostname(answer.data)) throw new MailUnsubscribeError("Private unsubscribe destinations are not allowed.", 400)

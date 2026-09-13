@@ -32,8 +32,8 @@ export async function processBackgroundTask(input: {
     kind: input.task.kind,
     lane: backgroundTaskLane(input.task.kind),
     outcome: "claimed",
-    runtime: (input.env.HYPERDRIVE ? "cloudflare" : "node") as
-      | "cloudflare"
+    runtime: (input.env.ZILOBASE_RUNTIME_KIND === "edge" ? "edge" : "node") as
+      | "edge"
       | "node",
   };
   recordBackgroundCounter("claim", attributes);

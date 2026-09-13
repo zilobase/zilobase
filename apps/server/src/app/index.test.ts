@@ -142,8 +142,8 @@ test("createApp registers a compile-time edition after public routes", () => {
 function createTestEditionExtension(): ZilobaseEditionExtension {
   return {
     id: "test-edition",
-    authPlugins: [],
-    capabilities: ["sso"],
+    capabilities: ["custom-auth"],
+    async createAuthPlugins() { return []; },
     async beforeMembershipGrant() {},
     async recordSecurityEvent() {},
     registerRoutes(app) {

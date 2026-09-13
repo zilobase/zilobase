@@ -255,7 +255,7 @@ describe("Node runtime lifecycle", () => {
     await runtime.close();
   });
 
-  it("runs the worker-only coordinator and private health server", async () => {
+  it("runs the background coordinator and internal health server", async () => {
     process.env.ZILOBASE_PROCESS_ROLE = "worker";
     process.env.BACKGROUND_HEALTH_PORT = String(await freePort());
     const runtime = createNodeRuntime({

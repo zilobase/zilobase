@@ -69,7 +69,6 @@
     "selfhost:reset": "node scripts/selfhost/manage.mjs reset",
     "test:selfhost": "node scripts/selfhost/manage.mjs test",
     "test:selfhost:upgrade": "node scripts/selfhost/test-upgrade.mjs",
-    "test:runtime-parity": "node scripts/dev/cli.mjs parity",
     "test:dev-workflow": "node --test scripts/dev/dev-workflow.test.mjs",
     "test:tooling": "node --test scripts/dev/dev-workflow.test.mjs scripts/selfhost/cookie-jar.test.mjs scripts/release/set-version.test.mjs scripts/git/pre-push.test.mjs",
     "test:k8s:community": "node scripts/dev/cli.mjs k8s-smoke --target community",

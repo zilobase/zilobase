@@ -15,7 +15,7 @@ export type BackgroundTelemetryAttributes = {
   kind: BackgroundTaskKind;
   lane: BackgroundLane;
   outcome: string;
-  runtime: "cloudflare" | "node";
+  runtime: "edge" | "node";
 };
 
 const counters = new Map<string, number>();
@@ -161,6 +161,6 @@ function backgroundAttributes(
     kind,
     lane: backgroundTaskLane(kind),
     outcome,
-    runtime: env.HYPERDRIVE ? "cloudflare" : "node",
+    runtime: env.ZILOBASE_RUNTIME_KIND === "edge" ? "edge" : "node",
   };
 }

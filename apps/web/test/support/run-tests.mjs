@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { basename, dirname, join } from "node:path"
+import { basename, dirname, join, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { build } from "esbuild"
 
@@ -11,6 +11,9 @@ const testDir = join(supportDir, "..")
 const appDir = join(testDir, "..")
 const workspaceDir = join(appDir, "..", "..")
 const srcDir = join(appDir, "src")
+const editionWebModule = process.env.ZILOBASE_WEB_EDITION_MODULE?.trim()
+  ? resolve(process.env.ZILOBASE_WEB_EDITION_MODULE)
+  : join(srcDir, "edition", "community-module.ts")
 const tempDir = await mkdtemp(join(tmpdir(), "zilobase-web-tests-"))
 const loadedModules = new Map()
 
@@ -132,7 +135,7 @@ function aliasPlugin() {
         })
       )
       build.onResolve({ filter: /^@zilobase\/edition-web$/ }, () => ({
-        path: join(srcDir, "edition", "community-module.ts"),
+        path: editionWebModule,
       }))
       build.onResolve({ filter: /^@\/packages\/editor\/?/ }, async (args) => ({
         path: await resolveAliasPath(
