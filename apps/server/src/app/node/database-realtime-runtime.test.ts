@@ -170,6 +170,75 @@ test("serverful database rooms fan out across realtime bus instances", async () 
   }
 });
 
+test("background-only publication reaches an API replica through the realtime bus", async () => {
+  const broker = new TestRealtimeBroker();
+  const workerFixture = await startFixture(broker.createBus());
+  const apiFixture = await startFixture(broker.createBus());
+  const ticket = await createTicket("user-1", 1);
+  const client = new RealtimeClient(apiFixture.url, ticket.token);
+
+  try {
+    await client.opened;
+    await client.next("realtime.ready");
+    await workerFixture.runtime.publishMutation(mutationEvent(
+      "worker-mutation",
+      2,
+    ));
+
+    assert.equal((await client.next("database.mutation")).mutationId, "worker-mutation");
+  } finally {
+    client.websocket.close();
+    await Promise.all([workerFixture.close(), apiFixture.close()]);
+  }
+});
+
+test("database rooms suppress duplicate versions and preserve catch-up position on reconnect", async () => {
+  const fixture = await startFixture();
+  const ticket = await createTicket("user-1", 1);
+  const first = new RealtimeClient(fixture.url, ticket.token);
+
+  try {
+    await first.opened;
+    await first.next("realtime.ready");
+    await fixture.runtime.publishMutation(mutationEvent("mutation-2", 2));
+    assert.equal((await first.next("database.mutation")).version, 2);
+    first.websocket.close();
+
+    const reconnectTicket = await createTicket("user-1", 2);
+    const reconnected = new RealtimeClient(fixture.url, reconnectTicket.token);
+    try {
+      await reconnected.opened;
+      const ready = await reconnected.next("realtime.ready");
+      assert.equal(ready.version, 2);
+
+      await fixture.runtime.publishMutation(mutationEvent("duplicate-version", 2));
+      await assert.rejects(
+        reconnected.next("database.mutation", 100),
+        /Timed out/,
+      );
+    } finally {
+      reconnected.websocket.close();
+    }
+  } finally {
+    first.websocket.close();
+    await fixture.close();
+  }
+});
+
+function mutationEvent(mutationId: string, version: number) {
+  return {
+    actorId: "user-1",
+    changed: ["rows" as const],
+    committedAt: new Date().toISOString(),
+    databaseId: "database-1",
+    delta: {},
+    mutationId,
+    protocolVersion: 1 as const,
+    type: "database.mutation" as const,
+    version,
+  };
+}
+
 async function startFixture(realtimeBus?: NodeRealtimeBus) {
   const server = createServer((_request, response) => response.end());
   const runtime = attachNodeDatabaseRealtimeRuntime(server, env, { realtimeBus });
