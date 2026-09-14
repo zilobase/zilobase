@@ -7,64 +7,10 @@ import {
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
 import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
-import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
-import type {
-  DatabaseChangedArea,
-  DatabaseDelta,
-  DatabaseRealtimeMutationEvent,
-} from "./delta";
-
-type StoredRealtimeEvent = {
-  actorId: string;
-  changed: DatabaseChangedArea[];
-  committedAt: Date;
-  databaseId: string;
-  delta: DatabaseDelta;
-  eventId: string | null;
-  id: string;
-  requiresRefetch: boolean;
-  version: number;
-};
+import { databaseMutationEventFromJournalRow } from "./journal-event";
 
 const DELIVERY_LEASE_MS = 2 * 60 * 1000;
 const MAX_DELIVERY_ATTEMPTS = 8;
-
-export async function publishDatabaseRealtimeEvent(
-  event: DatabaseRealtimeMutationEvent,
-  env: RuntimeEnv,
-  executor = db,
-) {
-  const publish = getRuntimeAdapter().publishDatabaseMutation;
-
-  if (!publish) return false;
-
-  try {
-    await publish({ env, event });
-    await executor
-      .delete(databaseRealtimeOutbox)
-      .where(eq(databaseRealtimeOutbox.id, event.mutationId));
-  } catch (error) {
-    const attemptedAt = new Date();
-    await executor
-      .update(databaseRealtimeOutbox)
-      .set({
-        attempts: 1,
-        lastAttemptAt: attemptedAt,
-        nextAttemptAt: retryAt(1, attemptedAt),
-      })
-      .where(eq(databaseRealtimeOutbox.id, event.mutationId));
-    await dispatchBackgroundTasks(env, [createBackgroundTask({
-      availableAt: retryAt(1, attemptedAt),
-      env,
-      kind: "realtime.database",
-      resourceId: event.mutationId,
-    })]);
-    throw error;
-  }
-
-  return true;
-}
 
 export async function drainDatabaseRealtimeOutbox(
   env: RuntimeEnv,
@@ -129,12 +75,12 @@ export async function drainDatabaseRealtimeOutbox(
   for (const entry of entries) {
     try {
       const journalEvent = entry.eventId ? journalById.get(entry.eventId) : undefined;
-      if (entry.eventId && !journalEvent) {
+      if (!journalEvent) {
         throw new Error("Database mutation journal event is unavailable");
       }
       await publish({
         env,
-        event: toRealtimeEvent(entry as StoredRealtimeEvent, journalEvent),
+        event: databaseMutationEventFromJournalRow(journalEvent),
       });
       deleteIds.push(entry.id);
       delivered += 1;
@@ -198,45 +144,6 @@ export async function drainDatabaseRealtimeOutbox(
   };
 }
 
-function toRealtimeEvent(
-  entry: StoredRealtimeEvent,
-  journal?: typeof databaseMutationEvent.$inferSelect,
-): DatabaseRealtimeMutationEvent {
-  if (journal) {
-    const changed = [...new Set(journal.areas.flatMap((area): DatabaseChangedArea[] => {
-      if (area === "databases") return ["database" as const];
-      if (area === "dataSources") return ["dataSource" as const];
-      if (area === "records") return ["rows" as const, "values" as const];
-      if (area === "views" || area === "properties") return [area];
-      return [];
-    }))];
-    return {
-      actorId: journal.actorId,
-      changed,
-      committedAt: journal.committedAt.toISOString(),
-      databaseId: journal.databaseId,
-      delta: {},
-      mutationId: journal.id,
-      protocolVersion: 1,
-      requiresRefetch: true,
-      type: "database.mutation",
-      version: journal.version,
-    };
-  }
-  return {
-    actorId: entry.actorId,
-    changed: entry.changed,
-    committedAt: entry.committedAt.toISOString(),
-    databaseId: entry.databaseId,
-    delta: entry.delta,
-    mutationId: entry.id,
-    protocolVersion: 1,
-    ...(entry.requiresRefetch ? { requiresRefetch: true as const } : {}),
-    type: "database.mutation",
-    version: entry.version,
-  };
-}
-
 function retryAt(attempts: number, from: Date) {
   const delay = Math.min(
     60 * 60 * 1000,
@@ -246,4 +153,4 @@ function retryAt(attempts: number, from: Date) {
   return new Date(from.getTime() + delay);
 }
 
-export type { DatabaseRealtimeMutationEvent } from "./delta";
+export type { DatabaseMutationEventV2 } from "@zilobase/features/databases/contracts";

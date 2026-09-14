@@ -60,12 +60,6 @@ type DatabaseRealtimeState = {
   status: "connected" | "connecting" | "disconnected" | "offline" | "unavailable"
 }
 
-type DatabaseMutationEvent = DatabaseMutationResponse & {
-  actorId: string
-  protocolVersion: 1
-  type: "database.mutation"
-}
-
 type Listener = () => void
 
 const managers = new WeakMap<
@@ -136,7 +130,7 @@ export function useDatabaseRealtime(
 
 export function applyDatabaseRealtimeMutation(
   queryClient: QueryClient,
-  event: DatabaseMutationEvent,
+  event: DatabaseMutationResponse,
 ) {
   applyDatabaseMutationToPageProperties(queryClient, event)
   void Promise.all([
@@ -299,15 +293,13 @@ class DatabaseRealtimeManager {
     if (!message || message.databaseId !== this.databaseId) return
 
     if (message.type === "database.mutation") {
-      if (message.protocolVersion === 2) {
-        if (this.databaseClient) {
-          void this.databaseClient.ingest(message).catch(() => undefined)
-        }
+      if (this.databaseClient) {
+        void this.databaseClient.ingest(message).catch(() => undefined)
       } else {
-        if (this.databaseClient) {
-          void this.databaseClient.catchUp(this.databaseId).catch(() => undefined)
-        }
-        applyDatabaseRealtimeMutation(this.queryClient, message)
+        void Promise.all([
+          this.queryClient.invalidateQueries({ queryKey: ["database-client-v2"] }),
+          this.queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
+        ])
       }
       return
     }
@@ -702,16 +694,6 @@ function parseMessage(data: unknown): RealtimeServerMessage | null {
       return parsed.success ? parsed.data : null
     }
 
-    if (message.type === "database.mutation" &&
-      message.protocolVersion === 1 &&
-      typeof message.databaseId === "string" &&
-      typeof message.version === "number" &&
-      typeof message.mutationId === "string" &&
-      Array.isArray(message.changed) &&
-      message.delta && typeof message.delta === "object") {
-      return message as DatabaseMutationEvent
-    }
-
     if (message.type === "realtime.ready" &&
       typeof message.databaseId === "string" &&
       typeof message.sessionId === "string" &&
@@ -754,7 +736,7 @@ type PresenceClearMessage = {
   sessionId: string
   type: "presence.clear"
 }
-type RealtimeServerMessage = DatabaseMutationEvent | DatabaseMutationEventV2 |
+type RealtimeServerMessage = DatabaseMutationEventV2 |
   RealtimeReadyMessage |
   PresenceUpdateMessage | PresenceClearMessage
 

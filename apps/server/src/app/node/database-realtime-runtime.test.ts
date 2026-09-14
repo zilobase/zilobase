@@ -54,17 +54,7 @@ test("serverful database rooms broadcast presence and versioned mutations", asyn
       viewId: null,
     });
 
-    await fixture.runtime.publishMutation({
-      actorId: "user-1",
-      changed: ["values"],
-      committedAt: new Date().toISOString(),
-      databaseId: "database-1",
-      delta: {},
-      mutationId: "mutation-1",
-      protocolVersion: 1,
-      type: "database.mutation",
-      version: 4,
-    });
+    await fixture.runtime.publishMutation(mutationEvent("mutation-1", 4));
 
     const [firstMutation, secondMutation] = await Promise.all([
       first.next("database.mutation"),
@@ -108,17 +98,7 @@ test("serverful database rooms ignore stale mutation deliveries", async () => {
   try {
     await client.opened;
     await client.next("realtime.ready");
-    await fixture.runtime.publishMutation({
-      actorId: "user-1",
-      changed: ["rows"],
-      committedAt: new Date().toISOString(),
-      databaseId: "database-1",
-      delta: {},
-      mutationId: "stale-mutation",
-      protocolVersion: 1,
-      type: "database.mutation",
-      version: 7,
-    });
+    await fixture.runtime.publishMutation(mutationEvent("stale-mutation", 7));
 
     await assert.rejects(
       client.next("database.mutation", 100),
@@ -126,6 +106,29 @@ test("serverful database rooms ignore stale mutation deliveries", async () => {
     );
   } finally {
     client.websocket.close();
+    await fixture.close();
+  }
+});
+
+test("serverful database rooms reject protocol v1 mutation deliveries", async () => {
+  const fixture = await startFixture();
+
+  try {
+    await assert.rejects(
+      fixture.runtime.publishMutation({
+        actorId: "user-1",
+        changed: ["rows"],
+        committedAt: new Date().toISOString(),
+        databaseId: "database-1",
+        delta: {},
+        mutationId: "legacy-mutation",
+        protocolVersion: 1,
+        type: "database.mutation",
+        version: 2,
+      } as never),
+      /Invalid database mutation event/,
+    );
+  } finally {
     await fixture.close();
   }
 });
@@ -151,17 +154,9 @@ test("serverful database rooms fan out across realtime bus instances", async () 
       firstTicket.sessionId,
     );
 
-    await firstFixture.runtime.publishMutation({
-      actorId: "user-1",
-      changed: ["values"],
-      committedAt: new Date().toISOString(),
-      databaseId: "database-1",
-      delta: {},
-      mutationId: "distributed-mutation",
-      protocolVersion: 1,
-      type: "database.mutation",
-      version: 2,
-    });
+    await firstFixture.runtime.publishMutation(
+      mutationEvent("distributed-mutation", 2),
+    );
     assert.equal((await second.next("database.mutation")).version, 2);
   } finally {
     first.websocket.close();
@@ -185,7 +180,7 @@ test("background-only publication reaches an API replica through the realtime bu
       2,
     ));
 
-    assert.equal((await client.next("database.mutation")).mutationId, "worker-mutation");
+    assert.equal((await client.next("database.mutation")).eventId, "worker-mutation");
   } finally {
     client.websocket.close();
     await Promise.all([workerFixture.close(), apiFixture.close()]);
@@ -225,15 +220,17 @@ test("database rooms suppress duplicate versions and preserve catch-up position 
   }
 });
 
-function mutationEvent(mutationId: string, version: number) {
+function mutationEvent(eventId: string, version: number) {
   return {
     actorId: "user-1",
-    changed: ["rows" as const],
+    areas: ["records" as const],
+    changes: { removedRecordIds: ["row-1"] },
+    commandId: eventId,
     committedAt: new Date().toISOString(),
     databaseId: "database-1",
-    delta: {},
-    mutationId,
-    protocolVersion: 1 as const,
+    dataSourceId: "source-1",
+    eventId,
+    protocolVersion: 2 as const,
     type: "database.mutation" as const,
     version,
   };

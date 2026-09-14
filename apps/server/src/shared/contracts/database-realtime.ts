@@ -35,9 +35,3 @@ export type DatabaseMutationResponse = {
   requiresRefetch?: true;
   version: number;
 };
-
-export type DatabaseRealtimeMutationEvent = DatabaseMutationResponse & {
-  actorId: string;
-  protocolVersion: 1;
-  type: "database.mutation";
-};

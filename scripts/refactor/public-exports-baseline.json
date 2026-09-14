@@ -164,7 +164,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -842,7 +842,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -1520,7 +1520,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -2198,7 +2198,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -2888,7 +2888,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -3590,7 +3590,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -4140,7 +4140,7 @@
       "value": true,
       "type": false
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -4266,7 +4266,7 @@
       "value": true,
       "type": false
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },

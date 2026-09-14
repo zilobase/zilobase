@@ -17,7 +17,6 @@ import { databaseQueryKey } from "./queries"
 import { createTestDatabasePayload } from "./test-helpers"
 
 const mutation = (version: number, value: unknown) => ({
-  actorId: "user-2",
   changed: ["values" as const],
   committedAt: "2026-07-14T12:00:00.000Z",
   databaseId: "database-1",
@@ -30,12 +29,10 @@ const mutation = (version: number, value: unknown) => ({
     }],
   },
   mutationId: `mutation-${version}`,
-  protocolVersion: 1 as const,
-  type: "database.mutation" as const,
   version,
 })
 
-test("v1 realtime invalidates database reads instead of applying partial deltas", () => {
+test("HTTP mutation responses invalidate database reads instead of applying partial deltas", () => {
   const queryClient = new QueryClient()
   const key = databaseQueryKey("database-1")
   const initial = createTestDatabasePayload()
@@ -54,7 +51,7 @@ test("v1 realtime invalidates database reads instead of applying partial deltas"
   assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
 })
 
-test("v1 realtime invalidates on duplicate and gapped versions alike", () => {
+test("HTTP mutation responses invalidate on duplicate and gapped versions alike", () => {
   const queryClient = new QueryClient()
   const key = databaseQueryKey("database-1")
   const initial = createTestDatabasePayload()

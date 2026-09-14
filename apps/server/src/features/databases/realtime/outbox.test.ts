@@ -2,101 +2,26 @@ import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 
 import { runWithRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
-import type { DatabaseRealtimeMutationEvent } from "./delta";
-import {
-  drainDatabaseRealtimeOutbox,
-  publishDatabaseRealtimeEvent,
-} from "./outbox";
+import { drainDatabaseRealtimeOutbox } from "./outbox";
 import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
 
-const event: DatabaseRealtimeMutationEvent = {
+const event = {
   actorId: "user-1",
   changed: ["rows"],
-  committedAt: "2026-08-02T00:00:00.000Z",
+  committedAt: new Date("2026-08-02T00:00:00.000Z"),
   databaseId: "database-1",
   delta: { rows: [{ id: "row-1" }] },
-  mutationId: "mutation-1",
-  protocolVersion: 1,
-  type: "database.mutation",
+  id: "mutation-1",
+  requiresRefetch: false,
   version: 3,
 };
 
 afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
-});
-
-function writeExecutor() {
-  const deleted: string[] = [];
-  const updates: Array<Record<string, unknown>> = [];
-  return {
-    deleted,
-    executor: {
-      delete() {
-        return {
-          async where() {
-            deleted.push("deleted");
-          },
-        };
-      },
-      update() {
-        return {
-          set(value: Record<string, unknown>) {
-            updates.push(value);
-            return { async where() {} };
-          },
-        };
-      },
-    },
-    updates,
-  };
-}
-
-test("immediate realtime publish reports an unavailable adapter", async () => {
-  assert.equal(await publishDatabaseRealtimeEvent(event, {}, {} as never), false);
-});
-
-test("immediate realtime publish deletes delivered outbox entries", async () => {
-  const publish = vi.fn(async (_input: unknown) => undefined);
-  const { deleted, executor } = writeExecutor();
-
-  const result = await runWithRuntimeAdapter(
-    { publishDatabaseMutation: publish },
-    () => publishDatabaseRealtimeEvent(event, { ENV: "test" }, executor as never),
-  );
-
-  assert.equal(result, true);
-  assert.equal(publish.mock.calls.length, 1);
-  assert.deepEqual(publish.mock.calls[0]?.[0], {
-    env: { ENV: "test" },
-    event,
-  });
-  assert.deepEqual(deleted, ["deleted"]);
-});
-
-test("immediate realtime failures schedule the first retry and rethrow", async () => {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date("2026-08-02T00:00:00.000Z"));
-  const failure = new Error("room unavailable");
-  const { executor, updates } = writeExecutor();
-
-  await assert.rejects(
-    runWithRuntimeAdapter(
-      { publishDatabaseMutation: async () => { throw failure; } },
-      () => publishDatabaseRealtimeEvent(event, {}, executor as never),
-    ),
-    failure,
-  );
-  assert.deepEqual(updates, [
-    {
-      attempts: 1,
-      lastAttemptAt: new Date("2026-08-02T00:00:00.000Z"),
-      nextAttemptAt: new Date("2026-08-02T00:01:00.000Z"),
-    },
-  ]);
 });
 
 test("outbox draining is a no-op without a publish adapter", async () => {
@@ -113,8 +38,25 @@ test("outbox draining is a no-op without a publish adapter", async () => {
 function drainExecutor(
   ready: Array<Record<string, any>>,
   health?: Record<string, unknown>,
-  journal: Array<Record<string, unknown>> = [],
+  journal?: Array<Record<string, unknown>>,
 ) {
+  const readyWithEventIds: Array<Record<string, any>> = ready.map((entry) => ({
+    ...entry,
+    eventId: entry.eventId ?? entry.id,
+  }));
+  const journalRows = journal ?? readyWithEventIds.map((entry) => ({
+    actorId: entry.actorId,
+    areas: ["records"],
+    changes: { removedRecordIds: [`row-${entry.id}`] },
+    commandId: entry.id,
+    committedAt: entry.committedAt,
+    databaseId: entry.databaseId,
+    dataSourceId: "source-1",
+    id: entry.eventId,
+    protocolVersion: 2,
+    requiresReset: entry.requiresRefetch,
+    version: entry.version,
+  }));
   const deleted: string[] = [];
   const retryUpdates: Array<Record<string, unknown>> = [];
   let claimedLimit: number | undefined;
@@ -139,7 +81,7 @@ function drainExecutor(
                   return {
                     limit(limit: number) {
                       claimedLimit = limit;
-                      return { async for() { return ready; } };
+                      return { async for() { return readyWithEventIds; } };
                     },
                   };
                 },
@@ -161,7 +103,7 @@ function drainExecutor(
       return {
         from(table: unknown) {
           if (table === databaseMutationEvent) {
-            return { async where() { return journal; } };
+            return { async where() { return journalRows; } };
           }
           assert.equal(table, databaseRealtimeOutbox);
           return Promise.resolve(health ? [health] : []);
@@ -213,7 +155,7 @@ test("outbox draining claims bounded batches and reports empty health", async ()
   });
 });
 
-test("journal-backed deliveries publish an invalidate-only v1 compatibility event", async () => {
+test("journal-backed deliveries publish the canonical v2 event", async () => {
   const committedAt = new Date("2026-08-02T00:00:00.000Z");
   const state = drainExecutor(
     [{ ...event, attempts: 0, committedAt, eventId: "journal-1", id: "delivery-1" }],
@@ -221,6 +163,7 @@ test("journal-backed deliveries publish an invalidate-only v1 compatibility even
     [{
       actorId: "user-2",
       areas: ["records"],
+      changes: { removedRecordIds: ["row-1"] },
       commandId: "command-1",
       committedAt,
       databaseId: "database-1",
@@ -238,16 +181,41 @@ test("journal-backed deliveries publish an invalidate-only v1 compatibility even
   );
   assert.deepEqual((publish.mock.calls[0]?.[0] as { event: unknown }).event, {
     actorId: "user-2",
-    changed: ["rows", "values"],
+    areas: ["records"],
+    changes: { removedRecordIds: ["row-1"] },
+    commandId: "command-1",
     committedAt: committedAt.toISOString(),
     databaseId: "database-1",
-    delta: {},
-    mutationId: "journal-1",
-    protocolVersion: 1,
-    requiresRefetch: true,
+    dataSourceId: "source-1",
+    eventId: "journal-1",
+    protocolVersion: 2,
     type: "database.mutation",
     version: 9,
   });
+});
+
+test("outbox delivery retries when its journal event is unavailable", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-08-02T00:10:00.000Z"));
+  const state = drainExecutor(
+    [{ ...event, attempts: 0, eventId: "missing", id: "delivery-1" }],
+    {},
+    [],
+  );
+  const publish = vi.fn(async (_input: unknown) => undefined);
+  const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+  const result = await runWithRuntimeAdapter(
+    { publishDatabaseMutation: publish },
+    () => drainDatabaseRealtimeOutbox({}, { database: state.executor as never }),
+  );
+
+  assert.equal(publish.mock.calls.length, 0);
+  assert.equal(result.failed, 1);
+  assert.deepEqual(state.retryUpdates, [
+    { nextAttemptAt: new Date("2026-08-02T00:11:00.000Z") },
+  ]);
+  assert.match(String(errorLog.mock.calls[0]?.[0]), /journal event is unavailable/);
 });
 
 test("outbox draining delivers, retries, discards, and reports health", async () => {
@@ -294,7 +262,7 @@ test("outbox draining delivers, retries, discards, and reports health", async ()
     maxAttempts: 4,
     oldestAgeMs: 600_000,
   });
-  assert.equal(publish.mock.calls[1]?.[0].event.requiresRefetch, true);
+  assert.equal(publish.mock.calls[1]?.[0].event.requiresReset, true);
   assert.equal(publish.mock.calls[0]?.[0].event.committedAt, committedAt.toISOString());
   assert.equal(errorLog.mock.calls.length, 2);
   assert.equal(

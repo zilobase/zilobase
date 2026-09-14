@@ -21,7 +21,6 @@ export type {
   DatabaseChangedArea,
   DatabaseDelta,
   DatabaseMutationResponse,
-  DatabaseRealtimeMutationEvent,
 } from "./contracts";
 
 type DatabaseReader = Pick<Database, "select">;

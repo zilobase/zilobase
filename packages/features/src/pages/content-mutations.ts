@@ -374,12 +374,7 @@ export function useUpdatePagePropertyValue() {
       ),
     onSuccess: ({ mutations }) => {
       for (const mutation of mutations) {
-        applyDatabaseRealtimeMutation(queryClient, {
-          ...mutation,
-          actorId: "http",
-          protocolVersion: 1,
-          type: "database.mutation",
-        });
+        applyDatabaseRealtimeMutation(queryClient, mutation);
       }
     },
   });

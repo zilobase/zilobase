@@ -5,7 +5,7 @@ export {
   verifyDatabaseRealtimeTicket,
   type DatabaseRealtimeTicketClaims,
 } from "../shared/security/database-realtime-ticket";
-export type { DatabaseRealtimeMutationEvent } from "../features/databases/realtime/delta";
+export type { DatabaseMutationEventV2 } from "../features/databases/realtime/outbox";
 export type {
   MeetingLifecycleAction,
 } from "../features/meetings/contracts/meeting-types";

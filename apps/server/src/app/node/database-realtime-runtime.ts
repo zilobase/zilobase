@@ -8,12 +8,15 @@ import crossws from "crossws/adapters/node";
 
 import type { RuntimeEnv } from "../../shared/config/config";
 import {
+  databaseMutationEventV2Schema,
+  type DatabaseMutationEventV2,
+} from "@zilobase/features/databases/contracts";
+import {
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
   verifyDatabaseRealtimeTicket,
   type DatabaseRealtimeTicketClaims,
 } from "../../shared/security/database-realtime-ticket";
-import type { DatabaseRealtimeMutationEvent } from "../../features/databases/realtime/outbox";
 import {
   databaseRealtimeChannel,
   type NodeRealtimeBus,
@@ -296,7 +299,7 @@ export function attachNodeDatabaseRealtimeRuntime(
       );
       await websocket.close(1001, "Server shutting down");
     },
-    async publishMutation(event: DatabaseRealtimeMutationEvent) {
+    async publishMutation(event: DatabaseMutationEventV2) {
       validateMutationEvent(event);
 
       const room = getOrCreateRoom(rooms, event.databaseId);
@@ -633,7 +636,7 @@ function receiveRealtimeBusMessage(
 ) {
   if (!payload || typeof payload !== "object") return;
   const message = payload as Record<string, unknown>;
-  if (message.databaseId !== databaseId || message.protocolVersion !== 1) return;
+  if (message.databaseId !== databaseId) return;
 
   if (message.type === "database.mutation") {
     try {
@@ -647,6 +650,8 @@ function receiveRealtimeBusMessage(
     broadcast(room, event, attachments);
     return;
   }
+
+  if (message.protocolVersion !== 1) return;
 
   if (message.type === "presence.update" && isCollaborator(message.collaborator)) {
     room.remotePresence.set(message.collaborator.sessionId, message.collaborator);
@@ -713,18 +718,8 @@ function logRealtimeBusError(error: unknown) {
 
 function validateMutationEvent(
   event: unknown,
-): asserts event is DatabaseRealtimeMutationEvent {
-  if (!event || typeof event !== "object") {
-    throw new Error("Invalid database mutation event");
-  }
-  const candidate = event as Partial<DatabaseRealtimeMutationEvent>;
-  if (
-    candidate.protocolVersion !== 1 ||
-    candidate.type !== "database.mutation" ||
-    typeof candidate.databaseId !== "string" ||
-    typeof candidate.version !== "number" ||
-    candidate.version < 1
-  ) {
+): asserts event is DatabaseMutationEventV2 {
+  if (!databaseMutationEventV2Schema.safeParse(event).success) {
     throw new Error("Invalid database mutation event");
   }
 }

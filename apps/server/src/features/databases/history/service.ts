@@ -1,6 +1,5 @@
 import { and, asc, eq, gt, sql } from "drizzle-orm"
 import {
-  databaseMutationEventV2Schema,
   type DatabaseMutationEventV2,
   type DatabaseMutationFeedResponse,
 } from "@zilobase/features/databases/contracts"
@@ -12,29 +11,13 @@ import {
   databaseMutationEvent,
 } from "../../../infrastructure/database/schema"
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
+import { databaseMutationEventFromJournalRow } from "../realtime/journal-event"
 
 export const DATABASE_MUTATION_FEED_LIMIT = 500
 const DATABASE_MUTATION_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000
 const DATABASE_MUTATION_MINIMUM_EVENTS = 10_000
 
 type HistoryReader = Pick<Database, "select">
-
-function eventFromRow(row: typeof databaseMutationEvent.$inferSelect) {
-  return databaseMutationEventV2Schema.parse({
-    actorId: row.actorId,
-    areas: row.areas,
-    changes: row.changes,
-    commandId: row.commandId,
-    committedAt: row.committedAt.toISOString(),
-    databaseId: row.databaseId,
-    dataSourceId: row.dataSourceId,
-    eventId: row.id,
-    protocolVersion: 2,
-    ...(row.requiresReset ? { requiresReset: true as const } : {}),
-    type: "database.mutation",
-    version: row.version,
-  })
-}
 
 export async function getDatabaseMutationFeed(
   input: {
@@ -81,7 +64,7 @@ export async function getDatabaseMutationFeed(
 
   let events: DatabaseMutationEventV2[]
   try {
-    events = window.map(eventFromRow)
+    events = window.map(databaseMutationEventFromJournalRow)
   } catch {
     return { events: [], hasMore: false, latestVersion: host.version, resetRequired: true }
   }
