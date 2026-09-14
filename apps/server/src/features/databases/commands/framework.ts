@@ -20,6 +20,9 @@ import {
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema"
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
+import type { RuntimeEnv } from "../../../shared/config/config"
+import { createBackgroundTask } from "../../../infrastructure/background/contracts"
+import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch"
 
 const COMMAND_RECEIPT_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000
 const MAX_DATABASE_MUTATION_CHANGES_BYTES = 64 * 1_024
@@ -129,6 +132,7 @@ function storedEvent(event: DatabaseMutationEventV2) {
 export async function executeDatabaseCommand<TResult = unknown>(
   input: {
     actorId: string
+    env?: RuntimeEnv
     request: DatabaseCommandRequest
     scope: DatabaseCommandScope
   },
@@ -139,7 +143,7 @@ export async function executeDatabaseCommand<TResult = unknown>(
   const now = dependencies.now?.() ?? new Date()
   const randomUUID = dependencies.randomUUID ?? (() => crypto.randomUUID())
 
-  return executor.transaction(async (tx) => {
+  const committed = await executor.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${input.request.commandId}, 0))`)
 
     const [receipt] = await tx
@@ -158,7 +162,12 @@ export async function executeDatabaseCommand<TResult = unknown>(
       ) {
         throw new CommandIdReusedError(input.request.commandId)
       }
-      return databaseCommandAckSchema.parse(receipt.acknowledgement) as DatabaseCommandAck<TResult>
+      return {
+        acknowledgement: databaseCommandAckSchema.parse(
+          receipt.acknowledgement,
+        ) as DatabaseCommandAck<TResult>,
+        eventIds: [] as string[],
+      }
     }
 
     let primaryHostVersion: number | null = null
@@ -284,6 +293,17 @@ export async function executeDatabaseCommand<TResult = unknown>(
       requestHash,
     })
 
-    return acknowledgement
+    return { acknowledgement, eventIds: events.map(({ eventId }) => eventId) }
   })
+
+  if (input.env && committed.eventIds.length > 0) {
+    await dispatchBackgroundTasks(input.env, committed.eventIds.map((eventId) =>
+      createBackgroundTask({
+        env: input.env!,
+        kind: "realtime.database",
+        resourceId: eventId,
+      })
+    ))
+  }
+  return committed.acknowledgement
 }

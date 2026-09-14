@@ -3,6 +3,7 @@ import { beforeEach, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   capture: vi.fn(),
+  dispatch: vi.fn(),
   publish: vi.fn(),
   transaction: vi.fn(),
 }));
@@ -10,8 +11,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../../infrastructure/database", () => ({
   db: { transaction: mocks.transaction },
 }));
-vi.mock("../realtime/outbox", () => ({
-  publishDatabaseRealtimeEvent: mocks.publish,
+vi.mock("../../../infrastructure/background/dispatch", () => ({
+  dispatchBackgroundTasks: mocks.dispatch,
 }));
 vi.mock("../automations/triggers/event-capture", () => ({
   captureDatabaseAutomationMutationFacts: mocks.capture,
@@ -81,6 +82,8 @@ function transactionExecutor(versions: Array<number | null>) {
 beforeEach(() => {
   mocks.capture.mockReset();
   mocks.capture.mockResolvedValue(0);
+  mocks.dispatch.mockReset();
+  mocks.dispatch.mockResolvedValue(true);
   mocks.publish.mockReset();
   mocks.transaction.mockReset();
   vi.restoreAllMocks();
@@ -142,18 +145,17 @@ test("commitDatabaseMutationBatch versions, bulk persists, and publishes each mu
   assert.ok(
     (transaction.outbox[0] as { committedAt: unknown }).committedAt instanceof Date,
   );
-  assert.equal(mocks.publish.mock.calls.length, 2);
-  assert.deepEqual(mocks.publish.mock.calls[0]?.[0], {
-    actorId: "user-1",
-    changed: ["database"],
-    committedAt: result.commits[0]?.committedAt,
-    databaseId: "database-1",
-    delta: { database: { name: "First" } },
-    mutationId: "00000000-0000-4000-8000-000000000001",
-    protocolVersion: 1,
-    type: "database.mutation",
-    version: 3,
-  });
+  assert.equal(mocks.publish.mock.calls.length, 0);
+  assert.deepEqual(
+    mocks.dispatch.mock.calls[0]?.[1].map((task: { kind: string; resourceId: string }) => ({
+      kind: task.kind,
+      resourceId: task.resourceId,
+    })),
+    [
+      { kind: "realtime.database", resourceId: "00000000-0000-4000-8000-000000000001" },
+      { kind: "realtime.database", resourceId: "00000000-0000-4000-8000-000000000002" },
+    ],
+  );
 });
 
 test("same-database batches reserve contiguous versions with one update", async () => {
@@ -282,12 +284,9 @@ test("large commits persist invalidate-only payloads", async () => {
   assert.equal(mocks.publish.mock.calls.length, 0);
 });
 
-test("immediate publish failures are logged without rolling back commits", async () => {
+test("background enqueue failures leave the committed outbox available for recovery", async () => {
   transactionExecutor([4]);
-  mocks.publish.mockRejectedValue(new Error("room unavailable"));
-  const errorLog = vi
-    .spyOn(console, "error")
-    .mockImplementation(() => undefined);
+  mocks.dispatch.mockResolvedValue(false);
 
   const result = await commitDatabaseMutationBatch(
     { actorId: "user-1", env: {} },
@@ -304,13 +303,8 @@ test("immediate publish failures are logged without rolling back commits", async
   );
 
   assert.equal(result.commits[0]?.version, 4);
-  assert.deepEqual(JSON.parse(String(errorLog.mock.calls[0]?.[0])), {
-    databaseId: "database-1",
-    error: "room unavailable",
-    event: "database_realtime_immediate_publish_failed",
-    mutationId: result.commits[0]?.mutationId,
-    version: 4,
-  });
+  assert.equal(mocks.dispatch.mock.calls.length, 1);
+  assert.equal(mocks.publish.mock.calls.length, 0);
 });
 
 test("missing databases abort mutation commits with a typed 404", async () => {

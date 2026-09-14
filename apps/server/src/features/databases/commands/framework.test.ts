@@ -2,6 +2,11 @@ import assert from "node:assert/strict"
 import { beforeEach, test, vi } from "vitest"
 import type { DatabaseCommandAck, DatabaseCommandRequest } from "@zilobase/features/databases/contracts"
 
+const background = vi.hoisted(() => ({ dispatch: vi.fn() }))
+vi.mock("../../../infrastructure/background/dispatch", () => ({
+  dispatchBackgroundTasks: background.dispatch,
+}))
+
 import {
   dataSource,
   database,
@@ -118,7 +123,11 @@ function transactionHarness(options: {
   }
 }
 
-beforeEach(() => vi.restoreAllMocks())
+beforeEach(() => {
+  vi.restoreAllMocks()
+  background.dispatch.mockReset()
+  background.dispatch.mockResolvedValue(true)
+})
 
 test("command hashes are stable across object key order and include route scope", async () => {
   const reordered: DatabaseCommandRequest = {
@@ -176,6 +185,36 @@ test("execution locks the command ID and atomically stores its event and receipt
   assert.equal(receipts.length, 1)
   assert.deepEqual(receipts[0]?.acknowledgement, ack)
   assert.equal(receipts[0]?.expiresAt.toISOString(), "2026-09-21T00:00:00.000Z")
+})
+
+test("committed commands enqueue delivery without publishing a socket event inline", async () => {
+  const harness = transactionHarness({ databaseVersions: [5] })
+  const dispatch = (async (context: DatabaseCommandContext) => ({
+    mutations: [{
+      areas: ["databases"],
+      changes: {},
+      databaseId: context.databaseId,
+      dataSourceId: null,
+    }],
+    result: null,
+  })) as DatabaseCommandDispatcher
+  await executeDatabaseCommand({
+    actorId: "user-1",
+    env: { ZILOBASE_RUNTIME_KIND: "edge" },
+    request,
+    scope: { databaseId: "database-1", dataSourceId: null },
+  }, {
+    database: harness.database as never,
+    dispatch,
+    randomUUID: () => "event-background",
+  })
+  assert.equal(background.dispatch.mock.calls.length, 1)
+  assert.deepEqual(background.dispatch.mock.calls[0]?.[1].map(
+    (task: { kind: string; resourceId: string }) => ({
+      kind: task.kind,
+      resourceId: task.resourceId,
+    }),
+  ), [{ kind: "realtime.database", resourceId: "event-background" }])
 })
 
 test("identical retries replay the stored acknowledgement without side effects", async () => {

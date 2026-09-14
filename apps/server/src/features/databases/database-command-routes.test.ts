@@ -93,6 +93,7 @@ test("host commands validate their union and forward actor and host scope", asyn
   assert.deepEqual(await response.json(), acknowledgement)
   assert.deepEqual(mocks.execute.mock.calls[0]?.[0], {
     actorId: "user-1",
+    env: undefined,
     request: body,
     scope: { databaseId: "database-1", dataSourceId: null },
   })

@@ -17,7 +17,6 @@ import {
   prepareDatabaseRealtimeDelta,
   toMutationResponse,
 } from "../realtime/delta";
-import { publishDatabaseRealtimeEvent } from "../realtime/outbox";
 import {
   enqueueNavigationInvalidation,
   publishCommittedNavigationInvalidation,
@@ -90,41 +89,6 @@ export type DatabaseMutationCommitResult = CommitMetadata & {
 type DatabaseMutationBatchResult<T> = {
   commits: DatabaseMutationCommitResult[];
   result: T;
-};
-
-const publishCommits = async (
-  commits: DatabaseMutationCommitResult[],
-  env?: RuntimeEnv,
-) => {
-  if (!env) {
-    return;
-  }
-
-  await Promise.all(
-    commits.map(async (commit) => {
-      try {
-        await publishDatabaseRealtimeEvent(
-          {
-            ...toMutationResponse(commit, commit.delta),
-            actorId: commit.actorId,
-            protocolVersion: 1,
-            type: "database.mutation",
-          },
-          env,
-        );
-      } catch (error) {
-        console.error(
-          JSON.stringify({
-            databaseId: commit.databaseId,
-            error: error instanceof Error ? error.message : String(error),
-            event: "database_realtime_immediate_publish_failed",
-            mutationId: commit.mutationId,
-            version: commit.version,
-          }),
-        );
-      }
-    }),
-  );
 };
 
 export async function commitDatabaseMutationBatch<T>(
@@ -259,14 +223,19 @@ export async function commitDatabaseMutationBatch<T>(
   });
 
   if (options.env) {
-    await dispatchBackgroundTasks(options.env, automationWindows.map((window) =>
-      createBackgroundTask({
+    await dispatchBackgroundTasks(options.env, [
+      ...commits.map((commit) => createBackgroundTask({
+        env: options.env!,
+        kind: "realtime.database" as const,
+        resourceId: commit.mutationId,
+      })),
+      ...automationWindows.map((window) => createBackgroundTask({
         availableAt: window.availableAt,
         env: options.env!,
-        kind: "automation.event_window",
+        kind: "automation.event_window" as const,
         resourceId: window.id,
-      })
-    ));
+      })),
+    ]);
     if (agentTriggerFacts.length > 0 && commits.length > 0) {
       try {
         const { dispatchDatabaseAgentMutationFacts } = await import("../../ai/agents/agent-trigger-service");
@@ -283,7 +252,6 @@ export async function commitDatabaseMutationBatch<T>(
     }
   }
 
-  await publishCommits(commits, options.env);
   if (navigationEvent) {
     await publishCommittedNavigationInvalidation(navigationEvent, options.env);
   }

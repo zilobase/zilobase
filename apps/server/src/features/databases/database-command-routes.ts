@@ -47,6 +47,7 @@ async function commandResponse(
   try {
     return c.json(await executeDatabaseCommand({
       actorId: authenticated.user.id,
+      env: c.env,
       request,
       scope: { databaseId, dataSourceId },
     }, { dispatch: dispatchDatabaseCommand }))
