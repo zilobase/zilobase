@@ -1,4 +1,4 @@
-import { boolean, foreignKey, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, foreignKey, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { workspace, teamspace } from "./workspaces";
 import { user } from "./authentication";
 import { page } from "./pages";
@@ -128,6 +128,71 @@ export const databaseRealtimeOutbox = pgTable(
   ],
 );
 
+export const databaseMutationEvent = pgTable(
+  "database_mutation_event",
+  {
+    id: text("id").primaryKey(),
+    commandId: text("command_id").notNull(),
+    databaseId: text("database_id")
+      .notNull()
+      .references(() => database.id, { onDelete: "cascade" }),
+    dataSourceId: text("data_source_id").references(() => dataSource.id, {
+      onDelete: "set null",
+    }),
+    actorId: text("actor_id").notNull(),
+    protocolVersion: integer("protocol_version").notNull().default(2),
+    version: integer("version").notNull(),
+    areas: text("areas").array().notNull(),
+    changes: jsonb("changes").notNull().default({}),
+    requiresReset: boolean("requires_reset").notNull().default(false),
+    committedAt: timestamp("committed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("database_mutation_event_database_version_unique").on(
+      table.databaseId,
+      table.version,
+    ),
+    index("database_mutation_event_database_committed_idx").on(
+      table.databaseId,
+      table.committedAt,
+    ),
+    index("database_mutation_event_command_idx").on(table.commandId),
+    index("database_mutation_event_retention_idx").on(table.committedAt),
+  ],
+);
+
+export const databaseCommandReceipt = pgTable(
+  "database_command_receipt",
+  {
+    commandId: text("command_id").primaryKey(),
+    databaseId: text("database_id")
+      .notNull()
+      .references(() => database.id, { onDelete: "cascade" }),
+    dataSourceId: text("data_source_id").references(() => dataSource.id, {
+      onDelete: "set null",
+    }),
+    actorId: text("actor_id").notNull(),
+    requestHash: text("request_hash").notNull(),
+    eventId: text("event_id")
+      .notNull()
+      .references(() => databaseMutationEvent.id, { onDelete: "cascade" }),
+    acknowledgement: jsonb("acknowledgement").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("database_command_receipt_database_created_idx").on(
+      table.databaseId,
+      table.createdAt,
+    ),
+    index("database_command_receipt_retention_idx").on(table.expiresAt),
+  ],
+);
+
 export const databaseAccess = pgTable(
   "database_access",
   {
@@ -226,6 +291,7 @@ export const databaseRow = pgTable(
       .references(() => page.id, { onDelete: "cascade" }),
     parentRowId: text("parent_row_id"),
     position: integer("position").notNull().default(0),
+    orderKey: numeric("order_key", { precision: 30, scale: 10 }),
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",
     }),

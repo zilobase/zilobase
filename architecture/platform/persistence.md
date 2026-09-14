@@ -18,10 +18,11 @@ See [tests or test configuration](../../apps/server/src/test-support) and [testi
 
 ## Schema ownership
 
-The stable [schema aggregate](../../apps/server/src/infrastructure/database/schema.ts) explicitly exports the existing 106 tables. Domain declarations live under [schema/](../../apps/server/src/infrastructure/database/schema); feature code, Drizzle configuration and external adapters continue to consume the aggregate. Schema modules import the specific declaration they reference, never the aggregate, so the declaration graph remains acyclic.
+The stable [schema aggregate](../../apps/server/src/infrastructure/database/schema.ts) explicitly exports the existing 108 tables. Domain declarations live under [schema/](../../apps/server/src/infrastructure/database/schema); feature code, Drizzle configuration and external adapters continue to consume the aggregate. Schema modules import the specific declaration they reference, never the aggregate, so the declaration graph remains acyclic.
 
 - Authentication and workspaces own identity, membership and teamspace tables.
 - Pages, page properties and placements are separate from database/data-source declarations. Placements refer to database rows without introducing a pages/databases initialization cycle.
+- Databases own a nullable fractional row-order key during the compatibility period, a durable versioned mutation journal, and idempotent command receipts. The legacy realtime outbox remains separate delivery state until its journal-reference migration.
 - Mail connections, organization and synchronization own their respective tables; meetings and notifications own theirs.
 - AI agents, MCP, conversations, execution, files and settings retain separate persistence responsibilities.
 - Navigation, images, search, background work, instance settings and user settings own their focused tables.
