@@ -1,5 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query"
-import { DbClient as TanStackDbClient } from "@tanstack/react-db"
+import {
+  createTransaction,
+  DbClient as TanStackDbClient,
+} from "@tanstack/react-db"
 
 import type { ApiFetcher } from "../../shared/api-fetcher"
 import type {
@@ -25,6 +28,11 @@ import {
   type DatabaseBootstrapCollections,
 } from "./bootstrap-collections"
 import { databaseClientQueryRoot } from "./query-keys"
+import {
+  DatabaseCommandLanes,
+  databaseCommandLane,
+} from "./command-lanes"
+import { applyOptimisticCommand } from "./optimistic-commands"
 import {
   createDatabaseRecordCollection,
   toDatabaseRecord,
@@ -106,6 +114,7 @@ export class SessionDatabaseClient implements DatabaseClient {
     string,
     DatabaseBootstrapCollections
   >()
+  private readonly commandLanes = new DatabaseCommandLanes()
   private readonly cleanups = new Set<() => Promise<void> | void>()
   private disposed = false
   private readonly ingestionTails = new Map<string, Promise<void>>()
@@ -165,37 +174,61 @@ export class SessionDatabaseClient implements DatabaseClient {
     input: DatabaseClientCommand,
   ): DatabaseCommandTransaction<TResult> {
     this.assertActive()
+    const lane = databaseCommandLane(input)
     const commandId = crypto.randomUUID()
-    const request: DatabaseCommandRequest = {
-      command: input.command,
-      commandId,
-      protocolVersion: 2,
-    }
-    const endpoint = input.dataSourceId
-      ? `/databases/${encodeURIComponent(input.databaseId)}` +
-        `/data-sources/${encodeURIComponent(input.dataSourceId)}/commands`
-      : `/databases/${encodeURIComponent(input.databaseId)}/commands`
-    const promise = (async () => {
-      const response = databaseCommandAckSchema.parse(
-        await this.apiFetch<DatabaseCommandAck>(endpoint, {
-          body: JSON.stringify(request),
-          method: "POST",
-        }),
+    const persist = () => this.commandLanes.run(
+      lane.key,
+      lane.cancelAfterFailure,
+      () => this.sendCommand<TResult>(input, commandId),
+    )
+    if (input.command.type === "cell.set") {
+      applyOptimisticCommand({
+        bootstrapCollections: this.bootstrapCollections.values(),
+        commandId,
+        input,
+        recordCollections: this.recordCollections.values(),
+        shouldOrderByKey: (scope) => this.shouldOrderByKey(scope),
+      })
+      const promise = persist().then(
+        (result) => {
+          this.settleCellOverlay(commandId)
+          return result
+        },
+        (error) => {
+          this.settleCellOverlay(commandId)
+          throw error
+        },
       )
-      if (response.commandId !== commandId) {
-        throw new Error("Database command acknowledgement ID does not match")
-      }
-      if (
-        response.event.databaseId !== input.databaseId ||
-        (input.dataSourceId &&
-          response.event.dataSourceId !== input.dataSourceId)
-      ) {
-        throw new Error("Database command acknowledgement scope does not match")
-      }
-      await this.ingest(response.event)
-      return response.result as TResult
-    })()
-    return { commandId, promise }
+      return { commandId, promise }
+    }
+
+    let result: TResult
+    const transaction = createTransaction({
+      autoCommit: false,
+      id: commandId,
+      metadata: { commandId, lane: lane.key },
+      mutationFn: async () => {
+        result = await persist()
+      },
+    })
+    transaction.mutate(() => {
+      applyOptimisticCommand({
+        bootstrapCollections: this.bootstrapCollections.values(),
+        commandId,
+        input,
+        recordCollections: this.recordCollections.values(),
+        shouldOrderByKey: (scope) => this.shouldOrderByKey(scope),
+      })
+    })
+    if (transaction.mutations.length === 0) {
+      void transaction.commit().catch(() => undefined)
+      return { commandId, promise: persist() }
+    }
+    void transaction.commit().catch(() => undefined)
+    return {
+      commandId,
+      promise: transaction.isPersisted.promise.then(() => result),
+    }
   }
 
   async ingest(input: DatabaseMutationEventV2) {
@@ -301,6 +334,7 @@ export class SessionDatabaseClient implements DatabaseClient {
     ])
     this.cleanups.clear()
     this.bootstrapCollections.clear()
+    this.commandLanes.clear()
     this.ingestionTails.clear()
     this.recordCollections.clear()
     this.versions.clear()
@@ -311,6 +345,44 @@ export class SessionDatabaseClient implements DatabaseClient {
 
   private assertActive() {
     if (this.disposed) throw new Error("Database client session is disposed")
+  }
+
+  private async sendCommand<TResult>(
+    input: DatabaseClientCommand,
+    commandId: string,
+  ) {
+    const request: DatabaseCommandRequest = {
+      command: input.command,
+      commandId,
+      protocolVersion: 2,
+    }
+    const endpoint = input.dataSourceId
+      ? `/databases/${encodeURIComponent(input.databaseId)}` +
+        `/data-sources/${encodeURIComponent(input.dataSourceId)}/commands`
+      : `/databases/${encodeURIComponent(input.databaseId)}/commands`
+    const response = databaseCommandAckSchema.parse(
+      await this.apiFetch<DatabaseCommandAck>(endpoint, {
+        body: JSON.stringify(request),
+        method: "POST",
+      }),
+    )
+    if (response.commandId !== commandId) {
+      throw new Error("Database command acknowledgement ID does not match")
+    }
+    if (
+      response.event.databaseId !== input.databaseId ||
+      (input.dataSourceId && response.event.dataSourceId !== input.dataSourceId)
+    ) {
+      throw new Error("Database command acknowledgement scope does not match")
+    }
+    await this.ingest(response.event)
+    return response.result as TResult
+  }
+
+  private settleCellOverlay(commandId: string) {
+    for (const resource of this.recordCollections.values()) {
+      resource.settleCellOverlay(commandId)
+    }
   }
 
   private enqueueIngestion(databaseId: string, work: () => Promise<void>) {

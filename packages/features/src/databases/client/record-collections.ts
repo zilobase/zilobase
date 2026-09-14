@@ -38,10 +38,28 @@ export type DatabaseRecordCollection = {
   readonly pageSize: DatabaseInitialPageSize
   readonly scope: RecordCollectionScope
   records: Collection<WindowedDatabaseRecord, string>
+  applyCellOverlay(input: {
+    commandId: string
+    propertyId: string
+    rowId: string
+    value: unknown
+  }): boolean
   apply(event: DatabaseMutationEventV2, sortByOrderKey: boolean): void
   cleanup(): Promise<void>
   getLatestWindow(): DatabaseRecordWindowResponse | undefined
   reset(): Promise<void>
+  settleCellOverlay(commandId: string): void
+}
+
+type CellOverlay = {
+  commandId: string
+  propertyId: string
+  value: unknown
+}
+
+type RecordCellOverlays = {
+  base: WindowedDatabaseRecord
+  overlays: CellOverlay[]
 }
 
 export function createDatabaseRecordCollection(options: {
@@ -53,6 +71,7 @@ export function createDatabaseRecordCollection(options: {
 }): DatabaseRecordCollection {
   let snapshot: string | undefined
   let latestWindow: DatabaseRecordWindowResponse | undefined
+  const cellOverlays = new Map<string, RecordCellOverlays>()
   const descriptorId = recordCollectionId(options.sessionId, options.scope)
   const queryKey = databaseClientQueryKey(
     options.sessionId,
@@ -112,6 +131,22 @@ export function createDatabaseRecordCollection(options: {
     pageSize: options.pageSize,
     scope: options.scope,
     records,
+    applyCellOverlay(input) {
+      const current = records.state.get(input.rowId)
+      if (!current || records.status === "cleaned-up") return false
+      let state = cellOverlays.get(input.rowId)
+      if (!state) {
+        state = {
+          base: withoutVirtualProperties(current),
+          overlays: [],
+        }
+        cellOverlays.set(input.rowId, state)
+      }
+      state.overlays.push(input)
+      writeRecordUpserts(records, [projectCellOverlays(state)])
+      updateLatestRecord(projectCellOverlays(state))
+      return true
+    },
     apply(event, sortByOrderKey) {
       if (records.status === "idle" || records.status === "cleaned-up") return
       if (
@@ -119,13 +154,16 @@ export function createDatabaseRecordCollection(options: {
         !event.changes.removedRecordIds?.length
       ) return
       const removed = new Set(event.changes.removedRecordIds ?? [])
+      for (const id of removed) cellOverlays.delete(id)
       const current = new Map<string, WindowedDatabaseRecord>(
-        [...records.state].map(([id, record]) => [
+        [...records._state.syncedData].map(([id, record]) => [
           id,
           withoutVirtualProperties(record),
         ]),
       )
-      const removedLoaded = [...removed].filter((id) => current.has(id))
+      for (const [id, state] of cellOverlays) current.set(id, state.base)
+      const removedLoaded = [...removed].filter((id) =>
+        records._state.syncedData.has(id))
       for (const id of removed) current.delete(id)
 
       let nextIndex = Math.max(
@@ -136,11 +174,27 @@ export function createDatabaseRecordCollection(options: {
       for (const entity of event.changes.records ?? []) {
         if (entity.dataSourceId !== options.scope.dataSourceId) continue
         const existing = current.get(entity.id)
+        const overlayState = cellOverlays.get(entity.id)
+        if (overlayState) {
+          overlayState.base = {
+            ...entity,
+            __windowIndex: existing?.__windowIndex ??
+              overlayState.base.__windowIndex,
+          }
+        }
         if (!existing) added += 1
-        current.set(entity.id, {
-          ...entity,
-          __windowIndex: existing?.__windowIndex ?? nextIndex++,
-        })
+        current.set(
+          entity.id,
+          overlayState
+            ? projectCellOverlays(overlayState)
+            : {
+                ...entity,
+                __windowIndex: existing?.__windowIndex ?? nextIndex++,
+              },
+        )
+      }
+      for (const [id, state] of cellOverlays) {
+        if (current.has(id)) current.set(id, projectCellOverlays(state))
       }
 
       const ordered = [...current.values()]
@@ -159,18 +213,18 @@ export function createDatabaseRecordCollection(options: {
           left.__windowIndex - right.__windowIndex ||
           left.id.localeCompare(right.id))
       }
-      const reindexed = ordered.map((entity, index) => ({
-        ...entity,
-        __windowIndex: index,
-      }))
-      const utils = records.utils as unknown as QueryCollectionUtils<
-        WindowedDatabaseRecord,
-        string
-      >
-      utils.writeBatch(() => {
-        if (removedLoaded.length > 0) utils.writeDelete(removedLoaded)
-        if (reindexed.length > 0) utils.writeUpsert(reindexed)
+      const reindexed = ordered.map((entity, index) => {
+        const overlayState = cellOverlays.get(entity.id)
+        if (overlayState) {
+          overlayState.base = {
+            ...overlayState.base,
+            __windowIndex: index,
+          }
+          return projectCellOverlays(overlayState)
+        }
+        return { ...entity, __windowIndex: index }
       })
+      writeRecordChanges(records, reindexed, removedLoaded)
 
       if (latestWindow) {
         latestWindow = {
@@ -194,7 +248,38 @@ export function createDatabaseRecordCollection(options: {
         string
       >
       await utils.refetch()
+      for (const [rowId, state] of cellOverlays) {
+        const canonical = records._state.syncedData.get(rowId)
+        if (!canonical) {
+          cellOverlays.delete(rowId)
+          continue
+        }
+        state.base = withoutVirtualProperties(canonical)
+        writeRecordUpserts(records, [projectCellOverlays(state)])
+      }
     },
+    settleCellOverlay(commandId) {
+      for (const [rowId, state] of cellOverlays) {
+        const next = state.overlays.filter(
+          (overlay) => overlay.commandId !== commandId,
+        )
+        if (next.length === state.overlays.length) continue
+        state.overlays = next
+        const projected = projectCellOverlays(state)
+        writeRecordUpserts(records, [projected])
+        updateLatestRecord(projected)
+        if (next.length === 0) cellOverlays.delete(rowId)
+      }
+    },
+  }
+
+  function updateLatestRecord(record: WindowedDatabaseRecord) {
+    if (!latestWindow) return
+    latestWindow = {
+      ...latestWindow,
+      records: latestWindow.records.map((candidate) =>
+        candidate.id === record.id ? toDatabaseRecord(record) : candidate),
+    }
   }
 }
 
@@ -226,6 +311,51 @@ function withoutVirtualProperties(record: WindowedDatabaseRecord) {
   delete entity.$key
   delete entity.$collectionId
   return entity
+}
+
+function projectCellOverlays(state: RecordCellOverlays) {
+  let record = state.base
+  for (const overlay of state.overlays) {
+    const existing = record.valuesByPropertyId[overlay.propertyId]
+    const updatedAt = new Date().toISOString()
+    record = {
+      ...record,
+      valuesByPropertyId: {
+        ...record.valuesByPropertyId,
+        [overlay.propertyId]: {
+          createdAt: existing?.createdAt ?? updatedAt,
+          id: existing?.id ?? `optimistic-${overlay.commandId}`,
+          pageId: record.pageId,
+          propertyId: overlay.propertyId,
+          updatedAt,
+          value: overlay.value,
+        },
+      },
+    }
+  }
+  return record
+}
+
+function writeRecordChanges(
+  records: DatabaseRecordCollection["records"],
+  upserts: WindowedDatabaseRecord[],
+  removals: string[],
+) {
+  const utils = records.utils as unknown as QueryCollectionUtils<
+    WindowedDatabaseRecord,
+    string
+  >
+  utils.writeBatch(() => {
+    if (removals.length > 0) utils.writeDelete(removals)
+    if (upserts.length > 0) utils.writeUpsert(upserts)
+  })
+}
+
+function writeRecordUpserts(
+  records: DatabaseRecordCollection["records"],
+  upserts: WindowedDatabaseRecord[],
+) {
+  writeRecordChanges(records, upserts, [])
 }
 
 function readWindowRequest(

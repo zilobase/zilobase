@@ -1,6 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query"
-import { createCollection, type Collection } from "@tanstack/db"
-import { queryCollectionOptions } from "@tanstack/query-db-collection"
+import { createCollection, type Collection } from "@tanstack/react-db"
+import {
+  queryCollectionOptions,
+  type QueryCollectionUtils,
+} from "@tanstack/query-db-collection"
 
 import type { ApiFetcher } from "../../shared/api-fetcher"
 import {
@@ -31,15 +34,21 @@ type BootstrapCollectionKind =
   | "properties"
 
 export type DatabaseBootstrapCollections = {
-  database: Collection<DatabaseHostEntity, string>
-  dataSources: Collection<DataSourceEntity, string>
-  properties: Collection<DatabasePropertyEntity, string>
+  database: QueryEntityCollection<DatabaseHostEntity>
+  dataSources: QueryEntityCollection<DataSourceEntity>
+  properties: QueryEntityCollection<DatabasePropertyEntity>
   readonly scope: BootstrapScope
-  views: Collection<DatabaseViewEntity, string>
+  views: QueryEntityCollection<DatabaseViewEntity>
   apply(event: DatabaseMutationEventV2): void
   cleanup(): Promise<void>
   refetch(): Promise<void>
 }
+
+type QueryEntityCollection<TEntity extends object> = Collection<
+  TEntity,
+  string,
+  QueryCollectionUtils<TEntity, string>
+>
 
 export function createDatabaseBootstrapCollections(options: {
   apiFetch: ApiFetcher
@@ -64,28 +73,28 @@ export function createDatabaseBootstrapCollections(options: {
     id: bootstrapCollectionId(options.sessionId, options.scope, "databases"),
     schema: databaseHostEntitySchema,
     select: (response) => [response.database],
-  }))
+  }) as never) as unknown as QueryEntityCollection<DatabaseHostEntity>
   const dataSources = createCollection(queryCollectionOptions({
     ...common,
     getKey: (entity: DataSourceEntity) => entity.id,
     id: bootstrapCollectionId(options.sessionId, options.scope, "data-sources"),
     schema: dataSourceEntitySchema,
     select: (response) => response.dataSources,
-  }))
+  }) as never) as unknown as QueryEntityCollection<DataSourceEntity>
   const views = createCollection(queryCollectionOptions({
     ...common,
     getKey: (entity: DatabaseViewEntity) => entity.id,
     id: bootstrapCollectionId(options.sessionId, options.scope, "views"),
     schema: databaseViewEntitySchema,
     select: (response) => response.views,
-  }))
+  }) as never) as unknown as QueryEntityCollection<DatabaseViewEntity>
   const properties = createCollection(queryCollectionOptions({
     ...common,
     getKey: (entity: DatabasePropertyEntity) => entity.id,
     id: bootstrapCollectionId(options.sessionId, options.scope, "properties"),
     schema: databasePropertyEntitySchema,
     select: (response) => response.properties,
-  }))
+  }) as never) as unknown as QueryEntityCollection<DatabasePropertyEntity>
 
   return {
     database,
@@ -94,11 +103,30 @@ export function createDatabaseBootstrapCollections(options: {
     scope: options.scope,
     views,
     apply(event) {
+      const current = options.queryClient.getQueryData<DatabaseBootstrapResponse>(
+        queryKey,
+      )
+      if (!current) return
+      const next = applyBootstrapEvent(current, event)
+      writeCollectionState(database, [next.database], [])
+      writeCollectionState(
+        dataSources,
+        next.dataSources,
+        event.changes.removedDataSourceIds ?? [],
+      )
+      writeCollectionState(
+        properties,
+        next.properties,
+        event.changes.removedPropertyIds ?? [],
+      )
+      writeCollectionState(
+        views,
+        next.views,
+        event.changes.removedViewIds ?? [],
+      )
       options.queryClient.setQueryData<DatabaseBootstrapResponse>(
         queryKey,
-        (current) => current
-          ? applyBootstrapEvent(current, event)
-          : current,
+        next,
       )
     },
     async cleanup() {
@@ -113,6 +141,23 @@ export function createDatabaseBootstrapCollections(options: {
       await options.queryClient.refetchQueries({ exact: true, queryKey })
     },
   }
+}
+
+function writeCollectionState<TEntity extends { id: string }>(
+  collection: QueryEntityCollection<TEntity>,
+  entities: TEntity[],
+  removedIds: string[],
+) {
+  if (collection.status === "idle" || collection.status === "cleaned-up") return
+  const entityIds = new Set(entities.map(({ id }) => id))
+  const loadedRemovals = removedIds.filter((id) =>
+    !entityIds.has(id) && collection._state.syncedData.has(id))
+  collection.utils.writeBatch(() => {
+    if (loadedRemovals.length > 0) {
+      collection.utils.writeDelete(loadedRemovals)
+    }
+    if (entities.length > 0) collection.utils.writeUpsert(entities)
+  })
 }
 
 function applyBootstrapEvent(

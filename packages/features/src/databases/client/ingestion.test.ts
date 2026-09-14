@@ -145,6 +145,11 @@ test("command acknowledgements and socket echoes share one direct-write path", a
     databaseId: "database-1",
     dataSourceId: "source-1",
   })
+  assert.equal(
+    records.records.state.get("row-1")
+      ?.valuesByPropertyId["property-1"]?.value,
+    "done",
+  )
   assert.deepEqual(await transaction.promise, { updated: true })
   assert.equal(records.records.state.get("row-1")?.page.name, "Moved")
   assert.equal(records.records.state.get("row-1")?.__windowIndex, 1)
@@ -248,5 +253,109 @@ test("expired history resets only the affected database scope", async () => {
   assert.equal(databaseTwoFetches, 1)
   assert.equal(client.bootstrap({ databaseId: "database-1" }).data?.database.name, "Canonical")
   assert.equal(client.bootstrap({ databaseId: "database-2" }).data?.database.name, "Other")
+  await client.cleanup()
+})
+
+test("row ordering paints optimistically before its command is sent", async () => {
+  let resolveCommand: ((value: unknown) => void) | undefined
+  let commandId = ""
+  const apiFetch: ApiFetcher = async (path, init) => {
+    if (path.includes("/bootstrap")) return bootstrap(1) as never
+    if (path.includes("/records?")) {
+      return {
+        databaseVersion: 1,
+        dataSourceVersion: 1,
+        hasMore: false,
+        offset: 0,
+        records: [
+          record("row-1", "1024.0000000000"),
+          record("row-2", "2048.0000000000"),
+          record("row-3", "3072.0000000000"),
+        ],
+        snapshot: "snapshot-1",
+        totalCount: 3,
+      } as never
+    }
+    if (path.endsWith("/data-sources/source-1/commands")) {
+      commandId = (JSON.parse(String(init?.body)) as { commandId: string }).commandId
+      return await new Promise<unknown>((resolve) => {
+        resolveCommand = resolve
+      }) as never
+    }
+    throw new Error(`Unexpected request: ${path}`)
+  }
+  const client = createDatabaseClient({
+    apiFetch,
+    queryClient: new QueryClient(),
+    sessionId: "session-1",
+  })
+  const collections = client.getBootstrapCollections({ databaseId: "database-1" })
+  await collections.database.stateWhenReady()
+  const records = client.getRecordCollection({
+    databaseId: "database-1",
+    dataSourceId: "source-1",
+    viewId: "view-1",
+  })
+  records.records._sync.startSync()
+  await records.records._sync.loadSubset({ limit: 51, offset: 0 })
+
+  const transaction = client.execute<DatabaseRecordEntity>({
+    command: {
+      afterRowId: "row-3",
+      beforeRowId: null,
+      rowId: "row-1",
+      type: "row.move",
+    },
+    databaseId: "database-1",
+    dataSourceId: "source-1",
+  })
+  assert.equal(records.records.state.get("row-1")?.__windowIndex, 2)
+  assert.equal(records.records.state.get("row-2")?.__windowIndex, 0)
+  assert.equal(records.records.state.get("row-3")?.__windowIndex, 1)
+
+  await Promise.resolve()
+  const moved = record("row-1", "4096.0000000000")
+  resolveCommand?.({
+    commandId,
+    event: event(2, { records: [moved] }, { commandId }),
+    result: moved,
+  })
+  assert.equal((await transaction.promise).orderKey, "4096.0000000000")
+  assert.equal(records.records.state.get("row-1")?.__windowIndex, 2)
+  await client.cleanup()
+})
+
+test("a failed metadata command rolls back only its optimistic transaction", async () => {
+  let rejectCommand: ((error: Error) => void) | undefined
+  const apiFetch: ApiFetcher = async (path) => {
+    if (path.includes("/bootstrap")) return bootstrap(1, "Original") as never
+    if (path.endsWith("/commands")) {
+      return await new Promise<unknown>((_resolve, reject) => {
+        rejectCommand = reject
+      }) as never
+    }
+    throw new Error(`Unexpected request: ${path}`)
+  }
+  const client = createDatabaseClient({
+    apiFetch,
+    queryClient: new QueryClient(),
+    sessionId: "session-1",
+  })
+  const collections = client.getBootstrapCollections({ databaseId: "database-1" })
+  await collections.database.stateWhenReady()
+
+  const transaction = client.execute({
+    command: {
+      patch: { name: "Optimistic" },
+      type: "database.update",
+    },
+    databaseId: "database-1",
+  })
+  assert.equal(collections.database.state.get("database-1")?.name, "Optimistic")
+
+  await Promise.resolve()
+  rejectCommand?.(new Error("save failed"))
+  await assert.rejects(transaction.promise, /save failed/)
+  assert.equal(collections.database.state.get("database-1")?.name, "Original")
   await client.cleanup()
 })
