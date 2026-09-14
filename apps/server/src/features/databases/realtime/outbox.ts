@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
+import { recordDatabaseGauge } from "../observability";
 import { db } from "../../../infrastructure/database";
 import {
   databaseMutationEvent,
@@ -20,6 +21,8 @@ export async function drainDatabaseRealtimeOutbox(
   const publish = getRuntimeAdapter().publishDatabaseMutation;
 
   if (!publish) {
+    recordDatabaseGauge("outbox_backlog", 0);
+    recordDatabaseGauge("outbox_oldest_age_ms", 0);
     return {
       backlog: 0,
       delivered: 0,
@@ -137,7 +140,7 @@ export async function drainDatabaseRealtimeOutbox(
     ? new Date(health.oldestReadyAt).getTime()
     : attemptedAt.getTime();
 
-  return {
+  const result = {
     backlog: health?.backlog ?? 0,
     delivered,
     discarded,
@@ -145,6 +148,9 @@ export async function drainDatabaseRealtimeOutbox(
     maxAttempts: health?.maxAttempts ?? 0,
     oldestAgeMs: Math.max(0, attemptedAt.getTime() - oldestReadyAt),
   };
+  recordDatabaseGauge("outbox_backlog", result.backlog);
+  recordDatabaseGauge("outbox_oldest_age_ms", result.oldestAgeMs);
+  return result;
 }
 
 function retryAt(attempts: number, from: Date) {

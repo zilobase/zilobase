@@ -25,6 +25,7 @@ import {
   startDatabaseRowDrag,
 } from "../../../interactions/database-row-drag"
 import { isInteractiveDatabaseCardTarget } from "../../../interactions/database-card-drag-target"
+import { markDatabaseInteractionPaint } from "../../../metrics"
 import {
   canMoveRowsAcrossKanbanGroups,
   type DatabasePropertyListItem,
@@ -562,6 +563,7 @@ export function useDatabaseKanbanCardDrag<
       if (input.isSorted) {
         if (move) setPendingSortedMove(move)
       } else if (move && draggedCard) {
+        const dropStartedAt = performance.now()
         const row = input.allRows.find((item) => item.id === draggedCard.rowId)
         if (row) {
           // Replace the preview with its final layout in this same render, before
@@ -578,7 +580,10 @@ export function useDatabaseKanbanCardDrag<
           }
           setDroppedRows(nextRows)
         }
-        applyMove(move, () => setDroppedRows(null))
+        applyMove(move, () => {
+          setDroppedRows(null)
+          markDatabaseInteractionPaint(dropStartedAt)
+        })
       }
       clearDrag()
     }, [

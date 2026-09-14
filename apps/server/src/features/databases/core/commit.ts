@@ -28,6 +28,7 @@ import {
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 import { buildLegacyDatabaseChangeset } from "./legacy-changeset";
+import { measureDatabaseOperation } from "../observability";
 
 export class DatabaseMutationError extends Error {
   constructor(
@@ -104,7 +105,10 @@ export async function commitDatabaseMutationBatch<T>(
   const committedAt = new Date().toISOString();
   const automationWindows: Array<{ availableAt: Date; id: string }> = [];
   let agentTriggerFacts: DatabaseAutomationMutationFactCandidate[] = [];
-  const { commits, navigationEvent, result } = await db.transaction(async (tx) => {
+  const { commits, navigationEvent, result } = await measureDatabaseOperation(
+    "commit_duration_ms",
+    { operation: "internal", scope: "source" },
+    () => db.transaction(async (tx) => {
     const mutationResult = await mutate(tx);
     agentTriggerFacts = mutationResult.automationFacts ?? [];
     if (mutationResult.automationFacts?.length) {
@@ -213,22 +217,27 @@ export async function commitDatabaseMutationBatch<T>(
       : null;
 
     return { commits, navigationEvent, result: mutationResult.result };
-  });
+    }),
+  );
 
   if (options.env) {
-    await dispatchBackgroundTasks(options.env, [
-      ...commits.map((commit) => createBackgroundTask({
-        env: options.env!,
-        kind: "realtime.database" as const,
-        resourceId: commit.mutationId,
-      })),
-      ...automationWindows.map((window) => createBackgroundTask({
-        availableAt: window.availableAt,
-        env: options.env!,
-        kind: "automation.event_window" as const,
-        resourceId: window.id,
-      })),
-    ]);
+    await measureDatabaseOperation(
+      "enqueue_duration_ms",
+      { operation: "internal", scope: "source" },
+      () => dispatchBackgroundTasks(options.env!, [
+        ...commits.map((commit) => createBackgroundTask({
+          env: options.env!,
+          kind: "realtime.database" as const,
+          resourceId: commit.mutationId,
+        })),
+        ...automationWindows.map((window) => createBackgroundTask({
+          availableAt: window.availableAt,
+          env: options.env!,
+          kind: "automation.event_window" as const,
+          resourceId: window.id,
+        })),
+      ]),
+    );
     if (agentTriggerFacts.length > 0 && commits.length > 0) {
       try {
         const { dispatchDatabaseAgentMutationFacts } = await import("../../ai/agents/agent-trigger-service");

@@ -23,6 +23,10 @@ import {
 import { getDatabaseInitialPageSize } from "../view-evaluation"
 import { databaseContextExportRootQueryKey } from "../queries"
 import {
+  emitDatabaseMetric,
+  type DatabaseMetricReason,
+} from "../telemetry"
+import {
   createDatabaseBootstrapCollections,
   databaseBootstrapQueryKey,
   readBootstrapCollectionStatus,
@@ -401,6 +405,7 @@ export class SessionDatabaseClient implements DatabaseClient {
     input: DatabaseClientCommand,
     commandId: string,
   ) {
+    const startedAt = performance.now()
     const request: DatabaseCommandRequest = {
       command: input.command,
       commandId,
@@ -410,23 +415,36 @@ export class SessionDatabaseClient implements DatabaseClient {
       ? `/databases/${encodeURIComponent(input.databaseId)}` +
         `/data-sources/${encodeURIComponent(input.dataSourceId)}/commands`
       : `/databases/${encodeURIComponent(input.databaseId)}/commands`
-    const response = databaseCommandAckSchema.parse(
-      await this.apiFetch<DatabaseCommandAck>(endpoint, {
-        body: JSON.stringify(request),
-        method: "POST",
-      }),
-    )
-    if (response.commandId !== commandId) {
-      throw new Error("Database command acknowledgement ID does not match")
+    try {
+      const response = databaseCommandAckSchema.parse(
+        await this.apiFetch<DatabaseCommandAck>(endpoint, {
+          body: JSON.stringify(request),
+          method: "POST",
+        }),
+      )
+      if (response.commandId !== commandId) {
+        throw new Error("Database command acknowledgement ID does not match")
+      }
+      if (
+        response.event.databaseId !== input.databaseId ||
+        (input.dataSourceId && response.event.dataSourceId !== input.dataSourceId)
+      ) {
+        throw new Error("Database command acknowledgement scope does not match")
+      }
+      await this.ingest(response.event)
+      emitDatabaseMetric(
+        "acknowledgement_latency",
+        performance.now() - startedAt,
+      )
+      return response.result as TResult
+    } catch (error) {
+      emitDatabaseMetric(
+        "acknowledgement_latency",
+        performance.now() - startedAt,
+        "failure",
+      )
+      throw error
     }
-    if (
-      response.event.databaseId !== input.databaseId ||
-      (input.dataSourceId && response.event.dataSourceId !== input.dataSourceId)
-    ) {
-      throw new Error("Database command acknowledgement scope does not match")
-    }
-    await this.ingest(response.event)
-    return response.result as TResult
   }
 
   private settleCellOverlay(commandId: string) {
@@ -449,6 +467,7 @@ export class SessionDatabaseClient implements DatabaseClient {
       (cause) => {
         const error = cause instanceof Error ? cause : new Error(String(cause))
         for (const target of targets) this.updateCommandState(target, -1, error)
+        emitDatabaseMetric("rollback", 1, "failure", "command_failure")
         throw cause
       },
     )
@@ -490,11 +509,12 @@ export class SessionDatabaseClient implements DatabaseClient {
     ) return
 
     if (event.version > ledger.version + 1) {
+      emitDatabaseMetric("gap_recovery", 1, "success", "event_gap")
       await this.catchUpNow(event.databaseId)
     }
     if (event.version <= ledger.version) return
     if (event.version !== ledger.version + 1) {
-      await this.resetNow({ databaseId: event.databaseId })
+      await this.resetNow({ databaseId: event.databaseId }, "invalid_history")
       ledger.version = Math.max(
         event.version,
         this.loadedVersion(event.databaseId),
@@ -516,7 +536,7 @@ export class SessionDatabaseClient implements DatabaseClient {
         ),
       )
       if (response.resetRequired) {
-        await this.resetNow({ databaseId })
+        await this.resetNow({ databaseId }, "expired_history")
         ledger.version = Math.max(
           response.latestVersion,
           this.loadedVersion(databaseId),
@@ -526,19 +546,19 @@ export class SessionDatabaseClient implements DatabaseClient {
         return
       }
       if (response.events.length === 0 && response.hasMore) {
-        await this.resetNow({ databaseId })
+        await this.resetNow({ databaseId }, "invalid_history")
         ledger.version = response.latestVersion
         return
       }
       for (const event of response.events) {
         if (event.databaseId !== databaseId) {
-          await this.resetNow({ databaseId })
+          await this.resetNow({ databaseId }, "invalid_history")
           ledger.version = response.latestVersion
           return
         }
         if (event.version <= ledger.version) continue
         if (event.version !== ledger.version + 1) {
-          await this.resetNow({ databaseId })
+          await this.resetNow({ databaseId }, "invalid_history")
           ledger.version = response.latestVersion
           return
         }
@@ -553,7 +573,7 @@ export class SessionDatabaseClient implements DatabaseClient {
     ledger: DatabaseVersionLedger,
   ) {
     if (event.requiresReset) {
-      await this.resetNow({ databaseId: event.databaseId })
+      await this.resetNow({ databaseId: event.databaseId }, "event_reset")
     } else {
       for (const collections of this.bootstrapCollections.values()) {
         if (collections.scope.databaseId === event.databaseId) {
@@ -579,7 +599,11 @@ export class SessionDatabaseClient implements DatabaseClient {
     })
   }
 
-  private async resetNow(scope: DatabaseScope) {
+  private async resetNow(
+    scope: DatabaseScope,
+    reason: DatabaseMetricReason = "manual",
+  ) {
+    emitDatabaseMetric("reset", 1, "success", reason)
     const work: Promise<void>[] = []
     for (const collections of this.bootstrapCollections.values()) {
       if (scopeMatches(collections.scope, scope)) {

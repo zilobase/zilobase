@@ -24,7 +24,8 @@ export function register({ assert, readSource, readWorkspace, test }) {
       "/packages/features/src/databases/row-mutations.ts",
     )
 
-    assert.match(controller, /applyMove\(move, \(\) => setDroppedRows\(null\)\)/)
+    assert.match(controller, /applyMove\(move, \(\) => \{/)
+    assert.match(controller, /markDatabaseInteractionPaint\(dropStartedAt\)/)
     assert.doesNotMatch(controller, /onSettled[^\n]*setDroppedRows/)
     assert.match(mutations, /input\.onOptimisticAccepted\?\.\(\)/)
   })

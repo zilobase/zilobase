@@ -23,6 +23,7 @@ import { ServiceMutationError } from "../../../shared/errors/service-mutation-er
 import type { RuntimeEnv } from "../../../shared/config/config"
 import { createBackgroundTask } from "../../../infrastructure/background/contracts"
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch"
+import { measureDatabaseOperation } from "../observability"
 
 const COMMAND_RECEIPT_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000
 const MAX_DATABASE_MUTATION_CHANGES_BYTES = 64 * 1_024
@@ -143,7 +144,14 @@ export async function executeDatabaseCommand<TResult = unknown>(
   const now = dependencies.now?.() ?? new Date()
   const randomUUID = dependencies.randomUUID ?? (() => crypto.randomUUID())
 
-  const committed = await executor.transaction(async (tx) => {
+  const metricAttributes = {
+    operation: input.request.command.type,
+    scope: input.scope.dataSourceId ? "source" as const : "host" as const,
+  }
+  const committed = await measureDatabaseOperation(
+    "commit_duration_ms",
+    metricAttributes,
+    () => executor.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${input.request.commandId}, 0))`)
 
     const [receipt] = await tx
@@ -287,16 +295,18 @@ export async function executeDatabaseCommand<TResult = unknown>(
     })
 
     return { acknowledgement, eventIds: events.map(({ eventId }) => eventId) }
-  })
+    }),
+  )
 
   if (input.env && committed.eventIds.length > 0) {
-    await dispatchBackgroundTasks(input.env, committed.eventIds.map((eventId) =>
-      createBackgroundTask({
-        env: input.env!,
-        kind: "realtime.database",
-        resourceId: eventId,
-      })
-    ))
+    await measureDatabaseOperation("enqueue_duration_ms", metricAttributes, () =>
+      dispatchBackgroundTasks(input.env!, committed.eventIds.map((eventId) =>
+        createBackgroundTask({
+          env: input.env!,
+          kind: "realtime.database",
+          resourceId: eventId,
+        })
+      )))
   }
   return committed.acknowledgement
 }

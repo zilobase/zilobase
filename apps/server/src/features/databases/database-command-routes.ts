@@ -16,6 +16,10 @@ import {
   executeDatabaseCommand,
   RowMoveConflictError,
 } from "./commands/framework"
+import {
+  recordDatabaseCounter,
+  recordDatabaseHistogram,
+} from "./observability"
 
 export const databaseCommandRoutes = new Hono<AppBindings>()
 const databaseWorkspace = pinnedResourceMiddleware(getDatabaseRecord)
@@ -44,14 +48,30 @@ async function commandResponse(
     )
   }
 
+  const startedAt = performance.now()
+  const metricAttributes = {
+    operation: request.command.type,
+    scope: dataSourceId ? "source" as const : "host" as const,
+  }
   try {
-    return c.json(await executeDatabaseCommand({
+    const acknowledgement = await executeDatabaseCommand({
       actorId: authenticated.user.id,
       env: c.env,
       request,
       scope: { databaseId, dataSourceId },
-    }, { dispatch: dispatchDatabaseCommand }))
+    }, { dispatch: dispatchDatabaseCommand })
+    recordDatabaseHistogram(
+      "acknowledgement_latency_ms",
+      performance.now() - startedAt,
+      { ...metricAttributes, outcome: "success" },
+    )
+    return c.json(acknowledgement)
   } catch (error) {
+    recordDatabaseHistogram(
+      "acknowledgement_latency_ms",
+      performance.now() - startedAt,
+      { ...metricAttributes, outcome: "failure" },
+    )
     if (error instanceof CommandIdReusedError) {
       return c.json({
         code: error.code,
@@ -60,6 +80,10 @@ async function commandResponse(
       }, 409)
     }
     if (error instanceof RowMoveConflictError) {
+      recordDatabaseCounter("ordering_conflict", {
+        ...metricAttributes,
+        outcome: "failure",
+      })
       return c.json({
         code: error.code,
         error: error.message,

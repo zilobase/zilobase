@@ -31,6 +31,7 @@ import { fetchPinnedNodeMcp } from "./pinned-mcp";
 import { createNodeBackgroundCoordinator, publishNodeBackgroundNotification } from "./background-coordinator";
 import { setBackgroundReadinessProbe, getBackgroundOperationalSnapshot } from "../../infrastructure/background/health";
 import { renderPrometheusBackgroundMetrics } from "../../infrastructure/background/telemetry";
+import { renderPrometheusDatabaseMetrics } from "../../features/databases/observability";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -218,7 +219,9 @@ function createBackgroundAdminServer(
     if (request.url === "/metrics") {
       response.statusCode = 200;
       response.setHeader("content-type", "text/plain; version=0.0.4");
-      response.end(renderPrometheusBackgroundMetrics());
+      response.end(
+        renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics(),
+      );
       return;
     }
     if (request.url !== "/health" && request.url !== "/ready") {
