@@ -248,23 +248,22 @@ function moveRecord(
       )
     : moving.orderKey
 
-  for (const [position, row] of rows.entries()) {
-    updateIfPresent(resource.records, row.id, (draft) => {
-      draft.__windowIndex = position
-      if (row.id === command.rowId && orderByKey) {
-        draft.orderKey = midpoint ?? databaseOrderKeyAtPosition(position)
-      } else if (orderByKey && midpoint === null) {
-        draft.orderKey = databaseOrderKeyAtPosition(position)
-      }
-      if (row.id === command.rowId && command.group) {
-        draft.valuesByPropertyId[command.group.propertyId] = optimisticValue(
-          draft,
-          command.group.propertyId,
-          command.group.value,
-        )
-      }
-    })
-  }
+  updateIfPresent(resource.records, command.rowId, (draft) => {
+    draft.__windowIndex = optimisticWindowIndex(
+      rows[index - 1]?.__windowIndex,
+      rows[index + 1]?.__windowIndex,
+    )
+    if (orderByKey) {
+      draft.orderKey = midpoint ?? databaseOrderKeyAtPosition(index)
+    }
+    if (command.group) {
+      draft.valuesByPropertyId[command.group.propertyId] = optimisticValue(
+        draft,
+        command.group.propertyId,
+        command.group.value,
+      )
+    }
+  })
 }
 
 function createRecord(
@@ -287,7 +286,10 @@ function createRecord(
     rows[index]?.orderKey ?? null,
   ) ?? databaseOrderKeyAtPosition(index)
   const optimistic: WindowedDatabaseRecord = {
-    __windowIndex: index,
+    __windowIndex: optimisticWindowIndex(
+      rows[index - 1]?.__windowIndex,
+      rows[index]?.__windowIndex,
+    ),
     createdAt: now,
     dataSourceId: resource.scope.dataSourceId,
     id: `optimistic-row-${commandId}`,
@@ -314,11 +316,13 @@ function createRecord(
     ),
   }
   resource.records.insert(optimistic)
-  for (const row of rows.slice(index)) {
-    updateIfPresent(resource.records, row.id, (draft) => {
-      draft.__windowIndex += 1
-    })
-  }
+}
+
+function optimisticWindowIndex(previous?: number, next?: number) {
+  if (previous === undefined && next === undefined) return 0
+  if (previous === undefined) return next! - 1
+  if (next === undefined) return previous + 1
+  return previous + (next - previous) / 2
 }
 
 function optimisticValue(

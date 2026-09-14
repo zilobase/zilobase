@@ -521,6 +521,13 @@ export class SessionDatabaseClient implements DatabaseClient {
         collections.database.state.get(databaseId)?.version ?? 0,
       )
     }
+    for (const resource of this.recordCollections.values()) {
+      if (resource.scope.databaseId !== databaseId) continue
+      version = Math.max(
+        version,
+        resource.getLatestWindow()?.databaseVersion ?? 0,
+      )
+    }
     return version
   }
 

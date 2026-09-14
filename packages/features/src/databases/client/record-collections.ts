@@ -30,7 +30,7 @@ export type WindowedDatabaseRecord = DatabaseRecordEntity & {
 }
 
 const windowedDatabaseRecordSchema = databaseRecordEntitySchema.extend({
-  __windowIndex: z.number().int().nonnegative(),
+  __windowIndex: z.number().finite(),
 })
 
 export type DatabaseRecordCollection = {
