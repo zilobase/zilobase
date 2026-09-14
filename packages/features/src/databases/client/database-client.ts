@@ -21,6 +21,7 @@ import {
   databaseMutationFeedResponseSchema,
 } from "../contracts-v2"
 import { getDatabaseInitialPageSize } from "../view-evaluation"
+import { databaseContextExportRootQueryKey } from "../queries"
 import {
   createDatabaseBootstrapCollections,
   databaseBootstrapQueryKey,
@@ -573,6 +574,9 @@ export class SessionDatabaseClient implements DatabaseClient {
       ? Math.max(event.version, this.loadedVersion(event.databaseId))
       : event.version
     this.rememberEvent(ledger, event)
+    void this.queryClient.invalidateQueries({
+      queryKey: databaseContextExportRootQueryKey(event.databaseId),
+    })
   }
 
   private async resetNow(scope: DatabaseScope) {

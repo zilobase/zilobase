@@ -254,6 +254,32 @@ export async function getDatabaseBootstrapService(
   }
 }
 
+export async function getDatabaseExportService(
+  input: {
+    dataSourceId?: string
+    databaseId: string
+    existingRecord?: DatabaseRecord
+    userId?: string
+  },
+  dependencies: ReadDependencies = defaultDependencies,
+): Promise<LegacyPayload> {
+  const record = await resolveReadRecord(input, dependencies)
+  const payload = await dependencies.getPayload(
+    record.id,
+    input.userId,
+    record,
+    input.dataSourceId ? { dataSourceId: input.dataSourceId } : undefined,
+  )
+  if (!payload) throw new ServiceMutationError("Database not found", 404)
+  if (
+    input.dataSourceId &&
+    payload.activeDataSource?.id !== input.dataSourceId
+  ) {
+    throw new ServiceMutationError("Database data source not found", 404)
+  }
+  return payload
+}
+
 function windowSnapshot(input: {
   databaseVersion: number
   dataSourceVersion: number

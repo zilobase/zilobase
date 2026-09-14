@@ -9,6 +9,7 @@ import type {
   DatabaseMutationEventV2,
   DatabaseRecordEntity,
 } from "../contracts-v2"
+import { databaseContextExportQueryKey } from "../queries"
 import { createDatabaseClient } from "./database-client"
 
 const timestamp = "2026-09-14T00:00:00.000Z"
@@ -191,6 +192,28 @@ test("command acknowledgements and socket echoes share one direct-write path", a
   await client.ingest(acknowledged!)
   assert.equal(paths.filter((path) => path.includes("/mutations?")).length, 0)
   assert.equal(records.records.size, 2)
+  await client.cleanup()
+})
+
+test("authoritative events invalidate only the explicit AI context export", async () => {
+  const queryClient = new QueryClient()
+  const exportKey = databaseContextExportQueryKey("database-1")
+  queryClient.setQueryData(exportKey, { rows: [] })
+  const apiFetch: ApiFetcher = async (path) => {
+    if (path.includes("/bootstrap")) return bootstrap(1) as never
+    throw new Error(`Unexpected request: ${path}`)
+  }
+  const client = createDatabaseClient({
+    apiFetch,
+    queryClient,
+    sessionId: "session-1",
+  })
+  const collections = client.getBootstrapCollections({ databaseId: "database-1" })
+  await collections.database.stateWhenReady()
+
+  await client.ingest(event(2, { databases: [host(2)] }))
+
+  assert.equal(queryClient.getQueryState(exportKey)?.isInvalidated, true)
   await client.cleanup()
 })
 

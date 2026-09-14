@@ -26,6 +26,7 @@ import {
   DatabaseWindowStaleError,
   MAX_DATABASE_RECORD_WINDOW_LIMIT,
   getDatabaseBootstrapService,
+  getDatabaseExportService,
   getDatabaseRecordWindowService,
 } from "./read/service";
 import {
@@ -102,6 +103,22 @@ databaseReadRoutes.get("/:id/bootstrap", resourceWorkspace, async (c) => {
     viewId: c.req.query("viewId") || undefined,
   });
   return c.json(bootstrap);
+});
+
+databaseReadRoutes.get("/:id/export", resourceWorkspace, async (c) => {
+  const readable = await readableDatabase(c, c.req.param("id"), false);
+  if (readable instanceof Response) return readable;
+  const dataSourceId = c.req.query("dataSourceId") || undefined;
+  if (dataSourceId && dataSourceId.length > 128) {
+    return c.json({ error: "Invalid data source" }, 400);
+  }
+  const payload = await getDatabaseExportService({
+    dataSourceId,
+    databaseId: readable.record.id,
+    existingRecord: readable.record,
+    userId: readable.user?.id,
+  });
+  return c.json(payload);
 });
 
 databaseReadRoutes.get(

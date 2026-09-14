@@ -88,6 +88,37 @@ export const databasePayloadRootQueryKey = (
   databaseId: string | null | undefined,
 ) => ["database", databaseId ?? "none"] as const
 
+export const databaseContextExportQueryKey = (
+  databaseId: string | null | undefined,
+  dataSourceId?: string,
+) => [
+  "database-context-export",
+  databaseId ?? "none",
+  dataSourceId ?? "primary-source",
+] as const
+
+export const databaseContextExportRootQueryKey = (
+  databaseId: string | null | undefined,
+) => ["database-context-export", databaseId ?? "none"] as const
+
+export const databaseContextExportQueryOptions = (
+  apiFetch: ApiFetcher,
+  databaseId: string,
+  dataSourceId?: string,
+) => queryOptions({
+  queryKey: databaseContextExportQueryKey(databaseId, dataSourceId),
+  queryFn: ({ signal }) => {
+    const query = dataSourceId
+      ? `?dataSourceId=${encodeURIComponent(dataSourceId)}`
+      : ""
+    return apiFetch<DatabasePayload>(
+      `/databases/${encodeURIComponent(databaseId)}/export${query}`,
+      { method: "GET", signal },
+    )
+  },
+  staleTime: 30_000,
+})
+
 export const databaseQueryOptions = (
   apiFetch: ApiFetcher,
   databaseId: string | null | undefined,

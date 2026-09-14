@@ -5,6 +5,7 @@ import { ServiceMutationError } from "../../../shared/errors/service-mutation-er
 import {
   DatabaseWindowStaleError,
   getDatabaseBootstrapService,
+  getDatabaseExportService,
   getDatabaseRecordWindowService,
 } from "./service"
 
@@ -172,6 +173,57 @@ test("bootstrap aggregates metadata for every accessible linked source", async (
     "column-source-2",
   ])
   assert.equal("rows" in result, false)
+})
+
+test("database exports deliberately load the complete requested data source", async () => {
+  const exported = {
+    ...payload(),
+    activeDataSource: source("source-2", 1),
+  }
+  const getPayload = vi.fn(async (
+    _databaseId: string,
+    _userId?: string,
+    _record?: unknown,
+    _options?: { dataSourceId?: string },
+  ) => exported)
+  const result = await getDatabaseExportService(
+    {
+      dataSourceId: "source-2",
+      databaseId: "database-1",
+      existingRecord: databaseRecord(),
+      userId: "user-1",
+    },
+    {
+      getPayload,
+      getSchemaPayload: vi.fn(),
+      requireAccess: vi.fn(),
+    } as never,
+  )
+
+  assert.equal(result.rows.length, 12)
+  assert.deepEqual(getPayload.mock.calls[0]?.[3], {
+    dataSourceId: "source-2",
+  })
+})
+
+test("database exports reject a mismatched requested data source", async () => {
+  await assert.rejects(
+    getDatabaseExportService(
+      {
+        dataSourceId: "source-2",
+        databaseId: "database-1",
+        existingRecord: databaseRecord(),
+        userId: "user-1",
+      },
+      {
+        getPayload: vi.fn(async () => payload()),
+        getSchemaPayload: vi.fn(),
+        requireAccess: vi.fn(),
+      } as never,
+    ),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 404,
+  )
 })
 
 test("record windows use view page size, complete aggregates, and load-more offsets", async () => {

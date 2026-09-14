@@ -104,6 +104,26 @@ test("database read route serves published and schema-only payloads", async () =
   assert.equal(mocks.schemaPayload.mock.calls.length, 1);
 });
 
+test("database export route performs an explicit complete source read", async () => {
+  mocks.payload.mockResolvedValue({
+    activeDataSource: { id: "source-1" },
+    database: { id: "database-1" },
+    rows: [{ id: "row-1" }],
+  });
+  const response = await sessionApp().request(
+    "/database-1/export?dataSourceId=source-1",
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    (await responseJson<{ rows: Array<{ id: string }> }>(response)).rows,
+    [{ id: "row-1" }],
+  );
+  assert.deepEqual(mocks.payload.mock.calls[0]?.[3], {
+    dataSourceId: "source-1",
+  });
+});
+
 test("database read route authorizes deleted records through membership", async () => {
   mocks.getRecord.mockResolvedValue({ ...record, deletedAt: new Date() });
   const response = await sessionApp().request("/database-1?includeDeleted=1");
