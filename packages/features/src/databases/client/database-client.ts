@@ -8,11 +8,18 @@ import type {
   DatabaseMutationEventV2,
   DatabaseRecordEntity,
 } from "../contracts-v2"
-
-export const databaseClientQueryRoot = "database-client-v2" as const
+import {
+  createDatabaseBootstrapCollections,
+  databaseBootstrapQueryKey,
+  readBootstrapCollectionStatus,
+  type DatabaseBootstrapCollections,
+} from "./bootstrap-collections"
+import { databaseClientQueryRoot } from "./query-keys"
+export { databaseClientQueryKey, databaseClientQueryRoot } from "./query-keys"
 
 export type DatabaseScope = {
   databaseId: string
+  includeDeleted?: boolean
   viewId?: string | null
 }
 
@@ -71,6 +78,10 @@ export class SessionDatabaseClient implements DatabaseClient {
   readonly sessionId: string
   readonly tanstack: TanStackDbClient
   private readonly apiFetch: ApiFetcher
+  private readonly bootstrapCollections = new Map<
+    string,
+    DatabaseBootstrapCollections
+  >()
   private readonly cleanups = new Set<() => Promise<void> | void>()
   private disposed = false
   private readonly queryClient: QueryClient
@@ -84,7 +95,16 @@ export class SessionDatabaseClient implements DatabaseClient {
 
   bootstrap(scope: DatabaseScope): DatabaseBootstrapState {
     this.assertActive()
-    return { data: undefined, error: null, scope, status: "idle" }
+    const collections = this.getBootstrapCollections(scope)
+    const queryKey = databaseBootstrapQueryKey(this.sessionId, scope)
+    return {
+      ...readBootstrapCollectionStatus(
+        collections,
+        this.queryClient,
+        queryKey,
+      ),
+      scope,
+    }
   }
 
   records(scope: DatabaseViewScope): DatabaseRecordWindow {
@@ -127,6 +147,27 @@ export class SessionDatabaseClient implements DatabaseClient {
     return () => this.cleanups.delete(cleanup)
   }
 
+  getBootstrapCollections(scope: DatabaseScope) {
+    this.assertActive()
+    const key = JSON.stringify([
+      scope.databaseId,
+      scope.viewId ?? null,
+      scope.includeDeleted === true,
+    ])
+    let collections = this.bootstrapCollections.get(key)
+    if (!collections) {
+      collections = createDatabaseBootstrapCollections({
+        apiFetch: this.apiFetch,
+        queryClient: this.queryClient,
+        scope,
+        sessionId: this.sessionId,
+      })
+      this.bootstrapCollections.set(key, collections)
+      this.cleanups.add(() => collections?.cleanup())
+    }
+    return collections
+  }
+
   getApiFetch() {
     this.assertActive()
     return this.apiFetch
@@ -149,6 +190,7 @@ export class SessionDatabaseClient implements DatabaseClient {
       this.tanstack.cleanup(),
     ])
     this.cleanups.clear()
+    this.bootstrapCollections.clear()
     this.queryClient.removeQueries({
       queryKey: [databaseClientQueryRoot, this.sessionId],
     })
@@ -161,11 +203,4 @@ export class SessionDatabaseClient implements DatabaseClient {
 
 export function createDatabaseClient(options: DatabaseClientOptions) {
   return new SessionDatabaseClient(options)
-}
-
-export function databaseClientQueryKey(
-  sessionId: string,
-  ...scope: readonly unknown[]
-) {
-  return [databaseClientQueryRoot, sessionId, ...scope] as const
 }
