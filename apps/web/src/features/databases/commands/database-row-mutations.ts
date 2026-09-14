@@ -23,7 +23,7 @@ export function createAddDatabaseRowMutation({
   updateValue: DatabaseRowMutations["updateValue"]
 }) {
   return ({ parentRelation, propertyValues, title }: NewRowSetup) => {
-    if (!editable || !databaseId || addRow.isPending) return
+    if (!editable || !databaseId) return
 
     const uniquePropertyValues = new Map(
       propertyValues.map((propertyValue) => [

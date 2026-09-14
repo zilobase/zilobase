@@ -181,8 +181,6 @@ export function DatabaseTableView() {
     groupProperty,
     hasNextPage,
     hostDatabaseId,
-    isAddingDatabaseProperty,
-    isAddingDatabaseRow,
     isFetchingNextPage,
     personOptions,
     properties,
@@ -1251,8 +1249,8 @@ export function DatabaseTableView() {
       key={insertKey}
     >
       <AddDatabasePropertyMenu
-        disabled={isAddingDatabaseProperty}
-        isPending={isAddingDatabaseProperty}
+        disabled={false}
+        isPending={false}
         onAdd={(type, label) =>
           addInsertedDatabaseProperty(type, label, position, insertKey)
         }
@@ -1518,8 +1516,8 @@ export function DatabaseTableView() {
         {canEditStructure ? (
           <th className="database-add-property-cell">
             <AddDatabasePropertyMenu
-              disabled={isAddingDatabaseProperty}
-              isPending={isAddingDatabaseProperty}
+              disabled={false}
+              isPending={false}
               onAdd={addDatabasePropertyAndMaybeOpenFormula}
             />
             <span
@@ -1795,7 +1793,7 @@ export function DatabaseTableView() {
                 <td colSpan={columnKeys.length}>
                   <button
                     className="database-sub-item-create"
-                    disabled={!databaseId || isAddingDatabaseRow}
+                    disabled={!databaseId}
                     onClick={() =>
                       addDatabaseRow(undefined, undefined, parentRowId)
                     }
@@ -1825,7 +1823,6 @@ export function DatabaseTableView() {
       editable,
       expandedEmptySubItemRowIds,
       fillTargetRowIds,
-      isAddingDatabaseRow,
       isSubItemsNested,
       nameColumnLabel,
       nameColumnShowPageIcon,
@@ -2073,7 +2070,7 @@ export function DatabaseTableView() {
                           canCreateRowInKanbanGroup(groupProperty) ? (
                             <CreateDatabaseRowButton
                               columnCount={columnKeys.length}
-                              disabled={!databaseId || isAddingDatabaseRow}
+                              disabled={!databaseId}
                               onClick={() =>
                                 addDatabaseRow(
                                   section.groupValue,
@@ -2143,7 +2140,7 @@ export function DatabaseTableView() {
                   editable ? (
                     <CreateDatabaseRowButton
                       columnCount={columnKeys.length}
-                      disabled={!databaseId || isAddingDatabaseRow}
+                      disabled={!databaseId}
                       onClick={() => addDatabaseRow()}
                     />
                   ) : undefined

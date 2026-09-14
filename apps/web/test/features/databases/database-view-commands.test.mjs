@@ -1980,6 +1980,49 @@ export function register({ assert, loadModule, test }) {
       title: "Untitled",
     });
   });
+
+  test("database view commands keep row and property creation responsive while commands are pending", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/features/databases/commands/database-view-commands.ts",
+    );
+    const addProperty = createMutation();
+    const addRow = createMutation();
+    addProperty.isPending = true;
+    addRow.isPending = true;
+    const commands = getDatabaseViewCommands({
+      notify: { error: () => {}, success: () => {} },
+      copyViewLink: async () => {},
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: {},
+        id: "view-1",
+        name: "Table",
+        type: "table",
+      },
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addProperty, addRow }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.addDatabaseRow();
+    commands.addDatabaseRow();
+    commands.addDatabaseProperty("text", "First");
+    commands.addDatabaseProperty("number", "Second");
+
+    assert.equal(addRow.calls.length, 2);
+    assert.equal(addProperty.calls.length, 2);
+  });
 }
 
 function createMutation() {

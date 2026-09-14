@@ -320,7 +320,7 @@ export function getDatabaseViewCommands({
       label = "Property",
       position?: number,
     ) => {
-      if (!editable || !databaseId || addProperty.isPending) {
+      if (!editable || !databaseId) {
         return;
       }
 
@@ -384,7 +384,7 @@ export function getDatabaseViewCommands({
       groupValue?: string,
       groupPropertyOverride?: DatabasePropertyListItem | null,
     ) => {
-      if (!editable || !databaseId || addRow.isPending) {
+      if (!editable || !databaseId) {
         return;
       }
 
