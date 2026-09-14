@@ -37,7 +37,7 @@ beforeEach(() => {
 function transactionRecorder(selectResults: unknown[][]) {
   const remaining = [...selectResults];
   const tx = {
-    async execute() {},
+    execute: vi.fn(async () => undefined),
     insert() {
       return {
         values() {
@@ -83,6 +83,21 @@ test("reorderDatabaseRowsService persists row and placement order", async () => 
   ]);
   assert.equal(mocks.positions.mock.calls[0]?.[0], tx);
   assert.equal(mocks.placements.mock.calls[0]?.[0], tx);
+});
+
+test("row order writes acquire the transaction lock before persistence", async () => {
+  const tx = transactionRecorder([[{ id: "row-1" }, { id: "row-2" }]]);
+
+  await reorderDatabaseRowsService({
+    databaseId: "database-1",
+    rowIds: ["row-2", "row-1"],
+    userId: "user-1",
+  });
+
+  assert.ok(
+    tx.execute.mock.invocationCallOrder[0]! <
+      mocks.positions.mock.invocationCallOrder[0]!,
+  );
 });
 
 test("moveDatabaseRowService updates ordering and a group value", async () => {
@@ -141,4 +156,24 @@ test("row position services reject invalid membership and missing records", asyn
     }),
     (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
+});
+
+test("moves reject deleted or foreign rows omitted from the active source", async () => {
+  transactionRecorder([[
+    { id: "row-1", pageId: "page-1" },
+    { id: "row-2", pageId: "page-2" },
+  ]]);
+
+  await assert.rejects(
+    moveDatabaseRowService({
+      databaseId: "database-1",
+      rowId: "row-1",
+      rowIds: ["row-2", "deleted-or-foreign", "row-1"],
+      userId: "user-1",
+    }),
+    (error: unknown) =>
+      error instanceof ServiceMutationError && error.status === 400,
+  );
+  assert.equal(mocks.positions.mock.calls.length, 0);
+  assert.equal(mocks.placements.mock.calls.length, 0);
 });
