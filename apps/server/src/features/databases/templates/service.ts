@@ -1,5 +1,6 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
+import { databaseOrderKeyAtPosition } from "@zilobase/features/databases/order-key";
 
 import { encodePageContentAsYjs } from "../../collaboration/service";
 import type { RuntimeEnv } from "../../../shared/config/config";
@@ -254,8 +255,8 @@ export async function applyDatabaseTemplateService(
             dataSourceId: existing.id,
             id: row.rowId,
             lastEditedById: input.userId,
+            orderKey: databaseOrderKeyAtPosition(row.position),
             pageId: row.pageId,
-            position: row.position,
             updatedAt: now,
           })),
         );

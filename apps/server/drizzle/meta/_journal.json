@@ -645,6 +645,13 @@
       "when": 1789372800001,
       "tag": "0091_database_outbox_journal_reference",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1789372800002,
+      "tag": "0092_database_v2_constraints",
+      "breakpoints": true
     }
   ]
 }

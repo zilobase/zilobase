@@ -142,9 +142,10 @@ test("commitDatabaseMutationBatch versions, bulk persists, and publishes each mu
     (transaction.outbox[0] as { eventId: string }).eventId,
     (transaction.journal[0] as { id: string }).id,
   );
-  assert.ok(
-    (transaction.outbox[0] as { committedAt: unknown }).committedAt instanceof Date,
-  );
+  assert.deepEqual(Object.keys(transaction.outbox[0] as object).sort(), [
+    "eventId",
+    "id",
+  ]);
   assert.equal(mocks.publish.mock.calls.length, 0);
   assert.deepEqual(
     mocks.dispatch.mock.calls[0]?.[1].map((task: { kind: string; resourceId: string }) => ({
@@ -177,8 +178,8 @@ test("same-database batches reserve contiguous versions with one update", async 
   assert.equal(transaction.updateCalls, 1);
   assert.equal(transaction.insertCalls, 2);
   assert.deepEqual(
-    transaction.outbox.map((row) => (row as { version: number }).version),
-    [10, 11, 12],
+    transaction.outbox.map((row) => (row as { eventId: string }).eventId),
+    transaction.journal.map((row) => (row as { id: string }).id),
   );
   assert.deepEqual(
     transaction.journal.map((row) => (row as { version: number }).version),
@@ -254,8 +255,8 @@ test("automation facts are captured inside the commit transaction and abort atom
   assert.equal(mocks.publish.mock.calls.length, 0);
 });
 
-test("large commits persist invalidate-only payloads", async () => {
-  const { outbox } = transactionExecutor([2]);
+test("large commits persist reset events with reference-only delivery", async () => {
+  const { journal, outbox } = transactionExecutor([2]);
 
   const result = await commitDatabaseMutationBatch(
     { actorId: "user-1" },
@@ -273,14 +274,8 @@ test("large commits persist invalidate-only payloads", async () => {
 
   assert.equal(result.commits[0]?.requiresRefetch, true);
   assert.deepEqual(result.commits[0]?.delta, {});
-  assert.deepEqual(
-    (outbox[0] as { delta: unknown; requiresRefetch: boolean }).delta,
-    {},
-  );
-  assert.equal(
-    (outbox[0] as { requiresRefetch: boolean }).requiresRefetch,
-    false,
-  );
+  assert.equal((journal[0] as { requiresReset: boolean }).requiresReset, true);
+  assert.deepEqual(Object.keys(outbox[0] as object).sort(), ["eventId", "id"]);
   assert.equal(mocks.publish.mock.calls.length, 0);
 });
 

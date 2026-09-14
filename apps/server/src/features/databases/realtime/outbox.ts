@@ -39,7 +39,10 @@ export async function drainDatabaseRealtimeOutbox(
         options?.outboxId ? eq(databaseRealtimeOutbox.id, options.outboxId) : undefined,
         lte(databaseRealtimeOutbox.nextAttemptAt, sql`CURRENT_TIMESTAMP`),
       ))
-      .orderBy(asc(databaseRealtimeOutbox.committedAt))
+      .orderBy(
+        asc(databaseRealtimeOutbox.nextAttemptAt),
+        asc(databaseRealtimeOutbox.id),
+      )
       .limit(Math.min(Math.max(options?.limit ?? 100, 1), 500))
       .for("update", { skipLocked: true });
 
@@ -73,8 +76,8 @@ export async function drainDatabaseRealtimeOutbox(
   const retryIdsByAttempts = new Map<number, string[]>();
 
   for (const entry of entries) {
+    const journalEvent = journalById.get(entry.eventId);
     try {
-      const journalEvent = entry.eventId ? journalById.get(entry.eventId) : undefined;
       if (!journalEvent) {
         throw new Error("Database mutation journal event is unavailable");
       }
@@ -99,13 +102,13 @@ export async function drainDatabaseRealtimeOutbox(
       }
       console.error(JSON.stringify({
         attempts: entry.attempts,
-        databaseId: entry.databaseId,
+        databaseId: journalEvent?.databaseId ?? null,
         error: error instanceof Error ? error.message : String(error),
         event: discard
           ? "database_realtime_publish_discarded"
           : "database_realtime_publish_failed",
-        mutationId: entry.id,
-        version: entry.version,
+        eventId: entry.eventId,
+        version: journalEvent?.version ?? null,
       }));
     }
   }
@@ -127,11 +130,11 @@ export async function drainDatabaseRealtimeOutbox(
     .select({
       backlog: sql<number>`count(*)::int`,
       maxAttempts: sql<number>`coalesce(max(${databaseRealtimeOutbox.attempts}), 0)::int`,
-      oldestCommittedAt: sql<Date | null>`min(${databaseRealtimeOutbox.committedAt})`,
+      oldestReadyAt: sql<Date | null>`min(${databaseRealtimeOutbox.nextAttemptAt})`,
     })
     .from(databaseRealtimeOutbox);
-  const oldestCommittedAt = health?.oldestCommittedAt
-    ? new Date(health.oldestCommittedAt).getTime()
+  const oldestReadyAt = health?.oldestReadyAt
+    ? new Date(health.oldestReadyAt).getTime()
     : attemptedAt.getTime();
 
   return {
@@ -140,7 +143,7 @@ export async function drainDatabaseRealtimeOutbox(
     discarded,
     failed,
     maxAttempts: health?.maxAttempts ?? 0,
-    oldestAgeMs: Math.max(0, attemptedAt.getTime() - oldestCommittedAt),
+    oldestAgeMs: Math.max(0, attemptedAt.getTime() - oldestReadyAt),
   };
 }
 

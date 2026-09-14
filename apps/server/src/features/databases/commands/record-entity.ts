@@ -3,7 +3,6 @@ import {
   databaseRecordEntitySchema,
   type DatabaseRecordEntity,
 } from "@zilobase/features/databases/contracts"
-import { databaseOrderKeyAtPosition } from "@zilobase/features/databases/order-key"
 
 import type { DatabaseCommandContext } from "./framework"
 import {
@@ -48,7 +47,7 @@ export async function getDatabaseRecordEntity(
     createdAt: timestamp(record.row.createdAt),
     dataSourceId: record.row.dataSourceId,
     id: record.row.id,
-    orderKey: record.row.orderKey ?? databaseOrderKeyAtPosition(record.row.position),
+    orderKey: record.row.orderKey,
     page: {
       createdAt: timestamp(record.page.createdAt),
       deletedAt: nullableTimestamp(record.page.deletedAt),

@@ -163,15 +163,8 @@ export async function commitDatabaseMutationBatch<T>(
       const delta = prepareDatabaseRealtimeDelta(mutation.delta);
 
       outboxRows.push({
-        actorId: options.actorId,
-        changed: [],
-        committedAt: new Date(committedAt),
-        databaseId: mutation.databaseId,
-        delta: {},
         id: mutationId,
         eventId: mutationId,
-        requiresRefetch: false,
-        version,
       });
 
       commits.push({

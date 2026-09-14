@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
   orderLocks: vi.fn(),
   placementPositions: vi.fn(),
   rebalance: vi.fn(),
-  rowPositions: vi.fn(),
   placement: vi.fn(),
   selectResults: [] as unknown[][],
   sourceAccess: vi.fn(),
@@ -50,7 +49,6 @@ vi.mock("../core/position-service", () => ({
   lockDatabaseRowOrderingSources: mocks.orderLocks,
   rebalanceDatabaseRowOrderKeys: mocks.rebalance,
   updateDatabaseRowPlacementPositions: mocks.placementPositions,
-  updateDatabaseRowPositions: mocks.rowPositions,
 }));
 vi.mock("./import-service", () => ({
   inheritDatabaseRowProperties: mocks.inherit,
@@ -108,7 +106,6 @@ beforeEach(() => {
   mocks.orderLocks.mockReset();
   mocks.orderLocks.mockResolvedValue(undefined);
   mocks.placementPositions.mockReset();
-  mocks.rowPositions.mockReset();
   mocks.rebalance.mockReset();
   mocks.rebalance.mockResolvedValue(undefined);
   mocks.placement.mockReset();
@@ -237,7 +234,7 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
     Buffer.isBuffer((inserts[1] as Record<string, unknown>).state),
     true,
   );
-  assert.equal((inserts[2] as Record<string, unknown>).position, 1);
+  assert.equal("position" in (inserts[2] as Record<string, unknown>), false);
   assert.equal((inserts[2] as Record<string, unknown>).orderKey, "1536");
   assert.equal(
     (inserts[2] as Record<string, unknown>).parentRowId,

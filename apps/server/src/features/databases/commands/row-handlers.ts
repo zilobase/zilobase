@@ -26,7 +26,6 @@ import { ServiceMutationError } from "../../../shared/errors/service-mutation-er
 import {
   lockDatabaseRowOrdering,
   rebalanceDatabaseRowOrderKeys,
-  updateDatabaseRowCompatibilityPositions,
   updateDatabaseRowPlacementPositions,
 } from "../core/position-service"
 import { validateCellValue } from "../properties/config"
@@ -40,19 +39,14 @@ import { getDatabaseRecordEntity } from "./record-entity"
 
 type OrderedRow = {
   id: string
-  orderKey: string | null
+  orderKey: string
   pageId: string
-  position: number
 }
 
 function sortRows(rows: OrderedRow[]) {
   return [...rows].sort((left, right) => {
-    const leftKey = parseDatabaseOrderKey(
-      left.orderKey ?? databaseOrderKeyAtPosition(left.position),
-    )
-    const rightKey = parseDatabaseOrderKey(
-      right.orderKey ?? databaseOrderKeyAtPosition(right.position),
-    )
+    const leftKey = parseDatabaseOrderKey(left.orderKey)
+    const rightKey = parseDatabaseOrderKey(right.orderKey)
     return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : left.id.localeCompare(right.id)
   })
 }
@@ -102,7 +96,6 @@ async function activeRows(context: DatabaseCommandContext, dataSourceId: string)
       id: databaseRow.id,
       orderKey: databaseRow.orderKey,
       pageId: databaseRow.pageId,
-      position: databaseRow.position,
     })
     .from(databaseRow)
     .where(and(
@@ -121,10 +114,10 @@ async function allocateOrderKey(
   const previous = rows[index - 1]
   const next = rows[index]
   const before = previous
-    ? previous.orderKey ?? databaseOrderKeyAtPosition(previous.position)
+    ? previous.orderKey
     : null
   const after = next
-    ? next.orderKey ?? databaseOrderKeyAtPosition(next.position)
+    ? next.orderKey
     : null
   let orderKey = databaseOrderKeyBetween(before, after)
   if (orderKey !== null) return orderKey
@@ -302,14 +295,12 @@ async function createRow(
     orderKey,
     pageId,
     parentRowId: command.parentRowId,
-    position: placement.index,
     updatedAt: now,
   })
   await writeValues(context, pageId, values, now)
 
   const rowIds = [...placement.rows.map(({ id }) => id)]
   rowIds.splice(placement.index, 0, rowId)
-  await updateDatabaseRowCompatibilityPositions(context.transaction, source.id, rowIds, now)
   await updateDatabaseRowPlacementPositions(
     context.transaction,
     source.parentDatabaseId,
@@ -372,7 +363,6 @@ async function moveRow(
 
   const rowIds = placement.rows.map(({ id }) => id)
   rowIds.splice(placement.index, 0, row.id)
-  await updateDatabaseRowCompatibilityPositions(context.transaction, source.id, rowIds, now)
   await updateDatabaseRowPlacementPositions(
     context.transaction,
     source.parentDatabaseId,
@@ -424,7 +414,7 @@ async function setRowArchived(
   await lockDatabaseRowOrdering(context.transaction, source.id)
   const restore = command.type === "row.restore"
   const [row] = await context.transaction
-    .select({ id: databaseRow.id, orderKey: databaseRow.orderKey, pageId: databaseRow.pageId, position: databaseRow.position })
+    .select({ id: databaseRow.id, orderKey: databaseRow.orderKey, pageId: databaseRow.pageId })
     .from(databaseRow)
     .where(and(
       eq(databaseRow.id, command.rowId),
@@ -450,11 +440,9 @@ async function setRowArchived(
       deletedById: null,
       lastEditedById: context.actorId,
       orderKey,
-      position: withoutRow.length,
       updatedAt: now,
     }).where(and(eq(databaseRow.id, row.id), eq(databaseRow.dataSourceId, source.id)))
     const rowIds = [...withoutRow.map(({ id }) => id), row.id]
-    await updateDatabaseRowCompatibilityPositions(context.transaction, source.id, rowIds, now)
     await context.transaction.update(pageItemPlacement).set({
       deletedAt: null,
       position: rowIds.length - 1,
@@ -482,7 +470,6 @@ async function setRowArchived(
       updatedAt: now,
     }).where(eq(pageItemPlacement.sourceRowId, row.id))
     const rowIds = active.filter(({ id }) => id !== row.id).map(({ id }) => id)
-    await updateDatabaseRowCompatibilityPositions(context.transaction, source.id, rowIds, now)
     await updateDatabaseRowPlacementPositions(
       context.transaction,
       source.parentDatabaseId,

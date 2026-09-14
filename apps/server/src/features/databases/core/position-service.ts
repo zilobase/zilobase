@@ -17,10 +17,10 @@ const getPositionValuesSql = (ids: string[]) =>
     sql`, `,
   );
 
-const getRowPositionValuesSql = (ids: string[]) =>
+const getRowOrderKeyValuesSql = (ids: string[]) =>
   sql.join(
     ids.map((id, position) =>
-      sql`(${id}::text, ${position}::integer, ${databaseOrderKeyAtPosition(position)}::numeric)`,
+      sql`(${id}::text, ${databaseOrderKeyAtPosition(position)}::numeric)`,
     ),
     sql`, `,
   );
@@ -55,8 +55,8 @@ export async function rebalanceDatabaseRowOrderKeys(
     update ${databaseRow}
     set "order_key" = positions.order_key,
         "updated_at" = ${updatedAt}
-    from (values ${getRowPositionValuesSql(rowIds)})
-      as positions(id, position, order_key)
+    from (values ${getRowOrderKeyValuesSql(rowIds)})
+      as positions(id, order_key)
     where ${databaseRow.id} = positions.id
       and ${databaseRow.dataSourceId} = ${dataSourceId}
       and ${databaseRow.orderKey} is distinct from positions.order_key
@@ -81,52 +81,6 @@ export async function updateDatabasePropertyPositions(
     where ${databaseProperty.id} = positions.id
       and ${databaseProperty.dataSourceId} = ${databaseId}
       and ${databaseProperty.position} <> positions.position
-  `);
-}
-
-export async function updateDatabaseRowPositions(
-  executor: SqlExecutor,
-  databaseId: string,
-  rowIds: string[],
-  updatedAt: Date,
-) {
-  if (rowIds.length === 0) {
-    return;
-  }
-
-  await executor.execute(sql`
-    update ${databaseRow}
-    set "position" = positions.position,
-        "order_key" = positions.order_key,
-        "updated_at" = ${updatedAt}
-    from (values ${getRowPositionValuesSql(rowIds)})
-      as positions(id, position, order_key)
-    where ${databaseRow.id} = positions.id
-      and ${databaseRow.dataSourceId} = ${databaseId}
-      and (
-        ${databaseRow.position} <> positions.position
-        or ${databaseRow.orderKey} is distinct from positions.order_key
-      )
-  `);
-}
-
-/** Keep the legacy integer projection in sync without rewriting fractional keys. */
-export async function updateDatabaseRowCompatibilityPositions(
-  executor: SqlExecutor,
-  dataSourceId: string,
-  rowIds: string[],
-  updatedAt: Date,
-) {
-  if (rowIds.length === 0) return;
-
-  await executor.execute(sql`
-    update ${databaseRow}
-    set "position" = positions.position,
-        "updated_at" = ${updatedAt}
-    from (values ${getPositionValuesSql(rowIds)}) as positions(id, position)
-    where ${databaseRow.id} = positions.id
-      and ${databaseRow.dataSourceId} = ${dataSourceId}
-      and ${databaseRow.position} <> positions.position
   `);
 }
 

@@ -10,13 +10,17 @@ import {
   databaseRow,
 } from "../../infrastructure/database/schema"
 
-test("database v2 schema exposes nullable row order and durable journals", () => {
+test("database v2 schema requires canonical row order and journal-backed delivery", () => {
   const rowColumns = getTableColumns(databaseRow)
+  const outboxColumns = getTableColumns(databaseRealtimeOutbox)
 
-  assert.equal(rowColumns.orderKey?.notNull, false)
+  assert.equal(rowColumns.orderKey?.notNull, true)
+  assert.equal("position" in rowColumns, false)
   assert.equal(getTableName(databaseMutationEvent), "database_mutation_event")
   assert.equal(getTableName(databaseCommandReceipt), "database_command_receipt")
-  assert.equal(getTableColumns(databaseRealtimeOutbox).eventId?.notNull, false)
+  assert.equal(outboxColumns.eventId?.notNull, true)
+  assert.equal("delta" in outboxColumns, false)
+  assert.equal("databaseId" in outboxColumns, false)
 })
 
 test("outbox migration references journal events while retaining legacy rows", async () => {
@@ -44,4 +48,20 @@ test("database v2 migration backfills order keys and indexes recovery paths", as
   assert.match(migration, /database_mutation_event_retention_idx/)
   assert.match(migration, /CREATE TABLE "database_command_receipt"/)
   assert.match(migration, /database_command_receipt_retention_idx/)
+})
+
+test("database v2 finalization removes compatibility columns and enforces order", async () => {
+  const migration = await readFile(
+    new URL("../../../drizzle/0092_database_v2_constraints.sql", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(migration, /row_number\(\) OVER/)
+  assert.match(migration, /ALTER COLUMN "order_key" SET NOT NULL/)
+  assert.match(migration, /database_row_source_order_unique/)
+  assert.match(migration, /DROP COLUMN "position"/)
+  assert.match(migration, /DELETE FROM "database_realtime_outbox" WHERE "event_id" IS NULL/)
+  assert.match(migration, /ALTER COLUMN "event_id" SET NOT NULL/)
+  assert.match(migration, /DROP COLUMN "delta"/)
+  assert.doesNotMatch(migration, /page_item_placement.*DROP COLUMN/is)
 })

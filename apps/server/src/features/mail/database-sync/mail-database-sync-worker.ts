@@ -1,4 +1,8 @@
-import { and, asc, eq, inArray, isNull, lt, lte, max, or, sql } from "drizzle-orm"
+import { and, asc, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm"
+import {
+  databaseOrderKeyAtPosition,
+  databaseOrderKeyBetween,
+} from "@zilobase/features/databases/order-key"
 import { evaluateMailFilterExpression, type MailFilterRecord } from "@zilobase/features/mail/predicate";
 import { normalizeMailViewConfig } from "@zilobase/features/mail/organization";
 import { type MailAddress } from "@zilobase/features/mail/contracts";
@@ -6,6 +10,10 @@ import { type MailAddress } from "@zilobase/features/mail/contracts";
 import { requireDatabaseEditAccess } from "../../databases/access/database-access"
 import { requireDataSourceEditAccess } from "../../databases/access/data-source-access"
 import { commitDataSourceMutation } from "../../databases/core/commit"
+import {
+  lockDatabaseRowOrdering,
+  rebalanceDatabaseRowOrderKeys,
+} from "../../databases/core/position-service"
 import { lockDatabaseAutomationFactRows } from "../../databases/automations/triggers/event-capture"
 import { validateCellValue } from "../../databases/properties/config"
 import { fetchDatabaseRowDelta, fetchDatabaseValuesForPage } from "../../databases/realtime/delta"
@@ -340,17 +348,31 @@ async function ensureSyncPage(env: RuntimeEnv, record: SyncRecord, dataSourceId:
   if (existing?.deletedAt) throw new MailDatabaseSyncPausedError("The synced database row was deleted.")
   if (!existing) {
     await commitDataSourceMutation({ actorId: userId, changed: ["rows"], dataSourceId, env }, async (tx) => {
+      await lockDatabaseRowOrdering(tx, dataSourceId)
       await lockDatabaseAutomationFactRows(tx, [{ dataSourceId, rowId: record.databaseRowId }])
-      const [position] = await tx.select({ value: max(databaseRow.position) }).from(databaseRow).where(and(eq(databaseRow.dataSourceId, dataSourceId), isNull(databaseRow.deletedAt)))
+      const activeRows = await tx.select({ id: databaseRow.id, orderKey: databaseRow.orderKey })
+        .from(databaseRow)
+        .where(and(eq(databaseRow.dataSourceId, dataSourceId), isNull(databaseRow.deletedAt)))
+        .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
       const now = new Date()
+      let orderKey = databaseOrderKeyBetween(activeRows.at(-1)?.orderKey ?? null, null)
+      if (orderKey === null) {
+        await rebalanceDatabaseRowOrderKeys(
+          tx,
+          dataSourceId,
+          activeRows.map(({ id }) => id),
+          now,
+        )
+        orderKey = databaseOrderKeyAtPosition(activeRows.length)
+      }
       const [inserted] = await tx.insert(databaseRow).values({
         createdAt: now,
         createdById: userId,
         dataSourceId,
         id: record.databaseRowId,
         lastEditedById: userId,
+        orderKey,
         pageId: record.pageId,
-        position: Number(position?.value ?? -1) + 1,
         updatedAt: now,
       }).onConflictDoNothing().returning({ id: databaseRow.id })
       await upsertPageItemPlacement(tx, {
@@ -360,7 +382,7 @@ async function ensureSyncPage(env: RuntimeEnv, record: SyncRecord, dataSourceId:
         parentId: databaseId,
         parentKind: "database",
         placementKind: "database_row",
-        position: Number(position?.value ?? -1) + 1,
+        position: activeRows.length,
         sourceRowId: record.databaseRowId,
         workspaceId,
       })

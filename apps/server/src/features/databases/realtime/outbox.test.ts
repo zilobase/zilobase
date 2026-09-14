@@ -228,7 +228,7 @@ test("outbox draining delivers, retries, discards, and reports health", async ()
       { ...event, attempts: 0, committedAt, id: "retry", requiresRefetch: true },
       { ...event, attempts: 7, committedAt, id: "discard", requiresRefetch: false },
     ],
-    { backlog: 2, maxAttempts: 4, oldestCommittedAt: committedAt },
+    { backlog: 2, maxAttempts: 4, oldestReadyAt: committedAt },
   );
   const publish = vi
     .fn((_input: any) => Promise.resolve())

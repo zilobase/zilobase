@@ -262,15 +262,8 @@ export async function executeDatabaseCommand<TResult = unknown>(
 
     await tx.insert(databaseMutationEvent).values(events.map(storedEvent))
     await tx.insert(databaseRealtimeOutbox).values(events.map((event) => ({
-      actorId: event.actorId,
-      changed: [],
-      committedAt: new Date(event.committedAt),
-      databaseId: event.databaseId,
-      delta: {},
       eventId: event.eventId,
       id: event.eventId,
-      requiresRefetch: false,
-      version: event.version,
     })))
     const primaryEvent = events.find(({ databaseId }) =>
       databaseId === input.scope.databaseId

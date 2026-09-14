@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import {
   databaseOrderKeyAtPosition,
   databaseOrderKeyBetween,
@@ -40,7 +40,6 @@ import {
   lockDatabaseRowOrderingSources,
   rebalanceDatabaseRowOrderKeys,
   updateDatabaseRowPlacementPositions,
-  updateDatabaseRowPositions,
 } from "../core/position-service";
 import { inheritDatabaseRowProperties } from "./import-service";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
@@ -104,12 +103,11 @@ export async function createDatabaseRowService(input: {
     );
   }
 
-  const rows = await db
+  const rows = (await db
     .select({
       id: databaseRow.id,
       orderKey: databaseRow.orderKey,
       pageId: databaseRow.pageId,
-      position: databaseRow.position,
     })
     .from(databaseRow)
     .where(
@@ -118,7 +116,8 @@ export async function createDatabaseRowService(input: {
         isNull(databaseRow.deletedAt),
       ),
     )
-    .orderBy(asc(databaseRow.position));
+    .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id)))
+    .map((row, position) => ({ ...row, position }));
 
   const sourceRows =
     sourceDataSource && input.sourceRowId
@@ -127,7 +126,7 @@ export async function createDatabaseRowService(input: {
             id: databaseRow.id,
             pageId: databaseRow.pageId,
             parentRowId: databaseRow.parentRowId,
-            position: databaseRow.position,
+            orderKey: databaseRow.orderKey,
           })
           .from(databaseRow)
           .where(
@@ -136,7 +135,10 @@ export async function createDatabaseRowService(input: {
               isNull(databaseRow.deletedAt),
             ),
           )
-          .orderBy(asc(databaseRow.position))
+          .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
+          .then((sourceRows) =>
+            sourceRows.map((row, position) => ({ ...row, position }))
+          )
       : [];
   const sourceRow = sourceRows.find((row) => row.id === input.sourceRowId);
 
@@ -284,12 +286,11 @@ export async function createDatabaseRowService(input: {
     ]);
     const now = new Date();
     if (typeof (tx as { select?: unknown }).select === "function") {
-      targetRows = await tx
+      targetRows = (await tx
         .select({
           id: databaseRow.id,
           orderKey: databaseRow.orderKey,
           pageId: databaseRow.pageId,
-          position: databaseRow.position,
         })
         .from(databaseRow)
         .where(
@@ -298,7 +299,8 @@ export async function createDatabaseRowService(input: {
             isNull(databaseRow.deletedAt),
           ),
         )
-        .orderBy(asc(databaseRow.position), asc(databaseRow.id));
+        .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id)))
+        .map((row, position) => ({ ...row, position }));
     }
     targetPosition = input.position === undefined
       ? targetRows.length
@@ -376,22 +378,9 @@ export async function createDatabaseRowService(input: {
       });
     }
 
-    await tx
-      .update(databaseRow)
-      .set({
-        position: sql`${databaseRow.position} + 1`,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(databaseRow.dataSourceId, existing.id),
-          isNull(databaseRow.deletedAt),
-          gte(databaseRow.position, targetPosition),
-        ),
-      );
     await incrementDatabaseRowPlacementPositions(
       tx,
-      existing.id,
+      existing.parentDatabaseId,
       targetPosition,
       now,
     );
@@ -401,7 +390,6 @@ export async function createDatabaseRowService(input: {
       dataSourceId: existing.id,
       pageId,
       parentRowId: input.parentRowId ?? null,
-      position: targetPosition,
       orderKey,
       createdById: input.userId,
       lastEditedById: input.userId,
@@ -533,7 +521,7 @@ export async function createDatabaseRowService(input: {
                   id: databaseRow.id,
                   pageId: databaseRow.pageId,
                   parentRowId: databaseRow.parentRowId,
-                  position: databaseRow.position,
+                  orderKey: databaseRow.orderKey,
                 })
                 .from(databaseRow)
                 .where(
@@ -542,7 +530,10 @@ export async function createDatabaseRowService(input: {
                     isNull(databaseRow.deletedAt),
                   ),
                 )
-                .orderBy(asc(databaseRow.position), asc(databaseRow.id))
+                .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
+                .then((sourceRows) =>
+                  sourceRows.map((row, position) => ({ ...row, position }))
+                )
             : sourceRows;
         const remainingSourceRows = lockedSourceRows.filter(
           (row) => row.id !== sourceRowId,
@@ -569,15 +560,9 @@ export async function createDatabaseRowService(input: {
           );
 
         const remainingSourceRowIds = remainingSourceRows.map((row) => row.id);
-        await updateDatabaseRowPositions(
-          tx,
-          sourceDataSourceId,
-          remainingSourceRowIds,
-          now,
-        );
         await updateDatabaseRowPlacementPositions(
           tx,
-          sourceDataSourceId,
+          sourceDataSource.parentDatabaseId,
           remainingSourceRowIds,
           now,
         );

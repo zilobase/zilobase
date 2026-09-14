@@ -6,10 +6,8 @@ import {
   incrementDatabaseRowPlacementPositions,
   lockDatabaseRowOrderingSources,
   rebalanceDatabaseRowOrderKeys,
-  updateDatabaseRowCompatibilityPositions,
   updateDatabasePropertyPositions,
   updateDatabaseRowPlacementPositions,
-  updateDatabaseRowPositions,
 } from "./position-service";
 
 const updatedAt = new Date("2026-01-01T00:00:00.000Z");
@@ -33,18 +31,7 @@ test("position updates skip empty identifier lists", async () => {
     [],
     updatedAt,
   );
-  await updateDatabaseRowPositions(
-    sqlExecutor,
-    "database-1",
-    [],
-    updatedAt,
-  );
-  await updateDatabaseRowCompatibilityPositions(
-    sqlExecutor,
-    "database-1",
-    [],
-    updatedAt,
-  );
+  await rebalanceDatabaseRowOrderKeys(sqlExecutor, "database-1", [], updatedAt);
   await updateDatabaseRowPlacementPositions(
     sqlExecutor,
     "database-1",
@@ -65,13 +52,7 @@ test("position updates execute one bulk statement per target", async () => {
     ids,
     updatedAt,
   );
-  await updateDatabaseRowPositions(
-    sqlExecutor,
-    "database-1",
-    ids,
-    updatedAt,
-  );
-  await updateDatabaseRowCompatibilityPositions(
+  await rebalanceDatabaseRowOrderKeys(
     sqlExecutor,
     "database-1",
     ids,
@@ -84,7 +65,7 @@ test("position updates execute one bulk statement per target", async () => {
     updatedAt,
   );
 
-  assert.equal(sqlExecutor.execute.mock.calls.length, 4);
+  assert.equal(sqlExecutor.execute.mock.calls.length, 3);
   for (const [query] of sqlExecutor.execute.mock.calls) {
     assert.equal(typeof query, "object");
   }
