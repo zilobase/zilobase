@@ -16,6 +16,8 @@ import {
   useOptionalDatabaseClient,
 } from "./client/provider"
 import type { DatabaseClient } from "./client/database-client"
+import { databaseClientQueryRoot } from "./client/query-keys"
+import { createRealtimeClientBinding } from "./client/realtime-client-binding"
 import {
   databaseRootQueryKey,
 } from "./queries"
@@ -164,14 +166,21 @@ class DatabaseRealtimeManager {
   private stopped = true
   private sessionId: string | null = null
   private state: DatabaseRealtimeState = getOfflineSnapshot()
+  private readonly databaseClientBinding
 
   constructor(
     private readonly queryClient: QueryClient,
     private readonly apiFetch: ApiFetcher,
     private readonly databaseId: string,
-    private readonly databaseClient: DatabaseClient | null,
+    databaseClient: DatabaseClient | null,
     private readonly onIdle: () => void,
-  ) {}
+  ) {
+    this.databaseClientBinding = createRealtimeClientBinding(databaseClient)
+  }
+
+  bindDatabaseClient(databaseClient: DatabaseClient | null) {
+    this.databaseClientBinding.bind(databaseClient)
+  }
 
   subscribe = (listener: Listener) => {
     if (this.idleTimer) clearTimeout(this.idleTimer)
@@ -277,14 +286,7 @@ class DatabaseRealtimeManager {
     if (!message || message.databaseId !== this.databaseId) return
 
     if (message.type === "database.mutation") {
-      if (this.databaseClient) {
-        void this.databaseClient.ingest(message).catch(() => undefined)
-      } else {
-        void Promise.all([
-          this.queryClient.invalidateQueries({ queryKey: ["database-client-v2"] }),
-          this.queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
-        ])
-      }
+      void this.ingestMutation(message).catch(() => undefined)
       return
     }
 
@@ -319,6 +321,30 @@ class DatabaseRealtimeManager {
         ),
       )
     }
+  }
+
+  private async ingestMutation(event: DatabaseMutationEventV2) {
+    try {
+      if (await this.databaseClientBinding.ingest(event)) return
+    } catch {
+      // A session/client transition must recover through authoritative reads.
+    }
+    await Promise.allSettled([
+      this.queryClient.invalidateQueries({ queryKey: [databaseClientQueryRoot] }),
+      this.queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
+    ])
+  }
+
+  private async catchUpOrInvalidate() {
+    try {
+      if (await this.databaseClientBinding.catchUp(this.databaseId)) return
+    } catch {
+      // A replaced session client falls back to an authoritative query refresh.
+    }
+    await Promise.allSettled([
+      this.queryClient.invalidateQueries({ queryKey: [databaseClientQueryRoot] }),
+      this.queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
+    ])
   }
 
   private scheduleTicketRefresh(
@@ -380,14 +406,7 @@ class DatabaseRealtimeManager {
   }
 
   private recoverIfBehind(serverVersion: number) {
-    if (this.databaseClient) {
-      void this.databaseClient.catchUp(this.databaseId).catch(() => undefined)
-    }
-    if (!this.databaseClient) {
-      void this.queryClient.invalidateQueries({
-        queryKey: databaseRootQueryKey(),
-      })
-    }
+    void this.catchUpOrInvalidate()
 
     recoverPagePropertiesIfBehind(
       this.queryClient,
@@ -660,6 +679,8 @@ function getManager(
     manager = created
     byDatabase.set(managerKey, manager)
   }
+
+  manager.bindDatabaseClient(databaseClient)
 
   return manager
 }

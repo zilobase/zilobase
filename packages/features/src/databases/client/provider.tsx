@@ -15,6 +15,7 @@ import {
   type DatabaseClient,
   type DatabaseCommandTarget,
 } from "./database-client"
+import { retainDatabaseClient } from "./client-lifecycle"
 
 const DatabaseClientContext = createContext<DatabaseClient | null>(null)
 
@@ -37,9 +38,10 @@ export function DbProvider({
     [apiFetch, queryClient, sessionId],
   )
 
-  useEffect(() => () => {
-    if (client) void client.cleanup()
-  }, [client])
+  useEffect(
+    () => client ? retainDatabaseClient(client) : undefined,
+    [client],
+  )
 
   if (!client) {
     return (
