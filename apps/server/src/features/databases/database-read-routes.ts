@@ -28,6 +28,10 @@ import {
   getDatabaseBootstrapService,
   getDatabaseRecordWindowService,
 } from "./read/service";
+import {
+  DATABASE_MUTATION_FEED_LIMIT,
+  getDatabaseMutationFeed,
+} from "./history/service";
 
 export const databaseReadRoutes = new Hono<AppBindings>();
 const resourceWorkspace = pinnedResourceMiddleware((id) => getDatabaseRecord(id, { includeDeleted: true }));
@@ -149,6 +153,25 @@ databaseReadRoutes.get(
     }
   },
 );
+
+databaseReadRoutes.get("/:id/mutations", resourceWorkspace, async (c) => {
+  const readable = await readableDatabase(c, c.req.param("id"), false);
+  if (readable instanceof Response) return readable;
+  const afterVersion = integerQuery(c.req.query("afterVersion"));
+  const limit = integerQuery(c.req.query("limit"), DATABASE_MUTATION_FEED_LIMIT);
+  if (
+    afterVersion === undefined || !Number.isSafeInteger(afterVersion) || afterVersion < 0 ||
+    limit === undefined || !Number.isSafeInteger(limit) || limit < 1 ||
+    limit > DATABASE_MUTATION_FEED_LIMIT
+  ) {
+    return c.json({ error: "Invalid mutation window" }, 400);
+  }
+  return c.json(await getDatabaseMutationFeed({
+    afterVersion,
+    databaseId: readable.record.id,
+    limit,
+  }));
+});
 
 
 databaseReadRoutes.get("/:id", resourceWorkspace, async (c) => {

@@ -6,6 +6,7 @@ import {
   databaseCommandAckSchema,
   databaseCommandRequestSchema,
   databaseMutationEventV2Schema,
+  databaseMutationFeedResponseSchema,
   databaseProtocolErrorSchema,
   databaseRecordWindowResponseSchema,
   moveRowCommandSchema,
@@ -163,6 +164,15 @@ test("events and acknowledgements require complete v2 entity changes", () => {
     }).commandId,
     "command-1",
   )
+})
+
+test("mutation feeds expose ordered catch-up state", () => {
+  assert.equal(databaseMutationFeedResponseSchema.parse({
+    events: [event],
+    hasMore: false,
+    latestVersion: 5,
+    resetRequired: false,
+  }).events[0]?.version, 5)
 })
 
 test("typed protocol errors preserve conflict-specific context", () => {

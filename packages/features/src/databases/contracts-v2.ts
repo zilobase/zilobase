@@ -437,6 +437,18 @@ export type DatabaseMutationEventV2 = z.infer<
   typeof databaseMutationEventV2Schema
 >
 
+export const databaseMutationFeedResponseSchema = z
+  .object({
+    events: z.array(databaseMutationEventV2Schema),
+    hasMore: z.boolean(),
+    latestVersion: versionSchema,
+    resetRequired: z.boolean(),
+  })
+  .strict()
+export type DatabaseMutationFeedResponse = z.infer<
+  typeof databaseMutationFeedResponseSchema
+>
+
 export const databaseCommandAckSchema = z
   .object({
     commandId: entityIdSchema,

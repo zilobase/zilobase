@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   effectiveDatabaseAccess: vi.fn(),
   publishedDatabase: vi.fn(),
   membership: vi.fn(),
+  mutationFeed: vi.fn(),
   deleteDatabase: vi.fn(),
   duplicateProperty: vi.fn(),
   restoreDatabase: vi.fn(),
@@ -67,6 +68,10 @@ vi.mock("./read/service", async (original) => ({
   ...(await original<typeof import("./read/service")>()),
   getDatabaseBootstrapService: mocks.bootstrap,
   getDatabaseRecordWindowService: mocks.recordWindow,
+}));
+vi.mock("./history/service", async (original) => ({
+  ...(await original<typeof import("./history/service")>()),
+  getDatabaseMutationFeed: mocks.mutationFeed,
 }));
 
 import { databaseRoutes } from "./database-routes";
@@ -238,6 +243,35 @@ test("v2 reads support published databases and reject invalid limits", async () 
   );
   assert.equal(invalid.status, 400);
   assert.equal(mocks.recordWindow.mock.calls.length, 0);
+});
+
+test("mutation catch-up validates and forwards the version window", async () => {
+  mocks.databaseRecord.mockResolvedValue({
+    deletedAt: null,
+    id: "database-1",
+    workspaceId: "workspace-1",
+  });
+  mocks.mutationFeed.mockResolvedValue({
+    events: [],
+    hasMore: false,
+    latestVersion: 8,
+    resetRequired: false,
+  });
+  const response = await appWithUser().request(
+    "/databases/database-1/mutations?afterVersion=6&limit=2",
+  );
+  assert.equal(response.status, 200);
+  assert.deepEqual(mocks.mutationFeed.mock.calls[0]?.[0], {
+    afterVersion: 6,
+    databaseId: "database-1",
+    limit: 2,
+  });
+
+  const invalid = await appWithUser().request(
+    "/databases/database-1/mutations?afterVersion=-1",
+  );
+  assert.equal(invalid.status, 400);
+  assert.equal(mocks.mutationFeed.mock.calls.length, 1);
 });
 
 test("database mutation routes require authentication", async () => {
