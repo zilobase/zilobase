@@ -486,7 +486,7 @@ test("OAuth database routes bind database and data-source IDs to the granted wor
   mocks.databaseRecord.mockResolvedValue({ workspaceId: "other" });
   mocks.sourceRecord.mockResolvedValue({ workspaceId: "other" });
   for (const [method, path] of [
-    ["GET", "/databases/database-1"],
+    ["GET", "/databases/database-1/bootstrap"],
     ["GET", "/databases/database-1/published"],
     ["DELETE", "/databases/database-1"],
     ["PATCH", "/databases/data-sources/source-1"],
