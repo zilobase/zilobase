@@ -44,7 +44,7 @@ vi.mock("../automations/service", () => ({
   invalidateDatabaseAutomationDependencies: mocks.invalidateAutomationDependencies,
 }));
 vi.mock("./payload", () => ({
-  getDatabasePayload: mocks.payload,
+  getDatabaseExportPayload: mocks.payload,
 }));
 vi.mock("../../workspaces/navigation-realtime/outbox", () => ({
   enqueueNavigationInvalidation: vi.fn(async (_tx, workspaceId: string) => ({
@@ -73,7 +73,6 @@ import {
   createDatabaseService,
   deleteDatabaseService,
   restoreDatabaseService,
-  updateDatabaseService,
 } from "./service";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
@@ -386,50 +385,6 @@ test("createDatabaseService inherits the parent page favorite", async () => {
     id: "00000000-0000-4000-8000-000000000005",
     userId: "user-1",
   });
-});
-
-test("updateDatabaseService commits supplied metadata", async () => {
-  const { updates } = transactionRecorder();
-
-  const result = await updateDatabaseService({
-    config: { icon: "table" },
-    databaseId: "database-1",
-    env: { ENV: "test" },
-    name: "Updated",
-    userId: "user-1",
-  });
-
-  assert.deepEqual(result, {
-    commit: await mocks.commit.mock.results[0]?.value,
-    databaseId: "database-1",
-  });
-  assert.deepEqual(updates[0], {
-    config: { icon: "table" },
-    name: "Updated",
-    updatedAt: (updates[0] as Record<string, unknown>).updatedAt,
-  });
-  assert.deepEqual(mocks.commit.mock.calls[0]?.[0], {
-    actorId: "user-1",
-    changed: ["database"],
-    databaseId: "database-1",
-    env: { ENV: "test" },
-  });
-  assert.deepEqual((await mocks.commit.mock.results[0]?.value)?.delta.database, {
-    config: { icon: "table" },
-    id: "database-1",
-    name: "Updated",
-    updatedAt: (updates[0] as Record<string, unknown>).updatedAt,
-  });
-});
-
-test("updateDatabaseService permits a timestamp-only touch", async () => {
-  const { updates } = transactionRecorder();
-  await updateDatabaseService({
-    databaseId: "database-1",
-    userId: "user-1",
-  });
-
-  assert.deepEqual(Object.keys(updates[0] as object), ["updatedAt"]);
 });
 
 test("deleteDatabaseService returns the deleted record without reloading it", async () => {

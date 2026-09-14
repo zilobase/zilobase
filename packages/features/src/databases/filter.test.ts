@@ -30,7 +30,7 @@ function filter(
   return { id: `${propertyId}-${operator}`, operator, propertyId, values }
 }
 
-test("normalizes legacy title filters and bounds untrusted trees", () => {
+test("rejects obsolete title filters and bounds untrusted trees", () => {
   const nested = (depth: number): unknown => ({
     filters: depth > 0 ? [nested(depth - 1)] : [],
     operator: "and",
@@ -46,15 +46,12 @@ test("normalizes legacy title filters and bounds untrusted trees", () => {
     })),
   ])
 
-  assert.equal(normalized.length, 100)
-  assert.deepEqual(normalized[0], {
-    id: "filter-0",
-    joinOperator: undefined,
-    operator: "contains",
-    propertyId: "name",
-    values: ["7", "true"],
-  })
-  let cursor: (typeof normalized)[number] | undefined = normalized[1]
+  assert.equal(normalized.length, 99)
+  assert.equal(normalized[0]?.id, "filter-1")
+  assert.equal(normalized[1] && "propertyId" in normalized[1]
+    ? normalized[1].propertyId
+    : null, "name")
+  let cursor: (typeof normalized)[number] | undefined = normalized[0]
   for (let depth = 0; depth < 6; depth += 1) {
     assert.equal(cursor && "type" in cursor ? cursor.type : null, "group")
     cursor = cursor && "type" in cursor ? cursor.filters[0] : undefined

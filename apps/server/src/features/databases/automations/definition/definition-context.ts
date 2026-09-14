@@ -26,19 +26,6 @@ export class DatabaseAutomationError extends Error {
   }
 }
 
-export function hasOptionReference(value: unknown, optionId: string): boolean {
-  if (Array.isArray(value)) return value.some((item) => hasOptionReference(item, optionId));
-  if (!value || typeof value !== "object") return false;
-  const record = value as Record<string, unknown>;
-  if (record.entityType === "option" && record.type === "entity") {
-    return record.id === optionId;
-  }
-  if (record.entityType === "option" && record.type === "entity_list") {
-    return Array.isArray(record.ids) && record.ids.includes(optionId);
-  }
-  return Object.values(record).some((item) => hasOptionReference(item, optionId));
-}
-
 export async function requireManagementContext(input: {
   databaseId: string;
   dataSourceId: string;

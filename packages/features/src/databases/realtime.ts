@@ -7,11 +7,7 @@ import {
 } from "react"
 
 import { useZilobaseFeatures, type ApiFetcher } from "../shared/context"
-import {
-  applyDatabaseMutationToPageProperties,
-  recoverPagePropertiesIfBehind,
-} from "../pages/database-realtime-cache"
-import type { DatabaseMutationResponse } from "./mutation-types"
+import { recoverPagePropertiesIfBehind } from "../pages/database-realtime-cache"
 import {
   databaseMutationEventV2Schema,
   type DatabaseMutationEventV2,
@@ -126,18 +122,6 @@ export function useDatabaseRealtime(
   ])
 
   return state
-}
-
-export function applyDatabaseRealtimeMutation(
-  queryClient: QueryClient,
-  event: DatabaseMutationResponse,
-) {
-  applyDatabaseMutationToPageProperties(queryClient, event)
-  void Promise.all([
-    queryClient.invalidateQueries({ queryKey: ["database-client-v2"] }),
-    queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
-  ])
-  return { gapDetected: true }
 }
 
 export function createCellPresenceByKey(
@@ -658,7 +642,7 @@ function getManager(
     managers.set(queryClient, byDatabase)
   }
 
-  const managerKey = `${databaseClient?.sessionId ?? "legacy"}:${databaseId}`
+  const managerKey = `${databaseClient?.sessionId ?? "public"}:${databaseId}`
   let manager = byDatabase.get(managerKey)
 
   if (!manager) {

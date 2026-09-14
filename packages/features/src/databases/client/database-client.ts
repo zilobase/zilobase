@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-db"
 
 import type { ApiFetcher } from "../../shared/api-fetcher"
+import { applyDatabaseMutationToPageProperties } from "../../pages/database-realtime-cache"
 import type {
   DatabaseBootstrapResponse,
   DatabaseCommand,
@@ -572,6 +573,7 @@ export class SessionDatabaseClient implements DatabaseClient {
     event: DatabaseMutationEventV2,
     ledger: DatabaseVersionLedger,
   ) {
+    applyDatabaseMutationToPageProperties(this.queryClient, event)
     if (event.requiresReset) {
       await this.resetNow({ databaseId: event.databaseId }, "event_reset")
     } else {

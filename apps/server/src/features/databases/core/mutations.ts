@@ -10,10 +10,6 @@ export {
   createDatabasePropertyService,
   updateDatabasePropertyService,
 } from "../properties/service";
-export {
-  deleteDatabasePropertyService,
-  reorderDatabasePropertiesService,
-} from "../properties/structure-service";
 export { createDatabaseRowService } from "../rows/service";
 export {
   deleteDatabaseAccessRuleService,
@@ -25,10 +21,8 @@ export {
   createDatabaseService,
   deleteDatabaseService,
   restoreDatabaseService,
-  updateDatabaseService,
 } from "./service";
 export {
   createDatabaseViewService,
-  deleteDatabaseViewService,
   updateDatabaseViewService,
 } from "../views/service";

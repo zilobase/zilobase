@@ -10,7 +10,7 @@ describe("database automation mutation-path audit", () => {
       read("databases/properties/cell-service.ts"),
       read("databases/rows/service.ts"),
       read("databases/commands/row-handlers.ts"),
-      read("databases/templates/service.ts"),
+      read("databases/commands/template-apply-handler.ts"),
       read("mail/database-sync/mail-database-sync-worker.ts"),
       read("pages/page-content-routes.ts"),
       read("ai/tools/ask-ai-database-tools.ts"),
@@ -30,7 +30,6 @@ describe("database automation mutation-path audit", () => {
     const files = await Promise.all([
       read("pages/properties/upsert.ts"),
       read("databases/properties/service.ts"),
-      read("databases/properties/duplication-service.ts"),
       read("demo/seed.ts"),
       read("meetings/lifecycle/meeting-operations.ts"),
     ]);
@@ -41,10 +40,9 @@ describe("database automation mutation-path audit", () => {
   });
 
   it("captures facts within the canonical transaction and keeps realtime independent", async () => {
-    const [commit, capture, realtime] = await Promise.all([
+    const [commit, capture] = await Promise.all([
       read("databases/core/commit.ts"),
       read("databases/automations/triggers/event-capture.ts"),
-      read("databases/realtime/delta.ts"),
     ]);
 
     expect(commit).toMatch(
@@ -52,7 +50,7 @@ describe("database automation mutation-path audit", () => {
     );
     expect(capture).toContain("pg_advisory_xact_lock");
     expect(capture).toContain("DATABASE_AUTOMATION_EVENT_WINDOW_MS = 3_000");
-    expect(realtime).not.toContain("DatabaseAutomationMutationFact");
+    expect(commit).not.toContain("buildLegacyDatabaseChangeset");
   });
 
   it("uses canonical page-property IDs in automation definitions", async () => {

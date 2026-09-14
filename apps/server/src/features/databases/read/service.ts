@@ -17,30 +17,58 @@ import {
   getDatabaseInitialPageSize,
 } from "@zilobase/features/databases/view-evaluation"
 
-import { getEffectiveDatabaseAccessForRecord } from "../../access"
-import type { database } from "../../../infrastructure/database/schema"
+import { canAccessDatabaseRecord, getEffectiveDatabaseAccessForRecord } from "../../access"
+import { db } from "../../../infrastructure/database"
+import {
+  dataSource,
+  database,
+  databaseDataSource,
+  databaseProperty,
+  databaseRow,
+  databaseView,
+  page,
+  pageProperty,
+  pagePropertyValue,
+} from "../../../infrastructure/database/schema"
+import { and, asc, eq, inArray, isNull } from "drizzle-orm"
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
 import { requireDatabaseAccess } from "../access/database-access"
-import { getDatabasePayload, getDatabaseSchemaPayload } from "../core/payload"
+import { getDatabaseExportPayload } from "../core/payload"
 
 type DatabaseRecord = typeof database.$inferSelect
 type AccessLevel = DatabaseHostEntity["accessLevel"]
-type LegacyPayload = NonNullable<Awaited<ReturnType<typeof getDatabasePayload>>>
-type LegacyProperty = LegacyPayload["properties"][number]
-type LegacySource = LegacyPayload["dataSources"][number]
-type LegacyView = LegacyPayload["views"][number]
-type LegacyRow = LegacyPayload["rows"][number]
-type LegacyValue = LegacyPayload["values"][number]
+type DatabaseExportPayload = NonNullable<Awaited<ReturnType<typeof getDatabaseExportPayload>>>
+type SourceRecord = typeof dataSource.$inferSelect & {
+  linkedAt: Date | null
+  position: number
+}
+type ViewRecord = typeof databaseView.$inferSelect
+type PropertyRecord = {
+  column: typeof databaseProperty.$inferSelect
+  property: typeof pageProperty.$inferSelect
+}
+type RowRecord = {
+  page: Pick<typeof page.$inferSelect,
+    "createdAt" | "deletedAt" | "hasContent" | "id" | "metadata" | "name" | "updatedAt">
+  row: typeof databaseRow.$inferSelect
+}
+
+type DatabaseReadModel = {
+  dataSources: DataSourceEntity[]
+  properties: DatabasePropertyEntity[]
+  records: DatabaseRecordEntity[]
+  views: DatabaseViewEntity[]
+}
 
 type ReadDependencies = {
-  getPayload: typeof getDatabasePayload
-  getSchemaPayload: typeof getDatabaseSchemaPayload
+  getPayload: typeof getDatabaseExportPayload
+  loadReadModel: typeof loadDatabaseReadModel
   requireAccess: typeof requireDatabaseAccess
 }
 
 const defaultDependencies: ReadDependencies = {
-  getPayload: getDatabasePayload,
-  getSchemaPayload: getDatabaseSchemaPayload,
+  getPayload: getDatabaseExportPayload,
+  loadReadModel: loadDatabaseReadModel,
   requireAccess: requireDatabaseAccess,
 }
 
@@ -64,7 +92,7 @@ function nullableTimestamp(value: Date | string | null | undefined) {
   return value == null ? null : timestamp(value)
 }
 
-function sourceEntity(source: LegacySource): DataSourceEntity {
+function sourceEntity(source: SourceRecord): DataSourceEntity {
   return {
     config: source.config ?? null,
     configVersion: source.configVersion,
@@ -80,7 +108,7 @@ function sourceEntity(source: LegacySource): DataSourceEntity {
   }
 }
 
-function viewEntity(view: LegacyView): DatabaseViewEntity {
+function viewEntity(view: ViewRecord): DatabaseViewEntity {
   return {
     config: view.config ?? null,
     createdAt: timestamp(view.createdAt),
@@ -94,30 +122,30 @@ function viewEntity(view: LegacyView): DatabaseViewEntity {
   }
 }
 
-function propertyEntity(property: LegacyProperty): DatabasePropertyEntity {
+function propertyEntity({ column, property }: PropertyRecord): DatabasePropertyEntity {
   return {
-    createdAt: timestamp(property.createdAt),
-    dataSourceId: property.dataSourceId,
-    id: property.id,
-    position: property.position,
+    createdAt: timestamp(column.createdAt),
+    dataSourceId: column.dataSourceId,
+    id: column.id,
+    position: column.position,
     property: {
-      config: property.property.config ?? null,
-      createdAt: timestamp(property.property.createdAt),
-      id: property.property.id,
-      name: property.property.name,
-      type: property.property.type,
-      updatedAt: timestamp(property.property.updatedAt),
-      workspaceId: property.property.workspaceId,
+      config: property.config ?? null,
+      createdAt: timestamp(property.createdAt),
+      id: property.id,
+      name: property.name,
+      type: property.type,
+      updatedAt: timestamp(property.updatedAt),
+      workspaceId: property.workspaceId,
     },
-    propertyId: property.propertyId,
-    updatedAt: timestamp(property.updatedAt),
-    visible: property.visible,
-    width: property.width ?? null,
+    propertyId: column.propertyId,
+    updatedAt: timestamp(column.updatedAt),
+    visible: column.visible,
+    width: column.width ?? null,
   }
 }
 
 function hostEntity(
-  record: LegacyPayload["database"],
+  record: DatabaseRecord,
   accessLevel: AccessLevel,
 ): DatabaseHostEntity {
   return {
@@ -133,7 +161,7 @@ function hostEntity(
   }
 }
 
-function valueEntity(value: LegacyValue): PagePropertyValueEntity {
+function valueEntity(value: typeof pagePropertyValue.$inferSelect): PagePropertyValueEntity {
   return {
     createdAt: timestamp(value.createdAt),
     id: value.id,
@@ -145,23 +173,24 @@ function valueEntity(value: LegacyValue): PagePropertyValueEntity {
 }
 
 function recordEntity(
-  row: LegacyRow,
+  entry: RowRecord,
   position: number,
-  values: LegacyValue[],
+  values: Array<typeof pagePropertyValue.$inferSelect>,
 ): DatabaseRecordEntity {
+  const { page: rowPage, row } = entry
   return {
     createdAt: timestamp(row.createdAt),
     dataSourceId: row.dataSourceId,
     id: row.id,
     orderKey: row.orderKey ?? databaseOrderKeyAtPosition(position),
     page: {
-      createdAt: timestamp(row.page.createdAt),
-      deletedAt: nullableTimestamp(row.page.deletedAt),
-      hasContent: row.page.hasContent,
-      id: row.page.id,
-      metadata: row.page.metadata ?? null,
-      name: row.page.name,
-      updatedAt: timestamp(row.page.updatedAt),
+      createdAt: timestamp(rowPage.createdAt),
+      deletedAt: nullableTimestamp(rowPage.deletedAt),
+      hasContent: rowPage.hasContent,
+      id: rowPage.id,
+      metadata: rowPage.metadata ?? null,
+      name: rowPage.name,
+      updatedAt: timestamp(rowPage.updatedAt),
     },
     pageId: row.pageId,
     parentRowId: row.parentRowId ?? null,
@@ -171,6 +200,104 @@ function recordEntity(
         .filter((value) => value.pageId === row.pageId)
         .map((value) => [value.propertyId, valueEntity(value)]),
     ),
+  }
+}
+
+async function loadDatabaseReadModel(input: {
+  dataSourceId?: string
+  includeDeleted?: boolean
+  record: DatabaseRecord
+  userId?: string
+}): Promise<DatabaseReadModel> {
+  const [sourceLinks, storedViews] = await Promise.all([
+    db.select({ link: databaseDataSource, source: dataSource })
+      .from(databaseDataSource)
+      .innerJoin(dataSource, eq(databaseDataSource.dataSourceId, dataSource.id))
+      .where(and(
+        eq(databaseDataSource.databaseId, input.record.id),
+        input.includeDeleted ? undefined : isNull(dataSource.deletedAt),
+      ))
+      .orderBy(asc(databaseDataSource.position), asc(dataSource.id)),
+    db.select().from(databaseView)
+      .where(eq(databaseView.databaseId, input.record.id))
+      .orderBy(asc(databaseView.position), asc(databaseView.id)),
+  ])
+
+  const foreignParentIds = [...new Set(sourceLinks
+    .map(({ source }) => source.parentDatabaseId)
+    .filter((parentId) => parentId !== input.record.id))]
+  const foreignParents = foreignParentIds.length
+    ? await db.select().from(database).where(and(
+        inArray(database.id, foreignParentIds),
+        input.includeDeleted ? undefined : isNull(database.deletedAt),
+      ))
+    : []
+  const foreignParentsById = new Map(foreignParents.map((parent) => [parent.id, parent]))
+  const accessibleLinks: typeof sourceLinks = []
+  for (const link of sourceLinks) {
+    if (link.source.parentDatabaseId === input.record.id) {
+      accessibleLinks.push(link)
+      continue
+    }
+    const parent = foreignParentsById.get(link.source.parentDatabaseId)
+    if (parent && input.userId && await canAccessDatabaseRecord(parent, input.userId, "view")) {
+      accessibleLinks.push(link)
+    }
+  }
+
+  const accessibleSourceIds = accessibleLinks.map(({ source }) => source.id)
+  const requestedSourceIds = input.dataSourceId
+    ? accessibleSourceIds.filter((id) => id === input.dataSourceId)
+    : accessibleSourceIds
+  const properties = requestedSourceIds.length
+    ? await db.select({ column: databaseProperty, property: pageProperty })
+        .from(databaseProperty)
+        .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
+        .where(and(
+          inArray(databaseProperty.dataSourceId, requestedSourceIds),
+          isNull(pageProperty.deletedAt),
+        ))
+        .orderBy(asc(databaseProperty.position), asc(databaseProperty.id))
+    : []
+
+  const rows = input.dataSourceId && requestedSourceIds.length
+    ? await db.select({
+        page: {
+          createdAt: page.createdAt,
+          deletedAt: page.deletedAt,
+          hasContent: page.hasContent,
+          id: page.id,
+          metadata: page.metadata,
+          name: page.name,
+          updatedAt: page.updatedAt,
+        },
+        row: databaseRow,
+      }).from(databaseRow)
+        .innerJoin(page, eq(databaseRow.pageId, page.id))
+        .where(and(
+          eq(databaseRow.dataSourceId, input.dataSourceId),
+          input.includeDeleted ? undefined : isNull(databaseRow.deletedAt),
+        ))
+        .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
+    : []
+  const pageIds = rows.map(({ row }) => row.pageId)
+  const propertyIds = properties.map(({ property }) => property.id)
+  const values = pageIds.length && propertyIds.length
+    ? await db.select().from(pagePropertyValue).where(and(
+        inArray(pagePropertyValue.pageId, pageIds),
+        inArray(pagePropertyValue.propertyId, propertyIds),
+      ))
+    : []
+
+  return {
+    dataSources: accessibleLinks.map(({ link, source }) => sourceEntity({
+      ...source,
+      linkedAt: link.createdAt,
+      position: link.position,
+    })),
+    properties: properties.map(propertyEntity),
+    records: rows.map((entry, position) => recordEntity(entry, position, values)),
+    views: storedViews.filter((view) => accessibleSourceIds.includes(view.dataSourceId)).map(viewEntity),
   }
 }
 
@@ -210,47 +337,23 @@ export async function getDatabaseBootstrapService(
   dependencies: ReadDependencies = defaultDependencies,
 ): Promise<DatabaseBootstrapResponse> {
   const record = await resolveReadRecord(input, dependencies)
-  const base = await dependencies.getSchemaPayload(
-    record.id,
-    input.userId,
+  const model = await dependencies.loadReadModel({
+    includeDeleted: input.includeDeleted,
     record,
-    {
-      includeDeleted: input.includeDeleted,
-      viewId: input.viewId,
-    },
-  )
-  if (!base) throw new ServiceMutationError("Database not found", 404)
-  if (input.viewId && !base.views.some((view) => view.id === input.viewId)) {
+    userId: input.userId,
+  })
+  if (input.viewId && !model.views.some((view) => view.id === input.viewId)) {
     throw new ServiceMutationError("Database view not found", 404)
-  }
-
-  const sourcePayloads = await Promise.all(
-    base.dataSources.map((source) =>
-      source.id === base.activeDataSource?.id
-        ? Promise.resolve(base)
-        : dependencies.getSchemaPayload(
-            record.id,
-            input.userId,
-            record,
-            { dataSourceId: source.id, includeDeleted: input.includeDeleted },
-          ),
-    ),
-  )
-  const properties = new Map<string, DatabasePropertyEntity>()
-  for (const payload of sourcePayloads) {
-    for (const property of payload?.properties ?? []) {
-      properties.set(property.id, propertyEntity(property))
-    }
   }
 
   return {
     database: hostEntity(
-      base.database,
+      record,
       await resolveAccessLevel(record, input.userId, input.accessLevel),
     ),
-    dataSources: base.dataSources.map(sourceEntity),
-    properties: [...properties.values()],
-    views: base.views.map(viewEntity),
+    dataSources: model.dataSources,
+    properties: model.properties,
+    views: model.views,
   }
 }
 
@@ -262,7 +365,7 @@ export async function getDatabaseExportService(
     userId?: string
   },
   dependencies: ReadDependencies = defaultDependencies,
-): Promise<LegacyPayload> {
+): Promise<DatabaseExportPayload> {
   const record = await resolveReadRecord(input, dependencies)
   const payload = await dependencies.getPayload(
     record.id,
@@ -283,7 +386,7 @@ export async function getDatabaseExportService(
 function windowSnapshot(input: {
   databaseVersion: number
   dataSourceVersion: number
-  view: LegacyView | null
+  view: DatabaseViewEntity | null
 }) {
   return Buffer.from(JSON.stringify({
     databaseVersion: input.databaseVersion,
@@ -323,24 +426,18 @@ export async function getDatabaseRecordWindowService(
   dependencies: ReadDependencies = defaultDependencies,
 ): Promise<DatabaseRecordWindowResponse> {
   const record = await resolveReadRecord(input, dependencies)
-  const payload = await dependencies.getPayload(
-    record.id,
-    input.userId,
+  const model = await dependencies.loadReadModel({
+    dataSourceId: input.dataSourceId,
+    includeDeleted: input.includeDeleted,
     record,
-    {
-      dataSourceId: input.dataSourceId,
-      includeDeleted: input.includeDeleted,
-      viewId: input.viewId,
-    },
-  )
-  if (!payload) throw new ServiceMutationError("Database not found", 404)
-
-  const source = payload.dataSources.find((item) => item.id === input.dataSourceId)
-  if (!source || payload.activeDataSource?.id !== source.id) {
+    userId: input.userId,
+  })
+  const source = model.dataSources.find((item) => item.id === input.dataSourceId)
+  if (!source) {
     throw new ServiceMutationError("Data source not found", 404)
   }
   const view = input.viewId
-    ? payload.views.find((item) => item.id === input.viewId) ?? null
+    ? model.views.find((item) => item.id === input.viewId) ?? null
     : null
   if (input.viewId && (!view || view.dataSourceId !== source.id)) {
     throw new ServiceMutationError("Database view not found", 404)
@@ -351,12 +448,12 @@ export async function getDatabaseRecordWindowService(
     throw new ServiceMutationError("offset must be a non-negative integer", 400)
   }
   const limit = input.limit ?? getDatabaseInitialPageSize(
-    view?.config ?? payload.database.config,
+    view?.config ?? record.config,
   )
   validateWindowLimit(limit)
 
   const snapshot = windowSnapshot({
-    databaseVersion: payload.database.version,
+    databaseVersion: record.version,
     dataSourceVersion: source.version,
     view,
   })
@@ -364,25 +461,23 @@ export async function getDatabaseRecordWindowService(
     throw new DatabaseWindowStaleError(snapshot)
   }
 
-  const properties = payload.properties.map(propertyEntity)
-  const records = payload.rows
-    .map((row, position) => recordEntity(row, position, payload.values))
+  const records = model.records
     .sort((left, right) => {
       const order = parseDatabaseOrderKey(left.orderKey) -
         parseDatabaseOrderKey(right.orderKey)
       return order < 0n ? -1 : order > 0n ? 1 : left.id.localeCompare(right.id)
     })
   const evaluated = evaluateDatabaseRecordsForView({
-    config: view?.config ?? payload.database.config,
+    config: view?.config ?? record.config,
     now: input.now,
-    properties,
+    properties: model.properties,
     records,
     timezone: input.timezone,
   })
   const requested = evaluated.slice(offset, offset + limit + 1)
 
   return {
-    databaseVersion: payload.database.version,
+    databaseVersion: record.version,
     dataSourceVersion: source.version,
     hasMore: requested.length > limit,
     offset,

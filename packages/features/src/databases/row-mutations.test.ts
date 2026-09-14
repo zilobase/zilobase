@@ -6,7 +6,6 @@ import type {
   DatabaseCommandRequest,
   DatabaseRecordEntity,
 } from "./contracts-v2";
-import { databaseQueryKey } from "./queries";
 import {
   getDatabaseRowMoveAnchors,
   useAddDatabaseRow,
@@ -79,9 +78,7 @@ for (const operation of ["move", "value"] as const) {
         path,
         "/databases/database-1/data-sources/data-source-1/commands",
       );
-      assert.equal(queryClient.getQueryData(databaseQueryKey("database-1")), original);
     }));
-    queryClient.setQueryData(databaseQueryKey("database-1"), original);
     setTestDatabaseClientState(queryClient, original);
     try {
       const anchors = getDatabaseRowMoveAnchors(["row-2", "row-1"], "row-1");
@@ -107,7 +104,6 @@ for (const operation of ["move", "value"] as const) {
       }
       assert.equal(sent[0]?.protocolVersion, 2);
       assert.equal(sent[0]?.command.type, operation === "value" ? "cell.set" : "row.move");
-      assert.deepEqual(queryClient.getQueryData(databaseQueryKey("database-1")), original);
     } finally {
       queryClient.clear();
     }
@@ -121,7 +117,6 @@ test("adding a row sends initial values atomically and returns the created recor
     useAddDatabaseRow,
     commandApi((request) => { sent.push(request); }),
   );
-  queryClient.setQueryData(databaseQueryKey("database-1"), original);
   setTestDatabaseClientState(queryClient, original);
   try {
     const result = await mutation.mutateAsync({
@@ -173,7 +168,6 @@ test("rapid row moves accept optimistic overlays before the ordering lane settle
     useMoveDatabaseRow,
     apiFetch,
   );
-  queryClient.setQueryData(databaseQueryKey("database-1"), original);
   setTestDatabaseClientState(queryClient, original);
   const accepted: string[] = [];
 

@@ -14,7 +14,6 @@ import {
   useUpdateDatabaseTemplate,
   useUpdateDataSource,
 } from "./mutation-hooks"
-import { databaseQueryKey } from "./queries"
 import {
   createTestDatabasePayload,
   setTestDatabaseClientState,
@@ -116,10 +115,6 @@ test("database and data-source metadata hooks execute scoped v2 commands", async
   const sent: Array<{ path: string; request: DatabaseCommandRequest }> = []
   const databaseRuntime = createMutationTestRuntime(useUpdateDatabase, commandApi(sent))
   const sourceRuntime = createMutationTestRuntime(useUpdateDataSource, commandApi(sent))
-  sourceRuntime.queryClient.setQueryData(
-    databaseQueryKey("database-1"),
-    createTestDatabasePayload(),
-  )
   setTestDatabaseClientState(
     sourceRuntime.queryClient,
     createTestDatabasePayload(),
@@ -180,10 +175,6 @@ test("property hooks use source commands and translate positions to anchors", as
   const update = createMutationTestRuntime(useUpdateDatabaseProperty, commandApi(sent))
   const archive = createMutationTestRuntime(useDeleteDatabaseProperty, commandApi(sent))
   for (const runtime of [add, update, archive]) {
-    runtime.queryClient.setQueryData(
-      databaseQueryKey("database-1"),
-      createTestDatabasePayload(),
-    )
     setTestDatabaseClientState(runtime.queryClient, createTestDatabasePayload())
   }
   try {
@@ -229,10 +220,6 @@ test("stored template hooks share the structural source lane", async () => {
   const update = createMutationTestRuntime(useUpdateDatabaseTemplate, commandApi(sent))
   const archive = createMutationTestRuntime(useArchiveDatabaseTemplate, commandApi(sent))
   for (const runtime of [create, update, archive]) {
-    runtime.queryClient.setQueryData(
-      databaseQueryKey("database-1"),
-      createTestDatabasePayload(),
-    )
     setTestDatabaseClientState(runtime.queryClient, createTestDatabasePayload())
   }
   try {

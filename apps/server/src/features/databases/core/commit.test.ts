@@ -22,7 +22,6 @@ import {
   commitDatabaseMutation,
   commitDatabaseMutationBatch,
   DatabaseMutationError,
-  mutationResponse,
 } from "./commit";
 import {
   databaseMutationEvent,
@@ -100,14 +99,14 @@ test("commitDatabaseMutationBatch versions, bulk persists, and publishes each mu
     async () => ({
       mutations: [
         {
-          changed: ["database"],
+          areas: ["databases"],
           databaseId: "database-1",
-          delta: { database: { name: "First" } },
+          changes: {},
         },
         {
-          changed: ["rows"],
+          areas: ["records"],
           databaseId: "database-2",
-          delta: { rows: [{ id: "row-1" }] },
+          changes: {},
         },
       ],
       result: "saved",
@@ -116,20 +115,20 @@ test("commitDatabaseMutationBatch versions, bulk persists, and publishes each mu
 
   assert.equal(result.result, "saved");
   assert.deepEqual(
-    result.commits.map(({ databaseId, mutationId, version }) => ({
+    result.commits.map(({ databaseId, eventId, version }) => ({
       databaseId,
-      mutationId,
+      eventId,
       version,
     })),
     [
       {
         databaseId: "database-1",
-        mutationId: "00000000-0000-4000-8000-000000000001",
+        eventId: "00000000-0000-4000-8000-000000000001",
         version: 3,
       },
       {
         databaseId: "database-2",
-        mutationId: "00000000-0000-4000-8000-000000000002",
+        eventId: "00000000-0000-4000-8000-000000000002",
         version: 9,
       },
     ],
@@ -165,10 +164,10 @@ test("same-database batches reserve contiguous versions with one update", async 
   const result = await commitDatabaseMutationBatch(
     { actorId: "user-1" },
     async () => ({
-      mutations: ["database", "rows", "values"].map((area) => ({
-        changed: [area] as Array<"database" | "rows" | "values">,
+      mutations: ["databases", "records", "properties"].map((area) => ({
+        areas: [area] as Array<"databases" | "records" | "properties">,
         databaseId: "database-1",
-        delta: {},
+        changes: {},
       })),
       result: "saved",
     }),
@@ -194,7 +193,7 @@ test("multi-database batches reserve locks deterministically and preserve commit
     { actorId: "user-1" },
     async () => ({
       mutations: ["database-b", "database-a", "database-b"].map(
-        (databaseId) => ({ changed: ["rows"] as const, databaseId, delta: {} }),
+        (databaseId) => ({ areas: ["records"] as const, databaseId, changes: {} }),
       ),
       result: undefined,
     }),
@@ -242,7 +241,7 @@ test("automation facts are captured inside the commit transaction and abort atom
     commitDatabaseMutationBatch({ actorId: "user-1" }, async () => ({
       automationFacts: facts,
       mutations: [
-        { changed: ["values"], databaseId: "database-1", delta: {} },
+        { areas: ["records"], databaseId: "database-1", changes: {} },
       ],
       result: undefined,
     })),
@@ -263,17 +262,22 @@ test("large commits persist reset events with reference-only delivery", async ()
     async () => ({
       mutations: [
         {
-          changed: ["values"],
+          areas: ["records"],
           databaseId: "database-1",
-          delta: { database: { value: "x".repeat(70_000) } },
+          changes: {
+            removedRecordIds: Array.from(
+              { length: 700 },
+              (_, index) => `${index}-${"x".repeat(110)}`,
+            ),
+          },
         },
       ],
       result: undefined,
     }),
   );
 
-  assert.equal(result.commits[0]?.requiresRefetch, true);
-  assert.deepEqual(result.commits[0]?.delta, {});
+  assert.equal(result.commits[0]?.requiresReset, true);
+  assert.deepEqual(result.commits[0]?.changes, {});
   assert.equal((journal[0] as { requiresReset: boolean }).requiresReset, true);
   assert.deepEqual(Object.keys(outbox[0] as object).sort(), ["eventId", "id"]);
   assert.equal(mocks.publish.mock.calls.length, 0);
@@ -288,9 +292,9 @@ test("background enqueue failures leave the committed outbox available for recov
     async () => ({
       mutations: [
         {
-          changed: ["views"],
+          areas: ["views"],
           databaseId: "database-1",
-          delta: { views: [] },
+          changes: { views: [] },
         },
       ],
       result: true,
@@ -309,9 +313,9 @@ test("missing databases abort mutation commits with a typed 404", async () => {
     commitDatabaseMutationBatch({ actorId: "user-1" }, async () => ({
       mutations: [
         {
-          changed: ["rows"],
+          areas: ["records"],
           databaseId: "missing",
-          delta: {},
+          changes: {},
         },
       ],
       result: undefined,
@@ -324,24 +328,29 @@ test("missing databases abort mutation commits with a typed 404", async () => {
   );
 });
 
-test("single mutation commits and response mapping preserve metadata", async () => {
+test("single mutation exposes its canonical v2 event", async () => {
   transactionExecutor([7]);
 
   const commit = await commitDatabaseMutation(
     {
       actorId: "user-1",
-      changed: ["properties"],
+      areas: ["properties"],
       databaseId: "database-1",
     },
-    async () => ({ delta: { properties: [{ id: "property-1" }] } }),
+    async () => ({ changes: { removedPropertyIds: ["property-1"] } }),
   );
 
-  assert.deepEqual(mutationResponse(commit), {
-    changed: ["properties"],
+  assert.deepEqual(commit, {
+    actorId: "user-1",
+    areas: ["properties"],
+    changes: { removedPropertyIds: ["property-1"] },
+    commandId: commit.eventId,
     committedAt: commit.committedAt,
     databaseId: "database-1",
-    delta: { properties: [{ id: "property-1" }] },
-    mutationId: commit.mutationId,
+    dataSourceId: null,
+    eventId: commit.eventId,
+    protocolVersion: 2,
+    type: "database.mutation",
     version: 7,
   });
 });
@@ -353,10 +362,10 @@ test("single mutation guard rejects an impossible empty batch result", async () 
     commitDatabaseMutation(
       {
         actorId: "user-1",
-        changed: ["database"],
+        areas: ["databases"],
         databaseId: "database-1",
       },
-      async () => ({ delta: {} }),
+      async () => ({ changes: {} }),
     ),
     /Database mutation did not produce a commit/,
   );

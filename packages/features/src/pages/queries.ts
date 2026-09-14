@@ -505,5 +505,5 @@ export function getPageCover(page: Pick<Page, "metadata">) {
 }
 
 export function getPageIconPosition(page: Pick<Page, "metadata">) {
-  return page.metadata?.iconPosition === "top" ? "top" : "inline";
+  return page.metadata?.iconPosition === "inline" ? "inline" : "top";
 }

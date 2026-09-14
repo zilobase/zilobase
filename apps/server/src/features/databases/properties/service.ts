@@ -1,15 +1,17 @@
-import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, sql } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import {
   databaseProperty,
+  databaseRow,
   pageProperty,
   pagePropertyValue,
 } from "../../../infrastructure/database/schema";
 import { requireDataSourceEditAccess } from "../access/data-source-access";
 import { commitDataSourceMutation } from "../core/commit";
-import { fetchDatabasePropertyDelta } from "../realtime/delta";
+import { getDatabasePropertyEntity } from "../commands/metadata-entities";
+import { getDatabaseRecordEntity } from "../commands/record-entity";
 import {
   formatDatePropertyValueAsText,
   normalizePropertyConfig,
@@ -67,7 +69,7 @@ export async function createDatabasePropertyService(input: {
   const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
-      changed: ["properties"],
+      areas: ["properties"],
       dataSourceId: existing.id,
       env: input.env,
     },
@@ -104,26 +106,15 @@ export async function createDatabasePropertyService(input: {
         updatedAt: now,
       });
 
-      const delta = await fetchDatabasePropertyDelta(
-        existing.id,
-        databasePropertyId,
-        tx,
-      );
-
-      return {
-        delta: {
-          properties: [
-            ...columns
-              .filter((column) => column.position >= targetPosition)
-              .map((column) => ({
-                id: column.id,
-                position: column.position + 1,
-                updatedAt: now.toISOString(),
-              })),
-            ...(delta?.properties ?? []),
-          ],
-        },
-      };
+      const ids = await tx.select({ id: databaseProperty.id })
+        .from(databaseProperty)
+        .where(eq(databaseProperty.dataSourceId, existing.id))
+        .orderBy(asc(databaseProperty.position), asc(databaseProperty.id));
+      const properties = [];
+      for (const item of ids) {
+        properties.push(await getDatabasePropertyEntity({ transaction: tx }, item.id));
+      }
+      return { changes: { properties } };
     },
   );
 
@@ -260,14 +251,14 @@ export async function updateDatabasePropertyService(input: {
   const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
-      changed:
+      areas:
         (input.type !== undefined &&
           previousType &&
           effectiveType !== previousType &&
           (shouldClearValuesForPropertyTypeChange(previousType, effectiveType) ||
             (previousType === "date" && effectiveType === "text"))) ||
         optionValueChanges.length > 0
-          ? ["properties", "values"]
+          ? ["properties", "records"]
           : ["properties"],
       dataSourceId: existing.id,
       env: input.env,
@@ -401,26 +392,26 @@ export async function updateDatabasePropertyService(input: {
         });
       }
 
-      const delta = await fetchDatabasePropertyDelta(
-        existing.id,
-        column.id,
-        tx,
-      );
-
-      return {
-        delta: {
-          ...(delta ?? { properties: [] }),
-          ...(changedValues.length > 0
-            ? {
-                values: changedValues.map((value) => ({
-                  ...value,
-                  createdAt: value.createdAt.toISOString(),
-                  updatedAt: value.updatedAt.toISOString(),
-                })),
-              }
-            : {}),
-        },
-      };
+      const propertyIds = await tx.select({ id: databaseProperty.id })
+        .from(databaseProperty)
+        .where(eq(databaseProperty.dataSourceId, existing.id))
+        .orderBy(asc(databaseProperty.position), asc(databaseProperty.id));
+      const properties = [];
+      for (const item of propertyIds) {
+        properties.push(await getDatabasePropertyEntity({ transaction: tx }, item.id));
+      }
+      const pageIds = [...new Set(changedValues.flatMap((value) => value ? [value.pageId] : []))];
+      const changedRows = pageIds.length
+        ? await tx.select({ id: databaseRow.id }).from(databaseRow).where(and(
+            eq(databaseRow.dataSourceId, existing.id),
+            inArray(databaseRow.pageId, pageIds),
+          ))
+        : [];
+      const records = [];
+      for (const row of changedRows) {
+        records.push(await getDatabaseRecordEntity(tx, existing.id, row.id));
+      }
+      return { changes: { properties, ...(records.length ? { records } : {}) } };
     },
   );
 

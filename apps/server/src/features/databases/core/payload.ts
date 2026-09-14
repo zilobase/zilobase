@@ -207,7 +207,7 @@ async function loadDatabasePayload(
   };
 }
 
-export function getDatabasePayload(
+export function getDatabaseExportPayload(
   id: string,
   userId?: string,
   existingRecord?: DatabaseRecord,
@@ -216,7 +216,7 @@ export function getDatabasePayload(
   return loadDatabasePayload(id, userId, existingRecord, options, true);
 }
 
-export function getDatabaseSchemaPayload(
+export function getDatabaseSchemaExportPayload(
   id: string,
   userId?: string,
   existingRecord?: DatabaseRecord,

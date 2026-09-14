@@ -9036,10 +9036,6 @@
       "value": true,
       "type": false
     },
-    "applyDatabaseRealtimeMutation": {
-      "value": true,
-      "type": false
-    },
     "ApplyDatabaseTemplateInput": {
       "value": false,
       "type": true
@@ -9460,17 +9456,9 @@
       "value": true,
       "type": false
     },
-    "DatabaseChangedArea": {
-      "value": false,
-      "type": true
-    },
     "databaseDateFilterOperators": {
       "value": true,
       "type": false
-    },
-    "DatabaseDelta": {
-      "value": false,
-      "type": true
     },
     "DatabaseFilterGroupConfig": {
       "value": false,
@@ -9516,10 +9504,6 @@
       "value": true,
       "type": false
     },
-    "DatabaseMutationResponse": {
-      "value": false,
-      "type": true
-    },
     "databaseNumberFilterOperators": {
       "value": true,
       "type": false
@@ -9561,10 +9545,6 @@
       "type": true
     },
     "databasePropertyTypes": {
-      "value": true,
-      "type": false
-    },
-    "databaseQueryKey": {
       "value": true,
       "type": false
     },
@@ -9749,10 +9729,6 @@
       "type": false
     },
     "isDatabaseLocked": {
-      "value": true,
-      "type": false
-    },
-    "isDatabaseMutationResponse": {
       "value": true,
       "type": false
     },
@@ -10050,10 +10026,6 @@
       "value": true,
       "type": false
     },
-    "applyDatabaseRealtimeMutation": {
-      "value": true,
-      "type": false
-    },
     "ApplyDatabaseTemplateInput": {
       "value": false,
       "type": true
@@ -10474,17 +10446,9 @@
       "value": true,
       "type": false
     },
-    "DatabaseChangedArea": {
-      "value": false,
-      "type": true
-    },
     "databaseDateFilterOperators": {
       "value": true,
       "type": false
-    },
-    "DatabaseDelta": {
-      "value": false,
-      "type": true
     },
     "DatabaseFilterGroupConfig": {
       "value": false,
@@ -10530,10 +10494,6 @@
       "value": true,
       "type": false
     },
-    "DatabaseMutationResponse": {
-      "value": false,
-      "type": true
-    },
     "databaseNumberFilterOperators": {
       "value": true,
       "type": false
@@ -10575,10 +10535,6 @@
       "type": true
     },
     "databasePropertyTypes": {
-      "value": true,
-      "type": false
-    },
-    "databaseQueryKey": {
       "value": true,
       "type": false
     },
@@ -10763,10 +10719,6 @@
       "type": false
     },
     "isDatabaseLocked": {
-      "value": true,
-      "type": false
-    },
-    "isDatabaseMutationResponse": {
       "value": true,
       "type": false
     },
@@ -12772,10 +12724,6 @@
       "value": false,
       "type": true
     },
-    "databaseQueryKey": {
-      "value": true,
-      "type": false
-    },
     "DatabaseRecord": {
       "value": false,
       "type": true
@@ -12849,10 +12797,6 @@
     "DatabaseProperty": {
       "value": false,
       "type": true
-    },
-    "databaseQueryKey": {
-      "value": true,
-      "type": false
     },
     "DatabaseRecord": {
       "value": false,

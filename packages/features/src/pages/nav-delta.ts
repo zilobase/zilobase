@@ -117,7 +117,7 @@ export function applyPageFavoriteToNav(
 
 export function applyDatabaseFavoriteToNav(
   navigation: PageNavigationPayload | undefined,
-  database: PageDatabase,
+  database: PageDatabase | Pick<PageDatabase, "id" | "isFavorite">,
 ) {
   if (!navigation) {
     return navigation;
@@ -127,7 +127,7 @@ export function applyDatabaseFavoriteToNav(
     ...navigation,
     databases: navigation.databases.map((current) =>
       current.id === database.id
-        ? { ...current, ...database, isFavorite: database.isFavorite }
+        ? { ...current, isFavorite: database.isFavorite }
         : current,
     ),
   };

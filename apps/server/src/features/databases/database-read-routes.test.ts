@@ -14,7 +14,6 @@ const mocks = vi.hoisted(() => ({
   payload: vi.fn(),
   published: vi.fn(),
   realtimeExpiration: vi.fn(),
-  schemaPayload: vi.fn(),
   verifyTicket: vi.fn(),
 }));
 
@@ -34,20 +33,40 @@ vi.mock("../../shared/security/database-realtime-ticket", () => ({
 vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
   getDatabaseRealtimeWebSocketUrl: () => "ws://localhost/realtime",
 }));
+vi.mock("../../infrastructure/database", () => {
+  const emptyQuery = () => {
+    const query = {
+      from() { return query; },
+      innerJoin() { return query; },
+      limit() { return Promise.resolve([]); },
+      orderBy() { return Promise.resolve([]); },
+      then(resolve: (value: unknown[]) => unknown) {
+        return Promise.resolve([]).then(resolve);
+      },
+      where() { return query; },
+    };
+    return query;
+  };
+  return { db: { select: emptyQuery } };
+});
 vi.mock("./access/database-access", async (original) => ({
   ...(await original<typeof import("./access/database-access")>()),
   getDatabaseRecord: mocks.getRecord,
 }));
 vi.mock("./core/payload", () => ({
-  getDatabasePayload: mocks.payload,
-  getDatabaseSchemaPayload: mocks.schemaPayload,
+  getDatabaseExportPayload: mocks.payload,
 }));
 
 import { databaseReadRoutes } from "./database-read-routes";
 
 const record = {
+  config: {},
+  createdAt: new Date("2026-08-01T00:00:00.000Z"),
   deletedAt: null,
   id: "database-1",
+  name: "Database",
+  pageId: "page-1",
+  updatedAt: new Date("2026-08-01T00:00:00.000Z"),
   version: 7,
   workspaceId: "workspace-1",
 };
@@ -65,22 +84,6 @@ beforeEach(() => {
   mocks.accessLevel.mockResolvedValue("full");
   mocks.membership.mockResolvedValue({ id: "membership-1" });
   mocks.payload.mockResolvedValue({ database: { id: "database-1" }, rows: [] });
-  mocks.schemaPayload.mockResolvedValue({
-    activeDataSource: null,
-    database: {
-      config: {},
-      createdAt: new Date("2026-08-01T00:00:00.000Z"),
-      id: "database-1",
-      name: "Database",
-      pageId: "page-1",
-      updatedAt: new Date("2026-08-01T00:00:00.000Z"),
-      version: 7,
-      workspaceId: "workspace-1",
-    },
-    dataSources: [],
-    properties: [],
-    views: [],
-  });
   mocks.published.mockResolvedValue(false);
   mocks.realtimeExpiration.mockResolvedValue(null);
   mocks.createTicket.mockResolvedValue({ expiresAt: "2026-08-04T00:00:00.000Z", token: "ticket" });
@@ -116,7 +119,6 @@ test("database bootstrap route serves schema-only entities", async () => {
   const response = await sessionApp().request("/database-1/bootstrap");
   assert.equal(response.status, 200);
   assert.equal((await responseJson<{ database: { accessLevel: string } }>(response)).database.accessLevel, "full");
-  assert.equal(mocks.schemaPayload.mock.calls.length, 2);
   assert.equal(mocks.payload.mock.calls.length, 0);
 });
 

@@ -28,8 +28,8 @@ vi.mock("../../../infrastructure/database", () => ({
 
 import { database } from "../../../infrastructure/database/schema";
 import {
-  getDatabasePayload,
-  getDatabaseSchemaPayload,
+  getDatabaseExportPayload,
+  getDatabaseSchemaExportPayload,
 } from "./payload";
 
 const existingRecord: typeof database.$inferSelect = {
@@ -52,7 +52,7 @@ beforeEach(() => {
   mocks.selectResults.length = 0;
 });
 
-test("getDatabasePayload assembles rows, values, schema, and favorite state", async () => {
+test("getDatabaseExportPayload assembles rows, values, schema, and favorite state", async () => {
   mocks.selectResults.push(
     [{
       link: { createdAt: new Date("2026-01-01"), position: 0 },
@@ -75,7 +75,7 @@ test("getDatabasePayload assembles rows, values, schema, and favorite state", as
     [{ id: "value-1", pageId: "page-1", propertyId: "property-1" }],
   );
 
-  const payload = await getDatabasePayload(
+  const payload = await getDatabaseExportPayload(
     "database-1",
     "user-1",
     existingRecord,
@@ -101,7 +101,7 @@ test("getDatabasePayload assembles rows, values, schema, and favorite state", as
   assert.equal(mocks.selectCalls, 6);
 });
 
-test("getDatabaseSchemaPayload skips row and value queries", async () => {
+test("getDatabaseSchemaExportPayload skips row and value queries", async () => {
   mocks.selectResults.push(
     [{
       link: { createdAt: new Date("2026-01-01"), position: 0 },
@@ -115,7 +115,7 @@ test("getDatabaseSchemaPayload skips row and value queries", async () => {
     }],
   );
 
-  const payload = await getDatabaseSchemaPayload(
+  const payload = await getDatabaseSchemaExportPayload(
     "database-1",
     "user-1",
     existingRecord,
@@ -127,10 +127,10 @@ test("getDatabaseSchemaPayload skips row and value queries", async () => {
   assert.equal(mocks.selectCalls, 4);
 });
 
-test("getDatabasePayload skips favorite and source queries when no sources are linked", async () => {
+test("getDatabaseExportPayload skips favorite and source queries when no sources are linked", async () => {
   mocks.selectResults.push([], []);
 
-  const payload = await getDatabasePayload(
+  const payload = await getDatabaseExportPayload(
     "database-1",
     undefined,
     existingRecord,
@@ -142,9 +142,9 @@ test("getDatabasePayload skips favorite and source queries when no sources are l
   assert.equal(mocks.selectCalls, 2);
 });
 
-test("getDatabasePayload returns null when the database is missing", async () => {
+test("getDatabaseExportPayload returns null when the database is missing", async () => {
   mocks.selectResults.push([]);
 
-  assert.equal(await getDatabasePayload("missing"), null);
+  assert.equal(await getDatabaseExportPayload("missing"), null);
   assert.equal(mocks.selectCalls, 1);
 });

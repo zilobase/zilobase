@@ -299,10 +299,7 @@ function normalizeDatabaseFilter(
 }
 
 function getDatabaseFilterPropertyId(value: unknown) {
-  if (value === "title") {
-    return "name";
-  }
-
+  if (value === "title") return null;
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 

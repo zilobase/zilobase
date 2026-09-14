@@ -31,8 +31,7 @@ vi.mock("./access/database-access", async (original) => ({
   getDatabaseRecord: mocks.databaseRecord,
 }));
 vi.mock("./core/payload", () => ({
-  getDatabasePayload: mocks.databasePayload,
-  getDatabaseSchemaPayload: vi.fn(),
+  getDatabaseExportPayload: mocks.databasePayload,
 }));
 vi.mock("./core/service", () => ({
   createDatabaseService: mocks.createDatabase,
@@ -81,7 +80,7 @@ beforeEach(() => {
   mocks.publishedDatabase.mockResolvedValue(false);
 });
 
-test("v2 bootstrap route returns metadata without invoking the legacy payload", async () => {
+  test("v2 bootstrap route returns metadata without invoking the export payload", async () => {
   const record = {
     deletedAt: null,
     id: "database-1",

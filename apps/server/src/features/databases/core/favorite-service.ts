@@ -3,7 +3,6 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../../infrastructure/database";
 import { favorite } from "../../../infrastructure/database/schema";
 import { requireDatabaseAccess } from "../access/database-access";
-import { getDatabasePayload } from "./payload";
 
 export async function updateDatabaseFavoriteService(input: {
   databaseId: string;
@@ -38,5 +37,9 @@ export async function updateDatabaseFavoriteService(input: {
       );
   }
 
-  return getDatabasePayload(existing.id, input.userId, existing);
+  return {
+    databaseId: existing.id,
+    isFavorite: input.favorite,
+    workspaceId: existing.workspaceId,
+  };
 }

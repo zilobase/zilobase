@@ -65,22 +65,6 @@ export const databaseAccessQueryOptions = (
     },
   })
 
-export const databaseQueryKey = (
-  databaseId: string | null | undefined,
-  options?: {
-    dataSourceId?: string
-    includeDeleted?: boolean
-    viewId?: string
-  },
-) =>
-  [
-    "database",
-    databaseId ?? "none",
-    "schema",
-    options?.includeDeleted ? "include-deleted" : "active-only",
-    options?.viewId ?? options?.dataSourceId ?? "primary-source",
-  ] as const
-
 export const databaseRootQueryKey = () => ["database"] as const
 
 export const databaseQueryRootKey = (

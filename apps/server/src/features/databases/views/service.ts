@@ -1,8 +1,6 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
-import type { Database } from "../../../infrastructure/database";
-import { invalidateDatabaseAutomationDependencies } from "../automations/service";
 import { db } from "../../../infrastructure/database";
 import {
   databaseProperty,
@@ -19,9 +17,10 @@ import {
 } from "../access/data-source-access";
 import { commitDatabaseMutation } from "../core/commit";
 import {
-  fetchDatabasePropertyDelta,
-  fetchDatabaseViewDelta,
-} from "../realtime/delta";
+  getDatabasePropertyEntity,
+  getDatabaseViewEntity,
+} from "../commands/metadata-entities";
+import { getDatabaseRecordEntity } from "../commands/record-entity";
 import { getNextDatabaseViewName } from "./naming";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import { upsertPagePropertyValues } from "../../pages/properties/upsert";
@@ -113,7 +112,7 @@ export async function createDatabaseViewService(input: {
   const commit = await commitDatabaseMutation(
     {
       actorId: input.userId,
-      changed: ["views"],
+      areas: ["views"],
       databaseId: existing.id,
       env: input.env,
       navigationWorkspaceId: existing.workspaceId,
@@ -133,11 +132,7 @@ export async function createDatabaseViewService(input: {
         updatedAt: now,
       });
 
-      const delta = await fetchDatabaseViewDelta(viewId, tx);
-
-      return {
-        delta: delta ?? { views: [] },
-      };
+      return { changes: { views: [await getDatabaseViewEntity({ transaction: tx }, viewId)] } };
     },
   );
 
@@ -392,7 +387,7 @@ export async function updateDatabaseViewService(input: {
   const commit = await commitDatabaseMutation(
     {
       actorId: input.userId,
-      changed: subItemSetup ? ["views", "properties", "values"] : ["views"],
+      areas: subItemSetup ? ["views", "properties", "records"] : ["views"],
       databaseId: existing.id,
       env: input.env,
       navigationWorkspaceId: existing.workspaceId,
@@ -487,91 +482,28 @@ export async function updateDatabaseViewService(input: {
         .set(values)
         .where(eq(databaseView.id, existingView.id));
 
-      const delta = await fetchDatabaseViewDelta(existingView.id, tx);
+      const view = await getDatabaseViewEntity({ transaction: tx }, existingView.id);
 
       if (subItemSetup) {
-        const [parentDelta, subItemDelta] = await Promise.all([
-          fetchDatabasePropertyDelta(
-            existingView.dataSourceId,
-            subItemSetup.parentColumnId,
-            tx,
-          ),
-          fetchDatabasePropertyDelta(
-            existingView.dataSourceId,
-            subItemSetup.subItemColumnId,
-            tx,
-          ),
+        const properties = await Promise.all([
+          getDatabasePropertyEntity({ transaction: tx }, subItemSetup.parentColumnId),
+          getDatabasePropertyEntity({ transaction: tx }, subItemSetup.subItemColumnId),
         ]);
-
-        return {
-          delta: {
-            ...delta,
-            properties: [
-              ...(parentDelta?.properties ?? []),
-              ...(subItemDelta?.properties ?? []),
-            ],
-            values: subItemSetup.values.map((value) => ({
-              ...value,
-              updatedAt: now.toISOString(),
-            })),
-          },
-        };
+        const pageIds = [...new Set(subItemSetup.values.map(({ pageId }) => pageId))];
+        const rowIds = pageIds.length
+          ? await tx.select({ id: databaseRow.id }).from(databaseRow).where(and(
+              eq(databaseRow.dataSourceId, existingView.dataSourceId),
+              inArray(databaseRow.pageId, pageIds),
+            ))
+          : [];
+        const records = [];
+        for (const row of rowIds) {
+          records.push(await getDatabaseRecordEntity(tx, existingView.dataSourceId, row.id));
+        }
+        return { changes: { properties, records, views: [view] } };
       }
 
-      return {
-        delta: delta ?? { views: [] },
-      };
-    },
-  );
-
-  return { commit, databaseId: existing.id, viewId: existingView.id };
-}
-
-export async function deleteDatabaseViewService(input: {
-  databaseId: string;
-  env?: RuntimeEnv;
-  userId: string;
-  viewId: string;
-}) {
-  const existing = await requireDatabaseEditAccess(
-    input.databaseId,
-    input.userId,
-  );
-  const views = await db
-    .select({ id: databaseView.id })
-    .from(databaseView)
-    .where(eq(databaseView.databaseId, existing.id));
-  const existingView = views.find((view) => view.id === input.viewId);
-
-  if (!existingView) {
-    throw new ServiceMutationError("Database view not found", 404);
-  }
-
-  if (views.length <= 1) {
-    throw new ServiceMutationError(
-      "The last view cannot be deleted. A database must always have one view.",
-      409,
-    );
-  }
-
-  const commit = await commitDatabaseMutation(
-    {
-      actorId: input.userId,
-      changed: ["views"],
-      databaseId: existing.id,
-      env: input.env,
-      navigationWorkspaceId: existing.workspaceId,
-    },
-    async (tx) => {
-      await tx.delete(databaseView).where(eq(databaseView.id, existingView.id));
-      await invalidateDatabaseAutomationDependencies({
-        dependencyId: existingView.id,
-        dependencyType: "view",
-        executor: tx as unknown as Database,
-        reason: "The saved view used by this automation was deleted",
-      });
-
-      return { delta: { removedViewIds: [existingView.id] } };
+      return { changes: { views: [view] } };
     },
   );
 

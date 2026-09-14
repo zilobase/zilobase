@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { rejectMismatchedPinnedWorkspace } from "../auth/oauth-access";
 import type { AppBindings } from "../../shared/types";
 import { readJsonBody } from "../../shared/http/request";
-import { getDatabasePayload } from "./core/payload";
+import { getDatabaseExportPayload } from "./core/payload";
 import { updateDatabaseFavoriteService } from "./core/favorite-service";
 import { deleteDatabaseAccessRuleService, deletePublicDatabaseAccessService, listDatabaseAccessRulesService, upsertDatabaseAccessRuleService } from "./sharing/service";
 import { createDatabaseService, deleteDatabaseService, restoreDatabaseService } from "./core/service";
@@ -76,7 +76,7 @@ databaseCreateRoutes.post("/", async (c) => {
       userId: user.id,
       workspaceId,
     });
-    const payload = await getDatabasePayload(created.databaseId, user.id);
+    const payload = await getDatabaseExportPayload(created.databaseId, user.id);
 
     if (!payload) {
       return c.json({ error: "Database not found" }, 404);

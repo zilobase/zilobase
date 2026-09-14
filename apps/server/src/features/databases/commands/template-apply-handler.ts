@@ -32,7 +32,7 @@ import {
   getDataSourceEntity,
 } from "./metadata-entities"
 import { getDatabaseRecordEntity } from "./record-entity"
-import { sourceMutations, sourceRecord } from "./structural-handlers"
+import { sourceMutations, sourceRecord } from "./source-command-state"
 
 type ApplyTemplateCommand = Extract<DataSourceCommand, { type: "template.apply" }>
 

@@ -17,10 +17,12 @@ import {
 } from "../../../infrastructure/database/schema"
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
 
+type EntityReadContext = Pick<DatabaseCommandContext, "transaction">
+
 const timestamp = (value: Date | string) =>
   value instanceof Date ? value.toISOString() : value
 
-export async function getDatabaseHostEntity(context: DatabaseCommandContext, databaseId: string) {
+export async function getDatabaseHostEntity(context: EntityReadContext, databaseId: string) {
   const [host] = await context.transaction.select().from(database)
     .where(eq(database.id, databaseId)).limit(1)
   if (!host) throw new ServiceMutationError("Database not found", 404)
@@ -38,7 +40,7 @@ export async function getDatabaseHostEntity(context: DatabaseCommandContext, dat
 }
 
 export async function getDataSourceEntity(
-  context: DatabaseCommandContext,
+  context: EntityReadContext,
   databaseId: string,
   dataSourceId: string,
 ) {
@@ -67,7 +69,7 @@ export async function getDataSourceEntity(
   })
 }
 
-export async function getDatabaseViewEntity(context: DatabaseCommandContext, viewId: string) {
+export async function getDatabaseViewEntity(context: EntityReadContext, viewId: string) {
   const [view] = await context.transaction.select().from(databaseView)
     .where(eq(databaseView.id, viewId)).limit(1)
   if (!view) throw new ServiceMutationError("Database view not found", 404)
@@ -80,7 +82,7 @@ export async function getDatabaseViewEntity(context: DatabaseCommandContext, vie
 }
 
 export async function getDatabasePropertyEntity(
-  context: DatabaseCommandContext,
+  context: EntityReadContext,
   databasePropertyId: string,
 ) {
   const [record] = await context.transaction

@@ -6,10 +6,8 @@ import {
   setPageDetailCache,
 } from "../shared/item-action-cache";
 import { patchDatabaseCachePage } from "../databases/row-page-properties";
-import { applyDatabaseRealtimeMutation } from "../databases/realtime";
-import type {
-  DatabaseMutationResponse,
-} from "../databases/mutation-types";
+import type { DatabaseMutationEventV2 } from "../databases/contracts-v2";
+import { useDatabaseClient } from "../databases/client/provider";
 import {
   defaultUserSettings,
   userSettingsQueryKey,
@@ -357,7 +355,8 @@ export function useRestorePage() {
 }
 
 export function useUpdatePagePropertyValue() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const databaseClient = useDatabaseClient();
+  const { apiFetch } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: async ({
@@ -365,16 +364,16 @@ export function useUpdatePagePropertyValue() {
       value,
       pageId,
     }: UpdatePagePropertyValueInput) =>
-      apiFetch<{ mutations: DatabaseMutationResponse[] }>(
+      apiFetch<{ events: DatabaseMutationEventV2[] }>(
         `/pages/${pageId}/properties/${propertyId}/value`,
         {
           method: "PUT",
           body: JSON.stringify({ value }),
         },
       ),
-    onSuccess: ({ mutations }) => {
-      for (const mutation of mutations) {
-        applyDatabaseRealtimeMutation(queryClient, mutation);
+    onSuccess: ({ events }) => {
+      for (const event of events) {
+        void databaseClient.ingest(event);
       }
     },
   });

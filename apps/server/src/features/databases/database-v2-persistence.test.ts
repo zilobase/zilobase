@@ -23,7 +23,7 @@ test("database v2 schema requires canonical row order and journal-backed deliver
   assert.equal("databaseId" in outboxColumns, false)
 })
 
-test("outbox migration references journal events while retaining legacy rows", async () => {
+test("outbox migration references journal events while retaining pre-journal rows", async () => {
   const migration = await readFile(
     new URL("../../../drizzle/0091_database_outbox_journal_reference.sql", import.meta.url),
     "utf8",

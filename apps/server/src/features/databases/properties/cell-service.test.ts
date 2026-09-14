@@ -4,6 +4,7 @@ import { beforeEach, test, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   access: vi.fn(),
   commit: vi.fn(),
+  recordEntity: vi.fn(),
   selectResults: [] as unknown[][],
   validate: vi.fn(),
 }));
@@ -17,6 +18,9 @@ vi.mock("../access/data-source-access", () => ({
 vi.mock("../core/commit", () => ({
   commitDatabaseMutation: mocks.commit,
   commitDataSourceMutation: mocks.commit,
+}));
+vi.mock("../commands/record-entity", () => ({
+  getDatabaseRecordEntity: mocks.recordEntity,
 }));
 vi.mock("./config", () => ({
   validateCellValue: mocks.validate,
@@ -47,6 +51,11 @@ beforeEach(() => {
     workspaceId: "workspace-1",
   });
   mocks.commit.mockReset();
+  mocks.recordEntity.mockReset();
+  mocks.recordEntity.mockResolvedValue({
+    id: "row-1",
+    valuesByPropertyId: { "property-1": { value: "Done" } },
+  });
   mocks.selectResults.length = 0;
   mocks.validate.mockReset();
   vi.restoreAllMocks();
@@ -137,13 +146,16 @@ test("setDatabaseCellValueService validates and upserts a cell mutation", async 
   );
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0], {
     actorId: "user-1",
-    changed: ["rows", "values"],
+    areas: ["records"],
     dataSourceId: "database-1",
     env: { ENV: "test" },
   });
-  const delta = (await mocks.commit.mock.results[0]?.value)?.delta;
-  assert.equal(delta.rows[0].lastEditedById, "user-1");
-  assert.equal(delta.values[0].value, "Done");
+  const changes = (await mocks.commit.mock.results[0]?.value)?.changes;
+  assert.equal(changes.records[0].id, "row-1");
+  assert.equal(
+    changes.records[0].valuesByPropertyId["property-1"].value,
+    "Done",
+  );
   assert.deepEqual((await mocks.commit.mock.results[0]?.value)?.automationFacts, [
     {
       actorId: "user-1",

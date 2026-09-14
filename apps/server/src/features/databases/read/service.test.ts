@@ -137,19 +137,68 @@ function payload(options: { config?: unknown; rows?: number } = {}) {
   }
 }
 
-test("bootstrap aggregates metadata for every accessible linked source", async () => {
-  const base = { ...payload({ rows: 0 }), properties: [property()] }
-  const second = {
-    ...base,
-    activeDataSource: source("source-2", 1),
-    properties: [property("source-2")],
+function readModel(options: { config?: unknown; rows?: number } = {}) {
+  const data = payload(options)
+  return {
+    dataSources: data.dataSources.map((item) => ({
+      ...item,
+      createdAt: item.createdAt.toISOString(),
+      linkedAt: item.linkedAt.toISOString(),
+      updatedAt: item.updatedAt.toISOString(),
+    })),
+    properties: data.properties.map(({ property: item, ...column }) => ({
+      ...column,
+      createdAt: column.createdAt.toISOString(),
+      property: {
+        ...item,
+        createdAt: item.createdAt.toISOString(),
+        updatedAt: item.updatedAt.toISOString(),
+      },
+      updatedAt: column.updatedAt.toISOString(),
+    })),
+    records: data.rows.map((item) => ({
+      ...item,
+      createdAt: item.createdAt.toISOString(),
+      page: {
+        ...item.page,
+        createdAt: item.page.createdAt.toISOString(),
+        updatedAt: item.page.updatedAt.toISOString(),
+      },
+      updatedAt: item.updatedAt.toISOString(),
+      valuesByPropertyId: Object.fromEntries(data.values
+        .filter((entry) => entry.pageId === item.pageId)
+        .map((entry) => [entry.propertyId, {
+          ...entry,
+          createdAt: entry.createdAt.toISOString(),
+          updatedAt: entry.updatedAt.toISOString(),
+        }])),
+    })),
+    views: data.views.map((item) => ({
+      ...item,
+      createdAt: item.createdAt.toISOString(),
+      updatedAt: item.updatedAt.toISOString(),
+    })),
   }
-  const getSchemaPayload = vi.fn(async (
-    _id: string,
-    _userId?: string,
-    _record?: unknown,
-    options?: { dataSourceId?: string },
-  ) => options?.dataSourceId === "source-2" ? second : base)
+}
+
+test("bootstrap aggregates metadata for every accessible linked source", async () => {
+  const base = readModel({ rows: 0 })
+  const loadReadModel = vi.fn(async () => ({
+    ...base,
+    properties: [
+      ...base.properties,
+      {
+        ...base.properties[0],
+        dataSourceId: "source-2",
+        id: "column-source-2",
+        property: {
+          ...base.properties[0]!.property,
+          id: "property-source-2",
+        },
+        propertyId: "property-source-2",
+      },
+    ],
+  }))
 
   const result = await getDatabaseBootstrapService(
     {
@@ -161,7 +210,7 @@ test("bootstrap aggregates metadata for every accessible linked source", async (
     },
     {
       getPayload: vi.fn(),
-      getSchemaPayload,
+      loadReadModel,
       requireAccess: vi.fn(),
     } as never,
   )
@@ -195,7 +244,7 @@ test("database exports deliberately load the complete requested data source", as
     },
     {
       getPayload,
-      getSchemaPayload: vi.fn(),
+      loadReadModel: vi.fn(),
       requireAccess: vi.fn(),
     } as never,
   )
@@ -217,7 +266,7 @@ test("database exports reject a mismatched requested data source", async () => {
       },
       {
         getPayload: vi.fn(async () => payload()),
-        getSchemaPayload: vi.fn(),
+        loadReadModel: vi.fn(),
         requireAccess: vi.fn(),
       } as never,
     ),
@@ -227,10 +276,10 @@ test("database exports reject a mismatched requested data source", async () => {
 })
 
 test("record windows use view page size, complete aggregates, and load-more offsets", async () => {
-  const getPayload = vi.fn(async () => payload())
+  const loadReadModel = vi.fn(async () => readModel())
   const dependencies = {
-    getPayload,
-    getSchemaPayload: vi.fn(),
+    getPayload: vi.fn(),
+    loadReadModel,
     requireAccess: vi.fn(),
   } as never
   const first = await getDatabaseRecordWindowService(
@@ -283,8 +332,8 @@ test("record windows apply normalized filters and formula-safe numeric sorts bef
       viewId: "view-1",
     },
     {
-      getPayload: vi.fn(async () => payload({ config })),
-      getSchemaPayload: vi.fn(),
+      getPayload: vi.fn(),
+      loadReadModel: vi.fn(async () => readModel({ config })),
       requireAccess: vi.fn(),
     } as never,
   )
@@ -300,8 +349,8 @@ test("record windows apply normalized filters and formula-safe numeric sorts bef
 
 test("stale snapshots and invalid source/view windows fail with typed conflicts", async () => {
   const dependencies = {
-    getPayload: vi.fn(async () => payload()),
-    getSchemaPayload: vi.fn(),
+    getPayload: vi.fn(),
+    loadReadModel: vi.fn(async () => readModel()),
     requireAccess: vi.fn(),
   } as never
 
@@ -338,8 +387,8 @@ test("stale snapshots and invalid source/view windows fail with typed conflicts"
 
 test("record window validates offsets and bounded collection limits", async () => {
   const dependencies = {
-    getPayload: vi.fn(async () => payload()),
-    getSchemaPayload: vi.fn(),
+    getPayload: vi.fn(),
+    loadReadModel: vi.fn(async () => readModel()),
     requireAccess: vi.fn(),
   } as never
 

@@ -7,12 +7,13 @@ const mocks = vi.hoisted(() => ({
   canAccessPage: vi.fn(),
   commit: vi.fn(),
   encode: vi.fn(),
-  fetchDelta: vi.fn(),
   incrementPlacements: vi.fn(),
   orderLock: vi.fn(),
   orderLocks: vi.fn(),
   placementPositions: vi.fn(),
+  propertyEntity: vi.fn(),
   rebalance: vi.fn(),
+  recordEntity: vi.fn(),
   placement: vi.fn(),
   selectResults: [] as unknown[][],
   sourceAccess: vi.fn(),
@@ -40,8 +41,11 @@ vi.mock("../core/commit", () => ({
   commitDataSourceMutation: mocks.commit,
   commitDataSourceMutationBatch: mocks.batch,
 }));
-vi.mock("../realtime/delta", () => ({
-  fetchDatabaseRowDelta: mocks.fetchDelta,
+vi.mock("../commands/metadata-entities", () => ({
+  getDatabasePropertyEntity: mocks.propertyEntity,
+}));
+vi.mock("../commands/record-entity", () => ({
+  getDatabaseRecordEntity: mocks.recordEntity,
 }));
 vi.mock("../core/position-service", () => ({
   incrementDatabaseRowPlacementPositions: mocks.incrementPlacements,
@@ -99,15 +103,23 @@ beforeEach(() => {
   mocks.batch.mockReset();
   mocks.encode.mockReset();
   mocks.encode.mockReturnValue(new Uint8Array([1, 2, 3]));
-  mocks.fetchDelta.mockReset();
   mocks.incrementPlacements.mockReset();
   mocks.orderLock.mockReset();
   mocks.orderLock.mockResolvedValue(undefined);
   mocks.orderLocks.mockReset();
   mocks.orderLocks.mockResolvedValue(undefined);
   mocks.placementPositions.mockReset();
+  mocks.propertyEntity.mockReset();
+  mocks.propertyEntity.mockResolvedValue({ id: "column-imported" });
   mocks.rebalance.mockReset();
   mocks.rebalance.mockResolvedValue(undefined);
+  mocks.recordEntity.mockReset();
+  mocks.recordEntity.mockResolvedValue({
+    id: "new-row",
+    valuesByPropertyId: {
+      "status-property": { value: "Todo" },
+    },
+  });
   mocks.placement.mockReset();
   mocks.sourceAccess.mockReset();
   mocks.sourceAccess.mockResolvedValue({
@@ -187,9 +199,6 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
     ],
     [],
   );
-  mocks.fetchDelta.mockResolvedValue({
-    rows: [{ id: "new-row", position: 1 }],
-  });
   vi.spyOn(crypto, "randomUUID")
     .mockReturnValueOnce("00000000-0000-4000-8000-000000000001")
     .mockReturnValueOnce("00000000-0000-4000-8000-000000000002")
@@ -260,19 +269,17 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
   ]);
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0], {
     actorId: "user-1",
-    changed: ["rows", "values"],
+    areas: ["records"],
     dataSourceId: "database-1",
     env: { ENV: "test" },
   });
-  const delta = (await mocks.commit.mock.results[0]?.value)?.delta;
-  assert.deepEqual(
-    delta.rows.map(({ id, position }: any) => ({ id, position })),
-    [
-      { id: "row-2", position: 2 },
-      { id: "new-row", position: 1 },
-    ],
-  );
-  assert.equal(delta.values[0].value, "Todo");
+  const changes = (await mocks.commit.mock.results[0]?.value)?.changes;
+  assert.deepEqual(changes.records, [{
+    id: "new-row",
+    valuesByPropertyId: {
+      "status-property": { value: "Todo" },
+    },
+  }]);
 });
 
 test("createDatabaseRowService attaches an editable existing page", async () => {
@@ -290,7 +297,6 @@ test("createDatabaseRowService attaches an editable existing page", async () => 
     [],
     [],
   );
-  mocks.fetchDelta.mockResolvedValue(null);
   vi.spyOn(crypto, "randomUUID").mockReturnValue(
     "00000000-0000-4000-8000-000000000001",
   );
@@ -314,9 +320,14 @@ test("createDatabaseRowService attaches an editable existing page", async () => 
   });
   assert.equal(inserts.length, 1);
   assert.equal((inserts[0] as Record<string, unknown>).pageId, "existing-page");
-  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].changed, ["rows"]);
-  assert.deepEqual((await mocks.commit.mock.results[0]?.value)?.delta, {
-    rows: [],
+  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].areas, ["records"]);
+  assert.deepEqual((await mocks.commit.mock.results[0]?.value)?.changes, {
+    records: [{
+      id: "new-row",
+      valuesByPropertyId: {
+        "status-property": { value: "Todo" },
+      },
+    }],
   });
 });
 
@@ -452,7 +463,12 @@ test("createDatabaseRowService imports source properties and values", async () =
   ]);
   assert.equal(mocks.inherit.mock.calls[0]?.[0].sourcePropertyMode, "match");
   assert.equal(mocks.batch.mock.calls.length, 1);
-  assert.deepEqual(result.commit.delta.properties, [{ id: "column-imported" }]);
-  assert.equal(result.commit.delta.values?.[0]?.value, 7);
-  assert.deepEqual(result.sourceCommit?.delta.removedRowIds, ["source-row"]);
+  assert.deepEqual(result.commit.changes.properties, [{ id: "column-imported" }]);
+  assert.deepEqual(result.commit.changes.records, [{
+    id: "new-row",
+    valuesByPropertyId: {
+      "status-property": { value: "Todo" },
+    },
+  }]);
+  assert.deepEqual(result.sourceCommit?.changes.removedRecordIds, ["source-row"]);
 });

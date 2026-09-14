@@ -31,7 +31,8 @@ import {
   lockDatabaseAutomationFactRows,
   type DatabaseMutationOrigin,
 } from "../automations/triggers/event-capture";
-import { fetchDatabaseRowDelta } from "../realtime/delta";
+import { getDatabasePropertyEntity } from "../commands/metadata-entities";
+import { getDatabaseRecordEntity } from "../commands/record-entity";
 import { isDatabaseHostPageId } from "../core/host-page";
 import { getStatusDefaultValue, validateCellValue } from "../properties/config";
 import {
@@ -271,11 +272,9 @@ export async function createDatabaseRowService(input: {
   const rowId = input.newRowId ?? crypto.randomUUID();
   let createdAt = "";
 
-  const targetChanged = sourceDataSource
-    ? (["rows", "properties", "values"] as const)
-    : defaultStatusValues.length > 0 || initialValues.length > 0
-      ? (["rows", "values"] as const)
-      : (["rows"] as const);
+  const targetAreas = sourceDataSource
+    ? (["records", "properties"] as const)
+    : (["records"] as const);
   const createTargetRow = async (
     tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
     orderingLocked = false,
@@ -458,14 +457,11 @@ export async function createDatabaseRowService(input: {
         });
     }
 
-    const delta = await fetchDatabaseRowDelta(rowId, tx);
-    const shiftedRows = targetRows
-      .filter((row) => row.position >= targetPosition)
-      .map((row) => ({
-        id: row.id,
-        position: row.position + 1,
-        updatedAt: now.toISOString(),
-      }));
+    const properties = [];
+    for (const property of inherited.properties) {
+      properties.push(await getDatabasePropertyEntity({ transaction: tx }, property.id as string));
+    }
+    const record = await getDatabaseRecordEntity(tx, existing.id, rowId);
 
     return {
       automationFacts: [
@@ -489,12 +485,9 @@ export async function createDatabaseRowService(input: {
           rowId,
         },
       ],
-      delta: {
-        ...(sourceDataSource ? { properties: inherited.properties } : {}),
-        rows: [...shiftedRows, ...(delta?.rows ?? [])],
-        ...(insertedValues.length > 0 || inherited.values.length > 0
-          ? { values: [...insertedValues, ...inherited.values] }
-          : {}),
+      changes: {
+        ...(properties.length ? { properties } : {}),
+        records: [record],
       },
     };
   };
@@ -585,24 +578,19 @@ export async function createDatabaseRowService(input: {
           ],
           mutations: [
             {
-              changed: [...targetChanged],
+              areas: [...targetAreas],
+              changes: targetResult.changes,
               dataSourceId: existing.id,
-              delta: targetResult.delta,
             },
             {
-              changed: ["rows"],
-              dataSourceId: sourceDataSource.id,
-              delta: {
-                removedRowIds: [sourceRowId],
-                rows: remainingSourceRows.map((row, position) => ({
-                  id: row.id,
-                  ...(row.parentRowId === sourceRowId
-                    ? { parentRowId: null }
-                    : {}),
-                  position,
-                  updatedAt: now.toISOString(),
-                })),
+              areas: ["records"],
+              changes: {
+                records: await Promise.all(remainingSourceRows.map((row) =>
+                  getDatabaseRecordEntity(tx, sourceDataSource.id, row.id)
+                )),
+                removedRecordIds: [sourceRowId],
               },
+              dataSourceId: sourceDataSource.id,
             },
           ],
           result: undefined,
@@ -615,7 +603,7 @@ export async function createDatabaseRowService(input: {
     commit = await commitDataSourceMutation(
       {
         actorId: input.userId,
-        changed: [...targetChanged],
+        areas: [...targetAreas],
         dataSourceId: existing.id,
         env: input.env,
       },

@@ -44,6 +44,12 @@ type SetDatabaseFavoriteInput = {
   isFavorite: boolean;
 };
 
+type SetDatabaseFavoriteResponse = {
+  databaseId: string;
+  isFavorite: boolean;
+  workspaceId: string;
+};
+
 export function useCreateDatabase() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
@@ -148,16 +154,16 @@ export function useSetDatabaseFavorite() {
 
   return useMutation({
     mutationFn: async ({ databaseId, isFavorite }: SetDatabaseFavoriteInput) =>
-      apiFetch<DatabasePayload>(`/databases/${databaseId}/favorite`, {
+      apiFetch<SetDatabaseFavoriteResponse>(`/databases/${databaseId}/favorite`, {
         method: isFavorite ? "PUT" : "DELETE",
       }),
-    onSuccess: async (payload) => {
+    onSuccess: async (result) => {
       queryClient.setQueriesData<PageNavigationPayload | undefined>(
-        { queryKey: pagesNavRootQueryKey(payload.database.workspaceId) },
+        { queryKey: pagesNavRootQueryKey(result.workspaceId) },
         (current) =>
           applyDatabaseFavoriteToNav(current, {
-            ...payload.database,
-            views: payload.views,
+            id: result.databaseId,
+            isFavorite: result.isFavorite,
           }),
       );
     },

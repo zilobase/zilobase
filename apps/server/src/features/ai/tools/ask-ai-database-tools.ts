@@ -26,7 +26,7 @@ import {
   updateDatabasePropertyService,
   updateDatabaseViewService,
 } from "../../databases/core";
-import { getDatabasePayload } from "../../databases/core/payload";
+import { getDatabaseExportPayload } from "../../databases/core/payload";
 import { updateDataSourceService } from "../../databases/data-sources";
 import {
   defaultStatusOptions,
@@ -266,7 +266,7 @@ async function emitCreatedDatabaseEffects(input: {
   toolCallId: string;
 }) {
   if (!input.context.progress) return;
-  const loaded = await getDatabasePayload(
+  const loaded = await getDatabaseExportPayload(
     input.created.databaseId,
     input.context.userId,
   );
@@ -286,13 +286,6 @@ async function emitCreatedDatabaseEffects(input: {
       : [],
   };
 
-  input.context.progress.effect({
-    databaseId: input.created.databaseId,
-    kind: "database-seed",
-    payload,
-    toolCallId: input.toolCallId,
-    workspaceId: input.context.workspaceId,
-  });
   input.context.progress.effect({
     delta,
     kind: "nav-delta",

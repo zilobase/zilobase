@@ -1,19 +1,14 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query"
 
-import type {
-  DatabaseDelta,
-  DatabaseMutationResponse,
-} from "../databases/mutation-types"
+import type { DatabaseMutationEventV2 } from "../databases/contracts-v2"
 import {
   pageRootQueryKey,
   type PagePropertiesPayload,
-  type PageProperty,
-  type PagePropertyValue,
 } from "./queries"
 
 export function applyDatabaseMutationToPageProperties(
   queryClient: QueryClient,
-  mutation: DatabaseMutationResponse,
+  mutation: DatabaseMutationEventV2,
 ) {
   const entries = getPagePropertiesQueries(queryClient)
 
@@ -22,7 +17,11 @@ export function applyDatabaseMutationToPageProperties(
 
     const currentVersion = current.databaseVersions?.[mutation.databaseId]
 
-    if (mutation.requiresRefetch) {
+    if (
+      mutation.requiresReset ||
+      mutation.areas.includes("properties") ||
+      (mutation.changes.removedRecordIds?.length ?? 0) > 0
+    ) {
       if (currentVersion === undefined || mutation.version > currentVersion) {
         void queryClient.invalidateQueries({ exact: true, queryKey })
       }
@@ -83,78 +82,9 @@ export function preferNewestPagePropertiesPayload(
 function applyMutationToPageProperties(
   current: PagePropertiesPayload,
   pageId: string,
-  mutation: DatabaseMutationResponse,
+  mutation: DatabaseMutationEventV2,
 ): PagePropertiesPayload {
-  const removedPropertyIds = new Set(
-    mutation.delta.removedPagePropertyIds ?? [],
-  )
-  const properties = current.properties.filter(
-    (property) => !removedPropertyIds.has(property.id),
-  )
-  const propertyPatches = getPagePropertyPatches(mutation.delta)
-
-  for (const patch of propertyPatches) {
-    const index = properties.findIndex((property) => property.id === patch.id)
-
-    if (index >= 0) {
-      properties[index] = { ...properties[index], ...patch }
-    } else {
-      properties.push(patch)
-    }
-  }
-
-  const addedPropertyIds = propertyPatches.map(
-    (property) => property.id,
-  )
-  const presenceTargets = current.presenceTargets?.map((target) => {
-    if (target.databaseId !== mutation.databaseId) return target
-
-    return {
-      ...target,
-      propertyIds: [
-        ...new Set([
-          ...target.propertyIds.filter(
-            (propertyId) => !removedPropertyIds.has(propertyId),
-          ),
-          ...addedPropertyIds,
-        ]),
-      ],
-    }
-  })
-
-  const values = current.values.filter(
-    (value) => !removedPropertyIds.has(value.propertyId),
-  )
-
-  for (const patch of mutation.delta.values ?? []) {
-    if (patch.pageId !== pageId) continue
-
-    const index = values.findIndex(
-      (value) =>
-        value.pageId === patch.pageId &&
-        value.propertyId === patch.propertyId,
-    )
-    const value: PagePropertyValue = {
-      createdAt:
-        patch.createdAt ??
-        (index >= 0 ? values[index]?.createdAt : undefined) ??
-        new Date().toISOString(),
-      id:
-        patch.id ??
-        (index >= 0 ? values[index]?.id : undefined) ??
-        crypto.randomUUID(),
-      pageId: patch.pageId,
-      propertyId: patch.propertyId,
-      updatedAt: patch.updatedAt,
-      value: patch.value,
-    }
-
-    if (index >= 0) {
-      values[index] = value
-    } else {
-      values.push(value)
-    }
-  }
+  const record = mutation.changes.records?.find((item) => item.pageId === pageId)
 
   return {
     ...current,
@@ -162,27 +92,8 @@ function applyMutationToPageProperties(
       ...current.databaseVersions,
       [mutation.databaseId]: mutation.version,
     },
-    presenceTargets,
-    properties,
-    values,
+    ...(record ? { values: Object.values(record.valuesByPropertyId) } : {}),
   }
-}
-
-function getPagePropertyPatches(delta: DatabaseDelta) {
-  return (delta.properties ?? []).flatMap((column) => {
-    const property = column.property
-
-    if (
-      !property ||
-      typeof property !== "object" ||
-      Array.isArray(property) ||
-      typeof (property as Record<string, unknown>).id !== "string"
-    ) {
-      return []
-    }
-
-    return [property as PageProperty]
-  })
 }
 
 function getPagePropertiesQueries(queryClient: QueryClient) {

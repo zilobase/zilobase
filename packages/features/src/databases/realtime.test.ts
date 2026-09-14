@@ -1,9 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { QueryClient } from "@tanstack/react-query"
 
 import {
-  applyDatabaseRealtimeMutation,
   closeRealtimeSocket,
   createCellPresenceByKey,
   DATABASE_REALTIME_HEARTBEAT_MS,
@@ -13,64 +11,6 @@ import {
   ticketFailureAction,
   type DatabasePresenceCollaborator,
 } from "./realtime"
-import { databaseQueryKey } from "./queries"
-import { createTestDatabasePayload } from "./test-helpers"
-
-const mutation = (version: number, value: unknown) => ({
-  changed: ["values" as const],
-  committedAt: "2026-07-14T12:00:00.000Z",
-  databaseId: "database-1",
-  delta: {
-    values: [{
-      propertyId: "property-status",
-      updatedAt: "2026-07-14T12:00:00.000Z",
-      value,
-      pageId: "page-1",
-    }],
-  },
-  mutationId: `mutation-${version}`,
-  version,
-})
-
-test("HTTP mutation responses invalidate database reads instead of applying partial deltas", () => {
-  const queryClient = new QueryClient()
-  const key = databaseQueryKey("database-1")
-  const initial = createTestDatabasePayload()
-  initial.database.version = 3
-  queryClient.setQueryData(key, initial)
-
-  const result = applyDatabaseRealtimeMutation(
-    queryClient,
-    mutation(4, "Done"),
-  )
-  const payload = queryClient.getQueryData<ReturnType<typeof createTestDatabasePayload>>(key)
-
-  assert.equal(result.gapDetected, true)
-  assert.equal(payload?.database.version, 3)
-  assert.equal(payload?.values[0]?.value, "Not started")
-  assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
-})
-
-test("HTTP mutation responses invalidate on duplicate and gapped versions alike", () => {
-  const queryClient = new QueryClient()
-  const key = databaseQueryKey("database-1")
-  const initial = createTestDatabasePayload()
-  initial.database.version = 3
-  queryClient.setQueryData(key, initial)
-
-  applyDatabaseRealtimeMutation(queryClient, mutation(3, "Duplicate"))
-  const result = applyDatabaseRealtimeMutation(
-    queryClient,
-    mutation(5, "Skipped"),
-  )
-  const payload = queryClient.getQueryData<ReturnType<typeof createTestDatabasePayload>>(key)
-
-  assert.equal(result.gapDetected, true)
-  assert.equal(payload?.database.version, 3)
-  assert.equal(payload?.values[0]?.value, "Not started")
-  assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
-})
-
 test("cell presence deduplicates the same user within a cell", () => {
   const collaborator = (
     sessionId: string,

@@ -50,12 +50,11 @@ vi.mock("../../databases/core/commit", () => ({
     return callback(db as unknown as Record<string, unknown>);
   }),
 }));
+vi.mock("../../databases/commands/record-entity", () => ({
+  getDatabaseRecordEntity: vi.fn(async () => ({ id: "row-1" })),
+}));
 vi.mock("../../databases/automations/triggers/event-capture", () => ({ lockDatabaseAutomationFactRows: vi.fn(async () => undefined) }));
 vi.mock("../../databases/properties/config", () => ({ validateCellValue: vi.fn() }));
-vi.mock("../../databases/realtime/delta", () => ({
-  fetchDatabaseRowDelta: vi.fn(async () => ({ rows: [] })),
-  fetchDatabaseValuesForPage: vi.fn(async () => []),
-}));
 vi.mock("../../pages/placements", () => ({ upsertPageItemPlacement: vi.fn(async () => undefined) }));
 vi.mock("../../collaboration/service", () => ({ encodePageContentAsYjs: vi.fn(() => new Uint8Array()) }));
 vi.mock("../../../infrastructure/storage/image-storage", () => ({ createImageStorage: vi.fn() }));

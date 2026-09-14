@@ -4,7 +4,6 @@ import { createMutationTestRuntime } from "../shared/mutation-runtime.test"
 import { pagesNavRootQueryKey } from "../pages/queries"
 import type { DatabaseCommandRequest } from "./contracts-v2"
 import { useApplyDatabaseTemplate } from "./mutation-hooks"
-import { databaseQueryKey } from "./queries"
 import { createTestDatabasePayload, setTestDatabaseClientState } from "./test-helpers"
 
 test("template application uses the idempotent source command and refreshes navigation", async () => {
@@ -29,12 +28,10 @@ test("template application uses the idempotent source command and refreshes navi
   })
   const navKey = pagesNavRootQueryKey("org-1")
   setTestDatabaseClientState(queryClient, original)
-  queryClient.setQueryData(databaseQueryKey("database-1"), original)
   queryClient.setQueryData(navKey, { pages: [], databases: [], placements: [] })
   try {
     const updated = await mutation.mutateAsync({ databaseId: "data-source-1", config: {}, name: "Projects", properties: [], rows: [] })
     assert.equal(updated.dataSource.version, 1)
     assert.equal(queryClient.getQueryState(navKey)?.isInvalidated, true)
-    assert.deepEqual(queryClient.getQueryData(databaseQueryKey("database-1")), original)
   } finally { queryClient.clear() }
 })

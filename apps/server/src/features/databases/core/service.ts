@@ -22,13 +22,8 @@ import {
 import { upsertPageItemPlacement } from "../../pages/placements";
 import { softDeleteDatabaseTree } from "../../pages/mutations/soft-delete-nav-items";
 import { invalidateDatabaseAutomationDependencies } from "../automations/service";
-import {
-  getDatabaseRecord,
-  requireDatabaseEditAccess,
-} from "../access/database-access";
-import { commitDatabaseMutation } from "./commit";
-import type { DatabaseDelta } from "../realtime/delta";
-import { getDatabasePayload } from "./payload";
+import { getDatabaseRecord } from "../access/database-access";
+import { getDatabaseExportPayload } from "./payload";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import {
   enqueueNavigationInvalidation,
@@ -227,56 +222,6 @@ export async function createDatabaseService(input: {
   };
 }
 
-export async function updateDatabaseService(input: {
-  config?: unknown;
-  databaseId: string;
-  env?: RuntimeEnv;
-  name?: string;
-  userId: string;
-}) {
-  const existing = await requireDatabaseEditAccess(
-    input.databaseId,
-    input.userId,
-  );
-  const values: Partial<typeof database.$inferInsert> = {
-    updatedAt: new Date(),
-  };
-
-  if (input.name !== undefined) {
-    values.name = input.name;
-  }
-
-  if (input.config !== undefined) {
-    values.config = input.config;
-  }
-
-  const commit = await commitDatabaseMutation(
-    {
-      actorId: input.userId,
-      changed: ["database"],
-      databaseId: existing.id,
-      env: input.env,
-      ...(existing.workspaceId
-        ? { navigationWorkspaceId: existing.workspaceId }
-        : {}),
-    },
-    async (tx) => {
-      await tx.update(database).set(values).where(eq(database.id, existing.id));
-
-      return {
-        delta: {
-          database: {
-            id: existing.id,
-            ...values,
-          },
-        } satisfies DatabaseDelta,
-      };
-    },
-  );
-
-  return { commit, databaseId: existing.id };
-}
-
 export async function deleteDatabaseService(input: {
   databaseId: string;
   env?: RuntimeEnv;
@@ -336,7 +281,7 @@ export async function restoreDatabaseService(input: {
   }
 
   if (!existing.deletedAt) {
-    const payload = await getDatabasePayload(
+    const payload = await getDatabaseExportPayload(
       existing.id,
       input.userId,
       existing,
@@ -435,7 +380,7 @@ export async function restoreDatabaseService(input: {
     deletedById: null,
     updatedAt: now,
   };
-  const payload = await getDatabasePayload(
+  const payload = await getDatabaseExportPayload(
     existing.id,
     input.userId,
     restoredRecord,

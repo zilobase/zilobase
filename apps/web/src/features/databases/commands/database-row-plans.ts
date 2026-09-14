@@ -83,13 +83,6 @@ export function getDraggedRowGroupSetup(
   }
 }
 
-export function findAddedDatabaseRow(
-  rows: DatabaseRow[],
-  existingRowIds: Set<string>,
-) {
-  return rows.find((row) => !existingRowIds.has(row.id)) ?? rows.at(-1)
-}
-
 export function getTimelineGroupPropertyId(
   currentProperties: DatabaseProperty[],
 ) {

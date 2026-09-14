@@ -26,14 +26,19 @@ const initialPayload = (): PagePropertiesPayload => ({
 
 function mutation(
   version: number,
-  delta: Parameters<typeof applyDatabaseMutationToPageProperties>[1]["delta"],
+  changes: Parameters<typeof applyDatabaseMutationToPageProperties>[1]["changes"],
 ) {
   return {
-    changed: ["properties" as const, "values" as const],
+    actorId: "user-1",
+    areas: ["records" as const],
+    changes,
+    commandId: `command-${version}`,
     committedAt: "2026-07-14T12:00:00.000Z",
     databaseId: "database-1",
-    delta,
-    mutationId: `mutation-${version}`,
+    dataSourceId: "source-1",
+    eventId: `event-${version}`,
+    protocolVersion: 2 as const,
+    type: "database.mutation" as const,
     version,
   }
 }
@@ -45,37 +50,25 @@ test("database events patch the targeted row-page properties cache", () => {
 
   applyDatabaseMutationToPageProperties(
     queryClient,
-    mutation(5, {
-      properties: [{
-        id: "column-status",
-        property: {
-          createdAt: "2026-07-14T12:00:00.000Z",
-          id: "property-status",
-          name: "Status",
-          type: "status",
-          updatedAt: "2026-07-14T12:00:00.000Z",
-          workspaceId: "workspace-1",
-        },
-      }],
-      values: [{
-        pageId: "page-1",
-        propertyId: "property-status",
-        updatedAt: "2026-07-14T12:00:00.000Z",
-        value: "Done",
-      }],
-    }),
+    mutation(5, { records: [{
+      createdAt: "2026-07-14T12:00:00.000Z",
+      dataSourceId: "source-1",
+      id: "row-1",
+      orderKey: "1024.0000000000",
+      page: { createdAt: "2026-07-14T12:00:00.000Z", deletedAt: null, hasContent: false, id: "page-1", metadata: {}, name: "Row", updatedAt: "2026-07-14T12:00:00.000Z" },
+      pageId: "page-1",
+      parentRowId: null,
+      updatedAt: "2026-07-14T12:00:00.000Z",
+      valuesByPropertyId: { "property-status": { createdAt: "2026-07-14T12:00:00.000Z", id: "value-1", pageId: "page-1", propertyId: "property-status", updatedAt: "2026-07-14T12:00:00.000Z", value: "Done" } },
+    }] }),
   )
 
   const payload = queryClient.getQueryData<PagePropertiesPayload>(key)
   assert.equal(payload?.databaseVersions?.["database-1"], 5)
-  assert.equal(payload?.properties[0]?.name, "Status")
   assert.equal(payload?.values[0]?.value, "Done")
-  assert.deepEqual(payload?.presenceTargets?.[0]?.propertyIds, [
-    "property-status",
-  ])
 })
 
-test("database events remove properties and their values from row pages", () => {
+test("property changes invalidate row-page properties", () => {
   const queryClient = new QueryClient()
   const key = pagePropertiesQueryKey("page-1")
   queryClient.setQueryData<PagePropertiesPayload>(key, {
@@ -104,15 +97,11 @@ test("database events remove properties and their values from row pages", () => 
     }],
   })
 
-  applyDatabaseMutationToPageProperties(
-    queryClient,
-    mutation(5, { removedPagePropertyIds: ["property-status"] }),
-  )
-
-  const payload = queryClient.getQueryData<PagePropertiesPayload>(key)
-  assert.deepEqual(payload?.properties, [])
-  assert.deepEqual(payload?.values, [])
-  assert.deepEqual(payload?.presenceTargets?.[0]?.propertyIds, [])
+  applyDatabaseMutationToPageProperties(queryClient, {
+    ...mutation(5, { removedPropertyIds: ["column-status"] }),
+    areas: ["properties"],
+  })
+  assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
 })
 
 test("row-page properties invalidate on version gaps and ticket recovery", () => {
@@ -122,7 +111,7 @@ test("row-page properties invalidate on version gaps and ticket recovery", () =>
 
   applyDatabaseMutationToPageProperties(
     queryClient,
-    mutation(6, { values: [] }),
+    mutation(6, {}),
   )
   assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
 
@@ -147,7 +136,7 @@ test("invalidate-only events refetch page properties without patching them", () 
 
   applyDatabaseMutationToPageProperties(queryClient, {
     ...mutation(5, {}),
-    requiresRefetch: true,
+    requiresReset: true,
   })
 
   assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
