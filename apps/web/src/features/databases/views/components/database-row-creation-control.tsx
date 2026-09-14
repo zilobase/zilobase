@@ -40,13 +40,13 @@ export function DatabaseRowCreationControl({
 
 function NewDatabaseRowButton() {
   const { addDatabaseRow } = useDatabaseActionsContext();
-  const { databaseId, isAddingDatabaseRow } = useDatabaseDataContext();
+  const { databaseId } = useDatabaseDataContext();
   const { newRowLabel } = useDatabaseUiContext();
   return (
     <Button
       aria-label={newRowLabel ?? "New page"}
       className="database-new-button"
-      disabled={!databaseId || isAddingDatabaseRow}
+      disabled={!databaseId}
       onClick={() => addDatabaseRow()}
       type="button"
     >

@@ -29,6 +29,7 @@ import {
   type ChartConfig,
 } from "@/shared/ui/chart"
 import { getPaletteColor } from "@/shared/lib/color-tokens"
+import { DatabaseRecordWindowControl } from "../../components/database-record-window-control"
 import { useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
 import {
   shouldSplitDatabaseChartSeries,
@@ -574,6 +575,7 @@ export function DatabaseChartView() {
       >
         {renderChart()}
       </ChartContainer>
+      <DatabaseRecordWindowControl />
     </div>
   )
 }

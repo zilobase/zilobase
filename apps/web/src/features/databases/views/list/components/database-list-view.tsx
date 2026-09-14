@@ -1,19 +1,18 @@
 import { listRowDragAttributes, listRowCompletionLabel } from "./list-row-presentation";
 import { useMemo } from "react"
-import { GripVertical, Loader2, Plus } from "@/shared/components/icons"
+import { GripVertical, Plus } from "@/shared/components/icons"
 
 import { Checkbox } from "@/shared/ui/checkbox"
 import { DatabasePageLink } from "../../../interactions/database-page-link"
 import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
-import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll"
 import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
+import { DatabaseRecordWindowControl } from "../../components/database-record-window-control"
 import { useDatabaseListRowDrag } from "../controller/use-database-list-row-drag"
 
 export function DatabaseListView() {
   const {
     addDraggedPageRow,
     addDatabaseRow,
-    fetchNextPage,
     isRowComplete,
     onOpenPage,
     savePropertyValue,
@@ -25,10 +24,7 @@ export function DatabaseListView() {
     activeDatabaseSorts,
     databaseId,
     editable,
-    hasNextPage,
     hostDatabaseId,
-    isAddingDatabaseRow,
-    isFetchingNextPage,
     items,
     personOptions,
     properties,
@@ -61,12 +57,6 @@ export function DatabaseListView() {
     reorderEnabled: canReorderRows,
     visibleRows: rows,
   })
-  const { sentinelRef } = useDatabaseRowsScroll({
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  })
-
   return (
     <div
       className="database-list-view"
@@ -150,23 +140,11 @@ export function DatabaseListView() {
             </div>
           </div>
         ))}
-        {hasNextPage || isFetchingNextPage ? (
-          <div
-            className="flex h-10 items-center justify-center gap-2 text-sm text-content-secondary"
-            ref={sentinelRef}
-          >
-            {isFetchingNextPage ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                <span>Loading more rows...</span>
-              </>
-            ) : null}
-          </div>
-        ) : null}
+        <DatabaseRecordWindowControl automatic />
         {editable ? (
           <button
             className="database-list-new-row"
-            disabled={!databaseId || isAddingDatabaseRow}
+            disabled={!databaseId}
             onClick={() => addDatabaseRow()}
             type="button"
           >
