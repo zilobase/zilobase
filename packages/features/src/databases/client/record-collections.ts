@@ -1,5 +1,9 @@
 import type { QueryClient, QueryFunctionContext } from "@tanstack/react-query"
-import { createCollection, type Collection } from "@tanstack/react-db"
+import {
+  BasicIndex,
+  createCollection,
+  type Collection,
+} from "@tanstack/react-db"
 import {
   queryCollectionOptions,
   type QueryCollectionUtils,
@@ -125,6 +129,10 @@ export function createDatabaseRecordCollection(options: {
     staleTime: 30_000,
     syncMode: "on-demand",
   }) as never) as unknown as Collection<WindowedDatabaseRecord, string>
+  records.createIndex(
+    (record) => record.__windowIndex,
+    { indexType: BasicIndex },
+  )
 
   return {
     descriptorId,

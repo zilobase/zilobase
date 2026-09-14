@@ -35,22 +35,10 @@ export function useDatabaseBootstrap(
   const collections = scope && facade instanceof SessionDatabaseClient
     ? facade.getBootstrapCollections(scope)
     : null
-  const databases = useLiveQuery(
-    () => collections?.database,
-    [collections?.database],
-  )
-  const dataSources = useLiveQuery(
-    () => collections?.dataSources,
-    [collections?.dataSources],
-  )
-  const properties = useLiveQuery(
-    () => collections?.properties,
-    [collections?.properties],
-  )
-  const views = useLiveQuery(
-    () => collections?.views,
-    [collections?.views],
-  )
+  const databases = useLiveQuery(() => collections?.database)
+  const dataSources = useLiveQuery(() => collections?.dataSources)
+  const properties = useLiveQuery(() => collections?.properties)
+  const views = useLiveQuery(() => collections?.views)
 
   if (!scope) {
     return {

@@ -1,4 +1,8 @@
-import { createCollection, useLiveInfiniteQuery } from "@tanstack/react-db"
+import {
+  BasicIndex,
+  createCollection,
+  useLiveInfiniteQuery,
+} from "@tanstack/react-db"
 import {
   useInfiniteQuery,
   type InfiniteData,
@@ -39,6 +43,10 @@ const disabledRecordCollection = createCollection<WindowedDatabaseRecord>({
     },
   },
 })
+disabledRecordCollection.createIndex(
+  (record) => record.__windowIndex,
+  { indexType: BasicIndex },
+)
 
 export type DatabaseRecordHookWindow = Omit<DatabaseRecordWindow, "scope"> & {
   scope: DatabaseViewScope | null
