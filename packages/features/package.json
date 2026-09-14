@@ -118,6 +118,10 @@
       "types": "./src/databases/order-key.ts",
       "default": "./src/databases/order-key.ts"
     },
+    "./databases/view-evaluation": {
+      "types": "./src/databases/view-evaluation.ts",
+      "default": "./src/databases/view-evaluation.ts"
+    },
     "./databases/queries": {
       "types": "./src/databases/queries.ts",
       "default": "./src/databases/queries.ts"
