@@ -160,6 +160,7 @@ export async function executeDatabaseCommand<TResult = unknown>(
       return databaseCommandAckSchema.parse(receipt.acknowledgement) as DatabaseCommandAck<TResult>
     }
 
+    let primaryHostVersion: number | null = null
     if (input.scope.dataSourceId) {
       const [linked] = await tx
         .select({ dataSourceId: databaseDataSource.dataSourceId })
@@ -170,6 +171,21 @@ export async function executeDatabaseCommand<TResult = unknown>(
         ))
         .limit(1)
       if (!linked) throw new ServiceMutationError("Data source is not linked", 404)
+
+      const [versionedSource] = await tx
+        .update(dataSource)
+        .set({ version: sql`${dataSource.version} + 1` })
+        .where(eq(dataSource.id, input.scope.dataSourceId))
+        .returning({ version: dataSource.version })
+      if (!versionedSource) throw new ServiceMutationError("Data source not found", 404)
+    } else {
+      const [versionedHost] = await tx
+        .update(database)
+        .set({ version: sql`${database.version} + 1` })
+        .where(eq(database.id, input.scope.databaseId))
+        .returning({ version: database.version })
+      if (!versionedHost) throw new ServiceMutationError("Database not found", 404)
+      primaryHostVersion = versionedHost.version
     }
 
     const dispatched = await dependencies.dispatch<TResult>({
@@ -194,31 +210,34 @@ export async function executeDatabaseCommand<TResult = unknown>(
       throw new Error("Database command produced multiple events for one host")
     }
 
-    if (input.scope.dataSourceId) {
-      const [versionedSource] = await tx
-        .update(dataSource)
-        .set({ version: sql`${dataSource.version} + 1` })
-        .where(eq(dataSource.id, input.scope.dataSourceId))
-        .returning({ version: dataSource.version })
-      if (!versionedSource) throw new ServiceMutationError("Data source not found", 404)
-    }
-
     const events: DatabaseMutationEventV2[] = []
     for (const mutation of [...dispatched.mutations].sort((left, right) =>
       left.databaseId.localeCompare(right.databaseId)
     )) {
-      const [versioned] = await tx
-        .update(database)
-        .set({ version: sql`${database.version} + 1` })
-        .where(eq(database.id, mutation.databaseId))
-        .returning({ version: database.version })
-      if (!versioned) throw new ServiceMutationError("Database not found", 404)
+      const version = mutation.databaseId === input.scope.databaseId && primaryHostVersion !== null
+        ? primaryHostVersion
+        : (await tx
+            .update(database)
+            .set({ version: sql`${database.version} + 1` })
+            .where(eq(database.id, mutation.databaseId))
+            .returning({ version: database.version }))[0]?.version
+      if (version === undefined) throw new ServiceMutationError("Database not found", 404)
 
       const prepared = boundedChanges(mutation)
+      const changes = prepared.changes.databases
+        ? {
+            ...prepared.changes,
+            databases: prepared.changes.databases.map((host) =>
+              host.id === mutation.databaseId
+                ? { ...host, version }
+                : host
+            ),
+          }
+        : prepared.changes
       events.push({
         actorId: input.actorId,
         areas: mutation.areas,
-        changes: prepared.changes,
+        changes,
         commandId: input.request.commandId,
         committedAt: now.toISOString(),
         databaseId: mutation.databaseId,
@@ -227,7 +246,7 @@ export async function executeDatabaseCommand<TResult = unknown>(
         protocolVersion: 2,
         ...(prepared.requiresReset ? { requiresReset: true as const } : {}),
         type: "database.mutation",
-        version: versioned.version,
+        version,
       })
     }
 

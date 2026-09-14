@@ -9,7 +9,7 @@ import { pinnedResourceMiddleware } from "../auth/pinned-resource-middleware"
 import type { AppBindings } from "../../shared/types"
 import { readAuthenticatedJson } from "../../shared/http/auth"
 import { getDatabaseRecord, requireDatabaseEditAccess } from "./access/database-access"
-import { requireDataSourceEditAccess } from "./access/data-source-access"
+import { requireDataSourceAccess, requireDataSourceEditAccess } from "./access/data-source-access"
 import { dispatchDatabaseCommand } from "./commands/dispatcher"
 import {
   CommandIdReusedError,
@@ -36,6 +36,12 @@ async function commandResponse(
   await requireDatabaseEditAccess(databaseId, authenticated.user.id)
   if (dataSourceId) {
     await requireDataSourceEditAccess(dataSourceId, authenticated.user.id)
+  } else if (request.command.type === "dataSource.link") {
+    await requireDataSourceAccess(
+      request.command.dataSourceId,
+      authenticated.user.id,
+      "view",
+    )
   }
 
   try {

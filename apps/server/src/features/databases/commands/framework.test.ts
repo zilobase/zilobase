@@ -47,6 +47,7 @@ function transactionHarness(options: {
   sourceVersion?: number
 } = {}) {
   const inserts = new Map<unknown, unknown[]>()
+  const updates: unknown[] = []
   const databaseVersions = [...(options.databaseVersions ?? [5])]
   const execute = vi.fn(async () => undefined)
 
@@ -85,6 +86,7 @@ function transactionHarness(options: {
       }
     },
     update(table: unknown) {
+      updates.push(table)
       return {
         set() {
           return {
@@ -111,6 +113,7 @@ function transactionHarness(options: {
     database: { transaction: async <T>(callback: (active: typeof tx) => Promise<T>) => callback(tx) },
     execute,
     inserts,
+    updates,
   }
 }
 
@@ -236,6 +239,35 @@ test("source commands verify host linkage and increment the source version", asy
     }),
     /Data source is not linked/,
   )
+})
+
+test("a linked source version is incremented before its handler builds entities", async () => {
+  const harness = transactionHarness({ databaseVersions: [7], sourceVersion: 3 })
+  const dispatchMock = vi.fn(async (context: DatabaseCommandContext) => {
+    assert.equal(harness.updates[0], dataSource)
+    return {
+      mutations: [{
+        areas: ["dataSources"] as const,
+        changes: {},
+        databaseId: context.databaseId,
+        dataSourceId: context.dataSourceId,
+      }],
+      result: null,
+    }
+  })
+  await executeDatabaseCommand({
+    actorId: "user-1",
+    request: {
+      command: { patch: { name: "Tasks" }, type: "dataSource.update" },
+      commandId: "source-command",
+      protocolVersion: 2,
+    },
+    scope: { databaseId: "database-1", dataSourceId: "source-1" },
+  }, {
+    database: harness.database as never,
+    dispatch: dispatchMock as unknown as DatabaseCommandDispatcher,
+  })
+  assert.deepEqual(harness.updates.slice(0, 2), [dataSource, database])
 })
 
 test("oversized changesets produce a reset event instead of truncated data", async () => {

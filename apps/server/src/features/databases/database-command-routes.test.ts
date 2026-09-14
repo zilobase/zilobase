@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getDatabase: vi.fn(),
   requireDatabase: vi.fn(),
   requireSource: vi.fn(),
+  requireSourceView: vi.fn(),
 }))
 
 vi.mock("./access/database-access", () => ({
@@ -17,6 +18,7 @@ vi.mock("./access/database-access", () => ({
   requireDatabaseEditAccess: mocks.requireDatabase,
 }))
 vi.mock("./access/data-source-access", () => ({
+  requireDataSourceAccess: mocks.requireSourceView,
   requireDataSourceEditAccess: mocks.requireSource,
 }))
 vi.mock("./commands/framework", async (original) => ({
@@ -72,6 +74,7 @@ beforeEach(() => {
   mocks.execute.mockResolvedValue(acknowledgement)
   mocks.requireDatabase.mockResolvedValue({ id: "database-1" })
   mocks.requireSource.mockResolvedValue({ id: "source-1" })
+  mocks.requireSourceView.mockResolvedValue({ id: "source-1" })
 })
 
 test("host commands validate their union and forward actor and host scope", async () => {
@@ -114,6 +117,25 @@ test("source commands require both host and source edit access", async () => {
   assert.equal(response.status, 200)
   assert.deepEqual(mocks.requireSource.mock.calls[0], ["source-1", "user-1"])
   assert.equal(mocks.execute.mock.calls[0]?.[0].scope.dataSourceId, "source-1")
+})
+
+test("link commands require view access to the source", async () => {
+  const response = await appWithUser().request("/databases/database-1/commands", {
+    body: JSON.stringify({
+      command: {
+        afterId: null,
+        beforeId: null,
+        dataSourceId: "source-2",
+        type: "dataSource.link",
+      },
+      commandId: "command-link",
+      protocolVersion: 2,
+    }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  })
+  assert.equal(response.status, 200)
+  assert.deepEqual(mocks.requireSourceView.mock.calls[0], ["source-2", "user-1", "view"])
 })
 
 test("route scope rejects the other command union and unauthenticated writes", async () => {
