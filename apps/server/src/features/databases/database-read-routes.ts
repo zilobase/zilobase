@@ -24,7 +24,7 @@ import type { AppBindings } from "../../shared/types";
 import { readJsonBody } from "../../shared/http/request";
 import {
   DatabaseWindowStaleError,
-  DATABASE_RECORD_WINDOW_LIMITS,
+  MAX_DATABASE_RECORD_WINDOW_LIMIT,
   getDatabaseBootstrapService,
   getDatabaseRecordWindowService,
 } from "./read/service";
@@ -121,9 +121,9 @@ databaseReadRoutes.get(
     if (
       offset === undefined || !Number.isSafeInteger(offset) || offset < 0 ||
       (limit !== undefined &&
-        !DATABASE_RECORD_WINDOW_LIMITS.includes(
-          limit as (typeof DATABASE_RECORD_WINDOW_LIMITS)[number],
-        ))
+        (!Number.isSafeInteger(limit) ||
+          limit < 1 ||
+          limit > MAX_DATABASE_RECORD_WINDOW_LIMIT))
     ) {
       return c.json({ error: "Invalid record window" }, 400);
     }

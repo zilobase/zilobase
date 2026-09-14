@@ -5,9 +5,11 @@ import type { ApiFetcher } from "../../shared/api-fetcher"
 import type {
   DatabaseBootstrapResponse,
   DatabaseCommand,
+  DatabaseInitialPageSize,
   DatabaseMutationEventV2,
   DatabaseRecordEntity,
 } from "../contracts-v2"
+import { getDatabaseInitialPageSize } from "../view-evaluation"
 import {
   createDatabaseBootstrapCollections,
   databaseBootstrapQueryKey,
@@ -15,6 +17,11 @@ import {
   type DatabaseBootstrapCollections,
 } from "./bootstrap-collections"
 import { databaseClientQueryRoot } from "./query-keys"
+import {
+  createDatabaseRecordCollection,
+  toDatabaseRecord,
+  type DatabaseRecordCollection,
+} from "./record-collections"
 export { databaseClientQueryKey, databaseClientQueryRoot } from "./query-keys"
 
 export type DatabaseScope = {
@@ -38,7 +45,10 @@ export type DatabaseBootstrapState = {
 
 export type DatabaseRecordWindow = {
   error: Error | null
+  fetchNextPage: () => Promise<void>
   hasMore: boolean
+  isFetchingNextPage: boolean
+  pageSize: DatabaseInitialPageSize
   records: DatabaseRecordEntity[]
   scope: DatabaseViewScope
   status: "idle" | "loading" | "success" | "error"
@@ -85,6 +95,7 @@ export class SessionDatabaseClient implements DatabaseClient {
   private readonly cleanups = new Set<() => Promise<void> | void>()
   private disposed = false
   private readonly queryClient: QueryClient
+  private readonly recordCollections = new Map<string, DatabaseRecordCollection>()
 
   constructor({ apiFetch, queryClient, sessionId }: DatabaseClientOptions) {
     this.apiFetch = apiFetch
@@ -109,13 +120,26 @@ export class SessionDatabaseClient implements DatabaseClient {
 
   records(scope: DatabaseViewScope): DatabaseRecordWindow {
     this.assertActive()
+    const resource = this.getRecordCollection(scope)
+    const latest = resource.getLatestWindow()
     return {
-      error: null,
-      hasMore: false,
-      records: [],
+      error: resource.records.utils.lastError instanceof Error
+        ? resource.records.utils.lastError
+        : null,
+      fetchNextPage: async () => undefined,
+      hasMore: latest?.hasMore ?? false,
+      isFetchingNextPage: false,
+      pageSize: resource.pageSize,
+      records: [...resource.records.state.values()].map(toDatabaseRecord),
       scope,
-      status: "idle",
-      totalCount: 0,
+      status: resource.records.utils.isError
+        ? "error"
+        : resource.records.utils.isLoading
+          ? "loading"
+          : resource.records.status === "ready"
+            ? "success"
+            : "idle",
+      totalCount: latest?.totalCount ?? resource.records.size,
     }
   }
 
@@ -168,6 +192,37 @@ export class SessionDatabaseClient implements DatabaseClient {
     return collections
   }
 
+  getRecordCollection(scope: DatabaseViewScope) {
+    this.assertActive()
+    const key = JSON.stringify([
+      scope.databaseId,
+      scope.dataSourceId,
+      scope.viewId,
+      scope.includeDeleted === true,
+    ])
+    let collection = this.recordCollections.get(key)
+    if (!collection) {
+      collection = createDatabaseRecordCollection({
+        apiFetch: this.apiFetch,
+        pageSize: this.getRecordPageSize(scope),
+        queryClient: this.queryClient,
+        scope,
+        sessionId: this.sessionId,
+      })
+      this.recordCollections.set(key, collection)
+      this.cleanups.add(() => collection?.cleanup())
+    }
+    return collection
+  }
+
+  getRecordPageSize(scope: DatabaseViewScope) {
+    const bootstrap = this.queryClient.getQueryData<DatabaseBootstrapResponse>(
+      databaseBootstrapQueryKey(this.sessionId, scope),
+    )
+    const view = bootstrap?.views.find((candidate) => candidate.id === scope.viewId)
+    return getDatabaseInitialPageSize(view?.config ?? bootstrap?.database.config)
+  }
+
   getApiFetch() {
     this.assertActive()
     return this.apiFetch
@@ -191,6 +246,7 @@ export class SessionDatabaseClient implements DatabaseClient {
     ])
     this.cleanups.clear()
     this.bootstrapCollections.clear()
+    this.recordCollections.clear()
     this.queryClient.removeQueries({
       queryKey: [databaseClientQueryRoot, this.sessionId],
     })

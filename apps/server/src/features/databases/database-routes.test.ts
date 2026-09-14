@@ -214,7 +214,7 @@ test("v2 record route exposes stale-window and source/view conflicts", async () 
   assert.equal(mismatch.status, 404);
 });
 
-test("v2 reads support published databases and reject invalid limits", async () => {
+test("v2 reads support published databases and bounded collection windows", async () => {
   const record = {
     deletedAt: null,
     id: "database-1",
@@ -238,11 +238,26 @@ test("v2 reads support published databases and reject invalid limits", async () 
     200,
   );
 
-  const invalid = await appWithUser().request(
+  mocks.recordWindow.mockResolvedValue({
+    databaseVersion: 1,
+    dataSourceVersion: 1,
+    hasMore: false,
+    offset: 0,
+    records: [],
+    snapshot: "snapshot-1",
+    totalCount: 0,
+  });
+  const collectionWindow = await appWithUser().request(
     "/databases/database-1/data-sources/source-1/records?limit=51",
   );
+  assert.equal(collectionWindow.status, 200);
+  assert.equal(mocks.recordWindow.mock.calls[0]?.[0]?.limit, 51);
+
+  const invalid = await appWithUser().request(
+    "/databases/database-1/data-sources/source-1/records?limit=1002",
+  );
   assert.equal(invalid.status, 400);
-  assert.equal(mocks.recordWindow.mock.calls.length, 0);
+  assert.equal(mocks.recordWindow.mock.calls.length, 1);
 });
 
 test("mutation catch-up validates and forwards the version window", async () => {

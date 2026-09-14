@@ -284,14 +284,14 @@ test("stale snapshots and invalid source/view windows fail with typed conflicts"
   )
 })
 
-test("record window validates offsets and supported limits", async () => {
+test("record window validates offsets and bounded collection limits", async () => {
   const dependencies = {
     getPayload: vi.fn(async () => payload()),
     getSchemaPayload: vi.fn(),
     requireAccess: vi.fn(),
   } as never
 
-  for (const request of [{ limit: 51 }, { offset: -1 }]) {
+  for (const request of [{ limit: 1_002 }, { offset: -1 }]) {
     await assert.rejects(
       getDatabaseRecordWindowService(
         {

@@ -1,7 +1,6 @@
 import type {
   DatabaseBootstrapResponse,
   DatabaseHostEntity,
-  DatabaseInitialPageSize,
   DatabasePropertyEntity,
   DatabaseRecordEntity,
   DatabaseRecordWindowResponse,
@@ -46,6 +45,7 @@ const defaultDependencies: ReadDependencies = {
 }
 
 export const DATABASE_RECORD_WINDOW_LIMITS = [10, 25, 50, 100] as const
+export const MAX_DATABASE_RECORD_WINDOW_LIMIT = 1_001
 
 export class DatabaseWindowStaleError extends ServiceMutationError {
   readonly code = "WINDOW_STALE" as const
@@ -267,9 +267,16 @@ function windowSnapshot(input: {
   })).toString("base64url")
 }
 
-function validateWindowLimit(value: number): asserts value is DatabaseInitialPageSize {
-  if (!DATABASE_RECORD_WINDOW_LIMITS.includes(value as DatabaseInitialPageSize)) {
-    throw new ServiceMutationError("limit must be one of 10, 25, 50, or 100", 400)
+function validateWindowLimit(value: number) {
+  if (
+    !Number.isSafeInteger(value) ||
+    value < 1 ||
+    value > MAX_DATABASE_RECORD_WINDOW_LIMIT
+  ) {
+    throw new ServiceMutationError(
+      `limit must be between 1 and ${MAX_DATABASE_RECORD_WINDOW_LIMIT}`,
+      400,
+    )
   }
 }
 
