@@ -1,4 +1,5 @@
 export * from "./bootstrap-collections"
+export * from "./bootstrap-hooks"
 export * from "./command-scope"
 export * from "./database-client"
 export * from "./provider"

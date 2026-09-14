@@ -15,7 +15,8 @@ import {
   useAddDatabaseRow,
   useApplyDatabaseTemplate,
   useCreateDatabaseDataSource,
-  useDatabase,
+  useDatabaseBootstrap,
+  useDatabaseRecords,
   useDeleteDatabaseView,
   useLinkDatabaseDataSource,
   useReplaceDatabaseViewDataSource,
@@ -49,6 +50,7 @@ import {
   writeLatestViewConfig,
 } from "../model/view-config-cache"
 import {
+  composeDatabaseControllerPayload,
   getDatabaseDataSourceSummaries,
   getDatabaseViewTabs,
   resolveRequestedDatabaseViewId,
@@ -120,18 +122,23 @@ export function useDatabaseViewController({
     refetchOnMount: false,
   })
   const includeDeletedDatabases = includeDeleted || Boolean(hostPage?.deletedAt)
-  const {
-    data: payload,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    error,
-    isError,
-    isLoading,
-  } = useDatabase(databaseId, {
-    includeDeleted: includeDeletedDatabases,
-  })
-  const editable = requestedEditable && !isDatabaseLocked(payload?.database)
+  const bootstrapState = useDatabaseBootstrap(
+    databaseId
+      ? { databaseId, includeDeleted: includeDeletedDatabases }
+      : null,
+  )
+  const bootstrap = bootstrapState.data
+  const bootstrapPayload = useMemo(
+    () => composeDatabaseControllerPayload({
+      bootstrap,
+      dataSourceId: null,
+      hasMore: false,
+      records: [],
+      totalCount: 0,
+    }),
+    [bootstrap],
+  )
+  const editable = requestedEditable && !isDatabaseLocked(bootstrap?.database)
   const [draftDatabaseTitle, setDraftDatabaseTitle] = useState("New database")
   const [draftViewTitle, setDraftViewTitle] = useState("Table")
   const [activeViewId, setActiveViewId] = useState<string | null>(
@@ -145,10 +152,13 @@ export function useDatabaseViewController({
   const latestViewConfigRef = useRef(new Map<string, unknown>())
   const isControlledActiveView = Boolean(onActiveViewIdChange)
   const dataSources = useMemo(
-    () => getDatabaseDataSourceSummaries(payload),
-    [payload],
+    () => getDatabaseDataSourceSummaries(bootstrapPayload),
+    [bootstrapPayload],
   )
-  const baseViewTabs = useMemo(() => getDatabaseViewTabs(payload), [payload])
+  const baseViewTabs = useMemo(
+    () => getDatabaseViewTabs(bootstrapPayload),
+    [bootstrapPayload],
+  )
   const requestedViewId = resolveRequestedDatabaseViewId({
     requestedViewId: requestedActiveViewId,
     viewTabs: baseViewTabs,
@@ -156,6 +166,35 @@ export function useDatabaseViewController({
   const resolvedActiveViewId = isControlledActiveView
     ? (requestedViewId ?? baseViewTabs[0]?.id ?? null)
     : activeViewId
+  const activeDataSourceId = bootstrap?.views.find(
+    ({ id }) => id === resolvedActiveViewId,
+  )?.dataSourceId ?? bootstrap?.dataSources[0]?.id ?? null
+  const recordWindow = useDatabaseRecords(
+    databaseId && resolvedActiveViewId && activeDataSourceId
+      ? {
+          databaseId,
+          dataSourceId: activeDataSourceId,
+          includeDeleted: includeDeletedDatabases,
+          viewId: resolvedActiveViewId,
+        }
+      : null,
+  )
+  const payload = useMemo(
+    () => composeDatabaseControllerPayload({
+      bootstrap,
+      dataSourceId: activeDataSourceId,
+      hasMore: recordWindow.hasMore,
+      records: recordWindow.records,
+      totalCount: recordWindow.totalCount,
+    }),
+    [
+      activeDataSourceId,
+      bootstrap,
+      recordWindow.hasMore,
+      recordWindow.records,
+      recordWindow.totalCount,
+    ],
+  )
   const setupDismissed = getDatabaseSetupDismissed(
     payload?.activeDataSource?.config,
   )
@@ -165,25 +204,12 @@ export function useDatabaseViewController({
     setupDismissed,
     setupMode,
   })
-  const {
-    data: selectedSourcePayload,
-    fetchNextPage: fetchNextSourcePage,
-    hasNextPage: hasNextSourcePage,
-    isFetchingNextPage: isFetchingNextSourcePage,
-    error: sourceError,
-    isError: isSourceError,
-    isLoading: isLoadingSourcePayload,
-  } = useDatabase(databaseId, {
-    includeDeleted: includeDeletedDatabases,
-    ...(resolvedActiveViewId ? { viewId: resolvedActiveViewId } : {}),
-  })
-  const activePayload = selectedSourcePayload ?? payload
+  const activePayload = payload
   const activeDatabaseId = activePayload?.activeDataSource?.id ?? null
   const viewTabs = baseViewTabs
-  const activeFetchNextPage = fetchNextSourcePage ?? fetchNextPage
-  const activeHasNextPage = hasNextSourcePage ?? hasNextPage
-  const activeIsFetchingNextPage =
-    isFetchingNextSourcePage || isFetchingNextPage
+  const activeFetchNextPage = recordWindow.fetchNextPage
+  const activeHasNextPage = recordWindow.hasMore
+  const activeIsFetchingNextPage = recordWindow.isFetchingNextPage
   const activeViewLookupId = resolvedActiveViewId
   const { data: session } = useSession()
   const needsPersonAccessTargets = useMemo(
@@ -940,11 +966,18 @@ export function useDatabaseViewController({
     context: databaseViewContext,
     dataSourceSetupOpen,
     databaseId,
-    error: sourceError ?? error,
-    isError: isSourceError || isError,
+    error: recordWindow.error ?? bootstrapState.error,
+    isError:
+      recordWindow.status === "error" || bootstrapState.status === "error",
     handleDatabaseBlockDragOver,
     handleDatabaseBlockDrop,
-    isLoading: isLoading || isLoadingSourcePayload,
+    isLoading:
+      Boolean(databaseId) &&
+      (bootstrapState.status === "idle" ||
+        bootstrapState.status === "loading" ||
+        (Boolean(resolvedActiveViewId && activeDataSourceId) &&
+          (recordWindow.status === "idle" ||
+            recordWindow.status === "loading"))),
     onDismissSetup,
     onDataSourceSetupClose: () => setDataSourceSetupOpen(false),
     onDataSourceSetupSelect: handleDataSourceSetupSelection,

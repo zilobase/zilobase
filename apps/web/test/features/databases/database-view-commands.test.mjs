@@ -1425,34 +1425,19 @@ export function register({ assert, loadModule, test }) {
     });
 
     commands.addTimelineView();
-    addProperty.calls[0][1].onSuccess({
-      properties: [
-        createProperty(
-          "database-property-date",
-          "property-date",
-          "Date",
-          "date",
-        ),
-      ],
-      views: [],
-    });
+    addProperty.calls[0][1].onSuccess(
+      createProperty(
+        "database-property-date",
+        "property-date",
+        "Date",
+        "date",
+      ),
+    );
     addDatabaseView.calls[0][1].onSuccess({
-      properties: [
-        createProperty(
-          "database-property-date",
-          "property-date",
-          "Date",
-          "date",
-        ),
-      ],
-      views: [
-        {
-          config: { datePropertyId: "property-date" },
-          id: "view-timeline",
-          name: "Timeline",
-          type: "timeline",
-        },
-      ],
+      config: { datePropertyId: "property-date" },
+      id: "view-timeline",
+      name: "Timeline",
+      type: "timeline",
     });
 
     assert.deepEqual(addProperty.calls[0][0], {
@@ -1618,7 +1603,9 @@ export function register({ assert, loadModule, test }) {
 
     commands.addChartView();
     addDatabaseView.calls[0][1].onSuccess({
-      views: [{ id: "view-chart", name: "Chart", type: "chart" }],
+      id: "view-chart",
+      name: "Chart",
+      type: "chart",
     });
 
     assert.deepEqual(addDatabaseView.calls[0][0], {
@@ -1914,11 +1901,15 @@ export function register({ assert, loadModule, test }) {
 
     commands.addListView();
     addDatabaseView.calls[0][1].onSuccess({
-      views: [{ id: "view-list", name: "List", type: "list" }],
+      id: "view-list",
+      name: "List",
+      type: "list",
     });
     commands.addGalleryView();
     addDatabaseView.calls[1][1].onSuccess({
-      views: [{ id: "view-gallery", name: "Gallery", type: "gallery" }],
+      id: "view-gallery",
+      name: "Gallery",
+      type: "gallery",
     });
 
     assert.deepEqual(

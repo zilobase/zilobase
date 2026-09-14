@@ -30,6 +30,12 @@ export {
   useDuplicateDatabaseProperty,
 } from "./property-mutations";
 export {
+  useArchiveDatabaseTemplate,
+  useCreateDatabaseTemplate,
+  useRestoreDatabaseTemplate,
+  useUpdateDatabaseTemplate,
+} from "./template-mutations";
+export {
   useAddDatabaseRow,
   useArchiveDatabaseRow,
   useReorderDatabaseRows,
@@ -39,6 +45,8 @@ export {
   getDatabaseRowMoveAnchors,
 } from "./row-mutations";
 export { useDatabaseEntityCommandState } from "./client/provider";
+export { useDatabaseBootstrap } from "./client/bootstrap-hooks";
+export { useDatabaseRecords } from "./client/record-hooks";
 export { useDatabase, useDatabaseAccess } from "./query-hooks";
 export { useDatabaseRealtime } from "./realtime";
 export { useDatabaseIdForRowPage } from "./use-database-id-for-row-page";

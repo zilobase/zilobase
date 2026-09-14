@@ -1,4 +1,4 @@
-import { useLiveInfiniteQuery } from "@tanstack/react-db"
+import { createCollection, useLiveInfiniteQuery } from "@tanstack/react-db"
 
 import type { DatabaseRecordEntity } from "../contracts-v2"
 import {
@@ -7,27 +7,60 @@ import {
   type DatabaseViewScope,
 } from "./database-client"
 import { useDatabaseClient } from "./provider"
-import { toDatabaseRecord } from "./record-collections"
+import {
+  toDatabaseRecord,
+  type WindowedDatabaseRecord,
+} from "./record-collections"
+
+const disabledRecordCollection = createCollection<WindowedDatabaseRecord>({
+  getKey: ({ id }) => id,
+  id: "database-client-v2:disabled-record-window",
+  sync: {
+    sync: ({ markReady }) => {
+      markReady()
+      return () => undefined
+    },
+  },
+})
+
+export type DatabaseRecordHookWindow = Omit<DatabaseRecordWindow, "scope"> & {
+  scope: DatabaseViewScope | null
+}
 
 export function useDatabaseRecords(
-  scope: DatabaseViewScope,
-): DatabaseRecordWindow {
+  scope: DatabaseViewScope | null,
+): DatabaseRecordHookWindow {
   const facade = useDatabaseClient()
   if (!(facade instanceof SessionDatabaseClient)) {
     throw new Error("Unsupported database client implementation")
   }
-  const resource = facade.getRecordCollection(scope)
+  const resource = scope ? facade.getRecordCollection(scope) : null
+  const collection = resource?.records ?? disabledRecordCollection
   const live = useLiveInfiniteQuery(
     (query) => query
-      .from({ records: resource.records })
+      .from({ records: collection })
       .orderBy(({ records }) => records.__windowIndex, "asc"),
     {
       client: facade.tanstack,
-      pageSize: resource.pageSize,
-      queryKey: [resource.descriptorId, resource.pageSize],
+      pageSize: resource?.pageSize ?? 50,
+      queryKey: [resource?.descriptorId ?? "disabled-record-window", resource?.pageSize ?? 50],
     },
   )
-  const metadata = resource.getLatestWindow()
+  const metadata = resource?.getLatestWindow()
+
+  if (!scope || !resource) {
+    return {
+      error: null,
+      fetchNextPage: async () => undefined,
+      hasMore: false,
+      isFetchingNextPage: false,
+      pageSize: 50,
+      records: [],
+      scope: null,
+      status: "idle",
+      totalCount: 0,
+    }
+  }
 
   return {
     error: live.error instanceof Error
