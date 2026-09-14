@@ -28,7 +28,7 @@ vi.mock("../access", () => ({
 vi.mock("../../shared/security/database-realtime-ticket", () => ({
   createDatabaseRealtimeTicket: mocks.createTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX: "zilobase-auth.",
-  DATABASE_REALTIME_PROTOCOL: "zilobase-realtime-v1",
+  DATABASE_REALTIME_PROTOCOL: "zilobase.database.v2",
   verifyDatabaseRealtimeTicket: mocks.verifyTicket,
 }));
 vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
@@ -186,7 +186,7 @@ test("realtime ticket route creates and refreshes scoped tickets", async () => {
   assert.equal(body.databaseId, "database-1");
   assert.equal(body.websocketUrl, "ws://localhost/realtime?database=database-1");
   assert.deepEqual(body.websocketProtocols, [
-    "zilobase-realtime-v1",
+    "zilobase.database.v2",
     "zilobase-auth.ticket",
   ]);
   assert.equal(mocks.createTicket.mock.calls[0]?.[0].sessionId, "session-1");
