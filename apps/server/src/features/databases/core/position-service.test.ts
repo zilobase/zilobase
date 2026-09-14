@@ -6,6 +6,7 @@ import {
   incrementDatabaseRowPlacementPositions,
   lockDatabaseRowOrderingSources,
   rebalanceDatabaseRowOrderKeys,
+  updateDatabaseRowCompatibilityPositions,
   updateDatabasePropertyPositions,
   updateDatabaseRowPlacementPositions,
   updateDatabaseRowPositions,
@@ -38,6 +39,12 @@ test("position updates skip empty identifier lists", async () => {
     [],
     updatedAt,
   );
+  await updateDatabaseRowCompatibilityPositions(
+    sqlExecutor,
+    "database-1",
+    [],
+    updatedAt,
+  );
   await updateDatabaseRowPlacementPositions(
     sqlExecutor,
     "database-1",
@@ -64,6 +71,12 @@ test("position updates execute one bulk statement per target", async () => {
     ids,
     updatedAt,
   );
+  await updateDatabaseRowCompatibilityPositions(
+    sqlExecutor,
+    "database-1",
+    ids,
+    updatedAt,
+  );
   await updateDatabaseRowPlacementPositions(
     sqlExecutor,
     "database-1",
@@ -71,7 +84,7 @@ test("position updates execute one bulk statement per target", async () => {
     updatedAt,
   );
 
-  assert.equal(sqlExecutor.execute.mock.calls.length, 3);
+  assert.equal(sqlExecutor.execute.mock.calls.length, 4);
   for (const [query] of sqlExecutor.execute.mock.calls) {
     assert.equal(typeof query, "object");
   }

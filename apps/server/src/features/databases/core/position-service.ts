@@ -110,6 +110,26 @@ export async function updateDatabaseRowPositions(
   `);
 }
 
+/** Keep the legacy integer projection in sync without rewriting fractional keys. */
+export async function updateDatabaseRowCompatibilityPositions(
+  executor: SqlExecutor,
+  dataSourceId: string,
+  rowIds: string[],
+  updatedAt: Date,
+) {
+  if (rowIds.length === 0) return;
+
+  await executor.execute(sql`
+    update ${databaseRow}
+    set "position" = positions.position,
+        "updated_at" = ${updatedAt}
+    from (values ${getPositionValuesSql(rowIds)}) as positions(id, position)
+    where ${databaseRow.id} = positions.id
+      and ${databaseRow.dataSourceId} = ${dataSourceId}
+      and ${databaseRow.position} <> positions.position
+  `);
+}
+
 export async function updateDatabaseRowPlacementPositions(
   executor: SqlExecutor,
   databaseId: string,

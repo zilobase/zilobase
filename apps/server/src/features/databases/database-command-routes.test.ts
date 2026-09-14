@@ -25,7 +25,7 @@ vi.mock("./commands/framework", async (original) => ({
 }))
 
 import { databaseCommandRoutes } from "./database-command-routes"
-import { CommandIdReusedError } from "./commands/framework"
+import { CommandIdReusedError, RowMoveConflictError } from "./commands/framework"
 
 const user = {
   email: "user@example.com",
@@ -155,5 +155,33 @@ test("command ID reuse returns the typed conflict body", async () => {
     code: "COMMAND_ID_REUSED",
     commandId: "command-1",
     error: "The command ID has already been used for another request",
+  })
+})
+
+test("row move conflicts expose the rejected row ID", async () => {
+  mocks.execute.mockRejectedValue(new RowMoveConflictError("row-1"))
+  const response = await appWithUser().request(
+    "/databases/database-1/data-sources/source-1/commands",
+    {
+      body: JSON.stringify({
+        command: {
+          afterRowId: "row-b",
+          beforeRowId: "row-a",
+          rowId: "row-1",
+          type: "row.move",
+        },
+        commandId: "command-move",
+        protocolVersion: 2,
+      }),
+      headers: { "content-type": "application/json" },
+      method: "POST",
+    },
+  )
+
+  assert.equal(response.status, 409)
+  assert.deepEqual(await response.json(), {
+    code: "ROW_MOVE_CONFLICT",
+    error: "The row move anchors conflict with the current ordering",
+    rowId: "row-1",
   })
 })

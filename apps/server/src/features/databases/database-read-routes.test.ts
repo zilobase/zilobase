@@ -34,7 +34,8 @@ vi.mock("../../shared/security/database-realtime-ticket", () => ({
 vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
   getDatabaseRealtimeWebSocketUrl: () => "ws://localhost/realtime",
 }));
-vi.mock("./access/database-access", () => ({
+vi.mock("./access/database-access", async (original) => ({
+  ...(await original<typeof import("./access/database-access")>()),
   getDatabaseRecord: mocks.getRecord,
 }));
 vi.mock("./core/payload", () => ({

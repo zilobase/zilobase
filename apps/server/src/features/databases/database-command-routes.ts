@@ -14,6 +14,7 @@ import { dispatchDatabaseCommand } from "./commands/dispatcher"
 import {
   CommandIdReusedError,
   executeDatabaseCommand,
+  RowMoveConflictError,
 } from "./commands/framework"
 
 export const databaseCommandRoutes = new Hono<AppBindings>()
@@ -49,6 +50,13 @@ async function commandResponse(
         code: error.code,
         commandId: error.commandId,
         error: error.message,
+      }, 409)
+    }
+    if (error instanceof RowMoveConflictError) {
+      return c.json({
+        code: error.code,
+        error: error.message,
+        rowId: error.rowId,
       }, 409)
     }
     throw error
