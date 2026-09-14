@@ -2,9 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
 import {
   databaseRootQueryKey,
-  type DatabasePayload,
 } from "./queries";
-import { type DatabaseMutationResponse } from "./mutation-types";
 import { pagesNavRootQueryKey } from "../pages/queries";
 import { type UpdateDatabaseInput } from "./database-mutations";
 import { useDatabaseClient } from "./client/provider";
@@ -123,18 +121,27 @@ export function useLinkDatabaseDataSource() {
 }
 
 export function useCreateDatabaseDataSource() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const client = useDatabaseClient();
+  const { queryClient } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: async ({
       databaseId,
       ...input
     }: CreateDatabaseDataSourceInput) => {
-      const response = await apiFetch<DatabasePayload>(
-        `/databases/${databaseId}/data-sources/new`,
-        { method: "POST", body: JSON.stringify(input) },
-      );
-      return response;
+      return client.execute<{
+        dataSource: DataSourceEntity;
+        view: DatabaseViewEntity;
+      }>({
+        command: {
+          config: input.config ?? {},
+          name: input.name?.trim() || "New data source",
+          type: "dataSource.create",
+          viewName: input.viewName?.trim() || "Table",
+          viewType: input.viewType?.trim() || "table",
+        },
+        databaseId,
+      }).promise;
     },
     onSettled: async (_result, _error, variables) => {
       await Promise.all([
@@ -146,7 +153,8 @@ export function useCreateDatabaseDataSource() {
 }
 
 export function useReplaceDatabaseViewDataSource() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const client = useDatabaseClient();
+  const { queryClient } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: async ({
@@ -154,11 +162,14 @@ export function useReplaceDatabaseViewDataSource() {
       databaseViewId,
       dataSourceId,
     }: ReplaceDatabaseViewDataSourceInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/views/${databaseViewId}/source`,
-        { method: "PUT", body: JSON.stringify({ dataSourceId }) },
-      );
-      return response;
+      return client.execute<DatabaseViewEntity>({
+        command: {
+          dataSourceId,
+          type: "view.setDataSource",
+          viewId: databaseViewId,
+        },
+        databaseId,
+      }).promise;
     },
     onSettled: async (_result, _error, variables) => {
       await Promise.all([

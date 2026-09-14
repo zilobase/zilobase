@@ -188,6 +188,16 @@ const dataSourceLinkCommandSchema = z
   })
   .strict()
 
+const dataSourceCreateCommandSchema = z
+  .object({
+    config: z.unknown(),
+    name: z.string(),
+    type: z.literal("dataSource.create"),
+    viewName: z.string(),
+    viewType: z.string().trim().min(1).max(64),
+  })
+  .strict()
+
 const dataSourceUnlinkCommandSchema = z
   .object({
     dataSourceId: entityIdSchema,
@@ -238,14 +248,24 @@ const viewDeleteCommandSchema = z
   })
   .strict()
 
+const viewSetDataSourceCommandSchema = z
+  .object({
+    dataSourceId: entityIdSchema,
+    type: z.literal("view.setDataSource"),
+    viewId: entityIdSchema,
+  })
+  .strict()
+
 export const hostDatabaseCommandSchema = z.discriminatedUnion("type", [
   databaseUpdateCommandSchema,
+  dataSourceCreateCommandSchema,
   dataSourceLinkCommandSchema,
   dataSourceUnlinkCommandSchema,
   viewCreateCommandSchema,
   viewUpdateCommandSchema,
   viewMoveCommandSchema,
   viewDeleteCommandSchema,
+  viewSetDataSourceCommandSchema,
 ])
 export type HostDatabaseCommand = z.infer<typeof hostDatabaseCommandSchema>
 
@@ -304,12 +324,42 @@ const propertyStateCommandSchema = z.discriminatedUnion("type", [
   z.object({ propertyId: entityIdSchema, type: z.literal("property.restore") }).strict(),
 ])
 
+const propertyDuplicateCommandSchema = z
+  .object({
+    includeValues: z.boolean(),
+    propertyId: entityIdSchema,
+    type: z.literal("property.duplicate"),
+  })
+  .strict()
+
 const templateWriteCommandSchema = z.discriminatedUnion("type", [
   z.object({ name: z.string(), template: z.unknown(), type: z.literal("template.create") }).strict(),
   z.object({ patch: z.unknown(), templateId: entityIdSchema, type: z.literal("template.update") }).strict(),
   z.object({ templateId: entityIdSchema, type: z.literal("template.archive") }).strict(),
   z.object({ templateId: entityIdSchema, type: z.literal("template.restore") }).strict(),
 ])
+
+const templateApplyCommandSchema = z
+  .object({
+    config: z.unknown(),
+    name: z.string(),
+    properties: z.array(z.object({
+      config: z.unknown().optional(),
+      name: z.string(),
+      type: z.string().trim().min(1).max(64),
+    }).strict()).max(50),
+    rows: z.array(z.object({
+      content: z.unknown().optional(),
+      metadata: z.unknown().optional(),
+      title: z.string(),
+      values: z.array(z.object({
+        propertyName: z.string(),
+        value: z.unknown(),
+      }).strict()),
+    }).strict()).max(100),
+    type: z.literal("template.apply"),
+  })
+  .strict()
 
 export const moveRowCommandSchema = z
   .object({
@@ -359,8 +409,10 @@ export const dataSourceCommandSchema = z.discriminatedUnion("type", [
   propertyCreateCommandSchema,
   propertyUpdateCommandSchema,
   propertyMoveCommandSchema,
+  propertyDuplicateCommandSchema,
   ...propertyStateCommandSchema.options,
   ...templateWriteCommandSchema.options,
+  templateApplyCommandSchema,
   rowCreateCommandSchema,
   moveRowCommandSchema,
   ...rowStateCommandSchema.options,

@@ -1,8 +1,10 @@
-import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm"
+import { and, asc, eq, gte, isNotNull, isNull, sql } from "drizzle-orm"
 import type {
   DataSourceCommand,
   DatabaseChangedAreaV2,
   DatabaseMutationChanges,
+  DatabasePropertyEntity,
+  DatabaseRecordEntity,
   HostDatabaseCommand,
 } from "@zilobase/features/databases/contracts"
 
@@ -11,13 +13,17 @@ import {
   database,
   databaseDataSource,
   databaseProperty,
+  databaseRow,
   databaseView,
   pageProperty,
+  pagePropertyValue,
 } from "../../../infrastructure/database/schema"
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
 import { updateDatabasePropertyPositions } from "../core/position-service"
 import { normalizePropertyConfig } from "../properties/config"
 import { normalizeDatabasePropertyType } from "../properties/types"
+import { getDuplicatePropertyName } from "../properties/import"
+import { getNextDatabaseViewName } from "../views/naming"
 import type {
   DatabaseCommandContext,
   DatabaseCommandDispatchResult,
@@ -29,6 +35,7 @@ import {
   getDatabaseViewEntity,
   getDataSourceEntity,
 } from "./metadata-entities"
+import { getDatabaseRecordEntity } from "./record-entity"
 
 export function resolveNeighborIndex(input: {
   afterId: string | null
@@ -80,7 +87,7 @@ async function updateLinkPositions(
   }
 }
 
-async function sourceMutations(
+export async function sourceMutations(
   context: DatabaseCommandContext,
   areas: DatabaseChangedAreaV2[],
   changes: (databaseId: string) => Promise<DatabaseMutationChanges>,
@@ -103,7 +110,7 @@ async function sourceMutations(
   return mutations
 }
 
-async function sourceRecord(context: DatabaseCommandContext) {
+export async function sourceRecord(context: DatabaseCommandContext) {
   const [source] = await context.transaction.select().from(dataSource)
     .where(eq(dataSource.id, context.dataSourceId!)).limit(1)
   if (!source) throw new ServiceMutationError("Data source not found", 404)
@@ -303,6 +310,106 @@ async function propertyState(
   }
 }
 
+async function propertyDuplicate(
+  context: DatabaseCommandContext,
+  command: Extract<DataSourceCommand, { type: "property.duplicate" }>,
+) {
+  const source = await sourceRecord(context)
+  const [record] = await context.transaction
+    .select({ column: databaseProperty, property: pageProperty })
+    .from(databaseProperty)
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
+    .where(and(
+      eq(databaseProperty.id, command.propertyId),
+      eq(databaseProperty.dataSourceId, source.id),
+      eq(pageProperty.workspaceId, source.workspaceId),
+      isNull(pageProperty.deletedAt),
+    ))
+    .limit(1)
+  if (!record) throw new ServiceMutationError("Property not found", 404)
+
+  const existing = await context.transaction
+    .select({ id: databaseProperty.id, name: pageProperty.name, position: databaseProperty.position })
+    .from(databaseProperty)
+    .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
+    .where(and(
+      eq(databaseProperty.dataSourceId, source.id),
+      eq(pageProperty.workspaceId, source.workspaceId),
+      isNull(pageProperty.deletedAt),
+    ))
+    .orderBy(asc(databaseProperty.position), asc(databaseProperty.id))
+  const copiedValues = command.includeValues
+    ? await context.transaction
+        .select({ pageId: pagePropertyValue.pageId, rowId: databaseRow.id, value: pagePropertyValue.value })
+        .from(pagePropertyValue)
+        .innerJoin(databaseRow, eq(pagePropertyValue.pageId, databaseRow.pageId))
+        .where(and(
+          eq(pagePropertyValue.propertyId, record.property.id),
+          eq(databaseRow.dataSourceId, source.id),
+          isNull(databaseRow.deletedAt),
+        ))
+    : []
+  const targetPosition = record.column.position + 1
+  const now = new Date()
+  const pagePropertyId = crypto.randomUUID()
+  const databasePropertyId = crypto.randomUUID()
+  const name = getDuplicatePropertyName(
+    record.property.name,
+    new Set(existing.map((property) => property.name)),
+  )
+  await context.transaction.update(databaseProperty).set({
+    position: sql`${databaseProperty.position} + 1`,
+    updatedAt: now,
+  }).where(and(
+    eq(databaseProperty.dataSourceId, source.id),
+    gte(databaseProperty.position, targetPosition),
+  ))
+  await context.transaction.insert(pageProperty).values({
+    config: record.property.config,
+    createdAt: now,
+    id: pagePropertyId,
+    name,
+    type: record.property.type,
+    updatedAt: now,
+    workspaceId: source.workspaceId,
+  })
+  await context.transaction.insert(databaseProperty).values({
+    createdAt: now,
+    dataSourceId: source.id,
+    id: databasePropertyId,
+    position: targetPosition,
+    propertyId: pagePropertyId,
+    updatedAt: now,
+  })
+  if (copiedValues.length) {
+    await context.transaction.insert(pagePropertyValue).values(copiedValues.map((value) => ({
+      createdAt: now,
+      id: crypto.randomUUID(),
+      pageId: value.pageId,
+      propertyId: pagePropertyId,
+      updatedAt: now,
+      value: value.value,
+    })))
+  }
+  const properties: DatabasePropertyEntity[] = []
+  for (const item of await orderedProperties(context)) {
+    properties.push(await getDatabasePropertyEntity(context, item.id))
+  }
+  const records: DatabaseRecordEntity[] = []
+  for (const item of copiedValues) {
+    records.push(await getDatabaseRecordEntity(context.transaction, source.id, item.rowId))
+  }
+  const entity = properties.find(({ id }) => id === databasePropertyId)!
+  return {
+    mutations: await sourceMutations(
+      context,
+      records.length ? ["properties", "records"] : ["properties"],
+      async () => ({ properties, ...(records.length ? { records } : {}) }),
+    ),
+    result: entity,
+  }
+}
+
 type StoredTemplate = {
   archivedAt: string | null
   id: string
@@ -375,6 +482,72 @@ async function databaseUpdate(
   }
 }
 
+async function dataSourceCreate(
+  context: DatabaseCommandContext,
+  command: Extract<HostDatabaseCommand, { type: "dataSource.create" }>,
+): Promise<DatabaseCommandDispatchResult> {
+  const [host] = await context.transaction.select().from(database)
+    .where(eq(database.id, context.databaseId)).limit(1)
+  if (!host) throw new ServiceMutationError("Database not found", 404)
+  const [views, links] = await Promise.all([
+    orderedViews(context),
+    context.transaction.select({ id: databaseDataSource.dataSourceId })
+      .from(databaseDataSource)
+      .where(eq(databaseDataSource.databaseId, host.id))
+      .orderBy(asc(databaseDataSource.position), asc(databaseDataSource.dataSourceId)),
+  ])
+  const existingViewNames = await context.transaction
+    .select({ name: databaseView.name })
+    .from(databaseView)
+    .where(eq(databaseView.databaseId, host.id))
+  const now = new Date()
+  const dataSourceId = crypto.randomUUID()
+  const viewId = crypto.randomUUID()
+  await context.transaction.insert(dataSource).values({
+    config: command.config,
+    createdAt: now,
+    createdById: context.actorId,
+    id: dataSourceId,
+    name: command.name.trim() || "New data source",
+    parentDatabaseId: host.id,
+    updatedAt: now,
+    workspaceId: host.workspaceId,
+  })
+  await context.transaction.insert(databaseDataSource).values({
+    createdAt: now,
+    databaseId: host.id,
+    dataSourceId,
+    linkedById: context.actorId,
+    position: links.length,
+    updatedAt: now,
+  })
+  await context.transaction.insert(databaseView).values({
+    config: null,
+    createdAt: now,
+    databaseId: host.id,
+    dataSourceId,
+    id: viewId,
+    name: getNextDatabaseViewName(
+      command.viewName.trim() || "Table",
+      new Set(existingViewNames.map(({ name }) => name)),
+    ),
+    position: views.length,
+    type: command.viewType,
+    updatedAt: now,
+  })
+  const sourceEntity = await getDataSourceEntity(context, host.id, dataSourceId)
+  const viewEntity = await getDatabaseViewEntity(context, viewId)
+  return {
+    mutations: [{
+      areas: ["dataSources", "views"],
+      changes: { dataSources: [sourceEntity], views: [viewEntity] },
+      databaseId: host.id,
+      dataSourceId,
+    }],
+    result: { dataSource: sourceEntity, view: viewEntity },
+  }
+}
+
 async function dataSourceLink(
   context: DatabaseCommandContext,
   command: Extract<HostDatabaseCommand, { type: "dataSource.link" }>,
@@ -414,6 +587,59 @@ async function dataSourceLink(
   return {
     mutations: [{ areas: ["dataSources"], changes: { dataSources: entities }, databaseId: host.id, dataSourceId: source.id }],
     result: entity,
+  }
+}
+
+async function viewSetDataSource(
+  context: DatabaseCommandContext,
+  command: Extract<HostDatabaseCommand, { type: "view.setDataSource" }>,
+): Promise<DatabaseCommandDispatchResult> {
+  const [host] = await context.transaction.select().from(database)
+    .where(eq(database.id, context.databaseId)).limit(1)
+  const [source] = await context.transaction.select().from(dataSource)
+    .where(eq(dataSource.id, command.dataSourceId)).limit(1)
+  const [view] = await context.transaction.select().from(databaseView).where(and(
+    eq(databaseView.id, command.viewId),
+    eq(databaseView.databaseId, context.databaseId),
+  )).limit(1)
+  if (!host || !source || source.workspaceId !== host.workspaceId) {
+    throw new ServiceMutationError("Data source not found", 404)
+  }
+  if (!view) throw new ServiceMutationError("Database view not found", 404)
+
+  const links = await context.transaction.select({ id: databaseDataSource.dataSourceId })
+    .from(databaseDataSource)
+    .where(eq(databaseDataSource.databaseId, host.id))
+    .orderBy(asc(databaseDataSource.position), asc(databaseDataSource.dataSourceId))
+  const alreadyLinked = links.some(({ id }) => id === source.id)
+  const now = new Date()
+  if (!alreadyLinked) {
+    await context.transaction.insert(databaseDataSource).values({
+      createdAt: now,
+      databaseId: host.id,
+      dataSourceId: source.id,
+      linkedById: context.actorId,
+      position: links.length,
+      updatedAt: now,
+    })
+  }
+  await context.transaction.update(databaseView).set({
+    dataSourceId: source.id,
+    updatedAt: now,
+  }).where(eq(databaseView.id, view.id))
+  const sourceEntity = await getDataSourceEntity(context, host.id, source.id)
+  const viewEntity = await getDatabaseViewEntity(context, view.id)
+  return {
+    mutations: [{
+      areas: alreadyLinked ? ["views"] : ["dataSources", "views"],
+      changes: {
+        ...(alreadyLinked ? {} : { dataSources: [sourceEntity] }),
+        views: [viewEntity],
+      },
+      databaseId: host.id,
+      dataSourceId: source.id,
+    }],
+    result: viewEntity,
   }
 }
 
@@ -585,22 +811,29 @@ export async function dispatchStructuralCommand(
 ): Promise<DatabaseCommandDispatchResult | null> {
   switch (command.type) {
     case "database.update": return databaseUpdate(context, command)
+    case "dataSource.create": return dataSourceCreate(context, command)
     case "dataSource.link": return dataSourceLink(context, command)
     case "dataSource.unlink": return dataSourceUnlink(context, command)
     case "view.create": return viewCreate(context, command)
     case "view.update": return viewUpdate(context, command)
     case "view.move": return viewMove(context, command)
     case "view.delete": return viewDelete(context, command)
+    case "view.setDataSource": return viewSetDataSource(context, command)
     case "dataSource.update": return dataSourceUpdate(context, command)
     case "property.create": return propertyCreate(context, command)
     case "property.update": return propertyUpdate(context, command)
     case "property.move": return propertyMove(context, command)
+    case "property.duplicate": return propertyDuplicate(context, command)
     case "property.archive":
     case "property.restore": return propertyState(context, command)
     case "template.create":
     case "template.update":
     case "template.archive":
     case "template.restore": return templateWrite(context, command)
+    case "template.apply": {
+      const { applyTemplate } = await import("./template-apply-handler")
+      return applyTemplate(context, command)
+    }
     default: return null
   }
 }

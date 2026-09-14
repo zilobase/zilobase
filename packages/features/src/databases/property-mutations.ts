@@ -1,7 +1,5 @@
 import { useMutation, type QueryClient } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
-import { type DatabasePayload } from "./queries";
-import { type DatabaseMutationResponse } from "./mutation-types";
 import { pagesNavRootQueryKey } from "../pages/queries";
 import { useDatabaseClient } from "./client/provider";
 import {
@@ -101,24 +99,34 @@ export function useAddDatabaseProperty() {
 }
 
 export function useApplyDatabaseTemplate() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: async ({ databaseId, ...input }: ApplyDatabaseTemplateInput) => {
-      const payload = await apiFetch<DatabasePayload>(
-        `/databases/${databaseId}/apply-template`,
-        {
-          body: JSON.stringify(input),
-          method: "POST",
-        },
+      const scope = await resolveDataSourceCommandScope(
+        queryClient,
+        apiFetch,
+        databaseId,
       );
+      const result = await client.execute<{
+        dataSource: import("./contracts-v2").DataSourceEntity;
+      }>({
+        command: { ...input, type: "template.apply" },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
       await invalidateDataSourceCollections(queryClient, databaseId);
 
-      await queryClient.invalidateQueries({
-        queryKey: pagesNavRootQueryKey(payload.database.workspaceId),
-      });
+      const workspaceId = findDataSourceBootstrap(queryClient, databaseId)
+        ?.database.workspaceId;
+      if (workspaceId) {
+        await queryClient.invalidateQueries({
+          queryKey: pagesNavRootQueryKey(workspaceId),
+        });
+      }
 
-      return payload;
+      return result;
     },
   });
 }
@@ -184,6 +192,7 @@ export function useDeleteDatabaseProperty() {
 }
 
 export function useDuplicateDatabaseProperty() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
@@ -192,15 +201,20 @@ export function useDuplicateDatabaseProperty() {
       databasePropertyId,
       includeValues = false,
     }: DuplicatePropertyInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/properties/${databasePropertyId}/duplicate`,
-        {
-          method: "POST",
-          body: JSON.stringify({ includeValues }),
-        },
+      const scope = await resolveDataSourceCommandScope(
+        queryClient,
+        apiFetch,
+        databaseId,
       );
-
-      return response;
+      return client.execute<DatabasePropertyEntity>({
+        command: {
+          includeValues,
+          propertyId: databasePropertyId,
+          type: "property.duplicate",
+        },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
     },
     onSettled: async (_result, _error, variables) => {
       await invalidateDataSourceCollections(queryClient, variables.databaseId);

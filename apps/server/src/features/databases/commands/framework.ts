@@ -24,6 +24,10 @@ import type { RuntimeEnv } from "../../../shared/config/config"
 import { createBackgroundTask } from "../../../infrastructure/background/contracts"
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch"
 import { measureDatabaseOperation } from "../observability"
+import {
+  captureDatabaseAutomationMutationFacts,
+  type DatabaseAutomationMutationFactCandidate,
+} from "../automations/triggers/event-capture"
 
 const COMMAND_RECEIPT_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000
 const MAX_DATABASE_MUTATION_CHANGES_BYTES = 64 * 1_024
@@ -42,6 +46,7 @@ export type DatabaseCommandMutation = {
 }
 
 export type DatabaseCommandDispatchResult<TResult = unknown> = {
+  automationFacts?: DatabaseAutomationMutationFactCandidate[]
   mutations: DatabaseCommandMutation[]
   result: TResult
 }
@@ -143,6 +148,8 @@ export async function executeDatabaseCommand<TResult = unknown>(
   const requestHash = await hashDatabaseCommandRequest(input.scope, input.request)
   const now = dependencies.now?.() ?? new Date()
   const randomUUID = dependencies.randomUUID ?? (() => crypto.randomUUID())
+  const automationWindows: Array<{ availableAt: Date; id: string }> = []
+  let agentTriggerFacts: DatabaseAutomationMutationFactCandidate[] = []
 
   const metricAttributes = {
     operation: input.request.command.type,
@@ -213,6 +220,14 @@ export async function executeDatabaseCommand<TResult = unknown>(
       dataSourceId: input.scope.dataSourceId,
       transaction: tx,
     }, input.request.command)
+    agentTriggerFacts = dispatched.automationFacts ?? []
+    if (agentTriggerFacts.length) {
+      await captureDatabaseAutomationMutationFacts(
+        tx,
+        agentTriggerFacts,
+        input.env ? { capturedWindows: automationWindows } : {},
+      )
+    }
 
     if (
       dispatched.mutations.length === 0 ||
@@ -300,13 +315,35 @@ export async function executeDatabaseCommand<TResult = unknown>(
 
   if (input.env && committed.eventIds.length > 0) {
     await measureDatabaseOperation("enqueue_duration_ms", metricAttributes, () =>
-      dispatchBackgroundTasks(input.env!, committed.eventIds.map((eventId) =>
-        createBackgroundTask({
+      dispatchBackgroundTasks(input.env!, [
+        ...committed.eventIds.map((eventId) => createBackgroundTask({
           env: input.env!,
           kind: "realtime.database",
           resourceId: eventId,
+        })),
+        ...automationWindows.map((window) => createBackgroundTask({
+          availableAt: window.availableAt,
+          env: input.env!,
+          kind: "automation.event_window",
+          resourceId: window.id,
+        })),
+      ]))
+    if (agentTriggerFacts.length) {
+      try {
+        const { dispatchDatabaseAgentMutationFacts } = await import(
+          "../../ai/agents/agent-trigger-service"
+        )
+        await dispatchDatabaseAgentMutationFacts(input.env, {
+          eventKeyPrefix: `database-command:${input.request.commandId}`,
+          facts: agentTriggerFacts,
         })
-      )))
+      } catch (error) {
+        console.error(JSON.stringify({
+          error: error instanceof Error ? error.name : "UnknownError",
+          event: "custom_agent_database_trigger_dispatch_failed",
+        }))
+      }
+    }
   }
   return committed.acknowledgement
 }

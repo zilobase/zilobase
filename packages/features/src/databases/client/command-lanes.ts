@@ -78,6 +78,7 @@ export function databaseCommandLane(input: DatabaseClientCommand) {
   }
   if (
     command.type === "database.update" ||
+    command.type === "dataSource.create" ||
     command.type === "dataSource.link" ||
     command.type === "dataSource.unlink" ||
     command.type.startsWith("view.")

@@ -72,23 +72,6 @@ describe("feature route composition", () => {
       "DELETE /:id",
       "POST /:id/restore",
       "DELETE /:id/favorite",
-      "PATCH /:id",
-      "PATCH /data-sources/:dataSourceId",
-      "PATCH /:id/views/:viewId",
-      "POST /:id/views",
-      "POST /:id/data-sources/new",
-      "POST /:id/data-sources",
-      "PUT /:id/views/:viewId/source",
-      "DELETE /:id/data-sources/:dataSourceId",
-      "DELETE /:id/views/:viewId",
-      "POST /:id/apply-template",
-      "POST /:id/properties",
-      "PATCH /:id/properties/reorder",
-      "PATCH /:id/properties/:databasePropertyId",
-      "POST /:id/properties/:databasePropertyId/duplicate",
-      "DELETE /:id/properties/:databasePropertyId",
-      "POST /:id/rows",
-      "PUT /:id/rows/:rowId/properties/:propertyId",
     ]);
   });
 });

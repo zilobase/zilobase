@@ -580,21 +580,13 @@ export function useDatabaseViewController({
         selection.csvImport?.name ||
         template?.name ||
         "New data source"
-      const existingSourceIds = new Set(
-        payload?.dataSources.map((source) => source.id) ?? [],
-      )
-      let createdPayload = await createDataSource.mutateAsync({
+      const created = await createDataSource.mutateAsync({
         databaseId,
         name: databaseName,
       })
-      const createdSource = createdPayload.dataSources.find(
-        (source) => !existingSourceIds.has(source.id),
-      )
-      if (!createdSource) {
-        throw new Error("The new data source could not be resolved.")
-      }
+      const createdSource = created.dataSource
       if (selection.csvImport) {
-        createdPayload = await applyDataSourceTemplate.mutateAsync({
+        await applyDataSourceTemplate.mutateAsync({
           config: getMergedDatabaseConfig(createdSource.config, {
             setupDismissed: true,
           }),
@@ -622,7 +614,7 @@ export function useDatabaseViewController({
           ]),
         )
 
-        createdPayload = await applyDataSourceTemplate.mutateAsync({
+        await applyDataSourceTemplate.mutateAsync({
           config: getMergedDatabaseConfig(createdSource.config, {
             emoji: template.emoji,
             setupDismissed: true,
@@ -654,10 +646,7 @@ export function useDatabaseViewController({
         })
       }
 
-      const added = createdPayload.views.find(
-        (view) => view.dataSourceId === createdSource.id,
-      )
-      setSelectedActiveViewId(added?.id ?? null)
+      setSelectedActiveViewId(created.view.id)
       toast.success("Data source added.")
     } catch (error) {
       toast.error(

@@ -95,10 +95,8 @@ export function MailDatabaseSyncPanel({ config, onChange, properties, saving, vi
   const createDestinationDataSource = async () => {
     if (!draft.destinationDatabaseId) return
     try {
-      const existingIds = new Set(selectedDatabase.data?.dataSources.map((source) => source.id) ?? [])
-      const payload = await createDataSource.mutateAsync({ databaseId: draft.destinationDatabaseId, name: `${viewName} mail` })
-      const created = payload.dataSources.find((source) => !existingIds.has(source.id))
-      setDraft((current) => ({ ...current, destinationDataSourceId: created?.id ?? current.destinationDataSourceId, mappings: requiredTitleMapping(current.mappings) }))
+      const created = await createDataSource.mutateAsync({ databaseId: draft.destinationDatabaseId, name: `${viewName} mail` })
+      setDraft((current) => ({ ...current, destinationDataSourceId: created.dataSource.id, mappings: requiredTitleMapping(current.mappings) }))
     } catch (error) { toast.error(getApiErrorMessage(error)) }
   }
   const createMappedProperty = async (mapping: MailDatabaseFieldMapping) => {

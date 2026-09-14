@@ -3,7 +3,6 @@ import { Hono } from "hono";
 import { test } from "vitest";
 import type { AppBindings } from "../../shared/types";
 import { databaseCreateRoutes } from "./database-core-routes";
-import { databaseSourceRoutes } from "./database-sources-routes";
 import { databaseAutomationRoutes } from "./automations/routes";
 
 function app(authenticated: boolean) {
@@ -22,14 +21,10 @@ function app(authenticated: boolean) {
       await next();
     })
     .route("/create", databaseCreateRoutes)
-    .route("/sources", databaseSourceRoutes)
     .route("/automation", databaseAutomationRoutes);
 }
 test("database transport authenticates before JSON validation", async () => {
-  for (const [path, method] of [
-    ["/create", "POST"],
-    ["/sources/data-sources/source", "PATCH"],
-  ]) {
+  for (const [path, method] of [["/create", "POST"]]) {
     const request = (authenticated: boolean, body: string) =>
       app(authenticated).request(path, {
         method,

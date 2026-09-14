@@ -3,13 +3,9 @@ import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
 import type { AppBindings } from "../../shared/types";
-import { responseJson } from "../../test-support/response";
 
 const mocks = vi.hoisted(() => ({
   databaseRecord: vi.fn(),
-  sourceRecord: vi.fn(),
-  cell: vi.fn(),
-  createProperty: vi.fn(),
   createDatabase: vi.fn(),
   databasePayload: vi.fn(),
   bootstrap: vi.fn(),
@@ -20,10 +16,7 @@ const mocks = vi.hoisted(() => ({
   membership: vi.fn(),
   mutationFeed: vi.fn(),
   deleteDatabase: vi.fn(),
-  duplicateProperty: vi.fn(),
   restoreDatabase: vi.fn(),
-  template: vi.fn(),
-  updateDatabase: vi.fn(),
 }));
 vi.mock("../access", async (original) => ({
   ...(await original<typeof import("../access")>()),
@@ -37,23 +30,6 @@ vi.mock("./access/database-access", async (original) => ({
   ...(await original<typeof import("./access/database-access")>()),
   getDatabaseRecord: mocks.databaseRecord,
 }));
-vi.mock("./access/data-source-access", async (original) => ({
-  ...(await original<typeof import("./access/data-source-access")>()),
-  getDataSourceRecord: mocks.sourceRecord,
-}));
-vi.mock("./properties/cell-service", () => ({
-  setDatabaseCellValueService: mocks.cell,
-}));
-vi.mock("./properties/service", () => ({
-  createDatabasePropertyService: mocks.createProperty,
-  updateDatabasePropertyService: vi.fn(),
-}));
-vi.mock("./properties/duplication-service", () => ({
-  duplicateDatabasePropertyService: mocks.duplicateProperty,
-}));
-vi.mock("./templates/service", () => ({
-  applyDatabaseTemplateService: mocks.template,
-}));
 vi.mock("./core/payload", () => ({
   getDatabasePayload: mocks.databasePayload,
   getDatabaseSchemaPayload: vi.fn(),
@@ -62,7 +38,6 @@ vi.mock("./core/service", () => ({
   createDatabaseService: mocks.createDatabase,
   deleteDatabaseService: mocks.deleteDatabase,
   restoreDatabaseService: mocks.restoreDatabase,
-  updateDatabaseService: mocks.updateDatabase,
 }));
 vi.mock("./read/service", async (original) => ({
   ...(await original<typeof import("./read/service")>()),
@@ -83,15 +58,6 @@ const user = {
   id: "user-1",
   image: null,
   name: "User",
-};
-const commit = {
-  actorId: "user-1",
-  changed: ["rows", "values"] as const,
-  committedAt: "2026-08-03T00:00:00.000Z",
-  databaseId: "database-1",
-  delta: { values: [{ pageId: "page-1", propertyId: "property-1", value: "Done" }] },
-  mutationId: "mutation-1",
-  version: 2,
 };
 
 function appWithUser(authMethod: "apiKey" | "session" = "session") {
@@ -289,15 +255,6 @@ test("mutation catch-up validates and forwards the version window", async () => 
   assert.equal(mocks.mutationFeed.mock.calls.length, 1);
 });
 
-test("database mutation routes require authentication", async () => {
-  const response = await databaseRoutes.request("/database-1/properties", {
-    body: JSON.stringify({ name: "Status", type: "status" }),
-    headers: { "content-type": "application/json" },
-    method: "POST",
-  });
-  assert.equal(response.status, 401);
-});
-
 test("embedded database creation preserves an omitted teamspace for parent inheritance", async () => {
   mocks.createDatabase.mockResolvedValue({
     databaseId: "database-1",
@@ -336,143 +293,6 @@ test("embedded database creation preserves an omitted teamspace for parent inher
   });
 });
 
-test("database property route validates input before calling services", async () => {
-  const response = await appWithUser().request("/databases/database-1/properties", {
-    body: JSON.stringify({ name: 7, position: -1, type: "text" }),
-    headers: { "content-type": "application/json" },
-    method: "POST",
-  });
-  assert.equal(response.status, 400);
-  assert.equal(mocks.createProperty.mock.calls.length, 0);
-});
-
-test("database routes map service errors to HTTP responses", async () => {
-  mocks.createProperty.mockRejectedValue(
-    new ServiceMutationError("Database not found", 404),
-  );
-  const response = await appWithUser().request("/databases/missing/properties", {
-    body: JSON.stringify({ name: "Status", type: "status" }),
-    headers: { "content-type": "application/json" },
-    method: "POST",
-  });
-  assert.equal(response.status, 404);
-  assert.deepEqual(await response.json(), { error: "Database not found" });
-});
-
-test("cell route returns the service commit response", async () => {
-  mocks.cell.mockResolvedValue({ commit });
-  const response = await appWithUser().request(
-    "/databases/database-1/rows/row-1/properties/property-1",
-    {
-      body: JSON.stringify({ value: "Done" }),
-      headers: { "content-type": "application/json" },
-      method: "PUT",
-    },
-  );
-  const body = await responseJson<{ mutationId: string; version: number }>(response);
-  assert.equal(response.status, 200);
-  assert.equal(body.mutationId, "mutation-1");
-  assert.equal(body.version, 2);
-  assert.deepEqual(mocks.cell.mock.calls[0]?.[0], {
-    databaseId: "database-1",
-    env: undefined,
-    origin: "user",
-    pagePropertyId: "property-1",
-    rowId: "row-1",
-    userId: "user-1",
-    value: "Done",
-  });
-});
-
-test("API-key row mutations carry the api origin", async () => {
-  mocks.cell.mockResolvedValue({ commit });
-  const response = await appWithUser("apiKey").request(
-    "/databases/database-1/rows/row-1/properties/property-1",
-    {
-      body: JSON.stringify({ value: "Done" }),
-      headers: { "content-type": "application/json" },
-      method: "PUT",
-    },
-  );
-
-  assert.equal(response.status, 200);
-  assert.equal(mocks.cell.mock.calls[0]?.[0].origin, "api");
-});
-
-test("duplicate and row routes reject malformed bodies", async () => {
-  const duplicate = await appWithUser().request(
-    "/databases/database-1/properties/property-1/duplicate",
-    {
-      body: JSON.stringify({ includeValues: "yes" }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    },
-  );
-  assert.equal(duplicate.status, 400);
-
-  const row = await appWithUser().request("/databases/database-1/rows", {
-    body: JSON.stringify({ position: -1 }),
-    headers: { "content-type": "application/json" },
-    method: "POST",
-  });
-  assert.equal(row.status, 400);
-  assert.equal(mocks.duplicateProperty.mock.calls.length, 0);
-});
-
-test("database template route validates and applies the whole template once", async () => {
-  const invalid = await appWithUser().request(
-    "/databases/database-1/apply-template",
-    {
-      body: JSON.stringify({ name: "Tasks", properties: [], rows: [{}] }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    },
-  );
-  assert.equal(invalid.status, 400);
-  assert.equal(mocks.template.mock.calls.length, 0);
-
-  const payload = {
-    database: { id: "database-1", name: "Tasks" },
-    properties: [],
-    rows: [],
-    values: [],
-    views: [],
-  };
-  mocks.template.mockResolvedValue({ commit, payload });
-
-  const template = {
-    config: { emoji: "✅", setupDismissed: true },
-    name: "Tasks",
-    properties: [{ config: null, name: "Status", type: "status" }],
-    rows: [
-      {
-        content: { type: "doc" },
-        metadata: { emoji: "📌" },
-        title: "Plan launch",
-        values: [{ propertyName: "Status", value: "In progress" }],
-      },
-    ],
-  };
-  const response = await appWithUser().request(
-    "/databases/database-1/apply-template",
-    {
-      body: JSON.stringify(template),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    },
-  );
-
-  assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), payload);
-  assert.deepEqual(mocks.template.mock.calls[0]?.[0], {
-    ...template,
-    databaseId: "database-1",
-    env: undefined,
-    userId: "user-1",
-  });
-});
-
-
 test("OAuth database routes bind database and data-source IDs to the granted workspace", async () => {
   const app = new Hono<AppBindings>();
   app.use("*", async (c, next) => {
@@ -484,30 +304,17 @@ test("OAuth database routes bind database and data-source IDs to the granted wor
   });
   app.route("/databases", databaseRoutes);
   mocks.databaseRecord.mockResolvedValue({ workspaceId: "other" });
-  mocks.sourceRecord.mockResolvedValue({ workspaceId: "other" });
   for (const [method, path] of [
     ["GET", "/databases/database-1/bootstrap"],
     ["GET", "/databases/database-1/published"],
     ["DELETE", "/databases/database-1"],
-    ["PATCH", "/databases/data-sources/source-1"],
-    ["POST", "/databases/source-1/properties"],
-    ["POST", "/databases/source-1/rows"],
-    ["POST", "/databases/source-1/apply-template"],
     ["GET", "/databases/database-1/automations"],
   ]) {
     assert.equal((await app.request(path!, { method })).status, 403, path);
   }
-  assert.equal(mocks.cell.mock.calls.length, 0);
   assert.equal(mocks.deleteDatabase.mock.calls.length, 0);
   assert.equal((await app.request("/databases", {
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ workspaceId: "other" }),
   })).status, 403);
-  mocks.sourceRecord.mockResolvedValue({ workspaceId: "granted" });
-  mocks.cell.mockResolvedValue({ commit });
-  assert.equal((await app.request("/databases/source-1/rows/row-1/properties/property-1", {
-    method: "PUT", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ value: "Done" }),
-  })).status, 200);
-  assert.equal(mocks.cell.mock.calls.length, 1);
 });

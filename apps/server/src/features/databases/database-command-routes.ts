@@ -40,7 +40,10 @@ async function commandResponse(
   await requireDatabaseEditAccess(databaseId, authenticated.user.id)
   if (dataSourceId) {
     await requireDataSourceEditAccess(dataSourceId, authenticated.user.id)
-  } else if (request.command.type === "dataSource.link") {
+  } else if (
+    request.command.type === "dataSource.link" ||
+    request.command.type === "view.setDataSource"
+  ) {
     await requireDataSourceAccess(
       request.command.dataSourceId,
       authenticated.user.id,
