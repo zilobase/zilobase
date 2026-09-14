@@ -24,7 +24,7 @@ import {
 import { useZilobaseFeatures } from "@zilobase/features"
 import { useSession } from "@zilobase/features/auth/react";
 import {
-  databaseQueryOptions,
+  databaseContextExportQueryOptions,
   type DatabasePayload,
 } from "@zilobase/features/databases"
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
@@ -43,7 +43,9 @@ export function SidebarTasksSection({
   const { data: session } = useSession()
   const queries = useQueries({
     queries: open
-      ? databaseIds.map((databaseId) => databaseQueryOptions(apiFetch, databaseId))
+      ? databaseIds.map((databaseId) =>
+          databaseContextExportQueryOptions(apiFetch, databaseId)
+        )
       : [],
   })
   const rows = React.useMemo(() => {

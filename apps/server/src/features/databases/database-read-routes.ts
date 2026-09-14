@@ -16,7 +16,6 @@ import {
 } from "../../shared/security/database-realtime-ticket";
 import { getDatabaseRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { getDatabaseRecord } from "./access/database-access";
-import { getDatabaseSchemaPayload } from "./core/payload";
 import type { AppBindings } from "../../shared/types";
 import { readJsonBody } from "../../shared/http/request";
 import {
@@ -187,63 +186,6 @@ databaseReadRoutes.get("/:id/mutations", resourceWorkspace, async (c) => {
   }));
 });
 
-
-databaseReadRoutes.get("/:id", resourceWorkspace, async (c) => {
-  const user = c.get("user") ?? null;
-  const includeDeleted = c.req.query("includeDeleted") === "1";
-  const record = await getDatabaseRecord(c.req.param("id"), {
-    includeDeleted,
-  });
-
-  if (!record) {
-    return c.json({ error: "Database not found" }, 404);
-  }
-
-  const canView = record.deletedAt
-    ? user
-      ? Boolean(await getMembership(record.workspaceId, user.id))
-      : false
-    : user
-      ? await canAccessDatabaseRecord(record, user.id, "view")
-      : false;
-
-  if (!canView) {
-    const published = await isDatabasePublishedInWorkspace(
-      record.id,
-      record.workspaceId,
-    );
-
-    if (!published) {
-      return user
-        ? c.json({ error: "Forbidden" }, 403)
-        : c.json({ error: "Unauthorized" }, 401);
-    }
-  }
-
-  const payloadOptions = {
-    includeDeleted,
-    ...(c.req.query("viewId") ? { viewId: c.req.query("viewId") } : {}),
-    ...(c.req.query("dataSourceId")
-      ? { dataSourceId: c.req.query("dataSourceId") }
-      : {}),
-  };
-  const payload = await getDatabaseSchemaPayload(
-    record.id,
-    user?.id,
-    record,
-    payloadOptions,
-  );
-  const accessLevel = user
-    ? record.deletedAt
-      ? "none"
-      : await getEffectiveDatabaseAccessForRecord(record, user.id)
-    : null;
-
-  return c.json({
-    ...payload,
-    database: payload ? { ...payload.database, accessLevel } : payload,
-  });
-});
 
 databaseReadRoutes.post("/:id/realtime-ticket", resourceWorkspace, async (c) => {
   const user = c.get("user") ?? null;

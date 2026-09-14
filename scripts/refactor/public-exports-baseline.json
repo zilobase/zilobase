@@ -9568,10 +9568,6 @@
       "value": true,
       "type": false
     },
-    "databaseQueryOptions": {
-      "value": true,
-      "type": false
-    },
     "DatabaseRecord": {
       "value": false,
       "type": true
@@ -9941,10 +9937,6 @@
       "type": false
     },
     "useCreateDatabaseDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useDatabase": {
       "value": true,
       "type": false
     },
@@ -10590,10 +10582,6 @@
       "value": true,
       "type": false
     },
-    "databaseQueryOptions": {
-      "value": true,
-      "type": false
-    },
     "DatabaseRecord": {
       "value": false,
       "type": true
@@ -10963,10 +10951,6 @@
       "type": false
     },
     "useCreateDatabaseDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useDatabase": {
       "value": true,
       "type": false
     },
@@ -12792,10 +12776,6 @@
       "value": true,
       "type": false
     },
-    "databaseQueryOptions": {
-      "value": true,
-      "type": false
-    },
     "DatabaseRecord": {
       "value": false,
       "type": true
@@ -12871,10 +12851,6 @@
       "type": true
     },
     "databaseQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "databaseQueryOptions": {
       "value": true,
       "type": false
     },

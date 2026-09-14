@@ -29,7 +29,7 @@ test("createApp registers every public feature route group", () => {
     "GET /api/ai/operations/turns",
     "GET /api/ai/operations/turns/:turnId/tools",
     "POST /api/keys",
-    "GET /databases/:id",
+    "GET /databases/:id/bootstrap",
     "GET /demo/bootstrap",
     "POST /images/uploads",
     "POST /user-settings/profile/image/uploads",

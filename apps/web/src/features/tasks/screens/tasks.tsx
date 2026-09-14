@@ -49,7 +49,7 @@ import { defaultStatusOptions } from "@/features/databases/properties/property-c
 import { TaskDatabaseListAdapter } from "../components/task-database-list-adapter"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
 import {
-  databaseQueryOptions,
+  databaseContextExportQueryOptions,
   type DatabasePayload,
   type DatabaseProperty,
   type DatabaseView,
@@ -133,7 +133,7 @@ export default function TasksPage() {
   const selectedDatabaseIds = sidebarLayout.taskDatabaseIds
   const databaseQueries = useQueries({
     queries: selectedDatabaseIds.map((databaseId) =>
-      databaseQueryOptions(apiFetch, databaseId)
+      databaseContextExportQueryOptions(apiFetch, databaseId)
     ),
   })
   const payloads = databaseQueries

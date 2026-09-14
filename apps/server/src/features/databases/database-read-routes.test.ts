@@ -65,7 +65,22 @@ beforeEach(() => {
   mocks.accessLevel.mockResolvedValue("full");
   mocks.membership.mockResolvedValue({ id: "membership-1" });
   mocks.payload.mockResolvedValue({ database: { id: "database-1" }, rows: [] });
-  mocks.schemaPayload.mockResolvedValue({ database: { id: "database-1" } });
+  mocks.schemaPayload.mockResolvedValue({
+    activeDataSource: null,
+    database: {
+      config: {},
+      createdAt: new Date("2026-08-01T00:00:00.000Z"),
+      id: "database-1",
+      name: "Database",
+      pageId: "page-1",
+      updatedAt: new Date("2026-08-01T00:00:00.000Z"),
+      version: 7,
+      workspaceId: "workspace-1",
+    },
+    dataSources: [],
+    properties: [],
+    views: [],
+  });
   mocks.published.mockResolvedValue(false);
   mocks.realtimeExpiration.mockResolvedValue(null);
   mocks.createTicket.mockResolvedValue({ expiresAt: "2026-08-04T00:00:00.000Z", token: "ticket" });
@@ -82,23 +97,23 @@ function sessionApp() {
   return app;
 }
 
-test("database read route returns 404 and protects private databases", async () => {
+test("database bootstrap route returns 404 and protects private databases", async () => {
   mocks.getRecord.mockResolvedValueOnce(undefined);
-  const missing = await databaseReadRoutes.request("/missing");
+  const missing = await databaseReadRoutes.request("/missing/bootstrap");
   assert.equal(missing.status, 404);
 
-  const privateResponse = await databaseReadRoutes.request("/database-1");
+  const privateResponse = await databaseReadRoutes.request("/database-1/bootstrap");
   assert.equal(privateResponse.status, 401);
   assert.deepEqual(await privateResponse.json(), { error: "Unauthorized" });
 });
 
-test("legacy database read route always serves schema-only payloads", async () => {
+test("database bootstrap route serves schema-only entities", async () => {
   mocks.published.mockResolvedValue(true);
-  const published = await databaseReadRoutes.request("/database-1");
+  const published = await databaseReadRoutes.request("/database-1/bootstrap");
   assert.equal(published.status, 200);
   assert.equal((await responseJson<{ database: { accessLevel: null } }>(published)).database.accessLevel, null);
 
-  const response = await sessionApp().request("/database-1");
+  const response = await sessionApp().request("/database-1/bootstrap");
   assert.equal(response.status, 200);
   assert.equal((await responseJson<{ database: { accessLevel: string } }>(response)).database.accessLevel, "full");
   assert.equal(mocks.schemaPayload.mock.calls.length, 2);
@@ -127,9 +142,9 @@ test("database export route performs an explicit complete source read", async ()
 
 test("database read route authorizes deleted records through membership", async () => {
   mocks.getRecord.mockResolvedValue({ ...record, deletedAt: new Date() });
-  const response = await sessionApp().request("/database-1?includeDeleted=1");
+  const response = await sessionApp().request("/database-1/bootstrap?includeDeleted=1");
   assert.equal(response.status, 200);
-  assert.equal((await responseJson<{ database: { accessLevel: string } }>(response)).database.accessLevel, "none");
+  assert.equal((await responseJson<{ database: { accessLevel: null } }>(response)).database.accessLevel, null);
   assert.equal(mocks.membership.mock.calls.length, 1);
 });
 
@@ -198,8 +213,8 @@ test("OAuth database workspace binding retains the existing ACL", async () => {
   });
   app.route("/", databaseReadRoutes);
   mocks.access.mockResolvedValue(false);
-  assert.equal((await app.request("/database-1")).status, 403);
+  assert.equal((await app.request("/database-1/bootstrap")).status, 403);
   assert.equal(mocks.payload.mock.calls.length, 0);
   mocks.access.mockResolvedValue(true);
-  assert.equal((await app.request("/database-1")).status, 200);
+  assert.equal((await app.request("/database-1/bootstrap")).status, 200);
 });
