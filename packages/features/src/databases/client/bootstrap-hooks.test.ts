@@ -10,6 +10,7 @@ import {
 } from "../../shared/context"
 import { useDatabaseBootstrap } from "./bootstrap-hooks"
 import { DbProvider } from "./provider"
+import { useDatabaseRecords } from "./record-hooks"
 
 test("database bootstrap is idle outside an authenticated session", () => {
   const queryClient = new QueryClient()
@@ -20,6 +21,47 @@ test("database bootstrap is idle outside an authenticated session", () => {
 
   function Capture() {
     status = useDatabaseBootstrap(null).status
+    return null
+  }
+
+  renderToString(
+    createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      createElement(
+        ZilobaseFeaturesProvider,
+        {
+          value: {
+            apiFetch,
+            auth: {} as ZilobaseFeaturesConfig["auth"],
+            queryClient,
+          },
+        },
+        createElement(
+          DbProvider,
+          { apiFetch, queryClient, sessionId: null },
+          createElement(Capture),
+        ),
+      ),
+    ),
+  )
+
+  assert.equal(status, "idle")
+})
+
+test("database record windows are idle outside an authenticated session", () => {
+  const queryClient = new QueryClient()
+  const apiFetch: ZilobaseFeaturesConfig["apiFetch"] = async () => {
+    throw new Error("anonymous record windows must not fetch through DbClient")
+  }
+  let status: string | undefined
+
+  function Capture() {
+    status = useDatabaseRecords({
+      databaseId: "database-1",
+      dataSourceId: "source-1",
+      viewId: "view-1",
+    }).status
     return null
   }
 

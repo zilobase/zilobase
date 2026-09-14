@@ -61,12 +61,12 @@ import {
   DialogTitle,
 } from "@/shared/ui/dialog";
 import {
-  useDatabase,
   useDeleteDatabaseProperty,
   useDuplicateDatabaseProperty,
   useUpdateDatabase,
   useUpdateDatabaseProperty,
 } from "@zilobase/features/databases/react";
+import { useDatabaseMetadata } from "../../hooks/use-database-metadata";
 import { Separator } from "@/shared/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 import { Textarea } from "@/shared/ui/textarea";
@@ -173,12 +173,12 @@ export function DatabasePropertyMenu({
   const canBasicAutofill =
     type === "text" || type === "select" || type === "multi_select";
   const relationDeleteConfig = getRelationDeleteConfig(config);
-  const { data: relatedDatabasePayload } = useDatabase(
+  const { data: relatedDatabasePayload } = useDatabaseMetadata(
     type === "relation" ? relationDeleteConfig.relatedDatabaseId : null,
-    { schemaOnly: true },
   );
   const relatedDatabaseProperty = relatedDatabasePayload?.properties.find(
     (property) =>
+      property.dataSourceId === relatedDatabasePayload.activeDataSource?.id &&
       property.property.id === relationDeleteConfig.relatedPropertyId,
   );
   const wrapContent = controlledWrapContent ?? getPropertyWrapContent(config);

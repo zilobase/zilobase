@@ -1,10 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
 
 import { useZilobaseFeatures } from "../shared/context";
-import { useDatabase } from "../databases/query-hooks";
-import { useDatabaseIdForRowPage } from "../databases/use-database-id-for-row-page";
-import { buildPagePropertiesPayloadFromDatabase } from "../databases/row-page-properties";
 import {
   getPageFromDetail,
   pageAccessQueryOptions,
@@ -142,26 +138,11 @@ type PagePropertiesOptions = {
 
 export function usePageProperties(
   pageId: string | null | undefined,
-  options?: PagePropertiesOptions,
+  _options?: PagePropertiesOptions,
 ) {
   const { apiFetch } = useZilobaseFeatures();
-  const resolvedDatabaseId = useDatabaseIdForRowPage(
-    pageId,
-    options?.databaseId,
-  );
-  const databaseQuery = useDatabase(resolvedDatabaseId);
-  const apiQuery = useQuery({
+  return useQuery({
     ...pagePropertiesQueryOptions(apiFetch, pageId),
-    enabled: Boolean(pageId) && !resolvedDatabaseId,
+    enabled: Boolean(pageId),
   });
-  const derivedPayload = useMemo(() => {
-    if (!resolvedDatabaseId || !databaseQuery.data) return undefined;
-
-    return buildPagePropertiesPayloadFromDatabase(databaseQuery.data, pageId) ??
-      undefined;
-  }, [databaseQuery.data, pageId, resolvedDatabaseId]);
-
-  return resolvedDatabaseId
-    ? { ...databaseQuery, data: derivedPayload }
-    : apiQuery;
 }

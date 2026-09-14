@@ -35,7 +35,6 @@ import {
 } from "@/shared/ui/tooltip";
 import {
   useAddDatabaseProperty,
-  useDatabase,
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
 } from "@zilobase/features/databases/react";
@@ -44,6 +43,8 @@ import { usePageNavigation } from "@zilobase/features/pages/react";
 import { DatabaseSearchableMenuItems } from "../../../views/components/database-searchable-menu-items";
 import { type DatabaseSearchableMenuOption } from "../../../views/menu-option-contracts";
 import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
+import { useDatabaseMetadata } from "../../../hooks/use-database-metadata";
+import { useDatabaseSecondaryPayload } from "../../../hooks/use-database-secondary-payload";
 import {
   getRelationNeedsRepair,
   getRelationRepairMutationPlan,
@@ -94,9 +95,7 @@ export function RelationPropertySettings({
   const { data: navigation, isLoading } = usePageNavigation(workspaceId, {
     enabled: Boolean(workspaceId),
   });
-  const { data: relatedDatabaseSchema } = useDatabase(selectedDatabaseId, {
-    schemaOnly: true,
-  });
+  const { data: relatedDatabaseSchema } = useDatabaseMetadata(selectedDatabaseId);
   const pagesById = new Map(
     (navigation?.pages ?? []).map((page) => [page.id, page]),
   );
@@ -127,25 +126,32 @@ export function RelationPropertySettings({
     propertyConfig: config,
     relatedDatabasePayload: relatedDatabaseSchema,
   });
-  const { data: currentDatabasePayload } = useDatabase(sourceDatabaseId, {
-    schemaOnly: !needsRepair,
+  const currentDatabaseRead = useDatabaseSecondaryPayload(sourceDatabaseId, {
+    enabled: repairDialogOpen,
+    loadAll: true,
   });
-  const { data: relatedDatabasePayload } = useDatabase(selectedDatabaseId, {
-    schemaOnly: !needsRepair,
+  const relatedDatabaseRead = useDatabaseSecondaryPayload(selectedDatabaseId, {
+    enabled: repairDialogOpen,
+    loadAll: true,
   });
+  const repairDataLoading = repairDialogOpen &&
+    (!currentDatabaseRead.isComplete || !relatedDatabaseRead.isComplete);
 
   useEffect(() => {
     setOptimisticTwoWayRelation(null);
   }, [relationConfig.twoWayRelation]);
 
   const repairRelations = () => {
+    if (repairDataLoading) {
+      return;
+    }
     const repairPlan = getRelationRepairMutationPlan({
       databaseId,
       databasePropertyId,
-      payload: currentDatabasePayload,
+      payload: currentDatabaseRead.data,
       primarySource: repairPrimarySource,
       propertyConfig: config,
-      relatedDatabasePayload,
+      relatedDatabasePayload: relatedDatabaseRead.data,
     });
 
     if (!repairPlan) {
@@ -357,7 +363,9 @@ export function RelationPropertySettings({
             <AlertDialogHeader>
               <AlertDialogTitle>Repair relation links?</AlertDialogTitle>
               <AlertDialogDescription>
-                Choose which database should be treated as the source of truth.
+                {repairDataLoading
+                  ? "Loading complete relation data before repair…"
+                  : "Choose which database should be treated as the source of truth."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <RadioGroup
@@ -396,8 +404,8 @@ export function RelationPropertySettings({
             </RadioGroup>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={repairRelations}>
-                Repair
+              <AlertDialogAction disabled={repairDataLoading} onClick={repairRelations}>
+                {repairDataLoading ? "Loading…" : "Repair"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -37,8 +37,8 @@ import { libraryViewIcons, mailViewIcons } from "@/features/sidebar";
 import { libraryViewLabels, mailViewLabels } from "@/features/sidebar";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useAiAgentProfile } from "@zilobase/features/ai-chat/react";
-import { useDatabase } from "@zilobase/features/databases/react";
 import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
+import { useDatabaseSecondaryPayload } from "@/features/databases/hooks/use-database-secondary-payload"
 import { useMeeting } from "@zilobase/features/meetings/react";
 import { useTeamspaces } from "@zilobase/features/teamspaces/react";
 import {
@@ -209,7 +209,10 @@ function PagePaneControls({
     : resolveEmbeddedItemsOpenAs(page, userSettings.embeddedItemsOpenAs);
   const rowDatabaseId = pageId ? rowNavigationDatabaseId : null;
   const isDialogPane = !onClose;
-  const { data: rowDatabasePayload } = useDatabase(rowDatabaseId);
+  const { data: rowDatabasePayload } = useDatabaseSecondaryPayload(
+    rowDatabaseId,
+    { loadAll: true },
+  );
   const { nextRowPageId, previousRowPageId } = useMemo(() => {
     const rowPageIds =
       rowDatabasePayload?.rows

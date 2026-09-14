@@ -31,6 +31,8 @@ type RelationPayload = {
   values: RelationValue[]
 }
 
+type RelationSchemaPayload = Pick<RelationPayload, "properties">
+
 type SourcePageSummary = {
   id: string
   metadata?: unknown
@@ -67,7 +69,7 @@ export function getRelationTwoWayConfigUpdate({
 }: {
   nextTwoWayRelation: boolean
   propertyConfig: unknown
-  relatedDatabasePayload: RelationPayload | null | undefined
+  relatedDatabasePayload: RelationSchemaPayload | null | undefined
 }): RelationConfigUpdate | null {
   const relatedDatabaseId = getRelationTargetDatabaseId(propertyConfig)
   const relatedPropertyId = getRelationRelatedPropertyId(propertyConfig)
@@ -284,7 +286,7 @@ export function getRelationNeedsRepair({
   relatedDatabasePayload,
 }: {
   propertyConfig: unknown
-  relatedDatabasePayload: RelationPayload | null | undefined
+  relatedDatabasePayload: RelationSchemaPayload | null | undefined
 }) {
   const relatedPropertyId = getRelationRelatedPropertyId(propertyConfig)
   const relatedProperty = relatedDatabasePayload?.properties.find(

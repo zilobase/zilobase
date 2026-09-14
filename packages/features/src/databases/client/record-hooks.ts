@@ -6,7 +6,7 @@ import {
   type DatabaseRecordWindow,
   type DatabaseViewScope,
 } from "./database-client"
-import { useDatabaseClient } from "./provider"
+import { useOptionalDatabaseClient } from "./provider"
 import {
   toDatabaseRecord,
   type WindowedDatabaseRecord,
@@ -30,25 +30,25 @@ export type DatabaseRecordHookWindow = Omit<DatabaseRecordWindow, "scope"> & {
 export function useDatabaseRecords(
   scope: DatabaseViewScope | null,
 ): DatabaseRecordHookWindow {
-  const facade = useDatabaseClient()
-  if (!(facade instanceof SessionDatabaseClient)) {
-    throw new Error("Unsupported database client implementation")
-  }
-  const resource = scope ? facade.getRecordCollection(scope) : null
+  const facade = useOptionalDatabaseClient()
+  const sessionClient = facade instanceof SessionDatabaseClient ? facade : null
+  const resource = scope && sessionClient
+    ? sessionClient.getRecordCollection(scope)
+    : null
   const collection = resource?.records ?? disabledRecordCollection
   const live = useLiveInfiniteQuery(
     (query) => query
       .from({ records: collection })
       .orderBy(({ records }) => records.__windowIndex, "asc"),
     {
-      client: facade.tanstack,
+      client: sessionClient?.tanstack,
       pageSize: resource?.pageSize ?? 50,
       queryKey: [resource?.descriptorId ?? "disabled-record-window", resource?.pageSize ?? 50],
     },
   )
   const metadata = resource?.getLatestWindow()
 
-  if (!scope || !resource) {
+  if (!scope || !resource || !sessionClient) {
     return {
       error: null,
       fetchNextPage: async () => undefined,

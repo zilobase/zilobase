@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { useDatabase } from "@zilobase/features/databases/react";
+import { useDatabaseMetadata } from "../../../hooks/use-database-metadata";
 
 import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
 import {
@@ -56,10 +56,12 @@ export function DatabaseRollupPropertySettings({
 }) {
   const rollupConfig = getRollupConfig(config);
   const { data: currentDatabasePayload, isLoading: isLoadingCurrentDatabase } =
-    useDatabase(databaseId, { schemaOnly: true });
+    useDatabaseMetadata(databaseId);
   const relationProperties =
     currentDatabasePayload?.properties.filter(
-      (property) => property.property.type === "relation",
+      (property) =>
+        property.dataSourceId === currentDatabasePayload.activeDataSource?.id &&
+        property.property.type === "relation",
     ) ?? [];
   const selectedRelationProperty =
     getRollupRelationProperty(
@@ -70,11 +72,15 @@ export function DatabaseRollupPropertySettings({
     selectedRelationProperty?.property.config,
   );
   const { data: relatedDatabasePayload, isLoading: isLoadingRelatedDatabase } =
-    useDatabase(relationConfig.relatedDatabaseId, { schemaOnly: true });
+    useDatabaseMetadata(relationConfig.relatedDatabaseId);
   const targetProperties = [
     { id: "name", name: "Name", type: "text" },
     ...(relatedDatabasePayload?.properties ?? [])
-      .filter((property) => property.property.type !== "rollup")
+      .filter(
+        (property) =>
+          property.dataSourceId === relatedDatabasePayload?.activeDataSource?.id &&
+          property.property.type !== "rollup",
+      )
       .map((property) => ({
         id: property.property.id,
         name: property.property.name,
