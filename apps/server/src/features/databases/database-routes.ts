@@ -12,6 +12,7 @@ import {
   databaseCreateRoutes,
 } from "./database-core-routes";
 import { databaseReadRoutes } from "./database-read-routes";
+import { databaseCommandRoutes } from "./database-command-routes";
 import { databasePropertyRoutes } from "./database-properties-routes";
 import { databaseRowRoutes } from "./database-rows-routes";
 import { databaseSourceRoutes } from "./database-sources-routes";
@@ -27,6 +28,7 @@ databaseRoutes.use(
 
 databaseRoutes.route("/", databaseCreateRoutes);
 databaseRoutes.route("/", databaseReadRoutes);
+databaseRoutes.route("/", databaseCommandRoutes);
 databaseRoutes.route("/", databaseAutomationRoutes);
 databaseRoutes.route("/", automationSlackRoutes);
 databaseRoutes.route("/", databaseCoreRoutes);
