@@ -14,6 +14,8 @@ Database routes compose reads, rows, properties and data-source operations. The 
 
 Database JSON routes use shared authenticated input parsing, retaining each operation’s payload validation and permission decisions. [Transport tests](../../../apps/server/src/features/databases/route-input.test.ts) cover malformed input and authentication ordering.
 
+The accepted [responsive database client and mutation protocol decision](../../decisions/0004-responsive-database-client.md) defines the staged replacement for the full-payload and snapshot-rollback flow described here. Until each compatibility pass lands, this guide continues to describe the implemented v1 system.
+
 ## Authorization and persistence
 
 OAuth database routes require `databases.read` or `databases.write` and bind the requested resource to the granted workspace before existing ACL checks. Database routes load the database; row, property, template and direct data-source routes load the data source, whose ID is still exposed as `:id` on legacy routes. Creation validates the body workspace. [Token resource middleware](../../../apps/server/src/features/auth/pinned-resource-middleware.ts) is attached per endpoint so Hono composition cannot apply a database loader to a later data-source route. [Route regression tests](../../../apps/server/src/features/databases/database-routes.test.ts) exercise both identifier kinds.
