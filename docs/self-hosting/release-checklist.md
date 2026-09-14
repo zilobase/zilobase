@@ -42,10 +42,13 @@ installer checksums, timestamps, and operator for each run.
 ## Upgrade and recovery
 
 - [ ] Deploy the previous released image, create a user, session, page, live
-      document update, and object. Replace only the image digest with the candidate
-      and run `docker compose up --detach --wait`.
+      document update, object, database, and database row with a property value.
+      Replace only the image digest with the candidate and run
+      `docker compose up --detach --wait`.
 - [ ] Confirm the previous data and compatible sessions remain usable. Review
-      migration logs for warnings before accepting new traffic.
+      migration logs for warnings before accepting new traffic. Verify the
+      existing database through `/databases/:id/bootstrap` and its v2 records
+      window, including the row order key and property value.
 - [ ] Back up Postgres with `pg_dump --format=custom` and mirror the MinIO bucket
       with `mc mirror`. Store both backups together with the image digest and secret
       version used to create them.
@@ -64,6 +67,10 @@ installer checksums, timestamps, and operator for each run.
       backup. Never run an older binary against a database already migrated by a
       newer release unless that rollback is explicitly documented as compatible.
 - [ ] Confirm dashboards or operator checks cover readiness, database capacity,
-      object-storage capacity, SMTP delivery, certificate expiry, and backup age.
+      object-storage capacity, SMTP delivery, certificate expiry, backup age,
+      database command latency, and realtime outbox backlog/age.
+- [ ] Run `npm run test:databases:acceptance`. For the full release matrix, set
+      explicit previous/current images and production-valid Cloudflare bindings,
+      then run `npm run test:databases:acceptance:full`.
 - [ ] Attach results to the release and require sign-off from the release owner
       before promoting the digest or installers.

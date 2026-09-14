@@ -1,10 +1,10 @@
 # Responsive database client and mutation protocol
 
-Status: accepted.
+Status: accepted and implemented.
 
 ## Context
 
-The interactive database views currently load one `DatabasePayload` containing
+The legacy interactive database views loaded one `DatabasePayload` containing
 metadata, rows and property values. Mutations optimistically replace that query
 value and retain a complete snapshot for rollback. This couples unrelated edits:
 a slow or failed row move can block interaction or restore state that contains a
@@ -114,10 +114,9 @@ in filtered views locate the move within the complete canonical sequence.
 Sorted views retain the existing confirmation that removes their explicit sort
 before manual movement.
 
-During migration, row writes dual-write legacy `database_row.position` and the
-affected `page_item_placement.position` range. The final schema removes only
-`database_row.position`; page placement ordering remains a compatibility
-projection.
+Row writes update the canonical order key and the affected
+`page_item_placement.position` range. `database_row.position` has been removed;
+page placement ordering remains a compatibility projection for navigation.
 
 The command side effect, group value, order update, host/source versions,
 mutation journal event, command receipt and realtime outbox reference commit in
@@ -149,9 +148,9 @@ broadcast. Failed scheduling leaves the outbox entry available for recovery.
 Duplicate acknowledgements and socket echoes are suppressed by event/version;
 gaps are filled from the mutation journal before later events are applied.
 
-### Migration order
+### Completed migration order
 
-The change lands behind the existing contracts: first dependencies and v2
+The change landed behind the existing contracts: first dependencies and v2
 contracts, then schema and dual-written order keys, paged reads, idempotent
 commands, journal-backed delivery and catch-up. The client facade and optimistic
 lanes follow before database views and secondary consumers migrate. Only after
@@ -181,4 +180,5 @@ migration.
 
 See the current [database architecture](../features/databases/README.md),
 [database realtime flow](../features/databases/realtime.md), [background work](../platform/background-work.md)
-and [realtime platform](../platform/realtime.md).
+and [realtime platform](../platform/realtime.md). Operational procedures and
+failure diagnosis are in the [database operations guide](../../docs/databases/operations.md).

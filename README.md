@@ -88,6 +88,7 @@ Read the self-hosting guide:
 - [Self-hosting overview](./docs/self-hosting/overview.md)
 - [Domains and TLS](./docs/self-hosting/domain.md)
 - [Operations guide](./docs/self-hosting/operations.md)
+- [Database operations and troubleshooting](./docs/databases/operations.md)
 - [Gmail deployment and verification](./docs/mail/gmail-deployment.md)
 
 ## Ask AI

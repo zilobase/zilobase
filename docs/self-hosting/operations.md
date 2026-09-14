@@ -41,6 +41,23 @@ For Helm, run `helm lint`, render the proposed values, and use
 the chart rejects an unsafe multi-replica configuration. Inspect the migration
 hook and `/ready` before ending the maintenance window.
 
+## Database realtime and background roles
+
+The default single-process `all` role can deliver database events without
+Redis. Split `api` and `worker` roles, or more than one API replica, require the
+same reachable `REALTIME_REDIS_URL` in every process. Treat `/ready` failure in
+that topology as a deployment failure; do not bypass the broker check.
+
+Worker-only processes expose `/health`, `/ready`, and `/metrics` on their
+background admin listener. Monitor database commit/enqueue latency, ordering
+conflicts, outbox backlog, and oldest outbox age. A committed command does not
+wait for WebSocket publication, so an acknowledged write with delayed remote
+updates points first to the background worker and outbox. Leave pending rows in
+place for lease recovery and periodic sweeps.
+
+The complete topology, retention policy, metric names, and recovery procedures
+are in [database operations and troubleshooting](../databases/operations.md).
+
 ## Backups
 
 Back up Postgres and MinIO together at a documented consistency point. At
@@ -62,6 +79,11 @@ desktop compatibility changes, update `ZILOBASE_IMAGE`, run `config`, then run
 `up -d --wait`. Migrations run in the application entrypoint before the server
 starts. Rollback is safe only when the target release supports the migrated
 schema; otherwise restore the matching backup.
+
+For the responsive database migration, confirm that pre-upgrade rows retain
+their canonical order keys and embedded property values through the v2
+bootstrap and record-window endpoints. `database_row.position` is no longer a
+rollback surface; `page_item_placement.position` remains for navigation.
 
 ## Email and registration
 

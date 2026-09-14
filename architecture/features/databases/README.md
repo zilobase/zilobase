@@ -10,7 +10,11 @@
 
 ## Main flow
 
-Database routes compose reads, rows, properties and data-source operations. The web database surface derives a view model and commands from shared payloads; feature mutations coordinate optimistic state and realtime invalidation.
+Database routes compose bounded reads and idempotent host/source commands. The
+web database surface derives view models from session-scoped collections of
+metadata and record aggregates; optimistic command lanes and version-aware
+event ingestion keep interaction responsive without monolithic payload
+snapshots.
 
 Database JSON routes use shared authenticated input parsing, retaining each operation’s payload validation and permission decisions. [Transport tests](../../../apps/server/src/features/databases/route-input.test.ts) cover malformed input and authentication ordering.
 
@@ -30,6 +34,9 @@ A database is page-backed; data sources, rows, views and property values are sep
 
 Row/property changes can update realtime outboxes, automations and page navigation. The common [database commit helper](../../../apps/server/src/features/databases/core/commit.ts) gives internal writers a shared server-generated command ID and atomically stores a v2 journal event before its delivery-only outbox reference. Partial internal deltas become scoped reset events so downstream v2 consumers never ingest partial entities. Delivery requires the canonical journal event and publishes protocol v2 only; missing history is retried instead of falling back to a payload-only message. Preserve mutation origin and transaction ordering. Database realtime revisions and cache reconciliation prevent stale UI after writes.
 
+Runtime topology, retention, recovery, metrics, and failure diagnosis are in
+the [database operations guide](../../../docs/databases/operations.md).
+
 ## Focused guides
 
 - [Database mutation and realtime flow](realtime.md)
@@ -39,6 +46,11 @@ Row/property changes can update realtime outboxes, automations and page navigati
 ## Client mutation ownership
 
 Shared mutations are grouped into database lifecycle, data sources, views, properties/templates, access and rows. The [mutation entrypoint](../../../packages/features/src/databases/mutation-hooks.ts) preserves the supported public hooks while React bindings select the operation modules directly. Interactive row, cell, schema, and view writes execute through the session-scoped database client: command lanes own optimistic overlays and isolated rollback, acknowledgements and realtime events share one ingestion path, and cached monolithic payload snapshots are never restored. Navigation-only actions remain in TanStack Query and refresh their narrow navigation queries after commit.
+
+TanStack DB owns only interactive database entities and projections. TanStack
+Query retains authentication, access/sharing, navigation, automation
+management, AI, uploads, and other non-database-view workflows; Yjs owns page
+documents; React-local state owns presence and transient interaction state.
 
 ## Verification and change points
 
