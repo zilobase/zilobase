@@ -151,3 +151,60 @@ test("row move anchors contain only immediate neighbors", () => {
     /missing from the requested order/,
   );
 });
+
+test("rapid row moves accept optimistic overlays before the ordering lane settles", async () => {
+  const original = createTestDatabasePayload();
+  const pending: Array<{
+    reject: (error: Error) => void;
+    request: DatabaseCommandRequest;
+  }> = [];
+  const apiFetch = <T>(path: string, init?: RequestInit) =>
+    new Promise<T>((_resolve, reject) => {
+      const request = JSON.parse(String(init?.body)) as DatabaseCommandRequest;
+      assert.equal(
+        path,
+        "/databases/database-1/data-sources/data-source-1/commands",
+      );
+      pending.push({ reject, request });
+    });
+  const { mutation, queryClient } = createMutationTestRuntime(
+    useMoveDatabaseRow,
+    apiFetch,
+  );
+  queryClient.setQueryData(databaseQueryKey("database-1"), original);
+  const accepted: string[] = [];
+
+  try {
+    const first = mutation.mutateAsync({
+      afterRowId: "row-2",
+      beforeRowId: null,
+      databaseId: "data-source-1",
+      onOptimisticAccepted: () => accepted.push("first"),
+      rowId: "row-1",
+    }).catch((error: unknown) => error);
+    const second = mutation.mutateAsync({
+      afterRowId: null,
+      beforeRowId: "row-2",
+      databaseId: "data-source-1",
+      onOptimisticAccepted: () => accepted.push("second"),
+      rowId: "row-1",
+    }).catch((error: unknown) => error);
+
+    for (let attempt = 0; accepted.length < 2 && attempt < 20; attempt += 1) {
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+
+    assert.deepEqual(accepted, ["first", "second"]);
+    assert.equal(pending.length, 1);
+    pending[0]!.reject(new Error("move rejected"));
+    const [firstError, secondError] = await Promise.all([first, second]);
+    assert.match(String(firstError), /move rejected/);
+    assert.equal(
+      (secondError as Error).name,
+      "DatabaseDependentCommandCancelledError",
+    );
+    assert.equal(pending.length, 1);
+  } finally {
+    queryClient.clear();
+  }
+});
