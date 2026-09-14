@@ -74,9 +74,17 @@ export function useDatabaseEntityCommandState(target: DatabaseCommandTarget) {
   const client = useDatabaseClient()
   const stableTarget = useMemo(() => ({
     dataSourceId: target.dataSourceId,
+    hostDatabaseId: target.hostDatabaseId,
     propertyId: target.propertyId,
     rowId: target.rowId,
-  }), [target.dataSourceId, target.propertyId, target.rowId])
+    viewId: target.viewId,
+  }), [
+    target.dataSourceId,
+    target.hostDatabaseId,
+    target.propertyId,
+    target.rowId,
+    target.viewId,
+  ])
   return useSyncExternalStore(
     (listener) => client.subscribeCommandState(stableTarget, listener),
     () => client.commandState(stableTarget),

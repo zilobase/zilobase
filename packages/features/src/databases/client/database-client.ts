@@ -83,9 +83,11 @@ export type DatabaseCommandTransaction<TResult = unknown> = {
 }
 
 export type DatabaseCommandTarget = {
-  dataSourceId: string
+  dataSourceId?: string
+  hostDatabaseId?: string
   propertyId?: string
   rowId?: string
+  viewId?: string
 }
 
 export type DatabaseEntityCommandState = {
@@ -679,7 +681,9 @@ const idleCommandState: DatabaseEntityCommandState = Object.freeze({
 
 function commandTargetKey(target: DatabaseCommandTarget) {
   return JSON.stringify([
-    target.dataSourceId,
+    target.hostDatabaseId ?? null,
+    target.dataSourceId ?? null,
+    target.viewId ?? null,
     target.rowId ?? null,
     target.propertyId ?? null,
   ])
@@ -687,8 +691,31 @@ function commandTargetKey(target: DatabaseCommandTarget) {
 
 function commandTargets(input: DatabaseClientCommand): DatabaseCommandTarget[] {
   const dataSourceId = input.dataSourceId
-  if (!dataSourceId) return []
   const command = input.command
+  if (!dataSourceId) {
+    if (command.type === "database.update") {
+      return [{ hostDatabaseId: input.databaseId }]
+    }
+    if (command.type.startsWith("view.") && "viewId" in command) {
+      return [
+        { hostDatabaseId: input.databaseId },
+        { hostDatabaseId: input.databaseId, viewId: command.viewId },
+      ]
+    }
+    if (command.type === "view.create") {
+      return [{ hostDatabaseId: input.databaseId }]
+    }
+    if (
+      command.type === "dataSource.link" ||
+      command.type === "dataSource.unlink"
+    ) {
+      return [
+        { hostDatabaseId: input.databaseId },
+        { dataSourceId: command.dataSourceId },
+      ]
+    }
+    return []
+  }
   if (command.type === "cell.set") {
     return [
       { dataSourceId },
@@ -702,6 +729,12 @@ function commandTargets(input: DatabaseClientCommand): DatabaseCommandTarget[] {
   }
   if ("rowId" in command && typeof command.rowId === "string") {
     return [{ dataSourceId }, { dataSourceId, rowId: command.rowId }]
+  }
+  if ("propertyId" in command && typeof command.propertyId === "string") {
+    return [
+      { dataSourceId },
+      { dataSourceId, propertyId: command.propertyId },
+    ]
   }
   return [{ dataSourceId }]
 }

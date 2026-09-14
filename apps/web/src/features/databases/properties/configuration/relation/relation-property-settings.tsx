@@ -198,19 +198,11 @@ export function RelationPropertySettings({
         type: "relation",
       },
       {
-        onSuccess: (payload) => {
-          const reciprocalProperty = payload.properties
-            .filter(
-              (property) =>
-                property.property.type === "relation" &&
-                property.property.name === relatedPropertyName.trim(),
-            )
-            .at(-1);
-
+        onSuccess: (reciprocalProperty) => {
           onUpdateConfig({
             relation: {
               ...nextRelation,
-              relatedPropertyId: reciprocalProperty?.property.id,
+              relatedPropertyId: reciprocalProperty.property.id,
             },
           });
         },

@@ -1,11 +1,18 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, type QueryClient } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
-import { getDataSourcePayloadQueryEntries, restoreDatabasePayloadSnapshots, setDataSourcePayloadQueryData, applyOptimisticDataSourceMutation } from "./query-cache";
+import { getDataSourcePayloadQueryEntries, setDataSourcePayloadQueryData } from "./query-cache";
 import { type DatabasePayload } from "./queries";
 import { type DatabaseMutationResponse } from "./mutation-types";
 import { shouldClearValuesForPropertyTypeChange } from "./property-types";
 import { pagesNavRootQueryKey } from "../pages/queries";
 import { commitDatabaseMutation } from "./mutation-cache-policy";
+import { useDatabaseClient } from "./client/provider";
+import {
+  findDataSourcePayload,
+  invalidateLegacyDataSourcePayloads,
+  resolveDataSourceCommandScope,
+} from "./client/command-scope";
+import type { DatabasePropertyEntity } from "./contracts-v2";
 
 type AddPropertyInput = {
   config?: unknown;
@@ -124,19 +131,41 @@ function formatDatePropertyValueAsText(value: unknown) {
 }
 
 export function useAddDatabaseProperty() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: async ({ databaseId, ...input }: AddPropertyInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/properties`,
-        {
-          method: "POST",
-          body: JSON.stringify(input),
-        },
+    mutationFn: async ({
+      config,
+      databaseId,
+      name,
+      position,
+      type,
+    }: AddPropertyInput) => {
+      const scope = await resolveDataSourceCommandScope(
+        queryClient,
+        apiFetch,
+        databaseId,
       );
-
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      const anchors = resolvePropertyCreateAnchors(
+        queryClient,
+        scope.dataSourceId,
+        position,
+      );
+      return client.execute<DatabasePropertyEntity>({
+        command: {
+          ...anchors,
+          config: config ?? null,
+          name: name?.trim() || "Property",
+          propertyType: type?.trim() || "text",
+          type: "property.create",
+        },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
+    },
+    onSettled: async (_result, _error, variables) => {
+      await invalidateLegacyDataSourcePayloads(queryClient, variables.databaseId);
     },
   });
 }
@@ -178,40 +207,38 @@ export function useApplyDatabaseTemplate() {
 }
 
 export function useUpdateDatabaseProperty() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    onMutate: async (variables) => {
-      const previous = await applyOptimisticDataSourceMutation(
-        queryClient,
-        variables.databaseId,
-        (current) => updateDatabasePropertyInPayload(current, variables)!,
-      );
-
-      return { previous };
-    },
     mutationFn: async ({
       databaseId,
       databasePropertyId,
       ...patch
     }: UpdatePropertyInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/properties/${databasePropertyId}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(patch),
-        },
+      const scope = await resolveDataSourceCommandScope(
+        queryClient,
+        apiFetch,
+        databaseId,
       );
-
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return client.execute<DatabasePropertyEntity>({
+        command: {
+          patch,
+          propertyId: databasePropertyId,
+          type: "property.update",
+        },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
     },
-    onError: (_error, _variables, context) => {
-      restoreDatabasePayloadSnapshots(queryClient, context?.previous ?? []);
+    onSettled: async (_result, _error, variables) => {
+      await invalidateLegacyDataSourcePayloads(queryClient, variables.databaseId);
     },
   });
 }
 
 export function useDeleteDatabaseProperty() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
@@ -219,12 +246,22 @@ export function useDeleteDatabaseProperty() {
       databaseId,
       databasePropertyId,
     }: DeletePropertyInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/properties/${databasePropertyId}`,
-        { method: "DELETE" },
+      const scope = await resolveDataSourceCommandScope(
+        queryClient,
+        apiFetch,
+        databaseId,
       );
-
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return client.execute<DatabasePropertyEntity>({
+        command: {
+          propertyId: databasePropertyId,
+          type: "property.archive",
+        },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
+    },
+    onSettled: async (_result, _error, variables) => {
+      await invalidateLegacyDataSourcePayloads(queryClient, variables.databaseId);
     },
   });
 }
@@ -258,4 +295,23 @@ function datePropertyBounds(value: unknown): [unknown, unknown] {
     return [date.start ?? date.date, date.end];
   }
   return [value, undefined];
+}
+
+function resolvePropertyCreateAnchors(
+  queryClient: QueryClient,
+  dataSourceId: string,
+  requestedPosition?: number,
+) {
+  const ids = (findDataSourcePayload(queryClient, dataSourceId)?.properties ?? [])
+    .slice()
+    .sort((left, right) => left.position - right.position)
+    .map(({ id }) => id);
+  const position = Math.max(
+    0,
+    Math.min(requestedPosition ?? ids.length, ids.length),
+  );
+  return {
+    afterPropertyId: ids[position - 1] ?? null,
+    beforePropertyId: ids[position] ?? null,
+  };
 }

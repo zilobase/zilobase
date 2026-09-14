@@ -5,9 +5,11 @@ import { useZilobaseFeatures } from "../shared/context";
 
 import { type DatabasePayload } from "./queries";
 import type { DatabaseRecordEntity } from "./contracts-v2";
-import { databaseBootstrapResponseSchema } from "./contracts-v2";
 import { useDatabaseClient } from "./client/provider";
-import type { ApiFetcher } from "../shared/api-fetcher";
+import {
+  findDataSourcePayload,
+  resolveDataSourceCommandScope,
+} from "./client/command-scope";
 
 type ReorderRowsInput = {
   afterRowId: string | null;
@@ -326,55 +328,4 @@ function resolveCreateAnchors(queryClient: QueryClient, input: AddRowInput) {
     afterRowId: rowIds[index - 1] ?? null,
     beforeRowId: rowIds[index] ?? null,
   };
-}
-
-async function resolveDataSourceCommandScope(
-  queryClient: QueryClient,
-  apiFetch: ApiFetcher,
-  databaseOrSourceId: string,
-  explicitHostDatabaseId?: string,
-) {
-  if (explicitHostDatabaseId) {
-    return {
-      dataSourceId: databaseOrSourceId,
-      hostDatabaseId: explicitHostDatabaseId,
-    };
-  }
-  const sourcePayload = findDataSourcePayload(queryClient, databaseOrSourceId);
-  if (sourcePayload) {
-    return {
-      dataSourceId: databaseOrSourceId,
-      hostDatabaseId: sourcePayload.database.id,
-    };
-  }
-  for (const [, candidate] of queryClient.getQueriesData<DatabasePayload>({
-    queryKey: ["database"],
-  })) {
-    if (candidate?.database.id !== databaseOrSourceId) continue;
-    if (!candidate.activeDataSource) break;
-    return {
-      dataSourceId: candidate.activeDataSource.id,
-      hostDatabaseId: candidate.database.id,
-    };
-  }
-  const bootstrap = databaseBootstrapResponseSchema.parse(
-    await apiFetch(`/databases/${encodeURIComponent(databaseOrSourceId)}/bootstrap`),
-  );
-  const source = bootstrap.dataSources[0];
-  if (!source) {
-    throw new Error(`Database ${databaseOrSourceId} has no data source`);
-  }
-  return {
-    dataSourceId: source.id,
-    hostDatabaseId: bootstrap.database.id,
-  };
-}
-
-function findDataSourcePayload(queryClient: QueryClient, dataSourceId: string) {
-  for (const [, candidate] of queryClient.getQueriesData<DatabasePayload>({
-    queryKey: ["database"],
-  })) {
-    if (candidate?.activeDataSource?.id === dataSourceId) return candidate;
-  }
-  return null;
 }

@@ -34,6 +34,13 @@ export {
   useDuplicateDatabaseProperty,
 } from "./property-mutations";
 export {
+  type DatabaseStoredTemplate,
+  useArchiveDatabaseTemplate,
+  useCreateDatabaseTemplate,
+  useRestoreDatabaseTemplate,
+  useUpdateDatabaseTemplate,
+} from "./template-mutations";
+export {
   reorderDatabaseRows,
   updateDatabasePropertyValue,
   moveDatabaseRow,

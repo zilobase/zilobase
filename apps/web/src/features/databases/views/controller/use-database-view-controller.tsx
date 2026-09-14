@@ -400,7 +400,6 @@ export function useDatabaseViewController({
 
   const linkDataSourceView = (selection: DatabaseSourceViewSelection) => {
     if (!databaseId || linkDatabaseDataSource.isPending) return
-    const existingIds = new Set(payload?.views.map((view) => view.id) ?? [])
     linkDatabaseDataSource.mutate(
       {
         databaseId,
@@ -410,9 +409,8 @@ export function useDatabaseViewController({
         type: selection.viewType,
       },
       {
-        onSuccess: (nextPayload) => {
-          const added = nextPayload.views.find((view) => !existingIds.has(view.id))
-          setSelectedActiveViewId(added?.id ?? null)
+        onSuccess: ({ view }) => {
+          setSelectedActiveViewId(view.id)
           toast.success("Data source linked.")
         },
       },
@@ -507,15 +505,13 @@ export function useDatabaseViewController({
         toast.success("View source replaced.")
         return
       }
-      const existingIds = new Set(payload?.views.map((view) => view.id) ?? [])
-      const nextPayload = await linkDatabaseDataSource.mutateAsync({
+      const { view } = await linkDatabaseDataSource.mutateAsync({
         databaseId,
         dataSourceId,
         name: viewName,
         type,
       })
-      const createdView = nextPayload.views.find((view) => !existingIds.has(view.id))
-      setSelectedActiveViewId(createdView?.id ?? null)
+      setSelectedActiveViewId(view.id)
       toast.success(`${viewName} view added.`)
     } catch (error) {
       toast.error(
@@ -538,16 +534,14 @@ export function useDatabaseViewController({
 
     try {
       if (selection.sourceView) {
-        const existingIds = new Set(payload?.views.map((view) => view.id) ?? [])
-        const nextPayload = await linkDatabaseDataSource.mutateAsync({
+        const { view } = await linkDatabaseDataSource.mutateAsync({
           databaseId,
           config: selection.sourceView.viewConfig,
           dataSourceId: selection.sourceView.dataSourceId,
           name: selection.sourceView.viewName,
           type: selection.sourceView.viewType,
         })
-        const added = nextPayload.views.find((view) => !existingIds.has(view.id))
-        setSelectedActiveViewId(added?.id ?? null)
+        setSelectedActiveViewId(view.id)
         toast.success("Data source linked.")
         return
       }
@@ -686,10 +680,6 @@ export function useDatabaseViewController({
       return
     }
 
-    const existingViewIds = new Set(
-      (payload?.views ?? []).map((databaseView) => databaseView.id),
-    )
-
     addDatabaseView.mutate(
       {
         config: sourceView.config,
@@ -699,13 +689,8 @@ export function useDatabaseViewController({
         type: sourceView.type,
       },
       {
-        onSuccess: (nextPayload) => {
-          const addedView =
-            nextPayload.views.find(
-              (databaseView) => !existingViewIds.has(databaseView.id),
-            ) ?? nextPayload.views.at(-1)
-
-          setSelectedActiveViewId(addedView?.id ?? null)
+        onSuccess: (view) => {
+          setSelectedActiveViewId(view.id)
         },
       },
     )
