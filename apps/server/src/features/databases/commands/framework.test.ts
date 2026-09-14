@@ -7,6 +7,7 @@ import {
   database,
   databaseCommandReceipt,
   databaseMutationEvent,
+  databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema"
 import {
   CommandIdReusedError,
@@ -164,6 +165,10 @@ test("execution locks the command ID and atomically stores its event and receipt
   assert.equal(ack.event.eventId, "event-1")
   assert.equal(ack.event.version, 5)
   assert.equal(harness.inserts.get(databaseMutationEvent)?.length, 1)
+  assert.deepEqual(harness.inserts.get(databaseRealtimeOutbox)?.map((row) => ({
+    eventId: (row as { eventId: string }).eventId,
+    requiresRefetch: (row as { requiresRefetch: boolean }).requiresRefetch,
+  })), [{ eventId: "event-1", requiresRefetch: false }])
   const receipts = harness.inserts.get(databaseCommandReceipt) as Array<{
     acknowledgement: DatabaseCommandAck
     expiresAt: Date

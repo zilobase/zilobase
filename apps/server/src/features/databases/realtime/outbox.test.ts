@@ -7,6 +7,10 @@ import {
   drainDatabaseRealtimeOutbox,
   publishDatabaseRealtimeEvent,
 } from "./outbox";
+import {
+  databaseMutationEvent,
+  databaseRealtimeOutbox,
+} from "../../../infrastructure/database/schema";
 
 const event: DatabaseRealtimeMutationEvent = {
   actorId: "user-1",
@@ -109,6 +113,7 @@ test("outbox draining is a no-op without a publish adapter", async () => {
 function drainExecutor(
   ready: Array<Record<string, any>>,
   health?: Record<string, unknown>,
+  journal: Array<Record<string, unknown>> = [],
 ) {
   const deleted: string[] = [];
   const retryUpdates: Array<Record<string, unknown>> = [];
@@ -154,8 +159,12 @@ function drainExecutor(
     },
     select() {
       return {
-        async from() {
-          return health ? [health] : [];
+        from(table: unknown) {
+          if (table === databaseMutationEvent) {
+            return { async where() { return journal; } };
+          }
+          assert.equal(table, databaseRealtimeOutbox);
+          return Promise.resolve(health ? [health] : []);
         },
       };
     },
@@ -201,6 +210,43 @@ test("outbox draining claims bounded batches and reports empty health", async ()
     failed: 0,
     maxAttempts: 0,
     oldestAgeMs: 0,
+  });
+});
+
+test("journal-backed deliveries publish an invalidate-only v1 compatibility event", async () => {
+  const committedAt = new Date("2026-08-02T00:00:00.000Z");
+  const state = drainExecutor(
+    [{ ...event, attempts: 0, committedAt, eventId: "journal-1", id: "delivery-1" }],
+    {},
+    [{
+      actorId: "user-2",
+      areas: ["records"],
+      commandId: "command-1",
+      committedAt,
+      databaseId: "database-1",
+      dataSourceId: "source-1",
+      id: "journal-1",
+      protocolVersion: 2,
+      requiresReset: false,
+      version: 9,
+    }],
+  );
+  const publish = vi.fn(async (_input: unknown) => undefined);
+  await runWithRuntimeAdapter(
+    { publishDatabaseMutation: publish },
+    () => drainDatabaseRealtimeOutbox({}, { database: state.executor as never }),
+  );
+  assert.deepEqual((publish.mock.calls[0]?.[0] as { event: unknown }).event, {
+    actorId: "user-2",
+    changed: ["rows", "values"],
+    committedAt: committedAt.toISOString(),
+    databaseId: "database-1",
+    delta: {},
+    mutationId: "journal-1",
+    protocolVersion: 1,
+    requiresRefetch: true,
+    type: "database.mutation",
+    version: 9,
   });
 });
 

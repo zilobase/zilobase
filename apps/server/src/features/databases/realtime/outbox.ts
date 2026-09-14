@@ -2,7 +2,10 @@ import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
-import { databaseRealtimeOutbox } from "../../../infrastructure/database/schema";
+import {
+  databaseMutationEvent,
+  databaseRealtimeOutbox,
+} from "../../../infrastructure/database/schema";
 import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
@@ -18,6 +21,7 @@ type StoredRealtimeEvent = {
   committedAt: Date;
   databaseId: string;
   delta: DatabaseDelta;
+  eventId: string | null;
   id: string;
   requiresRefetch: boolean;
   version: number;
@@ -110,6 +114,12 @@ export async function drainDatabaseRealtimeOutbox(
       lastAttemptAt: attemptedAt,
     }));
   });
+  const journalIds = entries.flatMap((entry) => entry.eventId ? [entry.eventId] : []);
+  const journalEvents = journalIds.length > 0
+    ? await executor.select().from(databaseMutationEvent)
+        .where(inArray(databaseMutationEvent.id, journalIds))
+    : [];
+  const journalById = new Map(journalEvents.map((event) => [event.id, event]));
   let delivered = 0;
   let discarded = 0;
   let failed = 0;
@@ -118,7 +128,14 @@ export async function drainDatabaseRealtimeOutbox(
 
   for (const entry of entries) {
     try {
-      await publish({ env, event: toRealtimeEvent(entry as StoredRealtimeEvent) });
+      const journalEvent = entry.eventId ? journalById.get(entry.eventId) : undefined;
+      if (entry.eventId && !journalEvent) {
+        throw new Error("Database mutation journal event is unavailable");
+      }
+      await publish({
+        env,
+        event: toRealtimeEvent(entry as StoredRealtimeEvent, journalEvent),
+      });
       deleteIds.push(entry.id);
       delivered += 1;
     } catch (error) {
@@ -183,7 +200,29 @@ export async function drainDatabaseRealtimeOutbox(
 
 function toRealtimeEvent(
   entry: StoredRealtimeEvent,
+  journal?: typeof databaseMutationEvent.$inferSelect,
 ): DatabaseRealtimeMutationEvent {
+  if (journal) {
+    const changed = [...new Set(journal.areas.flatMap((area): DatabaseChangedArea[] => {
+      if (area === "databases") return ["database" as const];
+      if (area === "dataSources") return ["dataSource" as const];
+      if (area === "records") return ["rows" as const, "values" as const];
+      if (area === "views" || area === "properties") return [area];
+      return [];
+    }))];
+    return {
+      actorId: journal.actorId,
+      changed,
+      committedAt: journal.committedAt.toISOString(),
+      databaseId: journal.databaseId,
+      delta: {},
+      mutationId: journal.id,
+      protocolVersion: 1,
+      requiresRefetch: true,
+      type: "database.mutation",
+      version: journal.version,
+    };
+  }
   return {
     actorId: entry.actorId,
     changed: entry.changed,

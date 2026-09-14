@@ -135,6 +135,10 @@ test("commitDatabaseMutationBatch versions, bulk persists, and publishes each mu
   assert.equal(transaction.insertCalls, 2);
   assert.equal(transaction.outbox.length, 2);
   assert.equal(transaction.journal.length, 2);
+  assert.equal(
+    (transaction.outbox[0] as { eventId: string }).eventId,
+    (transaction.journal[0] as { id: string }).id,
+  );
   assert.ok(
     (transaction.outbox[0] as { committedAt: unknown }).committedAt instanceof Date,
   );
@@ -273,7 +277,7 @@ test("large commits persist invalidate-only payloads", async () => {
   );
   assert.equal(
     (outbox[0] as { requiresRefetch: boolean }).requiresRefetch,
-    true,
+    false,
   );
   assert.equal(mocks.publish.mock.calls.length, 0);
 });

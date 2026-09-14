@@ -638,6 +638,13 @@
       "when": 1789372800000,
       "tag": "0090_database_mutation_journal",
       "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1789372800001,
+      "tag": "0091_database_outbox_journal_reference",
+      "breakpoints": true
     }
   ]
 }

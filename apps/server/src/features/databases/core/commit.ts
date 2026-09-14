@@ -200,12 +200,13 @@ export async function commitDatabaseMutationBatch<T>(
 
       outboxRows.push({
         actorId: options.actorId,
-        changed: mutation.changed,
+        changed: [],
         committedAt: new Date(committedAt),
         databaseId: mutation.databaseId,
-        delta: delta.value,
+        delta: {},
         id: mutationId,
-        requiresRefetch: delta.requiresRefetch,
+        eventId: mutationId,
+        requiresRefetch: false,
         version,
       });
 
@@ -222,7 +223,6 @@ export async function commitDatabaseMutationBatch<T>(
     }
 
     if (outboxRows.length > 0) {
-      await tx.insert(databaseRealtimeOutbox).values(outboxRows);
       const commandId = commits[0]!.mutationId;
       await tx.insert(databaseMutationEvent).values(
         commits.map((commit, index) => {
@@ -246,6 +246,7 @@ export async function commitDatabaseMutationBatch<T>(
           };
         }),
       );
+      await tx.insert(databaseRealtimeOutbox).values(outboxRows);
     }
 
     const navigationEvent = options.navigationWorkspaceId

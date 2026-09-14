@@ -101,6 +101,7 @@ export const databaseRealtimeOutbox = pgTable(
   "database_realtime_outbox",
   {
     id: text("id").primaryKey(),
+    eventId: text("event_id"),
     databaseId: text("database_id")
       .notNull()
       .references(() => database.id, { onDelete: "cascade" }),
@@ -121,6 +122,7 @@ export const databaseRealtimeOutbox = pgTable(
       table.nextAttemptAt,
       table.committedAt,
     ),
+    index("database_realtime_outbox_event_idx").on(table.eventId),
     uniqueIndex("database_realtime_outbox_database_version_unique").on(
       table.databaseId,
       table.version,
