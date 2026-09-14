@@ -14,6 +14,14 @@ import {
 import { applyVersionedDatabaseMutation } from "./mutation-cache"
 import type { DatabaseMutationResponse } from "./mutation-types"
 import {
+  databaseMutationEventV2Schema,
+  type DatabaseMutationEventV2,
+} from "./contracts-v2"
+import {
+  useOptionalDatabaseClient,
+} from "./client/provider"
+import type { DatabaseClient } from "./client/database-client"
+import {
   databasePayloadRootQueryKey,
   databaseQueryKey,
   type DatabasePayload,
@@ -78,15 +86,16 @@ export function useDatabaseRealtime(
 ) {
   const { apiFetch, databaseRealtimeEnabled = false, queryClient } =
     useZilobaseFeatures()
+  const databaseClient = useOptionalDatabaseClient()
   const ownerIdRef = useRef<string>(crypto.randomUUID())
   const enabled = Boolean(
     databaseRealtimeEnabled && options.enabled !== false && databaseId,
   )
   const manager = useMemo(
     () => enabled && databaseId
-      ? getManager(queryClient, apiFetch, databaseId)
+      ? getManager(queryClient, apiFetch, databaseId, databaseClient)
       : null,
-    [apiFetch, databaseId, enabled, queryClient],
+    [apiFetch, databaseClient, databaseId, enabled, queryClient],
   )
   const state = useSyncExternalStore(
     manager ? manager.subscribe : emptySubscribe,
@@ -182,6 +191,7 @@ class DatabaseRealtimeManager {
     private readonly queryClient: QueryClient,
     private readonly apiFetch: ApiFetcher,
     private readonly databaseId: string,
+    private readonly databaseClient: DatabaseClient | null,
     private readonly onIdle: () => void,
   ) {}
 
@@ -289,7 +299,13 @@ class DatabaseRealtimeManager {
     if (!message || message.databaseId !== this.databaseId) return
 
     if (message.type === "database.mutation") {
-      applyDatabaseRealtimeMutation(this.queryClient, message)
+      if (message.protocolVersion === 2) {
+        if (this.databaseClient) {
+          void this.databaseClient.ingest(message).catch(() => undefined)
+        }
+      } else {
+        applyDatabaseRealtimeMutation(this.queryClient, message)
+      }
       return
     }
 
@@ -385,6 +401,9 @@ class DatabaseRealtimeManager {
   }
 
   private recoverIfBehind(serverVersion: number) {
+    if (this.databaseClient) {
+      void this.databaseClient.catchUp(this.databaseId).catch(() => undefined)
+    }
     const payload = this.queryClient.getQueryData<DatabasePayload | null>(
       databaseQueryKey(this.databaseId),
     )
@@ -639,6 +658,7 @@ function getManager(
   queryClient: QueryClient,
   apiFetch: ApiFetcher,
   databaseId: string,
+  databaseClient: DatabaseClient | null,
 ) {
   let byDatabase = managers.get(queryClient)
 
@@ -647,21 +667,23 @@ function getManager(
     managers.set(queryClient, byDatabase)
   }
 
-  let manager = byDatabase.get(databaseId)
+  const managerKey = `${databaseClient?.sessionId ?? "legacy"}:${databaseId}`
+  let manager = byDatabase.get(managerKey)
 
   if (!manager) {
     const created = new DatabaseRealtimeManager(
       queryClient,
       apiFetch,
       databaseId,
+      databaseClient,
       () => {
-        if (byDatabase?.get(databaseId) === created) {
-          byDatabase.delete(databaseId)
+        if (byDatabase?.get(managerKey) === created) {
+          byDatabase.delete(managerKey)
         }
       },
     )
     manager = created
-    byDatabase.set(databaseId, manager)
+    byDatabase.set(managerKey, manager)
   }
 
   return manager
@@ -674,6 +696,12 @@ function parseMessage(data: unknown): RealtimeServerMessage | null {
     const value = JSON.parse(data) as unknown
     if (!value || typeof value !== "object") return null
     const message = value as Record<string, unknown>
+
+    if (message.type === "database.mutation" &&
+      message.protocolVersion === 2) {
+      const parsed = databaseMutationEventV2Schema.safeParse(value)
+      return parsed.success ? parsed.data : null
+    }
 
     if (message.type === "database.mutation" &&
       message.protocolVersion === 1 &&
@@ -727,7 +755,8 @@ type PresenceClearMessage = {
   sessionId: string
   type: "presence.clear"
 }
-type RealtimeServerMessage = DatabaseMutationEvent | RealtimeReadyMessage |
+type RealtimeServerMessage = DatabaseMutationEvent | DatabaseMutationEventV2 |
+  RealtimeReadyMessage |
   PresenceUpdateMessage | PresenceClearMessage
 
 function withColor<T extends Omit<DatabasePresenceCollaborator, "color">>(

@@ -1,0 +1,252 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+import { QueryClient } from "@tanstack/react-query"
+
+import type { ApiFetcher } from "../../shared/api-fetcher"
+import type {
+  DatabaseBootstrapResponse,
+  DatabaseHostEntity,
+  DatabaseMutationEventV2,
+  DatabaseRecordEntity,
+} from "../contracts-v2"
+import { createDatabaseClient } from "./database-client"
+
+const timestamp = "2026-09-14T00:00:00.000Z"
+
+function host(version: number, name = `Database ${version}`): DatabaseHostEntity {
+  return {
+    accessLevel: "edit",
+    config: {},
+    createdAt: timestamp,
+    id: "database-1",
+    name,
+    pageId: null,
+    updatedAt: timestamp,
+    version,
+    workspaceId: "workspace-1",
+  }
+}
+
+function bootstrap(version: number, name?: string): DatabaseBootstrapResponse {
+  return {
+    database: host(version, name),
+    dataSources: [],
+    properties: [],
+    views: [],
+  }
+}
+
+function record(
+  id: string,
+  orderKey: string,
+  name = id,
+): DatabaseRecordEntity {
+  return {
+    createdAt: timestamp,
+    dataSourceId: "source-1",
+    id,
+    orderKey,
+    page: {
+      createdAt: timestamp,
+      deletedAt: null,
+      hasContent: false,
+      id: `page-${id}`,
+      metadata: {},
+      name,
+      updatedAt: timestamp,
+    },
+    pageId: `page-${id}`,
+    parentRowId: null,
+    updatedAt: timestamp,
+    valuesByPropertyId: {},
+  }
+}
+
+function event(
+  version: number,
+  changes: DatabaseMutationEventV2["changes"],
+  options: { commandId?: string; eventId?: string } = {},
+): DatabaseMutationEventV2 {
+  return {
+    actorId: "actor-1",
+    areas: changes.records || changes.removedRecordIds
+      ? ["records"]
+      : ["databases"],
+    changes,
+    commandId: options.commandId ?? `command-${version}`,
+    committedAt: timestamp,
+    databaseId: "database-1",
+    dataSourceId: changes.records || changes.removedRecordIds
+      ? "source-1"
+      : null,
+    eventId: options.eventId ?? `event-${version}`,
+    protocolVersion: 2,
+    type: "database.mutation",
+    version,
+  }
+}
+
+test("command acknowledgements and socket echoes share one direct-write path", async () => {
+  const paths: string[] = []
+  let acknowledged: DatabaseMutationEventV2 | undefined
+  const initialRecords = [
+    record("row-1", "1024.0000000000"),
+    record("row-2", "2048.0000000000"),
+  ]
+  const apiFetch: ApiFetcher = async (path, init) => {
+    paths.push(path)
+    if (path.includes("/bootstrap")) return bootstrap(1) as never
+    if (path.includes("/records?")) {
+      return {
+        databaseVersion: 1,
+        dataSourceVersion: 1,
+        hasMore: false,
+        offset: 0,
+        records: initialRecords,
+        snapshot: "snapshot-1",
+        totalCount: 2,
+      } as never
+    }
+    if (path.endsWith("/data-sources/source-1/commands")) {
+      const request = JSON.parse(String(init?.body)) as { commandId: string }
+      acknowledged = event(2, {
+        records: [record("row-1", "3072.0000000000", "Moved")],
+      }, { commandId: request.commandId })
+      return {
+        commandId: request.commandId,
+        event: acknowledged,
+        result: { updated: true },
+      } as never
+    }
+    throw new Error(`Unexpected request: ${path}`)
+  }
+  const client = createDatabaseClient({
+    apiFetch,
+    queryClient: new QueryClient(),
+    sessionId: "session-1",
+  })
+  const collections = client.getBootstrapCollections({ databaseId: "database-1" })
+  await collections.database.stateWhenReady()
+  const records = client.getRecordCollection({
+    databaseId: "database-1",
+    dataSourceId: "source-1",
+    viewId: "view-1",
+  })
+  records.records._sync.startSync()
+  await records.records._sync.loadSubset({ limit: 51, offset: 0 })
+
+  const transaction = client.execute<{ updated: boolean }>({
+    command: {
+      propertyId: "property-1",
+      rowId: "row-1",
+      type: "cell.set",
+      value: "done",
+    },
+    databaseId: "database-1",
+    dataSourceId: "source-1",
+  })
+  assert.deepEqual(await transaction.promise, { updated: true })
+  assert.equal(records.records.state.get("row-1")?.page.name, "Moved")
+  assert.equal(records.records.state.get("row-1")?.__windowIndex, 1)
+  assert.equal(records.records.state.get("row-2")?.__windowIndex, 0)
+  assert.equal(client.bootstrap({ databaseId: "database-1" }).data?.database.version, 2)
+
+  await client.ingest(acknowledged!)
+  assert.equal(paths.filter((path) => path.includes("/mutations?")).length, 0)
+  assert.equal(records.records.size, 2)
+  await client.cleanup()
+})
+
+test("a version gap catches up in order before applying the socket event", async () => {
+  const paths: string[] = []
+  const second = event(2, { databases: [host(2, "Second")] })
+  const third = event(3, { databases: [host(3, "Third")] })
+  const apiFetch: ApiFetcher = async (path) => {
+    paths.push(path)
+    if (path.includes("/bootstrap")) return bootstrap(1, "First") as never
+    if (path.includes("afterVersion=1")) {
+      return {
+        events: [second],
+        hasMore: true,
+        latestVersion: 3,
+        resetRequired: false,
+      } as never
+    }
+    if (path.includes("afterVersion=2")) {
+      return {
+        events: [third],
+        hasMore: false,
+        latestVersion: 3,
+        resetRequired: false,
+      } as never
+    }
+    throw new Error(`Unexpected request: ${path}`)
+  }
+  const client = createDatabaseClient({
+    apiFetch,
+    queryClient: new QueryClient(),
+    sessionId: "session-1",
+  })
+  const collections = client.getBootstrapCollections({ databaseId: "database-1" })
+  await collections.database.stateWhenReady()
+
+  await client.ingest(third)
+  await client.ingest(third)
+
+  assert.deepEqual(
+    paths.filter((path) => path.includes("/mutations?")),
+    [
+      "/databases/database-1/mutations?afterVersion=1&limit=500",
+      "/databases/database-1/mutations?afterVersion=2&limit=500",
+    ],
+  )
+  assert.equal(client.bootstrap({ databaseId: "database-1" }).data?.database.name, "Third")
+  assert.equal(collections.database.state.get("database-1")?.version, 3)
+  await client.cleanup()
+})
+
+test("expired history resets only the affected database scope", async () => {
+  let databaseOneFetches = 0
+  let databaseTwoFetches = 0
+  const apiFetch: ApiFetcher = async (path) => {
+    if (path === "/databases/database-1/bootstrap") {
+      databaseOneFetches += 1
+      return bootstrap(databaseOneFetches === 1 ? 1 : 4, "Canonical") as never
+    }
+    if (path === "/databases/database-2/bootstrap") {
+      databaseTwoFetches += 1
+      return {
+        ...bootstrap(7, "Other"),
+        database: { ...host(7, "Other"), id: "database-2" },
+      } as never
+    }
+    if (path.includes("database-1/mutations?")) {
+      return {
+        events: [],
+        hasMore: false,
+        latestVersion: 4,
+        resetRequired: true,
+      } as never
+    }
+    throw new Error(`Unexpected request: ${path}`)
+  }
+  const client = createDatabaseClient({
+    apiFetch,
+    queryClient: new QueryClient(),
+    sessionId: "session-1",
+  })
+  const first = client.getBootstrapCollections({ databaseId: "database-1" })
+  const other = client.getBootstrapCollections({ databaseId: "database-2" })
+  await Promise.all([
+    first.database.stateWhenReady(),
+    other.database.stateWhenReady(),
+  ])
+
+  await client.ingest(event(4, { databases: [host(4, "Ignored delta")] }))
+
+  assert.equal(databaseOneFetches, 2)
+  assert.equal(databaseTwoFetches, 1)
+  assert.equal(client.bootstrap({ databaseId: "database-1" }).data?.database.name, "Canonical")
+  assert.equal(client.bootstrap({ databaseId: "database-2" }).data?.database.name, "Other")
+  await client.cleanup()
+})

@@ -1,6 +1,9 @@
 import type { QueryClient, QueryFunctionContext } from "@tanstack/react-query"
 import { createCollection, type Collection } from "@tanstack/react-db"
-import { queryCollectionOptions } from "@tanstack/query-db-collection"
+import {
+  queryCollectionOptions,
+  type QueryCollectionUtils,
+} from "@tanstack/query-db-collection"
 import { z } from "zod"
 
 import type { ApiFetcher } from "../../shared/api-fetcher"
@@ -8,9 +11,11 @@ import {
   databaseRecordEntitySchema,
   databaseRecordWindowResponseSchema,
   type DatabaseInitialPageSize,
+  type DatabaseMutationEventV2,
   type DatabaseRecordEntity,
   type DatabaseRecordWindowResponse,
 } from "../contracts-v2"
+import { parseDatabaseOrderKey } from "../order-key"
 import { databaseClientQueryKey } from "./query-keys"
 
 export type RecordCollectionScope = {
@@ -31,9 +36,12 @@ const windowedDatabaseRecordSchema = databaseRecordEntitySchema.extend({
 export type DatabaseRecordCollection = {
   readonly descriptorId: string
   readonly pageSize: DatabaseInitialPageSize
+  readonly scope: RecordCollectionScope
   records: Collection<WindowedDatabaseRecord, string>
+  apply(event: DatabaseMutationEventV2, sortByOrderKey: boolean): void
   cleanup(): Promise<void>
   getLatestWindow(): DatabaseRecordWindowResponse | undefined
+  reset(): Promise<void>
 }
 
 export function createDatabaseRecordCollection(options: {
@@ -84,10 +92,17 @@ export function createDatabaseRecordCollection(options: {
     queryFn,
     queryKey,
     schema: windowedDatabaseRecordSchema,
-    select: (response) => response.records.map((record, index) => ({
-      ...record,
-      __windowIndex: response.offset + index,
-    })),
+    select: (response) => response.records.map((record, index) => {
+      const directIndex = (record as DatabaseRecordEntity & {
+        __windowIndex?: unknown
+      }).__windowIndex
+      return {
+        ...record,
+        __windowIndex: Number.isSafeInteger(directIndex)
+          ? Number(directIndex)
+          : response.offset + index,
+      }
+    }),
     staleTime: 30_000,
     syncMode: "on-demand",
   }) as never) as unknown as Collection<WindowedDatabaseRecord, string>
@@ -95,9 +110,91 @@ export function createDatabaseRecordCollection(options: {
   return {
     descriptorId,
     pageSize: options.pageSize,
+    scope: options.scope,
     records,
+    apply(event, sortByOrderKey) {
+      if (records.status === "idle" || records.status === "cleaned-up") return
+      if (
+        !event.changes.records?.length &&
+        !event.changes.removedRecordIds?.length
+      ) return
+      const removed = new Set(event.changes.removedRecordIds ?? [])
+      const current = new Map<string, WindowedDatabaseRecord>(
+        [...records.state].map(([id, record]) => [
+          id,
+          withoutVirtualProperties(record),
+        ]),
+      )
+      const removedLoaded = [...removed].filter((id) => current.has(id))
+      for (const id of removed) current.delete(id)
+
+      let nextIndex = Math.max(
+        -1,
+        ...[...current.values()].map((record) => record.__windowIndex),
+      ) + 1
+      let added = 0
+      for (const entity of event.changes.records ?? []) {
+        if (entity.dataSourceId !== options.scope.dataSourceId) continue
+        const existing = current.get(entity.id)
+        if (!existing) added += 1
+        current.set(entity.id, {
+          ...entity,
+          __windowIndex: existing?.__windowIndex ?? nextIndex++,
+        })
+      }
+
+      const ordered = [...current.values()]
+      if (sortByOrderKey) {
+        ordered.sort((left, right) => {
+          const difference = parseDatabaseOrderKey(left.orderKey) -
+            parseDatabaseOrderKey(right.orderKey)
+          return difference < 0n
+            ? -1
+            : difference > 0n
+              ? 1
+              : left.id.localeCompare(right.id)
+        })
+      } else {
+        ordered.sort((left, right) =>
+          left.__windowIndex - right.__windowIndex ||
+          left.id.localeCompare(right.id))
+      }
+      const reindexed = ordered.map((entity, index) => ({
+        ...entity,
+        __windowIndex: index,
+      }))
+      const utils = records.utils as unknown as QueryCollectionUtils<
+        WindowedDatabaseRecord,
+        string
+      >
+      utils.writeBatch(() => {
+        if (removedLoaded.length > 0) utils.writeDelete(removedLoaded)
+        if (reindexed.length > 0) utils.writeUpsert(reindexed)
+      })
+
+      if (latestWindow) {
+        latestWindow = {
+          ...latestWindow,
+          records: reindexed.map(toDatabaseRecord),
+          totalCount: Math.max(
+            0,
+            latestWindow.totalCount + added - removedLoaded.length,
+          ),
+        }
+      }
+    },
     cleanup: () => records.cleanup(),
     getLatestWindow: () => latestWindow,
+    async reset() {
+      snapshot = undefined
+      latestWindow = undefined
+      if (records.status === "idle" || records.status === "cleaned-up") return
+      const utils = records.utils as unknown as QueryCollectionUtils<
+        WindowedDatabaseRecord,
+        string
+      >
+      await utils.refetch()
+    },
   }
 }
 
@@ -117,7 +214,17 @@ export function recordCollectionId(
 }
 
 export function toDatabaseRecord(record: WindowedDatabaseRecord) {
-  const { __windowIndex: _windowIndex, ...entity } = record
+  const { __windowIndex: _windowIndex, ...entity } =
+    withoutVirtualProperties(record)
+  return entity
+}
+
+function withoutVirtualProperties(record: WindowedDatabaseRecord) {
+  const entity = { ...record } as WindowedDatabaseRecord & Record<string, unknown>
+  delete entity.$synced
+  delete entity.$origin
+  delete entity.$key
+  delete entity.$collectionId
   return entity
 }
 

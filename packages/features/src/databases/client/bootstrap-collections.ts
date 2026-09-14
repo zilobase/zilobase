@@ -11,13 +11,14 @@ import {
   dataSourceEntitySchema,
   type DatabaseBootstrapResponse,
   type DatabaseHostEntity,
+  type DatabaseMutationEventV2,
   type DatabasePropertyEntity,
   type DatabaseViewEntity,
   type DataSourceEntity,
 } from "../contracts-v2"
 import { databaseClientQueryKey } from "./query-keys"
 
-type BootstrapScope = {
+export type BootstrapScope = {
   databaseId: string
   includeDeleted?: boolean
   viewId?: string | null
@@ -33,8 +34,11 @@ export type DatabaseBootstrapCollections = {
   database: Collection<DatabaseHostEntity, string>
   dataSources: Collection<DataSourceEntity, string>
   properties: Collection<DatabasePropertyEntity, string>
+  readonly scope: BootstrapScope
   views: Collection<DatabaseViewEntity, string>
+  apply(event: DatabaseMutationEventV2): void
   cleanup(): Promise<void>
+  refetch(): Promise<void>
 }
 
 export function createDatabaseBootstrapCollections(options: {
@@ -87,7 +91,16 @@ export function createDatabaseBootstrapCollections(options: {
     database,
     dataSources,
     properties,
+    scope: options.scope,
     views,
+    apply(event) {
+      options.queryClient.setQueryData<DatabaseBootstrapResponse>(
+        queryKey,
+        (current) => current
+          ? applyBootstrapEvent(current, event)
+          : current,
+      )
+    },
     async cleanup() {
       await Promise.all([
         database.cleanup(),
@@ -96,7 +109,53 @@ export function createDatabaseBootstrapCollections(options: {
         views.cleanup(),
       ])
     },
+    async refetch() {
+      await options.queryClient.refetchQueries({ exact: true, queryKey })
+    },
   }
+}
+
+function applyBootstrapEvent(
+  current: DatabaseBootstrapResponse,
+  event: DatabaseMutationEventV2,
+): DatabaseBootstrapResponse {
+  const changedHost = event.changes.databases?.find(
+    (database) => database.id === current.database.id,
+  )
+  const database = changedHost ?? {
+    ...current.database,
+    version: event.version,
+  }
+  return {
+    database,
+    dataSources: applyEntityChanges(
+      current.dataSources,
+      event.changes.dataSources,
+      event.changes.removedDataSourceIds,
+    ),
+    properties: applyEntityChanges(
+      current.properties,
+      event.changes.properties,
+      event.changes.removedPropertyIds,
+    ),
+    views: applyEntityChanges(
+      current.views,
+      event.changes.views,
+      event.changes.removedViewIds,
+    ),
+  }
+}
+
+function applyEntityChanges<TEntity extends { id: string }>(
+  current: TEntity[],
+  upserts: TEntity[] | undefined,
+  removedIds: string[] | undefined,
+) {
+  if (!upserts?.length && !removedIds?.length) return current
+  const next = new Map(current.map((entity) => [entity.id, entity]))
+  for (const id of removedIds ?? []) next.delete(id)
+  for (const entity of upserts ?? []) next.set(entity.id, entity)
+  return [...next.values()]
 }
 
 export function databaseBootstrapQueryKey(
