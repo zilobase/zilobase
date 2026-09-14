@@ -1,5 +1,6 @@
 export * from "./apply-delta"
 export * from "./automations"
+export * from "./contracts-v2"
 export * from "./formula"
 export * from "./filter"
 export * from "./row-snapshot"

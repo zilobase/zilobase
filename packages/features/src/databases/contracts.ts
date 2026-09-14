@@ -130,3 +130,5 @@ export type DatabaseAccessRule = {
 }
 
 export type DatabaseAccessPayload = { access: DatabaseAccessRule[] }
+
+export * from "./contracts-v2"
