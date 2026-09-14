@@ -1,6 +1,7 @@
 export * from "./automations"
 export * from "./client"
 export * from "./contracts-v2"
+export * from "./contract-fixtures"
 export * from "./formula"
 export * from "./filter"
 export * from "./row-snapshot"

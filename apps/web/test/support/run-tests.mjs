@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import { access, mkdtemp, readFile, readdir, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { basename, dirname, join, resolve } from "node:path"
+import { basename, dirname, join, resolve, sep as pathSeparator } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { build } from "esbuild"
 
@@ -14,6 +14,7 @@ const srcDir = join(appDir, "src")
 const editionWebModule = process.env.ZILOBASE_WEB_EDITION_MODULE?.trim()
   ? resolve(process.env.ZILOBASE_WEB_EDITION_MODULE)
   : join(srcDir, "edition", "community-module.ts")
+const testPathPattern = process.env.ZILOBASE_WEB_TEST_PATTERN?.trim() || null
 const tempDir = await mkdtemp(join(tmpdir(), "zilobase-web-tests-"))
 const loadedModules = new Map()
 
@@ -31,7 +32,12 @@ const context = {
 }
 
 try {
-  const testFiles = await findTestFiles(testDir)
+  const testFiles = (await findTestFiles(testDir)).filter((file) =>
+    !testPathPattern || file.split(pathSeparator).join("/").includes(testPathPattern)
+  )
+  if (testFiles.length === 0) {
+    throw new Error(`No web tests matched ${testPathPattern}`)
+  }
 
   for (const file of testFiles) {
     const module = await import(pathToFileURL(file).href)

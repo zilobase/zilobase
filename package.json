@@ -61,6 +61,8 @@
     "verify:commit": "node scripts/git/pre-push.mjs --staged",
     "hooks:install": "node scripts/git/install-hooks.mjs",
     "test:server": "npm run test:quality --workspace @zilobase/server",
+    "test:databases:acceptance": "node scripts/databases/test-acceptance.mjs",
+    "test:databases:acceptance:full": "node scripts/databases/test-acceptance.mjs --full",
     "db:migrate": "npm run db:migrate --workspace @zilobase/server",
     "db:studio": "node scripts/dev/cli.mjs studio",
     "selfhost:up": "node scripts/selfhost/manage.mjs up",
