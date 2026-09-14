@@ -104,7 +104,6 @@ export function DatabaseKanbanView() {
     groupableProperties,
     hasNextPage,
     hostDatabaseId,
-    isAddingDatabaseRow,
     isFetchingNextPage,
     personOptions,
     properties,
@@ -654,9 +653,13 @@ export function DatabaseKanbanView() {
                 const showAddCard = editable && canAddPageToOption;
                 function renderColumnCards() {
                   return (
-                    <div className="database-kanban-cards" style={preview ? {
-                      paddingBottom: `calc(var(--spacing) * 2 + ${Math.max(0, preview.heightDelta)}px)`,
-                    } : undefined}>
+                    <div
+                      className="database-kanban-cards"
+                      ref={cardDrag.getColumnRef(option.id)}
+                      style={preview ? {
+                        paddingBottom: `calc(var(--spacing) * 2 + ${Math.max(0, preview.heightDelta)}px)`,
+                      } : undefined}
+                    >
                       {preview?.placeholderTop != null ? (
                         <div
                           aria-hidden="true"
@@ -686,6 +689,7 @@ export function DatabaseKanbanView() {
                             cardDrag.startDrag(item, option, event)
                           }
                           onPointerDownCapture={cardDrag.captureDragOrigin}
+                          ref={cardDrag.getCardRef(option.id, item.id)}
                         >
                           <div className="database-kanban-card-title">
                             <DatabasePageLink
@@ -723,7 +727,7 @@ export function DatabaseKanbanView() {
                         <button
                           className="database-kanban-new-card"
                           style={preview ? { transform: `translateY(${preview.heightDelta}px)` } : undefined}
-                          disabled={!databaseId || isAddingDatabaseRow}
+                          disabled={!databaseId}
                           onClick={() =>
                             addDatabaseRow(option.groupValue, groupProperty)
                           }
@@ -767,7 +771,7 @@ export function DatabaseKanbanView() {
                         option={option}
                         actions={groupActions}
                         canAdd={canAddPageToOption}
-                        adding={!databaseId || isAddingDatabaseRow}
+                        adding={!databaseId}
                         onAdd={() => addDatabaseRow(option.groupValue, groupProperty)}
                       />
                     </div>

@@ -52,18 +52,14 @@ export function register({ assert, loadModule, test }) {
       "/src/features/databases/views/kanban/model/database-kanban-card-drag.ts"
     )
     const cards = [
-      { getBoundingClientRect: () => ({ height: 40, top: 100 }) },
-      { getBoundingClientRect: () => ({ height: 60, top: 140 }) },
+      { height: 40, top: 0 },
+      { height: 60, top: 40 },
     ]
-    const column = { querySelectorAll: () => cards }
 
-    assert.equal(getKanbanCardDropTargetIndex(column, 119), 0)
-    assert.equal(getKanbanCardDropTargetIndex(column, 120), 1)
-    assert.equal(getKanbanCardDropTargetIndex(column, 500), 2)
-    assert.equal(
-      getKanbanCardDropTargetIndex({ querySelectorAll: () => [] }, 100),
-      0
-    )
+    assert.equal(getKanbanCardDropTargetIndex(cards, 19), 0)
+    assert.equal(getKanbanCardDropTargetIndex(cards, 20), 1)
+    assert.equal(getKanbanCardDropTargetIndex(cards, 500), 2)
+    assert.equal(getKanbanCardDropTargetIndex([], 100), 0)
 
     const allRows = [{ id: "row-1" }, { id: "row-2" }, { id: "row-3" }]
     const columnRows = [allRows[0], allRows[2]]

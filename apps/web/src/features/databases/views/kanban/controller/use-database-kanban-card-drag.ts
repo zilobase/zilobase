@@ -60,6 +60,18 @@ type KanbanCardDropTarget = {
   targetIndex: number
 }
 
+type KanbanCardGeometry = {
+  height: number
+  top: number
+}
+
+type KanbanColumnMeasurement = {
+  cards: KanbanCardGeometry[]
+  gap: number
+  heights: number[]
+  paddingTop: number
+}
+
 type KanbanCardMove = {
   groupPropertyId?: string
   groupValue?: unknown
@@ -97,8 +109,20 @@ export function useDatabaseKanbanCardDrag<
 >(input: KanbanCardDragInput<Row, Option>) {
   const newGroupDrop = useRef<{ card: DraggedKanbanCard | null; payload: DatabasePageDragPayload | null } | null>(null)
   const dragFrame = useRef<number | null>(null)
-  const columnMeasurements = useRef(new Map<string, { heights: number[]; gap: number; paddingTop: number }>())
+  const hitTestFrame = useRef<number | null>(null)
+  const measurementFrame = useRef<number | null>(null)
+  const pendingHitTest = useRef<{ clientY: number; optionId: string } | null>(null)
+  const pendingMeasurementOptionIds = useRef(new Set<string>())
+  const inputRef = useRef(input)
+  const columnElements = useRef(new Map<string, HTMLElement>())
+  const cardElements = useRef(new Map<string, Map<string, HTMLElement>>())
+  const columnMeasurements = useRef(new Map<string, KanbanColumnMeasurement>())
+  const observedOptionIds = useRef(new WeakMap<Element, string>())
+  const resizeObserver = useRef<ResizeObserver | null>(null)
+  const columnRefCallbacks = useRef(new Map<string, (element: HTMLElement | null) => void>())
+  const cardRefCallbacks = useRef(new Map<string, (element: HTMLElement | null) => void>())
   const dragOriginRef = useRef<EventTarget | null>(null)
+  const [, setGeometryVersion] = useState(0)
   const [draggedCard, setDraggedCard] = useState<DraggedKanbanCard | null>(null)
   const [isExternalDragActive, setIsExternalDragActive] = useState(false)
   const [dropTarget, setDropTarget] = useState<KanbanCardDropTarget | null>(null)
@@ -108,12 +132,147 @@ export function useDatabaseKanbanCardDrag<
   const moveRow = useMoveDatabaseRow()
   const reorderRows = useReorderDatabaseRows()
   const updatePage = useUpdatePage()
+  inputRef.current = input
+
+  const measureColumn = useCallback((optionId: string) => {
+    const currentInput = inputRef.current
+    const option = currentInput.options.find((candidate) => candidate.id === optionId)
+    const columnElement = columnElements.current.get(optionId)
+    if (!option || !columnElement) {
+      columnMeasurements.current.delete(optionId)
+      return
+    }
+
+    const elements = cardElements.current.get(optionId)
+    const cards = currentInput.getOptionItems(option).flatMap((row) => {
+      const element = elements?.get(row.id)
+      if (!element) return []
+      const height = element.offsetHeight || element.getBoundingClientRect().height
+      return [{ height, top: element.offsetTop }]
+    })
+    const style = getComputedStyle(columnElement)
+    const nextMeasurement = {
+      cards,
+      gap: parseFloat(style.rowGap) || 0,
+      heights: cards.map((card) => card.height),
+      paddingTop: parseFloat(style.paddingTop) || 0,
+    }
+    const currentMeasurement = columnMeasurements.current.get(optionId)
+    if (areColumnMeasurementsEqual(currentMeasurement, nextMeasurement)) return
+    columnMeasurements.current.set(optionId, nextMeasurement)
+    setGeometryVersion((version) => version + 1)
+  }, [])
+
+  const scheduleColumnMeasurement = useCallback((optionId: string) => {
+    pendingMeasurementOptionIds.current.add(optionId)
+    if (measurementFrame.current !== null) return
+
+    measurementFrame.current = requestAnimationFrame(() => {
+      measurementFrame.current = null
+      const optionIds = [...pendingMeasurementOptionIds.current]
+      pendingMeasurementOptionIds.current.clear()
+      optionIds.forEach(measureColumn)
+    })
+  }, [measureColumn])
+
+  const getColumnRef = useCallback((optionId: string) => {
+    const existing = columnRefCallbacks.current.get(optionId)
+    if (existing) return existing
+
+    const callback = (element: HTMLElement | null) => {
+      const previous = columnElements.current.get(optionId)
+      if (previous === element) return
+      if (previous) resizeObserver.current?.unobserve(previous)
+      if (element) {
+        columnElements.current.set(optionId, element)
+        observedOptionIds.current.set(element, optionId)
+        resizeObserver.current?.observe(element)
+      } else {
+        columnElements.current.delete(optionId)
+        columnMeasurements.current.delete(optionId)
+        columnRefCallbacks.current.delete(optionId)
+      }
+      scheduleColumnMeasurement(optionId)
+    }
+    columnRefCallbacks.current.set(optionId, callback)
+    return callback
+  }, [scheduleColumnMeasurement])
+
+  const getCardRef = useCallback((optionId: string, rowId: string) => {
+    const key = `${optionId}\u0000${rowId}`
+    const existing = cardRefCallbacks.current.get(key)
+    if (existing) return existing
+
+    const callback = (element: HTMLElement | null) => {
+      let elements = cardElements.current.get(optionId)
+      const previous = elements?.get(rowId)
+      if (previous === element) return
+      if (previous) resizeObserver.current?.unobserve(previous)
+      if (element) {
+        if (!elements) {
+          elements = new Map()
+          cardElements.current.set(optionId, elements)
+        }
+        elements.set(rowId, element)
+        observedOptionIds.current.set(element, optionId)
+        resizeObserver.current?.observe(element)
+      } else {
+        elements?.delete(rowId)
+        if (elements?.size === 0) cardElements.current.delete(optionId)
+        cardRefCallbacks.current.delete(key)
+      }
+      scheduleColumnMeasurement(optionId)
+    }
+    cardRefCallbacks.current.set(key, callback)
+    return callback
+  }, [scheduleColumnMeasurement])
+
+  const getTargetIndex = useCallback((optionId: string, clientY: number) => {
+    const columnElement = columnElements.current.get(optionId)
+    const measurement = columnMeasurements.current.get(optionId)
+    if (!columnElement || !measurement) return 0
+    return getKanbanCardDropTargetIndex(
+      measurement.cards,
+      clientY - columnElement.getBoundingClientRect().top,
+    )
+  }, [])
+
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver((entries) => {
+      entries.forEach((entry) => {
+        const optionId = observedOptionIds.current.get(entry.target)
+        if (optionId) scheduleColumnMeasurement(optionId)
+      })
+    })
+    resizeObserver.current = observer
+    columnElements.current.forEach((element, optionId) => {
+      observedOptionIds.current.set(element, optionId)
+      observer.observe(element)
+    })
+    cardElements.current.forEach((elements, optionId) => {
+      elements.forEach((element) => {
+        observedOptionIds.current.set(element, optionId)
+        observer.observe(element)
+      })
+    })
+    return () => {
+      observer.disconnect()
+      resizeObserver.current = null
+    }
+  }, [scheduleColumnMeasurement])
+
+  useEffect(() => {
+    input.options.forEach((option) => scheduleColumnMeasurement(option.id))
+  }, [input.allRows, input.options, scheduleColumnMeasurement])
 
   const clearDrag = useCallback(() => {
     if (dragFrame.current !== null) cancelAnimationFrame(dragFrame.current)
+    if (hitTestFrame.current !== null) cancelAnimationFrame(hitTestFrame.current)
     dragFrame.current = null
+    hitTestFrame.current = null
+    pendingHitTest.current = null
     dragOriginRef.current = null
-    columnMeasurements.current.clear()
     finishDatabaseRowDrag()
     setDraggedCard(null)
     setIsExternalDragActive(false)
@@ -128,6 +287,9 @@ export function useDatabaseKanbanCardDrag<
     return () => {
       document.removeEventListener("keydown", cancel)
       if (dragFrame.current !== null) cancelAnimationFrame(dragFrame.current)
+      if (hitTestFrame.current !== null) cancelAnimationFrame(hitTestFrame.current)
+      if (measurementFrame.current !== null) cancelAnimationFrame(measurementFrame.current)
+      pendingMeasurementOptionIds.current.clear()
       finishDatabaseRowDrag()
     }
   }, [clearDrag])
@@ -204,7 +366,7 @@ export function useDatabaseKanbanCardDrag<
   )
 
   const applyMove = useCallback(
-    (move: KanbanCardMove, onSettled?: () => void) => {
+    (move: KanbanCardMove, onOptimisticAccepted?: () => void) => {
       const databaseId = input.databaseId
       if (!databaseId) return
 
@@ -214,7 +376,6 @@ export function useDatabaseKanbanCardDrag<
           {
             onError: () => {
               toast.error("Couldn't rename page")
-              onSettled?.()
             },
             onSuccess: () => {
               reorderRows.mutate({
@@ -223,10 +384,11 @@ export function useDatabaseKanbanCardDrag<
                   ? { hostDatabaseId: input.hostDatabaseId }
                   : {}),
                 ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
-              }, { onSettled })
+              })
             },
           },
         )
+        onOptimisticAccepted?.()
         return
       }
 
@@ -238,8 +400,9 @@ export function useDatabaseKanbanCardDrag<
             : {}),
           groupPropertyId: move.groupPropertyId,
           groupValue: move.groupValue,
+          onOptimisticAccepted,
           ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
-        }, { onSettled })
+        })
         return
       }
 
@@ -248,8 +411,9 @@ export function useDatabaseKanbanCardDrag<
         ...(input.hostDatabaseId
           ? { hostDatabaseId: input.hostDatabaseId }
           : {}),
+        onOptimisticAccepted,
         ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
-      }, { onSettled })
+      })
     }, [input.databaseId, input.hostDatabaseId, moveRow, reorderRows, updatePage],
   )
 
@@ -282,20 +446,6 @@ export function useDatabaseKanbanCardDrag<
 
       const title = row.page.name?.trim() || "Untitled"
       const cardRect = event.currentTarget.getBoundingClientRect()
-      columnMeasurements.current.clear()
-      event.currentTarget.closest(".database-kanban-board")
-        ?.querySelectorAll<HTMLElement>(".database-kanban-column[data-option-id]")
-        .forEach((column) => {
-          const cards = column.querySelector<HTMLElement>(".database-kanban-cards")
-          if (!cards) return
-          const style = getComputedStyle(cards)
-          columnMeasurements.current.set(column.dataset.optionId!, {
-            heights: Array.from(cards.querySelectorAll<HTMLElement>(".database-kanban-card"))
-              .map((card) => card.getBoundingClientRect().height),
-            gap: parseFloat(style.rowGap) || 0,
-            paddingTop: parseFloat(style.paddingTop) || 0,
-          })
-        })
       event.dataTransfer.setDragImage(
         event.currentTarget,
         event.clientX - cardRect.left,
@@ -350,12 +500,21 @@ export function useDatabaseKanbanCardDrag<
       event.stopPropagation()
       event.dataTransfer.dropEffect = "move"
       setIsExternalDragActive(hasExternalDragPayload)
-      const targetIndex = getKanbanCardDropTargetIndex(event.currentTarget, event.clientY)
-      setDropTarget((current) => current?.optionId === option.id && current.targetIndex === targetIndex
-        ? current
-        : { optionId: option.id, targetIndex })
+      pendingHitTest.current = { clientY: event.clientY, optionId: option.id }
+      if (hitTestFrame.current === null) {
+        hitTestFrame.current = requestAnimationFrame(() => {
+          hitTestFrame.current = null
+          const pending = pendingHitTest.current
+          pendingHitTest.current = null
+          if (!pending) return
+          const targetIndex = getTargetIndex(pending.optionId, pending.clientY)
+          setDropTarget((current) => current?.optionId === pending.optionId && current.targetIndex === targetIndex
+            ? current
+            : { optionId: pending.optionId, targetIndex })
+        })
+      }
     },
-    [draggedCard, input.editable, input.groupProperty],
+    [draggedCard, getTargetIndex, input.editable, input.groupProperty],
   )
 
   const drop = useCallback(
@@ -374,12 +533,12 @@ export function useDatabaseKanbanCardDrag<
 
       event.preventDefault()
       event.stopPropagation()
-      const target = (dropTarget?.optionId === option.id ? dropTarget : null) ?? {
+      pendingHitTest.current = null
+      if (hitTestFrame.current !== null) cancelAnimationFrame(hitTestFrame.current)
+      hitTestFrame.current = null
+      const target = {
         optionId: option.id,
-        targetIndex: getKanbanCardDropTargetIndex(
-          event.currentTarget,
-          event.clientY,
-        ),
+        targetIndex: getTargetIndex(option.id, event.clientY),
       }
 
       if (nextExternalDragPayload) {
@@ -428,6 +587,7 @@ export function useDatabaseKanbanCardDrag<
       draggedCard,
       dropTarget,
       getMove,
+      getTargetIndex,
       input,
     ],
   )
@@ -508,6 +668,8 @@ export function useDatabaseKanbanCardDrag<
     isDropSettling: droppedRows !== null,
     getRenderedItems: (option: Option) => droppedRows?.get(option.id) ?? input.getOptionItems(option),
     getPreview,
+    getCardRef,
+    getColumnRef,
     captureDragOrigin,
     clearDrag,
     confirmSortedMove,
@@ -522,4 +684,21 @@ export function useDatabaseKanbanCardDrag<
     setPendingSortedMove,
     startDrag,
   }
+}
+
+function areColumnMeasurementsEqual(
+  left: KanbanColumnMeasurement | undefined,
+  right: KanbanColumnMeasurement,
+) {
+  return Boolean(
+    left &&
+      left.gap === right.gap &&
+      left.paddingTop === right.paddingTop &&
+      left.cards.length === right.cards.length &&
+      left.cards.every(
+        (card, index) =>
+          card.height === right.cards[index]?.height &&
+          card.top === right.cards[index]?.top,
+      ),
+  )
 }

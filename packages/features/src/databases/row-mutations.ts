@@ -16,6 +16,7 @@ type ReorderRowsInput = {
   beforeRowId: string | null;
   databaseId: string;
   hostDatabaseId?: string;
+  onOptimisticAccepted?: () => void;
   rowId: string;
 };
 
@@ -26,6 +27,7 @@ type MoveRowInput = {
   groupPropertyId?: string;
   groupValue?: unknown;
   hostDatabaseId?: string;
+  onOptimisticAccepted?: () => void;
   rowId: string;
 };
 
@@ -193,7 +195,7 @@ export function useReorderDatabaseRows() {
         input.databaseId,
         input.hostDatabaseId,
       );
-      return client.execute<DatabaseRecordEntity>({
+      const transaction = client.execute<DatabaseRecordEntity>({
         command: {
           afterRowId: input.afterRowId,
           beforeRowId: input.beforeRowId,
@@ -202,7 +204,9 @@ export function useReorderDatabaseRows() {
         },
         databaseId: scope.hostDatabaseId,
         dataSourceId: scope.dataSourceId,
-      }).promise;
+      });
+      input.onOptimisticAccepted?.();
+      return transaction.promise;
     },
   });
 }
@@ -219,7 +223,7 @@ export function useMoveDatabaseRow() {
         input.databaseId,
         input.hostDatabaseId,
       );
-      return client.execute<DatabaseRecordEntity>({
+      const transaction = client.execute<DatabaseRecordEntity>({
         command: {
           afterRowId: input.afterRowId,
           beforeRowId: input.beforeRowId,
@@ -236,7 +240,9 @@ export function useMoveDatabaseRow() {
         },
         databaseId: scope.hostDatabaseId,
         dataSourceId: scope.dataSourceId,
-      }).promise;
+      });
+      input.onOptimisticAccepted?.();
+      return transaction.promise;
     },
   });
 }
