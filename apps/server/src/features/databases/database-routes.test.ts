@@ -12,11 +12,24 @@ const mocks = vi.hoisted(() => ({
   createProperty: vi.fn(),
   createDatabase: vi.fn(),
   databasePayload: vi.fn(),
+  bootstrap: vi.fn(),
+  recordWindow: vi.fn(),
+  canAccessDatabase: vi.fn(),
+  effectiveDatabaseAccess: vi.fn(),
+  publishedDatabase: vi.fn(),
+  membership: vi.fn(),
   deleteDatabase: vi.fn(),
   duplicateProperty: vi.fn(),
   restoreDatabase: vi.fn(),
   template: vi.fn(),
   updateDatabase: vi.fn(),
+}));
+vi.mock("../access", async (original) => ({
+  ...(await original<typeof import("../access")>()),
+  canAccessDatabaseRecord: mocks.canAccessDatabase,
+  getEffectiveDatabaseAccessForRecord: mocks.effectiveDatabaseAccess,
+  getMembership: mocks.membership,
+  isDatabasePublishedInWorkspace: mocks.publishedDatabase,
 }));
 
 vi.mock("./access/database-access", async (original) => ({
@@ -49,6 +62,11 @@ vi.mock("./core/service", () => ({
   deleteDatabaseService: mocks.deleteDatabase,
   restoreDatabaseService: mocks.restoreDatabase,
   updateDatabaseService: mocks.updateDatabase,
+}));
+vi.mock("./read/service", async (original) => ({
+  ...(await original<typeof import("./read/service")>()),
+  getDatabaseBootstrapService: mocks.bootstrap,
+  getDatabaseRecordWindowService: mocks.recordWindow,
 }));
 
 import { databaseRoutes } from "./database-routes";
@@ -86,6 +104,140 @@ function appWithUser(authMethod: "apiKey" | "session" = "session") {
 
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
+  mocks.canAccessDatabase.mockResolvedValue(true);
+  mocks.effectiveDatabaseAccess.mockResolvedValue("edit");
+  mocks.membership.mockResolvedValue({ id: "membership-1" });
+  mocks.publishedDatabase.mockResolvedValue(false);
+});
+
+test("v2 bootstrap route returns metadata without invoking the legacy payload", async () => {
+  const record = {
+    deletedAt: null,
+    id: "database-1",
+    workspaceId: "workspace-1",
+  };
+  const bootstrap = {
+    database: { id: "database-1" },
+    dataSources: [],
+    properties: [],
+    views: [],
+  };
+  mocks.databaseRecord.mockResolvedValue(record);
+  mocks.bootstrap.mockResolvedValue(bootstrap);
+
+  const response = await appWithUser().request(
+    "/databases/database-1/bootstrap?viewId=view-1",
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), bootstrap);
+  assert.deepEqual(mocks.bootstrap.mock.calls[0]?.[0], {
+    accessLevel: "edit",
+    databaseId: "database-1",
+    existingRecord: record,
+    includeDeleted: false,
+    userId: "user-1",
+    viewId: "view-1",
+  });
+  assert.equal(mocks.databasePayload.mock.calls.length, 0);
+});
+
+test("v2 record route forwards exact windows and deleted scope", async () => {
+  const record = {
+    deletedAt: null,
+    id: "database-1",
+    workspaceId: "workspace-1",
+  };
+  const window = {
+    databaseVersion: 1,
+    dataSourceVersion: 1,
+    hasMore: false,
+    offset: 25,
+    records: [],
+    snapshot: "next",
+    totalCount: 25,
+  };
+  mocks.databaseRecord.mockResolvedValue(record);
+  mocks.recordWindow.mockResolvedValue(window);
+
+  const response = await appWithUser().request(
+    "/databases/database-1/data-sources/source-1/records" +
+      "?viewId=view-1&offset=25&limit=25&snapshot=current&includeDeleted=1",
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), window);
+  assert.deepEqual(mocks.recordWindow.mock.calls[0]?.[0], {
+    databaseId: "database-1",
+    dataSourceId: "source-1",
+    existingRecord: record,
+    includeDeleted: true,
+    limit: 25,
+    offset: 25,
+    snapshot: "current",
+    userId: "user-1",
+    viewId: "view-1",
+  });
+});
+
+test("v2 record route exposes stale-window and source/view conflicts", async () => {
+  const { DatabaseWindowStaleError } = await import("./read/service");
+  mocks.databaseRecord.mockResolvedValue({
+    deletedAt: null,
+    id: "database-1",
+    workspaceId: "workspace-1",
+  });
+  mocks.recordWindow.mockRejectedValueOnce(
+    new DatabaseWindowStaleError("fresh-snapshot"),
+  );
+  const stale = await appWithUser().request(
+    "/databases/database-1/data-sources/source-1/records?limit=50&snapshot=old",
+  );
+  assert.equal(stale.status, 409);
+  assert.deepEqual(await stale.json(), {
+    code: "WINDOW_STALE",
+    currentSnapshot: "fresh-snapshot",
+    error: "The database record window is stale",
+  });
+
+  mocks.recordWindow.mockRejectedValueOnce(
+    new ServiceMutationError("Database view not found", 404),
+  );
+  const mismatch = await appWithUser().request(
+    "/databases/database-1/data-sources/source-1/records?viewId=foreign-view",
+  );
+  assert.equal(mismatch.status, 404);
+});
+
+test("v2 reads support published databases and reject invalid limits", async () => {
+  const record = {
+    deletedAt: null,
+    id: "database-1",
+    workspaceId: "workspace-1",
+  };
+  mocks.databaseRecord.mockResolvedValue(record);
+  mocks.canAccessDatabase.mockResolvedValue(false);
+  mocks.publishedDatabase.mockResolvedValue(true);
+  mocks.bootstrap.mockResolvedValue({
+    database: { accessLevel: null, id: "database-1" },
+    dataSources: [],
+    properties: [],
+    views: [],
+  });
+
+  const publicApp = new Hono<AppBindings>();
+  publicApp.route("/databases", databaseRoutes);
+  attachHttpRouteErrorHandler(publicApp);
+  assert.equal(
+    (await publicApp.request("/databases/database-1/bootstrap")).status,
+    200,
+  );
+
+  const invalid = await appWithUser().request(
+    "/databases/database-1/data-sources/source-1/records?limit=51",
+  );
+  assert.equal(invalid.status, 400);
+  assert.equal(mocks.recordWindow.mock.calls.length, 0);
 });
 
 test("database mutation routes require authentication", async () => {
