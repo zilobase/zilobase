@@ -1,4 +1,3 @@
-export * from "./apply-delta"
 export * from "./automations"
 export * from "./client"
 export * from "./contracts-v2"

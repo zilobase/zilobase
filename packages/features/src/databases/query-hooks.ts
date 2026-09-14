@@ -12,7 +12,6 @@ export function useDatabase(
   options?: {
     dataSourceId?: string;
     includeDeleted?: boolean;
-    schemaOnly?: boolean;
     viewId?: string;
   },
 ) {

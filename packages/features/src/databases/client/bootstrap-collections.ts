@@ -56,10 +56,13 @@ export function createDatabaseBootstrapCollections(options: {
   scope: BootstrapScope
   sessionId: string
 }): DatabaseBootstrapCollections {
-  const queryKey = databaseBootstrapQueryKey(options.sessionId, options.scope)
-  const queryFn = async () => databaseBootstrapResponseSchema.parse(
-    await options.apiFetch<DatabaseBootstrapResponse>(bootstrapPath(options.scope)),
+  const queryOptions = databaseBootstrapQueryOptions(
+    options.apiFetch,
+    options.sessionId,
+    options.scope,
   )
+  const queryKey = queryOptions.queryKey
+  const queryFn = queryOptions.queryFn
   const common = {
     queryClient: options.queryClient,
     queryFn,
@@ -140,6 +143,20 @@ export function createDatabaseBootstrapCollections(options: {
     async refetch() {
       await options.queryClient.refetchQueries({ exact: true, queryKey })
     },
+  }
+}
+
+export function databaseBootstrapQueryOptions(
+  apiFetch: ApiFetcher,
+  sessionId: string,
+  scope: BootstrapScope,
+) {
+  return {
+    queryKey: databaseBootstrapQueryKey(sessionId, scope),
+    queryFn: async () => databaseBootstrapResponseSchema.parse(
+      await apiFetch<DatabaseBootstrapResponse>(bootstrapPath(scope)),
+    ),
+    staleTime: 30_000,
   }
 }
 

@@ -1,17 +1,21 @@
 import { useLiveQuery } from "@tanstack/react-db"
+import { useQuery } from "@tanstack/react-query"
 
 import type { DatabaseBootstrapResponse } from "../contracts-v2"
+import { useZilobaseFeatures } from "../../shared/context"
 import type {
   DatabaseBootstrapState,
   DatabaseScope,
 } from "./database-client"
 import { SessionDatabaseClient } from "./database-client"
 import { useOptionalDatabaseClient } from "./provider"
+import { databaseBootstrapQueryOptions } from "./bootstrap-collections"
 
 export type DatabaseBootstrapHookState = Omit<
   DatabaseBootstrapState,
   "scope"
 > & {
+  refetch: () => Promise<unknown>
   scope: DatabaseScope | null
 }
 
@@ -19,6 +23,15 @@ export function useDatabaseBootstrap(
   scope: DatabaseScope | null,
 ): DatabaseBootstrapHookState {
   const facade = useOptionalDatabaseClient()
+  const { apiFetch } = useZilobaseFeatures()
+  const publicBootstrap = useQuery({
+    ...databaseBootstrapQueryOptions(
+      apiFetch,
+      "public",
+      scope ?? { databaseId: "disabled" },
+    ),
+    enabled: Boolean(scope) && !(facade instanceof SessionDatabaseClient),
+  })
   const collections = scope && facade instanceof SessionDatabaseClient
     ? facade.getBootstrapCollections(scope)
     : null
@@ -39,8 +52,34 @@ export function useDatabaseBootstrap(
     [collections?.views],
   )
 
-  if (!scope || !collections || !(facade instanceof SessionDatabaseClient)) {
-    return { data: undefined, error: null, scope: null, status: "idle" }
+  if (!scope) {
+    return {
+      data: undefined,
+      error: null,
+      refetch: async () => undefined,
+      scope: null,
+      status: "idle",
+    }
+  }
+
+  if (!collections || !(facade instanceof SessionDatabaseClient)) {
+    return {
+      data: publicBootstrap.data,
+      error: publicBootstrap.error instanceof Error
+        ? publicBootstrap.error
+        : publicBootstrap.error
+          ? new Error(String(publicBootstrap.error))
+          : null,
+      refetch: publicBootstrap.refetch,
+      scope,
+      status: publicBootstrap.isError
+        ? "error"
+        : publicBootstrap.isLoading
+          ? "loading"
+          : publicBootstrap.data
+            ? "success"
+            : "idle",
+    }
   }
 
   const state = facade.bootstrap(scope)
@@ -57,5 +96,5 @@ export function useDatabaseBootstrap(
       } satisfies DatabaseBootstrapResponse
     : state.data
 
-  return { ...state, data, scope }
+  return { ...state, data, refetch: () => facade.reset(scope), scope }
 }

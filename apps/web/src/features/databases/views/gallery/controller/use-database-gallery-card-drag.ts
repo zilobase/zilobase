@@ -5,7 +5,7 @@ import {
   type DragEvent,
   type PointerEvent,
 } from "react"
-import { getDatabaseRowMoveAnchors, useReorderDatabaseRows } from "@zilobase/features/databases/react";
+import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
 
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
 import {
@@ -54,7 +54,7 @@ export function useDatabaseGalleryCardDrag(
   const [draggedRowId, setDraggedRowId] = useState<string | null>(null)
   const [isExternalDragActive, setIsExternalDragActive] = useState(false)
   const [dropTarget, setDropTarget] = useState<GalleryDropTarget | null>(null)
-  const reorderRows = useReorderDatabaseRows()
+  const reorderRows = useMoveDatabaseRow()
 
   const clearDrag = useCallback(() => {
     dragOriginRef.current = null

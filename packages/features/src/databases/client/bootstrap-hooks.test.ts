@@ -49,7 +49,7 @@ test("database bootstrap is idle outside an authenticated session", () => {
   assert.equal(status, "idle")
 })
 
-test("database record windows are idle outside an authenticated session", () => {
+test("database record windows load through public REST outside a session", () => {
   const queryClient = new QueryClient()
   const apiFetch: ZilobaseFeaturesConfig["apiFetch"] = async () => {
     throw new Error("anonymous record windows must not fetch through DbClient")
@@ -87,5 +87,5 @@ test("database record windows are idle outside an authenticated session", () => 
     ),
   )
 
-  assert.equal(status, "idle")
+  assert.equal(status, "loading")
 })

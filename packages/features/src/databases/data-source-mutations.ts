@@ -1,16 +1,16 @@
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
 import {
-  databasePayloadRootQueryKey,
+  databaseRootQueryKey,
   type DatabasePayload,
 } from "./queries";
 import { type DatabaseMutationResponse } from "./mutation-types";
 import { pagesNavRootQueryKey } from "../pages/queries";
 import { type UpdateDatabaseInput } from "./database-mutations";
-import { commitDatabaseMutation } from "./mutation-cache-policy";
 import { useDatabaseClient } from "./client/provider";
 import {
-  invalidateLegacyDataSourcePayloads,
+  findDataSourceBootstrap,
+  invalidateDataSourceCollections,
   resolveDataSourceCommandScope,
 } from "./client/command-scope";
 import type {
@@ -58,28 +58,18 @@ export function useUpdateDataSource() {
       }).promise;
     },
     onSuccess: async (_result, variables) => {
-      const workspaceIds = new Set<string>();
-      const entries = queryClient.getQueriesData<DatabasePayload | null>({
-        queryKey: ["database"],
-      });
-
-      for (const [, current] of entries) {
-        if (
-          current?.dataSources.some(
-            (source) => source.id === variables.databaseId,
-          )
-        ) {
-          workspaceIds.add(current.database.workspaceId);
-        }
-      }
+      const workspaceId = findDataSourceBootstrap(
+        queryClient,
+        variables.databaseId,
+      )?.database.workspaceId;
 
       await Promise.all([
-        invalidateLegacyDataSourcePayloads(queryClient, variables.databaseId),
-        ...[...workspaceIds].map((workspaceId) =>
+        invalidateDataSourceCollections(queryClient, variables.databaseId),
+        ...(workspaceId ? [
           queryClient.invalidateQueries({
             queryKey: pagesNavRootQueryKey(workspaceId),
           }),
-        ),
+        ] : []),
       ]);
     },
   });
@@ -97,12 +87,8 @@ export function useLinkDatabaseDataSource() {
       name,
       type,
     }: LinkDatabaseDataSourceInput) => {
-      const cachedSource = queryClient
-        .getQueriesData<DatabasePayload>({
-          queryKey: databasePayloadRootQueryKey(databaseId),
-        })
-        .flatMap(([, payload]) => payload?.dataSources ?? [])
-        .find(({ id }) => id === dataSourceId);
+      const cachedSource = findDataSourceBootstrap(queryClient, dataSourceId)
+        ?.dataSources.find(({ id }) => id === dataSourceId);
       const dataSource = cachedSource
         ? null
         : await client.execute<DataSourceEntity>({
@@ -128,9 +114,9 @@ export function useLinkDatabaseDataSource() {
       }).promise;
       return { dataSource, view };
     },
-    onSettled: async (_result, _error, variables) => {
+    onSettled: async () => {
       await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+        queryKey: databaseRootQueryKey(),
       });
     },
   });
@@ -148,12 +134,13 @@ export function useCreateDatabaseDataSource() {
         `/databases/${databaseId}/data-sources/new`,
         { method: "POST", body: JSON.stringify(input) },
       );
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return response;
     },
     onSettled: async (_result, _error, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
-      });
+      await Promise.all([
+        invalidateDataSourceCollections(queryClient, variables.databaseId),
+        queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
+      ]);
     },
   });
 }
@@ -171,12 +158,13 @@ export function useReplaceDatabaseViewDataSource() {
         `/databases/${databaseId}/views/${databaseViewId}/source`,
         { method: "PUT", body: JSON.stringify({ dataSourceId }) },
       );
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return response;
     },
     onSettled: async (_result, _error, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
-      });
+      await Promise.all([
+        invalidateDataSourceCollections(queryClient, variables.databaseId),
+        queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
+      ]);
     },
   });
 }
@@ -195,9 +183,9 @@ export function useUnlinkDatabaseDataSource() {
         databaseId,
       }).promise;
     },
-    onSettled: async (_result, _error, variables) => {
+    onSettled: async () => {
       await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+        queryKey: databaseRootQueryKey(),
       });
     },
   });

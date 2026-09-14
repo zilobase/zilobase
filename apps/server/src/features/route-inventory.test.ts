@@ -38,9 +38,15 @@ describe("feature route composition", () => {
   it("preserves every database endpoint and its registration order", () => {
     expect(inventory(databaseRoutes)).toEqual([
       "POST /",
+      "GET /:id/bootstrap",
+      "GET /:id/export",
+      "GET /:id/data-sources/:dataSourceId/records",
+      "GET /:id/mutations",
       "GET /:id",
       "POST /:id/realtime-ticket",
       "GET /:id/published",
+      "POST /:id/commands",
+      "POST /:id/data-sources/:dataSourceId/commands",
       "GET /:databaseId/automation-capability",
       "GET /:databaseId/automations",
       "POST /:databaseId/automations/validate",
@@ -83,8 +89,6 @@ describe("feature route composition", () => {
       "POST /:id/properties/:databasePropertyId/duplicate",
       "DELETE /:id/properties/:databasePropertyId",
       "POST /:id/rows",
-      "PATCH /:id/rows/reorder",
-      "PATCH /:id/rows/:rowId/move",
       "PUT /:id/rows/:rowId/properties/:propertyId",
     ]);
   });

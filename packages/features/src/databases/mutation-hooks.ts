@@ -18,7 +18,6 @@ export {
   useUnlinkDatabaseDataSource,
 } from "./data-source-mutations";
 export {
-  updateDatabaseViewInPayload,
   updateDatabaseViewInNavigation,
   useUpdateDatabaseView,
   useAddDatabaseView,
@@ -26,7 +25,6 @@ export {
 } from "./view-mutations";
 export {
   type ApplyDatabaseTemplateInput,
-  updateDatabasePropertyInPayload,
   useAddDatabaseProperty,
   useApplyDatabaseTemplate,
   useUpdateDatabaseProperty,
@@ -41,12 +39,8 @@ export {
   useUpdateDatabaseTemplate,
 } from "./template-mutations";
 export {
-  reorderDatabaseRows,
-  updateDatabasePropertyValue,
-  moveDatabaseRow,
   useAddDatabaseRow,
   useArchiveDatabaseRow,
-  useReorderDatabaseRows,
   useRestoreDatabaseRow,
   useMoveDatabaseRow,
   useUpdateDatabasePropertyValue,

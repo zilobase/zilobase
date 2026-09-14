@@ -28,7 +28,7 @@ import {
   Plus,
 } from "@/shared/components/icons"
 import { toast } from "sonner"
-import { getDatabaseRowMoveAnchors, useMoveDatabaseRow, useReorderDatabaseRows } from "@zilobase/features/databases/react";
+import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -200,7 +200,7 @@ export function DatabaseTableView() {
     subItemsSettings,
   } = useDatabaseUiContext()
   const moveRow = useMoveDatabaseRow()
-  const reorderRows = useReorderDatabaseRows()
+  const reorderRows = useMoveDatabaseRow()
   const undoHistory = useUndoHistory()
   const loadedDatabaseId = requireDatabaseId(databaseId)
 

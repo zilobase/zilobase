@@ -6,10 +6,10 @@ const read = (path: string) => readFile(new URL(path, featuresRoot), "utf8");
 
 describe("database automation mutation-path audit", () => {
   it("captures every current eligible row/title/property mutation boundary", async () => {
-    const [cell, rows, position, template, mail, pages, ai] = await Promise.all([
+    const [cell, rows, commands, template, mail, pages, ai] = await Promise.all([
       read("databases/properties/cell-service.ts"),
       read("databases/rows/service.ts"),
-      read("databases/rows/position-service.ts"),
+      read("databases/commands/row-handlers.ts"),
       read("databases/templates/service.ts"),
       read("mail/database-sync/mail-database-sync-worker.ts"),
       read("pages/page-content-routes.ts"),
@@ -18,7 +18,7 @@ describe("database automation mutation-path audit", () => {
 
     expect(cell).toMatch(/automationFacts:[\s\S]*before: previous\?\.value/);
     expect(rows).toMatch(/rowAdded: true/);
-    expect(position).toMatch(/before: previousValue\?\.value/);
+    expect(commands).toMatch(/if \(command\.group\)[\s\S]*writeValues/);
     expect(template).toMatch(/origin: "import" as const/);
     expect(mail).toMatch(/origin: "integration" as const/);
     expect(pages).toMatch(/propertyId: "name"/);

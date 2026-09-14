@@ -1,9 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
 import {
-  databasePayloadRootQueryKey,
-  databaseQueryKey,
-  type DatabasePayload,
+  databaseRootQueryKey,
 } from "./queries";
 import {
   pagesNavRootQueryKey,
@@ -11,6 +9,7 @@ import {
 } from "../pages/queries";
 import { useDatabaseClient } from "./client/provider";
 import type { DatabaseViewEntity } from "./contracts-v2";
+import { findDataSourceBootstrap } from "./client/command-scope";
 
 type UpdateDatabaseViewInput = {
   config?: unknown;
@@ -32,30 +31,6 @@ type DeleteDatabaseViewInput = {
   databaseId: string;
   databaseViewId: string;
 };
-
-export function updateDatabaseViewInPayload(
-  payload: DatabasePayload | null | undefined,
-  input: UpdateDatabaseViewInput,
-) {
-  if (!payload) {
-    return payload;
-  }
-
-  const now = new Date().toISOString();
-  const views = payload.views.map((view) =>
-    view.id === input.databaseViewId
-      ? {
-          ...view,
-          ...(input.config !== undefined ? { config: input.config } : {}),
-          ...(input.name !== undefined ? { name: input.name } : {}),
-          ...(input.type !== undefined ? { type: input.type } : {}),
-          updatedAt: now,
-        }
-      : view,
-  );
-
-  return { ...payload, views };
-}
 
 export function updateDatabaseViewInNavigation(
   navigation: PageNavigationPayload | undefined,
@@ -112,13 +87,11 @@ export function useUpdateDatabaseView() {
       }).promise;
     },
     onSuccess: (updatedView, variables) => {
-      const payload = queryClient.getQueryData<DatabasePayload | null>(
-        databaseQueryKey(variables.databaseId),
-      );
-      if (payload) {
+      const bootstrap = findDataSourceBootstrap(queryClient, updatedView.dataSourceId);
+      if (bootstrap) {
         queryClient.setQueriesData<PageNavigationPayload | undefined>(
           {
-            queryKey: pagesNavRootQueryKey(payload.database.workspaceId),
+            queryKey: pagesNavRootQueryKey(bootstrap.database.workspaceId),
           },
           (current) =>
             updateDatabaseViewInNavigation(current, {
@@ -132,9 +105,9 @@ export function useUpdateDatabaseView() {
         );
       }
     },
-    onSettled: async (_result, _error, variables) => {
+    onSettled: async () => {
       await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+        queryKey: databaseRootQueryKey(),
       });
     },
   });
@@ -165,9 +138,9 @@ export function useAddDatabaseView() {
         databaseId,
       }).promise;
     },
-    onSettled: async (_result, _error, variables) => {
+    onSettled: async () => {
       await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+        queryKey: databaseRootQueryKey(),
       });
     },
   });
@@ -187,9 +160,9 @@ export function useDeleteDatabaseView() {
         databaseId,
       }).promise;
     },
-    onSettled: async (_result, _error, variables) => {
+    onSettled: async () => {
       await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+        queryKey: databaseRootQueryKey(),
       });
     },
   });

@@ -92,16 +92,17 @@ test("database read route returns 404 and protects private databases", async () 
   assert.deepEqual(await privateResponse.json(), { error: "Unauthorized" });
 });
 
-test("database read route serves published and schema-only payloads", async () => {
+test("legacy database read route always serves schema-only payloads", async () => {
   mocks.published.mockResolvedValue(true);
   const published = await databaseReadRoutes.request("/database-1");
   assert.equal(published.status, 200);
   assert.equal((await responseJson<{ database: { accessLevel: null } }>(published)).database.accessLevel, null);
 
-  const response = await sessionApp().request("/database-1?schemaOnly=1");
+  const response = await sessionApp().request("/database-1");
   assert.equal(response.status, 200);
   assert.equal((await responseJson<{ database: { accessLevel: string } }>(response)).database.accessLevel, "full");
-  assert.equal(mocks.schemaPayload.mock.calls.length, 1);
+  assert.equal(mocks.schemaPayload.mock.calls.length, 2);
+  assert.equal(mocks.payload.mock.calls.length, 0);
 });
 
 test("database export route performs an explicit complete source read", async () => {

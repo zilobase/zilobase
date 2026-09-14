@@ -16,10 +16,7 @@ import {
 } from "../../shared/security/database-realtime-ticket";
 import { getDatabaseRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { getDatabaseRecord } from "./access/database-access";
-import {
-  getDatabasePayload,
-  getDatabaseSchemaPayload,
-} from "./core/payload";
+import { getDatabaseSchemaPayload } from "./core/payload";
 import type { AppBindings } from "../../shared/types";
 import { readJsonBody } from "../../shared/http/request";
 import {
@@ -223,7 +220,6 @@ databaseReadRoutes.get("/:id", resourceWorkspace, async (c) => {
     }
   }
 
-  const schemaOnly = c.req.query("schemaOnly") === "1";
   const payloadOptions = {
     includeDeleted,
     ...(c.req.query("viewId") ? { viewId: c.req.query("viewId") } : {}),
@@ -231,9 +227,12 @@ databaseReadRoutes.get("/:id", resourceWorkspace, async (c) => {
       ? { dataSourceId: c.req.query("dataSourceId") }
       : {}),
   };
-  const payload = schemaOnly
-    ? await getDatabaseSchemaPayload(record.id, user?.id, record, payloadOptions)
-    : await getDatabasePayload(record.id, user?.id, record, payloadOptions);
+  const payload = await getDatabaseSchemaPayload(
+    record.id,
+    user?.id,
+    record,
+    payloadOptions,
+  );
   const accessLevel = user
     ? record.deletedAt
       ? "none"

@@ -38,7 +38,6 @@ export {
 export {
   useAddDatabaseRow,
   useArchiveDatabaseRow,
-  useReorderDatabaseRows,
   useRestoreDatabaseRow,
   useMoveDatabaseRow,
   useUpdateDatabasePropertyValue,

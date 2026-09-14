@@ -15,7 +15,10 @@ import {
   useUpdateDataSource,
 } from "./mutation-hooks"
 import { databaseQueryKey } from "./queries"
-import { createTestDatabasePayload } from "./test-helpers"
+import {
+  createTestDatabasePayload,
+  setTestDatabaseClientState,
+} from "./test-helpers"
 
 const now = "2026-09-08T00:00:00.000Z"
 const host = {
@@ -117,6 +120,10 @@ test("database and data-source metadata hooks execute scoped v2 commands", async
     databaseQueryKey("database-1"),
     createTestDatabasePayload(),
   )
+  setTestDatabaseClientState(
+    sourceRuntime.queryClient,
+    createTestDatabasePayload(),
+  )
   try {
     await databaseRuntime.mutation.mutateAsync({
       databaseId: "database-1",
@@ -177,6 +184,7 @@ test("property hooks use source commands and translate positions to anchors", as
       databaseQueryKey("database-1"),
       createTestDatabasePayload(),
     )
+    setTestDatabaseClientState(runtime.queryClient, createTestDatabasePayload())
   }
   try {
     await add.mutation.mutateAsync({
@@ -225,6 +233,7 @@ test("stored template hooks share the structural source lane", async () => {
       databaseQueryKey("database-1"),
       createTestDatabasePayload(),
     )
+    setTestDatabaseClientState(runtime.queryClient, createTestDatabasePayload())
   }
   try {
     await create.mutation.mutateAsync({

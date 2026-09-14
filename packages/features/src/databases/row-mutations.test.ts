@@ -11,10 +11,12 @@ import {
   getDatabaseRowMoveAnchors,
   useAddDatabaseRow,
   useMoveDatabaseRow,
-  useReorderDatabaseRows,
   useUpdateDatabasePropertyValue,
 } from "./mutation-hooks";
-import { createTestDatabasePayload } from "./test-helpers";
+import {
+  createTestDatabasePayload,
+  setTestDatabaseClientState,
+} from "./test-helpers";
 
 const record: DatabaseRecordEntity = {
   createdAt: "2026-09-08T00:00:00.000Z",
@@ -62,13 +64,11 @@ function commandApi(
   };
 }
 
-for (const operation of ["reorder", "move", "value"] as const) {
+for (const operation of ["move", "value"] as const) {
   test(`${operation} sends an optimistic v2 command without payload snapshots`, async () => {
     const original = createTestDatabasePayload();
     const sent: DatabaseCommandRequest[] = [];
-    const useHook = operation === "reorder"
-      ? useReorderDatabaseRows
-      : operation === "move"
+    const useHook = operation === "move"
         ? useMoveDatabaseRow
         : useUpdateDatabasePropertyValue;
     const { mutation, queryClient } = createMutationTestRuntime<
@@ -82,6 +82,7 @@ for (const operation of ["reorder", "move", "value"] as const) {
       assert.equal(queryClient.getQueryData(databaseQueryKey("database-1")), original);
     }));
     queryClient.setQueryData(databaseQueryKey("database-1"), original);
+    setTestDatabaseClientState(queryClient, original);
     try {
       const anchors = getDatabaseRowMoveAnchors(["row-2", "row-1"], "row-1");
       const mutateAsync = mutation.mutateAsync as unknown as (
@@ -121,6 +122,7 @@ test("adding a row sends initial values atomically and returns the created recor
     commandApi((request) => { sent.push(request); }),
   );
   queryClient.setQueryData(databaseQueryKey("database-1"), original);
+  setTestDatabaseClientState(queryClient, original);
   try {
     const result = await mutation.mutateAsync({
       databaseId: "data-source-1",
@@ -172,6 +174,7 @@ test("rapid row moves accept optimistic overlays before the ordering lane settle
     apiFetch,
   );
   queryClient.setQueryData(databaseQueryKey("database-1"), original);
+  setTestDatabaseClientState(queryClient, original);
   const accepted: string[] = [];
 
   try {

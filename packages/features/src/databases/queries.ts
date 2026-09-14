@@ -70,21 +70,20 @@ export const databaseQueryKey = (
   options?: {
     dataSourceId?: string
     includeDeleted?: boolean
-    schemaOnly?: boolean
     viewId?: string
   },
 ) =>
   [
     "database",
     databaseId ?? "none",
-    options?.schemaOnly ? "schema" : "full",
+    "schema",
     options?.includeDeleted ? "include-deleted" : "active-only",
     options?.viewId ?? options?.dataSourceId ?? "primary-source",
   ] as const
 
 export const databaseRootQueryKey = () => ["database"] as const
 
-export const databasePayloadRootQueryKey = (
+export const databaseQueryRootKey = (
   databaseId: string | null | undefined,
 ) => ["database", databaseId ?? "none"] as const
 
@@ -125,7 +124,6 @@ export const databaseQueryOptions = (
   options?: {
     dataSourceId?: string
     includeDeleted?: boolean
-    schemaOnly?: boolean
     viewId?: string
   },
 ) =>
@@ -138,10 +136,6 @@ export const databaseQueryOptions = (
       }
 
       const params = new URLSearchParams()
-
-      if (options?.schemaOnly) {
-        params.set("schemaOnly", "1")
-      }
 
       if (options?.includeDeleted) {
         params.set("includeDeleted", "1")

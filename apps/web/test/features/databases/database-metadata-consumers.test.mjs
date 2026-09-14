@@ -1,5 +1,5 @@
 export function register({ assert, readSource, readWorkspace, test }) {
-  test("database metadata facade prefers bootstrap collections and keeps public reads schema-only", async () => {
+  test("database metadata facade uses bootstrap for authenticated and public reads", async () => {
     const hook = await readSource(
       "/src/features/databases/hooks/use-database-metadata.ts",
     )
@@ -7,10 +7,11 @@ export function register({ assert, readSource, readWorkspace, test }) {
       "/packages/features/src/databases/client/bootstrap-hooks.ts",
     )
 
-    assert.match(hook, /useOptionalDatabaseClient/)
     assert.match(hook, /useDatabaseBootstrap/)
-    assert.match(hook, /schemaOnly: true/)
+    assert.doesNotMatch(hook, /\buseDatabase\(/)
     assert.match(bootstrapHook, /useOptionalDatabaseClient/)
+    assert.match(bootstrapHook, /databaseBootstrapQueryOptions/)
+    assert.match(bootstrapHook, /useQuery/)
   })
 
   test("metadata-only application consumers no longer request database payloads", async () => {

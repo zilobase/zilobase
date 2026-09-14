@@ -11,7 +11,6 @@ import {
   applyDatabaseMutationToPageProperties,
   recoverPagePropertiesIfBehind,
 } from "../pages/database-realtime-cache"
-import { applyVersionedDatabaseMutation } from "./mutation-cache"
 import type { DatabaseMutationResponse } from "./mutation-types"
 import {
   databaseMutationEventV2Schema,
@@ -22,9 +21,7 @@ import {
 } from "./client/provider"
 import type { DatabaseClient } from "./client/database-client"
 import {
-  databasePayloadRootQueryKey,
-  databaseQueryKey,
-  type DatabasePayload,
+  databaseRootQueryKey,
 } from "./queries"
 
 export type DatabasePresence = {
@@ -141,9 +138,12 @@ export function applyDatabaseRealtimeMutation(
   queryClient: QueryClient,
   event: DatabaseMutationEvent,
 ) {
-  const result = applyVersionedDatabaseMutation(queryClient, event)
   applyDatabaseMutationToPageProperties(queryClient, event)
-  return result
+  void Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["database-client-v2"] }),
+    queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
+  ])
+  return { gapDetected: true }
 }
 
 export function createCellPresenceByKey(
@@ -304,6 +304,9 @@ class DatabaseRealtimeManager {
           void this.databaseClient.ingest(message).catch(() => undefined)
         }
       } else {
+        if (this.databaseClient) {
+          void this.databaseClient.catchUp(this.databaseId).catch(() => undefined)
+        }
         applyDatabaseRealtimeMutation(this.queryClient, message)
       }
       return
@@ -404,13 +407,9 @@ class DatabaseRealtimeManager {
     if (this.databaseClient) {
       void this.databaseClient.catchUp(this.databaseId).catch(() => undefined)
     }
-    const payload = this.queryClient.getQueryData<DatabasePayload | null>(
-      databaseQueryKey(this.databaseId),
-    )
-
-    if (!payload || (payload.database.version ?? 0) < serverVersion) {
+    if (!this.databaseClient) {
       void this.queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(this.databaseId),
+        queryKey: databaseRootQueryKey(),
       })
     }
 

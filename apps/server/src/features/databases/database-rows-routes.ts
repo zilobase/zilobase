@@ -7,7 +7,6 @@ import { readAuthenticatedJson } from "../../shared/http/auth";
 import { mutationResponse } from "./core/commit";
 import { createDatabaseRowService } from "./rows/service";
 import { setDatabaseCellValueService } from "./properties/cell-service";
-import { moveDatabaseRowService, reorderDatabaseRowsService } from "./rows/position-service";
 import { requireDatabaseRouteUser as requireUser } from "./route-support";
 
 export const databaseRowRoutes = new Hono<AppBindings>();
@@ -87,59 +86,6 @@ databaseRowRoutes.post("/:id/rows", resourceWorkspace, async (c) => {
       },
       201,
     );
-});
-
-databaseRowRoutes.patch("/:id/rows/reorder", resourceWorkspace, async (c) => {
-  const request = await readAuthenticatedJson(c);
-  if (!request.ok) return request.response;
-  const { user, body } = request;
-  const { rowIds } = body as { rowIds?: unknown };
-  if (
-    !Array.isArray(rowIds) ||
-    rowIds.some((rowId) => typeof rowId !== "string")
-  ) {
-    return c.json({ error: "rowIds must be an array of strings" }, 400);
-  }
-  const result = await reorderDatabaseRowsService({
-    databaseId: c.req.param("id"),
-    env: c.env,
-    rowIds: rowIds as string[],
-    userId: user.id,
-  });
-  return c.json(mutationResponse(result.commit));
-});
-
-databaseRowRoutes.patch("/:id/rows/:rowId/move", resourceWorkspace, async (c) => {
-  const request = await readAuthenticatedJson(c);
-  if (!request.ok) return request.response;
-  const { user, body } = request;
-  const {
-    groupPropertyId,
-    groupValue = null,
-    rowIds,
-  } = body as {
-    groupPropertyId?: unknown;
-    groupValue?: unknown;
-    rowIds?: unknown;
-  };
-  if (
-    !Array.isArray(rowIds) ||
-    rowIds.some((rowId) => typeof rowId !== "string") ||
-    (groupPropertyId !== undefined && typeof groupPropertyId !== "string")
-  ) {
-    return c.json({ error: "Invalid row move input" }, 400);
-  }
-  const result = await moveDatabaseRowService({
-    databaseId: c.req.param("id"),
-    env: c.env,
-    origin: c.get("authMethod") === "apiKey" ? "api" : "user",
-    groupPropertyId: groupPropertyId as string | undefined,
-    groupValue,
-    rowId: c.req.param("rowId"),
-    rowIds: rowIds as string[],
-    userId: user.id,
-  });
-  return c.json(mutationResponse(result.commit));
 });
 
 databaseRowRoutes.put("/:id/rows/:rowId/properties/:propertyId", resourceWorkspace, async (c) => {

@@ -7,7 +7,7 @@ import {
   type RefObject,
 } from "react"
 import { toast } from "sonner"
-import { getDatabaseRowMoveAnchors, useMoveDatabaseRow, useReorderDatabaseRows } from "@zilobase/features/databases/react";
+import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
 
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
 import {
@@ -70,7 +70,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
     useState<TimelineRowMove | null>(null)
   const overlayRef = useRef<HTMLDivElement | null>(null)
   const { mutate: moveDatabaseRow } = useMoveDatabaseRow()
-  const { mutate: reorderDatabaseRows } = useReorderDatabaseRows()
+  const { mutate: reorderDatabaseRows } = useMoveDatabaseRow()
 
   const groupSectionByRowId = useMemo(
     () => indexTimelineGroupSections(input.groupedSections),

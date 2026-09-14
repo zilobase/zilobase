@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react"
 import { toast } from "sonner"
-import { getDatabaseRowMoveAnchors, useMoveDatabaseRow, useReorderDatabaseRows } from "@zilobase/features/databases/react";
+import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
 import { useUpdatePage } from "@zilobase/features/pages/react";
 
 import { serializePropertyValue } from "../../../properties/property-values"
@@ -130,7 +130,7 @@ export function useDatabaseKanbanCardDrag<
     useState<KanbanCardMove | null>(null)
   const [droppedRows, setDroppedRows] = useState<Map<string, Row[]> | null>(null)
   const moveRow = useMoveDatabaseRow()
-  const reorderRows = useReorderDatabaseRows()
+  const reorderRows = useMoveDatabaseRow()
   const updatePage = useUpdatePage()
   inputRef.current = input
 

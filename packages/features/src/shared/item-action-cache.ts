@@ -2,7 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import type { ApiFetcher } from "./api-fetcher";
 import {
-  databasePayloadRootQueryKey,
+  databaseQueryRootKey,
   databaseQueryKey,
 } from "../databases/queries";
 import { applyPageFavoriteToNav } from "../pages/nav-delta";
@@ -127,7 +127,7 @@ export async function invalidateRestoredItems({
       : Promise.resolve(),
     ...result.restoredDatabaseIds.map((databaseId) =>
       queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(databaseId),
+        queryKey: databaseQueryRootKey(databaseId),
       }),
     ),
     ...result.restoredPageIds.map((pageId) =>

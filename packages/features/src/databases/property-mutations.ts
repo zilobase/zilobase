@@ -1,15 +1,12 @@
 import { useMutation, type QueryClient } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
-import { getDataSourcePayloadQueryEntries, setDataSourcePayloadQueryData } from "./query-cache";
 import { type DatabasePayload } from "./queries";
 import { type DatabaseMutationResponse } from "./mutation-types";
-import { shouldClearValuesForPropertyTypeChange } from "./property-types";
 import { pagesNavRootQueryKey } from "../pages/queries";
-import { commitDatabaseMutation } from "./mutation-cache-policy";
 import { useDatabaseClient } from "./client/provider";
 import {
-  findDataSourcePayload,
-  invalidateLegacyDataSourcePayloads,
+  findDataSourceBootstrap,
+  invalidateDataSourceCollections,
   resolveDataSourceCommandScope,
 } from "./client/command-scope";
 import type { DatabasePropertyEntity } from "./contracts-v2";
@@ -63,73 +60,6 @@ type DuplicatePropertyInput = {
   includeValues?: boolean;
 };
 
-export function updateDatabasePropertyInPayload(
-  payload: DatabasePayload | null | undefined,
-  input: UpdatePropertyInput,
-) {
-  if (!payload) {
-    return payload;
-  }
-
-  const now = new Date().toISOString();
-  const previousProperty = payload.properties.find(
-    (databaseProperty) => databaseProperty.id === input.databasePropertyId,
-  );
-  const previousType = previousProperty?.property.type;
-  const pagePropertyId = previousProperty?.property.id;
-  const properties = payload.properties.map((databaseProperty) =>
-    databaseProperty.id === input.databasePropertyId
-      ? {
-          ...databaseProperty,
-          ...(input.visible !== undefined ? { visible: input.visible } : {}),
-          ...(input.width !== undefined ? { width: input.width } : {}),
-          updatedAt: now,
-          property: {
-            ...databaseProperty.property,
-            ...(input.config !== undefined ? { config: input.config } : {}),
-            ...(input.name !== undefined ? { name: input.name } : {}),
-            ...(input.type !== undefined ? { type: input.type } : {}),
-            updatedAt: now,
-          },
-        }
-      : databaseProperty,
-  );
-  const shouldUpdateValues = Boolean(
-    input.type &&
-    previousType &&
-    input.type !== previousType &&
-    (shouldClearValuesForPropertyTypeChange(previousType, input.type) ||
-      (previousType === "date" && input.type === "text")),
-  );
-  const values = shouldUpdateValues
-    ? payload.values.map((propertyValue) =>
-        propertyValue.propertyId === pagePropertyId
-          ? {
-              ...propertyValue,
-              updatedAt: now,
-              value: shouldClearValuesForPropertyTypeChange(
-                previousType!,
-                input.type!,
-              )
-                ? null
-                : formatDatePropertyValueAsText(propertyValue.value),
-            }
-          : propertyValue,
-      )
-    : payload.values;
-
-  return { ...payload, properties, values };
-}
-
-function formatDatePropertyValueAsText(value: unknown) {
-  const [start, end] = datePropertyBounds(value);
-
-  const startText = typeof start === "string" ? start.trim() : "";
-  const endText = typeof end === "string" ? end.trim() : "";
-
-  return startText && endText ? `${startText} - ${endText}` : startText || null;
-}
-
 export function useAddDatabaseProperty() {
   const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
@@ -165,7 +95,7 @@ export function useAddDatabaseProperty() {
       }).promise;
     },
     onSettled: async (_result, _error, variables) => {
-      await invalidateLegacyDataSourcePayloads(queryClient, variables.databaseId);
+      await invalidateDataSourceCollections(queryClient, variables.databaseId);
     },
   });
 }
@@ -182,26 +112,13 @@ export function useApplyDatabaseTemplate() {
           method: "POST",
         },
       );
-      const current = getDataSourcePayloadQueryEntries(
-        queryClient,
-        databaseId,
-      ).find(([, cached]) => cached)?.[1];
-      const nextPayload: DatabasePayload = {
-        ...payload,
-        database: {
-          ...payload.database,
-          accessLevel:
-            payload.database.accessLevel ?? current?.database.accessLevel,
-        },
-      };
-
-      setDataSourcePayloadQueryData(queryClient, databaseId, nextPayload);
+      await invalidateDataSourceCollections(queryClient, databaseId);
 
       await queryClient.invalidateQueries({
-        queryKey: pagesNavRootQueryKey(nextPayload.database.workspaceId),
+        queryKey: pagesNavRootQueryKey(payload.database.workspaceId),
       });
 
-      return nextPayload;
+      return payload;
     },
   });
 }
@@ -232,7 +149,7 @@ export function useUpdateDatabaseProperty() {
       }).promise;
     },
     onSettled: async (_result, _error, variables) => {
-      await invalidateLegacyDataSourcePayloads(queryClient, variables.databaseId);
+      await invalidateDataSourceCollections(queryClient, variables.databaseId);
     },
   });
 }
@@ -261,7 +178,7 @@ export function useDeleteDatabaseProperty() {
       }).promise;
     },
     onSettled: async (_result, _error, variables) => {
-      await invalidateLegacyDataSourcePayloads(queryClient, variables.databaseId);
+      await invalidateDataSourceCollections(queryClient, variables.databaseId);
     },
   });
 }
@@ -283,18 +200,12 @@ export function useDuplicateDatabaseProperty() {
         },
       );
 
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return response;
+    },
+    onSettled: async (_result, _error, variables) => {
+      await invalidateDataSourceCollections(queryClient, variables.databaseId);
     },
   });
-}
-
-function datePropertyBounds(value: unknown): [unknown, unknown] {
-  if (Array.isArray(value)) return [value[0], value[1]];
-  if (value && typeof value === "object") {
-    const date = value as { date?: unknown; start?: unknown; end?: unknown };
-    return [date.start ?? date.date, date.end];
-  }
-  return [value, undefined];
 }
 
 function resolvePropertyCreateAnchors(
@@ -302,7 +213,8 @@ function resolvePropertyCreateAnchors(
   dataSourceId: string,
   requestedPosition?: number,
 ) {
-  const ids = (findDataSourcePayload(queryClient, dataSourceId)?.properties ?? [])
+  const ids = (findDataSourceBootstrap(queryClient, dataSourceId)?.properties ?? [])
+    .filter((property) => property.dataSourceId === dataSourceId)
     .slice()
     .sort((left, right) => left.position - right.position)
     .map(({ id }) => id);

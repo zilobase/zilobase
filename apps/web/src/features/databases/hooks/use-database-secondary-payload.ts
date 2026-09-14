@@ -1,10 +1,6 @@
 import { useEffect, useMemo } from "react"
 
-import { useOptionalDatabaseClient } from "@zilobase/features/databases"
-import {
-  useDatabase,
-  useDatabaseRecords,
-} from "@zilobase/features/databases/react"
+import { useDatabaseRecords } from "@zilobase/features/databases/react"
 
 import { composeDatabaseControllerPayload } from "../views/model/database-controller-state"
 import { useDatabaseMetadata } from "./use-database-metadata"
@@ -17,8 +13,6 @@ export function useDatabaseSecondaryPayload(
     loadAll?: boolean
   },
 ) {
-  const databaseClient = useOptionalDatabaseClient()
-  const useCollections = Boolean(databaseClient)
   const metadata = useDatabaseMetadata(databaseId, {
     includeDeleted: options?.includeDeleted,
   })
@@ -27,7 +21,7 @@ export function useDatabaseSecondaryPayload(
     (candidate) => candidate.dataSourceId === activeDataSourceId,
   ) ?? null
   const records = useDatabaseRecords(
-    (options?.enabled ?? true) && useCollections && databaseId && activeDataSourceId && view
+    (options?.enabled ?? true) && databaseId && activeDataSourceId && view
       ? {
           databaseId,
           dataSourceId: activeDataSourceId,
@@ -36,14 +30,6 @@ export function useDatabaseSecondaryPayload(
         }
       : null,
   )
-  const legacy = useDatabase(
-    !useCollections && (options?.enabled ?? true) ? databaseId : null,
-    {
-      includeDeleted: options?.includeDeleted,
-      schemaOnly: false,
-    },
-  )
-
   useEffect(() => {
     if (
       !options?.loadAll ||
@@ -67,7 +53,6 @@ export function useDatabaseSecondaryPayload(
 
   const data = useMemo(() => {
     if (options?.enabled === false) return undefined
-    if (!useCollections) return legacy.data
     if (!metadata.data || !activeDataSourceId || !view) return undefined
     if (records.status !== "success") return undefined
 
@@ -80,14 +65,12 @@ export function useDatabaseSecondaryPayload(
     })
   }, [
     activeDataSourceId,
-    legacy.data,
     metadata.data,
     options?.enabled,
     records.hasMore,
     records.records,
     records.status,
     records.totalCount,
-    useCollections,
     view,
   ])
 
@@ -96,15 +79,11 @@ export function useDatabaseSecondaryPayload(
 
   return {
     data,
-    error: useCollections ? metadata.error ?? records.error : legacy.error,
+    error: metadata.error ?? records.error,
     fetchNextPage: records.fetchNextPage,
-    hasMore: useCollections ? records.hasMore : false,
-    isComplete: useCollections
-      ? enabled && records.status === "success" && !records.hasMore
-      : enabled && !legacy.isLoading,
+    hasMore: records.hasMore,
+    isComplete: enabled && records.status === "success" && !records.hasMore,
     isFetchingNextPage: records.isFetchingNextPage,
-    isLoading: useCollections
-      ? enabled && (metadata.isLoading || records.status === "loading" || loadingAll)
-      : enabled && legacy.isLoading,
+    isLoading: enabled && (metadata.isLoading || records.status === "loading" || loadingAll),
   }
 }

@@ -35,7 +35,7 @@ const mutation = (version: number, value: unknown) => ({
   version,
 })
 
-test("realtime applies exactly the next database version", () => {
+test("v1 realtime invalidates database reads instead of applying partial deltas", () => {
   const queryClient = new QueryClient()
   const key = databaseQueryKey("database-1")
   const initial = createTestDatabasePayload()
@@ -48,12 +48,13 @@ test("realtime applies exactly the next database version", () => {
   )
   const payload = queryClient.getQueryData<ReturnType<typeof createTestDatabasePayload>>(key)
 
-  assert.equal(result.gapDetected, false)
-  assert.equal(payload?.database.version, 4)
-  assert.equal(payload?.values[0]?.value, "Done")
+  assert.equal(result.gapDetected, true)
+  assert.equal(payload?.database.version, 3)
+  assert.equal(payload?.values[0]?.value, "Not started")
+  assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
 })
 
-test("realtime ignores duplicates and invalidates on a version gap", () => {
+test("v1 realtime invalidates on duplicate and gapped versions alike", () => {
   const queryClient = new QueryClient()
   const key = databaseQueryKey("database-1")
   const initial = createTestDatabasePayload()
