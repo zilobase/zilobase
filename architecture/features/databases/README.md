@@ -28,7 +28,7 @@ A database is page-backed; data sources, rows, views and property values are sep
 
 ## Side effects, failures and recovery
 
-Row/property changes can update realtime outboxes, automations and page navigation. Preserve mutation origin and transaction ordering. Database realtime revisions and cache reconciliation prevent stale UI after writes.
+Row/property changes can update realtime outboxes, automations and page navigation. The common [database commit helper](../../../apps/server/src/features/databases/core/commit.ts) now gives internal writers a shared server-generated command ID and atomically stores a v2 journal event beside each v1 compatibility outbox entry. Partial legacy deltas become scoped reset events so downstream v2 consumers never ingest partial entities. Preserve mutation origin and transaction ordering. Database realtime revisions and cache reconciliation prevent stale UI after writes.
 
 ## Focused guides
 

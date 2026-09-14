@@ -23,17 +23,27 @@ import {
   DatabaseMutationError,
   mutationResponse,
 } from "./commit";
+import {
+  databaseMutationEvent,
+  databaseRealtimeOutbox,
+} from "../../../infrastructure/database/schema";
 
 function transactionExecutor(versions: Array<number | null>) {
   let insertCalls = 0;
+  const journal: unknown[] = [];
   const outbox: unknown[] = [];
   let updateCalls = 0;
   const tx = {
-    insert() {
+    insert(table: unknown) {
       return {
         async values(value: unknown) {
           insertCalls += 1;
-          outbox.push(...(Array.isArray(value) ? value : [value]));
+          const target = table === databaseRealtimeOutbox
+            ? outbox
+            : table === databaseMutationEvent
+              ? journal
+              : [];
+          target.push(...(Array.isArray(value) ? value : [value]));
         },
       };
     },
@@ -61,6 +71,7 @@ function transactionExecutor(versions: Array<number | null>) {
   mocks.transaction.mockImplementation(async (callback) => callback(tx));
   return {
     get insertCalls() { return insertCalls; },
+    journal,
     outbox,
     tx,
     get updateCalls() { return updateCalls; },
@@ -121,8 +132,9 @@ test("commitDatabaseMutationBatch versions, bulk persists, and publishes each mu
     ],
   );
   assert.equal(transaction.updateCalls, 2);
-  assert.equal(transaction.insertCalls, 1);
+  assert.equal(transaction.insertCalls, 2);
   assert.equal(transaction.outbox.length, 2);
+  assert.equal(transaction.journal.length, 2);
   assert.ok(
     (transaction.outbox[0] as { committedAt: unknown }).committedAt instanceof Date,
   );
@@ -157,9 +169,13 @@ test("same-database batches reserve contiguous versions with one update", async 
 
   assert.deepEqual(result.commits.map(({ version }) => version), [10, 11, 12]);
   assert.equal(transaction.updateCalls, 1);
-  assert.equal(transaction.insertCalls, 1);
+  assert.equal(transaction.insertCalls, 2);
   assert.deepEqual(
     transaction.outbox.map((row) => (row as { version: number }).version),
+    [10, 11, 12],
+  );
+  assert.deepEqual(
+    transaction.journal.map((row) => (row as { version: number }).version),
     [10, 11, 12],
   );
 });

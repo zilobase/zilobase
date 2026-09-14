@@ -7,6 +7,7 @@ import {
   dataSource,
   database,
   databaseDataSource,
+  databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
 import {
@@ -27,6 +28,7 @@ import {
 } from "../automations/triggers/event-capture";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
+import { buildLegacyDatabaseChangeset } from "./legacy-changeset";
 
 export class DatabaseMutationError extends Error {
   constructor(
@@ -54,6 +56,7 @@ type CommitOptions = {
 
 type BatchMutation = {
   changed: DatabaseChangedArea[];
+  dataSourceId?: string | null;
   databaseId: string;
   delta: DatabaseDelta;
 };
@@ -220,6 +223,29 @@ export async function commitDatabaseMutationBatch<T>(
 
     if (outboxRows.length > 0) {
       await tx.insert(databaseRealtimeOutbox).values(outboxRows);
+      const commandId = commits[0]!.mutationId;
+      await tx.insert(databaseMutationEvent).values(
+        commits.map((commit, index) => {
+          const changeset = buildLegacyDatabaseChangeset({
+            changed: commit.changed,
+            delta: commit.delta,
+          });
+          const mutation = mutationResult.mutations[index]!;
+          return {
+            actorId: options.actorId,
+            areas: changeset.areas,
+            changes: changeset.changes,
+            commandId,
+            committedAt: new Date(committedAt),
+            databaseId: commit.databaseId,
+            dataSourceId: mutation.dataSourceId ?? null,
+            id: commit.mutationId,
+            protocolVersion: 2,
+            requiresReset: changeset.requiresReset === true || commit.requiresRefetch === true,
+            version: commit.version,
+          };
+        }),
+      );
     }
 
     const navigationEvent = options.navigationWorkspaceId
@@ -349,6 +375,7 @@ export async function commitDataSourceMutation(
         automationFacts: result.automationFacts,
         mutations: databaseIds.map((databaseId) => ({
           changed: options.changed,
+          dataSourceId: options.dataSourceId,
           databaseId,
           delta: result.delta,
         })),
@@ -421,6 +448,7 @@ export async function commitDataSourceMutationBatch<T>(
         containerMutations.push(
           ...databaseIds.map((databaseId) => ({
             changed: mutation.changed,
+            dataSourceId: mutation.dataSourceId,
             databaseId,
             delta: mutation.delta,
           })),
