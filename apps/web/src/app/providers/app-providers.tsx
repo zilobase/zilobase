@@ -21,6 +21,8 @@ import { DemoExperience, installDemoCache } from "@/features/demo"
 import { useNavigationRealtime } from "@zilobase/features/pages/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useSession } from "@zilobase/features/auth/react";
+import { DbProvider } from "@zilobase/features/databases";
+import { useZilobaseFeatures } from "@zilobase/features";
 
 import posthog from "@/shared/lib/posthog"
 
@@ -31,37 +33,54 @@ export function AppProviders({ children }: React.PropsWithChildren) {
     <AppIconProvider>
       <OfflineQueryProvider client={queryClient}>
         <WebFeaturesProvider>
-          <PostHogIdentitySync />
-          <NavigationRealtimeSync />
-          <ShortcutProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-              themes={selectableThemeIds}
-            >
-              <ThemeFamilyProvider>
-                <ThemeDocumentSync />
-                <DemoExperience>
-                  <TooltipProvider>
-                    <PageEditorRegistryProvider>
-                      <PageCommentsRegistryProvider>
-                        <PageEditorCommentsProvider>
-                          {children}
-                        </PageEditorCommentsProvider>
-                      </PageCommentsRegistryProvider>
-                    </PageEditorRegistryProvider>
-                    <DesktopUpdater />
-                    <Toaster />
-                  </TooltipProvider>
-                </DemoExperience>
-              </ThemeFamilyProvider>
-            </ThemeProvider>
-          </ShortcutProvider>
+          <SessionDatabaseProvider>
+            <PostHogIdentitySync />
+            <NavigationRealtimeSync />
+            <ShortcutProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="system"
+                enableSystem
+                disableTransitionOnChange
+                themes={selectableThemeIds}
+              >
+                <ThemeFamilyProvider>
+                  <ThemeDocumentSync />
+                  <DemoExperience>
+                    <TooltipProvider>
+                      <PageEditorRegistryProvider>
+                        <PageCommentsRegistryProvider>
+                          <PageEditorCommentsProvider>
+                            {children}
+                          </PageEditorCommentsProvider>
+                        </PageCommentsRegistryProvider>
+                      </PageEditorRegistryProvider>
+                      <DesktopUpdater />
+                      <Toaster />
+                    </TooltipProvider>
+                  </DemoExperience>
+                </ThemeFamilyProvider>
+              </ThemeProvider>
+            </ShortcutProvider>
+          </SessionDatabaseProvider>
         </WebFeaturesProvider>
       </OfflineQueryProvider>
     </AppIconProvider>
+  )
+}
+
+function SessionDatabaseProvider({ children }: React.PropsWithChildren) {
+  const { data: session } = useSession()
+  const { apiFetch } = useZilobaseFeatures()
+
+  return (
+    <DbProvider
+      apiFetch={apiFetch}
+      queryClient={queryClient}
+      sessionId={session?.session?.id ?? null}
+    >
+      {children}
+    </DbProvider>
   )
 }
 
