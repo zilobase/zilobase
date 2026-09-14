@@ -9,7 +9,10 @@ const mocks = vi.hoisted(() => ({
   encode: vi.fn(),
   fetchDelta: vi.fn(),
   incrementPlacements: vi.fn(),
+  orderLock: vi.fn(),
+  orderLocks: vi.fn(),
   placementPositions: vi.fn(),
+  rebalance: vi.fn(),
   rowPositions: vi.fn(),
   placement: vi.fn(),
   selectResults: [] as unknown[][],
@@ -43,6 +46,9 @@ vi.mock("../realtime/delta", () => ({
 }));
 vi.mock("../core/position-service", () => ({
   incrementDatabaseRowPlacementPositions: mocks.incrementPlacements,
+  lockDatabaseRowOrdering: mocks.orderLock,
+  lockDatabaseRowOrderingSources: mocks.orderLocks,
+  rebalanceDatabaseRowOrderKeys: mocks.rebalance,
   updateDatabaseRowPlacementPositions: mocks.placementPositions,
   updateDatabaseRowPositions: mocks.rowPositions,
 }));
@@ -97,8 +103,14 @@ beforeEach(() => {
   mocks.encode.mockReturnValue(new Uint8Array([1, 2, 3]));
   mocks.fetchDelta.mockReset();
   mocks.incrementPlacements.mockReset();
+  mocks.orderLock.mockReset();
+  mocks.orderLock.mockResolvedValue(undefined);
+  mocks.orderLocks.mockReset();
+  mocks.orderLocks.mockResolvedValue(undefined);
   mocks.placementPositions.mockReset();
   mocks.rowPositions.mockReset();
+  mocks.rebalance.mockReset();
+  mocks.rebalance.mockResolvedValue(undefined);
   mocks.placement.mockReset();
   mocks.sourceAccess.mockReset();
   mocks.sourceAccess.mockResolvedValue({
@@ -226,6 +238,7 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
     true,
   );
   assert.equal((inserts[2] as Record<string, unknown>).position, 1);
+  assert.equal((inserts[2] as Record<string, unknown>).orderKey, "1536");
   assert.equal(
     (inserts[2] as Record<string, unknown>).parentRowId,
     "parent-row",

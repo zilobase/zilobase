@@ -17,6 +17,7 @@ import {
 import { rowPositionDelta } from "../realtime/delta";
 import {
   hasDuplicateValues,
+  lockDatabaseRowOrdering,
   updateDatabaseRowPlacementPositions,
   updateDatabaseRowPositions,
 } from "../core/position-service";
@@ -61,6 +62,7 @@ export async function reorderDatabaseRowsService(input: {
       env: input.env,
     },
     async (tx) => {
+      await lockDatabaseRowOrdering(tx, existing.id);
       const rows = await tx
         .select({ id: databaseRow.id })
         .from(databaseRow)
@@ -118,6 +120,7 @@ export async function moveDatabaseRowService(input: {
       env: input.env,
     },
     async (tx) => {
+      await lockDatabaseRowOrdering(tx, existing.id);
       await lockDatabaseAutomationFactRows(tx, [
         { dataSourceId: existing.id, rowId: input.rowId },
       ]);
