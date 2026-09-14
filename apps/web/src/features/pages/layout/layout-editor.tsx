@@ -20,7 +20,8 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 import { Editor } from "@/features/editor"
-import { useDatabase, useDatabaseIdForRowPage } from "@zilobase/features/databases/react";
+import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
+import { useDatabaseIdForRowPage, useDatabaseRecords } from "@zilobase/features/databases/react";
 import {
   getPageCover,
   getPageEmoji,
@@ -88,13 +89,17 @@ export function LayoutEditorProvider({ children }: { children: ReactNode }) {
 
 function PreviewPageDropdown({
   currentPageId,
+  hasMore,
   loading,
+  onLoadMore,
   onSelect,
   pages,
   previewName,
 }: {
   currentPageId: string | null | undefined
+  hasMore?: boolean
   loading?: boolean
+  onLoadMore?: () => void
   onSelect: (pageId: string) => void
   pages: Array<{ id: string; name: string }>
   previewName: string
@@ -116,15 +121,22 @@ function PreviewPageDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="z-[110] w-72">
         {pages.length ? (
-          pages.map((page) => (
-            <DropdownMenuItem
-              key={page.id}
-              onSelect={() => onSelect(page.id)}
-            >
-              <span className="min-w-0 flex-1 truncate">{page.name}</span>
-              {page.id === currentPageId ? <Check className="ml-auto" /> : null}
-            </DropdownMenuItem>
-          ))
+          <>
+            {pages.map((page) => (
+              <DropdownMenuItem
+                key={page.id}
+                onSelect={() => onSelect(page.id)}
+              >
+                <span className="min-w-0 flex-1 truncate">{page.name}</span>
+                {page.id === currentPageId ? <Check className="ml-auto" /> : null}
+              </DropdownMenuItem>
+            ))}
+            {hasMore ? (
+              <DropdownMenuItem onSelect={onLoadMore}>
+                Load more pages
+              </DropdownMenuItem>
+            ) : null}
+          </>
         ) : loading ? (
           <DropdownMenuItem disabled>Loading pages...</DropdownMenuItem>
         ) : (
@@ -176,8 +188,23 @@ function LayoutEditor({
     resolved?.databaseId ??
     cachedRowDatabaseId ??
     navigationRowDatabaseId
-  const { data: databasePayload, isLoading: databaseLoading } =
-    useDatabase(databaseId)
+  const { data: databaseMetadata, isLoading: metadataLoading } =
+    useDatabaseMetadata(databaseId)
+  const previewView = databaseMetadata?.views.find(
+    (view) => view.dataSourceId === databaseMetadata.activeDataSource?.id,
+  ) ?? databaseMetadata?.views[0]
+  const databaseRecords = useDatabaseRecords(
+    databaseId && previewView
+      ? {
+          databaseId,
+          dataSourceId: previewView.dataSourceId,
+          viewId: previewView.id,
+        }
+      : null,
+  )
+  const databaseLoading = metadataLoading ||
+    databaseRecords.status === "loading" ||
+    databaseRecords.isFetchingNextPage
   const { data: userSettings = defaultUserSettings } = useUserSettings()
   const [draft, setDraft] = useState<PageLayoutConfig | null>(null)
   const [applyDialogOpen, setApplyDialogOpen] = useState(false)
@@ -202,19 +229,17 @@ function LayoutEditor({
   const previewCover = page ? getPageCover(page) : null
   const previewIconPosition = page ? getPageIconPosition(page) : "inline"
   const previewWorkspaceId =
-    page?.workspaceId ?? databasePayload?.database.workspaceId ?? null
+    page?.workspaceId ?? databaseMetadata?.database.workspaceId ?? null
   const fullWidth = resolvePageFullWidth(page, userSettings.pageFullWidth)
   const previewPages = useMemo(
     () =>
-      databasePayload?.rows
-        .filter((row) => !row.deletedAt && !row.page.deletedAt)
-        .slice()
-        .sort((first, second) => first.position - second.position)
+      databaseRecords.records
+        .filter((row) => !row.page.deletedAt)
         .map((row) => ({
           id: row.pageId,
           name: row.page.name.trim() || "Untitled",
-        })) ?? [],
-    [databasePayload?.rows],
+        })),
+    [databaseRecords.records],
   )
   const resolvedConfig = useMemo(
     () =>
@@ -289,9 +314,11 @@ function LayoutEditor({
           <SidebarSimpleIcon className="size-4 text-content-secondary" />
           <PreviewPageDropdown
             currentPageId={effectivePreviewPageId}
+            hasMore={databaseRecords.hasMore}
             loading={
               navigationLoading || (Boolean(databaseId) && databaseLoading)
             }
+            onLoadMore={() => void databaseRecords.fetchNextPage()}
             onSelect={setPreviewPageId}
             pages={previewPages}
             previewName={previewName}

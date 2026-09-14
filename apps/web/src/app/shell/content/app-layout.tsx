@@ -51,8 +51,8 @@ import {
   useSidebar,
 } from "@/shared/ui/sidebar"
 import { isEmbeddedMobileViewer } from "@/features/pages/pane/embedded-view"
+import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
 import { getDatabaseEmoji } from "@zilobase/features/databases";
-import { useDatabase } from "@zilobase/features/databases/react";
 import { getPageEmoji } from "@zilobase/features/pages";
 import { usePage, useRecordItemVisit } from "@zilobase/features/pages/react";
 import { defaultUserSettings } from "@zilobase/features/user-settings";
@@ -258,7 +258,7 @@ function AppLayoutContent({
     : null
   const agentWorkspaceSidePaneOpen = agentWorkspacePanel === "settings"
   const activeWorkspaceId = useActiveWorkspaceId()
-  const { data: databasePayload } = useDatabase(databaseId, {
+  const { data: databasePayload } = useDatabaseMetadata(databaseId, {
     includeDeleted: true,
   })
   const hostPageId = pageId ?? databasePayload?.database.pageId ?? null

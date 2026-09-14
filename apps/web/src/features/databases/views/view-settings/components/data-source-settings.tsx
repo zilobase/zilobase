@@ -21,7 +21,7 @@ import {
   DropDrawerSubTrigger,
 } from "@/shared/ui/dropdrawer";
 import { Input } from "@/shared/ui/input";
-import { useDatabase } from "@zilobase/features/databases/react";
+import { useDatabaseMetadata } from "../../../hooks/use-database-metadata"
 import { type PageDatabase } from "@zilobase/features/pages";
 import { usePageNavigation } from "@zilobase/features/pages/react";
 import { DEFAULT_DATABASE_ITEM_ICON } from "@/features/pages/index";
@@ -94,7 +94,7 @@ function LinkExistingDataSourcePicker({
   const [creatingView, setCreatingView] = useState(false);
   const [viewName, setViewName] = useState("");
   const { data: databasePayload, isLoading } =
-    useDatabase(selectedDatabaseId);
+    useDatabaseMetadata(selectedDatabaseId);
   const selectedDatabase = selectedDatabaseId
     ? databaseOptions.find((option) => option.value === selectedDatabaseId)
     : null;

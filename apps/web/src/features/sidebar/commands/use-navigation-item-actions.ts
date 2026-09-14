@@ -21,7 +21,6 @@ import {
   getNavigationPendingState,
 } from "../model/navigation-item-state";
 import {
-  useDatabase,
   useDeleteDatabase,
   useSetDatabaseFavorite,
   useUpdateDatabase,
@@ -32,6 +31,7 @@ import {
 } from "@zilobase/features/user-settings/react";
 
 import { useLayoutEditor } from "@/features/pages/layout";
+import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
 
 import {
   getPrimaryPageParentId,
@@ -53,7 +53,7 @@ export function useNavigationItemActions({
   const { openLayoutEditor } = useLayoutEditor();
   const [isOpen, setIsOpen] = React.useState(false);
   const [trashConfirmOpen, setTrashConfirmOpen] = React.useState(false);
-  const { data: databasePayload } = useDatabase(databaseId, {
+  const { data: databasePayload } = useDatabaseMetadata(databaseId, {
     includeDeleted: true,
   });
   const workspaceId = useActiveWorkspaceId();

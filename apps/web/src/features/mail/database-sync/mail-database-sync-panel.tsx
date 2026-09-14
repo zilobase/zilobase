@@ -11,8 +11,8 @@ import {
   useAddDatabaseProperty,
   useCreateDatabase,
   useCreateDatabaseDataSource,
-  useDatabase,
 } from "@zilobase/features/databases/react";
+import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
 import { usePageNavigation } from "@zilobase/features/pages/react";
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -39,9 +39,8 @@ export function MailDatabaseSyncPanel({ config, onChange, properties, saving, vi
   const [draft, setDraft] = useState(config.databaseSync)
   useEffect(() => setDraft(config.databaseSync), [configKey])
   const navigation = usePageNavigation(workspaceId)
-  const selectedDatabase = useDatabase(draft.destinationDatabaseId, {
+  const selectedDatabase = useDatabaseMetadata(draft.destinationDatabaseId, {
     dataSourceId: draft.destinationDataSourceId ?? undefined,
-    schemaOnly: true,
   })
   const createDatabase = useCreateDatabase()
   const createDataSource = useCreateDatabaseDataSource()
@@ -163,7 +162,7 @@ export function MailDatabaseSyncPanel({ config, onChange, properties, saving, vi
 }
 
 function MappingRow({ destinationProperties, mapping, onChange, onCreate, onRemove, sources, working }: {
-  destinationProperties: NonNullable<ReturnType<typeof useDatabase>["data"]>["properties"]
+  destinationProperties: NonNullable<ReturnType<typeof useDatabaseMetadata>["data"]>["properties"]
   mapping: MailDatabaseFieldMapping
   onChange: (mapping: MailDatabaseFieldMapping) => void
   onCreate: () => void
@@ -188,7 +187,7 @@ function requiredTitleMapping(mappings: MailDatabaseFieldMapping[]) {
   return [{ sourcePropertyId: "subject", destinationPropertyId: "title" }, ...mappings.filter((mapping) => mapping.sourcePropertyId !== "subject" && mapping.destinationPropertyId !== "title")]
 }
 
-function nextMapping(existing: MailDatabaseFieldMapping[], sources: SourceProperty[], destinations: NonNullable<ReturnType<typeof useDatabase>["data"]>["properties"]): MailDatabaseFieldMapping {
+function nextMapping(existing: MailDatabaseFieldMapping[], sources: SourceProperty[], destinations: NonNullable<ReturnType<typeof useDatabaseMetadata>["data"]>["properties"]): MailDatabaseFieldMapping {
   const source = sources.find((item) => item.id !== "subject" && !existing.some((mapping) => mapping.sourcePropertyId === item.id))
   const destination = source ? destinations.find((property) => !existing.some((mapping) => mapping.destinationPropertyId === property.property.id) && mappingCompatible(source.type, property.property.type)) : null
   return { destinationPropertyId: destination?.property.id ?? "", sourcePropertyId: source?.id ?? "" }

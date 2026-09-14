@@ -38,6 +38,7 @@ import { libraryViewLabels, mailViewLabels } from "@/features/sidebar";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useAiAgentProfile } from "@zilobase/features/ai-chat/react";
 import { useDatabase } from "@zilobase/features/databases/react";
+import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
 import { useMeeting } from "@zilobase/features/meetings/react";
 import { useTeamspaces } from "@zilobase/features/teamspaces/react";
 import {
@@ -540,7 +541,7 @@ function MeetingBreadcrumb({ meetingId }: { meetingId: string }) {
 
 function DatabaseBreadcrumb({ databaseId }: { databaseId: string }) {
   const workspaceId = useActiveWorkspaceId();
-  const { data: payload } = useDatabase(databaseId, {
+  const { data: payload } = useDatabaseMetadata(databaseId, {
     includeDeleted: true,
   });
   const { data: navigation } = usePageNavigation(workspaceId);

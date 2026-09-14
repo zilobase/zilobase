@@ -23,8 +23,8 @@ import {
   useRevokePageGuest,
 } from "@zilobase/features/pages/react";
 import { useWorkspaceGuestPolicy } from "@zilobase/features/workspaces/react";
+import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
 import {
-  useDatabase,
   useDatabaseAccess,
   useDeleteDatabaseAccess,
   useSetDatabasePublished,
@@ -49,7 +49,7 @@ export function useItemSharing({
   const { data: page } = usePage(pageId);
   const { data: accessLevel } = usePageAccessLevel(pageId);
   const { data: accessPayload } = usePageAccess(pageId);
-  const { data: databasePayload } = useDatabase(databaseId);
+  const { data: databasePayload } = useDatabaseMetadata(databaseId);
   const { data: databaseAccessPayload } = useDatabaseAccess(databaseId);
   const { data: targets } = usePageAccessTargets(workspaceId);
   const { data: customAgents = [] } = useAiAgentProfiles();

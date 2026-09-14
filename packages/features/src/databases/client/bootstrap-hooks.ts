@@ -6,7 +6,7 @@ import type {
   DatabaseScope,
 } from "./database-client"
 import { SessionDatabaseClient } from "./database-client"
-import { useDatabaseClient } from "./provider"
+import { useOptionalDatabaseClient } from "./provider"
 
 export type DatabaseBootstrapHookState = Omit<
   DatabaseBootstrapState,
@@ -18,11 +18,10 @@ export type DatabaseBootstrapHookState = Omit<
 export function useDatabaseBootstrap(
   scope: DatabaseScope | null,
 ): DatabaseBootstrapHookState {
-  const facade = useDatabaseClient()
-  if (!(facade instanceof SessionDatabaseClient)) {
-    throw new Error("Unsupported database client implementation")
-  }
-  const collections = scope ? facade.getBootstrapCollections(scope) : null
+  const facade = useOptionalDatabaseClient()
+  const collections = scope && facade instanceof SessionDatabaseClient
+    ? facade.getBootstrapCollections(scope)
+    : null
   const databases = useLiveQuery(
     () => collections?.database,
     [collections?.database],
@@ -40,7 +39,7 @@ export function useDatabaseBootstrap(
     [collections?.views],
   )
 
-  if (!scope || !collections) {
+  if (!scope || !collections || !(facade instanceof SessionDatabaseClient)) {
     return { data: undefined, error: null, scope: null, status: "idle" }
   }
 
