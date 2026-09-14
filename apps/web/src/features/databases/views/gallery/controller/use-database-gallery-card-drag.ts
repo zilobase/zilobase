@@ -5,7 +5,7 @@ import {
   type DragEvent,
   type PointerEvent,
 } from "react"
-import { useReorderDatabaseRows } from "@zilobase/features/databases/react";
+import { getDatabaseRowMoveAnchors, useReorderDatabaseRows } from "@zilobase/features/databases/react";
 
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
 import {
@@ -39,6 +39,7 @@ type DatabaseGalleryCardDragInput = {
     groupProperty?: DatabasePropertyListItem | null,
   ) => void | Promise<void>
   databaseId: string | null | undefined
+  hostDatabaseId: string | null | undefined
   editable: boolean
   groupProperty: DatabasePropertyListItem | null
   groupedSections: GallerySection[]
@@ -194,7 +195,13 @@ export function useDatabaseGalleryCardDrag(
       )
 
       if (rowIds) {
-        reorderRows.mutate({ databaseId: input.databaseId, rowIds })
+        reorderRows.mutate({
+          databaseId: input.databaseId,
+          ...(input.hostDatabaseId
+            ? { hostDatabaseId: input.hostDatabaseId }
+            : {}),
+          ...getDatabaseRowMoveAnchors(rowIds, draggedRowId),
+        })
       }
       clearDrag()
     },

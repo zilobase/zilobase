@@ -18,7 +18,10 @@ import {
 } from "./add-row-cache";
 
 export type AddRowInput = {
+  afterRowId?: string | null;
+  beforeRowId?: string | null;
   databaseId: string;
+  hostDatabaseId?: string;
   optimisticValues?: Array<{
     propertyId: string;
     value: unknown;
@@ -27,6 +30,7 @@ export type AddRowInput = {
   parentRowId?: string | null;
   position?: number;
   sourceDataSourceId?: string;
+  sourceHostDatabaseId?: string;
   sourcePropertyMode?: "duplicate" | "match";
   sourceRowId?: string;
   title?: string;

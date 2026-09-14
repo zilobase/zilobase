@@ -7,7 +7,7 @@ import {
   type RefObject,
 } from "react"
 import { toast } from "sonner"
-import { useMoveDatabaseRow, useReorderDatabaseRows } from "@zilobase/features/databases/react";
+import { getDatabaseRowMoveAnchors, useMoveDatabaseRow, useReorderDatabaseRows } from "@zilobase/features/databases/react";
 
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
 import {
@@ -40,6 +40,7 @@ type TimelineRowDragInput = {
     groupProperty?: DatabasePropertyListItem | null,
   ) => void | Promise<void>
   databaseId: string | null | undefined
+  hostDatabaseId: string | null | undefined
   editable: boolean
   getDropTargetIndex: (clientY: number) => number
   groupProperty: DatabasePropertyListItem | null
@@ -93,20 +94,25 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
       if (move.groupPropertyId) {
         moveDatabaseRow({
           databaseId: input.databaseId,
+          ...(input.hostDatabaseId
+            ? { hostDatabaseId: input.hostDatabaseId }
+            : {}),
           groupPropertyId: move.groupPropertyId,
           groupValue: move.groupValue,
-          rowId: move.rowId,
-          rowIds: move.rowIds,
+          ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
         })
         return
       }
 
       reorderDatabaseRows({
         databaseId: input.databaseId,
-        rowIds: move.rowIds,
+        ...(input.hostDatabaseId
+          ? { hostDatabaseId: input.hostDatabaseId }
+          : {}),
+        ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
       })
     },
-    [input.databaseId, moveDatabaseRow, reorderDatabaseRows],
+    [input.databaseId, input.hostDatabaseId, moveDatabaseRow, reorderDatabaseRows],
   )
 
   const clearDrag = useCallback(() => {

@@ -31,10 +31,14 @@ export {
 } from "./property-mutations";
 export {
   useAddDatabaseRow,
+  useArchiveDatabaseRow,
   useReorderDatabaseRows,
+  useRestoreDatabaseRow,
   useMoveDatabaseRow,
   useUpdateDatabasePropertyValue,
+  getDatabaseRowMoveAnchors,
 } from "./row-mutations";
+export { useDatabaseEntityCommandState } from "./client/provider";
 export { useDatabase, useDatabaseAccess } from "./query-hooks";
 export { useDatabaseRealtime } from "./realtime";
 export { useDatabaseIdForRowPage } from "./use-database-id-for-row-page";

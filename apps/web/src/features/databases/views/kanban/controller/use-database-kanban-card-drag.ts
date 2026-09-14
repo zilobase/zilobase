@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react"
 import { toast } from "sonner"
-import { useMoveDatabaseRow, useReorderDatabaseRows } from "@zilobase/features/databases/react";
+import { getDatabaseRowMoveAnchors, useMoveDatabaseRow, useReorderDatabaseRows } from "@zilobase/features/databases/react";
 import { useUpdatePage } from "@zilobase/features/pages/react";
 
 import { serializePropertyValue } from "../../../properties/property-values"
@@ -81,6 +81,7 @@ type KanbanCardDragInput<
   ) => void | Promise<void>
   allRows: Row[]
   databaseId: string | null | undefined
+  hostDatabaseId: string | null | undefined
   editable: boolean
   getOptionItems: (option: Option) => Row[]
   groupProperty: DatabasePropertyListItem | null
@@ -218,7 +219,10 @@ export function useDatabaseKanbanCardDrag<
             onSuccess: () => {
               reorderRows.mutate({
                 databaseId,
-                rowIds: move.rowIds,
+                ...(input.hostDatabaseId
+                  ? { hostDatabaseId: input.hostDatabaseId }
+                  : {}),
+                ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
               }, { onSettled })
             },
           },
@@ -229,16 +233,24 @@ export function useDatabaseKanbanCardDrag<
       if (move.groupPropertyId) {
         moveRow.mutate({
           databaseId,
+          ...(input.hostDatabaseId
+            ? { hostDatabaseId: input.hostDatabaseId }
+            : {}),
           groupPropertyId: move.groupPropertyId,
           groupValue: move.groupValue,
-          rowId: move.rowId,
-          rowIds: move.rowIds,
+          ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
         }, { onSettled })
         return
       }
 
-      reorderRows.mutate({ databaseId, rowIds: move.rowIds }, { onSettled })
-    }, [input.databaseId, moveRow, reorderRows, updatePage],
+      reorderRows.mutate({
+        databaseId,
+        ...(input.hostDatabaseId
+          ? { hostDatabaseId: input.hostDatabaseId }
+          : {}),
+        ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
+      }, { onSettled })
+    }, [input.databaseId, input.hostDatabaseId, moveRow, reorderRows, updatePage],
   )
 
   const confirmSortedMove = useCallback(() => {

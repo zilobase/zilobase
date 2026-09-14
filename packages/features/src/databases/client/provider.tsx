@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useSyncExternalStore,
   type PropsWithChildren,
 } from "react"
 
@@ -12,6 +13,7 @@ import type { ApiFetcher } from "../../shared/api-fetcher"
 import {
   createDatabaseClient,
   type DatabaseClient,
+  type DatabaseCommandTarget,
 } from "./database-client"
 
 const DatabaseClientContext = createContext<DatabaseClient | null>(null)
@@ -66,4 +68,18 @@ export function useDatabaseClient() {
 
 export function useOptionalDatabaseClient() {
   return useContext(DatabaseClientContext)
+}
+
+export function useDatabaseEntityCommandState(target: DatabaseCommandTarget) {
+  const client = useDatabaseClient()
+  const stableTarget = useMemo(() => ({
+    dataSourceId: target.dataSourceId,
+    propertyId: target.propertyId,
+    rowId: target.rowId,
+  }), [target.dataSourceId, target.propertyId, target.rowId])
+  return useSyncExternalStore(
+    (listener) => client.subscribeCommandState(stableTarget, listener),
+    () => client.commandState(stableTarget),
+    () => client.commandState(stableTarget),
+  )
 }

@@ -68,7 +68,6 @@ import {
 } from "../views/form/model/database-form-share-config";
 
 import {
-  findAddedDatabaseRow,
   getDraggedRowGroupSetup,
   getNewRowGroupSetup,
   getTimelineGroupPropertyId,
@@ -161,7 +160,7 @@ export function getDatabaseViewCommands({
     addRow,
     databaseId,
     editable,
-    items,
+    hostDatabaseId: viewDatabaseId,
     payload,
     updateValue,
   });
@@ -426,11 +425,10 @@ export function getDatabaseViewCommands({
           propertyValue,
         ]),
       );
-      const existingItemIds = new Set(items.map((row) => row.id));
-
       addRow.mutate(
         {
           databaseId,
+          ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
           ...(groupValues.size > 0
             ? { optimisticValues: [...groupValues.values()] }
             : {}),
@@ -447,13 +445,7 @@ export function getDatabaseViewCommands({
           onError: () => {
             notify.error("Couldn't move this row to the database.");
           },
-          onSuccess: (nextPayload) => {
-            const addedItem = findAddedDatabaseRow(
-              nextPayload.rows,
-              existingItemIds,
-            );
-            if (!addedItem) return;
-
+          onSuccess: () => {
             if (groupSetup.pageTitle !== undefined) {
               updatePage.mutate(
                 { id: dragPayload.pageId, name: groupSetup.pageTitle },
@@ -464,15 +456,6 @@ export function getDatabaseViewCommands({
                     ),
                 },
               );
-            }
-
-            for (const propertyValue of groupValues.values()) {
-              updateValue.mutate({
-                databaseId,
-                propertyId: propertyValue.propertyId,
-                rowId: addedItem.id,
-                value: propertyValue.value,
-              });
             }
           },
         },
@@ -1188,6 +1171,7 @@ export function getDatabaseViewCommands({
 
       updateValue.mutate({
         databaseId,
+        ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
         propertyId,
         rowId,
         value: serializePropertyValue(propertyType, nextValue),
@@ -1284,6 +1268,7 @@ export function getDatabaseViewCommands({
       for (const update of trimUpdates) {
         updateValue.mutate({
           databaseId,
+          ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
           propertyId: update.propertyId,
           rowId: update.rowId,
           value: update.value,

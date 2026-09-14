@@ -38,7 +38,10 @@ export {
   updateDatabasePropertyValue,
   moveDatabaseRow,
   useAddDatabaseRow,
+  useArchiveDatabaseRow,
   useReorderDatabaseRows,
+  useRestoreDatabaseRow,
   useMoveDatabaseRow,
   useUpdateDatabasePropertyValue,
+  getDatabaseRowMoveAnchors,
 } from "./row-mutations";

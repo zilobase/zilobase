@@ -82,6 +82,18 @@ export type DatabaseCommandTransaction<TResult = unknown> = {
   promise: Promise<TResult>
 }
 
+export type DatabaseCommandTarget = {
+  dataSourceId: string
+  propertyId?: string
+  rowId?: string
+}
+
+export type DatabaseEntityCommandState = {
+  error: Error | null
+  isPending: boolean
+  pendingCount: number
+}
+
 export type DatabaseClient = {
   readonly sessionId: string
   bootstrap(scope: DatabaseScope): DatabaseBootstrapState
@@ -89,6 +101,11 @@ export type DatabaseClient = {
   execute<TResult>(
     command: DatabaseClientCommand,
   ): DatabaseCommandTransaction<TResult>
+  commandState(target: DatabaseCommandTarget): DatabaseEntityCommandState
+  subscribeCommandState(
+    target: DatabaseCommandTarget,
+    listener: () => void,
+  ): () => void
   ingest(event: DatabaseMutationEventV2): Promise<void>
   catchUp(databaseId: string): Promise<void>
   reset(scope: DatabaseScope): Promise<void>
@@ -115,6 +132,8 @@ export class SessionDatabaseClient implements DatabaseClient {
     DatabaseBootstrapCollections
   >()
   private readonly commandLanes = new DatabaseCommandLanes()
+  private readonly commandStateListeners = new Map<string, Set<() => void>>()
+  private readonly commandStates = new Map<string, DatabaseEntityCommandState>()
   private readonly cleanups = new Set<() => Promise<void> | void>()
   private disposed = false
   private readonly ingestionTails = new Map<string, Promise<void>>()
@@ -199,7 +218,7 @@ export class SessionDatabaseClient implements DatabaseClient {
           throw error
         },
       )
-      return { commandId, promise }
+      return { commandId, promise: this.trackCommand(input, promise) }
     }
 
     let result: TResult
@@ -222,12 +241,38 @@ export class SessionDatabaseClient implements DatabaseClient {
     })
     if (transaction.mutations.length === 0) {
       void transaction.commit().catch(() => undefined)
-      return { commandId, promise: persist() }
+      return { commandId, promise: this.trackCommand(input, persist()) }
     }
     void transaction.commit().catch(() => undefined)
     return {
       commandId,
-      promise: transaction.isPersisted.promise.then(() => result),
+      promise: this.trackCommand(
+        input,
+        transaction.isPersisted.promise.then(() => result),
+      ),
+    }
+  }
+
+  commandState(target: DatabaseCommandTarget): DatabaseEntityCommandState {
+    this.assertActive()
+    return this.commandStates.get(commandTargetKey(target)) ?? idleCommandState
+  }
+
+  subscribeCommandState(
+    target: DatabaseCommandTarget,
+    listener: () => void,
+  ) {
+    this.assertActive()
+    const key = commandTargetKey(target)
+    let listeners = this.commandStateListeners.get(key)
+    if (!listeners) {
+      listeners = new Set()
+      this.commandStateListeners.set(key, listeners)
+    }
+    listeners.add(listener)
+    return () => {
+      listeners?.delete(listener)
+      if (listeners?.size === 0) this.commandStateListeners.delete(key)
     }
   }
 
@@ -335,6 +380,8 @@ export class SessionDatabaseClient implements DatabaseClient {
     this.cleanups.clear()
     this.bootstrapCollections.clear()
     this.commandLanes.clear()
+    this.commandStateListeners.clear()
+    this.commandStates.clear()
     this.ingestionTails.clear()
     this.recordCollections.clear()
     this.versions.clear()
@@ -383,6 +430,41 @@ export class SessionDatabaseClient implements DatabaseClient {
     for (const resource of this.recordCollections.values()) {
       resource.settleCellOverlay(commandId)
     }
+  }
+
+  private trackCommand<TResult>(
+    input: DatabaseClientCommand,
+    promise: Promise<TResult>,
+  ) {
+    const targets = commandTargets(input)
+    for (const target of targets) this.updateCommandState(target, 1, null)
+    return promise.then(
+      (result) => {
+        for (const target of targets) this.updateCommandState(target, -1, null)
+        return result
+      },
+      (cause) => {
+        const error = cause instanceof Error ? cause : new Error(String(cause))
+        for (const target of targets) this.updateCommandState(target, -1, error)
+        throw cause
+      },
+    )
+  }
+
+  private updateCommandState(
+    target: DatabaseCommandTarget,
+    pendingDelta: number,
+    error: Error | null,
+  ) {
+    const key = commandTargetKey(target)
+    const previous = this.commandStates.get(key) ?? idleCommandState
+    const pendingCount = Math.max(0, previous.pendingCount + pendingDelta)
+    this.commandStates.set(key, {
+      error,
+      isPending: pendingCount > 0,
+      pendingCount,
+    })
+    for (const listener of this.commandStateListeners.get(key) ?? []) listener()
   }
 
   private enqueueIngestion(databaseId: string, work: () => Promise<void>) {
@@ -587,4 +669,39 @@ function rememberBounded(values: Set<string>, value: string) {
   if (values.size <= 2_048) return
   const oldest = values.values().next().value
   if (oldest) values.delete(oldest)
+}
+
+const idleCommandState: DatabaseEntityCommandState = Object.freeze({
+  error: null,
+  isPending: false,
+  pendingCount: 0,
+})
+
+function commandTargetKey(target: DatabaseCommandTarget) {
+  return JSON.stringify([
+    target.dataSourceId,
+    target.rowId ?? null,
+    target.propertyId ?? null,
+  ])
+}
+
+function commandTargets(input: DatabaseClientCommand): DatabaseCommandTarget[] {
+  const dataSourceId = input.dataSourceId
+  if (!dataSourceId) return []
+  const command = input.command
+  if (command.type === "cell.set") {
+    return [
+      { dataSourceId },
+      { dataSourceId, rowId: command.rowId },
+      {
+        dataSourceId,
+        propertyId: command.propertyId,
+        rowId: command.rowId,
+      },
+    ]
+  }
+  if ("rowId" in command && typeof command.rowId === "string") {
+    return [{ dataSourceId }, { dataSourceId, rowId: command.rowId }]
+  }
+  return [{ dataSourceId }]
 }

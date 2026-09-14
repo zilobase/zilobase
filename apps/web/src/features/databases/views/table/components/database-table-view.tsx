@@ -28,7 +28,7 @@ import {
   Plus,
 } from "@/shared/components/icons"
 import { toast } from "sonner"
-import { useMoveDatabaseRow, useReorderDatabaseRows } from "@zilobase/features/databases/react";
+import { getDatabaseRowMoveAnchors, useMoveDatabaseRow, useReorderDatabaseRows } from "@zilobase/features/databases/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -180,6 +180,7 @@ export function DatabaseTableView() {
     editable,
     groupProperty,
     hasNextPage,
+    hostDatabaseId,
     isAddingDatabaseProperty,
     isAddingDatabaseRow,
     isFetchingNextPage,
@@ -735,10 +736,10 @@ export function DatabaseTableView() {
     if (nextMove.groupPropertyId) {
       moveRow.mutate({
         databaseId,
+        ...(hostDatabaseId ? { hostDatabaseId } : {}),
         groupPropertyId: nextMove.groupPropertyId,
         groupValue: nextMove.groupValue,
-        rowId: nextMove.rowId,
-        rowIds: nextMove.rowIds,
+        ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
       })
       return
     }
@@ -783,7 +784,11 @@ export function DatabaseTableView() {
     }
 
     if (nextMove.rowIds.some((rowId, index) => rowId !== rows[index]?.id)) {
-      reorderRows.mutate({ databaseId, rowIds: nextMove.rowIds })
+      reorderRows.mutate({
+        databaseId,
+        ...(hostDatabaseId ? { hostDatabaseId } : {}),
+        ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
+      })
     }
   }
   const confirmSortedRowReorder = () => {

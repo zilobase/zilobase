@@ -1,5 +1,5 @@
 import { useCallback, useState, type DragEvent } from "react"
-import { useReorderDatabaseRows } from "@zilobase/features/databases/react";
+import { getDatabaseRowMoveAnchors, useReorderDatabaseRows } from "@zilobase/features/databases/react";
 
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
 import {
@@ -22,6 +22,7 @@ type DatabaseListRowDragInput = {
     position: number,
   ) => void | Promise<void>
   databaseId: string | null | undefined
+  hostDatabaseId: string | null | undefined
   editable: boolean
   hasActiveFilters: boolean
   items: SortableDatabaseItem[]
@@ -147,7 +148,13 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
           )
 
       if (rowIds) {
-        reorderRows.mutate({ databaseId: input.databaseId, rowIds })
+        reorderRows.mutate({
+          databaseId: input.databaseId,
+          ...(input.hostDatabaseId
+            ? { hostDatabaseId: input.hostDatabaseId }
+            : {}),
+          ...getDatabaseRowMoveAnchors(rowIds, draggedRowId),
+        })
       }
 
       clearDrag()

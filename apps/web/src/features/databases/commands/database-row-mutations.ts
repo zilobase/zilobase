@@ -1,31 +1,30 @@
-import type { DatabasePayload, DatabaseRow } from "@zilobase/features/databases"
+import type { DatabasePayload } from "@zilobase/features/databases"
 
 import {
   toStringArray,
   type DatabasePropertyValue,
 } from "../properties/property-values"
-import { findAddedDatabaseRow, type NewRowSetup } from "./database-row-plans"
+import { type NewRowSetup } from "./database-row-plans"
 import type { DatabaseRowMutations } from "./database-mutation-adapters"
 
 export function createAddDatabaseRowMutation({
   addRow,
   databaseId,
   editable,
-  items,
+  hostDatabaseId,
   payload,
   updateValue,
 }: {
   addRow: DatabaseRowMutations["addRow"]
   databaseId: string | null | undefined
   editable: boolean
-  items: DatabaseRow[]
+  hostDatabaseId?: string | null
   payload: DatabasePayload | null | undefined
   updateValue: DatabaseRowMutations["updateValue"]
 }) {
   return ({ parentRelation, propertyValues, title }: NewRowSetup) => {
     if (!editable || !databaseId || addRow.isPending) return
 
-    const existingItemIds = new Set(items.map((row) => row.id))
     const uniquePropertyValues = new Map(
       propertyValues.map((propertyValue) => [
         propertyValue.propertyId,
@@ -36,28 +35,14 @@ export function createAddDatabaseRowMutation({
     addRow.mutate(
       {
         databaseId,
+        ...(hostDatabaseId ? { hostDatabaseId } : {}),
         ...(uniquePropertyValues.size > 0
           ? { optimisticValues: [...uniquePropertyValues.values()] }
           : {}),
         title,
       },
       {
-        onSuccess: (nextPayload) => {
-          const addedItem = findAddedDatabaseRow(
-            nextPayload.rows,
-            existingItemIds,
-          )
-          if (!addedItem) return
-
-          for (const propertyValue of uniquePropertyValues.values()) {
-            updateValue.mutate({
-              databaseId,
-              propertyId: propertyValue.propertyId,
-              rowId: addedItem.id,
-              value: propertyValue.value,
-            })
-          }
-
+        onSuccess: (addedItem) => {
           if (!parentRelation) return
 
           const currentValue = payload?.values.find(
@@ -74,6 +59,7 @@ export function createAddDatabaseRowMutation({
 
           updateValue.mutate({
             databaseId,
+            ...(hostDatabaseId ? { hostDatabaseId } : {}),
             propertyId: parentRelation.subItemPropertyId,
             rowId: parentRelation.parentRow.id,
             value: nextSubItemPageIds,

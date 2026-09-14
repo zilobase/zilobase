@@ -51,9 +51,7 @@ export function register({ assert, loadModule, test }) {
       "Done",
       statusProperty,
     );
-    addRow.calls[0][1].onSuccess({
-      rows: [{ id: "existing-row" }, { id: "imported-row" }],
-    });
+    addRow.calls[0][1].onSuccess({ id: "imported-row", pageId: "source-page" });
 
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
@@ -65,12 +63,7 @@ export function register({ assert, loadModule, test }) {
       sourceRowId: "source-row",
       title: "Imported task",
     });
-    assert.deepEqual(updateValue.calls[0][0], {
-      databaseId,
-      propertyId: "property-status",
-      rowId: "imported-row",
-      value: "Done",
-    });
+    assert.deepEqual(updateValue.calls, []);
   });
 
   test("database view commands rename an imported row dropped into a name group", async () => {
@@ -118,7 +111,7 @@ export function register({ assert, loadModule, test }) {
       "Renamed task",
       nameProperty,
     );
-    addRow.calls[0][1].onSuccess({ rows: [{ id: "imported-row" }] });
+    addRow.calls[0][1].onSuccess({ id: "imported-row", pageId: "source-page" });
 
     assert.equal(addRow.calls[0][0].title, "Renamed task");
     assert.deepEqual(updatePage.calls[0][0], {
@@ -1382,7 +1375,7 @@ export function register({ assert, loadModule, test }) {
       "In progress",
       statusProperty,
     );
-    addRow.calls[0][1].onSuccess({ rows: [{ id: "row-1" }] });
+    addRow.calls[0][1].onSuccess({ id: "row-1", pageId: "page-1" });
 
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
@@ -1401,26 +1394,7 @@ export function register({ assert, loadModule, test }) {
       ],
       title: "Untitled",
     });
-    assert.deepEqual(
-      updateValue.calls.map(([input]) => input),
-      [
-        {
-          databaseId,
-          propertyId: "property-date",
-          rowId: "row-1",
-          value: {
-            start: "2026-06-15",
-            end: "2026-06-20",
-          },
-        },
-        {
-          databaseId,
-          propertyId: "property-status",
-          rowId: "row-1",
-          value: "In progress",
-        },
-      ],
-    );
+    assert.deepEqual(updateValue.calls, []);
   });
 
   test("database view commands add timeline view creates date property", async () => {

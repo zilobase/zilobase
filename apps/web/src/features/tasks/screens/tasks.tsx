@@ -359,7 +359,8 @@ function TasksDatabaseView({
 
     updateValue.mutate(
       {
-        databaseId: task.databaseId,
+        databaseId: sourcePayload.activeDataSource?.id ?? task.databaseId,
+        hostDatabaseId: sourcePayload.database.id,
         propertyId: sourceProperty.property.id,
         rowId: task.rowId,
         value: nextValue || null,
@@ -439,11 +440,11 @@ function TasksDatabaseView({
         ? [{ propertyId: schema.status.property.id, value: initialStatus }]
         : []),
     ]
-    const existingRowIds = new Set(sourcePayload.rows.map((row) => row.id))
-
     addRow.mutate(
       {
-        databaseId: sourcePayload.database.id,
+        databaseId:
+          sourcePayload.activeDataSource?.id ?? sourcePayload.database.id,
+        hostDatabaseId: sourcePayload.database.id,
         optimisticValues: initialValues,
       },
       {
@@ -451,36 +452,6 @@ function TasksDatabaseView({
           toast.error(
             error instanceof Error ? error.message : "Could not create task."
           ),
-        onSuccess: (nextPayload) => {
-          const addedRow = nextPayload.rows.find(
-            (row) => !existingRowIds.has(row.id)
-          )
-          if (!addedRow) {
-            toast.error(
-              "The task was created, but its fields could not be updated."
-            )
-            return
-          }
-
-          for (const propertyValue of initialValues) {
-            updateValue.mutate(
-              {
-                databaseId: sourcePayload.database.id,
-                propertyId: propertyValue.propertyId,
-                rowId: addedRow.id,
-                value: propertyValue.value,
-              },
-              {
-                onError: (error) =>
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Could not update the task."
-                  ),
-              }
-            )
-          }
-        },
       }
     )
   }
@@ -641,7 +612,9 @@ function TasksDatabaseView({
 
           updateValue.mutate(
             {
-              databaseId: task.databaseId,
+              databaseId:
+                sourcePayload?.activeDataSource?.id ?? task.databaseId,
+              hostDatabaseId: sourcePayload?.database.id,
               propertyId: statusProperty.property.id,
               rowId: task.rowId,
               value: nextStatus,
