@@ -72,9 +72,10 @@ export function register({ assert, readSource, readWorkspace, test }) {
   })
 
   test("packaged self-host handoff accepts signed-out and connection-error startup", async () => {
-    const [source, routeErrorPage] = await Promise.all([
+    const [source, routeErrorPage, publicRoutes] = await Promise.all([
       readWorkspace("/apps/desktop/e2e/selfhost.mjs"),
       readSource("/src/app/routing/route-error-page.tsx"),
+      readSource("/src/app/routing/route-groups/public-routes.tsx"),
     ])
 
     assert.doesNotMatch(
@@ -93,5 +94,14 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.match(source, /element = await browser\.\$\(selector\)/)
     assert.match(routeErrorPage, /navigate\(\{ to: "\/connect" \}\)/)
     assert.doesNotMatch(routeErrorPage, /window\.location\.assign\("\/connect"\)/)
+    const connectRoute = publicRoutes.slice(
+      publicRoutes.indexOf("const connectRoute"),
+      publicRoutes.indexOf("const signupRoute"),
+    )
+    const connectivityCheck = connectRoute.indexOf("getConnectivityState()")
+    const sessionCheck = connectRoute.indexOf("getFreshSession")
+    assert.ok(connectivityCheck >= 0)
+    assert.ok(sessionCheck >= 0)
+    assert.ok(connectivityCheck < sessionCheck)
   })
 }

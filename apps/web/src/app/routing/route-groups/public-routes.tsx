@@ -74,9 +74,13 @@ const connectRoute = createRoute({
   path: "/connect",
   beforeLoad: async () => {
     if (!isDesktopApp()) throw redirect({ to: "/login" });
+    const connectivity = getConnectivityState();
+    if (connectivity === "offline" || connectivity === "service-unavailable") {
+      return;
+    }
 
     const session = await getFreshSession({ optional: true });
-    if (!session.user || getConnectivityState() !== "online") return;
+    if (!session.user) return;
 
     const workspaces = await getWorkspaces();
     throw redirect({ to: workspaces.length > 0 ? "/recents" : "/onboarding" });
