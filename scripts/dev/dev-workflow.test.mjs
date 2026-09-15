@@ -76,6 +76,16 @@ test("local Node API watches server, database client, and migration changes", ()
   assert.equal(args.at(-1), "src/entrypoints/serverful.ts");
 });
 
+test("development database commands use the journal-aware migration runner", async () => {
+  const serverPackage = JSON.parse(
+    await readFile(path.join(coreDir, "apps/server/package.json"), "utf8"),
+  );
+
+  assert.match(serverPackage.scripts["db:migrate"], /tsx src\/scripts\/migrate\.ts/u);
+  assert.doesNotMatch(serverPackage.scripts["db:migrate"], /drizzle-kit migrate/u);
+  assert.match(serverPackage.scripts["db:reset"], /npm run db:migrate$/u);
+});
+
 test("setup migrates the obsolete generated Node demo default", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "zilobase-node-env-test-"));
   const filename = path.join(directory, "node.env");

@@ -40,10 +40,10 @@
     "test:flow": "ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tsx src/scripts/simulate-user-flow.ts",
     "teamspaces:check": "dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tsx src/scripts/check-teamspaces.ts",
     "db:generate": "ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- drizzle-kit generate",
-    "db:migrate": "ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- drizzle-kit migrate",
+    "db:migrate": "ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tsx src/scripts/migrate.ts",
     "db:migrate:production": "tsx src/scripts/migrate.ts",
     "db:seed:demo": "dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tsx src/scripts/seed-demo.ts",
-    "db:reset": "ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tsx src/scripts/reset-database.ts && ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- drizzle-kit migrate",
+    "db:reset": "ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tsx src/scripts/reset-database.ts && npm run db:migrate",
     "db:studio": "drizzle-kit studio --host 127.0.0.1 --port 4983"
   },
   "dependencies": {
