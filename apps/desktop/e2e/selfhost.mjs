@@ -64,13 +64,13 @@ async function selectServer(origin) {
       "//*[self::a or self::button][normalize-space()='Change server']",
     )
     await changeServer.waitForDisplayed({ timeout: 30_000 })
-    await changeServer.click()
+    await clickElement(changeServer)
     await serverInput.waitForDisplayed({ timeout: 10_000 })
   }
   await serverInput.setValue(origin)
-  await (
-    await browser.$("//button[normalize-space()='Verify and continue']")
-  ).click()
+  await clickElement(
+    await browser.$("//button[normalize-space()='Verify and continue']"),
+  )
 
   const selectedOrigin = await browser.$(
     `//*[normalize-space()=${xpathString(origin)}]`,
@@ -79,6 +79,10 @@ async function selectServer(origin) {
   await (
     await browser.$("//button[normalize-space()='Continue in Browser']")
   ).waitForDisplayed({ timeout: 10_000 })
+}
+
+async function clickElement(element) {
+  await browser.execute((target) => target.click(), element)
 }
 
 function requiredPath(name) {
