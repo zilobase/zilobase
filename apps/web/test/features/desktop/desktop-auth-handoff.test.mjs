@@ -70,4 +70,17 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.ok(credentials > server)
     assert.ok(providers > credentials)
   })
+
+  test("packaged self-host handoff accepts signed-out and connection-error startup", async () => {
+    const source = await readWorkspace("/apps/desktop/e2e/selfhost.mjs")
+
+    assert.doesNotMatch(
+      source,
+      /h1\[normalize-space\(\)='Continue in your browser'\]/,
+    )
+    assert.match(
+      source,
+      /self::a or self::button.*normalize-space\(\)='Change server'/,
+    )
+  })
 }

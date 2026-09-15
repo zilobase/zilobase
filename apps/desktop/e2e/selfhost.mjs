@@ -37,11 +37,6 @@ try {
     port: driverPort,
   })
 
-  const continueScreen = await browser.$(
-    "//h1[normalize-space()='Continue in your browser']",
-  )
-  await continueScreen.waitForDisplayed({ timeout: 30_000 })
-
   await selectServer(serverOrigin)
 
   const additionalServer = process.env.ZILOBASE_E2E_ADDITIONAL_SERVER?.trim()
@@ -66,7 +61,7 @@ async function selectServer(origin) {
   const serverInput = await browser.$("#desktop-server-url")
   if (!(await serverInput.isDisplayed().catch(() => false))) {
     const changeServer = await browser.$(
-      "//a[normalize-space()='Change server']",
+      "//*[self::a or self::button][normalize-space()='Change server']",
     )
     await changeServer.waitForDisplayed({ timeout: 30_000 })
     await changeServer.click()
