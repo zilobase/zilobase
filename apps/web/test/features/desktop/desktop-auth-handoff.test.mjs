@@ -72,7 +72,10 @@ export function register({ assert, readSource, readWorkspace, test }) {
   })
 
   test("packaged self-host handoff accepts signed-out and connection-error startup", async () => {
-    const source = await readWorkspace("/apps/desktop/e2e/selfhost.mjs")
+    const [source, routeErrorPage] = await Promise.all([
+      readWorkspace("/apps/desktop/e2e/selfhost.mjs"),
+      readSource("/src/app/routing/route-error-page.tsx"),
+    ])
 
     assert.doesNotMatch(
       source,
@@ -82,5 +85,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
       source,
       /self::a or self::button.*normalize-space\(\)='Change server'/,
     )
+    assert.match(routeErrorPage, /navigate\(\{ to: "\/connect" \}\)/)
+    assert.doesNotMatch(routeErrorPage, /window\.location\.assign\("\/connect"\)/)
   })
 }
