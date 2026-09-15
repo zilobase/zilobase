@@ -1,6 +1,6 @@
 export { createEditorDragDrop } from "./block-drag-controller"
 export type { DragDropBridge } from "./block-drag-controller"
-export { dropCrossEditorBlock } from "./block-drop"
+export { dropCrossEditorBlock, dropEditorBlock } from "./block-drop"
 export {
   canMoveDatabaseBlockToPage,
   getBlockDragDatabaseId,
