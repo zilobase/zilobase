@@ -68,7 +68,6 @@ import {
 } from "../views/form/model/database-form-share-config";
 
 import {
-  findAddedDatabaseRow,
   getDraggedRowGroupSetup,
   getNewRowGroupSetup,
   getTimelineGroupPropertyId,
@@ -161,7 +160,7 @@ export function getDatabaseViewCommands({
     addRow,
     databaseId,
     editable,
-    items,
+    hostDatabaseId: viewDatabaseId,
     payload,
     updateValue,
   });
@@ -321,7 +320,7 @@ export function getDatabaseViewCommands({
       label = "Property",
       position?: number,
     ) => {
-      if (!editable || !databaseId || addProperty.isPending) {
+      if (!editable || !databaseId) {
         return;
       }
 
@@ -385,7 +384,7 @@ export function getDatabaseViewCommands({
       groupValue?: string,
       groupPropertyOverride?: DatabasePropertyListItem | null,
     ) => {
-      if (!editable || !databaseId || addRow.isPending) {
+      if (!editable || !databaseId) {
         return;
       }
 
@@ -426,11 +425,10 @@ export function getDatabaseViewCommands({
           propertyValue,
         ]),
       );
-      const existingItemIds = new Set(items.map((row) => row.id));
-
       addRow.mutate(
         {
           databaseId,
+          ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
           ...(groupValues.size > 0
             ? { optimisticValues: [...groupValues.values()] }
             : {}),
@@ -447,13 +445,7 @@ export function getDatabaseViewCommands({
           onError: () => {
             notify.error("Couldn't move this row to the database.");
           },
-          onSuccess: (nextPayload) => {
-            const addedItem = findAddedDatabaseRow(
-              nextPayload.rows,
-              existingItemIds,
-            );
-            if (!addedItem) return;
-
+          onSuccess: () => {
             if (groupSetup.pageTitle !== undefined) {
               updatePage.mutate(
                 { id: dragPayload.pageId, name: groupSetup.pageTitle },
@@ -465,15 +457,6 @@ export function getDatabaseViewCommands({
                 },
               );
             }
-
-            for (const propertyValue of groupValues.values()) {
-              updateValue.mutate({
-                databaseId,
-                propertyId: propertyValue.propertyId,
-                rowId: addedItem.id,
-                value: propertyValue.value,
-              });
-            }
           },
         },
       );
@@ -482,10 +465,6 @@ export function getDatabaseViewCommands({
       if (!editable || !databaseId || addDatabaseView.isPending) {
         return;
       }
-
-      const existingViewIds = new Set(
-        (payload?.views ?? []).map((view) => view.id),
-      );
 
       addDatabaseView.mutate(
         {
@@ -501,12 +480,8 @@ export function getDatabaseViewCommands({
           type: "chart",
         },
         {
-          onSuccess: (nextPayload) => {
-            const addedView =
-              nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
-              nextPayload.views.at(-1);
-
-            setActiveViewId(addedView?.id ?? null);
+          onSuccess: (view) => {
+            setActiveViewId(view.id);
           },
           onError: () => {
             notify.error("Couldn't add chart view");
@@ -519,10 +494,6 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const existingViewIds = new Set(
-        (payload?.views ?? []).map((view) => view.id),
-      );
-
       addDatabaseView.mutate(
         {
           databaseId: viewDatabaseId ?? databaseId,
@@ -531,12 +502,8 @@ export function getDatabaseViewCommands({
           type: "gallery",
         },
         {
-          onSuccess: (nextPayload) => {
-            const addedView =
-              nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
-              nextPayload.views.at(-1);
-
-            setActiveViewId(addedView?.id ?? null);
+          onSuccess: (view) => {
+            setActiveViewId(view.id);
           },
           onError: () => {
             notify.error("Couldn't add gallery view");
@@ -549,10 +516,6 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const existingViewIds = new Set(
-        (payload?.views ?? []).map((view) => view.id),
-      );
-
       addDatabaseView.mutate(
         {
           config: { hiddenPropertyIds },
@@ -562,12 +525,8 @@ export function getDatabaseViewCommands({
           type: "form",
         },
         {
-          onSuccess: (nextPayload) => {
-            const addedView =
-              nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
-              nextPayload.views.at(-1);
-
-            setActiveViewId(addedView?.id ?? null);
+          onSuccess: (view) => {
+            setActiveViewId(view.id);
           },
           onError: () => {
             notify.error("Couldn't add form view");
@@ -580,9 +539,6 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const existingViewIds = new Set(
-        (payload?.views ?? []).map((view) => view.id),
-      );
       const currentProperties = payload?.properties ?? [];
       const groupProperty =
         currentProperties.find(
@@ -598,7 +554,7 @@ export function getDatabaseViewCommands({
       const addView = (
         groupPropertyId: string,
         hiddenPropertyIds: string[],
-        onViewAdded?: (nextPayload: { rows: { id: string }[] }) => void,
+        onViewAdded?: () => void,
       ) => {
         addDatabaseView.mutate(
           {
@@ -609,14 +565,9 @@ export function getDatabaseViewCommands({
             type: "kanban",
           },
           {
-            onSuccess: (nextPayload) => {
-              const addedView =
-                nextPayload.views.find(
-                  (view) => !existingViewIds.has(view.id),
-                ) ?? nextPayload.views.at(-1);
-
-              setActiveViewId(addedView?.id ?? null);
-              onViewAdded?.(nextPayload);
+            onSuccess: (view) => {
+              setActiveViewId(view.id);
+              onViewAdded?.();
             },
             onError: () => {
               notify.error("Couldn't add kanban view");
@@ -643,10 +594,6 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const existingViewIds = new Set(
-        (payload?.views ?? []).map((view) => view.id),
-      );
-
       addDatabaseView.mutate(
         {
           databaseId: viewDatabaseId ?? databaseId,
@@ -655,12 +602,8 @@ export function getDatabaseViewCommands({
           type: "list",
         },
         {
-          onSuccess: (nextPayload) => {
-            const addedView =
-              nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
-              nextPayload.views.at(-1);
-
-            setActiveViewId(addedView?.id ?? null);
+          onSuccess: (view) => {
+            setActiveViewId(view.id);
           },
           onError: () => {
             notify.error("Couldn't add list view");
@@ -700,10 +643,6 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const existingViewIds = new Set(
-        (payload?.views ?? []).map((view) => view.id),
-      );
-
       ensureTimelineDatePropertyId((datePropertyId) => {
         const currentProperties = payload?.properties ?? properties;
         const groupPropertyId = getTimelineGroupPropertyId(currentProperties);
@@ -720,13 +659,8 @@ export function getDatabaseViewCommands({
             type: "timeline",
           },
           {
-            onSuccess: (nextPayload) => {
-              const addedView =
-                nextPayload.views.find(
-                  (view) => !existingViewIds.has(view.id),
-                ) ?? nextPayload.views.at(-1);
-
-              setActiveViewId(addedView?.id ?? null);
+            onSuccess: (view) => {
+              setActiveViewId(view.id);
             },
             onError: () => {
               notify.error("Couldn't add timeline view");
@@ -740,10 +674,6 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const existingViewIds = new Set(
-        (payload?.views ?? []).map((view) => view.id),
-      );
-
       addDatabaseView.mutate(
         {
           databaseId: viewDatabaseId ?? databaseId,
@@ -752,12 +682,8 @@ export function getDatabaseViewCommands({
           type: "table",
         },
         {
-          onSuccess: (nextPayload) => {
-            const addedView =
-              nextPayload.views.find((view) => !existingViewIds.has(view.id)) ??
-              nextPayload.views.at(-1);
-
-            setActiveViewId(addedView?.id ?? null);
+          onSuccess: (view) => {
+            setActiveViewId(view.id);
           },
           onError: () => {
             notify.error("Couldn't add table view");
@@ -1188,6 +1114,7 @@ export function getDatabaseViewCommands({
 
       updateValue.mutate({
         databaseId,
+        ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
         propertyId,
         rowId,
         value: serializePropertyValue(propertyType, nextValue),
@@ -1284,6 +1211,7 @@ export function getDatabaseViewCommands({
       for (const update of trimUpdates) {
         updateValue.mutate({
           databaseId,
+          ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
           propertyId: update.propertyId,
           rowId: update.rowId,
           value: update.value,
@@ -1380,17 +1308,7 @@ function createTimelineDateResolver({
         type: "date",
       },
       {
-        onSuccess: (nextPayload) => {
-          const createdDateProperty =
-            nextPayload.properties.find(
-              (property) => property.property.type === "date",
-            ) ?? nextPayload.properties.at(-1);
-
-          if (!createdDateProperty) {
-            notify.error("Couldn't add date property");
-            return;
-          }
-
+        onSuccess: (createdDateProperty) => {
           onResolved(createdDateProperty.property.id);
         },
         onError: () => {

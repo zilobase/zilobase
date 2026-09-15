@@ -15,7 +15,8 @@ import {
   useAddDatabaseRow,
   useApplyDatabaseTemplate,
   useCreateDatabaseDataSource,
-  useDatabase,
+  useDatabaseBootstrap,
+  useDatabaseRecords,
   useDeleteDatabaseView,
   useLinkDatabaseDataSource,
   useReplaceDatabaseViewDataSource,
@@ -49,6 +50,7 @@ import {
   writeLatestViewConfig,
 } from "../model/view-config-cache"
 import {
+  composeDatabaseControllerPayload,
   getDatabaseDataSourceSummaries,
   getDatabaseViewTabs,
   resolveRequestedDatabaseViewId,
@@ -120,18 +122,23 @@ export function useDatabaseViewController({
     refetchOnMount: false,
   })
   const includeDeletedDatabases = includeDeleted || Boolean(hostPage?.deletedAt)
-  const {
-    data: payload,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    error,
-    isError,
-    isLoading,
-  } = useDatabase(databaseId, {
-    includeDeleted: includeDeletedDatabases,
-  })
-  const editable = requestedEditable && !isDatabaseLocked(payload?.database)
+  const bootstrapState = useDatabaseBootstrap(
+    databaseId
+      ? { databaseId, includeDeleted: includeDeletedDatabases }
+      : null,
+  )
+  const bootstrap = bootstrapState.data
+  const bootstrapPayload = useMemo(
+    () => composeDatabaseControllerPayload({
+      bootstrap,
+      dataSourceId: null,
+      hasMore: false,
+      records: [],
+      totalCount: 0,
+    }),
+    [bootstrap],
+  )
+  const editable = requestedEditable && !isDatabaseLocked(bootstrap?.database)
   const [draftDatabaseTitle, setDraftDatabaseTitle] = useState("New database")
   const [draftViewTitle, setDraftViewTitle] = useState("Table")
   const [activeViewId, setActiveViewId] = useState<string | null>(
@@ -145,10 +152,13 @@ export function useDatabaseViewController({
   const latestViewConfigRef = useRef(new Map<string, unknown>())
   const isControlledActiveView = Boolean(onActiveViewIdChange)
   const dataSources = useMemo(
-    () => getDatabaseDataSourceSummaries(payload),
-    [payload],
+    () => getDatabaseDataSourceSummaries(bootstrapPayload),
+    [bootstrapPayload],
   )
-  const baseViewTabs = useMemo(() => getDatabaseViewTabs(payload), [payload])
+  const baseViewTabs = useMemo(
+    () => getDatabaseViewTabs(bootstrapPayload),
+    [bootstrapPayload],
+  )
   const requestedViewId = resolveRequestedDatabaseViewId({
     requestedViewId: requestedActiveViewId,
     viewTabs: baseViewTabs,
@@ -156,6 +166,35 @@ export function useDatabaseViewController({
   const resolvedActiveViewId = isControlledActiveView
     ? (requestedViewId ?? baseViewTabs[0]?.id ?? null)
     : activeViewId
+  const activeDataSourceId = bootstrap?.views.find(
+    ({ id }) => id === resolvedActiveViewId,
+  )?.dataSourceId ?? bootstrap?.dataSources[0]?.id ?? null
+  const recordWindow = useDatabaseRecords(
+    databaseId && resolvedActiveViewId && activeDataSourceId
+      ? {
+          databaseId,
+          dataSourceId: activeDataSourceId,
+          includeDeleted: includeDeletedDatabases,
+          viewId: resolvedActiveViewId,
+        }
+      : null,
+  )
+  const payload = useMemo(
+    () => composeDatabaseControllerPayload({
+      bootstrap,
+      dataSourceId: activeDataSourceId,
+      hasMore: recordWindow.hasMore,
+      records: recordWindow.records,
+      totalCount: recordWindow.totalCount,
+    }),
+    [
+      activeDataSourceId,
+      bootstrap,
+      recordWindow.hasMore,
+      recordWindow.records,
+      recordWindow.totalCount,
+    ],
+  )
   const setupDismissed = getDatabaseSetupDismissed(
     payload?.activeDataSource?.config,
   )
@@ -165,25 +204,12 @@ export function useDatabaseViewController({
     setupDismissed,
     setupMode,
   })
-  const {
-    data: selectedSourcePayload,
-    fetchNextPage: fetchNextSourcePage,
-    hasNextPage: hasNextSourcePage,
-    isFetchingNextPage: isFetchingNextSourcePage,
-    error: sourceError,
-    isError: isSourceError,
-    isLoading: isLoadingSourcePayload,
-  } = useDatabase(databaseId, {
-    includeDeleted: includeDeletedDatabases,
-    ...(resolvedActiveViewId ? { viewId: resolvedActiveViewId } : {}),
-  })
-  const activePayload = selectedSourcePayload ?? payload
+  const activePayload = payload
   const activeDatabaseId = activePayload?.activeDataSource?.id ?? null
   const viewTabs = baseViewTabs
-  const activeFetchNextPage = fetchNextSourcePage ?? fetchNextPage
-  const activeHasNextPage = hasNextSourcePage ?? hasNextPage
-  const activeIsFetchingNextPage =
-    isFetchingNextSourcePage || isFetchingNextPage
+  const activeFetchNextPage = recordWindow.fetchNextPage
+  const activeHasNextPage = recordWindow.hasMore
+  const activeIsFetchingNextPage = recordWindow.isFetchingNextPage
   const activeViewLookupId = resolvedActiveViewId
   const { data: session } = useSession()
   const needsPersonAccessTargets = useMemo(
@@ -400,7 +426,6 @@ export function useDatabaseViewController({
 
   const linkDataSourceView = (selection: DatabaseSourceViewSelection) => {
     if (!databaseId || linkDatabaseDataSource.isPending) return
-    const existingIds = new Set(payload?.views.map((view) => view.id) ?? [])
     linkDatabaseDataSource.mutate(
       {
         databaseId,
@@ -410,9 +435,8 @@ export function useDatabaseViewController({
         type: selection.viewType,
       },
       {
-        onSuccess: (nextPayload) => {
-          const added = nextPayload.views.find((view) => !existingIds.has(view.id))
-          setSelectedActiveViewId(added?.id ?? null)
+        onSuccess: ({ view }) => {
+          setSelectedActiveViewId(view.id)
           toast.success("Data source linked.")
         },
       },
@@ -507,15 +531,13 @@ export function useDatabaseViewController({
         toast.success("View source replaced.")
         return
       }
-      const existingIds = new Set(payload?.views.map((view) => view.id) ?? [])
-      const nextPayload = await linkDatabaseDataSource.mutateAsync({
+      const { view } = await linkDatabaseDataSource.mutateAsync({
         databaseId,
         dataSourceId,
         name: viewName,
         type,
       })
-      const createdView = nextPayload.views.find((view) => !existingIds.has(view.id))
-      setSelectedActiveViewId(createdView?.id ?? null)
+      setSelectedActiveViewId(view.id)
       toast.success(`${viewName} view added.`)
     } catch (error) {
       toast.error(
@@ -538,16 +560,14 @@ export function useDatabaseViewController({
 
     try {
       if (selection.sourceView) {
-        const existingIds = new Set(payload?.views.map((view) => view.id) ?? [])
-        const nextPayload = await linkDatabaseDataSource.mutateAsync({
+        const { view } = await linkDatabaseDataSource.mutateAsync({
           databaseId,
           config: selection.sourceView.viewConfig,
           dataSourceId: selection.sourceView.dataSourceId,
           name: selection.sourceView.viewName,
           type: selection.sourceView.viewType,
         })
-        const added = nextPayload.views.find((view) => !existingIds.has(view.id))
-        setSelectedActiveViewId(added?.id ?? null)
+        setSelectedActiveViewId(view.id)
         toast.success("Data source linked.")
         return
       }
@@ -560,21 +580,13 @@ export function useDatabaseViewController({
         selection.csvImport?.name ||
         template?.name ||
         "New data source"
-      const existingSourceIds = new Set(
-        payload?.dataSources.map((source) => source.id) ?? [],
-      )
-      let createdPayload = await createDataSource.mutateAsync({
+      const created = await createDataSource.mutateAsync({
         databaseId,
         name: databaseName,
       })
-      const createdSource = createdPayload.dataSources.find(
-        (source) => !existingSourceIds.has(source.id),
-      )
-      if (!createdSource) {
-        throw new Error("The new data source could not be resolved.")
-      }
+      const createdSource = created.dataSource
       if (selection.csvImport) {
-        createdPayload = await applyDataSourceTemplate.mutateAsync({
+        await applyDataSourceTemplate.mutateAsync({
           config: getMergedDatabaseConfig(createdSource.config, {
             setupDismissed: true,
           }),
@@ -602,7 +614,7 @@ export function useDatabaseViewController({
           ]),
         )
 
-        createdPayload = await applyDataSourceTemplate.mutateAsync({
+        await applyDataSourceTemplate.mutateAsync({
           config: getMergedDatabaseConfig(createdSource.config, {
             emoji: template.emoji,
             setupDismissed: true,
@@ -634,10 +646,7 @@ export function useDatabaseViewController({
         })
       }
 
-      const added = createdPayload.views.find(
-        (view) => view.dataSourceId === createdSource.id,
-      )
-      setSelectedActiveViewId(added?.id ?? null)
+      setSelectedActiveViewId(created.view.id)
       toast.success("Data source added.")
     } catch (error) {
       toast.error(
@@ -686,10 +695,6 @@ export function useDatabaseViewController({
       return
     }
 
-    const existingViewIds = new Set(
-      (payload?.views ?? []).map((databaseView) => databaseView.id),
-    )
-
     addDatabaseView.mutate(
       {
         config: sourceView.config,
@@ -699,13 +704,8 @@ export function useDatabaseViewController({
         type: sourceView.type,
       },
       {
-        onSuccess: (nextPayload) => {
-          const addedView =
-            nextPayload.views.find(
-              (databaseView) => !existingViewIds.has(databaseView.id),
-            ) ?? nextPayload.views.at(-1)
-
-          setSelectedActiveViewId(addedView?.id ?? null)
+        onSuccess: (view) => {
+          setSelectedActiveViewId(view.id)
         },
       },
     )
@@ -955,11 +955,18 @@ export function useDatabaseViewController({
     context: databaseViewContext,
     dataSourceSetupOpen,
     databaseId,
-    error: sourceError ?? error,
-    isError: isSourceError || isError,
+    error: recordWindow.error ?? bootstrapState.error,
+    isError:
+      recordWindow.status === "error" || bootstrapState.status === "error",
     handleDatabaseBlockDragOver,
     handleDatabaseBlockDrop,
-    isLoading: isLoading || isLoadingSourcePayload,
+    isLoading:
+      Boolean(databaseId) &&
+      (bootstrapState.status === "idle" ||
+        bootstrapState.status === "loading" ||
+        (Boolean(resolvedActiveViewId && activeDataSourceId) &&
+          (recordWindow.status === "idle" ||
+            recordWindow.status === "loading"))),
     onDismissSetup,
     onDataSourceSetupClose: () => setDataSourceSetupOpen(false),
     onDataSourceSetupSelect: handleDataSourceSetupSelection,

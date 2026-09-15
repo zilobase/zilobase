@@ -17,7 +17,6 @@ import {
   normalizeDatabasePropertyType,
 } from "../properties/types";
 import { validateCellValue } from "../properties/config";
-import type { DatabaseDelta } from "../realtime/delta";
 import { upsertPagePropertyValues } from "../../pages/properties/upsert";
 
 type DatabaseTransaction = Parameters<
@@ -36,8 +35,15 @@ export async function inheritDatabaseRowProperties(
   tx: DatabaseTransaction,
 ) {
   const nowIso = input.now.toISOString();
-  const properties: NonNullable<DatabaseDelta["properties"]> = [];
-  const values: NonNullable<DatabaseDelta["values"]> = [];
+  const properties: Array<{ id: string; [key: string]: unknown }> = [];
+  const values: Array<{
+    createdAt?: string;
+    id?: string;
+    pageId: string;
+    propertyId: string;
+    updatedAt: string;
+    value: unknown;
+  }> = [];
   const targetColumns = await tx
     .select({ column: databaseProperty, property: pageProperty })
     .from(databaseProperty)

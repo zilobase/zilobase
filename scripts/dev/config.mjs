@@ -5,11 +5,6 @@ export const coreDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../..",
 );
-export const platformDir = path.dirname(coreDir);
-export const adapterDir = path.resolve(
-  process.env.ZILOBASE_ADAPTER_DIR ?? path.join(platformDir, "zilobase-cloudflare-adapter"),
-);
-
 export const stateDir = path.resolve(
   process.env.ZILOBASE_DEV_STATE_DIR ?? path.join(coreDir, ".dev", "local"),
 );
@@ -21,13 +16,11 @@ export const kindCluster = "zilobase-community-dev";
 
 export const repoEnvironmentFiles = {
   node: path.join(coreDir, ".env.development"),
-  worker: path.join(adapterDir, ".env.development"),
 };
 
 export const generatedEnvironmentFiles = {
   dependencies: path.join(envDir, "dependencies.env"),
   node: path.join(envDir, "node.env"),
-  worker: path.join(envDir, "worker.env"),
   kubernetes: path.join(envDir, "kubernetes.env"),
 };
 
@@ -44,19 +37,6 @@ export const localProfiles = {
     database: "zilobase_node",
     bucket: "zilobase-node",
     cellId: "local-node",
-  },
-  worker: {
-    name: "worker",
-    appHost: "127.0.0.1",
-    appPort: 1422,
-    apiHost: "127.0.0.1",
-    apiPort: 3010,
-    backgroundPort: 3012,
-    inspectorPort: 9231,
-    backgroundInspectorPort: 9232,
-    studioPort: 4984,
-    database: "zilobase_worker",
-    cellId: "local-worker",
   },
 };
 

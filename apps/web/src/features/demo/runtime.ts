@@ -1,4 +1,3 @@
-import type { DatabasePayload } from "@zilobase/features/databases"
 import type { PageDetail } from "@zilobase/features/pages"
 import type { UserSettings } from "@zilobase/features/user-settings"
 
@@ -7,7 +6,6 @@ import { installDemoTransport } from "./transport"
 export const DEMO_SIGNUP_URL = "https://app.zilobase.com/signup"
 export const DEMO_GUARD_EVENT = "zilobase:demo-guard"
 
-const databaseSnapshots = new Map<string, DatabasePayload>()
 const pageSnapshots = new Map<string, PageDetail>()
 const pagePatches = new Map<string, { name?: string; updatedAt: string }>()
 let settingsSnapshot: UserSettings | null = null
@@ -153,29 +151,27 @@ function interceptDemoMutation<T>(
     }
   }
 
-  const databaseTarget = readAllowedDatabaseMutation(url.pathname, method, payload)
-  if (databaseTarget) {
-    const snapshot = captureDatabaseSnapshot(databaseTarget)
-    const databaseId = snapshot?.database.id ?? databaseTarget
-    const version = (snapshot?.database.version ?? 0) + 1
-    if (snapshot) {
-      snapshot.database.version = version
-      databaseSnapshots.set(databaseId, snapshot)
-    }
-    const changed = url.pathname.includes("/views/")
-      ? ["views"]
-      : url.pathname.includes("/properties/")
-        ? ["values"]
-        : ["rows", "values"]
+  const commandTarget = readDatabaseCommand(url.pathname, method, payload)
+  if (commandTarget) {
+    const eventId = `demo-local-${mutationSequence++}`
     return {
       handled: true,
       value: {
-        changed,
-        committedAt: new Date().toISOString(),
-        databaseId,
-        delta: {},
-        mutationId: `demo-local-${mutationSequence++}`,
-        version,
+        commandId: commandTarget.commandId,
+        event: {
+          actorId: "demo-user",
+          areas: commandTarget.areas,
+          changes: {},
+          commandId: commandTarget.commandId,
+          committedAt: new Date().toISOString(),
+          databaseId: commandTarget.databaseId,
+          dataSourceId: commandTarget.dataSourceId,
+          eventId,
+          protocolVersion: 2,
+          type: "database.mutation",
+          version: mutationSequence - 1,
+        },
+        result: null,
       } as T,
     }
   }
@@ -189,18 +185,6 @@ function applyDemoReadOverlay<T>(path: string, value: T): T {
   }
 
   const url = toLocalUrl(path)
-  const databaseMatch = url.pathname.match(/^\/databases\/([^/]+)$/)
-  if (databaseMatch) {
-    const requestedId = decodeURIComponent(databaseMatch[1]!)
-    const existing = findDatabaseSnapshot(requestedId)
-    if (existing) return clone(existing) as T
-
-    if (isDatabasePayload(value)) {
-      databaseSnapshots.set(value.database.id, clone(value))
-    }
-    return value
-  }
-
   const pageMatch = url.pathname.match(/^\/pages\/([^/]+)$/)
   if (pageMatch) {
     const pageId = decodeURIComponent(pageMatch[1]!)
@@ -225,71 +209,29 @@ function applyDemoReadOverlay<T>(path: string, value: T): T {
   return applyPagePatches(value)
 }
 
-function readAllowedDatabaseMutation(
+function readDatabaseCommand(
   pathname: string,
   method: string,
   payload: unknown,
 ) {
-  const cell = pathname.match(
-    /^\/databases\/([^/]+)\/rows\/[^/]+\/properties\/[^/]+$/,
-  )
-  if (method === "PUT" && cell && isRecord(payload) && "value" in payload) {
-    return decodeURIComponent(cell[1]!)
+  if (method !== "POST" || !isRecord(payload)) return null
+  if (payload.protocolVersion !== 2 || typeof payload.commandId !== "string") return null
+  const command = payload.command
+  if (!isRecord(command) || typeof command.type !== "string") return null
+  const source = pathname.match(/^\/databases\/([^/]+)\/data-sources\/([^/]+)\/commands$/)
+  const host = pathname.match(/^\/databases\/([^/]+)\/commands$/)
+  const match = source ?? host
+  if (!match) return null
+  const type = command.type
+  return {
+    areas: type.startsWith("view.") ? ["views"] : type.startsWith("property.")
+      ? ["properties"] : type === "database.update" ? ["databases"]
+        : type.startsWith("dataSource.") || type.startsWith("template.")
+          ? ["dataSources"] : ["records"],
+    commandId: payload.commandId,
+    databaseId: decodeURIComponent(match[1]!),
+    dataSourceId: source ? decodeURIComponent(source[2]!) : null,
   }
-
-  const move = pathname.match(/^\/databases\/([^/]+)\/rows\/[^/]+\/move$/)
-  if (method === "PATCH" && move && isRecord(payload)) {
-    return decodeURIComponent(move[1]!)
-  }
-
-  const reorder = pathname.match(/^\/databases\/([^/]+)\/rows\/reorder$/)
-  if (
-    method === "PATCH" &&
-    reorder &&
-    isRecord(payload) &&
-    Array.isArray(payload.rowIds)
-  ) {
-    return decodeURIComponent(reorder[1]!)
-  }
-
-  const view = pathname.match(/^\/databases\/([^/]+)\/views\/[^/]+$/)
-  if (
-    method === "PATCH" &&
-    view &&
-    isRecord(payload) &&
-    Object.keys(payload).every((key) => key === "config")
-  ) {
-    return decodeURIComponent(view[1]!)
-  }
-
-  return null
-}
-
-function captureDatabaseSnapshot(targetId: string) {
-  const cached = demoCache
-    .getQueriesData<DatabasePayload | null>({ queryKey: ["database"] })
-    .map(([, value]) => value)
-    .find(
-      (value) =>
-        value &&
-        (value.database.id === targetId ||
-          value.activeDataSource?.id === targetId ||
-          value.dataSources.some((source) => source.id === targetId)),
-    )
-  if (!cached) return findDatabaseSnapshot(targetId)
-  const snapshot = clone(cached)
-  databaseSnapshots.set(snapshot.database.id, snapshot)
-  return snapshot
-}
-
-function findDatabaseSnapshot(targetId: string) {
-  const direct = databaseSnapshots.get(targetId)
-  if (direct) return direct
-  return [...databaseSnapshots.values()].find(
-    (snapshot) =>
-      snapshot.activeDataSource?.id === targetId ||
-      snapshot.dataSources.some((source) => source.id === targetId),
-  )
 }
 
 function capturePageSnapshot(pageId: string) {
@@ -336,10 +278,6 @@ function parseBody(body: BodyInit | null | undefined) {
 
 function toLocalUrl(path: string) {
   return new URL(path, "https://demo.zilobase.com")
-}
-
-function isDatabasePayload(value: unknown): value is DatabasePayload {
-  return isRecord(value) && isRecord(value.database) && Array.isArray(value.rows)
 }
 
 function isPageDetail(value: unknown): value is PageDetail {

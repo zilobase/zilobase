@@ -66,7 +66,9 @@ export {
   type RuntimeEnv,
 } from "../shared/config/config";
 export {
+  createAuthTransactionDatabase,
   createDbClient,
+  getCurrentExtensionTransactionDatabase,
   runWithDbClient,
   runWithDbEnv,
 } from "../infrastructure/database";
@@ -127,7 +129,7 @@ export {
 } from "../features/meetings/audio/meeting-audio-ticket";
 export {
   drainDatabaseRealtimeOutbox,
-  type DatabaseRealtimeMutationEvent,
+  type DatabaseMutationEventV2,
 } from "../features/databases/realtime/outbox";
 export { drainNavigationRealtimeOutbox } from "../features/workspaces/navigation-realtime/outbox";
 export { expireTemporaryMemberships } from "../features/memberships";
@@ -154,8 +156,17 @@ export {
 export { drainInProductNotificationOutbox } from "../features/notifications/outbox";
 export {
   MembershipService,
+  TransactionalAdmissionError,
+  admitTransactionalMembership,
+  findActiveMembershipForAdmission,
+  listWorkspaceReadinessMembers,
+  lockWorkspaceAdmission,
+  revokeWorkspaceSessions,
   type GrantMembershipInput,
   type GrantMembershipResult,
+  type TransactionalAdmissionCode,
+  type TransactionalAdmissionResult,
+  type ReadinessMember,
 } from "../features/memberships";
 export {
   TeamspaceService,

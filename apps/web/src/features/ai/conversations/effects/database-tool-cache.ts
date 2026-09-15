@@ -4,7 +4,7 @@ import {
   isDatabaseConfigToolName,
   readDatabaseConfigToolIds,
 } from "@zilobase/features/ai-chat";
-import { databaseQueryKey } from "@zilobase/features/databases";
+import { databaseClientQueryRoot } from "@zilobase/features/databases";
 import { pageQueryKey } from "@zilobase/features/pages";
 
 function collectInvalidationTargets(ids: Record<string, string>) {
@@ -49,7 +49,9 @@ function invalidateToolResult(
   const { databaseIds, pageIds } = collectInvalidationTargets(ids);
   for (const databaseId of databaseIds) {
     void queryClient.invalidateQueries({
-      queryKey: databaseQueryKey(databaseId),
+      predicate: (query) =>
+        query.queryKey[0] === databaseClientQueryRoot &&
+        query.queryKey.includes(databaseId),
     });
   }
   for (const pageId of pageIds) {

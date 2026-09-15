@@ -163,7 +163,7 @@ async function loadDatabasePayload(
             options?.includeDeleted ? undefined : isNull(databaseRow.deletedAt),
           ),
         )
-        .orderBy(asc(databaseRow.position))
+        .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
     : Promise.resolve([]);
   const [properties, rows] = await Promise.all([propertiesPromise, rowsPromise]);
   const pageIds = rows.map(({ row }) => row.pageId);
@@ -197,13 +197,17 @@ async function loadDatabasePayload(
       ...column,
       property,
     })),
-    rows: rows.map(({ row, page: rowPage }) => ({ ...row, page: rowPage })),
+    rows: rows.map(({ row, page: rowPage }, position) => ({
+      ...row,
+      page: rowPage,
+      position,
+    })),
     values,
     views,
   };
 }
 
-export function getDatabasePayload(
+export function getDatabaseExportPayload(
   id: string,
   userId?: string,
   existingRecord?: DatabaseRecord,
@@ -212,7 +216,7 @@ export function getDatabasePayload(
   return loadDatabasePayload(id, userId, existingRecord, options, true);
 }
 
-export function getDatabaseSchemaPayload(
+export function getDatabaseSchemaExportPayload(
   id: string,
   userId?: string,
   existingRecord?: DatabaseRecord,

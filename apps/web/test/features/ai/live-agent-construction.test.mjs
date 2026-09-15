@@ -52,7 +52,7 @@ export function register({ assert, loadModule, readSource, test }) {
       readSource("/src/features/ai/conversations/components/elements/agent-resource-badges.tsx"),
     ])
 
-    for (const effectKind of ["page-upsert", "database-seed", "nav-delta"]) {
+    for (const effectKind of ["page-upsert", "nav-delta"]) {
       assert.match(effects, new RegExp(`effect\\.kind === \\"${effectKind}\\"`))
     }
     assert.match(effects, /\{ kind: "page-embed" \}/)

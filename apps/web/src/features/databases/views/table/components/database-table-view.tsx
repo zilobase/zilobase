@@ -28,7 +28,7 @@ import {
   Plus,
 } from "@/shared/components/icons"
 import { toast } from "sonner"
-import { useMoveDatabaseRow, useReorderDatabaseRows } from "@zilobase/features/databases/react";
+import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -180,8 +180,7 @@ export function DatabaseTableView() {
     editable,
     groupProperty,
     hasNextPage,
-    isAddingDatabaseProperty,
-    isAddingDatabaseRow,
+    hostDatabaseId,
     isFetchingNextPage,
     personOptions,
     properties,
@@ -201,7 +200,7 @@ export function DatabaseTableView() {
     subItemsSettings,
   } = useDatabaseUiContext()
   const moveRow = useMoveDatabaseRow()
-  const reorderRows = useReorderDatabaseRows()
+  const reorderRows = useMoveDatabaseRow()
   const undoHistory = useUndoHistory()
   const loadedDatabaseId = requireDatabaseId(databaseId)
 
@@ -735,10 +734,10 @@ export function DatabaseTableView() {
     if (nextMove.groupPropertyId) {
       moveRow.mutate({
         databaseId,
+        ...(hostDatabaseId ? { hostDatabaseId } : {}),
         groupPropertyId: nextMove.groupPropertyId,
         groupValue: nextMove.groupValue,
-        rowId: nextMove.rowId,
-        rowIds: nextMove.rowIds,
+        ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
       })
       return
     }
@@ -783,7 +782,11 @@ export function DatabaseTableView() {
     }
 
     if (nextMove.rowIds.some((rowId, index) => rowId !== rows[index]?.id)) {
-      reorderRows.mutate({ databaseId, rowIds: nextMove.rowIds })
+      reorderRows.mutate({
+        databaseId,
+        ...(hostDatabaseId ? { hostDatabaseId } : {}),
+        ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
+      })
     }
   }
   const confirmSortedRowReorder = () => {
@@ -1246,8 +1249,8 @@ export function DatabaseTableView() {
       key={insertKey}
     >
       <AddDatabasePropertyMenu
-        disabled={isAddingDatabaseProperty}
-        isPending={isAddingDatabaseProperty}
+        disabled={false}
+        isPending={false}
         onAdd={(type, label) =>
           addInsertedDatabaseProperty(type, label, position, insertKey)
         }
@@ -1513,8 +1516,8 @@ export function DatabaseTableView() {
         {canEditStructure ? (
           <th className="database-add-property-cell">
             <AddDatabasePropertyMenu
-              disabled={isAddingDatabaseProperty}
-              isPending={isAddingDatabaseProperty}
+              disabled={false}
+              isPending={false}
               onAdd={addDatabasePropertyAndMaybeOpenFormula}
             />
             <span
@@ -1790,7 +1793,7 @@ export function DatabaseTableView() {
                 <td colSpan={columnKeys.length}>
                   <button
                     className="database-sub-item-create"
-                    disabled={!databaseId || isAddingDatabaseRow}
+                    disabled={!databaseId}
                     onClick={() =>
                       addDatabaseRow(undefined, undefined, parentRowId)
                     }
@@ -1820,7 +1823,6 @@ export function DatabaseTableView() {
       editable,
       expandedEmptySubItemRowIds,
       fillTargetRowIds,
-      isAddingDatabaseRow,
       isSubItemsNested,
       nameColumnLabel,
       nameColumnShowPageIcon,
@@ -2068,7 +2070,7 @@ export function DatabaseTableView() {
                           canCreateRowInKanbanGroup(groupProperty) ? (
                             <CreateDatabaseRowButton
                               columnCount={columnKeys.length}
-                              disabled={!databaseId || isAddingDatabaseRow}
+                              disabled={!databaseId}
                               onClick={() =>
                                 addDatabaseRow(
                                   section.groupValue,
@@ -2138,7 +2140,7 @@ export function DatabaseTableView() {
                   editable ? (
                     <CreateDatabaseRowButton
                       columnCount={columnKeys.length}
-                      disabled={!databaseId || isAddingDatabaseRow}
+                      disabled={!databaseId}
                       onClick={() => addDatabaseRow()}
                     />
                   ) : undefined

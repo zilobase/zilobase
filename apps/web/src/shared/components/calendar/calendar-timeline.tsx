@@ -1,314 +1,28 @@
 import { TimelineCurrentTime } from "./current-time";
 import { ChevronDownIcon, ChevronUpIcon } from "@/shared/components/icons";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
-import { useVirtualizer, defaultRangeExtractor } from "@tanstack/react-virtual";
-import { snapTimelineOffset, timelineGeometry, timelineRetargets } from "@zilobase/features/calendar";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CalendarDayColumn, type CalendarColumnActions } from "./calendar-day-column";
 import { TimeAxis } from "./calendar-time-axis";
 import type { CalendarItem } from "./types";
-import type { ReactNode } from "react";
+import { CALENDAR_SNAP_ANIMATION_MS, useCalendarWheelScroll } from "./use-calendar-wheel-scroll";
+import { dateFromRank, visibleDateRank } from "@zilobase/features/calendar";
 
-// ── Constants ──────────────────────────────────────────────────────────
-
-/** Fallback settle delay when scrollend doesn't fire (e.g. older Safari). */
-const SETTLE_TIMEOUT_MS = 350;
-/** px/ms velocity threshold — above this, the virtualizer renders extra overscan. */
-const FAST_SCROLL_THRESHOLD_RATIO = 1 / 250;
-/** Vertical scroll must move more than this × hourHeight to update the viewport top. */
-const VERTICAL_HYSTERESIS = 1.5;
-/** Edge detection threshold in px. */
-const EDGE_THRESHOLD = 2;
-
-// ── Scroll state ───────────────────────────────────────────────────────
-
-type ScrollState = {
-  lastScrollLeft: number;
-  sampleTime: number;
-  pointerDown: boolean;
-  ignoring: boolean;
-  settleTimer: ReturnType<typeof setTimeout> | null;
-  snappingTo: number | null;
-  emittedDate: string | null;
-  previous: {
-    geometry: ReturnType<typeof timelineGeometry>;
-    target: string;
-    date: string;
-    hourHeight: number;
-    anchor: ReturnType<ReturnType<typeof timelineGeometry>["anchor"]>;
-  } | null;
+type TimelineProps = CalendarColumnActions & {
+  days: string[];
+  date: string;
+  target: string;
+  eventsByDay: Record<string, CalendarItem[]>;
+  zoneControls?: ReactNode;
+  onMetric?: (name: "mounted_columns", value: number) => void;
+  onRetry?: () => void;
+  onViewport: (first: string, last: string, retain?: boolean) => void;
+  beforeLoading: boolean;
+  afterLoading: boolean;
+  loadingMessage?: string;
+  onVisibleDate: (date: string) => void;
 };
 
-function createScrollState(): ScrollState {
-  return {
-    lastScrollLeft: 0,
-    sampleTime: performance.now(),
-    pointerDown: false,
-    ignoring: false,
-    settleTimer: null,
-    snappingTo: null,
-    emittedDate: null,
-    previous: null,
-  };
-}
-
-// ── Settle pipeline ────────────────────────────────────────────────────
-
-/**
- * Cancel any pending settle. Call on every user gesture that indicates
- * the scroll is still active (pointer, wheel, touch, keyboard).
- */
-function cancelSettle(state: ScrollState) {
-  if (state.settleTimer) {
-    clearTimeout(state.settleTimer);
-    state.settleTimer = null;
-  }
-  state.snappingTo = null;
-}
-
-/**
- * Arm a fallback settle timer. The primary settle trigger is `scrollend`;
- * this is a safety net for browsers that don't fire it reliably.
- */
-function armSettle(state: ScrollState, commit: () => void) {
-  cancelSettle(state);
-  state.settleTimer = setTimeout(() => {
-    state.settleTimer = null;
-    if (state.ignoring || state.pointerDown) return;
-    commit();
-  }, SETTLE_TIMEOUT_MS);
-}
-
-/** Apply the snap animation or instant jump. Returns true if a smooth animation was started (caller should wait for scrollend). */
-function smoothSnap(element: HTMLDivElement, target: number): boolean {
-  const reduceMotion = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-  if (reduceMotion || typeof element.scrollTo !== "function") {
-    element.scrollLeft = target;
-    return false;
-  }
-  element.scrollTo({ left: target, behavior: "smooth" });
-  return true;
-}
-
-/** Commit the visible date range at a resolved scroll position. */
-function commitVisibleRange(
-  left: number,
-  element: HTMLDivElement,
-  state: ScrollState,
-  geometry: ReturnType<typeof timelineGeometry>,
-  rail: number,
-  onViewport: TimelineProps["onViewport"],
-  onVisibleDate: TimelineProps["onVisibleDate"],
-) {
-  state.snappingTo = null;
-  const first = geometry.positionToDate(left);
-  const last = geometry.positionToDate(left + Math.max(0, element.clientWidth - rail - 1));
-  if (state.previous) state.previous.anchor = geometry.anchor(left);
-  onViewport(first, last, true);
-  if (state.emittedDate !== first) {
-    state.emittedDate = first;
-    onVisibleDate(first);
-  }
-}
-
-/**
- * Execute the snap after scroll has fully stopped.
- * Called by both `scrollend` and the fallback timer.
- */
-function settleTimeline(
-  element: HTMLDivElement,
-  state: ScrollState,
-  geometry: ReturnType<typeof timelineGeometry>,
-  columnWidth: number,
-  rail: number,
-  onViewport: TimelineProps["onViewport"],
-  onVisibleDate: TimelineProps["onVisibleDate"],
-) {
-  if (state.pointerDown || state.ignoring) return;
-  cancelSettle(state);
-
-  const snapped = snapTimelineOffset(element.scrollLeft, columnWidth);
-  if (snapped !== null) {
-    state.snappingTo = snapped;
-    if (smoothSnap(element, snapped)) return;
-  }
-
-  commitVisibleRange(snapped ?? element.scrollLeft, element, state, geometry, rail, onViewport, onVisibleDate);
-}
-
-// ── Scroll restore ────────────────────────────────────────────────────
-
-function suppressScroll(element: HTMLElement, state: ScrollState, write: () => void) {
-  state.ignoring = true;
-  write();
-  const release = () => { state.ignoring = false; element.removeEventListener("scrollend", release); };
-  element.addEventListener("scrollend", release);
-  requestAnimationFrame(() => requestAnimationFrame(release));
-}
-
-function restoreTimelineScroll(
-  element: HTMLDivElement,
-  state: ScrollState,
-  geometry: ReturnType<typeof timelineGeometry>,
-  target: string,
-  date: string,
-  hourHeight: number,
-  virtual: { measure: () => void },
-  setEdges: (value: { before: boolean; after: boolean }) => void,
-) {
-  const old = state.previous;
-  cancelSettle(state);
-  suppressScroll(element, state, () => {
-    element.scrollLeft = timelineScrollLeft(old, state.emittedDate, geometry, target, date);
-    element.scrollTop = timelineScrollTop(old, element.scrollTop, hourHeight);
-  });
-  state.previous = { geometry, target, date, hourHeight, anchor: geometry.anchor(element.scrollLeft) };
-  virtual.measure();
-  setEdges({ before: element.scrollLeft < EDGE_THRESHOLD, after: element.scrollLeft + element.clientWidth >= element.scrollWidth - EDGE_THRESHOLD });
-}
-
-function timelineScrollLeft(
-  old: { date: string; anchor?: ReturnType<ReturnType<typeof timelineGeometry>["anchor"]> } | null,
-  emitted: string | null,
-  geometry: ReturnType<typeof timelineGeometry>,
-  target: string,
-  date: string,
-) {
-  if (timelineRetargets(old?.date ?? null, date, emitted)) return geometry.dateToPosition(target);
-  return old?.anchor ? geometry.restore(old.anchor) : 0;
-}
-
-function timelineScrollTop(old: { hourHeight: number } | null, current: number, hourHeight: number) {
-  if (!old) return 7 * hourHeight;
-  if (old.hourHeight !== hourHeight) return current / old.hourHeight * hourHeight;
-  return current;
-}
-
-// ── Scroll handler ─────────────────────────────────────────────────────
-
-function handleTimelineScroll(
-  element: HTMLDivElement,
-  state: ScrollState,
-  geometry: ReturnType<typeof timelineGeometry>,
-  columnWidth: number,
-  hourHeight: number,
-  rail: number,
-  commitRef: { current: () => void },
-  setEdges: (value: { before: boolean; after: boolean } | ((old: { before: boolean; after: boolean }) => { before: boolean; after: boolean })) => void,
-  setTop: (value: number | ((old: number) => number)) => void,
-  setFast: (value: boolean) => void,
-  setDirection: (value: number) => void,
-  onViewport: TimelineProps["onViewport"],
-) {
-  commitRef.current = () => settleTimeline(element, state, geometry, columnWidth, rail, onViewport, (() => {}) as TimelineProps["onVisibleDate"]);
-  if (state.previous) state.previous.anchor = geometry.anchor(element.scrollLeft);
-
-  const left = element.scrollLeft;
-  const moved = left - state.lastScrollLeft;
-  state.lastScrollLeft = left;
-
-  if (state.ignoring) return;
-
-  // Edge detection
-  const before = left < EDGE_THRESHOLD;
-  const after = left + element.clientWidth >= element.scrollWidth - EDGE_THRESHOLD;
-  setEdges(old => old.before === before && old.after === after ? old : { before, after });
-
-  // Vertical viewport — hysteresis to reduce re-renders
-  setTop(old => Math.abs(old - element.scrollTop) > hourHeight * VERTICAL_HYSTERESIS ? element.scrollTop : old);
-
-  // Velocity sampling
-  const now = performance.now();
-  const velocity = Math.abs(moved) / Math.max(16, now - state.sampleTime);
-  setFast(velocity > columnWidth * FAST_SCROLL_THRESHOLD_RATIO);
-  state.sampleTime = now;
-  setDirection(moved >= 0 ? 1 : -1);
-
-  // Report visible range
-  onViewport(geometry.positionToDate(left), geometry.positionToDate(left + Math.max(0, element.clientWidth - rail - 1)), true);
-
-  // Arm fallback settle (scrollend is primary)
-  armSettle(state, commitRef.current);
-}
-
-// ── Scroll-end handling ────────────────────────────────────────────────
-
-/** Handle the scrollend event — either commit a completed snap or delegate to the fallback commit. */
-function handleScrollEnd(
-  element: HTMLDivElement,
-  state: ScrollState,
-  geometry: ReturnType<typeof timelineGeometry>,
-  rail: number,
-  onViewport: TimelineProps["onViewport"],
-  onVisibleDate: TimelineProps["onVisibleDate"],
-  commit: { current: () => void },
-) {
-  cancelSettle(state);
-  if (state.pointerDown || state.ignoring) return;
-  if (state.snappingTo !== null) {
-    commitVisibleRange(state.snappingTo, element, state, geometry, rail, onViewport, onVisibleDate);
-  } else {
-    commit.current();
-  }
-}
-
-// ── Component ──────────────────────────────────────────────────────────
-
-export type TimelineProps = CalendarColumnActions & { days: string[]; date: string; target: string; eventsByDay: Record<string, CalendarItem[]>; zoneControls?: ReactNode; onMetric?: (name: "mounted_columns", value: number) => void; onRetry?: () => void; onViewport: (first: string, last: string, retain?: boolean) => void; beforeLoading: boolean; afterLoading: boolean; loadingMessage?: string; onVisibleDate: (date: string) => void };
 const EMPTY: CalendarItem[] = [];
-function timelineRangeExtractor(
-  count: number,
-  direction: number,
-  fast: boolean,
-  focusedDay: string | null,
-  days: string[],
-) {
-  return (range: Parameters<typeof defaultRangeExtractor>[0]) => {
-    const lead = fast ? count * 2 : count;
-    const pad = Math.ceil(count / 2);
-    const first = Math.max(0, range.startIndex - (direction < 0 ? lead : pad));
-    const last = Math.min(range.count - 1, range.endIndex + (direction > 0 ? lead : pad));
-    const focused = focusedDay ? days.indexOf(focusedDay) : -1;
-    const indices: number[] = [];
-    for (let i = first; i <= last; i++) indices.push(i);
-    if (focused >= 0 && !indices.includes(focused)) indices.push(focused);
-    return indices.sort((a, b) => a - b);
-  };
-}
-
-function useTimelineElementListeners(
-  element: HTMLDivElement | null,
-  state: ScrollState,
-  geometry: ReturnType<typeof timelineGeometry>,
-  rail: number,
-  onViewport: TimelineProps["onViewport"],
-  onVisibleDate: TimelineProps["onVisibleDate"],
-  commit: { current: () => void },
-  setWidth: (w: number) => void,
-  setHeight: (h: number) => void,
-) {
-  useLayoutEffect(() => {
-    if (!element) return;
-    const release = () => { state.pointerDown = false; cancelSettle(state); };
-    const onEnd = () => handleScrollEnd(element, state, geometry, rail, onViewport, onVisibleDate, commit);
-    window.addEventListener("pointerup", release);
-    window.addEventListener("pointercancel", release);
-    element.addEventListener("scrollend", onEnd);
-    const observer = new ResizeObserver(() => {
-      setWidth(element.clientWidth);
-      setHeight(element.clientHeight);
-    });
-    observer.observe(element);
-    setWidth(element.clientWidth);
-    setHeight(element.clientHeight);
-    return () => {
-      window.removeEventListener("pointerup", release);
-      window.removeEventListener("pointercancel", release);
-      element.removeEventListener("scrollend", onEnd);
-      observer.disconnect();
-      cancelSettle(state);
-    };
-  }, [element, geometry, rail, onViewport, onVisibleDate]);
-}
 
 function TimelineHeaderRail({
   rail,
@@ -355,42 +69,119 @@ function TimelineHeaderRail({
   );
 }
 
-export function CalendarTimeline({ days, date, target, eventsByDay, zoneControls, onViewport, beforeLoading, afterLoading, loadingMessage, onVisibleDate, onMetric, onRetry, ...actions }: TimelineProps) {
-  const viewport = useRef<HTMLDivElement>(null), allDayToggle = useRef<HTMLButtonElement>(null);
-  const [width, setWidth] = useState(900), [top, setTop] = useState(0), [height, setHeight] = useState(800), [collapsed, collapse] = useState(true);
-  const [edges, setEdges] = useState({ before: false, after: false });
+/**
+ * Timed calendar with calendarcn-style horizontal wheel navigation. The date
+ * columns move as a translated buffer while the hour axis keeps native vertical
+ * scrolling, so trackpad momentum cannot start competing browser snap cycles.
+ */
+export function CalendarTimeline({ days, target, eventsByDay, zoneControls, onViewport, beforeLoading, afterLoading, loadingMessage, onVisibleDate, onMetric, onRetry, ...actions }: TimelineProps) {
+  const viewport = useRef<HTMLDivElement>(null);
+  const allDayToggle = useRef<HTMLButtonElement>(null);
+  const [width, setWidth] = useState(900);
+  const [top, setTop] = useState(0);
+  const [height, setHeight] = useState(800);
+  const [collapsed, collapse] = useState(true);
   const [focusedDay, setFocusedDay] = useState<string | null>(null);
-  const [fast, setFast] = useState(false);
-  const [direction, setDirection] = useState(1);
-  const scroll = useRef(createScrollState());
-  const p = actions.preferences, hourHeight = p.hourHeight ?? 48, headerHeight = 32 + (collapsed ? 24 : 96);
-  const rail = 24 + 56 * (1 + p.secondaryTimeZones.length), count = Math.max(1, p.visibleDayCount ?? 7);
-  const columnWidth = Math.max(1, (width - rail) / count);
-  const weekdays = p.showWeekends;
-  const geometry = useMemo(() => timelineGeometry(days[0]!, columnWidth, weekdays), [days[0], columnWidth, weekdays]);
-  const commit = useRef<() => void>(() => {});
-  const rangeExtractor = useCallback(
-    timelineRangeExtractor(count, direction, fast, focusedDay, days),
-    [count, direction, fast, focusedDay, days],
-  );
-  const virtual = useVirtualizer({ horizontal: true, count: days.length, getScrollElement: () => viewport.current, estimateSize: () => columnWidth, getItemKey: index => days[index]!, rangeExtractor, scrollMargin: rail });
+  const [anchor, setAnchor] = useState(target);
+  const anchorRef = useRef(anchor);
+  anchorRef.current = anchor;
+
+  const preferences = actions.preferences;
+  const hourHeight = preferences.hourHeight ?? 48;
+  const headerHeight = 32 + (collapsed ? 24 : 96);
+  const rail = 24 + 56 * (1 + preferences.secondaryTimeZones.length);
+  const visibleCount = Math.max(1, preferences.visibleDayCount ?? 7);
+  const columnWidth = Math.max(1, (width - rail) / visibleCount);
+  const weekdays = preferences.showWeekends;
+  const rank = useCallback((day: string) => visibleDateRank(day, weekdays), [weekdays]);
+  const dayAt = useCallback((value: number) => dateFromRank(value, weekdays), [weekdays]);
+  const loadedDaysRef = useRef(days);
+  loadedDaysRef.current = days;
+
+  const navigateFromScroll = useCallback((daysDelta: number) => {
+    const next = dayAt(rank(anchorRef.current) + daysDelta);
+    // The translated buffer can preview unloaded dates, but cache readiness still
+    // owns whether navigation commits (including while offline).
+    if (next === anchorRef.current || !loadedDaysRef.current.includes(next)) return;
+    anchorRef.current = next;
+    setAnchor(next);
+    onVisibleDate(next);
+  }, [dayAt, onVisibleDate, rank]);
+
+  const { scrollOffset, slideOffset, isAnimating, triggerSlideAnimation } = useCalendarWheelScroll({
+    containerRef: viewport,
+    itemSize: columnWidth,
+    axis: "horizontal",
+    onNavigate: navigateFromScroll,
+  });
+
+  const previousTarget = useRef(target);
+  useEffect(() => {
+    if (previousTarget.current === target) return;
+    const daysDelta = rank(target) - rank(anchorRef.current);
+    previousTarget.current = target;
+    anchorRef.current = target;
+    setAnchor(target);
+    triggerSlideAnimation(daysDelta);
+  }, [rank, target, triggerSlideAnimation]);
+
+  const scrollDaysDelta = columnWidth > 0 ? Math.round(-scrollOffset / columnWidth) : 0;
+  const visibleFirstRank = rank(anchor) + scrollDaysDelta;
+  const visibleLastRank = visibleFirstRank + visibleCount - 1;
+  const visibleFirst = dayAt(visibleFirstRank);
+  const visibleLast = dayAt(visibleLastRank);
+
+  useEffect(() => {
+    onViewport(visibleFirst, visibleLast, true);
+  }, [onViewport, visibleFirst, visibleLast]);
+
+  const gestureColumns = columnWidth > 0 ? Math.ceil(Math.max(Math.abs(scrollOffset), Math.abs(slideOffset)) / columnWidth) : 0;
+  // The visible columns are complete at rest; wheel/button transitions mount
+  // exactly the additional columns they expose.
+  const buffer = gestureColumns;
+  const displayFirstRank = Math.min(rank(days[0]!), visibleFirstRank) - buffer;
+  const displayLastRank = Math.max(rank(days.at(-1)!), visibleLastRank) + buffer;
+  const displayDays = useMemo(() => Array.from(
+    { length: displayLastRank - displayFirstRank + 1 },
+    (_, index) => dayAt(displayFirstRank + index),
+  ), [dayAt, displayFirstRank, displayLastRank]);
+  const anchorIndex = rank(anchor) - displayFirstRank;
+  const mountedIndices = useMemo(() => {
+    const first = Math.max(0, visibleFirstRank - displayFirstRank - buffer);
+    const last = Math.min(displayDays.length - 1, visibleLastRank - displayFirstRank + buffer);
+    const result = Array.from({ length: Math.max(0, last - first + 1) }, (_, index) => first + index);
+    const focusedIndex = focusedDay ? displayDays.indexOf(focusedDay) : -1;
+    if (focusedIndex >= 0 && !result.includes(focusedIndex)) result.push(focusedIndex);
+    return result.sort((a, b) => a - b);
+  }, [buffer, displayDays, displayFirstRank, focusedDay, visibleFirstRank, visibleLastRank]);
+  useEffect(() => onMetric?.("mounted_columns", mountedIndices.length), [mountedIndices.length, onMetric]);
+
+  const previousHourHeight = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const element = viewport.current;
+    if (!element) return;
+    const old = previousHourHeight.current;
+    element.scrollTop = old === null ? 7 * hourHeight : old === hourHeight ? element.scrollTop : element.scrollTop / old * hourHeight;
+    previousHourHeight.current = hourHeight;
+    setTop(element.scrollTop);
+  }, [hourHeight]);
 
   useLayoutEffect(() => {
-    const element = viewport.current; if (!element) return;
-    restoreTimelineScroll(element, scroll.current, geometry, target, date, hourHeight, virtual, setEdges);
-  }, [geometry, target, date, hourHeight]);
+    const element = viewport.current;
+    if (!element) return;
+    const observer = new ResizeObserver(() => {
+      setWidth(element.clientWidth);
+      setHeight(element.clientHeight);
+    });
+    observer.observe(element);
+    setWidth(element.clientWidth);
+    setHeight(element.clientHeight);
+    return () => observer.disconnect();
+  }, []);
 
-  useTimelineElementListeners(viewport.current, scroll.current, geometry, rail, onViewport, onVisibleDate, commit, setWidth, setHeight);
-
-  const mounted = virtual.getVirtualItems();
-  useEffect(() => onMetric?.("mounted_columns", mounted.length), [mounted.length, onMetric]);
-
-  const onScroll = (event: React.UIEvent<HTMLDivElement>) => {
-    const element = event.currentTarget;
-    const state = scroll.current;
-    commit.current = () => settleTimeline(element, state, geometry, columnWidth, rail, onViewport, onVisibleDate);
-    handleTimelineScroll(element, state, geometry, columnWidth, hourHeight, rail, commit, setEdges, setTop, setFast, setDirection, onViewport);
-  };
+  const transformX = -anchorIndex * columnWidth + scrollOffset + slideOffset;
+  const edgeBefore = visibleFirstRank <= rank(days[0]!);
+  const edgeAfter = visibleLastRank >= rank(days.at(-1)!);
 
   return <div className="relative min-h-0 flex-1">
     <div
@@ -398,16 +189,16 @@ export function CalendarTimeline({ days, date, target, eventsByDay, zoneControls
       data-calendar-scroll
       data-calendar-timeline-scroll
       data-calendar-rail-width={rail}
+      data-calendar-scroll-anchor={anchor}
+      data-calendar-scroll-offset={scrollOffset}
       onFocusCapture={event => setFocusedDay((event.target as HTMLElement).closest<HTMLElement>("[data-calendar-day-column]")?.dataset.calendarDayColumn ?? null)}
-      className="h-full overflow-auto overscroll-none [overflow-anchor:none] [scrollbar-gutter:stable]"
-      onPointerDown={() => { scroll.current.pointerDown = true; cancelSettle(scroll.current); }}
-      onPointerUp={() => { scroll.current.pointerDown = false; }}
-      onWheel={() => cancelSettle(scroll.current)}
-      onTouchStart={() => cancelSettle(scroll.current)}
-      onKeyDown={() => cancelSettle(scroll.current)}
-      onScroll={onScroll}
+      className="h-full overflow-y-auto overflow-x-hidden overscroll-none [overflow-anchor:none] [scrollbar-gutter:stable]"
+      onScroll={event => {
+        const next = event.currentTarget.scrollTop;
+        setTop(current => Math.abs(current - next) > hourHeight * 1.5 ? next : current);
+      }}
     >
-      <div className="relative flex" style={{ width: rail + days.length * columnWidth, minHeight: headerHeight + hourHeight * 24 }}>
+      <div className="relative flex" style={{ minHeight: headerHeight + hourHeight * 24 }}>
         <TimelineHeaderRail
           rail={rail}
           headerHeight={headerHeight}
@@ -415,32 +206,44 @@ export function CalendarTimeline({ days, date, target, eventsByDay, zoneControls
           collapsed={collapsed}
           onToggleCollapse={() => collapse(!collapsed)}
           allDayToggleRef={allDayToggle}
-          target={target}
-          days={days}
-          preferences={p}
+          target={anchor}
+          days={displayDays}
+          preferences={preferences}
         />
-        <div className="relative" style={{ width: days.length * columnWidth }}>
-          <TimelineCurrentTime days={days} columnWidth={columnWidth} zone={p.timeZone} hourHeight={hourHeight} headerHeight={headerHeight} />
-          {mounted.map(item => (
-            <div key={item.key} className="absolute top-0" style={{ left: item.index * columnWidth, width: columnWidth, height: headerHeight + hourHeight * 24 }}>
-              <CalendarDayColumn
-                {...actions}
-                day={days[item.index]!}
-                items={eventsByDay[days[item.index]!] ?? EMPTY}
-                allDayCollapsed={collapsed}
-                onExpandAllDay={() => { collapse(false); allDayToggle.current?.focus(); }}
-                viewportTop={top}
-                viewportHeight={height}
-              />
-            </div>
-          ))}
+        <div className="relative min-w-0 flex-1 overflow-hidden">
+          <div
+            data-calendar-scroll-content="horizontal"
+            className="relative"
+            style={{
+              width: displayDays.length * columnWidth,
+              height: headerHeight + hourHeight * 24,
+              transform: `translateX(${transformX}px)`,
+              transition: isAnimating ? `transform ${CALENDAR_SNAP_ANIMATION_MS}ms ease-out` : "none",
+            }}
+          >
+            <TimelineCurrentTime days={displayDays} columnWidth={columnWidth} zone={preferences.timeZone} hourHeight={hourHeight} headerHeight={headerHeight} />
+            {mountedIndices.map(index => (
+              <div key={displayDays[index]} className="absolute top-0" style={{ left: index * columnWidth, width: columnWidth, height: headerHeight + hourHeight * 24 }}>
+                <CalendarDayColumn
+                  {...actions}
+                  day={displayDays[index]!}
+                  items={eventsByDay[displayDays[index]!] ?? EMPTY}
+                  allDayCollapsed={collapsed}
+                  onExpandAllDay={() => { collapse(false); allDayToggle.current?.focus(); }}
+                  viewportTop={top}
+                  viewportHeight={height}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
-    <TimelineEdge label={loadingMessage ?? "← Loading"} show={beforeLoading && edges.before} loadingMessage={loadingMessage} onRetry={onRetry} className="absolute bottom-1 left-1 max-w-48 truncate text-xs text-content-secondary" />
-    <TimelineEdge label={loadingMessage ?? "Loading →"} show={afterLoading && edges.after} loadingMessage={loadingMessage} onRetry={onRetry} className="absolute bottom-1 right-1 max-w-48 truncate text-xs text-content-secondary" />
+    <TimelineEdge label={loadingMessage ?? "← Loading"} show={beforeLoading && edgeBefore} loadingMessage={loadingMessage} onRetry={onRetry} className="absolute bottom-1 left-1 max-w-48 truncate text-xs text-content-secondary" />
+    <TimelineEdge label={loadingMessage ?? "Loading →"} show={afterLoading && edgeAfter} loadingMessage={loadingMessage} onRetry={onRetry} className="absolute bottom-1 right-1 max-w-48 truncate text-xs text-content-secondary" />
   </div>;
 }
+
 function TimelineEdge({ label, show, loadingMessage, onRetry, className }: { label: string; show: boolean; loadingMessage?: string; onRetry?: () => void; className: string }) {
   if (!show) return null;
   return <div role="status" className={className}>{label}{loadingMessage && onRetry && <button type="button" className="ml-2 underline" onClick={onRetry}>Retry</button>}</div>;

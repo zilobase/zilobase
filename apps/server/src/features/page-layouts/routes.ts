@@ -122,7 +122,7 @@ async function getTargetContext(input: {
           isNull(databaseRow.deletedAt),
         ),
       )
-      .orderBy(asc(databaseRow.position))
+      .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
       .limit(1)
 
     return {
@@ -154,7 +154,7 @@ async function getTargetContext(input: {
         isNull(database.deletedAt),
       ),
     )
-    .orderBy(asc(databaseRow.position))
+    .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
     .limit(1)
 
   return {

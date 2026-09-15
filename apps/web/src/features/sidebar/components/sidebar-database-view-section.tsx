@@ -18,10 +18,12 @@ import {
   SidebarMenuItem,
 } from "@/shared/ui/sidebar"
 import { getDatabaseViewModel } from "@/features/databases"
+import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
+import { composeDatabaseControllerPayload } from "@/features/databases/views/model/database-controller-state"
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 import type { SidebarSection } from "@zilobase/features/user-settings"
 import { isDatabaseLocked } from "@zilobase/features/databases";
-import { useAddDatabaseRow, useDatabase } from "@zilobase/features/databases/react";
+import { useAddDatabaseRow, useDatabaseRecords } from "@zilobase/features/databases/react";
 
 export function SidebarDatabaseViewSection({
   activePageId,
@@ -35,21 +37,43 @@ export function SidebarDatabaseViewSection({
   storageKey: string
 }) {
   const [open, setOpen] = useSidebarSectionOpen(storageKey)
-  const database = useDatabase(open ? section.databaseId : null, {
+  const database = useDatabaseMetadata(open ? section.databaseId : null, {
     viewId: section.viewId,
   })
+  const activeView = section.viewId
+    ? database.data?.views.find((view) => view.id === section.viewId)
+    : database.data?.views[0]
+  const activeDataSourceId = database.data?.activeDataSource?.id ?? null
+  const records = useDatabaseRecords(
+    open && activeDataSourceId && activeView
+      ? {
+          databaseId: section.databaseId,
+          dataSourceId: activeDataSourceId,
+          viewId: activeView.id,
+        }
+      : null,
+  )
+  const payload = React.useMemo(
+    () => composeDatabaseControllerPayload({
+      bootstrap: database.data ?? undefined,
+      dataSourceId: activeDataSourceId,
+      hasMore: records.hasMore,
+      records: records.records,
+      totalCount: records.totalCount,
+    }),
+    [activeDataSourceId, database.data, records.hasMore, records.records, records.totalCount],
+  )
   const addRow = useAddDatabaseRow()
   const model = React.useMemo(
     () => getDatabaseViewModel({
       activeViewId: section.viewId ?? null,
       currentUserId,
-      payload: database.data,
+      payload,
     }),
-    [currentUserId, database.data, section.viewId],
+    [currentUserId, payload, section.viewId],
   )
   const rows = model.sortedItems.slice(0, section.limit)
   const title = section.label || database.data?.database.name || "Database view"
-  const activeDataSourceId = database.data?.activeDataSource?.id ?? null
 
   return (
     <Collapsible
@@ -74,7 +98,6 @@ export function SidebarDatabaseViewSection({
             <SidebarGroupAction
               aria-label={`Add row to ${title}`}
               className="right-9 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
-              disabled={addRow.isPending}
               onClick={() => {
                 addRow.mutate(
                   { databaseId: activeDataSourceId, title: "Untitled" },
@@ -95,9 +118,9 @@ export function SidebarDatabaseViewSection({
         </div>
         <CollapsibleContent className="pb-4 pt-0.5">
           <SidebarGroupContent>
-            {database.isLoading ? (
+            {database.isLoading || records.status === "loading" ? (
               <p className="px-2 py-1.5 text-xs text-content-secondary">Loading…</p>
-            ) : database.isError || !database.data ? (
+            ) : database.isError || records.status === "error" || !database.data ? (
               <p className="rounded-md bg-surface-muted px-2 py-2 text-xs text-content-secondary">Source unavailable</p>
             ) : rows.length === 0 ? (
               <p className="px-2 py-1.5 text-xs text-content-secondary">No matching rows</p>

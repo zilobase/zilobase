@@ -96,7 +96,7 @@ export function PageMetadataProperties({
   const propertyPresenceById = presenceByProperty
 
   return (
-          <div className="mt-6 grid gap-1 py-2">
+          <div className="mt-6 grid gap-1 px-3 py-2">
             {(layoutPropertyId
               ? (propertyPayload?.properties.filter(
                   (property) => property.id === layoutPropertyId,

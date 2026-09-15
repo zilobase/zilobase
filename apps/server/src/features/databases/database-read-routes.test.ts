@@ -14,7 +14,6 @@ const mocks = vi.hoisted(() => ({
   payload: vi.fn(),
   published: vi.fn(),
   realtimeExpiration: vi.fn(),
-  schemaPayload: vi.fn(),
   verifyTicket: vi.fn(),
 }));
 
@@ -28,25 +27,46 @@ vi.mock("../access", () => ({
 vi.mock("../../shared/security/database-realtime-ticket", () => ({
   createDatabaseRealtimeTicket: mocks.createTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX: "zilobase-auth.",
-  DATABASE_REALTIME_PROTOCOL: "zilobase-realtime-v1",
+  DATABASE_REALTIME_PROTOCOL: "zilobase.database.v2",
   verifyDatabaseRealtimeTicket: mocks.verifyTicket,
 }));
 vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
   getDatabaseRealtimeWebSocketUrl: () => "ws://localhost/realtime",
 }));
-vi.mock("./access/database-access", () => ({
+vi.mock("../../infrastructure/database", () => {
+  const emptyQuery = () => {
+    const query = {
+      from() { return query; },
+      innerJoin() { return query; },
+      limit() { return Promise.resolve([]); },
+      orderBy() { return Promise.resolve([]); },
+      then(resolve: (value: unknown[]) => unknown) {
+        return Promise.resolve([]).then(resolve);
+      },
+      where() { return query; },
+    };
+    return query;
+  };
+  return { db: { select: emptyQuery } };
+});
+vi.mock("./access/database-access", async (original) => ({
+  ...(await original<typeof import("./access/database-access")>()),
   getDatabaseRecord: mocks.getRecord,
 }));
 vi.mock("./core/payload", () => ({
-  getDatabasePayload: mocks.payload,
-  getDatabaseSchemaPayload: mocks.schemaPayload,
+  getDatabaseExportPayload: mocks.payload,
 }));
 
 import { databaseReadRoutes } from "./database-read-routes";
 
 const record = {
+  config: {},
+  createdAt: new Date("2026-08-01T00:00:00.000Z"),
   deletedAt: null,
   id: "database-1",
+  name: "Database",
+  pageId: "page-1",
+  updatedAt: new Date("2026-08-01T00:00:00.000Z"),
   version: 7,
   workspaceId: "workspace-1",
 };
@@ -64,7 +84,6 @@ beforeEach(() => {
   mocks.accessLevel.mockResolvedValue("full");
   mocks.membership.mockResolvedValue({ id: "membership-1" });
   mocks.payload.mockResolvedValue({ database: { id: "database-1" }, rows: [] });
-  mocks.schemaPayload.mockResolvedValue({ database: { id: "database-1" } });
   mocks.published.mockResolvedValue(false);
   mocks.realtimeExpiration.mockResolvedValue(null);
   mocks.createTicket.mockResolvedValue({ expiresAt: "2026-08-04T00:00:00.000Z", token: "ticket" });
@@ -81,33 +100,53 @@ function sessionApp() {
   return app;
 }
 
-test("database read route returns 404 and protects private databases", async () => {
+test("database bootstrap route returns 404 and protects private databases", async () => {
   mocks.getRecord.mockResolvedValueOnce(undefined);
-  const missing = await databaseReadRoutes.request("/missing");
+  const missing = await databaseReadRoutes.request("/missing/bootstrap");
   assert.equal(missing.status, 404);
 
-  const privateResponse = await databaseReadRoutes.request("/database-1");
+  const privateResponse = await databaseReadRoutes.request("/database-1/bootstrap");
   assert.equal(privateResponse.status, 401);
   assert.deepEqual(await privateResponse.json(), { error: "Unauthorized" });
 });
 
-test("database read route serves published and schema-only payloads", async () => {
+test("database bootstrap route serves schema-only entities", async () => {
   mocks.published.mockResolvedValue(true);
-  const published = await databaseReadRoutes.request("/database-1");
+  const published = await databaseReadRoutes.request("/database-1/bootstrap");
   assert.equal(published.status, 200);
   assert.equal((await responseJson<{ database: { accessLevel: null } }>(published)).database.accessLevel, null);
 
-  const response = await sessionApp().request("/database-1?schemaOnly=1");
+  const response = await sessionApp().request("/database-1/bootstrap");
   assert.equal(response.status, 200);
   assert.equal((await responseJson<{ database: { accessLevel: string } }>(response)).database.accessLevel, "full");
-  assert.equal(mocks.schemaPayload.mock.calls.length, 1);
+  assert.equal(mocks.payload.mock.calls.length, 0);
+});
+
+test("database export route performs an explicit complete source read", async () => {
+  mocks.payload.mockResolvedValue({
+    activeDataSource: { id: "source-1" },
+    database: { id: "database-1" },
+    rows: [{ id: "row-1" }],
+  });
+  const response = await sessionApp().request(
+    "/database-1/export?dataSourceId=source-1",
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    (await responseJson<{ rows: Array<{ id: string }> }>(response)).rows,
+    [{ id: "row-1" }],
+  );
+  assert.deepEqual(mocks.payload.mock.calls[0]?.[3], {
+    dataSourceId: "source-1",
+  });
 });
 
 test("database read route authorizes deleted records through membership", async () => {
   mocks.getRecord.mockResolvedValue({ ...record, deletedAt: new Date() });
-  const response = await sessionApp().request("/database-1?includeDeleted=1");
+  const response = await sessionApp().request("/database-1/bootstrap?includeDeleted=1");
   assert.equal(response.status, 200);
-  assert.equal((await responseJson<{ database: { accessLevel: string } }>(response)).database.accessLevel, "none");
+  assert.equal((await responseJson<{ database: { accessLevel: null } }>(response)).database.accessLevel, null);
   assert.equal(mocks.membership.mock.calls.length, 1);
 });
 
@@ -149,7 +188,7 @@ test("realtime ticket route creates and refreshes scoped tickets", async () => {
   assert.equal(body.databaseId, "database-1");
   assert.equal(body.websocketUrl, "ws://localhost/realtime?database=database-1");
   assert.deepEqual(body.websocketProtocols, [
-    "zilobase-realtime-v1",
+    "zilobase.database.v2",
     "zilobase-auth.ticket",
   ]);
   assert.equal(mocks.createTicket.mock.calls[0]?.[0].sessionId, "session-1");
@@ -176,8 +215,8 @@ test("OAuth database workspace binding retains the existing ACL", async () => {
   });
   app.route("/", databaseReadRoutes);
   mocks.access.mockResolvedValue(false);
-  assert.equal((await app.request("/database-1")).status, 403);
+  assert.equal((await app.request("/database-1/bootstrap")).status, 403);
   assert.equal(mocks.payload.mock.calls.length, 0);
   mocks.access.mockResolvedValue(true);
-  assert.equal((await app.request("/database-1")).status, 200);
+  assert.equal((await app.request("/database-1/bootstrap")).status, 200);
 });

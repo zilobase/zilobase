@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
+import { databaseOrderKeyAtPosition } from "@zilobase/features/databases/order-key";
 
 import type { Database } from "../../infrastructure/database";
 import {
@@ -595,8 +596,8 @@ export async function seedHostedDemo(databaseClient: Database) {
           deletedAt: null,
           id: task.id,
           lastEditedById: DEMO_IDS.user,
+          orderKey: databaseOrderKeyAtPosition(position),
           pageId: task.pageId,
-          position,
           updatedAt: FIXED_DATE,
         })
         .onConflictDoUpdate({
@@ -604,7 +605,7 @@ export async function seedHostedDemo(databaseClient: Database) {
           set: {
             deletedAt: null,
             lastEditedById: DEMO_IDS.user,
-            position,
+            orderKey: databaseOrderKeyAtPosition(position),
             updatedAt: FIXED_DATE,
           },
         });

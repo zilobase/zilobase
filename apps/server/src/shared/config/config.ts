@@ -115,7 +115,7 @@ export function resolvePublicRequestUrl(
   const incoming = new URL(request.url);
   const localAdapterPort = getStringEnv(env, "ZILOBASE_ADAPTER_PORT");
 
-  // Wrangler may preserve the Vite frontend in X-Forwarded-Host or Referer.
+  // A reverse proxy may preserve the frontend in X-Forwarded-Host or Referer.
   // In local adapter mode, keep OAuth and desktop callbacks on the explicitly
   // configured API origin so proxy headers cannot change the registered URL.
   if (localAdapterPort && isLocalAuthConfiguration(env)) {

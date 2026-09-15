@@ -12,9 +12,7 @@ import {
   databaseCreateRoutes,
 } from "./database-core-routes";
 import { databaseReadRoutes } from "./database-read-routes";
-import { databasePropertyRoutes } from "./database-properties-routes";
-import { databaseRowRoutes } from "./database-rows-routes";
-import { databaseSourceRoutes } from "./database-sources-routes";
+import { databaseCommandRoutes } from "./database-command-routes";
 
 export const databaseRoutes = new Hono<AppBindings>();
 
@@ -27,9 +25,7 @@ databaseRoutes.use(
 
 databaseRoutes.route("/", databaseCreateRoutes);
 databaseRoutes.route("/", databaseReadRoutes);
+databaseRoutes.route("/", databaseCommandRoutes);
 databaseRoutes.route("/", databaseAutomationRoutes);
 databaseRoutes.route("/", automationSlackRoutes);
 databaseRoutes.route("/", databaseCoreRoutes);
-databaseRoutes.route("/", databaseSourceRoutes);
-databaseRoutes.route("/", databasePropertyRoutes);
-databaseRoutes.route("/", databaseRowRoutes);

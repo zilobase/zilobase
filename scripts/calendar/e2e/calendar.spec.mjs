@@ -24,6 +24,49 @@ test("cached week opens details and switches views", async ({ page }) => {
   await page.getByRole("combobox").click(); await page.getByRole("option", { name: "Month", exact: true }).click();
   await expect(page.getByRole("button", { name: /Design review/ }).first()).toBeVisible();
 });
+
+test("calendarcn wheel gestures translate once and settle on exact dates", async ({ page }) => {
+  await page.evaluate(() => window.calendarFixture.navigate("week", "2026-09-09"));
+  const timeline = page.locator("[data-calendar-timeline-scroll]");
+  const horizontal = timeline.locator('[data-calendar-scroll-content="horizontal"]');
+  await expect(timeline).toBeVisible();
+  const columnWidth = await timeline.locator("[data-calendar-day-column]").first().evaluate(element => element.clientWidth);
+  const gesture = await timeline.evaluate((element, deltaX) => {
+    const content = element.querySelector('[data-calendar-scroll-content="horizontal"]');
+    const before = content.style.transform;
+    const wheel = new WheelEvent("wheel", { deltaX, deltaY: 1, bubbles: true, cancelable: true });
+    element.dispatchEvent(wheel);
+    return { before, cancelled: wheel.defaultPrevented };
+  }, columnWidth * .75);
+  expect(gesture.cancelled).toBe(true);
+  await page.waitForTimeout(500);
+  await expect.poll(() => page.evaluate(() => window.calendarFixture.search().date)).toBe("2026-09-08");
+  await expect(horizontal).toHaveCSS("transition-duration", "0s");
+  const verticalCancelled = await timeline.evaluate(element => {
+    const wheel = new WheelEvent("wheel", { deltaX: 1, deltaY: 80, bubbles: true, cancelable: true });
+    element.dispatchEvent(wheel);
+    return wheel.defaultPrevented;
+  });
+  expect(verticalCancelled).toBe(false);
+
+  await timeline.evaluate((element, deltaX) => element.dispatchEvent(new WheelEvent("wheel", { deltaX, deltaY: 1, bubbles: true, cancelable: true })), columnWidth * .25);
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => window.calendarFixture.search().date)).toBe("2026-09-08");
+
+  await page.evaluate(() => window.calendarFixture.navigate("month", "2026-09-09"));
+  const month = page.locator("[data-calendar-month-scroll]");
+  await expect(month).toBeVisible();
+  for (let index = 0; index < 2; index++) {
+    const cancelled = await month.evaluate(element => {
+      const wheel = new WheelEvent("wheel", { deltaX: 1, deltaY: 100, bubbles: true, cancelable: true });
+      element.dispatchEvent(wheel);
+      return wheel.defaultPrevented;
+    });
+    expect(cancelled).toBe(true);
+    await page.waitForTimeout(400);
+  }
+  await expect.poll(() => page.evaluate(() => window.calendarFixture.search().date)).toBe("2026-09-17");
+});
 test("calendar renders all appearance families", async ({ page }) => {
   await expect(page.getByRole("button", { name: /Design review/ })).toBeVisible();
   for (const family of ["default", "warm", "midnight", "forest", "ocean", "notion"]) for (const appearance of ["light", "dark"]) {

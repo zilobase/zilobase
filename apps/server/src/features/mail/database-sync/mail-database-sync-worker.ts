@@ -1,4 +1,8 @@
-import { and, asc, eq, inArray, isNull, lt, lte, max, or, sql } from "drizzle-orm"
+import { and, asc, eq, inArray, isNull, lt, lte, or, sql } from "drizzle-orm"
+import {
+  databaseOrderKeyAtPosition,
+  databaseOrderKeyBetween,
+} from "@zilobase/features/databases/order-key"
 import { evaluateMailFilterExpression, type MailFilterRecord } from "@zilobase/features/mail/predicate";
 import { normalizeMailViewConfig } from "@zilobase/features/mail/organization";
 import { type MailAddress } from "@zilobase/features/mail/contracts";
@@ -6,9 +10,13 @@ import { type MailAddress } from "@zilobase/features/mail/contracts";
 import { requireDatabaseEditAccess } from "../../databases/access/database-access"
 import { requireDataSourceEditAccess } from "../../databases/access/data-source-access"
 import { commitDataSourceMutation } from "../../databases/core/commit"
+import {
+  lockDatabaseRowOrdering,
+  rebalanceDatabaseRowOrderKeys,
+} from "../../databases/core/position-service"
 import { lockDatabaseAutomationFactRows } from "../../databases/automations/triggers/event-capture"
 import { validateCellValue } from "../../databases/properties/config"
-import { fetchDatabaseRowDelta, fetchDatabaseValuesForPage } from "../../databases/realtime/delta"
+import { getDatabaseRecordEntity } from "../../databases/commands/record-entity"
 import { upsertPageItemPlacement } from "../../pages/placements"
 import { encodePageContentAsYjs } from "../../collaboration/service"
 import { db } from "../../../infrastructure/database"
@@ -339,18 +347,32 @@ async function ensureSyncPage(env: RuntimeEnv, record: SyncRecord, dataSourceId:
   const [existing] = await db.select({ deletedAt: databaseRow.deletedAt, id: databaseRow.id }).from(databaseRow).where(eq(databaseRow.id, record.databaseRowId)).limit(1)
   if (existing?.deletedAt) throw new MailDatabaseSyncPausedError("The synced database row was deleted.")
   if (!existing) {
-    await commitDataSourceMutation({ actorId: userId, changed: ["rows"], dataSourceId, env }, async (tx) => {
+    await commitDataSourceMutation({ actorId: userId, areas: ["records"], dataSourceId, env }, async (tx) => {
+      await lockDatabaseRowOrdering(tx, dataSourceId)
       await lockDatabaseAutomationFactRows(tx, [{ dataSourceId, rowId: record.databaseRowId }])
-      const [position] = await tx.select({ value: max(databaseRow.position) }).from(databaseRow).where(and(eq(databaseRow.dataSourceId, dataSourceId), isNull(databaseRow.deletedAt)))
+      const activeRows = await tx.select({ id: databaseRow.id, orderKey: databaseRow.orderKey })
+        .from(databaseRow)
+        .where(and(eq(databaseRow.dataSourceId, dataSourceId), isNull(databaseRow.deletedAt)))
+        .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
       const now = new Date()
+      let orderKey = databaseOrderKeyBetween(activeRows.at(-1)?.orderKey ?? null, null)
+      if (orderKey === null) {
+        await rebalanceDatabaseRowOrderKeys(
+          tx,
+          dataSourceId,
+          activeRows.map(({ id }) => id),
+          now,
+        )
+        orderKey = databaseOrderKeyAtPosition(activeRows.length)
+      }
       const [inserted] = await tx.insert(databaseRow).values({
         createdAt: now,
         createdById: userId,
         dataSourceId,
         id: record.databaseRowId,
         lastEditedById: userId,
+        orderKey,
         pageId: record.pageId,
-        position: Number(position?.value ?? -1) + 1,
         updatedAt: now,
       }).onConflictDoNothing().returning({ id: databaseRow.id })
       await upsertPageItemPlacement(tx, {
@@ -360,7 +382,7 @@ async function ensureSyncPage(env: RuntimeEnv, record: SyncRecord, dataSourceId:
         parentId: databaseId,
         parentKind: "database",
         placementKind: "database_row",
-        position: Number(position?.value ?? -1) + 1,
+        position: activeRows.length,
         sourceRowId: record.databaseRowId,
         workspaceId,
       })
@@ -374,14 +396,14 @@ async function ensureSyncPage(env: RuntimeEnv, record: SyncRecord, dataSourceId:
           rowAdded: true,
           rowId: record.databaseRowId,
         }] : [],
-        delta: await fetchDatabaseRowDelta(record.databaseRowId, tx) ?? { rows: [] },
+        changes: { records: [await getDatabaseRecordEntity(tx, dataSourceId, record.databaseRowId)] },
       }
     })
   }
 }
 
 async function writeMappedValues(input: { dataSourceId: string; env: RuntimeEnv; record: SyncRecord; title: string; userId: string; values: Array<{ propertyId: string; value: unknown }> }) {
-  await commitDataSourceMutation({ actorId: input.userId, changed: ["rows", "values"], dataSourceId: input.dataSourceId, env: input.env }, async (tx) => {
+  await commitDataSourceMutation({ actorId: input.userId, areas: ["records"], dataSourceId: input.dataSourceId, env: input.env }, async (tx) => {
     await lockDatabaseAutomationFactRows(tx, [{ dataSourceId: input.dataSourceId, rowId: input.record.databaseRowId }])
     const now = new Date()
     const [activeRow] = await tx.select({ id: databaseRow.id, title: page.name }).from(databaseRow)
@@ -400,10 +422,6 @@ async function writeMappedValues(input: { dataSourceId: string; env: RuntimeEnv;
         .onConflictDoUpdate({ target: [pagePropertyValue.pageId, pagePropertyValue.propertyId], set: { updatedAt: now, value: mapped.value } })
     }
     await tx.update(databaseRow).set({ lastEditedById: input.userId, updatedAt: now }).where(eq(databaseRow.id, input.record.databaseRowId))
-    const [rowDelta, values] = await Promise.all([
-      fetchDatabaseRowDelta(input.record.databaseRowId, tx),
-      fetchDatabaseValuesForPage(input.record.pageId, input.values.map((value) => value.propertyId), tx),
-    ])
     return {
       automationFacts: [{
         actorId: input.userId,
@@ -420,11 +438,7 @@ async function writeMappedValues(input: { dataSourceId: string; env: RuntimeEnv;
         pageId: input.record.pageId,
         rowId: input.record.databaseRowId,
       }],
-      delta: { ...(rowDelta ?? {}), values: values.map((value) => ({
-        ...value,
-        createdAt: value.createdAt.toISOString(),
-        updatedAt: value.updatedAt.toISOString(),
-      })) },
+      changes: { records: [await getDatabaseRecordEntity(tx, input.dataSourceId, input.record.databaseRowId)] },
     }
   })
 }

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Bold, ChevronRight, PanelTop } from "@/shared/components/icons"
+import { ChevronRight, PanelTop } from "@/shared/components/icons"
 
 import {
   EmojiPicker,
@@ -16,7 +16,6 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
-import type { PhosphorPickerWeight } from "@/shared/ui/phosphor-icon-picker"
 import { cn } from "@/shared/lib/utils"
 
 type IconPosition = "inline" | "top"
@@ -45,8 +44,6 @@ export function IconEmojiPicker({
   onIconPositionChange,
 }: IconEmojiPickerProps) {
   const [activeTab, setActiveTab] = React.useState("emoji")
-  const [iconWeight, setIconWeight] =
-    React.useState<PhosphorPickerWeight>("bold")
 
   return (
     <div className={cn("flex w-72 flex-col", className)}>
@@ -79,10 +76,7 @@ export function IconEmojiPicker({
                 </div>
               }
             >
-              <PhosphorIconPicker
-                onIconSelect={onIconSelect}
-                weight={iconWeight}
-              />
+              <PhosphorIconPicker onIconSelect={onIconSelect} />
             </React.Suspense>
           ) : null}
         </TabsContent>
@@ -92,86 +86,45 @@ export function IconEmojiPicker({
           </TabsContent>
         ) : null}
       </Tabs>
-      {activeTab === "icon" || (iconPosition && onIconPositionChange) ? (
+      {iconPosition && onIconPositionChange ? (
         <div className="border-t p-2">
-          {activeTab === "icon" ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-action-neutral-hover focus-visible:bg-action-neutral-hover"
-                  type="button"
-                >
-                  <Bold className="size-4" weight={iconWeight} />
-                  <span>Icon weight</span>
-                  <span className="ml-auto text-content-secondary">
-                    {iconWeight === "fill" ? "Filled" : "Bold"}
-                  </span>
-                  <ChevronRight className="size-4 text-content-secondary" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="w-40"
-                side="right"
-                sideOffset={6}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-action-neutral-hover focus-visible:bg-action-neutral-hover"
+                type="button"
               >
-                <DropdownMenuRadioGroup
-                  onValueChange={(value) => {
-                    if (value === "bold" || value === "fill") {
-                      setIconWeight(value)
-                    }
-                  }}
-                  value={iconWeight}
-                >
-                  <DropdownMenuRadioItem value="bold">
-                    Bold
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="fill">
-                    Filled
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-          {iconPosition && onIconPositionChange ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none transition-colors hover:bg-action-neutral-hover focus-visible:bg-action-neutral-hover"
-                  type="button"
-                >
-                  <PanelTop className="size-4" />
-                  <span>Icon position</span>
-                  <span className="ml-auto text-content-secondary">
-                    {iconPosition === "inline" ? "Inline" : "Top"}
-                  </span>
-                  <ChevronRight className="size-4 text-content-secondary" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="w-40"
-                side="right"
-                sideOffset={6}
+                <PanelTop className="size-4" />
+                <span>Icon position</span>
+                <span className="ml-auto text-content-secondary">
+                  {iconPosition === "inline" ? "Inline" : "Top"}
+                </span>
+                <ChevronRight className="size-4 text-content-secondary" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-40"
+              side="right"
+              sideOffset={6}
+            >
+              <DropdownMenuRadioGroup
+                onValueChange={(value) => {
+                  if (value === "inline" || value === "top") {
+                    onIconPositionChange(value)
+                  }
+                }}
+                value={iconPosition}
               >
-                <DropdownMenuRadioGroup
-                  onValueChange={(value) => {
-                    if (value === "inline" || value === "top") {
-                      onIconPositionChange(value)
-                    }
-                  }}
-                  value={iconPosition}
-                >
-                  <DropdownMenuRadioItem value="inline">
-                    Inline
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="top">
-                    Top
-                  </DropdownMenuRadioItem>
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
+                <DropdownMenuRadioItem value="inline">
+                  Inline
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="top">
+                  Top
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ) : null}
     </div>

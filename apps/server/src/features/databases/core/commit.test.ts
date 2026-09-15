@@ -3,6 +3,7 @@ import { beforeEach, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   capture: vi.fn(),
+  dispatch: vi.fn(),
   publish: vi.fn(),
   transaction: vi.fn(),
 }));
@@ -10,8 +11,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../../infrastructure/database", () => ({
   db: { transaction: mocks.transaction },
 }));
-vi.mock("../realtime/outbox", () => ({
-  publishDatabaseRealtimeEvent: mocks.publish,
+vi.mock("../../../infrastructure/background/dispatch", () => ({
+  dispatchBackgroundTasks: mocks.dispatch,
 }));
 vi.mock("../automations/triggers/event-capture", () => ({
   captureDatabaseAutomationMutationFacts: mocks.capture,
@@ -21,19 +22,28 @@ import {
   commitDatabaseMutation,
   commitDatabaseMutationBatch,
   DatabaseMutationError,
-  mutationResponse,
 } from "./commit";
+import {
+  databaseMutationEvent,
+  databaseRealtimeOutbox,
+} from "../../../infrastructure/database/schema";
 
 function transactionExecutor(versions: Array<number | null>) {
   let insertCalls = 0;
+  const journal: unknown[] = [];
   const outbox: unknown[] = [];
   let updateCalls = 0;
   const tx = {
-    insert() {
+    insert(table: unknown) {
       return {
         async values(value: unknown) {
           insertCalls += 1;
-          outbox.push(...(Array.isArray(value) ? value : [value]));
+          const target = table === databaseRealtimeOutbox
+            ? outbox
+            : table === databaseMutationEvent
+              ? journal
+              : [];
+          target.push(...(Array.isArray(value) ? value : [value]));
         },
       };
     },
@@ -61,6 +71,7 @@ function transactionExecutor(versions: Array<number | null>) {
   mocks.transaction.mockImplementation(async (callback) => callback(tx));
   return {
     get insertCalls() { return insertCalls; },
+    journal,
     outbox,
     tx,
     get updateCalls() { return updateCalls; },
@@ -70,6 +81,8 @@ function transactionExecutor(versions: Array<number | null>) {
 beforeEach(() => {
   mocks.capture.mockReset();
   mocks.capture.mockResolvedValue(0);
+  mocks.dispatch.mockReset();
+  mocks.dispatch.mockResolvedValue(true);
   mocks.publish.mockReset();
   mocks.transaction.mockReset();
   vi.restoreAllMocks();
@@ -86,14 +99,14 @@ test("commitDatabaseMutationBatch versions, bulk persists, and publishes each mu
     async () => ({
       mutations: [
         {
-          changed: ["database"],
+          areas: ["databases"],
           databaseId: "database-1",
-          delta: { database: { name: "First" } },
+          changes: {},
         },
         {
-          changed: ["rows"],
+          areas: ["records"],
           databaseId: "database-2",
-          delta: { rows: [{ id: "row-1" }] },
+          changes: {},
         },
       ],
       result: "saved",
@@ -102,42 +115,47 @@ test("commitDatabaseMutationBatch versions, bulk persists, and publishes each mu
 
   assert.equal(result.result, "saved");
   assert.deepEqual(
-    result.commits.map(({ databaseId, mutationId, version }) => ({
+    result.commits.map(({ databaseId, eventId, version }) => ({
       databaseId,
-      mutationId,
+      eventId,
       version,
     })),
     [
       {
         databaseId: "database-1",
-        mutationId: "00000000-0000-4000-8000-000000000001",
+        eventId: "00000000-0000-4000-8000-000000000001",
         version: 3,
       },
       {
         databaseId: "database-2",
-        mutationId: "00000000-0000-4000-8000-000000000002",
+        eventId: "00000000-0000-4000-8000-000000000002",
         version: 9,
       },
     ],
   );
   assert.equal(transaction.updateCalls, 2);
-  assert.equal(transaction.insertCalls, 1);
+  assert.equal(transaction.insertCalls, 2);
   assert.equal(transaction.outbox.length, 2);
-  assert.ok(
-    (transaction.outbox[0] as { committedAt: unknown }).committedAt instanceof Date,
+  assert.equal(transaction.journal.length, 2);
+  assert.equal(
+    (transaction.outbox[0] as { eventId: string }).eventId,
+    (transaction.journal[0] as { id: string }).id,
   );
-  assert.equal(mocks.publish.mock.calls.length, 2);
-  assert.deepEqual(mocks.publish.mock.calls[0]?.[0], {
-    actorId: "user-1",
-    changed: ["database"],
-    committedAt: result.commits[0]?.committedAt,
-    databaseId: "database-1",
-    delta: { database: { name: "First" } },
-    mutationId: "00000000-0000-4000-8000-000000000001",
-    protocolVersion: 1,
-    type: "database.mutation",
-    version: 3,
-  });
+  assert.deepEqual(Object.keys(transaction.outbox[0] as object).sort(), [
+    "eventId",
+    "id",
+  ]);
+  assert.equal(mocks.publish.mock.calls.length, 0);
+  assert.deepEqual(
+    mocks.dispatch.mock.calls[0]?.[1].map((task: { kind: string; resourceId: string }) => ({
+      kind: task.kind,
+      resourceId: task.resourceId,
+    })),
+    [
+      { kind: "realtime.database", resourceId: "00000000-0000-4000-8000-000000000001" },
+      { kind: "realtime.database", resourceId: "00000000-0000-4000-8000-000000000002" },
+    ],
+  );
 });
 
 test("same-database batches reserve contiguous versions with one update", async () => {
@@ -146,10 +164,10 @@ test("same-database batches reserve contiguous versions with one update", async 
   const result = await commitDatabaseMutationBatch(
     { actorId: "user-1" },
     async () => ({
-      mutations: ["database", "rows", "values"].map((area) => ({
-        changed: [area] as Array<"database" | "rows" | "values">,
+      mutations: ["databases", "records", "properties"].map((area) => ({
+        areas: [area] as Array<"databases" | "records" | "properties">,
         databaseId: "database-1",
-        delta: {},
+        changes: {},
       })),
       result: "saved",
     }),
@@ -157,9 +175,13 @@ test("same-database batches reserve contiguous versions with one update", async 
 
   assert.deepEqual(result.commits.map(({ version }) => version), [10, 11, 12]);
   assert.equal(transaction.updateCalls, 1);
-  assert.equal(transaction.insertCalls, 1);
+  assert.equal(transaction.insertCalls, 2);
   assert.deepEqual(
-    transaction.outbox.map((row) => (row as { version: number }).version),
+    transaction.outbox.map((row) => (row as { eventId: string }).eventId),
+    transaction.journal.map((row) => (row as { id: string }).id),
+  );
+  assert.deepEqual(
+    transaction.journal.map((row) => (row as { version: number }).version),
     [10, 11, 12],
   );
 });
@@ -171,7 +193,7 @@ test("multi-database batches reserve locks deterministically and preserve commit
     { actorId: "user-1" },
     async () => ({
       mutations: ["database-b", "database-a", "database-b"].map(
-        (databaseId) => ({ changed: ["rows"] as const, databaseId, delta: {} }),
+        (databaseId) => ({ areas: ["records"] as const, databaseId, changes: {} }),
       ),
       result: undefined,
     }),
@@ -219,7 +241,7 @@ test("automation facts are captured inside the commit transaction and abort atom
     commitDatabaseMutationBatch({ actorId: "user-1" }, async () => ({
       automationFacts: facts,
       mutations: [
-        { changed: ["values"], databaseId: "database-1", delta: {} },
+        { areas: ["records"], databaseId: "database-1", changes: {} },
       ],
       result: undefined,
     })),
@@ -232,51 +254,47 @@ test("automation facts are captured inside the commit transaction and abort atom
   assert.equal(mocks.publish.mock.calls.length, 0);
 });
 
-test("large commits persist invalidate-only payloads", async () => {
-  const { outbox } = transactionExecutor([2]);
+test("large commits persist reset events with reference-only delivery", async () => {
+  const { journal, outbox } = transactionExecutor([2]);
 
   const result = await commitDatabaseMutationBatch(
     { actorId: "user-1" },
     async () => ({
       mutations: [
         {
-          changed: ["values"],
+          areas: ["records"],
           databaseId: "database-1",
-          delta: { database: { value: "x".repeat(70_000) } },
+          changes: {
+            removedRecordIds: Array.from(
+              { length: 700 },
+              (_, index) => `${index}-${"x".repeat(110)}`,
+            ),
+          },
         },
       ],
       result: undefined,
     }),
   );
 
-  assert.equal(result.commits[0]?.requiresRefetch, true);
-  assert.deepEqual(result.commits[0]?.delta, {});
-  assert.deepEqual(
-    (outbox[0] as { delta: unknown; requiresRefetch: boolean }).delta,
-    {},
-  );
-  assert.equal(
-    (outbox[0] as { requiresRefetch: boolean }).requiresRefetch,
-    true,
-  );
+  assert.equal(result.commits[0]?.requiresReset, true);
+  assert.deepEqual(result.commits[0]?.changes, {});
+  assert.equal((journal[0] as { requiresReset: boolean }).requiresReset, true);
+  assert.deepEqual(Object.keys(outbox[0] as object).sort(), ["eventId", "id"]);
   assert.equal(mocks.publish.mock.calls.length, 0);
 });
 
-test("immediate publish failures are logged without rolling back commits", async () => {
+test("background enqueue failures leave the committed outbox available for recovery", async () => {
   transactionExecutor([4]);
-  mocks.publish.mockRejectedValue(new Error("room unavailable"));
-  const errorLog = vi
-    .spyOn(console, "error")
-    .mockImplementation(() => undefined);
+  mocks.dispatch.mockResolvedValue(false);
 
   const result = await commitDatabaseMutationBatch(
     { actorId: "user-1", env: {} },
     async () => ({
       mutations: [
         {
-          changed: ["views"],
+          areas: ["views"],
           databaseId: "database-1",
-          delta: { views: [] },
+          changes: { views: [] },
         },
       ],
       result: true,
@@ -284,13 +302,8 @@ test("immediate publish failures are logged without rolling back commits", async
   );
 
   assert.equal(result.commits[0]?.version, 4);
-  assert.deepEqual(JSON.parse(String(errorLog.mock.calls[0]?.[0])), {
-    databaseId: "database-1",
-    error: "room unavailable",
-    event: "database_realtime_immediate_publish_failed",
-    mutationId: result.commits[0]?.mutationId,
-    version: 4,
-  });
+  assert.equal(mocks.dispatch.mock.calls.length, 1);
+  assert.equal(mocks.publish.mock.calls.length, 0);
 });
 
 test("missing databases abort mutation commits with a typed 404", async () => {
@@ -300,9 +313,9 @@ test("missing databases abort mutation commits with a typed 404", async () => {
     commitDatabaseMutationBatch({ actorId: "user-1" }, async () => ({
       mutations: [
         {
-          changed: ["rows"],
+          areas: ["records"],
           databaseId: "missing",
-          delta: {},
+          changes: {},
         },
       ],
       result: undefined,
@@ -315,24 +328,29 @@ test("missing databases abort mutation commits with a typed 404", async () => {
   );
 });
 
-test("single mutation commits and response mapping preserve metadata", async () => {
+test("single mutation exposes its canonical v2 event", async () => {
   transactionExecutor([7]);
 
   const commit = await commitDatabaseMutation(
     {
       actorId: "user-1",
-      changed: ["properties"],
+      areas: ["properties"],
       databaseId: "database-1",
     },
-    async () => ({ delta: { properties: [{ id: "property-1" }] } }),
+    async () => ({ changes: { removedPropertyIds: ["property-1"] } }),
   );
 
-  assert.deepEqual(mutationResponse(commit), {
-    changed: ["properties"],
+  assert.deepEqual(commit, {
+    actorId: "user-1",
+    areas: ["properties"],
+    changes: { removedPropertyIds: ["property-1"] },
+    commandId: commit.eventId,
     committedAt: commit.committedAt,
     databaseId: "database-1",
-    delta: { properties: [{ id: "property-1" }] },
-    mutationId: commit.mutationId,
+    dataSourceId: null,
+    eventId: commit.eventId,
+    protocolVersion: 2,
+    type: "database.mutation",
     version: 7,
   });
 });
@@ -344,10 +362,10 @@ test("single mutation guard rejects an impossible empty batch result", async () 
     commitDatabaseMutation(
       {
         actorId: "user-1",
-        changed: ["database"],
+        areas: ["databases"],
         databaseId: "database-1",
       },
-      async () => ({ delta: {} }),
+      async () => ({ changes: {} }),
     ),
     /Database mutation did not produce a commit/,
   );

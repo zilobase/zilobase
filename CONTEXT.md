@@ -10,6 +10,18 @@ A Database view is the editor surface for viewing and changing a Database as a T
 
 A Database is a page-backed collection of pages with properties, rows, views, and property values.
 
+### Database host
+
+The page-backed Database that owns views and may display one or more linked data sources. V2 client and realtime contracts call this a database host when it must be distinguished from its sources.
+
+### Database record
+
+The client-side rendering aggregate for one database row. It embeds the row page metadata and values keyed by property ID while PostgreSQL remains normalized.
+
+### Database mutation journal
+
+The authoritative, version-ordered history of committed database mutation events used for command replay, realtime delivery and reconnect catch-up. It is separate from the realtime outbox, which tracks delivery work.
+
 ### Page
 
 A Page is the page item represented by a Database row and opened from the editor.

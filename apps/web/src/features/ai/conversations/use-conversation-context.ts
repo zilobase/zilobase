@@ -8,7 +8,7 @@ import {
   usePageNavigation,
   usePageAccessLevel,
 } from "@zilobase/features/pages/react";
-import { useDatabase } from "@zilobase/features/databases/react";
+import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata";
 import { buildPrimaryAttachment } from "./components/elements/context-attach-menu";
 import { usePageAiContext } from "../context/use-page-ai-context";
 
@@ -49,7 +49,7 @@ export function useConversationContext({
       refetchOnMount: false,
     },
   );
-  const { data: databasePayload } = useDatabase(databaseId);
+  const { data: databasePayload } = useDatabaseMetadata(databaseId);
   const primaryAttachment = useMemo(() => {
     if (!effectivePrimarySource) {
       return null;

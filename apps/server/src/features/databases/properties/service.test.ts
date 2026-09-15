@@ -5,7 +5,8 @@ const mocks = vi.hoisted(() => ({
   invalidateAutomationDependencies: vi.fn(),
   access: vi.fn(),
   commit: vi.fn(),
-  fetchDelta: vi.fn(),
+  propertyEntity: vi.fn(),
+  recordEntity: vi.fn(),
   selectResults: [] as unknown[][],
 }));
 
@@ -23,8 +24,11 @@ vi.mock("../core/commit", () => ({
   commitDatabaseMutation: mocks.commit,
   commitDataSourceMutation: mocks.commit,
 }));
-vi.mock("../realtime/delta", () => ({
-  fetchDatabasePropertyDelta: mocks.fetchDelta,
+vi.mock("../commands/metadata-entities", () => ({
+  getDatabasePropertyEntity: mocks.propertyEntity,
+}));
+vi.mock("../commands/record-entity", () => ({
+  getDatabaseRecordEntity: mocks.recordEntity,
 }));
 vi.mock("../../../infrastructure/database", () => ({
   db: {
@@ -58,7 +62,10 @@ beforeEach(() => {
     workspaceId: "workspace-1",
   });
   mocks.commit.mockReset();
-  mocks.fetchDelta.mockReset();
+  mocks.propertyEntity.mockReset();
+  mocks.propertyEntity.mockImplementation(async (_context, id) => ({ id }));
+  mocks.recordEntity.mockReset();
+  mocks.recordEntity.mockImplementation(async (_tx, _sourceId, id) => ({ id }));
   mocks.invalidateAutomationDependencies.mockReset();
   mocks.selectResults.length = 0;
   vi.restoreAllMocks();
@@ -84,7 +91,11 @@ function transactionRecorder(options: {
       const rows = selectResults.shift() ?? [];
       const builder = {
         from() { return builder; },
-        async where() { return rows; },
+        where() { return builder; },
+        async orderBy() { return rows; },
+        then(resolve: (value: unknown[]) => unknown) {
+          return Promise.resolve(rows).then(resolve);
+        },
       };
       return builder;
     },
@@ -112,9 +123,6 @@ test("createDatabasePropertyService inserts and shifts a positioned property", a
     { id: "column-1", position: 0 },
     { id: "column-2", position: 1 },
   ]);
-  mocks.fetchDelta.mockResolvedValue({
-    properties: [{ id: "new-column", position: 1 }],
-  });
   vi.spyOn(crypto, "randomUUID")
     .mockReturnValueOnce("00000000-0000-4000-8000-000000000001")
     .mockReturnValueOnce("00000000-0000-4000-8000-000000000002");
@@ -158,15 +166,10 @@ test("createDatabasePropertyService inserts and shifts a positioned property", a
   });
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0], {
     actorId: "user-1",
-    changed: ["properties"],
+    areas: ["properties"],
     dataSourceId: "database-1",
     env: { ENV: "test" },
   });
-  const delta = (await mocks.commit.mock.results[0]?.value)?.delta;
-  assert.deepEqual(delta.properties.map(({ id, position }: any) => ({ id, position })), [
-    { id: "column-2", position: 2 },
-    { id: "new-column", position: 1 },
-  ]);
 });
 
 test("createDatabasePropertyService applies defaults and rejects invalid types", async () => {
@@ -198,7 +201,6 @@ test("updateDatabasePropertyService updates supplied metadata", async () => {
     [{ id: "column-1", propertyId: "property-1" }],
     [{ config: null, type: "text" }],
   );
-  mocks.fetchDelta.mockResolvedValue({ properties: [{ id: "column-1" }] });
 
   const result = await updateDatabasePropertyService({
     config: { options: [] },
@@ -220,7 +222,7 @@ test("updateDatabasePropertyService updates supplied metadata", async () => {
   assert.equal((updates[0] as Record<string, unknown>).position, 3);
   assert.equal((updates[1] as Record<string, unknown>).name, "Stage");
   assert.equal((updates[1] as Record<string, unknown>).type, "status");
-  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].changed, ["properties"]);
+  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].areas, ["properties"]);
   expect(mocks.invalidateAutomationDependencies).toHaveBeenCalledWith(
     expect.objectContaining({
       dependencyId: "column-1",
@@ -241,7 +243,6 @@ test("updateDatabasePropertyService normalizes retained status config", async ()
       type: "text",
     }],
   );
-  mocks.fetchDelta.mockResolvedValue({ properties: [{ id: "column-1" }] });
 
   await updateDatabasePropertyService({
     databaseId: "database-1",
@@ -269,7 +270,6 @@ test("updateDatabasePropertyService merges glyph patches without removing option
       type: "select",
     }],
   );
-  mocks.fetchDelta.mockResolvedValue({ properties: [{ id: "column-1" }] });
 
   await updateDatabasePropertyService({
     config: { icon: "safe-new-icon" },
@@ -299,7 +299,6 @@ test("updateDatabasePropertyService invalidates only removed option dependencies
       type: "multi_select",
     }],
   );
-  mocks.fetchDelta.mockResolvedValue({ properties: [{ id: "column-1" }] });
 
   await updateDatabasePropertyService({
     config: { options: [{ id: "keep", name: "Renamed", color: "green" }] },
@@ -344,7 +343,6 @@ test("updateDatabasePropertyService migrates renamed options and removes deleted
       type: "multi_select",
     }],
   );
-  mocks.fetchDelta.mockResolvedValue({ properties: [{ id: "column-1" }] });
 
   await updateDatabasePropertyService({
     config: { options: [{ id: "keep", name: "Renamed", color: "green" }] },
@@ -354,7 +352,7 @@ test("updateDatabasePropertyService migrates renamed options and removes deleted
   });
 
   expect(updates).toContainEqual(expect.objectContaining({ value: ["Renamed"] }));
-  expect(mocks.commit.mock.calls[0]?.[0].changed).toEqual(["properties", "values"]);
+  expect(mocks.commit.mock.calls[0]?.[0].areas).toEqual(["properties", "records"]);
 });
 
 test("updateDatabasePropertyService rejects missing records and invalid types", async () => {
@@ -415,7 +413,6 @@ test("updateDatabasePropertyService clears incompatible values", async () => {
     [{ id: "column-1", propertyId: "property-1" }],
     [{ config: null, type: "date" }],
   );
-  mocks.fetchDelta.mockResolvedValue(null);
 
   await updateDatabasePropertyService({
     databaseId: "database-1",
@@ -428,17 +425,10 @@ test("updateDatabasePropertyService clears incompatible values", async () => {
     updatedAt: (updates[0] as Record<string, unknown>).updatedAt,
     value: null,
   });
-  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].changed, [
+  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].areas, [
     "properties",
-    "values",
+    "records",
   ]);
-  const delta = (await mocks.commit.mock.results[0]?.value)?.delta;
-  assert.deepEqual(delta.properties, []);
-  assert.deepEqual(delta.values[0], {
-    ...changedValue,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-02T00:00:00.000Z",
-  });
 });
 
 test("updateDatabasePropertyService converts date values to text", async () => {
@@ -461,7 +451,6 @@ test("updateDatabasePropertyService converts date values to text", async () => {
     [{ id: "column-1", propertyId: "property-1" }],
     [{ config: null, type: "date" }],
   );
-  mocks.fetchDelta.mockResolvedValue({ properties: [{ id: "column-1" }] });
 
   await updateDatabasePropertyService({
     databaseId: "database-1",
@@ -474,8 +463,8 @@ test("updateDatabasePropertyService converts date values to text", async () => {
     (updates[0] as Record<string, unknown>).value,
     "2026-07-10 - 2026-07-12",
   );
-  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].changed, [
+  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].areas, [
     "properties",
-    "values",
+    "records",
   ]);
 });

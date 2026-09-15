@@ -1,66 +1,17 @@
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
+import { recordDatabaseGauge } from "../observability";
 import { db } from "../../../infrastructure/database";
-import { databaseRealtimeOutbox } from "../../../infrastructure/database/schema";
+import {
+  databaseMutationEvent,
+  databaseRealtimeOutbox,
+} from "../../../infrastructure/database/schema";
 import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
-import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
-import type {
-  DatabaseChangedArea,
-  DatabaseDelta,
-  DatabaseRealtimeMutationEvent,
-} from "./delta";
-
-type StoredRealtimeEvent = {
-  actorId: string;
-  changed: DatabaseChangedArea[];
-  committedAt: Date;
-  databaseId: string;
-  delta: DatabaseDelta;
-  id: string;
-  requiresRefetch: boolean;
-  version: number;
-};
+import { databaseMutationEventFromJournalRow } from "./journal-event";
 
 const DELIVERY_LEASE_MS = 2 * 60 * 1000;
 const MAX_DELIVERY_ATTEMPTS = 8;
-
-export async function publishDatabaseRealtimeEvent(
-  event: DatabaseRealtimeMutationEvent,
-  env: RuntimeEnv,
-  executor = db,
-) {
-  const publish = getRuntimeAdapter().publishDatabaseMutation;
-
-  if (!publish) return false;
-
-  try {
-    await publish({ env, event });
-    await executor
-      .delete(databaseRealtimeOutbox)
-      .where(eq(databaseRealtimeOutbox.id, event.mutationId));
-  } catch (error) {
-    const attemptedAt = new Date();
-    await executor
-      .update(databaseRealtimeOutbox)
-      .set({
-        attempts: 1,
-        lastAttemptAt: attemptedAt,
-        nextAttemptAt: retryAt(1, attemptedAt),
-      })
-      .where(eq(databaseRealtimeOutbox.id, event.mutationId));
-    await dispatchBackgroundTasks(env, [createBackgroundTask({
-      availableAt: retryAt(1, attemptedAt),
-      env,
-      kind: "realtime.database",
-      resourceId: event.mutationId,
-    })]);
-    throw error;
-  }
-
-  return true;
-}
 
 export async function drainDatabaseRealtimeOutbox(
   env: RuntimeEnv,
@@ -70,6 +21,8 @@ export async function drainDatabaseRealtimeOutbox(
   const publish = getRuntimeAdapter().publishDatabaseMutation;
 
   if (!publish) {
+    recordDatabaseGauge("outbox_backlog", 0);
+    recordDatabaseGauge("outbox_oldest_age_ms", 0);
     return {
       backlog: 0,
       delivered: 0,
@@ -89,7 +42,10 @@ export async function drainDatabaseRealtimeOutbox(
         options?.outboxId ? eq(databaseRealtimeOutbox.id, options.outboxId) : undefined,
         lte(databaseRealtimeOutbox.nextAttemptAt, sql`CURRENT_TIMESTAMP`),
       ))
-      .orderBy(asc(databaseRealtimeOutbox.committedAt))
+      .orderBy(
+        asc(databaseRealtimeOutbox.nextAttemptAt),
+        asc(databaseRealtimeOutbox.id),
+      )
       .limit(Math.min(Math.max(options?.limit ?? 100, 1), 500))
       .for("update", { skipLocked: true });
 
@@ -110,6 +66,12 @@ export async function drainDatabaseRealtimeOutbox(
       lastAttemptAt: attemptedAt,
     }));
   });
+  const journalIds = entries.flatMap((entry) => entry.eventId ? [entry.eventId] : []);
+  const journalEvents = journalIds.length > 0
+    ? await executor.select().from(databaseMutationEvent)
+        .where(inArray(databaseMutationEvent.id, journalIds))
+    : [];
+  const journalById = new Map(journalEvents.map((event) => [event.id, event]));
   let delivered = 0;
   let discarded = 0;
   let failed = 0;
@@ -117,8 +79,15 @@ export async function drainDatabaseRealtimeOutbox(
   const retryIdsByAttempts = new Map<number, string[]>();
 
   for (const entry of entries) {
+    const journalEvent = journalById.get(entry.eventId);
     try {
-      await publish({ env, event: toRealtimeEvent(entry as StoredRealtimeEvent) });
+      if (!journalEvent) {
+        throw new Error("Database mutation journal event is unavailable");
+      }
+      await publish({
+        env,
+        event: databaseMutationEventFromJournalRow(journalEvent),
+      });
       deleteIds.push(entry.id);
       delivered += 1;
     } catch (error) {
@@ -136,13 +105,13 @@ export async function drainDatabaseRealtimeOutbox(
       }
       console.error(JSON.stringify({
         attempts: entry.attempts,
-        databaseId: entry.databaseId,
+        databaseId: journalEvent?.databaseId ?? null,
         error: error instanceof Error ? error.message : String(error),
         event: discard
           ? "database_realtime_publish_discarded"
           : "database_realtime_publish_failed",
-        mutationId: entry.id,
-        version: entry.version,
+        eventId: entry.eventId,
+        version: journalEvent?.version ?? null,
       }));
     }
   }
@@ -164,38 +133,24 @@ export async function drainDatabaseRealtimeOutbox(
     .select({
       backlog: sql<number>`count(*)::int`,
       maxAttempts: sql<number>`coalesce(max(${databaseRealtimeOutbox.attempts}), 0)::int`,
-      oldestCommittedAt: sql<Date | null>`min(${databaseRealtimeOutbox.committedAt})`,
+      oldestReadyAt: sql<Date | null>`min(${databaseRealtimeOutbox.nextAttemptAt})`,
     })
     .from(databaseRealtimeOutbox);
-  const oldestCommittedAt = health?.oldestCommittedAt
-    ? new Date(health.oldestCommittedAt).getTime()
+  const oldestReadyAt = health?.oldestReadyAt
+    ? new Date(health.oldestReadyAt).getTime()
     : attemptedAt.getTime();
 
-  return {
+  const result = {
     backlog: health?.backlog ?? 0,
     delivered,
     discarded,
     failed,
     maxAttempts: health?.maxAttempts ?? 0,
-    oldestAgeMs: Math.max(0, attemptedAt.getTime() - oldestCommittedAt),
+    oldestAgeMs: Math.max(0, attemptedAt.getTime() - oldestReadyAt),
   };
-}
-
-function toRealtimeEvent(
-  entry: StoredRealtimeEvent,
-): DatabaseRealtimeMutationEvent {
-  return {
-    actorId: entry.actorId,
-    changed: entry.changed,
-    committedAt: entry.committedAt.toISOString(),
-    databaseId: entry.databaseId,
-    delta: entry.delta,
-    mutationId: entry.id,
-    protocolVersion: 1,
-    ...(entry.requiresRefetch ? { requiresRefetch: true as const } : {}),
-    type: "database.mutation",
-    version: entry.version,
-  };
+  recordDatabaseGauge("outbox_backlog", result.backlog);
+  recordDatabaseGauge("outbox_oldest_age_ms", result.oldestAgeMs);
+  return result;
 }
 
 function retryAt(attempts: number, from: Date) {
@@ -207,4 +162,4 @@ function retryAt(attempts: number, from: Date) {
   return new Date(from.getTime() + delay);
 }
 
-export type { DatabaseRealtimeMutationEvent } from "./delta";
+export type { DatabaseMutationEventV2 } from "@zilobase/features/databases/contracts";

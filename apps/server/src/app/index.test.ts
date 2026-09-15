@@ -29,7 +29,7 @@ test("createApp registers every public feature route group", () => {
     "GET /api/ai/operations/turns",
     "GET /api/ai/operations/turns/:turnId/tools",
     "POST /api/keys",
-    "GET /databases/:id",
+    "GET /databases/:id/bootstrap",
     "GET /demo/bootstrap",
     "POST /images/uploads",
     "POST /user-settings/profile/image/uploads",
@@ -142,8 +142,8 @@ test("createApp registers a compile-time edition after public routes", () => {
 function createTestEditionExtension(): ZilobaseEditionExtension {
   return {
     id: "test-edition",
-    authPlugins: [],
-    capabilities: ["sso"],
+    capabilities: ["custom-auth"],
+    async createAuthPlugins() { return []; },
     async beforeMembershipGrant() {},
     async recordSecurityEvent() {},
     registerRoutes(app) {

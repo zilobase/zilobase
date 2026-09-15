@@ -34,9 +34,10 @@ import {
 } from "../../collaboration/service";
 import { getDatabaseRecord } from "../../databases/access";
 import { lockDatabaseAutomationFactRows } from "../../databases/automations/triggers/event-capture";
-import { getDatabasePayload } from "../../databases/core";
+import { getDatabaseExportPayload } from "../../databases/core";
 import { commitDataSourceMutation } from "../../databases/core/commit";
 import { validateCellValue } from "../../databases/properties/config";
+import { getDatabaseRecordEntity } from "../../databases/commands/record-entity";
 import { upsertPageItemPlacement } from "../../pages/placements";
 import {
   enqueueNavigationInvalidation,
@@ -216,7 +217,7 @@ export function buildAgentNativeRunTools(
         const record = await getDatabaseRecord(input.databaseId);
         if (!record || record.workspaceId !== context.workspaceId)
           throw new Error("Database not found or not granted to this agent.");
-        const payload = await getDatabasePayload(record.id, undefined, record, {
+        const payload = await getDatabaseExportPayload(record.id, undefined, record, {
           dataSourceId: input.dataSourceId,
         });
         if (
@@ -400,7 +401,7 @@ export function buildAgentNativeRunTools(
           await commitDataSourceMutation(
             {
               actorId: `agent:${context.profileId}`,
-              changed: ["rows", "values"],
+              areas: ["records"],
               dataSourceId: input.dataSourceId,
               env: context.env,
             },
@@ -459,16 +460,8 @@ export function buildAgentNativeRunTools(
                     rowId: row.id,
                   },
                 ],
-                delta: {
-                  rows: [{ id: row.id, updatedAt: now.toISOString() }],
-                  values: [
-                    {
-                      pageId: row.pageId,
-                      propertyId: input.pagePropertyId,
-                      updatedAt: now.toISOString(),
-                      value: input.value,
-                    },
-                  ],
+                changes: {
+                  records: [await getDatabaseRecordEntity(tx, input.dataSourceId, row.id)],
                 },
               };
             },

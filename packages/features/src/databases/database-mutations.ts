@@ -4,13 +4,9 @@ import {
   invalidateDeletedItems,
   invalidateRestoredItems,
 } from "../shared/item-action-cache";
-import { setDatabasePayloadQueryData } from "./query-cache";
 import {
-  databasePayloadRootQueryKey,
-  databaseQueryKey,
   type DatabasePayload,
 } from "./queries";
-import { type DatabaseMutationResponse } from "./mutation-types";
 import { applyCreatedDatabaseToPageNav } from "./create-database-cache";
 import {
   applyDatabaseFavoriteToNav,
@@ -20,10 +16,10 @@ import { applyNavigationDeltaToCache } from "../pages/navigation-realtime";
 import {
   pagesNavRootQueryKey,
   pagesQueryKey,
-  pagesRootQueryKey,
   type PageNavigationPayload,
 } from "../pages/queries";
-import { commitDatabaseMutation, restoreDatabasePayloadAfterFailedMutation } from "./mutation-cache-policy";
+import { useDatabaseClient } from "./client/provider";
+import type { DatabaseHostEntity } from "./contracts-v2";
 
 type CreateDatabaseInput = {
   name?: string;
@@ -48,6 +44,12 @@ type SetDatabaseFavoriteInput = {
   isFavorite: boolean;
 };
 
+type SetDatabaseFavoriteResponse = {
+  databaseId: string;
+  isFavorite: boolean;
+  workspaceId: string;
+};
+
 export function useCreateDatabase() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
@@ -59,8 +61,6 @@ export function useCreateDatabase() {
       });
     },
     onSuccess: async (payload) => {
-      setDatabasePayloadQueryData(queryClient, payload.database.id, payload);
-
       if (!payload.database.pageId) {
         await queryClient.invalidateQueries({
           queryKey: pagesNavRootQueryKey(payload.database.workspaceId),
@@ -85,69 +85,20 @@ export function useCreateDatabase() {
 }
 
 export function useUpdateDatabase() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const client = useDatabaseClient();
+  const { queryClient } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: async ({ databaseId, ...patch }: UpdateDatabaseInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(patch),
-        },
-      );
-
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return client.execute<DatabaseHostEntity>({
+        command: { patch, type: "database.update" },
+        databaseId,
+      }).promise;
     },
-    onMutate: async (variables) => {
-      await queryClient.cancelQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+    onSuccess: async (database) => {
+      await queryClient.invalidateQueries({
+        queryKey: pagesQueryKey(database.workspaceId),
       });
-      const previous = queryClient.getQueryData<DatabasePayload | null>(
-        databaseQueryKey(variables.databaseId),
-      );
-
-      queryClient.setQueriesData<DatabasePayload | null>(
-        { queryKey: databasePayloadRootQueryKey(variables.databaseId) },
-        (current) =>
-          current
-            ? {
-                ...current,
-                database: {
-                  ...current.database,
-                  ...(variables.name !== undefined
-                    ? { name: variables.name }
-                    : {}),
-                  ...(variables.config !== undefined
-                    ? { config: variables.config }
-                    : {}),
-                  updatedAt: new Date().toISOString(),
-                },
-              }
-            : current,
-      );
-
-      return { previous };
-    },
-    onError: (_error, variables, context) => {
-      if (context?.previous) {
-        restoreDatabasePayloadAfterFailedMutation(
-          queryClient,
-          variables.databaseId,
-          context.previous,
-        );
-      }
-    },
-    onSuccess: async (_result, variables) => {
-      const payload = queryClient.getQueryData<DatabasePayload | null>(
-        databaseQueryKey(variables.databaseId),
-      );
-
-      if (payload) {
-        await queryClient.invalidateQueries({
-          queryKey: pagesQueryKey(payload.database.workspaceId),
-        });
-      }
     },
   });
 }
@@ -203,75 +154,16 @@ export function useSetDatabaseFavorite() {
 
   return useMutation({
     mutationFn: async ({ databaseId, isFavorite }: SetDatabaseFavoriteInput) =>
-      apiFetch<DatabasePayload>(`/databases/${databaseId}/favorite`, {
+      apiFetch<SetDatabaseFavoriteResponse>(`/databases/${databaseId}/favorite`, {
         method: isFavorite ? "PUT" : "DELETE",
       }),
-    onMutate: async (variables) => {
-      await Promise.all([
-        queryClient.cancelQueries({
-          queryKey: databasePayloadRootQueryKey(variables.databaseId),
-        }),
-        queryClient.cancelQueries({ queryKey: pagesRootQueryKey() }),
-      ]);
-      const previous = queryClient.getQueryData<DatabasePayload | null>(
-        databaseQueryKey(variables.databaseId),
-      );
-      const previousNavQueries =
-        queryClient.getQueriesData<PageNavigationPayload>({
-          queryKey: previous
-            ? pagesNavRootQueryKey(previous.database.workspaceId)
-            : pagesRootQueryKey(),
-        });
-
-      queryClient.setQueriesData<DatabasePayload | null>(
-        { queryKey: databasePayloadRootQueryKey(variables.databaseId) },
-        (current) =>
-          current
-            ? {
-                ...current,
-                database: {
-                  ...current.database,
-                  isFavorite: variables.isFavorite,
-                },
-              }
-            : current,
-      );
-
-      if (previous) {
-        queryClient.setQueriesData<PageNavigationPayload | undefined>(
-          { queryKey: pagesNavRootQueryKey(previous.database.workspaceId) },
-          (current) =>
-            applyDatabaseFavoriteToNav(current, {
-              ...previous.database,
-              isFavorite: variables.isFavorite,
-              views: previous.views,
-            }),
-        );
-      }
-
-      return { previous, previousNavQueries };
-    },
-    onError: (_error, variables, context) => {
-      if (context?.previous) {
-        restoreDatabasePayloadAfterFailedMutation(
-          queryClient,
-          variables.databaseId,
-          context.previous,
-        );
-      }
-
-      for (const [queryKey, data] of context?.previousNavQueries ?? []) {
-        queryClient.setQueryData(queryKey, data);
-      }
-    },
-    onSuccess: async (payload) => {
-      setDatabasePayloadQueryData(queryClient, payload.database.id, payload);
+    onSuccess: async (result) => {
       queryClient.setQueriesData<PageNavigationPayload | undefined>(
-        { queryKey: pagesNavRootQueryKey(payload.database.workspaceId) },
+        { queryKey: pagesNavRootQueryKey(result.workspaceId) },
         (current) =>
           applyDatabaseFavoriteToNav(current, {
-            ...payload.database,
-            views: payload.views,
+            id: result.databaseId,
+            isFavorite: result.isFavorite,
           }),
       );
     },

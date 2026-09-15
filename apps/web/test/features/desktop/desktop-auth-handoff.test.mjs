@@ -70,4 +70,39 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.ok(credentials > server)
     assert.ok(providers > credentials)
   })
+
+  test("packaged self-host handoff accepts signed-out and connection-error startup", async () => {
+    const [source, routeErrorPage, publicRoutes] = await Promise.all([
+      readWorkspace("/apps/desktop/e2e/selfhost.mjs"),
+      readSource("/src/app/routing/route-error-page.tsx"),
+      readSource("/src/app/routing/route-groups/public-routes.tsx"),
+    ])
+
+    assert.doesNotMatch(
+      source,
+      /h1\[normalize-space\(\)='Continue in your browser'\]/,
+    )
+    assert.match(
+      source,
+      /self::a or self::button.*normalize-space\(\)='Change server'/,
+    )
+    assert.match(
+      source,
+      /browser\.execute\(\(target\) => target\.click\(\), element\)/,
+    )
+    assert.match(source, /browser\.waitUntil/)
+    assert.match(source, /element = await browser\.\$\(selector\)/)
+    assert.match(source, /path: window\.location\.pathname/)
+    assert.doesNotMatch(source, /window\.location\.href/)
+    assert.match(routeErrorPage, /navigate\(\{ to: "\/connect" \}\)/)
+    assert.doesNotMatch(routeErrorPage, /window\.location\.assign\("\/connect"\)/)
+    const connectRoute = publicRoutes.slice(
+      publicRoutes.indexOf("const connectRoute"),
+      publicRoutes.indexOf("const signupRoute"),
+    )
+    assert.doesNotMatch(
+      connectRoute,
+      /getConnectivityState|getFreshSession|getWorkspaces/,
+    )
+  })
 }

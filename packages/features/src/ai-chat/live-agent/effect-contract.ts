@@ -6,11 +6,6 @@ export type AgentEffectBase = {
 
 export type AgentLiveEffect =
   | (AgentEffectBase & {
-      databaseId: string;
-      kind: "database-seed";
-      payload: unknown;
-    })
-  | (AgentEffectBase & {
       delta: unknown;
       kind: "nav-delta";
     })
@@ -35,8 +30,7 @@ export function isAgentLiveEffect(value: unknown): value is AgentLiveEffect {
     typeof effect.effectId === "string" &&
     typeof effect.toolCallId === "string" &&
     typeof effect.workspaceId === "string" &&
-    (effect.kind === "database-seed" ||
-      effect.kind === "nav-delta" ||
+    (effect.kind === "nav-delta" ||
       effect.kind === "page-upsert" ||
       effect.kind === "page-embed")
   );

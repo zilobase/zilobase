@@ -10,19 +10,32 @@
 
 ## Main flow
 
-Database routes compose reads, rows, properties and data-source operations. The web database surface derives a view model and commands from shared payloads; feature mutations coordinate optimistic state and realtime invalidation.
+Database routes compose bounded reads and idempotent host/source commands. The
+web database surface derives view models from session-scoped collections of
+metadata and record aggregates; optimistic command lanes and version-aware
+event ingestion keep interaction responsive without monolithic payload
+snapshots.
 
 Database JSON routes use shared authenticated input parsing, retaining each operation’s payload validation and permission decisions. [Transport tests](../../../apps/server/src/features/databases/route-input.test.ts) cover malformed input and authentication ordering.
 
+The [v2 command routes](../../../apps/server/src/features/databases/database-command-routes.ts) expose separate host and data-source endpoints with runtime-validated command unions. The [command framework](../../../apps/server/src/features/databases/commands/framework.ts) serializes each command ID with a transaction advisory lock, hashes the canonical request and route scope, replays identical stored acknowledgements, rejects mismatched reuse, and commits source/host versions, complete mutation journal events, and the seven-day receipt atomically. The actor and command origin are passed into the domain dispatcher. [Row and cell handlers](../../../apps/server/src/features/databases/commands/row-handlers.ts) implement create, neighbor-anchored move, archive, restore, and cell-set inside that transaction and return complete record aggregates. [Structural handlers](../../../apps/server/src/features/databases/commands/structural-handlers.ts) cover database/source metadata, source links, properties, templates, and views; ordered links, properties, and views accept neighbors rather than client-supplied full ID arrays. Source-scoped structural events fan out complete entities to every linked host.
+
+The accepted [responsive database client and mutation protocol decision](../../decisions/0004-responsive-database-client.md) defines the collection-backed client and journal-backed mutation protocol implemented here.
+
+The [v2 read service](../../../apps/server/src/features/databases/read/service.ts) separates metadata bootstrap from bounded record windows. Bootstrap aggregates properties for every accessible linked source without rows. Record reads materialize one complete entity per row, evaluate the selected view before slicing, default to 50 records (or a persisted 10/25/50/100 view choice), and bind continuation reads to host/source/view revisions. A changed revision raises the typed `WINDOW_STALE` conflict. The [database read routes](../../../apps/server/src/features/databases/database-read-routes.ts) expose those services as `GET /:id/bootstrap`, `GET /:id/data-sources/:dataSourceId/records`, and the ordered `GET /:id/mutations` catch-up feed, retaining authenticated and published-database access while validating source/view scope and exact window sizes. The [shared view evaluator](../../../packages/features/src/databases/view-evaluation.ts) is server-safe and reuses the tested filter and formula domains.
+
 ## Authorization and persistence
 
-OAuth database routes require `databases.read` or `databases.write` and bind the requested resource to the granted workspace before existing ACL checks. Database routes load the database; row, property, template and direct data-source routes load the data source, whose ID is still exposed as `:id` on legacy routes. Creation validates the body workspace. [Token resource middleware](../../../apps/server/src/features/auth/pinned-resource-middleware.ts) is attached per endpoint so Hono composition cannot apply a database loader to a later data-source route. [Route regression tests](../../../apps/server/src/features/databases/database-routes.test.ts) exercise both identifier kinds.
+OAuth database routes require `databases.read` or `databases.write` and bind the requested resource to the granted workspace before existing ACL checks. Reads load the database host, while source-scoped commands validate the linked data source through the command framework. Creation validates the body workspace. [Token resource middleware](../../../apps/server/src/features/auth/pinned-resource-middleware.ts) is attached per endpoint so Hono composition cannot apply a database loader to a later source-scoped command route. [Route regression tests](../../../apps/server/src/features/databases/database-routes.test.ts) exercise both scopes.
 
-A database is page-backed; data sources, rows, views and property values are separate persisted concepts. Resource and data-source access checks constrain mutations. Formula and value rules also have shared implementations.
+A database is page-backed; data sources, rows, views and property values are separate persisted concepts. Rows use a required `NUMERIC(30,10)` order key with active uniqueness per data source. [Shared order-key utilities](../../../packages/features/src/databases/order-key.ts) encode the decimal as a scaled bigint for deterministic cross-runtime midpoint calculation. Inserts and moves take a transaction-scoped source advisory lock; precision exhaustion rebalances keys at intervals of 1024. Moves normally change one fractional key, while `page_item_placement.position` remains the compatibility projection for navigation; visible anchors are resolved against the complete canonical source order, so filtered-out rows retain their relative ordering. The [v2 persistence migration](../../../apps/server/drizzle/0090_database_mutation_journal.sql) also adds the durable versioned mutation journal and idempotent command receipts; command traffic and internal producers write journal events plus delivery references through the shared commit path. Resource and data-source access checks constrain mutations. Formula and value rules also have shared implementations.
 
 ## Side effects, failures and recovery
 
-Row/property changes can update realtime outboxes, automations and page navigation. Preserve mutation origin and transaction ordering. Database realtime revisions and cache reconciliation prevent stale UI after writes.
+Row/property changes can update realtime outboxes, automations and page navigation. The common [database commit helper](../../../apps/server/src/features/databases/core/commit.ts) gives internal writers a shared server-generated command ID and atomically stores a v2 journal event before its delivery-only outbox reference. Partial internal deltas become scoped reset events so downstream v2 consumers never ingest partial entities. Delivery requires the canonical journal event and publishes protocol v2 only; missing history is retried instead of falling back to a payload-only message. Preserve mutation origin and transaction ordering. Database realtime revisions and cache reconciliation prevent stale UI after writes.
+
+Runtime topology, retention, recovery, metrics, and failure diagnosis are in
+the [database operations guide](../../../docs/databases/operations.md).
 
 ## Focused guides
 
@@ -32,7 +45,12 @@ Row/property changes can update realtime outboxes, automations and page navigati
 
 ## Client mutation ownership
 
-Shared mutations are grouped into database lifecycle, data sources, views, properties/templates, access and rows. The [legacy mutation entrypoint](../../../packages/features/src/databases/mutation-hooks.ts) preserves public exports; React bindings select the operation modules directly. [Cache policy](../../../packages/features/src/databases/mutation-cache-policy.ts) owns confirmed response application and version-aware rollback. [Query cache](../../../packages/features/src/databases/query-cache.ts) cancels, snapshots and updates every surface showing a data source before row writes. Reorder, move and value mutations restore those snapshots on failure; they receive the active data-source ID even though the legacy input field is named databaseId. [Row-addition cache transactions](../../../packages/features/src/databases/add-row-transaction.ts) own source/target snapshots, optimistic transfer, confirmed response reconciliation and rollback; the hook owns HTTP and subsequent navigation refresh. Favorite and view rollbacks retain their different version/navigation policies.
+Shared mutations are grouped into database lifecycle, data sources, views, properties/templates, access and rows. The [mutation entrypoint](../../../packages/features/src/databases/mutation-hooks.ts) preserves the supported public hooks while React bindings select the operation modules directly. Interactive row, cell, schema, and view writes execute through the session-scoped database client: command lanes own optimistic overlays and isolated rollback, acknowledgements and realtime events share one ingestion path, and cached monolithic payload snapshots are never restored. Navigation-only actions remain in TanStack Query and refresh their narrow navigation queries after commit.
+
+TanStack DB owns only interactive database entities and projections. TanStack
+Query retains authentication, access/sharing, navigation, automation
+management, AI, uploads, and other non-database-view workflows; Yjs owns page
+documents; React-local state owns presence and transient interaction state.
 
 ## Verification and change points
 

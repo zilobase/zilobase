@@ -23,7 +23,6 @@ import {
   startStudio,
   stopLocal,
 } from "./local.mjs";
-import { testRuntimeParity } from "./parity.mjs";
 import {
   followKubernetesLogs,
   rebuildKubernetes,
@@ -55,7 +54,7 @@ try {
   else if (command === "local") {
     if (args.includes("--target")) {
       throw new Error(
-        "dev no longer accepts --target. It starts Node and, when the sibling adapter repository is present, the adapter profile.",
+        "dev no longer accepts --target. It starts the Node development profile.",
       );
     }
     await startLocal();
@@ -64,7 +63,7 @@ try {
   } else if (command === "studio") {
     if (args.includes("--target")) {
       throw new Error(
-        "db:studio no longer accepts --target. It opens isolated Node and worker databases together.",
+        "db:studio no longer accepts --target. It opens the Node development database.",
       );
     }
     await startStudio();
@@ -74,8 +73,6 @@ try {
   else if (command === "down") await stopLocal();
   else if (command === "reset") {
     await resetLocal(readOption(args, "--target") ?? "all", args.includes("--yes"));
-  } else if (command === "parity") {
-    await testRuntimeParity(readOption(args, "--target") ?? "all");
   } else if (command === "k8s") await startKubernetes(readOption(args, "--target") ?? "community");
   else if (command === "k8s-rebuild") await rebuildKubernetes(readOption(args, "--target"));
   else if (command === "k8s-logs") await followKubernetesLogs(readOption(args, "--target") ?? "community");

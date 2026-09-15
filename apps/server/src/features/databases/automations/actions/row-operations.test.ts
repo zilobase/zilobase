@@ -57,6 +57,17 @@ vi.mock("../../core/commit", async () => {
     },
   };
 });
+vi.mock("../../commands/record-entity", () => ({
+  getDatabaseRecordEntity: async () => ({
+    id: "row",
+    page: {
+      name: (state.writes.find((value) =>
+        value && typeof value === "object" && "name" in value
+      ) as { name?: string } | undefined)?.name ?? "Before",
+    },
+    valuesByPropertyId: { amount: { value: 3 } },
+  }),
+}));
 vi.mock("../triggers/event-capture", () => ({
   lockDatabaseAutomationFactRows: async () => {
     state.events.push("lock");
@@ -81,9 +92,11 @@ function prepared() {
       changedValues: unknown[];
       automationRunId: string;
     }>;
-    delta: {
-      rows: Array<{ page?: { name: string } }>;
-      values?: Array<{ value: unknown }>;
+    changes: {
+      records: Array<{
+        page?: { name: string };
+        valuesByPropertyId: Record<string, { value: unknown }>;
+      }>;
     };
   };
 }
@@ -110,12 +123,12 @@ test("automation row operations retain first-before and final-after facts inside
     { propertyId: "amount", before: 1, after: 3 },
   ]);
   assert.equal(prepared().automationFacts[0].automationRunId, "run");
-  assert.equal(prepared().delta.rows[0].page?.name, "After");
-  assert.equal(prepared().delta.values?.[0].value, 3);
-  assert.deepEqual((state.commitInput as { changed: string[] }).changed, [
-    "rows",
-    "values",
-  ]);
+  assert.equal(prepared().changes.records[0].page?.name, "After");
+  assert.equal(
+    prepared().changes.records[0].valuesByPropertyId.amount?.value,
+    3,
+  );
+  assert.deepEqual((state.commitInput as { areas: string[] }).areas, ["records"]);
 });
 test("automation row operations reject unavailable properties and rows before writes", async () => {
   await assert.rejects(
@@ -145,7 +158,7 @@ test("automation row operations reject unavailable properties and rows before wr
   );
   assert.deepEqual(state.writes, []);
 });
-test("title-only automation writes preserve the Untitled default and row-only deltas", async () => {
+test("title-only automation writes preserve the Untitled default and record changes", async () => {
   state.rows.push(
     [{ id: "row", pageId: "page" }],
     [{ id: "page", name: "Before" }],
@@ -154,9 +167,6 @@ test("title-only automation writes preserve the Untitled default and row-only de
     ...input,
     operations: [{ propertyId: "name", mode: "set", value: "  " }],
   });
-  assert.equal(prepared().delta.rows[0].page?.name, "Untitled");
-  assert.equal("values" in prepared().delta, false);
-  assert.deepEqual((state.commitInput as { changed: string[] }).changed, [
-    "rows",
-  ]);
+  assert.equal(prepared().changes.records[0].page?.name, "Untitled");
+  assert.deepEqual((state.commitInput as { areas: string[] }).areas, ["records"]);
 });

@@ -340,7 +340,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 ### Added
 
 - Added a single-replica Community Helm chart for Kubernetes installs that use operator-managed PostgreSQL and S3-compatible object storage, plus a cluster CI gate for install, restore, and recovery.
-- Added Community edition seams so an Enterprise overlay can compile against the MIT core without changing the Community runtime contract.
+- Added extension seams so optional integrations can compile against the MIT core without changing its runtime contract.
 
 ### Changed
 
@@ -360,7 +360,7 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 - Added the self-hosted instance discovery, compatibility, liveness, and readiness contract, plus a Docker Compose developer workflow with Postgres, MinIO, Mailpit, backup/restore, upgrade, and packaged-desktop validation.
 - Added runtime desktop server selection for Cloud, localhost, and public HTTPS instances, including secure connection links and full local-data cleanup when changing servers.
-- Added system-browser desktop authorization with PKCE, loopback callbacks, one-time authorization codes, issuer validation, and server-native password, OTP, Google, and SSO login paths.
+- Added system-browser desktop authorization with PKCE, loopback callbacks, one-time authorization codes, issuer validation, and server-native password, email-code, Google, and organization-provider login paths.
 - Added single-use self-host bootstrap, initial administrator and pinned-workspace setup, and owner-managed invite-only or open registration.
 - Added compact Recents navigation and consolidated workspace creation controls in the application sidebar.
 

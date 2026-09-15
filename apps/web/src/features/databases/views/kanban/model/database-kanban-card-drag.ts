@@ -1,20 +1,10 @@
 export function getKanbanCardDropTargetIndex(
-  columnElement: HTMLElement,
-  clientY: number,
+  cards: readonly { height: number; top: number }[],
+  pointerOffset: number,
 ) {
-  const cards = Array.from(
-    columnElement.querySelectorAll<HTMLElement>(
-      ".database-kanban-card[data-database-row-id]",
-    ),
+  const targetIndex = cards.findIndex(
+    (card) => pointerOffset < card.top + card.height / 2,
   )
-  const targetIndex = cards.findIndex((card) => {
-    const rect = card.getBoundingClientRect()
-    // Layout coordinates stay stable while the preview animates with transforms.
-    const top = typeof HTMLElement !== "undefined" && card.offsetParent instanceof HTMLElement
-      ? card.offsetParent.getBoundingClientRect().top + card.offsetTop
-      : rect.top
-    return clientY < top + rect.height / 2
-  })
 
   return targetIndex === -1 ? cards.length : targetIndex
 }

@@ -6,7 +6,6 @@ import {
   type DatabaseRow as FeatureDatabaseRow,
 } from "@zilobase/features/databases";
 import {
-  useDatabase,
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
 } from "@zilobase/features/databases/react";
@@ -32,6 +31,7 @@ import {
   toStringArray,
   type DatabasePropertyValue,
 } from "../property-values"
+import { useDatabaseSecondaryPayload } from "../../hooks/use-database-secondary-payload"
 
 type DatabaseRow = {
   createdAt: string
@@ -85,9 +85,10 @@ export function DatabaseRollupPropertyValue({
   const relatedDatabaseId = relationProperty
     ? getRelationTargetDatabaseId(relationProperty.property.config)
     : null
-  const { data: relatedDatabasePayload } = useDatabase(relatedDatabaseId, {
-    schemaOnly: false,
-  })
+  const { data: relatedDatabasePayload } = useDatabaseSecondaryPayload(
+    relatedDatabaseId,
+    { loadAll: true },
+  )
   const result = evaluateDatabaseRollup({
     currentRow: row,
     propertyConfig,
@@ -246,9 +247,14 @@ export function DatabaseRelationPropertyValue({
   const relatedDatabaseId = getRelationTargetDatabaseId(propertyConfig)
   const multiple = getRelationLimit(propertyConfig) !== "one_page"
   const selectedPageIds = toStringArray(value)
-  const { data: relatedDatabasePayload, isLoading } = useDatabase(
+  const {
+    data: relatedDatabasePayload,
+    fetchNextPage,
+    hasMore,
+    isFetchingNextPage,
+    isLoading,
+  } = useDatabaseSecondaryPayload(
     relatedDatabaseId,
-    { schemaOnly: false }
   )
   const pageOptions = (relatedDatabasePayload?.rows ?? []).filter(
     (candidate) => candidate.pageId !== row.pageId
@@ -439,6 +445,16 @@ export function DatabaseRelationPropertyValue({
               No pages found.
             </div>
           )}
+          {hasMore ? (
+            <button
+              className="database-select-option justify-center text-content-secondary"
+              disabled={isFetchingNextPage}
+              onClick={() => void fetchNextPage()}
+              type="button"
+            >
+              {isFetchingNextPage ? "Loading…" : "Load more pages"}
+            </button>
+          ) : null}
         </div>
       </PopoverContent>
     </Popover>

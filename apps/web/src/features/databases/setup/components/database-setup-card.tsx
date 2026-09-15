@@ -39,10 +39,10 @@ import { cn } from "@/shared/lib/utils";
 import posthog from "@/shared/lib/posthog";
 import {
   useApplyDatabaseTemplate,
-  useDatabase,
   useLinkDatabaseDataSource,
   useUpdateDataSource,
 } from "@zilobase/features/databases/react";
+import { useDatabaseMetadata } from "../../hooks/use-database-metadata"
 import { usePageNavigation } from "@zilobase/features/pages/react";
 
 import {
@@ -431,7 +431,7 @@ export function DatabaseSetupCard({
   const applyTemplate = useApplyDatabaseTemplate();
   const updateDatabase = useUpdateDataSource();
   const linkDatabaseDataSource = useLinkDatabaseDataSource();
-  const { data: databasePayload } = useDatabase(databaseId);
+  const { data: databasePayload } = useDatabaseMetadata(databaseId);
   const { data: navigation, isLoading: isLoadingPages } = usePageNavigation(
     workspaceId,
     {
@@ -439,7 +439,7 @@ export function DatabaseSetupCard({
     },
   );
   const { data: selectedLinkDatabasePayload, isLoading: isLoadingLinkViews } =
-    useDatabase(selectedLinkDatabaseId);
+    useDatabaseMetadata(selectedLinkDatabaseId);
   const dismissSetup = useCallback(async () => {
     if (
       databasePayload &&
@@ -582,10 +582,14 @@ export function DatabaseSetupCard({
             }
 
             const propertyTypesByName = new Map(
-              (databasePayload?.properties ?? []).map((property) => [
-                property.property.name.toLowerCase(),
-                property.property.type,
-              ]),
+              (databasePayload?.properties ?? [])
+                .filter(
+                  (property) => property.dataSourceId === activeDataSource.id,
+                )
+                .map((property) => [
+                  property.property.name.toLowerCase(),
+                  property.property.type,
+                ]),
             );
 
             for (const property of template.properties) {

@@ -254,6 +254,26 @@ export const sessionMiddleware = createMiddleware<AppBindings>(async (
     );
     c.set("authMethod", session?.user ? "session" : null);
 
+    const effectiveSession = c.get("session");
+    if (session?.user && effectiveSession) {
+      const denial = await timed(c, "session_edition_policy", () =>
+        c.get("editionExtension")?.assertSession?.({
+          authMethod: "session",
+          database: db,
+          request: c.req.raw,
+          session: effectiveSession,
+          user: session.user,
+        }) ?? Promise.resolve(),
+      );
+
+      if (denial) {
+        return c.json(
+          { code: denial.code, message: denial.message },
+          denial.status,
+        );
+      }
+    }
+
     await timed(c, "session_next", next);
   }, {
     onTiming(name, durationMs) {

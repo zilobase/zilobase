@@ -2,6 +2,7 @@ import type { ComponentType } from "react"
 
 export type EditionLoginMethodProps = {
   disabled: boolean
+  email: string
 }
 
 export type EditionWebModule = {

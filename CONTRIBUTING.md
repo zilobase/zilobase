@@ -31,10 +31,9 @@ npm run test:web
 npm run db:studio
 ```
 
-The root supervisor can run the sibling Cloudflare adapter at the same time as
-the Node runtime, with isolated databases, storage, origins, and debuggers.
-`npm run db:studio` opens Drizzle Studio against those isolated Node and
-worker databases. See
+The root supervisor runs the Node runtime and its local dependencies.
+`npm run db:studio` opens Drizzle Studio against the local development
+database. See
 [Unified local development](./docs/development-workflows.md) for the complete
 command, Kubernetes, editor, environment, and reset contract.
 

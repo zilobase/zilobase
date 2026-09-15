@@ -3,6 +3,7 @@ import { Client } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { createAuth } from "./auth";
 import * as schema from "../../infrastructure/database/schema";
+import type { ZilobaseEditionExtension } from "../../shared/types";
 
 const env = {
   BETTER_AUTH_SECRET: "isolated-auth-initialization-test-secret",
@@ -39,6 +40,31 @@ test("a new request initializes successfully after a database failure", async ()
     const auth = await createAuth(env, new Request(env.BETTER_AUTH_URL), database);
     await expect(auth.$context).resolves.toBeDefined();
     expect(query).toHaveBeenCalledTimes(3);
+  } finally {
+    query.mockRestore();
+  }
+});
+
+test("edition auth plugins are created with the current request scope", async () => {
+  const client = new Client();
+  const query = vi.spyOn(client, "query")
+    .mockImplementation(async () => ({ rows: [] }));
+  const database = drizzle(client, { schema });
+  const request = new Request(`${env.BETTER_AUTH_URL}/api/auth/get-session`);
+  const createAuthPlugins = vi.fn(async () => []);
+  const extension: ZilobaseEditionExtension = {
+    id: "test-edition",
+    capabilities: [],
+    createAuthPlugins,
+    async beforeMembershipGrant() {},
+    async recordSecurityEvent() {},
+    registerRoutes() {},
+  };
+
+  try {
+    await createAuth(env, request, database, { editionExtension: extension });
+    expect(createAuthPlugins).toHaveBeenCalledOnce();
+    expect(createAuthPlugins).toHaveBeenCalledWith({ database, env, request });
   } finally {
     query.mockRestore();
   }

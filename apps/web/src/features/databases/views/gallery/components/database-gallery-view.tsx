@@ -2,7 +2,6 @@ import { useMemo, useState } from "react"
 import {
   ChevronDown,
   ChevronRight,
-  Loader2,
   Plus,
 } from "@/shared/components/icons"
 import {
@@ -17,9 +16,9 @@ import {
   getColorTokenDotClassName,
 } from "@/shared/lib/color-tokens"
 import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections"
-import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll"
 import { canCreateRowInKanbanGroup } from "../../kanban/model/database-kanban-config"
 import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
+import { DatabaseRecordWindowControl } from "../../components/database-record-window-control"
 import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
 import { DatabaseCellContent } from "../../components/database-cell-content"
 import { useDatabaseGalleryCardDrag } from "../controller/use-database-gallery-card-drag"
@@ -28,7 +27,6 @@ export function DatabaseGalleryView() {
   const {
     addDraggedPageRow,
     addDatabaseRow,
-    fetchNextPage,
     onOpenPage,
     savePropertyValue,
     updateDatabasePropertyConfig,
@@ -37,9 +35,7 @@ export function DatabaseGalleryView() {
     databaseId,
     editable,
     groupProperty,
-    hasNextPage,
-    isAddingDatabaseRow,
-    isFetchingNextPage,
+    hostDatabaseId,
     items,
     personOptions,
     properties,
@@ -77,16 +73,12 @@ export function DatabaseGalleryView() {
       }),
     [groupProperty, personOptionsById, propertyValuesByKey, rows],
   )
-  const { sentinelRef } = useDatabaseRowsScroll({
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  })
   const cardDrag = useDatabaseGalleryCardDrag({
     addDraggedPageRow,
     databaseId,
     editable,
     groupProperty,
+    hostDatabaseId,
     groupedSections,
     items,
     visibleRows: rows,
@@ -252,7 +244,7 @@ export function DatabaseGalleryView() {
     editable && (!grouped || (groupProperty && canCreateRowInKanbanGroup(groupProperty))) ? (
       <button
         className="database-gallery-new-card"
-        disabled={!databaseId || isAddingDatabaseRow}
+        disabled={!databaseId}
         onClick={() =>
           addDatabaseRow(groupValue, grouped ? groupProperty : undefined)
         }
@@ -338,19 +330,7 @@ export function DatabaseGalleryView() {
           {renderNewCard()}
         </div>
       )}
-      {hasNextPage || isFetchingNextPage ? (
-        <div
-          className="flex h-12 items-center justify-center gap-2 text-sm text-content-secondary"
-          ref={sentinelRef}
-        >
-          {isFetchingNextPage ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              <span>Loading more rows...</span>
-            </>
-          ) : null}
-        </div>
-      ) : null}
+      <DatabaseRecordWindowControl automatic />
     </div>
   )
 }

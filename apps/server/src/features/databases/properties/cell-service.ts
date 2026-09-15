@@ -15,7 +15,7 @@ import {
   lockDatabaseAutomationFactRows,
   type DatabaseMutationOrigin,
 } from "../automations/triggers/event-capture";
-import type { DatabaseDelta } from "../realtime/delta";
+import { getDatabaseRecordEntity } from "../commands/record-entity";
 import { validateCellValue } from "./config";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
@@ -75,7 +75,7 @@ export async function setDatabaseCellValueService(input: {
   const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
-      changed: ["rows", "values"],
+      areas: ["records"],
       dataSourceId: existing.id,
       env: input.env,
     },
@@ -134,23 +134,9 @@ export async function setDatabaseCellValueService(input: {
             rowId: row.id,
           },
         ],
-        delta: {
-          rows: [
-            {
-              id: row.id,
-              lastEditedById: input.userId,
-              updatedAt: now.toISOString(),
-            },
-          ],
-          values: [
-            {
-              propertyId: input.pagePropertyId,
-              updatedAt: now.toISOString(),
-              value: input.value,
-              pageId: row.pageId,
-            },
-          ],
-        } satisfies DatabaseDelta,
+        changes: {
+          records: [await getDatabaseRecordEntity(tx, existing.id, row.id)],
+        },
       };
     },
   );

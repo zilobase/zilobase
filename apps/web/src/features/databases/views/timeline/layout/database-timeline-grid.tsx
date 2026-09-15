@@ -182,9 +182,7 @@ const TimelineGridRowCell = memo(function TimelineGridRowCell({
               ? `Add page to ${viewRow.section.name}`
               : "Add page"
           }
-          disabled={
-            !sidebarCellProps.databaseId || sidebarCellProps.isAddingDatabaseRow
-          }
+          disabled={!sidebarCellProps.databaseId}
           durationDays={DEFAULT_TIMELINE_ITEM_DURATION_DAYS}
           onAddItem={addItem}
         />

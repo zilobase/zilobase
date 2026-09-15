@@ -17,7 +17,7 @@
     "packages/tiptap-comment-extension"
   ],
   "scripts": {
-    "dev": "node scripts/dev/cli.mjs local",
+    "dev": "node scripts/dev/workspace.mjs",
     "preview": "node scripts/dev/cli.mjs preview",
     "setup": "node scripts/dev/cli.mjs setup",
     "setup:check": "node scripts/dev/cli.mjs setup-check",
@@ -61,6 +61,8 @@
     "verify:commit": "node scripts/git/pre-push.mjs --staged",
     "hooks:install": "node scripts/git/install-hooks.mjs",
     "test:server": "npm run test:quality --workspace @zilobase/server",
+    "test:databases:acceptance": "node scripts/databases/test-acceptance.mjs",
+    "test:databases:acceptance:full": "node scripts/databases/test-acceptance.mjs --full",
     "db:migrate": "npm run db:migrate --workspace @zilobase/server",
     "db:studio": "node scripts/dev/cli.mjs studio",
     "selfhost:up": "node scripts/selfhost/manage.mjs up",
@@ -69,7 +71,6 @@
     "selfhost:reset": "node scripts/selfhost/manage.mjs reset",
     "test:selfhost": "node scripts/selfhost/manage.mjs test",
     "test:selfhost:upgrade": "node scripts/selfhost/test-upgrade.mjs",
-    "test:runtime-parity": "node scripts/dev/cli.mjs parity",
     "test:dev-workflow": "node --test scripts/dev/dev-workflow.test.mjs",
     "test:tooling": "node --test scripts/dev/dev-workflow.test.mjs scripts/selfhost/cookie-jar.test.mjs scripts/release/set-version.test.mjs scripts/git/pre-push.test.mjs",
     "test:k8s:community": "node scripts/dev/cli.mjs k8s-smoke --target community",
@@ -87,7 +88,7 @@
   },
   "dependencies": {
     "@dotenvx/dotenvx": "1.75.1",
-    "@tanstack/react-query": "^5.101.4",
+    "@tanstack/react-query": "5.101.4",
     "pg": "^8.22.0",
     "react-dom": "19.2.3",
     "react": "19.2.3",

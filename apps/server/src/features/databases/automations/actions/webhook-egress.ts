@@ -117,7 +117,7 @@ export async function sendPinnedWebhook(input: {
 async function resolveWithDoh(hostname: string) {
   const addresses: string[] = [];
   for (const type of ["A", "AAAA"] as const) {
-    const response = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(hostname)}&type=${type}`, {
+    const response = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(hostname)}&type=${type}`, {
       headers: { accept: "application/dns-json" },
       signal: requestSignal(5_000),
     });

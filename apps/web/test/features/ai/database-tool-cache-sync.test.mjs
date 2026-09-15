@@ -67,9 +67,18 @@ export function register({ assert, appPath, test }) {
       parts,
     });
     const calls = [];
+    const databaseKey = [
+      "database-client-v2",
+      "session",
+      "bootstrap",
+      "database",
+      null,
+      false,
+    ];
+    client.setQueryData(databaseKey, { loaded: true });
     const invalidate = client.invalidateQueries.bind(client);
     client.invalidateQueries = (options) => {
-      calls.push(options.queryKey);
+      calls.push(options);
       return invalidate(options);
     };
     const output = {
@@ -95,12 +104,12 @@ export function register({ assert, appPath, test }) {
     assert.deepEqual(calls, []);
     run([message([part("incomplete", output)])]);
     assert.equal(calls.length, 3);
-    assert.equal(calls[0].includes("database"), true);
+    assert.equal(calls[0].predicate({ queryKey: databaseKey }), true);
     assert.deepEqual(
-      calls.slice(1).map((key) => key.at(-1)),
+      calls.slice(1).map(({ queryKey }) => queryKey.at(-1)),
       ["page", "row"],
     );
-    const keys = calls.map((key) => [...key]);
+    const keys = [databaseKey, ...calls.slice(1).map(({ queryKey }) => [...queryKey])];
     for (const key of keys) client.setQueryData(key, { loaded: true });
     run([message([part("incomplete", output)])]);
     assert.equal(calls.length, 3);

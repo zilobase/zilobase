@@ -1,3 +1,12 @@
+import type { QueryClient } from "@tanstack/react-query"
+
+import { databaseBootstrapQueryKey } from "./client/bootstrap-collections"
+import { databaseClientQueryKey } from "./client/query-keys"
+import type {
+  DatabaseBootstrapResponse,
+  DatabaseRecordWindowResponse,
+} from "./contracts-v2"
+import { databaseOrderKeyAtPosition } from "./order-key"
 import type { DatabasePayload } from "./queries"
 
 export function createTestDatabasePayload(
@@ -117,5 +126,105 @@ export function createTestDatabasePayload(
     ],
     rowCount: overrides.rowCount,
     rowsPagination: overrides.rowsPagination,
+  }
+}
+
+export function setTestDatabaseClientState(
+  queryClient: QueryClient,
+  payload: DatabasePayload,
+) {
+  const bootstrap: DatabaseBootstrapResponse = {
+    database: {
+      accessLevel: payload.database.accessLevel ?? null,
+      config: payload.database.config ?? {},
+      createdAt: payload.database.createdAt,
+      id: payload.database.id,
+      name: payload.database.name,
+      pageId: payload.database.pageId,
+      updatedAt: payload.database.updatedAt,
+      version: payload.database.version,
+      workspaceId: payload.database.workspaceId,
+    },
+    dataSources: payload.dataSources.map((source, position) => ({
+      config: source.config ?? {},
+      configVersion: source.configVersion,
+      createdAt: source.createdAt,
+      id: source.id,
+      linkedAt: source.linkedAt ?? null,
+      name: source.name,
+      parentDatabaseId: source.parentDatabaseId,
+      position: source.position ?? position,
+      updatedAt: source.updatedAt,
+      version: source.version,
+      workspaceId: source.workspaceId,
+    })),
+    properties: payload.properties.map((property) => ({
+      ...property,
+      property: {
+        ...property.property,
+        config: property.property.config ?? {},
+      },
+      width: property.width ?? null,
+    })),
+    views: payload.views.map((view) => ({
+      ...view,
+      config: view.config ?? {},
+    })),
+  }
+  queryClient.setQueryData(
+    databaseBootstrapQueryKey("test-session", {
+      databaseId: payload.database.id,
+    }),
+    bootstrap,
+  )
+
+  for (const source of bootstrap.dataSources) {
+    const view = bootstrap.views.find(({ dataSourceId }) => dataSourceId === source.id)
+    if (!view) continue
+    const records = payload.rows
+      .filter(({ dataSourceId }) => dataSourceId === source.id)
+      .map((row) => ({
+        createdAt: row.createdAt,
+        dataSourceId: row.dataSourceId,
+        id: row.id,
+        orderKey: databaseOrderKeyAtPosition(row.position),
+        page: {
+          createdAt: row.createdAt,
+          deletedAt: null,
+          hasContent: false,
+          id: row.page.id,
+          metadata: row.page.metadata ?? {},
+          name: row.page.name,
+          updatedAt: row.updatedAt,
+        },
+        pageId: row.pageId,
+        parentRowId: row.parentRowId ?? null,
+        updatedAt: row.updatedAt,
+        valuesByPropertyId: Object.fromEntries(
+          payload.values
+            .filter(({ pageId }) => pageId === row.pageId)
+            .map((value) => [value.propertyId, value]),
+        ),
+      }))
+    const window: DatabaseRecordWindowResponse = {
+      databaseVersion: payload.database.version,
+      dataSourceVersion: source.version,
+      hasMore: false,
+      offset: 0,
+      records,
+      snapshot: "test-snapshot",
+      totalCount: records.length,
+    }
+    queryClient.setQueryData(
+      databaseClientQueryKey(
+        "test-session",
+        "records",
+        payload.database.id,
+        source.id,
+        view.id,
+        false,
+      ),
+      window,
+    )
   }
 }

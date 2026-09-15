@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { databaseOrderKeyAtPosition } from "@zilobase/features/databases/order-key";
 
 import {
   databaseProperty,
@@ -15,6 +16,52 @@ const getPositionValuesSql = (ids: string[]) =>
     ids.map((id, position) => sql`(${id}::text, ${position}::integer)`),
     sql`, `,
   );
+
+const getRowOrderKeyValuesSql = (ids: string[]) =>
+  sql.join(
+    ids.map((id, position) =>
+      sql`(${id}::text, ${databaseOrderKeyAtPosition(position)}::numeric)`,
+    ),
+    sql`, `,
+  );
+
+export async function lockDatabaseRowOrdering(
+  executor: SqlExecutor,
+  dataSourceId: string,
+) {
+  await executor.execute(sql`
+    select pg_advisory_xact_lock(hashtextextended(${dataSourceId}, 0))
+  `);
+}
+
+export async function lockDatabaseRowOrderingSources(
+  executor: SqlExecutor,
+  dataSourceIds: string[],
+) {
+  for (const dataSourceId of [...new Set(dataSourceIds)].sort()) {
+    await lockDatabaseRowOrdering(executor, dataSourceId);
+  }
+}
+
+export async function rebalanceDatabaseRowOrderKeys(
+  executor: SqlExecutor,
+  dataSourceId: string,
+  rowIds: string[],
+  updatedAt: Date,
+) {
+  if (rowIds.length === 0) return;
+
+  await executor.execute(sql`
+    update ${databaseRow}
+    set "order_key" = positions.order_key,
+        "updated_at" = ${updatedAt}
+    from (values ${getRowOrderKeyValuesSql(rowIds)})
+      as positions(id, order_key)
+    where ${databaseRow.id} = positions.id
+      and ${databaseRow.dataSourceId} = ${dataSourceId}
+      and ${databaseRow.orderKey} is distinct from positions.order_key
+  `);
+}
 
 export async function updateDatabasePropertyPositions(
   executor: SqlExecutor,
@@ -34,27 +81,6 @@ export async function updateDatabasePropertyPositions(
     where ${databaseProperty.id} = positions.id
       and ${databaseProperty.dataSourceId} = ${databaseId}
       and ${databaseProperty.position} <> positions.position
-  `);
-}
-
-export async function updateDatabaseRowPositions(
-  executor: SqlExecutor,
-  databaseId: string,
-  rowIds: string[],
-  updatedAt: Date,
-) {
-  if (rowIds.length === 0) {
-    return;
-  }
-
-  await executor.execute(sql`
-    update ${databaseRow}
-    set "position" = positions.position,
-        "updated_at" = ${updatedAt}
-    from (values ${getPositionValuesSql(rowIds)}) as positions(id, position)
-    where ${databaseRow.id} = positions.id
-      and ${databaseRow.dataSourceId} = ${databaseId}
-      and ${databaseRow.position} <> positions.position
   `);
 }
 

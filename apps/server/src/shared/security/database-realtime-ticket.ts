@@ -4,7 +4,7 @@ import type { RuntimeEnv } from "../config/config";
 
 const TICKET_TTL_MS = 30 * 60 * 1000;
 
-export const DATABASE_REALTIME_PROTOCOL = "zilobase.database.v1";
+export const DATABASE_REALTIME_PROTOCOL = "zilobase.database.v2";
 export const DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX =
   "zilobase.database.auth.";
 

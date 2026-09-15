@@ -1,6 +1,9 @@
 # System overview
 
-Zilobase is a workspace application built around pages, structured databases, and collaborative editing. The community repository contains the React web application, Hono server, Tauri desktop host, and shared TypeScript packages. Cloud and enterprise adapters are separate repositories consuming published interfaces.
+Zilobase is a workspace application built around pages, structured databases,
+and collaborative editing. This repository contains the React web application,
+Hono server, Tauri desktop host, and shared TypeScript packages. Optional
+integrations consume only published interfaces.
 
 ```mermaid
 flowchart TD

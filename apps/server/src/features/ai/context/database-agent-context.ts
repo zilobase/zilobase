@@ -5,8 +5,8 @@ import type { DatabaseContextPayload } from "@zilobase/page-context/types";
 import { canAccessDatabaseRecord } from "../../access";
 import { getDatabaseRecord } from "../../databases/access";
 import {
-  getDatabasePayload,
-  getDatabaseSchemaPayload,
+  getDatabaseExportPayload,
+  getDatabaseSchemaExportPayload,
 } from "../../databases/core";
 
 export type AgentDatabaseDescriptor = {
@@ -76,8 +76,8 @@ async function loadAgentDatabaseState(
   }
 
   const loadPayload = includeRows
-    ? getDatabasePayload
-    : getDatabaseSchemaPayload;
+    ? getDatabaseExportPayload
+    : getDatabaseSchemaExportPayload;
   const payload = await loadPayload(
     record.id,
     input.userId,
@@ -120,8 +120,8 @@ async function loadDataSourceSchemas(
     }
 
     const loadPayload = includeRows
-      ? getDatabasePayload
-      : getDatabaseSchemaPayload;
+      ? getDatabaseExportPayload
+      : getDatabaseSchemaExportPayload;
     const payload = await loadPayload(
       parent.id,
       userId,

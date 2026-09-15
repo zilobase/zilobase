@@ -10,8 +10,9 @@ import { readJsonBody } from "../../shared/http/request";
 import { createCollaborationTicket, documentNameForPage, getOrCreateCollaborationDocumentState, replacePageContent } from "../collaboration/service";
 import { getCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../workspaces/navigation-realtime/outbox";
-import { commitDatabaseMutationBatch, mutationResponse } from "../databases/core";
+import { commitDatabaseMutationBatch } from "../databases/core";
 import { lockDatabaseAutomationFactRows } from "../databases/automations/triggers/event-capture";
+import { getDatabaseRecordEntity } from "../databases/commands/record-entity";
 import { getPagePropertyPayload } from "./page-route-support";
 
 export const pageContentRoutes = new Hono<AppBindings>();
@@ -158,29 +159,18 @@ pageContentRoutes.put("/:id/properties/:propertyId/value", async (c) => {
           pageId: record.id,
           rowId,
         })),
-        mutations: memberships.map(({ databaseId, rowId }) => ({
-          changed: ["rows" as const, "values" as const],
+        mutations: await Promise.all(memberships.map(async ({ databaseId, dataSourceId, rowId }) => ({
+          areas: ["records" as const],
+          changes: { records: [await getDatabaseRecordEntity(tx, dataSourceId, rowId)] },
           databaseId,
-          delta: {
-            rows: [{ id: rowId, lastEditedById: user.id, updatedAt: nowIso }],
-            values: [
-              {
-                createdAt: savedValue.createdAt.toISOString(),
-                id: savedValue.id,
-                pageId: savedValue.pageId,
-                propertyId: savedValue.propertyId,
-                updatedAt: savedValue.updatedAt.toISOString(),
-                value: savedValue.value,
-              },
-            ],
-          },
-        })),
+          dataSourceId,
+        }))),
         result: undefined,
       };
     },
   );
 
-  return c.json({ mutations: commits.map(mutationResponse) });
+  return c.json({ events: commits });
 });
 
 pageContentRoutes.post("/:id/collaboration-ticket", async (c) => {
@@ -400,24 +390,12 @@ pageContentRoutes.patch("/:id", async (c) => {
                       pageId: existing.id,
                       rowId: row.id,
                     })),
-              mutations: rows.map(({ databaseId, row }) => ({
-                changed: ["rows" as const],
+              mutations: await Promise.all(rows.map(async ({ databaseId, dataSourceId, row }) => ({
+                areas: ["records" as const],
+                changes: { records: [await getDatabaseRecordEntity(tx, dataSourceId, row.id)] },
                 databaseId,
-                delta: {
-                  rows: [
-                    {
-                      ...row,
-                      page: {
-                        createdAt: updatedPage.createdAt,
-                        id: updatedPage.id,
-                        metadata: updatedPage.metadata,
-                        name: updatedPage.name,
-                        updatedAt: updatedPage.updatedAt,
-                      },
-                    },
-                  ],
-                },
-              })),
+                dataSourceId,
+              }))),
               result: {
                 navigationEvent: changesNavigation
                   ? await enqueueNavigationInvalidation(tx, existing.workspaceId)
@@ -466,4 +444,3 @@ pageContentRoutes.patch("/:id", async (c) => {
 
   return c.json({ page: record });
 });
-

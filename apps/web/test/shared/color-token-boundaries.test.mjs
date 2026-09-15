@@ -19,6 +19,7 @@ const systemColor = /\[(?:Canvas|CanvasText|Highlight|HighlightText)\]/g
 const literalExceptions = new Set([
   "src/shared/components/google-icon.tsx",
   "src/features/editor/extensions/embed-block.tsx",
+  "src/features/pages/images/cover-gallery.ts",
   "src/shared/styles/typeset.css",
 ])
 const legacyVariables = [

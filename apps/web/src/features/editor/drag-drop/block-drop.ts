@@ -102,7 +102,9 @@ function dropEditorBlockSlice(
     if (!dragged) return false
 
     if (insertPos >= dragged.from && insertPos <= dragged.to) {
+      view.focus()
       event.preventDefault()
+      resetBlockDragSession(view)
       return true
     }
 
@@ -166,7 +168,9 @@ export function dropEditorBlock(
     const from = payload.pos
     const to = from + dragged.nodeSize
     if (insertPos >= from && insertPos <= to) {
+      view.focus()
       event.preventDefault()
+      resetBlockDragSession(view)
       return true
     }
 

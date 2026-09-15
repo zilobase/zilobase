@@ -246,7 +246,6 @@ pageBrowseRoutes.get("/", async (c) => {
             databaseId: dataSource.parentDatabaseId,
             id: databaseRow.id,
             pageId: databaseRow.pageId,
-            position: databaseRow.position,
           })
           .from(databaseRow)
           .innerJoin(dataSource, eq(databaseRow.dataSourceId, dataSource.id))

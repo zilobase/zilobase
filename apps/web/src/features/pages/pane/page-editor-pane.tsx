@@ -226,7 +226,7 @@ export function PageEditorPane({
   const [cover, setCover] = useState("");
   const [emoji, setEmoji] = useState("");
   const [iconPosition, setIconPosition] =
-    useState<PageIconPosition>("inline");
+    useState<PageIconPosition>("top");
   const fullWidth = resolvePageFullWidth(page, userSettings?.pageFullWidth);
   const { setTitle: setName, title: name } = useTitleDraft({
     enabled: pageEditable,
@@ -268,7 +268,7 @@ export function PageEditorPane({
 
   const pageCover = page ? (getPageCover(page) ?? "") : "";
   const pageEmoji = page ? (getPageEmoji(page) ?? "") : "";
-  const pageIconPosition = page ? getPageIconPosition(page) : "inline";
+  const pageIconPosition = page ? getPageIconPosition(page) : "top";
 
   useEffect(() => {
     if (!page) {
@@ -439,7 +439,10 @@ export function PageEditorPane({
   };
 
   const updateEmoji = (nextEmoji: string) => {
+    const nextIconPosition = nextEmoji ? iconPosition : "top";
+
     setEmoji(nextEmoji);
+    setIconPosition(nextIconPosition);
 
     if (!page || !pageEditable) {
       return;
@@ -450,6 +453,7 @@ export function PageEditorPane({
       metadata: {
         ...((page.metadata ?? {}) as PageMetadata),
         emoji: nextEmoji,
+        iconPosition: nextIconPosition,
       },
     });
   };

@@ -3,7 +3,6 @@ export {
   commitDatabaseMutationBatch,
   commitDataSourceMutation,
   commitDataSourceMutationBatch,
-  mutationResponse,
   DatabaseMutationError,
   type DatabaseMutationCommitResult,
   type SqlExecutor,
@@ -22,4 +21,4 @@ export {
   updateDatabasePropertyService,
   updateDatabaseViewService,
 } from "./mutations";
-export { getDatabasePayload, getDatabaseSchemaPayload } from "./payload";
+export { getDatabaseExportPayload, getDatabaseSchemaExportPayload } from "./payload";

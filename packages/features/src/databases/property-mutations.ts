@@ -1,11 +1,13 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, type QueryClient } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
-import { getDataSourcePayloadQueryEntries, restoreDatabasePayloadSnapshots, setDataSourcePayloadQueryData, applyOptimisticDataSourceMutation } from "./query-cache";
-import { type DatabasePayload } from "./queries";
-import { type DatabaseMutationResponse } from "./mutation-types";
-import { shouldClearValuesForPropertyTypeChange } from "./property-types";
 import { pagesNavRootQueryKey } from "../pages/queries";
-import { commitDatabaseMutation } from "./mutation-cache-policy";
+import { useDatabaseClient } from "./client/provider";
+import {
+  findDataSourceBootstrap,
+  invalidateDataSourceCollections,
+  resolveDataSourceCommandScope,
+} from "./client/command-scope";
+import type { DatabasePropertyEntity } from "./contracts-v2";
 
 type AddPropertyInput = {
   config?: unknown;
@@ -56,162 +58,112 @@ type DuplicatePropertyInput = {
   includeValues?: boolean;
 };
 
-export function updateDatabasePropertyInPayload(
-  payload: DatabasePayload | null | undefined,
-  input: UpdatePropertyInput,
-) {
-  if (!payload) {
-    return payload;
-  }
-
-  const now = new Date().toISOString();
-  const previousProperty = payload.properties.find(
-    (databaseProperty) => databaseProperty.id === input.databasePropertyId,
-  );
-  const previousType = previousProperty?.property.type;
-  const pagePropertyId = previousProperty?.property.id;
-  const properties = payload.properties.map((databaseProperty) =>
-    databaseProperty.id === input.databasePropertyId
-      ? {
-          ...databaseProperty,
-          ...(input.visible !== undefined ? { visible: input.visible } : {}),
-          ...(input.width !== undefined ? { width: input.width } : {}),
-          updatedAt: now,
-          property: {
-            ...databaseProperty.property,
-            ...(input.config !== undefined ? { config: input.config } : {}),
-            ...(input.name !== undefined ? { name: input.name } : {}),
-            ...(input.type !== undefined ? { type: input.type } : {}),
-            updatedAt: now,
-          },
-        }
-      : databaseProperty,
-  );
-  const shouldUpdateValues = Boolean(
-    input.type &&
-    previousType &&
-    input.type !== previousType &&
-    (shouldClearValuesForPropertyTypeChange(previousType, input.type) ||
-      (previousType === "date" && input.type === "text")),
-  );
-  const values = shouldUpdateValues
-    ? payload.values.map((propertyValue) =>
-        propertyValue.propertyId === pagePropertyId
-          ? {
-              ...propertyValue,
-              updatedAt: now,
-              value: shouldClearValuesForPropertyTypeChange(
-                previousType!,
-                input.type!,
-              )
-                ? null
-                : formatDatePropertyValueAsText(propertyValue.value),
-            }
-          : propertyValue,
-      )
-    : payload.values;
-
-  return { ...payload, properties, values };
-}
-
-function formatDatePropertyValueAsText(value: unknown) {
-  const [start, end] = datePropertyBounds(value);
-
-  const startText = typeof start === "string" ? start.trim() : "";
-  const endText = typeof end === "string" ? end.trim() : "";
-
-  return startText && endText ? `${startText} - ${endText}` : startText || null;
-}
-
 export function useAddDatabaseProperty() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: async ({ databaseId, ...input }: AddPropertyInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/properties`,
-        {
-          method: "POST",
-          body: JSON.stringify(input),
-        },
+    mutationFn: async ({
+      config,
+      databaseId,
+      name,
+      position,
+      type,
+    }: AddPropertyInput) => {
+      const scope = await resolveDataSourceCommandScope(
+        queryClient,
+        apiFetch,
+        databaseId,
       );
-
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      const anchors = resolvePropertyCreateAnchors(
+        queryClient,
+        scope.dataSourceId,
+        position,
+      );
+      return client.execute<DatabasePropertyEntity>({
+        command: {
+          ...anchors,
+          config: config ?? null,
+          name: name?.trim() || "Property",
+          propertyType: type?.trim() || "text",
+          type: "property.create",
+        },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
+    },
+    onSettled: async (_result, _error, variables) => {
+      await invalidateDataSourceCollections(queryClient, variables.databaseId);
     },
   });
 }
 
 export function useApplyDatabaseTemplate() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: async ({ databaseId, ...input }: ApplyDatabaseTemplateInput) => {
-      const payload = await apiFetch<DatabasePayload>(
-        `/databases/${databaseId}/apply-template`,
-        {
-          body: JSON.stringify(input),
-          method: "POST",
-        },
-      );
-      const current = getDataSourcePayloadQueryEntries(
+      const scope = await resolveDataSourceCommandScope(
         queryClient,
+        apiFetch,
         databaseId,
-      ).find(([, cached]) => cached)?.[1];
-      const nextPayload: DatabasePayload = {
-        ...payload,
-        database: {
-          ...payload.database,
-          accessLevel:
-            payload.database.accessLevel ?? current?.database.accessLevel,
-        },
-      };
+      );
+      const result = await client.execute<{
+        dataSource: import("./contracts-v2").DataSourceEntity;
+      }>({
+        command: { ...input, type: "template.apply" },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
+      await invalidateDataSourceCollections(queryClient, databaseId);
 
-      setDataSourcePayloadQueryData(queryClient, databaseId, nextPayload);
+      const workspaceId = findDataSourceBootstrap(queryClient, databaseId)
+        ?.database.workspaceId;
+      if (workspaceId) {
+        await queryClient.invalidateQueries({
+          queryKey: pagesNavRootQueryKey(workspaceId),
+        });
+      }
 
-      await queryClient.invalidateQueries({
-        queryKey: pagesNavRootQueryKey(nextPayload.database.workspaceId),
-      });
-
-      return nextPayload;
+      return result;
     },
   });
 }
 
 export function useUpdateDatabaseProperty() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    onMutate: async (variables) => {
-      const previous = await applyOptimisticDataSourceMutation(
-        queryClient,
-        variables.databaseId,
-        (current) => updateDatabasePropertyInPayload(current, variables)!,
-      );
-
-      return { previous };
-    },
     mutationFn: async ({
       databaseId,
       databasePropertyId,
       ...patch
     }: UpdatePropertyInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/properties/${databasePropertyId}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(patch),
-        },
+      const scope = await resolveDataSourceCommandScope(
+        queryClient,
+        apiFetch,
+        databaseId,
       );
-
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return client.execute<DatabasePropertyEntity>({
+        command: {
+          patch,
+          propertyId: databasePropertyId,
+          type: "property.update",
+        },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
     },
-    onError: (_error, _variables, context) => {
-      restoreDatabasePayloadSnapshots(queryClient, context?.previous ?? []);
+    onSettled: async (_result, _error, variables) => {
+      await invalidateDataSourceCollections(queryClient, variables.databaseId);
     },
   });
 }
 
 export function useDeleteDatabaseProperty() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
@@ -219,17 +171,28 @@ export function useDeleteDatabaseProperty() {
       databaseId,
       databasePropertyId,
     }: DeletePropertyInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/properties/${databasePropertyId}`,
-        { method: "DELETE" },
+      const scope = await resolveDataSourceCommandScope(
+        queryClient,
+        apiFetch,
+        databaseId,
       );
-
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return client.execute<DatabasePropertyEntity>({
+        command: {
+          propertyId: databasePropertyId,
+          type: "property.archive",
+        },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
+    },
+    onSettled: async (_result, _error, variables) => {
+      await invalidateDataSourceCollections(queryClient, variables.databaseId);
     },
   });
 }
 
 export function useDuplicateDatabaseProperty() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
@@ -238,24 +201,43 @@ export function useDuplicateDatabaseProperty() {
       databasePropertyId,
       includeValues = false,
     }: DuplicatePropertyInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/properties/${databasePropertyId}/duplicate`,
-        {
-          method: "POST",
-          body: JSON.stringify({ includeValues }),
-        },
+      const scope = await resolveDataSourceCommandScope(
+        queryClient,
+        apiFetch,
+        databaseId,
       );
-
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return client.execute<DatabasePropertyEntity>({
+        command: {
+          includeValues,
+          propertyId: databasePropertyId,
+          type: "property.duplicate",
+        },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
+    },
+    onSettled: async (_result, _error, variables) => {
+      await invalidateDataSourceCollections(queryClient, variables.databaseId);
     },
   });
 }
 
-function datePropertyBounds(value: unknown): [unknown, unknown] {
-  if (Array.isArray(value)) return [value[0], value[1]];
-  if (value && typeof value === "object") {
-    const date = value as { date?: unknown; start?: unknown; end?: unknown };
-    return [date.start ?? date.date, date.end];
-  }
-  return [value, undefined];
+function resolvePropertyCreateAnchors(
+  queryClient: QueryClient,
+  dataSourceId: string,
+  requestedPosition?: number,
+) {
+  const ids = (findDataSourceBootstrap(queryClient, dataSourceId)?.properties ?? [])
+    .filter((property) => property.dataSourceId === dataSourceId)
+    .slice()
+    .sort((left, right) => left.position - right.position)
+    .map(({ id }) => id);
+  const position = Math.max(
+    0,
+    Math.min(requestedPosition ?? ids.length, ids.length),
+  );
+  return {
+    afterPropertyId: ids[position - 1] ?? null,
+    beforePropertyId: ids[position] ?? null,
+  };
 }

@@ -1,6 +1,6 @@
 import { apiKey } from "@better-auth/api-key";
 import { expo } from "@better-auth/expo";
-import { betterAuth } from "better-auth";
+import { betterAuth, type BetterAuthPlugin } from "better-auth";
 import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { jwt } from "better-auth/plugins/jwt";
@@ -16,7 +16,11 @@ import {
 } from "better-auth/plugins/organization/access";
 import { and, eq, ne } from "drizzle-orm";
 import { API_KEY_PREFIX } from "../api-keys";
-import { db, type Database } from "../../infrastructure/database";
+import {
+  createAuthTransactionDatabase,
+  db,
+  type Database,
+} from "../../infrastructure/database";
 import * as schema from "../../infrastructure/database/schema";
 import { sendEmail } from "../../infrastructure/email/email";
 import {
@@ -53,7 +57,19 @@ export async function createAuth(
   database: Database = db,
   options: EditionExtensionOptions = {},
 ): Promise<Auth> {
-  const auth = createAuthInstance(env, request, database, options);
+  const editionAuthPlugins =
+    (await options.editionExtension?.createAuthPlugins({
+      database,
+      env,
+      request,
+    })) ?? [];
+  const auth = createAuthInstance(
+    env,
+    request,
+    database,
+    options,
+    editionAuthPlugins,
+  );
   // Plugin initialization queries the database. Keep it inside the caller's
   // database scope and propagate failures through the request error boundary.
   await auth.$context;
@@ -65,6 +81,7 @@ function createAuthInstance(
   request: Request,
   database: Database,
   options: EditionExtensionOptions,
+  editionAuthPlugins: readonly BetterAuthPlugin[] = [],
 ) {
   const requestUrl = resolvePublicRequestUrl(request, env);
 
@@ -73,11 +90,18 @@ function createAuthInstance(
     secret: getRequiredStringEnv(env, "BETTER_AUTH_SECRET"),
     trustedOrigins: getTrustedOrigins(env, requestUrl.origin),
     disabledPaths: ["/token"],
-    database: drizzleAdapter(database, {
+    database: drizzleAdapter(createAuthTransactionDatabase(database), {
       provider: "pg",
       schema,
+      transaction: true,
     }),
-    ...sharedAuthOptions(env, request, database, options),
+    ...sharedAuthOptions(
+      env,
+      request,
+      database,
+      options,
+      editionAuthPlugins,
+    ),
   });
 }
 
@@ -86,6 +110,7 @@ function sharedAuthOptions(
   request: Request,
   database: Database,
   options: EditionExtensionOptions,
+  editionAuthPlugins: readonly BetterAuthPlugin[],
 ) {
   const googleClientId = getStringEnv(env, "GOOGLE_CLIENT_ID");
   const googleClientSecret = getStringEnv(env, "GOOGLE_CLIENT_SECRET");
@@ -272,6 +297,12 @@ function sharedAuthOptions(
                   "Temporary invitations must include an expiration date.",
               });
             }
+            await options.editionExtension?.beforeInvitationCreate?.({
+              database,
+              email: invitation.email.trim().toLowerCase(),
+              role: invitation.role,
+              workspaceId: invitation.organizationId,
+            });
           },
           async beforeAcceptInvitation({ invitation, user }) {
             try {
@@ -400,7 +431,7 @@ function sharedAuthOptions(
         jwt: { issuer: apiOrigin },
       }),
       createOAuthProviderPlugin(env, apiOrigin),
-      ...(options.editionExtension?.authPlugins ?? []),
+      ...editionAuthPlugins,
     ],
   };
 }

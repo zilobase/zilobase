@@ -12,6 +12,12 @@ The Node coordinator catches maintenance and lane-timer recalculation failures d
 
 Feature implementations own leases, receipts, authorization and durable status. Dispatch success is not equivalent to feature completion. Retries preserve task identity and availableAt semantics; terminal outcomes differ from thrown execution errors.
 
+For `realtime.database`, the committed journal event is canonical and the
+outbox contains only delivery state. HTTP acknowledgement does not wait for
+delivery. The feature handler drains the reference and returns retry while it
+remains pending; lease recovery and periodic sweeps cover failed scheduling and
+worker interruption.
+
 ## Verification
 
 See [tests or test configuration](../../apps/server/src/infrastructure/background) and [testing and quality](../setup/testing-and-quality.md). [Architecture index](../README.md).
@@ -19,3 +25,9 @@ See [tests or test configuration](../../apps/server/src/infrastructure/backgroun
 ## Dispatch seam
 
 The processor delegates mail indexing/sync, database realtime, navigation realtime and notification tasks to each feature's background module. Those modules own the post-drain persistence checks and retry deadlines. [Task result handling](../../apps/server/src/infrastructure/background/task-result.ts) shares the identical completed/retry interpretation of an outbox row; it does not claim work or change leases. [Processor tests](../../apps/server/src/app/background/processor.test.ts) exercise the dispatch interface before and after the move. Node websocket attachment remains separate for each protocol.
+
+A single-process Node `all` runtime may dispatch database events in process.
+Split Node roles and multiple API replicas publish through Redis/Valkey. The
+managed Cloud runtime schedules a Queue consumer, whose background Worker alone
+publishes through the per-database Durable Object. See the
+[database operations guide](../../docs/databases/operations.md).

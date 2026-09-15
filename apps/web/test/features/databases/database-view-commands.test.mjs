@@ -51,9 +51,7 @@ export function register({ assert, loadModule, test }) {
       "Done",
       statusProperty,
     );
-    addRow.calls[0][1].onSuccess({
-      rows: [{ id: "existing-row" }, { id: "imported-row" }],
-    });
+    addRow.calls[0][1].onSuccess({ id: "imported-row", pageId: "source-page" });
 
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
@@ -65,12 +63,7 @@ export function register({ assert, loadModule, test }) {
       sourceRowId: "source-row",
       title: "Imported task",
     });
-    assert.deepEqual(updateValue.calls[0][0], {
-      databaseId,
-      propertyId: "property-status",
-      rowId: "imported-row",
-      value: "Done",
-    });
+    assert.deepEqual(updateValue.calls, []);
   });
 
   test("database view commands rename an imported row dropped into a name group", async () => {
@@ -118,7 +111,7 @@ export function register({ assert, loadModule, test }) {
       "Renamed task",
       nameProperty,
     );
-    addRow.calls[0][1].onSuccess({ rows: [{ id: "imported-row" }] });
+    addRow.calls[0][1].onSuccess({ id: "imported-row", pageId: "source-page" });
 
     assert.equal(addRow.calls[0][0].title, "Renamed task");
     assert.deepEqual(updatePage.calls[0][0], {
@@ -1382,7 +1375,7 @@ export function register({ assert, loadModule, test }) {
       "In progress",
       statusProperty,
     );
-    addRow.calls[0][1].onSuccess({ rows: [{ id: "row-1" }] });
+    addRow.calls[0][1].onSuccess({ id: "row-1", pageId: "page-1" });
 
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
@@ -1401,26 +1394,7 @@ export function register({ assert, loadModule, test }) {
       ],
       title: "Untitled",
     });
-    assert.deepEqual(
-      updateValue.calls.map(([input]) => input),
-      [
-        {
-          databaseId,
-          propertyId: "property-date",
-          rowId: "row-1",
-          value: {
-            start: "2026-06-15",
-            end: "2026-06-20",
-          },
-        },
-        {
-          databaseId,
-          propertyId: "property-status",
-          rowId: "row-1",
-          value: "In progress",
-        },
-      ],
-    );
+    assert.deepEqual(updateValue.calls, []);
   });
 
   test("database view commands add timeline view creates date property", async () => {
@@ -1451,34 +1425,19 @@ export function register({ assert, loadModule, test }) {
     });
 
     commands.addTimelineView();
-    addProperty.calls[0][1].onSuccess({
-      properties: [
-        createProperty(
-          "database-property-date",
-          "property-date",
-          "Date",
-          "date",
-        ),
-      ],
-      views: [],
-    });
+    addProperty.calls[0][1].onSuccess(
+      createProperty(
+        "database-property-date",
+        "property-date",
+        "Date",
+        "date",
+      ),
+    );
     addDatabaseView.calls[0][1].onSuccess({
-      properties: [
-        createProperty(
-          "database-property-date",
-          "property-date",
-          "Date",
-          "date",
-        ),
-      ],
-      views: [
-        {
-          config: { datePropertyId: "property-date" },
-          id: "view-timeline",
-          name: "Timeline",
-          type: "timeline",
-        },
-      ],
+      config: { datePropertyId: "property-date" },
+      id: "view-timeline",
+      name: "Timeline",
+      type: "timeline",
     });
 
     assert.deepEqual(addProperty.calls[0][0], {
@@ -1644,7 +1603,9 @@ export function register({ assert, loadModule, test }) {
 
     commands.addChartView();
     addDatabaseView.calls[0][1].onSuccess({
-      views: [{ id: "view-chart", name: "Chart", type: "chart" }],
+      id: "view-chart",
+      name: "Chart",
+      type: "chart",
     });
 
     assert.deepEqual(addDatabaseView.calls[0][0], {
@@ -1940,11 +1901,15 @@ export function register({ assert, loadModule, test }) {
 
     commands.addListView();
     addDatabaseView.calls[0][1].onSuccess({
-      views: [{ id: "view-list", name: "List", type: "list" }],
+      id: "view-list",
+      name: "List",
+      type: "list",
     });
     commands.addGalleryView();
     addDatabaseView.calls[1][1].onSuccess({
-      views: [{ id: "view-gallery", name: "Gallery", type: "gallery" }],
+      id: "view-gallery",
+      name: "Gallery",
+      type: "gallery",
     });
 
     assert.deepEqual(
@@ -2014,6 +1979,49 @@ export function register({ assert, loadModule, test }) {
       databaseId,
       title: "Untitled",
     });
+  });
+
+  test("database view commands keep row and property creation responsive while commands are pending", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/features/databases/commands/database-view-commands.ts",
+    );
+    const addProperty = createMutation();
+    const addRow = createMutation();
+    addProperty.isPending = true;
+    addRow.isPending = true;
+    const commands = getDatabaseViewCommands({
+      notify: { error: () => {}, success: () => {} },
+      copyViewLink: async () => {},
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: {},
+        id: "view-1",
+        name: "Table",
+        type: "table",
+      },
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addProperty, addRow }),
+      payload: createPayload(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.addDatabaseRow();
+    commands.addDatabaseRow();
+    commands.addDatabaseProperty("text", "First");
+    commands.addDatabaseProperty("number", "Second");
+
+    assert.equal(addRow.calls.length, 2);
+    assert.equal(addProperty.calls.length, 2);
   });
 }
 

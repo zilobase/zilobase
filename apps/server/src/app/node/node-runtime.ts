@@ -31,6 +31,7 @@ import { fetchPinnedNodeMcp } from "./pinned-mcp";
 import { createNodeBackgroundCoordinator, publishNodeBackgroundNotification } from "./background-coordinator";
 import { setBackgroundReadinessProbe, getBackgroundOperationalSnapshot } from "../../infrastructure/background/health";
 import { renderPrometheusBackgroundMetrics } from "../../infrastructure/background/telemetry";
+import { renderPrometheusDatabaseMetrics } from "../../features/databases/observability";
 
 export type NodeRuntimeOptions = {
   app: Hono<AppBindings>;
@@ -81,6 +82,7 @@ export function createNodeRuntime({
   });
   const editionExtension = getAppEditionExtension(app);
   const realtimeBus = createNodeRealtimeBus(env);
+  assertNodeRealtimeTopology(processRole, realtimeBus);
   setCollaborationExtensionsFactory(createNodeCollaborationExtensions);
   setRealtimeReadinessProbe(() => realtimeBus?.isReady() ?? true);
   const collaboration = attachNodeCollaborationRuntime(server, env, {
@@ -111,7 +113,11 @@ export function createNodeRuntime({
         : publishNodeBackgroundNotification(dispatchEnv, tasks),
   };
   const backgroundAdminServer = backgroundCoordinator
-    ? createBackgroundAdminServer(env, backgroundCoordinator)
+    ? createBackgroundAdminServer(
+        env,
+        backgroundCoordinator,
+        () => realtimeBus?.isReady() ?? true,
+      )
     : null;
 
   setRuntimeAdapter(effectiveRuntimeAdapter);
@@ -141,14 +147,13 @@ export function createNodeRuntime({
       }
     },
     async start() {
+      await realtimeBus?.connect();
       await backgroundCoordinator?.start();
       await backgroundAdminServer?.start();
       if (processRole === "worker") {
         console.log("Zilobase background worker started");
         return;
       }
-      await realtimeBus?.connect();
-
       await new Promise<void>((resolve, reject) => {
         server.once("error", reject);
         server.listen(port, hostname, () => {
@@ -193,16 +198,30 @@ function readProcessRole(value: string | undefined): ProcessRole {
   throw new Error("ZILOBASE_PROCESS_ROLE must be all, api, or worker");
 }
 
+function assertNodeRealtimeTopology(
+  processRole: ProcessRole,
+  realtimeBus: ReturnType<typeof createNodeRealtimeBus>,
+) {
+  if (processRole !== "all" && !realtimeBus) {
+    throw new Error(
+      "REALTIME_REDIS_URL is required when ZILOBASE_PROCESS_ROLE is api or worker",
+    );
+  }
+}
+
 function createBackgroundAdminServer(
   env: Record<string, unknown>,
   coordinator: ReturnType<typeof createNodeBackgroundCoordinator>,
+  isRealtimeReady: () => boolean,
 ) {
   const port = readPort(process.env.BACKGROUND_HEALTH_PORT) ?? 3001;
   const admin = createServer(async (request, response) => {
     if (request.url === "/metrics") {
       response.statusCode = 200;
       response.setHeader("content-type", "text/plain; version=0.0.4");
-      response.end(renderPrometheusBackgroundMetrics());
+      response.end(
+        renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics(),
+      );
       return;
     }
     if (request.url !== "/health" && request.url !== "/ready") {
@@ -213,7 +232,8 @@ function createBackgroundAdminServer(
     try {
       const snapshot = await runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env));
       const ready = coordinator.readiness();
-      response.statusCode = request.url === "/ready" && (!snapshot.healthy || !ready.listenerReady)
+      response.statusCode = request.url === "/ready" &&
+          (!snapshot.healthy || !ready.listenerReady || !isRealtimeReady())
         ? 503
         : 200;
       response.setHeader("content-type", "application/json");

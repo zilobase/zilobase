@@ -49,7 +49,7 @@ import { defaultStatusOptions } from "@/features/databases/properties/property-c
 import { TaskDatabaseListAdapter } from "../components/task-database-list-adapter"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
 import {
-  databaseQueryOptions,
+  databaseContextExportQueryOptions,
   type DatabasePayload,
   type DatabaseProperty,
   type DatabaseView,
@@ -133,7 +133,7 @@ export default function TasksPage() {
   const selectedDatabaseIds = sidebarLayout.taskDatabaseIds
   const databaseQueries = useQueries({
     queries: selectedDatabaseIds.map((databaseId) =>
-      databaseQueryOptions(apiFetch, databaseId)
+      databaseContextExportQueryOptions(apiFetch, databaseId)
     ),
   })
   const payloads = databaseQueries
@@ -359,7 +359,8 @@ function TasksDatabaseView({
 
     updateValue.mutate(
       {
-        databaseId: task.databaseId,
+        databaseId: sourcePayload.activeDataSource?.id ?? task.databaseId,
+        hostDatabaseId: sourcePayload.database.id,
         propertyId: sourceProperty.property.id,
         rowId: task.rowId,
         value: nextValue || null,
@@ -439,11 +440,11 @@ function TasksDatabaseView({
         ? [{ propertyId: schema.status.property.id, value: initialStatus }]
         : []),
     ]
-    const existingRowIds = new Set(sourcePayload.rows.map((row) => row.id))
-
     addRow.mutate(
       {
-        databaseId: sourcePayload.database.id,
+        databaseId:
+          sourcePayload.activeDataSource?.id ?? sourcePayload.database.id,
+        hostDatabaseId: sourcePayload.database.id,
         optimisticValues: initialValues,
       },
       {
@@ -451,36 +452,6 @@ function TasksDatabaseView({
           toast.error(
             error instanceof Error ? error.message : "Could not create task."
           ),
-        onSuccess: (nextPayload) => {
-          const addedRow = nextPayload.rows.find(
-            (row) => !existingRowIds.has(row.id)
-          )
-          if (!addedRow) {
-            toast.error(
-              "The task was created, but its fields could not be updated."
-            )
-            return
-          }
-
-          for (const propertyValue of initialValues) {
-            updateValue.mutate(
-              {
-                databaseId: sourcePayload.database.id,
-                propertyId: propertyValue.propertyId,
-                rowId: addedRow.id,
-                value: propertyValue.value,
-              },
-              {
-                onError: (error) =>
-                  toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Could not update the task."
-                  ),
-              }
-            )
-          }
-        },
       }
     )
   }
@@ -641,7 +612,9 @@ function TasksDatabaseView({
 
           updateValue.mutate(
             {
-              databaseId: task.databaseId,
+              databaseId:
+                sourcePayload?.activeDataSource?.id ?? task.databaseId,
+              hostDatabaseId: sourcePayload?.database.id,
               propertyId: statusProperty.property.id,
               rowId: task.rowId,
               value: nextStatus,

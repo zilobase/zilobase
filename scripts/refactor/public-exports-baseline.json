@@ -164,7 +164,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -842,7 +842,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -1520,7 +1520,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -2198,7 +2198,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -2888,7 +2888,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -3590,7 +3590,7 @@
       "value": false,
       "type": true
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -4140,7 +4140,7 @@
       "value": true,
       "type": false
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -4266,7 +4266,7 @@
       "value": true,
       "type": false
     },
-    "DatabaseRealtimeMutationEvent": {
+    "DatabaseMutationEventV2": {
       "value": false,
       "type": true
     },
@@ -9036,14 +9036,6 @@
       "value": true,
       "type": false
     },
-    "applyDatabaseDelta": {
-      "value": true,
-      "type": false
-    },
-    "applyDatabaseRealtimeMutation": {
-      "value": true,
-      "type": false
-    },
     "ApplyDatabaseTemplateInput": {
       "value": false,
       "type": true
@@ -9149,10 +9141,6 @@
       "type": true
     },
     "automationValueExpressionSchema": {
-      "value": true,
-      "type": false
-    },
-    "buildPagePropertiesPayloadFromDatabase": {
       "value": true,
       "type": false
     },
@@ -9468,17 +9456,9 @@
       "value": true,
       "type": false
     },
-    "DatabaseChangedArea": {
-      "value": false,
-      "type": true
-    },
     "databaseDateFilterOperators": {
       "value": true,
       "type": false
-    },
-    "DatabaseDelta": {
-      "value": false,
-      "type": true
     },
     "DatabaseFilterGroupConfig": {
       "value": false,
@@ -9524,10 +9504,6 @@
       "value": true,
       "type": false
     },
-    "DatabaseMutationResponse": {
-      "value": false,
-      "type": true
-    },
     "databaseNumberFilterOperators": {
       "value": true,
       "type": false
@@ -9535,10 +9511,6 @@
     "DatabasePayload": {
       "value": false,
       "type": true
-    },
-    "databasePayloadRootQueryKey": {
-      "value": true,
-      "type": false
     },
     "DatabasePredicateContext": {
       "value": false,
@@ -9573,14 +9545,6 @@
       "type": true
     },
     "databasePropertyTypes": {
-      "value": true,
-      "type": false
-    },
-    "databaseQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "databaseQueryOptions": {
       "value": true,
       "type": false
     },
@@ -9768,15 +9732,7 @@
       "value": true,
       "type": false
     },
-    "isDatabaseMutationResponse": {
-      "value": true,
-      "type": false
-    },
     "isDatabasePropertyType": {
-      "value": true,
-      "type": false
-    },
-    "isDatabaseRowPage": {
       "value": true,
       "type": false
     },
@@ -9801,10 +9757,6 @@
       "type": false
     },
     "listValue": {
-      "value": true,
-      "type": false
-    },
-    "moveDatabaseRow": {
       "value": true,
       "type": false
     },
@@ -9848,10 +9800,6 @@
       "value": true,
       "type": false
     },
-    "patchDatabaseCachePagePropertyValues": {
-      "value": true,
-      "type": false
-    },
     "personTextValue": {
       "value": true,
       "type": false
@@ -9865,10 +9813,6 @@
       "type": false
     },
     "regexTest": {
-      "value": true,
-      "type": false
-    },
-    "reorderDatabaseRows": {
       "value": true,
       "type": false
     },
@@ -9944,19 +9888,7 @@
       "value": true,
       "type": false
     },
-    "updateDatabasePropertyInPayload": {
-      "value": true,
-      "type": false
-    },
-    "updateDatabasePropertyValue": {
-      "value": true,
-      "type": false
-    },
     "updateDatabaseViewInNavigation": {
-      "value": true,
-      "type": false
-    },
-    "updateDatabaseViewInPayload": {
       "value": true,
       "type": false
     },
@@ -9981,10 +9913,6 @@
       "type": false
     },
     "useCreateDatabaseDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useDatabase": {
       "value": true,
       "type": false
     },
@@ -10025,10 +9953,6 @@
       "type": false
     },
     "useMoveDatabaseRow": {
-      "value": true,
-      "type": false
-    },
-    "useReorderDatabaseRows": {
       "value": true,
       "type": false
     },
@@ -10102,14 +10026,6 @@
       "value": true,
       "type": false
     },
-    "applyDatabaseDelta": {
-      "value": true,
-      "type": false
-    },
-    "applyDatabaseRealtimeMutation": {
-      "value": true,
-      "type": false
-    },
     "ApplyDatabaseTemplateInput": {
       "value": false,
       "type": true
@@ -10215,10 +10131,6 @@
       "type": true
     },
     "automationValueExpressionSchema": {
-      "value": true,
-      "type": false
-    },
-    "buildPagePropertiesPayloadFromDatabase": {
       "value": true,
       "type": false
     },
@@ -10534,17 +10446,9 @@
       "value": true,
       "type": false
     },
-    "DatabaseChangedArea": {
-      "value": false,
-      "type": true
-    },
     "databaseDateFilterOperators": {
       "value": true,
       "type": false
-    },
-    "DatabaseDelta": {
-      "value": false,
-      "type": true
     },
     "DatabaseFilterGroupConfig": {
       "value": false,
@@ -10590,10 +10494,6 @@
       "value": true,
       "type": false
     },
-    "DatabaseMutationResponse": {
-      "value": false,
-      "type": true
-    },
     "databaseNumberFilterOperators": {
       "value": true,
       "type": false
@@ -10601,10 +10501,6 @@
     "DatabasePayload": {
       "value": false,
       "type": true
-    },
-    "databasePayloadRootQueryKey": {
-      "value": true,
-      "type": false
     },
     "DatabasePredicateContext": {
       "value": false,
@@ -10639,14 +10535,6 @@
       "type": true
     },
     "databasePropertyTypes": {
-      "value": true,
-      "type": false
-    },
-    "databaseQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "databaseQueryOptions": {
       "value": true,
       "type": false
     },
@@ -10834,15 +10722,7 @@
       "value": true,
       "type": false
     },
-    "isDatabaseMutationResponse": {
-      "value": true,
-      "type": false
-    },
     "isDatabasePropertyType": {
-      "value": true,
-      "type": false
-    },
-    "isDatabaseRowPage": {
       "value": true,
       "type": false
     },
@@ -10867,10 +10747,6 @@
       "type": false
     },
     "listValue": {
-      "value": true,
-      "type": false
-    },
-    "moveDatabaseRow": {
       "value": true,
       "type": false
     },
@@ -10914,10 +10790,6 @@
       "value": true,
       "type": false
     },
-    "patchDatabaseCachePagePropertyValues": {
-      "value": true,
-      "type": false
-    },
     "personTextValue": {
       "value": true,
       "type": false
@@ -10931,10 +10803,6 @@
       "type": false
     },
     "regexTest": {
-      "value": true,
-      "type": false
-    },
-    "reorderDatabaseRows": {
       "value": true,
       "type": false
     },
@@ -11010,19 +10878,7 @@
       "value": true,
       "type": false
     },
-    "updateDatabasePropertyInPayload": {
-      "value": true,
-      "type": false
-    },
-    "updateDatabasePropertyValue": {
-      "value": true,
-      "type": false
-    },
     "updateDatabaseViewInNavigation": {
-      "value": true,
-      "type": false
-    },
-    "updateDatabaseViewInPayload": {
       "value": true,
       "type": false
     },
@@ -11047,10 +10903,6 @@
       "type": false
     },
     "useCreateDatabaseDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useDatabase": {
       "value": true,
       "type": false
     },
@@ -11091,10 +10943,6 @@
       "type": false
     },
     "useMoveDatabaseRow": {
-      "value": true,
-      "type": false
-    },
-    "useReorderDatabaseRows": {
       "value": true,
       "type": false
     },
@@ -12872,21 +12720,9 @@
       "value": false,
       "type": true
     },
-    "databasePayloadRootQueryKey": {
-      "value": true,
-      "type": false
-    },
     "DatabaseProperty": {
       "value": false,
       "type": true
-    },
-    "databaseQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "databaseQueryOptions": {
-      "value": true,
-      "type": false
     },
     "DatabaseRecord": {
       "value": false,
@@ -12958,21 +12794,9 @@
       "value": false,
       "type": true
     },
-    "databasePayloadRootQueryKey": {
-      "value": true,
-      "type": false
-    },
     "DatabaseProperty": {
       "value": false,
       "type": true
-    },
-    "databaseQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "databaseQueryOptions": {
-      "value": true,
-      "type": false
     },
     "DatabaseRecord": {
       "value": false,

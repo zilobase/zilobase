@@ -1,9 +1,9 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { type DatabaseAutomationDependency } from "@zilobase/features/databases/automations";
 import { db, type Database } from "../../../../infrastructure/database";
-import { databaseAutomation, databaseAutomationDependency, databaseAutomationRevision } from "../../../../infrastructure/database/schema";
+import { databaseAutomation, databaseAutomationDependency } from "../../../../infrastructure/database/schema";
 import { operatorsForPropertyType } from "../compilation/compiler";
-import { DatabaseAutomationError, hasOptionReference, requireManagementContext, loadProperties, loadAutomationTargetCatalog, loadOwnedGmailConnections, loadOwnedSlackConnections, loadViews, loadWorkspaceUsers } from "./definition-context";
+import { DatabaseAutomationError, requireManagementContext, loadProperties, loadAutomationTargetCatalog, loadOwnedGmailConnections, loadOwnedSlackConnections, loadViews, loadWorkspaceUsers } from "./definition-context";
 
 export async function getDatabaseAutomationCatalog(input: {
   databaseId: string;
@@ -115,31 +115,7 @@ export async function invalidateDatabaseAutomationDependencies(input: {
         input.workspaceId ? eq(databaseAutomation.workspaceId, input.workspaceId) : undefined,
       ),
     );
-  const legacyOptionRows = input.dependencyType === "option"
-    ? await executor
-        .select({
-          automationId: databaseAutomation.id,
-          definition: databaseAutomationRevision.definition,
-        })
-        .from(databaseAutomation)
-        .innerJoin(
-          databaseAutomationRevision,
-          eq(databaseAutomationRevision.id, databaseAutomation.currentRevisionId),
-        )
-        .where(
-          and(
-            eq(databaseAutomation.status, "active"),
-            isNull(databaseAutomation.deletedAt),
-            input.workspaceId ? eq(databaseAutomation.workspaceId, input.workspaceId) : undefined,
-          ),
-        )
-    : [];
-  const automationIds = [...new Set([
-    ...rows.map(({ automationId }) => automationId),
-    ...legacyOptionRows
-      .filter(({ definition }) => hasOptionReference(definition, input.dependencyId))
-      .map(({ automationId }) => automationId),
-  ])];
+  const automationIds = [...new Set(rows.map(({ automationId }) => automationId))];
   if (automationIds.length === 0) return 0;
   await executor
     .update(databaseAutomation)
@@ -155,4 +131,3 @@ export async function invalidateDatabaseAutomationDependencies(input: {
     .where(and(inArray(databaseAutomation.id, automationIds), eq(databaseAutomation.status, "active")));
   return automationIds.length;
 }
-

@@ -1,4 +1,5 @@
-import { boolean, foreignKey, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, foreignKey, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { workspace, teamspace } from "./workspaces";
 import { user } from "./authentication";
 import { page } from "./pages";
@@ -97,19 +98,48 @@ export const databaseDataSource = pgTable(
   ],
 );
 
+export const databaseMutationEvent = pgTable(
+  "database_mutation_event",
+  {
+    id: text("id").primaryKey(),
+    commandId: text("command_id").notNull(),
+    databaseId: text("database_id")
+      .notNull()
+      .references(() => database.id, { onDelete: "cascade" }),
+    dataSourceId: text("data_source_id").references(() => dataSource.id, {
+      onDelete: "set null",
+    }),
+    actorId: text("actor_id").notNull(),
+    protocolVersion: integer("protocol_version").notNull().default(2),
+    version: integer("version").notNull(),
+    areas: text("areas").array().notNull(),
+    changes: jsonb("changes").notNull().default({}),
+    requiresReset: boolean("requires_reset").notNull().default(false),
+    committedAt: timestamp("committed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("database_mutation_event_database_version_unique").on(
+      table.databaseId,
+      table.version,
+    ),
+    index("database_mutation_event_database_committed_idx").on(
+      table.databaseId,
+      table.committedAt,
+    ),
+    index("database_mutation_event_command_idx").on(table.commandId),
+    index("database_mutation_event_retention_idx").on(table.committedAt),
+  ],
+);
+
 export const databaseRealtimeOutbox = pgTable(
   "database_realtime_outbox",
   {
     id: text("id").primaryKey(),
-    databaseId: text("database_id")
+    eventId: text("event_id")
       .notNull()
-      .references(() => database.id, { onDelete: "cascade" }),
-    version: integer("version").notNull(),
-    actorId: text("actor_id").notNull(),
-    changed: text("changed").array().notNull(),
-    delta: jsonb("delta").notNull().default({}),
-    requiresRefetch: boolean("requires_refetch").notNull().default(false),
-    committedAt: timestamp("committed_at", { withTimezone: true }).notNull(),
+      .references(() => databaseMutationEvent.id, { onDelete: "restrict" }),
     attempts: integer("attempts").notNull().default(0),
     lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
@@ -119,12 +149,39 @@ export const databaseRealtimeOutbox = pgTable(
   (table) => [
     index("database_realtime_outbox_ready_idx").on(
       table.nextAttemptAt,
-      table.committedAt,
+      table.id,
     ),
-    uniqueIndex("database_realtime_outbox_database_version_unique").on(
+    uniqueIndex("database_realtime_outbox_event_unique").on(table.eventId),
+  ],
+);
+
+export const databaseCommandReceipt = pgTable(
+  "database_command_receipt",
+  {
+    commandId: text("command_id").primaryKey(),
+    databaseId: text("database_id")
+      .notNull()
+      .references(() => database.id, { onDelete: "cascade" }),
+    dataSourceId: text("data_source_id").references(() => dataSource.id, {
+      onDelete: "set null",
+    }),
+    actorId: text("actor_id").notNull(),
+    requestHash: text("request_hash").notNull(),
+    eventId: text("event_id")
+      .notNull()
+      .references(() => databaseMutationEvent.id, { onDelete: "cascade" }),
+    acknowledgement: jsonb("acknowledgement").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("database_command_receipt_database_created_idx").on(
       table.databaseId,
-      table.version,
+      table.createdAt,
     ),
+    index("database_command_receipt_retention_idx").on(table.expiresAt),
   ],
 );
 
@@ -225,7 +282,7 @@ export const databaseRow = pgTable(
       .notNull()
       .references(() => page.id, { onDelete: "cascade" }),
     parentRowId: text("parent_row_id"),
-    position: integer("position").notNull().default(0),
+    orderKey: numeric("order_key", { precision: 30, scale: 10 }).notNull(),
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -235,13 +292,10 @@ export const databaseRow = pgTable(
     ...softDeleteColumns(),
   },
   (table) => [
-    index("database_row_database_deleted_position_idx").on(
-      table.dataSourceId,
-      table.deletedAt,
-      table.position,
-    ),
     index("database_row_parent_idx").on(table.dataSourceId, table.parentRowId),
-    index("database_row_position_idx").on(table.dataSourceId, table.position),
+    uniqueIndex("database_row_source_order_unique")
+      .on(table.dataSourceId, table.orderKey)
+      .where(sql`${table.deletedAt} is null`),
     index("database_row_page_id_idx").on(table.pageId),
     index("database_row_deleted_at_idx").on(table.deletedAt),
     uniqueIndex("database_row_database_page_unique").on(

@@ -6,10 +6,6 @@ import {
   type AgentLiveEffect,
 } from "@zilobase/features/ai-chat"
 import {
-  databaseQueryKey,
-  type DatabasePayload,
-} from "@zilobase/features/databases"
-import {
   applyNavDelta,
   applyNavigationDeltaToCache,
   pageQueryKey,
@@ -74,15 +70,6 @@ export function useAgentLiveEffects() {
     }
     const effect = part.data
     if (handledEffectIds.current.has(effect.effectId)) return
-
-    if (effect.kind === "database-seed") {
-      queryClient.setQueryData<DatabasePayload>(
-        databaseQueryKey(effect.databaseId),
-        effect.payload as DatabasePayload,
-      )
-      handledEffectIds.current.add(effect.effectId)
-      return
-    }
 
     if (effect.kind === "page-upsert") {
       queryClient.setQueryData<PageDetail>(

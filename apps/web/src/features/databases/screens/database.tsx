@@ -16,13 +16,10 @@ import { cn } from "@/shared/lib/utils"
 import {
   getDatabaseCover,
   getDatabaseEmoji,
-  getDatabaseIconPosition,
   isDatabaseLocked,
 } from "@zilobase/features/databases"
-import { type PageIconPosition } from "@zilobase/features/pages";
 import { usePage, usePageAccessLevel } from "@zilobase/features/pages/react";
 import {
-  useDatabase,
   useRestoreDatabase,
   useUpdateDatabase,
   useUpdateDataSource,
@@ -39,6 +36,7 @@ import { toast } from "sonner"
 import { PublicPaneTopbar, PublicPageBreadcrumb } from "@/features/pages/publication/shared-page-header";
 import { PageEditorPane } from "@/features/pages/pane/page-editor-pane";
 import { useDatabaseViewNavigation } from "../hooks/use-database-view-navigation"
+import { useDatabaseMetadata } from "../hooks/use-database-metadata"
 import type { OpenPageOptions } from "@/features/pages"
 import { useTitleDraft } from "@/features/pages/hooks/index"
 import { useConnectivity, useOfflineManifest } from "@/features/offline/index"
@@ -69,7 +67,7 @@ function AuthenticatedDatabasePage() {
   const { view: activeDatabaseViewId } = useSearch({
     from: "/d/$databaseId",
   })
-  const { data: payload, isLoading } = useDatabase(databaseId, {
+  const { data: payload, isLoading } = useDatabaseMetadata(databaseId, {
     includeDeleted: true,
   })
   const databasePageId = payload?.database.pageId ?? null
@@ -160,7 +158,7 @@ function PublicDatabaseContent({ databaseId }: { databaseId: string }) {
   const { view: activeDatabaseViewId } = useSearch({
     from: "/d/$databaseId",
   })
-  const { data: payload, isLoading } = useDatabase(databaseId)
+  const { data: payload, isLoading } = useDatabaseMetadata(databaseId)
   const databasePageId = payload?.database.pageId ?? null
   const { data: page } = usePage(databasePageId, {
     refetchOnMount: false,
@@ -314,18 +312,19 @@ export function DatabaseMainPane({
     databaseId,
     requestedViewId: activeDatabaseViewId,
   })
-  const { data: payload } = useDatabase(databaseId, {
+  const { data: payload } = useDatabaseMetadata(databaseId, {
     includeDeleted: true,
   })
   const databasePageId = payload?.database.pageId ?? null
+  const { data: databasePage } = usePage(databasePageId, {
+    refetchOnMount: false,
+  })
   const { data: accessLevel } = usePageAccessLevel(databasePageId)
   const updateDatabase = useUpdateDatabase()
   const updateDataSource = useUpdateDataSource()
   const restoreDatabase = useRestoreDatabase()
   const [cover, setCover] = useState("")
   const [emoji, setEmoji] = useState("")
-  const [iconPosition, setIconPosition] =
-    useState<PageIconPosition>("inline")
   const [embeddedViewId, setEmbeddedViewId] = useState<string | undefined>()
   const [showDataSourceTitles, setShowDataSourceTitles] = useState(true)
   const activeViewId = embedded ? embeddedViewId : localActiveViewId
@@ -335,16 +334,19 @@ export function DatabaseMainPane({
     (source) => source.id === selectedView?.dataSourceId,
   )
   const sourceParentDatabaseId = activeDataSource?.parentDatabaseId ?? null
-  const { data: sourceContainerPayload } = useDatabase(sourceParentDatabaseId, {
+  const { data: sourceContainerPayload } = useDatabaseMetadata(sourceParentDatabaseId, {
     includeDeleted: true,
   })
   const sourceContainer = sourceContainerPayload?.database
   const sourcePageId = sourceContainer?.pageId ?? null
+  const { data: sourcePage } = usePage(sourcePageId, {
+    refetchOnMount: false,
+  })
   const { data: sourceAccessLevel } = usePageAccessLevel(sourcePageId)
   const editable =
     !readOnly &&
     connectivity === "online" &&
-    !payload?.database.deletedAt &&
+    !databasePage?.deletedAt &&
     !isDatabaseLocked(payload?.database) &&
     (payload?.database.accessLevel === "edit" ||
       payload?.database.accessLevel === "full" ||
@@ -353,8 +355,7 @@ export function DatabaseMainPane({
   const sourceEditable =
     editable &&
     Boolean(activeDataSource && sourceContainer) &&
-    !activeDataSource?.deletedAt &&
-    !sourceContainer?.deletedAt &&
+    !sourcePage?.deletedAt &&
     !isDatabaseLocked(sourceContainer) &&
     (sourceContainer?.accessLevel === "edit" ||
       sourceContainer?.accessLevel === "full" ||
@@ -391,13 +392,11 @@ export function DatabaseMainPane({
     if (!headingRecord) {
       setCover("")
       setEmoji("")
-      setIconPosition("inline")
       return
     }
 
     setCover(getDatabaseCover(headingRecord) ?? "")
     setEmoji(getDatabaseEmoji(headingRecord) ?? "")
-    setIconPosition(getDatabaseIconPosition(headingRecord))
   }, [headingRecord])
 
   const updateCover = (nextCover: string) => {
@@ -438,24 +437,6 @@ export function DatabaseMainPane({
     else updateDataSource.mutate(input)
   }
 
-  const updateIconPosition = (nextPosition: PageIconPosition) => {
-    setIconPosition(nextPosition)
-
-    if (!headingRecord || !headingEditable) {
-      return
-    }
-
-    const input = {
-      databaseId: headingRecord.id,
-      config: {
-        ...((headingRecord.config ?? {}) as Record<string, unknown>),
-        iconPosition: nextPosition,
-      },
-    }
-
-    if (hasMultipleDataSources) updateDatabase.mutate(input)
-    else updateDataSource.mutate(input)
-  }
   const updateActiveViewSearch = (viewId: string | null) => {
     if (embedded) {
       setEmbeddedViewId(viewId ?? undefined)
@@ -486,7 +467,7 @@ export function DatabaseMainPane({
 
   return (
     <section className={cn(className, "animate-in fade-in-0 duration-300")}>
-      {payload?.database.deletedAt ? (
+      {databasePage?.deletedAt ? (
         <TrashedItemBanner
           itemLabel="database"
           onRestore={restoreTrashedDatabase}
@@ -495,6 +476,7 @@ export function DatabaseMainPane({
         />
       ) : null}
       <PageMetadataView
+        allowIconPositionChange={false}
         cover={cover}
         databaseId={
           hasMultipleDataSources ? databaseId : sourceParentDatabaseId
@@ -502,11 +484,10 @@ export function DatabaseMainPane({
         editable={headingEditable}
         enableComments={false}
         icon={emoji}
-        iconPosition={iconPosition}
+        iconPosition="inline"
         layoutSection="heading"
         onCoverChange={updateCover}
         onIconChange={updateEmoji}
-        onIconPositionChange={updateIconPosition}
         onOpenPage={onOpenPage}
         onTitleChange={setTitle}
         workspaceId={headingRecord?.workspaceId}
@@ -529,7 +510,7 @@ export function DatabaseMainPane({
           databaseId={databaseId}
           editable={editable}
           fullPage
-          includeDeleted={Boolean(payload?.database.deletedAt)}
+          includeDeleted={Boolean(databasePage?.deletedAt)}
           onActiveViewIdChange={updateActiveViewSearch}
           onOpenPage={onOpenPage}
           onShowTitleChange={

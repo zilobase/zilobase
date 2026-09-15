@@ -8,7 +8,7 @@
 
 ## Main flow
 
-createAuth composes Better Auth with Drizzle, session handling, email OTP, bearer authentication, API keys, JWT access tokens and the OAuth 2.1 provider plugin. Web [screens](../../../apps/web/src/features/auth/screens) compose the existing form modules and auth-flow state. Third-party and clipper clients authorize at `/api/auth/oauth2/authorize`, consent at `/oauth/consent`, and call APIs with a JWT Bearer token. [Initial instance setup](../instance/discovery-and-setup.md) separates bootstrap requests from form presentation. The web feature provider supplies the client authentication interface; Hono session middleware resolves callers before protected feature operations.
+createAuth composes Better Auth with Drizzle, session handling, email OTP, bearer authentication, API keys, JWT access tokens and the OAuth 2.1 provider plugin. A compile-time edition may add request-scoped plugins through `createAuthPlugins`; the factory receives the same request, environment, and database used by the core auth instance. Web [screens](../../../apps/web/src/features/auth/screens) compose the existing form modules and auth-flow state. Third-party and clipper clients authorize at `/api/auth/oauth2/authorize`, consent at `/oauth/consent`, and call APIs with a JWT Bearer token. [Initial instance setup](../instance/discovery-and-setup.md) separates bootstrap requests from form presentation. The web feature provider supplies the client authentication interface; Hono session middleware resolves callers before protected feature operations.
 
 ## Authorization and persistence
 
@@ -29,7 +29,7 @@ The official Web Clipper client id is `zilobase-web-clipper` (public native, no 
 
 Desktop [authorization rules](../../../apps/server/src/features/desktop-auth/authorization.ts) own request parsing, redirect validation, PKCE challenges, authorization-code hashing and signed consent tokens. [Desktop routes](../../../apps/server/src/features/desktop-auth/routes.ts) own session checks, consent presentation, code persistence/consumption and HTTP/deep-link responses. Callback parameters retain state and issuer; consuming a code matches its hash, redirect URI, challenge and expiry through the existing repository interface. [Authorization tests](../../../apps/server/src/features/desktop-auth/authorization.test.ts) and [route tests](../../../apps/server/src/features/desktop-auth/routes.test.ts) cover the production interface with controlled persistence.
 
-Email and OAuth are external side effects. Sign-out also coordinates client account state. Invalid or expired sessions must follow session-guard behavior; keep cookie, bearer and desktop authentication semantics distinct.
+Email and OAuth are external side effects. Sign-out also coordinates client account state. Invalid or expired sessions must follow session-guard behavior; keep cookie, bearer and desktop authentication semantics distinct. For an authenticated browser session, middleware normalizes the active workspace, verifies membership, and then invokes the edition's optional `assertSession` policy with the concrete session ID. A policy denial is returned as its stable 401/403 code and message. API-key, OAuth bearer, and demo authentication bypass this session-only assurance hook.
 
 ## Verification and change points
 

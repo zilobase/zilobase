@@ -1,7 +1,7 @@
 import { applyPublicDevelopmentOrigin } from "./public-origin.mjs";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -11,6 +11,11 @@ import { config as loadDotenvx, parse } from "@dotenvx/dotenvx";
 
 import { coreDir, localProfiles } from "./config.mjs";
 import {
+  developmentDashboardModel,
+  renderDevelopmentDashboard,
+  startDevelopmentDashboard,
+} from "./dashboard.mjs";
+import {
   createFromTemplateIfMissing,
   migrateGeneratedNodeEnvironment,
   migrateGeneratedMailEnvironment,
@@ -19,6 +24,7 @@ import {
 import {
   databaseResetStatements,
   effectiveProfile,
+  nodeApiArguments,
   resolveLocalProfileNames,
   resolveStudioServices,
   runtimeEnvironment,
@@ -27,34 +33,29 @@ import {
   webCacheDirectory,
 } from "./local.mjs";
 import { assertPortsAvailable, redact, stopChildren } from "./process.mjs";
+import {
+  DEVELOPMENT_PROVIDER_FILE,
+  discoverDevelopmentProviders,
+  validateDevelopmentProvider,
+} from "./providers.mjs";
 
-test("runtime profiles have isolated ports, databases, and identities", () => {
+test("the Node profile uses stable local ports and identity", () => {
   const node = localProfiles.node;
-  const worker = localProfiles.worker;
   const ports = [
     node.appPort,
     node.apiPort,
     node.healthPort,
     node.inspectorPort,
     node.studioPort,
-    worker.appPort,
-    worker.apiPort,
-    worker.backgroundPort,
-    worker.inspectorPort,
-    worker.backgroundInspectorPort,
-    worker.studioPort,
   ];
   assert.equal(new Set(ports).size, ports.length);
-  assert.notEqual(node.database, worker.database);
-  assert.notEqual(node.cellId, worker.cellId);
   assert.equal(node.appHost, "localhost");
   assert.equal(node.apiHost, "localhost");
-  assert.equal(worker.appHost, "127.0.0.1");
-  assert.equal(worker.apiHost, "127.0.0.1");
-  assert.notEqual(node.appHost, worker.appHost);
+  assert.equal(node.database, "zilobase_node");
+  assert.equal(node.cellId, "local-node");
 });
 
-test("only the hosted private profile enables demo seeding", () => {
+test("the Node profile disables demo seeding", () => {
   const dependencies = {
     MAILPIT_SMTP_PORT: "11025",
     MINIO_API_PORT: "19100",
@@ -70,17 +71,29 @@ test("only the hosted private profile enables demo seeding", () => {
     "false",
   );
   assert.equal(
-    profileEnvironment(localProfiles.worker, dependencies).ZILOBASE_DEMO_ENABLED,
-    "true",
-  );
-  assert.equal(
     profileEnvironment(localProfiles.node, dependencies).MEETING_BLOCK_ENABLED,
     "true",
   );
-  assert.equal(
-    profileEnvironment(localProfiles.worker, dependencies).MEETING_BLOCK_ENABLED,
-    "true",
+});
+
+test("local Node API watches server, database client, and migration changes", () => {
+  const args = nodeApiArguments(localProfiles.node);
+
+  assert.ok(args.some((argument) => argument.endsWith("tsx/dist/cli.mjs")));
+  assert.ok(args.includes("watch"));
+  assert.ok(args.includes("drizzle/**/*.sql"));
+  assert.ok(args.includes("../../packages/features/src/databases/**/*.ts"));
+  assert.equal(args.at(-1), "src/entrypoints/serverful.ts");
+});
+
+test("development database commands use the journal-aware migration runner", async () => {
+  const serverPackage = JSON.parse(
+    await readFile(path.join(coreDir, "apps/server/package.json"), "utf8"),
   );
+
+  assert.match(serverPackage.scripts["db:migrate"], /tsx src\/scripts\/migrate\.ts/u);
+  assert.doesNotMatch(serverPackage.scripts["db:migrate"], /drizzle-kit migrate/u);
+  assert.match(serverPackage.scripts["db:reset"], /npm run db:migrate$/u);
 });
 
 test("setup migrates the obsolete generated Node demo default", async () => {
@@ -100,56 +113,114 @@ test("setup migrates the obsolete generated Node demo default", async () => {
   assert.equal(await migrateGeneratedNodeEnvironment(filename), false);
 });
 
-test("studio always inspects isolated node and worker databases", () => {
+test("studio inspects the Node development database", () => {
   const services = resolveStudioServices();
-  assert.deepEqual(services.map((service) => service.name), ["node", "worker"]);
+  assert.deepEqual(services.map((service) => service.name), ["node"]);
   assert.deepEqual(
     services.map((service) => service.database),
-    ["zilobase_node", "zilobase_worker"],
+    ["zilobase_node"],
   );
-  assert.deepEqual(services.map((service) => service.port), [4983, 4984]);
+  assert.deepEqual(services.map((service) => service.port), [4983]);
   assert.equal(studioBrowserUrl(4983), "https://local.drizzle.studio");
-  assert.equal(studioBrowserUrl(4984), "https://local.drizzle.studio/?port=4984");
 });
 
-test("local starts the adapter when the sibling repository is present", () => {
-  assert.deepEqual(
-    resolveLocalProfileNames({ adapterAvailable: true }),
-    ["node", "worker"],
-  );
-  assert.deepEqual(
-    resolveLocalProfileNames({ adapterAvailable: false }),
-    ["node"],
-  );
+test("local starts only the public Node profile", () => {
+  assert.deepEqual(resolveLocalProfileNames(), ["node"]);
 });
 
-test("dual web clients use separate Vite dependency caches", () => {
+test("workspace discovery loads ordered opt-in sibling providers", async () => {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "zilobase-providers-test-"));
+  for (const [directory, id, order] of [["later", "later", 20], ["earlier", "earlier", 10]]) {
+    const providerDir = path.join(workspace, directory);
+    await mkdir(providerDir);
+    await writeFile(path.join(providerDir, DEVELOPMENT_PROVIDER_FILE), JSON.stringify({
+      id,
+      order,
+      readiness: ["http://127.0.0.1:9999/ready"],
+      schemaVersion: 1,
+      start: ["node", "scripts/start.mjs"],
+    }));
+  }
+  const providers = await discoverDevelopmentProviders(workspace);
+  assert.deepEqual(providers.map(({ id }) => id), ["earlier", "later"]);
+});
+
+test("workspace providers may expose only loopback readiness URLs", () => {
+  assert.throws(() => validateDevelopmentProvider({
+    id: "remote",
+    readiness: ["https://example.com/ready"],
+    schemaVersion: 1,
+    start: ["node", "scripts/start.mjs"],
+  }, "/tmp/provider"), /loopback readiness URLs/);
+});
+
+test("development hub combines public and provider-owned runtime details", async () => {
+  const model = developmentDashboardModel({
+    credentials: [{ name: "Core", description: "Core setup", fields: [["Token", "<secret>"]] }],
+    profiles: { node: localProfiles.node },
+    providerModels: [{
+      runtimes: [{
+        api: "http://localhost:9998",
+        app: "http://localhost:9999",
+        config: [["Mode", "Optional"]],
+        description: "Optional runtime",
+        health: "http://127.0.0.1:9998/ready",
+        id: "optional",
+        name: "Optional",
+      }],
+      services: [{ name: "Docs", detail: "Local docs", url: "http://localhost:9997" }],
+    }],
+  });
+  assert.deepEqual(model.runtimes.map(({ id }) => id), ["node", "optional"]);
+  const page = renderDevelopmentDashboard(model);
+  assert.match(page, /Development hub/);
+  assert.match(page, /Optional runtime/);
+  assert.match(page, /&lt;secret&gt;/);
+
+  const dashboard = await startDevelopmentDashboard({ model, open: false, port: 0 });
+  try {
+    const response = await fetch(dashboard.url);
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /Community self-hosted/);
+  } finally {
+    await dashboard.close();
+  }
+});
+
+test("development hub refuses non-loopback health probes", async () => {
+  await assert.rejects(startDevelopmentDashboard({
+    model: {
+      credentials: [],
+      runtimes: [{ health: "https://example.com/ready" }],
+      services: [],
+    },
+    open: false,
+    port: 0,
+  }), /loopback HTTP URLs/);
+});
+
+test("the web client uses a stable Vite dependency cache", () => {
   const rootDir = path.join(os.tmpdir(), "zilobase-vite-test");
   const nodeCache = webCacheDirectory(localProfiles.node, rootDir);
-  const workerCache = webCacheDirectory(localProfiles.worker, rootDir);
 
   assert.equal(nodeCache, path.join(rootDir, "vite", "node"));
-  assert.equal(workerCache, path.join(rootDir, "vite", "worker"));
-  assert.notEqual(nodeCache, workerCache);
 });
 
 test("shell profile overrides select validated ports", () => {
-  const profile = effectiveProfile("worker", {
-    ZILOBASE_ADAPTER_PORT: "4010",
-    ZILOBASE_BACKGROUND_PORT: "4012",
-    ZILOBASE_WORKER_WEB_PORT: "4020",
-    ZILOBASE_INSPECTOR_PORT: "4031",
-    ZILOBASE_BACKGROUND_INSPECTOR_PORT: "4032",
+  const profile = effectiveProfile("node", {
+    PORT: "4010",
+    BACKGROUND_HEALTH_PORT: "4012",
+    ZILOBASE_NODE_WEB_PORT: "4020",
+    ZILOBASE_NODE_INSPECTOR_PORT: "4031",
   });
   assert.deepEqual(
     [
       profile.apiPort,
-      profile.backgroundPort,
+      profile.healthPort,
       profile.appPort,
       profile.inspectorPort,
-      profile.backgroundInspectorPort,
     ],
-    [4010, 4012, 4020, 4031, 4032],
+    [4010, 4012, 4020, 4031],
   );
   assert.equal(effectiveProfile("node", { PORT: "invalid" }).apiPort, 3000);
 });
@@ -267,7 +338,7 @@ test("public mail development uses one origin without proxying back into its tun
 });
 
 test("mail readiness uses launcher origins rather than obsolete generated hostnames", () => {
-  for (const name of ["node", "worker"]) {
+  for (const name of ["node"]) {
     const env = { BETTER_AUTH_URL: "http://obsolete.zilobase.localhost:3000" };
     const profile = effectiveProfile(name, env);
     assert.equal(runtimeEnvironment(profile, env).BETTER_AUTH_URL, `http://${profile.apiHost}:${profile.apiPort}`);

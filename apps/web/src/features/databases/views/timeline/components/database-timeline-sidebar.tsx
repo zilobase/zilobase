@@ -46,7 +46,6 @@ export type TimelineSidebarRowCellProps = {
   databaseId: string | null | undefined
   editable: boolean
   groupProperty: DatabasePropertyListItem | null
-  isAddingDatabaseRow: boolean
   nameColumnLabel: string
   onAddPage: (
     groupValue?: string,
@@ -64,7 +63,6 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
   databaseId,
   editable,
   groupProperty,
-  isAddingDatabaseRow,
   nameColumnLabel,
   onAddPage,
   onOpenPage,
@@ -141,7 +139,7 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
         <div className="database-page-create-row">
           <button
             className="database-page-create database-page-create-full"
-            disabled={!databaseId || isAddingDatabaseRow}
+            disabled={!databaseId}
             onClick={() =>
               onAddPage(viewRow.section?.groupValue, groupProperty)
             }

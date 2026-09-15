@@ -14,14 +14,12 @@ export function DatabaseTimelineSetup({
   configuredDatePropertyId,
   dateProperties,
   editable,
-  isAddingProperty,
   onSelectDateProperty,
   onSetupDateProperty,
 }: {
   configuredDatePropertyId: string | null
   dateProperties: DatabasePropertyListItem[]
   editable: boolean
-  isAddingProperty: boolean
   onSelectDateProperty: (propertyId: string) => void
   onSetupDateProperty: () => void
 }) {
@@ -40,7 +38,7 @@ export function DatabaseTimelineSetup({
           </SelectTrigger>
         </Select>
         <Button
-          disabled={!editable || isAddingProperty}
+          disabled={!editable}
           onClick={onSetupDateProperty}
           size="sm"
           type="button"

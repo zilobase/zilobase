@@ -9,6 +9,7 @@ export function register({ assert, appPath, test }) {
       usePageAccessLevel: "accessLevel",
       usePageAccess: "pageAccess",
       useDatabase: "database",
+      useDatabaseMetadata: "database",
       useDatabaseAccess: "databaseAccess",
       usePageAccessTargets: "targets",
       useAiAgentProfiles: "agents",
@@ -81,7 +82,7 @@ export function register({ assert, appPath, test }) {
             build.onResolve(
               {
                 filter:
-                  /^(sharing-test-runtime|sonner)$|^@zilobase\/features\/.*\/react$/,
+                  /^(sharing-test-runtime|sonner)$|^@zilobase\/features\/.*\/react$|^@\/features\/databases\/hooks\/use-database-metadata$/,
               },
               (args) => ({ path: args.path, namespace: "sharing-test" }),
             );

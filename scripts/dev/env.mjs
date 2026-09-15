@@ -6,7 +6,6 @@ import path from "node:path";
 import { config as loadDotenvx } from "@dotenvx/dotenvx";
 
 import {
-  adapterDir,
   coreDir,
   envDir,
   generatedEnvironmentFiles,
@@ -18,7 +17,6 @@ import {
 
 const templates = [
   [path.join(coreDir, ".env.development.example"), repoEnvironmentFiles.node],
-  [path.join(adapterDir, ".env.development.example"), repoEnvironmentFiles.worker],
 ];
 let legacyConflictsReported = false;
 const optionalCredentialKeys = [
@@ -58,10 +56,6 @@ export async function ensureDevelopmentEnvironment(options = {}) {
     generatedEnvironmentFiles.node,
     () => profileEnvironment(localProfiles.node, dependencies),
   );
-  const workerEnvironment = await ensureGeneratedFile(
-    generatedEnvironmentFiles.worker,
-    () => profileEnvironment(localProfiles.worker, dependencies),
-  );
   await migrateGeneratedEmailSender();
   await ensureGeneratedFile(generatedEnvironmentFiles.kubernetes, () => ({
     COMMUNITY_BETTER_AUTH_SECRET: secret(48),
@@ -70,13 +64,10 @@ export async function ensureDevelopmentEnvironment(options = {}) {
     COMMUNITY_MINIO_PASSWORD: secret(32),
   }), { prune: true });
   await removeGeneratedOptionalCredentials();
-  for (const filename of [generatedEnvironmentFiles.node, generatedEnvironmentFiles.worker]) {
-    await migrateGeneratedMailEnvironment(filename);
-  }
+  await migrateGeneratedMailEnvironment(generatedEnvironmentFiles.node);
   await migrateGeneratedPortDefaults();
   if (options.reportLegacy && !legacyConflictsReported) {
     await reportLegacyConflicts("node", nodeEnvironment);
-    await reportLegacyConflicts("worker", workerEnvironment);
     legacyConflictsReported = true;
   }
 }
@@ -121,7 +112,7 @@ export async function loadGeneratedEnvironment(filename) {
 export async function checkEnvironment() {
   await ensureDevelopmentEnvironment();
   const results = [];
-  for (const name of ["node", "worker"]) {
+  for (const name of ["node"]) {
     const env = await loadProfileEnvironment(name);
     const required = [
       "DATABASE_URL",
@@ -158,7 +149,7 @@ export function profileEnvironment(profile, dependencies) {
     BETTER_AUTH_URL: apiOrigin,
     CLIENT_URL: clientOrigin,
     ZILOBASE_CELL_ID: profile.cellId,
-    ZILOBASE_DEMO_ENABLED: profile.name === "worker" ? "true" : "false",
+    ZILOBASE_DEMO_ENABLED: "false",
     DATABASE_AUTOMATIONS_ENABLED: "true",
     DATABASE_AUTOMATIONS_EXECUTION_DISABLED: "false",
     AUTOMATION_WEBHOOKS_ENABLED: "false",
@@ -171,17 +162,6 @@ export function profileEnvironment(profile, dependencies) {
     AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY: encryptionKey(),
     AUTOMATION_SECRET_ENCRYPTION_KEY: encryptionKey(),
   };
-
-  if (profile.name === "worker") {
-    return {
-      ...common,
-      CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: databaseUrl,
-      ZILOBASE_ADAPTER_PORT: String(profile.apiPort),
-      ZILOBASE_BACKGROUND_PORT: String(profile.backgroundPort),
-      ZILOBASE_INSPECTOR_PORT: String(profile.inspectorPort),
-      ZILOBASE_BACKGROUND_INSPECTOR_PORT: String(profile.backgroundInspectorPort),
-    };
-  }
 
   return {
     ...common,
@@ -225,10 +205,7 @@ export async function migrateGeneratedNodeEnvironment(
 }
 
 async function migrateGeneratedEmailSender() {
-  for (const filename of [
-    generatedEnvironmentFiles.node,
-    generatedEnvironmentFiles.worker,
-  ]) {
+  for (const filename of [generatedEnvironmentFiles.node]) {
     if (!(await exists(filename))) continue;
     const values = await readSimpleEnv(filename);
     if (values.EMAIL_FROM !== "Zilobase <hello@zilobase.local>") continue;
@@ -268,7 +245,6 @@ async function migrateGeneratedPortDefaults() {
   for (const filename of [
     generatedEnvironmentFiles.dependencies,
     generatedEnvironmentFiles.node,
-    generatedEnvironmentFiles.worker,
   ]) {
     if (!(await exists(filename))) continue;
     const values = await readSimpleEnv(filename);
@@ -298,7 +274,7 @@ async function migrateGeneratedPortDefaults() {
 }
 
 async function removeGeneratedOptionalCredentials() {
-  for (const filename of [generatedEnvironmentFiles.node, generatedEnvironmentFiles.worker]) {
+  for (const filename of [generatedEnvironmentFiles.node]) {
     if (!(await exists(filename))) continue;
     const values = await readSimpleEnv(filename);
     let changed = false;

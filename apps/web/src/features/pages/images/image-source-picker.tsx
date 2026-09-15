@@ -3,32 +3,27 @@ import {
   Image as ImageIcon,
   Link,
   Loader2,
+  Palette,
   Search,
-  Sparkles,
   Upload,
 } from "@/shared/components/icons"
 import { useRef, useState } from "react"
 
-import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card"
+import { Card, CardContent } from "@/shared/ui/card"
 import { Input } from "@/shared/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
 import { getApiErrorMessage } from "@/platform/network/api"
 import { uploadPageImage } from "@/platform/network/image-upload"
-
-const aiImageOptions = [
-  { label: "Photo", icon: ImageIcon },
-  { label: "Slides", icon: FileImage },
-  { label: "Diagram", icon: Sparkles },
-  { label: "Chart", icon: Sparkles },
-  { label: "Mockup", icon: FileImage },
-]
+import { CoverGalleryPicker } from "./cover-gallery-picker"
 
 type ImageSourcePickerProps = {
   className?: string
   databaseId?: string | null
+  enableCoverGallery?: boolean
+  initialCover?: string
   initialLinkUrl?: string
+  onGalleryChange?: (url: string) => void
   onSelect: (url: string) => void
   workspaceId?: string | null
   pageId?: string | null
@@ -37,7 +32,10 @@ type ImageSourcePickerProps = {
 export function ImageSourcePicker({
   className,
   databaseId,
+  enableCoverGallery = false,
+  initialCover,
   initialLinkUrl = "",
+  onGalleryChange,
   onSelect,
   workspaceId,
   pageId,
@@ -96,9 +94,18 @@ export function ImageSourcePicker({
   }
 
   return (
-    <Tabs className={className ?? "gap-4"} defaultValue="add">
+    <Tabs
+      className={className ?? "gap-4"}
+      defaultValue={enableCoverGallery ? "gallery" : "upload"}
+    >
       <TabsList>
-        <TabsTrigger value="add">Add</TabsTrigger>
+        {enableCoverGallery ? (
+          <TabsTrigger value="gallery">
+            <Palette />
+            Gallery
+          </TabsTrigger>
+        ) : null}
+        <TabsTrigger value="upload">Upload</TabsTrigger>
         <TabsTrigger value="link">Link</TabsTrigger>
         <TabsTrigger value="unsplash">
           <Upload />
@@ -110,7 +117,16 @@ export function ImageSourcePicker({
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent className="space-y-4" value="add">
+      {enableCoverGallery ? (
+        <TabsContent value="gallery">
+          <CoverGalleryPicker
+            initialCover={initialCover}
+            onChange={onGalleryChange ?? onSelect}
+          />
+        </TabsContent>
+      ) : null}
+
+      <TabsContent className="space-y-4" value="upload">
         <Button
           className="h-40 w-full flex-col gap-2 border-dashed"
           disabled={isUploading}
@@ -141,34 +157,6 @@ export function ImageSourcePicker({
           type="file"
         />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Create with AI</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-              {aiImageOptions.map((option) => (
-                <Button
-                  className="h-20 flex-col"
-                  key={option.label}
-                  type="button"
-                  variant="outline"
-                >
-                  <option.icon />
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2 rounded-md border p-2">
-              <Sparkles className="size-4 text-content-secondary" />
-              <Input
-                className="border-0 bg-transparent focus-visible:ring-0"
-                placeholder="Or describe your idea..."
-              />
-              <Badge variant="secondary">Beta</Badge>
-            </div>
-          </CardContent>
-        </Card>
       </TabsContent>
 
       <TabsContent className="space-y-3" value="link">

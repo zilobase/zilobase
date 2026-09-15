@@ -6,6 +6,9 @@ import { createNodeRuntime } from "./node-runtime";
 import { CORE_MIGRATION_SET } from "../../infrastructure/node/migrations";
 import { shutdownNodeTelemetry } from "../../infrastructure/background/node-telemetry";
 import { disposeProcessRuntimes } from "../../infrastructure/effect";
+import { DATABASE_REALTIME_PROTOCOL } from "../../shared/security/database-realtime-ticket";
+
+const CORE_SCHEMA_TARGET = "0092_database_v2_constraints";
 
 loadEnv({
   path: process.env.ZILOBASE_ENV_FILE ?? path.resolve("apps/server/.env"),
@@ -31,7 +34,20 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   });
 }
 
-void runtime.start().catch(async (error) => {
+async function start() {
+  const autoMigrate = process.env.ZILOBASE_AUTO_MIGRATE === "true";
+  if (autoMigrate) await runtime.migrate();
+  console.info(JSON.stringify({
+    autoMigrate,
+    event: "runtime.startup",
+    migrationSets: runtime.migrationSets.map((migrationSet) => migrationSet.id),
+    protocol: DATABASE_REALTIME_PROTOCOL,
+    schemaTarget: CORE_SCHEMA_TARGET,
+  }));
+  await runtime.start();
+}
+
+void start().catch(async (error) => {
   console.error("Unable to start Zilobase server", error);
   await disposeProcessRuntimes();
   await shutdownNodeTelemetry();

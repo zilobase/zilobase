@@ -2,7 +2,15 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { Client } from "pg";
 
-import { createDbClientForUrl, db, runWithDb, runWithDbClient, runWithIndependentDbEnv } from "./index";
+import {
+  createAuthTransactionDatabase,
+  createDbClientForUrl,
+  db,
+  getCurrentExtensionTransactionDatabase,
+  runWithDb,
+  runWithDbClient,
+  runWithIndependentDbEnv,
+} from "./index";
 
 function fakeStandaloneClient(options: { connectError?: Error } = {}) {
   const calls = { connect: 0, end: 0 };
@@ -22,6 +30,43 @@ function fakeStandaloneClient(options: { connectError?: Error } = {}) {
 
   return { calls, databaseClient };
 }
+
+test("auth transactions expose the exact Drizzle transaction to extensions", async () => {
+  const activeTransaction = { marker: "transaction" };
+  const database = {
+    async transaction(callback: (transaction: unknown) => Promise<unknown>) {
+      return callback(activeTransaction);
+    },
+  };
+  const authDatabase = createAuthTransactionDatabase(database as never) as
+    typeof database;
+
+  await authDatabase.transaction(async () => {
+    assert.equal(getCurrentExtensionTransactionDatabase(), activeTransaction);
+  });
+  assert.throws(
+    () => getCurrentExtensionTransactionDatabase(),
+    /EXTENSION_TRANSACTION_UNAVAILABLE/,
+  );
+});
+
+test("concurrent auth transactions retain independent database context", async () => {
+  const databases = ["first", "second"].map((marker) => ({
+    async transaction(callback: (transaction: unknown) => Promise<unknown>) {
+      return callback({ marker });
+    },
+  }));
+  const seen = await Promise.all(databases.map(async (database) => {
+    const authDatabase = createAuthTransactionDatabase(database as never) as
+      typeof database;
+    return authDatabase.transaction(async () => {
+      await Promise.resolve();
+      return (getCurrentExtensionTransactionDatabase() as unknown as { marker: string }).marker;
+    });
+  }));
+
+  assert.deepEqual(seen, ["first", "second"]);
+});
 
 test("nested database execution reuses the active context", async () => {
   const { calls, databaseClient } = fakeStandaloneClient();

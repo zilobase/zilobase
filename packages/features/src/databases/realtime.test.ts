@@ -1,78 +1,17 @@
 import assert from "node:assert/strict"
 import test from "node:test"
-import { QueryClient } from "@tanstack/react-query"
 
 import {
-  applyDatabaseRealtimeMutation,
   closeRealtimeSocket,
   createCellPresenceByKey,
   DATABASE_REALTIME_HEARTBEAT_MS,
   DATABASE_REALTIME_PING,
   reconnectDelay,
+  parseDatabaseRealtimeServerMessage,
   samePresence,
   ticketFailureAction,
   type DatabasePresenceCollaborator,
 } from "./realtime"
-import { databaseQueryKey } from "./queries"
-import { createTestDatabasePayload } from "./test-helpers"
-
-const mutation = (version: number, value: unknown) => ({
-  actorId: "user-2",
-  changed: ["values" as const],
-  committedAt: "2026-07-14T12:00:00.000Z",
-  databaseId: "database-1",
-  delta: {
-    values: [{
-      propertyId: "property-status",
-      updatedAt: "2026-07-14T12:00:00.000Z",
-      value,
-      pageId: "page-1",
-    }],
-  },
-  mutationId: `mutation-${version}`,
-  protocolVersion: 1 as const,
-  type: "database.mutation" as const,
-  version,
-})
-
-test("realtime applies exactly the next database version", () => {
-  const queryClient = new QueryClient()
-  const key = databaseQueryKey("database-1")
-  const initial = createTestDatabasePayload()
-  initial.database.version = 3
-  queryClient.setQueryData(key, initial)
-
-  const result = applyDatabaseRealtimeMutation(
-    queryClient,
-    mutation(4, "Done"),
-  )
-  const payload = queryClient.getQueryData<ReturnType<typeof createTestDatabasePayload>>(key)
-
-  assert.equal(result.gapDetected, false)
-  assert.equal(payload?.database.version, 4)
-  assert.equal(payload?.values[0]?.value, "Done")
-})
-
-test("realtime ignores duplicates and invalidates on a version gap", () => {
-  const queryClient = new QueryClient()
-  const key = databaseQueryKey("database-1")
-  const initial = createTestDatabasePayload()
-  initial.database.version = 3
-  queryClient.setQueryData(key, initial)
-
-  applyDatabaseRealtimeMutation(queryClient, mutation(3, "Duplicate"))
-  const result = applyDatabaseRealtimeMutation(
-    queryClient,
-    mutation(5, "Skipped"),
-  )
-  const payload = queryClient.getQueryData<ReturnType<typeof createTestDatabasePayload>>(key)
-
-  assert.equal(result.gapDetected, true)
-  assert.equal(payload?.database.version, 3)
-  assert.equal(payload?.values[0]?.value, "Not started")
-  assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
-})
-
 test("cell presence deduplicates the same user within a cell", () => {
   const collaborator = (
     sessionId: string,
@@ -166,4 +105,31 @@ test("ticket failures stop only for permanent authorization and lookup errors", 
   }
 
   assert.equal(ticketFailureAction(new TypeError("Failed to fetch")), "retry")
+})
+
+test("database realtime control messages require protocol v2", () => {
+  assert.deepEqual(
+    parseDatabaseRealtimeServerMessage(JSON.stringify({
+      databaseId: "database-1",
+      peers: [],
+      protocolVersion: 1,
+      sessionId: "session-1",
+      type: "realtime.ready",
+      version: 4,
+    })),
+    { ok: false, reason: "protocol_mismatch" },
+  )
+
+  const parsed = parseDatabaseRealtimeServerMessage(JSON.stringify({
+    databaseId: "database-1",
+    databaseVersion: 4,
+    peers: [],
+    protocolVersion: 2,
+    sessionId: "session-1",
+    type: "realtime.ready",
+  }))
+  assert.equal(parsed.ok, true)
+  if (parsed.ok && parsed.message.type === "realtime.ready") {
+    assert.equal(parsed.message.databaseVersion, 4)
+  }
 })

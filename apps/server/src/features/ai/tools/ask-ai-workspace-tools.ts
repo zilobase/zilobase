@@ -17,7 +17,7 @@ import { db } from "../../../infrastructure/database";
 import { page, pageCollaborationDocument } from "../../../infrastructure/database/schema";
 import { searchWorkspaceItems } from "../../search/workspace-search";
 import { getDatabaseRecord } from "../../databases/access";
-import { getDatabasePayload } from "../../databases/core";
+import { getDatabaseExportPayload } from "../../databases/core";
 import { hashPageContentMarkdown } from "../conversion/page-content-version";
 import { loadAgentDatabaseDescriptor } from "../context/database-agent-context";
 
@@ -171,7 +171,7 @@ export function buildWorkspaceReadTools(
             throw new Error("Database not found or not accessible.");
           }
 
-          const payload = await getDatabasePayload(
+          const payload = await getDatabaseExportPayload(
             record.id,
             context.userId,
             record,
@@ -356,7 +356,7 @@ function dedupeCitations(citations: AgentCitation[]) {
 }
 
 export function buildDatabaseTable(
-  payload: NonNullable<Awaited<ReturnType<typeof getDatabasePayload>>>,
+  payload: NonNullable<Awaited<ReturnType<typeof getDatabaseExportPayload>>>,
   options: { limit: number; query?: string },
 ): AgentTable {
   const columns: AgentTable["columns"] = [

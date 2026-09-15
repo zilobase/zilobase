@@ -1,4 +1,4 @@
-import { type ErrorComponentProps } from "@tanstack/react-router";
+import { type ErrorComponentProps, useNavigate } from "@tanstack/react-router";
 import { isDesktopApp } from "@/features/desktop/index";
 import { useEffect, useState } from "react";
 
@@ -17,6 +17,7 @@ import { Button } from "@/shared/ui/button";
 import { captureProductException } from "@/shared/lib/posthog";
 
 export default function RouteErrorPage({ error }: ErrorComponentProps) {
+  const navigate = useNavigate();
   const selectedServer = getSelectedDesktopServer();
   const copy = describeRouteError(error, {
     isDesktop: isDesktopApp() || Boolean(selectedServer),
@@ -85,7 +86,7 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
           ))}
           {copy.showChangeServer ? (
             <Button
-              onClick={() => window.location.assign("/connect")}
+              onClick={() => void navigate({ to: "/connect" })}
               variant="outline"
             >
               Change server

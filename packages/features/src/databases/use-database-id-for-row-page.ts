@@ -10,7 +10,7 @@ function subscribeToDatabaseQueries(
   onStoreChange: () => void,
 ) {
   return queryClient.getQueryCache().subscribe((event) => {
-    if (event?.query.queryKey[0] !== "database") {
+    if (event?.query.queryKey[0] !== "database-client-v2") {
       return
     }
 

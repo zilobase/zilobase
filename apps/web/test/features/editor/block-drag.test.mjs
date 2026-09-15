@@ -137,6 +137,55 @@ export function register({ assert, loadModule, test }) {
     assert.equal(getDraggedEditorBlockPayload(null), null)
   })
 
+  test("same-position block drops restore focus and end the drag session", async () => {
+    const { Schema } = await import("@tiptap/pm/model")
+    const { EditorState } = await import("@tiptap/pm/state")
+    const {
+      armBlockDrag,
+      dropEditorBlock,
+      getDraggedEditorBlockPayload,
+      registerBlockDragSource,
+    } = await loadModule("/src/features/editor/drag-drop/block-drag.ts")
+    const schema = new Schema({
+      nodes: {
+        doc: { content: "block+" },
+        paragraph: { content: "text*", group: "block" },
+        text: {},
+      },
+      marks: {},
+    })
+    const node = schema.node("paragraph", null, schema.text("Hello"))
+    const editorView = statefulEditorView(
+      EditorState.create({ doc: schema.node("doc", null, [node]) })
+    )
+    const target = { node, pos: 0 }
+    const unregister = registerBlockDragSource("editor-1", {
+      view: editorView.view,
+    })
+    let prevented = false
+
+    armBlockDrag("editor-1", target)
+
+    assert.equal(
+      dropEditorBlock(
+        editorView.view,
+        {
+          dataTransfer: null,
+          preventDefault() {
+            prevented = true
+          },
+        },
+        0,
+      ),
+      true,
+    )
+    assert.equal(prevented, true)
+    assert.equal(editorView.focused(), true)
+    assert.equal(getDraggedEditorBlockPayload(null), null)
+
+    unregister()
+  })
+
   test("database block drags expose their source database id", async () => {
     const { canMoveDatabaseBlockToPage, getBlockDragDatabaseId } =
       await loadModule("/src/features/editor/drag-drop/block-drag.ts")
@@ -284,6 +333,7 @@ export function register({ assert, loadModule, test }) {
 
 function statefulEditorView(initialState) {
   let state = initialState
+  let hasFocused = false
   const classList = { remove() {} }
   const view = {
     get state() {
@@ -293,10 +343,12 @@ function statefulEditorView(initialState) {
       state = state.apply(transaction)
     },
     dom: { classList },
-    focus() {},
+    focus() {
+      hasFocused = true
+    },
   }
 
-  return { view }
+  return { focused: () => hasFocused, view }
 }
 
 function fakeEditorView() {

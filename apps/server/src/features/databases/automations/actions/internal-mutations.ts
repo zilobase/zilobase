@@ -14,6 +14,7 @@ import { commitDataSourceMutation } from "../../core/commit";
 import { validateCellValue } from "../../properties/config";
 import { lockDatabaseAutomationFactRows } from "../triggers/event-capture";
 import { ServiceMutationError } from "../../../../shared/errors/service-mutation-error";
+import { getDatabaseRecordEntity } from "../../commands/record-entity";
 
 export type ResolvedAutomationPropertyOperation = {
   mode: "add" | "clear" | "remove" | "set";
@@ -59,7 +60,7 @@ export async function applyDatabaseAutomationRowOperations(input: {
   const commit = await commitDataSourceMutation(
     {
       actorId: input.actorId,
-      changed: propertyIds.length ? ["rows", "values"] : ["rows"],
+      areas: ["records"],
       dataSourceId: source.id,
       env: input.env,
     },
@@ -184,18 +185,10 @@ export async function applyDatabaseAutomationRowOperations(input: {
       }));
       return {
         automationFacts: facts,
-        delta: {
-          rows: input.rows.map((row) => ({
-            id: row.rowId,
-            lastEditedById: input.actorId,
-            ...(titleValuesByPageId.has(row.pageId)
-              ? { page: { id: row.pageId, name: titles.get(row.pageId), updatedAt: now.toISOString() } }
-              : {}),
-            updatedAt: now.toISOString(),
-          })),
-          ...(writtenValues.length
-            ? { values: writtenValues.map((value) => ({ ...value, updatedAt: now.toISOString() })) }
-            : {}),
+        changes: {
+          records: await Promise.all(input.rows.map((row) =>
+            getDatabaseRecordEntity(tx, source.id, row.rowId)
+          )),
         },
       };
     },

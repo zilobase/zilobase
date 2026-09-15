@@ -1,10 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 import type { ApiFetcher } from "./api-fetcher";
-import {
-  databasePayloadRootQueryKey,
-  databaseQueryKey,
-} from "../databases/queries";
+import { databaseQueryRootKey } from "../databases/queries";
+import { databaseClientQueryRoot } from "../databases/client/query-keys";
 import { applyPageFavoriteToNav } from "../pages/nav-delta";
 import {
   zilobaseAiPagesQueryKey,
@@ -97,7 +95,11 @@ export async function invalidateDeletedItems({
   ]);
 
   for (const databaseId of result.deletedDatabaseIds) {
-    queryClient.removeQueries({ queryKey: databaseQueryKey(databaseId) });
+    queryClient.removeQueries({
+      predicate: (query) =>
+        query.queryKey[0] === databaseClientQueryRoot[0] &&
+        query.queryKey.includes(databaseId),
+    });
   }
 
   for (const pageId of result.deletedPageIds) {
@@ -127,7 +129,7 @@ export async function invalidateRestoredItems({
       : Promise.resolve(),
     ...result.restoredDatabaseIds.map((databaseId) =>
       queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(databaseId),
+        queryKey: databaseQueryRootKey(databaseId),
       }),
     ),
     ...result.restoredPageIds.map((pageId) =>

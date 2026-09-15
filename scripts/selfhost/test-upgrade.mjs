@@ -69,6 +69,23 @@ try {
     jar,
     method: "POST",
   })
+  const createdDatabase = await requestJson("/databases", {
+    body: {
+      name: "Database created before upgrade",
+      pageId: page.data.page.id,
+      workspaceId: bootstrap.data.workspaceId,
+    },
+    jar,
+    method: "POST",
+  })
+  const databaseId = createdDatabase.data.database.id
+  const dataSourceId = createdDatabase.data.activeDataSource.id
+  const viewId = createdDatabase.data.views[0].id
+  const createdRow = await requestJson(`/databases/${dataSourceId}/rows`, {
+    body: { title: "Row created before upgrade" },
+    jar,
+    method: "POST",
+  })
 
   console.info(
     `Recreating the application with current image ${currentImage}...`,
@@ -96,8 +113,23 @@ try {
     method: "GET",
   })
   assert.equal(persistedPage.data.page.name, "Created before upgrade")
+  const databaseBootstrap = await requestJson(
+    `/databases/${databaseId}/bootstrap?viewId=${viewId}`,
+    { jar, method: "GET" },
+  )
+  assert.equal(databaseBootstrap.data.database.name, "Database created before upgrade")
+  assert.equal(databaseBootstrap.data.dataSources[0].id, dataSourceId)
+  const recordWindow = await requestJson(
+    `/databases/${databaseId}/data-sources/${dataSourceId}/records` +
+      `?viewId=${viewId}&offset=0&limit=50`,
+    { jar, method: "GET" },
+  )
+  assert.equal(recordWindow.data.totalCount, 1)
+  assert.equal(recordWindow.data.records[0].id, createdRow.data.rowId)
+  assert.equal(recordWindow.data.records[0].page.name, "Row created before upgrade")
+  assert.match(recordWindow.data.records[0].orderKey, /^\d+\.\d{10}$/)
   console.info(
-    "Previous-release data and session survived the current migration.",
+    "Previous-release page, database row, and session survived the current migration.",
   )
 } catch (error) {
   const logs = await captureCompose(currentImage, [

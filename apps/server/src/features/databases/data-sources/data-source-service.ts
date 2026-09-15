@@ -4,6 +4,7 @@ import type { RuntimeEnv } from "../../../shared/config/config";
 import { dataSource } from "../../../infrastructure/database/schema";
 import { commitDataSourceMutation } from "../core/commit";
 import { requireDataSourceEditAccess } from "../access/data-source-access";
+import { getDataSourceEntity } from "../commands/metadata-entities";
 
 export async function updateDataSourceService(input: {
   config?: unknown;
@@ -25,18 +26,22 @@ export async function updateDataSourceService(input: {
   const commit = await commitDataSourceMutation(
     {
       actorId: input.userId,
-      changed: ["dataSource"],
+      areas: ["dataSources"],
       dataSourceId: existing.id,
       env: input.env,
     },
     async (tx) => {
-      const [updated] = await tx
+      await tx
         .update(dataSource)
         .set(values)
         .where(eq(dataSource.id, existing.id))
-        .returning();
-
-      return { delta: { dataSource: updated ?? { id: existing.id, ...values } } };
+      return {
+        changes: (databaseId: string) => getDataSourceEntity(
+          { transaction: tx },
+          databaseId,
+          existing.id,
+        ).then((source) => ({ dataSources: [source] })),
+      };
     },
   );
 

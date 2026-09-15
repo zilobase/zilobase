@@ -1,7 +1,12 @@
 import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ maintenance: vi.fn(), database: vi.fn(), client: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  client: vi.fn(),
+  database: vi.fn(),
+  maintenance: vi.fn(),
+  realtime: vi.fn(),
+}));
 vi.mock("../../infrastructure/database", () => ({
   db: { select: () => ({ from: () => Object.assign(Promise.resolve([]), { where: async () => [] }) }) },
   createDbClientForUrl: mocks.client,
@@ -14,7 +19,7 @@ vi.mock("../../features/ai/jobs/ai-jobs", () => ({ runAiJobBatch: vi.fn() }));
 vi.mock("../../features/ai/execution/agent-run-service", () => ({ drainAgentRuns: vi.fn() }));
 vi.mock("../../features/databases/automations/triggers/event-evaluator", () => ({ drainDatabaseAutomationEventWindows: vi.fn() }));
 vi.mock("../../features/databases/automations/execution/run-engine", () => ({ drainDatabaseAutomationRuns: vi.fn() }));
-vi.mock("../../features/databases/realtime/outbox", () => ({ drainDatabaseRealtimeOutbox: vi.fn() }));
+vi.mock("../../features/databases/realtime/outbox", () => ({ drainDatabaseRealtimeOutbox: mocks.realtime }));
 vi.mock("../../features/mail/query/mail-index", () => ({ advancePendingMailIndexes: vi.fn() }));
 vi.mock("../../features/mail/database-sync/mail-database-sync-worker", () => ({ drainMailDatabaseSyncOutbox: vi.fn() }));
 vi.mock("../../features/notifications/outbox", () => ({ drainInProductNotificationOutbox: vi.fn() }));
@@ -29,6 +34,7 @@ beforeEach(() => {
   vi.spyOn(Math, "random").mockReturnValue(0.5);
   vi.spyOn(console, "warn").mockImplementation(() => {});
   mocks.maintenance.mockReset();
+  mocks.realtime.mockReset().mockResolvedValue(undefined);
   mocks.database.mockReset().mockImplementation((_env, callback) => callback());
   const client = Object.assign(new EventEmitter(), {
     connect: vi.fn().mockResolvedValue(undefined),
@@ -66,6 +72,25 @@ it("handles a periodic maintenance rejection without an unhandled promise and re
     await vi.advanceTimersByTimeAsync(60_000);
     expect(mocks.maintenance).toHaveBeenCalledTimes(3);
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("background.node_reconcile"));
+  } finally {
+    await coordinator.stop();
+  }
+});
+
+it("identifies a failed database realtime drainer without logging payload values", async () => {
+  mocks.realtime.mockRejectedValueOnce(new Error("cell value must stay private"));
+  const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv);
+  try {
+    await coordinator.start();
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(
+      '"event":"background.node_lane_operation"',
+    ));
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(
+      '"operation":"database_realtime"',
+    ));
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining(
+      "cell value must stay private",
+    ));
   } finally {
     await coordinator.stop();
   }

@@ -1,13 +1,18 @@
 export function register({ assert, loadModule, readSource, test }) {
-  test("continuous renderers never restore an attempted boundary offset or snap panes", async () => {
+  test("calendar renderers use translated wheel buffers without native pane snapping", async () => {
     const timed = await readSource("/src/shared/components/calendar/calendar-timeline.tsx");
     const month = await readSource("/src/shared/components/calendar/calendar-month-view.tsx");
     assert.doesNotMatch(timed + month, /lastSafe|snap-mandatory|preparedPeriod|restoringTop/);
-    assert.match(timed, /overflow-auto overscroll-none/);
-    assert.match(timed, /snapTimelineOffset/);
-    assert.match(timed, /timelineRetargets/);
-    assert.match(timed, /onViewport\(first, last, true\)/);
-    assert.match(month, /overflow-y-auto overscroll-none/);
+    assert.match(timed, /useCalendarWheelScroll/);
+    assert.match(timed, /overflow-y-auto overflow-x-hidden overscroll-none/);
+    assert.match(timed, /translateX/);
+    assert.match(timed, /onViewport\(visibleFirst, visibleLast, true\)/);
+    assert.match(month, /useCalendarWheelScroll/);
+    assert.match(month, /translateY/);
+    const wheel = await readSource("/src/shared/components/calendar/use-calendar-wheel-scroll.ts");
+    assert.match(wheel, /SCROLL_END_DEBOUNCE_MS = 150/);
+    assert.match(wheel, /CALENDAR_SNAP_ANIMATION_MS = 200/);
+    assert.match(wheel, /event\.preventDefault\(\)/);
     const schedule = await readSource("/src/features/calendar/views/calendar-schedule.tsx");
     const navigation = await readSource("/src/features/calendar/workspace/calendar-navigation.ts");
     assert.match(schedule, /bookmarkVisibleDate/);

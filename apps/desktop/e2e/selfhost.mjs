@@ -37,11 +37,6 @@ try {
     port: driverPort,
   })
 
-  const continueScreen = await browser.$(
-    "//h1[normalize-space()='Continue in your browser']",
-  )
-  await continueScreen.waitForDisplayed({ timeout: 30_000 })
-
   await selectServer(serverOrigin)
 
   const additionalServer = process.env.ZILOBASE_E2E_ADDITIONAL_SERVER?.trim()
@@ -52,6 +47,13 @@ try {
   console.info(`Packaged desktop connected to ${new URL(serverOrigin).origin}.`)
 } catch (error) {
   if (browser) {
+    const state = await browser
+      .execute(() => ({
+        path: window.location.pathname,
+        text: document.body.innerText.slice(0, 2_000),
+      }))
+      .catch(() => undefined)
+    if (state) console.error("Desktop failure state:", state)
     await browser
       .saveScreenshot(path.join(diagnosticsDirectory, "desktop-failure.png"))
       .catch(() => undefined)
@@ -63,27 +65,44 @@ try {
 }
 
 async function selectServer(origin) {
-  const serverInput = await browser.$("#desktop-server-url")
+  let serverInput = await browser.$("#desktop-server-url")
   if (!(await serverInput.isDisplayed().catch(() => false))) {
-    const changeServer = await browser.$(
-      "//a[normalize-space()='Change server']",
+    const changeServer = await waitForDisplayed(
+      "//*[self::a or self::button][normalize-space()='Change server']",
+      30_000,
     )
-    await changeServer.waitForDisplayed({ timeout: 30_000 })
-    await changeServer.click()
-    await serverInput.waitForDisplayed({ timeout: 10_000 })
+    await clickElement(changeServer)
+    serverInput = await waitForDisplayed("#desktop-server-url", 30_000)
   }
   await serverInput.setValue(origin)
-  await (
-    await browser.$("//button[normalize-space()='Verify and continue']")
-  ).click()
-
-  const selectedOrigin = await browser.$(
-    `//*[normalize-space()=${xpathString(origin)}]`,
+  await clickElement(
+    await browser.$("//button[normalize-space()='Verify and continue']"),
   )
-  await selectedOrigin.waitForDisplayed({ timeout: 30_000 })
-  await (
-    await browser.$("//button[normalize-space()='Continue in Browser']")
-  ).waitForDisplayed({ timeout: 10_000 })
+
+  await waitForDisplayed(
+    `//*[normalize-space()=${xpathString(origin)}]`,
+    30_000,
+  )
+  await waitForDisplayed(
+    "//button[normalize-space()='Continue in Browser']",
+    10_000,
+  )
+}
+
+async function clickElement(element) {
+  await browser.execute((target) => target.click(), element)
+}
+
+async function waitForDisplayed(selector, timeout) {
+  let element
+  await browser.waitUntil(
+    async () => {
+      element = await browser.$(selector)
+      return element.isDisplayed().catch(() => false)
+    },
+    { timeout, timeoutMsg: `Element (${selector}) was not displayed` },
+  )
+  return element
 }
 
 function requiredPath(name) {

@@ -15,6 +15,7 @@ type DatabaseClient =
   | ReturnType<typeof createPooledDbClientForUrl>;
 
 const databaseStore = new AsyncLocalStorage<DatabaseScope>();
+const authTransactionStore = new AsyncLocalStorage<Database>();
 const pools = new Map<string, Pool>();
 
 export const db = new Proxy({} as Database, {
@@ -35,6 +36,49 @@ export function createDbClient(env: DbEnv) {
   return isSelfHostedRuntime()
     ? createPooledDbClientForUrl(connectionString)
     : createDbClientForUrl(connectionString, { queryTimeoutMillis: 15_000 });
+}
+
+/**
+ * Better Auth deliberately exposes only its adapter inside a transaction.
+ * Edition extensions also need the exact Drizzle transaction so related
+ * and assurance writes commit with the Better Auth user, account, and session.
+ */
+export function createAuthTransactionDatabase(database: Database): Database {
+  return new Proxy(database, {
+    get(target, property, receiver) {
+      if (property !== "transaction") {
+        return Reflect.get(target, property, receiver);
+      }
+
+      return async <T>(
+        callback: (transaction: Database) => Promise<T>,
+        ...args: unknown[]
+      ) => {
+        const transaction = Reflect.get(target, property, receiver) as (
+          callback: (transaction: Database) => Promise<T>,
+          ...args: unknown[]
+        ) => Promise<T>;
+        return transaction.call(
+          target,
+          (activeDatabase: Database) =>
+            authTransactionStore.run(activeDatabase, () => callback(activeDatabase)),
+          ...args,
+        );
+      };
+    },
+  });
+}
+
+export function getCurrentExtensionTransactionDatabase(): Database {
+  const database = authTransactionStore.getStore();
+  if (!database) {
+    const error = new Error(
+      "EXTENSION_TRANSACTION_UNAVAILABLE: no authentication transaction is active.",
+    );
+    error.name = "ExtensionTransactionUnavailableError";
+    throw error;
+  }
+  return database;
 }
 
 export function createDbClientForUrl(

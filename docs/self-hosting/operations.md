@@ -41,6 +41,23 @@ For Helm, run `helm lint`, render the proposed values, and use
 the chart rejects an unsafe multi-replica configuration. Inspect the migration
 hook and `/ready` before ending the maintenance window.
 
+## Database realtime and background roles
+
+The default single-process `all` role can deliver database events without
+Redis. Split `api` and `worker` roles, or more than one API replica, require the
+same reachable `REALTIME_REDIS_URL` in every process. Treat `/ready` failure in
+that topology as a deployment failure; do not bypass the broker check.
+
+Worker-only processes expose `/health`, `/ready`, and `/metrics` on their
+background admin listener. Monitor database commit/enqueue latency, ordering
+conflicts, outbox backlog, and oldest outbox age. A committed command does not
+wait for WebSocket publication, so an acknowledged write with delayed remote
+updates points first to the background worker and outbox. Leave pending rows in
+place for lease recovery and periodic sweeps.
+
+The complete topology, retention policy, metric names, and recovery procedures
+are in [database operations and troubleshooting](../databases/operations.md).
+
 ## Backups
 
 Back up Postgres and MinIO together at a documented consistency point. At
@@ -63,6 +80,11 @@ desktop compatibility changes, update `ZILOBASE_IMAGE`, run `config`, then run
 starts. Rollback is safe only when the target release supports the migrated
 schema; otherwise restore the matching backup.
 
+For the responsive database migration, confirm that pre-upgrade rows retain
+their canonical order keys and embedded property values through the v2
+bootstrap and record-window endpoints. `database_row.position` is no longer a
+rollback surface; `page_item_placement.position` remains for navigation.
+
 ## Email and registration
 
 Production requires a working SMTP service for OTP, verification, and
@@ -83,11 +105,11 @@ the former unscoped credential table and cannot be rolled back by an older
 application image without restoring the matching database backup.
 
 The bundled Node server runs Gmail watch renewal, full-mailbox indexing, and the
-database-sync outbox in its maintenance loop. Custom and Cloudflare adapters
+database-sync outbox in its maintenance loop. Custom runtime adapters
 must schedule the exported `renewGmailWatches`, `advancePendingMailIndexes`, and
 `drainMailDatabaseSyncOutbox` functions at least once per minute. Multi-replica
 deployments require the shared realtime broker so workspace/binding-scoped mail
-events reach the correct Node or Cloudflare realtime room.
+events reach the correct realtime room.
 
 Monitor the non-PII `mail.watch_health`, `mail.index`, `mail.database_sync`,
 `mail.webhook_rejection`, `mail.quota_failure`, `mail.cursor_reset`, and

@@ -5,8 +5,8 @@ import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-reg
 import { buildPagePath } from "@/features/pages/index";
 import { useZilobaseFeatures } from "@zilobase/features";
 import {
-  databaseQueryKey,
-  databaseQueryOptions,
+  databaseContextExportQueryKey,
+  databaseContextExportQueryOptions,
   type DatabasePayload,
 } from "@zilobase/features/databases";
 import {
@@ -72,26 +72,26 @@ async function resolveDatabaseContext(
     return contextCache.get(cacheKey) ?? null;
   }
 
-  const fullCached = queryClient.getQueryData<DatabasePayload | null>(
-    databaseQueryKey(databaseId, dataSourceId ? { dataSourceId } : undefined),
+  const exportedCached = queryClient.getQueryData<DatabasePayload | null>(
+    databaseContextExportQueryKey(databaseId, dataSourceId),
   );
 
   if (
-    fullCached &&
-    Array.isArray(fullCached.rows) &&
-    Array.isArray(fullCached.values)
+    exportedCached &&
+    Array.isArray(exportedCached.rows) &&
+    Array.isArray(exportedCached.values)
   ) {
-    const contextPayload = stripDatabasePayload(fullCached);
+    const contextPayload = stripDatabasePayload(exportedCached);
     contextCache.set(cacheKey, contextPayload);
     return contextPayload;
   }
 
   try {
     const payload = await queryClient.fetchQuery(
-      databaseQueryOptions(
+      databaseContextExportQueryOptions(
         apiFetch,
         databaseId,
-        dataSourceId ? { dataSourceId } : undefined,
+        dataSourceId,
       ),
     );
 
@@ -424,7 +424,10 @@ export function usePageAiContext({
 
       const queryKey = event.query.queryKey;
 
-      if (queryKey[0] !== "database" || typeof queryKey[1] !== "string") {
+      if (
+        queryKey[0] !== "database-context-export" ||
+        typeof queryKey[1] !== "string"
+      ) {
         return;
       }
 

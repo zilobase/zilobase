@@ -197,7 +197,8 @@ export function normalizeDatabaseFilter(
     }
   }
 
-  const propertyId = record.propertyId === "title" ? "name" : record.propertyId
+  const propertyId = record.propertyId
+  if (propertyId === "title") return null
   const operator = allDatabaseFilterOperators.some(
     (candidate) => candidate.value === record.operator,
   )

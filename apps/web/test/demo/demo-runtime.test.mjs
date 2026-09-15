@@ -40,19 +40,25 @@ export function register({ assert, loadModule, test }) {
 
     try {
       const cellResult = runtime.interceptDemoMutation(
-        "/databases/demo-db/rows/demo-row/properties/demo-status",
-        "PUT",
-        JSON.stringify({ value: "In progress" }),
+        "/databases/demo-db/data-sources/demo-source/commands",
+        "POST",
+        JSON.stringify({
+          commandId: "demo-command",
+          command: {
+            propertyId: "demo-status",
+            rowId: "demo-row",
+            type: "cell.set",
+            value: "In progress",
+          },
+          protocolVersion: 2,
+        }),
       )
       assert.equal(cellResult.handled, true)
-      assert.equal(cellResult.value.version, 5)
-      assert.match(cellResult.value.mutationId, /^demo-local-/)
-
-      const databaseOverlay = runtime.applyDemoReadOverlay(
-        "/databases/demo-db",
-        database,
-      )
-      assert.equal(databaseOverlay.database.version, 5)
+      assert.equal(cellResult.value.commandId, "demo-command")
+      assert.equal(cellResult.value.event.databaseId, "demo-db")
+      assert.equal(cellResult.value.event.dataSourceId, "demo-source")
+      assert.deepEqual(cellResult.value.event.areas, ["records"])
+      assert.match(cellResult.value.event.eventId, /^demo-local-/)
 
       const visitResult = runtime.interceptDemoMutation(
         "/pages/item-visits",

@@ -1,18 +1,20 @@
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
 import {
-  cancelDataSourcePayloadQueries,
-  restoreDatabasePayloadSnapshots,
-  updateDataSourcePayloadQueryData,
-} from "./query-cache";
-import {
-  databasePayloadRootQueryKey,
-  type DatabasePayload,
+  databaseRootQueryKey,
 } from "./queries";
-import { type DatabaseMutationResponse } from "./mutation-types";
 import { pagesNavRootQueryKey } from "../pages/queries";
 import { type UpdateDatabaseInput } from "./database-mutations";
-import { commitDatabaseMutation } from "./mutation-cache-policy";
+import { useDatabaseClient } from "./client/provider";
+import {
+  findDataSourceBootstrap,
+  invalidateDataSourceCollections,
+  resolveDataSourceCommandScope,
+} from "./client/command-scope";
+import type {
+  DatabaseViewEntity,
+  DataSourceEntity,
+} from "./contracts-v2";
 
 type LinkDatabaseDataSourceInput = {
   config?: unknown;
@@ -37,115 +39,122 @@ type ReplaceDatabaseViewDataSourceInput = {
 };
 
 export function useUpdateDataSource() {
+  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: async ({
-      databaseId: dataSourceId,
-      ...patch
-    }: UpdateDatabaseInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/data-sources/${dataSourceId}`,
-        { method: "PATCH", body: JSON.stringify(patch) },
-      );
-      return commitDatabaseMutation(queryClient, dataSourceId, response);
-    },
-    onMutate: async (variables) => {
-      await cancelDataSourcePayloadQueries(queryClient, variables.databaseId);
-      const previous = updateDataSourcePayloadQueryData(
+    mutationFn: async ({ databaseId: dataSourceId, ...patch }: UpdateDatabaseInput) => {
+      const scope = await resolveDataSourceCommandScope(
         queryClient,
-        variables.databaseId,
-        (current) => {
-        const activeDataSource = {
-          ...current.activeDataSource!,
-          ...(variables.name !== undefined ? { name: variables.name } : {}),
-          ...(variables.config !== undefined ? { config: variables.config } : {}),
-          updatedAt: new Date().toISOString(),
-        };
-        return {
-          ...current,
-          activeDataSource,
-          dataSources: current.dataSources?.map((source) =>
-            source.id === activeDataSource.id ? activeDataSource : source,
-          ),
-        };
-        },
+        apiFetch,
+        dataSourceId,
       );
-      return { previous };
-    },
-    onError: (_error, _variables, context) => {
-      restoreDatabasePayloadSnapshots(queryClient, context?.previous ?? []);
+      return client.execute<DataSourceEntity>({
+        command: { patch, type: "dataSource.update" },
+        databaseId: scope.hostDatabaseId,
+        dataSourceId: scope.dataSourceId,
+      }).promise;
     },
     onSuccess: async (_result, variables) => {
-      const workspaceIds = new Set<string>();
-      const entries = queryClient.getQueriesData<DatabasePayload | null>({
-        queryKey: ["database"],
-      });
+      const workspaceId = findDataSourceBootstrap(
+        queryClient,
+        variables.databaseId,
+      )?.database.workspaceId;
 
-      for (const [, current] of entries) {
-        if (
-          current?.dataSources.some(
-            (source) => source.id === variables.databaseId,
-          )
-        ) {
-          workspaceIds.add(current.database.workspaceId);
-        }
-      }
-
-      await Promise.all(
-        [...workspaceIds].map((workspaceId) =>
+      await Promise.all([
+        invalidateDataSourceCollections(queryClient, variables.databaseId),
+        ...(workspaceId ? [
           queryClient.invalidateQueries({
             queryKey: pagesNavRootQueryKey(workspaceId),
           }),
-        ),
-      );
+        ] : []),
+      ]);
     },
   });
 }
 
 export function useLinkDatabaseDataSource() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const client = useDatabaseClient();
+  const { queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: async ({ databaseId, ...input }: LinkDatabaseDataSourceInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/data-sources`,
-        { method: "POST", body: JSON.stringify(input) },
-      );
-      return commitDatabaseMutation(queryClient, databaseId, response);
+    mutationFn: async ({
+      config,
+      databaseId,
+      dataSourceId,
+      name,
+      type,
+    }: LinkDatabaseDataSourceInput) => {
+      const cachedSource = findDataSourceBootstrap(queryClient, dataSourceId)
+        ?.dataSources.find(({ id }) => id === dataSourceId);
+      const dataSource = cachedSource
+        ? null
+        : await client.execute<DataSourceEntity>({
+            command: {
+              afterId: null,
+              beforeId: null,
+              dataSourceId,
+              type: "dataSource.link",
+            },
+            databaseId,
+          }).promise;
+      const view = await client.execute<DatabaseViewEntity>({
+        command: {
+          afterViewId: null,
+          beforeViewId: null,
+          config: config ?? null,
+          dataSourceId,
+          name: name?.trim() || dataSource?.name || cachedSource?.name || "Table",
+          type: "view.create",
+          viewType: type?.trim() || "table",
+        },
+        databaseId,
+      }).promise;
+      return { dataSource, view };
     },
-    onSettled: async (_result, _error, variables) => {
+    onSettled: async () => {
       await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+        queryKey: databaseRootQueryKey(),
       });
     },
   });
 }
 
 export function useCreateDatabaseDataSource() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const client = useDatabaseClient();
+  const { queryClient } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: async ({
       databaseId,
       ...input
     }: CreateDatabaseDataSourceInput) => {
-      const response = await apiFetch<DatabasePayload>(
-        `/databases/${databaseId}/data-sources/new`,
-        { method: "POST", body: JSON.stringify(input) },
-      );
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return client.execute<{
+        dataSource: DataSourceEntity;
+        view: DatabaseViewEntity;
+      }>({
+        command: {
+          config: input.config ?? {},
+          name: input.name?.trim() || "New data source",
+          type: "dataSource.create",
+          viewName: input.viewName?.trim() || "Table",
+          viewType: input.viewType?.trim() || "table",
+        },
+        databaseId,
+      }).promise;
     },
     onSettled: async (_result, _error, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
-      });
+      await Promise.all([
+        invalidateDataSourceCollections(queryClient, variables.databaseId),
+        queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
+      ]);
     },
   });
 }
 
 export function useReplaceDatabaseViewDataSource() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const client = useDatabaseClient();
+  const { queryClient } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: async ({
@@ -153,37 +162,41 @@ export function useReplaceDatabaseViewDataSource() {
       databaseViewId,
       dataSourceId,
     }: ReplaceDatabaseViewDataSourceInput) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/views/${databaseViewId}/source`,
-        { method: "PUT", body: JSON.stringify({ dataSourceId }) },
-      );
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return client.execute<DatabaseViewEntity>({
+        command: {
+          dataSourceId,
+          type: "view.setDataSource",
+          viewId: databaseViewId,
+        },
+        databaseId,
+      }).promise;
     },
     onSettled: async (_result, _error, variables) => {
-      await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
-      });
+      await Promise.all([
+        invalidateDataSourceCollections(queryClient, variables.databaseId),
+        queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
+      ]);
     },
   });
 }
 
 export function useUnlinkDatabaseDataSource() {
-  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const client = useDatabaseClient();
+  const { queryClient } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: async ({
       databaseId,
       dataSourceId,
     }: Pick<LinkDatabaseDataSourceInput, "databaseId" | "dataSourceId">) => {
-      const response = await apiFetch<DatabaseMutationResponse>(
-        `/databases/${databaseId}/data-sources/${dataSourceId}`,
-        { method: "DELETE" },
-      );
-      return commitDatabaseMutation(queryClient, databaseId, response);
+      return client.execute<DataSourceEntity>({
+        command: { dataSourceId, type: "dataSource.unlink" },
+        databaseId,
+      }).promise;
     },
-    onSettled: async (_result, _error, variables) => {
+    onSettled: async () => {
       await queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(variables.databaseId),
+        queryKey: databaseRootQueryKey(),
       });
     },
   });

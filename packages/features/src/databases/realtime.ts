@@ -7,16 +7,19 @@ import {
 } from "react"
 
 import { useZilobaseFeatures, type ApiFetcher } from "../shared/context"
+import { recoverPagePropertiesIfBehind } from "../pages/database-realtime-cache"
 import {
-  applyDatabaseMutationToPageProperties,
-  recoverPagePropertiesIfBehind,
-} from "../pages/database-realtime-cache"
-import { applyVersionedDatabaseMutation } from "./mutation-cache"
-import type { DatabaseMutationResponse } from "./mutation-types"
+  databaseMutationEventV2Schema,
+  type DatabaseMutationEventV2,
+} from "./contracts-v2"
 import {
-  databasePayloadRootQueryKey,
-  databaseQueryKey,
-  type DatabasePayload,
+  useOptionalDatabaseClient,
+} from "./client/provider"
+import type { DatabaseClient } from "./client/database-client"
+import { databaseClientQueryRoot } from "./client/query-keys"
+import { createRealtimeClientBinding } from "./client/realtime-client-binding"
+import {
+  databaseRootQueryKey,
 } from "./queries"
 
 export type DatabasePresence = {
@@ -55,12 +58,6 @@ type DatabaseRealtimeState = {
   status: "connected" | "connecting" | "disconnected" | "offline" | "unavailable"
 }
 
-type DatabaseMutationEvent = DatabaseMutationResponse & {
-  actorId: string
-  protocolVersion: 1
-  type: "database.mutation"
-}
-
 type Listener = () => void
 
 const managers = new WeakMap<
@@ -78,15 +75,16 @@ export function useDatabaseRealtime(
 ) {
   const { apiFetch, databaseRealtimeEnabled = false, queryClient } =
     useZilobaseFeatures()
+  const databaseClient = useOptionalDatabaseClient()
   const ownerIdRef = useRef<string>(crypto.randomUUID())
   const enabled = Boolean(
     databaseRealtimeEnabled && options.enabled !== false && databaseId,
   )
   const manager = useMemo(
     () => enabled && databaseId
-      ? getManager(queryClient, apiFetch, databaseId)
+      ? getManager(queryClient, apiFetch, databaseId, databaseClient)
       : null,
-    [apiFetch, databaseId, enabled, queryClient],
+    [apiFetch, databaseClient, databaseId, enabled, queryClient],
   )
   const state = useSyncExternalStore(
     manager ? manager.subscribe : emptySubscribe,
@@ -126,15 +124,6 @@ export function useDatabaseRealtime(
   ])
 
   return state
-}
-
-export function applyDatabaseRealtimeMutation(
-  queryClient: QueryClient,
-  event: DatabaseMutationEvent,
-) {
-  const result = applyVersionedDatabaseMutation(queryClient, event)
-  applyDatabaseMutationToPageProperties(queryClient, event)
-  return result
 }
 
 export function createCellPresenceByKey(
@@ -177,13 +166,21 @@ class DatabaseRealtimeManager {
   private stopped = true
   private sessionId: string | null = null
   private state: DatabaseRealtimeState = getOfflineSnapshot()
+  private readonly databaseClientBinding
 
   constructor(
     private readonly queryClient: QueryClient,
     private readonly apiFetch: ApiFetcher,
     private readonly databaseId: string,
+    databaseClient: DatabaseClient | null,
     private readonly onIdle: () => void,
-  ) {}
+  ) {
+    this.databaseClientBinding = createRealtimeClientBinding(databaseClient)
+  }
+
+  bindDatabaseClient(databaseClient: DatabaseClient | null) {
+    this.databaseClientBinding.bind(databaseClient)
+  }
 
   subscribe = (listener: Listener) => {
     if (this.idleTimer) clearTimeout(this.idleTimer)
@@ -246,7 +243,7 @@ class DatabaseRealtimeManager {
 
       socket.addEventListener("message", (message) => {
         if (this.socket !== socket) return
-        this.handleMessage(message.data)
+        this.handleMessage(message.data, socket)
       })
       socket.addEventListener("close", () => {
         if (this.socket !== socket) return
@@ -283,22 +280,33 @@ class DatabaseRealtimeManager {
     )
   }
 
-  private handleMessage(data: unknown) {
-    const message = parseMessage(data)
+  private handleMessage(data: unknown, socket: WebSocket) {
+    const parsed = parseDatabaseRealtimeServerMessage(data)
 
-    if (!message || message.databaseId !== this.databaseId) return
+    if (!parsed.ok) {
+      if (parsed.reason === "protocol_mismatch") {
+        console.warn(JSON.stringify({
+          databaseId: this.databaseId,
+          event: "database_realtime_protocol_mismatch",
+          expectedProtocolVersion: 2,
+        }))
+        closeRealtimeSocket(socket, 1012, "Database realtime protocol changed")
+      }
+      return
+    }
+    const message = parsed.message
+
+    if (message.databaseId !== this.databaseId) return
 
     if (message.type === "database.mutation") {
-      applyDatabaseRealtimeMutation(this.queryClient, message)
+      void this.ingestMutation(message).catch(() => undefined)
       return
     }
 
     if (message.type === "realtime.ready") {
       this.sessionId = message.sessionId
       this.reconnectAttempt = 0
-      if (typeof message.version === "number") {
-        this.recoverIfBehind(message.version)
-      }
+      this.recoverIfBehind(message.databaseVersion)
       this.setCollaborators(message.peers)
       this.setState({ ...this.state, status: "connected" })
       this.startHeartbeat()
@@ -324,6 +332,30 @@ class DatabaseRealtimeManager {
         ),
       )
     }
+  }
+
+  private async ingestMutation(event: DatabaseMutationEventV2) {
+    try {
+      if (await this.databaseClientBinding.ingest(event)) return
+    } catch {
+      // A session/client transition must recover through authoritative reads.
+    }
+    await Promise.allSettled([
+      this.queryClient.invalidateQueries({ queryKey: [databaseClientQueryRoot] }),
+      this.queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
+    ])
+  }
+
+  private async catchUpOrInvalidate() {
+    try {
+      if (await this.databaseClientBinding.catchUp(this.databaseId)) return
+    } catch {
+      // A replaced session client falls back to an authoritative query refresh.
+    }
+    await Promise.allSettled([
+      this.queryClient.invalidateQueries({ queryKey: [databaseClientQueryRoot] }),
+      this.queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
+    ])
   }
 
   private scheduleTicketRefresh(
@@ -385,15 +417,7 @@ class DatabaseRealtimeManager {
   }
 
   private recoverIfBehind(serverVersion: number) {
-    const payload = this.queryClient.getQueryData<DatabasePayload | null>(
-      databaseQueryKey(this.databaseId),
-    )
-
-    if (!payload || (payload.database.version ?? 0) < serverVersion) {
-      void this.queryClient.invalidateQueries({
-        queryKey: databasePayloadRootQueryKey(this.databaseId),
-      })
-    }
+    void this.catchUpOrInvalidate()
 
     recoverPagePropertiesIfBehind(
       this.queryClient,
@@ -639,6 +663,7 @@ function getManager(
   queryClient: QueryClient,
   apiFetch: ApiFetcher,
   databaseId: string,
+  databaseClient: DatabaseClient | null,
 ) {
   let byDatabase = managers.get(queryClient)
 
@@ -647,87 +672,111 @@ function getManager(
     managers.set(queryClient, byDatabase)
   }
 
-  let manager = byDatabase.get(databaseId)
+  const managerKey = `${databaseClient?.sessionId ?? "public"}:${databaseId}`
+  let manager = byDatabase.get(managerKey)
 
   if (!manager) {
     const created = new DatabaseRealtimeManager(
       queryClient,
       apiFetch,
       databaseId,
+      databaseClient,
       () => {
-        if (byDatabase?.get(databaseId) === created) {
-          byDatabase.delete(databaseId)
+        if (byDatabase?.get(managerKey) === created) {
+          byDatabase.delete(managerKey)
         }
       },
     )
     manager = created
-    byDatabase.set(databaseId, manager)
+    byDatabase.set(managerKey, manager)
   }
+
+  manager.bindDatabaseClient(databaseClient)
 
   return manager
 }
 
-function parseMessage(data: unknown): RealtimeServerMessage | null {
-  if (typeof data !== "string") return null
+export type DatabaseRealtimeServerMessageParseResult =
+  | { message: RealtimeServerMessage; ok: true }
+  | { ok: false; reason: "invalid" | "protocol_mismatch" }
+
+export function parseDatabaseRealtimeServerMessage(
+  data: unknown,
+): DatabaseRealtimeServerMessageParseResult {
+  if (typeof data !== "string") return { ok: false, reason: "invalid" }
 
   try {
     const value = JSON.parse(data) as unknown
-    if (!value || typeof value !== "object") return null
+    if (!value || typeof value !== "object") {
+      return { ok: false, reason: "invalid" }
+    }
     const message = value as Record<string, unknown>
+    const isKnownServerMessage = message.type === "database.mutation" ||
+      message.type === "realtime.ready" ||
+      message.type === "presence.update" ||
+      message.type === "presence.clear"
 
-    if (message.type === "database.mutation" &&
-      message.protocolVersion === 1 &&
-      typeof message.databaseId === "string" &&
-      typeof message.version === "number" &&
-      typeof message.mutationId === "string" &&
-      Array.isArray(message.changed) &&
-      message.delta && typeof message.delta === "object") {
-      return message as DatabaseMutationEvent
+    if (isKnownServerMessage && message.protocolVersion !== 2) {
+      return { ok: false, reason: "protocol_mismatch" }
+    }
+
+    if (message.type === "database.mutation") {
+      const parsed = databaseMutationEventV2Schema.safeParse(value)
+      return parsed.success
+        ? { message: parsed.data, ok: true }
+        : { ok: false, reason: "invalid" }
     }
 
     if (message.type === "realtime.ready" &&
       typeof message.databaseId === "string" &&
+      typeof message.databaseVersion === "number" &&
+      Number.isSafeInteger(message.databaseVersion) &&
+      message.databaseVersion >= 0 &&
       typeof message.sessionId === "string" &&
       Array.isArray(message.peers)) {
-      return message as RealtimeReadyMessage
+      return { message: message as RealtimeReadyMessage, ok: true }
     }
 
     if (message.type === "presence.update" &&
       typeof message.databaseId === "string" &&
       message.collaborator && typeof message.collaborator === "object") {
-      return message as PresenceUpdateMessage
+      return { message: message as PresenceUpdateMessage, ok: true }
     }
 
     if (message.type === "presence.clear" &&
       typeof message.databaseId === "string" &&
       typeof message.sessionId === "string") {
-      return message as PresenceClearMessage
+      return { message: message as PresenceClearMessage, ok: true }
     }
 
-    return null
+    return { ok: false, reason: "invalid" }
   } catch {
-    return null
+    return { ok: false, reason: "invalid" }
   }
 }
 
 type RealtimeReadyMessage = {
+  databaseVersion: number
   databaseId: string
   peers: Array<Omit<DatabasePresenceCollaborator, "color">>
+  protocolVersion: 2
   sessionId: string
   type: "realtime.ready"
-  version?: number
 }
 type PresenceUpdateMessage = {
   collaborator: Omit<DatabasePresenceCollaborator, "color">
   databaseId: string
+  protocolVersion: 2
   type: "presence.update"
 }
 type PresenceClearMessage = {
   databaseId: string
+  protocolVersion: 2
   sessionId: string
   type: "presence.clear"
 }
-type RealtimeServerMessage = DatabaseMutationEvent | RealtimeReadyMessage |
+type RealtimeServerMessage = DatabaseMutationEventV2 |
+  RealtimeReadyMessage |
   PresenceUpdateMessage | PresenceClearMessage
 
 function withColor<T extends Omit<DatabasePresenceCollaborator, "color">>(

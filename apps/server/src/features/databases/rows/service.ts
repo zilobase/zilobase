@@ -1,4 +1,8 @@
-import { and, asc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import {
+  databaseOrderKeyAtPosition,
+  databaseOrderKeyBetween,
+} from "@zilobase/features/databases/order-key";
 
 import { canAccessPage } from "../../access";
 import { encodePageContentAsYjs } from "../../collaboration/service";
@@ -27,13 +31,16 @@ import {
   lockDatabaseAutomationFactRows,
   type DatabaseMutationOrigin,
 } from "../automations/triggers/event-capture";
-import { fetchDatabaseRowDelta } from "../realtime/delta";
+import { getDatabasePropertyEntity } from "../commands/metadata-entities";
+import { getDatabaseRecordEntity } from "../commands/record-entity";
 import { isDatabaseHostPageId } from "../core/host-page";
 import { getStatusDefaultValue, validateCellValue } from "../properties/config";
 import {
   incrementDatabaseRowPlacementPositions,
+  lockDatabaseRowOrdering,
+  lockDatabaseRowOrderingSources,
+  rebalanceDatabaseRowOrderKeys,
   updateDatabaseRowPlacementPositions,
-  updateDatabaseRowPositions,
 } from "../core/position-service";
 import { inheritDatabaseRowProperties } from "./import-service";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
@@ -97,11 +104,11 @@ export async function createDatabaseRowService(input: {
     );
   }
 
-  const rows = await db
+  const rows = (await db
     .select({
       id: databaseRow.id,
+      orderKey: databaseRow.orderKey,
       pageId: databaseRow.pageId,
-      position: databaseRow.position,
     })
     .from(databaseRow)
     .where(
@@ -110,7 +117,8 @@ export async function createDatabaseRowService(input: {
         isNull(databaseRow.deletedAt),
       ),
     )
-    .orderBy(asc(databaseRow.position));
+    .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id)))
+    .map((row, position) => ({ ...row, position }));
 
   const sourceRows =
     sourceDataSource && input.sourceRowId
@@ -119,7 +127,7 @@ export async function createDatabaseRowService(input: {
             id: databaseRow.id,
             pageId: databaseRow.pageId,
             parentRowId: databaseRow.parentRowId,
-            position: databaseRow.position,
+            orderKey: databaseRow.orderKey,
           })
           .from(databaseRow)
           .where(
@@ -128,7 +136,10 @@ export async function createDatabaseRowService(input: {
               isNull(databaseRow.deletedAt),
             ),
           )
-          .orderBy(asc(databaseRow.position))
+          .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
+          .then((sourceRows) =>
+            sourceRows.map((row, position) => ({ ...row, position }))
+          )
       : [];
   const sourceRow = sourceRows.find((row) => row.id === input.sourceRowId);
 
@@ -139,10 +150,11 @@ export async function createDatabaseRowService(input: {
     throw new ServiceMutationError("Source row not found", 404);
   }
 
-  const targetPosition =
+  let targetPosition =
     input.position === undefined
       ? rows.length
-      : Math.min(input.position, rows.length);
+      : Math.max(0, Math.min(input.position, rows.length));
+  let targetRows = rows;
 
   let pageId =
     typeof input.pageId === "string" && input.pageId.length > 0
@@ -260,18 +272,67 @@ export async function createDatabaseRowService(input: {
   const rowId = input.newRowId ?? crypto.randomUUID();
   let createdAt = "";
 
-  const targetChanged = sourceDataSource
-    ? (["rows", "properties", "values"] as const)
-    : defaultStatusValues.length > 0 || initialValues.length > 0
-      ? (["rows", "values"] as const)
-      : (["rows"] as const);
+  const targetAreas = sourceDataSource
+    ? (["records", "properties"] as const)
+    : (["records"] as const);
   const createTargetRow = async (
     tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+    orderingLocked = false,
   ) => {
+    if (!orderingLocked) await lockDatabaseRowOrdering(tx, existing.id);
     await lockDatabaseAutomationFactRows(tx, [
       { dataSourceId: existing.id, rowId },
     ]);
     const now = new Date();
+    if (typeof (tx as { select?: unknown }).select === "function") {
+      targetRows = (await tx
+        .select({
+          id: databaseRow.id,
+          orderKey: databaseRow.orderKey,
+          pageId: databaseRow.pageId,
+        })
+        .from(databaseRow)
+        .where(
+          and(
+            eq(databaseRow.dataSourceId, existing.id),
+            isNull(databaseRow.deletedAt),
+          ),
+        )
+        .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id)))
+        .map((row, position) => ({ ...row, position }));
+    }
+    targetPosition = input.position === undefined
+      ? targetRows.length
+      : Math.max(0, Math.min(input.position, targetRows.length));
+
+    const previousKey = targetRows[targetPosition - 1]?.orderKey ?? null;
+    const nextKey = targetRows[targetPosition]?.orderKey ?? null;
+    let orderKey = previousKey !== null || nextKey !== null
+      ? databaseOrderKeyBetween(previousKey, nextKey)
+      : targetRows.length === 0
+        ? databaseOrderKeyBetween(null, null)
+        : null;
+
+    if (orderKey === null) {
+      await rebalanceDatabaseRowOrderKeys(
+        tx,
+        existing.id,
+        targetRows.map((row) => row.id),
+        now,
+      );
+      orderKey = databaseOrderKeyBetween(
+        targetPosition === 0
+          ? null
+          : databaseOrderKeyAtPosition(targetPosition - 1),
+        targetPosition === targetRows.length
+          ? null
+          : databaseOrderKeyAtPosition(targetPosition),
+      );
+    }
+
+    if (orderKey === null) {
+      throw new Error("Database row order key allocation failed after rebalance");
+    }
     createdAt = now.toISOString();
     const inherited = sourceDataSource
       ? await inheritDatabaseRowProperties(
@@ -316,22 +377,9 @@ export async function createDatabaseRowService(input: {
       });
     }
 
-    await tx
-      .update(databaseRow)
-      .set({
-        position: sql`${databaseRow.position} + 1`,
-        updatedAt: now,
-      })
-      .where(
-        and(
-          eq(databaseRow.dataSourceId, existing.id),
-          isNull(databaseRow.deletedAt),
-          gte(databaseRow.position, targetPosition),
-        ),
-      );
     await incrementDatabaseRowPlacementPositions(
       tx,
-      existing.id,
+      existing.parentDatabaseId,
       targetPosition,
       now,
     );
@@ -341,7 +389,7 @@ export async function createDatabaseRowService(input: {
       dataSourceId: existing.id,
       pageId,
       parentRowId: input.parentRowId ?? null,
-      position: targetPosition,
+      orderKey,
       createdById: input.userId,
       lastEditedById: input.userId,
       createdAt: now,
@@ -409,14 +457,11 @@ export async function createDatabaseRowService(input: {
         });
     }
 
-    const delta = await fetchDatabaseRowDelta(rowId, tx);
-    const shiftedRows = rows
-      .filter((row) => row.position >= targetPosition)
-      .map((row) => ({
-        id: row.id,
-        position: row.position + 1,
-        updatedAt: now.toISOString(),
-      }));
+    const properties = [];
+    for (const property of inherited.properties) {
+      properties.push(await getDatabasePropertyEntity({ transaction: tx }, property.id as string));
+    }
+    const record = await getDatabaseRecordEntity(tx, existing.id, rowId);
 
     return {
       automationFacts: [
@@ -440,12 +485,9 @@ export async function createDatabaseRowService(input: {
           rowId,
         },
       ],
-      delta: {
-        ...(sourceDataSource ? { properties: inherited.properties } : {}),
-        rows: [...shiftedRows, ...(delta?.rows ?? [])],
-        ...(insertedValues.length > 0 || inherited.values.length > 0
-          ? { values: [...insertedValues, ...inherited.values] }
-          : {}),
+      changes: {
+        ...(properties.length ? { properties } : {}),
+        records: [record],
       },
     };
   };
@@ -459,9 +501,34 @@ export async function createDatabaseRowService(input: {
     const batch = await commitDataSourceMutationBatch(
       { actorId: input.userId, env: input.env },
       async (tx) => {
-        const targetResult = await createTargetRow(tx);
+        await lockDatabaseRowOrderingSources(tx, [
+          existing.id,
+          sourceDataSourceId,
+        ]);
+        const targetResult = await createTargetRow(tx, true);
         const now = new Date();
-        const remainingSourceRows = sourceRows.filter(
+        const lockedSourceRows =
+          typeof (tx as { select?: unknown }).select === "function"
+            ? await tx
+                .select({
+                  id: databaseRow.id,
+                  pageId: databaseRow.pageId,
+                  parentRowId: databaseRow.parentRowId,
+                  orderKey: databaseRow.orderKey,
+                })
+                .from(databaseRow)
+                .where(
+                  and(
+                    eq(databaseRow.dataSourceId, sourceDataSourceId),
+                    isNull(databaseRow.deletedAt),
+                  ),
+                )
+                .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
+                .then((sourceRows) =>
+                  sourceRows.map((row, position) => ({ ...row, position }))
+                )
+            : sourceRows;
+        const remainingSourceRows = lockedSourceRows.filter(
           (row) => row.id !== sourceRowId,
         );
 
@@ -486,15 +553,9 @@ export async function createDatabaseRowService(input: {
           );
 
         const remainingSourceRowIds = remainingSourceRows.map((row) => row.id);
-        await updateDatabaseRowPositions(
-          tx,
-          sourceDataSourceId,
-          remainingSourceRowIds,
-          now,
-        );
         await updateDatabaseRowPlacementPositions(
           tx,
-          sourceDataSourceId,
+          sourceDataSource.parentDatabaseId,
           remainingSourceRowIds,
           now,
         );
@@ -517,24 +578,19 @@ export async function createDatabaseRowService(input: {
           ],
           mutations: [
             {
-              changed: [...targetChanged],
+              areas: [...targetAreas],
+              changes: targetResult.changes,
               dataSourceId: existing.id,
-              delta: targetResult.delta,
             },
             {
-              changed: ["rows"],
-              dataSourceId: sourceDataSource.id,
-              delta: {
-                removedRowIds: [sourceRowId],
-                rows: remainingSourceRows.map((row, position) => ({
-                  id: row.id,
-                  ...(row.parentRowId === sourceRowId
-                    ? { parentRowId: null }
-                    : {}),
-                  position,
-                  updatedAt: now.toISOString(),
-                })),
+              areas: ["records"],
+              changes: {
+                records: await Promise.all(remainingSourceRows.map((row) =>
+                  getDatabaseRecordEntity(tx, sourceDataSource.id, row.id)
+                )),
+                removedRecordIds: [sourceRowId],
               },
+              dataSourceId: sourceDataSource.id,
             },
           ],
           result: undefined,
@@ -547,7 +603,7 @@ export async function createDatabaseRowService(input: {
     commit = await commitDataSourceMutation(
       {
         actorId: input.userId,
-        changed: [...targetChanged],
+        areas: [...targetAreas],
         dataSourceId: existing.id,
         env: input.env,
       },

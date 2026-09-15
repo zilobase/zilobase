@@ -1,17 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query"
 
-import type {
-  Page,
-  PagePropertiesPayload,
-} from "../pages/queries"
-
-import {
-  databasePayloadRootQueryKey,
-  databaseQueryKey,
-  databaseRootQueryKey,
-  type DatabasePayload,
-  type DatabaseProperty,
-} from "./queries"
+import type { Page } from "../pages/queries"
+import { databaseRecordWindowResponseSchema } from "./contracts-v2"
 export function findDatabaseIdForRowPage(
   queryClient: QueryClient,
   pageId: string,
@@ -25,94 +15,20 @@ export function findDatabaseIdsForRowPage(
 ) {
   const databaseIds: string[] = []
 
-  for (const [queryKey, data] of queryClient.getQueriesData<DatabasePayload>({
-    queryKey: databaseRootQueryKey(),
+  for (const [queryKey, data] of queryClient.getQueriesData({
+    queryKey: ["database-client-v2"],
   })) {
-    const databaseId = queryKey[1]
+    if (queryKey[2] !== "records") continue
+    const databaseId = queryKey[3]
 
-    if (typeof databaseId !== "string" || !data) {
-      continue
-    }
-
-    if (data.rows.some((row) => row.pageId === pageId)) {
+    if (typeof databaseId === "string" && recordWindows(data).some(
+      (window) => window.records.some((row) => row.pageId === pageId),
+    )) {
       databaseIds.push(databaseId)
     }
   }
 
   return [...new Set(databaseIds)]
-}
-
-export function isDatabaseRowPage(
-  payload: DatabasePayload,
-  pageId: string,
-) {
-  return payload.rows.some((row) => row.pageId === pageId)
-}
-
-export function buildPagePropertiesPayloadFromDatabase(
-  payload: DatabasePayload,
-  pageId?: string | null,
-): PagePropertiesPayload | null {
-  if (pageId && !isDatabaseRowPage(payload, pageId)) {
-    return null
-  }
-
-  const properties = [...payload.properties]
-    .sort(
-      (left: DatabaseProperty, right: DatabaseProperty) =>
-        left.position - right.position,
-    )
-    .map(({ property }) => property)
-
-  const values = pageId
-    ? payload.values.filter((value) => value.pageId === pageId)
-    : []
-  const row = pageId
-    ? payload.rows.find((candidate) => candidate.pageId === pageId)
-    : undefined
-  const databaseId = payload.database.id
-
-  return {
-    databaseIds: [databaseId],
-    databaseVersions: { [databaseId]: payload.database.version ?? 0 },
-    presenceTargets: row
-      ? [{
-          databaseId,
-          propertyIds: properties.map((property) => property.id),
-          rowId: row.id,
-        }]
-      : [],
-    properties,
-    values,
-  }
-}
-
-export function patchDatabaseCachePagePropertyValues(
-  queryClient: QueryClient,
-  databaseId: string,
-  pageId: string,
-  pageProperties: PagePropertiesPayload,
-) {
-  queryClient.setQueryData<DatabasePayload>(
-    databaseQueryKey(databaseId),
-    (current) => {
-      if (!current || !isDatabaseRowPage(current, pageId)) {
-        return current
-      }
-
-      const remainingValues = current.values.filter(
-        (value) => value.pageId !== pageId,
-      )
-      const nextValues = pageProperties.values.filter(
-        (value) => value.pageId === pageId,
-      )
-
-      return {
-        ...current,
-        values: [...remainingValues, ...nextValues],
-      }
-    },
-  )
 }
 
 export function patchDatabaseCachePage(
@@ -121,41 +37,21 @@ export function patchDatabaseCachePage(
 ) {
   const databaseIds = findDatabaseIdsForRowPage(queryClient, page.id)
 
-  for (const databaseId of databaseIds) {
-    queryClient.setQueriesData<DatabasePayload>(
-      { queryKey: databasePayloadRootQueryKey(databaseId) },
-      (current) => patchDatabasePayloadPage(current, page),
-    )
+  if (databaseIds.length > 0) {
+    void queryClient.invalidateQueries({ queryKey: ["database-client-v2"] })
   }
 
   return databaseIds
 }
 
-function patchDatabasePayloadPage(
-  current: DatabasePayload | undefined,
-  page: Page,
-) {
-  if (!current || !isDatabaseRowPage(current, page.id)) {
-    return current
-  }
-
-  const rows = current.rows.map((row) => {
-    if (row.pageId !== page.id) {
-      return row
-    }
-
-    return {
-      ...row,
-      page: {
-        ...row.page,
-        deletedAt: page.deletedAt,
-        id: page.id,
-        metadata: page.metadata,
-        name: page.name,
-        updatedAt: page.updatedAt,
-      },
-    }
+function recordWindows(value: unknown) {
+  const direct = databaseRecordWindowResponseSchema.safeParse(value)
+  if (direct.success) return [direct.data]
+  if (!value || typeof value !== "object" || !("pages" in value)) return []
+  const pages = (value as { pages?: unknown }).pages
+  if (!Array.isArray(pages)) return []
+  return pages.flatMap((page) => {
+    const parsed = databaseRecordWindowResponseSchema.safeParse(page)
+    return parsed.success ? [parsed.data] : []
   })
-
-  return { ...current, rows }
 }

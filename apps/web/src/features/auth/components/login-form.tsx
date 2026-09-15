@@ -111,9 +111,6 @@ export function LoginForm({
       onSubmit={handleSubmit}
       {...props}
     >
-      {editionWebModule.additionalLoginMethods.map((LoginMethod, index) => (
-        <LoginMethod disabled={isPending} key={index} />
-      ))}
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="email">Email address</FieldLabel>
@@ -129,6 +126,10 @@ export function LoginForm({
             value={email}
           />
         </Field>
+
+        {editionWebModule.additionalLoginMethods.map((LoginMethod, index) => (
+          <LoginMethod disabled={isPending} email={email} key={index} />
+        ))}
 
         <Field>
           <FieldLabel htmlFor="password">Password</FieldLabel>

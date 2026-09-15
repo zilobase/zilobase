@@ -2,93 +2,81 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  findPrivateRuntimeReferences,
+  findRestrictedRuntimeReferences,
   isMissingWorkingTreeFile,
   isVendoredReferenceTree,
 } from "./community-boundary.mjs";
 
-test("community boundary ignores documentation and public service URLs", () => {
+test("community boundary uses externally configured restricted markers", () => {
+  process.env.ZILOBASE_RESTRICTED_PACKAGE_MARKERS = "@restricted/runtime,restricted-addon";
+  process.env.ZILOBASE_RESTRICTED_PATH_PATTERN = "restricted-addon";
+  try {
+    assert.deepEqual(
+      findRestrictedRuntimeReferences(
+        "src/runtime.ts",
+        'import { adapter } from "@restricted/runtime"',
+      ),
+      ["@restricted/runtime"],
+    );
+    assert.deepEqual(
+      findRestrictedRuntimeReferences(
+        "package.json",
+        JSON.stringify({ dependencies: { "restricted-addon": "workspace:*" } }),
+      ),
+      ["restricted runtime marker"],
+    );
+    assert.deepEqual(
+      findRestrictedRuntimeReferences("scripts/dev/restricted-addon.mjs", "export {}"),
+      ["restricted runtime marker"],
+    );
+  } finally {
+    delete process.env.ZILOBASE_RESTRICTED_PACKAGE_MARKERS;
+    delete process.env.ZILOBASE_RESTRICTED_PATH_PATTERN;
+  }
+});
+
+test("SSO and Enterprise names are reserved for public boundary policy", () => {
   assert.deepEqual(
-    findPrivateRuntimeReferences(
-      "docs/runtime.md",
-      "Cloudflare can host a community deployment with Durable Objects.",
+    findRestrictedRuntimeReferences(
+      "apps/server/src/private-feature.ts",
+      "export const feature = 'enterprise SSO';",
     ),
-    [],
+    [
+      "private feature implementation term: ENTERPRISE",
+      "private feature implementation term: SSO",
+    ],
   );
   assert.deepEqual(
-    findPrivateRuntimeReferences(
-      "src/dns.ts",
-      'fetch("https://cloudflare-dns.com/dns-query")',
+    findRestrictedRuntimeReferences(
+      "architecture/platform/edition-integration.md",
+      "SSO and Enterprise implementations stay outside this repository.",
     ),
     [],
   );
 });
 
-test("community boundary rejects private runtime dependencies", () => {
-  assert.deepEqual(
-    findPrivateRuntimeReferences(
-      "src/runtime.ts",
-      'import { adapter } from "@zilobase/cloud-adapter"',
-    ),
-    ["@zilobase/cloud-adapter"],
-  );
-  assert.deepEqual(
-    findPrivateRuntimeReferences(
-      "package.json",
-      JSON.stringify({ dependencies: { "zilobase-cloud-adapter": "workspace:*" } }),
-    ),
-    ["zilobase-cloud-adapter"],
-  );
-  assert.deepEqual(
-    findPrivateRuntimeReferences(
-      "src/runtime.ts",
-      'import { runtime } from "@zilobase/enterprise"',
-    ),
-    ["@zilobase/enterprise"],
-  );
-  assert.deepEqual(
-    findPrivateRuntimeReferences(
-      "scripts/dev/private-profile.mjs",
-      'const directory = "../zilobase-enterprise";',
-    ),
-    ["private-edition repository marker"],
-  );
-  assert.deepEqual(
-    findPrivateRuntimeReferences("scripts/dev/enterprise-profile.mjs", "export {}"),
-    ["private-edition repository marker"],
-  );
-  assert.deepEqual(
-    findPrivateRuntimeReferences(
-      "apps/web/src/routes.ts",
-      'const path = "/enterprise/audit";',
-    ),
-    ["private-edition repository marker"],
-  );
-});
-
-test("community boundary ignores vendored third-party reference trees", () => {
-  assert.equal(isVendoredReferenceTree("repos/effect/packages/sql/d1/src/D1Client.ts"), true);
-  assert.deepEqual(
-    findPrivateRuntimeReferences(
-      "repos/effect/packages/sql/d1/src/D1Client.ts",
-      'import type { D1Database } from "@cloudflare/workers-types"',
-    ),
-    [],
-  );
-  assert.deepEqual(
-    findPrivateRuntimeReferences(
-      "repos/effect/packages/sql/d1/package.json",
-      JSON.stringify({ dependencies: { "@cloudflare/workers-types": "^5.0.0" } }),
-    ),
-    [],
-  );
-  assert.deepEqual(
-    findPrivateRuntimeReferences(
-      "apps/server/src/runtime.ts",
-      'import type { D1Database } from "@cloudflare/workers-types"',
-    ),
-    ["@cloudflare/workers-types"],
-  );
+test("community boundary ignores documentation and vendored references", () => {
+  process.env.ZILOBASE_RESTRICTED_PACKAGE_MARKERS = "@restricted/runtime";
+  try {
+    assert.deepEqual(
+      findRestrictedRuntimeReferences(
+        "docs/runtime.md",
+        'import { adapter } from "@restricted/runtime"',
+      ),
+      [],
+    );
+    assert.equal(isVendoredReferenceTree("repos/vendor/package.ts"), true);
+    assert.equal(isVendoredReferenceTree(".claude/skills/reference.md"), true);
+    assert.deepEqual(
+      findRestrictedRuntimeReferences(
+        "repos/vendor/package.ts",
+        'import type { Runtime } from "@restricted/runtime"',
+      ),
+      [],
+    );
+  } finally {
+    delete process.env.ZILOBASE_RESTRICTED_PACKAGE_MARKERS;
+  }
 });
 
 test("community boundary skips files deleted from the working tree", () => {

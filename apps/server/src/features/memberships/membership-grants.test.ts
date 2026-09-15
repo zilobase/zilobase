@@ -12,8 +12,8 @@ test("membership grants run edition policy and audit inside the transaction", as
   const database = createMembershipDatabase(rows, events);
   const extension: ZilobaseEditionExtension = {
     id: "test-edition",
-    authPlugins: [],
     capabilities: [],
+    async createAuthPlugins() { return []; },
     async beforeMembershipGrant(input) {
       assert.equal(input.database, database);
       events.push(`policy:${input.source}`);
@@ -27,7 +27,7 @@ test("membership grants run edition policy and audit inside the transaction", as
 
   const result = await new MembershipService(database, extension).grantMembership({
     role: "member",
-    source: "sso-jit",
+    source: "extension",
     userId: "user-1",
     workspaceId: "workspace-1",
   });
@@ -35,7 +35,7 @@ test("membership grants run edition policy and audit inside the transaction", as
   assert.equal(result.created, true);
   assert.deepEqual(events, [
     "transaction",
-    "policy:sso-jit",
+    "policy:extension",
     "insert:member",
     "insert:teamspace",
     "audit:teamspace.created",

@@ -21,6 +21,7 @@ import {
 
 import { getRawDatabaseGroupValue } from "../../../interactions/database-group-values"
 import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections"
+import { DatabaseRecordWindowControl } from "../../components/database-record-window-control"
 import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
 import {
   buildTimelineRowItem,
@@ -61,8 +62,7 @@ export function DatabaseTimelineView() {
     editable,
     databaseId,
     groupProperty,
-    isAddingDatabaseProperty,
-    isAddingDatabaseRow,
+    hostDatabaseId,
     items,
     personOptions,
     properties,
@@ -239,6 +239,7 @@ export function DatabaseTimelineView() {
       editable,
       getDropTargetIndex: getRowDropTargetIndex,
       groupProperty,
+      hostDatabaseId,
       groupedSections,
       isFiltered,
       isGrouped,
@@ -260,6 +261,7 @@ export function DatabaseTimelineView() {
       editable,
       getRowDropTargetIndex,
       groupProperty,
+      hostDatabaseId,
       groupedSections,
       isFiltered,
       isGrouped,
@@ -326,7 +328,6 @@ export function DatabaseTimelineView() {
       databaseId,
       editable,
       groupProperty,
-      isAddingDatabaseRow,
       nameColumnLabel: titlePropertyLabel,
       onAddPage: addDatabaseRow,
       onOpenPage,
@@ -340,7 +341,6 @@ export function DatabaseTimelineView() {
       databaseId,
       editable,
       groupProperty,
-      isAddingDatabaseRow,
       onOpenPage,
       rowDrag.setHoveredRowId,
       showPageIconInTitle,
@@ -370,7 +370,6 @@ export function DatabaseTimelineView() {
         configuredDatePropertyId={configuredDatePropertyId}
         dateProperties={timelineDateProperties}
         editable={editable}
-        isAddingProperty={isAddingDatabaseProperty}
         onSelectDateProperty={setViewDateProperty}
         onSetupDateProperty={setupTimelineDateProperty}
       />
@@ -421,6 +420,7 @@ export function DatabaseTimelineView() {
           />
         </GanttProvider>
       </div>
+      <DatabaseRecordWindowControl />
       <AlertDialog
         open={rowDrag.pendingSortedMove !== null}
         onOpenChange={(open) => {

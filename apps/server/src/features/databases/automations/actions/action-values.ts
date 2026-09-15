@@ -167,7 +167,7 @@ async function loadFilterTargetRows(
       .from(databaseRow)
       .innerJoin(page, eq(page.id, databaseRow.pageId))
       .where(and(eq(databaseRow.dataSourceId, dataSourceId), isNull(databaseRow.deletedAt), isNull(page.deletedAt)))
-      .orderBy(asc(databaseRow.position))
+      .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
       .limit(1_001),
     loadProperties(dataSourceId),
   ]);

@@ -78,6 +78,8 @@ export {
   database,
   dataSource,
   databaseDataSource,
+  databaseCommandReceipt,
+  databaseMutationEvent,
   databaseRealtimeOutbox,
   databaseAccess,
   databaseProperty,
