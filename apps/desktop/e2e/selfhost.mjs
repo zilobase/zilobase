@@ -58,31 +58,44 @@ try {
 }
 
 async function selectServer(origin) {
-  const serverInput = await browser.$("#desktop-server-url")
+  let serverInput = await browser.$("#desktop-server-url")
   if (!(await serverInput.isDisplayed().catch(() => false))) {
-    const changeServer = await browser.$(
+    const changeServer = await waitForDisplayed(
       "//*[self::a or self::button][normalize-space()='Change server']",
+      30_000,
     )
-    await changeServer.waitForDisplayed({ timeout: 30_000 })
     await clickElement(changeServer)
-    await serverInput.waitForDisplayed({ timeout: 10_000 })
+    serverInput = await waitForDisplayed("#desktop-server-url", 30_000)
   }
   await serverInput.setValue(origin)
   await clickElement(
     await browser.$("//button[normalize-space()='Verify and continue']"),
   )
 
-  const selectedOrigin = await browser.$(
+  await waitForDisplayed(
     `//*[normalize-space()=${xpathString(origin)}]`,
+    30_000,
   )
-  await selectedOrigin.waitForDisplayed({ timeout: 30_000 })
-  await (
-    await browser.$("//button[normalize-space()='Continue in Browser']")
-  ).waitForDisplayed({ timeout: 10_000 })
+  await waitForDisplayed(
+    "//button[normalize-space()='Continue in Browser']",
+    10_000,
+  )
 }
 
 async function clickElement(element) {
   await browser.execute((target) => target.click(), element)
+}
+
+async function waitForDisplayed(selector, timeout) {
+  let element
+  await browser.waitUntil(
+    async () => {
+      element = await browser.$(selector)
+      return element.isDisplayed().catch(() => false)
+    },
+    { timeout, timeoutMsg: `Element (${selector}) was not displayed` },
+  )
+  return element
 }
 
 function requiredPath(name) {

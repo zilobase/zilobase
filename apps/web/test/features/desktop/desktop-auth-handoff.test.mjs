@@ -89,6 +89,8 @@ export function register({ assert, readSource, readWorkspace, test }) {
       source,
       /browser\.execute\(\(target\) => target\.click\(\), element\)/,
     )
+    assert.match(source, /browser\.waitUntil/)
+    assert.match(source, /element = await browser\.\$\(selector\)/)
     assert.match(routeErrorPage, /navigate\(\{ to: "\/connect" \}\)/)
     assert.doesNotMatch(routeErrorPage, /window\.location\.assign\("\/connect"\)/)
   })
