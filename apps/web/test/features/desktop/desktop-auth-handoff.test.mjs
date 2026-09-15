@@ -92,16 +92,17 @@ export function register({ assert, readSource, readWorkspace, test }) {
     )
     assert.match(source, /browser\.waitUntil/)
     assert.match(source, /element = await browser\.\$\(selector\)/)
+    assert.match(source, /path: window\.location\.pathname/)
+    assert.doesNotMatch(source, /window\.location\.href/)
     assert.match(routeErrorPage, /navigate\(\{ to: "\/connect" \}\)/)
     assert.doesNotMatch(routeErrorPage, /window\.location\.assign\("\/connect"\)/)
     const connectRoute = publicRoutes.slice(
       publicRoutes.indexOf("const connectRoute"),
       publicRoutes.indexOf("const signupRoute"),
     )
-    const connectivityCheck = connectRoute.indexOf("getConnectivityState()")
-    const sessionCheck = connectRoute.indexOf("getFreshSession")
-    assert.ok(connectivityCheck >= 0)
-    assert.ok(sessionCheck >= 0)
-    assert.ok(connectivityCheck < sessionCheck)
+    assert.doesNotMatch(
+      connectRoute,
+      /getConnectivityState|getFreshSession|getWorkspaces/,
+    )
   })
 }

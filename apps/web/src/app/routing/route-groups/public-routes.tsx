@@ -3,7 +3,6 @@ import { isDesktopApp } from "@/features/desktop/index";
 
 import { getAuthReturnPath } from "@/features/auth/lib/google-auth";
 import { isBootstrapRequiredAuthError } from "@/features/auth/lib/bootstrap-redirect";
-import { getConnectivityState } from "@/features/offline/index";
 import { getDefaultAppPath, getFreshSession, getWorkspaces } from "../guards";
 import { rootRoute } from "../route-roots";
 import { isOAuthLoginSearch, pickOAuthSearch } from "@/features/oauth/lib/oauth-query";
@@ -72,18 +71,8 @@ const loginRoute = createRoute({
 const connectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/connect",
-  beforeLoad: async () => {
+  beforeLoad: () => {
     if (!isDesktopApp()) throw redirect({ to: "/login" });
-    const connectivity = getConnectivityState();
-    if (connectivity === "offline" || connectivity === "service-unavailable") {
-      return;
-    }
-
-    const session = await getFreshSession({ optional: true });
-    if (!session.user) return;
-
-    const workspaces = await getWorkspaces();
-    throw redirect({ to: workspaces.length > 0 ? "/recents" : "/onboarding" });
   },
   component: lazyRouteComponent(() => import("@/features/desktop/pages/connect")),
 });

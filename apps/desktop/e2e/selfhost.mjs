@@ -47,6 +47,13 @@ try {
   console.info(`Packaged desktop connected to ${new URL(serverOrigin).origin}.`)
 } catch (error) {
   if (browser) {
+    const state = await browser
+      .execute(() => ({
+        path: window.location.pathname,
+        text: document.body.innerText.slice(0, 2_000),
+      }))
+      .catch(() => undefined)
+    if (state) console.error("Desktop failure state:", state)
     await browser
       .saveScreenshot(path.join(diagnosticsDirectory, "desktop-failure.png"))
       .catch(() => undefined)
