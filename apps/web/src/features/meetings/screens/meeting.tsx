@@ -147,7 +147,7 @@ function MeetingMainPane({
   const emoji = metadataPage ? (getPageEmoji(metadataPage) ?? "") : ""
   const iconPosition = metadataPage
     ? getPageIconPosition(metadataPage)
-    : "inline"
+    : "top"
   const { setTitle, title } = useTitleDraft({
     enabled: editable,
     onSave: async (nextTitle) => {

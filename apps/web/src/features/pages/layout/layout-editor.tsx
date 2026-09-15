@@ -227,7 +227,7 @@ function LayoutEditor({
     page?.name?.trim() || (databaseId ? "Untitled" : "New page")
   const previewIcon = page ? getPageEmoji(page) : null
   const previewCover = page ? getPageCover(page) : null
-  const previewIconPosition = page ? getPageIconPosition(page) : "inline"
+  const previewIconPosition = page ? getPageIconPosition(page) : "top"
   const previewWorkspaceId =
     page?.workspaceId ?? databaseMetadata?.database.workspaceId ?? null
   const fullWidth = resolvePageFullWidth(page, userSettings.pageFullWidth)

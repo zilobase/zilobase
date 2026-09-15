@@ -16,10 +16,8 @@ import { cn } from "@/shared/lib/utils"
 import {
   getDatabaseCover,
   getDatabaseEmoji,
-  getDatabaseIconPosition,
   isDatabaseLocked,
 } from "@zilobase/features/databases"
-import { type PageIconPosition } from "@zilobase/features/pages";
 import { usePage, usePageAccessLevel } from "@zilobase/features/pages/react";
 import {
   useRestoreDatabase,
@@ -327,8 +325,6 @@ export function DatabaseMainPane({
   const restoreDatabase = useRestoreDatabase()
   const [cover, setCover] = useState("")
   const [emoji, setEmoji] = useState("")
-  const [iconPosition, setIconPosition] =
-    useState<PageIconPosition>("inline")
   const [embeddedViewId, setEmbeddedViewId] = useState<string | undefined>()
   const [showDataSourceTitles, setShowDataSourceTitles] = useState(true)
   const activeViewId = embedded ? embeddedViewId : localActiveViewId
@@ -396,13 +392,11 @@ export function DatabaseMainPane({
     if (!headingRecord) {
       setCover("")
       setEmoji("")
-      setIconPosition("inline")
       return
     }
 
     setCover(getDatabaseCover(headingRecord) ?? "")
     setEmoji(getDatabaseEmoji(headingRecord) ?? "")
-    setIconPosition(getDatabaseIconPosition(headingRecord))
   }, [headingRecord])
 
   const updateCover = (nextCover: string) => {
@@ -443,24 +437,6 @@ export function DatabaseMainPane({
     else updateDataSource.mutate(input)
   }
 
-  const updateIconPosition = (nextPosition: PageIconPosition) => {
-    setIconPosition(nextPosition)
-
-    if (!headingRecord || !headingEditable) {
-      return
-    }
-
-    const input = {
-      databaseId: headingRecord.id,
-      config: {
-        ...((headingRecord.config ?? {}) as Record<string, unknown>),
-        iconPosition: nextPosition,
-      },
-    }
-
-    if (hasMultipleDataSources) updateDatabase.mutate(input)
-    else updateDataSource.mutate(input)
-  }
   const updateActiveViewSearch = (viewId: string | null) => {
     if (embedded) {
       setEmbeddedViewId(viewId ?? undefined)
@@ -500,6 +476,7 @@ export function DatabaseMainPane({
         />
       ) : null}
       <PageMetadataView
+        allowIconPositionChange={false}
         cover={cover}
         databaseId={
           hasMultipleDataSources ? databaseId : sourceParentDatabaseId
@@ -507,11 +484,10 @@ export function DatabaseMainPane({
         editable={headingEditable}
         enableComments={false}
         icon={emoji}
-        iconPosition={iconPosition}
+        iconPosition="inline"
         layoutSection="heading"
         onCoverChange={updateCover}
         onIconChange={updateEmoji}
-        onIconPositionChange={updateIconPosition}
         onOpenPage={onOpenPage}
         onTitleChange={setTitle}
         workspaceId={headingRecord?.workspaceId}

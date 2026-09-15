@@ -41,6 +41,7 @@ import {
 } from "@/features/comments/index"
 
 import { ImageSourcePicker } from "@/features/pages/images/image-source-picker"
+import { buildRandomCoverGalleryDataUrl } from "@/features/pages/images/cover-gallery"
 
 import { getDatabasePropertyType } from "../properties/property-catalog"
 import {
@@ -58,6 +59,7 @@ export type PageMetadataHandle = {
 
 type PageMetadataProps = {
   afterHeading?: ReactNode
+  allowIconPositionChange?: boolean
   compact?: boolean
   compactSpacing?: "default" | "comfortable"
   contentClassName?: string
@@ -149,6 +151,7 @@ function resizeTitleTextarea(
 
 export function PageMetadata({
   afterHeading,
+  allowIconPositionChange = true,
   compact = false,
   compactSpacing = "default",
   collaborationUsers = [],
@@ -188,7 +191,7 @@ export function PageMetadata({
   const [localCover, setLocalCover] = useState("")
   const [localIcon, setLocalIcon] = useState("")
   const [localIconPosition, setLocalIconPosition] =
-    useState<PageIconPosition>("inline")
+    useState<PageIconPosition>("top")
   const [localDescription, setLocalDescription] = useState("")
   const [localTitle, setLocalTitle] = useState("")
   const [commentsOpen, setCommentsOpen] = useState(false)
@@ -616,7 +619,9 @@ export function PageMetadata({
               updateIcon(svg)
               setIconOpen(false)
             }}
-            onIconPositionChange={updateIconPosition}
+            onIconPositionChange={
+              allowIconPositionChange ? updateIconPosition : undefined
+            }
           />
         </PopoverContent>
       </Popover>
@@ -664,7 +669,9 @@ export function PageMetadata({
             updateIcon(svg)
             setIconOpen(false)
           }}
-          onIconPositionChange={updateIconPosition}
+          onIconPositionChange={
+            allowIconPositionChange ? updateIconPosition : undefined
+          }
         />
       </PopoverContent>
     </Popover>
@@ -684,6 +691,31 @@ export function PageMetadata({
       </div>
     )
   ) : null
+
+  const coverPickerContent = (
+    <PopoverContent
+      align="start"
+      className="max-h-[min(40rem,calc(100vh-6rem))] w-[min(28rem,calc(100vw-2rem))] overflow-y-auto p-4"
+      onMouseDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+      side="bottom"
+      sideOffset={8}
+    >
+      <ImageSourcePicker
+        databaseId={databaseId}
+        enableCoverGallery
+        initialCover={cover}
+        initialLinkUrl={cover.startsWith("data:") ? "" : cover}
+        onGalleryChange={updateCover}
+        onSelect={(url) => {
+          updateCover(url)
+          setCoverOpen(false)
+        }}
+        pageId={pageId}
+        workspaceId={workspaceId}
+      />
+    </PopoverContent>
+  )
 
   const showMetadataActions =
     (hasDescription && !showDescription && editable) ||
@@ -710,20 +742,37 @@ export function PageMetadata({
         />
       ))}
       {showHeading && cover ? (
-        <div className="relative h-40 w-full overflow-hidden bg-surface-muted">
+        <div className="relative h-[200px] w-full overflow-hidden bg-surface-muted">
           <img alt="Cover" className="size-full object-cover" src={cover} />
           {editable ? (
-            <Button
-              aria-label={`Remove ${metadataSubjectLowercase} cover`}
-              className="absolute right-3 top-3 bg-effect-backdrop opacity-0 shadow-sm backdrop-blur transition-opacity group-focus-within/metadata:opacity-100 group-hover/metadata:opacity-100 focus-visible:opacity-100"
-              disabled={!editable}
-              onClick={() => updateCover("")}
-              size="icon-sm"
-              type="button"
-              variant="outline"
-            >
-              <X />
-            </Button>
+            <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-focus-within/metadata:opacity-100 group-hover/metadata:opacity-100">
+              <Popover onOpenChange={setCoverOpen} open={coverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    className="bg-effect-backdrop shadow-sm backdrop-blur"
+                    disabled={!editable}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <ImagePlus />
+                    Change cover
+                  </Button>
+                </PopoverTrigger>
+                {coverPickerContent}
+              </Popover>
+              <Button
+                aria-label={`Remove ${metadataSubjectLowercase} cover`}
+                className="bg-effect-backdrop shadow-sm backdrop-blur focus-visible:opacity-100"
+                disabled={!editable}
+                onClick={() => updateCover("")}
+                size="icon-sm"
+                type="button"
+                variant="outline"
+              >
+                <X />
+              </Button>
+            </div>
           ) : null}
         </div>
       ) : null}
@@ -734,7 +783,7 @@ export function PageMetadata({
             compact
               ? "absolute right-4 top-4"
               : cover
-                ? "absolute right-5 top-[calc(10rem+1.5rem)] sm:right-8 md:top-[calc(10rem+2rem)]"
+                ? "absolute right-5 top-[calc(12.5rem+1.5rem)] sm:right-8 md:top-[calc(12.5rem+2rem)]"
                 : "absolute right-5 top-6 sm:right-8 md:top-8"
           }
           users={collaborationUsers}
@@ -749,8 +798,8 @@ export function PageMetadata({
           <div
             className={
               cover
-              ? `${compact && compactSpacing === "comfortable" ? "-mt-5" : "-mt-4"} relative z-10 mb-4 w-fit -translate-y-1/2`
-                : "mb-4 w-fit"
+              ? `${compact && compactSpacing === "comfortable" ? "-mt-5" : "-mt-4"} relative z-10 mb-1 w-fit -translate-y-1/2`
+                : "mb-1 w-fit"
             }
           >
             {pageIcon}
@@ -770,38 +819,19 @@ export function PageMetadata({
               </Button>
             )}
             {!cover && editable ? (
-              <Popover onOpenChange={setCoverOpen} open={coverOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    className="text-content-secondary"
-                    disabled={!editable}
-                    size="sm"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <ImagePlus />
-                      {headingLabel ? `Add ${metadataSubjectLowercase} cover` : "Add cover"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent
-                  align="start"
-                  className="w-[min(42rem,calc(100vw-2rem))] p-4"
-                  onMouseDown={(event) => event.stopPropagation()}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  side="bottom"
-                  sideOffset={8}
-                >
-                  <ImageSourcePicker
-                    databaseId={databaseId}
-                    onSelect={(url) => {
-                      updateCover(url)
-                      setCoverOpen(false)
-                    }}
-                    workspaceId={workspaceId}
-                    pageId={pageId}
-                  />
-                </PopoverContent>
-              </Popover>
+              <Button
+                className="text-content-secondary"
+                disabled={!editable}
+                onClick={() => updateCover(buildRandomCoverGalleryDataUrl())}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                <ImagePlus />
+                {headingLabel
+                  ? `Add ${metadataSubjectLowercase} cover`
+                  : "Add cover"}
+              </Button>
             ) : null}
               {commentsEnabled &&
               !layoutSection &&
