@@ -17,7 +17,7 @@
     "packages/tiptap-comment-extension"
   ],
   "scripts": {
-    "dev": "node scripts/dev/cli.mjs local",
+    "dev": "node scripts/dev/workspace.mjs",
     "preview": "node scripts/dev/cli.mjs preview",
     "setup": "node scripts/dev/cli.mjs setup",
     "setup:check": "node scripts/dev/cli.mjs setup-check",

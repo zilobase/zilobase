@@ -1,7 +1,7 @@
 import { applyPublicDevelopmentOrigin } from "./public-origin.mjs";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -10,6 +10,11 @@ import test from "node:test";
 import { config as loadDotenvx, parse } from "@dotenvx/dotenvx";
 
 import { coreDir, localProfiles } from "./config.mjs";
+import {
+  developmentDashboardModel,
+  renderDevelopmentDashboard,
+  startDevelopmentDashboard,
+} from "./dashboard.mjs";
 import {
   createFromTemplateIfMissing,
   migrateGeneratedNodeEnvironment,
@@ -28,6 +33,11 @@ import {
   webCacheDirectory,
 } from "./local.mjs";
 import { assertPortsAvailable, redact, stopChildren } from "./process.mjs";
+import {
+  DEVELOPMENT_PROVIDER_FILE,
+  discoverDevelopmentProviders,
+  validateDevelopmentProvider,
+} from "./providers.mjs";
 
 test("the Node profile uses stable local ports and identity", () => {
   const node = localProfiles.node;
@@ -116,6 +126,77 @@ test("studio inspects the Node development database", () => {
 
 test("local starts only the public Node profile", () => {
   assert.deepEqual(resolveLocalProfileNames(), ["node"]);
+});
+
+test("workspace discovery loads ordered opt-in sibling providers", async () => {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "zilobase-providers-test-"));
+  for (const [directory, id, order] of [["later", "later", 20], ["earlier", "earlier", 10]]) {
+    const providerDir = path.join(workspace, directory);
+    await mkdir(providerDir);
+    await writeFile(path.join(providerDir, DEVELOPMENT_PROVIDER_FILE), JSON.stringify({
+      id,
+      order,
+      readiness: ["http://127.0.0.1:9999/ready"],
+      schemaVersion: 1,
+      start: ["node", "scripts/start.mjs"],
+    }));
+  }
+  const providers = await discoverDevelopmentProviders(workspace);
+  assert.deepEqual(providers.map(({ id }) => id), ["earlier", "later"]);
+});
+
+test("workspace providers may expose only loopback readiness URLs", () => {
+  assert.throws(() => validateDevelopmentProvider({
+    id: "remote",
+    readiness: ["https://example.com/ready"],
+    schemaVersion: 1,
+    start: ["node", "scripts/start.mjs"],
+  }, "/tmp/provider"), /loopback readiness URLs/);
+});
+
+test("development hub combines public and provider-owned runtime details", async () => {
+  const model = developmentDashboardModel({
+    credentials: [{ name: "Core", description: "Core setup", fields: [["Token", "<secret>"]] }],
+    profiles: { node: localProfiles.node },
+    providerModels: [{
+      runtimes: [{
+        api: "http://localhost:9998",
+        app: "http://localhost:9999",
+        config: [["Mode", "Optional"]],
+        description: "Optional runtime",
+        health: "http://127.0.0.1:9998/ready",
+        id: "optional",
+        name: "Optional",
+      }],
+      services: [{ name: "Docs", detail: "Local docs", url: "http://localhost:9997" }],
+    }],
+  });
+  assert.deepEqual(model.runtimes.map(({ id }) => id), ["node", "optional"]);
+  const page = renderDevelopmentDashboard(model);
+  assert.match(page, /Development hub/);
+  assert.match(page, /Optional runtime/);
+  assert.match(page, /&lt;secret&gt;/);
+
+  const dashboard = await startDevelopmentDashboard({ model, open: false, port: 0 });
+  try {
+    const response = await fetch(dashboard.url);
+    assert.equal(response.status, 200);
+    assert.match(await response.text(), /Community self-hosted/);
+  } finally {
+    await dashboard.close();
+  }
+});
+
+test("development hub refuses non-loopback health probes", async () => {
+  await assert.rejects(startDevelopmentDashboard({
+    model: {
+      credentials: [],
+      runtimes: [{ health: "https://example.com/ready" }],
+      services: [],
+    },
+    open: false,
+    port: 0,
+  }), /loopback HTTP URLs/);
 });
 
 test("the web client uses a stable Vite dependency cache", () => {

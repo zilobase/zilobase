@@ -16,6 +16,13 @@ setup command installs dependencies, creates missing local environment files,
 starts no long-running application processes, and never overwrites an existing
 secret file.
 
+`npm run dev` always starts the open-source Node profile. It also discovers
+opt-in sibling repositories that contain `.zilobase-dev.json`, starts them in
+descriptor order, waits for their loopback readiness endpoints, and merges
+their provider-owned runtime details into the development hub. This keeps the
+public repository independent of optional implementations while preserving a
+single command for a complete multi-repository checkout.
+
 ## Local services
 
 The Node profile uses these defaults:
@@ -29,11 +36,16 @@ The Node profile uses these defaults:
 | PostgreSQL | `127.0.0.1:15432` |
 | Object storage | `http://127.0.0.1:19100` |
 | Mailpit | `http://127.0.0.1:18025` |
+| Development hub | `http://127.0.0.1:1418` |
 
 The supervisor prefixes child-process output and shuts down the remaining
 processes if a required child exits. Press Ctrl-C once for an orderly shutdown.
 `npm run dev:down` stops local processes and dependency containers while
 preserving data.
+
+The development hub shows runtime health, ports, supporting services, setup
+tokens, and generated local credentials. It binds only to `127.0.0.1`; do not
+proxy or expose it beyond the local machine.
 
 ## Environment files
 

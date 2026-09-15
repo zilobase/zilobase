@@ -130,7 +130,7 @@ Common commands:
 | `npm run setup:check` | Check prerequisites and optional tooling without running bootstrap steps. |
 | `npm run dev:doctor` | Validate source and optional Kubernetes tooling. |
 | `npm run dev:setup` | Create missing private development files without overwriting. |
-| `npm run dev` | Run the local Node development profile. |
+| `npm run dev` | Run the local Node profile, detected sibling development providers, and the loopback development hub. |
 | `npm run db:studio` | Open Drizzle Studio for the local development database. |
 | `npm run dev:status` | Inspect dependency and runtime health. |
 | `npm run build` | Type-check and build the web client and server. |
