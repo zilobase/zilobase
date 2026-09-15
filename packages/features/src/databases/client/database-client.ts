@@ -588,7 +588,24 @@ export class SessionDatabaseClient implements DatabaseClient {
           (event.dataSourceId === null ||
             resource.scope.dataSourceId === event.dataSourceId)
         ) {
-          resource.apply(event, this.shouldOrderByKey(resource.scope))
+          let fallback: "apply_failed" | "source_mismatch" | null = null
+          let fallbackError: unknown
+          try {
+            const outcome = resource.apply(
+              event,
+              this.shouldOrderByKey(resource.scope),
+            )
+            if (outcome === "source_mismatch") {
+              fallback = outcome
+            }
+          } catch (error) {
+            fallback = "apply_failed"
+            fallbackError = error
+          }
+          if (fallback) {
+            logRecordApplyFallback(event, resource, fallback, fallbackError)
+            await resource.reset()
+          }
         }
       }
     }
@@ -670,6 +687,24 @@ export class SessionDatabaseClient implements DatabaseClient {
     rememberBounded(ledger.eventIds, event.eventId)
     rememberBounded(ledger.commandIds, event.commandId)
   }
+}
+
+function logRecordApplyFallback(
+  event: DatabaseMutationEventV2,
+  resource: DatabaseRecordCollection,
+  outcome: "apply_failed" | "source_mismatch",
+  error?: unknown,
+) {
+  console.warn(JSON.stringify({
+    code: error instanceof Error ? error.name.slice(0, 64) : undefined,
+    databaseId: event.databaseId,
+    dataSourceId: resource.scope.dataSourceId,
+    event: "database_realtime_collection_apply_fallback",
+    eventId: event.eventId,
+    outcome,
+    version: event.version,
+    viewId: resource.scope.viewId,
+  }))
 }
 
 export function createDatabaseClient(options: DatabaseClientOptions) {

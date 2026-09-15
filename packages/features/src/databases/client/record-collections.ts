@@ -48,12 +48,21 @@ export type DatabaseRecordCollection = {
     rowId: string
     value: unknown
   }): boolean
-  apply(event: DatabaseMutationEventV2, sortByOrderKey: boolean): void
+  apply(
+    event: DatabaseMutationEventV2,
+    sortByOrderKey: boolean,
+  ): DatabaseRecordApplyOutcome
   cleanup(): Promise<void>
   getLatestWindow(): DatabaseRecordWindowResponse | undefined
   reset(): Promise<void>
   settleCellOverlay(commandId: string): void
 }
+
+export type DatabaseRecordApplyOutcome =
+  | "applied"
+  | "collection_unavailable"
+  | "no_record_changes"
+  | "source_mismatch"
 
 type CellOverlay = {
   commandId: string
@@ -156,11 +165,21 @@ export function createDatabaseRecordCollection(options: {
       return true
     },
     apply(event, sortByOrderKey) {
-      if (records.status === "idle" || records.status === "cleaned-up") return
+      if (records.status === "idle" || records.status === "cleaned-up") {
+        return "collection_unavailable"
+      }
       if (
         !event.changes.records?.length &&
         !event.changes.removedRecordIds?.length
-      ) return
+      ) return "no_record_changes"
+      const incomingRecords = (event.changes.records ?? []).filter(
+        (entity) => entity.dataSourceId === options.scope.dataSourceId,
+      )
+      if (
+        event.changes.records?.length &&
+        incomingRecords.length === 0 &&
+        !event.changes.removedRecordIds?.length
+      ) return "source_mismatch"
       const removed = new Set(event.changes.removedRecordIds ?? [])
       for (const id of removed) cellOverlays.delete(id)
       const current = new Map<string, WindowedDatabaseRecord>(
@@ -179,8 +198,7 @@ export function createDatabaseRecordCollection(options: {
         ...[...current.values()].map((record) => record.__windowIndex),
       ) + 1
       let added = 0
-      for (const entity of event.changes.records ?? []) {
-        if (entity.dataSourceId !== options.scope.dataSourceId) continue
+      for (const entity of incomingRecords) {
         const existing = current.get(entity.id)
         const overlayState = cellOverlays.get(entity.id)
         if (overlayState) {
@@ -244,6 +262,7 @@ export function createDatabaseRecordCollection(options: {
           ),
         }
       }
+      return "applied"
     },
     cleanup: () => records.cleanup(),
     getLatestWindow: () => latestWindow,

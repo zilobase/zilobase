@@ -19,6 +19,7 @@ import {
 import {
   databaseResetStatements,
   effectiveProfile,
+  nodeApiArguments,
   resolveLocalProfileNames,
   resolveStudioServices,
   runtimeEnvironment,
@@ -63,6 +64,16 @@ test("the Node profile disables demo seeding", () => {
     profileEnvironment(localProfiles.node, dependencies).MEETING_BLOCK_ENABLED,
     "true",
   );
+});
+
+test("local Node API watches server, database client, and migration changes", () => {
+  const args = nodeApiArguments(localProfiles.node);
+
+  assert.ok(args.some((argument) => argument.endsWith("tsx/dist/cli.mjs")));
+  assert.ok(args.includes("watch"));
+  assert.ok(args.includes("drizzle/**/*.sql"));
+  assert.ok(args.includes("../../packages/features/src/databases/**/*.ts"));
+  assert.equal(args.at(-1), "src/entrypoints/serverful.ts");
 });
 
 test("setup migrates the obsolete generated Node demo default", async () => {

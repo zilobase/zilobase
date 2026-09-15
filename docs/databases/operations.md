@@ -109,6 +109,7 @@ drag-to-paint timing. Metrics and logs must never contain property values.
 
 | Symptom | Checks and recovery |
 | --- | --- |
+| Presence works but collaborator cells remain stale | Presence and mutation delivery share a socket but have separate paths. Confirm `runtime.startup` reports `zilobase.database.v2` and the current schema target, then inspect `background.node_lane_operation` for `database_realtime` or the Cloud Queue/DO path. In local development, restart `npm run dev`; the supervised API now watches server/database-client/migration changes and migrates before listening. |
 | Commands commit but cards update late on other clients | Compare commit and enqueue latency, then inspect outbox backlog/oldest age and the background worker. Leave rows for the recovery sweep. |
 | Split Node roles are not ready | Configure one reachable `REALTIME_REDIS_URL` for every API and worker process. A single `all` process may intentionally run without Redis. |
 | Frequent `WINDOW_STALE` responses | Occasional conflicts are normal during active sorting, filtering, or writes. A sustained rate suggests a refetch loop or rapidly changing view configuration. |

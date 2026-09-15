@@ -7,6 +7,7 @@ import {
   DATABASE_REALTIME_HEARTBEAT_MS,
   DATABASE_REALTIME_PING,
   reconnectDelay,
+  parseDatabaseRealtimeServerMessage,
   samePresence,
   ticketFailureAction,
   type DatabasePresenceCollaborator,
@@ -104,4 +105,31 @@ test("ticket failures stop only for permanent authorization and lookup errors", 
   }
 
   assert.equal(ticketFailureAction(new TypeError("Failed to fetch")), "retry")
+})
+
+test("database realtime control messages require protocol v2", () => {
+  assert.deepEqual(
+    parseDatabaseRealtimeServerMessage(JSON.stringify({
+      databaseId: "database-1",
+      peers: [],
+      protocolVersion: 1,
+      sessionId: "session-1",
+      type: "realtime.ready",
+      version: 4,
+    })),
+    { ok: false, reason: "protocol_mismatch" },
+  )
+
+  const parsed = parseDatabaseRealtimeServerMessage(JSON.stringify({
+    databaseId: "database-1",
+    databaseVersion: 4,
+    peers: [],
+    protocolVersion: 2,
+    sessionId: "session-1",
+    type: "realtime.ready",
+  }))
+  assert.equal(parsed.ok, true)
+  if (parsed.ok && parsed.message.type === "realtime.ready") {
+    assert.equal(parsed.message.databaseVersion, 4)
+  }
 })

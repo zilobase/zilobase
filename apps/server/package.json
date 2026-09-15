@@ -22,8 +22,8 @@
     }
   },
   "scripts": {
-    "dev": "AI_DEV_TOOLS_ENABLED=true AI_AGENT_DAILY_USAGE_LIMITS_ENABLED=false ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tsx src/entrypoints/serverful.ts",
-    "dev:node": "AI_DEV_TOOLS_ENABLED=true AI_AGENT_DAILY_USAGE_LIMITS_ENABLED=false ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tsx src/entrypoints/serverful.ts",
+    "dev": "AI_DEV_TOOLS_ENABLED=true AI_AGENT_DAILY_USAGE_LIMITS_ENABLED=false ZILOBASE_AUTO_MIGRATE=true ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tsx watch --include 'drizzle/**/*.sql' --include '../../packages/features/src/databases/**/*.ts' src/entrypoints/serverful.ts",
+    "dev:node": "AI_DEV_TOOLS_ENABLED=true AI_AGENT_DAILY_USAGE_LIMITS_ENABLED=false ZILOBASE_AUTO_MIGRATE=true ZILOBASE_ENV_FILE=../../.env.development dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tsx watch --include 'drizzle/**/*.sql' --include '../../packages/features/src/databases/**/*.ts' src/entrypoints/serverful.ts",
     "build": "npm run tokens:check --prefix ../.. && npm run typecheck",
     "build:node": "npm run tokens:check --prefix ../.. && npm run typecheck",
     "typecheck": "tsc --noEmit",

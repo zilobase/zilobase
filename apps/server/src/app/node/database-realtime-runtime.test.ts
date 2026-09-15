@@ -37,8 +37,10 @@ test("serverful database rooms broadcast presence and versioned mutations", asyn
       second.next("realtime.ready"),
     ]);
 
-    assert.equal(firstReady.version, 3);
-    assert.equal(secondReady.version, 3);
+    assert.equal(firstReady.databaseVersion, 3);
+    assert.equal(secondReady.databaseVersion, 3);
+    assert.equal(firstReady.protocolVersion, 2);
+    assert.equal(secondReady.protocolVersion, 2);
     assert.equal(first.websocket.protocol, DATABASE_REALTIME_PROTOCOL);
 
     first.send({
@@ -47,6 +49,7 @@ test("serverful database rooms broadcast presence and versioned mutations", asyn
     });
 
     const presence = await second.next("presence.update");
+    assert.equal(presence.protocolVersion, 2);
     assert.equal(presence.collaborator.sessionId, firstTicket.sessionId);
     assert.deepEqual(presence.collaborator.presence, {
       columnKey: "status",
@@ -65,6 +68,7 @@ test("serverful database rooms broadcast presence and versioned mutations", asyn
 
     first.websocket.close();
     const cleared = await second.next("presence.clear");
+    assert.equal(cleared.protocolVersion, 2);
     assert.equal(cleared.sessionId, firstTicket.sessionId);
   } finally {
     first.websocket.close();
@@ -90,7 +94,7 @@ test("serverful database rooms keep the socket open for heartbeat pings", async 
   }
 });
 
-test("serverful database rooms ignore stale mutation deliveries", async () => {
+test("a ticket watermark cannot suppress a delayed mutation delivery", async () => {
   const fixture = await startFixture();
   const ticket = await createTicket("user-1", 8);
   const client = new RealtimeClient(fixture.url, ticket.token);
@@ -99,11 +103,7 @@ test("serverful database rooms ignore stale mutation deliveries", async () => {
     await client.opened;
     await client.next("realtime.ready");
     await fixture.runtime.publishMutation(mutationEvent("stale-mutation", 7));
-
-    await assert.rejects(
-      client.next("database.mutation", 100),
-      /Timed out/,
-    );
+    assert.equal((await client.next("database.mutation")).version, 7);
   } finally {
     client.websocket.close();
     await fixture.close();
@@ -204,7 +204,7 @@ test("database rooms suppress duplicate versions and preserve catch-up position 
     try {
       await reconnected.opened;
       const ready = await reconnected.next("realtime.ready");
-      assert.equal(ready.version, 2);
+      assert.equal(ready.databaseVersion, 2);
 
       await fixture.runtime.publishMutation(mutationEvent("duplicate-version", 2));
       await assert.rejects(

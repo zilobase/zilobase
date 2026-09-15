@@ -77,24 +77,24 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv) {
       await runWithDbEnv(env, async () => {
         const concurrency = laneConcurrency(env, lane);
         if (lane === "fast") {
-          await Promise.allSettled([
-            drainDatabaseAutomationEventWindows(env, { limit: concurrency * 4, workerId: `${workerId}:events` }),
-            drainDatabaseRealtimeOutbox(env, { limit: concurrency * 8 }),
-            drainNavigationRealtimeOutbox(env, { limit: concurrency * 8 }),
-            drainInProductNotificationOutbox(env, { limit: concurrency * 8 }),
+          await settleLaneOperations(lane, [
+            { name: "database_automation_events", run: () => drainDatabaseAutomationEventWindows(env, { limit: concurrency * 4, workerId: `${workerId}:events` }) },
+            { name: "database_realtime", run: () => drainDatabaseRealtimeOutbox(env, { limit: concurrency * 8 }) },
+            { name: "navigation_realtime", run: () => drainNavigationRealtimeOutbox(env, { limit: concurrency * 8 }) },
+            { name: "in_product_notifications", run: () => drainInProductNotificationOutbox(env, { limit: concurrency * 8 }) },
           ]);
         } else if (lane === "automation") {
-          await Promise.allSettled([
-            drainDatabaseAutomationRuns(env, { limit: concurrency, workerId: `${workerId}:automation` }),
-            drainAgentRuns(env, { limit: concurrency, workerId: `${workerId}:agent` }),
+          await settleLaneOperations(lane, [
+            { name: "database_automations", run: () => drainDatabaseAutomationRuns(env, { limit: concurrency, workerId: `${workerId}:automation` }) },
+            { name: "agent_runs", run: () => drainAgentRuns(env, { limit: concurrency, workerId: `${workerId}:agent` }) },
           ]);
         } else if (lane === "ai") {
           await runAiJobBatch({ env, handlers: AI_JOB_HANDLERS, limit: concurrency, workerId: `${workerId}:ai` });
         } else {
-          await Promise.allSettled([
-            advancePendingCalendars(env),
-            advancePendingMailIndexes(env, concurrency),
-            drainMailDatabaseSyncOutbox(env, { limit: concurrency, workerId: `${workerId}:mail` }),
+          await settleLaneOperations(lane, [
+            { name: "calendar_sync", run: () => advancePendingCalendars(env) },
+            { name: "mail_index", run: () => advancePendingMailIndexes(env, concurrency) },
+            { name: "mail_database_sync", run: () => drainMailDatabaseSyncOutbox(env, { limit: concurrency, workerId: `${workerId}:mail` }) },
           ]);
         }
         const next = await nextLaneDueAt(lane);
@@ -221,6 +221,25 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv) {
       running = false;
     },
   };
+}
+
+async function settleLaneOperations(
+  lane: BackgroundLane,
+  operations: Array<{ name: string; run: () => Promise<unknown> }>,
+) {
+  const results = await Promise.allSettled(
+    operations.map((operation) => Promise.resolve().then(operation.run)),
+  );
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled") return;
+    console.warn(JSON.stringify({
+      code: boundedErrorCode(result.reason),
+      event: "background.node_lane_operation",
+      lane,
+      operation: operations[index]?.name ?? "unknown",
+      outcome: "failed",
+    }));
+  });
 }
 
 export async function publishNodeBackgroundNotification(

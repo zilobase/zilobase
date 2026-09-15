@@ -174,3 +174,58 @@ test("record descriptors and page sizes include the complete business scope", as
   )
   await client.cleanup()
 })
+
+test("a realtime cell event directly updates a loaded record collection", async () => {
+  const resource = createDatabaseRecordCollection({
+    apiFetch: async () => windowResponse(0, 1, "snapshot-1") as never,
+    pageSize: 25,
+    queryClient: new QueryClient(),
+    scope,
+    sessionId: "session-1",
+  })
+  resource.records._sync.startSync()
+  await resource.records._sync.loadSubset({ limit: 1, offset: 0 })
+  let notifications = 0
+  const subscription = resource.records.subscribeChanges(() => {
+    notifications += 1
+  }, { includeInitialState: false })
+  const timestamp = "2026-09-15T00:00:00.000Z"
+  const updated = {
+    ...record(0),
+    updatedAt: timestamp,
+    valuesByPropertyId: {
+      "property-status": {
+        createdAt: timestamp,
+        id: "value-1",
+        pageId: "page-0",
+        propertyId: "property-status",
+        updatedAt: timestamp,
+        value: "Done",
+      },
+    },
+  }
+
+  assert.equal(resource.apply({
+    actorId: "collaborator-2",
+    areas: ["records"],
+    changes: { records: [updated] },
+    commandId: "command-4",
+    committedAt: timestamp,
+    databaseId: scope.databaseId,
+    dataSourceId: scope.dataSourceId,
+    eventId: "event-4",
+    protocolVersion: 2,
+    type: "database.mutation",
+    version: 4,
+  }, false), "applied")
+  assert.equal(
+    resource.records.state.get("row-0")?.valuesByPropertyId[
+      "property-status"
+    ]?.value,
+    "Done",
+  )
+  assert.ok(notifications > 0)
+
+  subscription.unsubscribe()
+  await resource.cleanup()
+})

@@ -243,7 +243,7 @@ class DatabaseRealtimeManager {
 
       socket.addEventListener("message", (message) => {
         if (this.socket !== socket) return
-        this.handleMessage(message.data)
+        this.handleMessage(message.data, socket)
       })
       socket.addEventListener("close", () => {
         if (this.socket !== socket) return
@@ -280,10 +280,23 @@ class DatabaseRealtimeManager {
     )
   }
 
-  private handleMessage(data: unknown) {
-    const message = parseMessage(data)
+  private handleMessage(data: unknown, socket: WebSocket) {
+    const parsed = parseDatabaseRealtimeServerMessage(data)
 
-    if (!message || message.databaseId !== this.databaseId) return
+    if (!parsed.ok) {
+      if (parsed.reason === "protocol_mismatch") {
+        console.warn(JSON.stringify({
+          databaseId: this.databaseId,
+          event: "database_realtime_protocol_mismatch",
+          expectedProtocolVersion: 2,
+        }))
+        closeRealtimeSocket(socket, 1012, "Database realtime protocol changed")
+      }
+      return
+    }
+    const message = parsed.message
+
+    if (message.databaseId !== this.databaseId) return
 
     if (message.type === "database.mutation") {
       void this.ingestMutation(message).catch(() => undefined)
@@ -293,9 +306,7 @@ class DatabaseRealtimeManager {
     if (message.type === "realtime.ready") {
       this.sessionId = message.sessionId
       this.reconnectAttempt = 0
-      if (typeof message.version === "number") {
-        this.recoverIfBehind(message.version)
-      }
+      this.recoverIfBehind(message.databaseVersion)
       this.setCollaborators(message.peers)
       this.setState({ ...this.state, status: "connected" })
       this.startHeartbeat()
@@ -685,59 +696,82 @@ function getManager(
   return manager
 }
 
-function parseMessage(data: unknown): RealtimeServerMessage | null {
-  if (typeof data !== "string") return null
+export type DatabaseRealtimeServerMessageParseResult =
+  | { message: RealtimeServerMessage; ok: true }
+  | { ok: false; reason: "invalid" | "protocol_mismatch" }
+
+export function parseDatabaseRealtimeServerMessage(
+  data: unknown,
+): DatabaseRealtimeServerMessageParseResult {
+  if (typeof data !== "string") return { ok: false, reason: "invalid" }
 
   try {
     const value = JSON.parse(data) as unknown
-    if (!value || typeof value !== "object") return null
+    if (!value || typeof value !== "object") {
+      return { ok: false, reason: "invalid" }
+    }
     const message = value as Record<string, unknown>
+    const isKnownServerMessage = message.type === "database.mutation" ||
+      message.type === "realtime.ready" ||
+      message.type === "presence.update" ||
+      message.type === "presence.clear"
 
-    if (message.type === "database.mutation" &&
-      message.protocolVersion === 2) {
+    if (isKnownServerMessage && message.protocolVersion !== 2) {
+      return { ok: false, reason: "protocol_mismatch" }
+    }
+
+    if (message.type === "database.mutation") {
       const parsed = databaseMutationEventV2Schema.safeParse(value)
-      return parsed.success ? parsed.data : null
+      return parsed.success
+        ? { message: parsed.data, ok: true }
+        : { ok: false, reason: "invalid" }
     }
 
     if (message.type === "realtime.ready" &&
       typeof message.databaseId === "string" &&
+      typeof message.databaseVersion === "number" &&
+      Number.isSafeInteger(message.databaseVersion) &&
+      message.databaseVersion >= 0 &&
       typeof message.sessionId === "string" &&
       Array.isArray(message.peers)) {
-      return message as RealtimeReadyMessage
+      return { message: message as RealtimeReadyMessage, ok: true }
     }
 
     if (message.type === "presence.update" &&
       typeof message.databaseId === "string" &&
       message.collaborator && typeof message.collaborator === "object") {
-      return message as PresenceUpdateMessage
+      return { message: message as PresenceUpdateMessage, ok: true }
     }
 
     if (message.type === "presence.clear" &&
       typeof message.databaseId === "string" &&
       typeof message.sessionId === "string") {
-      return message as PresenceClearMessage
+      return { message: message as PresenceClearMessage, ok: true }
     }
 
-    return null
+    return { ok: false, reason: "invalid" }
   } catch {
-    return null
+    return { ok: false, reason: "invalid" }
   }
 }
 
 type RealtimeReadyMessage = {
+  databaseVersion: number
   databaseId: string
   peers: Array<Omit<DatabasePresenceCollaborator, "color">>
+  protocolVersion: 2
   sessionId: string
   type: "realtime.ready"
-  version?: number
 }
 type PresenceUpdateMessage = {
   collaborator: Omit<DatabasePresenceCollaborator, "color">
   databaseId: string
+  protocolVersion: 2
   type: "presence.update"
 }
 type PresenceClearMessage = {
   databaseId: string
+  protocolVersion: 2
   sessionId: string
   type: "presence.clear"
 }

@@ -46,7 +46,7 @@ type SocketAttachment = {
 };
 
 type DatabaseRoom = {
-  latestVersion: number;
+  lastPublishedVersion: number;
   peers: Set<Peer>;
   remotePresence: Map<string, DatabaseCollaborator>;
   subscription?: Promise<void>;
@@ -81,6 +81,7 @@ export function attachNodeDatabaseRealtimeRuntime(
     { count: number; startedAt: number }
   >();
   const rooms = new Map<string, DatabaseRoom>();
+  const publishedVersions = new Map<string, number>();
   const connectionLimiter = createConnectionLimiter(
     options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
   );
@@ -179,26 +180,30 @@ export function attachNodeDatabaseRealtimeRuntime(
         };
         attachments.set(peer, attachment);
 
-        const room = getOrCreateRoom(rooms, context.databaseId);
+        const room = getOrCreateRoom(
+          rooms,
+          context.databaseId,
+          publishedVersions,
+        );
         await ensureRoomSubscription(
           room,
           context.databaseId,
           realtimeBus,
           attachments,
+          publishedVersions,
         );
         pruneExpiredPeers(room, attachments, realtimeBus);
-        room.latestVersion = Math.max(
-          room.latestVersion,
-          context.claims.version ?? 0,
-        );
         room.peers.add(peer);
         peer.send(JSON.stringify({
+          databaseVersion: Math.max(
+            room.lastPublishedVersion,
+            context.claims.version ?? 0,
+          ),
           databaseId: context.databaseId,
           peers: readPeers(room, peer, attachments),
-          protocolVersion: 1,
+          protocolVersion: 2,
           sessionId: context.claims.sessionId,
           type: "realtime.ready",
-          version: room.latestVersion,
         }));
       },
       async message(peer, rawMessage) {
@@ -302,11 +307,12 @@ export function attachNodeDatabaseRealtimeRuntime(
     async publishMutation(event: DatabaseMutationEventV2) {
       validateMutationEvent(event);
 
-      const room = getOrCreateRoom(rooms, event.databaseId);
+      const room = getOrCreateRoom(rooms, event.databaseId, publishedVersions);
 
-      if (event.version <= room.latestVersion) return;
+      if (event.version <= room.lastPublishedVersion) return;
 
-      room.latestVersion = event.version;
+      room.lastPublishedVersion = event.version;
+      publishedVersions.set(event.databaseId, event.version);
       pruneExpiredPeers(room, attachments, realtimeBus);
       broadcast(room, event, attachments);
       await realtimeBus?.publish(databaseRealtimeChannel(event.databaseId), event);
@@ -451,7 +457,7 @@ function updatePresence(
   const event = {
     collaborator: toCollaborator(attachment),
     databaseId: attachment.databaseId,
-    protocolVersion: 1,
+    protocolVersion: 2,
     type: "presence.update",
   };
   broadcast(room, event, attachments, peer);
@@ -476,7 +482,7 @@ function clearPresence(
 
   const event = {
     databaseId: attachment.databaseId,
-    protocolVersion: 1,
+    protocolVersion: 2,
     sessionId: attachment.claims.sessionId,
     type: "presence.clear",
   };
@@ -563,7 +569,7 @@ function pruneExpiredPeers(
         delete attachment.updatedAt;
         const event = {
           databaseId: attachment.databaseId,
-          protocolVersion: 1,
+          protocolVersion: 2,
           sessionId: attachment.claims.sessionId,
           type: "presence.clear",
         };
@@ -596,11 +602,16 @@ function consumeMessageAllowance(
 function getOrCreateRoom(
   rooms: Map<string, DatabaseRoom>,
   databaseId: string,
+  publishedVersions: Map<string, number>,
 ) {
   let room = rooms.get(databaseId);
 
   if (!room) {
-    room = { latestVersion: 0, peers: new Set(), remotePresence: new Map() };
+    room = {
+      lastPublishedVersion: publishedVersions.get(databaseId) ?? 0,
+      peers: new Set(),
+      remotePresence: new Map(),
+    };
     rooms.set(databaseId, room);
   }
 
@@ -612,11 +623,18 @@ async function ensureRoomSubscription(
   databaseId: string,
   realtimeBus: NodeRealtimeBus | null,
   attachments: WeakMap<Peer, SocketAttachment>,
+  publishedVersions: Map<string, number>,
 ) {
   if (!realtimeBus || room.unsubscribe) return;
   room.subscription ??= realtimeBus
     .subscribe(databaseRealtimeChannel(databaseId), (payload) => {
-      receiveRealtimeBusMessage(room, databaseId, payload, attachments);
+      receiveRealtimeBusMessage(
+        room,
+        databaseId,
+        payload,
+        attachments,
+        publishedVersions,
+      );
     })
     .then((unsubscribe) => {
       room.unsubscribe = unsubscribe;
@@ -633,6 +651,7 @@ function receiveRealtimeBusMessage(
   databaseId: string,
   payload: unknown,
   attachments: WeakMap<Peer, SocketAttachment>,
+  publishedVersions: Map<string, number>,
 ) {
   if (!payload || typeof payload !== "object") return;
   const message = payload as Record<string, unknown>;
@@ -645,13 +664,14 @@ function receiveRealtimeBusMessage(
       return;
     }
     const event = payload;
-    if (event.version <= room.latestVersion) return;
-    room.latestVersion = event.version;
+    if (event.version <= room.lastPublishedVersion) return;
+    room.lastPublishedVersion = event.version;
+    publishedVersions.set(databaseId, event.version);
     broadcast(room, event, attachments);
     return;
   }
 
-  if (message.protocolVersion !== 1) return;
+  if (message.protocolVersion !== 2) return;
 
   if (message.type === "presence.update" && isCollaborator(message.collaborator)) {
     room.remotePresence.set(message.collaborator.sessionId, message.collaborator);
@@ -675,7 +695,7 @@ function publishPresenceHeartbeat(
   publishRealtimeBus(realtimeBus, attachment.databaseId, {
     collaborator: toCollaborator(attachment),
     databaseId: attachment.databaseId,
-    protocolVersion: 1,
+    protocolVersion: 2,
     type: "presence.update",
   });
 }

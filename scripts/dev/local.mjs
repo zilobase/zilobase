@@ -47,6 +47,20 @@ export function resolveStudioServices() {
   }));
 }
 
+export function nodeApiArguments(profile) {
+  return [
+    `--inspect=127.0.0.1:${profile.inspectorPort}`,
+    "--enable-source-maps",
+    path.join(coreDir, "node_modules", "tsx", "dist", "cli.mjs"),
+    "watch",
+    "--include",
+    "drizzle/**/*.sql",
+    "--include",
+    "../../packages/features/src/databases/**/*.ts",
+    "src/entrypoints/serverful.ts",
+  ];
+}
+
 export function studioBrowserUrl(port) {
   const url = new URL("https://local.drizzle.studio");
   if (port !== localProfiles.node.studioPort) {
@@ -162,19 +176,14 @@ async function spawnNodeProfile(profile, environment, logDir, spawnWebFn, color)
     spawnService(
       "node-api",
       process.execPath,
-      [
-        `--inspect=127.0.0.1:${profile.inspectorPort}`,
-        "--enable-source-maps",
-        "--import",
-        "tsx",
-        "src/entrypoints/serverful.ts",
-      ],
+      nodeApiArguments(profile),
       {
         cwd: path.join(coreDir, "apps", "server"),
         logFile: path.join(logDir, "node-api.log"),
         env: {
           ...env,
           PORT: String(profile.apiPort),
+          ZILOBASE_AUTO_MIGRATE: "true",
           AI_DEV_TOOLS_ENABLED: "true",
           AI_AGENT_DAILY_USAGE_LIMITS_ENABLED: "false",
         },
