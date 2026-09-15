@@ -60,8 +60,23 @@
     @apply leading-7 text-content-primary;
   }
 
-  /* Horizontal inset inside blocks so selection fills padded area, not just text. */
-  .tiptap-editor > :is(p, h1, h2, h3, h4, h5, h6) {
+  /* Keep top-level content blocks on the same horizontal content line. */
+  .tiptap-editor > :is(
+      p,
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      .node-imageBlock,
+      .node-videoBlock,
+      .node-embedBlock,
+      .node-fileBlock,
+      .node-bookmarkBlock,
+      .node-askAiBlock,
+      .node-pageBlock
+    ) {
     @apply px-3;
   }
 
