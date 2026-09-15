@@ -38,6 +38,7 @@ test("property and view glyphs use native-type fallbacks without colors", () => 
 
   const svg = buildAgentGlyphSvg("place")
   assert.match(svg, /data-icon-library="phosphor"/)
+  assert.match(svg, /data-icon-weight="fill"/)
   assert.doesNotMatch(svg, /data-icon-color=/)
 })
 
@@ -54,5 +55,6 @@ test("explicit validated icon choices win and render sanitized stored SVG", () =
   assert.match(svg, /^<svg /)
   assert.match(svg, /data-icon-color="pink"/)
   assert.match(svg, /data-icon-library="phosphor"/)
+  assert.match(svg, /data-icon-weight="fill"/)
   assert.doesNotMatch(svg, /<script|onload=|javascript:/i)
 })

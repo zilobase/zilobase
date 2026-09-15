@@ -19,6 +19,7 @@ export function register({ readSource, assert, test }) {
     const databasePageLinkSource = await readSource("/src/features/databases/interactions/database-page-link.tsx")
     const appIconProviderSource = await readSource("/src/shared/components/app-icon-provider.tsx")
     const iconPickerSource = await readSource("/src/shared/ui/icon-emoji-picker.tsx")
+    const phosphorIconPickerSource = await readSource("/src/shared/ui/phosphor-icon-picker.tsx")
 
     assert.doesNotMatch(sidebarSource, /ZilobaseLogo|SidebarThemeSwitcher|SidebarTrigger/)
     assert.doesNotMatch(sidebarSource, /<NewMenu/)
@@ -48,7 +49,9 @@ export function register({ readSource, assert, test }) {
     assert.match(defaultIconsSource, /viewBox="0 0 256 256"/)
     assert.equal(defaultIconsSource.match(/buildPhosphorFallbackIcon\(/g)?.length, 4)
     assert.match(appIconProviderSource, /weight: "bold"/)
-    assert.match(iconPickerSource, /useState<PhosphorPickerWeight>\("bold"\)/)
+    assert.doesNotMatch(iconPickerSource, /Icon weight|PhosphorPickerWeight|iconWeight/)
+    assert.equal(phosphorIconPickerSource.match(/weight="fill"/g)?.length, 2)
+    assert.doesNotMatch(phosphorIconPickerSource, /PhosphorPickerWeight/)
     assert.doesNotMatch(defaultIconsSource, /stroke-width=/)
     assert.match(pageIconSource, /export function DefaultPageIcon/)
     assert.match(pageIconSource, /getPageEmoji\(page\) \?\? DEFAULT_PAGE_ITEM_ICON/)

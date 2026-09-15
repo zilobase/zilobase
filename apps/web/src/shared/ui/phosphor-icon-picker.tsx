@@ -11,8 +11,6 @@ import {
 import { cn } from "@/shared/lib/utils"
 import { buildStoredSvgFromRenderedSvg } from "@/shared/lib/page-icon-utils"
 
-export type PhosphorPickerWeight = "bold" | "fill"
-
 type PhosphorCatalogEntry = {
   Icon: React.LazyExoticComponent<Icon>
   label: string
@@ -53,7 +51,6 @@ const phosphorCatalog = Object.entries(iconModules)
 type PhosphorIconPickerProps = {
   className?: string
   onIconSelect: (svg: string) => void
-  weight: PhosphorPickerWeight
 }
 
 const ICON_BATCH_SIZE = 72
@@ -61,7 +58,6 @@ const ICON_BATCH_SIZE = 72
 export function PhosphorIconPicker({
   className,
   onIconSelect,
-  weight,
 }: PhosphorIconPickerProps) {
   const [query, setQuery] = React.useState("")
   const [visibleCount, setVisibleCount] = React.useState(ICON_BATCH_SIZE)
@@ -128,7 +124,6 @@ export function PhosphorIconPicker({
                 icon={icon}
                 key={icon.name}
                 onIconSelect={onIconSelect}
-                weight={weight}
               />
             ))}
           </div>
@@ -144,11 +139,9 @@ export function PhosphorIconPicker({
 function PhosphorIconOption({
   icon,
   onIconSelect,
-  weight,
 }: {
   icon: PhosphorCatalogEntry
   onIconSelect: (svg: string) => void
-  weight: PhosphorPickerWeight
 }) {
   const { Icon } = icon
 
@@ -162,7 +155,7 @@ function PhosphorIconOption({
           type="button"
         >
           <React.Suspense fallback={<span className="size-5" />}>
-            <Icon aria-hidden className="size-5" weight={weight} />
+            <Icon aria-hidden className="size-5" weight="fill" />
           </React.Suspense>
         </button>
       </DropdownMenuTrigger>
@@ -190,7 +183,7 @@ function PhosphorIconOption({
           }}
           preview={
             <React.Suspense fallback={<span className="size-5" />}>
-              <Icon aria-hidden weight={weight} />
+              <Icon aria-hidden weight="fill" />
             </React.Suspense>
           }
         />
