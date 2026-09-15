@@ -252,7 +252,7 @@ function PagePaneControls({
     : resolveEmbeddedItemsOpenAs(page, userSettings.embeddedItemsOpenAs);
   const rowDatabaseId = pageId ? rowNavigationDatabaseId : null;
   const isDialogPane = !onClose;
-  const rowPageIds = useRowNavigationPageIds(rowDatabaseId);
+  const rowPageIds = useRowNavigationPageIds(rowDatabaseId ?? null);
   const { nextRowPageId, previousRowPageId } = useMemo(() => {
     const currentRowIndex = pageId ? rowPageIds.indexOf(pageId) : -1;
 
