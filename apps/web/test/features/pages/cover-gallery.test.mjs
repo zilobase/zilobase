@@ -3,7 +3,6 @@ export function register({ assert, loadModule, readSource, test }) {
     const {
       buildCoverGalleryDataUrl,
       buildRandomCoverGalleryDataUrl,
-      coverGalleryPresets,
       parseCoverGalleryDataUrl,
     } = await loadModule("/src/features/pages/images/cover-gallery.ts")
     const configs = [
@@ -35,11 +34,19 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.equal(parseCoverGalleryDataUrl("https://example.com/cover.png"), null)
     assert.equal(
       buildRandomCoverGalleryDataUrl(() => 0),
-      buildCoverGalleryDataUrl(coverGalleryPresets[0]),
+      buildCoverGalleryDataUrl({ color: "#1D4ED8", kind: "solid" }),
     )
     assert.equal(
       buildRandomCoverGalleryDataUrl(() => 1),
-      buildCoverGalleryDataUrl(coverGalleryPresets.at(-1)),
+      buildCoverGalleryDataUrl({
+        amplitude: 50,
+        angle: 12,
+        backgroundColor: "#431407",
+        dotSize: 2,
+        foregroundColor: "#FDBA74",
+        frequency: 8,
+        kind: "dither",
+      }),
     )
   })
 

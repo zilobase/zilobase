@@ -57,7 +57,7 @@ export const ditherCoverPresets: DitherCoverConfig[] = [
   { amplitude: 50, angle: 12, backgroundColor: "#431407", dotSize: 2, foregroundColor: "#FDBA74", frequency: 8, kind: "dither" },
 ]
 
-export const coverGalleryPresets: CoverGalleryConfig[] = [
+const coverGalleryPresets: CoverGalleryConfig[] = [
   ...solidCoverPresets,
   ...gradientCoverPresets,
   ...ditherCoverPresets,
@@ -81,7 +81,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value)
 }
 
-export function normalizeCoverGalleryConfig(value: unknown): CoverGalleryConfig {
+function normalizeCoverGalleryConfig(value: unknown): CoverGalleryConfig {
   if (!isRecord(value)) return defaultCoverGalleryConfig
 
   if (value.kind === "solid") {

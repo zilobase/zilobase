@@ -20,8 +20,11 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
 import { Editor } from "@/features/editor"
-import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
-import { useDatabaseIdForRowPage, useDatabaseRecords } from "@zilobase/features/databases/react";
+import {
+  useDatabaseBootstrap,
+  useDatabaseIdForRowPage,
+  useDatabaseRecords,
+} from "@zilobase/features/databases/react";
 import {
   getPageCover,
   getPageEmoji,
@@ -188,11 +191,12 @@ function LayoutEditor({
     resolved?.databaseId ??
     cachedRowDatabaseId ??
     navigationRowDatabaseId
-  const { data: databaseMetadata, isLoading: metadataLoading } =
-    useDatabaseMetadata(databaseId)
-  const previewView = databaseMetadata?.views.find(
-    (view) => view.dataSourceId === databaseMetadata.activeDataSource?.id,
-  ) ?? databaseMetadata?.views[0]
+  const databaseBootstrap = useDatabaseBootstrap(
+    databaseId ? { databaseId } : null,
+  )
+  const databaseMetadata = databaseBootstrap.data
+  const metadataLoading = databaseBootstrap.status === "loading"
+  const previewView = databaseMetadata?.views[0]
   const databaseRecords = useDatabaseRecords(
     databaseId && previewView
       ? {

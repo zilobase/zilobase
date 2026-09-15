@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
 import {
   ChevronDown,
@@ -37,8 +37,10 @@ import { libraryViewIcons, mailViewIcons } from "@/features/sidebar";
 import { libraryViewLabels, mailViewLabels } from "@/features/sidebar";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useAiAgentProfile } from "@zilobase/features/ai-chat/react";
-import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
-import { useDatabaseSecondaryPayload } from "@/features/databases/hooks/use-database-secondary-payload"
+import {
+  useDatabaseBootstrap,
+  useDatabaseRecords,
+} from "@zilobase/features/databases/react";
 import { useMeeting } from "@zilobase/features/meetings/react";
 import { useTeamspaces } from "@zilobase/features/teamspaces/react";
 import {
@@ -184,6 +186,47 @@ export function PageSidePaneCollapseButton({
   );
 }
 
+function useRowNavigationPageIds(databaseId: string | null) {
+  const databaseBootstrap = useDatabaseBootstrap(
+    databaseId ? { databaseId } : null,
+  );
+  const view = databaseBootstrap.data?.views[0] ?? null;
+  const records = useDatabaseRecords(
+    databaseId && view
+      ? {
+          databaseId,
+          dataSourceId: view.dataSourceId,
+          viewId: view.id,
+        }
+      : null,
+  );
+
+  useEffect(() => {
+    if (
+      records.status !== "success" ||
+      !records.hasMore ||
+      records.isFetchingNextPage
+    ) {
+      return;
+    }
+    void records.fetchNextPage();
+  }, [
+    records.fetchNextPage,
+    records.hasMore,
+    records.isFetchingNextPage,
+    records.records.length,
+    records.status,
+  ]);
+
+  return useMemo(
+    () =>
+      records.records
+        .filter((row) => !row.page.deletedAt)
+        .map((row) => row.pageId),
+    [records.records],
+  );
+}
+
 function PagePaneControls({
   leadingControl,
   onClose,
@@ -209,17 +252,8 @@ function PagePaneControls({
     : resolveEmbeddedItemsOpenAs(page, userSettings.embeddedItemsOpenAs);
   const rowDatabaseId = pageId ? rowNavigationDatabaseId : null;
   const isDialogPane = !onClose;
-  const { data: rowDatabasePayload } = useDatabaseSecondaryPayload(
-    rowDatabaseId,
-    { loadAll: true },
-  );
+  const rowPageIds = useRowNavigationPageIds(rowDatabaseId);
   const { nextRowPageId, previousRowPageId } = useMemo(() => {
-    const rowPageIds =
-      rowDatabasePayload?.rows
-        .filter((row) => !row.deletedAt)
-        .slice()
-        .sort((first, second) => first.position - second.position)
-        .map((row) => row.pageId) ?? [];
     const currentRowIndex = pageId ? rowPageIds.indexOf(pageId) : -1;
 
     return {
@@ -230,7 +264,7 @@ function PagePaneControls({
           ? rowPageIds[currentRowIndex + 1]
           : null,
     };
-  }, [pageId, rowDatabasePayload?.rows]);
+  }, [pageId, rowPageIds]);
 
   const handleModeSelect = (nextMode: EmbeddedItemsOpenAs) => {
     if (!pageId) {
@@ -544,7 +578,8 @@ function MeetingBreadcrumb({ meetingId }: { meetingId: string }) {
 
 function DatabaseBreadcrumb({ databaseId }: { databaseId: string }) {
   const workspaceId = useActiveWorkspaceId();
-  const { data: payload } = useDatabaseMetadata(databaseId, {
+  const { data: payload } = useDatabaseBootstrap({
+    databaseId,
     includeDeleted: true,
   });
   const { data: navigation } = usePageNavigation(workspaceId);

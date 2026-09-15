@@ -48,6 +48,10 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.doesNotMatch(sidebar, /disabled=\{addRow\.isPending\}/)
     assert.match(layout, /useDatabaseRecords/)
     assert.match(layout, /Load more pages/)
-    assert.match(pane, /function DatabaseBreadcrumb[\s\S]*useDatabaseMetadata/)
+    assert.match(pane, /function DatabaseBreadcrumb[\s\S]*useDatabaseBootstrap/)
+    assert.doesNotMatch(
+      pane,
+      /@\/features\/databases\/hooks\/use-database-/,
+    )
   })
 }
