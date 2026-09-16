@@ -58,7 +58,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(context, /value\.realtimeEnabled !== false/)
   })
 
-  test("database realtime tickets use the host database id", async () => {
+  test("database realtime tickets use the active data source id", async () => {
     const [context, controller] = await Promise.all([
       readSource("/src/features/databases/views/state/database-view-context.tsx"),
       readSource("/src/features/databases/views/controller/use-database-view-controller.tsx"),
@@ -66,9 +66,13 @@ export function register({ readSource, assert, loadModule, test }) {
 
     assert.match(
       context,
-      /useDatabaseRealtime\(value\.hostDatabaseId, \{/,
+      /useDatabaseRealtime\(activeDataSourceId, \{/,
     )
-    assert.doesNotMatch(context, /useDatabaseRealtime\(value\.databaseId, \{/)
+    assert.match(
+      context,
+      /activeDataSourceId = value\.activeView\?\.dataSourceId \?\? null/,
+    )
+    assert.doesNotMatch(context, /useDatabaseRealtime\(value\.hostDatabaseId, \{/)
     assert.match(
       controller,
       /hostDatabaseId: payload\?\.database\.id \?\? databaseId/,
