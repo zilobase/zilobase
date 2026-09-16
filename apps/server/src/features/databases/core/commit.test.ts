@@ -21,6 +21,8 @@ vi.mock("../automations/triggers/event-capture", () => ({
 import {
   commitDatabaseMutation,
   commitDatabaseMutationBatch,
+  commitDataSourceMutation,
+  commitDataSourceMutationBatch,
   DatabaseMutationError,
 } from "./commit";
 import {
@@ -58,7 +60,7 @@ function transactionExecutor(versions: Array<number | null>) {
                   const version = versions.shift();
                   return version === null || version === undefined
                     ? []
-                    : [{ version }];
+                    : [{ parentDatabaseId: "database-owner", version }];
                 },
               };
             },
@@ -353,6 +355,144 @@ test("single mutation exposes its canonical v2 event", async () => {
     type: "database.mutation",
     version: 7,
   });
+});
+
+test("source mutations persist one v3 event without enumerating linking hosts", async () => {
+  const transaction = transactionExecutor([8]);
+
+  const commit = await commitDataSourceMutation(
+    {
+      actorId: "user-1",
+      areas: ["records"],
+      dataSourceId: "source-1",
+    },
+    async () => ({
+      changes: (databaseId: string) => {
+        assert.equal(databaseId, "database-owner");
+        return Promise.resolve({ removedRecordIds: ["row-1"] });
+      },
+    }),
+  );
+
+  assert.deepEqual(commit, {
+    actorId: "user-1",
+    areas: ["records"],
+    changes: { removedRecordIds: ["row-1"] },
+    commandId: commit.eventId,
+    committedAt: commit.committedAt,
+    eventId: commit.eventId,
+    protocolVersion: 3,
+    sourceId: "source-1",
+    sourceVersion: 8,
+    type: "database.mutation",
+  });
+  assert.equal(transaction.journal.length, 1);
+  assert.deepEqual(transaction.journal[0], {
+    actorId: "user-1",
+    areas: ["records"],
+    changes: { removedRecordIds: ["row-1"] },
+    commandId: commit.commandId,
+    committedAt: new Date(commit.committedAt),
+    databaseId: null,
+    dataSourceId: "source-1",
+    id: commit.eventId,
+    protocolVersion: 3,
+    requiresReset: false,
+    sourceId: "source-1",
+    streamKind: "source",
+    version: 8,
+  });
+  assert.equal(transaction.outbox.length, 1);
+  assert.equal(transaction.updateCalls, 1);
+});
+
+test("source batches reserve contiguous versions per source", async () => {
+  const transaction = transactionExecutor([4, 12]);
+
+  const result = await commitDataSourceMutationBatch(
+    { actorId: "user-1" },
+    async () => ({
+      mutations: [
+        {
+          areas: ["records"] as const,
+          changes: { removedRecordIds: ["row-1"] },
+          dataSourceId: "source-b",
+        },
+        {
+          areas: ["properties"] as const,
+          changes: { removedPropertyIds: ["property-1"] },
+          dataSourceId: "source-a",
+        },
+        {
+          areas: ["records"] as const,
+          changes: { removedRecordIds: ["row-2"] },
+          dataSourceId: "source-b",
+        },
+      ],
+      result: "moved",
+    }),
+  );
+
+  assert.equal(result.result, "moved");
+  assert.deepEqual(
+    result.commits.map(({ sourceId, sourceVersion }) => ({
+      sourceId,
+      sourceVersion,
+    })),
+    [
+      { sourceId: "source-b", sourceVersion: 11 },
+      { sourceId: "source-a", sourceVersion: 4 },
+      { sourceId: "source-b", sourceVersion: 12 },
+    ],
+  );
+  assert.equal(transaction.updateCalls, 2);
+  assert.equal(transaction.journal.length, 3);
+  assert.equal(transaction.outbox.length, 3);
+});
+
+test("source metadata strips host link placement and uses the committed version", async () => {
+  transactionExecutor([9]);
+  const now = "2026-09-16T10:00:00.000Z";
+
+  const commit = await commitDataSourceMutation(
+    {
+      actorId: "user-1",
+      areas: ["dataSources"],
+      dataSourceId: "source-1",
+    },
+    async () => ({
+      changes: {
+        dataSources: [{
+          config: {},
+          configVersion: 2,
+          createdAt: now,
+          id: "source-1",
+          linkedAt: now,
+          name: "Tasks",
+          parentDatabaseId: "database-owner",
+          position: 4,
+          updatedAt: now,
+          version: 3,
+          workspaceId: "workspace-1",
+        }],
+      },
+    }),
+  );
+
+  assert.deepEqual(commit.areas, ["source"]);
+  assert.deepEqual(commit.changes.source, {
+    config: {},
+    configVersion: 2,
+    createdAt: now,
+    id: "source-1",
+    name: "Tasks",
+    parentDatabaseId: "database-owner",
+    updatedAt: now,
+    version: 9,
+    workspaceId: "workspace-1",
+  });
+  assert.equal("linkedAt" in commit.changes.source!, false);
+  assert.equal("position" in commit.changes.source!, false);
 });
 
 test("single mutation guard rejects an impossible empty batch result", async () => {

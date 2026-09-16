@@ -5,6 +5,7 @@ export {
   commitDataSourceMutationBatch,
   DatabaseMutationError,
   type DatabaseMutationCommitResult,
+  type DataSourceMutationCommitResult,
   type SqlExecutor,
 } from "./commit";
 export type {

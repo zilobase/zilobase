@@ -25,7 +25,7 @@ import {
 import {
   commitDataSourceMutation,
   commitDataSourceMutationBatch,
-  type DatabaseMutationCommitResult,
+  type DataSourceMutationCommitResult,
 } from "../core/commit";
 import {
   lockDatabaseAutomationFactRows,
@@ -492,8 +492,8 @@ export async function createDatabaseRowService(input: {
     };
   };
 
-  let commit: DatabaseMutationCommitResult;
-  let sourceCommit: DatabaseMutationCommitResult | undefined;
+  let commit: DataSourceMutationCommitResult;
+  let sourceCommit: DataSourceMutationCommitResult | undefined;
 
   if (sourceDataSource && sourceRow && input.sourceRowId) {
     const sourceDataSourceId = sourceDataSource.id;
