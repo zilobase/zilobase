@@ -1,4 +1,4 @@
-import { boolean, foreignKey, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, check, foreignKey, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { workspace, teamspace } from "./workspaces";
 import { user } from "./authentication";
@@ -103,9 +103,12 @@ export const databaseMutationEvent = pgTable(
   {
     id: text("id").primaryKey(),
     commandId: text("command_id").notNull(),
+    streamKind: text("stream_kind").notNull().default("host"),
     databaseId: text("database_id")
-      .notNull()
       .references(() => database.id, { onDelete: "cascade" }),
+    sourceId: text("source_id").references(() => dataSource.id, {
+      onDelete: "cascade",
+    }),
     dataSourceId: text("data_source_id").references(() => dataSource.id, {
       onDelete: "set null",
     }),
@@ -120,16 +123,26 @@ export const databaseMutationEvent = pgTable(
       .defaultNow(),
   },
   (table) => [
-    uniqueIndex("database_mutation_event_database_version_unique").on(
-      table.databaseId,
-      table.version,
-    ),
+    uniqueIndex("database_mutation_event_host_version_unique")
+      .on(table.databaseId, table.version)
+      .where(sql`${table.streamKind} = 'host'`),
+    uniqueIndex("database_mutation_event_source_version_unique")
+      .on(table.sourceId, table.version)
+      .where(sql`${table.streamKind} = 'source'`),
     index("database_mutation_event_database_committed_idx").on(
       table.databaseId,
       table.committedAt,
     ),
+    index("database_mutation_event_source_committed_idx").on(
+      table.sourceId,
+      table.committedAt,
+    ),
     index("database_mutation_event_command_idx").on(table.commandId),
     index("database_mutation_event_retention_idx").on(table.committedAt),
+    check(
+      "database_mutation_event_stream_subject_check",
+      sql`(${table.streamKind} = 'host' AND ${table.databaseId} IS NOT NULL AND ${table.sourceId} IS NULL) OR (${table.streamKind} = 'source' AND ${table.databaseId} IS NULL AND ${table.sourceId} IS NOT NULL)`,
+    ),
   ],
 );
 

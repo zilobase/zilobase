@@ -48,6 +48,27 @@ export const dataSourceEntitySchema = z
   .strict()
 export type DataSourceEntity = z.infer<typeof dataSourceEntitySchema>
 
+/**
+ * Source-owned fields carried by the source realtime stream.
+ *
+ * Link placement (`linkedAt` and `position`) belongs to the host database and
+ * intentionally is not part of this shape.
+ */
+export const dataSourcePatchSchema = z
+  .object({
+    config: z.unknown(),
+    configVersion: versionSchema,
+    createdAt: timestampSchema,
+    id: entityIdSchema,
+    name: z.string(),
+    parentDatabaseId: entityIdSchema,
+    updatedAt: timestampSchema,
+    version: versionSchema,
+    workspaceId: entityIdSchema,
+  })
+  .strict()
+export type DataSourcePatch = z.infer<typeof dataSourcePatchSchema>
+
 export const databaseViewEntitySchema = z
   .object({
     config: z.unknown(),
@@ -489,6 +510,48 @@ export type DatabaseMutationEventV2 = z.infer<
   typeof databaseMutationEventV2Schema
 >
 
+export const dataSourceChangedAreaV3Schema = z.enum([
+  "source",
+  "properties",
+  "records",
+])
+export type DataSourceChangedAreaV3 = z.infer<
+  typeof dataSourceChangedAreaV3Schema
+>
+
+export const dataSourceMutationChangesV3Schema = z
+  .object({
+    affectedPropertyIds: z.array(entityIdSchema).optional(),
+    properties: z.array(databasePropertyEntitySchema).optional(),
+    records: z.array(databaseRecordEntitySchema).optional(),
+    removedPropertyIds: z.array(entityIdSchema).optional(),
+    removedRecordIds: z.array(entityIdSchema).optional(),
+    source: dataSourcePatchSchema.optional(),
+  })
+  .strict()
+export type DataSourceMutationChangesV3 = z.infer<
+  typeof dataSourceMutationChangesV3Schema
+>
+
+export const dataSourceMutationEventV3Schema = z
+  .object({
+    actorId: entityIdSchema,
+    areas: z.array(dataSourceChangedAreaV3Schema),
+    changes: dataSourceMutationChangesV3Schema,
+    commandId: entityIdSchema,
+    committedAt: timestampSchema,
+    eventId: entityIdSchema,
+    protocolVersion: z.literal(3),
+    requiresReset: z.literal(true).optional(),
+    sourceId: entityIdSchema,
+    sourceVersion: positiveVersionSchema,
+    type: z.literal("database.mutation"),
+  })
+  .strict()
+export type DataSourceMutationEventV3 = z.infer<
+  typeof dataSourceMutationEventV3Schema
+>
+
 export const databaseMutationFeedResponseSchema = z
   .object({
     events: z.array(databaseMutationEventV2Schema),
@@ -499,6 +562,18 @@ export const databaseMutationFeedResponseSchema = z
   .strict()
 export type DatabaseMutationFeedResponse = z.infer<
   typeof databaseMutationFeedResponseSchema
+>
+
+export const dataSourceMutationFeedResponseV3Schema = z
+  .object({
+    events: z.array(dataSourceMutationEventV3Schema),
+    hasMore: z.boolean(),
+    latestSourceVersion: versionSchema,
+    resetRequired: z.boolean(),
+  })
+  .strict()
+export type DataSourceMutationFeedResponseV3 = z.infer<
+  typeof dataSourceMutationFeedResponseV3Schema
 >
 
 export const databaseCommandAckSchema = z

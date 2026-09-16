@@ -9,6 +9,8 @@ import {
   databaseMutationFeedResponseSchema,
   databaseProtocolErrorSchema,
   databaseRecordWindowResponseSchema,
+  dataSourceMutationEventV3Schema,
+  dataSourceMutationFeedResponseV3Schema,
   moveRowCommandSchema,
 } from "./contracts-v2"
 
@@ -58,6 +60,19 @@ const event = {
   protocolVersion: 2 as const,
   type: "database.mutation" as const,
   version: 5,
+}
+
+const sourceEvent = {
+  actorId: "user-1",
+  areas: ["records" as const],
+  changes: { records: [record] },
+  commandId: "command-1",
+  committedAt: now,
+  eventId: "event-8",
+  protocolVersion: 3 as const,
+  sourceId: "source-1",
+  sourceVersion: 8,
+  type: "database.mutation" as const,
 }
 
 test("v2 bootstrap excludes monolithic row fields", () => {
@@ -173,6 +188,68 @@ test("mutation feeds expose ordered catch-up state", () => {
     latestVersion: 5,
     resetRequired: false,
   }).events[0]?.version, 5)
+})
+
+test("v3 source events have one source identity and source clock", () => {
+  assert.equal(
+    dataSourceMutationEventV3Schema.parse(sourceEvent).sourceVersion,
+    8,
+  )
+  assert.equal(
+    dataSourceMutationEventV3Schema.safeParse({
+      ...sourceEvent,
+      databaseId: "database-1",
+    }).success,
+    false,
+  )
+})
+
+test("v3 source metadata excludes host link placement", () => {
+  const metadataEvent = {
+    ...sourceEvent,
+    areas: ["source" as const],
+    changes: {
+      source: {
+        config: {},
+        configVersion: 2,
+        createdAt: now,
+        id: "source-1",
+        name: "Tasks",
+        parentDatabaseId: "database-1",
+        updatedAt: now,
+        version: 8,
+        workspaceId: "workspace-1",
+      },
+    },
+  }
+
+  assert.equal(
+    dataSourceMutationEventV3Schema.parse(metadataEvent).changes.source?.id,
+    "source-1",
+  )
+  assert.equal(
+    dataSourceMutationEventV3Schema.safeParse({
+      ...metadataEvent,
+      changes: {
+        source: {
+          ...metadataEvent.changes.source,
+          position: 0,
+        },
+      },
+    }).success,
+    false,
+  )
+})
+
+test("v3 source feeds report only the source high-water mark", () => {
+  const parsed = dataSourceMutationFeedResponseV3Schema.parse({
+    events: [sourceEvent],
+    hasMore: false,
+    latestSourceVersion: 8,
+    resetRequired: false,
+  })
+
+  assert.equal(parsed.latestSourceVersion, 8)
 })
 
 test("typed protocol errors preserve conflict-specific context", () => {
