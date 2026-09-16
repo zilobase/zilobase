@@ -7,9 +7,9 @@ Page collaboration, database mutation events, mail updates and workspace navigat
 Node and Cloudflare are alternative deployment topologies. One Node process in
 the `all` role can use in-process database fanout without Redis. Split
 `api`/`worker` roles or multiple API replicas require Redis/Valkey and fail
-realtime readiness when it is absent. Managed Cloud uses API Worker -> Queue ->
-background Worker -> per-database Durable Object; the API Worker never calls
-the Durable Object directly. There is no Node-to-Cloudflare bridge.
+realtime readiness when it is absent. Managed Cloud publishes from the API
+Worker to a per-source Durable Object; its Queue/background Worker retries the
+durable outbox. There is no Node-to-Cloudflare bridge.
 
 Start at the [entrypoint](../../apps/server/src/app/node); follow the [implementation](../../apps/server/src/features/collaboration) and [related modules](../../apps/server/src/features/databases/realtime).
 

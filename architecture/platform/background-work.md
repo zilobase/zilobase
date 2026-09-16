@@ -12,11 +12,11 @@ The Node coordinator catches maintenance and lane-timer recalculation failures d
 
 Feature implementations own leases, receipts, authorization and durable status. Dispatch success is not equivalent to feature completion. Retries preserve task identity and availableAt semantics; terminal outcomes differ from thrown execution errors.
 
-For `realtime.database`, the committed journal event is canonical and the
-outbox contains only delivery state. HTTP acknowledgement does not wait for
-delivery. The feature handler drains the reference and returns retry while it
-remains pending; lease recovery and periodic sweeps cover failed scheduling and
-worker interruption.
+For `realtime.database`, the committed source journal event is canonical and
+the outbox contains only retry state. The request publishes after commit and
+does not wait for background drain. The feature handler retries the reference
+while it remains pending; lease recovery and periodic sweeps cover publish
+failure, failed scheduling, and worker interruption.
 
 ## Verification
 
@@ -28,6 +28,6 @@ The processor delegates mail indexing/sync, database realtime, navigation realti
 
 A single-process Node `all` runtime may dispatch database events in process.
 Split Node roles and multiple API replicas publish through Redis/Valkey. The
-managed Cloud runtime schedules a Queue consumer, whose background Worker alone
-publishes through the per-database Durable Object. See the
+managed Cloud runtime publishes first from the API Worker; its Queue consumer
+retries through the per-source Durable Object. See the
 [database operations guide](../../docs/databases/operations.md).

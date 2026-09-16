@@ -57,8 +57,9 @@ The v2 HTTP interface separates metadata from records:
 - `GET /databases/:databaseId/data-sources/:dataSourceId/records` returns an
   exact offset/limit window plus total count, continuation state, a snapshot and
   host/source versions.
-- `GET /databases/:databaseId/mutations?afterVersion=:version&limit=500` returns
-  ordered retained mutation events for reconnect recovery.
+- `GET /data-sources/:sourceId/mutations?afterVersion=:version&limit=500`
+  returns ordered retained source events for reconnect recovery. Host history is
+  a separate stream for host chrome.
 
 View configuration persists an `initialPageSize` of `10`, `25`, `50` or `100`;
 the default is `50`. Loading more grows the window by that amount. The snapshot
@@ -120,8 +121,8 @@ page placement ordering remains a compatibility projection for navigation.
 
 The command side effect, group value, order update, host/source versions,
 mutation journal event, command receipt and realtime outbox reference commit in
-one PostgreSQL transaction. Linked-source writes create a contiguous host event
-for each displaying database with one shared command ID.
+one PostgreSQL transaction. A source write creates one source event with one
+source version regardless of how many hosts display it.
 
 ### Durable history and realtime topology
 
@@ -135,16 +136,16 @@ longer available or contains a reset event.
 Node and Cloudflare are alternative deployments; they never serve the same
 environment and no Node-to-Cloudflare event bridge is introduced.
 
-- Managed cloud: the API Worker commits and enqueues a fast background task. A
-  background Worker reads the journal-backed outbox and invokes the per-database
-  Durable Object, which broadcasts to clients.
-- Self-hosted: the API commits and schedules background work. A worker publishes
-  through Redis to Node websocket rooms. A single-process `all` role may use an
-  in-memory bus; split `api`/`worker` roles and multiple API replicas require
-  Redis and fail realtime readiness when it is absent.
+- Managed cloud: after commit, the API Worker invokes the per-source Durable
+  Object. The Queue/background Worker retries the journal-backed outbox.
+- Self-hosted: after commit, the API publishes through the local room or Redis
+  to source-keyed Node websocket rooms. A worker retries failures. A
+  single-process `all` role may use an in-memory bus; split `api`/`worker` roles
+  and multiple API replicas require Redis and fail readiness when it is absent.
 
-HTTP requests never await Redis publication, Durable Object calls or websocket
-broadcast. Failed scheduling leaves the outbox entry available for recovery.
+HTTP requests publish after the transaction commits and await that first
+runtime publish attempt. Failure does not roll back the acknowledged mutation;
+the outbox entry remains available for recovery.
 Duplicate acknowledgements and socket echoes are suppressed by event/version;
 gaps are filled from the mutation journal before later events are applied.
 

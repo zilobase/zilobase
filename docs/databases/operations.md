@@ -12,14 +12,14 @@ environment and there is no Node-to-Cloudflare event bridge.
 
 | Deployment | Database delivery path | Broker requirement |
 | --- | --- | --- |
-| One Node process in the `all` role | PostgreSQL outbox -> in-process background coordinator -> local WebSocket rooms | Redis is optional |
-| Split Node `api` and `worker` roles, or multiple API replicas | PostgreSQL outbox -> background worker -> Redis/Valkey -> API WebSocket rooms | `REALTIME_REDIS_URL` is required; readiness fails without it |
-| Managed Cloudflare | API Worker -> fast Queue -> background Worker -> per-database Durable Object -> WebSocket clients | The Queue and Durable Object bindings are required |
+| One Node process in the `all` role | Request -> source room; PostgreSQL outbox -> background retry -> source room | Redis is optional |
+| Split Node `api` and `worker` roles, or multiple API replicas | Request -> Redis/Valkey -> API source rooms; outbox worker retries failures | `REALTIME_REDIS_URL` is required; readiness fails without it |
+| Managed Cloudflare | API Worker -> per-source Durable Object; Queue/background Worker retries the outbox | The Queue and Durable Object bindings are required |
 
-The HTTP request path never publishes to Redis, calls a Durable Object, or
-broadcasts to sockets. It commits the command and schedules a fast background
-task. If scheduling fails, the durable outbox reference remains for a recovery
-sweep.
+After the transaction commits, the request path publishes the source event to
+Redis/local Node rooms or the per-source Durable Object. Successful publication
+removes the outbox row. Publish failure does not reject the committed command;
+the durable outbox reference and scheduled background work provide retry.
 
 ## Reads and commands
 
@@ -33,7 +33,7 @@ configuration revision. `409 WINDOW_STALE` means that membership or ordering
 may have changed. The client restarts only that window and retains valid
 optimistic overlays.
 
-Every write uses a protocol-v2 command with a caller-generated `commandId`.
+Every write uses an idempotent command with a caller-generated `commandId`.
 Replaying the same ID and identical request returns the stored acknowledgement
 without repeating side effects. Reusing it for a different request returns
 `409 COMMAND_ID_REUSED`. The domain write, host/source versions, mutation
@@ -53,11 +53,11 @@ the source before retrying.
 HTTP acknowledgements, socket events, and catch-up events enter the same
 version-aware client ingestion function. Event IDs and versions suppress HTTP
 acknowledgement/socket-echo duplicates. A version gap pauses newer events while
-the client calls `GET /databases/:databaseId/mutations?afterVersion=...` in
+the client calls `GET /data-sources/:sourceId/mutations?afterVersion=...` in
 pages of at most 500.
 
 The server retains all journal events from the last seven days and at least the
-newest 10,000 events per database. Command receipts are retained for seven
+newest 10,000 events per stream. Command receipts are retained for seven
 days. Expired or discontinuous history, a future client version, or a reset
 marker produces `resetRequired`; the client then reloads the affected bootstrap
 and record scopes. Oversized changes use `requiresReset` instead of publishing
@@ -109,21 +109,21 @@ drag-to-paint timing. Metrics and logs must never contain property values.
 
 | Symptom | Checks and recovery |
 | --- | --- |
-| Presence works but collaborator cells remain stale | Presence and mutation delivery share a socket but have separate paths. Confirm `runtime.startup` reports `zilobase.database.v2` and the current schema target, then inspect `background.node_lane_operation` for `database_realtime` or the Cloud Queue/DO path. In local development, restart `npm run dev`; the supervised API now watches server/database-client/migration changes and migrates before listening. |
-| Commands commit but cards update late on other clients | Compare commit and enqueue latency, then inspect outbox backlog/oldest age and the background worker. Leave rows for the recovery sweep. |
+| Presence works but collaborator cells remain stale | Presence and mutation delivery share the source socket but have separate paths. Confirm `runtime.startup` reports `zilobase.database.v3` and schema target `0093_source_realtime_stream`, then inspect the source ID, source ledger, and Node Redis or Cloud Durable Object path. |
+| Commands commit but cards update late on other clients | Compare commit and acknowledgement latency, then inspect immediate-publish errors before the outbox backlog/oldest age. Leave retry rows for the recovery sweep. |
 | Split Node roles are not ready | Configure one reachable `REALTIME_REDIS_URL` for every API and worker process. A single `all` process may intentionally run without Redis. |
 | Frequent `WINDOW_STALE` responses | Occasional conflicts are normal during active sorting, filtering, or writes. A sustained rate suggests a refetch loop or rapidly changing view configuration. |
 | Repeated gap catch-up or resets | Check socket delivery and journal cleanup. Verify retention is seven days/newest 10,000 and that no producer emits partial entities. |
 | `ROW_MOVE_CONFLICT` | An anchor was deleted, foreign, reversed, or changed concurrently. Reload the source ordering and retry using current visible neighbors. |
-| A v2 event has `requiresReset` | Reload the affected bootstrap/window. Do not attempt to infer a partial entity patch. |
-| Cloud acknowledgements succeed but sockets are quiet | Check Queue backlog and retry state, the background Worker binding, then the database Durable Object. The API Worker must not invoke the Durable Object directly. |
+| A source-v3 event has `requiresReset` | Reload the affected source bootstrap/window. Do not attempt to infer a partial entity patch. |
+| Cloud acknowledgements succeed but sockets are quiet | Confirm the API Worker has the Durable Object binding and immediate publisher enabled, then check the per-source object, Queue backlog, and background retry state. |
 | Outbox backlog grows while workers are healthy | Inspect retry/discard metrics and journal-event availability. Missing canonical history is a recovery fault, not a reason to synthesize a payload. |
 
 ## Deployment and verification
 
 Apply database migrations before serving the new application and take a
 PostgreSQL backup before upgrades. A self-hosted upgrade must preserve a
-pre-existing database row and verify its protocol-v2 bootstrap and record
+pre-existing database row and verify its bootstrap, source-v3 catch-up, and record
 window after image replacement, in addition to page content and stored objects.
 
 Run the core acceptance suite before release:

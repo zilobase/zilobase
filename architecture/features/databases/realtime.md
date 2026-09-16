@@ -1,22 +1,64 @@
 # Database mutation and realtime flow
 
-The shared feature package publishes the runtime-validated [protocol-v2 database contracts](../../../packages/features/src/databases/contracts-v2.ts) for entity bootstrap, bounded record windows, idempotent commands, complete-entity changesets, and typed protocol conflicts. Command traffic and internal producers—including automations, imports, mail synchronization, templates, and relation-driven writes—journal the same v2 event shape. Linked-host events share the originating command ID while retaining a contiguous version per host.
+Page collaboration and database collaboration have separate truth models. Yjs
+owns page document content and the existence of a `databaseBlock`. PostgreSQL
+owns database hosts, data sources, rows, properties, values, and their ordered
+mutation journals. Rows and cell values must never be copied into page Yjs.
 
-[Realtime persistence and outbox](../../../apps/server/src/features/databases/realtime) coordinate committed mutations with eventual publication. Outbox rows reference the canonical journal event and contain delivery and lease state, not a duplicate event payload. Oversized changes become `requiresReset`; producers otherwise emit complete typed entities, never partial patches. Node and Cloudflare delivery publish protocol v2 only. [Node attachment](../../../apps/server/src/app/node/database-realtime-runtime.ts) owns websocket handling. The session-scoped database client applies acknowledgements, socket events, and history events through one ingestion path.
+Database realtime has two clocks:
 
-After the database transaction commits, command and internal mutation paths enqueue only `realtime.database` background tasks. They never call Redis, a Durable Object, or a WebSocket broadcaster directly. Queue/notification failure does not reject an acknowledged mutation: the undelivered outbox reference remains available to the normal recovery sweep.
+- a source clock for data-source metadata, properties, records, cell values,
+  and cell presence;
+- a host clock for views, linked-source membership, and view configuration.
 
-The [mutation history service](../../../apps/server/src/features/databases/history/service.ts) serves contiguous events after a client version in pages of at most 500. A missing version, malformed event, future client version, expired history, or journal reset marker returns `resetRequired` without applying a partial sequence. Cleanup retains all events from the last seven days and at least the newest 10,000 events per database, and removes expired command receipts.
+Source commands commit one protocol-v3 journal event with `sourceId` and
+`sourceVersion`. A linked source is not cloned into a separate event for every
+displaying host. Host-only commands retain the host journal and host version.
+The shared contracts live in
+[database contracts](../../../packages/features/src/databases/contracts-v2.ts).
 
-Every database websocket server frame uses protocol version `2`, including
-`realtime.ready`, `presence.update`, `presence.clear`, and
-`database.mutation`. The ready frame exposes `databaseVersion`, which is a
-catch-up watermark. It is deliberately separate from the room's last
-published version: a newly connected ticket must never suppress an event that
-committed earlier but is still moving through the background delivery path.
-Clients close and reconnect when a known database frame has another protocol
-version instead of silently accepting presence while dropping mutations.
+[Realtime persistence and outbox](../../../apps/server/src/features/databases/realtime)
+store the source journal event and a retry reference in the same transaction as
+the mutation. After commit, the request path immediately invokes the runtime
+publisher. Successful delivery removes the retry row; a failed or interrupted
+publication leaves it for background drain and reconnect catch-up. The outbox
+is recovery state, not the normal first-delivery hop.
 
-Preserve event identity, versioning, authorization and delivery/retry semantics. A local optimistic mutation and its later realtime event must not be applied twice. Reconnect gaps use journal catch-up; unavailable history or a reset marker reloads only affected scopes. Test duplicate/out-of-order events, rollback, deleted resources and access revocation with the adjacent realtime/client tests.
+Node and Cloudflare use the same source identity and protocol. The
+[Node runtime](../../../apps/server/src/app/node/database-realtime-runtime.ts)
+keys its local/Redis room by `sourceId`; the Cloudflare adapter keys the Durable
+Object by `sourceId`. Tickets are issued only from
+`POST /data-sources/:sourceId/realtime-ticket`, authorize the source through
+its parent ACL, and carry `sourceId`, `sourceVersion`, `sessionId`, and
+`canEdit`. A connection never grants access to every source linked to a host.
+
+Every source websocket server frame uses protocol version `3`:
+`realtime.ready`, `database.mutation`, `presence.update`, and
+`presence.clear`. Ready exposes the source catch-up watermark. Presence is
+revisioned per connection session and keyed by `sourceId + rowId + columnKey`.
+Different browser tabs remain distinct sessions, including tabs owned by the
+same user. Within one tab/source connection, the most recently focused local
+surface owns the single published cell cursor, so grid and row-page fields do
+not overwrite each other nondeterministically.
+
+The session-scoped database client keeps a ledger per source. HTTP command
+acknowledgements, socket delivery, and source catch-up enter the same ingestion
+path. Optimistic cell overlays settle by `commandId`; loaded collections and
+row-page property queries receive complete-entity patches. An event for another
+source is ignored by that collection. Only a source-version gap,
+`requiresReset`, expired history, or an apply failure resets the affected
+source scope. Ordinary cell edits never invalidate the whole database query
+tree.
+
+Reconnect catch-up uses
+`GET /data-sources/:sourceId/mutations?afterVersion=...` in pages of at most
+500. Host history remains a separate stream for host chrome. Journal cleanup
+retains all events from the last seven days and at least the newest 10,000
+events per stream, and removes expired command receipts.
+
+Preserve event identity, source ordering, authorization, and retry semantics.
+Test cross-host access to one linked source, duplicate/out-of-order delivery,
+presence revisions and hibernation, optimistic rollback, gaps, deleted
+resources, and access revocation in both Node and Cloudflare runtimes.
 
 [Database overview](README.md). [Operations and troubleshooting](../../../docs/databases/operations.md).
