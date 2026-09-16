@@ -6,7 +6,6 @@ import type {
 
 import {
   dataSource,
-  databaseDataSource,
 } from "../../../infrastructure/database/schema"
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
 import type {
@@ -20,21 +19,13 @@ export async function sourceMutations(
   changes: (databaseId: string) => Promise<DatabaseMutationChanges>,
   requiresReset = false,
 ): Promise<DatabaseCommandMutation[]> {
-  const links = await context.transaction
-    .select({ databaseId: databaseDataSource.databaseId })
-    .from(databaseDataSource)
-    .where(eq(databaseDataSource.dataSourceId, context.dataSourceId!))
-  const mutations: DatabaseCommandMutation[] = []
-  for (const link of links) {
-    mutations.push({
-      areas,
-      changes: await changes(link.databaseId),
-      databaseId: link.databaseId,
-      dataSourceId: context.dataSourceId,
-      ...(requiresReset ? { requiresReset: true as const } : {}),
-    })
-  }
-  return mutations
+  return [{
+    areas,
+    changes: await changes(context.databaseId),
+    databaseId: context.databaseId,
+    dataSourceId: context.dataSourceId,
+    ...(requiresReset ? { requiresReset: true as const } : {}),
+  }]
 }
 
 export async function sourceRecord(context: DatabaseCommandContext) {

@@ -589,6 +589,29 @@ export type DatabaseCommandAck<TResult = unknown> = Omit<
   "result"
 > & { result: TResult }
 
+export const dataSourceCommandAckV3Schema = z
+  .object({
+    commandId: entityIdSchema,
+    event: dataSourceMutationEventV3Schema,
+    result: z.unknown(),
+  })
+  .strict()
+type ParsedDataSourceCommandAckV3 = z.infer<
+  typeof dataSourceCommandAckV3Schema
+>
+export type DataSourceCommandAckV3<TResult = unknown> = Omit<
+  ParsedDataSourceCommandAckV3,
+  "result"
+> & { result: TResult }
+
+export const databaseCommandExecutionAckSchema = z.union([
+  databaseCommandAckSchema,
+  dataSourceCommandAckV3Schema,
+])
+export type DatabaseCommandExecutionAck<TResult = unknown> =
+  | DatabaseCommandAck<TResult>
+  | DataSourceCommandAckV3<TResult>
+
 const protocolErrorBase = {
   message: z.string().trim().min(1).max(2_000),
 }

@@ -1,13 +1,17 @@
 import { and, eq, sql } from "drizzle-orm"
 import {
   databaseCommandAckSchema,
+  databaseCommandExecutionAckSchema,
   databaseMutationChangesSchema,
+  dataSourceCommandAckV3Schema,
   type DatabaseChangedAreaV2,
   type DatabaseCommand,
-  type DatabaseCommandAck,
+  type DatabaseCommandExecutionAck,
   type DatabaseCommandRequest,
   type DatabaseMutationChanges,
   type DatabaseMutationEventV2,
+  type DataSourceCommandAckV3,
+  type DataSourceMutationEventV3,
 } from "@zilobase/features/databases/contracts"
 
 import { db, type Database } from "../../../infrastructure/database"
@@ -28,6 +32,7 @@ import {
   captureDatabaseAutomationMutationFacts,
   type DatabaseAutomationMutationFactCandidate,
 } from "../automations/triggers/event-capture"
+import { prepareDataSourceMutation } from "../core/commit"
 
 const COMMAND_RECEIPT_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000
 const MAX_DATABASE_MUTATION_CHANGES_BYTES = 64 * 1_024
@@ -119,7 +124,7 @@ function boundedChanges(mutation: DatabaseCommandMutation) {
   return { changes: {}, requiresReset: true as const }
 }
 
-function storedEvent(event: DatabaseMutationEventV2) {
+function storedHostEvent(event: DatabaseMutationEventV2) {
   return {
     actorId: event.actorId,
     areas: event.areas,
@@ -131,7 +136,27 @@ function storedEvent(event: DatabaseMutationEventV2) {
     id: event.eventId,
     protocolVersion: event.protocolVersion,
     requiresReset: event.requiresReset === true,
+    sourceId: null,
+    streamKind: "host",
     version: event.version,
+  }
+}
+
+function storedSourceEvent(event: DataSourceMutationEventV3) {
+  return {
+    actorId: event.actorId,
+    areas: event.areas,
+    changes: event.changes,
+    commandId: event.commandId,
+    committedAt: new Date(event.committedAt),
+    databaseId: null,
+    dataSourceId: event.sourceId,
+    id: event.eventId,
+    protocolVersion: event.protocolVersion,
+    requiresReset: event.requiresReset === true,
+    sourceId: event.sourceId,
+    streamKind: "source",
+    version: event.sourceVersion,
   }
 }
 
@@ -143,7 +168,7 @@ export async function executeDatabaseCommand<TResult = unknown>(
     scope: DatabaseCommandScope
   },
   dependencies: FrameworkDependencies,
-): Promise<DatabaseCommandAck<TResult>> {
+): Promise<DatabaseCommandExecutionAck<TResult>> {
   const executor = dependencies.database ?? db
   const requestHash = await hashDatabaseCommandRequest(input.scope, input.request)
   const now = dependencies.now?.() ?? new Date()
@@ -178,14 +203,15 @@ export async function executeDatabaseCommand<TResult = unknown>(
         throw new CommandIdReusedError(input.request.commandId)
       }
       return {
-        acknowledgement: databaseCommandAckSchema.parse(
+        acknowledgement: databaseCommandExecutionAckSchema.parse(
           receipt.acknowledgement,
-        ) as DatabaseCommandAck<TResult>,
+        ) as DatabaseCommandExecutionAck<TResult>,
         eventIds: [] as string[],
       }
     }
 
     let primaryHostVersion: number | null = null
+    let sourceVersion: number | null = null
     if (input.scope.dataSourceId) {
       const [linked] = await tx
         .select({ dataSourceId: databaseDataSource.dataSourceId })
@@ -199,10 +225,14 @@ export async function executeDatabaseCommand<TResult = unknown>(
 
       const [versionedSource] = await tx
         .update(dataSource)
-        .set({ version: sql`${dataSource.version} + 1` })
+        .set({
+          updatedAt: now,
+          version: sql`${dataSource.version} + 1`,
+        })
         .where(eq(dataSource.id, input.scope.dataSourceId))
         .returning({ version: dataSource.version })
       if (!versionedSource) throw new ServiceMutationError("Data source not found", 404)
+      sourceVersion = versionedSource.version
     } else {
       const [versionedHost] = await tx
         .update(database)
@@ -229,73 +259,126 @@ export async function executeDatabaseCommand<TResult = unknown>(
       )
     }
 
-    if (
-      dispatched.mutations.length === 0 ||
-      !dispatched.mutations.some(({ databaseId }) => databaseId === input.scope.databaseId)
-    ) {
-      throw new Error("Database command did not produce a host mutation event")
-    }
+    let acknowledgement: DatabaseCommandExecutionAck<TResult>
+    let eventIds: string[]
+    let receiptEventId: string
 
-    const duplicateHost = dispatched.mutations.find((mutation, index, mutations) =>
-      mutations.findIndex(({ databaseId }) => databaseId === mutation.databaseId) !== index
-    )
-    if (duplicateHost) {
-      throw new Error("Database command produced multiple events for one host")
-    }
-
-    const events: DatabaseMutationEventV2[] = []
-    for (const mutation of [...dispatched.mutations].sort((left, right) =>
-      left.databaseId.localeCompare(right.databaseId)
-    )) {
-      const version = mutation.databaseId === input.scope.databaseId && primaryHostVersion !== null
-        ? primaryHostVersion
-        : (await tx
-            .update(database)
-            .set({ version: sql`${database.version} + 1` })
-            .where(eq(database.id, mutation.databaseId))
-            .returning({ version: database.version }))[0]?.version
-      if (version === undefined) throw new ServiceMutationError("Database not found", 404)
-
-      const prepared = boundedChanges(mutation)
-      const changes = prepared.changes.databases
-        ? {
-            ...prepared.changes,
-            databases: prepared.changes.databases.map((host) =>
-              host.id === mutation.databaseId
-                ? { ...host, version }
-                : host
-            ),
-          }
-        : prepared.changes
-      events.push({
+    if (input.scope.dataSourceId) {
+      if (sourceVersion === null || dispatched.mutations.length !== 1) {
+        throw new Error("Data source command must produce one source mutation event")
+      }
+      const mutation = dispatched.mutations[0]!
+      if (mutation.dataSourceId !== input.scope.dataSourceId) {
+        throw new Error("Data source command produced an event for another source")
+      }
+      const prepared = prepareDataSourceMutation(
+        mutation.areas,
+        mutation.changes,
+        input.scope.dataSourceId,
+        sourceVersion,
+        mutation.requiresReset,
+      )
+      const sourceEvent: DataSourceMutationEventV3 = {
         actorId: input.actorId,
-        areas: mutation.areas,
-        changes,
+        areas: prepared.areas,
+        changes: prepared.changes,
         commandId: input.request.commandId,
         committedAt: now.toISOString(),
-        databaseId: mutation.databaseId,
-        dataSourceId: mutation.dataSourceId,
         eventId: randomUUID(),
-        protocolVersion: 2,
+        protocolVersion: 3,
         ...(prepared.requiresReset ? { requiresReset: true as const } : {}),
+        sourceId: input.scope.dataSourceId,
+        sourceVersion,
         type: "database.mutation",
-        version,
-      })
+      }
+      await tx.insert(databaseMutationEvent).values(storedSourceEvent(sourceEvent))
+      acknowledgement = dataSourceCommandAckV3Schema.parse({
+        commandId: input.request.commandId,
+        event: sourceEvent,
+        result: dispatched.result,
+      }) as DataSourceCommandAckV3<TResult>
+      eventIds = [sourceEvent.eventId]
+      receiptEventId = sourceEvent.eventId
+    } else {
+      if (
+        dispatched.mutations.length === 0 ||
+        !dispatched.mutations.some(({ databaseId }) =>
+          databaseId === input.scope.databaseId
+        )
+      ) {
+        throw new Error("Database command did not produce a host mutation event")
+      }
+
+      const duplicateHost = dispatched.mutations.find(
+        (mutation, index, mutations) =>
+          mutations.findIndex(({ databaseId }) =>
+            databaseId === mutation.databaseId
+          ) !== index,
+      )
+      if (duplicateHost) {
+        throw new Error("Database command produced multiple events for one host")
+      }
+
+      const events: DatabaseMutationEventV2[] = []
+      for (const mutation of [...dispatched.mutations].sort((left, right) =>
+        left.databaseId.localeCompare(right.databaseId)
+      )) {
+        const version = mutation.databaseId === input.scope.databaseId &&
+            primaryHostVersion !== null
+          ? primaryHostVersion
+          : (await tx
+              .update(database)
+              .set({ version: sql`${database.version} + 1` })
+              .where(eq(database.id, mutation.databaseId))
+              .returning({ version: database.version }))[0]?.version
+        if (version === undefined) {
+          throw new ServiceMutationError("Database not found", 404)
+        }
+
+        const prepared = boundedChanges(mutation)
+        const changes = prepared.changes.databases
+          ? {
+              ...prepared.changes,
+              databases: prepared.changes.databases.map((host) =>
+                host.id === mutation.databaseId
+                  ? { ...host, version }
+                  : host
+              ),
+            }
+          : prepared.changes
+        events.push({
+          actorId: input.actorId,
+          areas: mutation.areas,
+          changes,
+          commandId: input.request.commandId,
+          committedAt: now.toISOString(),
+          databaseId: mutation.databaseId,
+          dataSourceId: mutation.dataSourceId,
+          eventId: randomUUID(),
+          protocolVersion: 2,
+          ...(prepared.requiresReset ? { requiresReset: true as const } : {}),
+          type: "database.mutation",
+          version,
+        })
+      }
+
+      await tx.insert(databaseMutationEvent).values(events.map(storedHostEvent))
+      const primaryEvent = events.find(({ databaseId }) =>
+        databaseId === input.scope.databaseId
+      )!
+      acknowledgement = databaseCommandAckSchema.parse({
+        commandId: input.request.commandId,
+        event: primaryEvent,
+        result: dispatched.result,
+      }) as DatabaseCommandExecutionAck<TResult>
+      eventIds = events.map(({ eventId }) => eventId)
+      receiptEventId = primaryEvent.eventId
     }
 
-    await tx.insert(databaseMutationEvent).values(events.map(storedEvent))
-    await tx.insert(databaseRealtimeOutbox).values(events.map((event) => ({
-      eventId: event.eventId,
-      id: event.eventId,
+    await tx.insert(databaseRealtimeOutbox).values(eventIds.map((eventId) => ({
+      eventId,
+      id: eventId,
     })))
-    const primaryEvent = events.find(({ databaseId }) =>
-      databaseId === input.scope.databaseId
-    )!
-    const acknowledgement = databaseCommandAckSchema.parse({
-      commandId: input.request.commandId,
-      event: primaryEvent,
-      result: dispatched.result,
-    }) as DatabaseCommandAck<TResult>
 
     await tx.insert(databaseCommandReceipt).values({
       acknowledgement,
@@ -304,12 +387,12 @@ export async function executeDatabaseCommand<TResult = unknown>(
       createdAt: now,
       databaseId: input.scope.databaseId,
       dataSourceId: input.scope.dataSourceId,
-      eventId: primaryEvent.eventId,
+      eventId: receiptEventId,
       expiresAt: new Date(now.getTime() + COMMAND_RECEIPT_RETENTION_MS),
       requestHash,
     })
 
-    return { acknowledgement, eventIds: events.map(({ eventId }) => eventId) }
+    return { acknowledgement, eventIds }
     }),
   )
 

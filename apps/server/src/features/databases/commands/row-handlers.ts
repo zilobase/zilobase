@@ -13,7 +13,6 @@ import { encodePageContentAsYjs } from "../../collaboration/service"
 import { upsertPageItemPlacement } from "../../pages/placements"
 import {
   dataSource,
-  databaseDataSource,
   databaseProperty,
   databaseRow,
   page,
@@ -141,16 +140,12 @@ async function mutationForHosts(
   record: DatabaseRecordEntity,
   changes: { records?: DatabaseRecordEntity[]; removedRecordIds?: string[] },
 ): Promise<DatabaseCommandMutation[]> {
-  const hosts = await context.transaction
-    .select({ databaseId: databaseDataSource.databaseId })
-    .from(databaseDataSource)
-    .where(eq(databaseDataSource.dataSourceId, record.dataSourceId))
-  return hosts.map(({ databaseId }) => ({
+  return [{
     areas: ["records"],
     changes,
-    databaseId,
+    databaseId: context.databaseId,
     dataSourceId: record.dataSourceId,
-  }))
+  }]
 }
 
 async function validateParent(

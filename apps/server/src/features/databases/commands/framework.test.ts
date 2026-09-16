@@ -172,6 +172,8 @@ test("execution locks the command ID and atomically stores its event and receipt
   assert.equal(harness.execute.mock.calls.length, 1)
   assert.equal(dispatchMock.mock.calls[0]?.[0].commandId, "command-1")
   assert.equal(ack.event.eventId, "event-1")
+  assert.equal(ack.event.protocolVersion, 2)
+  if (ack.event.protocolVersion !== 2) throw new Error("Expected a host event")
   assert.equal(ack.event.version, 5)
   assert.equal(harness.inserts.get(databaseMutationEvent)?.length, 1)
   assert.deepEqual(harness.inserts.get(databaseRealtimeOutbox), [{
@@ -285,7 +287,7 @@ test("source commands verify host linkage and increment the source version", asy
   )
 })
 
-test("a linked source version is incremented before its handler builds entities", async () => {
+test("a linked source command persists one event on the source clock", async () => {
   const harness = transactionHarness({ databaseVersions: [7], sourceVersion: 3 })
   const dispatchMock = vi.fn(async (context: DatabaseCommandContext) => {
     assert.equal(harness.updates[0], dataSource)
@@ -299,7 +301,7 @@ test("a linked source version is incremented before its handler builds entities"
       result: null,
     }
   })
-  await executeDatabaseCommand({
+  const ack = await executeDatabaseCommand({
     actorId: "user-1",
     request: {
       command: { patch: { name: "Tasks" }, type: "dataSource.update" },
@@ -310,8 +312,37 @@ test("a linked source version is incremented before its handler builds entities"
   }, {
     database: harness.database as never,
     dispatch: dispatchMock as unknown as DatabaseCommandDispatcher,
+    now: () => new Date("2026-09-16T00:00:00.000Z"),
+    randomUUID: () => "source-event-3",
   })
-  assert.deepEqual(harness.updates.slice(0, 2), [dataSource, database])
+  assert.deepEqual(harness.updates, [dataSource])
+  assert.deepEqual(ack.event, {
+    actorId: "user-1",
+    areas: ["source"],
+    changes: {},
+    commandId: "source-command",
+    committedAt: "2026-09-16T00:00:00.000Z",
+    eventId: "source-event-3",
+    protocolVersion: 3,
+    sourceId: "source-1",
+    sourceVersion: 3,
+    type: "database.mutation",
+  })
+  assert.deepEqual(harness.inserts.get(databaseMutationEvent), [{
+    actorId: "user-1",
+    areas: ["source"],
+    changes: {},
+    commandId: "source-command",
+    committedAt: new Date("2026-09-16T00:00:00.000Z"),
+    databaseId: null,
+    dataSourceId: "source-1",
+    id: "source-event-3",
+    protocolVersion: 3,
+    requiresReset: false,
+    sourceId: "source-1",
+    streamKind: "source",
+    version: 3,
+  }])
 })
 
 test("oversized changesets produce a reset event instead of truncated data", async () => {

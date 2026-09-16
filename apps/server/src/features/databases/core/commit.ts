@@ -165,6 +165,24 @@ function boundedSourceChanges(
     : { changes: {}, requiresReset: true as const };
 }
 
+export function prepareDataSourceMutation(
+  areas: DatabaseChangedAreaV2[],
+  changes: DatabaseMutationChanges,
+  sourceId: string,
+  sourceVersion: number,
+  requiresReset?: true,
+) {
+  const prepared = boundedSourceChanges(
+    sourceChanges(changes, sourceId, sourceVersion),
+    requiresReset,
+  );
+  return {
+    areas: sourceAreas(areas),
+    changes: prepared.changes,
+    ...(prepared.requiresReset ? { requiresReset: true as const } : {}),
+  };
+}
+
 export async function commitDatabaseMutationBatch<T>(
   options: BatchCommitOptions,
   mutate: (
@@ -484,14 +502,17 @@ export async function commitDataSourceMutationBatch<T>(
         const resolvedChanges = typeof mutation.changes === "function"
           ? await mutation.changes(parentDatabaseId)
           : mutation.changes;
-        const prepared = boundedSourceChanges(
-          sourceChanges(resolvedChanges, mutation.dataSourceId, sourceVersion),
+        const prepared = prepareDataSourceMutation(
+          mutation.areas,
+          resolvedChanges,
+          mutation.dataSourceId,
+          sourceVersion,
           mutation.requiresReset,
         );
         const eventId = crypto.randomUUID();
         commits.push({
           actorId: options.actorId,
-          areas: sourceAreas(mutation.areas),
+          areas: prepared.areas,
           changes: prepared.changes,
           commandId: commits[0]?.commandId ?? eventId,
           committedAt,

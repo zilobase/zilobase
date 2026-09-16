@@ -4,12 +4,14 @@ import test from "node:test"
 import {
   databaseBootstrapResponseSchema,
   databaseCommandAckSchema,
+  databaseCommandExecutionAckSchema,
   databaseCommandRequestSchema,
   databaseMutationEventV2Schema,
   databaseMutationFeedResponseSchema,
   databaseProtocolErrorSchema,
   databaseRecordWindowResponseSchema,
   dataSourceMutationEventV3Schema,
+  dataSourceCommandAckV3Schema,
   dataSourceMutationFeedResponseV3Schema,
   moveRowCommandSchema,
 } from "./contracts-v2"
@@ -250,6 +252,28 @@ test("v3 source feeds report only the source high-water mark", () => {
   })
 
   assert.equal(parsed.latestSourceVersion, 8)
+})
+
+test("command acknowledgements preserve their host or source clock", () => {
+  const sourceAck = dataSourceCommandAckV3Schema.parse({
+    commandId: "command-1",
+    event: sourceEvent,
+    result: { saved: true },
+  })
+
+  assert.equal(sourceAck.event.sourceVersion, 8)
+  assert.equal(
+    databaseCommandExecutionAckSchema.parse(sourceAck).event.protocolVersion,
+    3,
+  )
+  assert.equal(
+    databaseCommandExecutionAckSchema.parse({
+      commandId: "command-1",
+      event,
+      result: { saved: true },
+    }).event.protocolVersion,
+    2,
+  )
 })
 
 test("typed protocol errors preserve conflict-specific context", () => {
