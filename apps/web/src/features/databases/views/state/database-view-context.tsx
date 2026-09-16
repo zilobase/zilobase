@@ -571,10 +571,11 @@ function DatabaseRealtimeStateProvider({
         viewId: value.activeView?.id ?? null,
       }
     : null
-  const realtime = useDatabaseRealtime(value.hostDatabaseId, {
+  const activeDataSourceId = value.activeView?.dataSourceId ?? null
+  const realtime = useDatabaseRealtime(activeDataSourceId, {
     enabled: Boolean(
       session?.user &&
-      value.hostDatabaseId &&
+      activeDataSourceId &&
       value.hostDatabaseWorkspaceId &&
       value.realtimeEnabled !== false,
     ),

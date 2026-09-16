@@ -7,20 +7,15 @@ import {
 } from "react"
 
 import { useZilobaseFeatures, type ApiFetcher } from "../shared/context"
-import { recoverPagePropertiesIfBehind } from "../pages/database-realtime-cache"
 import {
-  databaseMutationEventV2Schema,
-  type DatabaseMutationEventV2,
+  dataSourceMutationEventV3Schema,
+  type DataSourceMutationEventV3,
 } from "./contracts-v2"
 import {
   useOptionalDatabaseClient,
 } from "./client/provider"
 import type { DatabaseClient } from "./client/database-client"
-import { databaseClientQueryRoot } from "./client/query-keys"
 import { createRealtimeClientBinding } from "./client/realtime-client-binding"
-import {
-  databaseRootQueryKey,
-} from "./queries"
 
 export type DatabasePresence = {
   columnKey: string
@@ -32,6 +27,7 @@ export type DatabasePresenceCollaborator = {
   color: string
   connectedAt: string
   presence: DatabasePresence
+  revision: number
   sessionId: string
   updatedAt: string
   user: {
@@ -43,11 +39,11 @@ export type DatabasePresenceCollaborator = {
 }
 
 type DatabaseRealtimeTicket = {
-  databaseId: string
   expiresAt: string
   sessionId: string
+  sourceId: string
+  sourceVersion: number
   token: string
-  version: number
   websocketProtocols: string[]
   websocketUrl: string
 }
@@ -66,7 +62,7 @@ const managers = new WeakMap<
 >()
 
 export function useDatabaseRealtime(
-  databaseId: string | null | undefined,
+  sourceId: string | null | undefined,
   options: {
     enabled?: boolean
     presence?: DatabasePresence | null
@@ -78,13 +74,13 @@ export function useDatabaseRealtime(
   const databaseClient = useOptionalDatabaseClient()
   const ownerIdRef = useRef<string>(crypto.randomUUID())
   const enabled = Boolean(
-    databaseRealtimeEnabled && options.enabled !== false && databaseId,
+    databaseRealtimeEnabled && options.enabled !== false && sourceId,
   )
   const manager = useMemo(
-    () => enabled && databaseId
-      ? getManager(queryClient, apiFetch, databaseId, databaseClient)
+    () => enabled && sourceId
+      ? getManager(queryClient, apiFetch, sourceId, databaseClient)
       : null,
-    [apiFetch, databaseClient, databaseId, enabled, queryClient],
+    [apiFetch, databaseClient, enabled, queryClient, sourceId],
   )
   const state = useSyncExternalStore(
     manager ? manager.subscribe : emptySubscribe,
@@ -135,7 +131,7 @@ export function createCellPresenceByKey(
     const key = `${collaborator.presence.rowId}:${collaborator.presence.columnKey}`
     const existing = result[key] ?? []
 
-    if (existing.some((item) => item.user.id === collaborator.user.id)) {
+    if (existing.some((item) => item.sessionId === collaborator.sessionId)) {
       continue
     }
 
@@ -150,7 +146,10 @@ export const DATABASE_REALTIME_PING = { type: "realtime.ping" } as const
 
 class DatabaseRealtimeManager {
   private readonly listeners = new Set<Listener>()
-  private readonly presenceByOwner = new Map<string, DatabasePresence>()
+  private readonly presenceByOwner = new Map<
+    string,
+    { activation: number; presence: DatabasePresence }
+  >()
   private socket: WebSocket | null = null
   private idleTimer: ReturnType<typeof setTimeout> | null = null
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -163,15 +162,17 @@ class DatabaseRealtimeManager {
   private lifecycleListening = false
   private paused = false
   private reconnectAttempt = 0
+  private presenceActivation = 0
+  private presenceRevision = 0
+  private lastSentPresence: DatabasePresence | null = null
   private stopped = true
   private sessionId: string | null = null
   private state: DatabaseRealtimeState = getOfflineSnapshot()
   private readonly databaseClientBinding
 
   constructor(
-    private readonly queryClient: QueryClient,
     private readonly apiFetch: ApiFetcher,
-    private readonly databaseId: string,
+    private readonly sourceId: string,
     databaseClient: DatabaseClient | null,
     private readonly onIdle: () => void,
   ) {
@@ -204,12 +205,18 @@ class DatabaseRealtimeManager {
   getSnapshot = () => this.state
 
   setPresence(ownerId: string, presence: DatabasePresence | null) {
-    const previous = this.presenceByOwner.get(ownerId) ?? null
+    const previous = this.presenceByOwner.get(ownerId)?.presence ?? null
 
     if (samePresence(previous, presence)) return
 
     this.presenceByOwner.delete(ownerId)
-    if (presence) this.presenceByOwner.set(ownerId, presence)
+    if (presence) {
+      this.presenceActivation += 1
+      this.presenceByOwner.set(ownerId, {
+        activation: this.presenceActivation,
+        presence,
+      })
+    }
     this.sendPresence()
   }
 
@@ -256,7 +263,7 @@ class DatabaseRealtimeManager {
         }
       })
       this.scheduleTicketRefresh(ticket, socket, generation)
-      this.recoverIfBehind(ticket.version)
+      this.recoverSource()
     } catch (error) {
       if (ticketFailureAction(error) === "stop") {
         this.markUnavailable()
@@ -272,7 +279,7 @@ class DatabaseRealtimeManager {
 
   private async fetchTicket(refreshToken?: string) {
     return this.apiFetch<DatabaseRealtimeTicket>(
-      `/databases/${encodeURIComponent(this.databaseId)}/realtime-ticket`,
+      `/data-sources/${encodeURIComponent(this.sourceId)}/realtime-ticket`,
       {
         body: JSON.stringify(refreshToken ? { token: refreshToken } : {}),
         method: "POST",
@@ -286,9 +293,9 @@ class DatabaseRealtimeManager {
     if (!parsed.ok) {
       if (parsed.reason === "protocol_mismatch") {
         console.warn(JSON.stringify({
-          databaseId: this.databaseId,
+          sourceId: this.sourceId,
           event: "database_realtime_protocol_mismatch",
-          expectedProtocolVersion: 2,
+          expectedProtocolVersion: 3,
         }))
         closeRealtimeSocket(socket, 1012, "Database realtime protocol changed")
       }
@@ -296,7 +303,7 @@ class DatabaseRealtimeManager {
     }
     const message = parsed.message
 
-    if (message.databaseId !== this.databaseId) return
+    if (message.sourceId !== this.sourceId) return
 
     if (message.type === "database.mutation") {
       void this.ingestMutation(message).catch(() => undefined)
@@ -306,16 +313,20 @@ class DatabaseRealtimeManager {
     if (message.type === "realtime.ready") {
       this.sessionId = message.sessionId
       this.reconnectAttempt = 0
-      this.recoverIfBehind(message.databaseVersion)
+      this.recoverSource()
       this.setCollaborators(message.peers)
       this.setState({ ...this.state, status: "connected" })
       this.startHeartbeat()
-      this.sendPresence()
+      this.sendPresence(true)
       return
     }
 
     if (message.type === "presence.update") {
       const collaborator = withColor(message.collaborator)
+      const current = this.state.collaborators.find(
+        (item) => item.sessionId === collaborator.sessionId,
+      )
+      if (current && !isNewerCollaborator(collaborator, current)) return
       this.setCollaborators([
         ...this.state.collaborators.filter(
           (item) => item.sessionId !== collaborator.sessionId,
@@ -326,6 +337,10 @@ class DatabaseRealtimeManager {
     }
 
     if (message.type === "presence.clear") {
+      const current = this.state.collaborators.find(
+        (item) => item.sessionId === message.sessionId,
+      )
+      if (current && current.revision > message.revision) return
       this.setCollaborators(
         this.state.collaborators.filter(
           (item) => item.sessionId !== message.sessionId,
@@ -334,28 +349,21 @@ class DatabaseRealtimeManager {
     }
   }
 
-  private async ingestMutation(event: DatabaseMutationEventV2) {
+  private async ingestMutation(event: DataSourceMutationEventV3) {
     try {
       if (await this.databaseClientBinding.ingest(event)) return
     } catch {
-      // A session/client transition must recover through authoritative reads.
+      // A replaced session client recovers from the source feed below.
     }
-    await Promise.allSettled([
-      this.queryClient.invalidateQueries({ queryKey: [databaseClientQueryRoot] }),
-      this.queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
-    ])
+    await this.catchUpSource()
   }
 
-  private async catchUpOrInvalidate() {
+  private async catchUpSource() {
     try {
-      if (await this.databaseClientBinding.catchUp(this.databaseId)) return
+      await this.databaseClientBinding.catchUp(this.sourceId)
     } catch {
-      // A replaced session client falls back to an authoritative query refresh.
+      // The next ready/mutation/reconnect retries the authoritative source feed.
     }
-    await Promise.allSettled([
-      this.queryClient.invalidateQueries({ queryKey: [databaseClientQueryRoot] }),
-      this.queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
-    ])
   }
 
   private scheduleTicketRefresh(
@@ -416,22 +424,21 @@ class DatabaseRealtimeManager {
     }, delay)
   }
 
-  private recoverIfBehind(serverVersion: number) {
-    void this.catchUpOrInvalidate()
-
-    recoverPagePropertiesIfBehind(
-      this.queryClient,
-      this.databaseId,
-      serverVersion,
-    )
+  private recoverSource() {
+    void this.catchUpSource()
   }
 
-  private sendPresence() {
+  private sendPresence(force = false) {
     if (this.socket?.readyState !== WebSocket.OPEN ||
       this.state.status !== "connected") return
-    const values = [...this.presenceByOwner.values()]
+    const selected = selectActivePresence(this.presenceByOwner.values())
+    if (selected === null && this.lastSentPresence === null) return
+    if (!force && samePresence(this.lastSentPresence, selected)) return
+    this.presenceRevision += 1
+    this.lastSentPresence = selected
     this.socket.send(JSON.stringify({
-      presence: values.at(-1) ?? null,
+      presence: selected,
+      revision: this.presenceRevision,
       type: "presence.update",
     }))
   }
@@ -499,6 +506,7 @@ class DatabaseRealtimeManager {
     closeRealtimeSocket(this.socket, 1000, "Database view closed")
     this.socket = null
     this.sessionId = null
+    this.lastSentPresence = null
     this.presenceByOwner.clear()
     this.paused = false
     this.stopLifecycleListeners()
@@ -521,6 +529,7 @@ class DatabaseRealtimeManager {
     closeRealtimeSocket(this.socket, 1000, "Database realtime unavailable")
     this.socket = null
     this.sessionId = null
+    this.lastSentPresence = null
     this.stopLifecycleListeners()
     this.setState(getUnavailableSnapshot())
   }
@@ -580,6 +589,7 @@ class DatabaseRealtimeManager {
     closeRealtimeSocket(this.socket, 1000, "Database realtime paused")
     this.socket = null
     this.sessionId = null
+    this.lastSentPresence = null
     this.setState(getOfflineSnapshot())
   }
 
@@ -659,36 +669,45 @@ export function samePresence(
   )
 }
 
+export function selectActivePresence(
+  entries: Iterable<{ activation: number; presence: DatabasePresence }>,
+) {
+  let selected: { activation: number; presence: DatabasePresence } | null = null
+  for (const entry of entries) {
+    if (!selected || entry.activation > selected.activation) selected = entry
+  }
+  return selected?.presence ?? null
+}
+
 function getManager(
   queryClient: QueryClient,
   apiFetch: ApiFetcher,
-  databaseId: string,
+  sourceId: string,
   databaseClient: DatabaseClient | null,
 ) {
-  let byDatabase = managers.get(queryClient)
+  let bySource = managers.get(queryClient)
 
-  if (!byDatabase) {
-    byDatabase = new Map()
-    managers.set(queryClient, byDatabase)
+  if (!bySource) {
+    bySource = new Map()
+    managers.set(queryClient, bySource)
   }
 
-  const managerKey = `${databaseClient?.sessionId ?? "public"}:${databaseId}`
-  let manager = byDatabase.get(managerKey)
+  const managerKey = `${databaseClient?.sessionId ?? "public"}:${sourceId}`
+  let manager = bySource.get(managerKey)
 
   if (!manager) {
     const created = new DatabaseRealtimeManager(
-      queryClient,
       apiFetch,
-      databaseId,
+      sourceId,
       databaseClient,
       () => {
-        if (byDatabase?.get(managerKey) === created) {
-          byDatabase.delete(managerKey)
+        if (bySource?.get(managerKey) === created) {
+          bySource.delete(managerKey)
         }
       },
     )
     manager = created
-    byDatabase.set(managerKey, manager)
+    bySource.set(managerKey, manager)
   }
 
   manager.bindDatabaseClient(databaseClient)
@@ -716,36 +735,39 @@ export function parseDatabaseRealtimeServerMessage(
       message.type === "presence.update" ||
       message.type === "presence.clear"
 
-    if (isKnownServerMessage && message.protocolVersion !== 2) {
+    if (isKnownServerMessage && message.protocolVersion !== 3) {
       return { ok: false, reason: "protocol_mismatch" }
     }
 
     if (message.type === "database.mutation") {
-      const parsed = databaseMutationEventV2Schema.safeParse(value)
+      const parsed = dataSourceMutationEventV3Schema.safeParse(value)
       return parsed.success
         ? { message: parsed.data, ok: true }
         : { ok: false, reason: "invalid" }
     }
 
     if (message.type === "realtime.ready" &&
-      typeof message.databaseId === "string" &&
-      typeof message.databaseVersion === "number" &&
-      Number.isSafeInteger(message.databaseVersion) &&
-      message.databaseVersion >= 0 &&
+      typeof message.sourceId === "string" &&
+      typeof message.sourceVersion === "number" &&
+      Number.isSafeInteger(message.sourceVersion) &&
+      message.sourceVersion >= 0 &&
       typeof message.sessionId === "string" &&
-      Array.isArray(message.peers)) {
+      Array.isArray(message.peers) &&
+      message.peers.every(isPresenceCollaborator)) {
       return { message: message as RealtimeReadyMessage, ok: true }
     }
 
     if (message.type === "presence.update" &&
-      typeof message.databaseId === "string" &&
-      message.collaborator && typeof message.collaborator === "object") {
+      typeof message.sourceId === "string" &&
+      isPresenceCollaborator(message.collaborator)) {
       return { message: message as PresenceUpdateMessage, ok: true }
     }
 
     if (message.type === "presence.clear" &&
-      typeof message.databaseId === "string" &&
-      typeof message.sessionId === "string") {
+      typeof message.sourceId === "string" &&
+      typeof message.sessionId === "string" &&
+      Number.isSafeInteger(message.revision) &&
+      (message.revision as number) >= 0) {
       return { message: message as PresenceClearMessage, ok: true }
     }
 
@@ -756,33 +778,62 @@ export function parseDatabaseRealtimeServerMessage(
 }
 
 type RealtimeReadyMessage = {
-  databaseVersion: number
-  databaseId: string
   peers: Array<Omit<DatabasePresenceCollaborator, "color">>
-  protocolVersion: 2
+  protocolVersion: 3
   sessionId: string
+  sourceId: string
+  sourceVersion: number
   type: "realtime.ready"
 }
 type PresenceUpdateMessage = {
   collaborator: Omit<DatabasePresenceCollaborator, "color">
-  databaseId: string
-  protocolVersion: 2
+  protocolVersion: 3
+  sourceId: string
   type: "presence.update"
 }
 type PresenceClearMessage = {
-  databaseId: string
-  protocolVersion: 2
+  protocolVersion: 3
+  revision: number
   sessionId: string
+  sourceId: string
   type: "presence.clear"
 }
-type RealtimeServerMessage = DatabaseMutationEventV2 |
+type RealtimeServerMessage = DataSourceMutationEventV3 |
   RealtimeReadyMessage |
   PresenceUpdateMessage | PresenceClearMessage
+
+function isPresenceCollaborator(
+  value: unknown,
+): value is Omit<DatabasePresenceCollaborator, "color"> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const collaborator = value as Record<string, unknown>
+  const presence = collaborator.presence as Record<string, unknown> | undefined
+  const user = collaborator.user as Record<string, unknown> | undefined
+  return typeof collaborator.connectedAt === "string" &&
+    typeof collaborator.updatedAt === "string" &&
+    typeof collaborator.sessionId === "string" &&
+    Number.isSafeInteger(collaborator.revision) &&
+    (collaborator.revision as number) >= 0 &&
+    Boolean(presence &&
+      typeof presence.columnKey === "string" &&
+      typeof presence.rowId === "string" &&
+      (presence.viewId === null || typeof presence.viewId === "string")) &&
+    Boolean(user && typeof user.id === "string" && typeof user.name === "string")
+}
+
+function isNewerCollaborator(
+  candidate: DatabasePresenceCollaborator,
+  current: DatabasePresenceCollaborator,
+) {
+  return candidate.revision > current.revision ||
+    (candidate.revision === current.revision &&
+      Date.parse(candidate.updatedAt) > Date.parse(current.updatedAt))
+}
 
 function withColor<T extends Omit<DatabasePresenceCollaborator, "color">>(
   collaborator: T,
 ): DatabasePresenceCollaborator {
-  return { ...collaborator, color: stableColor(collaborator.user.id) }
+  return { ...collaborator, color: stableColor(collaborator.sessionId) }
 }
 
 function stableColor(value: string) {

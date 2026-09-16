@@ -8,11 +8,12 @@ import {
   DATABASE_REALTIME_PING,
   reconnectDelay,
   parseDatabaseRealtimeServerMessage,
+  selectActivePresence,
   samePresence,
   ticketFailureAction,
   type DatabasePresenceCollaborator,
 } from "./realtime"
-test("cell presence deduplicates the same user within a cell", () => {
+test("cell presence keeps separate browser sessions for the same user", () => {
   const collaborator = (
     sessionId: string,
     rowId = "row-1",
@@ -20,6 +21,7 @@ test("cell presence deduplicates the same user within a cell", () => {
     color: "#2563eb",
     connectedAt: "2026-07-14T12:00:00.000Z",
     presence: { columnKey: "property-status", rowId, viewId: "view-1" },
+    revision: 1,
     sessionId,
     updatedAt: "2026-07-14T12:00:00.000Z",
     user: { id: "user-2", name: "User Two" },
@@ -30,7 +32,7 @@ test("cell presence deduplicates the same user within a cell", () => {
     collaborator("session-3", "row-2"),
   ])
 
-  assert.equal(result["row-1:property-status"]?.length, 1)
+  assert.equal(result["row-1:property-status"]?.length, 2)
   assert.equal(result["row-2:property-status"]?.length, 1)
 })
 
@@ -50,6 +52,21 @@ test("presence equality is based on stable cell fields", () => {
     false,
   )
   assert.equal(samePresence(null, null), true)
+})
+
+test("the most recently focused surface owns the source cursor", () => {
+  const grid = {
+    activation: 1,
+    presence: { columnKey: "status", rowId: "row-1", viewId: "view-1" },
+  }
+  const rowPage = {
+    activation: 2,
+    presence: { columnKey: "title", rowId: "row-1", viewId: null },
+  }
+
+  assert.deepEqual(selectActivePresence([grid, rowPage]), rowPage.presence)
+  assert.deepEqual(selectActivePresence([rowPage, { ...grid, activation: 3 }]), grid.presence)
+  assert.equal(selectActivePresence([]), null)
 })
 
 test("connecting realtime sockets are not closed until they open", () => {
@@ -107,29 +124,29 @@ test("ticket failures stop only for permanent authorization and lookup errors", 
   assert.equal(ticketFailureAction(new TypeError("Failed to fetch")), "retry")
 })
 
-test("database realtime control messages require protocol v2", () => {
+test("database realtime control messages require source protocol v3", () => {
   assert.deepEqual(
     parseDatabaseRealtimeServerMessage(JSON.stringify({
-      databaseId: "database-1",
       peers: [],
-      protocolVersion: 1,
+      protocolVersion: 2,
       sessionId: "session-1",
+      sourceId: "source-1",
+      sourceVersion: 4,
       type: "realtime.ready",
-      version: 4,
     })),
     { ok: false, reason: "protocol_mismatch" },
   )
 
   const parsed = parseDatabaseRealtimeServerMessage(JSON.stringify({
-    databaseId: "database-1",
-    databaseVersion: 4,
     peers: [],
-    protocolVersion: 2,
+    protocolVersion: 3,
     sessionId: "session-1",
+    sourceId: "source-1",
+    sourceVersion: 4,
     type: "realtime.ready",
   }))
   assert.equal(parsed.ok, true)
   if (parsed.ok && parsed.message.type === "realtime.ready") {
-    assert.equal(parsed.message.databaseVersion, 4)
+    assert.equal(parsed.message.sourceVersion, 4)
   }
 })
