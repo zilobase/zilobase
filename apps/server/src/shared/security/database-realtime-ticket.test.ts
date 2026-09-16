@@ -3,7 +3,9 @@ import { Buffer } from "node:buffer";
 import { afterEach, test, vi } from "vitest";
 
 import {
+  createDataSourceRealtimeTicket,
   createDatabaseRealtimeTicket,
+  verifyDataSourceRealtimeTicket,
   verifyDatabaseRealtimeTicket,
 } from "./database-realtime-ticket";
 
@@ -54,6 +56,44 @@ test("database realtime tickets preserve scope, identity, and edit capability", 
   assert.equal(claims.user.id, "user-1");
   assert.equal(claims.version, 7);
   assert.equal(claims.workspaceId, "workspace-1");
+});
+
+test("data source realtime tickets carry only source identity and clock", async () => {
+  const ticket = await createDataSourceRealtimeTicket(
+    {
+      canEdit: true,
+      sessionId: "session-1",
+      sourceId: "source-1",
+      sourceVersion: 11,
+      user: { id: "user-1", name: "User One" },
+      workspaceId: "workspace-1",
+    },
+    env,
+  );
+  const claims = await verifyDataSourceRealtimeTicket(ticket.token, env);
+
+  assert.equal(claims.sourceId, "source-1");
+  assert.equal(claims.sourceVersion, 11);
+  assert.equal(claims.sessionId, "session-1");
+  assert.equal("databaseId" in claims, false);
+  assert.equal("version" in claims, false);
+});
+
+test("data source tickets reject host-shaped claims", async () => {
+  const token = await signRawClaims({
+    canEdit: true,
+    databaseId: "database-1",
+    exp: Date.now() + 60_000,
+    sessionId: "session-1",
+    user: { id: "user-1", name: "User One" },
+    version: 3,
+    workspaceId: "workspace-1",
+  }, env.COLLABORATION_SECRET);
+
+  await assert.rejects(
+    verifyDataSourceRealtimeTicket(token, env),
+    /Expired data source realtime ticket/,
+  );
 });
 
 test("database realtime tickets are capped by temporary membership expiry", async () => {

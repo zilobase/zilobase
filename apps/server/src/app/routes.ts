@@ -8,6 +8,7 @@ import { clipRoutes } from "../features/clips";
 import { authRoutes } from "../features/auth/routes";
 import { sessionRoutes } from "../features/auth/session-routes";
 import { databaseRoutes } from "../features/databases/database-routes";
+import { dataSourceRealtimeRoutes } from "../features/databases/data-source-realtime-routes";
 import { desktopAuthRoutes } from "../features/desktop-auth/routes";
 import { healthRoutes } from "../features/health/routes";
 import { imageRoutes } from "../features/images/routes";
@@ -42,6 +43,7 @@ export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/", desktopAuthRoutes);
   app.route("/", authRoutes);
   app.route("/databases", databaseRoutes);
+  app.route("/data-sources", dataSourceRealtimeRoutes);
   app.route("/demo", demoRoutes);
   app.route("/", healthRoutes);
   app.route("/", instanceRoutes);

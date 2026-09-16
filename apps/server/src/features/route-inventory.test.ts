@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { databaseRoutes } from "./databases/database-routes";
+import { dataSourceRealtimeRoutes } from "./databases/data-source-realtime-routes";
 import { pageRoutes } from "./pages/page-routes";
 
 const inventory = (routes: typeof pageRoutes) =>
@@ -72,6 +73,13 @@ describe("feature route composition", () => {
       "DELETE /:id",
       "POST /:id/restore",
       "DELETE /:id/favorite",
+    ]);
+  });
+
+  it("exposes source-keyed catch-up and realtime tickets", () => {
+    expect(inventory(dataSourceRealtimeRoutes)).toEqual([
+      "GET /:sourceId/mutations",
+      "POST /:sourceId/realtime-ticket",
     ]);
   });
 });
