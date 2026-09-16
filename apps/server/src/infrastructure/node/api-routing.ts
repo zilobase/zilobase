@@ -16,6 +16,7 @@ const apiPathPrefixes = [
   "/page-guest-invitations",
   "/page-layouts",
   "/databases",
+  "/data-sources",
   "/demo",
   "/desktop",
   "/images",
