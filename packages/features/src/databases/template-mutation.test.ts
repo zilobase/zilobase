@@ -15,6 +15,7 @@ test("template application uses the idempotent source command and refreshes navi
     name: "Projects", parentDatabaseId: "database-1", position: 0,
     updatedAt: original.dataSources[0]!.updatedAt, version: 1, workspaceId: "org-1",
   }
+  const { linkedAt: _linkedAt, position: _position, ...sourcePatch } = source
   const { mutation, queryClient } = createMutationTestRuntime(useApplyDatabaseTemplate, async <T>(url: string, init?: RequestInit) => {
     const request = JSON.parse(String(init?.body)) as DatabaseCommandRequest
     assert.equal(url, "/databases/database-1/data-sources/data-source-1/commands")
@@ -22,7 +23,7 @@ test("template application uses the idempotent source command and refreshes navi
     assert.equal(request.command.type, "template.apply")
     return {
       commandId: request.commandId,
-      event: { actorId: "user-1", areas: ["dataSources"], changes: { dataSources: [source] }, commandId: request.commandId, committedAt: source.updatedAt, databaseId: "database-1", dataSourceId: "data-source-1", eventId: "event-1", protocolVersion: 2, type: "database.mutation", version: 1 },
+      event: { actorId: "user-1", areas: ["source"], changes: { source: sourcePatch }, commandId: request.commandId, committedAt: source.updatedAt, eventId: "event-1", protocolVersion: 3, sourceId: "data-source-1", sourceVersion: 1, type: "database.mutation" },
       result: { dataSource: source },
     } as T
   })

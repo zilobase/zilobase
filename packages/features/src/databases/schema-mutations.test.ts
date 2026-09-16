@@ -82,6 +82,7 @@ function commandApi(sent: Array<{ path: string; request: DatabaseCommandRequest 
     sent.push({ path, request })
     version += 1
     const command = request.command
+    const sourceScoped = path.includes("/data-sources/")
     const result = command.type === "database.update"
       ? host
       : command.type === "view.create"
@@ -93,14 +94,25 @@ function commandApi(sent: Array<{ path: string; request: DatabaseCommandRequest 
             : source
     return {
       commandId: request.commandId,
-      event: {
+      event: sourceScoped ? {
+        actorId: "user-1",
+        areas: [command.type.startsWith("property.") ? "properties" : "source"],
+        changes: {},
+        commandId: request.commandId,
+        committedAt: now,
+        eventId: `event-${version}`,
+        protocolVersion: 3,
+        sourceId: "data-source-1",
+        sourceVersion: version,
+        type: "database.mutation",
+      } : {
         actorId: "user-1",
         areas: [command.type.startsWith("view.") ? "views" : "dataSources"],
         changes: {},
         commandId: request.commandId,
         committedAt: now,
         databaseId: "database-1",
-        dataSourceId: command.type === "database.update" ? null : "data-source-1",
+        dataSourceId: null,
         eventId: `event-${version}`,
         protocolVersion: 2,
         type: "database.mutation",
