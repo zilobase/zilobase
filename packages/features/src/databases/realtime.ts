@@ -8,6 +8,10 @@ import {
 
 import { useZilobaseFeatures, type ApiFetcher } from "../shared/context"
 import {
+  applyDataSourceMutationToPageProperties,
+  recoverPagePropertiesIfSourceBehind,
+} from "../pages/database-realtime-cache"
+import {
   dataSourceMutationEventV3Schema,
   type DataSourceMutationEventV3,
 } from "./contracts-v2"
@@ -171,6 +175,7 @@ class DatabaseRealtimeManager {
   private readonly databaseClientBinding
 
   constructor(
+    private readonly queryClient: QueryClient,
     private readonly apiFetch: ApiFetcher,
     private readonly sourceId: string,
     databaseClient: DatabaseClient | null,
@@ -263,7 +268,7 @@ class DatabaseRealtimeManager {
         }
       })
       this.scheduleTicketRefresh(ticket, socket, generation)
-      this.recoverSource()
+      this.recoverSource(ticket.sourceVersion)
     } catch (error) {
       if (ticketFailureAction(error) === "stop") {
         this.markUnavailable()
@@ -313,7 +318,7 @@ class DatabaseRealtimeManager {
     if (message.type === "realtime.ready") {
       this.sessionId = message.sessionId
       this.reconnectAttempt = 0
-      this.recoverSource()
+      this.recoverSource(message.sourceVersion)
       this.setCollaborators(message.peers)
       this.setState({ ...this.state, status: "connected" })
       this.startHeartbeat()
@@ -350,6 +355,7 @@ class DatabaseRealtimeManager {
   }
 
   private async ingestMutation(event: DataSourceMutationEventV3) {
+    applyDataSourceMutationToPageProperties(this.queryClient, event)
     try {
       if (await this.databaseClientBinding.ingest(event)) return
     } catch {
@@ -424,8 +430,15 @@ class DatabaseRealtimeManager {
     }, delay)
   }
 
-  private recoverSource() {
+  private recoverSource(serverVersion?: number) {
     void this.catchUpSource()
+    if (serverVersion !== undefined) {
+      recoverPagePropertiesIfSourceBehind(
+        this.queryClient,
+        this.sourceId,
+        serverVersion,
+      )
+    }
   }
 
   private sendPresence(force = false) {
@@ -697,6 +710,7 @@ function getManager(
 
   if (!manager) {
     const created = new DatabaseRealtimeManager(
+      queryClient,
       apiFetch,
       sourceId,
       databaseClient,

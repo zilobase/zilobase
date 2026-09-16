@@ -1,35 +1,42 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query"
 
-import type { DatabaseMutationEventV2 } from "../databases/contracts-v2"
+import type { DataSourceMutationEventV3 } from "../databases/contracts-v2"
 import {
   pageRootQueryKey,
   type PagePropertiesPayload,
 } from "./queries"
 
-export function applyDatabaseMutationToPageProperties(
+export function applyDataSourceMutationToPageProperties(
   queryClient: QueryClient,
-  mutation: DatabaseMutationEventV2,
+  mutation: DataSourceMutationEventV3,
 ) {
   const entries = getPagePropertiesQueries(queryClient)
 
   for (const [queryKey, current] of entries) {
-    if (!current?.databaseIds?.includes(mutation.databaseId)) continue
+    if (!current?.sourceIds?.includes(mutation.sourceId)) continue
 
-    const currentVersion = current.databaseVersions?.[mutation.databaseId]
+    const currentVersion = current.sourceVersions?.[mutation.sourceId]
 
     if (
       mutation.requiresReset ||
       mutation.areas.includes("properties") ||
       (mutation.changes.removedRecordIds?.length ?? 0) > 0
     ) {
-      if (currentVersion === undefined || mutation.version > currentVersion) {
+      if (
+        currentVersion === undefined || mutation.sourceVersion > currentVersion
+      ) {
         void queryClient.invalidateQueries({ exact: true, queryKey })
       }
       continue
     }
 
-    if (currentVersion === undefined || mutation.version !== currentVersion + 1) {
-      if (currentVersion === undefined || mutation.version > currentVersion) {
+    if (
+      currentVersion === undefined ||
+      mutation.sourceVersion !== currentVersion + 1
+    ) {
+      if (
+        currentVersion === undefined || mutation.sourceVersion > currentVersion
+      ) {
         void queryClient.invalidateQueries({ exact: true, queryKey })
       }
       continue
@@ -46,15 +53,15 @@ export function applyDatabaseMutationToPageProperties(
   }
 }
 
-export function recoverPagePropertiesIfBehind(
+export function recoverPagePropertiesIfSourceBehind(
   queryClient: QueryClient,
-  databaseId: string,
+  sourceId: string,
   serverVersion: number,
 ) {
   for (const [queryKey, current] of getPagePropertiesQueries(queryClient)) {
-    if (!current?.databaseIds?.includes(databaseId)) continue
+    if (!current?.sourceIds?.includes(sourceId)) continue
 
-    if ((current.databaseVersions?.[databaseId] ?? -1) < serverVersion) {
+    if ((current.sourceVersions?.[sourceId] ?? -1) < serverVersion) {
       void queryClient.invalidateQueries({ exact: true, queryKey })
     }
   }
@@ -66,10 +73,10 @@ export function preferNewestPagePropertiesPayload(
 ) {
   if (!current) return incoming
 
-  for (const [databaseId, incomingVersion] of Object.entries(
-    incoming.databaseVersions ?? {},
+  for (const [sourceId, incomingVersion] of Object.entries(
+    incoming.sourceVersions ?? {},
   )) {
-    const currentVersion = current.databaseVersions?.[databaseId]
+    const currentVersion = current.sourceVersions?.[sourceId]
 
     if (currentVersion !== undefined && currentVersion > incomingVersion) {
       return current
@@ -82,15 +89,15 @@ export function preferNewestPagePropertiesPayload(
 function applyMutationToPageProperties(
   current: PagePropertiesPayload,
   pageId: string,
-  mutation: DatabaseMutationEventV2,
+  mutation: DataSourceMutationEventV3,
 ): PagePropertiesPayload {
   const record = mutation.changes.records?.find((item) => item.pageId === pageId)
 
   return {
     ...current,
-    databaseVersions: {
-      ...current.databaseVersions,
-      [mutation.databaseId]: mutation.version,
+    sourceVersions: {
+      ...current.sourceVersions,
+      [mutation.sourceId]: mutation.sourceVersion,
     },
     ...(record ? { values: Object.values(record.valuesByPropertyId) } : {}),
   }

@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-db"
 
 import type { ApiFetcher } from "../../shared/api-fetcher"
-import { applyDatabaseMutationToPageProperties } from "../../pages/database-realtime-cache"
+import { applyDataSourceMutationToPageProperties } from "../../pages/database-realtime-cache"
 import type {
   DatabaseBootstrapResponse,
   DatabaseCommand,
@@ -661,7 +661,6 @@ export class SessionDatabaseClient implements DatabaseClient {
     event: DatabaseMutationEventV2,
     ledger: DatabaseVersionLedger,
   ) {
-    applyDatabaseMutationToPageProperties(this.queryClient, event)
     if (event.requiresReset) {
       await this.resetNow({ databaseId: event.databaseId }, "event_reset")
     } else {
@@ -710,6 +709,7 @@ export class SessionDatabaseClient implements DatabaseClient {
     event: DataSourceMutationEventV3,
     ledger: DatabaseVersionLedger,
   ) {
+    applyDataSourceMutationToPageProperties(this.queryClient, event)
     this.settleCellOverlay(event.commandId)
     if (event.requiresReset) {
       await this.resetSourceNow(event.sourceId, "event_reset")

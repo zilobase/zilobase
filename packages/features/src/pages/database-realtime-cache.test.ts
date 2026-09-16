@@ -3,9 +3,9 @@ import test from "node:test"
 import { QueryClient } from "@tanstack/react-query"
 
 import {
-  applyDatabaseMutationToPageProperties,
+  applyDataSourceMutationToPageProperties,
   preferNewestPagePropertiesPayload,
-  recoverPagePropertiesIfBehind,
+  recoverPagePropertiesIfSourceBehind,
 } from "./database-realtime-cache"
 import {
   pagePropertiesQueryKey,
@@ -13,20 +13,20 @@ import {
 } from "./queries"
 
 const initialPayload = (): PagePropertiesPayload => ({
-  databaseIds: ["database-1"],
-  databaseVersions: { "database-1": 4 },
   presenceTargets: [{
-    databaseId: "database-1",
     propertyIds: [],
     rowId: "row-1",
+    sourceId: "source-1",
   }],
   properties: [],
+  sourceIds: ["source-1"],
+  sourceVersions: { "source-1": 4 },
   values: [],
 })
 
 function mutation(
   version: number,
-  changes: Parameters<typeof applyDatabaseMutationToPageProperties>[1]["changes"],
+  changes: Parameters<typeof applyDataSourceMutationToPageProperties>[1]["changes"],
 ) {
   return {
     actorId: "user-1",
@@ -34,21 +34,20 @@ function mutation(
     changes,
     commandId: `command-${version}`,
     committedAt: "2026-07-14T12:00:00.000Z",
-    databaseId: "database-1",
-    dataSourceId: "source-1",
     eventId: `event-${version}`,
-    protocolVersion: 2 as const,
+    protocolVersion: 3 as const,
+    sourceId: "source-1",
+    sourceVersion: version,
     type: "database.mutation" as const,
-    version,
   }
 }
 
-test("database events patch the targeted row-page properties cache", () => {
+test("source events patch the targeted row-page properties cache", () => {
   const queryClient = new QueryClient()
   const key = pagePropertiesQueryKey("page-1")
   queryClient.setQueryData(key, initialPayload())
 
-  applyDatabaseMutationToPageProperties(
+  applyDataSourceMutationToPageProperties(
     queryClient,
     mutation(5, { records: [{
       createdAt: "2026-07-14T12:00:00.000Z",
@@ -64,7 +63,7 @@ test("database events patch the targeted row-page properties cache", () => {
   )
 
   const payload = queryClient.getQueryData<PagePropertiesPayload>(key)
-  assert.equal(payload?.databaseVersions?.["database-1"], 5)
+  assert.equal(payload?.sourceVersions?.["source-1"], 5)
   assert.equal(payload?.values[0]?.value, "Done")
 })
 
@@ -72,13 +71,13 @@ test("property changes invalidate row-page properties", () => {
   const queryClient = new QueryClient()
   const key = pagePropertiesQueryKey("page-1")
   queryClient.setQueryData<PagePropertiesPayload>(key, {
-    databaseIds: ["database-1"],
-    databaseVersions: { "database-1": 4 },
     presenceTargets: [{
-      databaseId: "database-1",
       propertyIds: ["property-status"],
       rowId: "row-1",
+      sourceId: "source-1",
     }],
+    sourceIds: ["source-1"],
+    sourceVersions: { "source-1": 4 },
     properties: [{
       createdAt: "2026-07-14T12:00:00.000Z",
       id: "property-status",
@@ -97,7 +96,7 @@ test("property changes invalidate row-page properties", () => {
     }],
   })
 
-  applyDatabaseMutationToPageProperties(queryClient, {
+  applyDataSourceMutationToPageProperties(queryClient, {
     ...mutation(5, { removedPropertyIds: ["column-status"] }),
     areas: ["properties"],
   })
@@ -109,22 +108,22 @@ test("row-page properties invalidate on version gaps and ticket recovery", () =>
   const key = pagePropertiesQueryKey("page-1")
   queryClient.setQueryData(key, initialPayload())
 
-  applyDatabaseMutationToPageProperties(
+  applyDataSourceMutationToPageProperties(
     queryClient,
     mutation(6, {}),
   )
   assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
 
   queryClient.setQueryData(key, initialPayload())
-  recoverPagePropertiesIfBehind(queryClient, "database-1", 5)
+  recoverPagePropertiesIfSourceBehind(queryClient, "source-1", 5)
   assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
 })
 
 test("an older page-property response cannot replace newer realtime data", () => {
   const current = initialPayload()
-  current.databaseVersions = { "database-1": 6 }
+  current.sourceVersions = { "source-1": 6 }
   const incoming = initialPayload()
-  incoming.databaseVersions = { "database-1": 5 }
+  incoming.sourceVersions = { "source-1": 5 }
 
   assert.equal(preferNewestPagePropertiesPayload(current, incoming), current)
 })
@@ -134,7 +133,7 @@ test("invalidate-only events refetch page properties without patching them", () 
   const key = pagePropertiesQueryKey("page-1")
   queryClient.setQueryData(key, initialPayload())
 
-  applyDatabaseMutationToPageProperties(queryClient, {
+  applyDataSourceMutationToPageProperties(queryClient, {
     ...mutation(5, {}),
     requiresReset: true,
   })
@@ -142,7 +141,7 @@ test("invalidate-only events refetch page properties without patching them", () 
   assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
   assert.equal(
     queryClient.getQueryData<PagePropertiesPayload>(key)
-      ?.databaseVersions?.["database-1"],
+      ?.sourceVersions?.["source-1"],
     4,
   )
 })

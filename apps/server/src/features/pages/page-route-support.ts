@@ -1,6 +1,7 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Context } from "hono";
-import { canAccessDatabaseInWorkspace, getPageRecord, rejectActiveWorkspaceMismatch } from "../access";
+import { getPageRecord, rejectActiveWorkspaceMismatch } from "../access";
+import { requireDataSourceAccess } from "../databases/access/data-source-access";
 import { db } from "../../infrastructure/database";
 import { database, dataSource, databaseProperty, databaseRow, page, pageProperty, pagePropertyValue } from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
@@ -30,9 +31,9 @@ export const getPagePropertyPayload = async (
   // handshake will refetch it instead of treating stale data as current.
   const memberships = await db
     .selectDistinct({
-      databaseId: dataSource.parentDatabaseId,
       rowId: databaseRow.id,
-      version: database.version,
+      sourceId: dataSource.id,
+      sourceVersion: dataSource.version,
     })
     .from(databaseRow)
     .innerJoin(dataSource, eq(databaseRow.dataSourceId, dataSource.id))
@@ -47,8 +48,8 @@ export const getPagePropertyPayload = async (
   const [databaseProperties, values] = await Promise.all([
     db
       .select({
-        databaseId: dataSource.parentDatabaseId,
         property: pageProperty,
+        sourceId: dataSource.id,
       })
       .from(databaseRow)
       .innerJoin(
@@ -80,47 +81,41 @@ export const getPagePropertyPayload = async (
   const accessibleMemberships = (
     await Promise.all(
       memberships.map(async (membership) =>
-        (await canAccessDatabaseInWorkspace(
-          membership.databaseId,
-          workspaceId,
-          userId,
-          "view",
-        ))
-          ? membership
-          : null,
+        requireDataSourceAccess(membership.sourceId, userId, "view")
+          .then(() => membership, () => null),
       ),
     )
   ).filter((membership): membership is (typeof memberships)[number] =>
     Boolean(membership),
   );
-  const databaseIds = accessibleMemberships.map(
-    ({ databaseId }) => databaseId,
+  const sourceIds = accessibleMemberships.map(
+    ({ sourceId }) => sourceId,
   );
-  const databaseVersions = Object.fromEntries(
-    accessibleMemberships.map(({ databaseId, version }) => [
-      databaseId,
-      version,
+  const sourceVersions = Object.fromEntries(
+    accessibleMemberships.map(({ sourceId, sourceVersion }) => [
+      sourceId,
+      sourceVersion,
     ]),
   );
   const presenceTargets = accessibleMemberships.map(
-    ({ databaseId, rowId }) => ({
-      databaseId,
+    ({ rowId, sourceId }) => ({
       propertyIds: [
         ...new Set(
           databaseProperties
-            .filter((item) => item.databaseId === databaseId)
+            .filter((item) => item.sourceId === sourceId)
             .map(({ property }) => property.id),
         ),
       ],
       rowId,
+      sourceId,
     }),
   );
 
   return {
-    databaseIds,
-    databaseVersions,
     presenceTargets,
     properties,
+    sourceIds,
+    sourceVersions,
     values,
   };
 };
@@ -138,4 +133,3 @@ export const getNestedFavoriteTargetIds = async (
     pageIds,
   };
 };
-

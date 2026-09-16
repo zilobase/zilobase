@@ -106,7 +106,7 @@ function PageDatabaseRealtimeSubscription({
   editable: boolean
   enabled: boolean
   onPresenceChange: (
-    databaseId: string,
+    sourceId: string,
     presence: Record<string, DatabasePresenceCollaborator[]> | null,
   ) => void
   target: PagePropertyPresenceTarget
@@ -119,19 +119,19 @@ function PageDatabaseRealtimeSubscription({
         viewId: null,
       }
     : null
-  const realtime = useDatabaseRealtime(target.databaseId, {
+  const realtime = useDatabaseRealtime(target.sourceId, {
     enabled,
     presence,
     publishPresence: editable,
   })
 
   useEffect(() => {
-    onPresenceChange(target.databaseId, realtime.cellPresenceByKey)
-  }, [onPresenceChange, realtime.cellPresenceByKey, target.databaseId])
+    onPresenceChange(target.sourceId, realtime.cellPresenceByKey)
+  }, [onPresenceChange, realtime.cellPresenceByKey, target.sourceId])
 
   useEffect(
-    () => () => onPresenceChange(target.databaseId, null),
-    [onPresenceChange, target.databaseId],
+    () => () => onPresenceChange(target.sourceId, null),
+    [onPresenceChange, target.sourceId],
   )
 
   return null
@@ -199,7 +199,7 @@ export function PageMetadata({
     Record<string, DatabasePropertyValue>
   >({})
   const [activePropertyId, setActivePropertyId] = useState<string | null>(null)
-  const [presenceByDatabase, setPresenceByDatabase] = useState<
+  const [presenceBySource, setPresenceBySource] = useState<
     Record<string, Record<string, DatabasePresenceCollaborator[]>>
   >({})
   const titleRowRef = useRef<HTMLDivElement | null>(null)
@@ -225,21 +225,21 @@ export function PageMetadata({
   const presenceTargets = propertyPayload?.presenceTargets ?? []
   const updateDatabasePresence = useCallback(
     (
-    realtimeDatabaseId: string,
+    realtimeSourceId: string,
     presence: Record<string, DatabasePresenceCollaborator[]> | null,
   ) => {
-    setPresenceByDatabase((current) => {
+    setPresenceBySource((current) => {
       if (presence === null) {
-        if (!(realtimeDatabaseId in current)) return current
+        if (!(realtimeSourceId in current)) return current
 
         const next = { ...current }
-        delete next[realtimeDatabaseId]
+        delete next[realtimeSourceId]
         return next
       }
 
-      if (current[realtimeDatabaseId] === presence) return current
+      if (current[realtimeSourceId] === presence) return current
 
-      return { ...current, [realtimeDatabaseId]: presence }
+      return { ...current, [realtimeSourceId]: presence }
     })
     },
     [],
@@ -248,25 +248,27 @@ export function PageMetadata({
     const result: Record<string, DatabasePresenceCollaborator[]> = {}
 
     for (const target of presenceTargets) {
-      const databasePresence = presenceByDatabase[target.databaseId]
+      const sourcePresence = presenceBySource[target.sourceId]
 
       for (const propertyId of target.propertyIds) {
         const collaborators =
-          databasePresence?.[`${target.rowId}:${propertyId}`] ?? []
+          sourcePresence?.[`${target.rowId}:${propertyId}`] ?? []
         const existing = result[propertyId] ?? []
 
         result[propertyId] = [
           ...existing,
           ...collaborators.filter(
             (collaborator) =>
-              !existing.some((item) => item.user.id === collaborator.user.id),
+              !existing.some((item) =>
+                item.sessionId === collaborator.sessionId
+              ),
           ),
         ]
       }
     }
 
     return result
-  }, [presenceByDatabase, presenceTargets])
+  }, [presenceBySource, presenceTargets])
   const setPropertyActive = useCallback(
     (propertyId: string, active: boolean) => {
     setActivePropertyId((current) =>
@@ -736,7 +738,7 @@ export function PageMetadata({
           activePropertyId={activePropertyId}
           editable={editable}
           enabled={Boolean(session?.user)}
-          key={`${target.databaseId}:${target.rowId}`}
+          key={`${target.sourceId}:${target.rowId}`}
           onPresenceChange={updateDatabasePresence}
           target={target}
         />

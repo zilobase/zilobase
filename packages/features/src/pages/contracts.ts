@@ -119,17 +119,17 @@ export type PagePropertyValue = {
 };
 
 export type PagePropertiesPayload = {
-  databaseIds?: string[];
-  databaseVersions?: Record<string, number>;
   presenceTargets?: PagePropertyPresenceTarget[];
   properties: PageProperty[];
+  sourceIds?: string[];
+  sourceVersions?: Record<string, number>;
   values: PagePropertyValue[];
 };
 
 export type PagePropertyPresenceTarget = {
-  databaseId: string;
   propertyIds: string[];
   rowId: string;
+  sourceId: string;
 };
 
 export type AccessLevel = "view" | "comment" | "edit" | "full";
