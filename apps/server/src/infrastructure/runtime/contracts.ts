@@ -1,4 +1,4 @@
-import type { DatabaseMutationEventV2 } from "@zilobase/features/databases/contracts";
+import type { DataSourceMutationEventV3 } from "@zilobase/features/databases/contracts";
 import type { NavigationRealtimeInvalidateEvent } from "@zilobase/features/pages/navigation-realtime";
 import type {
   MeetingAudioSource,
@@ -103,7 +103,7 @@ export type ServerRuntimeAdapter = {
   getImageStorageMode?(env: RuntimeEnv): "s3" | "binding" | null | undefined;
   publishDatabaseMutation?(input: {
     env: RuntimeEnv;
-    event: DatabaseMutationEventV2;
+    event: DataSourceMutationEventV3;
   }): Promise<void>;
   publishMailNotification?(input: {
     env: RuntimeEnv;

@@ -8,7 +8,7 @@ import {
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
 import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
-import { databaseMutationEventFromJournalRow } from "./journal-event";
+import { dataSourceMutationEventFromJournalRow } from "./journal-event";
 
 const DELIVERY_LEASE_MS = 2 * 60 * 1000;
 const MAX_DELIVERY_ATTEMPTS = 8;
@@ -84,9 +84,14 @@ export async function drainDatabaseRealtimeOutbox(
       if (!journalEvent) {
         throw new Error("Database mutation journal event is unavailable");
       }
+      if (journalEvent.streamKind !== "source") {
+        deleteIds.push(entry.id);
+        delivered += 1;
+        continue;
+      }
       await publish({
         env,
-        event: databaseMutationEventFromJournalRow(journalEvent),
+        event: dataSourceMutationEventFromJournalRow(journalEvent),
       });
       deleteIds.push(entry.id);
       delivered += 1;
@@ -105,7 +110,7 @@ export async function drainDatabaseRealtimeOutbox(
       }
       console.error(JSON.stringify({
         attempts: entry.attempts,
-        databaseId: journalEvent?.databaseId ?? null,
+        sourceId: journalEvent?.sourceId ?? null,
         error: error instanceof Error ? error.message : String(error),
         event: discard
           ? "database_realtime_publish_discarded"
@@ -162,4 +167,7 @@ function retryAt(attempts: number, from: Date) {
   return new Date(from.getTime() + delay);
 }
 
-export type { DatabaseMutationEventV2 } from "@zilobase/features/databases/contracts";
+export type {
+  DatabaseMutationEventV2,
+  DataSourceMutationEventV3,
+} from "@zilobase/features/databases/contracts";

@@ -114,10 +114,14 @@ export {
   type MailNotificationEvent,
 } from "../infrastructure/runtime/runtime-adapter";
 export {
+  createDataSourceRealtimeTicket,
   createDatabaseRealtimeTicket,
+  DATA_SOURCE_REALTIME_PROTOCOL,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
+  verifyDataSourceRealtimeTicket,
   verifyDatabaseRealtimeTicket,
+  type DataSourceRealtimeTicketClaims,
   type DatabaseRealtimeTicketClaims,
 } from "../shared/security/database-realtime-ticket";
 export {
@@ -130,6 +134,7 @@ export {
 export {
   drainDatabaseRealtimeOutbox,
   type DatabaseMutationEventV2,
+  type DataSourceMutationEventV3,
 } from "../features/databases/realtime/outbox";
 export { drainNavigationRealtimeOutbox } from "../features/workspaces/navigation-realtime/outbox";
 export { expireTemporaryMemberships } from "../features/memberships";

@@ -50,11 +50,13 @@ function drainExecutor(
     changes: { removedRecordIds: [`row-${entry.id}`] },
     commandId: entry.id,
     committedAt: entry.committedAt,
-    databaseId: entry.databaseId,
+    databaseId: null,
     dataSourceId: "source-1",
     id: entry.eventId,
-    protocolVersion: 2,
+    protocolVersion: 3,
     requiresReset: entry.requiresRefetch,
+    sourceId: "source-1",
+    streamKind: "source",
     version: entry.version,
   }));
   const deleted: string[] = [];
@@ -155,7 +157,7 @@ test("outbox draining claims bounded batches and reports empty health", async ()
   });
 });
 
-test("journal-backed deliveries publish the canonical v2 event", async () => {
+test("journal-backed deliveries publish the canonical v3 source event", async () => {
   const committedAt = new Date("2026-08-02T00:00:00.000Z");
   const state = drainExecutor(
     [{ ...event, attempts: 0, committedAt, eventId: "journal-1", id: "delivery-1" }],
@@ -166,11 +168,13 @@ test("journal-backed deliveries publish the canonical v2 event", async () => {
       changes: { removedRecordIds: ["row-1"] },
       commandId: "command-1",
       committedAt,
-      databaseId: "database-1",
+      databaseId: null,
       dataSourceId: "source-1",
       id: "journal-1",
-      protocolVersion: 2,
+      protocolVersion: 3,
       requiresReset: false,
+      sourceId: "source-1",
+      streamKind: "source",
       version: 9,
     }],
   );
@@ -185,12 +189,11 @@ test("journal-backed deliveries publish the canonical v2 event", async () => {
     changes: { removedRecordIds: ["row-1"] },
     commandId: "command-1",
     committedAt: committedAt.toISOString(),
-    databaseId: "database-1",
-    dataSourceId: "source-1",
     eventId: "journal-1",
-    protocolVersion: 2,
+    protocolVersion: 3,
+    sourceId: "source-1",
+    sourceVersion: 9,
     type: "database.mutation",
-    version: 9,
   });
 });
 

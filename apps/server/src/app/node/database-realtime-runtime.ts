@@ -8,17 +8,17 @@ import crossws from "crossws/adapters/node";
 
 import type { RuntimeEnv } from "../../shared/config/config";
 import {
-  databaseMutationEventV2Schema,
-  type DatabaseMutationEventV2,
+  dataSourceMutationEventV3Schema,
+  type DataSourceMutationEventV3,
 } from "@zilobase/features/databases/contracts";
 import {
+  DATA_SOURCE_REALTIME_PROTOCOL,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
-  DATABASE_REALTIME_PROTOCOL,
-  verifyDatabaseRealtimeTicket,
-  type DatabaseRealtimeTicketClaims,
+  verifyDataSourceRealtimeTicket,
+  type DataSourceRealtimeTicketClaims,
 } from "../../shared/security/database-realtime-ticket";
 import {
-  databaseRealtimeChannel,
+  sourceRealtimeChannel,
   type NodeRealtimeBus,
   type RealtimeSubscription,
 } from "../../infrastructure/node/realtime-bus";
@@ -28,7 +28,7 @@ const DEFAULT_CONNECTION_LIMIT = 60;
 const CONNECTION_LIMIT_WINDOW_MS = 60_000;
 const MESSAGE_RATE_LIMIT = 30;
 const MESSAGE_RATE_WINDOW_MS = 1_000;
-const MAX_DATABASE_ID_LENGTH = 128;
+const MAX_SOURCE_ID_LENGTH = 128;
 const MAX_TICKET_BYTES = 8 * 1024;
 
 type DatabasePresence = {
@@ -38,9 +38,10 @@ type DatabasePresence = {
 };
 
 type SocketAttachment = {
-  claims: DatabaseRealtimeTicketClaims;
+  claims: DataSourceRealtimeTicketClaims;
   connectedAt: number;
-  databaseId: string;
+  presenceRevision: number;
+  sourceId: string;
   presence?: DatabasePresence;
   updatedAt?: number;
 };
@@ -56,9 +57,10 @@ type DatabaseRoom = {
 type DatabaseCollaborator = {
   connectedAt: string;
   presence: DatabasePresence;
+  revision: number;
   sessionId: string;
   updatedAt: string;
-  user: DatabaseRealtimeTicketClaims["user"];
+  user: DataSourceRealtimeTicketClaims["user"];
 };
 
 type NodeDatabaseRealtimeRuntimeOptions = {
@@ -66,7 +68,7 @@ type NodeDatabaseRealtimeRuntimeOptions = {
   verifyTicket?: (
     token: string,
     env: RuntimeEnv,
-  ) => Promise<DatabaseRealtimeTicketClaims>;
+  ) => Promise<DataSourceRealtimeTicketClaims>;
   realtimeBus?: NodeRealtimeBus | null;
 };
 
@@ -85,7 +87,7 @@ export function attachNodeDatabaseRealtimeRuntime(
   const connectionLimiter = createConnectionLimiter(
     options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
   );
-  const verifyTicket = options.verifyTicket ?? verifyDatabaseRealtimeTicket;
+  const verifyTicket = options.verifyTicket ?? verifyDataSourceRealtimeTicket;
   const realtimeBus = options.realtimeBus ?? null;
 
   const websocket = crossws({
@@ -95,10 +97,10 @@ export function attachNodeDatabaseRealtimeRuntime(
     },
     hooks: {
       async upgrade(request) {
-        const databaseId = new URL(request.url).searchParams.get("database");
+        const sourceId = new URL(request.url).searchParams.get("source");
 
-        if (!databaseId || databaseId.length > MAX_DATABASE_ID_LENGTH) {
-          throw new Response("Invalid database", { status: 400 });
+        if (!sourceId || sourceId.length > MAX_SOURCE_ID_LENGTH) {
+          throw new Response("Invalid data source", { status: 400 });
         }
 
         const authentication = readAuthenticationProtocol(request.headers);
@@ -112,8 +114,8 @@ export function attachNodeDatabaseRealtimeRuntime(
         try {
           const claims = await verifyTicket(authentication.token, env);
 
-          if (claims.databaseId !== databaseId) {
-            throw new Error("Database realtime ticket scope does not match");
+          if (claims.sourceId !== sourceId) {
+            throw new Error("Data source realtime ticket scope does not match");
           }
 
           const clientAddress = getClientAddress(request);
@@ -135,11 +137,11 @@ export function attachNodeDatabaseRealtimeRuntime(
 
           const userAllowed = realtimeBus
             ? await realtimeBus.consumeLimit(
-                `database:connection:user:${claims.user.id}:${databaseId}`,
+                `database:connection:user:${claims.user.id}:${sourceId}`,
                 options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
                 CONNECTION_LIMIT_WINDOW_MS,
               )
-            : connectionLimiter.allow(`user:${claims.user.id}:${databaseId}`);
+            : connectionLimiter.allow(`user:${claims.user.id}:${sourceId}`);
 
           if (!userAllowed) {
             throw new Response("Too Many Requests", {
@@ -149,18 +151,18 @@ export function attachNodeDatabaseRealtimeRuntime(
           }
 
           return {
-            context: { databaseRealtime: { claims, databaseId } },
-            protocol: DATABASE_REALTIME_PROTOCOL,
+            context: { databaseRealtime: { claims, sourceId } },
+            protocol: DATA_SOURCE_REALTIME_PROTOCOL,
           };
         } catch (error) {
           if (error instanceof Response) throw error;
 
           console.warn(JSON.stringify({
-            databaseId,
+            sourceId,
             error: error instanceof Error ? error.message : String(error),
             event: "database_realtime_upgrade_authentication_failed",
           }));
-          throw new Response("Invalid database realtime ticket", {
+          throw new Response("Invalid data source realtime ticket", {
             status: 401,
           });
         }
@@ -176,18 +178,19 @@ export function attachNodeDatabaseRealtimeRuntime(
         const attachment: SocketAttachment = {
           claims: context.claims,
           connectedAt: Date.now(),
-          databaseId: context.databaseId,
+          presenceRevision: 0,
+          sourceId: context.sourceId,
         };
         attachments.set(peer, attachment);
 
         const room = getOrCreateRoom(
           rooms,
-          context.databaseId,
+          context.sourceId,
           publishedVersions,
         );
         await ensureRoomSubscription(
           room,
-          context.databaseId,
+          context.sourceId,
           realtimeBus,
           attachments,
           publishedVersions,
@@ -195,13 +198,13 @@ export function attachNodeDatabaseRealtimeRuntime(
         pruneExpiredPeers(room, attachments, realtimeBus);
         room.peers.add(peer);
         peer.send(JSON.stringify({
-          databaseVersion: Math.max(
+          sourceVersion: Math.max(
             room.lastPublishedVersion,
-            context.claims.version ?? 0,
+            context.claims.sourceVersion,
           ),
-          databaseId: context.databaseId,
+          sourceId: context.sourceId,
           peers: readPeers(room, peer, attachments),
-          protocolVersion: 2,
+          protocolVersion: 3,
           sessionId: context.claims.sessionId,
           type: "realtime.ready",
         }));
@@ -304,18 +307,18 @@ export function attachNodeDatabaseRealtimeRuntime(
       );
       await websocket.close(1001, "Server shutting down");
     },
-    async publishMutation(event: DatabaseMutationEventV2) {
+    async publishMutation(event: DataSourceMutationEventV3) {
       validateMutationEvent(event);
 
-      const room = getOrCreateRoom(rooms, event.databaseId, publishedVersions);
+      const room = getOrCreateRoom(rooms, event.sourceId, publishedVersions);
 
-      if (event.version <= room.lastPublishedVersion) return;
+      if (event.sourceVersion <= room.lastPublishedVersion) return;
 
-      room.lastPublishedVersion = event.version;
-      publishedVersions.set(event.databaseId, event.version);
+      room.lastPublishedVersion = event.sourceVersion;
+      publishedVersions.set(event.sourceId, event.sourceVersion);
       pruneExpiredPeers(room, attachments, realtimeBus);
       broadcast(room, event, attachments);
-      await realtimeBus?.publish(databaseRealtimeChannel(event.databaseId), event);
+      await realtimeBus?.publish(sourceRealtimeChannel(event.sourceId), event);
     },
   };
 }
@@ -331,7 +334,7 @@ function readAuthenticationProtocol(headers: Headers) {
     DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX.length,
   );
 
-  return protocols.includes(DATABASE_REALTIME_PROTOCOL) &&
+  return protocols.includes(DATA_SOURCE_REALTIME_PROTOCOL) &&
       token && token.length <= MAX_TICKET_BYTES
     ? { token }
     : null;
@@ -344,11 +347,11 @@ function readUpgradeContext(peer: Peer) {
 
   const context = value as Record<string, unknown>;
 
-  return typeof context.databaseId === "string" &&
+  return typeof context.sourceId === "string" &&
       context.claims && typeof context.claims === "object"
     ? context as {
-      claims: DatabaseRealtimeTicketClaims;
-      databaseId: string;
+      claims: DataSourceRealtimeTicketClaims;
+      sourceId: string;
     }
     : null;
 }
@@ -399,7 +402,7 @@ async function refreshAuthentication(
   verifyTicket: (
     token: string,
     env: RuntimeEnv,
-  ) => Promise<DatabaseRealtimeTicketClaims>,
+  ) => Promise<DataSourceRealtimeTicketClaims>,
 ) {
   if (typeof message.token !== "string") {
     peer.close(1008, "Missing database realtime ticket");
@@ -410,16 +413,16 @@ async function refreshAuthentication(
     const claims = await verifyTicket(message.token, env);
 
     if (
-      claims.databaseId !== attachment.databaseId ||
+      claims.sourceId !== attachment.sourceId ||
       claims.sessionId !== attachment.claims.sessionId
     ) {
-      throw new Error("Database realtime ticket does not match the session");
+      throw new Error("Data source realtime ticket does not match the session");
     }
 
     attachment.claims = claims;
   } catch (error) {
     console.warn(JSON.stringify({
-      databaseId: attachment.databaseId,
+      sourceId: attachment.sourceId,
       error: error instanceof Error ? error.message : String(error),
       event: "database_realtime_authentication_failed",
     }));
@@ -437,8 +440,22 @@ function updatePresence(
 ) {
   if (!attachment.claims.canEdit) return;
 
+  if (
+    !Number.isSafeInteger(message.revision) ||
+    (message.revision as number) <= attachment.presenceRevision
+  ) {
+    return;
+  }
+
   if (message.presence === null) {
-    clearPresence(peer, attachment, rooms, attachments, realtimeBus);
+    clearPresence(
+      peer,
+      attachment,
+      rooms,
+      attachments,
+      realtimeBus,
+      message.revision as number,
+    );
     return;
   }
 
@@ -448,20 +465,21 @@ function updatePresence(
   }
 
   attachment.presence = message.presence;
+  attachment.presenceRevision = message.revision as number;
   attachment.updatedAt = Date.now();
 
-  const room = rooms.get(attachment.databaseId);
+  const room = rooms.get(attachment.sourceId);
 
   if (!room) return;
 
   const event = {
     collaborator: toCollaborator(attachment),
-    databaseId: attachment.databaseId,
-    protocolVersion: 2,
+    protocolVersion: 3,
+    sourceId: attachment.sourceId,
     type: "presence.update",
   };
   broadcast(room, event, attachments, peer);
-  publishRealtimeBus(realtimeBus, attachment.databaseId, event);
+  publishRealtimeBus(realtimeBus, attachment.sourceId, event);
 }
 
 function clearPresence(
@@ -470,24 +488,29 @@ function clearPresence(
   rooms: Map<string, DatabaseRoom>,
   attachments: WeakMap<Peer, SocketAttachment>,
   realtimeBus: NodeRealtimeBus | null,
+  revision?: number,
 ) {
-  if (!attachment.presence) return;
+  if (!attachment.presence && revision === undefined) return;
+  const nextRevision = revision ?? attachment.presenceRevision + 1;
+  if (nextRevision <= attachment.presenceRevision) return;
 
   delete attachment.presence;
   delete attachment.updatedAt;
+  attachment.presenceRevision = nextRevision;
 
-  const room = rooms.get(attachment.databaseId);
+  const room = rooms.get(attachment.sourceId);
 
   if (!room) return;
 
   const event = {
-    databaseId: attachment.databaseId,
-    protocolVersion: 2,
+    protocolVersion: 3,
+    revision: nextRevision,
     sessionId: attachment.claims.sessionId,
+    sourceId: attachment.sourceId,
     type: "presence.clear",
   };
   broadcast(room, event, attachments, peer);
-  publishRealtimeBus(realtimeBus, attachment.databaseId, event);
+  publishRealtimeBus(realtimeBus, attachment.sourceId, event);
 }
 
 function removePeer(
@@ -501,11 +524,11 @@ function removePeer(
   if (!attachment) return;
 
   clearPresence(peer, attachment, rooms, attachments, realtimeBus);
-  const room = rooms.get(attachment.databaseId);
+  const room = rooms.get(attachment.sourceId);
   room?.peers.delete(peer);
   if (room && room.peers.size === 0) {
     void room.unsubscribe?.().catch(logRealtimeBusError);
-    rooms.delete(attachment.databaseId);
+    rooms.delete(attachment.sourceId);
   }
   attachments.delete(peer);
 }
@@ -518,16 +541,23 @@ function readPeers(
   const now = Date.now();
   pruneRemotePresence(room, now);
 
-  const local = [...room.peers].flatMap((candidate) => {
-    if (candidate === skip) return [];
+  const collaborators = new Map<string, DatabaseCollaborator>(
+    room.remotePresence,
+  );
+  for (const candidate of room.peers) {
+    if (candidate === skip) continue;
 
     const attachment = attachments.get(candidate);
-
-    return attachment && attachment.claims.exp > now && attachment.presence
-      ? [toCollaborator(attachment)]
-      : [];
-  });
-  return [...local, ...room.remotePresence.values()];
+    if (!attachment || attachment.claims.exp <= now || !attachment.presence) {
+      continue;
+    }
+    const collaborator = toCollaborator(attachment);
+    const existing = collaborators.get(collaborator.sessionId);
+    if (!existing || isNewerCollaborator(collaborator, existing)) {
+      collaborators.set(collaborator.sessionId, collaborator);
+    }
+  }
+  return [...collaborators.values()];
 }
 
 function broadcast(
@@ -567,14 +597,16 @@ function pruneExpiredPeers(
       if (attachment.presence) {
         delete attachment.presence;
         delete attachment.updatedAt;
+        attachment.presenceRevision += 1;
         const event = {
-          databaseId: attachment.databaseId,
-          protocolVersion: 2,
+          protocolVersion: 3,
+          revision: attachment.presenceRevision,
           sessionId: attachment.claims.sessionId,
+          sourceId: attachment.sourceId,
           type: "presence.clear",
         };
         broadcast(room, event, attachments, peer);
-        publishRealtimeBus(realtimeBus, attachment.databaseId, event);
+        publishRealtimeBus(realtimeBus, attachment.sourceId, event);
       }
       room.peers.delete(peer);
       attachments.delete(peer);
@@ -601,18 +633,18 @@ function consumeMessageAllowance(
 
 function getOrCreateRoom(
   rooms: Map<string, DatabaseRoom>,
-  databaseId: string,
+  sourceId: string,
   publishedVersions: Map<string, number>,
 ) {
-  let room = rooms.get(databaseId);
+  let room = rooms.get(sourceId);
 
   if (!room) {
     room = {
-      lastPublishedVersion: publishedVersions.get(databaseId) ?? 0,
+      lastPublishedVersion: publishedVersions.get(sourceId) ?? 0,
       peers: new Set(),
       remotePresence: new Map(),
     };
-    rooms.set(databaseId, room);
+    rooms.set(sourceId, room);
   }
 
   return room;
@@ -620,17 +652,17 @@ function getOrCreateRoom(
 
 async function ensureRoomSubscription(
   room: DatabaseRoom,
-  databaseId: string,
+  sourceId: string,
   realtimeBus: NodeRealtimeBus | null,
   attachments: WeakMap<Peer, SocketAttachment>,
   publishedVersions: Map<string, number>,
 ) {
   if (!realtimeBus || room.unsubscribe) return;
   room.subscription ??= realtimeBus
-    .subscribe(databaseRealtimeChannel(databaseId), (payload) => {
+    .subscribe(sourceRealtimeChannel(sourceId), (payload) => {
       receiveRealtimeBusMessage(
         room,
-        databaseId,
+        sourceId,
         payload,
         attachments,
         publishedVersions,
@@ -648,14 +680,14 @@ async function ensureRoomSubscription(
 
 function receiveRealtimeBusMessage(
   room: DatabaseRoom,
-  databaseId: string,
+  sourceId: string,
   payload: unknown,
   attachments: WeakMap<Peer, SocketAttachment>,
   publishedVersions: Map<string, number>,
 ) {
   if (!payload || typeof payload !== "object") return;
   const message = payload as Record<string, unknown>;
-  if (message.databaseId !== databaseId) return;
+  if (message.sourceId !== sourceId) return;
 
   if (message.type === "database.mutation") {
     try {
@@ -664,23 +696,39 @@ function receiveRealtimeBusMessage(
       return;
     }
     const event = payload;
-    if (event.version <= room.lastPublishedVersion) return;
-    room.lastPublishedVersion = event.version;
-    publishedVersions.set(databaseId, event.version);
+    if (event.sourceVersion <= room.lastPublishedVersion) return;
+    room.lastPublishedVersion = event.sourceVersion;
+    publishedVersions.set(sourceId, event.sourceVersion);
     broadcast(room, event, attachments);
     return;
   }
 
-  if (message.protocolVersion !== 2) return;
+  if (message.protocolVersion !== 3) return;
 
   if (message.type === "presence.update" && isCollaborator(message.collaborator)) {
+    const existing = latestSessionCollaborator(
+      room,
+      message.collaborator.sessionId,
+      attachments,
+    );
+    if (existing && !isNewerCollaborator(message.collaborator, existing)) return;
     room.remotePresence.set(message.collaborator.sessionId, message.collaborator);
     pruneRemotePresence(room, Date.now());
     broadcast(room, message, attachments);
     return;
   }
 
-  if (message.type === "presence.clear" && typeof message.sessionId === "string") {
+  if (
+    message.type === "presence.clear" &&
+    typeof message.sessionId === "string" &&
+    Number.isSafeInteger(message.revision)
+  ) {
+    const existing = latestSessionCollaborator(
+      room,
+      message.sessionId,
+      attachments,
+    );
+    if (existing && existing.revision > (message.revision as number)) return;
     room.remotePresence.delete(message.sessionId);
     broadcast(room, message, attachments);
   }
@@ -692,22 +740,22 @@ function publishPresenceHeartbeat(
 ) {
   if (!attachment.presence) return;
   attachment.updatedAt = Date.now();
-  publishRealtimeBus(realtimeBus, attachment.databaseId, {
+  publishRealtimeBus(realtimeBus, attachment.sourceId, {
     collaborator: toCollaborator(attachment),
-    databaseId: attachment.databaseId,
-    protocolVersion: 2,
+    protocolVersion: 3,
+    sourceId: attachment.sourceId,
     type: "presence.update",
   });
 }
 
 function publishRealtimeBus(
   realtimeBus: NodeRealtimeBus | null,
-  databaseId: string,
+  sourceId: string,
   payload: unknown,
 ) {
   if (!realtimeBus) return;
   void realtimeBus
-    .publish(databaseRealtimeChannel(databaseId), payload)
+    .publish(sourceRealtimeChannel(sourceId), payload)
     .catch(logRealtimeBusError);
 }
 
@@ -723,10 +771,43 @@ function isCollaborator(value: unknown): value is DatabaseCollaborator {
   if (!value || typeof value !== "object") return false;
   const collaborator = value as Partial<DatabaseCollaborator>;
   return typeof collaborator.connectedAt === "string" &&
+    Number.isSafeInteger(collaborator.revision) &&
+    (collaborator.revision ?? -1) >= 0 &&
     typeof collaborator.sessionId === "string" &&
     typeof collaborator.updatedAt === "string" &&
     isPresence(collaborator.presence) &&
     Boolean(collaborator.user && typeof collaborator.user === "object");
+}
+
+function isNewerCollaborator(
+  candidate: DatabaseCollaborator,
+  current: DatabaseCollaborator,
+) {
+  return candidate.revision > current.revision ||
+    (candidate.revision === current.revision &&
+      Date.parse(candidate.updatedAt) > Date.parse(current.updatedAt));
+}
+
+function latestSessionCollaborator(
+  room: DatabaseRoom,
+  sessionId: string,
+  attachments: WeakMap<Peer, SocketAttachment>,
+) {
+  let latest = room.remotePresence.get(sessionId);
+  for (const peer of room.peers) {
+    const attachment = attachments.get(peer);
+    if (
+      !attachment?.presence ||
+      attachment.claims.sessionId !== sessionId
+    ) {
+      continue;
+    }
+    const collaborator = toCollaborator(attachment);
+    if (!latest || isNewerCollaborator(collaborator, latest)) {
+      latest = collaborator;
+    }
+  }
+  return latest;
 }
 
 function logRealtimeBusError(error: unknown) {
@@ -738,9 +819,9 @@ function logRealtimeBusError(error: unknown) {
 
 function validateMutationEvent(
   event: unknown,
-): asserts event is DatabaseMutationEventV2 {
-  if (!databaseMutationEventV2Schema.safeParse(event).success) {
-    throw new Error("Invalid database mutation event");
+): asserts event is DataSourceMutationEventV3 {
+  if (!dataSourceMutationEventV3Schema.safeParse(event).success) {
+    throw new Error("Invalid data source mutation event");
   }
 }
 
@@ -767,6 +848,7 @@ function toCollaborator(attachment: SocketAttachment) {
   return {
     connectedAt: new Date(attachment.connectedAt).toISOString(),
     presence: attachment.presence,
+    revision: attachment.presenceRevision,
     sessionId: attachment.claims.sessionId,
     updatedAt: new Date(attachment.updatedAt ?? Date.now()).toISOString(),
     user: attachment.claims.user,

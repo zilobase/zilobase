@@ -116,6 +116,10 @@ export function databaseRealtimeChannel(databaseId: string) {
   return `zilobase:realtime:database:${databaseId}`;
 }
 
+export function sourceRealtimeChannel(sourceId: string) {
+  return `zilobase:realtime:source:${sourceId}`;
+}
+
 export function mailRealtimeChannel(bindingId: string) {
   return `zilobase:realtime:mail:${bindingId}`;
 }

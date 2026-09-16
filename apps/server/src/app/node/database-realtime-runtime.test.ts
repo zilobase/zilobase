@@ -4,9 +4,9 @@ import { createServer, type Server } from "node:http";
 import { test } from "vitest";
 
 import {
-  createDatabaseRealtimeTicket,
+  createDataSourceRealtimeTicket,
+  DATA_SOURCE_REALTIME_PROTOCOL,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
-  DATABASE_REALTIME_PROTOCOL,
 } from "../../shared/security/database-realtime-ticket";
 import { attachNodeDatabaseRealtimeRuntime } from "./database-realtime-runtime";
 import type { NodeRealtimeBus } from "../../infrastructure/node/realtime-bus";
@@ -37,19 +37,21 @@ test("serverful database rooms broadcast presence and versioned mutations", asyn
       second.next("realtime.ready"),
     ]);
 
-    assert.equal(firstReady.databaseVersion, 3);
-    assert.equal(secondReady.databaseVersion, 3);
-    assert.equal(firstReady.protocolVersion, 2);
-    assert.equal(secondReady.protocolVersion, 2);
-    assert.equal(first.websocket.protocol, DATABASE_REALTIME_PROTOCOL);
+    assert.equal(firstReady.sourceVersion, 3);
+    assert.equal(secondReady.sourceVersion, 3);
+    assert.equal(firstReady.protocolVersion, 3);
+    assert.equal(secondReady.protocolVersion, 3);
+    assert.equal(first.websocket.protocol, DATA_SOURCE_REALTIME_PROTOCOL);
 
     first.send({
       presence: { columnKey: "status", rowId: "row-1", viewId: null },
+      revision: 1,
       type: "presence.update",
     });
 
     const presence = await second.next("presence.update");
-    assert.equal(presence.protocolVersion, 2);
+    assert.equal(presence.protocolVersion, 3);
+    assert.equal(presence.collaborator.revision, 1);
     assert.equal(presence.collaborator.sessionId, firstTicket.sessionId);
     assert.deepEqual(presence.collaborator.presence, {
       columnKey: "status",
@@ -63,12 +65,13 @@ test("serverful database rooms broadcast presence and versioned mutations", asyn
       first.next("database.mutation"),
       second.next("database.mutation"),
     ]);
-    assert.equal(firstMutation.version, 4);
-    assert.equal(secondMutation.version, 4);
+    assert.equal(firstMutation.sourceVersion, 4);
+    assert.equal(secondMutation.sourceVersion, 4);
 
     first.websocket.close();
     const cleared = await second.next("presence.clear");
-    assert.equal(cleared.protocolVersion, 2);
+    assert.equal(cleared.protocolVersion, 3);
+    assert.equal(cleared.revision, 2);
     assert.equal(cleared.sessionId, firstTicket.sessionId);
   } finally {
     first.websocket.close();
@@ -103,14 +106,14 @@ test("a ticket watermark cannot suppress a delayed mutation delivery", async () 
     await client.opened;
     await client.next("realtime.ready");
     await fixture.runtime.publishMutation(mutationEvent("stale-mutation", 7));
-    assert.equal((await client.next("database.mutation")).version, 7);
+    assert.equal((await client.next("database.mutation")).sourceVersion, 7);
   } finally {
     client.websocket.close();
     await fixture.close();
   }
 });
 
-test("serverful database rooms reject protocol v1 mutation deliveries", async () => {
+test("serverful source rooms reject non-v3 mutation deliveries", async () => {
   const fixture = await startFixture();
 
   try {
@@ -126,7 +129,7 @@ test("serverful database rooms reject protocol v1 mutation deliveries", async ()
         type: "database.mutation",
         version: 2,
       } as never),
-      /Invalid database mutation event/,
+      /Invalid data source mutation event/,
     );
   } finally {
     await fixture.close();
@@ -147,6 +150,7 @@ test("serverful database rooms fan out across realtime bus instances", async () 
     await Promise.all([first.next("realtime.ready"), second.next("realtime.ready")]);
     first.send({
       presence: { columnKey: "status", rowId: "row-1", viewId: null },
+      revision: 1,
       type: "presence.update",
     });
     assert.equal(
@@ -157,11 +161,44 @@ test("serverful database rooms fan out across realtime bus instances", async () 
     await firstFixture.runtime.publishMutation(
       mutationEvent("distributed-mutation", 2),
     );
-    assert.equal((await second.next("database.mutation")).version, 2);
+    assert.equal((await second.next("database.mutation")).sourceVersion, 2);
   } finally {
     first.websocket.close();
     second.websocket.close();
     await Promise.all([firstFixture.close(), secondFixture.close()]);
+  }
+});
+
+test("source presence ignores stale revisions from the same session", async () => {
+  const fixture = await startFixture();
+  const firstTicket = await createTicket("user-1", 1);
+  const secondTicket = await createTicket("user-2", 1);
+  const first = new RealtimeClient(fixture.url, firstTicket.token);
+  const second = new RealtimeClient(fixture.url, secondTicket.token);
+
+  try {
+    await Promise.all([first.opened, second.opened]);
+    await Promise.all([first.next("realtime.ready"), second.next("realtime.ready")]);
+    first.send({
+      presence: { columnKey: "status", rowId: "row-2", viewId: null },
+      revision: 2,
+      type: "presence.update",
+    });
+    assert.equal(
+      (await second.next("presence.update")).collaborator.presence.rowId,
+      "row-2",
+    );
+
+    first.send({
+      presence: { columnKey: "status", rowId: "row-1", viewId: null },
+      revision: 1,
+      type: "presence.update",
+    });
+    await assert.rejects(second.next("presence.update", 100), /Timed out/);
+  } finally {
+    first.websocket.close();
+    second.websocket.close();
+    await fixture.close();
   }
 });
 
@@ -187,7 +224,7 @@ test("background-only publication reaches an API replica through the realtime bu
   }
 });
 
-test("database rooms suppress duplicate versions and preserve catch-up position on reconnect", async () => {
+test("source rooms suppress duplicate versions and preserve catch-up position on reconnect", async () => {
   const fixture = await startFixture();
   const ticket = await createTicket("user-1", 1);
   const first = new RealtimeClient(fixture.url, ticket.token);
@@ -196,7 +233,7 @@ test("database rooms suppress duplicate versions and preserve catch-up position 
     await first.opened;
     await first.next("realtime.ready");
     await fixture.runtime.publishMutation(mutationEvent("mutation-2", 2));
-    assert.equal((await first.next("database.mutation")).version, 2);
+    assert.equal((await first.next("database.mutation")).sourceVersion, 2);
     first.websocket.close();
 
     const reconnectTicket = await createTicket("user-1", 2);
@@ -204,7 +241,7 @@ test("database rooms suppress duplicate versions and preserve catch-up position 
     try {
       await reconnected.opened;
       const ready = await reconnected.next("realtime.ready");
-      assert.equal(ready.databaseVersion, 2);
+      assert.equal(ready.sourceVersion, 2);
 
       await fixture.runtime.publishMutation(mutationEvent("duplicate-version", 2));
       await assert.rejects(
@@ -227,12 +264,11 @@ function mutationEvent(eventId: string, version: number) {
     changes: { removedRecordIds: ["row-1"] },
     commandId: eventId,
     committedAt: new Date().toISOString(),
-    databaseId: "database-1",
-    dataSourceId: "source-1",
     eventId,
-    protocolVersion: 2 as const,
+    protocolVersion: 3 as const,
+    sourceId: "source-1",
+    sourceVersion: version,
     type: "database.mutation" as const,
-    version,
   };
 }
 
@@ -250,7 +286,7 @@ async function startFixture(realtimeBus?: NodeRealtimeBus) {
       await closeServer(server);
     },
     runtime,
-    url: `ws://127.0.0.1:${address.port}/database-collaboration?database=database-1`,
+    url: `ws://127.0.0.1:${address.port}/database-collaboration?source=source-1`,
   };
 }
 
@@ -293,11 +329,11 @@ class TestRealtimeBroker {
 }
 
 async function createTicket(userId: string, version: number) {
-  return createDatabaseRealtimeTicket({
+  return createDataSourceRealtimeTicket({
     canEdit: true,
-    databaseId: "database-1",
+    sourceId: "source-1",
+    sourceVersion: version,
     user: { id: userId, name: userId },
-    version,
     workspaceId: "workspace-1",
   }, env);
 }
@@ -313,7 +349,7 @@ class RealtimeClient {
 
   constructor(url: string, token: string) {
     this.websocket = new WebSocket(url, [
-      DATABASE_REALTIME_PROTOCOL,
+      DATA_SOURCE_REALTIME_PROTOCOL,
       `${DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX}${token}`,
     ]);
     this.websocket.addEventListener("message", (event) => {
