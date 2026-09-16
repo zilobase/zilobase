@@ -9,17 +9,21 @@ import { applyDatabaseMutationToPageProperties } from "../../pages/database-real
 import type {
   DatabaseBootstrapResponse,
   DatabaseCommand,
-  DatabaseCommandAck,
+  DatabaseCommandExecutionAck,
   DatabaseCommandRequest,
   DatabaseInitialPageSize,
   DatabaseMutationEventV2,
   DatabaseMutationFeedResponse,
   DatabaseRecordEntity,
+  DataSourceMutationEventV3,
+  DataSourceMutationFeedResponseV3,
 } from "../contracts-v2"
 import {
-  databaseCommandAckSchema,
+  databaseCommandExecutionAckSchema,
   databaseMutationEventV2Schema,
   databaseMutationFeedResponseSchema,
+  dataSourceMutationEventV3Schema,
+  dataSourceMutationFeedResponseV3Schema,
 } from "../contracts-v2"
 import { getDatabaseInitialPageSize } from "../view-evaluation"
 import { databaseContextExportRootQueryKey } from "../queries"
@@ -114,8 +118,8 @@ export type DatabaseClient = {
     target: DatabaseCommandTarget,
     listener: () => void,
   ): () => void
-  ingest(event: DatabaseMutationEventV2): Promise<void>
-  catchUp(databaseId: string): Promise<void>
+  ingest(event: DatabaseMutationEventV2 | DataSourceMutationEventV3): Promise<void>
+  catchUp(sourceId: string): Promise<void>
   reset(scope: DatabaseScope): Promise<void>
 }
 
@@ -147,6 +151,7 @@ export class SessionDatabaseClient implements DatabaseClient {
   private readonly ingestionTails = new Map<string, Promise<void>>()
   private readonly queryClient: QueryClient
   private readonly recordCollections = new Map<string, DatabaseRecordCollection>()
+  private readonly sourceVersions = new Map<string, DatabaseVersionLedger>()
   private readonly versions = new Map<string, DatabaseVersionLedger>()
 
   constructor({ apiFetch, queryClient, sessionId }: DatabaseClientOptions) {
@@ -284,15 +289,23 @@ export class SessionDatabaseClient implements DatabaseClient {
     }
   }
 
-  async ingest(input: DatabaseMutationEventV2) {
+  async ingest(input: DatabaseMutationEventV2 | DataSourceMutationEventV3) {
     this.assertActive()
+    if (input.protocolVersion === 3) {
+      const event = dataSourceMutationEventV3Schema.parse(input)
+      await this.enqueueIngestion(`source:${event.sourceId}`, () =>
+        this.ingestSourceNow(event))
+      return
+    }
     const event = databaseMutationEventV2Schema.parse(input)
-    await this.enqueueIngestion(event.databaseId, () => this.ingestNow(event))
+    await this.enqueueIngestion(`host:${event.databaseId}`, () =>
+      this.ingestNow(event))
   }
 
-  async catchUp(databaseId: string) {
+  async catchUp(sourceId: string) {
     this.assertActive()
-    await this.enqueueIngestion(databaseId, () => this.catchUpNow(databaseId))
+    await this.enqueueIngestion(`source:${sourceId}`, () =>
+      this.catchUpSourceNow(sourceId))
   }
 
   async reset(scope: DatabaseScope) {
@@ -392,6 +405,7 @@ export class SessionDatabaseClient implements DatabaseClient {
     this.commandStates.clear()
     this.ingestionTails.clear()
     this.recordCollections.clear()
+    this.sourceVersions.clear()
     this.versions.clear()
     this.queryClient.removeQueries({
       queryKey: [databaseClientQueryRoot, this.sessionId],
@@ -417,8 +431,8 @@ export class SessionDatabaseClient implements DatabaseClient {
         `/data-sources/${encodeURIComponent(input.dataSourceId)}/commands`
       : `/databases/${encodeURIComponent(input.databaseId)}/commands`
     try {
-      const response = databaseCommandAckSchema.parse(
-        await this.apiFetch<DatabaseCommandAck>(endpoint, {
+      const response = databaseCommandExecutionAckSchema.parse(
+        await this.apiFetch<DatabaseCommandExecutionAck>(endpoint, {
           body: JSON.stringify(request),
           method: "POST",
         }),
@@ -426,10 +440,13 @@ export class SessionDatabaseClient implements DatabaseClient {
       if (response.commandId !== commandId) {
         throw new Error("Database command acknowledgement ID does not match")
       }
-      if (
-        response.event.databaseId !== input.databaseId ||
-        (input.dataSourceId && response.event.dataSourceId !== input.dataSourceId)
-      ) {
+      const scopeMatches = response.event.protocolVersion === 3
+        ? Boolean(
+            input.dataSourceId &&
+            response.event.sourceId === input.dataSourceId,
+          )
+        : !input.dataSourceId && response.event.databaseId === input.databaseId
+      if (!scopeMatches) {
         throw new Error("Database command acknowledgement scope does not match")
       }
       await this.ingest(response.event)
@@ -526,6 +543,77 @@ export class SessionDatabaseClient implements DatabaseClient {
     await this.applyEvent(event, ledger)
   }
 
+  private async ingestSourceNow(event: DataSourceMutationEventV3) {
+    const ledger = this.sourceLedger(event.sourceId)
+    this.observeSourceVersion(
+      event.sourceId,
+      this.loadedSourceVersion(event.sourceId),
+    )
+    if (
+      ledger.eventIds.has(event.eventId) ||
+      event.sourceVersion <= ledger.version
+    ) return
+
+    if (event.sourceVersion > ledger.version + 1) {
+      emitDatabaseMetric("gap_recovery", 1, "success", "event_gap")
+      await this.catchUpSourceNow(event.sourceId)
+    }
+    if (event.sourceVersion <= ledger.version) return
+    if (event.sourceVersion !== ledger.version + 1) {
+      await this.resetSourceNow(event.sourceId, "invalid_history")
+      ledger.version = Math.max(
+        event.sourceVersion,
+        this.loadedSourceVersion(event.sourceId),
+      )
+      this.rememberSourceEvent(ledger, event)
+      return
+    }
+    await this.applySourceEvent(event, ledger)
+  }
+
+  private async catchUpSourceNow(sourceId: string) {
+    const ledger = this.sourceLedger(sourceId)
+    this.observeSourceVersion(sourceId, this.loadedSourceVersion(sourceId))
+    while (true) {
+      const response = dataSourceMutationFeedResponseV3Schema.parse(
+        await this.apiFetch<DataSourceMutationFeedResponseV3>(
+          `/data-sources/${encodeURIComponent(sourceId)}` +
+            `/mutations?afterVersion=${ledger.version}&limit=500`,
+        ),
+      )
+      if (response.resetRequired) {
+        await this.resetSourceNow(sourceId, "expired_history")
+        ledger.version = Math.max(
+          response.latestSourceVersion,
+          this.loadedSourceVersion(sourceId),
+        )
+        ledger.commandIds.clear()
+        ledger.eventIds.clear()
+        return
+      }
+      if (response.events.length === 0 && response.hasMore) {
+        await this.resetSourceNow(sourceId, "invalid_history")
+        ledger.version = response.latestSourceVersion
+        return
+      }
+      for (const event of response.events) {
+        if (event.sourceId !== sourceId) {
+          await this.resetSourceNow(sourceId, "invalid_history")
+          ledger.version = response.latestSourceVersion
+          return
+        }
+        if (event.sourceVersion <= ledger.version) continue
+        if (event.sourceVersion !== ledger.version + 1) {
+          await this.resetSourceNow(sourceId, "invalid_history")
+          ledger.version = response.latestSourceVersion
+          return
+        }
+        await this.applySourceEvent(event, ledger)
+      }
+      if (!response.hasMore) return
+    }
+  }
+
   private async catchUpNow(databaseId: string) {
     const ledger = this.ledger(databaseId)
     this.observeVersion(databaseId, this.loadedVersion(databaseId))
@@ -618,6 +706,50 @@ export class SessionDatabaseClient implements DatabaseClient {
     })
   }
 
+  private async applySourceEvent(
+    event: DataSourceMutationEventV3,
+    ledger: DatabaseVersionLedger,
+  ) {
+    this.settleCellOverlay(event.commandId)
+    if (event.requiresReset) {
+      await this.resetSourceNow(event.sourceId, "event_reset")
+    } else {
+      for (const collections of this.bootstrapCollections.values()) {
+        collections.applySource(event)
+      }
+      for (const resource of this.recordCollections.values()) {
+        if (resource.scope.dataSourceId !== event.sourceId) continue
+        try {
+          const outcome = resource.apply(
+            event,
+            this.shouldOrderByKey(resource.scope),
+          )
+          if (outcome === "source_mismatch") {
+            logSourceRecordApplyIgnored(event, resource)
+          }
+        } catch (error) {
+          logSourceRecordApplyFailure(event, resource, error)
+          await resource.reset()
+        }
+      }
+    }
+    ledger.version = event.requiresReset
+      ? Math.max(
+          event.sourceVersion,
+          this.loadedSourceVersion(event.sourceId),
+        )
+      : event.sourceVersion
+    this.rememberSourceEvent(ledger, event)
+    for (const collections of this.bootstrapCollections.values()) {
+      if (!collections.dataSources.state.has(event.sourceId)) continue
+      void this.queryClient.invalidateQueries({
+        queryKey: databaseContextExportRootQueryKey(
+          collections.scope.databaseId,
+        ),
+      })
+    }
+  }
+
   private async resetNow(
     scope: DatabaseScope,
     reason: DatabaseMetricReason = "manual",
@@ -631,6 +763,23 @@ export class SessionDatabaseClient implements DatabaseClient {
     }
     for (const resource of this.recordCollections.values()) {
       if (scopeMatches(resource.scope, scope)) work.push(resource.reset())
+    }
+    await Promise.all(work)
+  }
+
+  private async resetSourceNow(
+    sourceId: string,
+    reason: DatabaseMetricReason,
+  ) {
+    emitDatabaseMetric("reset", 1, "success", reason)
+    const work: Promise<void>[] = []
+    for (const collections of this.bootstrapCollections.values()) {
+      if (collections.dataSources.state.has(sourceId)) {
+        work.push(collections.refetch())
+      }
+    }
+    for (const resource of this.recordCollections.values()) {
+      if (resource.scope.dataSourceId === sourceId) work.push(resource.reset())
     }
     await Promise.all(work)
   }
@@ -662,6 +811,24 @@ export class SessionDatabaseClient implements DatabaseClient {
     return version
   }
 
+  private loadedSourceVersion(sourceId: string) {
+    let version = 0
+    for (const collections of this.bootstrapCollections.values()) {
+      version = Math.max(
+        version,
+        collections.dataSources.state.get(sourceId)?.version ?? 0,
+      )
+    }
+    for (const resource of this.recordCollections.values()) {
+      if (resource.scope.dataSourceId !== sourceId) continue
+      version = Math.max(
+        version,
+        resource.getLatestWindow()?.dataSourceVersion ?? 0,
+      )
+    }
+    return version
+  }
+
   private ledger(databaseId: string) {
     let ledger = this.versions.get(databaseId)
     if (!ledger) {
@@ -675,14 +842,40 @@ export class SessionDatabaseClient implements DatabaseClient {
     return ledger
   }
 
+  private sourceLedger(sourceId: string) {
+    let ledger = this.sourceVersions.get(sourceId)
+    if (!ledger) {
+      ledger = {
+        commandIds: new Set(),
+        eventIds: new Set(),
+        version: this.loadedSourceVersion(sourceId),
+      }
+      this.sourceVersions.set(sourceId, ledger)
+    }
+    return ledger
+  }
+
   private observeVersion(databaseId: string, version: number) {
     const ledger = this.ledger(databaseId)
+    ledger.version = Math.max(ledger.version, version)
+  }
+
+  private observeSourceVersion(sourceId: string, version: number) {
+    const ledger = this.sourceLedger(sourceId)
     ledger.version = Math.max(ledger.version, version)
   }
 
   private rememberEvent(
     ledger: DatabaseVersionLedger,
     event: DatabaseMutationEventV2,
+  ) {
+    rememberBounded(ledger.eventIds, event.eventId)
+    rememberBounded(ledger.commandIds, event.commandId)
+  }
+
+  private rememberSourceEvent(
+    ledger: DatabaseVersionLedger,
+    event: DataSourceMutationEventV3,
   ) {
     rememberBounded(ledger.eventIds, event.eventId)
     rememberBounded(ledger.commandIds, event.commandId)
@@ -703,6 +896,38 @@ function logRecordApplyFallback(
     eventId: event.eventId,
     outcome,
     version: event.version,
+    viewId: resource.scope.viewId,
+  }))
+}
+
+function logSourceRecordApplyIgnored(
+  event: DataSourceMutationEventV3,
+  resource: DatabaseRecordCollection,
+) {
+  console.info(JSON.stringify({
+    dataSourceId: resource.scope.dataSourceId,
+    event: "database_realtime_collection_event_ignored",
+    eventId: event.eventId,
+    outcome: "source_mismatch",
+    sourceId: event.sourceId,
+    sourceVersion: event.sourceVersion,
+    viewId: resource.scope.viewId,
+  }))
+}
+
+function logSourceRecordApplyFailure(
+  event: DataSourceMutationEventV3,
+  resource: DatabaseRecordCollection,
+  error: unknown,
+) {
+  console.warn(JSON.stringify({
+    code: error instanceof Error ? error.name.slice(0, 64) : undefined,
+    dataSourceId: resource.scope.dataSourceId,
+    event: "database_realtime_collection_apply_fallback",
+    eventId: event.eventId,
+    outcome: "apply_failed",
+    sourceId: event.sourceId,
+    sourceVersion: event.sourceVersion,
     viewId: resource.scope.viewId,
   }))
 }

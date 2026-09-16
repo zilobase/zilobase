@@ -1,8 +1,11 @@
-import type { DatabaseMutationEventV2 } from "../contracts-v2"
+import type {
+  DatabaseMutationEventV2,
+  DataSourceMutationEventV3,
+} from "../contracts-v2"
 
 type MutationIngestTarget = {
-  catchUp(databaseId: string): Promise<void>
-  ingest(event: DatabaseMutationEventV2): Promise<void>
+  catchUp(sourceId: string): Promise<void>
+  ingest(event: DatabaseMutationEventV2 | DataSourceMutationEventV3): Promise<void>
 }
 
 export function createRealtimeClientBinding(
@@ -14,12 +17,12 @@ export function createRealtimeClientBinding(
     bind(nextClient: MutationIngestTarget | null) {
       client = nextClient
     },
-    async catchUp(databaseId: string) {
+    async catchUp(sourceId: string) {
       if (!client) return false
-      await client.catchUp(databaseId)
+      await client.catchUp(sourceId)
       return true
     },
-    async ingest(event: DatabaseMutationEventV2) {
+    async ingest(event: DatabaseMutationEventV2 | DataSourceMutationEventV3) {
       if (!client) return false
       await client.ingest(event)
       return true

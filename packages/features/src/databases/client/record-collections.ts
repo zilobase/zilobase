@@ -16,6 +16,7 @@ import {
   databaseRecordWindowResponseSchema,
   type DatabaseInitialPageSize,
   type DatabaseMutationEventV2,
+  type DataSourceMutationEventV3,
   type DatabaseRecordEntity,
   type DatabaseRecordWindowResponse,
 } from "../contracts-v2"
@@ -49,7 +50,7 @@ export type DatabaseRecordCollection = {
     value: unknown
   }): boolean
   apply(
-    event: DatabaseMutationEventV2,
+    event: DatabaseMutationEventV2 | DataSourceMutationEventV3,
     sortByOrderKey: boolean,
   ): DatabaseRecordApplyOutcome
   cleanup(): Promise<void>
@@ -172,6 +173,12 @@ export function createDatabaseRecordCollection(options: {
         !event.changes.records?.length &&
         !event.changes.removedRecordIds?.length
       ) return "no_record_changes"
+      const eventSourceId = event.protocolVersion === 3
+        ? event.sourceId
+        : event.dataSourceId
+      if (eventSourceId && eventSourceId !== options.scope.dataSourceId) {
+        return "source_mismatch"
+      }
       const incomingRecords = (event.changes.records ?? []).filter(
         (entity) => entity.dataSourceId === options.scope.dataSourceId,
       )
@@ -255,6 +262,9 @@ export function createDatabaseRecordCollection(options: {
       if (latestWindow) {
         latestWindow = {
           ...latestWindow,
+          ...(event.protocolVersion === 3
+            ? { dataSourceVersion: event.sourceVersion }
+            : {}),
           records: reindexed.map(toDatabaseRecord),
           totalCount: Math.max(
             0,

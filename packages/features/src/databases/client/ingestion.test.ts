@@ -8,6 +8,7 @@ import type {
   DatabaseHostEntity,
   DatabaseMutationEventV2,
   DatabaseRecordEntity,
+  DataSourceMutationEventV3,
 } from "../contracts-v2"
 import { databaseContextExportQueryKey } from "../queries"
 import { createDatabaseClient } from "./database-client"
@@ -111,6 +112,27 @@ function event(
   }
 }
 
+function sourceEvent(
+  sourceVersion: number,
+  changes: DataSourceMutationEventV3["changes"],
+  options: { commandId?: string; eventId?: string } = {},
+): DataSourceMutationEventV3 {
+  return {
+    actorId: "actor-1",
+    areas: changes.records || changes.removedRecordIds
+      ? ["records"]
+      : ["properties"],
+    changes,
+    commandId: options.commandId ?? `command-${sourceVersion}`,
+    committedAt: timestamp,
+    eventId: options.eventId ?? `source-event-${sourceVersion}`,
+    protocolVersion: 3,
+    sourceId: "source-1",
+    sourceVersion,
+    type: "database.mutation",
+  }
+}
+
 function orderedRecordIds(
   records: ReturnType<ReturnType<typeof createDatabaseClient>["getRecordCollection"]>,
 ) {
@@ -121,7 +143,7 @@ function orderedRecordIds(
 
 test("command acknowledgements and socket echoes share one direct-write path", async () => {
   const paths: string[] = []
-  let acknowledged: DatabaseMutationEventV2 | undefined
+  let acknowledged: DataSourceMutationEventV3 | undefined
   const initialRecords = [
     record("row-1", "1024.0000000000"),
     record("row-2", "2048.0000000000"),
@@ -142,7 +164,7 @@ test("command acknowledgements and socket echoes share one direct-write path", a
     }
     if (path.endsWith("/data-sources/source-1/commands")) {
       const request = JSON.parse(String(init?.body)) as { commandId: string }
-      acknowledged = event(2, {
+      acknowledged = sourceEvent(2, {
         records: [record("row-1", "3072.0000000000", "Moved")],
       }, { commandId: request.commandId })
       return {
@@ -187,7 +209,7 @@ test("command acknowledgements and socket echoes share one direct-write path", a
   assert.equal(records.records.state.get("row-1")?.page.name, "Moved")
   assert.equal(records.records.state.get("row-1")?.__windowIndex, 1)
   assert.equal(records.records.state.get("row-2")?.__windowIndex, 0)
-  assert.equal(client.bootstrap({ databaseId: "database-1" }).data?.database.version, 2)
+  assert.equal(client.bootstrap({ databaseId: "database-1" }).data?.database.version, 1)
 
   await client.ingest(acknowledged!)
   assert.equal(paths.filter((path) => path.includes("/mutations?")).length, 0)
@@ -370,7 +392,7 @@ test("row ordering paints optimistically before its command is sent", async () =
   const moved = record("row-1", "4096.0000000000")
   resolveCommand?.({
     commandId,
-    event: event(2, { records: [moved] }, { commandId }),
+    event: sourceEvent(2, { records: [moved] }, { commandId }),
     result: moved,
   })
   assert.equal((await transaction.promise).orderKey, "4096.0000000000")
@@ -506,7 +528,7 @@ test("a failed cell overlay preserves an unrelated pending cell on the same row"
   const confirmed = recordWithValues({ first: "A", second: "B2" })
   secondRequest.resolve({
     commandId: secondRequest.commandId,
-    event: event(2, { records: [confirmed] }, {
+    event: sourceEvent(2, { records: [confirmed] }, {
       commandId: secondRequest.commandId,
     }),
     result: confirmed,
@@ -614,7 +636,7 @@ test("a failed ordering command cancels dependent unsent moves and permits retry
   const retried = record("row-1", "4096.0000000000")
   commandRequests[1]?.resolve({
     commandId: commandRequests[1]?.commandId,
-    event: event(2, { records: [retried] }, {
+    event: sourceEvent(2, { records: [retried] }, {
       commandId: commandRequests[1]?.commandId,
     }),
     result: retried,
@@ -629,8 +651,8 @@ test("out-of-order independent acknowledgements catch up without losing overlays
     commandId: string
     resolve(value: unknown): void
   }>()
-  let secondEvent: DatabaseMutationEventV2 | undefined
-  let firstEvent: DatabaseMutationEventV2 | undefined
+  let secondEvent: DataSourceMutationEventV3 | undefined
+  let firstEvent: DataSourceMutationEventV3 | undefined
   const paths: string[] = []
   const apiFetch: ApiFetcher = async (path, init) => {
     paths.push(path)
@@ -649,7 +671,7 @@ test("out-of-order independent acknowledgements catch up without losing overlays
       return {
         events: [firstEvent, secondEvent],
         hasMore: false,
-        latestVersion: 3,
+        latestSourceVersion: 3,
         resetRequired: false,
       } as never
     }
@@ -705,10 +727,10 @@ test("out-of-order independent acknowledgements catch up without losing overlays
   const secondRequest = requests.get("second")!
   const afterFirst = recordWithValues({ first: "A2", second: "B" })
   const afterSecond = recordWithValues({ first: "A2", second: "B2" })
-  firstEvent = event(2, { records: [afterFirst] }, {
+  firstEvent = sourceEvent(2, { records: [afterFirst] }, {
     commandId: firstRequest.commandId,
   })
-  secondEvent = event(3, { records: [afterSecond] }, {
+  secondEvent = sourceEvent(3, { records: [afterSecond] }, {
     commandId: secondRequest.commandId,
   })
 
@@ -720,7 +742,7 @@ test("out-of-order independent acknowledgements catch up without losing overlays
   await second.promise
   assert.deepEqual(
     paths.filter((path) => path.includes("/mutations?")),
-    ["/databases/database-1/mutations?afterVersion=1&limit=500"],
+    ["/data-sources/source-1/mutations?afterVersion=1&limit=500"],
   )
   assert.equal(
     records.records.state.get("row-1")?.valuesByPropertyId.first?.value,
@@ -746,7 +768,7 @@ test("out-of-order independent acknowledgements catch up without losing overlays
   await client.cleanup()
 })
 
-test("linked-source fanout applies once within each displaying host", async () => {
+test("one source event patches every collection displaying that source", async () => {
   const apiFetch: ApiFetcher = async (path) => {
     if (path.includes("/records?")) {
       return {
@@ -783,23 +805,15 @@ test("linked-source fanout applies once within each displaying host", async () =
     second.records._sync.loadSubset({ limit: 51, offset: 0 }),
   ])
   const changed = record("row-1", "1024.0000000000", "Shared update")
-  const firstEvent = event(2, { records: [changed] }, {
+  const sharedEvent = sourceEvent(2, { records: [changed] }, {
     commandId: "shared-command",
-    eventId: "host-one-event",
+    eventId: "source-event",
   })
-  const secondEvent = {
-    ...firstEvent,
-    databaseId: "database-2",
-    eventId: "host-two-event",
-  }
 
-  await client.ingest(firstEvent)
+  await client.ingest(sharedEvent)
   assert.equal(first.records.state.get("row-1")?.page.name, "Shared update")
-  assert.equal(second.records.state.get("row-1")?.page.name, "Original")
-  await client.ingest(secondEvent)
-  await client.ingest(firstEvent)
-  await client.ingest(secondEvent)
   assert.equal(second.records.state.get("row-1")?.page.name, "Shared update")
+  await client.ingest(sharedEvent)
   assert.equal(first.records.size, 1)
   assert.equal(second.records.size, 1)
   await client.cleanup()

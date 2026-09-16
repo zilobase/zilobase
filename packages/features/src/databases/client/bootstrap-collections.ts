@@ -17,6 +17,7 @@ import {
   type DatabaseMutationEventV2,
   type DatabasePropertyEntity,
   type DatabaseViewEntity,
+  type DataSourceMutationEventV3,
   type DataSourceEntity,
 } from "../contracts-v2"
 import { databaseClientQueryKey } from "./query-keys"
@@ -40,6 +41,7 @@ export type DatabaseBootstrapCollections = {
   readonly scope: BootstrapScope
   views: QueryEntityCollection<DatabaseViewEntity>
   apply(event: DatabaseMutationEventV2): void
+  applySource(event: DataSourceMutationEventV3): void
   cleanup(): Promise<void>
   refetch(): Promise<void>
 }
@@ -132,6 +134,22 @@ export function createDatabaseBootstrapCollections(options: {
         next,
       )
     },
+    applySource(event) {
+      const current = options.queryClient.getQueryData<DatabaseBootstrapResponse>(
+        queryKey,
+      )
+      if (!current || !current.dataSources.some(({ id }) => id === event.sourceId)) {
+        return
+      }
+      const next = applySourceEvent(current, event)
+      writeCollectionState(dataSources, next.dataSources, [])
+      writeCollectionState(
+        properties,
+        next.properties,
+        event.changes.removedPropertyIds ?? [],
+      )
+      options.queryClient.setQueryData<DatabaseBootstrapResponse>(queryKey, next)
+    },
     async cleanup() {
       await Promise.all([
         database.cleanup(),
@@ -204,6 +222,30 @@ function applyBootstrapEvent(
       current.views,
       event.changes.views,
       event.changes.removedViewIds,
+    ),
+  }
+}
+
+function applySourceEvent(
+  current: DatabaseBootstrapResponse,
+  event: DataSourceMutationEventV3,
+): DatabaseBootstrapResponse {
+  const dataSources = current.dataSources.map((source) =>
+    source.id === event.sourceId
+      ? {
+          ...source,
+          ...(event.changes.source ?? {}),
+          version: event.sourceVersion,
+        }
+      : source
+  )
+  return {
+    ...current,
+    dataSources,
+    properties: applyEntityChanges(
+      current.properties,
+      event.changes.properties,
+      event.changes.removedPropertyIds,
     ),
   }
 }

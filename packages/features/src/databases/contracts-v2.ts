@@ -552,6 +552,14 @@ export type DataSourceMutationEventV3 = z.infer<
   typeof dataSourceMutationEventV3Schema
 >
 
+export const databaseMutationEventSchema = z.union([
+  databaseMutationEventV2Schema,
+  dataSourceMutationEventV3Schema,
+])
+export type DatabaseMutationEvent = z.infer<
+  typeof databaseMutationEventSchema
+>
+
 export const databaseMutationFeedResponseSchema = z
   .object({
     events: z.array(databaseMutationEventV2Schema),
