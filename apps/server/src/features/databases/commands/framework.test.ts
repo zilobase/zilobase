@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { beforeEach, test, vi } from "vitest"
 import type { DatabaseCommandAck, DatabaseCommandRequest } from "@zilobase/features/databases/contracts"
+import { runWithRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter"
 
 const background = vi.hoisted(() => ({ dispatch: vi.fn() }))
 vi.mock("../../../infrastructure/background/dispatch", () => ({
@@ -53,6 +54,7 @@ function transactionHarness(options: {
   sourceVersion?: number
 } = {}) {
   const inserts = new Map<unknown, unknown[]>()
+  const deleted: string[] = []
   const updates: unknown[] = []
   const databaseVersions = [...(options.databaseVersions ?? [5])]
   const execute = vi.fn(async () => undefined)
@@ -116,7 +118,13 @@ function transactionHarness(options: {
     },
   }
   return {
-    database: { transaction: async <T>(callback: (active: typeof tx) => Promise<T>) => callback(tx) },
+    database: {
+      delete() {
+        return { async where() { deleted.push("deleted") } }
+      },
+      transaction: async <T>(callback: (active: typeof tx) => Promise<T>) => callback(tx),
+    },
+    deleted,
     execute,
     inserts,
     updates,
@@ -343,6 +351,45 @@ test("a linked source command persists one event on the source clock", async () 
     streamKind: "source",
     version: 3,
   }])
+})
+
+test("source commands publish before returning and do not enqueue on success", async () => {
+  const harness = transactionHarness({ sourceVersion: 4 })
+  const publish = vi.fn(async (_input: {
+    event: { sourceVersion: number }
+  }) => undefined)
+  const dispatch = (async (context: DatabaseCommandContext) => ({
+    mutations: [{
+      areas: ["records"],
+      changes: { removedRecordIds: ["row-1"] },
+      databaseId: context.databaseId,
+      dataSourceId: context.dataSourceId,
+    }],
+    result: null,
+  })) as DatabaseCommandDispatcher
+
+  await runWithRuntimeAdapter(
+    { publishDatabaseMutation: publish },
+    () => executeDatabaseCommand({
+      actorId: "user-1",
+      env: { ZILOBASE_RUNTIME_KIND: "node" },
+      request: {
+        command: { rowId: "row-1", type: "row.archive" },
+        commandId: "source-command",
+        protocolVersion: 2,
+      },
+      scope: { databaseId: "database-1", dataSourceId: "source-1" },
+    }, {
+      database: harness.database as never,
+      dispatch,
+      randomUUID: () => "source-event-4",
+    }),
+  )
+
+  assert.equal(publish.mock.calls.length, 1)
+  assert.equal(publish.mock.calls[0]?.[0].event.sourceVersion, 4)
+  assert.deepEqual(harness.deleted, ["deleted"])
+  assert.deepEqual(background.dispatch.mock.calls[0]?.[1], [])
 })
 
 test("oversized changesets produce a reset event instead of truncated data", async () => {

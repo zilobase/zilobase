@@ -30,6 +30,7 @@ import {
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 import { measureDatabaseOperation } from "../observability";
+import { publishCommittedDataSourceMutations } from "../realtime/outbox";
 
 export class DatabaseMutationError extends Error {
   constructor(
@@ -552,14 +553,18 @@ export async function commitDataSourceMutationBatch<T>(
   );
 
   if (options.env) {
+    const retryEventIds = await publishCommittedDataSourceMutations(
+      options.env,
+      batch.commits,
+    );
     await measureDatabaseOperation(
       "enqueue_duration_ms",
       { operation: "internal", scope: "source" },
       () => dispatchBackgroundTasks(options.env!, [
-        ...batch.commits.map((commit) => createBackgroundTask({
+        ...retryEventIds.map((eventId) => createBackgroundTask({
           env: options.env!,
           kind: "realtime.database" as const,
-          resourceId: commit.eventId,
+          resourceId: eventId,
         })),
         ...automationWindows.map((window) => createBackgroundTask({
           availableAt: window.availableAt,

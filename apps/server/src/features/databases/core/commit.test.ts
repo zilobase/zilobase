@@ -3,13 +3,14 @@ import { beforeEach, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   capture: vi.fn(),
+  delete: vi.fn(),
   dispatch: vi.fn(),
   publish: vi.fn(),
   transaction: vi.fn(),
 }));
 
 vi.mock("../../../infrastructure/database", () => ({
-  db: { transaction: mocks.transaction },
+  db: { delete: mocks.delete, transaction: mocks.transaction },
 }));
 vi.mock("../../../infrastructure/background/dispatch", () => ({
   dispatchBackgroundTasks: mocks.dispatch,
@@ -29,6 +30,7 @@ import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
+import { runWithRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
 
 function transactionExecutor(versions: Array<number | null>) {
   let insertCalls = 0;
@@ -86,6 +88,8 @@ beforeEach(() => {
   mocks.dispatch.mockReset();
   mocks.dispatch.mockResolvedValue(true);
   mocks.publish.mockReset();
+  mocks.delete.mockReset();
+  mocks.delete.mockReturnValue({ where: vi.fn(async () => undefined) });
   mocks.transaction.mockReset();
   vi.restoreAllMocks();
 });
@@ -404,6 +408,28 @@ test("source mutations persist one v3 event without enumerating linking hosts", 
   });
   assert.equal(transaction.outbox.length, 1);
   assert.equal(transaction.updateCalls, 1);
+});
+
+test("internal source commits publish on the request path", async () => {
+  transactionExecutor([8]);
+  const publish = vi.fn(async (_input: unknown) => undefined);
+
+  await runWithRuntimeAdapter(
+    { publishDatabaseMutation: publish },
+    () => commitDataSourceMutation(
+      {
+        actorId: "user-1",
+        areas: ["records"],
+        dataSourceId: "source-1",
+        env: { ZILOBASE_RUNTIME_KIND: "node" },
+      },
+      async () => ({ changes: { removedRecordIds: ["row-1"] } }),
+    ),
+  );
+
+  assert.equal(publish.mock.calls.length, 1);
+  assert.equal(mocks.delete.mock.calls.length, 1);
+  assert.deepEqual(mocks.dispatch.mock.calls[0]?.[1], []);
 });
 
 test("source batches reserve contiguous versions per source", async () => {

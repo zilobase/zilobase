@@ -33,6 +33,7 @@ import {
   type DatabaseAutomationMutationFactCandidate,
 } from "../automations/triggers/event-capture"
 import { prepareDataSourceMutation } from "../core/commit"
+import { publishCommittedDataSourceMutations } from "../realtime/outbox"
 
 const COMMAND_RECEIPT_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000
 const MAX_DATABASE_MUTATION_CHANGES_BYTES = 64 * 1_024
@@ -70,7 +71,7 @@ export type DatabaseCommandDispatcher = <TResult>(
 type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0]
 
 type FrameworkDependencies = {
-  database?: Pick<Database, "transaction">
+  database?: Pick<Database, "delete" | "transaction">
   dispatch: DatabaseCommandDispatcher
   now?: () => Date
   randomUUID?: () => string
@@ -207,6 +208,7 @@ export async function executeDatabaseCommand<TResult = unknown>(
           receipt.acknowledgement,
         ) as DatabaseCommandExecutionAck<TResult>,
         eventIds: [] as string[],
+        sourceEvents: [] as DataSourceMutationEventV3[],
       }
     }
 
@@ -392,14 +394,27 @@ export async function executeDatabaseCommand<TResult = unknown>(
       requestHash,
     })
 
-    return { acknowledgement, eventIds }
+    return {
+      acknowledgement,
+      eventIds,
+      sourceEvents: acknowledgement.event.protocolVersion === 3
+        ? [acknowledgement.event]
+        : [],
+    }
     }),
   )
 
   if (input.env && committed.eventIds.length > 0) {
+    const retryEventIds = committed.sourceEvents.length > 0
+      ? await publishCommittedDataSourceMutations(
+          input.env,
+          committed.sourceEvents,
+          executor,
+        )
+      : committed.eventIds
     await measureDatabaseOperation("enqueue_duration_ms", metricAttributes, () =>
       dispatchBackgroundTasks(input.env!, [
-        ...committed.eventIds.map((eventId) => createBackgroundTask({
+        ...retryEventIds.map((eventId) => createBackgroundTask({
           env: input.env!,
           kind: "realtime.database",
           resourceId: eventId,

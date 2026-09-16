@@ -1,8 +1,9 @@
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
+import type { DataSourceMutationEventV3 } from "@zilobase/features/databases/contracts";
 import { recordDatabaseGauge } from "../observability";
-import { db } from "../../../infrastructure/database";
+import { db, type Database } from "../../../infrastructure/database";
 import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
@@ -12,6 +13,34 @@ import { dataSourceMutationEventFromJournalRow } from "./journal-event";
 
 const DELIVERY_LEASE_MS = 2 * 60 * 1000;
 const MAX_DELIVERY_ATTEMPTS = 8;
+
+export async function publishCommittedDataSourceMutations(
+  env: RuntimeEnv,
+  events: readonly DataSourceMutationEventV3[],
+  executor: Pick<Database, "delete"> = db,
+) {
+  const publish = getRuntimeAdapter().publishDatabaseMutation;
+  if (!publish) return events.map(({ eventId }) => eventId);
+
+  const retryEventIds: string[] = [];
+  for (const event of events) {
+    try {
+      await publish({ env, event });
+      await executor.delete(databaseRealtimeOutbox)
+        .where(eq(databaseRealtimeOutbox.eventId, event.eventId));
+    } catch (error) {
+      retryEventIds.push(event.eventId);
+      console.warn(JSON.stringify({
+        error: error instanceof Error ? error.name : "UnknownError",
+        event: "database_realtime_hot_publish_failed",
+        eventId: event.eventId,
+        sourceId: event.sourceId,
+        sourceVersion: event.sourceVersion,
+      }));
+    }
+  }
+  return retryEventIds;
+}
 
 export async function drainDatabaseRealtimeOutbox(
   env: RuntimeEnv,

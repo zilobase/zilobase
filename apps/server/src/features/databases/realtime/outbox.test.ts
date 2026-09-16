@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 
 import { runWithRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
-import { drainDatabaseRealtimeOutbox } from "./outbox";
+import {
+  drainDatabaseRealtimeOutbox,
+  publishCommittedDataSourceMutations,
+} from "./outbox";
 import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
@@ -22,6 +25,73 @@ const event = {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
+});
+
+function committedSourceEvent(eventId: string, sourceVersion: number) {
+  return {
+    actorId: "user-1",
+    areas: ["records" as const],
+    changes: { removedRecordIds: ["row-1"] },
+    commandId: "command-1",
+    committedAt: "2026-09-16T00:00:00.000Z",
+    eventId,
+    protocolVersion: 3 as const,
+    sourceId: "source-1",
+    sourceVersion,
+    type: "database.mutation" as const,
+  };
+}
+
+test("hot publication is ordered and deletes successful outbox rows", async () => {
+  const published: number[] = [];
+  const deleted: string[] = [];
+  const executor = {
+    delete() {
+      return {
+        async where(value: unknown) {
+          assert.ok(value);
+          deleted.push("deleted");
+        },
+      };
+    },
+  };
+  const retryEventIds = await runWithRuntimeAdapter(
+    {
+      publishDatabaseMutation: async ({ event }) => {
+        published.push(event.sourceVersion);
+      },
+    },
+    () => publishCommittedDataSourceMutations(
+      {},
+      [committedSourceEvent("event-2", 2), committedSourceEvent("event-3", 3)],
+      executor as never,
+    ),
+  );
+
+  assert.deepEqual(published, [2, 3]);
+  assert.deepEqual(deleted, ["deleted", "deleted"]);
+  assert.deepEqual(retryEventIds, []);
+});
+
+test("hot publication leaves failed events in the outbox for retry", async () => {
+  const executor = { delete: vi.fn() };
+  const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const retryEventIds = await runWithRuntimeAdapter(
+    {
+      publishDatabaseMutation: async () => {
+        throw new Error("room unavailable");
+      },
+    },
+    () => publishCommittedDataSourceMutations(
+      {},
+      [committedSourceEvent("event-2", 2)],
+      executor as never,
+    ),
+  );
+
+  assert.deepEqual(retryEventIds, ["event-2"]);
+  assert.equal(executor.delete.mock.calls.length, 0);
+  assert.match(String(warning.mock.calls[0]?.[0]), /hot_publish_failed/);
 });
 
 test("outbox draining is a no-op without a publish adapter", async () => {
