@@ -582,36 +582,67 @@ export class SessionDatabaseClient implements DatabaseClient {
         ),
       )
       if (response.resetRequired) {
-        await this.resetSourceNow(sourceId, "expired_history")
-        ledger.version = Math.max(
+        await this.recoverExpiredSourceHistory(
+          sourceId,
+          ledger,
           response.latestSourceVersion,
-          this.loadedSourceVersion(sourceId),
         )
-        ledger.commandIds.clear()
-        ledger.eventIds.clear()
         return
       }
-      if (response.events.length === 0 && response.hasMore) {
-        await this.resetSourceNow(sourceId, "invalid_history")
-        ledger.version = response.latestSourceVersion
-        return
-      }
-      for (const event of response.events) {
-        if (event.sourceId !== sourceId) {
-          await this.resetSourceNow(sourceId, "invalid_history")
-          ledger.version = response.latestSourceVersion
-          return
-        }
-        if (event.sourceVersion <= ledger.version) continue
-        if (event.sourceVersion !== ledger.version + 1) {
-          await this.resetSourceNow(sourceId, "invalid_history")
-          ledger.version = response.latestSourceVersion
-          return
-        }
-        await this.applySourceEvent(event, ledger)
-      }
+      const valid = await this.applySourceFeedPage(sourceId, ledger, response)
+      if (!valid) return
       if (!response.hasMore) return
     }
+  }
+
+  private async recoverExpiredSourceHistory(
+    sourceId: string,
+    ledger: DatabaseVersionLedger,
+    latestSourceVersion: number,
+  ) {
+    await this.resetSourceNow(sourceId, "expired_history")
+    ledger.version = Math.max(
+      latestSourceVersion,
+      this.loadedSourceVersion(sourceId),
+    )
+    ledger.commandIds.clear()
+    ledger.eventIds.clear()
+  }
+
+  private async applySourceFeedPage(
+    sourceId: string,
+    ledger: DatabaseVersionLedger,
+    response: DataSourceMutationFeedResponseV3,
+  ) {
+    if (response.events.length === 0 && response.hasMore) {
+      await this.rejectSourceHistory(sourceId, ledger, response.latestSourceVersion)
+      return false
+    }
+    for (const event of response.events) {
+      if (event.sourceVersion <= ledger.version) continue
+      if (
+        event.sourceId !== sourceId ||
+        event.sourceVersion !== ledger.version + 1
+      ) {
+        await this.rejectSourceHistory(
+          sourceId,
+          ledger,
+          response.latestSourceVersion,
+        )
+        return false
+      }
+      await this.applySourceEvent(event, ledger)
+    }
+    return true
+  }
+
+  private async rejectSourceHistory(
+    sourceId: string,
+    ledger: DatabaseVersionLedger,
+    latestSourceVersion: number,
+  ) {
+    await this.resetSourceNow(sourceId, "invalid_history")
+    ledger.version = latestSourceVersion
   }
 
   private async catchUpNow(databaseId: string) {
@@ -711,28 +742,7 @@ export class SessionDatabaseClient implements DatabaseClient {
   ) {
     applyDataSourceMutationToPageProperties(this.queryClient, event)
     this.settleCellOverlay(event.commandId)
-    if (event.requiresReset) {
-      await this.resetSourceNow(event.sourceId, "event_reset")
-    } else {
-      for (const collections of this.bootstrapCollections.values()) {
-        collections.applySource(event)
-      }
-      for (const resource of this.recordCollections.values()) {
-        if (resource.scope.dataSourceId !== event.sourceId) continue
-        try {
-          const outcome = resource.apply(
-            event,
-            this.shouldOrderByKey(resource.scope),
-          )
-          if (outcome === "source_mismatch") {
-            logSourceRecordApplyIgnored(event, resource)
-          }
-        } catch (error) {
-          logSourceRecordApplyFailure(event, resource, error)
-          await resource.reset()
-        }
-      }
-    }
+    await this.applySourceEventChanges(event)
     ledger.version = event.requiresReset
       ? Math.max(
           event.sourceVersion,
@@ -740,8 +750,37 @@ export class SessionDatabaseClient implements DatabaseClient {
         )
       : event.sourceVersion
     this.rememberSourceEvent(ledger, event)
+    this.invalidateSourceContextExports(event.sourceId)
+  }
+
+  private async applySourceEventChanges(event: DataSourceMutationEventV3) {
+    if (event.requiresReset) {
+      await this.resetSourceNow(event.sourceId, "event_reset")
+      return
+    }
     for (const collections of this.bootstrapCollections.values()) {
-      if (!collections.dataSources.state.has(event.sourceId)) continue
+      collections.applySource(event)
+    }
+    for (const resource of this.recordCollections.values()) {
+      if (resource.scope.dataSourceId !== event.sourceId) continue
+      try {
+        const outcome = resource.apply(
+          event,
+          this.shouldOrderByKey(resource.scope),
+        )
+        if (outcome === "source_mismatch") {
+          logSourceRecordApplyIgnored(event, resource)
+        }
+      } catch (error) {
+        logSourceRecordApplyFailure(event, resource, error)
+        await resource.reset()
+      }
+    }
+  }
+
+  private invalidateSourceContextExports(sourceId: string) {
+    for (const collections of this.bootstrapCollections.values()) {
+      if (!collections.dataSources.state.has(sourceId)) continue
       void this.queryClient.invalidateQueries({
         queryKey: databaseContextExportRootQueryKey(
           collections.scope.databaseId,

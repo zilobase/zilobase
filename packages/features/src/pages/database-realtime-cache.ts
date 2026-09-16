@@ -15,30 +15,13 @@ export function applyDataSourceMutationToPageProperties(
   for (const [queryKey, current] of entries) {
     if (!current?.sourceIds?.includes(mutation.sourceId)) continue
 
-    const currentVersion = current.sourceVersions?.[mutation.sourceId]
-
-    if (
-      mutation.requiresReset ||
-      mutation.areas.includes("properties") ||
-      (mutation.changes.removedRecordIds?.length ?? 0) > 0
-    ) {
-      if (
-        currentVersion === undefined || mutation.sourceVersion > currentVersion
-      ) {
-        void queryClient.invalidateQueries({ exact: true, queryKey })
-      }
-      continue
-    }
-
-    if (
-      currentVersion === undefined ||
-      mutation.sourceVersion !== currentVersion + 1
-    ) {
-      if (
-        currentVersion === undefined || mutation.sourceVersion > currentVersion
-      ) {
-        void queryClient.invalidateQueries({ exact: true, queryKey })
-      }
+    const action = pagePropertiesMutationAction(
+      current.sourceVersions?.[mutation.sourceId],
+      mutation,
+    )
+    if (action === "ignore") continue
+    if (action === "invalidate") {
+      void queryClient.invalidateQueries({ exact: true, queryKey })
       continue
     }
 
@@ -51,6 +34,20 @@ export function applyDataSourceMutationToPageProperties(
       applyMutationToPageProperties(current, pageId, mutation),
     )
   }
+}
+
+function pagePropertiesMutationAction(
+  currentVersion: number | undefined,
+  mutation: DataSourceMutationEventV3,
+): "ignore" | "invalidate" | "patch" {
+  if (currentVersion !== undefined && mutation.sourceVersion <= currentVersion) {
+    return "ignore"
+  }
+  if (currentVersion === undefined) return "invalidate"
+  if (mutation.requiresReset) return "invalidate"
+  if (mutation.areas.includes("properties")) return "invalidate"
+  if (mutation.changes.removedRecordIds?.length) return "invalidate"
+  return mutation.sourceVersion === currentVersion + 1 ? "patch" : "invalidate"
 }
 
 export function recoverPagePropertiesIfSourceBehind(

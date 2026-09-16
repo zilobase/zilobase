@@ -296,62 +296,71 @@ class DatabaseRealtimeManager {
     const parsed = parseDatabaseRealtimeServerMessage(data)
 
     if (!parsed.ok) {
-      if (parsed.reason === "protocol_mismatch") {
-        console.warn(JSON.stringify({
-          sourceId: this.sourceId,
-          event: "database_realtime_protocol_mismatch",
-          expectedProtocolVersion: 3,
-        }))
-        closeRealtimeSocket(socket, 1012, "Database realtime protocol changed")
-      }
+      this.handleInvalidMessage(parsed.reason, socket)
       return
     }
     const message = parsed.message
 
     if (message.sourceId !== this.sourceId) return
-
-    if (message.type === "database.mutation") {
-      void this.ingestMutation(message).catch(() => undefined)
-      return
+    switch (message.type) {
+      case "database.mutation":
+        void this.ingestMutation(message).catch(() => undefined)
+        break
+      case "realtime.ready":
+        this.handleReady(message)
+        break
+      case "presence.update":
+        this.handlePresenceUpdate(message)
+        break
+      case "presence.clear":
+        this.handlePresenceClear(message)
     }
+  }
 
-    if (message.type === "realtime.ready") {
-      this.sessionId = message.sessionId
-      this.reconnectAttempt = 0
-      this.recoverSource(message.sourceVersion)
-      this.setCollaborators(message.peers)
-      this.setState({ ...this.state, status: "connected" })
-      this.startHeartbeat()
-      this.sendPresence(true)
-      return
-    }
+  private handleInvalidMessage(reason: string, socket: WebSocket) {
+    if (reason !== "protocol_mismatch") return
+    console.warn(JSON.stringify({
+      sourceId: this.sourceId,
+      event: "database_realtime_protocol_mismatch",
+      expectedProtocolVersion: 3,
+    }))
+    closeRealtimeSocket(socket, 1012, "Database realtime protocol changed")
+  }
 
-    if (message.type === "presence.update") {
-      const collaborator = withColor(message.collaborator)
-      const current = this.state.collaborators.find(
-        (item) => item.sessionId === collaborator.sessionId,
-      )
-      if (current && !isNewerCollaborator(collaborator, current)) return
-      this.setCollaborators([
-        ...this.state.collaborators.filter(
-          (item) => item.sessionId !== collaborator.sessionId,
-        ),
-        collaborator,
-      ])
-      return
-    }
+  private handleReady(message: RealtimeReadyMessage) {
+    this.sessionId = message.sessionId
+    this.reconnectAttempt = 0
+    this.recoverSource(message.sourceVersion)
+    this.setCollaborators(message.peers)
+    this.setState({ ...this.state, status: "connected" })
+    this.startHeartbeat()
+    this.sendPresence(true)
+  }
 
-    if (message.type === "presence.clear") {
-      const current = this.state.collaborators.find(
-        (item) => item.sessionId === message.sessionId,
-      )
-      if (current && current.revision > message.revision) return
-      this.setCollaborators(
-        this.state.collaborators.filter(
-          (item) => item.sessionId !== message.sessionId,
-        ),
-      )
-    }
+  private handlePresenceUpdate(message: PresenceUpdateMessage) {
+    const collaborator = withColor(message.collaborator)
+    const current = this.state.collaborators.find(
+      (item) => item.sessionId === collaborator.sessionId,
+    )
+    if (current && !isNewerCollaborator(collaborator, current)) return
+    this.setCollaborators([
+      ...this.state.collaborators.filter(
+        (item) => item.sessionId !== collaborator.sessionId,
+      ),
+      collaborator,
+    ])
+  }
+
+  private handlePresenceClear(message: PresenceClearMessage) {
+    const current = this.state.collaborators.find(
+      (item) => item.sessionId === message.sessionId,
+    )
+    if (current && current.revision > message.revision) return
+    this.setCollaborators(
+      this.state.collaborators.filter(
+        (item) => item.sessionId !== message.sessionId,
+      ),
+    )
   }
 
   private async ingestMutation(event: DataSourceMutationEventV3) {
@@ -819,20 +828,35 @@ type RealtimeServerMessage = DataSourceMutationEventV3 |
 function isPresenceCollaborator(
   value: unknown,
 ): value is Omit<DatabasePresenceCollaborator, "color"> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  if (!isObjectRecord(value)) return false
   const collaborator = value as Record<string, unknown>
-  const presence = collaborator.presence as Record<string, unknown> | undefined
-  const user = collaborator.user as Record<string, unknown> | undefined
   return typeof collaborator.connectedAt === "string" &&
     typeof collaborator.updatedAt === "string" &&
     typeof collaborator.sessionId === "string" &&
-    Number.isSafeInteger(collaborator.revision) &&
-    (collaborator.revision as number) >= 0 &&
-    Boolean(presence &&
-      typeof presence.columnKey === "string" &&
-      typeof presence.rowId === "string" &&
-      (presence.viewId === null || typeof presence.viewId === "string")) &&
-    Boolean(user && typeof user.id === "string" && typeof user.name === "string")
+    isPresenceRevision(collaborator.revision) &&
+    isPresenceCell(collaborator.presence) &&
+    isPresenceUser(collaborator.user)
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value)
+}
+
+function isPresenceRevision(value: unknown) {
+  return Number.isSafeInteger(value) && (value as number) >= 0
+}
+
+function isPresenceCell(value: unknown) {
+  if (!isObjectRecord(value)) return false
+  return typeof value.columnKey === "string" &&
+    typeof value.rowId === "string" &&
+    (value.viewId === null || typeof value.viewId === "string")
+}
+
+function isPresenceUser(value: unknown) {
+  return isObjectRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.name === "string"
 }
 
 function isNewerCollaborator(

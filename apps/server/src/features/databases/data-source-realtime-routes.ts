@@ -43,22 +43,53 @@ function integerQuery(value: string | undefined, fallback?: number) {
   return /^\d+$/.test(value) ? Number(value) : Number.NaN
 }
 
+function mutationWindow(after: string | undefined, requestedLimit: string | undefined) {
+  const afterVersion = integerQuery(after)
+  const limit = integerQuery(requestedLimit, DATABASE_MUTATION_FEED_LIMIT)
+  const valid = afterVersion !== undefined && Number.isSafeInteger(afterVersion) &&
+    afterVersion >= 0 && limit !== undefined && Number.isSafeInteger(limit) &&
+    limit >= 1 && limit <= DATABASE_MUTATION_FEED_LIMIT
+  return valid ? { afterVersion, limit } : null
+}
+
+function refreshTokenFromBody(body: unknown) {
+  if (!body || typeof body !== "object" || !("token" in body)) {
+    return { ok: true as const, token: undefined }
+  }
+  const token = (body as { token?: unknown }).token
+  if (typeof token !== "string" || token.length === 0 || token.length > 8 * 1024) {
+    return { ok: false as const }
+  }
+  return { ok: true as const, token }
+}
+
+async function restoredSessionId(
+  token: string | undefined,
+  sourceId: string,
+  userId: string,
+  env: Parameters<typeof verifyDataSourceRealtimeTicket>[1],
+) {
+  if (!token) return undefined
+  const previous = await verifyDataSourceRealtimeTicket(token, env)
+  if (previous.sourceId !== sourceId || previous.user.id !== userId) {
+    throw new Error("Realtime session identity changed")
+  }
+  return previous.sessionId
+}
+
 dataSourceRealtimeRoutes.get("/:sourceId/mutations", sourceWorkspace, async (c) => {
   const user = c.get("user") ?? null
   if (!user) return c.json({ error: "Unauthorized" }, 401)
   const source = await requireDataSourceAccess(c.req.param("sourceId"), user.id, "view")
-  const afterVersion = integerQuery(c.req.query("afterVersion"))
-  const limit = integerQuery(c.req.query("limit"), DATABASE_MUTATION_FEED_LIMIT)
-  if (
-    afterVersion === undefined || !Number.isSafeInteger(afterVersion) ||
-    afterVersion < 0 || limit === undefined || !Number.isSafeInteger(limit) ||
-    limit < 1 || limit > DATABASE_MUTATION_FEED_LIMIT
-  ) {
+  const window = mutationWindow(
+    c.req.query("afterVersion"),
+    c.req.query("limit"),
+  )
+  if (!window) {
     return c.json({ error: "Invalid mutation window" }, 400)
   }
   return c.json(await getDataSourceMutationFeed({
-    afterVersion,
-    limit,
+    ...window,
     sourceId: source.id,
   }))
 })
@@ -77,31 +108,21 @@ dataSourceRealtimeRoutes.post(
       "view",
     )
     const body = await readJsonBody(c.req)
-    const hasRefreshToken = Boolean(
-      body && typeof body === "object" && "token" in body,
-    )
-    const refreshToken = hasRefreshToken &&
-        typeof (body as { token?: unknown }).token === "string"
-      ? (body as { token: string }).token
-      : undefined
-    if (hasRefreshToken && (!refreshToken || refreshToken.length > 8 * 1024)) {
+    const refresh = refreshTokenFromBody(body)
+    if (!refresh.ok) {
       return c.json({ error: "Invalid realtime session" }, 400)
     }
 
     let sessionId: string | undefined
-    if (refreshToken) {
-      try {
-        const previous = await verifyDataSourceRealtimeTicket(
-          refreshToken,
-          c.env,
-        )
-        if (previous.sourceId !== source.id || previous.user.id !== user.id) {
-          return c.json({ error: "Invalid realtime session" }, 401)
-        }
-        sessionId = previous.sessionId
-      } catch {
-        return c.json({ error: "Invalid realtime session" }, 401)
-      }
+    try {
+      sessionId = await restoredSessionId(
+        refresh.token,
+        source.id,
+        user.id,
+        c.env,
+      )
+    } catch {
+      return c.json({ error: "Invalid realtime session" }, 401)
     }
 
     const editable = await requireDataSourceAccess(source.id, user.id, "edit")

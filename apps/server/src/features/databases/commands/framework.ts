@@ -161,22 +161,411 @@ function storedSourceEvent(event: DataSourceMutationEventV3) {
   }
 }
 
+type ExecuteDatabaseCommandInput = {
+  actorId: string
+  env?: RuntimeEnv
+  request: DatabaseCommandRequest
+  scope: DatabaseCommandScope
+}
+
+type CommandMutationResult<TResult> = {
+  acknowledgement: DatabaseCommandExecutionAck<TResult>
+  eventIds: string[]
+  receiptEventId: string
+  sourceEvents: DataSourceMutationEventV3[]
+}
+
+type CommandCommitResult<TResult> = CommandMutationResult<TResult> & {
+  agentTriggerFacts: DatabaseAutomationMutationFactCandidate[]
+  automationWindows: Array<{ availableAt: Date; id: string }>
+}
+
+async function loadCommandReceipt(tx: DatabaseTransaction, commandId: string) {
+  const [receipt] = await tx
+    .select()
+    .from(databaseCommandReceipt)
+    .where(eq(databaseCommandReceipt.commandId, commandId))
+    .for("update")
+    .limit(1)
+  return receipt
+}
+
+function replayCommandReceipt<TResult>(
+  receipt: NonNullable<Awaited<ReturnType<typeof loadCommandReceipt>>>,
+  input: ExecuteDatabaseCommandInput,
+  requestHash: string,
+): CommandCommitResult<TResult> {
+  const sameRequest = receipt.requestHash === requestHash &&
+    receipt.databaseId === input.scope.databaseId &&
+    receipt.dataSourceId === input.scope.dataSourceId &&
+    receipt.actorId === input.actorId
+  if (!sameRequest) throw new CommandIdReusedError(input.request.commandId)
+  return {
+    acknowledgement: databaseCommandExecutionAckSchema.parse(
+      receipt.acknowledgement,
+    ) as DatabaseCommandExecutionAck<TResult>,
+    agentTriggerFacts: [],
+    automationWindows: [],
+    eventIds: [],
+    receiptEventId: receipt.eventId,
+    sourceEvents: [],
+  }
+}
+
+async function bumpCommandClock(
+  tx: DatabaseTransaction,
+  scope: DatabaseCommandScope,
+  now: Date,
+) {
+  if (scope.dataSourceId) {
+    const [linked] = await tx
+      .select({ dataSourceId: databaseDataSource.dataSourceId })
+      .from(databaseDataSource)
+      .where(and(
+        eq(databaseDataSource.databaseId, scope.databaseId),
+        eq(databaseDataSource.dataSourceId, scope.dataSourceId),
+      ))
+      .limit(1)
+    if (!linked) throw new ServiceMutationError("Data source is not linked", 404)
+    const [source] = await tx
+      .update(dataSource)
+      .set({ updatedAt: now, version: sql`${dataSource.version} + 1` })
+      .where(eq(dataSource.id, scope.dataSourceId))
+      .returning({ version: dataSource.version })
+    if (!source) throw new ServiceMutationError("Data source not found", 404)
+    return { primaryHostVersion: null, sourceVersion: source.version }
+  }
+  const [host] = await tx
+    .update(database)
+    .set({ version: sql`${database.version} + 1` })
+    .where(eq(database.id, scope.databaseId))
+    .returning({ version: database.version })
+  if (!host) throw new ServiceMutationError("Database not found", 404)
+  return { primaryHostVersion: host.version, sourceVersion: null }
+}
+
+async function dispatchCommand<TResult>(
+  tx: DatabaseTransaction,
+  input: ExecuteDatabaseCommandInput,
+  dependencies: FrameworkDependencies,
+  automationWindows: Array<{ availableAt: Date; id: string }>,
+) {
+  const dispatched = await dependencies.dispatch<TResult>({
+    actorId: input.actorId,
+    commandId: input.request.commandId,
+    databaseId: input.scope.databaseId,
+    dataSourceId: input.scope.dataSourceId,
+    transaction: tx,
+  }, input.request.command)
+  const agentTriggerFacts = dispatched.automationFacts ?? []
+  if (agentTriggerFacts.length) {
+    await captureDatabaseAutomationMutationFacts(
+      tx,
+      agentTriggerFacts,
+      input.env ? { capturedWindows: automationWindows } : {},
+    )
+  }
+  return { agentTriggerFacts, dispatched }
+}
+
+async function persistSourceMutation<TResult>(
+  tx: DatabaseTransaction,
+  input: ExecuteDatabaseCommandInput,
+  dispatched: DatabaseCommandDispatchResult<TResult>,
+  sourceVersion: number | null,
+  now: Date,
+  randomUUID: () => string,
+): Promise<CommandMutationResult<TResult>> {
+  const sourceId = input.scope.dataSourceId
+  if (!sourceId || sourceVersion === null || dispatched.mutations.length !== 1) {
+    throw new Error("Data source command must produce one source mutation event")
+  }
+  const mutation = dispatched.mutations[0]!
+  if (mutation.dataSourceId !== sourceId) {
+    throw new Error("Data source command produced an event for another source")
+  }
+  const prepared = prepareDataSourceMutation(
+    mutation.areas,
+    mutation.changes,
+    sourceId,
+    sourceVersion,
+    mutation.requiresReset,
+  )
+  const sourceEvent: DataSourceMutationEventV3 = {
+    actorId: input.actorId,
+    areas: prepared.areas,
+    changes: prepared.changes,
+    commandId: input.request.commandId,
+    committedAt: now.toISOString(),
+    eventId: randomUUID(),
+    protocolVersion: 3,
+    ...(prepared.requiresReset ? { requiresReset: true as const } : {}),
+    sourceId,
+    sourceVersion,
+    type: "database.mutation",
+  }
+  await tx.insert(databaseMutationEvent).values(storedSourceEvent(sourceEvent))
+  return {
+    acknowledgement: dataSourceCommandAckV3Schema.parse({
+      commandId: input.request.commandId,
+      event: sourceEvent,
+      result: dispatched.result,
+    }) as DataSourceCommandAckV3<TResult>,
+    eventIds: [sourceEvent.eventId],
+    receiptEventId: sourceEvent.eventId,
+    sourceEvents: [sourceEvent],
+  }
+}
+
+function validateHostMutations(
+  scope: DatabaseCommandScope,
+  mutations: DatabaseCommandMutation[],
+) {
+  if (!mutations.some(({ databaseId }) => databaseId === scope.databaseId)) {
+    throw new Error("Database command did not produce a host mutation event")
+  }
+  const hostIds = mutations.map(({ databaseId }) => databaseId)
+  if (new Set(hostIds).size !== hostIds.length) {
+    throw new Error("Database command produced multiple events for one host")
+  }
+}
+
+async function hostMutationVersion(
+  tx: DatabaseTransaction,
+  mutation: DatabaseCommandMutation,
+  scope: DatabaseCommandScope,
+  primaryHostVersion: number | null,
+) {
+  if (mutation.databaseId === scope.databaseId && primaryHostVersion !== null) {
+    return primaryHostVersion
+  }
+  const [host] = await tx
+    .update(database)
+    .set({ version: sql`${database.version} + 1` })
+    .where(eq(database.id, mutation.databaseId))
+    .returning({ version: database.version })
+  if (!host) throw new ServiceMutationError("Database not found", 404)
+  return host.version
+}
+
+function createHostMutationEvent(
+  input: ExecuteDatabaseCommandInput,
+  mutation: DatabaseCommandMutation,
+  version: number,
+  now: Date,
+  randomUUID: () => string,
+): DatabaseMutationEventV2 {
+  const prepared = boundedChanges(mutation)
+  const changes = prepared.changes.databases
+    ? {
+        ...prepared.changes,
+        databases: prepared.changes.databases.map((host) =>
+          host.id === mutation.databaseId ? { ...host, version } : host
+        ),
+      }
+    : prepared.changes
+  return {
+    actorId: input.actorId,
+    areas: mutation.areas,
+    changes,
+    commandId: input.request.commandId,
+    committedAt: now.toISOString(),
+    databaseId: mutation.databaseId,
+    dataSourceId: mutation.dataSourceId,
+    eventId: randomUUID(),
+    protocolVersion: 2,
+    ...(prepared.requiresReset ? { requiresReset: true as const } : {}),
+    type: "database.mutation",
+    version,
+  }
+}
+
+async function persistHostMutations<TResult>(
+  tx: DatabaseTransaction,
+  input: ExecuteDatabaseCommandInput,
+  dispatched: DatabaseCommandDispatchResult<TResult>,
+  primaryHostVersion: number | null,
+  now: Date,
+  randomUUID: () => string,
+): Promise<CommandMutationResult<TResult>> {
+  validateHostMutations(input.scope, dispatched.mutations)
+  const events: DatabaseMutationEventV2[] = []
+  const mutations = [...dispatched.mutations].sort((left, right) =>
+    left.databaseId.localeCompare(right.databaseId)
+  )
+  for (const mutation of mutations) {
+    const version = await hostMutationVersion(
+      tx,
+      mutation,
+      input.scope,
+      primaryHostVersion,
+    )
+    events.push(createHostMutationEvent(input, mutation, version, now, randomUUID))
+  }
+  await tx.insert(databaseMutationEvent).values(events.map(storedHostEvent))
+  const primaryEvent = events.find(({ databaseId }) =>
+    databaseId === input.scope.databaseId
+  )!
+  return {
+    acknowledgement: databaseCommandAckSchema.parse({
+      commandId: input.request.commandId,
+      event: primaryEvent,
+      result: dispatched.result,
+    }) as DatabaseCommandExecutionAck<TResult>,
+    eventIds: events.map(({ eventId }) => eventId),
+    receiptEventId: primaryEvent.eventId,
+    sourceEvents: [],
+  }
+}
+
+async function persistCommandMutation<TResult>(
+  tx: DatabaseTransaction,
+  input: ExecuteDatabaseCommandInput,
+  dispatched: DatabaseCommandDispatchResult<TResult>,
+  versions: Awaited<ReturnType<typeof bumpCommandClock>>,
+  now: Date,
+  randomUUID: () => string,
+) {
+  return input.scope.dataSourceId
+    ? persistSourceMutation(
+        tx,
+        input,
+        dispatched,
+        versions.sourceVersion,
+        now,
+        randomUUID,
+      )
+    : persistHostMutations(
+        tx,
+        input,
+        dispatched,
+        versions.primaryHostVersion,
+        now,
+        randomUUID,
+      )
+}
+
+async function persistCommandBookkeeping<TResult>(
+  tx: DatabaseTransaction,
+  input: ExecuteDatabaseCommandInput,
+  requestHash: string,
+  now: Date,
+  mutation: CommandMutationResult<TResult>,
+) {
+  await tx.insert(databaseRealtimeOutbox).values(
+    mutation.eventIds.map((eventId) => ({ eventId, id: eventId })),
+  )
+  await tx.insert(databaseCommandReceipt).values({
+    acknowledgement: mutation.acknowledgement,
+    actorId: input.actorId,
+    commandId: input.request.commandId,
+    createdAt: now,
+    databaseId: input.scope.databaseId,
+    dataSourceId: input.scope.dataSourceId,
+    eventId: mutation.receiptEventId,
+    expiresAt: new Date(now.getTime() + COMMAND_RECEIPT_RETENTION_MS),
+    requestHash,
+  })
+}
+
+async function commitDatabaseCommand<TResult>(
+  tx: DatabaseTransaction,
+  input: ExecuteDatabaseCommandInput,
+  dependencies: FrameworkDependencies,
+  requestHash: string,
+  now: Date,
+  randomUUID: () => string,
+): Promise<CommandCommitResult<TResult>> {
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${input.request.commandId}, 0))`,
+  )
+  const receipt = await loadCommandReceipt(tx, input.request.commandId)
+  if (receipt) return replayCommandReceipt<TResult>(receipt, input, requestHash)
+
+  const versions = await bumpCommandClock(tx, input.scope, now)
+  const automationWindows: Array<{ availableAt: Date; id: string }> = []
+  const { agentTriggerFacts, dispatched } = await dispatchCommand<TResult>(
+    tx,
+    input,
+    dependencies,
+    automationWindows,
+  )
+  const mutation = await persistCommandMutation(
+    tx,
+    input,
+    dispatched,
+    versions,
+    now,
+    randomUUID,
+  )
+  await persistCommandBookkeeping(tx, input, requestHash, now, mutation)
+  return { ...mutation, agentTriggerFacts, automationWindows }
+}
+
+async function dispatchAgentTriggerFacts(
+  env: RuntimeEnv,
+  commandId: string,
+  facts: DatabaseAutomationMutationFactCandidate[],
+) {
+  if (facts.length === 0) return
+  try {
+    const { dispatchDatabaseAgentMutationFacts } = await import(
+      "../../ai/agents/agent-trigger-service"
+    )
+    await dispatchDatabaseAgentMutationFacts(env, {
+      eventKeyPrefix: `database-command:${commandId}`,
+      facts,
+    })
+  } catch (error) {
+    console.error(JSON.stringify({
+      error: error instanceof Error ? error.name : "UnknownError",
+      event: "custom_agent_database_trigger_dispatch_failed",
+    }))
+  }
+}
+
+async function publishCommandEffects<TResult>(
+  input: ExecuteDatabaseCommandInput & { env: RuntimeEnv },
+  committed: CommandCommitResult<TResult>,
+  executor: Pick<Database, "delete" | "transaction">,
+  metricAttributes: { operation: string; scope: "host" | "source" },
+) {
+  const retryEventIds = committed.sourceEvents.length > 0
+    ? await publishCommittedDataSourceMutations(
+        input.env,
+        committed.sourceEvents,
+        executor,
+      )
+    : committed.eventIds
+  await measureDatabaseOperation("enqueue_duration_ms", metricAttributes, () =>
+    dispatchBackgroundTasks(input.env, [
+      ...retryEventIds.map((eventId) => createBackgroundTask({
+        env: input.env,
+        kind: "realtime.database",
+        resourceId: eventId,
+      })),
+      ...committed.automationWindows.map((window) => createBackgroundTask({
+        availableAt: window.availableAt,
+        env: input.env,
+        kind: "automation.event_window",
+        resourceId: window.id,
+      })),
+    ]))
+  await dispatchAgentTriggerFacts(
+    input.env,
+    input.request.commandId,
+    committed.agentTriggerFacts,
+  )
+}
+
 export async function executeDatabaseCommand<TResult = unknown>(
-  input: {
-    actorId: string
-    env?: RuntimeEnv
-    request: DatabaseCommandRequest
-    scope: DatabaseCommandScope
-  },
+  input: ExecuteDatabaseCommandInput,
   dependencies: FrameworkDependencies,
 ): Promise<DatabaseCommandExecutionAck<TResult>> {
   const executor = dependencies.database ?? db
   const requestHash = await hashDatabaseCommandRequest(input.scope, input.request)
   const now = dependencies.now?.() ?? new Date()
   const randomUUID = dependencies.randomUUID ?? (() => crypto.randomUUID())
-  const automationWindows: Array<{ availableAt: Date; id: string }> = []
-  let agentTriggerFacts: DatabaseAutomationMutationFactCandidate[] = []
-
   const metricAttributes = {
     operation: input.request.command.type,
     scope: input.scope.dataSourceId ? "source" as const : "host" as const,
@@ -184,264 +573,24 @@ export async function executeDatabaseCommand<TResult = unknown>(
   const committed = await measureDatabaseOperation(
     "commit_duration_ms",
     metricAttributes,
-    () => executor.transaction(async (tx) => {
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${input.request.commandId}, 0))`)
-
-    const [receipt] = await tx
-      .select()
-      .from(databaseCommandReceipt)
-      .where(eq(databaseCommandReceipt.commandId, input.request.commandId))
-      .for("update")
-      .limit(1)
-
-    if (receipt) {
-      if (
-        receipt.requestHash !== requestHash ||
-        receipt.databaseId !== input.scope.databaseId ||
-        receipt.dataSourceId !== input.scope.dataSourceId ||
-        receipt.actorId !== input.actorId
-      ) {
-        throw new CommandIdReusedError(input.request.commandId)
-      }
-      return {
-        acknowledgement: databaseCommandExecutionAckSchema.parse(
-          receipt.acknowledgement,
-        ) as DatabaseCommandExecutionAck<TResult>,
-        eventIds: [] as string[],
-        sourceEvents: [] as DataSourceMutationEventV3[],
-      }
-    }
-
-    let primaryHostVersion: number | null = null
-    let sourceVersion: number | null = null
-    if (input.scope.dataSourceId) {
-      const [linked] = await tx
-        .select({ dataSourceId: databaseDataSource.dataSourceId })
-        .from(databaseDataSource)
-        .where(and(
-          eq(databaseDataSource.databaseId, input.scope.databaseId),
-          eq(databaseDataSource.dataSourceId, input.scope.dataSourceId),
-        ))
-        .limit(1)
-      if (!linked) throw new ServiceMutationError("Data source is not linked", 404)
-
-      const [versionedSource] = await tx
-        .update(dataSource)
-        .set({
-          updatedAt: now,
-          version: sql`${dataSource.version} + 1`,
-        })
-        .where(eq(dataSource.id, input.scope.dataSourceId))
-        .returning({ version: dataSource.version })
-      if (!versionedSource) throw new ServiceMutationError("Data source not found", 404)
-      sourceVersion = versionedSource.version
-    } else {
-      const [versionedHost] = await tx
-        .update(database)
-        .set({ version: sql`${database.version} + 1` })
-        .where(eq(database.id, input.scope.databaseId))
-        .returning({ version: database.version })
-      if (!versionedHost) throw new ServiceMutationError("Database not found", 404)
-      primaryHostVersion = versionedHost.version
-    }
-
-    const dispatched = await dependencies.dispatch<TResult>({
-      actorId: input.actorId,
-      commandId: input.request.commandId,
-      databaseId: input.scope.databaseId,
-      dataSourceId: input.scope.dataSourceId,
-      transaction: tx,
-    }, input.request.command)
-    agentTriggerFacts = dispatched.automationFacts ?? []
-    if (agentTriggerFacts.length) {
-      await captureDatabaseAutomationMutationFacts(
+    () => executor.transaction((tx) =>
+      commitDatabaseCommand<TResult>(
         tx,
-        agentTriggerFacts,
-        input.env ? { capturedWindows: automationWindows } : {},
+        input,
+        dependencies,
+        requestHash,
+        now,
+        randomUUID,
       )
-    }
-
-    let acknowledgement: DatabaseCommandExecutionAck<TResult>
-    let eventIds: string[]
-    let receiptEventId: string
-
-    if (input.scope.dataSourceId) {
-      if (sourceVersion === null || dispatched.mutations.length !== 1) {
-        throw new Error("Data source command must produce one source mutation event")
-      }
-      const mutation = dispatched.mutations[0]!
-      if (mutation.dataSourceId !== input.scope.dataSourceId) {
-        throw new Error("Data source command produced an event for another source")
-      }
-      const prepared = prepareDataSourceMutation(
-        mutation.areas,
-        mutation.changes,
-        input.scope.dataSourceId,
-        sourceVersion,
-        mutation.requiresReset,
-      )
-      const sourceEvent: DataSourceMutationEventV3 = {
-        actorId: input.actorId,
-        areas: prepared.areas,
-        changes: prepared.changes,
-        commandId: input.request.commandId,
-        committedAt: now.toISOString(),
-        eventId: randomUUID(),
-        protocolVersion: 3,
-        ...(prepared.requiresReset ? { requiresReset: true as const } : {}),
-        sourceId: input.scope.dataSourceId,
-        sourceVersion,
-        type: "database.mutation",
-      }
-      await tx.insert(databaseMutationEvent).values(storedSourceEvent(sourceEvent))
-      acknowledgement = dataSourceCommandAckV3Schema.parse({
-        commandId: input.request.commandId,
-        event: sourceEvent,
-        result: dispatched.result,
-      }) as DataSourceCommandAckV3<TResult>
-      eventIds = [sourceEvent.eventId]
-      receiptEventId = sourceEvent.eventId
-    } else {
-      if (
-        dispatched.mutations.length === 0 ||
-        !dispatched.mutations.some(({ databaseId }) =>
-          databaseId === input.scope.databaseId
-        )
-      ) {
-        throw new Error("Database command did not produce a host mutation event")
-      }
-
-      const duplicateHost = dispatched.mutations.find(
-        (mutation, index, mutations) =>
-          mutations.findIndex(({ databaseId }) =>
-            databaseId === mutation.databaseId
-          ) !== index,
-      )
-      if (duplicateHost) {
-        throw new Error("Database command produced multiple events for one host")
-      }
-
-      const events: DatabaseMutationEventV2[] = []
-      for (const mutation of [...dispatched.mutations].sort((left, right) =>
-        left.databaseId.localeCompare(right.databaseId)
-      )) {
-        const version = mutation.databaseId === input.scope.databaseId &&
-            primaryHostVersion !== null
-          ? primaryHostVersion
-          : (await tx
-              .update(database)
-              .set({ version: sql`${database.version} + 1` })
-              .where(eq(database.id, mutation.databaseId))
-              .returning({ version: database.version }))[0]?.version
-        if (version === undefined) {
-          throw new ServiceMutationError("Database not found", 404)
-        }
-
-        const prepared = boundedChanges(mutation)
-        const changes = prepared.changes.databases
-          ? {
-              ...prepared.changes,
-              databases: prepared.changes.databases.map((host) =>
-                host.id === mutation.databaseId
-                  ? { ...host, version }
-                  : host
-              ),
-            }
-          : prepared.changes
-        events.push({
-          actorId: input.actorId,
-          areas: mutation.areas,
-          changes,
-          commandId: input.request.commandId,
-          committedAt: now.toISOString(),
-          databaseId: mutation.databaseId,
-          dataSourceId: mutation.dataSourceId,
-          eventId: randomUUID(),
-          protocolVersion: 2,
-          ...(prepared.requiresReset ? { requiresReset: true as const } : {}),
-          type: "database.mutation",
-          version,
-        })
-      }
-
-      await tx.insert(databaseMutationEvent).values(events.map(storedHostEvent))
-      const primaryEvent = events.find(({ databaseId }) =>
-        databaseId === input.scope.databaseId
-      )!
-      acknowledgement = databaseCommandAckSchema.parse({
-        commandId: input.request.commandId,
-        event: primaryEvent,
-        result: dispatched.result,
-      }) as DatabaseCommandExecutionAck<TResult>
-      eventIds = events.map(({ eventId }) => eventId)
-      receiptEventId = primaryEvent.eventId
-    }
-
-    await tx.insert(databaseRealtimeOutbox).values(eventIds.map((eventId) => ({
-      eventId,
-      id: eventId,
-    })))
-
-    await tx.insert(databaseCommandReceipt).values({
-      acknowledgement,
-      actorId: input.actorId,
-      commandId: input.request.commandId,
-      createdAt: now,
-      databaseId: input.scope.databaseId,
-      dataSourceId: input.scope.dataSourceId,
-      eventId: receiptEventId,
-      expiresAt: new Date(now.getTime() + COMMAND_RECEIPT_RETENTION_MS),
-      requestHash,
-    })
-
-    return {
-      acknowledgement,
-      eventIds,
-      sourceEvents: acknowledgement.event.protocolVersion === 3
-        ? [acknowledgement.event]
-        : [],
-    }
-    }),
+    ),
   )
-
   if (input.env && committed.eventIds.length > 0) {
-    const retryEventIds = committed.sourceEvents.length > 0
-      ? await publishCommittedDataSourceMutations(
-          input.env,
-          committed.sourceEvents,
-          executor,
-        )
-      : committed.eventIds
-    await measureDatabaseOperation("enqueue_duration_ms", metricAttributes, () =>
-      dispatchBackgroundTasks(input.env!, [
-        ...retryEventIds.map((eventId) => createBackgroundTask({
-          env: input.env!,
-          kind: "realtime.database",
-          resourceId: eventId,
-        })),
-        ...automationWindows.map((window) => createBackgroundTask({
-          availableAt: window.availableAt,
-          env: input.env!,
-          kind: "automation.event_window",
-          resourceId: window.id,
-        })),
-      ]))
-    if (agentTriggerFacts.length) {
-      try {
-        const { dispatchDatabaseAgentMutationFacts } = await import(
-          "../../ai/agents/agent-trigger-service"
-        )
-        await dispatchDatabaseAgentMutationFacts(input.env, {
-          eventKeyPrefix: `database-command:${input.request.commandId}`,
-          facts: agentTriggerFacts,
-        })
-      } catch (error) {
-        console.error(JSON.stringify({
-          error: error instanceof Error ? error.name : "UnknownError",
-          event: "custom_agent_database_trigger_dispatch_failed",
-        }))
-      }
-    }
+    await publishCommandEffects(
+      { ...input, env: input.env },
+      committed,
+      executor,
+      metricAttributes,
+    )
   }
   return committed.acknowledgement
 }
