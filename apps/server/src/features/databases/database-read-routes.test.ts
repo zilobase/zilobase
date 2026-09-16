@@ -8,30 +8,17 @@ import { responseJson } from "../../test-support/response";
 const mocks = vi.hoisted(() => ({
   access: vi.fn(),
   accessLevel: vi.fn(),
-  createTicket: vi.fn(),
   getRecord: vi.fn(),
   membership: vi.fn(),
   payload: vi.fn(),
   published: vi.fn(),
-  realtimeExpiration: vi.fn(),
-  verifyTicket: vi.fn(),
 }));
 
 vi.mock("../access", () => ({
   canAccessDatabaseRecord: mocks.access,
   getEffectiveDatabaseAccessForRecord: mocks.accessLevel,
   getMembership: mocks.membership,
-  getWorkspaceRealtimeAccessExpiration: mocks.realtimeExpiration,
   isDatabasePublishedInWorkspace: mocks.published,
-}));
-vi.mock("../../shared/security/database-realtime-ticket", () => ({
-  createDatabaseRealtimeTicket: mocks.createTicket,
-  DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX: "zilobase-auth.",
-  DATABASE_REALTIME_PROTOCOL: "zilobase.database.v2",
-  verifyDatabaseRealtimeTicket: mocks.verifyTicket,
-}));
-vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
-  getDatabaseRealtimeWebSocketUrl: () => "ws://localhost/realtime",
 }));
 vi.mock("../../infrastructure/database", () => {
   const emptyQuery = () => {
@@ -85,8 +72,6 @@ beforeEach(() => {
   mocks.membership.mockResolvedValue({ id: "membership-1" });
   mocks.payload.mockResolvedValue({ database: { id: "database-1" }, rows: [] });
   mocks.published.mockResolvedValue(false);
-  mocks.realtimeExpiration.mockResolvedValue(null);
-  mocks.createTicket.mockResolvedValue({ expiresAt: "2026-08-04T00:00:00.000Z", token: "ticket" });
 });
 
 function sessionApp() {
@@ -148,50 +133,6 @@ test("database read route authorizes deleted records through membership", async 
   assert.equal(response.status, 200);
   assert.equal((await responseJson<{ database: { accessLevel: null } }>(response)).database.accessLevel, null);
   assert.equal(mocks.membership.mock.calls.length, 1);
-});
-
-test("realtime ticket route requires a session and database access", async () => {
-  const unauthorized = await databaseReadRoutes.request(
-    "/database-1/realtime-ticket",
-    { method: "POST" },
-  );
-  assert.equal(unauthorized.status, 401);
-
-  mocks.accessLevel.mockResolvedValue("none");
-  const forbidden = await sessionApp().request(
-    "/database-1/realtime-ticket",
-    { method: "POST" },
-  );
-  assert.equal(forbidden.status, 403);
-});
-
-test("realtime ticket route creates and refreshes scoped tickets", async () => {
-  mocks.verifyTicket.mockResolvedValue({
-    databaseId: "database-1",
-    sessionId: "session-1",
-    user: { id: "user-1" },
-  });
-  const response = await sessionApp().request(
-    "/database-1/realtime-ticket",
-    {
-      body: JSON.stringify({ token: "old-ticket" }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    },
-  );
-  const body = await responseJson<{
-    databaseId: string;
-    websocketProtocols: string[];
-    websocketUrl: string;
-  }>(response);
-  assert.equal(response.status, 200);
-  assert.equal(body.databaseId, "database-1");
-  assert.equal(body.websocketUrl, "ws://localhost/realtime?database=database-1");
-  assert.deepEqual(body.websocketProtocols, [
-    "zilobase.database.v2",
-    "zilobase-auth.ticket",
-  ]);
-  assert.equal(mocks.createTicket.mock.calls[0]?.[0].sessionId, "session-1");
 });
 
 test("published route reports missing and published databases", async () => {

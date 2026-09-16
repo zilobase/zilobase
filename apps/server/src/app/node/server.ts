@@ -6,9 +6,9 @@ import { createNodeRuntime } from "./node-runtime";
 import { CORE_MIGRATION_SET } from "../../infrastructure/node/migrations";
 import { shutdownNodeTelemetry } from "../../infrastructure/background/node-telemetry";
 import { disposeProcessRuntimes } from "../../infrastructure/effect";
-import { DATABASE_REALTIME_PROTOCOL } from "../../shared/security/database-realtime-ticket";
+import { DATA_SOURCE_REALTIME_PROTOCOL } from "../../shared/security/database-realtime-ticket";
 
-const CORE_SCHEMA_TARGET = "0092_database_v2_constraints";
+const CORE_SCHEMA_TARGET = "0093_source_realtime_stream";
 
 loadEnv({
   path: process.env.ZILOBASE_ENV_FILE ?? path.resolve("apps/server/.env"),
@@ -41,7 +41,7 @@ async function start() {
     autoMigrate,
     event: "runtime.startup",
     migrationSets: runtime.migrationSets.map((migrationSet) => migrationSet.id),
-    protocol: DATABASE_REALTIME_PROTOCOL,
+    protocol: DATA_SOURCE_REALTIME_PROTOCOL,
     schemaTarget: CORE_SCHEMA_TARGET,
   }));
   await runtime.start();

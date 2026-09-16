@@ -1,13 +1,9 @@
 export {
   createDataSourceRealtimeTicket,
-  createDatabaseRealtimeTicket,
   DATA_SOURCE_REALTIME_PROTOCOL,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
-  DATABASE_REALTIME_PROTOCOL,
   verifyDataSourceRealtimeTicket,
-  verifyDatabaseRealtimeTicket,
   type DataSourceRealtimeTicketClaims,
-  type DatabaseRealtimeTicketClaims,
 } from "../shared/security/database-realtime-ticket";
 export type {
   DatabaseMutationEventV2,

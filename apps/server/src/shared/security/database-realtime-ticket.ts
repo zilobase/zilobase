@@ -4,24 +4,15 @@ import type { RuntimeEnv } from "../config/config";
 
 const TICKET_TTL_MS = 30 * 60 * 1000;
 
-export const DATABASE_REALTIME_PROTOCOL = "zilobase.database.v2";
 export const DATA_SOURCE_REALTIME_PROTOCOL = "zilobase.database.v3";
 export const DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX =
   "zilobase.database.auth.";
 
-export type DatabaseRealtimeTicketClaims = {
-  canEdit: boolean;
-  databaseId: string;
-  exp: number;
-  sessionId: string;
-  user: {
-    email?: string | null;
-    id: string;
-    image?: string | null;
-    name: string;
-  };
-  version?: number;
-  workspaceId: string;
+type RealtimeTicketUser = {
+  email?: string | null;
+  id: string;
+  image?: string | null;
+  name: string;
 };
 
 export type DataSourceRealtimeTicketClaims = {
@@ -30,65 +21,9 @@ export type DataSourceRealtimeTicketClaims = {
   sessionId: string;
   sourceId: string;
   sourceVersion: number;
-  user: DatabaseRealtimeTicketClaims["user"];
+  user: RealtimeTicketUser;
   workspaceId: string;
 };
-
-export async function createDatabaseRealtimeTicket(
-  claims: Omit<
-    DatabaseRealtimeTicketClaims,
-    "exp" | "sessionId" | "version"
-  > & {
-    sessionId?: string;
-    version: number;
-  },
-  env: RuntimeEnv,
-  options: { maxExpiresAt?: Date | null } = {},
-) {
-  const defaultExpiration = Date.now() + TICKET_TTL_MS;
-  const payload: DatabaseRealtimeTicketClaims = {
-    ...claims,
-    exp: options.maxExpiresAt
-      ? Math.min(defaultExpiration, options.maxExpiresAt.getTime())
-      : defaultExpiration,
-    sessionId: claims.sessionId ?? crypto.randomUUID(),
-  };
-
-  if (payload.exp <= Date.now()) {
-    throw new Error("Database realtime access has expired");
-  }
-  const encoded = encodeJson(payload);
-  const signature = await sign(encoded, getTicketSecret(env));
-
-  return {
-    expiresAt: new Date(payload.exp).toISOString(),
-    sessionId: payload.sessionId,
-    token: `${encoded}.${signature}`,
-  };
-}
-
-export async function verifyDatabaseRealtimeTicket(
-  token: string,
-  env: RuntimeEnv,
-) {
-  const [encoded, signature, extra] = token.split(".");
-
-  if (!encoded || !signature || extra) {
-    throw new Error("Invalid database realtime ticket");
-  }
-
-  if (!(await verify(encoded, signature, getTicketSecret(env)))) {
-    throw new Error("Invalid database realtime ticket");
-  }
-
-  const claims = decodeJson(encoded);
-
-  if (!isTicketClaims(claims) || claims.exp <= Date.now()) {
-    throw new Error("Expired database realtime ticket");
-  }
-
-  return claims;
-}
 
 export async function createDataSourceRealtimeTicket(
   claims: Omit<DataSourceRealtimeTicketClaims, "exp" | "sessionId"> & {
@@ -184,27 +119,6 @@ function encodeJson(value: unknown) {
 
 function decodeJson(value: string): unknown {
   return JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
-}
-
-function isTicketClaims(value: unknown): value is DatabaseRealtimeTicketClaims {
-  if (!value || typeof value !== "object") return false;
-
-  const claims = value as Record<string, unknown>;
-  const ticketUser = claims.user;
-
-  return (
-    typeof claims.canEdit === "boolean" &&
-    typeof claims.databaseId === "string" &&
-    typeof claims.exp === "number" &&
-    typeof claims.sessionId === "string" &&
-    (claims.version === undefined ||
-      (typeof claims.version === "number" && claims.version >= 0)) &&
-    typeof claims.workspaceId === "string" &&
-    Boolean(ticketUser) &&
-    typeof ticketUser === "object" &&
-    typeof (ticketUser as Record<string, unknown>).id === "string" &&
-    typeof (ticketUser as Record<string, unknown>).name === "string"
-  );
 }
 
 function isDataSourceTicketClaims(

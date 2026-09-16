@@ -150,7 +150,7 @@ function resolveRuntimeResponse(path: string, data: unknown) {
     }
   }
 
-  if (/\/databases\/[^/]+\/realtime-ticket(?:\?|$)/.test(path)) {
+  if (/\/data-sources\/[^/]+\/realtime-ticket(?:\?|$)/.test(path)) {
     return {
       ...response,
       websocketUrl: resolveRuntimeWebSocketUrl(

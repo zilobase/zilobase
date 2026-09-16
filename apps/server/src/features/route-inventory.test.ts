@@ -43,7 +43,6 @@ describe("feature route composition", () => {
       "GET /:id/export",
       "GET /:id/data-sources/:dataSourceId/records",
       "GET /:id/mutations",
-      "POST /:id/realtime-ticket",
       "GET /:id/published",
       "POST /:id/commands",
       "POST /:id/data-sources/:dataSourceId/commands",

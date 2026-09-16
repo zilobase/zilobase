@@ -4,9 +4,7 @@ import { afterEach, test, vi } from "vitest";
 
 import {
   createDataSourceRealtimeTicket,
-  createDatabaseRealtimeTicket,
   verifyDataSourceRealtimeTicket,
-  verifyDatabaseRealtimeTicket,
 } from "./database-realtime-ticket";
 
 const env = { COLLABORATION_SECRET: "database-realtime-test-secret" };
@@ -30,32 +28,6 @@ async function signRawClaims(value: unknown, secret: string) {
 
 afterEach(() => {
   vi.useRealTimers();
-});
-
-test("database realtime tickets preserve scope, identity, and edit capability", async () => {
-  const ticket = await createDatabaseRealtimeTicket(
-    {
-      canEdit: true,
-      databaseId: "database-1",
-      sessionId: "session-1",
-      user: {
-        email: "user@example.com",
-        id: "user-1",
-        name: "User One",
-      },
-      version: 7,
-      workspaceId: "workspace-1",
-    },
-    env,
-  );
-  const claims = await verifyDatabaseRealtimeTicket(ticket.token, env);
-
-  assert.equal(claims.canEdit, true);
-  assert.equal(claims.databaseId, "database-1");
-  assert.equal(claims.sessionId, "session-1");
-  assert.equal(claims.user.id, "user-1");
-  assert.equal(claims.version, 7);
-  assert.equal(claims.workspaceId, "workspace-1");
 });
 
 test("data source realtime tickets carry only source identity and clock", async () => {
@@ -96,31 +68,31 @@ test("data source tickets reject host-shaped claims", async () => {
   );
 });
 
-test("database realtime tickets are capped by temporary membership expiry", async () => {
+test("data source realtime tickets are capped by temporary membership expiry", async () => {
   const maxExpiresAt = new Date(Date.now() + 45_000);
-  const ticket = await createDatabaseRealtimeTicket(
+  const ticket = await createDataSourceRealtimeTicket(
     {
       canEdit: true,
-      databaseId: "database-1",
+      sourceId: "source-1",
+      sourceVersion: 7,
       user: { id: "user-1", name: "User One" },
-      version: 7,
       workspaceId: "workspace-1",
     },
     env,
     { maxExpiresAt },
   );
-  const claims = await verifyDatabaseRealtimeTicket(ticket.token, env);
+  const claims = await verifyDataSourceRealtimeTicket(ticket.token, env);
 
   assert.equal(claims.exp, maxExpiresAt.getTime());
 });
 
-test("database realtime tickets reject tampering", async () => {
-  const { token } = await createDatabaseRealtimeTicket(
+test("data source realtime tickets reject tampering", async () => {
+  const { token } = await createDataSourceRealtimeTicket(
     {
       canEdit: false,
-      databaseId: "database-1",
+      sourceId: "source-1",
+      sourceVersion: 7,
       user: { id: "user-1", name: "User One" },
-      version: 7,
       workspaceId: "workspace-1",
     },
     env,
@@ -129,27 +101,27 @@ test("database realtime tickets reject tampering", async () => {
   const [payload, signature] = token.split(".");
   const tamperedSignature = `${signature?.startsWith("A") ? "B" : "A"}${signature?.slice(1)}`;
   await assert.rejects(
-    verifyDatabaseRealtimeTicket(`${payload}.${tamperedSignature}`, env),
-    /Invalid database realtime ticket/,
+    verifyDataSourceRealtimeTicket(`${payload}.${tamperedSignature}`, env),
+    /Invalid data source realtime ticket/,
   );
 });
 
-test("database realtime tickets validate shape, expiry, and configuration", async () => {
+test("data source realtime tickets validate shape, expiry, and configuration", async () => {
   await assert.rejects(
-    verifyDatabaseRealtimeTicket("missing-segments", env),
-    /Invalid database realtime ticket/,
+    verifyDataSourceRealtimeTicket("missing-segments", env),
+    /Invalid data source realtime ticket/,
   );
   await assert.rejects(
-    verifyDatabaseRealtimeTicket("payload.signature.extra", env),
-    /Invalid database realtime ticket/,
+    verifyDataSourceRealtimeTicket("payload.signature.extra", env),
+    /Invalid data source realtime ticket/,
   );
   await assert.rejects(
-    createDatabaseRealtimeTicket(
+    createDataSourceRealtimeTicket(
       {
         canEdit: false,
-        databaseId: "database-1",
+        sourceId: "source-1",
+        sourceVersion: 1,
         user: { id: "user-1", name: "User One" },
-        version: 1,
         workspaceId: "workspace-1",
       },
       {},
@@ -157,45 +129,45 @@ test("database realtime tickets validate shape, expiry, and configuration", asyn
     /COLLABORATION_SECRET or BETTER_AUTH_SECRET is required/,
   );
 
-  const invalidShape = await createDatabaseRealtimeTicket(
+  const invalidShape = await createDataSourceRealtimeTicket(
     {
       canEdit: false,
-      databaseId: "database-1",
+      sourceId: "source-1",
+      sourceVersion: -1,
       user: { id: "user-1", name: "User One" },
-      version: -1,
       workspaceId: "workspace-1",
     },
     env,
   );
   await assert.rejects(
-    verifyDatabaseRealtimeTicket(invalidShape.token, env),
-    /Expired database realtime ticket/,
+    verifyDataSourceRealtimeTicket(invalidShape.token, env),
+    /Expired data source realtime ticket/,
   );
   await assert.rejects(
-    verifyDatabaseRealtimeTicket(
+    verifyDataSourceRealtimeTicket(
       await signRawClaims(null, env.COLLABORATION_SECRET),
       env,
     ),
-    /Expired database realtime ticket/,
+    /Expired data source realtime ticket/,
   );
 
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-08-02T00:00:00.000Z"));
-  const expiring = await createDatabaseRealtimeTicket(
+  const expiring = await createDataSourceRealtimeTicket(
     {
       canEdit: true,
-      databaseId: "database-1",
+      sourceId: "source-1",
+      sourceVersion: 1,
       user: { id: "user-1", name: "User One" },
-      version: 1,
       workspaceId: "workspace-1",
     },
     { BETTER_AUTH_SECRET: "fallback-secret" },
   );
   vi.advanceTimersByTime(30 * 60 * 1000 + 1);
   await assert.rejects(
-    verifyDatabaseRealtimeTicket(expiring.token, {
+    verifyDataSourceRealtimeTicket(expiring.token, {
       BETTER_AUTH_SECRET: "fallback-secret",
     }),
-    /Expired database realtime ticket/,
+    /Expired data source realtime ticket/,
   );
 });

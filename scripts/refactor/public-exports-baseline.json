@@ -116,10 +116,6 @@
       "value": true,
       "type": false
     },
-    "createDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "createDbClient": {
       "value": true,
       "type": false
@@ -148,10 +144,6 @@
       "value": true,
       "type": false
     },
-    "DATABASE_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
     "DATABASE_UNAVAILABLE_CODE": {
       "value": true,
       "type": false
@@ -165,10 +157,6 @@
       "type": true
     },
     "DatabaseMutationEventV2": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRealtimeTicketClaims": {
       "value": false,
       "type": true
     },
@@ -657,10 +645,6 @@
       "type": false
     },
     "verifyCollaborationTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyDatabaseRealtimeTicket": {
       "value": true,
       "type": false
     },
@@ -794,10 +778,6 @@
       "value": true,
       "type": false
     },
-    "createDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "createDbClient": {
       "value": true,
       "type": false
@@ -826,10 +806,6 @@
       "value": true,
       "type": false
     },
-    "DATABASE_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
     "DATABASE_UNAVAILABLE_CODE": {
       "value": true,
       "type": false
@@ -843,10 +819,6 @@
       "type": true
     },
     "DatabaseMutationEventV2": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRealtimeTicketClaims": {
       "value": false,
       "type": true
     },
@@ -1335,10 +1307,6 @@
       "type": false
     },
     "verifyCollaborationTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyDatabaseRealtimeTicket": {
       "value": true,
       "type": false
     },
@@ -1472,10 +1440,6 @@
       "value": true,
       "type": false
     },
-    "createDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "createDbClient": {
       "value": true,
       "type": false
@@ -1504,10 +1468,6 @@
       "value": true,
       "type": false
     },
-    "DATABASE_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
     "DATABASE_UNAVAILABLE_CODE": {
       "value": true,
       "type": false
@@ -1521,10 +1481,6 @@
       "type": true
     },
     "DatabaseMutationEventV2": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRealtimeTicketClaims": {
       "value": false,
       "type": true
     },
@@ -2013,10 +1969,6 @@
       "type": false
     },
     "verifyCollaborationTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyDatabaseRealtimeTicket": {
       "value": true,
       "type": false
     },
@@ -2150,10 +2102,6 @@
       "value": true,
       "type": false
     },
-    "createDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "createDbClient": {
       "value": true,
       "type": false
@@ -2182,10 +2130,6 @@
       "value": true,
       "type": false
     },
-    "DATABASE_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
     "DATABASE_UNAVAILABLE_CODE": {
       "value": true,
       "type": false
@@ -2199,10 +2143,6 @@
       "type": true
     },
     "DatabaseMutationEventV2": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRealtimeTicketClaims": {
       "value": false,
       "type": true
     },
@@ -2691,10 +2631,6 @@
       "type": false
     },
     "verifyCollaborationTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyDatabaseRealtimeTicket": {
       "value": true,
       "type": false
     },
@@ -2836,10 +2772,6 @@
       "value": true,
       "type": false
     },
-    "createDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "createDbClient": {
       "value": true,
       "type": false
@@ -2872,10 +2804,6 @@
       "value": true,
       "type": false
     },
-    "DATABASE_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
     "DATABASE_UNAVAILABLE_CODE": {
       "value": true,
       "type": false
@@ -2889,10 +2817,6 @@
       "type": true
     },
     "DatabaseMutationEventV2": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRealtimeTicketClaims": {
       "value": false,
       "type": true
     },
@@ -3393,10 +3317,6 @@
       "type": false
     },
     "verifyCollaborationTicket": {
-      "value": true,
-      "type": false
-    },
-    "verifyDatabaseRealtimeTicket": {
       "value": true,
       "type": false
     },
@@ -3538,10 +3458,6 @@
       "value": true,
       "type": false
     },
-    "createDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "createDbClient": {
       "value": true,
       "type": false
@@ -3574,10 +3490,6 @@
       "value": true,
       "type": false
     },
-    "DATABASE_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
     "DATABASE_UNAVAILABLE_CODE": {
       "value": true,
       "type": false
@@ -3591,10 +3503,6 @@
       "type": true
     },
     "DatabaseMutationEventV2": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRealtimeTicketClaims": {
       "value": false,
       "type": true
     },
@@ -4098,10 +4006,6 @@
       "value": true,
       "type": false
     },
-    "verifyDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "verifyMeetingAudioTicket": {
       "value": true,
       "type": false
@@ -4116,10 +4020,6 @@
     }
   },
   "@zilobase/server:./realtime-api:types": {
-    "createDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "createMailRealtimeTicket": {
       "value": true,
       "type": false
@@ -4136,15 +4036,7 @@
       "value": true,
       "type": false
     },
-    "DATABASE_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
     "DatabaseMutationEventV2": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRealtimeTicketClaims": {
       "value": false,
       "type": true
     },
@@ -4223,10 +4115,6 @@
     "NavigationRealtimeTicketClaims": {
       "value": false,
       "type": true
-    },
-    "verifyDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
     },
     "verifyMailRealtimeTicket": {
       "value": true,
@@ -4242,10 +4130,6 @@
     }
   },
   "@zilobase/server:./realtime-api:default": {
-    "createDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
-    },
     "createMailRealtimeTicket": {
       "value": true,
       "type": false
@@ -4262,15 +4146,7 @@
       "value": true,
       "type": false
     },
-    "DATABASE_REALTIME_PROTOCOL": {
-      "value": true,
-      "type": false
-    },
     "DatabaseMutationEventV2": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRealtimeTicketClaims": {
       "value": false,
       "type": true
     },
@@ -4349,10 +4225,6 @@
     "NavigationRealtimeTicketClaims": {
       "value": false,
       "type": true
-    },
-    "verifyDatabaseRealtimeTicket": {
-      "value": true,
-      "type": false
     },
     "verifyMailRealtimeTicket": {
       "value": true,
