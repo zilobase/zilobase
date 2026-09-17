@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query"
 
 import { useZilobaseFeatures } from "../../shared/context"
-import { useDatabaseSessionId } from "../client/provider"
+import { useDatabaseSessionId } from "../queries/session"
 import { resolveDataSourceCommandScope } from "./scope"
 import { executeDatabaseCommand } from "./execute"
 import { invalidateDatabaseQueries } from "./invalidate"

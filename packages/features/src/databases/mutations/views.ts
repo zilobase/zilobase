@@ -7,7 +7,7 @@ import {
   pagesNavRootQueryKey,
   type PageNavigationPayload,
 } from "../../pages/queries";
-import { useDatabaseSessionId } from "../client/provider";
+import { useDatabaseSessionId } from "../queries/session";
 import type { DatabaseViewEntity } from "../core/entities";
 import { findDataSourceBootstrap } from "./scope";
 import { executeDatabaseCommand } from "./execute";

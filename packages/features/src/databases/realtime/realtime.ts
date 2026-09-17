@@ -11,7 +11,7 @@ import {
   databaseMutationEventV2Schema,
   type DatabaseMutationEventV2,
 } from "../core/entities"
-import { useDatabaseSessionId } from "../client/provider"
+import { useDatabaseSessionId } from "../queries/session"
 import { cachedVersion } from "../queries/keys"
 import { invalidateDatabaseQueries } from "../mutations/invalidate"
 

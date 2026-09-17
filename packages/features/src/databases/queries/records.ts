@@ -6,7 +6,7 @@ import {
 import { useRef } from "react";
 
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
-import { useDatabaseSessionId } from "../client/provider";
+import { useDatabaseSessionId } from "./session";
 import {
   databaseRecordWindowResponseSchema,
   type DatabaseInitialPageSize,

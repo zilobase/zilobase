@@ -9,8 +9,8 @@
 Shared database code is grouped by boundary inside `packages/features/src/databases`:
 `core/` (entities, ordering, telemetry), `schema/` (filter, property types,
 formula), `views/` (appearance, view evaluation), `records/` (snapshots,
-row-page host resolution), `access/` (sharing writes), `queries/` (read query
-options and hooks), `mutations/` (command execution, invalidation,
+row-page host resolution), `access/` (sharing writes), `queries/` (session
+provider, read query options and hooks), `mutations/` (command execution, invalidation,
 serialization, pending state, one module per write domain), `realtime/` (poke
 socket plus presence). Automations were promoted out of the
 database section to [packages/features/src/automations](../../../packages/features/src/automations),

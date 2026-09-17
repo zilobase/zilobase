@@ -37,7 +37,7 @@ for keys plus `cachedVersion` and prefer-newest helpers,
 [keyed serialization](../../../packages/features/src/databases/mutations/serialize.ts)
 with cell coalescing, [pending state](../../../packages/features/src/databases/mutations/pending.ts),
 and the [poke socket](../../../packages/features/src/databases/realtime/realtime.ts).
-The [thin session provider](../../../packages/features/src/databases/client/provider.tsx)
+The [thin session provider](../../../packages/features/src/databases/queries/session.tsx)
 supplies only the session id, evicts the previous session's `["db", …]`
 queries, and installs the database-only reload guard.
 

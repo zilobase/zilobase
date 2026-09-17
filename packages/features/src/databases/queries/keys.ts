@@ -51,13 +51,13 @@ export const sessionIdForQueries = (
   authSessionId: string | null | undefined,
 ) => authSessionId ?? "public";
 
-export function bootstrapVersionOf(value: unknown): number | null {
+function bootstrapVersionOf(value: unknown): number | null {
   const parsed = databaseBootstrapResponseSchema.safeParse(value);
   if (parsed.success) return parsed.data.database.version;
   return null;
 }
 
-export function windowVersionOf(value: unknown): number | null {
+function windowVersionOf(value: unknown): number | null {
   const direct = databaseRecordWindowResponseSchema.safeParse(value);
   if (direct.success) return direct.data.databaseVersion;
   if (!value || typeof value !== "object" || !("pages" in value)) return null;

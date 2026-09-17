@@ -44,7 +44,7 @@ export {
   getDatabaseRowMoveAnchors,
 } from "./mutations/rows";
 export { useDatabaseEntityCommandState } from "./mutations/pending";
-export { useDatabaseSessionId } from "./client/provider";
+export { useDatabaseSessionId } from "./queries/session";
 export { useDatabaseBootstrap } from "./queries/bootstrap";
 export { useDatabaseRecords } from "./queries/records";
 export { useDatabaseAccess } from "./queries/query-hooks";

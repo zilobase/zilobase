@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { ZilobaseFeaturesProvider, type ZilobaseFeaturesConfig } from "./context";
-import { DbProvider } from "../databases/client/provider";
+import { DbProvider } from "../databases/queries/session";
 
 // Render the real hook once, then exercise its MutationObserver through mutateAsync.
 // These mutations do not use authentication; fail immediately if that changes.

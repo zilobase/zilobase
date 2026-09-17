@@ -1,7 +1,7 @@
 import { useMutation, type QueryClient } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
 import { pagesNavRootQueryKey } from "../../pages/queries";
-import { useDatabaseSessionId } from "../client/provider";
+import { useDatabaseSessionId } from "../queries/session";
 import {
   findDataSourceBootstrap,
   resolveDataSourceCommandScope,

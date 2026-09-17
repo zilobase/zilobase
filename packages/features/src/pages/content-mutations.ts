@@ -5,7 +5,7 @@ import {
   invalidateRestoredItems,
   setPageDetailCache,
 } from "../shared/item-action-cache";
-import { useDatabaseSessionId } from "../databases/client/provider";
+import { useDatabaseSessionId } from "../databases/queries/session";
 import { invalidateDatabaseQueries } from "../databases/mutations/invalidate";
 import {
   defaultUserSettings,

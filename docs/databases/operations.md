@@ -1,9 +1,9 @@
 # Database operations and troubleshooting
 
-This runbook covers the responsive database client, idempotent command API,
-mutation journal, and realtime delivery path. PostgreSQL is authoritative. The
-browser collections and every delivery transport are projections that can be
-rebuilt from bounded reads and journal catch-up.
+This runbook covers the poke-and-refetch database client, idempotent command
+API, mutation journal, and realtime delivery path. PostgreSQL is authoritative.
+The browser QueryClient copy and every delivery transport are projections that
+can be rebuilt from bounded reads.
 
 ## Supported runtime topologies
 
@@ -30,8 +30,9 @@ views may persist 10, 25, 50, or 100. `Load more` extends the requested window.
 
 A record-window snapshot binds the host version, source version, and view
 configuration revision. `409 WINDOW_STALE` means that membership or ordering
-may have changed. The client restarts only that window and retains valid
-optimistic overlays.
+may have changed. The client retries that window once without the snapshot;
+the user's own edit stays visible as local draft state until POST plus refetch
+finishes.
 
 Every write uses a protocol-v2 command with a caller-generated `commandId`.
 Replaying the same ID and identical request returns the stored acknowledgement
@@ -50,24 +51,24 @@ the source before retrying.
 
 ## Catch-up, retention, and reset
 
-HTTP acknowledgements, socket events, and catch-up events enter the same
-version-aware client ingestion function. Committed host versions suppress HTTP
-acknowledgement/socket-echo duplicates. A version gap pauses newer events while
-the client calls `GET /databases/:databaseId/mutations?afterVersion=...` in
-pages of at most 500.
+Socket events are version pokes, not payloads: when a `database.mutation` or
+`realtime.ready` frame carries a version above the minimum cached version for
+that host, the client invalidates the host queries and refetches. The client
+never calls `GET /databases/:databaseId/mutations`; frame changesets are
+ignored because the version bump already covers them.
 
 The server retains all journal events from the last seven days and at least the
 newest 10,000 events per database. Command receipts are retained for seven
 days. Expired or discontinuous history, a future client version, or a reset
-marker produces `resetRequired`; the client then reloads the affected bootstrap
-and record scopes. Oversized changes use `requiresReset` instead of publishing
-a truncated changeset.
+marker produces `resetRequired` on the server feed; the poke-and-refetch client
+converges through its following GET instead. Oversized changes use
+`requiresReset` instead of publishing a truncated changeset.
 
-There is no durable browser command queue or offline replay. Optimistic command
-lanes exist only for the authenticated application session. Ordering commands
-serialize per source, structural commands per source, view commands per host,
-and cell writes per row/property so an unrelated edit is never rolled back with
-a failed operation.
+There is no durable browser command queue or offline replay. Writes serialize
+through tiny keyed queues: ordering and structural commands per source, view
+commands per host, and cell writes coalesced per source/row/property (one in
+flight plus the latest queued value) so concurrent edits to different cells
+stay parallel.
 
 The toolbar shows `Saving…` while commands are pending and asks the browser to
 confirm reload/close during that interval. Offline edits fail without entering
@@ -79,9 +80,9 @@ an interrupted request once with the same command ID to recover its receipt.
 could not reconcile its projection; do not repeat that write.
 
 Bootstrap and record-window reads use a single read-only repeatable-read
-transaction. The browser rejects stale responses below a collection's committed
-watermark. Catch-up begins at the oldest loaded projection, so a fresh row
-window cannot suppress an event still needed by older property metadata.
+transaction. Out-of-order GETs use a prefer-newest guard so a stale response
+never regresses newer cached data, and pokes compare against the minimum cached
+version across the host's queries so one fresh view cannot hide a stale sibling.
 
 Outbox workers use leases, `SKIP LOCKED`, retry backoff, and recovery sweeps.
 Repeated delivery is expected and safe. Investigate terminally discarded rows;
@@ -91,16 +92,17 @@ do not delete pending outbox or journal data to clear an alert.
 
 | Owner | State and responsibilities |
 | --- | --- |
-| TanStack DB behind `DatabaseClient` | Interactive database hosts, data sources, views, properties, loaded record aggregates, live projections, and optimistic overlays |
+| TanStack Query `["db", …]` cache | Last successful database bootstrap plus record windows; never unsaved values |
 | TanStack Query or the existing subsystem | Authentication, access/sharing, favorites/navigation, automation definitions/history/secrets, AI, uploads, billing, admin, reporting, global search, and explicit complete-source export workflows |
 | Yjs collaboration | Page document content |
-| React-local ephemeral state | Presence, connection status, drag hover and geometry, selection, dialogs, and other transient UI state |
+| React-local ephemeral state | Cell drafts, presence, connection status, drag hover and geometry, selection, dialogs, and other transient UI state |
 | PostgreSQL | Canonical entities, versions, command receipts, mutation journal, and delivery outbox |
 | Redis/Valkey, Cloudflare Queue, and Durable Objects | Delivery and fanout only; never canonical database state |
 
-One database client exists per authenticated application session. Collection
-descriptors and query keys include every business-scope value, and logout or an
-account change disposes the collections.
+A thin session provider exists per authenticated application session. Query
+keys include the session id plus every business-scope value, and a session
+change evicts the previous session's `["db", …]` queries so no cross-account
+data leaks through the shared QueryClient.
 
 ## Monitoring
 
@@ -116,8 +118,8 @@ retry. Database metrics include:
 - `zilobase_database_outbox_oldest_age_ms`
 
 The web client emits sanitized `zilobase:database:metric` events for
-acknowledgement latency, optimistic rollback, version gaps, scoped resets, and
-drag-to-paint timing. Metrics and logs must never contain property values.
+acknowledgement latency, command failures, and drag-to-paint timing. Metrics
+and logs must never contain property values.
 
 ## Troubleshooting
 
@@ -127,9 +129,9 @@ drag-to-paint timing. Metrics and logs must never contain property values.
 | Commands commit but cards update late on other clients | Compare commit and enqueue latency, then inspect outbox backlog/oldest age and the background worker. Leave rows for the recovery sweep. |
 | Split Node roles are not ready | Configure one reachable `REALTIME_REDIS_URL` for every API and worker process. A single `all` process may intentionally run without Redis. |
 | Frequent `WINDOW_STALE` responses | Occasional conflicts are normal during active sorting, filtering, or writes. A sustained rate suggests a refetch loop or rapidly changing view configuration. |
-| Repeated gap catch-up or resets | Check socket delivery and journal cleanup. Verify retention is seven days/newest 10,000 and that no producer emits partial entities. |
+| Repeated invalidations without settling | Check socket delivery and journal cleanup. Verify retention is seven days/newest 10,000 and that no producer emits partial entities. A refetch loop or rapidly changing view configuration can also keep the version moving. |
 | `ROW_MOVE_CONFLICT` | An anchor was deleted, foreign, reversed, or changed concurrently. Reload the source ordering and retry using current visible neighbors. |
-| A v2 event has `requiresReset` | Reload the affected bootstrap/window. Do not attempt to infer a partial entity patch. |
+| A v2 event has `requiresReset` | The client ignores the frame payload and refetches on the version bump. Do not attempt to infer a partial entity patch. |
 | Cloud acknowledgements succeed but sockets are quiet | Check Queue backlog and retry state, the background Worker binding, then the database Durable Object. The API Worker must not invoke the Durable Object directly. |
 | Outbox backlog grows while workers are healthy | Inspect retry/discard metrics and journal-event availability. Missing canonical history is a recovery fault, not a reason to synthesize a payload. |
 

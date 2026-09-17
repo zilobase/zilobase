@@ -18,7 +18,7 @@ import {
   pagesQueryKey,
   type PageNavigationPayload,
 } from  "../../pages/queries";
-import { useDatabaseSessionId } from "../client/provider";
+import { useDatabaseSessionId } from "../queries/session";
 import type { DatabaseHostEntity } from "../core/entities";
 import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";

@@ -1,7 +1,7 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
-import { useDatabaseSessionId } from "../client/provider";
+import { useDatabaseSessionId } from "./session";
 import {
   databaseBootstrapResponseSchema,
   type DatabaseBootstrapResponse,

@@ -5,7 +5,7 @@ import {
 } from "../queries/queries";
 import { pagesNavRootQueryKey } from "../../pages/queries";
 import { type UpdateDatabaseInput } from "./databases";
-import { useDatabaseSessionId } from "../client/provider";
+import { useDatabaseSessionId } from "../queries/session";
 import {
   findDataSourceBootstrap,
   resolveDataSourceCommandScope,

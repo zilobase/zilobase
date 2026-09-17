@@ -4,7 +4,7 @@ import { useZilobaseFeatures } from "../../shared/context";
 
 import type { DatabaseRecordEntity } from "../core/entities";
 import { parseDatabaseOrderKey } from "../core/order-key";
-import { useDatabaseSessionId } from "../client/provider";
+import { useDatabaseSessionId } from "../queries/session";
 import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
 import {
