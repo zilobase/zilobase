@@ -40,7 +40,7 @@ export const jobs = [
   {
     id: "architecture",
     name: "Architecture links and published exports",
-    workflow: ".github/workflows/fallow.yml",
+    workflow: "package.json verify:architecture",
     commit: true,
     paths: null,
     commands: [["npm", "run", "test:architecture"]],
@@ -63,13 +63,6 @@ export const jobs = [
       ["npm", "run", "test:web"],
       ["npm", "run", "build"],
     ],
-  },
-  {
-    id: "fallow",
-    name: "Fallow changed-code audit",
-    workflow: ".github/workflows/fallow.yml",
-    paths: null,
-    commands: [["npm", "run", "quality:fallow", "--", "--summary"]],
   },
   {
     id: "desktop",

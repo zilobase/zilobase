@@ -48,7 +48,6 @@ target
 
 # local ui-skills install (https://github.com/ibelick/ui-skills)
 .grok/
-.fallow/
 .dev/ai-thread-logs/
 .dev/local/
 apps/desktop/src-tauri/local-resources/
@@ -61,6 +60,3 @@ apps/desktop/src-tauri/local-resources/
 
 # Generated renderer snapshot for calendar benchmark comparisons
 .dev/calendar-baseline/
-
-# graft's local graph cache — regenerable, not committed (run `graft build`).
-/graft/

@@ -1,13 +1,3 @@
 {
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "graft": {
-      "type": "local",
-      "command": [
-        "graft",
-        "mcp"
-      ],
-      "enabled": true
-    }
-  }
+  "$schema": "https://opencode.ai/config.json"
 }

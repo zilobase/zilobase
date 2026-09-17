@@ -36,11 +36,11 @@ test("docs-only changes still run always-on GitHub PR jobs", () => {
   const selected = selectJobs(["docs/development-workflows.md", "CONTRIBUTING.md"]);
   assert.deepEqual(
     selected.map((job) => job.id),
-    ["community-boundary", "architecture", "fallow"],
+    ["community-boundary", "architecture"],
   );
 });
 
-test("commit gate keeps cheap checks and skips web, Fallow, and desktop suites", () => {
+test("commit gate keeps cheap checks and skips web and desktop suites", () => {
   const selected = selectJobs(["package.json"], jobs, { commit: true });
   assert.deepEqual(
     selected.map((job) => job.id).sort(),
@@ -69,9 +69,9 @@ test("web paths select the web-and-packages workflow commands", () => {
   assert.equal(selected.some((job) => job.id === "backend"), false);
 });
 
-test("server paths skip the web and desktop suites; Fallow still covers server tests", () => {
+test("server paths skip the web and desktop suites", () => {
   const selected = selectJobs(["apps/server/src/features/pages/routes.ts"]);
-  assert.ok(selected.some((job) => job.id === "fallow"));
+  assert.ok(selected.some((job) => job.id === "architecture"));
   assert.equal(selected.some((job) => job.id === "web-and-packages"), false);
   assert.equal(selected.some((job) => job.id === "desktop"), false);
 });
@@ -90,7 +90,6 @@ test("package.json matches every path-filtered GitHub workflow", () => {
       "architecture",
       "community-boundary",
       "desktop",
-      "fallow",
       "tooling",
       "web-and-packages",
     ],
@@ -203,7 +202,7 @@ test("every catalog job points at an existing workflow or verify:core", () => {
   assert.equal(path.basename(script), "pre-push.mjs");
   for (const job of jobs) {
     assert.ok(job.commands.length > 0, job.id);
-    assert.ok(job.workflow.includes(".yml") || job.workflow.includes("verify:core"), job.id);
+    assert.ok(job.workflow.includes(".yml") || job.workflow.includes("package.json"), job.id);
   }
   assert.equal(jobApplies(jobs.find((job) => job.id === "community-boundary"), []), true);
 });

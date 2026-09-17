@@ -151,8 +151,7 @@ Before adding or moving a file, use this checklist:
    create a broad barrel or a forwarding file for a private legacy path.
 
 Web features cannot import `app`, and web `shared` cannot import `features` or
-`app`. Server infrastructure cannot import feature implementations. Fallow
-enforces the current approved graph in `.fallowrc.json`.
+`app`. Server infrastructure cannot import feature implementations.
 
 Run the architecture gate before submitting structural changes:
 
@@ -163,9 +162,9 @@ npm run verify:architecture
 Run the repository verification commands from the workspace root:
 
 ```sh
-npm run verify:core         # TypeScript packages, web, server, and changed code
+npm run verify:core         # TypeScript packages, web, and server
 npm run verify:desktop      # Rust formatting, clippy, and tests
-npm run verify:architecture # Complete production Fallow report
+npm run verify:architecture # Architecture links and published exports
 npm run verify              # All of the above
 npm run verify:commit       # Fast staged-file checks used by the commit hook
 npm run verify:push         # Path-filtered GitHub pull-request checks
@@ -175,9 +174,8 @@ npm run verify:push -- --dry-run
 `npm run setup` points Git at [`.githooks`](.githooks). `git commit` runs the
 cheap path-filtered jobs (community boundary, architecture links, and tooling
 or token checks when those files are staged). `git push` then runs the same
-pull-request jobs GitHub runs: those commit checks plus Fallow's changed-code
-audit (including server tests) and the web, package, or desktop suites when
-those paths changed. Compose self-host, Community Helm, nightly desktop
+pull-request jobs GitHub runs: those commit checks plus the web, package, or
+desktop suites when those paths changed. Compose self-host, Community Helm, nightly desktop
 packaging, and release publishing stay on GitHub; they need Docker/kind
 clusters and take much longer. Enable the hooks later with
 `npm run hooks:install`. Skip once with `git commit --no-verify`,
@@ -185,17 +183,12 @@ clusters and take much longer. Enable the hooks later with
 
 Verification evidence and the scope of each gate are described in [testing and quality](architecture/setup/testing-and-quality.md). Use current command output for counts and coverage; source moves and new behavioral tests change those measurements.
 
-`verify:architecture` requires zero production unresolved imports, dependency
-cycles, boundary violations, unused files, unused exports, and dependency
-ownership findings. It also enforces the duplication ceiling and the
-identity-based legacy health baseline. Full-repository reporting runs on
-`main` and nightly, while pull requests block newly introduced changed-file
-findings.
+`verify:architecture` checks local links in architecture and contributor
+documents and verifies published package exports against the baseline in
+`scripts/refactor/public-exports-baseline.json`.
 
 New and changed units must remain at or below 25 cyclomatic complexity, 40
-cognitive complexity, 100 CRAP, and 400 lines. Do not regenerate the health
-baseline to accommodate a change. An inline suppression must name the exception
-and explain why it cannot be reduced in the same change.
+cognitive complexity, 100 CRAP, and 400 lines.
 
 ## License
 
