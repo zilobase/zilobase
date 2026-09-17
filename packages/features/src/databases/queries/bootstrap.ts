@@ -50,8 +50,11 @@ export function databaseBootstrapQueryOptions(
         const cached = queryClient.getQueryData<DatabaseBootstrapResponse>(
           queryKey,
         );
-        const cachedVersion = cached ? cached.database.version : -1;
-        if (incoming.database.version < cachedVersion) return cached;
+        if (
+          cached && incoming.database.version < cached.database.version
+        ) {
+          return cached;
+        }
       }
       return incoming;
     },

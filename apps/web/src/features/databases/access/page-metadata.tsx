@@ -23,9 +23,14 @@ import {
 import { usePageEditorComments } from "@/features/comments/index"
 import { useSession } from "@zilobase/features/auth/react";
 import { type DatabasePresenceCollaborator } from "@zilobase/features/databases";
-import { useDatabaseRealtime } from "@zilobase/features/databases/react";
 import {
-  useUpdatePagePropertyValue,
+  resolveCellCommandScope,
+  saveCellValue,
+  useDatabaseRealtime,
+  useDatabaseSessionId,
+} from "@zilobase/features/databases/react";
+import { useZilobaseFeatures } from "@zilobase/features";
+import {
   usePagePersonAccessTargets,
   usePageProperties,
 } from "@zilobase/features/pages/react";
@@ -284,7 +289,8 @@ export function PageMetadata({
   const commentsSnapshot = usePageCommentsSnapshot(
     commentsEnabled ? pageId : null,
   )
-  const updatePropertyValue = useUpdatePagePropertyValue()
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+  const databaseSessionId = useDatabaseSessionId()
   const cover = coverProp ?? localCover
   const description = descriptionProp ?? localDescription
   const icon = iconProp ?? localIcon
@@ -388,29 +394,49 @@ export function PageMetadata({
       return
     }
 
+    const target = presenceTargets.find((candidate) =>
+      candidate.propertyIds.includes(propertyId),
+    ) ?? presenceTargets[0]
+    const hostDatabaseId = databaseId ?? target?.databaseId
+    const rowId = target?.rowId
+    if (!hostDatabaseId || !rowId) {
+      return
+    }
+
     setDraftValues((drafts) => ({
       ...drafts,
       [propertyId]: value,
     }))
 
-    updatePropertyValue.mutate(
-      {
-        propertyId,
-        value: serializePropertyValue(propertyType, value),
-        pageId,
-      },
-      {
-        onSuccess: () => {
-          setDraftValues((drafts) => {
-            const nextDrafts = { ...drafts }
+    void (async () => {
+      try {
+        const scope = await resolveCellCommandScope(
+          queryClient,
+          apiFetch,
+          hostDatabaseId,
+          rowId,
+        )
+        await saveCellValue({
+          apiFetch,
+          dataSourceId: scope.dataSourceId,
+          hostDatabaseId: scope.hostDatabaseId,
+          propertyId,
+          queryClient,
+          rowId,
+          sessionId: databaseSessionId,
+          value: serializePropertyValue(propertyType, value),
+        })
+        setDraftValues((drafts) => {
+          const nextDrafts = { ...drafts }
 
-            delete nextDrafts[propertyId]
+          delete nextDrafts[propertyId]
 
-            return nextDrafts
-          })
-        },
-      },
-    )
+          return nextDrafts
+        })
+      } catch {
+        // Draft stays visible until the save succeeds; presence is unaffected.
+      }
+    })()
   }
 
   useEffect(() => {

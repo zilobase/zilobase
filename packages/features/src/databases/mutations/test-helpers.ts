@@ -1,7 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query"
 
-import { databaseBootstrapQueryKey as legacyBootstrapQueryKey } from "../client/bootstrap-collections"
-import { databaseClientQueryKey } from "../client/query-keys"
 import {
   databaseBootstrapQueryKey,
   databaseWindowQueryKey,
@@ -176,13 +174,6 @@ export function setTestDatabaseClientState(
     })),
   }
   queryClient.setQueryData(
-    legacyBootstrapQueryKey("test-session", {
-      databaseId: payload.database.id,
-    }),
-    bootstrap,
-  )
-  // New poke-and-refetch keys (["db", session, host, ...]).
-  queryClient.setQueryData(
     databaseBootstrapQueryKey("test-session", {
       databaseId: payload.database.id,
     }),
@@ -226,17 +217,6 @@ export function setTestDatabaseClientState(
       snapshot: "test-snapshot",
       totalCount: records.length,
     }
-    queryClient.setQueryData(
-      databaseClientQueryKey(
-        "test-session",
-        "records",
-        payload.database.id,
-        source.id,
-        view.id,
-        false,
-      ),
-      window,
-    )
     queryClient.setQueryData(
       databaseWindowQueryKey("test-session", {
         databaseId: payload.database.id,

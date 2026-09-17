@@ -52,7 +52,7 @@ test("record window uses growing limit with offset 0", async () => {
   const apiFetch = (async (path: string) => {
     seen.push(path);
     return windowResponse({ totalCount: 120 });
-  }) as never as (path: string) => Promise<unknown>;
+  }) as unknown as import("../../shared/api-fetcher").ApiFetcher;
   const data = await fetchRecordWindow(apiFetch, scope, {
     limit: 100,
     snapshot: "snapshot-1",
@@ -72,7 +72,7 @@ test("WINDOW_STALE retries once without snapshot then throws", async () => {
       throw { code: "WINDOW_STALE", status: 409 };
     }
     return windowResponse({ databaseVersion: 6 });
-  }) as never as (path: string) => Promise<unknown>;
+  }) as unknown as import("../../shared/api-fetcher").ApiFetcher;
   const data = await fetchRecordWindow(apiFetch, scope, {
     limit: 50,
     snapshot: "stale",
@@ -83,7 +83,7 @@ test("WINDOW_STALE retries once without snapshot then throws", async () => {
 
   const failing = (async () => {
     throw { code: "WINDOW_STALE", status: 409 };
-  }) as never as (path: string) => Promise<unknown>;
+  }) as unknown as import("../../shared/api-fetcher").ApiFetcher;
   await assert.rejects(() => fetchRecordWindow(failing, scope, {
     limit: 50,
     snapshot: "stale",
@@ -97,9 +97,7 @@ test("prefer-newest guard ignores stale incoming window", async () => {
     const cached = windowResponse({ databaseVersion: 10, totalCount: 7 });
     queryClient.setQueryData(key, { pages: [cached], pageParams: [{ limit: 50 }] });
     const apiFetch = (async () =>
-      windowResponse({ databaseVersion: 8, totalCount: 1 })) as never as (
-        path: string,
-      ) => Promise<unknown>;
+      windowResponse({ databaseVersion: 8, totalCount: 1 })) as unknown as import("../../shared/api-fetcher").ApiFetcher;
     const data = await fetchRecordWindow(
       apiFetch,
       scope,

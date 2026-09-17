@@ -48,7 +48,7 @@ test("bootstrap fetch parses and validates", async () => {
   const apiFetch = (async (path: string) => {
     seen.push(path);
     return bootstrap;
-  }) as never as (path: string) => Promise<unknown>;
+  }) as unknown as import("../../shared/api-fetcher").ApiFetcher;
   const options = databaseBootstrapQueryOptions(
     apiFetch,
     "session-1",
@@ -72,9 +72,8 @@ test("bootstrap prefer-newest guard keeps newer cached version", async () => {
       ...bootstrap,
       database: { ...bootstrap.database, version: 1 },
     };
-    const apiFetch = (async () => stale) as never as (
-      path: string,
-    ) => Promise<unknown>;
+    const apiFetch = (async () =>
+      stale) as unknown as import("../../shared/api-fetcher").ApiFetcher;
     const options = databaseBootstrapQueryOptions(
       apiFetch,
       "session-1",

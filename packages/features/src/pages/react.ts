@@ -20,7 +20,6 @@ export {
   useUpdatePage,
   useDeletePage,
   useRestorePage,
-  useUpdatePagePropertyValue,
 } from "./content-mutations";
 export {
   useSetPageFavorite,

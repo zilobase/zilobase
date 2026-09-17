@@ -1,24 +1,14 @@
 import type { QueryClient } from "@tanstack/react-query"
-import { DbProvider as TanStackDbProvider } from "@tanstack/react-db"
 import {
   createContext,
   useContext,
   useEffect,
-  useMemo,
-  useSyncExternalStore,
+  useRef,
   type PropsWithChildren,
 } from "react"
 
 import type { ApiFetcher } from "../../shared/api-fetcher"
-import {
-  createDatabaseClient,
-  type DatabaseClient,
-  type DatabaseCommandTarget,
-} from "./db-client"
-import { retainDatabaseClient } from "./client-lifecycle"
-import { guardPendingDatabaseWrites } from "./commands/pending-navigation"
-
-const DatabaseClientContext = createContext<DatabaseClient | null>(null)
+import { guardPendingDatabaseWrites } from "../mutations/beforeunload"
 
 const DatabaseSessionContext = createContext<string | null>(null)
 
@@ -33,80 +23,29 @@ export type DbProviderProps = PropsWithChildren<{
 }>
 
 export function DbProvider({
-  apiFetch,
   children,
   queryClient,
   sessionId,
 }: DbProviderProps) {
-  const client = useMemo(
-    () => sessionId
-      ? createDatabaseClient({ apiFetch, queryClient, sessionId })
-      : null,
-    [apiFetch, queryClient, sessionId],
-  )
-
-  useEffect(
-    () => client ? retainDatabaseClient(client) : undefined,
-    [client],
-  )
+  const previousSessionRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (client && typeof window !== "undefined") {
-      return guardPendingDatabaseWrites(client, window)
+    const current = sessionId ?? "public"
+    const previous = previousSessionRef.current
+    if (previous && previous !== current) {
+      queryClient.removeQueries({ queryKey: ["db", previous] })
     }
-  }, [client])
+    previousSessionRef.current = current
+  }, [queryClient, sessionId])
 
-  if (!client) {
-    return (
-      <DatabaseClientContext.Provider value={null}>
-        <DatabaseSessionContext.Provider value={sessionId ?? "public"}>
-          {children}
-        </DatabaseSessionContext.Provider>
-      </DatabaseClientContext.Provider>
-    )
-  }
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    return guardPendingDatabaseWrites(window)
+  }, [])
 
   return (
-    <DatabaseClientContext.Provider value={client}>
-      <DatabaseSessionContext.Provider value={sessionId ?? "public"}>
-        <TanStackDbProvider client={client.tanstack}>
-          {children}
-        </TanStackDbProvider>
-      </DatabaseSessionContext.Provider>
-    </DatabaseClientContext.Provider>
-  )
-}
-
-export function useDatabaseClient() {
-  const client = useContext(DatabaseClientContext)
-  if (!client) {
-    throw new Error("useDatabaseClient must be used in an authenticated DbProvider")
-  }
-  return client
-}
-
-export function useOptionalDatabaseClient() {
-  return useContext(DatabaseClientContext)
-}
-
-export function useDatabaseEntityCommandState(target: DatabaseCommandTarget) {
-  const client = useDatabaseClient()
-  const stableTarget = useMemo(() => ({
-    dataSourceId: target.dataSourceId,
-    hostDatabaseId: target.hostDatabaseId,
-    propertyId: target.propertyId,
-    rowId: target.rowId,
-    viewId: target.viewId,
-  }), [
-    target.dataSourceId,
-    target.hostDatabaseId,
-    target.propertyId,
-    target.rowId,
-    target.viewId,
-  ])
-  return useSyncExternalStore(
-    (listener) => client.subscribeCommandState(stableTarget, listener),
-    () => client.commandState(stableTarget),
-    () => client.commandState(stableTarget),
+    <DatabaseSessionContext.Provider value={sessionId ?? "public"}>
+      {children}
+    </DatabaseSessionContext.Provider>
   )
 }

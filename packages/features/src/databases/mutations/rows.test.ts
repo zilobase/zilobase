@@ -200,7 +200,7 @@ test("row move conflict invalidates host and surfaces order message", async () =
         body: { code: "ROW_MOVE_CONFLICT", message: "stale", rowId: "row-1" },
         status: 409,
       };
-    }) as never as (path: string) => Promise<unknown>,
+    }) as unknown as import("../../shared/api-fetcher").ApiFetcher,
   );
   setTestDatabaseClientState(queryClient, original);
   try {
