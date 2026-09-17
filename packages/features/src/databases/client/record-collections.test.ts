@@ -6,11 +6,11 @@ import type {
   DatabaseBootstrapResponse,
   DatabaseRecordEntity,
   DatabaseRecordWindowResponse,
-} from "../contracts-v2"
+} from  "../core/entities"
 import type { ApiFetcher } from "../../shared/api-fetcher"
 import {
   createDatabaseClient,
-} from "./database-client"
+} from "./db-client"
 import { databaseBootstrapQueryKey } from "./bootstrap-collections"
 import {
   createDatabaseRecordCollection,
@@ -64,6 +64,68 @@ function windowResponse(
     totalCount,
   }
 }
+
+test("a stale row refresh cannot undo a committed event", async (t) => {
+  const stale = Promise.withResolvers<DatabaseRecordWindowResponse>()
+  const started = Promise.withResolvers<void>()
+  let reads = 0
+  const resource = createDatabaseRecordCollection({
+    apiFetch: async () => {
+      reads += 1
+      if (reads === 2) {
+        started.resolve()
+        return await stale.promise as never
+      }
+      const response = windowResponse(0, 1, `snapshot-${reads}`)
+      if (reads > 2) {
+        response.databaseVersion = 4
+        response.records[0]!.page.name = "Committed"
+      }
+      return response as never
+    },
+    pageSize: 25, queryClient: new QueryClient(), scope, sessionId: "session",
+  })
+  t.after(() => resource.cleanup())
+  resource.records._sync.startSync()
+  await resource.records._sync.loadSubset({ limit: 1, offset: 0 })
+  const refresh = resource.reset()
+  await started.promise
+  const committed = record(0)
+  committed.page.name = "Committed"
+  resource.apply({
+    actorId: "actor", areas: ["records"], changes: { records: [committed] },
+    commandId: "command", committedAt: "2026-09-17T00:00:00.000Z",
+    databaseId: scope.databaseId, dataSourceId: scope.dataSourceId,
+    eventId: "event", protocolVersion: 2, type: "database.mutation", version: 4,
+  }, true)
+  stale.resolve(windowResponse(0, 1, "stale"))
+  await refresh
+  assert.equal(resource.records.state.get("row-0")?.page.name, "Committed")
+})
+
+test("refetch preserves pending cell values and rollback uses the fresh canonical value", async (t) => {
+  let value = "Original"
+  const resource = createDatabaseRecordCollection({
+    apiFetch: async () => {
+      const response = windowResponse(0, 1, "snapshot")
+      response.records[0]!.valuesByPropertyId.property = {
+        id: "value", propertyId: "property", pageId: "page-0",
+        createdAt: "2026-09-17T00:00:00.000Z", updatedAt: "2026-09-17T00:00:00.000Z", value,
+      }
+      return response as never
+    },
+    pageSize: 25, queryClient: new QueryClient(), scope, sessionId: "session",
+  })
+  t.after(() => resource.cleanup())
+  resource.records._sync.startSync()
+  await resource.records._sync.loadSubset({ limit: 1, offset: 0 })
+  resource.applyCellOverlay({ commandId: "pending", rowId: "row-0", propertyId: "property", value: "Draft" })
+  value = "Collaborator update"
+  await resource.reset()
+  assert.equal(resource.records.state.get("row-0")?.valuesByPropertyId.property?.value, "Draft")
+  resource.settleCellOverlay("pending")
+  assert.equal(resource.records.state.get("row-0")?.valuesByPropertyId.property?.value, "Collaborator update")
+})
 
 test("record collections request exact growing windows and retain snapshots", async () => {
   const paths: string[] = []

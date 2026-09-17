@@ -181,6 +181,54 @@ function readModel(options: { config?: unknown; rows?: number } = {}) {
   }
 }
 
+test("bootstrap reloads a preauthorized host inside the entity read snapshot", async () => {
+  let inSnapshot = false
+  const result = await getDatabaseBootstrapService({
+    databaseId: "database-1", existingRecord: databaseRecord(), accessLevel: "edit",
+  }, {
+    getPayload: vi.fn(), requireAccess: vi.fn(),
+    readSnapshot: async (read) => {
+      inSnapshot = true
+      try { return await read() } finally { inSnapshot = false }
+    },
+    reloadRecord: async () => {
+      assert.equal(inSnapshot, true)
+      return { ...databaseRecord(), version: 8, name: "Committed" }
+    },
+    loadReadModel: async ({ record }) => {
+      assert.equal(inSnapshot, true)
+      assert.equal(record.version, 8)
+      return readModel({ rows: 0 })
+    },
+  })
+  assert.equal(result.database.version, 8)
+  assert.equal(result.database.name, "Committed")
+  assert.equal(inSnapshot, false)
+})
+
+test("record windows use the host version from their read snapshot", async () => {
+  let inSnapshot = false
+  const result = await getDatabaseRecordWindowService({
+    databaseId: "database-1", dataSourceId: "source-1", existingRecord: databaseRecord(),
+  }, {
+    getPayload: vi.fn(), requireAccess: vi.fn(),
+    readSnapshot: async (read) => {
+      inSnapshot = true
+      try { return await read() } finally { inSnapshot = false }
+    },
+    reloadRecord: async () => {
+      assert.equal(inSnapshot, true)
+      return { ...databaseRecord(), version: 9 }
+    },
+    loadReadModel: async () => {
+      assert.equal(inSnapshot, true)
+      return readModel()
+    },
+  })
+  assert.equal(result.databaseVersion, 9)
+  assert.equal(inSnapshot, false)
+})
+
 test("bootstrap aggregates metadata for every accessible linked source", async () => {
   const base = readModel({ rows: 0 })
   const loadReadModel = vi.fn(async () => ({

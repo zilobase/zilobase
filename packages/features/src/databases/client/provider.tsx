@@ -14,8 +14,9 @@ import {
   createDatabaseClient,
   type DatabaseClient,
   type DatabaseCommandTarget,
-} from "./database-client"
+} from "./db-client"
 import { retainDatabaseClient } from "./client-lifecycle"
+import { guardPendingDatabaseWrites } from "./commands/pending-navigation"
 
 const DatabaseClientContext = createContext<DatabaseClient | null>(null)
 
@@ -42,6 +43,12 @@ export function DbProvider({
     () => client ? retainDatabaseClient(client) : undefined,
     [client],
   )
+
+  useEffect(() => {
+    if (client && typeof window !== "undefined") {
+      return guardPendingDatabaseWrites(client, window)
+    }
+  }, [client])
 
   if (!client) {
     return (

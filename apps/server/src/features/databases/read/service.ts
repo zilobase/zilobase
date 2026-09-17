@@ -32,8 +32,9 @@ import {
 } from "../../../infrastructure/database/schema"
 import { and, asc, eq, inArray, isNull } from "drizzle-orm"
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
-import { requireDatabaseAccess } from "../access/database-access"
+import { getDatabaseRecord, requireDatabaseAccess } from "../access/database-access"
 import { getDatabaseExportPayload } from "../core/payload"
+import { withDatabaseReadSnapshot } from "./snapshot"
 
 type DatabaseRecord = typeof database.$inferSelect
 type AccessLevel = DatabaseHostEntity["accessLevel"]
@@ -64,12 +65,16 @@ type ReadDependencies = {
   getPayload: typeof getDatabaseExportPayload
   loadReadModel: typeof loadDatabaseReadModel
   requireAccess: typeof requireDatabaseAccess
+  readSnapshot?: typeof withDatabaseReadSnapshot
+  reloadRecord?: (id: string) => Promise<DatabaseRecord | undefined>
 }
 
 const defaultDependencies: ReadDependencies = {
   getPayload: getDatabaseExportPayload,
   loadReadModel: loadDatabaseReadModel,
   requireAccess: requireDatabaseAccess,
+  readSnapshot: withDatabaseReadSnapshot,
+  reloadRecord: (id) => getDatabaseRecord(id, { includeDeleted: true }),
 }
 
 export const DATABASE_RECORD_WINDOW_LIMITS = [10, 25, 50, 100] as const
@@ -309,7 +314,14 @@ async function resolveReadRecord(
   },
   dependencies: ReadDependencies,
 ) {
-  if (input.existingRecord) return input.existingRecord
+  if (input.existingRecord) {
+    // Route authorization may predate the read transaction. Refresh its version
+    // and metadata inside the same snapshot as sources, properties and records.
+    if (!dependencies.reloadRecord) return input.existingRecord
+    const record = await dependencies.reloadRecord(input.databaseId)
+    if (!record) throw new ServiceMutationError("Database not found", 404)
+    return record
+  }
   if (!input.userId) throw new ServiceMutationError("Unauthorized", 401)
   return dependencies.requireAccess(input.databaseId, input.userId, "view")
 }
@@ -336,25 +348,28 @@ export async function getDatabaseBootstrapService(
   },
   dependencies: ReadDependencies = defaultDependencies,
 ): Promise<DatabaseBootstrapResponse> {
-  const record = await resolveReadRecord(input, dependencies)
-  const model = await dependencies.loadReadModel({
-    includeDeleted: input.includeDeleted,
-    record,
-    userId: input.userId,
-  })
-  if (input.viewId && !model.views.some((view) => view.id === input.viewId)) {
-    throw new ServiceMutationError("Database view not found", 404)
-  }
-
-  return {
-    database: hostEntity(
+  const read = async () => {
+    const record = await resolveReadRecord(input, dependencies)
+    const model = await dependencies.loadReadModel({
+      includeDeleted: input.includeDeleted,
       record,
-      await resolveAccessLevel(record, input.userId, input.accessLevel),
-    ),
-    dataSources: model.dataSources,
-    properties: model.properties,
-    views: model.views,
+      userId: input.userId,
+    })
+    if (input.viewId && !model.views.some((view) => view.id === input.viewId)) {
+      throw new ServiceMutationError("Database view not found", 404)
+    }
+
+    return {
+      database: hostEntity(
+        record,
+        await resolveAccessLevel(record, input.userId, input.accessLevel),
+      ),
+      dataSources: model.dataSources,
+      properties: model.properties,
+      views: model.views,
+    }
   }
+  return dependencies.readSnapshot ? dependencies.readSnapshot(read) : read()
 }
 
 export async function getDatabaseExportService(
@@ -425,64 +440,67 @@ export async function getDatabaseRecordWindowService(
   },
   dependencies: ReadDependencies = defaultDependencies,
 ): Promise<DatabaseRecordWindowResponse> {
-  const record = await resolveReadRecord(input, dependencies)
-  const model = await dependencies.loadReadModel({
-    dataSourceId: input.dataSourceId,
-    includeDeleted: input.includeDeleted,
-    record,
-    userId: input.userId,
-  })
-  const source = model.dataSources.find((item) => item.id === input.dataSourceId)
-  if (!source) {
-    throw new ServiceMutationError("Data source not found", 404)
-  }
-  const view = input.viewId
-    ? model.views.find((item) => item.id === input.viewId) ?? null
-    : null
-  if (input.viewId && (!view || view.dataSourceId !== source.id)) {
-    throw new ServiceMutationError("Database view not found", 404)
-  }
-
-  const offset = input.offset ?? 0
-  if (!Number.isSafeInteger(offset) || offset < 0) {
-    throw new ServiceMutationError("offset must be a non-negative integer", 400)
-  }
-  const limit = input.limit ?? getDatabaseInitialPageSize(
-    view?.config ?? record.config,
-  )
-  validateWindowLimit(limit)
-
-  const snapshot = windowSnapshot({
-    databaseVersion: record.version,
-    dataSourceVersion: source.version,
-    view,
-  })
-  if (input.snapshot && input.snapshot !== snapshot) {
-    throw new DatabaseWindowStaleError(snapshot)
-  }
-
-  const records = model.records
-    .sort((left, right) => {
-      const order = parseDatabaseOrderKey(left.orderKey) -
-        parseDatabaseOrderKey(right.orderKey)
-      return order < 0n ? -1 : order > 0n ? 1 : left.id.localeCompare(right.id)
+  const read = async () => {
+    const record = await resolveReadRecord(input, dependencies)
+    const model = await dependencies.loadReadModel({
+      dataSourceId: input.dataSourceId,
+      includeDeleted: input.includeDeleted,
+      record,
+      userId: input.userId,
     })
-  const evaluated = evaluateDatabaseRecordsForView({
-    config: view?.config ?? record.config,
-    now: input.now,
-    properties: model.properties,
-    records,
-    timezone: input.timezone,
-  })
-  const requested = evaluated.slice(offset, offset + limit + 1)
+    const source = model.dataSources.find((item) => item.id === input.dataSourceId)
+    if (!source) {
+      throw new ServiceMutationError("Data source not found", 404)
+    }
+    const view = input.viewId
+      ? model.views.find((item) => item.id === input.viewId) ?? null
+      : null
+    if (input.viewId && (!view || view.dataSourceId !== source.id)) {
+      throw new ServiceMutationError("Database view not found", 404)
+    }
 
-  return {
-    databaseVersion: record.version,
-    dataSourceVersion: source.version,
-    hasMore: requested.length > limit,
-    offset,
-    records: requested.slice(0, limit),
-    snapshot,
-    totalCount: evaluated.length,
+    const offset = input.offset ?? 0
+    if (!Number.isSafeInteger(offset) || offset < 0) {
+      throw new ServiceMutationError("offset must be a non-negative integer", 400)
+    }
+    const limit = input.limit ?? getDatabaseInitialPageSize(
+      view?.config ?? record.config,
+    )
+    validateWindowLimit(limit)
+
+    const snapshot = windowSnapshot({
+      databaseVersion: record.version,
+      dataSourceVersion: source.version,
+      view,
+    })
+    if (input.snapshot && input.snapshot !== snapshot) {
+      throw new DatabaseWindowStaleError(snapshot)
+    }
+
+    const records = model.records
+      .sort((left, right) => {
+        const order = parseDatabaseOrderKey(left.orderKey) -
+          parseDatabaseOrderKey(right.orderKey)
+        return order < 0n ? -1 : order > 0n ? 1 : left.id.localeCompare(right.id)
+      })
+    const evaluated = evaluateDatabaseRecordsForView({
+      config: view?.config ?? record.config,
+      now: input.now,
+      properties: model.properties,
+      records,
+      timezone: input.timezone,
+    })
+    const requested = evaluated.slice(offset, offset + limit + 1)
+
+    return {
+      databaseVersion: record.version,
+      dataSourceVersion: source.version,
+      hasMore: requested.length > limit,
+      offset,
+      records: requested.slice(0, limit),
+      snapshot,
+      totalCount: evaluated.length,
+    }
   }
+  return dependencies.readSnapshot ? dependencies.readSnapshot(read) : read()
 }

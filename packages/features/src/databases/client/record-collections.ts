@@ -18,9 +18,10 @@ import {
   type DatabaseMutationEventV2,
   type DatabaseRecordEntity,
   type DatabaseRecordWindowResponse,
-} from "../contracts-v2"
-import { parseDatabaseOrderKey } from "../order-key"
+} from  "../core/entities"
+import { parseDatabaseOrderKey } from  "../core/order-key"
 import { databaseClientQueryKey } from "./query-keys"
+import { DatabaseSnapshotWatermark } from "./sync/snapshot-watermark"
 
 export type RecordCollectionScope = {
   databaseId: string
@@ -54,7 +55,7 @@ export type DatabaseRecordCollection = {
   ): DatabaseRecordApplyOutcome
   cleanup(): Promise<void>
   getLatestWindow(): DatabaseRecordWindowResponse | undefined
-  reset(): Promise<void>
+  reset(minimumVersion?: number): Promise<void>
   settleCellOverlay(commandId: string): void
 }
 
@@ -82,6 +83,7 @@ export function createDatabaseRecordCollection(options: {
   scope: RecordCollectionScope
   sessionId: string
 }): DatabaseRecordCollection {
+  const watermark = new DatabaseSnapshotWatermark()
   let snapshot: string | undefined
   let latestWindow: DatabaseRecordWindowResponse | undefined
   const cellOverlays = new Map<string, RecordCellOverlays>()
@@ -99,22 +101,26 @@ export function createDatabaseRecordCollection(options: {
       context.meta?.loadSubsetOptions,
       options.pageSize,
     )
-    try {
-      const response = await fetchRecordWindow(options, request, snapshot)
-      snapshot = response.snapshot
-      latestWindow = response
-      return response
-    } catch (error) {
-      if (!isWindowStaleError(error)) throw error
-      snapshot = undefined
-      const response = await fetchRecordWindow(options, {
-        limit: request.offset + request.limit,
-        offset: 0,
-      })
-      snapshot = response.snapshot
-      latestWindow = response
-      return response
+    const response = await watermark.read(async () => {
+      try {
+        return await fetchRecordWindow(options, request, snapshot)
+      } catch (error) {
+        if (!isWindowStaleError(error)) throw error
+        snapshot = undefined
+        return fetchRecordWindow(options, {
+          limit: request.offset + request.limit,
+          offset: 0,
+        })
+      }
+    }, (data) => data.databaseVersion)
+    snapshot = response.snapshot
+    latestWindow = response
+    // Refetches update canonical values without erasing pending cell edits.
+    for (const [index, entity] of response.records.entries()) {
+      const state = cellOverlays.get(entity.id)
+      if (state) state.base = { ...entity, __windowIndex: response.offset + index }
     }
+    return response
   }
   const records = createCollection(queryCollectionOptions({
     gcTime: 0,
@@ -125,6 +131,8 @@ export function createDatabaseRecordCollection(options: {
     queryKey,
     schema: windowedDatabaseRecordSchema,
     select: (response) => response.records.map((record, index) => {
+      const overlay = cellOverlays.get(record.id)
+      if (overlay) return projectCellOverlays(overlay)
       const directIndex = (record as DatabaseRecordEntity & {
         __windowIndex?: unknown
       }).__windowIndex
@@ -165,13 +173,22 @@ export function createDatabaseRecordCollection(options: {
       return true
     },
     apply(event, sortByOrderKey) {
+      watermark.observe(event.version)
+      if (latestWindow && event.version <= latestWindow.databaseVersion) {
+        return "no_record_changes"
+      }
+      // Never reuse a continuation token from before a committed event.
+      snapshot = undefined
       if (records.status === "idle" || records.status === "cleaned-up") {
         return "collection_unavailable"
       }
       if (
         !event.changes.records?.length &&
         !event.changes.removedRecordIds?.length
-      ) return "no_record_changes"
+      ) {
+        if (latestWindow) latestWindow = { ...latestWindow, databaseVersion: event.version }
+        return "no_record_changes"
+      }
       const incomingRecords = (event.changes.records ?? []).filter(
         (entity) => entity.dataSourceId === options.scope.dataSourceId,
       )
@@ -255,6 +272,7 @@ export function createDatabaseRecordCollection(options: {
       if (latestWindow) {
         latestWindow = {
           ...latestWindow,
+          databaseVersion: event.version,
           records: reindexed.map(toDatabaseRecord),
           totalCount: Math.max(
             0,
@@ -266,7 +284,8 @@ export function createDatabaseRecordCollection(options: {
     },
     cleanup: () => records.cleanup(),
     getLatestWindow: () => latestWindow,
-    async reset() {
+    async reset(minimumVersion = 0) {
+      watermark.observe(minimumVersion)
       snapshot = undefined
       latestWindow = undefined
       if (records.status === "idle" || records.status === "cleaned-up") return
@@ -274,16 +293,7 @@ export function createDatabaseRecordCollection(options: {
         WindowedDatabaseRecord,
         string
       >
-      await utils.refetch()
-      for (const [rowId, state] of cellOverlays) {
-        const canonical = records._state.syncedData.get(rowId)
-        if (!canonical) {
-          cellOverlays.delete(rowId)
-          continue
-        }
-        state.base = withoutVirtualProperties(canonical)
-        writeRecordUpserts(records, [projectCellOverlays(state)])
-      }
+      await utils.refetch({ throwOnError: true })
     },
     settleCellOverlay(commandId) {
       for (const [rowId, state] of cellOverlays) {

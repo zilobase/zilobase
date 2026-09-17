@@ -18,8 +18,9 @@ import {
   type DatabasePropertyEntity,
   type DatabaseViewEntity,
   type DataSourceEntity,
-} from "../contracts-v2"
+} from  "../core/entities"
 import { databaseClientQueryKey } from "./query-keys"
+import { DatabaseSnapshotWatermark } from "./sync/snapshot-watermark"
 
 export type BootstrapScope = {
   databaseId: string
@@ -41,7 +42,7 @@ export type DatabaseBootstrapCollections = {
   views: QueryEntityCollection<DatabaseViewEntity>
   apply(event: DatabaseMutationEventV2): void
   cleanup(): Promise<void>
-  refetch(): Promise<void>
+  refetch(minimumVersion?: number): Promise<void>
 }
 
 type QueryEntityCollection<TEntity extends object> = Collection<
@@ -56,13 +57,14 @@ export function createDatabaseBootstrapCollections(options: {
   scope: BootstrapScope
   sessionId: string
 }): DatabaseBootstrapCollections {
+  const watermark = new DatabaseSnapshotWatermark()
   const queryOptions = databaseBootstrapQueryOptions(
     options.apiFetch,
     options.sessionId,
     options.scope,
   )
   const queryKey = queryOptions.queryKey
-  const queryFn = queryOptions.queryFn
+  const queryFn = () => watermark.read(queryOptions.queryFn, (data) => data.database.version)
   const common = {
     queryClient: options.queryClient,
     queryFn,
@@ -106,10 +108,11 @@ export function createDatabaseBootstrapCollections(options: {
     scope: options.scope,
     views,
     apply(event) {
+      watermark.observe(event.version)
       const current = options.queryClient.getQueryData<DatabaseBootstrapResponse>(
         queryKey,
       )
-      if (!current) return
+      if (!current || event.version <= current.database.version) return
       const next = applyBootstrapEvent(current, event)
       writeCollectionState(database, [next.database], [])
       writeCollectionState(
@@ -140,8 +143,9 @@ export function createDatabaseBootstrapCollections(options: {
         views.cleanup(),
       ])
     },
-    async refetch() {
-      await options.queryClient.refetchQueries({ exact: true, queryKey })
+    async refetch(minimumVersion = 0) {
+      watermark.observe(minimumVersion)
+      await options.queryClient.refetchQueries({ exact: true, queryKey }, { throwOnError: true })
     },
   }
 }

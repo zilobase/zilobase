@@ -8,9 +8,9 @@ import type {
   DatabaseHostEntity,
   DatabaseMutationEventV2,
   DatabaseRecordEntity,
-} from "../contracts-v2"
-import { databaseContextExportQueryKey } from "../queries"
-import { createDatabaseClient } from "./database-client"
+} from  "../core/entities"
+import { databaseContextExportQueryKey } from  "../queries/queries"
+import { createDatabaseClient } from "./db-client"
 
 const timestamp = "2026-09-14T00:00:00.000Z"
 
@@ -118,6 +118,154 @@ function orderedRecordIds(
     .sort((left, right) => left.__windowIndex - right.__windowIndex)
     .map(({ id }) => id)
 }
+
+test("a newer record snapshot must not hide events from older metadata", async (t) => {
+  const client = createDatabaseClient({
+    apiFetch: async (path) => {
+      if (path.includes("/bootstrap")) return bootstrap(1, "Old name") as never
+      if (path.includes("/records?")) return {
+        databaseVersion: 3, dataSourceVersion: 1, hasMore: false,
+        offset: 0, records: [], snapshot: "snapshot-3", totalCount: 0,
+      } as never
+      throw new Error(`Unexpected request: ${path}`)
+    },
+    queryClient: new QueryClient(),
+    sessionId: "session-1",
+  })
+  t.after(() => client.cleanup())
+  const metadata = client.getBootstrapCollections({ databaseId: "database-1" })
+  await metadata.database.stateWhenReady()
+  const rows = client.getRecordCollection({
+    databaseId: "database-1", dataSourceId: "source-1", viewId: "view-1",
+  })
+  rows.records._sync.startSync()
+  await rows.records._sync.loadSubset({ limit: 51, offset: 0 })
+
+  await client.ingest(event(2, { databases: [host(2, "Collaborator rename")] }))
+  assert.equal(metadata.database.state.get("database-1")?.name, "Collaborator rename")
+})
+
+test("catch-up updates older metadata without regressing a newer scope", async (t) => {
+  const client = createDatabaseClient({
+    apiFetch: async (path) => {
+      if (path.includes("viewId=newer")) return bootstrap(3, "Newest") as never
+      if (path.includes("/bootstrap")) return bootstrap(1, "Old") as never
+      if (path.includes("afterVersion=1")) return {
+        events: [event(2, { databases: [host(2, "Middle")] })],
+        hasMore: false, latestVersion: 2, resetRequired: false,
+      } as never
+      throw new Error(`Unexpected request: ${path}`)
+    },
+    queryClient: new QueryClient(), sessionId: "session-1",
+  })
+  t.after(() => client.cleanup())
+  const older = client.getBootstrapCollections({ databaseId: "database-1" })
+  const newer = client.getBootstrapCollections({ databaseId: "database-1", viewId: "newer" })
+  await Promise.all([older.database.stateWhenReady(), newer.database.stateWhenReady()])
+  client.bootstrap({ databaseId: "database-1", viewId: "newer" })
+  await client.catchUp("database-1")
+  assert.equal(older.database.state.get("database-1")?.name, "Middle")
+  assert.equal(newer.database.state.get("database-1")?.name, "Newest")
+})
+
+test("a bootstrap response started before an event cannot undo that event", async (t) => {
+  const stale = Promise.withResolvers<DatabaseBootstrapResponse>()
+  const started = Promise.withResolvers<void>()
+  let reads = 0
+  const client = createDatabaseClient({
+    apiFetch: async () => {
+      reads += 1
+      if (reads === 1) return bootstrap(1, "Original") as never
+      if (reads === 2) {
+        started.resolve()
+        return await stale.promise as never
+      }
+      return bootstrap(2, "Committed") as never
+    },
+    queryClient: new QueryClient(), sessionId: "session-1",
+  })
+  t.after(() => client.cleanup())
+  const metadata = client.getBootstrapCollections({ databaseId: "database-1" })
+  await metadata.database.stateWhenReady()
+  const refresh = metadata.refetch()
+  await started.promise
+  await client.ingest(event(2, { databases: [host(2, "Committed")] }))
+  stale.resolve(bootstrap(1, "Original"))
+  await refresh
+  assert.equal(metadata.database.state.get("database-1")?.name, "Committed")
+})
+
+test("a confirmed command does not fail when local reconciliation is unavailable", async (t) => {
+  let reads = 0
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const client = createDatabaseClient({
+    apiFetch: async (path, init) => {
+      if (path.includes("/bootstrap") && reads++ === 0) return bootstrap(1) as never
+      if (path.endsWith("/commands")) {
+        const { commandId } = JSON.parse(String(init?.body))
+        return { commandId, event: event(3, { databases: [host(3)] }, { commandId }), result: "saved" } as never
+      }
+      throw new Error("Refresh unavailable")
+    },
+    queryClient, sessionId: "session-1",
+  })
+  t.after(() => client.cleanup())
+  const metadata = client.getBootstrapCollections({ databaseId: "database-1" })
+  await metadata.database.stateWhenReady()
+  const transaction = client.execute({
+    databaseId: "database-1", command: { type: "database.update", patch: { name: "Saved" } },
+  })
+  assert.equal(await transaction.promise, "saved")
+  assert.equal(client.commandState({ hostDatabaseId: "database-1" }).error?.name, "DatabaseReconciliationError")
+  assert.equal(client.commandState({}).isPending, false)
+})
+
+test("created rows converge across clients and rehydrate from authoritative reads", async (t) => {
+  let version = 1
+  let writes = 0
+  const persisted: DatabaseRecordEntity[] = []
+  let committed: DatabaseMutationEventV2 | undefined
+  const apiFetch: ApiFetcher = async (path, init) => {
+    if (path.includes("/bootstrap")) return bootstrap(version) as never
+    if (path.includes("/records?")) return {
+      databaseVersion: version, dataSourceVersion: version, hasMore: false,
+      offset: 0, records: persisted, snapshot: `snapshot-${version}`, totalCount: persisted.length,
+    } as never
+    if (path.endsWith("/commands")) {
+      const { commandId } = JSON.parse(String(init?.body))
+      writes += 1
+      const created = recordWithValues({ property: "Initial value" })
+      persisted.push(created)
+      committed = event(++version, { records: [created] }, { commandId })
+      return { commandId, event: committed, result: created } as never
+    }
+    throw new Error(`Unexpected request: ${path}`)
+  }
+  async function open(sessionId: string) {
+    const client = createDatabaseClient({ apiFetch, queryClient: new QueryClient(), sessionId })
+    t.after(() => client.cleanup())
+    await client.getBootstrapCollections({ databaseId: "database-1" }).database.stateWhenReady()
+    const rows = client.getRecordCollection({ databaseId: "database-1", dataSourceId: "source-1", viewId: "view-1" })
+    rows.records._sync.startSync()
+    await rows.records._sync.loadSubset({ limit: 51, offset: 0 })
+    return { client, rows }
+  }
+  const author = await open("author")
+  const collaborator = await open("collaborator")
+  await author.client.execute({
+    databaseId: "database-1", dataSourceId: "source-1",
+    command: { type: "row.create", title: "New page", parentRowId: null, valuesByPropertyId: { property: "Initial value" } },
+  }).promise
+  await collaborator.client.ingest(committed!)
+  await collaborator.client.ingest(committed!)
+  assert.equal(writes, 1)
+  assert.equal(author.rows.records.size, 1)
+  assert.equal(collaborator.rows.records.size, 1)
+  await author.client.cleanup()
+  const reloaded = await open("reloaded")
+  assert.equal(reloaded.rows.records.size, 1)
+  assert.equal(reloaded.rows.records.state.get("row-1")?.valuesByPropertyId.property?.value, "Initial value")
+})
 
 test("command acknowledgements and socket echoes share one direct-write path", async () => {
   const paths: string[] = []

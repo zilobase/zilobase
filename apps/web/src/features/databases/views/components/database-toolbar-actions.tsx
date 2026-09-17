@@ -6,6 +6,7 @@ import { DatabaseSettingsControl } from "./database-settings-control";
 import { DatabaseRowCreationControl } from "./database-row-creation-control";
 import { DatabaseSortControl } from "./database-sort-control";
 import { DatabaseFilterControl } from "./database-filter-control";
+import { DatabaseSaveStatus } from "./database-save-status";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Maximize2 } from "@/shared/components/icons";
@@ -16,8 +17,8 @@ import {
   useDatabaseUiContext,
 } from "../state/database-view-context";
 
-import { DatabaseAutomationManager } from "../../automations";
-import { useDatabaseAutomationCapability } from "@zilobase/features/databases/automations/react";
+import { DatabaseAutomationManager } from "../../../automations";
+import { useDatabaseAutomationCapability } from "@zilobase/features/automations/react";
 
 export function DatabaseToolbarActions({
   onPreviewForm,
@@ -80,6 +81,7 @@ export function DatabaseToolbarActions({
     >
       {editable ? (
         <>
+          <DatabaseSaveStatus databaseId={automationDatabaseId} />
           <DatabaseFilterControl />
           <DatabaseSortControl />
           <ToolbarAutomationManager
