@@ -40,7 +40,7 @@ vi.mock("../../pages/placements", () => ({
 vi.mock("../../pages/mutations/soft-delete-nav-items", () => ({
   softDeleteDatabaseTree: mocks.softDelete,
 }));
-vi.mock("../automations/service", () => ({
+vi.mock("../../automations/service", () => ({
   invalidateDatabaseAutomationDependencies: mocks.invalidateAutomationDependencies,
 }));
 vi.mock("./payload", () => ({

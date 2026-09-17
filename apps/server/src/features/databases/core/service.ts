@@ -21,7 +21,7 @@ import {
 } from "../../../infrastructure/database/schema";
 import { upsertPageItemPlacement } from "../../pages/placements";
 import { softDeleteDatabaseTree } from "../../pages/mutations/soft-delete-nav-items";
-import { invalidateDatabaseAutomationDependencies } from "../automations/service";
+import { invalidateDatabaseAutomationDependencies } from "../../automations/service";
 import { getDatabaseRecord } from "../access/database-access";
 import { getDatabaseExportPayload } from "./payload";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";

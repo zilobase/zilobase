@@ -14,7 +14,7 @@ vi.mock("../../../infrastructure/database", () => ({
 vi.mock("../../../infrastructure/background/dispatch", () => ({
   dispatchBackgroundTasks: mocks.dispatch,
 }));
-vi.mock("../automations/triggers/event-capture", () => ({
+vi.mock("../../automations/triggers/event-capture", () => ({
   captureDatabaseAutomationMutationFacts: mocks.capture,
 }));
 

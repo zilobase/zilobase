@@ -6,7 +6,7 @@ import {
   canAccessPage,
   getMembership,
 } from "../access"
-import { createDatabaseRowService } from "../databases/rows/service"
+import { createDatabaseRowService } from "../databases/records/service"
 import { getDataSourceRecord } from "../databases/access/data-source-access"
 import { db } from "../../infrastructure/database"
 import { dataSource, page } from "../../infrastructure/database/schema"

@@ -1,16 +1,16 @@
-export { setDatabaseCellValueService } from "../properties/cell-service";
+export { setDatabaseCellValueService } from  "../schema/cells";
 export {
   defaultStatusOptions,
   formatDatePropertyValueAsText,
   normalizePropertyConfig,
   selectOptionColors,
   validateCellValue,
-} from "../properties/config";
+} from "../schema/config";
 export {
   createDatabasePropertyService,
   updateDatabasePropertyService,
-} from "../properties/service";
-export { createDatabaseRowService } from "../rows/service";
+} from  "../schema/properties";
+export { createDatabaseRowService } from "../records/service";
 export {
   deleteDatabaseAccessRuleService,
   deletePublicDatabaseAccessService,

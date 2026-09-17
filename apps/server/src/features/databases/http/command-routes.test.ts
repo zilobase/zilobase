@@ -2,8 +2,8 @@ import assert from "node:assert/strict"
 import { Hono } from "hono"
 import { beforeEach, test, vi } from "vitest"
 
-import type { AppBindings } from "../../shared/types"
-import { attachHttpRouteErrorHandler } from "../../shared/http/route-error"
+import type { AppBindings } from   "../../../shared/types"
+import { attachHttpRouteErrorHandler } from   "../../../shared/http/route-error"
 
 const mocks = vi.hoisted(() => ({
   execute: vi.fn(),
@@ -13,21 +13,21 @@ const mocks = vi.hoisted(() => ({
   requireSourceView: vi.fn(),
 }))
 
-vi.mock("./access/database-access", () => ({
+vi.mock( "../access/database-access", () => ({
   getDatabaseRecord: mocks.getDatabase,
   requireDatabaseEditAccess: mocks.requireDatabase,
 }))
-vi.mock("./access/data-source-access", () => ({
+vi.mock( "../access/data-source-access", () => ({
   requireDataSourceAccess: mocks.requireSourceView,
   requireDataSourceEditAccess: mocks.requireSource,
 }))
-vi.mock("./commands/framework", async (original) => ({
-  ...(await original<typeof import("./commands/framework")>()),
+vi.mock( "../commands/framework", async (original) => ({
+  ...(await original<typeof import( "../commands/framework")>()),
   executeDatabaseCommand: mocks.execute,
 }))
 
-import { databaseCommandRoutes } from "./database-command-routes"
-import { CommandIdReusedError, RowMoveConflictError } from "./commands/framework"
+import { databaseCommandRoutes } from  "./command-routes"
+import { CommandIdReusedError, RowMoveConflictError } from  "../commands/framework"
 
 const user = {
   email: "user@example.com",

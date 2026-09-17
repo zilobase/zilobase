@@ -20,9 +20,9 @@ import {
   getStatusDefaultValue,
   normalizePropertyConfig,
   validateCellValue,
-} from "../properties/config"
-import { normalizeDatabasePropertyType } from "../properties/types"
-import { lockDatabaseAutomationFactRows } from "../automations/triggers/event-capture"
+} from "../schema/config"
+import { normalizeDatabasePropertyType } from "../schema/types"
+import { lockDatabaseAutomationFactRows } from "../../automations/triggers/event-capture"
 import type {
   DatabaseCommandContext,
   DatabaseCommandDispatchResult,

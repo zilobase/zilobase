@@ -5,21 +5,21 @@ import {
 } from "@zilobase/features/databases/contracts"
 import { Hono, type Context } from "hono"
 
-import { pinnedResourceMiddleware } from "../auth/pinned-resource-middleware"
-import type { AppBindings } from "../../shared/types"
-import { readAuthenticatedJson } from "../../shared/http/auth"
-import { getDatabaseRecord, requireDatabaseEditAccess } from "./access/database-access"
-import { requireDataSourceAccess, requireDataSourceEditAccess } from "./access/data-source-access"
-import { dispatchDatabaseCommand } from "./commands/dispatcher"
+import { pinnedResourceMiddleware } from  "../../auth/pinned-resource-middleware"
+import type { AppBindings } from   "../../../shared/types"
+import { readAuthenticatedJson } from   "../../../shared/http/auth"
+import { getDatabaseRecord, requireDatabaseEditAccess } from  "../access/database-access"
+import { requireDataSourceAccess, requireDataSourceEditAccess } from  "../access/data-source-access"
+import { dispatchDatabaseCommand } from  "../commands/dispatcher"
 import {
   CommandIdReusedError,
   executeDatabaseCommand,
   RowMoveConflictError,
-} from "./commands/framework"
+} from  "../commands/framework"
 import {
   recordDatabaseCounter,
   recordDatabaseHistogram,
-} from "./observability"
+} from   "../observability"
 
 export const databaseCommandRoutes = new Hono<AppBindings>()
 const databaseWorkspace = pinnedResourceMiddleware(getDatabaseRecord)

@@ -1,7 +1,7 @@
 import type { DatabaseCommandDispatcher } from "./framework"
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
-import { dispatchRowOrCellCommand } from "./row-handlers"
-import { dispatchStructuralCommand } from "./structural-handlers"
+import { dispatchRowOrCellCommand } from "./records"
+import { dispatchStructuralCommand } from "./structural/dispatch"
 
 /** Commands are registered here as their domain operations migrate in passes 10 and 11. */
 export const dispatchDatabaseCommand = (async (context, command) => {

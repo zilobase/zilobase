@@ -11,7 +11,7 @@ export type {
   DatabaseAutomationMutationFact,
   DatabaseAutomationMutationFactCandidate,
   DatabaseMutationOrigin,
-} from "../automations/triggers/event-capture";
+} from "../../automations/triggers/event-capture";
 export {
   createDatabasePropertyService,
   createDatabaseRowService,

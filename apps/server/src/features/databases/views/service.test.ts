@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   viewEntity: vi.fn(),
 }));
 
-vi.mock("../automations/service", () => ({
+vi.mock("../../automations/service", () => ({
   invalidateDatabaseAutomationDependencies: mocks.invalidateAutomationDependencies,
 }));
 

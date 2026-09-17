@@ -11,12 +11,12 @@ import {
   mergeSelectOptionsForValue,
   normalizeValueForPropertyType,
   shouldInsertUnmatchedSourceProperty,
-} from "../properties/import";
+} from "../schema/import";
 import {
   isReadOnlyPropertyType,
   normalizeDatabasePropertyType,
-} from "../properties/types";
-import { validateCellValue } from "../properties/config";
+} from "../schema/types";
+import { validateCellValue } from "../schema/config";
 import { upsertPagePropertyValues } from "../../pages/properties/upsert";
 
 type DatabaseTransaction = Parameters<

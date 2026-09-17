@@ -8,7 +8,7 @@ import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
   databaseRow,
-} from "../../infrastructure/database/schema"
+} from   "../../../infrastructure/database/schema"
 
 test("database v2 schema requires canonical row order and journal-backed delivery", () => {
   const rowColumns = getTableColumns(databaseRow)
@@ -25,7 +25,7 @@ test("database v2 schema requires canonical row order and journal-backed deliver
 
 test("outbox migration references journal events while retaining pre-journal rows", async () => {
   const migration = await readFile(
-    new URL("../../../drizzle/0091_database_outbox_journal_reference.sql", import.meta.url),
+    new URL(  "../../../../drizzle/0091_database_outbox_journal_reference.sql", import.meta.url),
     "utf8",
   )
   assert.match(migration, /ADD COLUMN "event_id" text/)
@@ -36,7 +36,7 @@ test("outbox migration references journal events while retaining pre-journal row
 
 test("database v2 migration backfills order keys and indexes recovery paths", async () => {
   const migration = await readFile(
-    new URL("../../../drizzle/0090_database_mutation_journal.sql", import.meta.url),
+    new URL(  "../../../../drizzle/0090_database_mutation_journal.sql", import.meta.url),
     "utf8",
   )
 
@@ -52,7 +52,7 @@ test("database v2 migration backfills order keys and indexes recovery paths", as
 
 test("database v2 finalization removes compatibility columns and enforces order", async () => {
   const migration = await readFile(
-    new URL("../../../drizzle/0092_database_v2_constraints.sql", import.meta.url),
+    new URL(  "../../../../drizzle/0092_database_v2_constraints.sql", import.meta.url),
     "utf8",
   )
 
@@ -68,7 +68,7 @@ test("database v2 finalization removes compatibility columns and enforces order"
 
 test("source-stream undo restores the host journal unique index", async () => {
   const migration = await readFile(
-    new URL("../../../drizzle/0094_undo_database_source_stream.sql", import.meta.url),
+    new URL(  "../../../../drizzle/0094_undo_database_source_stream.sql", import.meta.url),
     "utf8",
   )
 

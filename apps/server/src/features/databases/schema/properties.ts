@@ -21,7 +21,7 @@ import {
   shouldClearValuesForPropertyTypeChange,
 } from "./types";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
-import { invalidateDatabaseAutomationDependencies } from "../automations/service";
+import { invalidateDatabaseAutomationDependencies } from "../../automations/service";
 import type { Database } from "../../../infrastructure/database";
 
 export async function createDatabasePropertyService(input: {

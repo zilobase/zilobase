@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
-import type { AppBindings } from "../../shared/types";
-import { responseJson } from "../../test-support/response";
+import type { AppBindings } from   "../../../shared/types";
+import { responseJson } from   "../../../test-support/response";
 
 const mocks = vi.hoisted(() => ({
   access: vi.fn(),
@@ -17,23 +17,23 @@ const mocks = vi.hoisted(() => ({
   verifyTicket: vi.fn(),
 }));
 
-vi.mock("../access", () => ({
+vi.mock(  "../../access", () => ({
   canAccessDatabaseRecord: mocks.access,
   getEffectiveDatabaseAccessForRecord: mocks.accessLevel,
   getMembership: mocks.membership,
   getWorkspaceRealtimeAccessExpiration: mocks.realtimeExpiration,
   isDatabasePublishedInWorkspace: mocks.published,
 }));
-vi.mock("../../shared/security/database-realtime-ticket", () => ({
+vi.mock(  "../../../shared/security/database-realtime-ticket", () => ({
   createDatabaseRealtimeTicket: mocks.createTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX: "zilobase-auth.",
   DATABASE_REALTIME_PROTOCOL: "zilobase.database.v2",
   verifyDatabaseRealtimeTicket: mocks.verifyTicket,
 }));
-vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
+vi.mock(  "../../../infrastructure/runtime/runtime-adapter", () => ({
   getDatabaseRealtimeWebSocketUrl: () => "ws://localhost/realtime",
 }));
-vi.mock("../../infrastructure/database", () => {
+vi.mock(  "../../../infrastructure/database", () => {
   const emptyQuery = () => {
     const query = {
       from() { return query; },
@@ -47,17 +47,24 @@ vi.mock("../../infrastructure/database", () => {
     };
     return query;
   };
-  return { db: { select: emptyQuery } };
+  const db = {
+    select: emptyQuery,
+    transaction: async (read: (transaction: unknown) => Promise<unknown>, options: unknown) => {
+      assert.deepEqual(options, { accessMode: "read only", isolationLevel: "repeatable read" });
+      return read(db);
+    },
+  };
+  return { db, runWithDb: (_transaction: unknown, read: () => Promise<unknown>) => read() };
 });
-vi.mock("./access/database-access", async (original) => ({
-  ...(await original<typeof import("./access/database-access")>()),
+vi.mock( "../access/database-access", async (original) => ({
+  ...(await original<typeof import( "../access/database-access")>()),
   getDatabaseRecord: mocks.getRecord,
 }));
-vi.mock("./core/payload", () => ({
+vi.mock( "../core/payload", () => ({
   getDatabaseExportPayload: mocks.payload,
 }));
 
-import { databaseReadRoutes } from "./database-read-routes";
+import { databaseReadRoutes } from    "./read-routes";
 
 const record = {
   config: {},

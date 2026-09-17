@@ -1,1 +1,1 @@
-export { updateDataSourceService } from "./data-source-service";
+export { updateDataSourceService } from "./service";

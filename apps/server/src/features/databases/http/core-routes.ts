@@ -1,15 +1,15 @@
-import { getDatabaseRecord } from "./access/database-access";
-import { pinnedResourceMiddleware } from "../auth/pinned-resource-middleware";
-import { readAuthenticatedJson } from "../../shared/http/auth";
+import { getDatabaseRecord } from  "../access/database-access";
+import { pinnedResourceMiddleware } from  "../../auth/pinned-resource-middleware";
+import { readAuthenticatedJson } from   "../../../shared/http/auth";
 import { Hono } from "hono";
-import { rejectMismatchedPinnedWorkspace } from "../auth/oauth-access";
-import type { AppBindings } from "../../shared/types";
-import { readJsonBody } from "../../shared/http/request";
-import { getDatabaseExportPayload } from "./core/payload";
-import { updateDatabaseFavoriteService } from "./core/favorite-service";
-import { deleteDatabaseAccessRuleService, deletePublicDatabaseAccessService, listDatabaseAccessRulesService, upsertDatabaseAccessRuleService } from "./sharing/service";
-import { createDatabaseService, deleteDatabaseService, restoreDatabaseService } from "./core/service";
-import { requireDatabaseRouteUser as requireUser } from "./route-support";
+import { rejectMismatchedPinnedWorkspace } from  "../../auth/oauth-access";
+import type { AppBindings } from   "../../../shared/types";
+import { readJsonBody } from   "../../../shared/http/request";
+import { getDatabaseExportPayload } from  "../core/payload";
+import { updateDatabaseFavoriteService } from  "../core/favorite-service";
+import { deleteDatabaseAccessRuleService, deletePublicDatabaseAccessService, listDatabaseAccessRulesService, upsertDatabaseAccessRuleService } from  "../sharing/service";
+import { createDatabaseService, deleteDatabaseService, restoreDatabaseService } from  "../core/service";
+import { requireDatabaseRouteUser as requireUser } from  "./support";
 
 export const databaseCoreRoutes = new Hono<AppBindings>();
 const resourceWorkspace = pinnedResourceMiddleware((id) => getDatabaseRecord(id, { includeDeleted: true }));

@@ -27,7 +27,7 @@ import { measureDatabaseOperation } from "../observability"
 import {
   captureDatabaseAutomationMutationFacts,
   type DatabaseAutomationMutationFactCandidate,
-} from "../automations/triggers/event-capture"
+} from "../../automations/triggers/event-capture"
 
 const COMMAND_RECEIPT_RETENTION_MS = 7 * 24 * 60 * 60 * 1_000
 const MAX_DATABASE_MUTATION_CHANGES_BYTES = 64 * 1_024

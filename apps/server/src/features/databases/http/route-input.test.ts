@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { test } from "vitest";
-import type { AppBindings } from "../../shared/types";
-import { databaseCreateRoutes } from "./database-core-routes";
-import { databaseAutomationRoutes } from "./automations/routes";
+import type { AppBindings } from   "../../../shared/types";
+import { databaseCreateRoutes } from    "./core-routes";
+import { databaseAutomationRoutes } from  "../../automations/http/routes";
 
 function app(authenticated: boolean) {
   return new Hono<AppBindings>()

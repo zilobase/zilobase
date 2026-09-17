@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
-import type { AppBindings } from "../../shared/types";
+import type { AppBindings } from   "../../../shared/types";
 
 const mocks = vi.hoisted(() => ({
   databaseRecord: vi.fn(),
@@ -18,39 +18,39 @@ const mocks = vi.hoisted(() => ({
   deleteDatabase: vi.fn(),
   restoreDatabase: vi.fn(),
 }));
-vi.mock("../access", async (original) => ({
-  ...(await original<typeof import("../access")>()),
+vi.mock(  "../../access", async (original) => ({
+  ...(await original<typeof import(  "../../access")>()),
   canAccessDatabaseRecord: mocks.canAccessDatabase,
   getEffectiveDatabaseAccessForRecord: mocks.effectiveDatabaseAccess,
   getMembership: mocks.membership,
   isDatabasePublishedInWorkspace: mocks.publishedDatabase,
 }));
 
-vi.mock("./access/database-access", async (original) => ({
-  ...(await original<typeof import("./access/database-access")>()),
+vi.mock( "../access/database-access", async (original) => ({
+  ...(await original<typeof import( "../access/database-access")>()),
   getDatabaseRecord: mocks.databaseRecord,
 }));
-vi.mock("./core/payload", () => ({
+vi.mock( "../core/payload", () => ({
   getDatabaseExportPayload: mocks.databasePayload,
 }));
-vi.mock("./core/service", () => ({
+vi.mock( "../core/service", () => ({
   createDatabaseService: mocks.createDatabase,
   deleteDatabaseService: mocks.deleteDatabase,
   restoreDatabaseService: mocks.restoreDatabase,
 }));
-vi.mock("./read/service", async (original) => ({
-  ...(await original<typeof import("./read/service")>()),
+vi.mock( "../read/service", async (original) => ({
+  ...(await original<typeof import( "../read/service")>()),
   getDatabaseBootstrapService: mocks.bootstrap,
   getDatabaseRecordWindowService: mocks.recordWindow,
 }));
-vi.mock("./history/service", async (original) => ({
-  ...(await original<typeof import("./history/service")>()),
+vi.mock( "../history/service", async (original) => ({
+  ...(await original<typeof import( "../history/service")>()),
   getDatabaseMutationFeed: mocks.mutationFeed,
 }));
 
-import { databaseRoutes } from "./database-routes";
-import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
-import { attachHttpRouteErrorHandler } from "../../shared/http/route-error";
+import { databaseRoutes } from  "./routes";
+import { ServiceMutationError } from   "../../../shared/errors/service-mutation-error";
+import { attachHttpRouteErrorHandler } from   "../../../shared/http/route-error";
 
 const user = {
   email: "user@example.com",
@@ -151,7 +151,7 @@ test("v2 record route forwards exact windows and deleted scope", async () => {
 });
 
 test("v2 record route exposes stale-window and source/view conflicts", async () => {
-  const { DatabaseWindowStaleError } = await import("./read/service");
+  const { DatabaseWindowStaleError } = await import( "../read/service");
   mocks.databaseRecord.mockResolvedValue({
     deletedAt: null,
     id: "database-1",

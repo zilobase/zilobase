@@ -1,8 +1,8 @@
 import assert from "node:assert/strict"
 import { test } from "vitest"
 
-import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
-import { resolveNeighborIndex } from "./structural-handlers"
+import { ServiceMutationError } from "../../../../shared/errors/service-mutation-error"
+import { resolveNeighborIndex } from "./ordering"
 
 test("neighbor ordering inserts and moves without a full client ID list", () => {
   assert.deepEqual(resolveNeighborIndex({

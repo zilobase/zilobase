@@ -28,7 +28,7 @@ import {
   rebalanceDatabaseRowOrderKeys,
   updateDatabaseRowPlacementPositions,
 } from "../core/position-service"
-import { validateCellValue } from "../properties/config"
+import { validateCellValue } from "../schema/config"
 import {
   type DatabaseCommandContext,
   type DatabaseCommandDispatchResult,

@@ -14,7 +14,7 @@ import { commitDataSourceMutation } from "../core/commit";
 import {
   lockDatabaseAutomationFactRows,
   type DatabaseMutationOrigin,
-} from "../automations/triggers/event-capture";
+} from "../../automations/triggers/event-capture";
 import { getDatabaseRecordEntity } from "../commands/record-entity";
 import { validateCellValue } from "./config";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";

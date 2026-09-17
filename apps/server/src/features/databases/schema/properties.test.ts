@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   selectResults: [] as unknown[][],
 }));
 
-vi.mock("../automations/service", () => ({
+vi.mock("../../automations/service", () => ({
   invalidateDatabaseAutomationDependencies: mocks.invalidateAutomationDependencies,
 }));
 
@@ -51,7 +51,7 @@ vi.mock("../../../infrastructure/database", () => ({
 import {
   createDatabasePropertyService,
   updateDatabasePropertyService,
-} from "./service";
+} from "./properties";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 beforeEach(() => {

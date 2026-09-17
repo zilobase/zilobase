@@ -54,7 +54,7 @@ vi.mock("../core/position-service", () => ({
   rebalanceDatabaseRowOrderKeys: mocks.rebalance,
   updateDatabaseRowPlacementPositions: mocks.placementPositions,
 }));
-vi.mock("./import-service", () => ({
+vi.mock("./import", () => ({
   inheritDatabaseRowProperties: mocks.inherit,
 }));
 vi.mock("../../../infrastructure/database", () => ({

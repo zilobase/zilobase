@@ -23,7 +23,7 @@ import {
 import {
   captureDatabaseAutomationMutationFacts,
   type DatabaseAutomationMutationFactCandidate,
-} from "../automations/triggers/event-capture";
+} from "../../automations/triggers/event-capture";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 import { measureDatabaseOperation } from "../observability";

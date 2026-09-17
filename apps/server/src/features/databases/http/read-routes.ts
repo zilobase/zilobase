@@ -1,4 +1,4 @@
-import { pinnedResourceMiddleware } from "../auth/pinned-resource-middleware";
+import { pinnedResourceMiddleware } from  "../../auth/pinned-resource-middleware";
 import { Hono, type Context } from "hono";
 
 import {
@@ -7,28 +7,28 @@ import {
   getMembership,
   getWorkspaceRealtimeAccessExpiration,
   isDatabasePublishedInWorkspace,
-} from "../access";
+} from   "../../access";
 import {
   createDatabaseRealtimeTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
   verifyDatabaseRealtimeTicket,
-} from "../../shared/security/database-realtime-ticket";
-import { getDatabaseRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
-import { getDatabaseRecord } from "./access/database-access";
-import type { AppBindings } from "../../shared/types";
-import { readJsonBody } from "../../shared/http/request";
+} from   "../../../shared/security/database-realtime-ticket";
+import { getDatabaseRealtimeWebSocketUrl } from   "../../../infrastructure/runtime/runtime-adapter";
+import { getDatabaseRecord } from  "../access/database-access";
+import type { AppBindings } from   "../../../shared/types";
+import { readJsonBody } from   "../../../shared/http/request";
 import {
   DatabaseWindowStaleError,
   MAX_DATABASE_RECORD_WINDOW_LIMIT,
   getDatabaseBootstrapService,
   getDatabaseExportService,
   getDatabaseRecordWindowService,
-} from "./read/service";
+} from  "../read/service";
 import {
   DATABASE_MUTATION_FEED_LIMIT,
   getDatabaseMutationFeed,
-} from "./history/service";
+} from  "../history/service";
 
 export const databaseReadRoutes = new Hono<AppBindings>();
 const resourceWorkspace = pinnedResourceMiddleware((id) => getDatabaseRecord(id, { includeDeleted: true }));

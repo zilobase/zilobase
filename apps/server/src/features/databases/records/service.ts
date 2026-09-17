@@ -30,11 +30,11 @@ import {
 import {
   lockDatabaseAutomationFactRows,
   type DatabaseMutationOrigin,
-} from "../automations/triggers/event-capture";
+} from "../../automations/triggers/event-capture";
 import { getDatabasePropertyEntity } from "../commands/metadata-entities";
 import { getDatabaseRecordEntity } from "../commands/record-entity";
 import { isDatabaseHostPageId } from "../core/host-page";
-import { getStatusDefaultValue, validateCellValue } from "../properties/config";
+import { getStatusDefaultValue, validateCellValue } from "../schema/config";
 import {
   incrementDatabaseRowPlacementPositions,
   lockDatabaseRowOrdering,
@@ -42,7 +42,7 @@ import {
   rebalanceDatabaseRowOrderKeys,
   updateDatabaseRowPlacementPositions,
 } from "../core/position-service";
-import { inheritDatabaseRowProperties } from "./import-service";
+import { inheritDatabaseRowProperties } from "./import";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 export async function createDatabaseRowService(input: {

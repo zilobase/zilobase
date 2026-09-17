@@ -3,16 +3,16 @@ import { Hono } from "hono";
 import {
   oauthScopeMiddleware,
   scopeForReadWrite,
-} from "../auth/oauth-access";
-import type { AppBindings } from "../../shared/types";
-import { databaseAutomationRoutes } from "./automations/routes";
-import { automationSlackRoutes } from "./automations/slack-routes";
+} from  "../../auth/oauth-access";
+import type { AppBindings } from   "../../../shared/types";
+import { databaseAutomationRoutes } from  "../../automations/http/routes";
+import { automationSlackRoutes } from  "../../automations/http/slack-routes";
 import {
   databaseCoreRoutes,
   databaseCreateRoutes,
-} from "./database-core-routes";
-import { databaseReadRoutes } from "./database-read-routes";
-import { databaseCommandRoutes } from "./database-command-routes";
+} from    "./core-routes";
+import { databaseReadRoutes } from    "./read-routes";
+import { databaseCommandRoutes } from  "./command-routes";
 
 export const databaseRoutes = new Hono<AppBindings>();
 

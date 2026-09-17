@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { databaseRoutes } from "./databases/database-routes";
+import { databaseRoutes } from "./databases/http/routes";
 import { pageRoutes } from "./pages/page-routes";
 
 const inventory = (routes: typeof pageRoutes) =>

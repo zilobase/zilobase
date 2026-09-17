@@ -40,7 +40,7 @@ vi.mock("../../../infrastructure/database", () => ({
   },
 }));
 
-import { setDatabaseCellValueService } from "./cell-service";
+import { setDatabaseCellValueService } from "./cells";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 beforeEach(() => {

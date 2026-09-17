@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { test } from "vitest"
 
 import { RowMoveConflictError } from "./framework"
-import { resolveAnchoredRowIndex } from "./row-handlers"
+import { resolveAnchoredRowIndex } from "./records"
 
 const rows = ["row-a", "row-hidden", "row-b", "row-c"].map((id) => ({ id }))
 
