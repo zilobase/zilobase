@@ -65,3 +65,16 @@ test("database v2 finalization removes compatibility columns and enforces order"
   assert.match(migration, /DROP COLUMN "delta"/)
   assert.doesNotMatch(migration, /page_item_placement.*DROP COLUMN/is)
 })
+
+test("source-stream undo restores the host journal unique index", async () => {
+  const migration = await readFile(
+    new URL("../../../drizzle/0094_undo_database_source_stream.sql", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(migration, /column_name = 'stream_kind'/)
+  assert.match(migration, /DROP COLUMN IF EXISTS "source_id"/)
+  assert.match(migration, /DROP COLUMN IF EXISTS "stream_kind"/)
+  assert.match(migration, /ALTER COLUMN "database_id" SET NOT NULL/)
+  assert.match(migration, /database_mutation_event_database_version_unique/)
+})
