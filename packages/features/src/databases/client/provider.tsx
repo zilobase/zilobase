@@ -20,6 +20,12 @@ import { guardPendingDatabaseWrites } from "./commands/pending-navigation"
 
 const DatabaseClientContext = createContext<DatabaseClient | null>(null)
 
+const DatabaseSessionContext = createContext<string | null>(null)
+
+export function useDatabaseSessionId(): string {
+  return useContext(DatabaseSessionContext) ?? "public"
+}
+
 export type DbProviderProps = PropsWithChildren<{
   apiFetch: ApiFetcher
   queryClient: QueryClient
@@ -53,16 +59,20 @@ export function DbProvider({
   if (!client) {
     return (
       <DatabaseClientContext.Provider value={null}>
-        {children}
+        <DatabaseSessionContext.Provider value={sessionId ?? "public"}>
+          {children}
+        </DatabaseSessionContext.Provider>
       </DatabaseClientContext.Provider>
     )
   }
 
   return (
     <DatabaseClientContext.Provider value={client}>
-      <TanStackDbProvider client={client.tanstack}>
-        {children}
-      </TanStackDbProvider>
+      <DatabaseSessionContext.Provider value={sessionId ?? "public"}>
+        <TanStackDbProvider client={client.tanstack}>
+          {children}
+        </TanStackDbProvider>
+      </DatabaseSessionContext.Provider>
     </DatabaseClientContext.Provider>
   )
 }
