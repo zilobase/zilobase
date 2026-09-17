@@ -48,7 +48,7 @@ test("successful tickets preserve upgrade failure backoff until realtime is read
     websocketProtocols: [],
     websocketUrl: "ws://localhost/database-collaboration",
   })) as ApiFetcher
-  const manager = new DatabaseRealtimeManager(queryClient, apiFetch, "database-1", null, () => {})
+  const manager = new DatabaseRealtimeManager(queryClient, apiFetch, "database-1", "test-session", () => {})
   const unsubscribe = manager.subscribe(() => {})
   t.after(unsubscribe)
   await new Promise<void>((resolve) => setImmediate(resolve))
@@ -198,4 +198,96 @@ test("database realtime control messages require protocol v2", () => {
   if (parsed.ok && parsed.message.type === "realtime.ready") {
     assert.equal(parsed.message.databaseVersion, 4)
   }
+})
+
+test("poke with version <= cached does not invalidate", () => {
+  const queryClient = new QueryClient()
+  try {
+    queryClient.setQueryData(
+      ["db", "test-session", "database-1", "bootstrap", null, false],
+      {
+        database: {
+          accessLevel: null,
+          config: {},
+          createdAt: "2026-09-08T00:00:00.000Z",
+          id: "database-1",
+          name: "Projects",
+          pageId: null,
+          updatedAt: "2026-09-08T00:00:00.000Z",
+          version: 10,
+          workspaceId: "workspace-1",
+        },
+        dataSources: [],
+        properties: [],
+        views: [],
+      },
+    )
+    let invalidated = 0
+    const original = queryClient.invalidateQueries.bind(queryClient)
+    queryClient.invalidateQueries = (async (...args: never[]) => {
+      invalidated += 1
+      return original(...args)
+    }) as typeof queryClient.invalidateQueries
+    const apiFetch = (async () => {
+      throw new Error("should not fetch")
+    }) as ApiFetcher
+    const manager = new DatabaseRealtimeManager(
+      queryClient,
+      apiFetch,
+      "database-1",
+      "test-session",
+      () => {},
+    )
+    manager.pokeDatabaseVersion(9)
+    manager.pokeDatabaseVersion(10)
+    assert.equal(invalidated, 0)
+    manager.pokeDatabaseVersion(11)
+    assert.equal(invalidated >= 1, true)
+  } finally {
+    queryClient.clear()
+  }
+})
+
+test("database.mutation never writes frame payload to cache", () => {
+  const parsed = parseDatabaseRealtimeServerMessage(JSON.stringify({
+    actorId: "user-1",
+    areas: ["records"],
+    changes: { records: [] },
+    commandId: "command-1",
+    committedAt: "2026-09-08T00:00:00.000Z",
+    databaseId: "database-1",
+    dataSourceId: null,
+    eventId: "event-1",
+    protocolVersion: 2,
+    type: "database.mutation",
+    version: 12,
+  }))
+  assert.equal(parsed.ok, true)
+  // Poke path uses only databaseId + version; changes/areas are ignored
+  // by DatabaseRealtimeManager.pokeDatabaseVersion (no setQueryData).
+  // Presence still builds cell keys.
+  assert.deepEqual(
+    createCellPresenceByKey([
+      {
+        color: "c",
+        connectedAt: "2026-09-08T00:00:00.000Z",
+        presence: { columnKey: "prop-1", rowId: "row-1", viewId: null },
+        sessionId: "s-1",
+        updatedAt: "2026-09-08T00:00:00.000Z",
+        user: { id: "user-1", name: "User" },
+      },
+    ]),
+    {
+      "row-1:prop-1": [
+        {
+          color: "c",
+          connectedAt: "2026-09-08T00:00:00.000Z",
+          presence: { columnKey: "prop-1", rowId: "row-1", viewId: null },
+          sessionId: "s-1",
+          updatedAt: "2026-09-08T00:00:00.000Z",
+          user: { id: "user-1", name: "User" },
+        },
+      ],
+    },
+  )
 })

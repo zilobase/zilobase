@@ -6,21 +6,14 @@ import {
   useSyncExternalStore,
 } from "react"
 
-import { useZilobaseFeatures, type ApiFetcher } from  "../../shared/context"
-import { recoverPagePropertiesIfBehind } from  "../../pages/database-realtime-cache"
+import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context"
 import {
   databaseMutationEventV2Schema,
   type DatabaseMutationEventV2,
-} from  "../core/entities"
-import {
-  useOptionalDatabaseClient,
-} from "../client/provider"
-import type { DatabaseClient } from  "../client/db-client"
-import { databaseClientQueryRoot } from "../client/query-keys"
-import { createRealtimeClientBinding } from "../client/realtime-client-binding"
-import {
-  databaseRootQueryKey,
-} from  "../queries/queries"
+} from "../core/entities"
+import { useDatabaseSessionId } from "../client/provider"
+import { cachedVersion } from "../queries/keys"
+import { invalidateDatabaseQueries } from "../mutations/invalidate"
 
 export type DatabasePresence = {
   columnKey: string
@@ -75,16 +68,16 @@ export function useDatabaseRealtime(
 ) {
   const { apiFetch, databaseRealtimeEnabled = false, queryClient } =
     useZilobaseFeatures()
-  const databaseClient = useOptionalDatabaseClient()
+  const sessionId = useDatabaseSessionId()
   const ownerIdRef = useRef<string>(crypto.randomUUID())
   const enabled = Boolean(
     databaseRealtimeEnabled && options.enabled !== false && databaseId,
   )
   const manager = useMemo(
     () => enabled && databaseId
-      ? getManager(queryClient, apiFetch, databaseId, databaseClient)
+      ? getManager(queryClient, apiFetch, databaseId, sessionId)
       : null,
-    [apiFetch, databaseClient, databaseId, enabled, queryClient],
+    [apiFetch, databaseId, enabled, queryClient, sessionId],
   )
   const state = useSyncExternalStore(
     manager ? manager.subscribe : emptySubscribe,
@@ -109,10 +102,10 @@ export function useDatabaseRealtime(
       ownerIdRef.current,
       publishPresence && presenceRowId && presenceColumnKey
         ? {
-            columnKey: presenceColumnKey,
-            rowId: presenceRowId,
-            viewId: presenceViewId,
-          }
+          columnKey: presenceColumnKey,
+          rowId: presenceRowId,
+          viewId: presenceViewId,
+        }
         : null,
     )
   }, [
@@ -164,23 +157,16 @@ export class DatabaseRealtimeManager {
   private paused = false
   private reconnectAttempt = 0
   private stopped = true
-  private sessionId: string | null = null
+  private realtimeSessionId: string | null = null
   private state: DatabaseRealtimeState = getOfflineSnapshot()
-  private readonly databaseClientBinding
 
   constructor(
     private readonly queryClient: QueryClient,
     private readonly apiFetch: ApiFetcher,
     private readonly databaseId: string,
-    databaseClient: DatabaseClient | null,
+    private readonly sessionId: string,
     private readonly onIdle: () => void,
-  ) {
-    this.databaseClientBinding = createRealtimeClientBinding(databaseClient)
-  }
-
-  bindDatabaseClient(databaseClient: DatabaseClient | null) {
-    this.databaseClientBinding.bind(databaseClient)
-  }
+  ) {}
 
   subscribe = (listener: Listener) => {
     if (this.idleTimer) clearTimeout(this.idleTimer)
@@ -211,6 +197,17 @@ export class DatabaseRealtimeManager {
     this.presenceByOwner.delete(ownerId)
     if (presence) this.presenceByOwner.set(ownerId, presence)
     this.sendPresence()
+  }
+
+  /** Poke-only: version bump invalidates host, never applies frame payload. */
+  pokeDatabaseVersion(version: number) {
+    if (version > cachedVersion(this.queryClient, this.sessionId, this.databaseId)) {
+      invalidateDatabaseQueries(
+        this.queryClient,
+        this.sessionId,
+        this.databaseId,
+      )
+    }
   }
 
   private async connect() {
@@ -255,7 +252,7 @@ export class DatabaseRealtimeManager {
         }
       })
       this.scheduleTicketRefresh(ticket, socket, generation)
-      this.recoverIfBehind(ticket.version)
+      // Ticket version is ignored for resync. Never suppress poke because of ticket.
     } catch (error) {
       if (ticketFailureAction(error) === "stop") {
         this.markUnavailable()
@@ -298,14 +295,15 @@ export class DatabaseRealtimeManager {
     if (message.databaseId !== this.databaseId) return
 
     if (message.type === "database.mutation") {
-      void this.ingestMutation(message).catch(() => undefined)
+      // Poke only. Ignore changes, areas, requiresReset payload.
+      this.pokeDatabaseVersion(message.version)
       return
     }
 
     if (message.type === "realtime.ready") {
-      this.sessionId = message.sessionId
+      this.realtimeSessionId = message.sessionId
       this.reconnectAttempt = 0
-      this.recoverIfBehind(message.databaseVersion)
+      this.pokeDatabaseVersion(message.databaseVersion)
       this.setCollaborators(message.peers)
       this.setState({ ...this.state, status: "connected" })
       this.startHeartbeat()
@@ -331,30 +329,6 @@ export class DatabaseRealtimeManager {
         ),
       )
     }
-  }
-
-  private async ingestMutation(event: DatabaseMutationEventV2) {
-    try {
-      if (await this.databaseClientBinding.ingest(event)) return
-    } catch {
-      // A session/client transition must recover through authoritative reads.
-    }
-    await Promise.allSettled([
-      this.queryClient.invalidateQueries({ queryKey: [databaseClientQueryRoot] }),
-      this.queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
-    ])
-  }
-
-  private async catchUpOrInvalidate() {
-    try {
-      if (await this.databaseClientBinding.catchUp(this.databaseId)) return
-    } catch {
-      // A replaced session client falls back to an authoritative query refresh.
-    }
-    await Promise.allSettled([
-      this.queryClient.invalidateQueries({ queryKey: [databaseClientQueryRoot] }),
-      this.queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
-    ])
   }
 
   private scheduleTicketRefresh(
@@ -415,16 +389,6 @@ export class DatabaseRealtimeManager {
     }, delay)
   }
 
-  private recoverIfBehind(serverVersion: number) {
-    void this.catchUpOrInvalidate()
-
-    recoverPagePropertiesIfBehind(
-      this.queryClient,
-      this.databaseId,
-      serverVersion,
-    )
-  }
-
   private sendPresence() {
     if (this.socket?.readyState !== WebSocket.OPEN ||
       this.state.status !== "connected") return
@@ -458,7 +422,7 @@ export class DatabaseRealtimeManager {
     >,
   ) {
     const colored = collaborators
-      .filter((item) => item.sessionId !== this.sessionId)
+      .filter((item) => item.sessionId !== this.realtimeSessionId)
       .map(withColor)
     this.setState({
       ...this.state,
@@ -497,7 +461,7 @@ export class DatabaseRealtimeManager {
     this.visibilityTimer = null
     closeRealtimeSocket(this.socket, 1000, "Database view closed")
     this.socket = null
-    this.sessionId = null
+    this.realtimeSessionId = null
     this.presenceByOwner.clear()
     this.paused = false
     this.stopLifecycleListeners()
@@ -519,7 +483,7 @@ export class DatabaseRealtimeManager {
     this.visibilityTimer = null
     closeRealtimeSocket(this.socket, 1000, "Database realtime unavailable")
     this.socket = null
-    this.sessionId = null
+    this.realtimeSessionId = null
     this.stopLifecycleListeners()
     this.setState(getUnavailableSnapshot())
   }
@@ -578,7 +542,7 @@ export class DatabaseRealtimeManager {
     this.refreshTimer = null
     closeRealtimeSocket(this.socket, 1000, "Database realtime paused")
     this.socket = null
-    this.sessionId = null
+    this.realtimeSessionId = null
     this.setState(getOfflineSnapshot())
   }
 
@@ -662,7 +626,7 @@ function getManager(
   queryClient: QueryClient,
   apiFetch: ApiFetcher,
   databaseId: string,
-  databaseClient: DatabaseClient | null,
+  sessionId: string,
 ) {
   let byDatabase = managers.get(queryClient)
 
@@ -671,7 +635,7 @@ function getManager(
     managers.set(queryClient, byDatabase)
   }
 
-  const managerKey = `${databaseClient?.sessionId ?? "public"}:${databaseId}`
+  const managerKey = `${sessionId}:${databaseId}`
   let manager = byDatabase.get(managerKey)
 
   if (!manager) {
@@ -679,7 +643,7 @@ function getManager(
       queryClient,
       apiFetch,
       databaseId,
-      databaseClient,
+      sessionId,
       () => {
         if (byDatabase?.get(managerKey) === created) {
           byDatabase.delete(managerKey)
@@ -689,8 +653,6 @@ function getManager(
     manager = created
     byDatabase.set(managerKey, manager)
   }
-
-  manager.bindDatabaseClient(databaseClient)
 
   return manager
 }
@@ -774,7 +736,7 @@ type PresenceClearMessage = {
   sessionId: string
   type: "presence.clear"
 }
-type RealtimeServerMessage = DatabaseMutationEventV2 |
+export type RealtimeServerMessage = DatabaseMutationEventV2 |
   RealtimeReadyMessage |
   PresenceUpdateMessage | PresenceClearMessage
 
