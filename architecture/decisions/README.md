@@ -6,3 +6,4 @@ Record a lasting decision when its rejected alternatives explain the implementat
 - [Continuous calendar timeline](0002-continuous-calendar-timeline.md)
 - [Incremental Effect runtime on the server](0003-effect-runtime.md)
 - [Responsive database client and mutation protocol](0004-responsive-database-client.md)
+- [Poke-and-refetch database client](0005-poke-and-refetch-database-client.md)

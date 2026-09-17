@@ -68,10 +68,10 @@ export function register({ assert, appPath, test }) {
     });
     const calls = [];
     const databaseKey = [
-      "database-client-v2",
+      "db",
       "session",
-      "bootstrap",
       "database",
+      "bootstrap",
       null,
       false,
     ];

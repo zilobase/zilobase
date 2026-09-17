@@ -20,7 +20,7 @@ The client-side rendering aggregate for one database row. It embeds the row page
 
 ### Database mutation journal
 
-The authoritative, version-ordered history of committed database mutation events used for command replay, realtime delivery and reconnect catch-up. It is separate from the realtime outbox, which tracks delivery work.
+The authoritative, version-ordered history of committed database mutation events used for command replay and realtime delivery. Reconnect catch-up through the journal feed is server-only for now; the client converges through poke plus refetch instead. It is separate from the realtime outbox, which tracks delivery work.
 
 ### Database command acknowledgement
 
@@ -30,9 +30,12 @@ confirmation is a synchronization failure, not a rejected database write.
 
 ### Database projection watermark
 
-The committed version below which a client collection must not accept a
-replacement snapshot. Different loaded views can have different watermarks;
-one newer view does not prove that the other views have received its events.
+The committed version below which a client query must not accept a
+replacement payload. Client-side collection watermarks are deleted; the
+remaining guards are prefer-newest checks on QueryClient bootstrap and window
+data plus poke comparison against the minimum cached version. Different loaded
+views can have different versions; one newer view does not prove that the
+other views are fresh.
 
 ### Page
 
