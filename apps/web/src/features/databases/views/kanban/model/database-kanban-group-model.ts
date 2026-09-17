@@ -1,9 +1,9 @@
-import { defaultStatusOption } from "../../../properties/model/property-defaults";
+import { defaultStatusOption } from "../../../schema/model/property-defaults";
 import {
   toStringArray,
   type DatabasePropertyValue as DatabaseCellValue,
-} from "../../../properties/property-values"
-import { formatDatabaseDateValue } from "../../../properties/model/database-date-config"
+} from "../../../schema/property-values"
+import { formatDatabaseDateValue } from "../../../schema/model/database-date-config"
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
 import type { DatabasePropertyConfig } from "../../model/database-view-config"
 import type {

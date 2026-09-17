@@ -1,10 +1,10 @@
 export { DATABASE_PAGE_DRAG_MIME } from "./interactions/database-drag-contracts";
 export { DatabaseView } from "./views/components/database-view"
-export { DatabaseBlock } from "./embedding/database-extension"
-export type { DatabaseBlockEditorRuntime } from "./embedding/database-block-contracts"
+export { DatabaseBlock } from "./core/database-block"
+export type { DatabaseBlockEditorRuntime } from "./core/database-block-contracts"
 export {
   createDatabaseSetupBlockContent,
-} from "./embedding/database-block-content"
+} from "./core/database-block-content"
 export {
   getDatabasePageDragPayload,
   hasDatabasePageDragPayload,
@@ -12,9 +12,9 @@ export {
 } from "./interactions/database-page-drop"
 export { DatabasePageLink } from "./interactions/database-page-link"
 export { getDatabaseViewModel } from "./views/components/database-view-model"
-export { DatabaseViewIcon } from "./components/database-view-icon"
-export { PageMetadata } from "./components/page-metadata"
-export type { PageMetadataHandle } from "./components/page-metadata"
+export { DatabaseViewIcon } from "./views/components/database-view-icon"
+export { PageMetadata } from "./access/page-metadata"
+export type { PageMetadataHandle } from "./access/page-metadata"
 export { DatabaseViewProvider } from "./views/state/database-view-context"
 export type { DatabaseViewProviderValue } from "./views/state/database-view-context"
 export { DatabaseViewToolbar } from "./views/components/database-view-toolbar"

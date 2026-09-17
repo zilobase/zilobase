@@ -49,7 +49,7 @@ import {
 } from "@/shared/lib/color-tokens";
 import { cn } from "@/shared/lib/utils";
 
-import { getDatabasePropertyType } from "../../../properties/property-catalog";
+import { getDatabasePropertyType } from "../../../schema/property-catalog";
 import { NameColumnGlyph } from "../../../interactions/name-column-glyph";
 import type {
   DatabaseChartReferenceLine,

@@ -10,7 +10,6 @@ import type * as Y from "yjs"
 
 // Meeting fields intentionally reuse the complete editor inside the meeting
 // node view. The import cycle is bounded to this nested composition seam.
-// fallow-ignore-next-line circular-dependency -- nested editor composition
 import { Editor } from "../../composition/editor"
 import {
   setMeetingTranscriptPreview,

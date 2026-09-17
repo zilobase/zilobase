@@ -51,7 +51,7 @@ import {
   useSidebar,
 } from "@/shared/ui/sidebar"
 import { isEmbeddedMobileViewer } from "@/features/pages/pane/embedded-view"
-import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
+import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata"
 import { getDatabaseEmoji } from "@zilobase/features/databases";
 import { getPageEmoji } from "@zilobase/features/pages";
 import { usePage, useRecordItemVisit } from "@zilobase/features/pages/react";

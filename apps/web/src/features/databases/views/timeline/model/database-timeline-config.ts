@@ -3,9 +3,9 @@ import { addDays } from "date-fns"
 import type { GanttFeature, GanttStatus } from "../gantt"
 
 import { getPaletteColor } from "@/shared/lib/color-tokens"
-import { parseLocalDateMatch } from "../../../properties/model/database-date-value"
+import { parseLocalDateMatch } from "../../../schema/model/database-date-value"
 
-import { defaultStatusOptions } from "../../../properties/model/property-defaults";
+import { defaultStatusOptions } from "../../../schema/model/property-defaults";
 import {
   getSelectOptions,
   type DatabasePropertyListItem,
@@ -14,7 +14,7 @@ import {
   firstScalarValue,
   serializePropertyValue,
   type DatabasePropertyValue,
-} from "../../../properties/property-values"
+} from "../../../schema/property-values"
 
 export const UNSCHEDULED_GROUP_NAME = "Unscheduled"
 export const DEFAULT_TIMELINE_ITEM_DURATION_DAYS = 5

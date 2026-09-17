@@ -1,11 +1,11 @@
 export function register({ assert, loadModule, sourcePath, test }) {
   test('automation draft rules have no runtime React or presentation dependency', async () => {
     const { build } = await import('esbuild')
-    const result = await build({ entryPoints: [sourcePath('/src/features/databases/automations/definition/automation-draft.ts')], bundle: true, platform: 'node', format: 'esm', write: false, metafile: true })
+    const result = await build({ entryPoints: [sourcePath('/src/features/automations/definition/automation-draft.ts')], bundle: true, platform: 'node', format: 'esm', write: false, metafile: true })
     assert.deepEqual(Object.keys(result.metafile.inputs).filter(path => /node_modules\/(react|react-dom)|\/shared\/(ui|components)\//.test(path)), [])
   })
-  const draftPath = '/src/features/databases/automations/definition/automation-draft.ts'
-  const actionPath = '/src/features/databases/automations/actions/notion-action-model.ts'
+  const draftPath = '/src/features/automations/definition/automation-draft.ts'
+  const actionPath = '/src/features/automations/actions/notion-action-model.ts'
   test('automation drafts keep incomplete triggers unsavable and round-trip typed operands', async () => {
     const model = await loadModule(draftPath)
     const { createNotionActionDraft } = await loadModule(actionPath)
@@ -35,7 +35,7 @@ export function register({ assert, loadModule, sourcePath, test }) {
   test('automation drafts preserve schedule options, reordering identity and property literals', async () => {
     const model = await loadModule(draftPath)
     const { createNotionActionDraft } = await loadModule(actionPath)
-    const { actionLiteralFromValues, actionValuesFromLiteral } = await loadModule('/src/features/databases/automations/actions/property-action-model.ts')
+    const { actionLiteralFromValues, actionValuesFromLiteral } = await loadModule('/src/features/automations/actions/property-action-model.ts')
     const draft = { ...model.emptyDraft(), triggerKind: 'schedule', actions: [createNotionActionDraft('add_page', 'source-1')] }
     draft.schedule = { ...draft.schedule, frequency: 'custom', customPattern: 'yearly', months: [2, 8], dayOfMonth: 'last', startDate: '2026-01-01', endDate: '2027-01-01' }
     const definition = model.buildDefinition(draft, 'Asia/Kolkata')

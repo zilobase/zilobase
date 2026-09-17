@@ -21,15 +21,15 @@ import {
   DropDrawerSubTrigger,
 } from "@/shared/ui/dropdrawer";
 import { Input } from "@/shared/ui/input";
-import { useDatabaseMetadata } from "../../../hooks/use-database-metadata"
+import { useDatabaseMetadata } from "../../../access/use-database-metadata"
 import { type PageDatabase } from "@zilobase/features/pages";
 import { usePageNavigation } from "@zilobase/features/pages/react";
 import { DEFAULT_DATABASE_ITEM_ICON } from "@/features/pages/index";
 import { getDatabaseIconNode, PageIconDisplay } from "@/features/pages/index";
 
-import { getDatabasePropertyType } from "../../../properties/property-catalog";
-import { hasDatabasePropertyEditSettings } from "../../../properties/configuration";
-import { DatabasePropertyEditSubmenu } from "../../../properties/editors/database-property-menu";
+import { getDatabasePropertyType } from "../../../schema/property-catalog";
+import { hasDatabasePropertyEditSettings } from "../../../schema/configuration";
+import { DatabasePropertyEditSubmenu } from "../../../schema/editors/database-property-menu";
 import { DatabaseSearchableMenuItems } from "../../components/database-searchable-menu-items";
 import { type DatabaseSearchableMenuOption } from "../../menu-option-contracts";
 import { getDatabaseViewIcon } from "../../model/database-view-config";

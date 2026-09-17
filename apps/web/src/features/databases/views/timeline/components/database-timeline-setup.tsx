@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select"
-import { getDatabasePropertyType } from "../../../properties/property-catalog"
+import { getDatabasePropertyType } from "../../../schema/property-catalog"
 import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config"
 
 export function DatabaseTimelineSetup({

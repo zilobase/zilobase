@@ -1,7 +1,7 @@
 import type { DatabaseProperty } from "@zilobase/features/databases"
-import { defaultStatusOptions } from "../../../properties/model/property-defaults";
+import { defaultStatusOptions } from "../../../schema/model/property-defaults";
 import { getPersonLimit } from "../../model/database-view-config"
-import { getRelationLimit } from "../../../properties/relations/model/database-relation-sync"
+import { getRelationLimit } from "../../../schema/relations/model/database-relation-sync"
 
 export type FormOption = {
   color?: string

@@ -32,7 +32,7 @@ import {
   type DatabaseSetupSelection,
 } from "../../setup/components/database-setup-card"
 import { getDatabaseSetupTemplate } from "../../setup/model/database-setup-templates"
-import { serializePropertyValue } from "../../properties/property-values"
+import { serializePropertyValue } from "../../schema/property-values"
 import { usePage, usePagePersonAccessTargets, useUpdatePage } from "@zilobase/features/pages/react";
 import {
   getDatabasePageDragPayload,
@@ -43,7 +43,7 @@ import type {
   DatabaseSourceViewSelection,
   DatabaseViewProviderValue,
 } from "../state/database-view-context"
-import { getDatabaseViewCommands } from "../../commands/database-view-commands"
+import { getDatabaseViewCommands } from "../../records/view-commands"
 import { getDatabaseViewModel } from "../components/database-view-model"
 import {
   readLatestViewConfig,

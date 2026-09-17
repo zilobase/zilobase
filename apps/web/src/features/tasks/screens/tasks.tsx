@@ -44,8 +44,8 @@ import type { DatabaseSortUpdatePatch } from "../../databases/views/model/filter
 import {
   serializePropertyValue,
   type DatabasePropertyValue,
-} from "@/features/databases/properties/property-values"
-import { defaultStatusOptions } from "@/features/databases/properties/property-catalog"
+} from "@/features/databases/schema/property-values"
+import { defaultStatusOptions } from "@/features/databases/schema/property-catalog"
 import { TaskDatabaseListAdapter } from "../components/task-database-list-adapter"
 import { getDatabaseEmoji } from "@zilobase/features/databases"
 import {

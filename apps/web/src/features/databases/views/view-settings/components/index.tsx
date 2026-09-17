@@ -32,7 +32,7 @@ import {
   PopoverTrigger,
 } from "@/shared/ui/popover";
 
-import { getDatabasePropertyType } from "../../../properties/property-catalog";
+import { getDatabasePropertyType } from "../../../schema/property-catalog";
 import {
   getDatabaseViewIcon,
   getPropertyHiddenForView,

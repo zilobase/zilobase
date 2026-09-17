@@ -8,7 +8,7 @@ import {
   usePageNavigation,
   usePageAccessLevel,
 } from "@zilobase/features/pages/react";
-import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata";
+import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata";
 import { buildPrimaryAttachment } from "./components/elements/context-attach-menu";
 import { usePageAiContext } from "../context/use-page-ai-context";
 

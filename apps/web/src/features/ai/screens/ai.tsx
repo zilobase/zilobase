@@ -5,7 +5,7 @@ import {
 import {
   useOpenEmbeddedPage,
 } from "@/features/pages/pane/use-open-embedded-page";
-import { DatabaseMainPane } from "@/features/databases/screens/index";
+import { DatabaseMainPane } from "@/features/databases/core/index";
 import { PageEditorPane } from "@/features/pages/pane/page-editor-pane";
 import { AgentChatWorkspace } from "../conversations/components/agent-chat-workspace";
 

@@ -10,7 +10,7 @@ import { toast } from "sonner"
 import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
 import { useUpdatePage } from "@zilobase/features/pages/react";
 
-import { serializePropertyValue } from "../../../properties/property-values"
+import { serializePropertyValue } from "../../../schema/property-values"
 import { getDatabaseGroupMoveValue } from "../../../interactions/database-group-values"
 import {
   getDatabasePageDragPayload,

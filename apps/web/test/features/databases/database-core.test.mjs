@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("database block helpers preserve normal and setup attributes", async () => {
     const utils = await loadModule(
-      "/src/features/databases/embedding/database-block-content.ts"
+      "/src/features/databases/core/database-block-content.ts"
     )
 
     assert.deepEqual(utils.createDatabaseSetupBlockContent("database-1"), [

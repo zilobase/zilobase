@@ -19,7 +19,7 @@ import { type DatabasePresenceCollaborator } from "@zilobase/features/databases"
 import { useDatabaseRealtime } from "@zilobase/features/databases/react";
 import { useSession } from "@zilobase/features/auth/react";
 
-import type { DatabasePropertyValue } from "../../properties/property-values"
+import type { DatabasePropertyValue } from "../../schema/property-values"
 import type {
   DatabasePropertyListItem,
   DatabaseSelectOption,

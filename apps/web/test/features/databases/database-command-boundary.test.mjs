@@ -25,7 +25,7 @@ export function register({ assert, loadModule, sourcePath, test }) {
   })
 
   test('view commands report clipboard outcomes and date-property failure through supplied feedback', async () => {
-    const { getDatabaseViewCommands } = await loadModule('/src/features/databases/commands/database-view-commands.ts')
+    const { getDatabaseViewCommands } = await loadModule('/src/features/databases/records/view-commands.ts')
     const events = []
     let dateCallbacks
     const mutation = { isPending: false, mutate() {}, async mutateAsync() {} }

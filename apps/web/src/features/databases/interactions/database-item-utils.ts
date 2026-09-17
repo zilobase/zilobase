@@ -4,13 +4,13 @@ import {
   toStringArray,
   toTrimmedStringArray,
   type DatabasePropertyValue,
-} from "../properties/property-values"
+} from "../schema/property-values"
 import {
   evaluateDatabaseFilter,
   evaluateDatabaseFilters,
   type DatabasePredicateContext,
 } from "@zilobase/features/databases/filter"
-import { getReadOnlyTimePropertyRawValue } from "../properties/model/read-only-time-property"
+import { getReadOnlyTimePropertyRawValue } from "../schema/model/read-only-time-property"
 import type {
   DatabaseFilterItemConfig,
   DatabaseSortConfig,

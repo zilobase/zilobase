@@ -42,7 +42,7 @@ import {
   useLinkDatabaseDataSource,
   useUpdateDataSource,
 } from "@zilobase/features/databases/react";
-import { useDatabaseMetadata } from "../../hooks/use-database-metadata"
+import { useDatabaseMetadata } from "../../access/use-database-metadata"
 import { usePageNavigation } from "@zilobase/features/pages/react";
 
 import {
@@ -64,7 +64,7 @@ import {
   getDatabaseViewTypePresentation,
   type DatabaseViewType,
 } from "../../views/view-settings/model/view-type-options";
-import { serializePropertyValue } from "../../properties/property-values";
+import { serializePropertyValue } from "../../schema/property-values";
 
 type SetupView = "main" | "link";
 

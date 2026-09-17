@@ -31,7 +31,7 @@ import {
 } from "@zilobase/features/user-settings/react";
 
 import { useLayoutEditor } from "@/features/pages/layout";
-import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
+import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata"
 
 import {
   getPrimaryPageParentId,

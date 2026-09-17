@@ -1,4 +1,4 @@
-import { serializePropertyValue } from "../../../properties/property-values"
+import { serializePropertyValue } from "../../../schema/property-values"
 import { getDatabaseGroupMoveValue } from "../../../interactions/database-group-values"
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
 import {

@@ -19,7 +19,7 @@ import {
 import { Switch } from "@/shared/ui/switch";
 import { cn } from "@/shared/lib/utils";
 
-import { getDatabasePropertyType } from "../../../properties/property-catalog";
+import { getDatabasePropertyType } from "../../../schema/property-catalog";
 import { NameColumnGlyph } from "../../../interactions/name-column-glyph";
 import { getPropertyHiddenForView } from "../../model/database-view-config";
 import { DatabaseChartSettingsSection } from "./chart-settings";

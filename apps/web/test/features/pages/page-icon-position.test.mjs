@@ -18,8 +18,8 @@ export function register({ assert, loadModule, readSource, test }) {
 
   test("top icons use action-row spacing and database icons stay inline", async () => {
     const [metadataSource, databaseSource, pageEditorSource] = await Promise.all([
-      readSource("/src/features/databases/components/page-metadata.tsx"),
-      readSource("/src/features/databases/screens/database.tsx"),
+      readSource("/src/features/databases/access/page-metadata.tsx"),
+      readSource("/src/features/databases/core/database-screen.tsx"),
       readSource("/src/features/pages/pane/page-editor-pane.tsx"),
     ])
 

@@ -1,0 +1,997 @@
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from "react"
+import { ImagePlus, MessageSquare, SmilePlus, X } from "@/shared/components/icons"
+
+import { Button } from "@/shared/ui/button"
+import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker"
+import { PageIconDisplay } from "@/features/pages/index"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/shared/ui/popover"
+
+import { usePageEditorComments } from "@/features/comments/index"
+import { useSession } from "@zilobase/features/auth/react";
+import { type DatabasePresenceCollaborator } from "@zilobase/features/databases";
+import { useDatabaseRealtime } from "@zilobase/features/databases/react";
+import {
+  useUpdatePagePropertyValue,
+  usePagePersonAccessTargets,
+  usePageProperties,
+} from "@zilobase/features/pages/react";
+import { usePageCommentsSnapshot } from "@/features/comments/index"
+import type {
+  PageIconPosition,
+  PageLayoutConfig,
+  PagePropertyPresenceTarget,
+} from "@zilobase/features/pages"
+import {
+  formatCommentButtonLabel,
+  PageCommentThread,
+} from "@/features/comments/index"
+
+import { ImageSourcePicker } from "@/features/pages/images/image-source-picker"
+import { buildRandomCoverGalleryDataUrl } from "@/features/pages/images/cover-gallery"
+
+import { getDatabasePropertyType } from "../schema/property-catalog"
+import {
+  type DatabasePropertyValue,
+  parsePropertyValue,
+  serializePropertyValue,
+} from "../schema/property-values"
+import { CollaborationPresence } from "@/features/editor/collaboration/collaboration-presence"
+import type { CollaborationPresenceUser } from "@/features/editor/collaboration/collaboration-presence"
+import { PageMetadataProperties } from "./page-metadata-properties"
+
+export type PageMetadataHandle = {
+  focusTitleEnd: () => boolean
+}
+
+type PageMetadataProps = {
+  afterHeading?: ReactNode
+  allowIconPositionChange?: boolean
+  compact?: boolean
+  compactSpacing?: "default" | "comfortable"
+  contentClassName?: string
+  collaborationUsers?: CollaborationPresenceUser[]
+  cover?: string
+  databaseId?: string | null
+  description?: string
+  descriptionInitiallyHidden?: boolean
+  descriptionPlaceholder?: string
+  editable?: boolean
+  enableComments?: boolean
+  forceDiscussionsExpanded?: boolean
+  headingLabel?: string
+  icon?: string
+  iconPosition?: PageIconPosition
+  layoutConfig?: PageLayoutConfig
+  layoutPropertyId?: string
+  layoutSection?: "heading" | "properties" | "discussions"
+  onCoverChange?: (cover: string) => void
+  onDescriptionBlur?: () => void
+  onDescriptionChange?: (description: string) => void
+  onIconChange?: (icon: string) => void
+  onIconPositionChange?: (position: PageIconPosition) => void
+  onOpenPage?: (pageId: string) => void
+  onTitleEnter?: () => void
+  onTitleBlur?: () => void
+  onTitleChange?: (title: string) => void
+  workspaceId?: string | null
+  title?: string
+  titlePrefix?: ReactNode
+  titlePlaceholder?: string
+  pageId?: string | null
+  ref?: Ref<PageMetadataHandle>
+}
+
+function PageDatabaseRealtimeSubscription({
+  activePropertyId,
+  editable,
+  enabled,
+  onPresenceChange,
+  target,
+}: {
+  activePropertyId: string | null
+  editable: boolean
+  enabled: boolean
+  onPresenceChange: (
+    databaseId: string,
+    presence: Record<string, DatabasePresenceCollaborator[]> | null,
+  ) => void
+  target: PagePropertyPresenceTarget
+}) {
+  const presence =
+    activePropertyId && target.propertyIds.includes(activePropertyId)
+    ? {
+        columnKey: activePropertyId,
+        rowId: target.rowId,
+        viewId: null,
+      }
+    : null
+  const realtime = useDatabaseRealtime(target.databaseId, {
+    enabled,
+    presence,
+    publishPresence: editable,
+  })
+
+  useEffect(() => {
+    onPresenceChange(target.databaseId, realtime.cellPresenceByKey)
+  }, [onPresenceChange, realtime.cellPresenceByKey, target.databaseId])
+
+  useEffect(
+    () => () => onPresenceChange(target.databaseId, null),
+    [onPresenceChange, target.databaseId],
+  )
+
+  return null
+}
+
+function resizeTitleTextarea(
+  titleElement: HTMLTextAreaElement,
+  titleRow: HTMLDivElement,
+) {
+  if (titleRow.clientWidth < 64) {
+    return
+  }
+
+  titleElement.style.height = "0px"
+  titleElement.style.height = `${titleElement.scrollHeight}px`
+}
+
+export function PageMetadata({
+  afterHeading,
+  allowIconPositionChange = true,
+  compact = false,
+  compactSpacing = "default",
+  collaborationUsers = [],
+  contentClassName,
+  cover: coverProp,
+  databaseId,
+  description: descriptionProp,
+  descriptionInitiallyHidden = false,
+  descriptionPlaceholder = "Description (optional)",
+  editable = true,
+  enableComments = true,
+  forceDiscussionsExpanded = false,
+  headingLabel,
+  icon: iconProp,
+  iconPosition: iconPositionProp,
+  layoutConfig,
+  layoutPropertyId,
+  layoutSection,
+  onCoverChange,
+  onDescriptionBlur,
+  onDescriptionChange,
+  onIconChange,
+  onIconPositionChange,
+  onOpenPage,
+  onTitleEnter,
+  onTitleBlur,
+  onTitleChange,
+  workspaceId,
+  title: titleProp,
+  titlePrefix,
+  titlePlaceholder,
+  pageId,
+  ref,
+}: PageMetadataProps) {
+  const [coverOpen, setCoverOpen] = useState(false)
+  const [iconOpen, setIconOpen] = useState(false)
+  const [localCover, setLocalCover] = useState("")
+  const [localIcon, setLocalIcon] = useState("")
+  const [localIconPosition, setLocalIconPosition] =
+    useState<PageIconPosition>("top")
+  const [localDescription, setLocalDescription] = useState("")
+  const [localTitle, setLocalTitle] = useState("")
+  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [draftValues, setDraftValues] = useState<
+    Record<string, DatabasePropertyValue>
+  >({})
+  const [activePropertyId, setActivePropertyId] = useState<string | null>(null)
+  const [presenceByDatabase, setPresenceByDatabase] = useState<
+    Record<string, Record<string, DatabasePresenceCollaborator[]>>
+  >({})
+  const titleRowRef = useRef<HTMLDivElement | null>(null)
+  const titleRef = useRef<HTMLTextAreaElement | null>(null)
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const descriptionRowRef = useRef<HTMLDivElement | null>(null)
+  const descriptionRef = useRef<HTMLTextAreaElement | null>(null)
+  const { editorCommentsOpenRequest } = usePageEditorComments()
+  const { data: propertyPayload } = usePageProperties(pageId, {
+    databaseId,
+  })
+  const needsPersonAccessTargets = useMemo(
+    () =>
+      (propertyPayload?.properties ?? []).some(
+        (property) => property.type === "person",
+      ),
+    [propertyPayload?.properties],
+  )
+  const { data: accessTargets } = usePagePersonAccessTargets(pageId, {
+    enabled: needsPersonAccessTargets,
+  })
+  const { data: session } = useSession()
+  const presenceTargets = propertyPayload?.presenceTargets ?? []
+  const updateDatabasePresence = useCallback(
+    (
+    realtimeDatabaseId: string,
+    presence: Record<string, DatabasePresenceCollaborator[]> | null,
+  ) => {
+    setPresenceByDatabase((current) => {
+      if (presence === null) {
+        if (!(realtimeDatabaseId in current)) return current
+
+        const next = { ...current }
+        delete next[realtimeDatabaseId]
+        return next
+      }
+
+      if (current[realtimeDatabaseId] === presence) return current
+
+      return { ...current, [realtimeDatabaseId]: presence }
+    })
+    },
+    [],
+  )
+  const propertyPresenceById = useMemo(() => {
+    const result: Record<string, DatabasePresenceCollaborator[]> = {}
+
+    for (const target of presenceTargets) {
+      const databasePresence = presenceByDatabase[target.databaseId]
+
+      for (const propertyId of target.propertyIds) {
+        const collaborators =
+          databasePresence?.[`${target.rowId}:${propertyId}`] ?? []
+        const existing = result[propertyId] ?? []
+
+        result[propertyId] = [
+          ...existing,
+          ...collaborators.filter(
+            (collaborator) =>
+              !existing.some((item) => item.user.id === collaborator.user.id),
+          ),
+        ]
+      }
+    }
+
+    return result
+  }, [presenceByDatabase, presenceTargets])
+  const setPropertyActive = useCallback(
+    (propertyId: string, active: boolean) => {
+    setActivePropertyId((current) =>
+      active ? propertyId : current === propertyId ? null : current,
+    )
+    },
+    [],
+  )
+  const commentsEnabled = Boolean(
+    enableComments &&
+    layoutConfig?.discussionsVisible !== false &&
+    pageId &&
+    session?.user,
+  )
+  const commentsSnapshot = usePageCommentsSnapshot(
+    commentsEnabled ? pageId : null,
+  )
+  const updatePropertyValue = useUpdatePagePropertyValue()
+  const cover = coverProp ?? localCover
+  const description = descriptionProp ?? localDescription
+  const icon = iconProp ?? localIcon
+  const iconPosition = iconPositionProp ?? localIconPosition
+  const title = titleProp ?? localTitle
+  const hasDescription =
+    descriptionProp !== undefined || onDescriptionChange !== undefined
+  const showDescription = hasDescription && (!descriptionInitiallyHidden || !!description || descriptionExpanded)
+  const metadataSubject = headingLabel ?? "page"
+  const metadataSubjectLowercase = metadataSubject.toLowerCase()
+  const unresolvedThreads = useMemo(
+    () =>
+      commentsSnapshot.threads.filter(
+        (thread) => thread.kind === "page" && !thread.resolvedAt,
+      ),
+    [commentsSnapshot.threads],
+  )
+  const totalCommentCount = unresolvedThreads.reduce(
+    (sum, thread) => sum + thread.comments.length,
+    0,
+  )
+  const showHeading = !layoutSection || layoutSection === "heading"
+  const showProperties = !layoutSection || layoutSection === "properties"
+  const showDiscussions = !layoutSection || layoutSection === "discussions"
+  const showCommentsSection =
+    forceDiscussionsExpanded || commentsOpen || unresolvedThreads.length > 0
+  const propertyValues = useMemo(() => {
+    const values: Record<string, DatabasePropertyValue> = {}
+
+    for (const value of propertyPayload?.values ?? []) {
+      const property = propertyPayload?.properties.find(
+        (item) => item.id === value.propertyId,
+      )
+      values[value.propertyId] = parsePropertyValue(value.value, property?.type)
+    }
+
+    return values
+  }, [propertyPayload?.properties, propertyPayload?.values])
+  const standalonePropertyIds = useMemo(
+    () =>
+      new Set(
+      (layoutConfig?.modules ?? [])
+        .filter((module) => module.type === "property" && module.propertyId)
+        .map((module) => module.propertyId as string),
+    ),
+    [layoutConfig?.modules],
+  )
+  const visibleProperties = useMemo(
+    () =>
+      [...(propertyPayload?.properties ?? [])]
+        .sort((left, right) => {
+      const leftIndex = layoutConfig?.propertyOrder.indexOf(left.id) ?? -1
+      const rightIndex = layoutConfig?.propertyOrder.indexOf(right.id) ?? -1
+          return (
+            (leftIndex < 0 ? Number.MAX_SAFE_INTEGER : leftIndex) -
+        (rightIndex < 0 ? Number.MAX_SAFE_INTEGER : rightIndex)
+          )
+        })
+        .filter((property) => {
+      const setting = layoutConfig?.propertySettings[property.id]
+      const value = propertyValues[property.id]
+      if (setting?.display === "hidden") return false
+          if (
+            setting?.display === "hide_when_empty" &&
+            (value === "" ||
+              value === null ||
+              value === undefined ||
+              (Array.isArray(value) && value.length === 0))
+          )
+            return false
+          return (
+            !layoutConfig?.pinnedPropertyIds.includes(property.id) &&
+            !standalonePropertyIds.has(property.id)
+          )
+    }),
+    [
+      layoutConfig?.pinnedPropertyIds,
+      layoutConfig?.propertyOrder,
+      layoutConfig?.propertySettings,
+      propertyPayload?.properties,
+      propertyValues,
+      standalonePropertyIds,
+    ],
+  )
+  const personOptions = useMemo(
+    () =>
+      (accessTargets?.members ?? []).map((member) => ({
+        id: member.id,
+        name: member.name || member.email,
+        suffix: member.id === session?.user?.id ? "(you)" : undefined,
+      })),
+    [accessTargets?.members, session?.user?.id],
+  )
+
+  const commitPropertyValue = (
+    propertyId: string,
+    propertyType: string,
+    value: DatabasePropertyValue,
+  ) => {
+    if (!pageId || !editable) {
+      return
+    }
+
+    setDraftValues((drafts) => ({
+      ...drafts,
+      [propertyId]: value,
+    }))
+
+    updatePropertyValue.mutate(
+      {
+        propertyId,
+        value: serializePropertyValue(propertyType, value),
+        pageId,
+      },
+      {
+        onSuccess: () => {
+          setDraftValues((drafts) => {
+            const nextDrafts = { ...drafts }
+
+            delete nextDrafts[propertyId]
+
+            return nextDrafts
+          })
+        },
+      },
+    )
+  }
+
+  useEffect(() => {
+    setCommentsOpen(false)
+    setActivePropertyId(null)
+  }, [pageId])
+
+  useEffect(() => {
+    if (editorCommentsOpenRequest > 0) {
+      setCommentsOpen(true)
+    }
+  }, [editorCommentsOpenRequest])
+
+  const updateCover = (nextCover: string) => {
+    if (!editable) {
+      return
+    }
+
+    onCoverChange?.(nextCover)
+
+    if (coverProp === undefined) {
+      setLocalCover(nextCover)
+    }
+  }
+
+  const updateDescription = (nextDescription: string) => {
+    if (!editable) {
+      return
+    }
+
+    onDescriptionChange?.(nextDescription)
+
+    if (descriptionProp === undefined) {
+      setLocalDescription(nextDescription)
+    }
+  }
+
+  const updateIcon = (nextIcon: string) => {
+    if (!editable) {
+      return
+    }
+
+    onIconChange?.(nextIcon)
+
+    if (iconProp === undefined) {
+      setLocalIcon(nextIcon)
+    }
+  }
+
+  const updateIconPosition = (nextPosition: PageIconPosition) => {
+    if (!editable) {
+      return
+    }
+
+    onIconPositionChange?.(nextPosition)
+
+    if (iconPositionProp === undefined) {
+      setLocalIconPosition(nextPosition)
+    }
+  }
+
+  const updateTitle = (nextTitle: string) => {
+    if (!editable) {
+      return
+    }
+
+    onTitleChange?.(nextTitle)
+
+    if (titleProp === undefined) {
+      setLocalTitle(nextTitle)
+    }
+  }
+
+  useLayoutEffect(() => {
+    const titleElement = titleRef.current
+    const titleRow = titleRowRef.current
+
+    if (titleElement && titleRow) {
+      resizeTitleTextarea(titleElement, titleRow)
+    }
+  }, [title])
+
+  useLayoutEffect(() => {
+    const descriptionElement = descriptionRef.current
+    const descriptionRow = descriptionRowRef.current
+
+    if (descriptionElement && descriptionRow) {
+      resizeTitleTextarea(descriptionElement, descriptionRow)
+    }
+  }, [description])
+
+  useEffect(() => {
+    const titleElement = titleRef.current
+    const titleRow = titleRowRef.current
+
+    if (!titleElement || !titleRow) {
+      return
+    }
+
+    let resizeFrame = 0
+    let previousWidth = titleRow.clientWidth
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width ?? titleRow.clientWidth
+
+      if (width === previousWidth) {
+        return
+      }
+
+      previousWidth = width
+      cancelAnimationFrame(resizeFrame)
+      resizeFrame = requestAnimationFrame(() => {
+        resizeTitleTextarea(titleElement, titleRow)
+      })
+    })
+
+    observer.observe(titleRow)
+
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(resizeFrame)
+    }
+  }, [])
+
+  useEffect(() => {
+    const descriptionElement = descriptionRef.current
+    const descriptionRow = descriptionRowRef.current
+
+    if (!descriptionElement || !descriptionRow) {
+      return
+    }
+
+    let resizeFrame = 0
+    let previousWidth = descriptionRow.clientWidth
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width ?? descriptionRow.clientWidth
+
+      if (width === previousWidth) {
+        return
+      }
+
+      previousWidth = width
+      cancelAnimationFrame(resizeFrame)
+      resizeFrame = requestAnimationFrame(() => {
+        resizeTitleTextarea(descriptionElement, descriptionRow)
+      })
+    })
+
+    observer.observe(descriptionRow)
+
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(resizeFrame)
+    }
+  }, [hasDescription])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+    focusTitleEnd: () => {
+      const titleElement = titleRef.current
+
+      if (!showHeading || !titleElement) return false
+
+      titleElement.focus()
+      titleElement.setSelectionRange(
+        titleElement.value.length,
+        titleElement.value.length,
+      )
+      return true
+    },
+    }),
+    [showHeading],
+  )
+
+  const iconPicker =
+    icon && editable ? (
+    <div className="group/icon relative shrink-0">
+      <Popover open={iconOpen} onOpenChange={setIconOpen}>
+        <PopoverTrigger asChild>
+          <button
+              aria-label={`Change ${metadataSubjectLowercase} icon`}
+            className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex items-center justify-center rounded-md transition-colors hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none`}
+            disabled={!editable}
+            type="button"
+          >
+            <PageIconDisplay
+              size={iconPosition === "top" ? "2xl" : "xl"}
+              value={icon}
+            />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="w-auto gap-0 overflow-hidden p-0"
+          onMouseDown={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+          sideOffset={6}
+        >
+          <IconEmojiPicker
+            iconPosition={iconPosition}
+            onEmojiSelect={(emoji) => {
+              updateIcon(emoji)
+              setIconOpen(false)
+            }}
+            onIconSelect={(svg) => {
+              updateIcon(svg)
+              setIconOpen(false)
+            }}
+            onIconPositionChange={
+              allowIconPositionChange ? updateIconPosition : undefined
+            }
+          />
+        </PopoverContent>
+      </Popover>
+      <button
+          aria-label={`Remove ${metadataSubjectLowercase} icon`}
+        className="absolute -right-1 -top-1 hidden size-5 items-center justify-center rounded-full border bg-surface-canvas text-content-secondary shadow-sm transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral focus-visible:flex focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none group-focus-within/metadata:flex group-hover/icon:flex group-hover/metadata:flex [&_svg]:size-3"
+        onClick={() => {
+          updateIcon("")
+          setIconOpen(false)
+        }}
+        disabled={!editable}
+        type="button"
+      >
+        <X />
+      </button>
+    </div>
+  ) : !icon && editable ? (
+    <Popover open={iconOpen} onOpenChange={setIconOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          className="text-content-secondary"
+          disabled={!editable}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          <SmilePlus />
+            {headingLabel ? `Add ${metadataSubjectLowercase} icon` : "Add icon"}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-auto gap-0 overflow-hidden p-0"
+        onMouseDown={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+        sideOffset={6}
+      >
+        <IconEmojiPicker
+          iconPosition={iconPosition}
+          onEmojiSelect={(emoji) => {
+            updateIcon(emoji)
+            setIconOpen(false)
+          }}
+          onIconSelect={(svg) => {
+            updateIcon(svg)
+            setIconOpen(false)
+          }}
+          onIconPositionChange={
+            allowIconPositionChange ? updateIconPosition : undefined
+          }
+        />
+      </PopoverContent>
+    </Popover>
+  ) : null
+
+  const pageIcon = icon ? (
+    editable ? (
+      iconPicker
+    ) : (
+      <div
+        className={`${iconPosition === "top" ? "size-20 text-6xl" : "size-11 text-3xl"} flex shrink-0 items-center justify-center rounded-md`}
+      >
+        <PageIconDisplay
+          size={iconPosition === "top" ? "2xl" : "xl"}
+          value={icon}
+        />
+      </div>
+    )
+  ) : null
+
+  const coverPickerContent = (
+    <PopoverContent
+      align="start"
+      className="max-h-[min(40rem,calc(100vh-6rem))] w-[min(28rem,calc(100vw-2rem))] overflow-y-auto p-4"
+      onMouseDown={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+      side="bottom"
+      sideOffset={8}
+    >
+      <ImageSourcePicker
+        databaseId={databaseId}
+        enableCoverGallery
+        initialCover={cover}
+        initialLinkUrl={cover.startsWith("data:") ? "" : cover}
+        onGalleryChange={updateCover}
+        onSelect={(url) => {
+          updateCover(url)
+          setCoverOpen(false)
+        }}
+        pageId={pageId}
+        workspaceId={workspaceId}
+      />
+    </PopoverContent>
+  )
+
+  const showMetadataActions =
+    (hasDescription && !showDescription && editable) ||
+    (!icon && editable) ||
+    (!cover && editable) ||
+    (commentsEnabled &&
+      !layoutSection &&
+      !showCommentsSection &&
+      (editable || totalCommentCount > 0))
+
+  const metadataActionVisibilityClassName =
+    "opacity-0 transition-opacity pointer-events-none group-focus-within/metadata:opacity-100 group-focus-within/metadata:pointer-events-auto group-has-[[data-state=open]]/metadata:opacity-100 group-has-[[data-state=open]]/metadata:pointer-events-auto group-hover/metadata:opacity-100 group-hover/metadata:pointer-events-auto"
+
+  return (
+    <section className="group/metadata relative" contentEditable={false}>
+      {presenceTargets.map((target) => (
+        <PageDatabaseRealtimeSubscription
+          activePropertyId={activePropertyId}
+          editable={editable}
+          enabled={Boolean(session?.user)}
+          key={`${target.databaseId}:${target.rowId}`}
+          onPresenceChange={updateDatabasePresence}
+          target={target}
+        />
+      ))}
+      {showHeading && cover ? (
+        <div className="relative h-[200px] w-full overflow-hidden bg-surface-muted">
+          <img alt="Cover" className="size-full object-cover" src={cover} />
+          {editable ? (
+            <div className="absolute right-3 top-3 flex items-center gap-1 opacity-0 transition-opacity group-focus-within/metadata:opacity-100 group-hover/metadata:opacity-100">
+              <Popover onOpenChange={setCoverOpen} open={coverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    className="bg-effect-backdrop shadow-sm backdrop-blur"
+                    disabled={!editable}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <ImagePlus />
+                    Change cover
+                  </Button>
+                </PopoverTrigger>
+                {coverPickerContent}
+              </Popover>
+              <Button
+                aria-label={`Remove ${metadataSubjectLowercase} cover`}
+                className="bg-effect-backdrop shadow-sm backdrop-blur focus-visible:opacity-100"
+                disabled={!editable}
+                onClick={() => updateCover("")}
+                size="icon-sm"
+                type="button"
+                variant="outline"
+              >
+                <X />
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {showHeading && collaborationUsers.length > 0 ? (
+        <CollaborationPresence
+          className={
+            compact
+              ? "absolute right-4 top-4"
+              : cover
+                ? "absolute right-5 top-[calc(12.5rem+1.5rem)] sm:right-8 md:top-[calc(12.5rem+2rem)]"
+                : "absolute right-5 top-6 sm:right-8 md:top-8"
+          }
+          users={collaborationUsers}
+        />
+      ) : null}
+
+      <div
+        data-page-metadata-content
+        className={`${contentClassName ?? ""} relative ${compact ? (compactSpacing === "comfortable" ? "px-8 py-5" : "px-4 py-4") : "px-5 pt-1 pb-0 sm:px-8 md:px-20 lg:px-24"}`}
+      >
+        {showHeading && iconPosition === "top" && pageIcon ? (
+          <div
+            className={
+              cover
+              ? `${compact && compactSpacing === "comfortable" ? "-mt-5" : "-mt-4"} relative z-10 mb-1 w-fit -translate-y-1/2`
+                : "mb-1 w-fit"
+            }
+          >
+            {pageIcon}
+          </div>
+        ) : null}
+
+        {showHeading && showMetadataActions ? (
+          <div className="relative mb-1 min-h-8">
+            <div
+              className={`absolute inset-0 flex flex-wrap items-center gap-2 ${metadataActionVisibilityClassName}`}
+            >
+            {!icon ? iconPicker : null}
+            {hasDescription && !showDescription && editable && (
+              <Button className="text-content-secondary" size="sm" type="button" variant="ghost"
+                onClick={() => { setDescriptionExpanded(true); requestAnimationFrame(() => descriptionRef.current?.focus()) }}>
+                <MessageSquare />Add {metadataSubjectLowercase} description
+              </Button>
+            )}
+            {!cover && editable ? (
+              <Button
+                className="text-content-secondary"
+                disabled={!editable}
+                onClick={() => updateCover(buildRandomCoverGalleryDataUrl())}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                <ImagePlus />
+                {headingLabel
+                  ? `Add ${metadataSubjectLowercase} cover`
+                  : "Add cover"}
+              </Button>
+            ) : null}
+              {commentsEnabled &&
+              !layoutSection &&
+            !showCommentsSection &&
+            (editable || totalCommentCount > 0) ? (
+              <Button
+                className="text-content-secondary"
+                onClick={() => {
+                  setCommentsOpen((open) => !open)
+                  if (totalCommentCount === 0) {
+                    setCommentsOpen(true)
+                  }
+                }}
+                size="sm"
+                type="button"
+                variant="ghost"
+              >
+                <MessageSquare />
+                {formatCommentButtonLabel(totalCommentCount)}
+              </Button>
+            ) : null}
+            </div>
+          </div>
+        ) : null}
+
+        {showHeading ? (
+          <div className="flex items-start gap-3" ref={titleRowRef}>
+            {iconPosition === "inline" ? pageIcon : null}
+            {titlePrefix ? (
+              <span className="flex min-h-10 shrink-0 items-center text-content-secondary">
+                {titlePrefix}
+              </span>
+            ) : null}
+            <textarea
+              aria-label={headingLabel ? `${headingLabel} title` : "Page title"}
+            className="min-h-10 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-4xl font-semibold leading-tight tracking-normal whitespace-pre-wrap text-balance text-content-primary shadow-none outline-none placeholder:text-content-secondary placeholder:opacity-60 focus-visible:ring-0 dark:bg-transparent"
+            onBlur={onTitleBlur}
+            onChange={(event) => updateTitle(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault()
+                event.currentTarget.blur()
+                onTitleEnter?.()
+              }
+            }}
+              placeholder={
+                titlePlaceholder ??
+                (headingLabel ? `${headingLabel} title` : "New page")
+              }
+            readOnly={!editable}
+            ref={titleRef}
+            rows={1}
+            value={title}
+          />
+          </div>
+        ) : null}
+
+        {showHeading && showDescription && (editable || description) ? (
+          <div className="mt-3 flex" ref={descriptionRowRef}>
+            <textarea
+              aria-label={
+                headingLabel
+                  ? `${headingLabel} description`
+                  : "Page description"
+              }
+              className="min-h-6 min-w-0 flex-1 resize-none overflow-hidden border-0 bg-transparent px-3 py-0 text-base leading-relaxed text-content-secondary shadow-none outline-none placeholder:text-content-secondary placeholder:opacity-60 focus-visible:ring-0 dark:bg-transparent"
+              onBlur={onDescriptionBlur}
+              onChange={(event) => updateDescription(event.target.value)}
+              placeholder={descriptionPlaceholder}
+              readOnly={!editable}
+              ref={descriptionRef}
+              rows={1}
+              value={description}
+            />
+          </div>
+        ) : null}
+
+        {showHeading && layoutConfig?.pinnedPropertyIds.length ? (
+          <div className="mt-3 flex flex-wrap gap-2 pl-3">
+            {layoutConfig.pinnedPropertyIds.flatMap((propertyId) => {
+              const property = propertyPayload?.properties.find(
+                (item) => item.id === propertyId,
+              )
+              if (!property) return []
+              const value = propertyValues[property.id]
+              const PropertyIcon = getDatabasePropertyType(property.type).icon
+              return [
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-md bg-surface-muted px-2 py-1 text-xs text-content-secondary"
+                  key={property.id}
+                >
+                  {layoutConfig.propertyIcons ? (
+                    <PropertyIcon className="size-3.5" />
+                  ) : null}
+                  <span>{property.name}</span>
+                  <span className="text-content-primary">
+                    {Array.isArray(value)
+                      ? value.join(", ")
+                      : String(value || "Empty")}
+                  </span>
+                </span>,
+              ]
+            })}
+          </div>
+        ) : null}
+
+        {showDiscussions && commentsEnabled && showCommentsSection ? (
+          <div className="mt-6 space-y-0 pb-3">
+            {unresolvedThreads.length > 0 ? (
+              unresolvedThreads.map((thread, index) => (
+                <div
+                  className={
+                    index > 0 ? "mt-5 border-t border-stroke-default pt-4" : ""
+                  }
+                  key={thread.id}
+                >
+                  <PageCommentThread
+                    placeholder={index === 0 ? "Add a comment..." : "Reply..."}
+                    threadId={thread.id}
+                    pageId={pageId}
+                  />
+                </div>
+              ))
+            ) : (
+              <PageCommentThread
+                placeholder="Add a comment..."
+                pageId={pageId}
+              />
+            )}
+            <div className="mt-5 border-t border-stroke-default" />
+          </div>
+        ) : null}
+
+        {showProperties &&
+        (layoutPropertyId
+          ? propertyPayload?.properties.some(
+              (property) => property.id === layoutPropertyId,
+            )
+          : visibleProperties.length) ? (
+          <PageMetadataProperties
+            draftValues={draftValues}
+            editable={editable}
+            layoutConfig={layoutConfig}
+            layoutPropertyId={layoutPropertyId}
+            onCommit={commitPropertyValue}
+            onDraftValuesChange={setDraftValues}
+            onOpenPage={onOpenPage}
+            onPropertyActive={setPropertyActive}
+            pageId={pageId}
+            personOptions={personOptions}
+            presenceByProperty={propertyPresenceById}
+            propertyPayload={propertyPayload}
+            propertyValues={propertyValues}
+            title={title}
+            visibleProperties={visibleProperties}
+          />
+        ) : null}
+
+        {showHeading && afterHeading ? afterHeading : null}
+      </div>
+    </section>
+  )
+}

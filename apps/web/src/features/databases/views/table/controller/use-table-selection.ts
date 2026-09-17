@@ -7,7 +7,7 @@ import type { useUndoHistory } from "@/shared/shortcuts"
 
 import {
   type DatabasePropertyValue as DatabasePropertyValueType,
-} from "../../../properties/property-values";
+} from "../../../schema/property-values";
 
 import { areSerializedPropertyValuesEqual } from "../../../interactions/database-item-utils";
 

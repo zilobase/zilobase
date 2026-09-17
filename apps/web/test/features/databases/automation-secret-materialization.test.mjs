@@ -1,8 +1,8 @@
 export function register({ assert, loadModule, test }) {
   test('automation secrets materialize in order without mutating the editing draft', async () => {
-    const { materializeWebhookSecrets } = await loadModule('/src/features/databases/automations/definition/materialize-webhook-secrets.ts')
-    const { emptyDraft, buildDefinition } = await loadModule('/src/features/databases/automations/definition/automation-draft.ts')
-    const { createNotionActionDraft } = await loadModule('/src/features/databases/automations/actions/notion-action-model.ts')
+    const { materializeWebhookSecrets } = await loadModule('/src/features/automations/definition/materialize-webhook-secrets.ts')
+    const { emptyDraft, buildDefinition } = await loadModule('/src/features/automations/definition/automation-draft.ts')
+    const { createNotionActionDraft } = await loadModule('/src/features/automations/actions/notion-action-model.ts')
     const action = createNotionActionDraft('send_webhook', 'source-1')
     action.webhookHeaders = [
       { key: 'a', name: 'Authorization', secretId: '', value: 'first' },

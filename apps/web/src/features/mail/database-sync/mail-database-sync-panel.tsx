@@ -12,7 +12,7 @@ import {
   useCreateDatabase,
   useCreateDatabaseDataSource,
 } from "@zilobase/features/databases/react";
-import { useDatabaseMetadata } from "@/features/databases/hooks/use-database-metadata"
+import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata"
 import { usePageNavigation } from "@zilobase/features/pages/react";
 import { useQuery } from "@tanstack/react-query"
 import { toast } from "sonner"

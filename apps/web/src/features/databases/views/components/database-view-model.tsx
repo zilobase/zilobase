@@ -2,7 +2,7 @@ import { deriveDatabaseViewModel } from "../model/database-view-model.ts"
 import type { DatabaseFieldOption } from "../model/field-option"
 import type { DatabaseSearchableMenuOption } from "../menu-option-contracts"
 import { NameColumnGlyph } from "../../interactions/name-column-glyph"
-import { getDatabasePropertyType } from "../../properties/property-catalog"
+import { getDatabasePropertyType } from "../../schema/property-catalog"
 
 // Render field icons at the presentation boundary; row/config derivation is pure.
 export function getDatabaseViewModel(input: Parameters<typeof deriveDatabaseViewModel>[0]) {

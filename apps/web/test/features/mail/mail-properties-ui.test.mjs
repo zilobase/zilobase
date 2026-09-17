@@ -3,9 +3,9 @@ import { readMailFeatureSource } from "./mail-feature-source.mjs"
 export function register({ assert, readSource, readWorkspace, test }) {
   test("mail reuses data-source-neutral property controls", async () => {
     const [databaseAdd, picker, valueControl, panel] = await Promise.all([
-      readSource("/src/features/databases/properties/editors/add-database-property-menu.tsx"),
-      readSource("/src/features/databases/properties/shared/property-type-picker.tsx"),
-      readSource("/src/features/databases/properties/shared/property-value-control.tsx"),
+      readSource("/src/features/databases/schema/editors/add-database-property-menu.tsx"),
+      readSource("/src/features/databases/schema/shared/property-type-picker.tsx"),
+      readSource("/src/features/databases/schema/shared/property-value-control.tsx"),
       readSource("/src/features/mail/organization/mail-properties-panel.tsx"),
     ])
 

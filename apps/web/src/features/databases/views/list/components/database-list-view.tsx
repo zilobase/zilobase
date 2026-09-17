@@ -4,7 +4,7 @@ import { GripVertical, Plus } from "@/shared/components/icons"
 
 import { Checkbox } from "@/shared/ui/checkbox"
 import { DatabasePageLink } from "../../../interactions/database-page-link"
-import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
+import { DatabasePropertyValue } from "../../../schema/editors/database-property-value"
 import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
 import { DatabaseRecordWindowControl } from "../../components/database-record-window-control"
 import { useDatabaseListRowDrag } from "../controller/use-database-list-row-drag"

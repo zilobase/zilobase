@@ -3,7 +3,7 @@ import {
   getUndoableDatabaseCellFillChanges,
   type DatabaseCellFillHistoryChange,
 } from "./database-cell-fill"
-import type { DatabasePropertyValue } from "../properties/property-values"
+import type { DatabasePropertyValue } from "../schema/property-values"
 
 export function createCellEditHistoryAction({
   label, changes, readValues, savePropertyValue, runWithoutRecording,

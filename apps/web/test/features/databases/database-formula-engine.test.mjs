@@ -1,10 +1,10 @@
 export function register({ assert, loadModule, test }) {
   test("database formulas evaluate Notion-style property expressions", async () => {
     const { evaluateDatabaseFormula } = await loadModule(
-      "/src/features/databases/properties/formula/runtime/formula-evaluator.ts"
+      "/src/features/databases/schema/formula/runtime/formula-evaluator.ts"
     )
     const { formatFormulaValue } = await loadModule(
-      "/src/features/databases/properties/formula/formatting/formula-formatters.ts"
+      "/src/features/databases/schema/formula/formatting/formula-formatters.ts"
     )
     const context = createFormulaContext()
 
@@ -38,7 +38,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database formulas can reference other formula properties", async () => {
     const { evaluateDatabaseFormula } = await loadModule(
-      "/src/features/databases/properties/formula/runtime/formula-evaluator.ts"
+      "/src/features/databases/schema/formula/runtime/formula-evaluator.ts"
     )
     const context = createFormulaContext({
       extraProperties: [
@@ -62,10 +62,10 @@ export function register({ assert, loadModule, test }) {
 
   test("database formulas support variables and scoped list expressions", async () => {
     const { evaluateDatabaseFormula } = await loadModule(
-      "/src/features/databases/properties/formula/runtime/formula-evaluator.ts"
+      "/src/features/databases/schema/formula/runtime/formula-evaluator.ts"
     )
     const { formatFormulaValue } = await loadModule(
-      "/src/features/databases/properties/formula/formatting/formula-formatters.ts"
+      "/src/features/databases/schema/formula/formatting/formula-formatters.ts"
     )
     const context = createFormulaContext()
 
@@ -105,10 +105,10 @@ export function register({ assert, loadModule, test }) {
 
   test("database formulas support date, number, and list utility functions", async () => {
     const { evaluateDatabaseFormula } = await loadModule(
-      "/src/features/databases/properties/formula/runtime/formula-evaluator.ts"
+      "/src/features/databases/schema/formula/runtime/formula-evaluator.ts"
     )
     const { formatFormulaValue } = await loadModule(
-      "/src/features/databases/properties/formula/formatting/formula-formatters.ts"
+      "/src/features/databases/schema/formula/formatting/formula-formatters.ts"
     )
     const context = createFormulaContext()
 
@@ -148,7 +148,7 @@ export function register({ assert, loadModule, test }) {
 
   test("database formula parsing preserves precedence and rejects malformed tokens", async () => {
     const { evaluateDatabaseFormula } = await loadModule(
-      "/src/features/databases/properties/formula/runtime/formula-evaluator.ts"
+      "/src/features/databases/schema/formula/runtime/formula-evaluator.ts"
     )
     const context = createFormulaContext()
 

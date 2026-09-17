@@ -163,6 +163,7 @@ function aliasPlugin() {
             "features",
             "src",
             "databases",
+            "schema",
             "property-types.ts"
           ),
         })
@@ -178,14 +179,21 @@ function aliasPlugin() {
             "features",
             "src",
             "databases",
+            "schema",
             args.path.endsWith("/filter") ? "filter.ts" : "formula/index.ts"
           ),
         })
       )
       build.onResolve(
-        { filter: /^@zilobase\/features\/(databases\/appearance|user-settings\/sidebar-config|ai-chat\/settings-contract)$/ },
+        { filter: /^@zilobase\/features\/(databases\/views\/appearance|user-settings\/sidebar-config|ai-chat\/settings-contract)$/ },
         (args) => ({
           path: join(workspaceDir, "packages/features/src", `${args.path.slice("@zilobase/features/".length)}.ts`),
+        }),
+      )
+      build.onResolve(
+        { filter: /^@zilobase\/features\/databases\/appearance$/ },
+        (args) => ({
+          path: join(workspaceDir, "packages/features/src", "databases/views/appearance.ts"),
         }),
       )
       build.onResolve({ filter: /^@\// }, async (args) => ({

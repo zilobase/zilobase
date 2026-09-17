@@ -1,23 +1,23 @@
 export function register({ assert, readSource, test }) {
   const readAutomationManager = async () =>
     (await Promise.all([
-      readSource("/src/features/databases/automations/database-automation-manager.tsx"),
-      readSource("/src/features/databases/automations/use-automation-manager.ts"),
-      readSource("/src/features/databases/automations/automation-picker-controls.tsx"),
-      readSource("/src/features/databases/automations/definition/automation-builder.tsx"),
-      readSource("/src/features/databases/automations/definition/automation-trigger-controls.tsx"),
-      readSource("/src/features/databases/automations/definition/automation-draft.ts"),
-      readSource("/src/features/databases/automations/definition/schedule-model.ts"),
-      readSource("/src/features/databases/automations/definition/materialize-webhook-secrets.ts"),
-      readSource("/src/features/databases/automations/actions/property-action-controls.tsx"),
-      readSource("/src/features/databases/automations/actions/property-action-model.ts"),
-      readSource("/src/features/databases/automations/database-automation-screens.tsx"),
-      readSource("/src/features/databases/automations/definition/automation-schedule.tsx"),
+      readSource("/src/features/automations/database-automation-manager.tsx"),
+      readSource("/src/features/automations/use-automation-manager.ts"),
+      readSource("/src/features/automations/automation-picker-controls.tsx"),
+      readSource("/src/features/automations/definition/automation-builder.tsx"),
+      readSource("/src/features/automations/definition/automation-trigger-controls.tsx"),
+      readSource("/src/features/automations/definition/automation-draft.ts"),
+      readSource("/src/features/automations/definition/schedule-model.ts"),
+      readSource("/src/features/automations/definition/materialize-webhook-secrets.ts"),
+      readSource("/src/features/automations/actions/property-action-controls.tsx"),
+      readSource("/src/features/automations/actions/property-action-model.ts"),
+      readSource("/src/features/automations/database-automation-screens.tsx"),
+      readSource("/src/features/automations/definition/automation-schedule.tsx"),
     ])).join("\n")
   const readNotionActions = async () =>
     (await Promise.all([
-      readSource("/src/features/databases/automations/actions/notion-action-builder.tsx"),
-      readSource("/src/features/databases/automations/actions/notion-action-model.ts"),
+      readSource("/src/features/automations/actions/notion-action-builder.tsx"),
+      readSource("/src/features/automations/actions/notion-action-model.ts"),
     ])).join("\n")
   test("database automation release is server-capability gated and source scoped", async () => {
     const [manager, toolbar] = await Promise.all([

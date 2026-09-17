@@ -18,7 +18,7 @@ import {
   getTimelineDateProperty,
 } from "../timeline/model/database-timeline-config"
 import { getDatabaseChartSettings } from "../chart/model/database-chart-config"
-import { getPropertyValue, type DatabasePropertyValue } from "../../properties/property-values"
+import { getPropertyValue, type DatabasePropertyValue } from "../../schema/property-values"
 import {
   getDatabaseFilterOperatorLabel,
   getDatabaseConditionalColors,

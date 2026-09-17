@@ -98,26 +98,26 @@ Every direct shared-menu consumer found in the web application is listed below.
 
 ### Databases
 
-- [features/databases/automations/actions/notion-action-builder.tsx](../../apps/web/src/features/databases/automations/actions/notion-action-builder.tsx) — select
-- [features/databases/automations/database-automation-manager.tsx](../../apps/web/src/features/databases/automations/database-automation-manager.tsx) — dropdrawer
-- [features/databases/automations/database-automation-screens.tsx](../../apps/web/src/features/databases/automations/database-automation-screens.tsx) — dropdrawer
-- [features/databases/automations/definition/automation-select.tsx](../../apps/web/src/features/databases/automations/definition/automation-select.tsx) — select
-- [features/databases/properties/configuration/index.tsx](../../apps/web/src/features/databases/properties/configuration/index.tsx) — dropdrawer
-- [features/databases/properties/configuration/number/number-property-settings.tsx](../../apps/web/src/features/databases/properties/configuration/number/number-property-settings.tsx) — dropdrawer
-- [features/databases/properties/configuration/relation/relation-property-settings.tsx](../../apps/web/src/features/databases/properties/configuration/relation/relation-property-settings.tsx) — dropdrawer
-- [features/databases/properties/configuration/rollup/rollup-property-settings.tsx](../../apps/web/src/features/databases/properties/configuration/rollup/rollup-property-settings.tsx) — dropdrawer, select
-- [features/databases/properties/configuration/select/select-property-settings.tsx](../../apps/web/src/features/databases/properties/configuration/select/select-property-settings.tsx) — dropdrawer
-- [features/databases/properties/configuration/shared/option-editor-submenu.tsx](../../apps/web/src/features/databases/properties/configuration/shared/option-editor-submenu.tsx) — dropdrawer
-- [features/databases/properties/configuration/shared/property-setting-submenu.tsx](../../apps/web/src/features/databases/properties/configuration/shared/property-setting-submenu.tsx) — dropdrawer
-- [features/databases/properties/configuration/status/status-property-settings.tsx](../../apps/web/src/features/databases/properties/configuration/status/status-property-settings.tsx) — dropdrawer
-- [features/databases/properties/configuration/url/url-property-settings.tsx](../../apps/web/src/features/databases/properties/configuration/url/url-property-settings.tsx) — dropdrawer
-- [features/databases/properties/editors/add-database-property-menu.tsx](../../apps/web/src/features/databases/properties/editors/add-database-property-menu.tsx) — dropdrawer
-- [features/databases/properties/editors/database-name-property-menu.tsx](../../apps/web/src/features/databases/properties/editors/database-name-property-menu.tsx) — dropdrawer
-- [features/databases/properties/editors/database-property-menu.tsx](../../apps/web/src/features/databases/properties/editors/database-property-menu.tsx) — dropdrawer
-- [features/databases/properties/editors/database-property-select.tsx](../../apps/web/src/features/databases/properties/editors/database-property-select.tsx) — menu popover
-- [features/databases/properties/formula/view/database-formula-dialog.tsx](../../apps/web/src/features/databases/properties/formula/view/database-formula-dialog.tsx) — select
-- [features/databases/properties/shared/property-type-picker.tsx](../../apps/web/src/features/databases/properties/shared/property-type-picker.tsx) — dropdrawer
-- [features/databases/properties/shared/property-value-control.tsx](../../apps/web/src/features/databases/properties/shared/property-value-control.tsx) — select
+- [features/automations/actions/notion-action-builder.tsx](../../apps/web/src/features/automations/actions/notion-action-builder.tsx) — select
+- [features/automations/database-automation-manager.tsx](../../apps/web/src/features/automations/database-automation-manager.tsx) — dropdrawer
+- [features/automations/database-automation-screens.tsx](../../apps/web/src/features/automations/database-automation-screens.tsx) — dropdrawer
+- [features/automations/definition/automation-select.tsx](../../apps/web/src/features/automations/definition/automation-select.tsx) — select
+- [features/databases/schema/configuration/index.tsx](../../apps/web/src/features/databases/schema/configuration/index.tsx) — dropdrawer
+- [features/databases/schema/configuration/number/number-property-settings.tsx](../../apps/web/src/features/databases/schema/configuration/number/number-property-settings.tsx) — dropdrawer
+- [features/databases/schema/configuration/relation/relation-property-settings.tsx](../../apps/web/src/features/databases/schema/configuration/relation/relation-property-settings.tsx) — dropdrawer
+- [features/databases/schema/configuration/rollup/rollup-property-settings.tsx](../../apps/web/src/features/databases/schema/configuration/rollup/rollup-property-settings.tsx) — dropdrawer, select
+- [features/databases/schema/configuration/select/select-property-settings.tsx](../../apps/web/src/features/databases/schema/configuration/select/select-property-settings.tsx) — dropdrawer
+- [features/databases/schema/configuration/shared/option-editor-submenu.tsx](../../apps/web/src/features/databases/schema/configuration/shared/option-editor-submenu.tsx) — dropdrawer
+- [features/databases/schema/configuration/shared/property-setting-submenu.tsx](../../apps/web/src/features/databases/schema/configuration/shared/property-setting-submenu.tsx) — dropdrawer
+- [features/databases/schema/configuration/status/status-property-settings.tsx](../../apps/web/src/features/databases/schema/configuration/status/status-property-settings.tsx) — dropdrawer
+- [features/databases/schema/configuration/url/url-property-settings.tsx](../../apps/web/src/features/databases/schema/configuration/url/url-property-settings.tsx) — dropdrawer
+- [features/databases/schema/editors/add-database-property-menu.tsx](../../apps/web/src/features/databases/schema/editors/add-database-property-menu.tsx) — dropdrawer
+- [features/databases/schema/editors/database-name-property-menu.tsx](../../apps/web/src/features/databases/schema/editors/database-name-property-menu.tsx) — dropdrawer
+- [features/databases/schema/editors/database-property-menu.tsx](../../apps/web/src/features/databases/schema/editors/database-property-menu.tsx) — dropdrawer
+- [features/databases/schema/editors/database-property-select.tsx](../../apps/web/src/features/databases/schema/editors/database-property-select.tsx) — menu popover
+- [features/databases/schema/formula/view/database-formula-dialog.tsx](../../apps/web/src/features/databases/schema/formula/view/database-formula-dialog.tsx) — select
+- [features/databases/schema/shared/property-type-picker.tsx](../../apps/web/src/features/databases/schema/shared/property-type-picker.tsx) — dropdrawer
+- [features/databases/schema/shared/property-value-control.tsx](../../apps/web/src/features/databases/schema/shared/property-value-control.tsx) — select
 - [features/databases/views/components/database-condition-editor.tsx](../../apps/web/src/features/databases/views/components/database-condition-editor.tsx) — select
 - [features/databases/views/components/database-filter-control.tsx](../../apps/web/src/features/databases/views/components/database-filter-control.tsx) — dropdrawer
 - [features/databases/views/components/database-filter-menu.tsx](../../apps/web/src/features/databases/views/components/database-filter-menu.tsx) — dropdrawer

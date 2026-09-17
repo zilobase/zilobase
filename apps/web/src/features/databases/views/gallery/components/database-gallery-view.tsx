@@ -19,7 +19,7 @@ import { getDatabaseTableGroupSections } from "../../../interactions/database-ta
 import { canCreateRowInKanbanGroup } from "../../kanban/model/database-kanban-config"
 import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
 import { DatabaseRecordWindowControl } from "../../components/database-record-window-control"
-import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
+import { DatabasePropertyValue } from "../../../schema/editors/database-property-value"
 import { DatabaseCellContent } from "../../components/database-cell-content"
 import { useDatabaseGalleryCardDrag } from "../controller/use-database-gallery-card-drag"
 

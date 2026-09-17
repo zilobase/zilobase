@@ -50,23 +50,23 @@ import {
   getColorTokenDotClassName,
 } from "@/shared/lib/color-tokens"
 
-import { AddDatabasePropertyMenu } from "../../../properties/editors/add-database-property-menu"
+import { AddDatabasePropertyMenu } from "../../../schema/editors/add-database-property-menu"
 import { DatabaseCellContent } from "../../components/database-cell-content"
 
 import {
   setDatabasePageDragPayload,
 } from "../../../interactions/database-page-drop"
 import { DatabasePageLink } from "../../../interactions/database-page-link"
-import { DatabaseFormulaDialog } from "../../../properties/formula/view/database-formula-dialog"
+import { DatabaseFormulaDialog } from "../../../schema/formula/view/database-formula-dialog"
 import {
   DatabaseNamePropertyMenu,
   DatabasePropertyMenu,
-} from "../../../properties/editors/database-property-menu"
-import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
+} from "../../../schema/editors/database-property-menu"
+import { DatabasePropertyValue } from "../../../schema/editors/database-property-value"
 import {
   getDatabasePropertyType,
-} from "../../../properties/property-catalog"
-import { serializePropertyValue } from "../../../properties/property-values";
+} from "../../../schema/property-catalog"
+import { serializePropertyValue } from "../../../schema/property-values";
 import {
   getDatabasePropertyIcon,
   getNameColumnWrapContent,

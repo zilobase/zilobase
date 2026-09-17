@@ -37,7 +37,7 @@ export const contentRoutes = [
     beforeLoad: async ({ params }) => ({
       publishedShare: await applyDatabaseShareAccess(params.databaseId),
     }),
-    component: lazyRouteComponent(() => import("@/features/databases/screens/database")),
+    component: lazyRouteComponent(() => import("@/features/databases/core/database-screen")),
     pendingComponent: PendingPage,
   }),
 ];

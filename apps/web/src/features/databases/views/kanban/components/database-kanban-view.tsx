@@ -34,17 +34,17 @@ import {
 import {
   getNextDatabaseOptionColor,
   getDatabasePropertyType,
-} from "../../../properties/property-catalog"
-import { DatabasePropertyDate } from "../../../properties/editors/database-property-date"
-import { DatabasePropertyInput } from "../../../properties/editors/database-property-input"
+} from "../../../schema/property-catalog"
+import { DatabasePropertyDate } from "../../../schema/editors/database-property-date"
+import { DatabasePropertyInput } from "../../../schema/editors/database-property-input"
 import { DatabasePageLink } from "../../../interactions/database-page-link"
-import { DatabasePropertyMenu } from "../../../properties/editors/database-property-menu"
-import { DatabasePropertyValue } from "../../../properties/editors/database-property-value"
+import { DatabasePropertyMenu } from "../../../schema/editors/database-property-menu"
+import { DatabasePropertyValue } from "../../../schema/editors/database-property-value"
 import { DatabaseCellContent } from "../../components/database-cell-content"
 import {
   firstScalarValue,
   type DatabasePropertyValue as DatabaseCellValue,
-} from "../../../properties/property-values"
+} from "../../../schema/property-values"
 import {
   getMergedPropertyConfig,
   getPropertyWrapContent,

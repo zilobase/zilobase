@@ -14,7 +14,7 @@ import {
   type DatabasePropertyFilterConfig,
   type DatabasePropertyFilterOperator,
 } from "@zilobase/features/databases/filter";
-import { defaultStatusOption } from "../../properties/model/property-defaults";
+import { defaultStatusOption } from "../../schema/model/property-defaults";
 
 export {
   databaseDateFilterOperators,
@@ -36,7 +36,7 @@ export type {
 import type {
   DateFormatValue,
   TimeFormatValue,
-} from "../../properties/model/database-date-config";
+} from "../../schema/model/database-date-config";
 import type { DatabaseChartSettings } from "../chart/model/database-chart-config";
 import type { DatabaseFormHeaderSettings } from "../form/model/database-form-header-config";
 import type { DatabaseFormQuestionSettingsPatch } from "../form/model/database-form-question-config";

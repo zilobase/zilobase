@@ -1,4 +1,4 @@
-import type { DatabasePropertyValue } from "../../../properties/property-values"
+import type { DatabasePropertyValue } from "../../../schema/property-values"
 
 export const DATABASE_SELECTION_PRIMARY_PROPERTY_LIMIT = 5
 

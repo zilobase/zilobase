@@ -3,7 +3,7 @@ export function register({ assert, readSource, test }) {
     const [context, chart, propertySettings] = await Promise.all([
       readSource("/src/features/databases/views/state/database-view-context.tsx"),
       readSource("/src/features/databases/views/chart/components/database-chart-view.tsx"),
-      readSource("/src/features/databases/properties/configuration/index.tsx"),
+      readSource("/src/features/databases/schema/configuration/index.tsx"),
     ])
 
     assert.match(context, /const DatabaseDataContext = createContext/)

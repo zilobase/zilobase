@@ -85,7 +85,7 @@ export function register({ readSource, assert, test }) {
     const agentPageSource = await readSource("/src/features/ai/screens/custom-agent.tsx")
     const agentHeaderSource = await readSource("/src/features/ai/screens/custom-agent-header-actions.tsx")
     const layoutSource = await readSource("/src/app/shell/content/app-layout.tsx")
-    const pageMetadataSource = await readSource("/src/features/databases/components/page-metadata.tsx")
+    const pageMetadataSource = await readSource("/src/features/databases/access/page-metadata.tsx")
 
     assert.match(agentPageSource, /<PageSidePaneLayout/)
     assert.match(agentPageSource, /<PageMetadata/)
@@ -171,7 +171,7 @@ export function register({ readSource, assert, test }) {
 
   test("agent metadata preserves agent labels and opt-in descriptions", async () => {
     const chat = await readSource("/src/features/ai/screens/custom-agent.tsx")
-    const metadata = await readSource("/src/features/databases/components/page-metadata.tsx")
+    const metadata = await readSource("/src/features/databases/access/page-metadata.tsx")
     assert.match(chat, /headingLabel="Agent"/)
     assert.match(chat, /titlePlaceholder="Untitled agent"/)
     assert.match(chat, /descriptionInitiallyHidden/)

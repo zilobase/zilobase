@@ -10,7 +10,7 @@ export function register({ assert, appPath, test }) {
         'export const toast = { error: value => runtime.calls.push(["error",value]), success: value => runtime.calls.push(["success",value]) };',
       "@/features/pages/layout":
         'export const useLayoutEditor = () => ({openLayoutEditor: input => runtime.calls.push(["layout",input])});',
-      "@/features/databases/hooks/use-database-metadata":
+      "@/features/databases/access/use-database-metadata":
         "export const useDatabaseMetadata = () => ({data:runtime.database});",
       "@zilobase/features/workspaces/react":
         'export const useActiveWorkspaceId = () => "workspace";',

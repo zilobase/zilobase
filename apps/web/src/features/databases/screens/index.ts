@@ -1,1 +1,0 @@
-export { DatabaseMainPane } from "./database"

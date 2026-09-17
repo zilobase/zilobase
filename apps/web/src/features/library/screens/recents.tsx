@@ -19,7 +19,7 @@ import {
 } from "@/features/pages/pane/use-open-embedded-page";
 import { PageEditorPane } from "@/features/pages/pane/page-editor-pane";
 import { DatabaseTableView, DatabaseViewProvider, DatabaseViewSkeleton, DatabaseViewToolbar, getDatabaseViewModel, getMergedDatabaseConfig, getMergedNameColumnConfig, getMergedPropertyConfig, type DatabaseNameColumnConfig, type DatabasePropertyConfig, type DatabaseSortConfig } from "@/features/databases";
-import { DatabaseMainPane } from "@/features/databases/screens/index";
+import { DatabaseMainPane } from "@/features/databases/core/index";
 
 import {
   DropdownMenu,

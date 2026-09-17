@@ -33,7 +33,7 @@ import {
   getDatabaseFilterOperatorsForType,
   type DatabasePropertyFilterOperator
 } from "../model/database-view-config"
-import { isDateLikePropertyType } from "../../properties/property-catalog"
+import { isDateLikePropertyType } from "../../schema/property-catalog"
 import type { DatabaseSearchableMenuOption } from "../menu-option-contracts";
 
 type DatabaseConditionEditorLayout = "inline" | "stacked"

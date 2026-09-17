@@ -1,7 +1,7 @@
 export function register({ assert, readSource, readWorkspace, test }) {
   test("secondary database reads separate metadata from bounded record windows", async () => {
     const hook = await readSource(
-      "/src/features/databases/hooks/use-database-secondary-payload.ts",
+      "/src/features/databases/records/use-database-secondary-payload.ts",
     )
 
     assert.match(hook, /useDatabaseMetadata\(databaseId/)
@@ -15,13 +15,13 @@ export function register({ assert, readSource, readWorkspace, test }) {
   test("schema consumers do not request related record payloads", async () => {
     const [relation, rollup, propertyMenu] = await Promise.all([
       readSource(
-        "/src/features/databases/properties/configuration/relation/relation-property-settings.tsx",
+        "/src/features/databases/schema/configuration/relation/relation-property-settings.tsx",
       ),
       readSource(
-        "/src/features/databases/properties/configuration/rollup/rollup-property-settings.tsx",
+        "/src/features/databases/schema/configuration/rollup/rollup-property-settings.tsx",
       ),
       readSource(
-        "/src/features/databases/properties/editors/database-property-menu.tsx",
+        "/src/features/databases/schema/editors/database-property-menu.tsx",
       ),
     ])
 
@@ -38,7 +38,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
 
   test("relation values page record choices instead of loading a legacy payload", async () => {
     const source = await readSource(
-      "/src/features/databases/properties/editors/database-derived-property-value.tsx",
+      "/src/features/databases/schema/editors/database-derived-property-value.tsx",
     )
 
     assert.doesNotMatch(source, /useDatabase\(/)

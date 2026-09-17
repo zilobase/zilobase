@@ -19,11 +19,11 @@ import {
   DropDrawerSubTrigger,
   DropDrawerTrigger,
 } from "@/shared/ui/dropdrawer"
-import { DatabasePropertyDate } from "../../../properties/editors/database-property-date"
-import { DatabasePropertySelect } from "../../../properties/editors/database-property-select"
-import { defaultStatusOption, defaultStatusOptions } from "../../../properties/model/property-defaults";
-import { getDatabasePropertyCellKind, getDatabasePropertyType } from "../../../properties/property-catalog";
-import type { DatabasePropertyValue as DatabasePropertyValueType } from "../../../properties/property-values"
+import { DatabasePropertyDate } from "../../../schema/editors/database-property-date"
+import { DatabasePropertySelect } from "../../../schema/editors/database-property-select"
+import { defaultStatusOption, defaultStatusOptions } from "../../../schema/model/property-defaults";
+import { getDatabasePropertyCellKind, getDatabasePropertyType } from "../../../schema/property-catalog";
+import type { DatabasePropertyValue as DatabasePropertyValueType } from "../../../schema/property-values"
 import { getPersonLimit } from "../../model/database-view-config"
 import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config"
 import { splitDatabaseSelectionProperties } from "../model/database-table-selection"

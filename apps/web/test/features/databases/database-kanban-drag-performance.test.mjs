@@ -21,7 +21,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
       "/src/features/databases/views/kanban/controller/use-database-kanban-card-drag.ts",
     )
     const mutations = await readWorkspace(
-      "/packages/features/src/databases/row-mutations.ts",
+      "/packages/features/src/databases/mutations/rows.ts",
     )
 
     assert.match(controller, /applyMove\(move, \(\) => \{/)

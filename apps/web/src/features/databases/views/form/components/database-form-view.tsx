@@ -15,7 +15,7 @@ import {
 } from "@/shared/components/icons"
 import { useState, type ReactNode } from "react"
 
-import { PageMetadata } from "../../../components/page-metadata"
+import { PageMetadata } from "../../../access/page-metadata"
 import { Button } from "@/shared/ui/button"
 import { Checkbox } from "@/shared/ui/checkbox"
 import {
@@ -46,9 +46,9 @@ import {
   getDatabasePropertyCellKind,
   getDatabasePropertyType,
   getNextDatabaseOptionColor,
-} from "../../../properties/property-catalog"
-import { DatabasePropertyDate } from "../../../properties/editors/database-property-date"
-import { formatDatabaseDateValue } from "../../../properties/model/database-date-config"
+} from "../../../schema/property-catalog"
+import { DatabasePropertyDate } from "../../../schema/editors/database-property-date"
+import { formatDatabaseDateValue } from "../../../schema/model/database-date-config"
 import { getColorTokenDotClassName } from "@/shared/lib/color-tokens"
 import { cn } from "@/shared/lib/utils"
 import {
