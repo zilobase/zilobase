@@ -16,7 +16,7 @@ A **module** presents one deliberate **interface**. That interface includes inva
 
 Web feature rules no longer allow app composition imports. Settings use the provider query client; app providers install demo cache behavior; edition alias consumers use the focused edition contract zone. Published compatibility exports remain intentional, while unused internal UI and wrappers are removed.
 
-These are the direction for new and refactored code. Existing exceptions are visible in [Fallow](../.fallowrc.json); narrowing them requires migrating callers and tests in the same change. File length signals a review, not an automatic split. Do not weaken health thresholds to hide moved functions.
+These are the direction for new and refactored code. Narrowing existing exceptions requires migrating callers and tests in the same change. File length signals a review, not an automatic split.
 
 ## Documentation and verification
 

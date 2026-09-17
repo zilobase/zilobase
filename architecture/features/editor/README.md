@@ -35,7 +35,7 @@ Commands affect selection, undo, collaboration and embedded content. Mount/unmou
 
 ## Verification and change points
 
-[Editor tests](../../../apps/web/test/features/editor) cover structural drag/drop, protected blocks, column/table behavior and editor integration. [Meeting tests](../../../apps/web/test/features/meetings) also protect collaboration-field and summary behavior. Keep structural assertions for wiring and use observable tests for document changes. Run web tests, typecheck, production build, architecture checks and the existing Fallow audit after relocating modules; discovery paths must follow moves.
+[Editor tests](../../../apps/web/test/features/editor) cover structural drag/drop, protected blocks, column/table behavior and editor integration. [Meeting tests](../../../apps/web/test/features/meetings) also protect collaboration-field and summary behavior. Keep structural assertions for wiring and use observable tests for document changes. Run web tests, typecheck, production build, and architecture checks after relocating modules; discovery paths must follow moves.
 
 Update this guide with implemented changes. See [testing and quality](../../setup/testing-and-quality.md) and the [architecture index](../../README.md).
 

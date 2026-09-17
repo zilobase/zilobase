@@ -39,7 +39,7 @@ OAuth requests `openid`, `email`, `calendar.events`, `calendar.calendarlist`, an
 Run these from core:
 
 ```sh
-FALLOW_AUDIT_BASE=415caa0cbc427d2b5c81c4ed562e06064303e012 npm run verify:core
+npm run verify:core
 npm run test:architecture
 npm run quality:web-bundle
 npm run verify:desktop

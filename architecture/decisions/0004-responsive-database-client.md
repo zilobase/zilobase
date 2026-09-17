@@ -48,6 +48,13 @@ search, Yjs page content, presence or ephemeral interaction state. Those remain
 with TanStack Query or their existing subsystem. There is no persistent browser
 command queue; editing is online-first.
 
+The online-only client exposes pending and failed command states and guards
+reloads while a command is pending. Interrupted transport may replay the same
+command once using its receipt; it does not create an offline queue. Command
+transport/status, event recovery, and projection snapshot watermarks are separate
+modules behind the facade. Reads use one read-only repeatable-read transaction
+so their versions and entities are a coherent baseline for event recovery.
+
 ### Reads
 
 The v2 HTTP interface separates metadata from records:

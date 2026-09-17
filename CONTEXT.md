@@ -22,6 +22,18 @@ The client-side rendering aggregate for one database row. It embeds the row page
 
 The authoritative, version-ordered history of committed database mutation events used for command replay, realtime delivery and reconnect catch-up. It is separate from the realtime outbox, which tracks delivery work.
 
+### Database command acknowledgement
+
+Confirmation that a database command committed on the server, carrying its
+result and mutation event. A failure to refresh a client projection after this
+confirmation is a synchronization failure, not a rejected database write.
+
+### Database projection watermark
+
+The committed version below which a client collection must not accept a
+replacement snapshot. Different loaded views can have different watermarks;
+one newer view does not prove that the other views have received its events.
+
 ### Page
 
 A Page is the page item represented by a Database row and opened from the editor.

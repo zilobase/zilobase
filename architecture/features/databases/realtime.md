@@ -1,6 +1,6 @@
 # Database mutation and realtime flow
 
-The shared feature package publishes the runtime-validated [protocol-v2 database contracts](../../../packages/features/src/databases/contracts-v2.ts) for entity bootstrap, bounded record windows, idempotent commands, complete-entity changesets, and typed protocol conflicts. Command traffic and internal producers—including automations, imports, mail synchronization, templates, and relation-driven writes—journal the same v2 event shape. Linked-host events share the originating command ID while retaining a contiguous version per host.
+The shared feature package publishes the runtime-validated [protocol-v2 database contracts](../../../packages/features/src/databases/core/entities.ts) for entity bootstrap, bounded record windows, idempotent commands, complete-entity changesets, and typed protocol conflicts. Command traffic and internal producers—including automations, imports, mail synchronization, templates, and relation-driven writes—journal the same v2 event shape. Linked-host events share the originating command ID while retaining a contiguous version per host.
 
 [Realtime persistence and outbox](../../../apps/server/src/features/databases/realtime) coordinate committed mutations with eventual publication. Outbox rows reference the canonical journal event and contain delivery and lease state, not a duplicate event payload. Oversized changes become `requiresReset`; producers otherwise emit complete typed entities, never partial patches. Node and Cloudflare delivery publish protocol v2 only. [Node attachment](../../../apps/server/src/app/node/database-realtime-runtime.ts) owns websocket handling. The session-scoped database client applies acknowledgements, socket events, and history events through one ingestion path.
 
@@ -16,7 +16,22 @@ published version: a newly connected ticket must never suppress an event that
 committed earlier but is still moving through the background delivery path.
 Clients close and reconnect when a known database frame has another protocol
 version instead of silently accepting presence while dropping mutations.
+Reconnect backoff resets only after a valid `realtime.ready` frame. Receiving
+an HTTP ticket does not prove that its WebSocket endpoint accepted the ticket;
+repeated upgrade failures continue backing off rather than restarting the
+shortest retry delay.
 
 Preserve event identity, versioning, authorization and delivery/retry semantics. A local optimistic mutation and its later realtime event must not be applied twice. Reconnect gaps use journal catch-up; unavailable history or a reset marker reloads only affected scopes. Test duplicate/out-of-order events, rollback, deleted resources and access revocation with the adjacent realtime/client tests.
+
+The [event ingestion coordinator](../../../packages/features/src/databases/client/sync/event-ingestion.ts)
+owns one recovery cursor and serialized queue per host. Its initial cursor is
+the oldest loaded projection version, rather than the newest view's version.
+Only successful event application or a successful reset advances that cursor;
+a partial application or failed refetch cannot acknowledge missing changes.
+Each collection ignores events already covered by its own snapshot. Empty or
+repeating history pages that cannot advance recovery trigger a scoped reset.
+Snapshot watermarks prevent an in-flight HTTP read from overwriting newer
+committed events. HTTP acknowledgements, websocket messages and history pages
+all use this coordinator.
 
 [Database overview](README.md). [Operations and troubleshooting](../../../docs/databases/operations.md).

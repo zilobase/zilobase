@@ -60,4 +60,4 @@ Each guide follows a capability through its web, shared-package, server and nati
 
 ## Decisions and maintenance
 
-[Architecture decisions](decisions/README.md) explain lasting tradeoffs. Update the affected guide with each implementation change and verify local links. These guides describe current behavior, not pending refactor passes. Existing dependency exceptions remain visible in [Fallow configuration](../.fallowrc.json).
+[Architecture decisions](decisions/README.md) explain lasting tradeoffs. Update the affected guide with each implementation change and verify local links. These guides describe current behavior, not pending refactor passes.

@@ -29,7 +29,7 @@ Update this guide when ownership, interfaces, authorization, persistence or cros
 
 [Resource loading](../../../apps/server/src/features/access/resource-access-records.ts) owns the repeated active page, active database-container and standalone-row association queries. Only identical query shapes share loaders. Publication retains its own queries and security policy checks; it is not treated as membership access.
 
-[Pure access decisions](../../../apps/server/src/features/access/access-decisions.ts) centralize strongest valid explicit grants, user/team grant targets, immutable snapshot-root matching, and teamspace principal overrides. Fallow confines this model and access-level rules to each other; neither may import persistence, transport or feature operations. Effective access remains orchestration of loading and these decisions.
+[Pure access decisions](../../../apps/server/src/features/access/access-decisions.ts) centralize strongest valid explicit grants, user/team grant targets, immutable snapshot-root matching, and teamspace principal overrides. This model and access-level rules are confined to each other; neither may import persistence, transport or feature operations. Effective access remains orchestration of loading and these decisions.
 
 Member ownership shortcuts, guest ceilings, live agent grants and immutable snapshots remain distinct. Snapshot callers must still check live agent ACLs so revocations win. The multi-user batch function retains its existing caller preconditions and loading behavior; this refactor does not add membership queries to that fast path.
 

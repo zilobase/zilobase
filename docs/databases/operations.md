@@ -51,7 +51,7 @@ the source before retrying.
 ## Catch-up, retention, and reset
 
 HTTP acknowledgements, socket events, and catch-up events enter the same
-version-aware client ingestion function. Event IDs and versions suppress HTTP
+version-aware client ingestion function. Committed host versions suppress HTTP
 acknowledgement/socket-echo duplicates. A version gap pauses newer events while
 the client calls `GET /databases/:databaseId/mutations?afterVersion=...` in
 pages of at most 500.
@@ -68,6 +68,20 @@ lanes exist only for the authenticated application session. Ordering commands
 serialize per source, structural commands per source, view commands per host,
 and cell writes per row/property so an unrelated edit is never rolled back with
 a failed operation.
+
+The toolbar shows `Saving…` while commands are pending and asks the browser to
+confirm reload/close during that interval. Offline edits fail without entering
+a queue. `Save failed` means to correct or repeat the edit. `Save unconfirmed`
+means a transport failure left the result uncertain: reload to check the server
+before repeating an operation such as creating a page. The client first retries
+an interrupted request once with the same command ID to recover its receipt.
+`Saved — reload to refresh` means the server confirmed the write but the client
+could not reconcile its projection; do not repeat that write.
+
+Bootstrap and record-window reads use a single read-only repeatable-read
+transaction. The browser rejects stale responses below a collection's committed
+watermark. Catch-up begins at the oldest loaded projection, so a fresh row
+window cannot suppress an event still needed by older property metadata.
 
 Outbox workers use leases, `SKIP LOCKED`, retry backoff, and recovery sweeps.
 Repeated delivery is expected and safe. Investigate terminally discarded rows;

@@ -18,6 +18,6 @@
 | Editor utilities | Markdown splitting and comment extension | [splitter](../packages/markdown-text-splitter), [comments](../packages/tiptap-comment-extension) |
 | Setup and operations | Development, deployment and release tooling | [scripts](../scripts), [deploy](../deploy), [docker](../docker) |
 
-Capabilities own their models, commands and presentation. Database configuration and value models no longer import view presentation types; presentation options such as icons stay in browser-facing modules. App composition connects runtime policy, demo cache setup and offline cleanup without reverse feature imports. Cross-feature capabilities retain documented interfaces; the authoritative allowed import graph is in [Fallow configuration](../.fallowrc.json).
+Capabilities own their models, commands and presentation. Database configuration and value models no longer import view presentation types; presentation options such as icons stay in browser-facing modules. App composition connects runtime policy, demo cache setup and offline cleanup without reverse feature imports. Cross-feature capabilities retain documented interfaces.
 
 Migration SQL under [drizzle](../apps/server/drizzle) is ordered history. Published package exports and edition aliases are compatibility interfaces, even when a consumer lives outside this repository.
