@@ -13,15 +13,15 @@ import {
   databaseRecordWindowResponseSchema,
   type DatabaseRecordEntity,
   type DatabaseRecordWindowResponse,
-} from "../contracts-v2"
-import { getDatabaseInitialPageSize } from "../view-evaluation"
+} from  "../core/entities"
+import { getDatabaseInitialPageSize } from  "../views/view-evaluation"
 import type { ApiFetcher } from "../../shared/api-fetcher"
 import { useZilobaseFeatures } from "../../shared/context"
 import {
   SessionDatabaseClient,
   type DatabaseRecordWindow,
   type DatabaseViewScope,
-} from "./database-client"
+} from "./db-client"
 import { useOptionalDatabaseClient } from "./provider"
 import {
   databaseBootstrapQueryKey,

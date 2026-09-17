@@ -1,4 +1,4 @@
-import type { DatabaseMutationEventV2 } from "../contracts-v2"
+import type { DatabaseMutationEventV2 } from  "../core/entities"
 
 type MutationIngestTarget = {
   catchUp(databaseId: string): Promise<void>

@@ -2,39 +2,42 @@ export {
   useUpsertDatabaseAccess,
   useDeleteDatabaseAccess,
   useSetDatabasePublished,
-} from "./access/access-mutations";
+} from  "../access/access-mutations";
 export {
   useCreateDatabase,
   useUpdateDatabase,
   useDeleteDatabase,
   useRestoreDatabase,
   useSetDatabaseFavorite,
-} from "./mutations/databases";
+} from  "./databases";
 export {
   useUpdateDataSource,
   useLinkDatabaseDataSource,
   useCreateDatabaseDataSource,
   useReplaceDatabaseViewDataSource,
   useUnlinkDatabaseDataSource,
-} from "./mutations/data-sources";
+} from  "./data-sources";
 export {
+  updateDatabaseViewInNavigation,
   useUpdateDatabaseView,
   useAddDatabaseView,
   useDeleteDatabaseView,
-} from "./mutations/views";
+} from  "./views";
 export {
+  type ApplyDatabaseTemplateInput,
   useAddDatabaseProperty,
   useApplyDatabaseTemplate,
   useUpdateDatabaseProperty,
   useDeleteDatabaseProperty,
   useDuplicateDatabaseProperty,
-} from "./mutations/properties";
+} from  "./properties";
 export {
+  type DatabaseStoredTemplate,
   useArchiveDatabaseTemplate,
   useCreateDatabaseTemplate,
   useRestoreDatabaseTemplate,
   useUpdateDatabaseTemplate,
-} from "./mutations/templates";
+} from  "./templates";
 export {
   useAddDatabaseRow,
   useArchiveDatabaseRow,
@@ -42,10 +45,4 @@ export {
   useMoveDatabaseRow,
   useUpdateDatabasePropertyValue,
   getDatabaseRowMoveAnchors,
-} from "./mutations/rows";
-export { useDatabaseEntityCommandState } from "./client/provider";
-export { useDatabaseBootstrap } from "./client/bootstrap-hooks";
-export { useDatabaseRecords } from "./client/record-hooks";
-export { useDatabaseAccess } from "./queries/query-hooks";
-export { useDatabaseRealtime } from "./realtime/realtime";
-export { useDatabaseIdForRowPage } from "./records/use-database-id-for-row-page";
+} from  "./rows";

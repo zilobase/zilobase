@@ -2,17 +2,17 @@ import type {
   DataSourceCommand,
   HostDatabaseCommand,
   PagePropertyValueEntity,
-} from "../contracts-v2"
+} from  "../core/entities"
 import type { Collection } from "@tanstack/react-db"
 import {
   databaseOrderKeyAtPosition,
   databaseOrderKeyBetween,
-} from "../order-key"
+} from  "../core/order-key"
 import type { DatabaseBootstrapCollections } from "./bootstrap-collections"
 import type {
   DatabaseClientCommand,
   DatabaseViewScope,
-} from "./database-client"
+} from "./db-client"
 import type {
   DatabaseRecordCollection,
   WindowedDatabaseRecord,

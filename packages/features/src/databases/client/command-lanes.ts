@@ -1,4 +1,4 @@
-import type { DatabaseClientCommand } from "./database-client"
+import type { DatabaseClientCommand } from "./db-client"
 
 type LaneCompletion = {
   error?: unknown

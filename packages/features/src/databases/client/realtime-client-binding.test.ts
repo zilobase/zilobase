@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import type { DatabaseMutationEventV2 } from "../contracts-v2"
+import type { DatabaseMutationEventV2 } from  "../core/entities"
 import { createRealtimeClientBinding } from "./realtime-client-binding"
 
 const event = {

@@ -26,15 +26,6 @@ if (full) {
 
 await run("npm", ["run", "test:databases", "--workspace", "@zilobase/features"])
 await run("npx", [
-  "tsx",
-  "--test",
-  "src/databases/client/bootstrap-collections.test.ts",
-  "src/databases/client/command-lanes.test.ts",
-  "src/databases/client/database-client.test.ts",
-  "src/databases/client/ingestion.test.ts",
-  "src/databases/client/record-collections.test.ts",
-], { cwd: path.join(repositoryRoot, "packages", "features") })
-await run("npx", [
   "vitest",
   "run",
   "src/features/databases/database-v2-acceptance.test.ts",

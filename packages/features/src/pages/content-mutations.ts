@@ -5,8 +5,8 @@ import {
   invalidateRestoredItems,
   setPageDetailCache,
 } from "../shared/item-action-cache";
-import { patchDatabaseCachePage } from "../databases/row-page-properties";
-import type { DatabaseMutationEventV2 } from "../databases/contracts-v2";
+import { patchDatabaseCachePage } from  "../databases/records/row-page-properties";
+import type { DatabaseMutationEventV2 } from  "../databases/core/entities";
 import { useDatabaseClient } from "../databases/client/provider";
 import {
   defaultUserSettings,

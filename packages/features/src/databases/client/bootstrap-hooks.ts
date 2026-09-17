@@ -1,13 +1,13 @@
 import { useLiveQuery } from "@tanstack/react-db"
 import { useQuery } from "@tanstack/react-query"
 
-import type { DatabaseBootstrapResponse } from "../contracts-v2"
+import type { DatabaseBootstrapResponse } from  "../core/entities"
 import { useZilobaseFeatures } from "../../shared/context"
 import type {
   DatabaseBootstrapState,
   DatabaseScope,
-} from "./database-client"
-import { SessionDatabaseClient } from "./database-client"
+} from "./db-client"
+import { SessionDatabaseClient } from "./db-client"
 import { useOptionalDatabaseClient } from "./provider"
 import { databaseBootstrapQueryOptions } from "./bootstrap-collections"
 

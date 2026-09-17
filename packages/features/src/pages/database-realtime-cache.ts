@@ -1,6 +1,6 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query"
 
-import type { DatabaseMutationEventV2 } from "../databases/contracts-v2"
+import type { DatabaseMutationEventV2 } from  "../databases/core/entities"
 import {
   pageRootQueryKey,
   type PagePropertiesPayload,

@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "test": "tsx --test \"src/**/*.test.ts\"",
-    "test:databases": "tsx --test src/databases/*.test.ts \"src/databases/automations/**/*.test.ts\" src/databases/formula/*.test.ts",
+    "test:databases": "tsx --test src/databases/**/*.test.ts \"src/automations/**/*.test.ts\" src/databases/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -87,44 +87,52 @@
       "default": "./src/databases/index.ts"
     },
     "./databases/automations": {
-      "types": "./src/databases/automations/index.ts",
-      "default": "./src/databases/automations/index.ts"
+      "types": "./src/automations/index.ts",
+      "default": "./src/automations/index.ts"
     },
     "./databases/automations/react": {
-      "types": "./src/databases/automations/react/index.ts",
-      "default": "./src/databases/automations/react/index.ts"
+      "types": "./src/automations/react/index.ts",
+      "default": "./src/automations/react/index.ts"
+    },
+    "./automations": {
+      "types": "./src/automations/index.ts",
+      "default": "./src/automations/index.ts"
+    },
+    "./automations/react": {
+      "types": "./src/automations/react/index.ts",
+      "default": "./src/automations/react/index.ts"
     },
     "./databases/property-types": {
-      "types": "./src/databases/property-types.ts",
-      "default": "./src/databases/property-types.ts"
+      "types": "./src/databases/schema/property-types.ts",
+      "default": "./src/databases/schema/property-types.ts"
     },
     "./databases/filter": {
-      "types": "./src/databases/filter.ts",
-      "default": "./src/databases/filter.ts"
+      "types": "./src/databases/schema/filter.ts",
+      "default": "./src/databases/schema/filter.ts"
     },
     "./databases/formula": {
-      "types": "./src/databases/formula/index.ts",
-      "default": "./src/databases/formula/index.ts"
+      "types": "./src/databases/schema/formula/index.ts",
+      "default": "./src/databases/schema/formula/index.ts"
     },
     "./databases/formula/syntax": {
-      "types": "./src/databases/formula/syntax.ts",
-      "default": "./src/databases/formula/syntax.ts"
+      "types": "./src/databases/schema/formula/syntax.ts",
+      "default": "./src/databases/schema/formula/syntax.ts"
     },
     "./databases/appearance": {
-      "types": "./src/databases/appearance.ts",
-      "default": "./src/databases/appearance.ts"
+      "types": "./src/databases/views/appearance.ts",
+      "default": "./src/databases/views/appearance.ts"
     },
     "./databases/order-key": {
-      "types": "./src/databases/order-key.ts",
-      "default": "./src/databases/order-key.ts"
+      "types": "./src/databases/core/order-key.ts",
+      "default": "./src/databases/core/order-key.ts"
     },
     "./databases/view-evaluation": {
-      "types": "./src/databases/view-evaluation.ts",
-      "default": "./src/databases/view-evaluation.ts"
+      "types": "./src/databases/views/view-evaluation.ts",
+      "default": "./src/databases/views/view-evaluation.ts"
     },
     "./databases/queries": {
-      "types": "./src/databases/queries.ts",
-      "default": "./src/databases/queries.ts"
+      "types": "./src/databases/queries/index.ts",
+      "default": "./src/databases/queries/index.ts"
     },
     "./meetings": {
       "types": "./src/meetings/index.ts",
@@ -200,8 +208,8 @@
       "default": "./src/auth/contracts.ts"
     },
     "./databases/contracts": {
-      "types": "./src/databases/contracts.ts",
-      "default": "./src/databases/contracts.ts"
+      "types": "./src/databases/core/legacy-contracts.ts",
+      "default": "./src/databases/core/legacy-contracts.ts"
     },
     "./mail/query-contracts": {
       "types": "./src/mail/query-contracts.ts",

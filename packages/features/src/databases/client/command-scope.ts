@@ -6,7 +6,7 @@ import {
   databaseRecordWindowResponseSchema,
   type DatabaseBootstrapResponse,
   type DatabaseRecordEntity,
-} from "../contracts-v2"
+} from  "../core/entities"
 
 export type DataSourceCommandScope = {
   dataSourceId: string

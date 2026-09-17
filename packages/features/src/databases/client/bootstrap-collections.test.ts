@@ -7,7 +7,7 @@ import {
   createDatabaseClient,
   databaseBootstrapQueryKey,
 } from "./index"
-import type { DatabaseBootstrapResponse } from "../contracts-v2"
+import type { DatabaseBootstrapResponse } from  "../core/entities"
 
 const bootstrap: DatabaseBootstrapResponse = {
   database: {
