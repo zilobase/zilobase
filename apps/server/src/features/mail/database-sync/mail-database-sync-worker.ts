@@ -14,8 +14,8 @@ import {
   lockDatabaseRowOrdering,
   rebalanceDatabaseRowOrderKeys,
 } from "../../databases/core/position-service"
-import { lockDatabaseAutomationFactRows } from "../../databases/automations/triggers/event-capture"
-import { validateCellValue } from "../../databases/properties/config"
+import { lockDatabaseAutomationFactRows } from "../../automations/triggers/event-capture"
+import { validateCellValue } from "../../databases/schema/config"
 import { getDatabaseRecordEntity } from "../../databases/commands/record-entity"
 import { upsertPageItemPlacement } from "../../pages/placements"
 import { encodePageContentAsYjs } from "../../collaboration/service"

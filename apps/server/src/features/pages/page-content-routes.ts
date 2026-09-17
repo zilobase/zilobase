@@ -11,7 +11,7 @@ import { createCollaborationTicket, documentNameForPage, getOrCreateCollaboratio
 import { getCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
 import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../workspaces/navigation-realtime/outbox";
 import { commitDatabaseMutationBatch } from "../databases/core";
-import { lockDatabaseAutomationFactRows } from "../databases/automations/triggers/event-capture";
+import { lockDatabaseAutomationFactRows } from "../automations/triggers/event-capture";
 import { getDatabaseRecordEntity } from "../databases/commands/record-entity";
 import { getPagePropertyPayload } from "./page-route-support";
 

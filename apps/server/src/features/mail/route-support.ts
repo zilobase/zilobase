@@ -10,7 +10,7 @@ import {
 import { db } from "../../infrastructure/database";
 import { gmailAccount, gmailWorkspaceConnection, member } from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
-import { invalidateDatabaseAutomationDependencies } from "../databases/automations/service";
+import { invalidateDatabaseAutomationDependencies } from "../automations/service";
 import { GmailOauthError } from "./provider/google-oauth";
 import { clearGmailAccessTokenCache, createGmailGateway, GmailApiError } from "./provider/gmail-gateway";
 import { MailComposeError, parseMailComposeRequest } from "./compose/mail-mime";

@@ -139,20 +139,20 @@ export { drainMailDatabaseSyncOutbox } from "../features/mail/database-sync/mail
 export {
   getDatabaseAutomationEventCaptureMetrics,
   promoteClosedDatabaseAutomationEventWindows,
-} from "../features/databases/automations/triggers/event-capture";
+} from "../features/automations/triggers/event-capture";
 export {
   drainDatabaseAutomationEventWindows,
   processDatabaseAutomationEventWindow,
-} from "../features/databases/automations/triggers/event-evaluator";
+} from "../features/automations/triggers/event-evaluator";
 export {
   drainDatabaseAutomationRuns,
   processDatabaseAutomationRun,
-} from "../features/databases/automations/execution/run-engine";
-export { scanDueDatabaseAutomationSchedules } from "../features/databases/automations/triggers/scheduler";
+} from "../features/automations/execution/run-engine";
+export { scanDueDatabaseAutomationSchedules } from "../features/automations/triggers/scheduler";
 export {
   cleanupDatabaseAutomationHistory,
   getDatabaseAutomationOperationalSnapshot,
-} from "../features/databases/automations/history/history-maintenance";
+} from "../features/automations/history/history-maintenance";
 export { drainInProductNotificationOutbox } from "../features/notifications/outbox";
 export {
   MembershipService,

@@ -8,7 +8,7 @@ import { getCanonicalWebOrigin } from "../../../shared/config/config";
 import type { AppBindings } from "../../../shared/types";
 import { readJsonBody } from "../../../shared/http/request";
 import { getZilobaseDiscoveryDocument } from "../../instance/service";
-import { invalidateDatabaseAutomationDependencies } from "../../databases/automations/service";
+import { invalidateDatabaseAutomationDependencies } from "../../automations/service";
 import { beginGmailOauth, completeGmailOauth, GmailOauthError, gmailProviderConfigured, revokeGmailConnection } from "../provider/google-oauth";
 import { clearGmailAccessTokenCache, createGmailGateway, GmailApiError } from "../provider/gmail-gateway";
 import { GmailPushError, processGmailPubsubRequest } from "../sync/gmail-pubsub";

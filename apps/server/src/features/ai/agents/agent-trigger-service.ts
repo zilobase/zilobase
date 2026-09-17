@@ -19,7 +19,7 @@ import {
 } from "../../../infrastructure/database/schema";
 import { getStringEnv, type RuntimeEnv } from "../../../shared/config/config";
 import { canAgentAccessDatabase, canAgentAccessPage } from "../../access";
-import { encryptAutomationSecret } from "../../databases/automations/actions/secret-crypto";
+import { encryptAutomationSecret } from "../../automations/actions/secret-crypto";
 import { computeNextAgentSchedule, normalizeAgentDefinition } from "./agent-definition";
 import { AgentProfileError, requireAgentProfileRole } from "./agent-profile-service";
 import { applyAgentDefinition, getCurrentAgentRevision } from "./agent-revision-service";

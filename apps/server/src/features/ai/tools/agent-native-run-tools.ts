@@ -33,10 +33,10 @@ import {
   replacePageContent,
 } from "../../collaboration/service";
 import { getDatabaseRecord } from "../../databases/access";
-import { lockDatabaseAutomationFactRows } from "../../databases/automations/triggers/event-capture";
+import { lockDatabaseAutomationFactRows } from "../../automations/triggers/event-capture";
 import { getDatabaseExportPayload } from "../../databases/core";
 import { commitDataSourceMutation } from "../../databases/core/commit";
-import { validateCellValue } from "../../databases/properties/config";
+import { validateCellValue } from "../../databases/schema/config";
 import { getDatabaseRecordEntity } from "../../databases/commands/record-entity";
 import { upsertPageItemPlacement } from "../../pages/placements";
 import {

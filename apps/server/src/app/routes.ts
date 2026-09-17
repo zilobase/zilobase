@@ -7,7 +7,7 @@ import { apiKeyRoutes } from "../features/api-keys/routes";
 import { clipRoutes } from "../features/clips";
 import { authRoutes } from "../features/auth/routes";
 import { sessionRoutes } from "../features/auth/session-routes";
-import { databaseRoutes } from "../features/databases/database-routes";
+import { databaseRoutes } from "../features/databases/http/routes";
 import { desktopAuthRoutes } from "../features/desktop-auth/routes";
 import { healthRoutes } from "../features/health/routes";
 import { imageRoutes } from "../features/images/routes";
@@ -27,7 +27,7 @@ import { workspaceSettingsRoutes } from "../features/workspaces/settings/routes"
 import type { AppBindings } from "../shared/types";
 import { demoRoutes } from "../features/demo/routes";
 import { notificationRoutes } from "../features/notifications/routes";
-import { automationSlackProviderRoutes } from "../features/databases/automations/slack-routes";
+import { automationSlackProviderRoutes } from "../features/automations/http/slack-routes";
 
 export function registerRoutes(app: Hono<AppBindings>) {
   app.route("/", automationSlackProviderRoutes);

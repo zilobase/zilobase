@@ -31,7 +31,7 @@ import { updateDataSourceService } from "../../databases/data-sources";
 import {
   defaultStatusOptions,
   selectOptionColors,
-} from "../../databases/properties";
+} from "../../databases/schema";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import { runIdempotentAgentAction } from "../actions/agent-action-receipts";
 import { markdownToPageContent } from "../conversion/markdown-to-page-content";

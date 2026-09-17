@@ -53,8 +53,8 @@ vi.mock("../../databases/core/commit", () => ({
 vi.mock("../../databases/commands/record-entity", () => ({
   getDatabaseRecordEntity: vi.fn(async () => ({ id: "row-1" })),
 }));
-vi.mock("../../databases/automations/triggers/event-capture", () => ({ lockDatabaseAutomationFactRows: vi.fn(async () => undefined) }));
-vi.mock("../../databases/properties/config", () => ({ validateCellValue: vi.fn() }));
+vi.mock("../../automations/triggers/event-capture", () => ({ lockDatabaseAutomationFactRows: vi.fn(async () => undefined) }));
+vi.mock("../../databases/schema/config", () => ({ validateCellValue: vi.fn() }));
 vi.mock("../../pages/placements", () => ({ upsertPageItemPlacement: vi.fn(async () => undefined) }));
 vi.mock("../../collaboration/service", () => ({ encodePageContentAsYjs: vi.fn(() => new Uint8Array()) }));
 vi.mock("../../../infrastructure/storage/image-storage", () => ({ createImageStorage: vi.fn() }));

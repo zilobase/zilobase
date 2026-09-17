@@ -9,7 +9,7 @@ import {
   aiAgentTrigger,
   automationSecret,
 } from "../../../infrastructure/database/schema";
-import { decryptAutomationSecret } from "../../databases/automations/actions/secret-crypto";
+import { decryptAutomationSecret } from "../../automations/actions/secret-crypto";
 import { acceptAgentEvent } from "./agent-trigger-service";
 
 const MAX_WEBHOOK_BYTES = 1024 * 1024;

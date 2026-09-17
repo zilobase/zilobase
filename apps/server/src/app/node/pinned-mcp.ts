@@ -4,7 +4,7 @@ import type { IncomingHttpHeaders } from "node:http";
 import { isIP } from "node:net";
 import { Readable } from "node:stream";
 
-import { isBlockedAddress } from "../../features/databases/automations/actions/webhook-egress";
+import { isBlockedAddress } from "../../features/automations/actions/webhook-egress";
 
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
 

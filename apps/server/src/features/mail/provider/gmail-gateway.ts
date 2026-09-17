@@ -5,7 +5,7 @@ import { db } from "../../../infrastructure/database"
 import { gmailAccount } from "../../../infrastructure/database/schema"
 import { getRequiredStringEnv, type RuntimeEnv } from "../../../shared/config/config"
 import { requestSignal } from "../../../shared/http/request"
-import { invalidateDatabaseAutomationDependencies } from "../../databases/automations/service"
+import { invalidateDatabaseAutomationDependencies } from "../../automations/service"
 import { decryptMailSecret } from "./security/mail-credentials"
 
 const GMAIL_API_ORIGIN = "https://gmail.googleapis.com"
