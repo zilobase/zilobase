@@ -1,14 +1,22 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
-import { useZilobaseFeatures } from  "../../shared/context";
+import { useZilobaseFeatures } from "../../shared/context";
 
-import type { DatabaseRecordEntity } from  "../core/entities";
-import { parseDatabaseOrderKey } from  "../core/order-key";
-import { useDatabaseClient } from "../client/provider";
+import type { DatabaseRecordEntity } from "../core/entities";
+import { parseDatabaseOrderKey } from "../core/order-key";
+import { useDatabaseSessionId } from "../client/provider";
+import { executeDatabaseCommand } from "./execute";
+import { invalidateDatabaseQueries } from "./invalidate";
 import {
   findLoadedDataSourceRecords,
   resolveDataSourceCommandScope,
-} from "../client/command-scope";
+} from "./scope";
+import {
+  dropSerializedQueue,
+  orderingSerializationKey,
+  runSerialized,
+  saveCellValue,
+} from "./serialize";
 
 type MoveRowInput = {
   afterRowId: string | null;
@@ -45,9 +53,16 @@ type UpdatePropertyValueInput = {
   value: unknown;
 };
 
+function isRowMoveConflict(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { body?: { code?: unknown }; code?: unknown };
+  return candidate.code === "ROW_MOVE_CONFLICT" ||
+    candidate.body?.code === "ROW_MOVE_CONFLICT";
+}
+
 export function useAddDatabaseRow() {
-  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async (variables: AddRowInput) => {
       const scope = await resolveDataSourceCommandScope(
@@ -60,26 +75,30 @@ export function useAddDatabaseRow() {
         ...variables,
         databaseId: scope.dataSourceId,
       });
-      const record = await client.execute<DatabaseRecordEntity>({
-        command: {
-          afterRowId: anchors.afterRowId,
-          beforeRowId: anchors.beforeRowId,
-          pageId: variables.pageId,
-          parentRowId: variables.parentRowId ?? null,
-          title: variables.title ?? "Untitled",
-          type: "row.create",
-          valuesByPropertyId: variables.optimisticValues
-            ? Object.fromEntries(
-                variables.optimisticValues.map(({ propertyId, value }) => [
-                  propertyId,
-                  value,
-                ]),
-              )
-            : undefined,
-        },
-        databaseId: scope.hostDatabaseId,
-        dataSourceId: scope.dataSourceId,
-      }).promise;
+      const ack = await runSerialized(
+        orderingSerializationKey(scope.dataSourceId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: {
+              afterRowId: anchors.afterRowId,
+              beforeRowId: anchors.beforeRowId,
+              pageId: variables.pageId,
+              parentRowId: variables.parentRowId ?? null,
+              title: variables.title ?? "Untitled",
+              type: "row.create",
+              valuesByPropertyId: variables.optimisticValues
+                ? Object.fromEntries(
+                  variables.optimisticValues.map(({ propertyId, value }) => [
+                    propertyId,
+                    value,
+                  ]),
+                )
+                : undefined,
+            },
+            databaseId: scope.hostDatabaseId,
+            dataSourceId: scope.dataSourceId,
+          }),
+      );
 
       if (
         variables.sourceDataSourceId &&
@@ -92,26 +111,50 @@ export function useAddDatabaseRow() {
           variables.sourceDataSourceId,
           variables.sourceHostDatabaseId,
         );
-        await client.execute({
-          command: { rowId: variables.sourceRowId, type: "row.archive" },
-          databaseId: sourceScope.hostDatabaseId,
-          dataSourceId: sourceScope.dataSourceId,
-        }).promise;
+        await runSerialized(
+          orderingSerializationKey(sourceScope.dataSourceId),
+          () =>
+            executeDatabaseCommand(apiFetch, {
+              command: { rowId: variables.sourceRowId!, type: "row.archive" },
+              databaseId: sourceScope.hostDatabaseId,
+              dataSourceId: sourceScope.dataSourceId,
+            }),
+        );
+        invalidateDatabaseQueries(
+          queryClient,
+          sessionId,
+          sourceScope.hostDatabaseId,
+        );
       }
+
+      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
 
       if (variables.pageId) {
         void queryClient.invalidateQueries({ queryKey: ["pages"] }).catch(() => {
           // Navigation refresh must not delay or reject an already committed row.
         });
       }
-      return record;
+      return ack.result as DatabaseRecordEntity;
+    },
+    onSuccess: async (_data, variables) => {
+      try {
+        const scope = await resolveDataSourceCommandScope(
+          queryClient,
+          apiFetch,
+          variables.databaseId,
+          variables.hostDatabaseId,
+        );
+        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      } catch {
+        // Scope resolution failed; cache stays as-is.
+      }
     },
   });
 }
 
 export function useMoveDatabaseRow() {
-  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async (input: MoveRowInput) => {
@@ -121,33 +164,64 @@ export function useMoveDatabaseRow() {
         input.databaseId,
         input.hostDatabaseId,
       );
-      const transaction = client.execute<DatabaseRecordEntity>({
-        command: {
-          afterRowId: input.afterRowId,
-          beforeRowId: input.beforeRowId,
-          ...(input.groupPropertyId
-            ? {
-                group: {
-                  propertyId: input.groupPropertyId,
-                  value: input.groupValue,
-                },
-              }
-            : {}),
-          rowId: input.rowId,
-          type: "row.move",
-        },
-        databaseId: scope.hostDatabaseId,
-        dataSourceId: scope.dataSourceId,
-      });
       input.onOptimisticAccepted?.();
-      return transaction.promise;
+      try {
+        const ack = await runSerialized(
+          orderingSerializationKey(scope.dataSourceId),
+          () =>
+            executeDatabaseCommand(apiFetch, {
+              command: {
+                afterRowId: input.afterRowId,
+                beforeRowId: input.beforeRowId,
+                ...(input.groupPropertyId
+                  ? {
+                    group: {
+                      propertyId: input.groupPropertyId,
+                      value: input.groupValue,
+                    },
+                  }
+                  : {}),
+                rowId: input.rowId,
+                type: "row.move",
+              },
+              databaseId: scope.hostDatabaseId,
+              dataSourceId: scope.dataSourceId,
+            }),
+        );
+        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+        return ack.result as DatabaseRecordEntity;
+      } catch (error) {
+        if (isRowMoveConflict(error)) {
+          invalidateDatabaseQueries(
+            queryClient,
+            sessionId,
+            scope.hostDatabaseId,
+          );
+          dropSerializedQueue(orderingSerializationKey(scope.dataSourceId));
+          throw new Error("Order changed — try again.", { cause: error });
+        }
+        throw error;
+      }
+    },
+    onSuccess: async (_data, variables) => {
+      try {
+        const scope = await resolveDataSourceCommandScope(
+          queryClient,
+          apiFetch,
+          variables.databaseId,
+          variables.hostDatabaseId,
+        );
+        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      } catch {
+        // Ignore scope failures after a committed move.
+      }
     },
   });
 }
 
 export function useUpdateDatabasePropertyValue() {
-  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async (input: UpdatePropertyValueInput) => {
@@ -157,16 +231,17 @@ export function useUpdateDatabasePropertyValue() {
         input.databaseId,
         input.hostDatabaseId,
       );
-      return client.execute<DatabaseRecordEntity>({
-        command: {
-          propertyId: input.propertyId,
-          rowId: input.rowId,
-          type: "cell.set",
-          value: input.value,
-        },
-        databaseId: scope.hostDatabaseId,
+      const ack = await saveCellValue({
+        apiFetch,
         dataSourceId: scope.dataSourceId,
-      }).promise;
+        hostDatabaseId: scope.hostDatabaseId,
+        propertyId: input.propertyId,
+        queryClient,
+        rowId: input.rowId,
+        sessionId,
+        value: input.value,
+      });
+      return ack.result as DatabaseRecordEntity;
     },
   });
 }
@@ -180,8 +255,8 @@ export function useRestoreDatabaseRow() {
 }
 
 function useDatabaseRowStateMutation(type: "row.archive" | "row.restore") {
-  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
   return useMutation({
     mutationFn: async (input: {
       databaseId: string;
@@ -194,11 +269,43 @@ function useDatabaseRowStateMutation(type: "row.archive" | "row.restore") {
         input.databaseId,
         input.hostDatabaseId,
       );
-      return client.execute<DatabaseRecordEntity>({
-        command: { rowId: input.rowId, type },
-        databaseId: scope.hostDatabaseId,
-        dataSourceId: scope.dataSourceId,
-      }).promise;
+      try {
+        const ack = await runSerialized(
+          orderingSerializationKey(scope.dataSourceId),
+          () =>
+            executeDatabaseCommand(apiFetch, {
+              command: { rowId: input.rowId, type },
+              databaseId: scope.hostDatabaseId,
+              dataSourceId: scope.dataSourceId,
+            }),
+        );
+        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+        return ack.result as DatabaseRecordEntity;
+      } catch (error) {
+        if (isRowMoveConflict(error)) {
+          invalidateDatabaseQueries(
+            queryClient,
+            sessionId,
+            scope.hostDatabaseId,
+          );
+          dropSerializedQueue(orderingSerializationKey(scope.dataSourceId));
+          throw new Error("Order changed — try again.", { cause: error });
+        }
+        throw error;
+      }
+    },
+    onSuccess: async (_data, variables) => {
+      try {
+        const scope = await resolveDataSourceCommandScope(
+          queryClient,
+          apiFetch,
+          variables.databaseId,
+          variables.hostDatabaseId,
+        );
+        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      } catch {
+        // Ignore.
+      }
     },
   });
 }
@@ -224,9 +331,11 @@ function resolveCreateAnchors(queryClient: QueryClient, input: AddRowInput) {
   }
   const rowIds = findLoadedDataSourceRecords(queryClient, input.databaseId)
     .slice()
-    .sort((left, right) => Number(
-      parseDatabaseOrderKey(left.orderKey) - parseDatabaseOrderKey(right.orderKey),
-    ))
+    .sort((left, right) =>
+      Number(
+        parseDatabaseOrderKey(left.orderKey) - parseDatabaseOrderKey(right.orderKey),
+      )
+    )
     .map(({ id }) => id) ?? [];
   const index = Math.max(0, Math.min(input.position ?? rowIds.length, rowIds.length));
   return {

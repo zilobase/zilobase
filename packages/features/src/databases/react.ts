@@ -43,9 +43,12 @@ export {
   useUpdateDatabasePropertyValue,
   getDatabaseRowMoveAnchors,
 } from "./mutations/rows";
-export { useDatabaseEntityCommandState } from "./client/provider";
-export { useDatabaseBootstrap } from "./client/bootstrap-hooks";
-export { useDatabaseRecords } from "./client/record-hooks";
+export { useDatabaseEntityCommandState } from "./mutations/pending";
+export { useDatabaseBootstrap } from "./queries/bootstrap";
+export { useDatabaseRecords } from "./queries/records";
 export { useDatabaseAccess } from "./queries/query-hooks";
 export { useDatabaseRealtime } from "./realtime/realtime";
 export { useDatabaseIdForRowPage } from "./records/use-database-id-for-row-page";
+export { saveCellValue } from "./mutations/serialize";
+export type { DatabaseScope } from "./queries/bootstrap";
+export type { DatabaseViewScope } from "./queries/records";

@@ -1,15 +1,18 @@
 import { useMutation } from "@tanstack/react-query";
-import { useZilobaseFeatures } from  "../../shared/context";
+import { useZilobaseFeatures } from "../../shared/context";
 import {
   databaseRootQueryKey,
-} from  "../queries/queries";
+} from "../queries/queries";
 import {
   pagesNavRootQueryKey,
   type PageNavigationPayload,
-} from  "../../pages/queries";
-import { useDatabaseClient } from "../client/provider";
-import type { DatabaseViewEntity } from  "../core/entities";
-import { findDataSourceBootstrap } from "../client/command-scope";
+} from "../../pages/queries";
+import { useDatabaseSessionId } from "../client/provider";
+import type { DatabaseViewEntity } from "../core/entities";
+import { findDataSourceBootstrap } from "./scope";
+import { executeDatabaseCommand } from "./execute";
+import { invalidateDatabaseQueries } from "./invalidate";
+import { runSerialized, viewSerializationKey } from "./serialize";
 
 type UpdateDatabaseViewInput = {
   config?: unknown;
@@ -47,29 +50,29 @@ export function updateDatabaseViewInNavigation(
     databases: navigation.databases.map((database) =>
       database.id === input.databaseId
         ? {
-            ...database,
-            views: database.views.map((view) =>
-              view.id === input.databaseViewId
-                ? {
-                    ...view,
-                    ...(input.config !== undefined
-                      ? { config: input.config }
-                      : {}),
-                    ...(input.name !== undefined ? { name: input.name } : {}),
-                    ...(input.type !== undefined ? { type: input.type } : {}),
-                    updatedAt,
-                  }
-                : view,
-            ),
-          }
+          ...database,
+          views: database.views.map((view) =>
+            view.id === input.databaseViewId
+              ? {
+                ...view,
+                ...(input.config !== undefined
+                  ? { config: input.config }
+                  : {}),
+                ...(input.name !== undefined ? { name: input.name } : {}),
+                ...(input.type !== undefined ? { type: input.type } : {}),
+                updatedAt,
+              }
+              : view,
+          ),
+        }
         : database,
     ),
   };
 }
 
 export function useUpdateDatabaseView() {
-  const client = useDatabaseClient();
-  const { queryClient } = useZilobaseFeatures();
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
@@ -77,17 +80,26 @@ export function useUpdateDatabaseView() {
       databaseViewId,
       ...patch
     }: UpdateDatabaseViewInput) => {
-      return client.execute<DatabaseViewEntity>({
-        command: {
-          patch,
-          type: "view.update",
-          viewId: databaseViewId,
-        },
-        databaseId,
-      }).promise;
+      const ack = await runSerialized(
+        viewSerializationKey(databaseId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: {
+              patch,
+              type: "view.update",
+              viewId: databaseViewId,
+            },
+            databaseId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
+      return ack.result as DatabaseViewEntity;
     },
     onSuccess: (updatedView, variables) => {
-      const bootstrap = findDataSourceBootstrap(queryClient, updatedView.dataSourceId);
+      const bootstrap = findDataSourceBootstrap(
+        queryClient,
+        updatedView.dataSourceId,
+      );
       if (bootstrap) {
         queryClient.setQueriesData<PageNavigationPayload | undefined>(
           {
@@ -114,8 +126,8 @@ export function useUpdateDatabaseView() {
 }
 
 export function useAddDatabaseView() {
-  const client = useDatabaseClient();
-  const { queryClient } = useZilobaseFeatures();
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
@@ -125,18 +137,24 @@ export function useAddDatabaseView() {
       name,
       type,
     }: AddDatabaseViewInput) => {
-      return client.execute<DatabaseViewEntity>({
-        command: {
-          afterViewId: null,
-          beforeViewId: null,
-          config: config ?? null,
-          dataSourceId,
-          name: name?.trim() || "Table",
-          type: "view.create",
-          viewType: type?.trim() || "table",
-        },
-        databaseId,
-      }).promise;
+      const ack = await runSerialized(
+        viewSerializationKey(databaseId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: {
+              afterViewId: null,
+              beforeViewId: null,
+              config: config ?? null,
+              dataSourceId,
+              name: name?.trim() || "Table",
+              type: "view.create",
+              viewType: type?.trim() || "table",
+            },
+            databaseId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
+      return ack.result as DatabaseViewEntity;
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({
@@ -147,18 +165,24 @@ export function useAddDatabaseView() {
 }
 
 export function useDeleteDatabaseView() {
-  const client = useDatabaseClient();
-  const { queryClient } = useZilobaseFeatures();
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
       databaseId,
       databaseViewId,
     }: DeleteDatabaseViewInput) => {
-      return client.execute<{ viewId: string }>({
-        command: { type: "view.delete", viewId: databaseViewId },
-        databaseId,
-      }).promise;
+      const ack = await runSerialized(
+        viewSerializationKey(databaseId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: { type: "view.delete", viewId: databaseViewId },
+            databaseId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
+      return ack.result as { viewId: string };
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({

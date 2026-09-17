@@ -18,8 +18,11 @@ import {
   pagesQueryKey,
   type PageNavigationPayload,
 } from  "../../pages/queries";
-import { useDatabaseClient } from "../client/provider";
-import type { DatabaseHostEntity } from  "../core/entities";
+import { useDatabaseSessionId } from "../client/provider";
+import type { DatabaseHostEntity } from "../core/entities";
+import { executeDatabaseCommand } from "./execute";
+import { invalidateDatabaseQueries } from "./invalidate";
+import { runSerialized, viewSerializationKey } from "./serialize";
 
 type CreateDatabaseInput = {
   name?: string;
@@ -85,15 +88,21 @@ export function useCreateDatabase() {
 }
 
 export function useUpdateDatabase() {
-  const client = useDatabaseClient();
-  const { queryClient } = useZilobaseFeatures();
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({ databaseId, ...patch }: UpdateDatabaseInput) => {
-      return client.execute<DatabaseHostEntity>({
-        command: { patch, type: "database.update" },
-        databaseId,
-      }).promise;
+      const ack = await runSerialized(
+        viewSerializationKey(databaseId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: { patch, type: "database.update" },
+            databaseId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
+      return ack.result as DatabaseHostEntity;
     },
     onSuccess: async (database) => {
       await queryClient.invalidateQueries({

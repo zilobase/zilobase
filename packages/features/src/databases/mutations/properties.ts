@@ -1,13 +1,18 @@
 import { useMutation, type QueryClient } from "@tanstack/react-query";
-import { useZilobaseFeatures } from  "../../shared/context";
-import { pagesNavRootQueryKey } from  "../../pages/queries";
-import { useDatabaseClient } from "../client/provider";
+import { useZilobaseFeatures } from "../../shared/context";
+import { pagesNavRootQueryKey } from "../../pages/queries";
+import { useDatabaseSessionId } from "../client/provider";
 import {
   findDataSourceBootstrap,
-  invalidateDataSourceCollections,
   resolveDataSourceCommandScope,
-} from "../client/command-scope";
-import type { DatabasePropertyEntity } from  "../core/entities";
+} from "./scope";
+import { executeDatabaseCommand } from "./execute";
+import { invalidateDatabaseQueries } from "./invalidate";
+import {
+  runSerialized,
+  structuralSerializationKey,
+} from "./serialize";
+import type { DatabasePropertyEntity } from "../core/entities";
 
 type AddPropertyInput = {
   config?: unknown;
@@ -59,8 +64,8 @@ type DuplicatePropertyInput = {
 };
 
 export function useAddDatabaseProperty() {
-  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
@@ -80,27 +85,42 @@ export function useAddDatabaseProperty() {
         scope.dataSourceId,
         position,
       );
-      return client.execute<DatabasePropertyEntity>({
-        command: {
-          ...anchors,
-          config: config ?? null,
-          name: name?.trim() || "Property",
-          propertyType: type?.trim() || "text",
-          type: "property.create",
-        },
-        databaseId: scope.hostDatabaseId,
-        dataSourceId: scope.dataSourceId,
-      }).promise;
+      const ack = await runSerialized(
+        structuralSerializationKey(scope.dataSourceId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: {
+              ...anchors,
+              config: config ?? null,
+              name: name?.trim() || "Property",
+              propertyType: type?.trim() || "text",
+              type: "property.create",
+            },
+            databaseId: scope.hostDatabaseId,
+            dataSourceId: scope.dataSourceId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      return ack.result as DatabasePropertyEntity;
     },
-    onSettled: async (_result, _error, variables) => {
-      await invalidateDataSourceCollections(queryClient, variables.databaseId);
+    onSuccess: async (_result, variables) => {
+      try {
+        const scope = await resolveDataSourceCommandScope(
+          queryClient,
+          apiFetch,
+          variables.databaseId,
+        );
+        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      } catch {
+        // Ignore.
+      }
     },
   });
 }
 
 export function useApplyDatabaseTemplate() {
-  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({ databaseId, ...input }: ApplyDatabaseTemplateInput) => {
@@ -109,14 +129,19 @@ export function useApplyDatabaseTemplate() {
         apiFetch,
         databaseId,
       );
-      const result = await client.execute<{
-        dataSource: import( "../core/entities").DataSourceEntity;
-      }>({
-        command: { ...input, type: "template.apply" },
-        databaseId: scope.hostDatabaseId,
-        dataSourceId: scope.dataSourceId,
-      }).promise;
-      await invalidateDataSourceCollections(queryClient, databaseId);
+      const ack = await runSerialized(
+        structuralSerializationKey(scope.dataSourceId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: { ...input, type: "template.apply" },
+            databaseId: scope.hostDatabaseId,
+            dataSourceId: scope.dataSourceId,
+          }),
+      );
+      const result = ack.result as {
+        dataSource: import("../core/entities").DataSourceEntity;
+      };
+      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
 
       const workspaceId = findDataSourceBootstrap(queryClient, databaseId)
         ?.database.workspaceId;
@@ -132,8 +157,8 @@ export function useApplyDatabaseTemplate() {
 }
 
 export function useUpdateDatabaseProperty() {
-  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
@@ -146,25 +171,40 @@ export function useUpdateDatabaseProperty() {
         apiFetch,
         databaseId,
       );
-      return client.execute<DatabasePropertyEntity>({
-        command: {
-          patch,
-          propertyId: databasePropertyId,
-          type: "property.update",
-        },
-        databaseId: scope.hostDatabaseId,
-        dataSourceId: scope.dataSourceId,
-      }).promise;
+      const ack = await runSerialized(
+        structuralSerializationKey(scope.dataSourceId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: {
+              patch,
+              propertyId: databasePropertyId,
+              type: "property.update",
+            },
+            databaseId: scope.hostDatabaseId,
+            dataSourceId: scope.dataSourceId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      return ack.result as DatabasePropertyEntity;
     },
-    onSettled: async (_result, _error, variables) => {
-      await invalidateDataSourceCollections(queryClient, variables.databaseId);
+    onSuccess: async (_result, variables) => {
+      try {
+        const scope = await resolveDataSourceCommandScope(
+          queryClient,
+          apiFetch,
+          variables.databaseId,
+        );
+        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      } catch {
+        // Ignore.
+      }
     },
   });
 }
 
 export function useDeleteDatabaseProperty() {
-  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
@@ -176,24 +216,39 @@ export function useDeleteDatabaseProperty() {
         apiFetch,
         databaseId,
       );
-      return client.execute<DatabasePropertyEntity>({
-        command: {
-          propertyId: databasePropertyId,
-          type: "property.archive",
-        },
-        databaseId: scope.hostDatabaseId,
-        dataSourceId: scope.dataSourceId,
-      }).promise;
+      const ack = await runSerialized(
+        structuralSerializationKey(scope.dataSourceId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: {
+              propertyId: databasePropertyId,
+              type: "property.archive",
+            },
+            databaseId: scope.hostDatabaseId,
+            dataSourceId: scope.dataSourceId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      return ack.result as DatabasePropertyEntity;
     },
-    onSettled: async (_result, _error, variables) => {
-      await invalidateDataSourceCollections(queryClient, variables.databaseId);
+    onSuccess: async (_result, variables) => {
+      try {
+        const scope = await resolveDataSourceCommandScope(
+          queryClient,
+          apiFetch,
+          variables.databaseId,
+        );
+        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      } catch {
+        // Ignore.
+      }
     },
   });
 }
 
 export function useDuplicateDatabaseProperty() {
-  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
@@ -206,18 +261,33 @@ export function useDuplicateDatabaseProperty() {
         apiFetch,
         databaseId,
       );
-      return client.execute<DatabasePropertyEntity>({
-        command: {
-          includeValues,
-          propertyId: databasePropertyId,
-          type: "property.duplicate",
-        },
-        databaseId: scope.hostDatabaseId,
-        dataSourceId: scope.dataSourceId,
-      }).promise;
+      const ack = await runSerialized(
+        structuralSerializationKey(scope.dataSourceId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: {
+              includeValues,
+              propertyId: databasePropertyId,
+              type: "property.duplicate",
+            },
+            databaseId: scope.hostDatabaseId,
+            dataSourceId: scope.dataSourceId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      return ack.result as DatabasePropertyEntity;
     },
-    onSettled: async (_result, _error, variables) => {
-      await invalidateDataSourceCollections(queryClient, variables.databaseId);
+    onSuccess: async (_result, variables) => {
+      try {
+        const scope = await resolveDataSourceCommandScope(
+          queryClient,
+          apiFetch,
+          variables.databaseId,
+        );
+        invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      } catch {
+        // Ignore.
+      }
     },
   });
 }
