@@ -19,11 +19,8 @@ import {
   getReadOnlyTimePropertyRawValue,
 } from "../model/read-only-time-property"
 import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../views/state/database-view-context"
-import {
-  useDatabaseCellDraft,
-  useSetActiveDatabaseCell,
-  useUpdateDatabaseCellDraft,
-} from "../../views/state/database-cell-state"
+import { useDatabaseCellDraft, useSetActiveDatabaseCell, useUpdateDatabaseCellDraft } from "../../views/state/database-cell-state"
+import { areSerializedPropertyValuesEqual } from "../../interactions/database-item-utils"
 import { getPersonLimit, getPropertyWrapContent } from "../../views/model/database-view-config"
 import { type DatabasePropertyListItem } from "../../views/kanban/model/database-kanban-config"
 import { DatabaseRelationPropertyValue, DatabaseRollupPropertyValue } from "./database-derived-property-value"
@@ -121,6 +118,14 @@ export function DatabasePropertyValue({
   const setActiveCell = useSetActiveDatabaseCell()
   const updateDraft = useUpdateDatabaseCellDraft()
   const previousPropertyTypeRef = useRef(pageProperty.type)
+  // Server value observed when the current draft was committed. The draft is
+  // cleared once the server catches up to it, or when the server value moves
+  // on independently (normalization, another writer), so a draft can never
+  // stick forever and the UI keeps showing the attempted edit until then.
+  const commitBaseRef = useRef<{
+    key: string
+    value: DatabasePropertyValue
+  } | null>(null)
 
   useEffect(() => {
     if (previousPropertyTypeRef.current === pageProperty.type) {
@@ -128,8 +133,36 @@ export function DatabasePropertyValue({
     }
 
     previousPropertyTypeRef.current = pageProperty.type
+    commitBaseRef.current = null
     updateDraft(key, () => undefined)
   }, [key, pageProperty.type, updateDraft])
+
+  useEffect(() => {
+    if (draftValue === undefined || !commitBaseRef.current) {
+      return
+    }
+
+    if (commitBaseRef.current.key !== key) {
+      commitBaseRef.current = null
+      return
+    }
+
+    if (
+      areSerializedPropertyValuesEqual(
+        pageProperty.type,
+        persistedValue,
+        draftValue
+      ) ||
+      !areSerializedPropertyValuesEqual(
+        pageProperty.type,
+        persistedValue,
+        commitBaseRef.current.value
+      )
+    ) {
+      commitBaseRef.current = null
+      updateDraft(key, () => undefined)
+    }
+  }, [draftValue, key, pageProperty.type, persistedValue, updateDraft])
 
   const draftValues =
     draftValue === undefined ? {} : { [key]: draftValue }
@@ -152,6 +185,43 @@ export function DatabasePropertyValue({
       })
     },
     [key, updateDraft]
+  )
+  // Keep the attempted value visible as a draft until the server catches up.
+  // The catch-up effect above clears it once refetched data confirms it (or
+  // moves on), so the cell never snaps back to the stale value after commit.
+  const commitValue = useCallback(
+    (nextValue: DatabasePropertyValue) => {
+      if (
+        areSerializedPropertyValuesEqual(
+          pageProperty.type,
+          persistedValue,
+          nextValue
+        )
+      ) {
+        commitBaseRef.current = null
+        updateDraft(key, () => undefined)
+        return
+      }
+
+      commitBaseRef.current = { key, value: persistedValue }
+      updateDraft(key, () => nextValue)
+      onSaveValue(
+        row.id,
+        pageProperty.id,
+        pageProperty.type,
+        persistedValue,
+        nextValue
+      )
+    },
+    [
+      key,
+      onSaveValue,
+      pageProperty.id,
+      pageProperty.type,
+      persistedValue,
+      row.id,
+      updateDraft,
+    ]
   )
   const cellKind = getDatabasePropertyCellKind(pageProperty.type)
   const isMultiSelectProperty =
@@ -181,13 +251,7 @@ export function DatabasePropertyValue({
         disabled={!editable}
         onBlur={() => onActiveValueChange(null)}
         onCheckedChange={(nextChecked) =>
-          onSaveValue(
-            row.id,
-            pageProperty.id,
-            pageProperty.type,
-            persistedValue,
-            nextChecked === true ? "true" : "false"
-          )
+          commitValue(nextChecked === true ? "true" : "false")
         }
         onFocus={() => onActiveValueChange(key)}
       />
@@ -221,15 +285,7 @@ export function DatabasePropertyValue({
       }
       label={pageProperty.name}
       multiple={isMultiSelectProperty}
-      onSelect={(optionValue) =>
-        onSaveValue(
-          row.id,
-          pageProperty.id,
-          pageProperty.type,
-          persistedValue,
-          optionValue
-        )
-      }
+      onSelect={(optionValue) => commitValue(optionValue)}
       onOpenChange={(open) => onActiveValueChange(open ? key : null)}
       onPropertyConfigChange={(config) =>
         onPropertyConfigChange(property.id, config)
@@ -247,15 +303,7 @@ export function DatabasePropertyValue({
       onPropertyConfigChange={(config) =>
         onPropertyConfigChange(property.id, config)
       }
-      onSelect={(nextValue) =>
-        onSaveValue(
-          row.id,
-          pageProperty.id,
-          pageProperty.type,
-          persistedValue,
-          nextValue
-        )
-      }
+      onSelect={(nextValue) => commitValue(nextValue)}
       propertyConfig={pageProperty.config}
       value={value}
     />
@@ -265,15 +313,7 @@ export function DatabasePropertyValue({
       editable={editable}
       label={pageProperty.name}
       onOpenChange={(open) => onActiveValueChange(open ? key : null)}
-      onSelect={(nextValue) =>
-        onSaveValue(
-          row.id,
-          pageProperty.id,
-          pageProperty.type,
-          persistedValue,
-          nextValue
-        )
-      }
+      onSelect={(nextValue) => commitValue(nextValue)}
       workspaceId={
         workspaceId ?? databaseWorkspaceId ?? hostDatabaseWorkspaceId
       }
@@ -290,15 +330,7 @@ export function DatabasePropertyValue({
       onPropertyConfigChange={(config) =>
         onPropertyConfigChange(property.id, config)
       }
-      onSelect={(nextValue) =>
-        onSaveValue(
-          row.id,
-          pageProperty.id,
-          pageProperty.type,
-          persistedValue,
-          nextValue
-        )
-      }
+      onSelect={(nextValue) => commitValue(nextValue)}
       propertyConfig={pageProperty.config}
       row={row}
       value={value}
@@ -334,22 +366,7 @@ export function DatabasePropertyValue({
         }))
       }
       onCommit={() => {
-        const nextValue = draftValues[key] ?? persistedValue
-
-        onSaveValue(
-          row.id,
-          pageProperty.id,
-          pageProperty.type,
-          persistedValue,
-          nextValue
-        )
-        onDraftValuesChange((drafts) => {
-          const nextDrafts = { ...drafts }
-
-          delete nextDrafts[key]
-
-          return nextDrafts
-        })
+        commitValue(draftValues[key] ?? persistedValue)
       }}
       onDeactivate={() => onActiveValueChange(null)}
       onInput={handleCellInput}
