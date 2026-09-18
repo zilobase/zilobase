@@ -11,9 +11,9 @@ import {
 } from "react"
 
 import type {
-  DatabaseProperty,
+  DatabasePropertyEntity,
   DatabaseRow,
-  DatabaseView,
+  DatabaseViewEntity,
 } from "@zilobase/features/databases"
 import { type DatabasePresenceCollaborator } from "@zilobase/features/databases";
 import { useDatabaseRealtime } from "@zilobase/features/databases/react";
@@ -89,7 +89,7 @@ export type DatabaseViewProviderValue = {
   activeConditionalColors: DatabaseActiveConditionalColor[]
   activeDatabaseFilters: DatabaseActiveFilter[]
   activeDatabaseSorts: DatabaseActiveSort[]
-  activeView: DatabaseView | null
+  activeView: DatabaseViewEntity | null
   activeViewTabId: string | null
   activeVisibilityConfig: unknown
   addDataSource?: () => void
@@ -188,7 +188,7 @@ export type DatabaseViewProviderValue = {
   hostDatabaseId: string | null | undefined
   hostDatabaseName?: string
   hostDatabaseWorkspaceId?: string
-  hostViews: DatabaseView[]
+  hostViews: DatabaseViewEntity[]
   isAddingDatabaseProperty: boolean
   isAddingDatabaseRow: boolean
   isAddingDataSource?: boolean
@@ -206,7 +206,7 @@ export type DatabaseViewProviderValue = {
   options: DatabaseSelectOption[]
   workspaceId?: string | null
   personOptions: Array<{ id: string; name: string; suffix?: string }>
-  properties: DatabaseProperty[]
+  properties: DatabasePropertyEntity[]
   propertyValuesByKey: Record<string, DatabasePropertyValue>
   removeDatabaseFilter: (index: number) => void
   removeDatabaseSort: (index: number) => void
@@ -297,10 +297,10 @@ export type DatabaseViewProviderValue = {
   updateDatabaseSubItemsSettings: (
     settings: Partial<DatabaseSubItemsSettings>
   ) => void
-  visibleProperties: DatabaseProperty[]
+  visibleProperties: DatabasePropertyEntity[]
   visiblePropertyCount: number
   viewTabs: DatabaseViewTab[]
-  views: DatabaseView[]
+  views: DatabaseViewEntity[]
 }
 
 const databaseDataKeys = [

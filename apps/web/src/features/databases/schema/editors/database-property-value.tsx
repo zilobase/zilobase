@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, type FormEvent } from "react"
 
 import { Checkbox } from "@/shared/ui/checkbox"
 import {
-  type DatabaseProperty,
+  type DatabasePropertyEntity,
 } from "@zilobase/features/databases"
 
 import { defaultStatusOption, defaultStatusOptions } from "../model/property-defaults";
@@ -49,7 +49,7 @@ type PersonOption = {
 type DatabasePropertyValueProps = {
   disabledSelect?: boolean
   editable: boolean
-  properties: DatabaseProperty[]
+  properties: DatabasePropertyEntity[]
   propertyValuesByKey: Record<string, DatabasePropertyValue>
   onPropertyConfigChange: (
     databasePropertyId: string,

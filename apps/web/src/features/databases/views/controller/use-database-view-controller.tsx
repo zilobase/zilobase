@@ -50,7 +50,7 @@ import {
   writeLatestViewConfig,
 } from "../model/view-config-cache"
 import {
-  composeDatabaseControllerPayload,
+  composeDatabaseViewData,
   getDatabaseDataSourceSummaries,
   getDatabaseViewTabs,
   resolveRequestedDatabaseViewId,
@@ -128,8 +128,8 @@ export function useDatabaseViewController({
       : null,
   )
   const bootstrap = bootstrapState.data
-  const bootstrapPayload = useMemo(
-    () => composeDatabaseControllerPayload({
+  const bootstrapViewData = useMemo(
+    () => composeDatabaseViewData({
       bootstrap,
       dataSourceId: null,
       hasMore: false,
@@ -152,12 +152,18 @@ export function useDatabaseViewController({
   const latestViewConfigRef = useRef(new Map<string, unknown>())
   const isControlledActiveView = Boolean(onActiveViewIdChange)
   const dataSources = useMemo(
-    () => getDatabaseDataSourceSummaries(bootstrapPayload),
-    [bootstrapPayload],
+    () => getDatabaseDataSourceSummaries(
+      bootstrapViewData?.bootstrap.dataSources,
+      bootstrapViewData?.bootstrap.views,
+    ),
+    [bootstrapViewData],
   )
   const baseViewTabs = useMemo(
-    () => getDatabaseViewTabs(bootstrapPayload),
-    [bootstrapPayload],
+    () => getDatabaseViewTabs(
+      bootstrapViewData?.bootstrap.dataSources,
+      bootstrapViewData?.bootstrap.views,
+    ),
+    [bootstrapViewData],
   )
   const requestedViewId = resolveRequestedDatabaseViewId({
     requestedViewId: requestedActiveViewId,
@@ -179,8 +185,8 @@ export function useDatabaseViewController({
         }
       : null,
   )
-  const payload = useMemo(
-    () => composeDatabaseControllerPayload({
+  const viewData = useMemo(
+    () => composeDatabaseViewData({
       bootstrap,
       dataSourceId: activeDataSourceId,
       hasMore: recordWindow.hasMore,
@@ -195,17 +201,29 @@ export function useDatabaseViewController({
       recordWindow.totalCount,
     ],
   )
+  const activeProperties = useMemo(
+    () => (viewData?.bootstrap.properties ?? []).filter(
+      (property) => property.dataSourceId === viewData?.dataSourceId,
+    ),
+    [viewData],
+  )
   const setupDismissed = getDatabaseSetupDismissed(
-    payload?.activeDataSource?.config,
+    viewData?.activeDataSource?.config,
+  )
+  const hasSetupContent = Boolean(
+    viewData &&
+      (activeProperties.length > 0 ||
+        viewData.totalCount > 0 ||
+        viewData.bootstrap.dataSources.length > 1),
   )
   const effectiveSetupMode = shouldUseDatabaseSetupMode({
     editable,
-    payload,
+    hasContent: hasSetupContent,
     setupDismissed,
     setupMode,
   })
-  const activePayload = payload
-  const activeDatabaseId = activePayload?.activeDataSource?.id ?? null
+  const activeViewData = viewData
+  const activeDatabaseId = activeViewData?.activeDataSource?.id ?? null
   const viewTabs = baseViewTabs
   const activeFetchNextPage = recordWindow.fetchNextPage
   const activeHasNextPage = recordWindow.hasMore
@@ -214,13 +232,13 @@ export function useDatabaseViewController({
   const { data: session } = useSession()
   const needsPersonAccessTargets = useMemo(
     () =>
-      (activePayload?.properties ?? []).some(
+      activeProperties.some(
         (property) => property.property.type === "person",
       ),
-    [activePayload?.properties],
+    [activeProperties],
   )
   const { data: accessTargets } = usePagePersonAccessTargets(
-    activePayload?.database.pageId,
+    activeViewData?.bootstrap.database.pageId,
     { enabled: needsPersonAccessTargets },
   )
   const activeViewTabId = resolvedActiveViewId
@@ -252,9 +270,9 @@ export function useDatabaseViewController({
         accessTargets,
         activeViewId: activeViewLookupId,
         currentUserId: session?.user?.id,
-        payload: activePayload,
+        viewData: activeViewData,
       }),
-    [accessTargets, activePayload, activeViewLookupId, session?.user?.id],
+    [accessTargets, activeViewData, activeViewLookupId, session?.user?.id],
   )
   const {
     activeConditionalColors,
@@ -336,13 +354,13 @@ export function useDatabaseViewController({
     updateDatabaseView,
   ])
   useEffect(() => {
-    const nextDatabaseTitle = activePayload?.activeDataSource?.name
+    const nextDatabaseTitle = activeViewData?.activeDataSource?.name
 
     if (nextDatabaseTitle) {
       setDraftDatabaseTitle(nextDatabaseTitle)
     }
   }, [
-    activePayload?.activeDataSource?.name,
+    activeViewData?.activeDataSource?.name,
   ])
 
   useEffect(() => {
@@ -386,7 +404,7 @@ export function useDatabaseViewController({
     if (!updateDatabaseView.isPending) {
       latestViewConfigRef.current.clear()
     }
-  }, [activePayload?.views, updateDatabaseView.isPending])
+  }, [activeViewData?.bootstrap.views, updateDatabaseView.isPending])
 
   const getLatestViewConfig = useCallback(
     (
@@ -399,10 +417,10 @@ export function useDatabaseViewController({
         databaseId: nextDatabaseId,
         databaseViewId,
         fallbackConfig,
-        views: activePayload?.views,
+        views: activeViewData?.bootstrap.views,
       })
     },
-    [activePayload?.views],
+    [activeViewData?.bootstrap.views],
   )
 
   const setLatestViewConfig = useCallback(
@@ -453,17 +471,17 @@ export function useDatabaseViewController({
       return
     }
 
-    const source = payload?.dataSources.find(
+    const source = bootstrap?.dataSources.find(
       (candidate) => candidate.id === dataSourceId,
     )
     if (!source || source.parentDatabaseId === databaseId) return
 
     const sourceViewIds =
-      payload?.views
+      bootstrap?.views
         .filter((view) => view.dataSourceId === dataSourceId)
         .map((view) => view.id) ?? []
     const fallbackViewId =
-      payload?.views.find((view) => view.dataSourceId !== dataSourceId)?.id ??
+      bootstrap?.views.find((view) => view.dataSourceId !== dataSourceId)?.id ??
       null
 
     try {
@@ -665,7 +683,7 @@ export function useDatabaseViewController({
       return
     }
 
-    const sourceView = payload?.views.find(
+    const sourceView = bootstrap?.views.find(
       (candidate) => candidate.id === view.id,
     )
 
@@ -687,7 +705,7 @@ export function useDatabaseViewController({
       return
     }
 
-    const sourceView = (payload?.views ?? []).find(
+    const sourceView = (bootstrap?.views ?? []).find(
       (databaseView) => databaseView.id === view.id,
     )
 
@@ -765,7 +783,7 @@ export function useDatabaseViewController({
       updateProperty,
       updateValue,
     },
-    payload: activePayload,
+    viewData: activeViewData,
     properties,
     setActiveViewId: setSelectedActiveViewId,
     setFilterPickerOpen,
@@ -843,12 +861,12 @@ export function useDatabaseViewController({
     createDatabaseSort: commands.createDatabaseSort,
     dataSources,
     databaseConfig:
-      activePayload?.activeDataSource?.config,
+      activeViewData?.activeDataSource?.config,
     databaseId: activeDatabaseId,
     databaseName:
-      activePayload?.activeDataSource?.name,
-    databasePageId: activePayload?.database.pageId,
-    databaseWorkspaceId: activePayload?.database.workspaceId,
+      activeViewData?.activeDataSource?.name,
+    databasePageId: activeViewData?.bootstrap.database.pageId,
+    databaseWorkspaceId: activeViewData?.bootstrap.database.workspaceId,
     deleteDatabaseView: deleteDatabaseViewByTab,
     duplicateDatabaseView,
     draftDatabaseTitle,
@@ -867,10 +885,10 @@ export function useDatabaseViewController({
     hasDatabasePageDragPayload,
     hasNextPage: activeHasNextPage,
     headerMenusEnabled: editable,
-    hostDatabaseId: payload?.database.id ?? databaseId,
-    hostDatabaseName: payload?.database.name,
-    hostDatabaseWorkspaceId: payload?.database.workspaceId,
-    hostViews: payload?.views ?? [],
+    hostDatabaseId: bootstrap?.database.id ?? databaseId,
+    hostDatabaseName: bootstrap?.database.name,
+    hostDatabaseWorkspaceId: bootstrap?.database.workspaceId,
+    hostViews: bootstrap?.views ?? [],
     isAddingDatabaseProperty: addProperty.isPending,
     isAddingDatabaseRow: addRow.isPending,
     isAddingDataSource:
@@ -886,7 +904,7 @@ export function useDatabaseViewController({
     showPageIconInTitle,
     onOpenPage,
     options: kanbanOptions,
-    workspaceId: payload?.database.workspaceId ?? workspaceId,
+    workspaceId: bootstrap?.database.workspaceId ?? workspaceId,
     personOptions,
     properties,
     removeDatabaseFilter: commands.removeDatabaseFilter,
@@ -945,7 +963,7 @@ export function useDatabaseViewController({
     visibleProperties,
     visiblePropertyCount,
     viewTabs,
-    views: activePayload?.views ?? [],
+    views: activeViewData?.bootstrap.views ?? [],
   }
 
   return {
@@ -971,8 +989,8 @@ export function useDatabaseViewController({
     onDataSourceSetupClose: () => setDataSourceSetupOpen(false),
     onDataSourceSetupSelect: handleDataSourceSetupSelection,
     onSetupComplete,
-    workspaceId: payload?.database.workspaceId ?? workspaceId,
-    payload: activePayload,
+    workspaceId: bootstrap?.database.workspaceId ?? workspaceId,
+    viewData: activeViewData,
     sourcePropertyDialog: null,
     setupMode: effectiveSetupMode,
     viewType: activeView?.type,

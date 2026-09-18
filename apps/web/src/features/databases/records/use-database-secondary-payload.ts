@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react"
 
 import { useDatabaseRecords } from "@zilobase/features/databases/react"
 
-import { composeDatabaseControllerPayload } from "../views/model/database-controller-state"
+import { composeDatabaseViewData } from "../views/model/database-controller-state"
 import { useDatabaseMetadata } from "../access/use-database-metadata"
 
 export function useDatabaseSecondaryPayload(
@@ -56,7 +56,7 @@ export function useDatabaseSecondaryPayload(
     if (!metadata.data || !activeDataSourceId || !view) return undefined
     if (records.status !== "success") return undefined
 
-    return composeDatabaseControllerPayload({
+    return composeDatabaseViewData({
       bootstrap: metadata.data,
       dataSourceId: activeDataSourceId,
       hasMore: records.hasMore,

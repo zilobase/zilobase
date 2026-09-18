@@ -2,6 +2,7 @@ import {
   parsePropertyValue,
   toStringArray,
 } from "../../property-values"
+import type { DatabaseViewData } from "../../../views/model/database-controller-state"
 
 type RelationRow = {
   id: string
@@ -24,11 +25,35 @@ type RelationValue = {
   value: unknown
 }
 
-type RelationPayload = {
+export type RelationPayload = {
   database?: { id?: string }
   properties: RelationProperty[]
   rows: RelationRow[]
   values: RelationValue[]
+}
+
+/** Project interactive view data onto the rows/values/properties relation logic reads. */
+export function relationPayloadFromViewData(
+  viewData: DatabaseViewData | null | undefined,
+): RelationPayload | null {
+  if (!viewData) return null
+  return {
+    database: { id: viewData.bootstrap.database.id },
+    properties: viewData.bootstrap.properties.filter(
+      (property) => property.dataSourceId === viewData.dataSourceId,
+    ),
+    rows: viewData.records.map((record) => ({
+      id: record.id,
+      pageId: record.pageId,
+    })),
+    values: viewData.records.flatMap((record) =>
+      Object.values(record.valuesByPropertyId).map((value) => ({
+        pageId: value.pageId,
+        propertyId: value.propertyId,
+        value: value.value,
+      }))
+    ),
+  }
 }
 
 type RelationSchemaPayload = Pick<RelationPayload, "properties">

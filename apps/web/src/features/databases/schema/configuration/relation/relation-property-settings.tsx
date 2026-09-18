@@ -49,6 +49,7 @@ import {
   getRelationNeedsRepair,
   getRelationRepairMutationPlan,
   getRelationTwoWayConfigUpdate,
+  relationPayloadFromViewData,
 } from "../../relations/model/database-relation-sync";
 
 type RelationDatabaseOption = DatabaseSearchableMenuOption & {
@@ -148,10 +149,12 @@ export function RelationPropertySettings({
     const repairPlan = getRelationRepairMutationPlan({
       databaseId,
       databasePropertyId,
-      payload: currentDatabaseRead.data,
+      payload: relationPayloadFromViewData(currentDatabaseRead.data),
       primarySource: repairPrimarySource,
       propertyConfig: config,
-      relatedDatabasePayload: relatedDatabaseRead.data,
+      relatedDatabasePayload: relationPayloadFromViewData(
+        relatedDatabaseRead.data,
+      ),
     });
 
     if (!repairPlan) {

@@ -1,8 +1,9 @@
 import type {
-  DatabasePayload,
-  DatabaseProperty,
+  DatabasePropertyEntity,
+  DatabaseRecordEntity,
   DatabaseRow,
-  PagePropertyValue,
+  DatabaseViewEntity,
+  PagePropertyValueEntity,
 } from "@zilobase/features/databases"
 
 import {
@@ -48,6 +49,7 @@ import {
   getSortedDatabaseItems,
   hasViewHiddenPropertyIds,
 } from "../../interactions/database-item-utils"
+import type { DatabaseViewData } from "./database-controller-state"
 
 type PagePersonAccessTargets = {
   members?: Array<{
@@ -62,15 +64,15 @@ export function deriveDatabaseViewModel({
   accessTargets,
   activeViewId,
   currentUserId,
-  payload,
+  viewData,
 }: {
   accessTargets?: PagePersonAccessTargets
   activeViewId: string | null
   currentUserId?: string
-  payload: DatabasePayload | null | undefined
+  viewData: DatabaseViewData | null | undefined
 }) {
   const { propertyValues, properties, items, databaseConfig, activeView } =
-    resolveViewSource(payload, activeViewId)
+    resolveViewSource(viewData, activeViewId)
   const personOptions = getPersonOptions(accessTargets, currentUserId)
   const personOptionsById = new Map(
     personOptions.map((personOption) => [personOption.id, personOption.name])
@@ -235,23 +237,54 @@ export function deriveDatabaseViewModel({
   }
 }
 
-function resolveViewSource(payload: DatabasePayload | null | undefined, activeViewId: string | null) {
-  const activeView = resolveActiveView(payload?.views, activeViewId)
+function resolveViewSource(viewData: DatabaseViewData | null | undefined, activeViewId: string | null) {
+  const bootstrap = viewData?.bootstrap
+  const dataSourceId = viewData?.dataSourceId
+  const activeView = resolveActiveView(bootstrap?.views, activeViewId)
+  const records = dataSourceId
+    ? (viewData?.records ?? []).filter(
+      (record) => record.dataSourceId === dataSourceId,
+    )
+    : []
   return {
-    propertyValues: payload?.values ?? [],
-    properties: payload?.properties ?? [],
-    items: payload?.rows ?? [],
-    databaseConfig: payload?.database.config,
+    propertyValues: records.flatMap((record) =>
+      Object.values(record.valuesByPropertyId)
+    ),
+    properties: (bootstrap?.properties ?? []).filter(
+      (property) => property.dataSourceId === dataSourceId,
+    ),
+    items: records.map((record, position) => toViewRow(record, position)),
+    databaseConfig: bootstrap?.database.config,
     activeView,
   }
 }
 
-function resolveActiveView(views: DatabasePayload["views"] | undefined, activeViewId: string | null) {
+function toViewRow(record: DatabaseRecordEntity, position: number): DatabaseRow {
+  return {
+    createdAt: record.createdAt,
+    dataSourceId: record.dataSourceId,
+    id: record.id,
+    page: {
+      createdAt: record.page.createdAt,
+      deletedAt: record.page.deletedAt,
+      id: record.page.id,
+      metadata: record.page.metadata,
+      name: record.page.name,
+      updatedAt: record.page.updatedAt,
+    },
+    pageId: record.pageId,
+    parentRowId: record.parentRowId,
+    position,
+    updatedAt: record.updatedAt,
+  }
+}
+
+function resolveActiveView(views: DatabaseViewEntity[] | undefined, activeViewId: string | null) {
   return views?.find(view => view.id === activeViewId) ?? views?.[0] ?? null
 }
 
 function resolveGroupProperty(
-  properties: DatabaseProperty[], activeViewConfig: unknown,
+  properties: DatabasePropertyEntity[], activeViewConfig: unknown,
   nameGroupProperty: DatabasePropertyListItem,
 ) {
   return activeViewConfig &&
@@ -265,7 +298,7 @@ function resolveGroupProperty(
 }
 
 function getOrderedDatabaseProperties(
-  properties: DatabaseProperty[],
+  properties: DatabasePropertyEntity[],
   config: unknown
 ) {
   const order = getDatabasePropertyOrder(config)
@@ -297,7 +330,7 @@ function getPersonOptions(
 
 function getSortFieldOptions(
   titlePropertyLabel: string,
-  properties: DatabaseProperty[]
+  properties: DatabasePropertyEntity[]
 ): DatabaseFieldOption[] {
   return [
     {
@@ -322,7 +355,7 @@ function getActiveVisibilityConfig({
 }: {
   activeViewConfig: unknown
   isKanbanView: boolean
-  properties: DatabaseProperty[]
+  properties: DatabasePropertyEntity[]
 }) {
   if (!isKanbanView || hasViewHiddenPropertyIds(activeViewConfig)) {
     return activeViewConfig
@@ -359,7 +392,7 @@ function getActiveDatabaseSorts(
 function getActiveDatabaseFilters(
   databaseFilters: DatabaseFilterItemConfig[],
   filterFieldOptions: DatabaseFieldOption[],
-  properties: DatabaseProperty[]
+  properties: DatabasePropertyEntity[]
 ): DatabaseActiveFilter[] {
   return databaseFilters.flatMap((filter) => {
     if (isDatabaseFilterGroup(filter)) {
@@ -395,7 +428,7 @@ function getActiveDatabaseFilters(
 function getActiveDatabaseConditionalColors(
   conditionalColors: DatabaseConditionalColorConfig[],
   filterFieldOptions: DatabaseFieldOption[],
-  properties: DatabaseProperty[]
+  properties: DatabasePropertyEntity[]
 ) {
   return conditionalColors.flatMap((setting) => {
     const [filter] = getActiveDatabaseFilters(
@@ -417,7 +450,7 @@ function getActiveDatabaseConditionalColors(
 
 function getFilterPropertyType(
   propertyId: DatabasePropertyFilterConfig["propertyId"],
-  properties: DatabaseProperty[]
+  properties: DatabasePropertyEntity[]
 ) {
   if (propertyId === "name") {
     return "text"
@@ -437,7 +470,7 @@ function getFilterValueOptionsByField({
 }: {
   items: DatabaseRow[]
   personOptions: Array<{ id: string; name: string; suffix?: string }>
-  properties: DatabaseProperty[]
+  properties: DatabasePropertyEntity[]
   propertyValuesByKey: Record<string, DatabasePropertyValue>
 }) {
   const optionsByField: Record<string, DatabaseFieldOption[]> = {}
@@ -477,7 +510,7 @@ function getFilterValueOptionsByField({
 
 function getPropertyFilterValues(
   items: DatabaseRow[],
-  property: DatabaseProperty,
+  property: DatabasePropertyEntity,
   propertyValuesByKey: Record<string, DatabasePropertyValue>
 ) {
   return items.flatMap((item) => {
@@ -545,8 +578,8 @@ function getPropertyValuesByKey({
   propertyValues,
 }: {
   items: DatabaseRow[]
-  properties: DatabaseProperty[]
-  propertyValues: PagePropertyValue[]
+  properties: DatabasePropertyEntity[]
+  propertyValues: PagePropertyValueEntity[]
 }) {
   const values: Record<string, DatabasePropertyValue> = {}
 
