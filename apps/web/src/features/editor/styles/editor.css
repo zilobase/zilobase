@@ -29,11 +29,11 @@
   }
 
   .tiptap-editor h1 {
-    @apply scroll-m-20 text-4xl font-semibold leading-tight tracking-normal text-balance;
+    @apply scroll-m-20 text-3xl font-semibold leading-tight tracking-normal text-balance;
   }
 
   .tiptap-editor h2 {
-    @apply scroll-m-20 text-3xl font-semibold leading-tight tracking-normal;
+    @apply scroll-m-20 text-2xl font-semibold leading-tight tracking-normal;
   }
 
   .tiptap-editor h3 {
