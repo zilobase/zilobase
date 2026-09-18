@@ -7,3 +7,4 @@ Record a lasting decision when its rejected alternatives explain the implementat
 - [Incremental Effect runtime on the server](0003-effect-runtime.md)
 - [Responsive database client and mutation protocol](0004-responsive-database-client.md)
 - [Poke-and-refetch database client](0005-poke-and-refetch-database-client.md)
+- [Query-hashed database windows](0006-query-hashed-database-windows.md)

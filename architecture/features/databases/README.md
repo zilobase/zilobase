@@ -30,6 +30,12 @@ split per domain under `databases/commands/` (`records.ts`, `structural/`,
 Database routes compose bounded reads and idempotent host/source commands. The
 web database surface keeps one QueryClient photocopy of the notebook:
 `GET /bootstrap` plus `GET /records` under `["db", sessionId, hostId, …]`.
+Record windows are keyed by view query hash (`dataSourceId` plus normalized
+filters/sorts), so sibling views that differ only in presentation share one
+cached window; `viewId` selects the server-side evaluation, never the cache
+key. Switching views within one data source keeps the previous rows visible
+while the new hash loads, and tabs prefetch on hover/focus with idle
+prefetch for same-source siblings.
 Postgres remains the only truth and the host `database.version` is the clock.
 Writes go `UI -> useMutation -> POST …/commands -> ack -> invalidate -> GET`;
 the realtime socket is a doorbell that only says `{ databaseId, version }`.
@@ -42,7 +48,7 @@ The [v2 command routes](../../../apps/server/src/features/databases/http/command
 
 The accepted [poke-and-refetch database client decision](../../decisions/0005-poke-and-refetch-database-client.md) defines the QueryClient-backed client used here. It supersedes the collection-backed responsive client: the server protocol is unchanged, but the client no longer keeps TanStack DB collections, optimistic overlays, journals, or command lanes.
 
-The [v2 read service](../../../apps/server/src/features/databases/read/service.ts) separates metadata bootstrap from bounded record windows. Bootstrap aggregates properties for every accessible linked source without rows. Record reads materialize one complete entity per row, evaluate the selected view before slicing, default to 50 records (or a persisted 10/25/50/100 view choice), and bind continuation reads to host/source/view revisions. A changed revision raises the typed `WINDOW_STALE` conflict. The [database read routes](../../../apps/server/src/features/databases/http/read-routes.ts) expose those services as `GET /:id/bootstrap` and `GET /:id/data-sources/:dataSourceId/records`, retaining authenticated and published-database access while validating source/view scope and exact window sizes. The `GET /:id/mutations` catch-up feed remains on the server but the client never calls it. The [shared view evaluator](../../../packages/features/src/databases/views/view-evaluation.ts) is server-safe and reuses the tested filter and formula domains.
+The [v2 read service](../../../apps/server/src/features/databases/read/service.ts) separates metadata bootstrap from bounded record windows. Bootstrap aggregates properties for every accessible linked source without rows. Record reads materialize one complete entity per row, evaluate the selected view before slicing, default to 50 records (or a persisted 10/25/50/100 view choice), and bind continuation reads to host/source/view revisions. A changed revision raises the typed `WINDOW_STALE` conflict. The [database read routes](../../../apps/server/src/features/databases/http/read-routes.ts) expose those services as `GET /:id/bootstrap` and `GET /:id/data-sources/:dataSourceId/records`, retaining authenticated and published-database access while validating source/view scope and exact window sizes. The `GET /:id/mutations` catch-up feed remains on the server but the client never calls it. The [shared view evaluator](../../../packages/features/src/databases/views/view-evaluation.ts) is server-safe and reuses the tested filter and formula domains. The [view query hash](../../../packages/features/src/databases/views/query-hash.ts) reduces each view config to its data-affecting slice (normalized filters/sorts plus the deleted-rows flag, excluding type, grouping, visibility, and layout) so the client cache in [record windows](../../../packages/features/src/databases/queries/records.ts) is per query, not per view; see the [query-hashed windows decision](../../decisions/0006-query-hashed-database-windows.md).
 
 ## Authorization and persistence
 

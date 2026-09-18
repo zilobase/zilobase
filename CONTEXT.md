@@ -37,6 +37,13 @@ data plus poke comparison against the minimum cached version. Different loaded
 views can have different versions; one newer view does not prove that the
 other views are fresh.
 
+### Database view query hash
+
+The data-affecting slice of a Database view config: normalized filters,
+sorts, and the deleted-rows flag, excluding presentation (view type,
+grouping, visibility, layout). Views with equal hashes evaluate the same
+rows and share one cached record window.
+
 ### Page
 
 A Page is the page item represented by a Database row and opened from the editor.
