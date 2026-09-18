@@ -130,6 +130,10 @@ export function useDatabaseKanbanCardDrag<
   const [pendingSortedMove, setPendingSortedMove] =
     useState<KanbanCardMove | null>(null)
   const [droppedRows, setDroppedRows] = useState<Map<string, Row[]> | null>(null)
+  // Mirrors `draggedCard` state synchronously: the state update is deferred to
+  // a frame so the browser can capture the native drag image first, but drop
+  // and drag-over handlers must see the card even on a very fast drop.
+  const draggedCardRef = useRef<DraggedKanbanCard | null>(null)
   const moveRow = useMoveDatabaseRow()
   const reorderRows = useMoveDatabaseRow()
   const updatePage = useUpdatePage()
@@ -274,6 +278,7 @@ export function useDatabaseKanbanCardDrag<
     hitTestFrame.current = null
     pendingHitTest.current = null
     dragOriginRef.current = null
+    draggedCardRef.current = null
     finishDatabaseRowDrag()
     setDraggedCard(null)
     setIsExternalDragActive(false)
@@ -370,6 +375,13 @@ export function useDatabaseKanbanCardDrag<
     (move: KanbanCardMove, onOptimisticAccepted?: () => void) => {
       const databaseId = input.databaseId
       if (!databaseId) return
+      const notifyMoveError = (error: unknown) => {
+        toast.error(
+          error instanceof Error && error.message
+            ? error.message
+            : "Couldn't move card",
+        )
+      }
 
       if (move.pageId && typeof move.pageTitle === "string") {
         updatePage.mutate(
@@ -385,7 +397,7 @@ export function useDatabaseKanbanCardDrag<
                   ? { hostDatabaseId: input.hostDatabaseId }
                   : {}),
                 ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
-              })
+              }, { onError: notifyMoveError })
             },
           },
         )
@@ -403,7 +415,7 @@ export function useDatabaseKanbanCardDrag<
           groupValue: move.groupValue,
           onOptimisticAccepted,
           ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
-        })
+        }, { onError: notifyMoveError })
         return
       }
 
@@ -414,7 +426,7 @@ export function useDatabaseKanbanCardDrag<
           : {}),
         onOptimisticAccepted,
         ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
-      })
+      }, { onError: notifyMoveError })
     }, [input.databaseId, input.hostDatabaseId, moveRow, reorderRows, updatePage],
   )
 
@@ -461,15 +473,19 @@ export function useDatabaseKanbanCardDrag<
         title,
       })
       // Let the browser capture its native drag image before hiding the source.
+      // The ref is set synchronously so a fast drop still sees the card even
+      // if this frame hasn't run yet.
+      const nextDraggedCard = {
+        pageId: row.pageId,
+        rowId: row.id,
+        sourceOptionId: option.id,
+        sourceGroupValue: option.groupValue,
+        height: cardRect.height,
+      }
+      draggedCardRef.current = nextDraggedCard
       dragFrame.current = requestAnimationFrame(() => {
         dragFrame.current = null
-        setDraggedCard({
-          pageId: row.pageId,
-          rowId: row.id,
-          sourceOptionId: option.id,
-          sourceGroupValue: option.groupValue,
-          height: cardRect.height,
-        })
+        setDraggedCard(draggedCardRef.current)
         setDropTarget({
           optionId: option.id,
           targetIndex: Math.max(
@@ -484,17 +500,18 @@ export function useDatabaseKanbanCardDrag<
 
   const dragOver = useCallback(
     (option: Option, event: ReactDragEvent<HTMLElement>) => {
+      const activeCard = draggedCard ?? draggedCardRef.current
       const hasExternalDragPayload =
-        !draggedCard && hasDatabasePageDragPayload(event.dataTransfer)
+        !activeCard && hasDatabasePageDragPayload(event.dataTransfer)
       if (
         !input.editable ||
         !input.groupProperty ||
-        (!draggedCard && !hasExternalDragPayload)
+        (!activeCard && !hasExternalDragPayload)
       ) {
         return
       }
 
-      if (draggedCard && draggedCard.sourceOptionId !== option.id &&
+      if (activeCard && activeCard.sourceOptionId !== option.id &&
         !canMoveRowsAcrossKanbanGroups(input.groupProperty)) return
 
       event.preventDefault()
@@ -520,14 +537,15 @@ export function useDatabaseKanbanCardDrag<
 
   const drop = useCallback(
     (option: Option, event: ReactDragEvent<HTMLElement>) => {
-      const nextExternalDragPayload = draggedCard
+      const activeCard = draggedCard ?? draggedCardRef.current
+      const nextExternalDragPayload = activeCard
         ? null
         : getDatabasePageDragPayload(event.dataTransfer)
       if (
         !input.editable ||
         !input.databaseId ||
         !input.groupProperty ||
-        (!draggedCard && !nextExternalDragPayload)
+        (!activeCard && !nextExternalDragPayload)
       ) {
         return
       }
@@ -558,19 +576,19 @@ export function useDatabaseKanbanCardDrag<
         return
       }
 
-      const move = getMove(target)
+      const move = getMove(target, activeCard ?? undefined)
 
       if (input.isSorted) {
         if (move) setPendingSortedMove(move)
-      } else if (move && draggedCard) {
+      } else if (move && activeCard) {
         const dropStartedAt = performance.now()
-        const row = input.allRows.find((item) => item.id === draggedCard.rowId)
+        const row = input.allRows.find((item) => item.id === activeCard.rowId)
         if (row) {
           // Replace the preview with its final layout in this same render, before
           // the asynchronous cache mutation can expose the old order again.
           const nextRows = new Map<string, Row[]>()
           for (const group of input.options) {
-            if (group.id !== draggedCard.sourceOptionId && group.id !== target.optionId) continue
+            if (group.id !== activeCard.sourceOptionId && group.id !== target.optionId) continue
             nextRows.set(group.id, getKanbanDroppedRows({
               rows: input.getOptionItems(group),
               draggedRow: row,
@@ -638,15 +656,16 @@ export function useDatabaseKanbanCardDrag<
 
   const canDropOnNewGroup = (event: ReactDragEvent<HTMLElement>) =>
     input.editable && Boolean(input.databaseId) && !droppedRows &&
-    Boolean(draggedCard || hasDatabasePageDragPayload(event.dataTransfer))
+    Boolean((draggedCard ?? draggedCardRef.current) || hasDatabasePageDragPayload(event.dataTransfer))
 
   const dropOnNewGroup = (event: ReactDragEvent<HTMLElement>) => {
     if (!canDropOnNewGroup(event)) return false
-    const payload = draggedCard ? null : getDatabasePageDragPayload(event.dataTransfer)
-    if (!draggedCard && !payload) return false
+    const activeCard = draggedCard ?? draggedCardRef.current
+    const payload = activeCard ? null : getDatabasePageDragPayload(event.dataTransfer)
+    if (!activeCard && !payload) return false
     event.preventDefault()
     event.stopPropagation()
-    newGroupDrop.current = { card: draggedCard, payload }
+    newGroupDrop.current = { card: activeCard, payload }
     clearDrag()
     return true
   }
