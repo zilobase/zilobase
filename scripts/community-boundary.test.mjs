@@ -55,7 +55,7 @@ test("SSO and Enterprise names are reserved for public boundary policy", () => {
   );
 });
 
-test("community boundary ignores documentation and vendored references", () => {
+test("community boundary ignores documentation and agent references", () => {
   process.env.ZILOBASE_RESTRICTED_PACKAGE_MARKERS = "@restricted/runtime";
   try {
     assert.deepEqual(
@@ -65,11 +65,10 @@ test("community boundary ignores documentation and vendored references", () => {
       ),
       [],
     );
-    assert.equal(isVendoredReferenceTree("repos/vendor/package.ts"), true);
     assert.equal(isVendoredReferenceTree(".claude/skills/reference.md"), true);
     assert.deepEqual(
       findRestrictedRuntimeReferences(
-        "repos/vendor/package.ts",
+        ".claude/skills/reference.md",
         'import type { Runtime } from "@restricted/runtime"',
       ),
       [],

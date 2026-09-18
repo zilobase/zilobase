@@ -30,22 +30,11 @@ For setup or operational changes, also update the affected contributor guide or
 runbook. Keep command definitions and enforcement thresholds in their existing
 configuration files; link to them instead of copying values into this file.
 
-## Vendored repositories
+## Effect dependency
 
-This project vendors external repositories under [repos/](repos/).
-
-- Use vendored repositories as read-only reference material when working with
-  related libraries.
-- Prefer examples and patterns from the vendored source code over generated
-  guesses or web search results.
-- Do not edit files under [repos/](repos/) unless explicitly asked.
-- Do not import from [repos/](repos/). Application code should continue importing
-  from normal package dependencies.
-
-When writing Effect code, read [repos/effect/LLMS.md](repos/effect/LLMS.md)
-first, then inspect [repos/effect/](repos/effect/) for idiomatic usage, tests,
-module structure, and API design. Treat it as the source of truth for Effect
-patterns.
+Effect comes from the npm package (`effect` in `apps/server/package.json`).
+Use the installed package types and the official Effect documentation as the
+source of truth for Effect patterns; do not vendor the Effect source tree.
 
 Server Effect code belongs in `@zilobase/server`. Put shared runtime helpers in
 [apps/server/src/infrastructure/effect](apps/server/src/infrastructure/effect)
@@ -56,5 +45,5 @@ routes use [parseJsonBody](apps/server/src/shared/http/schema-json.ts). Database
 [Db](apps/server/src/infrastructure/database/db.ts) (`withEnv`) rather than
 calling `runWithDbEnv` directly. Object-storage work uses
 [ObjectStorage](apps/server/src/infrastructure/storage/object-storage.ts)
-rather than calling `createImageStorage` directly. Import `effect`, not
-`repos/effect`.
+rather than calling `createImageStorage` directly. Import `effect` from
+the npm package.

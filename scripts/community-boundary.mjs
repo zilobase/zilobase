@@ -30,8 +30,7 @@ function isRestrictedPackage(specifier) {
 
 export function isVendoredReferenceTree(file) {
   const normalizedFile = file.replaceAll("\\", "/");
-  return normalizedFile === "repos" || normalizedFile.startsWith("repos/") ||
-    normalizedFile === ".claude" || normalizedFile.startsWith(".claude/");
+  return normalizedFile === ".claude" || normalizedFile.startsWith(".claude/");
 }
 
 export function findRestrictedRuntimeReferences(file, content) {

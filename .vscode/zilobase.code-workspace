@@ -7,17 +7,6 @@
     "debug.javascript.autoAttachFilter": "disabled",
     "debug.javascript.terminalOptions": {
       "skipFiles": ["<node_internals>/**"]
-    },
-    "typescript.preferences.autoImportFileExcludePatterns": ["repos/**"],
-    "javascript.preferences.autoImportFileExcludePatterns": ["repos/**"],
-    "files.exclude": {
-      "repos/**": true
-    },
-    "files.watcherExclude": {
-      "repos/**": true
-    },
-    "search.exclude": {
-      "repos/**": true
     }
   }
 }
