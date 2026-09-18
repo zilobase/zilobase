@@ -32,7 +32,7 @@ type MoveRowInput = {
   groupPropertyId?: string;
   groupValue?: unknown;
   hostDatabaseId?: string;
-  onCommandQueued?: () => void;
+  onOptimisticAccepted?: () => void;
   rowId: string;
 };
 
@@ -171,7 +171,7 @@ export function useMoveDatabaseRow() {
         input.databaseId,
         input.hostDatabaseId,
       );
-      input.onCommandQueued?.();
+      input.onOptimisticAccepted?.();
       try {
         const ack = await runSerialized(
           orderingSerializationKey(scope.dataSourceId),

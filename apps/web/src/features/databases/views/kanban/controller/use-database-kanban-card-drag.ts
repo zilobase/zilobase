@@ -367,7 +367,7 @@ export function useDatabaseKanbanCardDrag<
   )
 
   const applyMove = useCallback(
-    (move: KanbanCardMove, onCommandQueued?: () => void) => {
+    (move: KanbanCardMove, onOptimisticAccepted?: () => void) => {
       const databaseId = input.databaseId
       if (!databaseId) return
 
@@ -389,7 +389,7 @@ export function useDatabaseKanbanCardDrag<
             },
           },
         )
-        onCommandQueued?.()
+        onOptimisticAccepted?.()
         return
       }
 
@@ -401,7 +401,7 @@ export function useDatabaseKanbanCardDrag<
             : {}),
           groupPropertyId: move.groupPropertyId,
           groupValue: move.groupValue,
-          onCommandQueued,
+          onOptimisticAccepted,
           ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
         })
         return
@@ -412,7 +412,7 @@ export function useDatabaseKanbanCardDrag<
         ...(input.hostDatabaseId
           ? { hostDatabaseId: input.hostDatabaseId }
           : {}),
-        onCommandQueued,
+        onOptimisticAccepted,
         ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
       })
     }, [input.databaseId, input.hostDatabaseId, moveRow, reorderRows, updatePage],

@@ -168,14 +168,14 @@ test("rapid row moves serialize per source in order", async () => {
         afterRowId: "row-2",
         beforeRowId: null,
         databaseId: "data-source-1",
-        onCommandQueued: () => accepted.push("first"),
+        onOptimisticAccepted: () => accepted.push("first"),
         rowId: "row-1",
       }),
       mutation.mutateAsync({
         afterRowId: null,
         beforeRowId: "row-2",
         databaseId: "data-source-1",
-        onCommandQueued: () => accepted.push("second"),
+        onOptimisticAccepted: () => accepted.push("second"),
         rowId: "row-1",
       }),
     ]);
