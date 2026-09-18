@@ -9044,106 +9044,6 @@
       "value": true,
       "type": false
     },
-    "automationDateOperandSchema": {
-      "value": true,
-      "type": false
-    },
-    "automationDateRangeOperandSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationEditPagesTarget": {
-      "value": false,
-      "type": true
-    },
-    "automationEditPagesTargetSchema": {
-      "value": true,
-      "type": false
-    },
-    "automationEntityListReferenceSchema": {
-      "value": true,
-      "type": false
-    },
-    "automationEntityReferenceSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationFilterCondition": {
-      "value": false,
-      "type": true
-    },
-    "automationFilterConditionSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationFilterDefinition": {
-      "value": false,
-      "type": true
-    },
-    "automationFilterDefinitionSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationJsonValue": {
-      "value": false,
-      "type": true
-    },
-    "automationJsonValueSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationNotificationRecipient": {
-      "value": false,
-      "type": true
-    },
-    "automationNotificationRecipientSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationPropertyOperation": {
-      "value": false,
-      "type": true
-    },
-    "automationPropertyOperationSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationReference": {
-      "value": false,
-      "type": true
-    },
-    "automationReferenceSchema": {
-      "value": true,
-      "type": false
-    },
-    "automationRelativeDateOperandSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationRichTextExpression": {
-      "value": false,
-      "type": true
-    },
-    "automationRichTextExpressionSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationTriggerOperand": {
-      "value": false,
-      "type": true
-    },
-    "automationTriggerOperandSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationValueExpression": {
-      "value": false,
-      "type": true
-    },
-    "automationValueExpressionSchema": {
-      "value": true,
-      "type": false
-    },
     "callEagerFormulaFunction": {
       "value": true,
       "type": false
@@ -9164,31 +9064,7 @@
       "value": true,
       "type": false
     },
-    "CreateDatabaseAutomationRequest": {
-      "value": false,
-      "type": true
-    },
-    "createDatabaseAutomationRequestSchema": {
-      "value": true,
-      "type": false
-    },
-    "CreateDatabaseAutomationSecretRequest": {
-      "value": false,
-      "type": true
-    },
-    "createDatabaseAutomationSecretRequestSchema": {
-      "value": true,
-      "type": false
-    },
     "createDatabaseRowSnapshot": {
-      "value": true,
-      "type": false
-    },
-    "DATABASE_AUTOMATION_DEFINITION_VERSION": {
-      "value": true,
-      "type": false
-    },
-    "DATABASE_AUTOMATION_LIMITS": {
       "value": true,
       "type": false
     },
@@ -9215,246 +9091,6 @@
     "DatabaseAccessRule": {
       "value": false,
       "type": true
-    },
-    "DatabaseAutomationAction": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationActionSchema": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationActionTypeSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationAuditExport": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationAuditExportSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationCatalog": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationCatalogSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDefinition": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDefinitionSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDefinitionV1": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDefinitionV1Schema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDelivery": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDeliverySchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDeliveryStatus": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDeliveryStatuses": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationDeliveryStatusSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDependency": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDependencySchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDependencyType": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDependencyTypeSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDetail": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDetailSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationEventTriggerClause": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationEventTriggerClauseSchema": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationEventTriggerSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationMutationFact": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationMutationFactSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationRevision": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationRevisionSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationRun": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationRunSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationRunStatus": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationRunStatuses": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationRunStatusSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationSchedule": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationScheduleSchema": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationScheduleTriggerSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationScope": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationScopeSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationSecretReference": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationSecretReferenceSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationStatus": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationStatuses": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationStatusSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationStepRun": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationStepRunSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationStepStatus": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationStepStatuses": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationStepStatusSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationSummary": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationSummarySchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationTrigger": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseAutomationTriggerOperator": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationTriggerOperators": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationTriggerOperatorSchema": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationTriggerSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationValidationError": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationValidationErrorSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationValidationResult": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationValidationResultSchema": {
-      "value": true,
-      "type": false
     },
     "databaseDateFilterOperators": {
       "value": true,
@@ -9492,25 +9128,9 @@
       "value": false,
       "type": true
     },
-    "DatabaseMutationOrigin": {
-      "value": false,
-      "type": true
-    },
-    "databaseMutationOrigins": {
-      "value": true,
-      "type": false
-    },
-    "databaseMutationOriginSchema": {
-      "value": true,
-      "type": false
-    },
     "databaseNumberFilterOperators": {
       "value": true,
       "type": false
-    },
-    "DatabasePayload": {
-      "value": false,
-      "type": true
     },
     "DatabasePredicateContext": {
       "value": false,
@@ -9551,10 +9171,6 @@
     "DatabaseRecord": {
       "value": false,
       "type": true
-    },
-    "databaseRootQueryKey": {
-      "value": true,
-      "type": false
     },
     "DatabaseRow": {
       "value": false,
@@ -9672,10 +9288,6 @@
       "value": true,
       "type": false
     },
-    "getDatabaseIconPosition": {
-      "value": true,
-      "type": false
-    },
     "getDatabasePropertyFilterKind": {
       "value": true,
       "type": false
@@ -9692,15 +9304,7 @@
       "value": true,
       "type": false
     },
-    "getLatestDatabaseAutomationOccurrence": {
-      "value": true,
-      "type": false
-    },
     "getMergedFormulaConfig": {
-      "value": true,
-      "type": false
-    },
-    "getNextDatabaseAutomationOccurrence": {
       "value": true,
       "type": false
     },
@@ -9796,10 +9400,6 @@
       "value": false,
       "type": true
     },
-    "patchDatabaseCachePage": {
-      "value": true,
-      "type": false
-    },
     "personTextValue": {
       "value": true,
       "type": false
@@ -9828,31 +9428,11 @@
       "value": true,
       "type": false
     },
-    "resolveDatabaseAutomationLocalTime": {
-      "value": true,
-      "type": false
-    },
     "samePresence": {
       "value": true,
       "type": false
     },
     "shouldClearValuesForPropertyTypeChange": {
-      "value": true,
-      "type": false
-    },
-    "SlackAutomationChannel": {
-      "value": false,
-      "type": true
-    },
-    "slackAutomationChannelSchema": {
-      "value": true,
-      "type": false
-    },
-    "SlackAutomationRichTextExpression": {
-      "value": false,
-      "type": true
-    },
-    "slackAutomationRichTextExpressionSchema": {
       "value": true,
       "type": false
     },
@@ -9877,14 +9457,6 @@
       "type": false
     },
     "uniqueFormulaList": {
-      "value": true,
-      "type": false
-    },
-    "UpdateDatabaseAutomationRequest": {
-      "value": false,
-      "type": true
-    },
-    "updateDatabaseAutomationRequestSchema": {
       "value": true,
       "type": false
     },
@@ -9997,14 +9569,6 @@
       "type": false
     },
     "useUpsertDatabaseAccess": {
-      "value": true,
-      "type": false
-    },
-    "ValidateDatabaseAutomationRequest": {
-      "value": false,
-      "type": true
-    },
-    "validateDatabaseAutomationRequestSchema": {
       "value": true,
       "type": false
     },
@@ -10034,106 +9598,6 @@
       "value": true,
       "type": false
     },
-    "automationDateOperandSchema": {
-      "value": true,
-      "type": false
-    },
-    "automationDateRangeOperandSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationEditPagesTarget": {
-      "value": false,
-      "type": true
-    },
-    "automationEditPagesTargetSchema": {
-      "value": true,
-      "type": false
-    },
-    "automationEntityListReferenceSchema": {
-      "value": true,
-      "type": false
-    },
-    "automationEntityReferenceSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationFilterCondition": {
-      "value": false,
-      "type": true
-    },
-    "automationFilterConditionSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationFilterDefinition": {
-      "value": false,
-      "type": true
-    },
-    "automationFilterDefinitionSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationJsonValue": {
-      "value": false,
-      "type": true
-    },
-    "automationJsonValueSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationNotificationRecipient": {
-      "value": false,
-      "type": true
-    },
-    "automationNotificationRecipientSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationPropertyOperation": {
-      "value": false,
-      "type": true
-    },
-    "automationPropertyOperationSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationReference": {
-      "value": false,
-      "type": true
-    },
-    "automationReferenceSchema": {
-      "value": true,
-      "type": false
-    },
-    "automationRelativeDateOperandSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationRichTextExpression": {
-      "value": false,
-      "type": true
-    },
-    "automationRichTextExpressionSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationTriggerOperand": {
-      "value": false,
-      "type": true
-    },
-    "automationTriggerOperandSchema": {
-      "value": true,
-      "type": false
-    },
-    "AutomationValueExpression": {
-      "value": false,
-      "type": true
-    },
-    "automationValueExpressionSchema": {
-      "value": true,
-      "type": false
-    },
     "callEagerFormulaFunction": {
       "value": true,
       "type": false
@@ -10154,31 +9618,7 @@
       "value": true,
       "type": false
     },
-    "CreateDatabaseAutomationRequest": {
-      "value": false,
-      "type": true
-    },
-    "createDatabaseAutomationRequestSchema": {
-      "value": true,
-      "type": false
-    },
-    "CreateDatabaseAutomationSecretRequest": {
-      "value": false,
-      "type": true
-    },
-    "createDatabaseAutomationSecretRequestSchema": {
-      "value": true,
-      "type": false
-    },
     "createDatabaseRowSnapshot": {
-      "value": true,
-      "type": false
-    },
-    "DATABASE_AUTOMATION_DEFINITION_VERSION": {
-      "value": true,
-      "type": false
-    },
-    "DATABASE_AUTOMATION_LIMITS": {
       "value": true,
       "type": false
     },
@@ -10205,246 +9645,6 @@
     "DatabaseAccessRule": {
       "value": false,
       "type": true
-    },
-    "DatabaseAutomationAction": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationActionSchema": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationActionTypeSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationAuditExport": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationAuditExportSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationCatalog": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationCatalogSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDefinition": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDefinitionSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDefinitionV1": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDefinitionV1Schema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDelivery": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDeliverySchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDeliveryStatus": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDeliveryStatuses": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationDeliveryStatusSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDependency": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDependencySchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDependencyType": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDependencyTypeSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationDetail": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationDetailSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationEventTriggerClause": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationEventTriggerClauseSchema": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationEventTriggerSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationMutationFact": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationMutationFactSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationRevision": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationRevisionSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationRun": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationRunSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationRunStatus": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationRunStatuses": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationRunStatusSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationSchedule": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationScheduleSchema": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationScheduleTriggerSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationScope": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationScopeSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationSecretReference": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationSecretReferenceSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationStatus": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationStatuses": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationStatusSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationStepRun": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationStepRunSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationStepStatus": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationStepStatuses": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationStepStatusSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationSummary": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationSummarySchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationTrigger": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseAutomationTriggerOperator": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationTriggerOperators": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationTriggerOperatorSchema": {
-      "value": true,
-      "type": false
-    },
-    "databaseAutomationTriggerSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationValidationError": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationValidationErrorSchema": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAutomationValidationResult": {
-      "value": false,
-      "type": true
-    },
-    "databaseAutomationValidationResultSchema": {
-      "value": true,
-      "type": false
     },
     "databaseDateFilterOperators": {
       "value": true,
@@ -10482,25 +9682,9 @@
       "value": false,
       "type": true
     },
-    "DatabaseMutationOrigin": {
-      "value": false,
-      "type": true
-    },
-    "databaseMutationOrigins": {
-      "value": true,
-      "type": false
-    },
-    "databaseMutationOriginSchema": {
-      "value": true,
-      "type": false
-    },
     "databaseNumberFilterOperators": {
       "value": true,
       "type": false
-    },
-    "DatabasePayload": {
-      "value": false,
-      "type": true
     },
     "DatabasePredicateContext": {
       "value": false,
@@ -10541,10 +9725,6 @@
     "DatabaseRecord": {
       "value": false,
       "type": true
-    },
-    "databaseRootQueryKey": {
-      "value": true,
-      "type": false
     },
     "DatabaseRow": {
       "value": false,
@@ -10662,10 +9842,6 @@
       "value": true,
       "type": false
     },
-    "getDatabaseIconPosition": {
-      "value": true,
-      "type": false
-    },
     "getDatabasePropertyFilterKind": {
       "value": true,
       "type": false
@@ -10682,15 +9858,7 @@
       "value": true,
       "type": false
     },
-    "getLatestDatabaseAutomationOccurrence": {
-      "value": true,
-      "type": false
-    },
     "getMergedFormulaConfig": {
-      "value": true,
-      "type": false
-    },
-    "getNextDatabaseAutomationOccurrence": {
       "value": true,
       "type": false
     },
@@ -10786,10 +9954,6 @@
       "value": false,
       "type": true
     },
-    "patchDatabaseCachePage": {
-      "value": true,
-      "type": false
-    },
     "personTextValue": {
       "value": true,
       "type": false
@@ -10818,31 +9982,11 @@
       "value": true,
       "type": false
     },
-    "resolveDatabaseAutomationLocalTime": {
-      "value": true,
-      "type": false
-    },
     "samePresence": {
       "value": true,
       "type": false
     },
     "shouldClearValuesForPropertyTypeChange": {
-      "value": true,
-      "type": false
-    },
-    "SlackAutomationChannel": {
-      "value": false,
-      "type": true
-    },
-    "slackAutomationChannelSchema": {
-      "value": true,
-      "type": false
-    },
-    "SlackAutomationRichTextExpression": {
-      "value": false,
-      "type": true
-    },
-    "slackAutomationRichTextExpressionSchema": {
       "value": true,
       "type": false
     },
@@ -10867,14 +10011,6 @@
       "type": false
     },
     "uniqueFormulaList": {
-      "value": true,
-      "type": false
-    },
-    "UpdateDatabaseAutomationRequest": {
-      "value": false,
-      "type": true
-    },
-    "updateDatabaseAutomationRequestSchema": {
       "value": true,
       "type": false
     },
@@ -10987,14 +10123,6 @@
       "type": false
     },
     "useUpsertDatabaseAccess": {
-      "value": true,
-      "type": false
-    },
-    "ValidateDatabaseAutomationRequest": {
-      "value": false,
-      "type": true
-    },
-    "validateDatabaseAutomationRequestSchema": {
       "value": true,
       "type": false
     },
@@ -12716,10 +11844,6 @@
       "value": false,
       "type": true
     },
-    "DatabasePayload": {
-      "value": false,
-      "type": true
-    },
     "DatabaseProperty": {
       "value": false,
       "type": true
@@ -12727,10 +11851,6 @@
     "DatabaseRecord": {
       "value": false,
       "type": true
-    },
-    "databaseRootQueryKey": {
-      "value": true,
-      "type": false
     },
     "DatabaseRow": {
       "value": false,
@@ -12747,22 +11867,6 @@
     "DataSourceRecord": {
       "value": false,
       "type": true
-    },
-    "getDatabaseCover": {
-      "value": true,
-      "type": false
-    },
-    "getDatabaseEmoji": {
-      "value": true,
-      "type": false
-    },
-    "getDatabaseIconPosition": {
-      "value": true,
-      "type": false
-    },
-    "isDatabaseLocked": {
-      "value": true,
-      "type": false
     },
     "PageProperty": {
       "value": false,
@@ -12790,10 +11894,6 @@
       "value": false,
       "type": true
     },
-    "DatabasePayload": {
-      "value": false,
-      "type": true
-    },
     "DatabaseProperty": {
       "value": false,
       "type": true
@@ -12801,10 +11901,6 @@
     "DatabaseRecord": {
       "value": false,
       "type": true
-    },
-    "databaseRootQueryKey": {
-      "value": true,
-      "type": false
     },
     "DatabaseRow": {
       "value": false,
@@ -12821,22 +11917,6 @@
     "DataSourceRecord": {
       "value": false,
       "type": true
-    },
-    "getDatabaseCover": {
-      "value": true,
-      "type": false
-    },
-    "getDatabaseEmoji": {
-      "value": true,
-      "type": false
-    },
-    "getDatabaseIconPosition": {
-      "value": true,
-      "type": false
-    },
-    "isDatabaseLocked": {
-      "value": true,
-      "type": false
     },
     "PageProperty": {
       "value": false,
@@ -15668,10 +14748,6 @@
       "value": true,
       "type": false
     },
-    "useUpdatePagePropertyValue": {
-      "value": true,
-      "type": false
-    },
     "useUpsertPageAccess": {
       "value": true,
       "type": false
@@ -16243,10 +15319,6 @@
       "type": false
     },
     "useUpdatePage": {
-      "value": true,
-      "type": false
-    },
-    "useUpdatePagePropertyValue": {
       "value": true,
       "type": false
     },

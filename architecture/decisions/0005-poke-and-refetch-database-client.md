@@ -28,16 +28,16 @@ QueryClient holds one photocopy: the last successful `GET /bootstrap` plus
 POST plus refetch. There are no collections, overlays, journals, or command
 lanes on the client.
 
-The owning modules are [database queries](../../../packages/features/src/databases/queries/keys.ts)
+The owning modules are [database queries](../../packages/features/src/databases/queries/keys.ts)
 for keys plus `cachedVersion` and prefer-newest helpers,
-[bootstrap](../../../packages/features/src/databases/queries/bootstrap.ts) and
-[records](../../../packages/features/src/databases/queries/records.ts) hooks,
-[command execution](../../../packages/features/src/databases/mutations/execute.ts),
-[host invalidation](../../../packages/features/src/databases/mutations/invalidate.ts),
-[keyed serialization](../../../packages/features/src/databases/mutations/serialize.ts)
-with cell coalescing, [pending state](../../../packages/features/src/databases/mutations/pending.ts),
-and the [poke socket](../../../packages/features/src/databases/realtime/realtime.ts).
-The [thin session provider](../../../packages/features/src/databases/queries/session.tsx)
+[bootstrap](../../packages/features/src/databases/queries/bootstrap.ts) and
+[records](../../packages/features/src/databases/queries/records.ts) hooks,
+[command execution](../../packages/features/src/databases/mutations/execute.ts),
+[host invalidation](../../packages/features/src/databases/mutations/invalidate.ts),
+[keyed serialization](../../packages/features/src/databases/mutations/serialize.ts)
+with cell coalescing, [pending state](../../packages/features/src/databases/mutations/pending.ts),
+and the [poke socket](../../packages/features/src/databases/realtime/realtime.ts).
+The [thin session provider](../../packages/features/src/databases/queries/session.tsx)
 supplies only the session id, evicts the previous session's `["db", …]`
 queries, and installs the database-only reload guard.
 
@@ -105,7 +105,7 @@ See the current [database architecture](../features/databases/README.md) and
 
 Hot-path mutations (cell values, database/view titles, property add/update)
 now patch the QueryClient photocopy synchronously in `onMutate`
-([optimistic helpers](../../../packages/features/src/databases/mutations/optimistic.ts))
+([optimistic helpers](../../packages/features/src/databases/mutations/optimistic.ts))
 and roll back in `onError`, so the UI reflects the attempted edit instantly
 instead of waiting for POST plus refetch. `onError` also invalidates the
 host, because rollback alone would hide a write that committed while its
