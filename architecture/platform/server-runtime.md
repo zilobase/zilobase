@@ -6,7 +6,7 @@ Hono app creation installs request context, CORS, secure headers, request IDs, J
 
 Start at the [entrypoint](../../apps/server/src/app/index.ts); follow the [implementation](../../apps/server/src/infrastructure/runtime/runtime-adapter.ts) and [related modules](../../apps/server/src/app/node).
 
-Effect programs run through [ManagedRuntime](../../apps/server/src/infrastructure/effect/runtime.ts). Feature services are Layers; Hono handlers and other Promise edges call `runPromise`. Process-scoped runtimes register with `createAppRuntime(..., { process: true })` and are disposed on Node shutdown. Application code imports `effect`, not `repos/effect`.
+Effect programs run through [ManagedRuntime](../../apps/server/src/infrastructure/effect/runtime.ts). Feature services are Layers; Hono handlers and other Promise edges call `runPromise`. Process-scoped runtimes register with `createAppRuntime(..., { process: true })` and are disposed on Node shutdown. Application code imports `effect` from the npm package.
 
 Migrated HTTP edges decode untrusted input with Schema and map tagged errors to status codes. Existing Zod validators remain until those routes move.
 
