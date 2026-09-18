@@ -25,7 +25,7 @@ import { useZilobaseFeatures } from "@zilobase/features"
 import { useSession } from "@zilobase/features/auth/react";
 import {
   databaseContextExportQueryOptions,
-  type DatabasePayload,
+  type DatabaseExportPayload,
 } from "@zilobase/features/databases"
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 
@@ -51,7 +51,7 @@ export function SidebarTasksSection({
   const rows = React.useMemo(() => {
     const payloads = queries
       .map((query) => query.data)
-      .filter((payload): payload is DatabasePayload => Boolean(payload))
+      .filter((payload): payload is DatabaseExportPayload => Boolean(payload))
       .filter((payload) => getTaskDatabaseSchema(payload).missing.length === 0)
     return filterMyTaskRows(buildTaskRows(payloads), session?.user?.id ?? null).slice(0, limit)
   }, [limit, queries, session?.user?.id])

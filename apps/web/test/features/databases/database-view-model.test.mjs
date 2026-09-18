@@ -15,7 +15,7 @@ export function register({ assert, loadModule, test }) {
       "Priority",
       "number"
     )
-    const payload = {
+    const viewData = createViewData({
       database: {
         config: {
           nameColumn: {
@@ -57,7 +57,7 @@ export function register({ assert, loadModule, test }) {
           type: "kanban",
         },
       ],
-    }
+    })
 
     const model = getDatabaseViewModel({
       accessTargets: {
@@ -68,7 +68,7 @@ export function register({ assert, loadModule, test }) {
       },
       activeViewId: "view-kanban",
       currentUserId: "user-1",
-      payload,
+      viewData,
     })
 
     assert.equal(model.activeView?.id, "view-kanban")
@@ -105,13 +105,15 @@ export function register({ assert, loadModule, test }) {
     assert.equal(
       getDatabaseViewModel({
         activeViewId: "view-kanban",
-        payload: {
-          ...payload,
-          views: [
+        viewData: {
+          ...viewData,
+          bootstrap: {
+            ...viewData.bootstrap,
+            views: [
             {
-              ...payload.views[0],
+              ...viewData.bootstrap.views[0],
               config: {
-                ...payload.views[0].config,
+                ...viewData.bootstrap.views[0].config,
                 hiddenPropertyIds: [
                   "database-property-status",
                   "database-property-priority",
@@ -121,6 +123,7 @@ export function register({ assert, loadModule, test }) {
               },
             },
           ],
+          },
         },
       }).visiblePropertyCount,
       1
@@ -128,17 +131,20 @@ export function register({ assert, loadModule, test }) {
     assert.equal(
       getDatabaseViewModel({
         activeViewId: "view-kanban",
-        payload: {
-          ...payload,
-          views: [
+        viewData: {
+          ...viewData,
+          bootstrap: {
+            ...viewData.bootstrap,
+            views: [
             {
-              ...payload.views[0],
+              ...viewData.bootstrap.views[0],
               config: {
-                ...payload.views[0].config,
+                ...viewData.bootstrap.views[0].config,
                 showPropertyTitles: true,
               },
             },
           ],
+          },
         },
       }).showPropertyTitles,
       true
@@ -197,7 +203,7 @@ export function register({ assert, loadModule, test }) {
         "text"
       ),
     ]
-    const payload = {
+    const viewData = createViewData({
       database: { config: {}, id: "database-1", name: "Roadmap" },
       properties,
       rows: [],
@@ -210,11 +216,11 @@ export function register({ assert, loadModule, test }) {
           type: "kanban",
         },
       ],
-    }
+    })
 
     const model = getDatabaseViewModel({
       activeViewId: "view-kanban",
-      payload,
+      viewData,
     })
 
     assert.deepEqual(
@@ -253,7 +259,7 @@ export function register({ assert, loadModule, test }) {
       "Priority",
       "number"
     )
-    const payload = {
+    const viewData = createViewData({
       database: {
         config: {
           nameColumn: { label: "Task" },
@@ -322,11 +328,11 @@ export function register({ assert, loadModule, test }) {
           type: "table",
         },
       ],
-    }
+    })
 
     const model = getDatabaseViewModel({
       activeViewId: "view-table",
-      payload,
+      viewData,
     })
 
     assert.deepEqual(
@@ -391,7 +397,7 @@ export function register({ assert, loadModule, test }) {
       "Owner",
       "person"
     )
-    const payload = {
+    const viewData = createViewData({
       database: {
         config: {},
         id: "database-1",
@@ -414,11 +420,11 @@ export function register({ assert, loadModule, test }) {
           type: "table",
         },
       ],
-    }
+    })
 
     const model = getDatabaseViewModel({
       activeViewId: "view-table",
-      payload,
+      viewData,
     })
 
     assert.deepEqual(
@@ -441,7 +447,7 @@ export function register({ assert, loadModule, test }) {
       "Status",
       "status"
     )
-    const payload = {
+    const viewData = createViewData({
       database: {
         config: {},
         id: "database-1",
@@ -469,11 +475,11 @@ export function register({ assert, loadModule, test }) {
           type: "table",
         },
       ],
-    }
+    })
 
     const model = getDatabaseViewModel({
       activeViewId: "view-table",
-      payload,
+      viewData,
     })
 
     assert.equal(
@@ -498,7 +504,7 @@ export function register({ assert, loadModule, test }) {
       "Created",
       "created_time"
     )
-    const payload = {
+    const viewData = createViewData({
       database: {
         config: {
           nameColumn: { label: "Task" },
@@ -535,19 +541,19 @@ export function register({ assert, loadModule, test }) {
           type: "kanban",
         },
       ],
-    }
+    })
 
     const nameModel = getDatabaseViewModel({
       activeViewId: "view-name-kanban",
-      payload,
+      viewData,
     })
     const dateModel = getDatabaseViewModel({
       activeViewId: "view-date-kanban",
-      payload,
+      viewData,
     })
     const createdModel = getDatabaseViewModel({
       activeViewId: "view-created-kanban",
-      payload,
+      viewData,
     })
 
     assert.equal(nameModel.groupProperty?.id, "name")
@@ -574,7 +580,7 @@ export function register({ assert, loadModule, test }) {
       "Status",
       "status"
     )
-    const payload = {
+    const viewData = createViewData({
       database: {
         config: {},
         id: "database-1",
@@ -616,11 +622,11 @@ export function register({ assert, loadModule, test }) {
           type: "table",
         },
       ],
-    }
+    })
 
     const model = getDatabaseViewModel({
       activeViewId: "view-table",
-      payload,
+      viewData,
     })
 
     assert.deepEqual(
@@ -654,30 +660,117 @@ export function register({ assert, loadModule, test }) {
   })
 }
 
+const TIMESTAMP = "2026-01-01T00:00:00.000Z"
+
 function createProperty(id, propertyId, name, type, config = {}) {
   return {
+    createdAt: TIMESTAMP,
+    dataSourceId: "source-1",
     id,
     position: 0,
     property: {
       config,
+      createdAt: TIMESTAMP,
       id: propertyId,
       name,
       type,
+      updatedAt: TIMESTAMP,
+      workspaceId: "workspace-1",
     },
+    propertyId,
+    updatedAt: TIMESTAMP,
+    visible: true,
+    width: null,
   }
 }
 
-function createRow(id, pageId, name, position) {
+function createRow(id, pageId, name) {
+  return { id, pageId, name }
+}
+
+function createValue(pageId, propertyId, value) {
   return {
-    createdAt: "2026-01-01T00:00:00.000Z",
-    id,
-    page: {
-      createdAt: "2026-01-01T00:00:00.000Z",
-      name,
-      updatedAt: "2026-01-01T00:00:00.000Z",
-    },
+    createdAt: TIMESTAMP,
+    id: `${pageId}:${propertyId}`,
     pageId,
-    position,
-    updatedAt: "2026-01-01T00:00:00.000Z",
+    propertyId,
+    updatedAt: TIMESTAMP,
+    value,
+  }
+}
+
+function createViewData({ database, properties = [], rows = [], values = [], views = [] }) {
+  const source = {
+    config: {},
+    configVersion: 1,
+    createdAt: TIMESTAMP,
+    id: "source-1",
+    linkedAt: null,
+    name: "Source",
+    parentDatabaseId: "database-1",
+    position: 0,
+    updatedAt: TIMESTAMP,
+    version: 0,
+    workspaceId: "workspace-1",
+  }
+  const valuesByRow = new Map()
+  for (const value of values) {
+    const group = valuesByRow.get(value.pageId) ?? []
+    group.push(createValue(value.pageId, value.propertyId, value.value))
+    valuesByRow.set(value.pageId, group)
+  }
+  const records = rows.map((row, index) => ({
+    createdAt: TIMESTAMP,
+    dataSourceId: "source-1",
+    id: row.id,
+    orderKey: `${(index + 1) * 1024}.0000000000`,
+    page: {
+      createdAt: TIMESTAMP,
+      deletedAt: null,
+      hasContent: false,
+      id: row.pageId,
+      metadata: {},
+      name: row.name,
+      updatedAt: TIMESTAMP,
+    },
+    pageId: row.pageId,
+    parentRowId: null,
+    updatedAt: TIMESTAMP,
+    valuesByPropertyId: Object.fromEntries(
+      (valuesByRow.get(row.pageId) ?? []).map((value) => [value.propertyId, value]),
+    ),
+  }))
+  return {
+    activeDataSource: source,
+    bootstrap: {
+      database: {
+        accessLevel: "edit",
+        config: database.config ?? {},
+        createdAt: TIMESTAMP,
+        id: database.id,
+        name: database.name,
+        pageId: null,
+        updatedAt: TIMESTAMP,
+        version: 0,
+        workspaceId: "workspace-1",
+      },
+      dataSources: [source],
+      properties,
+      views: views.map((view, index) => ({
+        createdAt: TIMESTAMP,
+        databaseId: "database-1",
+        dataSourceId: "source-1",
+        id: view.id,
+        name: view.name,
+        position: index,
+        type: view.type,
+        updatedAt: TIMESTAMP,
+        config: view.config ?? {},
+      })),
+    },
+    dataSourceId: "source-1",
+    hasMore: false,
+    records,
+    totalCount: records.length,
   }
 }

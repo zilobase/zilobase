@@ -7,7 +7,7 @@ import { useZilobaseFeatures } from "@zilobase/features";
 import {
   databaseContextExportQueryKey,
   databaseContextExportQueryOptions,
-  type DatabasePayload,
+  type DatabaseExportPayload,
 } from "@zilobase/features/databases";
 import {
   ensurePageDetail,
@@ -72,7 +72,7 @@ async function resolveDatabaseContext(
     return contextCache.get(cacheKey) ?? null;
   }
 
-  const exportedCached = queryClient.getQueryData<DatabasePayload | null>(
+  const exportedCached = queryClient.getQueryData<DatabaseExportPayload | null>(
     databaseContextExportQueryKey(databaseId, dataSourceId),
   );
 

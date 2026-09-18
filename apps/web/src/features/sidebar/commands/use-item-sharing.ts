@@ -1,5 +1,5 @@
 import { getNavigationItemPath } from "../model/database-view-navigation";
-import type { DatabaseAccessRule } from "@zilobase/features/databases/contracts";
+import type { DatabaseAccessRule } from "@zilobase/features/databases";
 import * as React from "react";
 
 import { toast } from "sonner";

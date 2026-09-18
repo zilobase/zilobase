@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   const load = () => loadModule("/src/features/library/model/library-model.ts");
   test("Skills and Instructions tabs contain only matching saved items", async () => {
-    const { buildHomepageRows, applyHomepageView, buildHomepagePayload } = await load();
+    const { buildHomepageRows, applyHomepageView, buildHomepageViewData } = await load();
     const page = {
       name: "Saved item", createdAt: "2026-09-08", updatedAt: "2026-09-08",
       workspaceId: "workspace", type: "page", metadata: {},
@@ -19,11 +19,11 @@ export function register({ assert, loadModule, test }) {
     }, [], [{ id: "agent", name: "Agent", ownerUserId: "owner", status: "active", updatedAt: "2026-09-08" }], "home");
     for (const [view, id] of [["skills", "skill"], ["instructions", "instruction"]]) {
       assert.deepEqual(applyHomepageView(rows, view).map((row) => row.id), [`page:${id}`]);
-      const payload = buildHomepagePayload({
+      const viewData = buildHomepageViewData({
         activeViewId: view, rows, mode: "home", workspaceId: "workspace",
         databaseConfig: {}, propertyConfigs: {}, viewConfigs: {},
       });
-      assert.deepEqual(payload.rows.map((row) => row.id), [`page:${id}`]);
+      assert.deepEqual(viewData.records.map((record) => record.id), [`page:${id}`]);
       assert.equal(rows.find((row) => row.id === `page:${id}`).openPageId, id);
     }
     assert.deepEqual(applyHomepageView([], "skills"), []);
@@ -165,7 +165,7 @@ export function register({ assert, loadModule, test }) {
     );
   });
   test("library synthetic payload retains source summaries, view order and trash properties", async () => {
-    const { buildHomepageRows, buildHomepagePayload } = await load();
+    const { buildHomepageRows, buildHomepageViewData } = await load();
     const rows = buildHomepageRows(
       {
         pages: [
@@ -178,7 +178,7 @@ export function register({ assert, loadModule, test }) {
       [],
       "home",
     );
-    const payload = buildHomepagePayload({
+    const viewData = buildHomepageViewData({
       activeViewId: "recents",
       databaseConfig: { nameColumn: { label: "Name" } },
       mode: "home",
@@ -187,15 +187,15 @@ export function register({ assert, loadModule, test }) {
       rows,
       viewConfigs: { recents: { sorts: [] } },
     });
-    assert.equal(payload.database.id, "homepage");
+    assert.equal(viewData.bootstrap.database.id, "homepage");
     assert.deepEqual(
-      payload.views.map((view) => view.id),
+      viewData.bootstrap.views.map((view) => view.id),
       ["recents", "favourites", "meetings", "skills", "instructions", "shared", "teamspaces", "private"],
     );
-    assert.equal(payload.rows[0].id, "page:p");
-    assert.equal(payload.properties[0].property.config.custom, true);
-    assert.deepEqual(payload.views[0].config, { sorts: [] });
-    const trash = buildHomepagePayload({
+    assert.equal(viewData.records[0].id, "page:p");
+    assert.equal(viewData.bootstrap.properties[0].property.config.custom, true);
+    assert.deepEqual(viewData.bootstrap.views[0].config, { sorts: [] });
+    const trash = buildHomepageViewData({
       activeViewId: "recents",
       databaseConfig: {},
       mode: "trash",
@@ -204,9 +204,9 @@ export function register({ assert, loadModule, test }) {
       rows: [],
       viewConfigs: {},
     });
-    assert.equal(trash.database.id, "trash");
+    assert.equal(trash.bootstrap.database.id, "trash");
     assert.deepEqual(
-      trash.properties.slice(-2).map((property) => property.id),
+      trash.bootstrap.properties.slice(-2).map((property) => property.id),
       ["deletedAt", "deletedBy"],
     );
   });

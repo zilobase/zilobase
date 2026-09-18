@@ -71,7 +71,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.doesNotMatch(context, /useDatabaseRealtime\(value\.databaseId, \{/)
     assert.match(
       controller,
-      /hostDatabaseId: payload\?\.database\.id \?\? databaseId/,
+      /hostDatabaseId: bootstrap\?\.database\.id \?\? databaseId/,
     )
   })
 }

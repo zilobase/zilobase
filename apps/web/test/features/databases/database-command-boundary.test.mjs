@@ -13,7 +13,7 @@ export function register({ assert, loadModule, sourcePath, test }) {
   test('view presentation supplies icons while derivation exposes only field descriptors', async () => {
     const { deriveDatabaseViewModel } = await loadModule('/src/features/databases/views/model/database-view-model.ts')
     const { getDatabaseViewModel } = await loadModule('/src/features/databases/views/components/database-view-model.tsx')
-    const input = { activeViewId: null, payload: null }
+    const input = { activeViewId: null, viewData: null }
     const data = deriveDatabaseViewModel(input)
     const view = getDatabaseViewModel(input)
     assert.deepEqual(data.sortFieldOptions[0].fieldIcon, { kind: 'name' })
@@ -32,7 +32,7 @@ export function register({ assert, loadModule, sourcePath, test }) {
     const input = {
       activeDatabaseFilters: [], activeDatabaseSorts: [], activeView: { id: 'v1', type: 'table', config: {} },
       databaseId: 'source-1', editable: true, isKanbanView: false, items: [], kanbanGroupProperty: null,
-      timelineDateProperty: null, properties: [], payload: { database: { config: {} }, properties: [] },
+      timelineDateProperty: null, properties: [], viewData: null,
       mutations: { addDatabaseView: mutation, addProperty: { ...mutation, mutate: (_input, callbacks) => { dateCallbacks = callbacks } }, addRow: mutation, updateDatabase: mutation, updateDatabaseView: mutation, updatePage: mutation, updateProperty: mutation, updateValue: mutation },
       setActiveViewId() {}, setFilterPickerOpen() {}, setShowFilterPill() {}, setShowSortPill() {}, setSortPickerOpen() {},
       notify: { success: message => events.push(['success', message]), error: message => events.push(['error', message]) },

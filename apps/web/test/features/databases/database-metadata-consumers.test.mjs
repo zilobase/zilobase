@@ -44,7 +44,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
     )
 
     assert.match(sidebar, /useDatabaseRecords/)
-    assert.match(sidebar, /composeDatabaseControllerPayload/)
+    assert.match(sidebar, /composeDatabaseViewData/)
     assert.doesNotMatch(sidebar, /disabled=\{addRow\.isPending\}/)
     assert.match(layout, /useDatabaseRecords/)
     assert.match(layout, /Load more pages/)
