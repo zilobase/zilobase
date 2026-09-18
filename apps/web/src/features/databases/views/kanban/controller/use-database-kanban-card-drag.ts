@@ -460,6 +460,10 @@ export function useDatabaseKanbanCardDrag<
         rowId: row.id,
         title,
       })
+      // Measure synchronously so the lift preview never waits on scheduled
+      // geometry: without a stored measurement getPreview stays null and the
+      // drag shows no animation or drop highlight even though drops work.
+      measureColumn(option.id)
       // Let the browser capture its native drag image before hiding the source.
       dragFrame.current = requestAnimationFrame(() => {
         dragFrame.current = null
@@ -479,7 +483,7 @@ export function useDatabaseKanbanCardDrag<
         })
       })
     },
-    [droppedRows, input],
+    [droppedRows, input, measureColumn],
   )
 
   const dragOver = useCallback(
@@ -502,6 +506,9 @@ export function useDatabaseKanbanCardDrag<
       event.dataTransfer.dropEffect = "move"
       setIsExternalDragActive(hasExternalDragPayload)
       pendingHitTest.current = { clientY: event.clientY, optionId: option.id }
+      // Keep hovered-column geometry fresh through the shared batched
+      // scheduler so getPreview never starves on a stale measurement.
+      scheduleColumnMeasurement(option.id)
       if (hitTestFrame.current === null) {
         hitTestFrame.current = requestAnimationFrame(() => {
           hitTestFrame.current = null
@@ -515,7 +522,7 @@ export function useDatabaseKanbanCardDrag<
         })
       }
     },
-    [draggedCard, getTargetIndex, input.editable, input.groupProperty],
+    [draggedCard, getTargetIndex, input.editable, input.groupProperty, scheduleColumnMeasurement],
   )
 
   const drop = useCallback(
