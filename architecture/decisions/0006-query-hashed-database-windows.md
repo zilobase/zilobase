@@ -46,5 +46,14 @@ Same-query view switches issue zero `/records` calls and show no skeleton.
 New filter/sort combinations fetch once, then share. Large-database
 pagination and `totalCount` stay server-evaluated and correct.
 
+## Amendment: setup dialog waits for settled data
+
+Unloaded and placeholder windows always compute `hasContent === false`, so
+the automatic setup dialog (`shouldUseDatabaseSetupMode`) must wait for the
+active hash's real result: bootstrap success plus record success without
+placeholder data. Emptiness cannot be judged before load, and background
+refetches keep settled (non-placeholder) data, so an already-correct dialog
+never flickers. Explicitly user-opened data-source setup is unaffected.
+
 See the [database architecture](../features/databases/README.md) and the
 [record window queries](../../packages/features/src/databases/queries/records.ts).

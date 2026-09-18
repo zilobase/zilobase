@@ -230,6 +230,13 @@ export function useDatabaseViewController({
         viewData.bootstrap.dataSources.length > 1),
   )
   const effectiveSetupMode = shouldUseDatabaseSetupMode({
+    // Emptiness is only knowable after load: unloaded and placeholder states
+    // always compute hasContent === false, so the setup dialog must wait for
+    // this hash's real result. Background refetches keep settled data (not
+    // placeholder), so an already-correct dialog never flickers.
+    dataSettled: bootstrapState.status === "success" &&
+      recordWindow.status === "success" &&
+      !recordWindow.isPlaceholderData,
     editable,
     hasContent: hasSetupContent,
     setupDismissed,
