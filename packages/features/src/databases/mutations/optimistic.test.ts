@@ -8,8 +8,11 @@ import {
 } from "../queries/keys";
 import type {
   DatabaseBootstrapResponse,
+  DatabaseCommandRequest,
+  DatabaseRecordEntity,
   DatabaseRecordWindowResponse,
 } from "../core/entities";
+import { createMutationTestRuntime } from "../../shared/mutation-runtime.test";
 import {
   insertOptimisticProperty,
   patchCachedCellValue,
@@ -18,6 +21,7 @@ import {
   patchCachedView,
   resolveOptimisticScope,
 } from "./optimistic";
+import { useUpdateDatabasePropertyValue } from "./mutation-hooks";
 import {
   createTestDatabasePayload,
   setTestDatabaseClientState,
@@ -207,6 +211,134 @@ test("scope resolution stays cache-only", () => {
       hostDatabaseId: "database-1",
     });
     assert.equal(resolveOptimisticScope(queryClient, "missing"), null);
+  } finally {
+    queryClient.clear();
+  }
+});
+
+const hookRecord: DatabaseRecordEntity = {
+  createdAt: "2026-09-08T00:00:00.000Z",
+  dataSourceId: "data-source-1",
+  id: "row-1",
+  orderKey: "1024.0000000000",
+  page: {
+    createdAt: "2026-09-08T00:00:00.000Z",
+    deletedAt: null,
+    hasContent: false,
+    id: "page-1",
+    metadata: {},
+    name: "Row",
+    updatedAt: "2026-09-08T00:00:00.000Z",
+  },
+  pageId: "page-1",
+  parentRowId: null,
+  updatedAt: "2026-09-08T00:00:00.000Z",
+  valuesByPropertyId: {},
+};
+
+function hookAck(commandId: string) {
+  return {
+    commandId,
+    event: {
+      actorId: "user-1",
+      areas: ["records"],
+      changes: { records: [hookRecord] },
+      commandId,
+      committedAt: "2026-09-08T00:00:00.000Z",
+      databaseId: "database-1",
+      dataSourceId: "data-source-1",
+      eventId: `event-${commandId}`,
+      protocolVersion: 2,
+      type: "database.mutation",
+      version: 1,
+    },
+    result: hookRecord,
+  };
+}
+
+function cellValueOf(queryClient: QueryClient): unknown {
+  const data = queryClient.getQueryData<{
+    pages: DatabaseRecordWindowResponse[];
+  }>(
+    databaseWindowQueryKey(SESSION, {
+      databaseId: HOST,
+      dataSourceId: "data-source-1",
+      viewId: "view-table",
+    }),
+  );
+  return data?.pages[0]?.records
+    .find((record) => record.id === "row-1")
+    ?.valuesByPropertyId["property-status"]?.value;
+}
+
+async function flush(times = 10) {
+  for (let i = 0; i < times; i += 1) {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  }
+}
+
+test("cell mutation is visible in cache while POST is still in flight", async () => {
+  let releasePost!: (value: unknown) => void;
+  const postGate = new Promise<unknown>((resolve) => {
+    releasePost = resolve;
+  });
+  const { mutation, queryClient } = createMutationTestRuntime(
+    useUpdateDatabasePropertyValue,
+    (async <T>(path: string, init?: RequestInit): Promise<T> => {
+      assert.match(path, /commands$/);
+      const request = JSON.parse(String(init?.body)) as DatabaseCommandRequest;
+      await postGate;
+      return hookAck(request.commandId) as T;
+    }),
+  );
+  setTestDatabaseClientState(queryClient, createTestDatabasePayload());
+  try {
+    assert.equal(cellValueOf(queryClient), "Not started");
+    const pending = (
+      mutation.mutateAsync as unknown as (
+        input: Record<string, unknown>,
+      ) => Promise<unknown>
+    )({
+      databaseId: "data-source-1",
+      propertyId: "property-status",
+      rowId: "row-1",
+      value: "Done",
+    });
+    await flush();
+    // POST has not resolved, yet the cache already shows the edit.
+    assert.equal(cellValueOf(queryClient), "Done");
+    releasePost(undefined);
+    await pending;
+    // Ack + refetch reconcile; the value stays.
+    assert.equal(cellValueOf(queryClient), "Done");
+  } finally {
+    queryClient.clear();
+  }
+});
+
+test("failed cell mutation rolls the cache back", async () => {
+  const { mutation, queryClient } = createMutationTestRuntime(
+    useUpdateDatabasePropertyValue,
+    (async <T>(): Promise<T> => {
+      throw new Error("network down");
+    }),
+  );
+  setTestDatabaseClientState(queryClient, createTestDatabasePayload());
+  try {
+    await assert.rejects(
+      (
+        mutation.mutateAsync as unknown as (
+          input: Record<string, unknown>,
+        ) => Promise<unknown>
+      )({
+        databaseId: "data-source-1",
+        propertyId: "property-status",
+        rowId: "row-1",
+        value: "Done",
+      }),
+      /network down/,
+    );
+    assert.equal(cellValueOf(queryClient), "Not started");
   } finally {
     queryClient.clear();
   }
