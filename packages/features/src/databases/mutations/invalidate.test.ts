@@ -82,7 +82,7 @@ test("also invalidates matching page properties and export key", async () => {
       databaseWindowQueryKey("session-1", {
         databaseId: "database-1",
         dataSourceId: "data-source-1",
-        viewId: "view-1",
+        queryHash: "q1",
       })[0] === "db",
     );
   } finally {

@@ -24,6 +24,14 @@ import {
 
 export type DatabaseViewScope = DatabaseBootstrapScope & {
   dataSourceId: string;
+  queryHash: string;
+  viewId: string;
+};
+
+/** Fetch-time scope: the cache key is the query hash, viewId selects the
+ *  server-side evaluation for that hash. Sibling views with equal hashes
+ *  share one cached window. */
+export type DatabaseWindowFetchScope = DatabaseWindowScope & {
   viewId: string;
 };
 
@@ -45,7 +53,7 @@ export type RecordWindowPageParam = {
 };
 
 export function recordWindowPath(
-  scope: DatabaseWindowScope,
+  scope: DatabaseWindowFetchScope,
   window: RecordWindowPageParam,
 ): string {
   const query = new URLSearchParams({
@@ -62,7 +70,7 @@ export function recordWindowPath(
 
 export async function fetchRecordWindow(
   apiFetch: ApiFetcher,
-  scope: DatabaseWindowScope,
+  scope: DatabaseWindowFetchScope,
   window: RecordWindowPageParam,
   queryClient?: QueryClient,
   queryKey?: readonly unknown[],
@@ -178,7 +186,7 @@ export function useDatabaseRecords(
       databaseWindowQueryKey(sessionId, {
         databaseId: "disabled",
         dataSourceId: "disabled",
-        viewId: "disabled",
+        queryHash: "disabled",
       })) as ReturnType<typeof databaseWindowQueryKey>,
     staleTime: 30_000,
   });

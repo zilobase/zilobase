@@ -17,7 +17,7 @@ export type DatabaseWindowScope = {
   databaseId: string;
   dataSourceId: string;
   includeDeleted?: boolean;
-  viewId: string;
+  queryHash: string;
 };
 
 export const databaseBootstrapQueryKey = (
@@ -43,7 +43,7 @@ export const databaseWindowQueryKey = (
     scope.databaseId,
     "window",
     scope.dataSourceId,
-    scope.viewId,
+    scope.queryHash,
     scope.includeDeleted === true,
   ] as const;
 

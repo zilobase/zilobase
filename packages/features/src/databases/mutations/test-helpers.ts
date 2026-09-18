@@ -4,6 +4,7 @@ import {
   databaseBootstrapQueryKey,
   databaseWindowQueryKey,
 } from "../queries/keys"
+import { databaseViewQueryHash } from "../views/query-hash"
 import type {
   DatabaseBootstrapResponse,
   DatabaseRecordWindowResponse,
@@ -221,7 +222,7 @@ export function setTestDatabaseClientState(
       databaseWindowQueryKey("test-session", {
         databaseId: payload.database.id,
         dataSourceId: source.id,
-        viewId: view.id,
+        queryHash: databaseViewQueryHash(view.config),
       }),
       { pageParams: [{ limit: 50, snapshot: undefined }], pages: [window] },
     )

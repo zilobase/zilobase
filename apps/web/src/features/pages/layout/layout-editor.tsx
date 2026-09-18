@@ -25,6 +25,7 @@ import {
   useDatabaseIdForRowPage,
   useDatabaseRecords,
 } from "@zilobase/features/databases/react";
+import { databaseViewQueryHash } from "@zilobase/features/databases";
 import {
   getPageCover,
   getPageEmoji,
@@ -202,6 +203,7 @@ function LayoutEditor({
       ? {
           databaseId,
           dataSourceId: previewView.dataSourceId,
+          queryHash: databaseViewQueryHash(previewView.config),
           viewId: previewView.id,
         }
       : null,

@@ -8,7 +8,10 @@ import {
 } from "react"
 
 import { useSession } from "@zilobase/features/auth/react";
-import { isDatabaseLocked } from "@zilobase/features/databases/appearance";
+import {
+  databaseViewQueryHash,
+  isDatabaseLocked,
+} from "@zilobase/features/databases";
 import {
   useAddDatabaseView,
   useAddDatabaseProperty,
@@ -175,12 +178,18 @@ export function useDatabaseViewController({
   const activeDataSourceId = bootstrap?.views.find(
     ({ id }) => id === resolvedActiveViewId,
   )?.dataSourceId ?? bootstrap?.dataSources[0]?.id ?? null
+  const activeQueryHash = databaseViewQueryHash(
+    bootstrap?.views.find(({ id }) => id === resolvedActiveViewId)?.config ??
+      bootstrap?.database.config,
+    includeDeletedDatabases,
+  )
   const recordWindow = useDatabaseRecords(
     databaseId && resolvedActiveViewId && activeDataSourceId
       ? {
           databaseId,
           dataSourceId: activeDataSourceId,
           includeDeleted: includeDeletedDatabases,
+          queryHash: activeQueryHash,
           viewId: resolvedActiveViewId,
         }
       : null,

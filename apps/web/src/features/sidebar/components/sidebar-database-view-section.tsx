@@ -22,7 +22,10 @@ import { useDatabaseMetadata } from "@/features/databases/access/use-database-me
 import { composeDatabaseViewData } from "@/features/databases/views/model/database-controller-state"
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 import type { SidebarSection } from "@zilobase/features/user-settings"
-import { isDatabaseLocked } from "@zilobase/features/databases";
+import {
+  databaseViewQueryHash,
+  isDatabaseLocked,
+} from "@zilobase/features/databases";
 import { useAddDatabaseRow, useDatabaseRecords } from "@zilobase/features/databases/react";
 
 export function SidebarDatabaseViewSection({
@@ -49,6 +52,7 @@ export function SidebarDatabaseViewSection({
       ? {
           databaseId: section.databaseId,
           dataSourceId: activeDataSourceId,
+          queryHash: databaseViewQueryHash(activeView.config),
           viewId: activeView.id,
         }
       : null,

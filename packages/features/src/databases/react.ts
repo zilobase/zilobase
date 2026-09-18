@@ -53,4 +53,4 @@ export { useDatabaseIdForRowPage } from "./records/use-database-id-for-row-page"
 export { saveCellValue } from "./mutations/serialize";
 export { resolveCellCommandScope, resolveDataSourceCommandScope } from "./mutations/scope";
 export type { DatabaseScope } from "./queries/bootstrap";
-export type { DatabaseViewScope } from "./queries/records";
+export type { DatabaseViewScope, DatabaseWindowFetchScope } from "./queries/records";

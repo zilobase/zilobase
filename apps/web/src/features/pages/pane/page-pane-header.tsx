@@ -41,6 +41,7 @@ import {
   useDatabaseBootstrap,
   useDatabaseRecords,
 } from "@zilobase/features/databases/react";
+import { databaseViewQueryHash } from "@zilobase/features/databases";
 import { useMeeting } from "@zilobase/features/meetings/react";
 import { useTeamspaces } from "@zilobase/features/teamspaces/react";
 import {
@@ -196,6 +197,7 @@ function useRowNavigationPageIds(databaseId: string | null) {
       ? {
           databaseId,
           dataSourceId: view.dataSourceId,
+          queryHash: databaseViewQueryHash(view.config),
           viewId: view.id,
         }
       : null,

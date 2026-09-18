@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react"
 
 import { useDatabaseRecords } from "@zilobase/features/databases/react"
+import { databaseViewQueryHash } from "@zilobase/features/databases"
 
 import { composeDatabaseViewData } from "../views/model/database-controller-state"
 import { useDatabaseMetadata } from "../access/use-database-metadata"
@@ -26,6 +27,10 @@ export function useDatabaseSecondaryPayload(
           databaseId,
           dataSourceId: activeDataSourceId,
           includeDeleted: options?.includeDeleted,
+          queryHash: databaseViewQueryHash(
+            view.config,
+            options?.includeDeleted,
+          ),
           viewId: view.id,
         }
       : null,

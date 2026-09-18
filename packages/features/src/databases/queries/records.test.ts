@@ -29,10 +29,11 @@ function windowResponse(
 const scope = {
   databaseId: "database-1",
   dataSourceId: "data-source-1",
+  queryHash: "q1",
   viewId: "view-1",
 };
 
-test("window key uses host root with source/view segments", () => {
+test("window key uses host root with source/query segments", () => {
   assert.deepEqual(
     databaseWindowQueryKey("session-1", scope),
     [
@@ -41,9 +42,26 @@ test("window key uses host root with source/view segments", () => {
       "database-1",
       "window",
       "data-source-1",
-      "view-1",
+      "q1",
       false,
     ],
+  );
+});
+
+test("window key splits by query hash, not by view", () => {
+  const siblingKey = databaseWindowQueryKey("session-1", {
+    databaseId: scope.databaseId,
+    dataSourceId: scope.dataSourceId,
+    queryHash: scope.queryHash,
+  });
+  assert.deepEqual(siblingKey, databaseWindowQueryKey("session-1", scope));
+  assert.notDeepEqual(
+    databaseWindowQueryKey("session-1", {
+      databaseId: scope.databaseId,
+      dataSourceId: scope.dataSourceId,
+      queryHash: "q2",
+    }),
+    databaseWindowQueryKey("session-1", scope),
   );
 });
 

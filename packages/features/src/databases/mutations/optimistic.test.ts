@@ -6,6 +6,7 @@ import {
   databaseBootstrapQueryKey,
   databaseWindowQueryKey,
 } from "../queries/keys";
+import { databaseViewQueryHash } from "../views/query-hash";
 import type {
   DatabaseBootstrapResponse,
   DatabaseCommandRequest,
@@ -43,7 +44,7 @@ function readWindow(queryClient: QueryClient): DatabaseRecordWindowResponse {
     databaseWindowQueryKey(SESSION, {
       databaseId: HOST,
       dataSourceId: "data-source-1",
-      viewId: "view-table",
+      queryHash: databaseViewQueryHash({}),
     }),
   );
   assert.ok(data);
@@ -263,7 +264,7 @@ function cellValueOf(queryClient: QueryClient): unknown {
     databaseWindowQueryKey(SESSION, {
       databaseId: HOST,
       dataSourceId: "data-source-1",
-      viewId: "view-table",
+      queryHash: databaseViewQueryHash({}),
     }),
   );
   return data?.pages[0]?.records
