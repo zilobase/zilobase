@@ -62,11 +62,7 @@ export function getPendingState(
   return getSnapshotForKey(pendingKeyForTarget(target));
 }
 
-export function subscribePendingState(
-  target: DatabaseCommandTarget,
-  listener: () => void,
-): () => void {
-  const key = pendingKeyForTarget(target);
+function subscribeToKey(key: string, listener: () => void): () => void {
   let listeners = listenersByKey.get(key);
   if (!listeners) {
     listeners = new Set();
@@ -77,6 +73,13 @@ export function subscribePendingState(
     listeners.delete(listener);
     if (listeners.size === 0) listenersByKey.delete(key);
   };
+}
+
+export function subscribePendingState(
+  target: DatabaseCommandTarget,
+  listener: () => void,
+): () => void {
+  return subscribeToKey(pendingKeyForTarget(target), listener);
 }
 
 export function subscribeAnyPending(listener: () => void): () => void {
@@ -187,24 +190,29 @@ export function targetsForCommand(input: {
 export function useDatabaseEntityCommandState(
   target: DatabaseCommandTarget,
 ): DatabaseEntityCommandState {
-  const stableTarget = useMemo(() => ({
-    dataSourceId: target.dataSourceId,
-    hostDatabaseId: target.hostDatabaseId,
-    propertyId: target.propertyId,
-    rowId: target.rowId,
-    viewId: target.viewId,
-  }), [
-    target.dataSourceId,
-    target.hostDatabaseId,
-    target.propertyId,
-    target.rowId,
-    target.viewId,
-  ]);
-  return useSyncExternalStore(
-    (listener) => subscribePendingState(stableTarget, listener),
-    () => getPendingState(stableTarget),
-    () => getPendingState(stableTarget),
+  const key = useMemo(
+    () =>
+      pendingKeyForTarget({
+        dataSourceId: target.dataSourceId,
+        hostDatabaseId: target.hostDatabaseId,
+        propertyId: target.propertyId,
+        rowId: target.rowId,
+        viewId: target.viewId,
+      }),
+    [
+      target.dataSourceId,
+      target.hostDatabaseId,
+      target.propertyId,
+      target.rowId,
+      target.viewId,
+    ],
   );
+  const subscribe = useMemo(
+    () => (listener: () => void) => subscribeToKey(key, listener),
+    [key],
+  );
+  const getSnapshot = useMemo(() => () => getSnapshotForKey(key), [key]);
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 /** Test-only: reset all pending state. */
