@@ -1,4 +1,5 @@
-import type { DatabaseAccessPayload, DatabasePayload } from  "../core/legacy-contracts";
+import type { DatabaseAccessPayload } from  "../access/access-contracts";
+import type { DatabaseExportPayload } from  "../core/export-payload";
 export type {
   DatabaseRecord,
   DatabaseProperty,
@@ -7,11 +8,13 @@ export type {
   DatabaseRow,
   PagePropertyValue,
   DatabaseRowsPagination,
-  DatabasePayload,
+  DatabaseExportPayload,
   DataSourceRecord,
+} from  "../core/export-payload";
+export type {
   DatabaseAccessRule,
   DatabaseAccessPayload,
-} from  "../core/legacy-contracts";
+} from  "../access/access-contracts";
 import { queryOptions } from "@tanstack/react-query"
 
 import type { ApiFetcher } from  "../../shared/api-fetcher"
@@ -67,11 +70,11 @@ export const databaseContextExportQueryOptions = (
   dataSourceId?: string,
 ) => queryOptions({
   queryKey: databaseContextExportQueryKey(databaseId, dataSourceId),
-  queryFn: ({ signal }) => {
-    const query = dataSourceId
-      ? `?dataSourceId=${encodeURIComponent(dataSourceId)}`
-      : ""
-    return apiFetch<DatabasePayload>(
+    queryFn: ({ signal }) => {
+      const query = dataSourceId
+        ? `?dataSourceId=${encodeURIComponent(dataSourceId)}`
+        : ""
+      return apiFetch<DatabaseExportPayload>(
       `/databases/${encodeURIComponent(databaseId)}/export${query}`,
       { method: "GET", signal },
     )

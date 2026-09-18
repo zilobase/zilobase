@@ -206,8 +206,8 @@
       "default": "./src/auth/contracts.ts"
     },
     "./databases/contracts": {
-      "types": "./src/databases/core/legacy-contracts.ts",
-      "default": "./src/databases/core/legacy-contracts.ts"
+      "types": "./src/databases/contracts.ts",
+      "default": "./src/databases/contracts.ts"
     },
     "./mail/query-contracts": {
       "types": "./src/mail/query-contracts.ts",
