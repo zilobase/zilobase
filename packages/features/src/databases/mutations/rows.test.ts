@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import type { QueryClient } from "@tanstack/react-query";
+
 import { createMutationTestRuntime } from  "../../shared/mutation-runtime.test";
 import type {
   DatabaseCommandRequest,
@@ -16,6 +18,8 @@ import {
   createTestDatabasePayload,
   setTestDatabaseClientState,
 } from "./test-helpers";
+import { databaseWindowQueryKey } from "../queries/keys";
+import { databaseViewQueryHash } from "../views/query-hash";
 
 const record: DatabaseRecordEntity = {
   createdAt: "2026-09-08T00:00:00.000Z",
@@ -214,6 +218,100 @@ test("row move conflict invalidates host and surfaces order message", async () =
         }),
       /Order changed/,
     );
+  } finally {
+    queryClient.clear();
+  }
+});
+
+function readTestStatusValue(queryClient: QueryClient) {
+  const windowKey = databaseWindowQueryKey("test-session", {
+    databaseId: "database-1",
+    dataSourceId: "data-source-1",
+    queryHash: databaseViewQueryHash({}),
+  });
+  const data = queryClient.getQueryData(windowKey) as {
+    pages: Array<{
+      records: Array<{
+        id: string;
+        valuesByPropertyId: Record<string, { value: unknown }>;
+      }>;
+    }>;
+  };
+  return data.pages[0]?.records.find((row) => row.id === "row-1")
+    ?.valuesByPropertyId["property-status"]?.value;
+}
+
+test("grouped row move patches the group cell before commit", async () => {
+  const original = createTestDatabasePayload();
+  let releaseGate!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    releaseGate = resolve;
+  });
+  const inner = commandApi((request) => {
+    assert.equal(request.command.type, "row.move");
+  });
+  const { mutation, queryClient } = createMutationTestRuntime(
+    useMoveDatabaseRow,
+    (async <T>(path: string, init?: RequestInit) => {
+      const pending = inner(path, init);
+      await gate;
+      return pending;
+    }) as unknown as import("../../shared/api-fetcher").ApiFetcher,
+  );
+  setTestDatabaseClientState(queryClient, original);
+  try {
+    assert.equal(readTestStatusValue(queryClient), "Not started");
+    const mutateAsync = mutation.mutateAsync as unknown as (
+      input: Record<string, unknown>,
+    ) => Promise<unknown>;
+    const pending = mutateAsync({
+      afterRowId: "row-2",
+      beforeRowId: null,
+      databaseId: "data-source-1",
+      groupPropertyId: "property-status",
+      groupValue: "Done",
+      rowId: "row-1",
+    });
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      if (readTestStatusValue(queryClient) === "Done") break;
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.equal(readTestStatusValue(queryClient), "Done");
+    releaseGate();
+    await pending;
+    assert.equal(readTestStatusValue(queryClient), "Done");
+  } finally {
+    queryClient.clear();
+  }
+});
+
+test("failed grouped row move rolls back the optimistic group cell", async () => {
+  const original = createTestDatabasePayload();
+  const { mutation, queryClient } = createMutationTestRuntime(
+    useMoveDatabaseRow,
+    (async () => {
+      throw new Error("network down");
+    }) as unknown as import("../../shared/api-fetcher").ApiFetcher,
+  );
+  setTestDatabaseClientState(queryClient, original);
+  try {
+    assert.equal(readTestStatusValue(queryClient), "Not started");
+    const mutateAsync = mutation.mutateAsync as unknown as (
+      input: Record<string, unknown>,
+    ) => Promise<unknown>;
+    await assert.rejects(
+      () =>
+        mutateAsync({
+          afterRowId: "row-2",
+          beforeRowId: null,
+          databaseId: "data-source-1",
+          groupPropertyId: "property-status",
+          groupValue: "Done",
+          rowId: "row-1",
+        }),
+      /network down/,
+    );
+    assert.equal(readTestStatusValue(queryClient), "Not started");
   } finally {
     queryClient.clear();
   }

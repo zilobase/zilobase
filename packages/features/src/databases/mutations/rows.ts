@@ -210,6 +210,34 @@ export function useMoveDatabaseRow() {
         throw error;
       }
     },
+    onMutate: async (input): Promise<OptimisticContext | undefined> => {
+      // Cross-group moves change a cell value, exactly like a table cell edit:
+      // patch the cached cell with the same helper so every view converges
+      // instantly. Pure reorders keep their view-local preview instead.
+      if (!input.groupPropertyId) return undefined;
+      const scope = resolveOptimisticScope(
+        queryClient,
+        input.databaseId,
+        input.hostDatabaseId,
+      );
+      if (!scope) return undefined;
+      await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
+      const rollback = patchCachedCellValue(
+        queryClient,
+        sessionId,
+        scope.hostDatabaseId,
+        {
+          propertyId: input.groupPropertyId,
+          rowId: input.rowId,
+          value: input.groupValue,
+        },
+      );
+      return { rollback, scope };
+    },
+    onError: (_error, _input, context) => {
+      context?.rollback();
+      invalidateOptimisticHost(queryClient, sessionId, context?.scope);
+    },
     onSuccess: async (_data, variables) => {
       try {
         const scope = await resolveDataSourceCommandScope(
