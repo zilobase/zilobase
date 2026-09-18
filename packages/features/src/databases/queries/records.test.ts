@@ -8,6 +8,7 @@ import {
 import {
   fetchRecordWindow,
   isWindowStaleError,
+  selectSameSourcePlaceholder,
 } from "./records";
 import type { DatabaseRecordWindowResponse } from "../core/entities";
 
@@ -128,4 +129,40 @@ test("prefer-newest guard ignores stale incoming window", async () => {
   } finally {
     queryClient.clear();
   }
+});
+
+test("placeholder keeps the previous window within one data source", () => {
+  const previousData = {
+    pageParams: [{ limit: 50, snapshot: undefined }],
+    pages: [windowResponse({ totalCount: 3 })],
+  };
+  const sameSourceKey = databaseWindowQueryKey("session-1", {
+    databaseId: "database-1",
+    dataSourceId: "data-source-1",
+    queryHash: "q-old",
+  });
+  assert.equal(
+    selectSameSourcePlaceholder(previousData, sameSourceKey, "data-source-1"),
+    previousData,
+  );
+});
+
+test("placeholder drops rows from another data source", () => {
+  const previousData = {
+    pageParams: [{ limit: 50, snapshot: undefined }],
+    pages: [windowResponse({ totalCount: 3 })],
+  };
+  const otherSourceKey = databaseWindowQueryKey("session-1", {
+    databaseId: "database-1",
+    dataSourceId: "data-source-2",
+    queryHash: "q-old",
+  });
+  assert.equal(
+    selectSameSourcePlaceholder(previousData, otherSourceKey, "data-source-1"),
+    undefined,
+  );
+  assert.equal(
+    selectSameSourcePlaceholder(previousData, undefined, "data-source-1"),
+    undefined,
+  );
 });

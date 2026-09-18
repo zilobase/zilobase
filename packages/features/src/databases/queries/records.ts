@@ -4,7 +4,6 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { useRef } from "react";
-
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
 import { useDatabaseSessionId } from "./session";
 import {
@@ -39,7 +38,9 @@ export type DatabaseRecordHookWindow = {
   error: Error | null;
   fetchNextPage: () => Promise<void>;
   hasMore: boolean;
+  isFetching: boolean;
   isFetchingNextPage: boolean;
+  isPlaceholderData: boolean;
   pageSize: DatabaseInitialPageSize;
   records: DatabaseRecordEntity[];
   scope: DatabaseViewScope | null;
@@ -116,6 +117,25 @@ export function isWindowStaleError(error: unknown): boolean {
     (candidate.status === 409 && candidate.body?.code === "WINDOW_STALE");
 }
 
+/**
+ * Keep the previous window visible while a new query hash loads, but only
+ * within one data source: rows from another source have a different schema
+ * and must not flash in the new view. Returning undefined falls back to the
+ * loading state (skeleton on true cold load).
+ *
+ * Window key: ["db", session, host, "window", dataSourceId, queryHash, …].
+ */
+export function selectSameSourcePlaceholder<Data>(
+  previousData: Data | undefined,
+  previousKey: readonly unknown[] | undefined,
+  dataSourceId: string,
+): Data | undefined {
+  if (Array.isArray(previousKey) && previousKey[4] === dataSourceId) {
+    return previousData;
+  }
+  return undefined;
+}
+
 function resolvePageSize(
   queryClient: QueryClient,
   sessionId: string,
@@ -188,6 +208,15 @@ export function useDatabaseRecords(
         dataSourceId: "disabled",
         queryHash: "disabled",
       })) as ReturnType<typeof databaseWindowQueryKey>,
+    placeholderData: (previousData, previousQuery) =>
+      scope
+        ? selectSameSourcePlaceholder(
+          previousData,
+          (previousQuery as { queryKey?: readonly unknown[] } | undefined)
+            ?.queryKey,
+          scope.dataSourceId,
+        )
+        : previousData,
     staleTime: 30_000,
   });
 
@@ -196,7 +225,9 @@ export function useDatabaseRecords(
       error: null,
       fetchNextPage: async () => undefined,
       hasMore: false,
+      isFetching: false,
       isFetchingNextPage: false,
+      isPlaceholderData: false,
       pageSize: 50,
       records: [],
       scope: null,
@@ -218,7 +249,9 @@ export function useDatabaseRecords(
       await query.fetchNextPage();
     },
     hasMore: latest?.hasMore ?? false,
+    isFetching: query.isFetching,
     isFetchingNextPage: query.isFetchingNextPage,
+    isPlaceholderData: query.isPlaceholderData,
     pageSize,
     records: latest?.records ?? [],
     scope,
