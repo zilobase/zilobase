@@ -100,3 +100,15 @@ saved-but-stale states. The server journal, receipts, outbox, and
 
 See the current [database architecture](../features/databases/README.md) and
 [database realtime flow](../features/databases/realtime.md).
+
+## Amendment: targeted optimistic cache updates
+
+Hot-path mutations (cell values, database/view titles, property add/update)
+now patch the QueryClient photocopy synchronously in `onMutate`
+([optimistic helpers](../../../packages/features/src/databases/mutations/optimistic.ts))
+and roll back in `onError`, so the UI reflects the attempted edit instantly
+instead of waiting for POST plus refetch. Version fields are never patched,
+so pokes and prefer-newest guards keep working on server versions, and the
+normal invalidation refetch still reconciles with committed truth. The
+acknowledgement payload itself is still never written into the cache; only
+the user-supplied input values are applied optimistically.

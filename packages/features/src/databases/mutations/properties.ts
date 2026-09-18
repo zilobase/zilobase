@@ -9,6 +9,13 @@ import {
 import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
 import {
+  cancelHostQueries,
+  firstCachedDataSourceId,
+  insertOptimisticProperty,
+  patchCachedProperty,
+  resolveOptimisticScope,
+} from "./optimistic";
+import {
   runSerialized,
   structuralSerializationKey,
 } from "./serialize";
@@ -103,6 +110,29 @@ export function useAddDatabaseProperty() {
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
     },
+    onMutate: async ({ config, databaseId, name, position, type }) => {
+      const scope = resolveOptimisticScope(queryClient, databaseId);
+      if (!scope) return undefined;
+      const dataSourceId = scope.dataSourceId ??
+        firstCachedDataSourceId(queryClient, sessionId, scope.hostDatabaseId);
+      if (!dataSourceId) return undefined;
+      await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
+      return insertOptimisticProperty(
+        queryClient,
+        sessionId,
+        scope.hostDatabaseId,
+        {
+          config,
+          dataSourceId,
+          name: name?.trim() || "Property",
+          position,
+          type: type?.trim() || "text",
+        },
+      ).rollback;
+    },
+    onError: (_error, _input, rollback) => {
+      rollback?.();
+    },
     onSuccess: async (_result, variables) => {
       try {
         const scope = await resolveDataSourceCommandScope(
@@ -186,6 +216,21 @@ export function useUpdateDatabaseProperty() {
       );
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
+    },
+    onMutate: async ({ databaseId, databasePropertyId, ...patch }) => {
+      const scope = resolveOptimisticScope(queryClient, databaseId);
+      if (!scope) return undefined;
+      await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
+      return patchCachedProperty(
+        queryClient,
+        sessionId,
+        scope.hostDatabaseId,
+        databasePropertyId,
+        patch,
+      );
+    },
+    onError: (_error, _input, rollback) => {
+      rollback?.();
     },
     onSuccess: async (_result, variables) => {
       try {

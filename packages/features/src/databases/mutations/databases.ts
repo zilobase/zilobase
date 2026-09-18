@@ -22,6 +22,10 @@ import { useDatabaseSessionId } from "../queries/session";
 import type { DatabaseHostEntity } from "../core/entities";
 import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
+import {
+  cancelHostQueries,
+  patchCachedDatabase,
+} from "./optimistic";
 import { runSerialized, viewSerializationKey } from "./serialize";
 
 type CreateDatabaseInput = {
@@ -103,6 +107,13 @@ export function useUpdateDatabase() {
       );
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DatabaseHostEntity;
+    },
+    onMutate: async ({ databaseId, ...patch }) => {
+      await cancelHostQueries(queryClient, sessionId, databaseId);
+      return patchCachedDatabase(queryClient, sessionId, databaseId, patch);
+    },
+    onError: (_error, _input, rollback) => {
+      rollback?.();
     },
     onSuccess: async (database) => {
       await queryClient.invalidateQueries({

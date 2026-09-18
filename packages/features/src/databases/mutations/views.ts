@@ -12,6 +12,10 @@ import type { DatabaseViewEntity } from "../core/entities";
 import { findDataSourceBootstrap } from "./scope";
 import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
+import {
+  cancelHostQueries,
+  patchCachedView,
+} from "./optimistic";
 import { runSerialized, viewSerializationKey } from "./serialize";
 
 type UpdateDatabaseViewInput = {
@@ -94,6 +98,19 @@ export function useUpdateDatabaseView() {
       );
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DatabaseViewEntity;
+    },
+    onMutate: async ({ databaseId, databaseViewId, ...patch }) => {
+      await cancelHostQueries(queryClient, sessionId, databaseId);
+      return patchCachedView(
+        queryClient,
+        sessionId,
+        databaseId,
+        databaseViewId,
+        patch,
+      );
+    },
+    onError: (_error, _input, rollback) => {
+      rollback?.();
     },
     onSuccess: (updatedView, variables) => {
       const bootstrap = findDataSourceBootstrap(

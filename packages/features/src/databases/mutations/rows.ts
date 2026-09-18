@@ -8,6 +8,12 @@ import { useDatabaseSessionId } from "../queries/session";
 import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
 import {
+  cancelHostQueries,
+  patchCachedCellValue,
+  resolveOptimisticScope,
+  type OptimisticRollback,
+} from "./optimistic";
+import {
   findLoadedDataSourceRecords,
   resolveDataSourceCommandScope,
 } from "./scope";
@@ -242,6 +248,29 @@ export function useUpdateDatabasePropertyValue() {
         value: input.value,
       });
       return ack.result as DatabaseRecordEntity;
+    },
+    onMutate: async (input) => {
+      const scope = resolveOptimisticScope(
+        queryClient,
+        input.databaseId,
+        input.hostDatabaseId,
+      );
+      if (!scope) return undefined;
+      await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
+      return patchCachedCellValue(
+        queryClient,
+        sessionId,
+        scope.hostDatabaseId,
+        {
+          dataSourceId: scope.dataSourceId,
+          propertyId: input.propertyId,
+          rowId: input.rowId,
+          value: input.value,
+        },
+      ) satisfies OptimisticRollback | undefined;
+    },
+    onError: (_error, _input, rollback) => {
+      rollback?.();
     },
   });
 }
