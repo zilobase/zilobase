@@ -5,10 +5,6 @@ import {
   invalidateRestoredItems,
 } from  "../../shared/item-action-cache";
 import {
-  type DatabasePayload,
-} from  "../queries/queries";
-import { applyCreatedDatabaseToPageNav } from  "./cache";
-import {
   applyDatabaseFavoriteToNav,
   type NavDelta,
 } from  "../../pages/nav-delta";
@@ -19,7 +15,7 @@ import {
   type PageNavigationPayload,
 } from  "../../pages/queries";
 import { useDatabaseSessionId } from "../queries/session";
-import type { DatabaseHostEntity } from "../core/entities";
+import type { DatabaseHostEntity, DataSourceEntity } from "../core/entities";
 import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
 import {
@@ -38,8 +34,10 @@ type CreateDatabaseInput = {
   teamspaceId?: string | null;
 };
 
-type CreateDatabaseResponse = DatabasePayload & {
-  navDelta?: NavDelta;
+type CreateDatabaseResponse = {
+  activeDataSource: DataSourceEntity | null;
+  database: DatabaseHostEntity;
+  navDelta: NavDelta;
 };
 
 export type UpdateDatabaseInput = {
@@ -77,18 +75,12 @@ export function useCreateDatabase() {
         return;
       }
 
-      if (payload.navDelta) {
-        applyNavigationDeltaToCache(
-          queryClient,
-          payload.database.workspaceId,
-          payload.navDelta,
-        );
-      } else {
-        queryClient.setQueriesData<PageNavigationPayload | undefined>(
-          { queryKey: pagesNavRootQueryKey(payload.database.workspaceId) },
-          (current) => applyCreatedDatabaseToPageNav(current, payload),
-        );
-      }
+      // POST /databases always returns navDelta; apply it directly.
+      applyNavigationDeltaToCache(
+        queryClient,
+        payload.database.workspaceId,
+        payload.navDelta,
+      );
     },
   });
 }
@@ -133,13 +125,13 @@ export function useUpdateDatabase() {
 }
 
 type DeleteDatabaseResult = {
-  database: DatabasePayload["database"] | null;
+  database: DatabaseHostEntity | null;
   deletedDatabaseIds: string[];
   deletedPageIds: string[];
 };
 
 type RestoreDatabaseResult = {
-  database: DatabasePayload["database"];
+  database: DatabaseHostEntity;
   restoredDatabaseIds: string[];
   restoredPageIds: string[];
 };

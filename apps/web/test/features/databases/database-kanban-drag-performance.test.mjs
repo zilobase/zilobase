@@ -27,6 +27,6 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.match(controller, /applyMove\(move, \(\) => \{/)
     assert.match(controller, /markDatabaseInteractionPaint\(dropStartedAt\)/)
     assert.doesNotMatch(controller, /onSettled[^\n]*setDroppedRows/)
-    assert.match(mutations, /input\.onOptimisticAccepted\?\.\(\)/)
+    assert.match(mutations, /input\.onCommandQueued\?\.\(\)/)
   })
 }

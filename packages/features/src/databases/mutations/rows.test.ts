@@ -64,7 +64,7 @@ function commandApi(
 }
 
 for (const operation of ["move", "value"] as const) {
-  test(`${operation} sends an optimistic v2 command without payload snapshots`, async () => {
+  test(`${operation} sends a v2 command without payload snapshots`, async () => {
     const original = createTestDatabasePayload();
     const sent: DatabaseCommandRequest[] = [];
     const useHook = operation === "move"
@@ -121,7 +121,7 @@ test("adding a row sends initial values atomically and returns the created recor
   try {
     const result = await mutation.mutateAsync({
       databaseId: "data-source-1",
-      optimisticValues: [{ propertyId: "property-status", value: "Done" }],
+      initialValues: [{ propertyId: "property-status", value: "Done" }],
       title: "Added",
     });
     assert.equal(result.id, "row-1");
@@ -168,14 +168,14 @@ test("rapid row moves serialize per source in order", async () => {
         afterRowId: "row-2",
         beforeRowId: null,
         databaseId: "data-source-1",
-        onOptimisticAccepted: () => accepted.push("first"),
+        onCommandQueued: () => accepted.push("first"),
         rowId: "row-1",
       }),
       mutation.mutateAsync({
         afterRowId: null,
         beforeRowId: "row-2",
         databaseId: "data-source-1",
-        onOptimisticAccepted: () => accepted.push("second"),
+        onCommandQueued: () => accepted.push("second"),
         rowId: "row-1",
       }),
     ]);

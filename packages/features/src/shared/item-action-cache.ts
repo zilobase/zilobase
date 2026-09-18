@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 import type { ApiFetcher } from "./api-fetcher";
-import { databaseQueryRootKey } from "../databases/queries";
+import { databaseAccessQueryKey } from "../databases/queries";
 import { applyPageFavoriteToNav } from "../pages/nav-delta";
 import {
   zilobaseAiPagesQueryKey,
@@ -99,7 +99,7 @@ export async function invalidateDeletedItems({
         query.queryKey[0] === "db" && query.queryKey.includes(databaseId),
     });
     queryClient.removeQueries({
-      queryKey: databaseQueryRootKey(databaseId),
+      queryKey: databaseAccessQueryKey(databaseId),
     });
   }
 
@@ -130,7 +130,7 @@ export async function invalidateRestoredItems({
       : Promise.resolve(),
     ...result.restoredDatabaseIds.map((databaseId) =>
       queryClient.invalidateQueries({
-        queryKey: databaseQueryRootKey(databaseId),
+        queryKey: databaseAccessQueryKey(databaseId),
       }),
     ),
     ...result.restoredPageIds.map((pageId) =>

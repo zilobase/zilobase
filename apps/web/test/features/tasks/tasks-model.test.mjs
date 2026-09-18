@@ -16,7 +16,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(source, /newRowLabel: "New task"/);
     assert.match(source, /setRowComplete:/);
     assert.match(source, /addDatabaseRow: createTask/);
-    assert.match(source, /optimisticValues: initialValues/);
+    assert.match(source, /initialValues: initialValues/);
     assert.match(source, /configureDataSources: onConfigureDataSources/);
     assert.match(
       source,

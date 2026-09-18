@@ -55,7 +55,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
-      optimisticValues: [{ propertyId: "property-status", value: "Done" }],
+      initialValues: [{ propertyId: "property-status", value: "Done" }],
       pageId: "source-page",
       position: 1,
       sourceDataSourceId: "source-database",
@@ -1379,7 +1379,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
-      optimisticValues: [
+      initialValues: [
         {
           propertyId: "property-date",
           value: {

@@ -1,9 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
 import {
-  databaseRootQueryKey,
-} from "../queries/queries";
-import {
   pagesNavRootQueryKey,
   type PageNavigationPayload,
 } from "../../pages/queries";
@@ -138,11 +135,6 @@ export function useUpdateDatabaseView() {
         );
       }
     },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: databaseRootQueryKey(),
-      });
-    },
   });
 }
 
@@ -177,11 +169,6 @@ export function useAddDatabaseView() {
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DatabaseViewEntity;
     },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: databaseRootQueryKey(),
-      });
-    },
   });
 }
 
@@ -204,11 +191,6 @@ export function useDeleteDatabaseView() {
       );
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as { viewId: string };
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: databaseRootQueryKey(),
-      });
     },
   });
 }

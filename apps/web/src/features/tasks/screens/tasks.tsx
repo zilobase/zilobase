@@ -445,7 +445,7 @@ function TasksDatabaseView({
         databaseId:
           sourcePayload.activeDataSource?.id ?? sourcePayload.database.id,
         hostDatabaseId: sourcePayload.database.id,
-        optimisticValues: initialValues,
+        initialValues: initialValues,
       },
       {
         onError: (error) =>

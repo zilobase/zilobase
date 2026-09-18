@@ -1,5 +1,4 @@
-export { getDatabaseEmoji, getDatabaseCover, isDatabaseLocked } from  "../views/appearance";
-import type { DatabaseRecord, DatabasePayload, DatabaseAccessPayload } from  "../core/legacy-contracts";
+import type { DatabaseAccessPayload, DatabasePayload } from  "../core/legacy-contracts";
 export type {
   DatabaseRecord,
   DatabaseProperty,
@@ -16,22 +15,6 @@ export type {
 import { queryOptions } from "@tanstack/react-query"
 
 import type { ApiFetcher } from  "../../shared/api-fetcher"
-
-export function getDatabaseIconPosition(
-  database: Pick<DatabaseRecord, "config">,
-) {
-  if (
-    !database.config ||
-    typeof database.config !== "object" ||
-    Array.isArray(database.config)
-  ) {
-    return "inline" as const
-  }
-
-  return (database.config as { iconPosition?: unknown }).iconPosition === "top"
-    ? "top" as const
-    : "inline" as const
-}
 
 export const databaseAccessQueryKey = (
   databaseId: string | null | undefined,
@@ -64,12 +47,6 @@ export const databaseAccessQueryOptions = (
       }
     },
   })
-
-export const databaseRootQueryKey = () => ["database"] as const
-
-export const databaseQueryRootKey = (
-  databaseId: string | null | undefined,
-) => ["database", databaseId ?? "none"] as const
 
 export const databaseContextExportQueryKey = (
   databaseId: string | null | undefined,

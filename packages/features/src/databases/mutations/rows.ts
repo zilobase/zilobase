@@ -32,7 +32,7 @@ type MoveRowInput = {
   groupPropertyId?: string;
   groupValue?: unknown;
   hostDatabaseId?: string;
-  onOptimisticAccepted?: () => void;
+  onCommandQueued?: () => void;
   rowId: string;
 };
 
@@ -41,7 +41,7 @@ type AddRowInput = {
   beforeRowId?: string | null;
   databaseId: string;
   hostDatabaseId?: string;
-  optimisticValues?: Array<{ propertyId: string; value: unknown }>;
+  initialValues?: Array<{ propertyId: string; value: unknown }>;
   pageId?: string;
   parentRowId?: string | null;
   position?: number;
@@ -93,9 +93,9 @@ export function useAddDatabaseRow() {
               parentRowId: variables.parentRowId ?? null,
               title: variables.title ?? "Untitled",
               type: "row.create",
-              valuesByPropertyId: variables.optimisticValues
+              valuesByPropertyId: variables.initialValues
                 ? Object.fromEntries(
-                  variables.optimisticValues.map(({ propertyId, value }) => [
+                  variables.initialValues.map(({ propertyId, value }) => [
                     propertyId,
                     value,
                   ]),
@@ -171,7 +171,7 @@ export function useMoveDatabaseRow() {
         input.databaseId,
         input.hostDatabaseId,
       );
-      input.onOptimisticAccepted?.();
+      input.onCommandQueued?.();
       try {
         const ack = await runSerialized(
           orderingSerializationKey(scope.dataSourceId),

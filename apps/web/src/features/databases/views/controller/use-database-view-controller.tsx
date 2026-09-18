@@ -8,7 +8,7 @@ import {
 } from "react"
 
 import { useSession } from "@zilobase/features/auth/react";
-import { isDatabaseLocked } from "@zilobase/features/databases";
+import { isDatabaseLocked } from "@zilobase/features/databases/appearance";
 import {
   useAddDatabaseView,
   useAddDatabaseProperty,

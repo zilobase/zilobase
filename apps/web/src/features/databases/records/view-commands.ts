@@ -430,7 +430,7 @@ export function getDatabaseViewCommands({
           databaseId,
           ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
           ...(groupValues.size > 0
-            ? { optimisticValues: [...groupValues.values()] }
+            ? { initialValues: [...groupValues.values()] }
             : {}),
           pageId: dragPayload.pageId,
           position,

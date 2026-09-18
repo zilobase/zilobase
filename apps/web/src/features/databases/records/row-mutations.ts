@@ -37,7 +37,7 @@ export function createAddDatabaseRowMutation({
         databaseId,
         ...(hostDatabaseId ? { hostDatabaseId } : {}),
         ...(uniquePropertyValues.size > 0
-          ? { optimisticValues: [...uniquePropertyValues.values()] }
+          ? { initialValues: [...uniquePropertyValues.values()] }
           : {}),
         title,
       },
