@@ -206,6 +206,7 @@ export type DatabaseViewProviderValue = {
   options: DatabaseSelectOption[]
   workspaceId?: string | null
   personOptions: Array<{ id: string; name: string; suffix?: string }>
+  prefetchDatabaseView: (viewId: string) => void
   properties: DatabasePropertyEntity[]
   propertyValuesByKey: Record<string, DatabasePropertyValue>
   removeDatabaseFilter: (index: number) => void
@@ -339,7 +340,7 @@ const databaseActionKeys = [
   "copyDatabaseViewLink", "createDatabaseFilter", "createDatabaseSort",
   "deleteDatabaseView", "duplicateDatabaseView", "fetchNextPage",
   "getDatabasePageDragPayload", "hasDatabasePageDragPayload", "isRowComplete",
-  "onOpenPage", "removeDatabaseFilter", "removeDatabaseSort",
+  "onOpenPage", "prefetchDatabaseView", "removeDatabaseFilter", "removeDatabaseSort",
   "renameDatabaseProperty", "reorderDatabaseFilters", "saveDatabaseTitle",
   "saveDatabaseEmoji", "saveDatabaseViewIcon", "saveDatabaseViewTitle",
   "saveDatabaseConditionalColors", "saveDatabaseFilters", "saveDatabasePropertyOrder",

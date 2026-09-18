@@ -136,6 +136,52 @@ export function selectSameSourcePlaceholder<Data>(
   return undefined;
 }
 
+export function databaseWindowQueryOptions(
+  apiFetch: ApiFetcher,
+  sessionId: string,
+  scope: DatabaseWindowFetchScope,
+  pageSize: DatabaseInitialPageSize,
+  queryClient?: QueryClient,
+) {
+  const queryKey = databaseWindowQueryKey(sessionId, scope);
+  return {
+    queryKey,
+    staleTime: 30_000,
+    initialPageParam: { limit: pageSize, snapshot: undefined },
+    getNextPageParam: (
+      last: DatabaseRecordWindowResponse,
+    ): RecordWindowPageParam | undefined =>
+      last.hasMore
+        ? {
+          limit: last.records.length + pageSize,
+          snapshot: last.snapshot,
+        }
+        : undefined,
+    queryFn: async (
+      { pageParam }: { pageParam: RecordWindowPageParam },
+    ): Promise<DatabaseRecordWindowResponse> =>
+      fetchRecordWindow(apiFetch, scope, pageParam, queryClient, queryKey),
+  };
+}
+
+/**
+ * Warm the cache for a view the user has not opened yet. Skips when any
+ * data is cached: staleness is handled by the opening query itself.
+ */
+export async function prefetchDatabaseWindow(
+  queryClient: QueryClient,
+  apiFetch: ApiFetcher,
+  sessionId: string,
+  scope: DatabaseWindowFetchScope,
+  pageSize: DatabaseInitialPageSize,
+): Promise<void> {
+  const queryKey = databaseWindowQueryKey(sessionId, scope);
+  if (queryClient.getQueryData(queryKey) !== undefined) return;
+  await queryClient.prefetchInfiniteQuery(
+    databaseWindowQueryOptions(apiFetch, sessionId, scope, pageSize, queryClient),
+  );
+}
+
 function resolvePageSize(
   queryClient: QueryClient,
   sessionId: string,
@@ -181,27 +227,19 @@ export function useDatabaseRecords(
     ReturnType<typeof databaseWindowQueryKey>,
     RecordWindowPageParam
   >({
+    ...databaseWindowQueryOptions(
+      apiFetch,
+      sessionId,
+      scope ?? {
+        databaseId: "disabled",
+        dataSourceId: "disabled",
+        queryHash: "disabled",
+        viewId: "disabled",
+      },
+      pageSize,
+      queryClient,
+    ),
     enabled: Boolean(scope),
-    initialPageParam: { limit: pageSize, snapshot: undefined },
-    queryFn: async ({ pageParam }) => {
-      if (!scope || !queryKey) {
-        throw new Error("Database record scope is required");
-      }
-      return fetchRecordWindow(
-        apiFetch,
-        scope,
-        pageParam,
-        queryClient,
-        queryKey,
-      );
-    },
-    getNextPageParam: (last): RecordWindowPageParam | undefined =>
-      last.hasMore
-        ? {
-          limit: last.records.length + pageSize,
-          snapshot: last.snapshot,
-        }
-        : undefined,
     queryKey: (queryKey ??
       databaseWindowQueryKey(sessionId, {
         databaseId: "disabled",

@@ -8,9 +8,12 @@ import {
 } from "react"
 
 import { useSession } from "@zilobase/features/auth/react";
+import { useZilobaseFeatures } from "@zilobase/features";
 import {
   databaseViewQueryHash,
+  getDatabaseInitialPageSize,
   isDatabaseLocked,
+  prefetchDatabaseWindow,
 } from "@zilobase/features/databases";
 import {
   useAddDatabaseView,
@@ -20,6 +23,7 @@ import {
   useCreateDatabaseDataSource,
   useDatabaseBootstrap,
   useDatabaseRecords,
+  useDatabaseSessionId,
   useDeleteDatabaseView,
   useLinkDatabaseDataSource,
   useReplaceDatabaseViewDataSource,
@@ -272,6 +276,68 @@ export function useDatabaseViewController({
     },
     [isControlledActiveView, onActiveViewIdChange, resolvedActiveViewId],
   )
+
+  const { apiFetch, queryClient } = useZilobaseFeatures()
+  const sessionId = useDatabaseSessionId()
+  const prefetchDatabaseView = useCallback((viewId: string) => {
+    if (!databaseId || !bootstrap || viewId === resolvedActiveViewId) return
+    const view = bootstrap.views.find((candidate) => candidate.id === viewId)
+    if (!view) return
+    void prefetchDatabaseWindow(queryClient, apiFetch, sessionId, {
+      databaseId,
+      dataSourceId: view.dataSourceId,
+      includeDeleted: includeDeletedDatabases,
+      queryHash: databaseViewQueryHash(view.config, includeDeletedDatabases),
+      viewId: view.id,
+    }, getDatabaseInitialPageSize(view.config ?? bootstrap.database.config))
+  }, [
+    apiFetch,
+    bootstrap,
+    databaseId,
+    includeDeletedDatabases,
+    queryClient,
+    resolvedActiveViewId,
+    sessionId,
+  ])
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" || !bootstrap ||
+      recordWindow.status !== "success"
+    ) {
+      return
+    }
+    const pending = bootstrap.views
+      .filter((view) =>
+        view.id !== resolvedActiveViewId &&
+        view.dataSourceId === activeDataSourceId
+      )
+      .slice(0, 3)
+    if (pending.length === 0) return
+    let cancelled = false
+    const run = () => {
+      if (cancelled) return
+      for (const view of pending) prefetchDatabaseView(view.id)
+    }
+    let idleHandle: number | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
+    if (typeof window.requestIdleCallback === "function") {
+      idleHandle = window.requestIdleCallback(() => run(), { timeout: 1_200 })
+    } else {
+      timer = globalThis.setTimeout(run, 400)
+    }
+    return () => {
+      cancelled = true
+      if (idleHandle !== null) window.cancelIdleCallback(idleHandle)
+      if (timer !== null) globalThis.clearTimeout(timer)
+    }
+  }, [
+    activeDataSourceId,
+    bootstrap,
+    prefetchDatabaseView,
+    recordWindow.status,
+    resolvedActiveViewId,
+  ])
 
   const viewModel = useMemo(
     () =>
@@ -915,6 +981,7 @@ export function useDatabaseViewController({
     options: kanbanOptions,
     workspaceId: bootstrap?.database.workspaceId ?? workspaceId,
     personOptions,
+    prefetchDatabaseView,
     properties,
     removeDatabaseFilter: commands.removeDatabaseFilter,
     removeDatabaseSort: commands.removeDatabaseSort,

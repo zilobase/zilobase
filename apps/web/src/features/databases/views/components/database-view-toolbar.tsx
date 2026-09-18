@@ -138,6 +138,7 @@ export function DatabaseViewToolbar() {
     deleteDatabaseView,
     duplicateDatabaseView,
     onShowTitleChange,
+    prefetchDatabaseView,
     removeDatabaseFilter,
     removeDatabaseSort,
     reorderDatabaseFilters,
@@ -671,7 +672,9 @@ export function DatabaseViewToolbar() {
                             className="shrink-0 grow-0 gap-2 px-3"
                             onClick={handleViewClick}
                             onContextMenu={handleViewContextMenu}
+                            onFocus={() => prefetchDatabaseView(view.id)}
                             onKeyDownCapture={handleViewKeyDownCapture}
+                            onMouseEnter={() => prefetchDatabaseView(view.id)}
                             onPointerDownCapture={handleViewPointerDownCapture}
                             value={view.id}
                           >

@@ -429,6 +429,7 @@ export default function RecentsPage({
                   onOpenPage: openHomepagePage,
                   onShowTitleChange: undefined,
                   options: viewModel.kanbanOptions,
+                  prefetchDatabaseView: () => {},
                   workspaceId,
                   removeDatabaseFilter: () => {},
                   removeDatabaseSort: () => {},

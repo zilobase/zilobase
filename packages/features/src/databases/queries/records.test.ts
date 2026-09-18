@@ -8,6 +8,7 @@ import {
 import {
   fetchRecordWindow,
   isWindowStaleError,
+  prefetchDatabaseWindow,
   selectSameSourcePlaceholder,
 } from "./records";
 import type { DatabaseRecordWindowResponse } from "../core/entities";
@@ -147,8 +148,7 @@ test("placeholder keeps the previous window within one data source", () => {
   );
 });
 
-test("placeholder drops rows from another data source", () => {
-  const previousData = {
+test("placeholder drops rows from another data source", () => {  const previousData = {
     pageParams: [{ limit: 50, snapshot: undefined }],
     pages: [windowResponse({ totalCount: 3 })],
   };
@@ -165,4 +165,37 @@ test("placeholder drops rows from another data source", () => {
     selectSameSourcePlaceholder(previousData, undefined, "data-source-1"),
     undefined,
   );
+});
+
+test("prefetch warms an uncached window and skips a cached one", async () => {
+  const queryClient = new QueryClient();
+  try {
+    let calls = 0;
+    const apiFetch = (async () => {
+      calls += 1;
+      return windowResponse({ totalCount: 4 });
+    }) as unknown as import("../../shared/api-fetcher").ApiFetcher;
+    await prefetchDatabaseWindow(
+      queryClient,
+      apiFetch,
+      "session-1",
+      scope,
+      50,
+    );
+    assert.equal(calls, 1);
+    const cached = queryClient.getQueryData(
+      databaseWindowQueryKey("session-1", scope),
+    ) as { pages: DatabaseRecordWindowResponse[] };
+    assert.equal(cached.pages[0]?.totalCount, 4);
+    await prefetchDatabaseWindow(
+      queryClient,
+      apiFetch,
+      "session-1",
+      scope,
+      50,
+    );
+    assert.equal(calls, 1);
+  } finally {
+    queryClient.clear();
+  }
 });

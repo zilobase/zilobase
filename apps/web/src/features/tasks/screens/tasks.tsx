@@ -558,6 +558,7 @@ function TasksDatabaseView({
         onShowTitleChange: undefined,
         options: viewModel.kanbanOptions,
         realtimeEnabled: false,
+        prefetchDatabaseView: () => {},
         removeDatabaseFilter: (index) =>
           saveDatabaseFilters(
             plainFilters().filter((_, filterIndex) => filterIndex !== index)
