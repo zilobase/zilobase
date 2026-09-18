@@ -1,17 +1,19 @@
 import type { QueryClient } from "@tanstack/react-query"
 
-import { databaseBootstrapQueryKey } from "../client/bootstrap-collections"
-import { databaseClientQueryKey } from "../client/query-keys"
+import {
+  databaseBootstrapQueryKey,
+  databaseWindowQueryKey,
+} from "../queries/keys"
 import type {
   DatabaseBootstrapResponse,
   DatabaseRecordWindowResponse,
 } from  "../core/entities"
 import { databaseOrderKeyAtPosition } from  "../core/order-key"
-import type { DatabasePayload } from  "../queries/queries"
+import type { DatabaseExportPayload } from  "../queries/queries"
 
 export function createTestDatabasePayload(
-  overrides: Partial<DatabasePayload> = {},
-): DatabasePayload {
+  overrides: Partial<DatabaseExportPayload> = {},
+): DatabaseExportPayload {
   const defaultDataSource = {
     configVersion: 1,
     createdAt: "2026-06-01T00:00:00.000Z",
@@ -131,7 +133,7 @@ export function createTestDatabasePayload(
 
 export function setTestDatabaseClientState(
   queryClient: QueryClient,
-  payload: DatabasePayload,
+  payload: DatabaseExportPayload,
 ) {
   const bootstrap: DatabaseBootstrapResponse = {
     database: {
@@ -216,15 +218,12 @@ export function setTestDatabaseClientState(
       totalCount: records.length,
     }
     queryClient.setQueryData(
-      databaseClientQueryKey(
-        "test-session",
-        "records",
-        payload.database.id,
-        source.id,
-        view.id,
-        false,
-      ),
-      window,
+      databaseWindowQueryKey("test-session", {
+        databaseId: payload.database.id,
+        dataSourceId: source.id,
+        viewId: view.id,
+      }),
+      { pageParams: [{ limit: 50, snapshot: undefined }], pages: [window] },
     )
   }
 }

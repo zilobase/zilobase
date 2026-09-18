@@ -1,4 +1,10 @@
-
+/**
+ * Wire shape of `GET /databases/:id/export` and the derived AI/task context
+ * payloads. This is a genuine endpoint contract, not client state: the
+ * interactive database client reads bootstrap plus record windows
+ * (`entities.ts`) and never fetches this shape. Keep export-only concerns
+ * here; do not reuse these types for interactive UI state.
+ */
 
 export type DatabaseRecord = {
   id: string
@@ -89,7 +95,7 @@ export type DatabaseRowsPagination = {
   nextCursor: number | null
 }
 
-export type DatabasePayload = {
+export type DatabaseExportPayload = {
   activeDataSource: DataSourceRecord | null
   dataSources: DataSourceRecord[]
   database: DatabaseRecord
@@ -117,19 +123,3 @@ export type DataSourceRecord = {
   linkedAt?: string
   position?: number
 }
-
-export type DatabaseAccessRule = {
-  id: string
-  workspaceId: string
-  databaseId: string
-  targetType: "public" | "user" | "team" | "agent"
-  targetId: string
-  accessLevel: "view" | "edit" | "full"
-  createdAt: string
-  updatedAt: string
-}
-
-export type DatabaseAccessPayload = { access: DatabaseAccessRule[] }
-
-export * from  "./entities"
-export * from  "./fixtures"

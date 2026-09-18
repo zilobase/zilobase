@@ -19,7 +19,7 @@ import {
 } from "@/shared/ui/sidebar"
 import { getDatabaseViewModel } from "@/features/databases"
 import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata"
-import { composeDatabaseControllerPayload } from "@/features/databases/views/model/database-controller-state"
+import { composeDatabaseViewData } from "@/features/databases/views/model/database-controller-state"
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 import type { SidebarSection } from "@zilobase/features/user-settings"
 import { isDatabaseLocked } from "@zilobase/features/databases";
@@ -53,8 +53,8 @@ export function SidebarDatabaseViewSection({
         }
       : null,
   )
-  const payload = React.useMemo(
-    () => composeDatabaseControllerPayload({
+  const viewData = React.useMemo(
+    () => composeDatabaseViewData({
       bootstrap: database.data ?? undefined,
       dataSourceId: activeDataSourceId,
       hasMore: records.hasMore,
@@ -68,9 +68,9 @@ export function SidebarDatabaseViewSection({
     () => getDatabaseViewModel({
       activeViewId: section.viewId ?? null,
       currentUserId,
-      payload,
+      viewData,
     }),
-    [currentUserId, payload, section.viewId],
+    [currentUserId, viewData, section.viewId],
   )
   const rows = model.sortedItems.slice(0, section.limit)
   const title = section.label || database.data?.database.name || "Database view"

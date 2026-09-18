@@ -1,4 +1,4 @@
-import type { PagePropertyValue } from "@zilobase/features/databases"
+import type { PagePropertyValueEntity } from "@zilobase/features/databases"
 
 export type DatabasePropertyValue = string | string[]
 
@@ -19,7 +19,7 @@ export function firstScalarValue(
 }
 
 export function getPropertyValue(
-  values: PagePropertyValue[],
+  values: PagePropertyValueEntity[],
   pageId: string,
   propertyId: string,
   propertyType = "text"

@@ -24,8 +24,8 @@ import { getPageEmoji, type Page } from "@zilobase/features/pages";
 import { usePages } from "@zilobase/features/pages/react";
 import { useZilobaseFeatures } from "@zilobase/features";
 import {
-  databaseRootQueryKey,
-  type DatabasePayload,
+  databaseQueryRoot,
+  databaseRecordWindowResponseSchema,
 } from "@zilobase/features/databases";
 import { colorWithAlpha, getPaletteColor } from "@/shared/lib/color-tokens";
 import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
@@ -55,13 +55,29 @@ function findCachedDatabaseRowPage(
     return null;
   }
 
-  for (const [, data] of queryClient.getQueriesData<DatabasePayload>({
-    queryKey: databaseRootQueryKey(),
+  for (const [, data] of queryClient.getQueriesData({
+    queryKey: [databaseQueryRoot],
   })) {
-    const row = data?.rows.find((item) => item.pageId === pageId);
-
-    if (row) {
-      return row.page as PageSummary;
+    const windows =
+      databaseRecordWindowResponseSchema.safeParse(data).success
+        ? [data]
+        : data && typeof data === "object" && "pages" in data &&
+            Array.isArray((data as { pages?: unknown }).pages)
+          ? (data as { pages: unknown[] }).pages
+          : [];
+    for (const window of windows) {
+      const parsed = databaseRecordWindowResponseSchema.safeParse(window);
+      if (!parsed.success) continue;
+      const record = parsed.data.records.find(
+        (candidate) => candidate.pageId === pageId,
+      );
+      if (record) {
+        return {
+          id: record.page.id,
+          metadata: record.page.metadata,
+          name: record.page.name,
+        } as PageSummary;
+      }
     }
   }
 

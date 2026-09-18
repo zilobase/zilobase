@@ -1,4 +1,4 @@
-import type { DatabasePayload } from "@zilobase/features/databases"
+import type { DatabaseViewData } from "../views/model/database-controller-state"
 
 import {
   toStringArray,
@@ -12,14 +12,14 @@ export function createAddDatabaseRowMutation({
   databaseId,
   editable,
   hostDatabaseId,
-  payload,
+  viewData,
   updateValue,
 }: {
   addRow: DatabaseRowMutations["addRow"]
   databaseId: string | null | undefined
   editable: boolean
   hostDatabaseId?: string | null
-  payload: DatabasePayload | null | undefined
+  viewData: DatabaseViewData | null | undefined
   updateValue: DatabaseRowMutations["updateValue"]
 }) {
   return ({ parentRelation, propertyValues, title }: NewRowSetup) => {
@@ -37,15 +37,17 @@ export function createAddDatabaseRowMutation({
         databaseId,
         ...(hostDatabaseId ? { hostDatabaseId } : {}),
         ...(uniquePropertyValues.size > 0
-          ? { optimisticValues: [...uniquePropertyValues.values()] }
+          ? { initialValues: [...uniquePropertyValues.values()] }
           : {}),
         title,
       },
       {
-        onSuccess: (addedItem) => {
-          if (!parentRelation) return
+      onSuccess: (addedItem) => {
+        if (!parentRelation) return
 
-          const currentValue = payload?.values.find(
+        const currentValue = viewData?.records
+          .flatMap((record) => Object.values(record.valuesByPropertyId))
+          .find(
             (value) =>
               value.pageId === parentRelation.parentRow.pageId &&
               value.propertyId === parentRelation.subItemPropertyId,

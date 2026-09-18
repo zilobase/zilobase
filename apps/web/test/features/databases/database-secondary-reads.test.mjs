@@ -36,7 +36,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.doesNotMatch(propertyMenu, /useDatabase\(/)
   })
 
-  test("relation values page record choices instead of loading a legacy payload", async () => {
+  test("relation values page record choices instead of loading full windows", async () => {
     const source = await readSource(
       "/src/features/databases/schema/editors/database-derived-property-value.tsx",
     )

@@ -1,8 +1,14 @@
 import { useMutation } from "@tanstack/react-query"
 
-import { useZilobaseFeatures } from  "../../shared/context"
-import { resolveDataSourceCommandScope } from "../client/command-scope"
-import { useDatabaseClient } from "../client/provider"
+import { useZilobaseFeatures } from "../../shared/context"
+import { useDatabaseSessionId } from "../queries/session"
+import { resolveDataSourceCommandScope } from "./scope"
+import { executeDatabaseCommand } from "./execute"
+import { invalidateDatabaseQueries } from "./invalidate"
+import {
+  runSerialized,
+  structuralSerializationKey,
+} from "./serialize"
 
 export type DatabaseStoredTemplate = {
   archivedAt: string | null
@@ -63,8 +69,8 @@ function useDatabaseTemplateMutation<
     | { patch: unknown; templateId: string; type: "template.update" }
     | { templateId: string; type: "template.archive" | "template.restore" },
 >(command: (input: TInput) => TCommand) {
-  const client = useDatabaseClient()
   const { apiFetch, queryClient } = useZilobaseFeatures()
+  const sessionId = useDatabaseSessionId()
 
   return useMutation({
     mutationFn: async (input: TInput) => {
@@ -74,11 +80,17 @@ function useDatabaseTemplateMutation<
         input.databaseId,
         input.hostDatabaseId,
       )
-      return client.execute<DatabaseStoredTemplate>({
-        command: command(input),
-        databaseId: scope.hostDatabaseId,
-        dataSourceId: scope.dataSourceId,
-      }).promise
+      const ack = await runSerialized(
+        structuralSerializationKey(scope.dataSourceId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: command(input),
+            databaseId: scope.hostDatabaseId,
+            dataSourceId: scope.dataSourceId,
+          }),
+      )
+      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId)
+      return ack.result as DatabaseStoredTemplate
     },
   })
 }

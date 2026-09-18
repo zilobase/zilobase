@@ -2,11 +2,11 @@ import type { Dispatch, SetStateAction } from "react";
 import { getConvertedViewConfig, removeDatabaseGroupProperty } from "../views/model/view-type-transition";
 
 import type {
-  DatabasePayload,
-  DatabaseProperty,
+  DatabasePropertyEntity,
   DatabaseRow,
-  DatabaseView,
+  DatabaseViewEntity,
 } from "@zilobase/features/databases";
+import type { DatabaseViewData } from "../views/model/database-controller-state";
 
 import { defaultStatusOption } from "../schema/model/property-defaults";
 import {
@@ -48,7 +48,7 @@ import {
   type DatabaseSubItemsSettings,
 } from "../views/model/database-view-config";
 import type { DatabaseFilterUpdatePatch } from "../views/model/filter-sort-contracts";
-import { getRelationLimitTrimUpdates } from "../schema/relations/model/database-relation-sync";
+import { getRelationLimitTrimUpdates, relationPayloadFromViewData } from "../schema/relations/model/database-relation-sync";
 import {
   defaultDatabaseChartSettings,
   getDatabaseChartSettings,
@@ -91,7 +91,7 @@ export function getDatabaseViewCommands({
   mutations,
   notify,
   copyViewLink,
-  payload,
+  viewData,
   properties,
   setActiveViewId,
   setFilterPickerOpen,
@@ -104,7 +104,7 @@ export function getDatabaseViewCommands({
 }: {
   activeDatabaseFilters: DatabasePropertyFilterConfig[];
   activeDatabaseSorts: DatabaseSortConfig[];
-  activeView: DatabaseView | null;
+  activeView: DatabaseViewEntity | null;
   databaseId: string | null | undefined;
   viewDatabaseId?: string | null;
   editable: boolean;
@@ -115,8 +115,8 @@ export function getDatabaseViewCommands({
   mutations: DatabaseMutations;
   notify: { error: (message: string) => void; success: (message: string) => void };
   copyViewLink: (databaseId: string) => Promise<void> | undefined;
-  payload: DatabasePayload | null | undefined;
-  properties: DatabaseProperty[];
+  viewData: DatabaseViewData | null | undefined;
+  properties: DatabasePropertyEntity[];
   setActiveViewId: Dispatch<SetStateAction<string | null>>;
   setFilterPickerOpen: Dispatch<SetStateAction<boolean>>;
   setShowFilterPill: Dispatch<SetStateAction<boolean>>;
@@ -146,11 +146,19 @@ export function getDatabaseViewCommands({
     updateProperty,
     updateValue,
   } = mutations;
+  const databaseConfig = viewData?.bootstrap.database.config;
+  const databasePageId = viewData?.bootstrap.database.pageId;
+  const databaseName = viewData?.bootstrap.database.name;
+  const viewProperties = viewData
+    ? viewData.bootstrap.properties.filter(
+      (property) => property.dataSourceId === viewData.dataSourceId,
+    )
+    : null;
   const ensureTimelineDatePropertyId = createTimelineDateResolver({
     addProperty,
     databaseId,
     editable,
-    payload,
+    viewData,
     properties,
     timelineDateProperty,
     notify,
@@ -161,7 +169,7 @@ export function getDatabaseViewCommands({
     databaseId,
     editable,
     hostDatabaseId: viewDatabaseId,
-    payload,
+    viewData,
     updateValue,
   });
 
@@ -347,7 +355,7 @@ export function getDatabaseViewCommands({
           : null);
       const groupSetup = getNewRowGroupSetup(nextGroupValue, nextGroupProperty);
       const subItemsSettings = getDatabaseSubItemsSettings(
-        activeView?.config ?? payload?.database.config,
+        activeView?.config ?? databaseConfig,
       );
       const parentRow = parentRowId
         ? items.find((row) => row.id === parentRowId)
@@ -388,7 +396,7 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      if (dragPayload.pageId === payload?.database.pageId) {
+      if (dragPayload.pageId === databasePageId) {
         notify.error("You can't nest a page inside itself.");
         return;
       }
@@ -430,7 +438,7 @@ export function getDatabaseViewCommands({
           databaseId,
           ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
           ...(groupValues.size > 0
-            ? { optimisticValues: [...groupValues.values()] }
+            ? { initialValues: [...groupValues.values()] }
             : {}),
           pageId: dragPayload.pageId,
           position,
@@ -539,7 +547,7 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const currentProperties = payload?.properties ?? [];
+      const currentProperties = viewProperties ?? [];
       const groupProperty =
         currentProperties.find(
           (property) => property.property.type === "status",
@@ -644,7 +652,7 @@ export function getDatabaseViewCommands({
       }
 
       ensureTimelineDatePropertyId((datePropertyId) => {
-        const currentProperties = payload?.properties ?? properties;
+        const currentProperties = viewProperties ?? properties;
         const groupPropertyId = getTimelineGroupPropertyId(currentProperties);
 
         addDatabaseView.mutate(
@@ -893,14 +901,14 @@ export function getDatabaseViewCommands({
       }
 
       updateDatabase.mutate({
-        config: getMergedDatabaseConfig(payload?.database.config, {
+        config: getMergedDatabaseConfig(databaseConfig, {
           emoji: nextEmoji,
         }),
         databaseId,
       });
     },
     saveDatabaseTitle: (nextTitle: string) => {
-      if (!databaseId || nextTitle === payload?.database.name) {
+      if (!databaseId || nextTitle === databaseName) {
         return;
       }
 
@@ -1091,7 +1099,7 @@ export function getDatabaseViewCommands({
       }
 
       updateDatabase.mutate({
-        config: getMergedNameColumnConfig(payload?.database.config, config),
+        config: getMergedNameColumnConfig(databaseConfig, config),
         databaseId,
       });
     },
@@ -1194,7 +1202,7 @@ export function getDatabaseViewCommands({
       if (!databaseId) {
         return Promise.resolve();
       }
-      const currentPropertyConfig = payload?.properties.find(
+      const currentPropertyConfig = viewProperties?.find(
         (property) => property.id === databasePropertyId,
       )?.property.config;
       const nextConfig = getMergedPropertyConfig(
@@ -1204,7 +1212,7 @@ export function getDatabaseViewCommands({
 
       const trimUpdates = getRelationLimitTrimUpdates({
         databasePropertyId,
-        payload,
+        payload: relationPayloadFromViewData(viewData),
         propertyConfig: nextConfig,
       });
 
@@ -1273,7 +1281,7 @@ function createTimelineDateResolver({
   addProperty,
   databaseId,
   editable,
-  payload,
+  viewData,
   properties,
   timelineDateProperty,
   notify,
@@ -1281,13 +1289,18 @@ function createTimelineDateResolver({
   addProperty: DatabaseMutations["addProperty"];
   databaseId: string | null | undefined;
   editable: boolean;
-  payload: DatabasePayload | null | undefined;
-  properties: DatabaseProperty[];
+  viewData: DatabaseViewData | null | undefined;
+  properties: DatabasePropertyEntity[];
   timelineDateProperty: DatabasePropertyListItem | null;
   notify: { error: (message: string) => void };
 }) {
   return (onResolved: (datePropertyId: string) => void) => {
-    const currentProperties = payload?.properties ?? properties;
+    const viewProperties = viewData
+      ? viewData.bootstrap.properties.filter(
+        (property) => property.dataSourceId === viewData.dataSourceId,
+      )
+      : null;
+    const currentProperties = viewProperties ?? properties;
     const existingDateProperty =
       timelineDateProperty ??
       getTimelineDateProperty(currentProperties, null);

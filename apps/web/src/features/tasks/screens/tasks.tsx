@@ -27,6 +27,7 @@ import {
 import { getDatabaseSetupTemplate } from "@/features/databases/setup/model/database-setup-templates"
 import { DatabaseViewSkeleton } from "@/features/databases/views/components/database-view-skeleton"
 import { getDatabaseViewModel } from "@/features/databases/views/components/database-view-model"
+import type { DatabaseViewData } from "@/features/databases/views/model/database-controller-state"
 import {
   getDatabaseFilterOperatorsForType,
   getMergedDatabaseConfig,
@@ -50,11 +51,14 @@ import { TaskDatabaseListAdapter } from "../components/task-database-list-adapte
 import { getDatabaseEmoji } from "@zilobase/features/databases"
 import {
   databaseContextExportQueryOptions,
-  type DatabasePayload,
-  type DatabaseProperty,
-  type DatabaseView,
-  type PagePropertyValue,
+  type DatabaseExportPayload,
+  type DatabasePropertyEntity,
+  type DatabaseRecordEntity,
+  type DatabaseViewEntity,
+  type DataSourceEntity,
+  type PagePropertyValueEntity,
 } from "@zilobase/features/databases";
+import { databaseOrderKeyAtPosition } from "@zilobase/features/databases/order-key";
 import {
   useAddDatabaseRow,
   useApplyDatabaseTemplate,
@@ -138,7 +142,7 @@ export default function TasksPage() {
   })
   const payloads = databaseQueries
     .map((query) => query.data)
-    .filter((payload): payload is DatabasePayload => Boolean(payload))
+    .filter((payload): payload is DatabaseExportPayload => Boolean(payload))
   const isLoading =
     navigationLoading || databaseQueries.some((query) => query.isLoading)
   const eligiblePayloads = payloads.filter(
@@ -260,7 +264,7 @@ function TasksDatabaseView({
   isAddingDataSource: boolean
   onConfigureDataSources: () => void
   onSelectDataSource: (selection: DatabaseSetupSelection) => Promise<void>
-  payloads: DatabasePayload[]
+  payloads: DatabaseExportPayload[]
   rows: TaskRow[]
   workspaceId: string | null | undefined
 }) {
@@ -283,9 +287,9 @@ function TasksDatabaseView({
   const [showFilterPill, setShowFilterPill] = useState(false)
   const [showSortPill, setShowSortPill] = useState(false)
   const [showPropertyTitles, setShowPropertyTitles] = useState(false)
-  const payload = useMemo(
+  const viewData = useMemo(
     () =>
-      buildTasksPayload({
+      buildTasksViewData({
         databaseConfig,
         propertyConfigs,
         rows,
@@ -295,15 +299,16 @@ function TasksDatabaseView({
       }),
     [databaseConfig, payloads, propertyConfigs, rows, viewConfig, workspaceId]
   )
+  const taskProperties = viewData.bootstrap.properties
   const viewModel = useMemo(
     () =>
       getDatabaseViewModel({
         accessTargets,
         activeViewId,
         currentUserId: currentUserId ?? undefined,
-        payload,
+        viewData,
       }),
-    [accessTargets, activeViewId, currentUserId, payload]
+    [accessTargets, activeViewId, currentUserId, viewData]
   )
   const rowsBySyntheticId = useMemo(
     () => new Map(rows.map((row) => [getSyntheticRowId(row), row])),
@@ -334,7 +339,7 @@ function TasksDatabaseView({
   const getPropertyType = (propertyId: string) =>
     propertyId === "name"
       ? "text"
-      : (payload.properties.find((property) => property.id === propertyId)
+      : (taskProperties.find((property) => property.id === propertyId)
           ?.property.type ?? "text")
   const savePropertyValue = (
     rowId: string,
@@ -445,7 +450,7 @@ function TasksDatabaseView({
         databaseId:
           sourcePayload.activeDataSource?.id ?? sourcePayload.database.id,
         hostDatabaseId: sourcePayload.database.id,
-        optimisticValues: initialValues,
+        initialValues: initialValues,
       },
       {
         onError: (error) =>
@@ -515,7 +520,7 @@ function TasksDatabaseView({
               ]
             : [],
         ),
-        databaseConfig: payload.activeDataSource?.config,
+        databaseConfig: viewData.activeDataSource?.config,
         databaseId: payloads.length > 0 ? TASKS_DATA_SOURCE_ID : null,
         databaseName: "My Tasks",
         databaseWorkspaceId: workspaceId ?? undefined,
@@ -530,7 +535,7 @@ function TasksDatabaseView({
         hostDatabaseId: TASKS_DATABASE_ID,
         hostDatabaseName: "My Tasks",
         hostDatabaseWorkspaceId: workspaceId ?? undefined,
-        hostViews: payload.views,
+        hostViews: viewData.bootstrap.views,
         isAddingDatabaseProperty: false,
         isAddingDatabaseRow: addRow.isPending,
         isAddingDataSource,
@@ -644,7 +649,7 @@ function TasksDatabaseView({
           setShowPropertyTitles((current) => !current),
         togglePropertyVisibility: (propertyId) => {
           const hidden = new Set(
-            payload.properties
+            taskProperties
               .filter(
                 (property) => !viewModel.visibleProperties.includes(property)
               )
@@ -679,7 +684,7 @@ function TasksDatabaseView({
             type: "list",
           },
         ],
-        views: payload.views,
+        views: viewData.bootstrap.views,
         workspaceId,
       }}
     >
@@ -711,7 +716,7 @@ function TasksDatabaseView({
   )
 }
 
-function buildTasksPayload({
+function buildTasksViewData({
   databaseConfig,
   propertyConfigs,
   rows,
@@ -722,10 +727,10 @@ function buildTasksPayload({
   databaseConfig: unknown
   propertyConfigs: Record<string, unknown>
   rows: TaskRow[]
-  sourcePayloads: DatabasePayload[]
+  sourcePayloads: DatabaseExportPayload[]
   viewConfig: unknown
   workspaceId: string | null | undefined
-}): DatabasePayload {
+}): DatabaseViewData {
   const statusOptions = Array.from(
     new Map(
       sourcePayloads
@@ -787,7 +792,7 @@ function buildTasksPayload({
       width: 210,
     },
   ] as const
-  const properties: DatabaseProperty[] = propertyDefinitions.map(
+  const properties: DatabasePropertyEntity[] = propertyDefinitions.map(
     (definition, position) => ({
       createdAt: "",
       dataSourceId: TASKS_DATA_SOURCE_ID,
@@ -813,13 +818,13 @@ function buildTasksPayload({
       width: definition.width,
     })
   )
-  const values: PagePropertyValue[] = rows.flatMap((row) => [
+  const values: PagePropertyValueEntity[] = rows.flatMap((row) => [
     makeValue(row, STATUS_PROPERTY_ID, row.status),
     makeValue(row, ASSIGNEE_PROPERTY_ID, row.assigneeIds),
     makeValue(row, DUE_DATE_PROPERTY_ID, row.dueDate),
     makeValue(row, SOURCE_PROPERTY_ID, [`task-source:${row.databaseId}`]),
   ])
-  const views: DatabaseView[] = [
+  const views: DatabaseViewEntity[] = [
     {
       config: viewConfig,
       createdAt: "",
@@ -833,59 +838,73 @@ function buildTasksPayload({
     },
   ]
 
-  return {
-    activeDataSource: {
-      config: databaseConfig,
-      configVersion: 1,
-      createdAt: "",
-      id: TASKS_DATA_SOURCE_ID,
-      name: "My Tasks",
-      parentDatabaseId: TASKS_DATABASE_ID,
-      updatedAt: "",
-      version: 0,
-      workspaceId: workspaceId ?? TASKS_DATABASE_ID,
+  const valuesByPageId = new Map<string, PagePropertyValueEntity[]>()
+  for (const value of values) {
+    const group = valuesByPageId.get(value.pageId) ?? []
+    group.push(value)
+    valuesByPageId.set(value.pageId, group)
+  }
+  const records: DatabaseRecordEntity[] = rows.map((row, position) => ({
+    createdAt: row.createdAt,
+    dataSourceId: TASKS_DATA_SOURCE_ID,
+    id: getSyntheticRowId(row),
+    orderKey: databaseOrderKeyAtPosition(position),
+    page: {
+      createdAt: row.createdAt,
+      deletedAt: null,
+      hasContent: false,
+      id: row.pageId,
+      metadata: row.pageMetadata,
+      name: row.title,
+      updatedAt: row.updatedAt,
     },
-    dataSources: [
-      {
+    pageId: row.pageId,
+    parentRowId: null,
+    updatedAt: row.updatedAt,
+    valuesByPropertyId: Object.fromEntries(
+      (valuesByPageId.get(row.pageId) ?? []).map((value) => [
+        value.propertyId,
+        value,
+      ]),
+    ),
+  }))
+
+  const activeDataSource: DataSourceEntity = {
+    config: databaseConfig,
+    configVersion: 1,
+    createdAt: "",
+    id: TASKS_DATA_SOURCE_ID,
+    linkedAt: null,
+    name: "My Tasks",
+    parentDatabaseId: TASKS_DATABASE_ID,
+    position: 0,
+    updatedAt: "",
+    version: 0,
+    workspaceId: workspaceId ?? TASKS_DATABASE_ID,
+  }
+
+  return {
+    activeDataSource,
+    bootstrap: {
+      database: {
+        accessLevel: "full",
         config: databaseConfig,
-        configVersion: 1,
         createdAt: "",
-        id: TASKS_DATA_SOURCE_ID,
+        id: TASKS_DATABASE_ID,
         name: "My Tasks",
-        parentDatabaseId: TASKS_DATABASE_ID,
+        pageId: null,
         updatedAt: "",
         version: 0,
         workspaceId: workspaceId ?? TASKS_DATABASE_ID,
       },
-    ],
-    database: {
-      config: databaseConfig,
-      createdAt: "",
-      id: TASKS_DATABASE_ID,
-      name: "My Tasks",
-      pageId: null,
-      updatedAt: "",
-      version: 0,
-      workspaceId: workspaceId ?? TASKS_DATABASE_ID,
+      dataSources: [activeDataSource],
+      properties,
+      views,
     },
-    properties,
-    rows: rows.map((row, position) => ({
-      createdAt: row.createdAt,
-      dataSourceId: TASKS_DATA_SOURCE_ID,
-      id: getSyntheticRowId(row),
-      page: {
-        createdAt: row.createdAt,
-        id: row.pageId,
-        metadata: row.pageMetadata,
-        name: row.title,
-        updatedAt: row.updatedAt,
-      },
-      pageId: row.pageId,
-      position,
-      updatedAt: row.updatedAt,
-    })),
-    values,
-    views,
+    dataSourceId: TASKS_DATA_SOURCE_ID,
+    hasMore: false,
+    records,
+    totalCount: records.length,
   }
 }
 
@@ -893,7 +912,7 @@ function makeValue(
   row: TaskRow,
   propertyId: string,
   value: unknown
-): PagePropertyValue {
+): PagePropertyValueEntity {
   return {
     createdAt: row.createdAt,
     id: `${getSyntheticRowId(row)}:${propertyId}`,
@@ -942,7 +961,7 @@ function TasksEmptyState({
   )
 }
 
-function DatabaseWarnings({ payloads }: { payloads: DatabasePayload[] }) {
+function DatabaseWarnings({ payloads }: { payloads: DatabaseExportPayload[] }) {
   const warnings = payloads.flatMap((payload) => {
     const missing = getTaskDatabaseSchema(payload).missing
     return missing.length ? [{ missing, payload }] : []

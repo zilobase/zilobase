@@ -1,5 +1,5 @@
 import type {
-  DatabasePayload,
+  DatabaseExportPayload,
   DatabaseProperty,
 } from "@zilobase/features/databases"
 
@@ -34,7 +34,7 @@ export type TaskRow = {
 }
 
 export function getTaskDatabaseSchema(
-  payload: DatabasePayload
+  payload: DatabaseExportPayload
 ): TaskDatabaseSchema {
   const status = findPreferredProperty(
     payload.properties,
@@ -60,7 +60,7 @@ export function getTaskDatabaseSchema(
   return { assignee, dueDate, missing, status }
 }
 
-export function buildTaskRows(payloads: DatabasePayload[]): TaskRow[] {
+export function buildTaskRows(payloads: DatabaseExportPayload[]): TaskRow[] {
   return payloads.flatMap((payload) => {
     const schema = getTaskDatabaseSchema(payload)
 
@@ -114,7 +114,7 @@ export function filterMyTaskRows(
 }
 
 export function getTaskStatusForCompletion(
-  payload: DatabasePayload,
+  payload: DatabaseExportPayload,
   complete: boolean
 ) {
   const statusProperty = getTaskDatabaseSchema(payload).status

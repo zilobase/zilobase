@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { getDatabaseEmoji, isDatabaseLocked } from  "../queries/queries"
+import { getDatabaseEmoji, isDatabaseLocked } from  "./appearance"
 
 test("database lock is read from database config", () => {
   assert.equal(isDatabaseLocked({ config: { locked: true } }), true)

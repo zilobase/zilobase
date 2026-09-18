@@ -1,2 +1,2 @@
 export * from "./mutation-hooks";
-export * from "./cache";
+export * from "./optimistic";

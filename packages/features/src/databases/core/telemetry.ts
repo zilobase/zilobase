@@ -1,16 +1,11 @@
 export type DatabaseMetricName =
   | "acknowledgement_latency"
   | "drag_to_paint"
-  | "gap_recovery"
   | "reset"
   | "rollback"
 
 export type DatabaseMetricReason =
   | "command_failure"
-  | "event_gap"
-  | "event_reset"
-  | "expired_history"
-  | "invalid_history"
   | "manual"
 
 export type DatabaseMetric = {

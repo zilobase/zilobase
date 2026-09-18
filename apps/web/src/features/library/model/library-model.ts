@@ -1,11 +1,14 @@
 import { DEFAULT_MEETING_ITEM_ICON } from "@/features/pages/icons/item-icons";
 import { getDatabaseEmoji } from "@zilobase/features/databases/appearance";
-import type {
-  DatabasePayload,
-  DatabaseProperty,
-  DatabaseView,
-  PagePropertyValue,
+import {
+  type DatabasePropertyEntity,
+  type DatabaseRecordEntity,
+  type DatabaseViewEntity,
+  type DataSourceEntity,
+  type PagePropertyValueEntity,
 } from "@zilobase/features/databases";
+import { databaseOrderKeyAtPosition } from "@zilobase/features/databases/order-key";
+import type { DatabaseViewData } from "@/features/databases/views/model/database-controller-state";
 import type { MeetingListItem } from "@zilobase/features/meetings";
 import type {
   Page,
@@ -113,7 +116,7 @@ export function buildTeamspaceLibraryRows(
   return result;
 }
 
-export function buildHomepagePayload({
+export function buildHomepageViewData({
   activeViewId,
   databaseConfig,
   mode,
@@ -129,7 +132,7 @@ export function buildHomepagePayload({
   propertyConfigs: Record<string, unknown>;
   rows: HomepageRow[];
   viewConfigs: Record<string, unknown>;
-}): DatabasePayload {
+}): DatabaseViewData {
   const homepageDatabaseId = mode === "trash" ? "trash" : "homepage";
   const homepageDataSourceId = `${homepageDatabaseId}:source`;
   const propertyDefinitions =
@@ -137,7 +140,7 @@ export function buildHomepagePayload({
       ? [...homepagePropertyDefinitions, ...trashPropertyDefinitions]
       : homepagePropertyDefinitions;
   const filteredRows = applyHomepageView(rows, activeViewId as HomepageView);
-  const properties: DatabaseProperty[] = propertyDefinitions.map(
+  const properties: DatabasePropertyEntity[] = propertyDefinitions.map(
     (definition, index) => {
       const propertyConfig = propertyConfigs[definition.id];
       const config =
@@ -173,7 +176,7 @@ export function buildHomepagePayload({
       };
     },
   );
-  const values: PagePropertyValue[] = filteredRows.flatMap((row) =>
+  const values: PagePropertyValueEntity[] = filteredRows.flatMap((row) =>
     propertyDefinitions.map((definition) => ({
       createdAt: row.createdAt,
       id: `${row.id}:${definition.id}`,
@@ -184,74 +187,86 @@ export function buildHomepagePayload({
     })),
   );
 
-  return {
-    activeDataSource: {
-      config: databaseConfig,
-      configVersion: 1,
-      createdAt: "",
-      id: homepageDataSourceId,
-      name: mode === "trash" ? "Trash" : "Recents",
-      parentDatabaseId: homepageDatabaseId,
-      updatedAt: "",
-      version: 0,
-      workspaceId: workspaceId ?? homepageDatabaseId,
+  const valuesByPageId = new Map<string, PagePropertyValueEntity[]>()
+  for (const value of values) {
+    const group = valuesByPageId.get(value.pageId) ?? []
+    group.push(value)
+    valuesByPageId.set(value.pageId, group)
+  }
+  const records: DatabaseRecordEntity[] = filteredRows.map((row, index) => ({
+    createdAt: row.createdAt,
+    dataSourceId: homepageDataSourceId,
+    id: row.id,
+    orderKey: databaseOrderKeyAtPosition(index),
+    page: {
+      createdAt: row.createdAt,
+      deletedAt: null,
+      hasContent: false,
+      id: row.id,
+      metadata: row.metadata,
+      name: row.name,
+      updatedAt: row.updatedAt,
     },
-    dataSources: [
-      {
+    pageId: row.id,
+    parentRowId: row.parentRowId,
+    updatedAt: row.updatedAt,
+    valuesByPropertyId: Object.fromEntries(
+      (valuesByPageId.get(row.id) ?? []).map((value) => [
+        value.propertyId,
+        value,
+      ]),
+    ),
+  }))
+
+  const activeDataSource: DataSourceEntity = {
+    config: databaseConfig,
+    configVersion: 1,
+    createdAt: "",
+    id: homepageDataSourceId,
+    linkedAt: null,
+    name: mode === "trash" ? "Trash" : "Recents",
+    parentDatabaseId: homepageDatabaseId,
+    position: 0,
+    updatedAt: "",
+    version: 0,
+    workspaceId: workspaceId ?? homepageDatabaseId,
+  }
+
+  return {
+    activeDataSource,
+    bootstrap: {
+      database: {
+        accessLevel: "full",
         config: databaseConfig,
-        configVersion: 1,
         createdAt: "",
-        id: homepageDataSourceId,
+        id: homepageDatabaseId,
         name: mode === "trash" ? "Trash" : "Recents",
-        parentDatabaseId: homepageDatabaseId,
+        workspaceId: workspaceId ?? homepageDatabaseId,
+        pageId: homepageDatabaseId,
         updatedAt: "",
         version: 0,
-        workspaceId: workspaceId ?? homepageDatabaseId,
       },
-    ],
-    database: {
-      config: databaseConfig,
-      createdAt: "",
-      id: homepageDatabaseId,
-      name: mode === "trash" ? "Trash" : "Recents",
-      workspaceId: workspaceId ?? homepageDatabaseId,
-      pageId: homepageDatabaseId,
-      updatedAt: "",
-      version: 0,
+      dataSources: [activeDataSource],
+      properties,
+      views: homepageViews.map(
+        (view, index): DatabaseViewEntity => ({
+          config: viewConfigs[view.id],
+          createdAt: "",
+          databaseId: homepageDatabaseId,
+          dataSourceId: homepageDataSourceId,
+          id: view.id,
+          name: view.label,
+          position: index,
+          type: "table",
+          updatedAt: "",
+        }),
+      ),
     },
-    properties,
-    rows: filteredRows.map((row, index) => ({
-      createdAt: row.createdAt,
-      dataSourceId: homepageDataSourceId,
-      id: row.id,
-      page: {
-        createdAt: row.createdAt,
-        iconKind: row.iconKind,
-        id: row.id,
-        metadata: row.metadata,
-        name: row.name,
-        updatedAt: row.updatedAt,
-      },
-      pageId: row.id,
-      parentRowId: row.parentRowId,
-      position: row.position === Number.MAX_SAFE_INTEGER ? index : row.position,
-      updatedAt: row.updatedAt,
-    })),
-    values,
-    views: homepageViews.map(
-      (view, index): DatabaseView => ({
-        config: viewConfigs[view.id],
-        createdAt: "",
-        databaseId: homepageDatabaseId,
-        dataSourceId: homepageDataSourceId,
-        id: view.id,
-        name: view.label,
-        position: index,
-        type: "table",
-        updatedAt: "",
-      }),
-    ),
-  };
+    dataSourceId: homepageDataSourceId,
+    hasMore: false,
+    records,
+    totalCount: records.length,
+  }
 }
 
 export function buildHomepageRows(

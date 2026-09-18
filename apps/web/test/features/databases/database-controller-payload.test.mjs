@@ -5,16 +5,16 @@ export function register({ assert, loadModule, readSource, test }) {
     )
     assert.match(controller, /useDatabaseBootstrap/)
     assert.match(controller, /useDatabaseRecords/)
-    assert.match(controller, /composeDatabaseControllerPayload/)
+    assert.match(controller, /composeDatabaseViewData/)
     assert.doesNotMatch(controller, /\buseDatabase\(/)
   })
 
-  test("controller compatibility payload embeds each record's property values", async () => {
-    const { composeDatabaseControllerPayload } = await loadModule(
+  test("controller view data keeps record identity and source scoping", async () => {
+    const { composeDatabaseViewData } = await loadModule(
       "/src/features/databases/views/model/database-controller-state.ts",
     )
     const timestamp = "2026-09-14T00:00:00.000Z"
-    const payload = composeDatabaseControllerPayload({
+    const viewData = composeDatabaseViewData({
       bootstrap: {
         database: {
           accessLevel: "edit",
@@ -86,10 +86,15 @@ export function register({ assert, loadModule, readSource, test }) {
       totalCount: 51,
     })
 
-    assert.equal(payload.activeDataSource.id, "source-1")
-    assert.equal(payload.rows[0].position, 0)
-    assert.equal(payload.values[0].value, "Done")
-    assert.deepEqual(payload.rowsPagination, { hasMore: true, nextCursor: 1 })
-    assert.equal(payload.rowCount, 51)
+    assert.equal(viewData.activeDataSource.id, "source-1")
+    assert.equal(viewData.dataSourceId, "source-1")
+    assert.equal(viewData.records[0].id, "row-1")
+    assert.equal(
+      viewData.records[0].valuesByPropertyId["property-1"].value,
+      "Done",
+    )
+    assert.equal(viewData.records[0].orderKey, "1024.0000000000")
+    assert.equal(viewData.hasMore, true)
+    assert.equal(viewData.totalCount, 51)
   })
 }

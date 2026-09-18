@@ -10,8 +10,6 @@
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
-    "@tanstack/query-db-collection": "1.2.4",
-    "@tanstack/react-db": "0.3.6",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -208,8 +206,8 @@
       "default": "./src/auth/contracts.ts"
     },
     "./databases/contracts": {
-      "types": "./src/databases/core/legacy-contracts.ts",
-      "default": "./src/databases/core/legacy-contracts.ts"
+      "types": "./src/databases/contracts.ts",
+      "default": "./src/databases/contracts.ts"
     },
     "./mail/query-contracts": {
       "types": "./src/mail/query-contracts.ts",

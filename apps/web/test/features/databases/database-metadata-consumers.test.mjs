@@ -4,12 +4,12 @@ export function register({ assert, readSource, readWorkspace, test }) {
       "/src/features/databases/access/use-database-metadata.ts",
     )
     const bootstrapHook = await readWorkspace(
-      "/packages/features/src/databases/client/bootstrap-hooks.ts",
+      "/packages/features/src/databases/queries/bootstrap.ts",
     )
 
     assert.match(hook, /useDatabaseBootstrap/)
     assert.doesNotMatch(hook, /\buseDatabase\(/)
-    assert.match(bootstrapHook, /useOptionalDatabaseClient/)
+    assert.match(bootstrapHook, /useDatabaseSessionId/)
     assert.match(bootstrapHook, /databaseBootstrapQueryOptions/)
     assert.match(bootstrapHook, /useQuery/)
   })
@@ -44,7 +44,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
     )
 
     assert.match(sidebar, /useDatabaseRecords/)
-    assert.match(sidebar, /composeDatabaseControllerPayload/)
+    assert.match(sidebar, /composeDatabaseViewData/)
     assert.doesNotMatch(sidebar, /disabled=\{addRow\.isPending\}/)
     assert.match(layout, /useDatabaseRecords/)
     assert.match(layout, /Load more pages/)

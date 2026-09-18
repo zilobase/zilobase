@@ -42,7 +42,7 @@ export function DatabaseView(props: DatabaseViewProps) {
     onDataSourceSetupSelect,
     onSetupComplete,
     workspaceId,
-    payload,
+    viewData,
     sourcePropertyDialog,
     setupMode,
     viewType,
@@ -75,7 +75,7 @@ export function DatabaseView(props: DatabaseViewProps) {
                   : "This database is unavailable."}
               </span>
             </div>
-          ) : !payload ? (
+          ) : !viewData ? (
             <div className="database-empty-state">
               <span>This database is unavailable.</span>
             </div>

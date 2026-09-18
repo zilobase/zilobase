@@ -55,12 +55,12 @@ export function DatabaseRollupPropertySettings({
   surface?: "menu" | "popover";
 }) {
   const rollupConfig = getRollupConfig(config);
-  const { data: currentDatabasePayload, isLoading: isLoadingCurrentDatabase } =
+  const { data: currentDatabase, isLoading: isLoadingCurrentDatabase } =
     useDatabaseMetadata(databaseId);
   const relationProperties =
-    currentDatabasePayload?.properties.filter(
+    currentDatabase?.properties.filter(
       (property) =>
-        property.dataSourceId === currentDatabasePayload.activeDataSource?.id &&
+        property.dataSourceId === currentDatabase.activeDataSource?.id &&
         property.property.type === "relation",
     ) ?? [];
   const selectedRelationProperty =
@@ -71,14 +71,14 @@ export function DatabaseRollupPropertySettings({
   const relationConfig = getRelationConfig(
     selectedRelationProperty?.property.config,
   );
-  const { data: relatedDatabasePayload, isLoading: isLoadingRelatedDatabase } =
+  const { data: relatedDatabase, isLoading: isLoadingRelatedDatabase } =
     useDatabaseMetadata(relationConfig.relatedDatabaseId);
   const targetProperties = [
     { id: "name", name: "Name", type: "text" },
-    ...(relatedDatabasePayload?.properties ?? [])
+    ...(relatedDatabase?.properties ?? [])
       .filter(
         (property) =>
-          property.dataSourceId === relatedDatabasePayload?.activeDataSource?.id &&
+          property.dataSourceId === relatedDatabase?.activeDataSource?.id &&
           property.property.type !== "rollup",
       )
       .map((property) => ({

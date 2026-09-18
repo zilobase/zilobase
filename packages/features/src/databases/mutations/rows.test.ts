@@ -64,7 +64,7 @@ function commandApi(
 }
 
 for (const operation of ["move", "value"] as const) {
-  test(`${operation} sends an optimistic v2 command without payload snapshots`, async () => {
+  test(`${operation} sends a v2 command without payload snapshots`, async () => {
     const original = createTestDatabasePayload();
     const sent: DatabaseCommandRequest[] = [];
     const useHook = operation === "move"
@@ -121,7 +121,7 @@ test("adding a row sends initial values atomically and returns the created recor
   try {
     const result = await mutation.mutateAsync({
       databaseId: "data-source-1",
-      optimisticValues: [{ propertyId: "property-status", value: "Done" }],
+      initialValues: [{ propertyId: "property-status", value: "Done" }],
       title: "Added",
     });
     assert.equal(result.id, "row-1");
@@ -149,58 +149,71 @@ test("row move anchors contain only immediate neighbors", () => {
   );
 });
 
-test("rapid row moves accept optimistic overlays before the ordering lane settles", async () => {
+test("rapid row moves serialize per source in order", async () => {
   const original = createTestDatabasePayload();
-  const pending: Array<{
-    reject: (error: Error) => void;
-    request: DatabaseCommandRequest;
-  }> = [];
-  const apiFetch = <T>(path: string, init?: RequestInit) =>
-    new Promise<T>((_resolve, reject) => {
-      const request = JSON.parse(String(init?.body)) as DatabaseCommandRequest;
-      assert.equal(
-        path,
-        "/databases/database-1/data-sources/data-source-1/commands",
-      );
-      pending.push({ reject, request });
-    });
+  const paths: string[] = [];
   const { mutation, queryClient } = createMutationTestRuntime(
     useMoveDatabaseRow,
-    apiFetch,
+    commandApi((request, path) => {
+      paths.push(path);
+      assert.equal(request.command.type, "row.move");
+    }),
   );
   setTestDatabaseClientState(queryClient, original);
   const accepted: string[] = [];
 
   try {
-    const first = mutation.mutateAsync({
-      afterRowId: "row-2",
-      beforeRowId: null,
-      databaseId: "data-source-1",
-      onOptimisticAccepted: () => accepted.push("first"),
-      rowId: "row-1",
-    }).catch((error: unknown) => error);
-    const second = mutation.mutateAsync({
-      afterRowId: null,
-      beforeRowId: "row-2",
-      databaseId: "data-source-1",
-      onOptimisticAccepted: () => accepted.push("second"),
-      rowId: "row-1",
-    }).catch((error: unknown) => error);
-
-    for (let attempt = 0; accepted.length < 2 && attempt < 20; attempt += 1) {
-      await new Promise<void>((resolve) => setImmediate(resolve));
-    }
-
+    const [first, second] = await Promise.all([
+      mutation.mutateAsync({
+        afterRowId: "row-2",
+        beforeRowId: null,
+        databaseId: "data-source-1",
+        onOptimisticAccepted: () => accepted.push("first"),
+        rowId: "row-1",
+      }),
+      mutation.mutateAsync({
+        afterRowId: null,
+        beforeRowId: "row-2",
+        databaseId: "data-source-1",
+        onOptimisticAccepted: () => accepted.push("second"),
+        rowId: "row-1",
+      }),
+    ]);
     assert.deepEqual(accepted, ["first", "second"]);
-    assert.equal(pending.length, 1);
-    pending[0]!.reject(new Error("move rejected"));
-    const [firstError, secondError] = await Promise.all([first, second]);
-    assert.match(String(firstError), /move rejected/);
-    assert.equal(
-      (secondError as Error).name,
-      "DatabaseDependentCommandCancelledError",
+    assert.equal(paths.length, 2);
+    assert.ok(paths.every((path) =>
+      path === "/databases/database-1/data-sources/data-source-1/commands"
+    ));
+    assert.equal(first.id, "row-1");
+    assert.equal(second.id, "row-1");
+  } finally {
+    queryClient.clear();
+  }
+});
+
+test("row move conflict invalidates host and surfaces order message", async () => {
+  const original = createTestDatabasePayload();
+  const { mutation, queryClient } = createMutationTestRuntime(
+    useMoveDatabaseRow,
+    (async () => {
+      throw {
+        body: { code: "ROW_MOVE_CONFLICT", message: "stale", rowId: "row-1" },
+        status: 409,
+      };
+    }) as unknown as import("../../shared/api-fetcher").ApiFetcher,
+  );
+  setTestDatabaseClientState(queryClient, original);
+  try {
+    await assert.rejects(
+      () =>
+        mutation.mutateAsync({
+          afterRowId: "row-2",
+          beforeRowId: null,
+          databaseId: "data-source-1",
+          rowId: "row-1",
+        }),
+      /Order changed/,
     );
-    assert.equal(pending.length, 1);
   } finally {
     queryClient.clear();
   }

@@ -1,7 +1,7 @@
-import type { DatabaseRecord } from  "../core/legacy-contracts";
+import type { DatabaseHostEntity } from  "../core/entities";
 
 export function isDatabaseLocked(
-  database: Pick<DatabaseRecord, "config"> | null | undefined,
+  database: { config?: unknown } | null | undefined,
 ) {
   if (
     !database?.config ||
@@ -30,7 +30,7 @@ export function getDatabaseEmoji(database: { config?: unknown }) {
   return typeof emoji === "string" && emoji.length > 0 ? emoji : null
 }
 
-export function getDatabaseCover(database: Pick<DatabaseRecord, "config">) {
+export function getDatabaseCover(database: Pick<DatabaseHostEntity, "config">) {
   if (
     !database.config ||
     typeof database.config !== "object" ||

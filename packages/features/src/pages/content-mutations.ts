@@ -5,9 +5,8 @@ import {
   invalidateRestoredItems,
   setPageDetailCache,
 } from "../shared/item-action-cache";
-import { patchDatabaseCachePage } from  "../databases/records/row-page-properties";
-import type { DatabaseMutationEventV2 } from  "../databases/core/entities";
-import { useDatabaseClient } from "../databases/client/provider";
+import { useDatabaseSessionId } from "../databases/queries/session";
+import { invalidateDatabaseQueries } from "../databases/mutations/invalidate";
 import {
   defaultUserSettings,
   userSettingsQueryKey,
@@ -64,12 +63,6 @@ type UpdatePageResponse =
   | {
       page: Pick<Page, "id" | "updatedAt">;
     };
-
-type UpdatePagePropertyValueInput = {
-  propertyId: string;
-  value: unknown;
-  pageId: string;
-};
 
 export function useCreatePage() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
@@ -164,6 +157,7 @@ export function useCreatePage() {
 
 export function useUpdatePage() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({ id, ...patch }: UpdatePageInput) => {
@@ -234,7 +228,6 @@ export function useUpdatePage() {
           page: optimisticPage,
         }),
       );
-      patchDatabaseCachePage(queryClient, optimisticPage);
       queryClient.setQueriesData<PageNavigationPayload | undefined>(
         { queryKey: pagesNavRootQueryKey(optimisticPage.workspaceId) },
         (current) => applyNavDelta(current, { upsertPages: [optimisticPage] }),
@@ -248,7 +241,6 @@ export function useUpdatePage() {
       }
 
       queryClient.setQueryData(pageQueryKey(variables.id), context.previous);
-      patchDatabaseCachePage(queryClient, context.previous.page);
 
       for (const [queryKey, data] of context.previousNavQueries) {
         queryClient.setQueryData(queryKey, data);
@@ -275,7 +267,13 @@ export function useUpdatePage() {
           page,
         }),
       );
-      const rowPageDatabaseIds = patchDatabaseCachePage(queryClient, page);
+      const detail = queryClient.getQueryData<PageDetail | null>(
+        pageQueryKey(page.id),
+      );
+      const rowPageDatabaseIds = detail?.databaseIds ?? [];
+      for (const hostId of rowPageDatabaseIds) {
+        invalidateDatabaseQueries(queryClient, sessionId, hostId);
+      }
 
       const navFieldsChanged =
         variables.content !== undefined ||
@@ -350,31 +348,6 @@ export function useRestorePage() {
         result,
       });
       setPageDetailCache(queryClient, result.page);
-    },
-  });
-}
-
-export function useUpdatePagePropertyValue() {
-  const databaseClient = useDatabaseClient();
-  const { apiFetch } = useZilobaseFeatures();
-
-  return useMutation({
-    mutationFn: async ({
-      propertyId,
-      value,
-      pageId,
-    }: UpdatePagePropertyValueInput) =>
-      apiFetch<{ events: DatabaseMutationEventV2[] }>(
-        `/pages/${pageId}/properties/${propertyId}/value`,
-        {
-          method: "PUT",
-          body: JSON.stringify({ value }),
-        },
-      ),
-    onSuccess: ({ events }) => {
-      for (const event of events) {
-        void databaseClient.ingest(event);
-      }
     },
   });
 }

@@ -1,20 +1,19 @@
 import { useMutation } from "@tanstack/react-query";
-import { useZilobaseFeatures } from  "../../shared/context";
-import {
-  databaseRootQueryKey,
-} from  "../queries/queries";
-import { pagesNavRootQueryKey } from  "../../pages/queries";
-import { type UpdateDatabaseInput } from  "./databases";
-import { useDatabaseClient } from "../client/provider";
+import { useZilobaseFeatures } from "../../shared/context";
+import { pagesNavRootQueryKey } from "../../pages/queries";
+import { type UpdateDatabaseInput } from "./databases";
+import { useDatabaseSessionId } from "../queries/session";
 import {
   findDataSourceBootstrap,
-  invalidateDataSourceCollections,
   resolveDataSourceCommandScope,
-} from "../client/command-scope";
+} from "./scope";
+import { executeDatabaseCommand } from "./execute";
+import { invalidateDatabaseQueries } from "./invalidate";
+import { runSerialized, viewSerializationKey } from "./serialize";
 import type {
   DatabaseViewEntity,
   DataSourceEntity,
-} from  "../core/entities";
+} from "../core/entities";
 
 type LinkDatabaseDataSourceInput = {
   config?: unknown;
@@ -39,8 +38,8 @@ type ReplaceDatabaseViewDataSourceInput = {
 };
 
 export function useUpdateDataSource() {
-  const client = useDatabaseClient();
   const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({ databaseId: dataSourceId, ...patch }: UpdateDatabaseInput) => {
@@ -49,11 +48,13 @@ export function useUpdateDataSource() {
         apiFetch,
         dataSourceId,
       );
-      return client.execute<DataSourceEntity>({
+      const ack = await executeDatabaseCommand(apiFetch, {
         command: { patch, type: "dataSource.update" },
         databaseId: scope.hostDatabaseId,
         dataSourceId: scope.dataSourceId,
-      }).promise;
+      });
+      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      return ack.result as DataSourceEntity;
     },
     onSuccess: async (_result, variables) => {
       const workspaceId = findDataSourceBootstrap(
@@ -62,20 +63,37 @@ export function useUpdateDataSource() {
       )?.database.workspaceId;
 
       await Promise.all([
-        invalidateDataSourceCollections(queryClient, variables.databaseId),
-        ...(workspaceId ? [
-          queryClient.invalidateQueries({
-            queryKey: pagesNavRootQueryKey(workspaceId),
-          }),
-        ] : []),
+        (async () => {
+          try {
+            const scope = await resolveDataSourceCommandScope(
+              queryClient,
+              apiFetch,
+              variables.databaseId,
+            );
+            invalidateDatabaseQueries(
+              queryClient,
+              sessionId,
+              scope.hostDatabaseId,
+            );
+          } catch {
+            // Ignore.
+          }
+        })(),
+        ...(workspaceId
+          ? [
+            queryClient.invalidateQueries({
+              queryKey: pagesNavRootQueryKey(workspaceId),
+            }),
+          ]
+          : []),
       ]);
     },
   });
 }
 
 export function useLinkDatabaseDataSource() {
-  const client = useDatabaseClient();
-  const { queryClient } = useZilobaseFeatures();
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
@@ -89,72 +107,79 @@ export function useLinkDatabaseDataSource() {
         ?.dataSources.find(({ id }) => id === dataSourceId);
       const dataSource = cachedSource
         ? null
-        : await client.execute<DataSourceEntity>({
+        : (await runSerialized(
+          viewSerializationKey(databaseId),
+          () =>
+            executeDatabaseCommand(apiFetch, {
+              command: {
+                afterId: null,
+                beforeId: null,
+                dataSourceId,
+                type: "dataSource.link",
+              },
+              databaseId,
+            }),
+        )).result as DataSourceEntity;
+      const view = (await runSerialized(
+        viewSerializationKey(databaseId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
             command: {
-              afterId: null,
-              beforeId: null,
+              afterViewId: null,
+              beforeViewId: null,
+              config: config ?? null,
               dataSourceId,
-              type: "dataSource.link",
+              name: name?.trim() || dataSource?.name || cachedSource?.name || "Table",
+              type: "view.create",
+              viewType: type?.trim() || "table",
             },
             databaseId,
-          }).promise;
-      const view = await client.execute<DatabaseViewEntity>({
-        command: {
-          afterViewId: null,
-          beforeViewId: null,
-          config: config ?? null,
-          dataSourceId,
-          name: name?.trim() || dataSource?.name || cachedSource?.name || "Table",
-          type: "view.create",
-          viewType: type?.trim() || "table",
-        },
-        databaseId,
-      }).promise;
+          }),
+      )).result as DatabaseViewEntity;
+      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return { dataSource, view };
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: databaseRootQueryKey(),
-      });
     },
   });
 }
 
 export function useCreateDatabaseDataSource() {
-  const client = useDatabaseClient();
-  const { queryClient } = useZilobaseFeatures();
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
       databaseId,
       ...input
     }: CreateDatabaseDataSourceInput) => {
-      return client.execute<{
+      const ack = await runSerialized(
+        viewSerializationKey(databaseId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: {
+              config: input.config ?? {},
+              name: input.name?.trim() || "New data source",
+              type: "dataSource.create",
+              viewName: input.viewName?.trim() || "Table",
+              viewType: input.viewType?.trim() || "table",
+            },
+            databaseId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
+      return ack.result as {
         dataSource: DataSourceEntity;
         view: DatabaseViewEntity;
-      }>({
-        command: {
-          config: input.config ?? {},
-          name: input.name?.trim() || "New data source",
-          type: "dataSource.create",
-          viewName: input.viewName?.trim() || "Table",
-          viewType: input.viewType?.trim() || "table",
-        },
-        databaseId,
-      }).promise;
+      };
     },
     onSettled: async (_result, _error, variables) => {
-      await Promise.all([
-        invalidateDataSourceCollections(queryClient, variables.databaseId),
-        queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
-      ]);
+      invalidateDatabaseQueries(queryClient, sessionId, variables.databaseId);
     },
   });
 }
 
 export function useReplaceDatabaseViewDataSource() {
-  const client = useDatabaseClient();
-  const { queryClient } = useZilobaseFeatures();
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
@@ -162,42 +187,46 @@ export function useReplaceDatabaseViewDataSource() {
       databaseViewId,
       dataSourceId,
     }: ReplaceDatabaseViewDataSourceInput) => {
-      return client.execute<DatabaseViewEntity>({
-        command: {
-          dataSourceId,
-          type: "view.setDataSource",
-          viewId: databaseViewId,
-        },
-        databaseId,
-      }).promise;
+      const ack = await runSerialized(
+        viewSerializationKey(databaseId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: {
+              dataSourceId,
+              type: "view.setDataSource",
+              viewId: databaseViewId,
+            },
+            databaseId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
+      return ack.result as DatabaseViewEntity;
     },
     onSettled: async (_result, _error, variables) => {
-      await Promise.all([
-        invalidateDataSourceCollections(queryClient, variables.databaseId),
-        queryClient.invalidateQueries({ queryKey: databaseRootQueryKey() }),
-      ]);
+      invalidateDatabaseQueries(queryClient, sessionId, variables.databaseId);
     },
   });
 }
 
 export function useUnlinkDatabaseDataSource() {
-  const client = useDatabaseClient();
-  const { queryClient } = useZilobaseFeatures();
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
 
   return useMutation({
     mutationFn: async ({
       databaseId,
       dataSourceId,
     }: Pick<LinkDatabaseDataSourceInput, "databaseId" | "dataSourceId">) => {
-      return client.execute<DataSourceEntity>({
-        command: { dataSourceId, type: "dataSource.unlink" },
-        databaseId,
-      }).promise;
-    },
-    onSettled: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: databaseRootQueryKey(),
-      });
+      const ack = await runSerialized(
+        viewSerializationKey(databaseId),
+        () =>
+          executeDatabaseCommand(apiFetch, {
+            command: { dataSourceId, type: "dataSource.unlink" },
+            databaseId,
+          }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, databaseId);
+      return ack.result as DataSourceEntity;
     },
   });
 }

@@ -1,4 +1,4 @@
-import { buildHomepagePayload, buildHomepageRows, isHomepageView, homepageViews as libraryViews, type RecentsMode } from "../model/library-model";
+import { buildHomepageViewData, buildHomepageRows, isHomepageView, homepageViews as libraryViews, type RecentsMode } from "../model/library-model";
 import { TeamspacesLibraryTable } from "../components/teamspace-library-table";
 import { CreateTeamspaceDialog as CreateLibraryTeamspaceDialog } from "@/features/teamspaces/creation/index";
 import { useEffect, useMemo, useState } from "react";
@@ -196,9 +196,9 @@ export default function RecentsPage({
       });
     }
   };
-  const payload = useMemo(
+  const viewData = useMemo(
     () =>
-      buildHomepagePayload({
+      buildHomepageViewData({
         activeViewId: activeViewId ?? "recents",
         databaseConfig,
         mode,
@@ -221,9 +221,9 @@ export default function RecentsPage({
     () =>
       getDatabaseViewModel({
         activeViewId,
-        payload,
+        viewData,
       }),
-    [activeViewId, payload],
+    [activeViewId, viewData],
   );
   const activeView = viewModel.activeView;
   const updateActiveViewConfig = (nextConfig: unknown) => {
@@ -400,9 +400,9 @@ export default function RecentsPage({
                   copyDatabaseViewLink: () => {},
                   createDatabaseFilter: () => {},
                   createDatabaseSort: () => {},
-                  databaseConfig: payload.database.config,
-                  databaseId: payload.database.id,
-                  databaseName: payload.database.name,
+                  databaseConfig: viewData.bootstrap.database.config,
+                  databaseId: viewData.bootstrap.database.id,
+                  databaseName: viewData.bootstrap.database.name,
                   databaseWorkspaceId: workspaceId ?? undefined,
                   realtimeEnabled: false,
                   deleteDatabaseView: () => {},
@@ -418,10 +418,10 @@ export default function RecentsPage({
                   hasDatabasePageDragPayload: () => false,
                   hasNextPage: false,
                   headerMenusEnabled: true,
-                  hostDatabaseId: payload.database.id,
-                  hostDatabaseName: payload.database.name,
+                  hostDatabaseId: viewData.bootstrap.database.id,
+                  hostDatabaseName: viewData.bootstrap.database.name,
                   hostDatabaseWorkspaceId: workspaceId ?? undefined,
-                  hostViews: payload.views,
+                  hostViews: viewData.bootstrap.views,
                   isAddingDatabaseProperty: false,
                   isAddingDatabaseRow: false,
                   isAddingDatabaseView: false,
@@ -486,14 +486,14 @@ export default function RecentsPage({
                     ),
                   updateNameColumnConfig,
                   viewTabs: homepageViews.map((view) => ({
-                    dataSourceId: payload.activeDataSource!.id,
+                    dataSourceId: viewData.activeDataSource!.id,
                     fallbackIcon: view.icon,
                     id: view.id,
                     name: view.label,
-                    sourceParentDatabaseId: payload.database.id,
+                    sourceParentDatabaseId: viewData.bootstrap.database.id,
                     type: "table",
                   })),
-                  views: payload.views,
+                  views: viewData.bootstrap.views,
                 }}
               >
                 <div className="database-block-shell database-block-shell-full">

@@ -1,6 +1,7 @@
 import type {
-  DatabasePayload,
-  DatabaseProperty,
+  DatabasePropertyEntity,
+  DatabaseRecordEntity,
+  PagePropertyValueEntity,
 } from "@zilobase/features/databases"
 
 import {
@@ -44,6 +45,12 @@ type DatabaseRollupRow = {
   updatedAt: string
 }
 
+export type RollupRelatedData = {
+  properties: DatabasePropertyEntity[]
+  rows: DatabaseRecordEntity[]
+  values: PagePropertyValueEntity[]
+}
+
 export function evaluateDatabaseRollup({
   currentRow,
   propertyConfig,
@@ -54,8 +61,8 @@ export function evaluateDatabaseRollup({
   currentRow: DatabaseRollupRow
   propertyConfig: unknown
   propertyValuesByKey: Record<string, DatabasePropertyValue>
-  relatedDatabasePayload: DatabasePayload | null | undefined
-  relationProperty: DatabaseProperty | null | undefined
+  relatedDatabasePayload: RollupRelatedData | null | undefined
+  relationProperty: DatabasePropertyEntity | null | undefined
 }): DatabaseRollupEvaluationResult {
   const config = getRollupConfig(propertyConfig)
 
@@ -90,9 +97,9 @@ export function evaluateDatabaseRollup({
   const values = relatedPageIds.map((pageId) =>
     getRollupTargetValue({
       pageId,
-      payload: relatedDatabasePayload,
       row: relatedRowsByPageId.get(pageId),
       targetProperty,
+      values: relatedDatabasePayload.values,
     })
   )
   const calculation = getValidRollupCalculation(
@@ -104,7 +111,7 @@ export function evaluateDatabaseRollup({
 }
 
 export function getRollupTargetProperty(
-  properties: DatabaseProperty[],
+  properties: DatabasePropertyEntity[],
   propertyId: string
 ): { id: string; name: string; type: string } | null {
   if (propertyId === "name") {
@@ -125,7 +132,7 @@ export function getRollupTargetProperty(
 }
 
 export function getRollupRelationProperty(
-  properties: DatabaseProperty[],
+  properties: DatabasePropertyEntity[],
   relationPropertyId: string | undefined
 ) {
   return properties.find(
@@ -251,14 +258,14 @@ function calculateRollupValue(
 
 function getRollupTargetValue({
   pageId,
-  payload,
   row,
   targetProperty,
+  values,
 }: {
   pageId: string
-  payload: DatabasePayload
   row: DatabaseRollupRow | undefined
   targetProperty: { id: string; type: string }
+  values: PagePropertyValueEntity[]
 }): RollupTargetValue {
   if (targetProperty.id === "name") {
     const value = row?.page.name ?? ""
@@ -273,7 +280,7 @@ function getRollupTargetValue({
   const value =
     row && isReadOnlyTimeProperty(targetProperty.type)
       ? getReadOnlyTimePropertyRawValue(row, targetProperty.type)
-      : getPropertyValue(payload.values, pageId, targetProperty.id, targetProperty.type)
+      : getPropertyValue(values, pageId, targetProperty.id, targetProperty.type)
   const text = Array.isArray(value) ? value.filter(Boolean).join(", ") : value
 
   return {

@@ -1,4 +1,4 @@
-import type { DatabaseRecord } from "@zilobase/features/databases/contracts";
+import type { DatabaseRecord } from "@zilobase/features/databases";
 import { isDatabaseLocked } from "@zilobase/features/databases/appearance";
 import type { AccessLevel, Page } from "@zilobase/features/pages";
 

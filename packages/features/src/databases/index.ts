@@ -5,5 +5,4 @@ export * from "./records";
 export * from "./access";
 export * from "./queries";
 export * from "./mutations";
-export * from "./client";
 export * from "./realtime";

@@ -1,9 +1,8 @@
 import { useState } from "react"
 import { Check } from "@/shared/components/icons"
 import {
-  type DatabasePayload,
-  type DatabaseProperty,
-  type DatabaseRow as FeatureDatabaseRow,
+  type DatabasePropertyEntity,
+  type DatabaseRecordEntity,
 } from "@zilobase/features/databases";
 import {
   useUpdateDatabaseProperty,
@@ -20,6 +19,7 @@ import {
   getRelationLimit,
   getRelationReciprocalUpdates,
   getRelationTargetDatabaseId,
+  relationPayloadFromViewData,
 } from "../relations/model/database-relation-sync"
 import {
   evaluateDatabaseRollup,
@@ -71,7 +71,7 @@ export function DatabaseRollupPropertyValue({
   onOpen?: (pageId: string) => void
   onOpenChange?: (open: boolean) => void
   onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown
-  properties: DatabaseProperty[]
+  properties: DatabasePropertyEntity[]
   propertyConfig: unknown
   propertyValuesByKey: Record<string, DatabasePropertyValue>
   row: DatabaseRow
@@ -85,15 +85,26 @@ export function DatabaseRollupPropertyValue({
   const relatedDatabaseId = relationProperty
     ? getRelationTargetDatabaseId(relationProperty.property.config)
     : null
-  const { data: relatedDatabasePayload } = useDatabaseSecondaryPayload(
+  const { data: relatedViewData } = useDatabaseSecondaryPayload(
     relatedDatabaseId,
     { loadAll: true },
   )
+  const relatedRollupData = relatedViewData
+    ? {
+      properties: relatedViewData.bootstrap.properties.filter(
+        (property) => property.dataSourceId === relatedViewData.dataSourceId,
+      ),
+      rows: relatedViewData.records,
+      values: relatedViewData.records.flatMap((record) =>
+        Object.values(record.valuesByPropertyId)
+      ),
+    }
+    : null
   const result = evaluateDatabaseRollup({
     currentRow: row,
     propertyConfig,
     propertyValuesByKey,
-    relatedDatabasePayload,
+    relatedDatabasePayload: relatedRollupData,
     relationProperty,
   })
   const numberDisplayConfig =
@@ -117,7 +128,7 @@ export function DatabaseRollupPropertyValue({
               ? propertyValuesByKey[`${row.pageId}:${relationProperty.property.id}`]
               : ""
           ),
-          relatedDatabasePayload,
+          relatedRows: relatedViewData?.records,
         })
       : null
   const displayContent =
@@ -175,19 +186,19 @@ function getRollupPageLinks({
   onOpen,
   openMode,
   pageIds,
-  relatedDatabasePayload,
+  relatedRows,
 }: {
   onOpen?: (pageId: string) => void
   openMode: "button" | "title"
   pageIds: string[]
-  relatedDatabasePayload: DatabasePayload | null | undefined
+  relatedRows: DatabaseRecordEntity[] | null | undefined
 }) {
-  if (!relatedDatabasePayload) {
+  if (!relatedRows) {
     return []
   }
 
   const rowsByPageId = new Map(
-    relatedDatabasePayload.rows.map((relatedRow) => [relatedRow.pageId, relatedRow])
+    relatedRows.map((relatedRow) => [relatedRow.pageId, relatedRow])
   )
 
   return pageIds.flatMap((pageId) => {
@@ -248,7 +259,7 @@ export function DatabaseRelationPropertyValue({
   const multiple = getRelationLimit(propertyConfig) !== "one_page"
   const selectedPageIds = toStringArray(value)
   const {
-    data: relatedDatabasePayload,
+    data: relatedViewData,
     fetchNextPage,
     hasMore,
     isFetchingNextPage,
@@ -256,7 +267,7 @@ export function DatabaseRelationPropertyValue({
   } = useDatabaseSecondaryPayload(
     relatedDatabaseId,
   )
-  const pageOptions = (relatedDatabasePayload?.rows ?? []).filter(
+  const pageOptions = (relatedViewData?.records ?? []).filter(
     (candidate) => candidate.pageId !== row.pageId
   )
   const normalizedQuery = query.trim().toLowerCase()
@@ -278,7 +289,7 @@ export function DatabaseRelationPropertyValue({
     setQuery("")
   }
 
-  const selectPage = (page: FeatureDatabaseRow["page"]) => {
+  const selectPage = (page: DatabaseRecordEntity["page"]) => {
     const wasSelected = selectedPageIds.includes(page.id)
     const nextValue = multiple
       ? wasSelected
@@ -293,7 +304,7 @@ export function DatabaseRelationPropertyValue({
     const reciprocalUpdates = getRelationReciprocalUpdates({
       nextPageIds,
       propertyConfig,
-      relatedDatabasePayload,
+      relatedDatabasePayload: relationPayloadFromViewData(relatedViewData),
       selectedPageIds,
       sourcePage: {
         id: row.pageId,
@@ -335,7 +346,7 @@ export function DatabaseRelationPropertyValue({
   }
 
   const selectedLinks = selectedPageIds.map((pageId) => {
-    const relatedPage = relatedDatabasePayload?.rows.find(
+    const relatedPage = relatedViewData?.records.find(
       (candidate) => candidate.pageId === pageId
     )?.page
 
@@ -464,7 +475,7 @@ export function DatabaseRelationPropertyValue({
 function RelationPageOptionIcon({
   page,
 }: {
-  page: FeatureDatabaseRow["page"]
+  page: DatabaseRecordEntity["page"]
 }) {
   const emoji = getPageEmoji({
     metadata: page.metadata as PageMetadata | null | undefined,
