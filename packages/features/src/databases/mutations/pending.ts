@@ -20,6 +20,7 @@ type PendingEntry = {
 };
 
 const states = new Map<string, PendingEntry>();
+const snapshots = new Map<string, DatabaseEntityCommandState>();
 const listenersByKey = new Map<string, Set<() => void>>();
 const anyListeners = new Set<() => void>();
 
@@ -33,15 +34,32 @@ export function pendingKeyForTarget(target: DatabaseCommandTarget): string {
   ]);
 }
 
+function getSnapshotForKey(key: string): DatabaseEntityCommandState {
+  const entry = states.get(key);
+  const error = entry?.error ?? null;
+  const pendingCount = entry?.pendingCount ?? 0;
+  const isPending = pendingCount > 0;
+  const cached = snapshots.get(key);
+  // useSyncExternalStore requires a cached snapshot: returning a fresh object
+  // on every call makes React loop forever (getSnapshot must be Object.is-stable
+  // while the store hasn't changed).
+  if (
+    cached &&
+    cached.error === error &&
+    cached.pendingCount === pendingCount &&
+    cached.isPending === isPending
+  ) {
+    return cached;
+  }
+  const next: DatabaseEntityCommandState = { error, isPending, pendingCount };
+  snapshots.set(key, next);
+  return next;
+}
+
 export function getPendingState(
   target: DatabaseCommandTarget,
 ): DatabaseEntityCommandState {
-  const entry = states.get(pendingKeyForTarget(target));
-  return {
-    error: entry?.error ?? null,
-    isPending: (entry?.pendingCount ?? 0) > 0,
-    pendingCount: entry?.pendingCount ?? 0,
-  };
+  return getSnapshotForKey(pendingKeyForTarget(target));
 }
 
 export function subscribePendingState(
@@ -192,6 +210,7 @@ export function useDatabaseEntityCommandState(
 /** Test-only: reset all pending state. */
 export function clearPendingStateForTests(): void {
   states.clear();
+  snapshots.clear();
   listenersByKey.clear();
   anyListeners.clear();
 }
