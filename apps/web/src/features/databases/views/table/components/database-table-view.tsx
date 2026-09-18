@@ -730,6 +730,13 @@ export function DatabaseTableView() {
     if (!databaseId) {
       return
     }
+    const notifyMoveError = (error: unknown) => {
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "Couldn't move row",
+      )
+    }
 
     if (nextMove.groupPropertyId) {
       moveRow.mutate({
@@ -738,7 +745,7 @@ export function DatabaseTableView() {
         groupPropertyId: nextMove.groupPropertyId,
         groupValue: nextMove.groupValue,
         ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
-      })
+      }, { onError: notifyMoveError })
       return
     }
 
@@ -786,7 +793,7 @@ export function DatabaseTableView() {
         databaseId,
         ...(hostDatabaseId ? { hostDatabaseId } : {}),
         ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
-      })
+      }, { onError: notifyMoveError })
     }
   }
   const confirmSortedRowReorder = () => {

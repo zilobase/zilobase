@@ -90,6 +90,13 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
   const applyMove = useCallback(
     (move: TimelineRowMove) => {
       if (!input.databaseId) return
+      const notifyMoveError = (error: unknown) => {
+        toast.error(
+          error instanceof Error && error.message
+            ? error.message
+            : "Couldn't move row",
+        )
+      }
 
       if (move.groupPropertyId) {
         moveDatabaseRow({
@@ -100,7 +107,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
           groupPropertyId: move.groupPropertyId,
           groupValue: move.groupValue,
           ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
-        })
+        }, { onError: notifyMoveError })
         return
       }
 
@@ -110,7 +117,7 @@ export function useTimelineRowDrag(input: TimelineRowDragInput) {
           ? { hostDatabaseId: input.hostDatabaseId }
           : {}),
         ...getDatabaseRowMoveAnchors(move.rowIds, move.rowId),
-      })
+      }, { onError: notifyMoveError })
     },
     [input.databaseId, input.hostDatabaseId, moveDatabaseRow, reorderDatabaseRows],
   )

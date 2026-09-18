@@ -1,4 +1,5 @@
 import { useCallback, useState, type DragEvent } from "react"
+import { toast } from "sonner"
 import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
 
 import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
@@ -154,6 +155,14 @@ export function useDatabaseListRowDrag(input: DatabaseListRowDragInput) {
             ? { hostDatabaseId: input.hostDatabaseId }
             : {}),
           ...getDatabaseRowMoveAnchors(rowIds, draggedRowId),
+        }, {
+          onError: (error) => {
+            toast.error(
+              error instanceof Error && error.message
+                ? error.message
+                : "Couldn't move row",
+            )
+          },
         })
       }
 
