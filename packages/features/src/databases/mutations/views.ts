@@ -14,7 +14,9 @@ import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
 import {
   cancelHostQueries,
+  invalidateOptimisticHost,
   patchCachedView,
+  type OptimisticContext,
 } from "./optimistic";
 import { runSerialized, viewSerializationKey } from "./serialize";
 
@@ -99,18 +101,20 @@ export function useUpdateDatabaseView() {
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DatabaseViewEntity;
     },
-    onMutate: async ({ databaseId, databaseViewId, ...patch }) => {
+    onMutate: async ({ databaseId, databaseViewId, ...patch }): Promise<OptimisticContext> => {
       await cancelHostQueries(queryClient, sessionId, databaseId);
-      return patchCachedView(
+      const rollback = patchCachedView(
         queryClient,
         sessionId,
         databaseId,
         databaseViewId,
         patch,
       );
+      return { rollback, scope: { hostDatabaseId: databaseId } };
     },
-    onError: (_error, _input, rollback) => {
-      rollback?.();
+    onError: (_error, _input, context) => {
+      context?.rollback();
+      invalidateOptimisticHost(queryClient, sessionId, context?.scope);
     },
     onSuccess: (updatedView, variables) => {
       const bootstrap = findDataSourceBootstrap(

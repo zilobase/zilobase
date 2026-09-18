@@ -9,9 +9,10 @@ import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
 import {
   cancelHostQueries,
+  invalidateOptimisticHost,
   patchCachedCellValue,
   resolveOptimisticScope,
-  type OptimisticRollback,
+  type OptimisticContext,
 } from "./optimistic";
 import {
   findLoadedDataSourceRecords,
@@ -249,7 +250,7 @@ export function useUpdateDatabasePropertyValue() {
       });
       return ack.result as DatabaseRecordEntity;
     },
-    onMutate: async (input) => {
+    onMutate: async (input): Promise<OptimisticContext | undefined> => {
       const scope = resolveOptimisticScope(
         queryClient,
         input.databaseId,
@@ -257,7 +258,7 @@ export function useUpdateDatabasePropertyValue() {
       );
       if (!scope) return undefined;
       await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
-      return patchCachedCellValue(
+      const rollback = patchCachedCellValue(
         queryClient,
         sessionId,
         scope.hostDatabaseId,
@@ -267,10 +268,12 @@ export function useUpdateDatabasePropertyValue() {
           rowId: input.rowId,
           value: input.value,
         },
-      ) satisfies OptimisticRollback | undefined;
+      );
+      return { rollback, scope };
     },
-    onError: (_error, _input, rollback) => {
-      rollback?.();
+    onError: (_error, _input, context) => {
+      context?.rollback();
+      invalidateOptimisticHost(queryClient, sessionId, context?.scope);
     },
   });
 }

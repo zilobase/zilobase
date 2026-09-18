@@ -8,6 +8,7 @@ import {
   type DatabaseRecordWindowResponse,
 } from "../core/entities";
 import { databaseQueryRoot } from "../queries/keys";
+import { invalidateDatabaseQueries } from "./invalidate";
 import { findDataSourceBootstrap } from "./scope";
 
 /**
@@ -29,6 +30,11 @@ export type OptimisticRollback = () => void;
 export type OptimisticScope = {
   dataSourceId?: string;
   hostDatabaseId: string;
+};
+
+export type OptimisticContext = {
+  rollback: OptimisticRollback;
+  scope: OptimisticScope;
 };
 
 type HostQueryEntry = {
@@ -106,6 +112,26 @@ export async function cancelHostQueries(
   await queryClient.cancelQueries({
     queryKey: [databaseQueryRoot, sessionId, hostDatabaseId],
   });
+}
+
+/**
+ * Refetch host queries after a failed optimistic mutation. Rollback alone
+ * restores the pre-mutation cache, which is wrong when the write actually
+ * committed but the response was lost (unconfirmed): only a refetch can
+ * tell. Reconciliation failures are reported through the pending map by
+ * invalidateDatabaseQueries itself.
+ */
+export function invalidateOptimisticHost(
+  queryClient: QueryClient,
+  sessionId: string,
+  scope: OptimisticScope | null | undefined,
+): void {
+  if (!scope) return;
+  try {
+    invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+  } catch {
+    // invalidateDatabaseQueries reports its own failures.
+  }
 }
 
 /** First data-source id of a cached host bootstrap, if any. */

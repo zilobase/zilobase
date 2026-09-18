@@ -12,8 +12,10 @@ import {
   cancelHostQueries,
   firstCachedDataSourceId,
   insertOptimisticProperty,
+  invalidateOptimisticHost,
   patchCachedProperty,
   resolveOptimisticScope,
+  type OptimisticContext,
 } from "./optimistic";
 import {
   runSerialized,
@@ -110,14 +112,14 @@ export function useAddDatabaseProperty() {
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
     },
-    onMutate: async ({ config, databaseId, name, position, type }) => {
+    onMutate: async ({ config, databaseId, name, position, type }): Promise<OptimisticContext | undefined> => {
       const scope = resolveOptimisticScope(queryClient, databaseId);
       if (!scope) return undefined;
       const dataSourceId = scope.dataSourceId ??
         firstCachedDataSourceId(queryClient, sessionId, scope.hostDatabaseId);
       if (!dataSourceId) return undefined;
       await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
-      return insertOptimisticProperty(
+      const { rollback } = insertOptimisticProperty(
         queryClient,
         sessionId,
         scope.hostDatabaseId,
@@ -128,10 +130,12 @@ export function useAddDatabaseProperty() {
           position,
           type: type?.trim() || "text",
         },
-      ).rollback;
+      );
+      return { rollback, scope };
     },
-    onError: (_error, _input, rollback) => {
-      rollback?.();
+    onError: (_error, _input, context) => {
+      context?.rollback();
+      invalidateOptimisticHost(queryClient, sessionId, context?.scope);
     },
     onSuccess: async (_result, variables) => {
       try {
@@ -217,20 +221,22 @@ export function useUpdateDatabaseProperty() {
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
     },
-    onMutate: async ({ databaseId, databasePropertyId, ...patch }) => {
+    onMutate: async ({ databaseId, databasePropertyId, ...patch }): Promise<OptimisticContext | undefined> => {
       const scope = resolveOptimisticScope(queryClient, databaseId);
       if (!scope) return undefined;
       await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
-      return patchCachedProperty(
+      const rollback = patchCachedProperty(
         queryClient,
         sessionId,
         scope.hostDatabaseId,
         databasePropertyId,
         patch,
       );
+      return { rollback, scope };
     },
-    onError: (_error, _input, rollback) => {
-      rollback?.();
+    onError: (_error, _input, context) => {
+      context?.rollback();
+      invalidateOptimisticHost(queryClient, sessionId, context?.scope);
     },
     onSuccess: async (_result, variables) => {
       try {

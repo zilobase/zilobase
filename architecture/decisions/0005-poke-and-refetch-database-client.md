@@ -107,7 +107,10 @@ Hot-path mutations (cell values, database/view titles, property add/update)
 now patch the QueryClient photocopy synchronously in `onMutate`
 ([optimistic helpers](../../../packages/features/src/databases/mutations/optimistic.ts))
 and roll back in `onError`, so the UI reflects the attempted edit instantly
-instead of waiting for POST plus refetch. Version fields are never patched,
+instead of waiting for POST plus refetch. `onError` also invalidates the
+host, because rollback alone would hide a write that committed while its
+response was lost (unconfirmed) — only a refetch can tell. Version fields
+are never patched,
 so pokes and prefer-newest guards keep working on server versions, and the
 normal invalidation refetch still reconciles with committed truth. The
 acknowledgement payload itself is still never written into the cache; only
