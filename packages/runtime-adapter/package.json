@@ -1,0 +1,74 @@
+{
+  "name": "@zilobase/runtime-adapter",
+  "type": "module",
+  "version": "0.0.0",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./contracts": {
+      "types": "./src/contracts.ts",
+      "default": "./src/contracts.ts"
+    },
+    "./capabilities": {
+      "types": "./src/capabilities.ts",
+      "default": "./src/capabilities.ts"
+    },
+    "./context": {
+      "types": "./src/context.ts",
+      "default": "./src/context.ts"
+    },
+    "./dispatcher": {
+      "types": "./src/dispatcher.ts",
+      "default": "./src/dispatcher.ts"
+    },
+    "./resolve": {
+      "types": "./src/resolve.ts",
+      "default": "./src/resolve.ts"
+    },
+    "./node": {
+      "types": "./src/node/index.ts",
+      "default": "./src/node/index.ts"
+    },
+    "./worker": {
+      "types": "./src/worker/index.ts",
+      "default": "./src/worker/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:workers": "vitest run --config vitest.workers.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.13.7"
+  },
+  "peerDependencies": {
+    "@zilobase/server": "*",
+    "react": "^19.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@cloudflare/ai-chat": {
+      "optional": true
+    },
+    "agents": {
+      "optional": true
+    },
+    "ioredis": {
+      "optional": true
+    },
+    "pg": {
+      "optional": true
+    },
+    "ws": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "typescript": "6.0.3",
+    "vitest": "^4.1.11"
+  }
+}

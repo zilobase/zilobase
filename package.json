@@ -14,6 +14,7 @@
     "packages/html-to-page",
     "packages/markdown-text-splitter",
     "packages/page-context",
+    "packages/runtime-adapter",
     "packages/tiptap-comment-extension"
   ],
   "scripts": {
