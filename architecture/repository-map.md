@@ -11,6 +11,7 @@
 | Server features | Authorization integration, feature operations and persistence | [features](../apps/server/src/features) |
 | Infrastructure | Database context, runtime capabilities, storage, telemetry and Effect runtime | [infrastructure](../apps/server/src/infrastructure), [effect](../apps/server/src/infrastructure/effect), [Db](../apps/server/src/infrastructure/database/db.ts), [ObjectStorage](../apps/server/src/infrastructure/storage/object-storage.ts) |
 | Published server interface | Entry points consumed by external runtime adapters | [public](../apps/server/src/public), [exports](../apps/server/package.json) |
+| Runtime adapter | Community Node and Cloudflare Worker runtimes, factories, and deploy templates | [runtime-adapter](../packages/runtime-adapter/src), [worker templates](../packages/runtime-adapter/deploy/worker) |
 | Native host | Authentication, server selection, recording and diagnostics | [Rust modules](../apps/desktop/src-tauri/src) |
 | Shared features | Contracts, pure rules, queries and React bindings | [features package](../packages/features/src) |
 | Page context | Structural page content and markdown conversion | [page-context](../packages/page-context/src) |

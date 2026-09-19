@@ -11,6 +11,14 @@ for worker-only deployments. Runtime details are in the
 
 Both test runners use the shared [cookie jar](../../scripts/selfhost/cookie-jar.mjs), which stores response cookies, preserves replacement and supports combined Set-Cookie headers with expiry commas. It is test-session support, not a browser cookie-policy implementation. The Helm smoke runner retains its narrower getSetCookie-only behavior and its own seed/verify state file. Request helpers remain local where origin, forwarding or response semantics differ.
 
+Zilobase also self-hosts on Cloudflare Workers through the community
+[`@zilobase/runtime-adapter`](../../packages/runtime-adapter) package
+(`./node` + `./worker` subpaths, placeholder-only [deploy templates](../../packages/runtime-adapter/deploy/worker/README.md)).
+The hosted `zilobase-cloud` composition adds only gated policy (identity,
+demo guard, telemetry, production bindings). Provisioning and smoke steps are
+in the [Cloudflare self-host runbook](../../docs/runbooks/cloudflare-selfhost.md);
+runtime seams are in the [server runtime guide](../platform/server-runtime.md).
+
 ## Ownership
 
 - [Entrypoint/configuration](../../docker-compose.yml)

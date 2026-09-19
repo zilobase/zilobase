@@ -2,13 +2,32 @@
 
 ## Interface and flow
 
-Hono app creation installs request context, CORS, secure headers, request IDs, JSON body limits, optional JSON compression (self-hosted Node), method-not-allowed handling, Server-Timing, session middleware and the demo write guard before feature route composition. Node entrypoints attach static assets and websocket handlers around that application. The Node HTTP server sends a request to Hono only when [isNodeApiPath](../../apps/server/src/infrastructure/node/api-routing.ts) matches, including `/mail`, `/page-guest-invitations` and `/automation-slack`.
+Hono app creation installs request context, CORS, secure headers, request IDs, JSON body limits, optional JSON compression (self-hosted Node), method-not-allowed handling, Server-Timing, session middleware and the demo write guard before feature route composition. Node entrypoints attach static assets and websocket handlers around that application. The Node HTTP server sends a request to Hono only when [isNodeApiPath](../../packages/runtime-adapter/src/node/api-routing.ts) matches, including `/mail`, `/page-guest-invitations` and `/automation-slack`.
 
-Start at the [entrypoint](../../apps/server/src/app/index.ts); follow the [implementation](../../apps/server/src/infrastructure/runtime/runtime-adapter.ts) and [related modules](../../apps/server/src/app/node).
+Start at the [entrypoint](../../apps/server/src/entrypoints/serverful.ts); follow the [node runtime factory](../../packages/runtime-adapter/src/node/node-runtime.ts) and [worker factory](../../packages/runtime-adapter/src/worker/worker.ts).
 
 Effect programs run through [ManagedRuntime](../../apps/server/src/infrastructure/effect/runtime.ts). Feature services are Layers; Hono handlers and other Promise edges call `runPromise`. Process-scoped runtimes register with `createAppRuntime(..., { process: true })` and are disposed on Node shutdown. Application code imports `effect` from the npm package.
 
 Migrated HTTP edges decode untrusted input with Schema and map tagged errors to status codes. Existing Zod validators remain until those routes move.
+
+## Unified runtime adapter
+
+Both runtimes live in [`@zilobase/runtime-adapter`](../../packages/runtime-adapter) as isolated subpaths:
+
+```text
+@zilobase/runtime-adapter
+├── .            # contracts, context, capabilities, resolve, dispatcher (no heavy deps)
+├── ./contracts  # ServerRuntimeAdapter, WorkerEnvBindings, wire payloads
+├── ./resolve    # resolveRuntimeKind(env): "node" | "worker"
+├── ./node       # createNodeRuntime, startNodeServer, websocket runtimes, migrations
+└── ./worker     # createWorker, createBackgroundWorker, DO rooms, web gateway
+```
+
+`node/*` never imports `worker/*` and vice versa; the root entrypoint imports neither side. `dispatcher.ts` loads one side through dynamic `import()` only. The adapter consumes `@zilobase/server` surfaces (`adapter-api`, `node-adapter-api`) and never reaches into server source relatively; `community-boundary` tests enforce the split. `resolveRuntimeKind` selects `"worker"` for edge deployments (`ZILOBASE_RUNTIME_KIND=edge`, Hyperdrive, or collaboration/agent bindings) and `"node"` otherwise.
+
+`createNodeRuntime` takes `loadApp` plus hook overrides (edition extension, production-config assert, realtime bus, collaboration extensions, pinned webhook/MCP transports, background coordinator) with community defaults; `apps/server` passes Zilobase wiring through hooks in [serverful.ts](../../apps/server/src/entrypoints/serverful.ts). `createWorker`/`createBackgroundWorker` take the same shape of seams (adapter, edition extension, error/event reporters, demo guard, session-policy denial, CORS); the hosted cloud package injects hosted identity, the demo guard, and PostHog reporters while the community template omits them. Worker adapters default to self-hosted; hosted compositions pass `selfHosted: false`.
+
+Community Cloudflare deployment uses the [worker templates](../../packages/runtime-adapter/deploy/worker/README.md); see the [Cloudflare self-host runbook](../../docs/runbooks/cloudflare-selfhost.md). Durable Object migration history (`v1..v14 + calendar-v1`) is frozen; `template-parity` tests pin templates to the hosted composition.
 
 ## Invariants and failure handling
 
@@ -20,12 +39,12 @@ Shared [HTTP input handling](../../apps/server/src/shared/http/auth.ts) authenti
 
 ## Verification
 
-See [tests or test configuration](../../apps/server/src/app) and [testing and quality](../setup/testing-and-quality.md). [Architecture index](../README.md).
+See [testing and quality](../setup/testing-and-quality.md) and the adapter's [unit tests](../../packages/runtime-adapter/test) plus colocated [node tests](../../packages/runtime-adapter/src/node) and [worker tests](../../packages/runtime-adapter/test/worker). [Architecture index](../README.md).
 
 ## Internal organization
 
-[Runtime contracts](../../apps/server/src/infrastructure/runtime/contracts.ts) contain the adapter interface and wire payloads; [runtime context](../../apps/server/src/infrastructure/runtime/runtime-context.ts) owns process fallback and request-scoped selection. The existing runtime-adapter entrypoint re-exports that interface for compatibility and implements capability behavior. Meeting and database realtime wire types live in [shared contracts](../../apps/server/src/shared/contracts), with compatibility type re-exports at the feature entrypoints. Infrastructure no longer imports feature implementations or feature-owned wire declarations.
+[Runtime contracts](../../packages/runtime-adapter/src/contracts.ts) contain the adapter interface and wire payloads; [runtime context](../../packages/runtime-adapter/src/context.ts) owns process fallback and request-scoped selection; [capabilities](../../packages/runtime-adapter/src/capabilities.ts) implement the capability helpers. The `apps/server` runtime modules re-export the adapter package for one release for compatibility. Meeting and database realtime wire types live in [shared contracts](../../apps/server/src/shared/contracts), with compatibility type re-exports at the feature entrypoints. Infrastructure no longer imports feature implementations or feature-owned wire declarations.
 
 The [app binding declaration](../../apps/server/src/shared/types.ts) intentionally infers session types from the authentication feature and exposes the canonical Drizzle database type for edition hooks. These are type-only contracts, with a focused `server-bindings` dependency exception; concrete runtime modules do not import authentication implementation code.
 
-Effect adoption is incremental. See [the Effect runtime decision](../decisions/0003-effect-runtime.md).
+Effect adoption is incremental. See [the Effect runtime decision](../decisions/0003-effect-runtime.md) and [the unified adapter decision](../decisions/0007-unified-runtime-adapter.md).
