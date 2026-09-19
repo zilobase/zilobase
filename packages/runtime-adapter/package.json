@@ -35,6 +35,13 @@
     "./worker": {
       "types": "./src/worker/index.ts",
       "default": "./src/worker/index.ts"
+    },
+    "./worker/web/gateway": {
+      "default": "./src/worker/web/gateway.js"
+    },
+    "./worker/web/use-agent-conversation": {
+      "types": "./src/worker/web/use-agent-conversation.ts",
+      "default": "./src/worker/web/use-agent-conversation.ts"
     }
   },
   "scripts": {
@@ -67,8 +74,15 @@
     }
   },
   "devDependencies": {
+    "@cloudflare/ai-chat": "^0.11.0",
+    "@cloudflare/workers-types": "^4.20250929.0",
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
     "@types/node": "^25.9.1",
+    "@zilobase/features": "file:../features",
+    "@zilobase/server": "file:../../apps/server",
+    "agents": "^0.22.0",
     "typescript": "6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "wrangler": "^4.131.1"
   }
 }

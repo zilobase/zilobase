@@ -1,0 +1,55 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "zilobase-runtime-tests",
+  "main": "entry.ts",
+  "compatibility_date": "2026-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      { "name": "CALENDAR_NOTIFICATION_ROOM", "class_name": "CalendarNotificationRoom" },
+      {
+        "name": "DATABASE_COLLABORATION",
+        "class_name": "DatabaseCollaborationRoom"
+      },
+      {
+        "name": "PAGE_COLLABORATION",
+        "class_name": "PageCollaborationRoom"
+      },
+      {
+        "name": "MEETING_COLLABORATION",
+        "class_name": "MeetingCollaborationRoom"
+      },
+      {
+        "name": "MAIL_NOTIFICATION_ROOM",
+        "class_name": "MailNotificationRoom"
+      },
+      {
+        "name": "NAVIGATION_NOTIFICATION_ROOM",
+        "class_name": "NavigationNotificationRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["DatabaseCollaborationRoom"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["PageCollaborationRoom"]
+    },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": ["MeetingCollaborationRoom"]
+    },
+    {
+      "tag": "v4",
+      "new_sqlite_classes": ["MailNotificationRoom"]
+    },
+    {
+      "tag": "v5",
+      "new_sqlite_classes": ["NavigationNotificationRoom"]
+    },
+    { "tag": "calendar-v1", "new_sqlite_classes": ["CalendarNotificationRoom"] }
+  ]
+}

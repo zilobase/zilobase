@@ -1,0 +1,276 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "zilobase-server",
+  // Community entry: copy this template next to your worker entry (see worker.template.ts)
+  // and replace every <PLACEHOLDER> before deploying.
+  "main": "<WORKER_ENTRY>",
+  "compatibility_date": "2026-08-21",
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 0.1
+    }
+  },
+  "upload_source_maps": true,
+  "secrets": {
+    "required": [
+      "BETTER_AUTH_SECRET",
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_SECRET",
+      "COLLABORATION_SECRET",
+      "ZILOBASE_OPERATIONS_TOKEN",
+      "CALENDAR_GOOGLE_CLIENT_ID",
+      "CALENDAR_GOOGLE_CLIENT_SECRET",
+      "CALENDAR_TOKEN_ENCRYPTION_KEY",
+      "GMAIL_GOOGLE_CLIENT_ID",
+      "GMAIL_GOOGLE_CLIENT_SECRET",
+      "GMAIL_TOKEN_ENCRYPTION_KEY",
+      "GMAIL_PUBSUB_TOPIC",
+      "GMAIL_PUBSUB_PUSH_AUDIENCE",
+      "GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL",
+      "GMAIL_PUBSUB_SUBSCRIPTION",
+      "AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY",
+      "OPENAI_API_KEY",
+      "AUTOMATION_SECRET_ENCRYPTION_KEY",
+      "SLACK_CLIENT_ID",
+      "SLACK_CLIENT_SECRET"
+    ]
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "alias": {
+    "@cloudflare/ai-chat": "./node_modules/@cloudflare/ai-chat/dist/index.js",
+    "agents": "./node_modules/agents/dist/index.js",
+    "better-auth/adapters/drizzle": "../zilobase/node_modules/better-auth/dist/adapters/drizzle-adapter/index.mjs",
+    "better-auth/plugins": "../zilobase/node_modules/better-auth/dist/plugins/index.mjs",
+    "better-auth": "../zilobase/node_modules/better-auth/dist/index.mjs",
+    "drizzle-orm/node-postgres": "../zilobase/node_modules/drizzle-orm/node-postgres/index.js",
+    "drizzle-orm/pg-core": "../zilobase/node_modules/drizzle-orm/pg-core/index.js",
+    "drizzle-orm": "../zilobase/node_modules/drizzle-orm/index.js",
+    "pg": "../zilobase/node_modules/pg/esm/index.mjs",
+    "yjs": "./node_modules/yjs/dist/yjs.mjs"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "CALENDAR_NOTIFICATION_ROOM", "class_name": "CalendarNotificationRoom" },
+      {
+        "name": "CHAT_AGENT",
+        "class_name": "ChatAgent"
+      },
+      {
+        "name": "PAGE_COLLABORATION",
+        "class_name": "PageCollaborationRoom"
+      },
+      {
+        "name": "DATABASE_COLLABORATION",
+        "class_name": "DatabaseCollaborationRoom"
+      },
+      {
+        "name": "MEETING_COLLABORATION",
+        "class_name": "MeetingCollaborationRoom"
+      },
+      {
+        "name": "MAIL_NOTIFICATION_ROOM",
+        "class_name": "MailNotificationRoom"
+      },
+      {
+        "name": "NAVIGATION_NOTIFICATION_ROOM",
+        "class_name": "NavigationNotificationRoom"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "WorkspaceCollaborationRoom"
+      ]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": [
+        "DatabaseRealtimeRoom"
+      ]
+    },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": [
+        "WorkspaceRealtimeRoom"
+      ]
+    },
+    {
+      "tag": "v4",
+      "new_sqlite_classes": [
+        "ChatAgent"
+      ]
+    },
+    {
+      "tag": "v5",
+      "deleted_classes": [
+        "WorkspaceRealtimeRoom"
+      ]
+    },
+    {
+      "tag": "v6",
+      "new_sqlite_classes": [
+        "WorkspaceLiveRoom"
+      ],
+      "deleted_classes": [
+        "WorkspaceCollaborationRoom",
+        "DatabaseRealtimeRoom"
+      ]
+    },
+    {
+      "tag": "v7",
+      "deleted_classes": [
+        "WorkspaceLiveRoom"
+      ]
+    },
+    {
+      "tag": "v8",
+      "new_sqlite_classes": [
+        "PageCollaborationRoom"
+      ]
+    },
+    {
+      "tag": "v9",
+      "new_sqlite_classes": [
+        "DatabaseCollaborationRoom"
+      ]
+    },
+    {
+      "tag": "v10",
+      "new_sqlite_classes": [
+        "MeetingCollaborationRoom"
+      ]
+    },
+    {
+      "tag": "v11",
+      "new_sqlite_classes": [
+        "MeetingAudioRoom"
+      ]
+    },
+    {
+      "tag": "v12",
+      "deleted_classes": [
+        "MeetingAudioRoom"
+      ]
+    },
+    {
+      "tag": "v13",
+      "new_sqlite_classes": [
+        "MailNotificationRoom"
+      ]
+    },
+    {
+      "tag": "v14",
+      "new_sqlite_classes": [
+        "NavigationNotificationRoom"
+      ]
+    },
+    { "tag": "calendar-v1", "new_sqlite_classes": ["CalendarNotificationRoom"] }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "BACKGROUND_FAST",
+        "queue": "zilobase-background-fast"
+      },
+      {
+        "binding": "AI_JOBS",
+        "queue": "zilobase-ai-jobs"
+      },
+      {
+        "binding": "AUTOMATION_RUNS",
+        "queue": "zilobase-automation-runs"
+      },
+      {
+        "binding": "MAIL_JOBS",
+        "queue": "zilobase-mail-jobs"
+      }
+    ]
+  },
+  "placement": {
+    "mode": "targeted",
+    "region": "<CLOUDFLARE_PLACEMENT_REGION>"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "<HYPERDRIVE_ID>"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "COLLABORATION_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
+    },
+    {
+      "name": "API_RATE_LIMITER",
+      "namespace_id": "2001",
+      "simple": {
+        "limit": 120,
+        "period": 60
+      }
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "IMAGE_BUCKET",
+      "bucket_name": "<R2_BUCKET_NAME>",
+      "preview_bucket_name": "<R2_PREVIEW_BUCKET_NAME>"
+    }
+  ],
+  "send_email": [
+    {
+      "name": "EMAIL",
+      "allowed_sender_addresses": [
+        "<NO_REPLY_EMAIL>"
+      ]
+    }
+  ],
+  "vars": {
+    "BETTER_AUTH_URL": "<API_ORIGIN>",
+    "CLIENT_URL": "<WEB_ORIGIN>",
+    "COLLABORATION_WEBSOCKET_URL": "<API_ORIGIN_WS>/collaboration",
+    "DATABASE_REALTIME_WEBSOCKET_URL": "<API_ORIGIN_WS>/database-collaboration",
+    "DATABASE_AUTOMATIONS_ENABLED": "false",
+    "DATABASE_AUTOMATIONS_EXECUTION_DISABLED": "false",
+    "AUTOMATION_WEBHOOKS_ENABLED": "false",
+    "AUTOMATION_SLACK_ENABLED": "false",
+    "MEETING_BLOCK_ENABLED": "true",
+    "MAIL_ENABLED": "false",
+    "CALENDAR_ENABLED": "false",
+    "CALENDAR_ENABLED_WORKSPACE_IDS": "",
+    "MEETING_AUDIO_WEBSOCKET_URL": "<API_ORIGIN_WS>/meeting-audio",
+    "MEETING_COLLABORATION_WEBSOCKET_URL": "<API_ORIGIN_WS>/meeting-collaboration",
+    "NAVIGATION_REALTIME_WEBSOCKET_URL": "<API_ORIGIN_WS>/navigation-realtime",
+    "EMAIL_FROM": "Zilobase <<NO_REPLY_EMAIL>>",
+    "GOOGLE_DESKTOP_CLIENT_ID": "<GOOGLE_DESKTOP_CLIENT_ID>",
+    "IMAGE_READ_URL_TTL_SECONDS": "300",
+    "IMAGE_UPLOAD_MAX_BYTES": "10485760",
+    "IMAGE_UPLOAD_URL_TTL_SECONDS": "600",
+    "R2_BUCKET_NAME": "<R2_BUCKET_NAME>",
+    "ZILOBASE_DEMO_ENABLED": "false",
+    "ZILOBASE_CELL_ID": "default",
+    "ZILOBASE_RUNTIME_KIND": "edge",
+    "ZILOBASE_ENVIRONMENT": "production"
+  },
+  "routes": [
+    {
+      "pattern": "<API_ROUTE_PATTERN>",
+      "custom_domain": true
+    }
+  ]
+}

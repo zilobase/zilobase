@@ -2,8 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ESNext",
+    "jsx": "react-jsx",
     "lib": ["ESNext", "DOM"],
-    "types": ["node"]
+    "types": ["node", "@cloudflare/workers-types"]
   },
-  "include": ["src", "test"]
+  "include": ["src"]
 }
