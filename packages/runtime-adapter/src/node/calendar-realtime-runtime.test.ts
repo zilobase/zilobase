@@ -7,8 +7,8 @@ import {
   createCalendarRealtimeTicket,
   CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX,
   CALENDAR_REALTIME_PROTOCOL,
-} from "../../features/calendar/realtime/calendar-realtime-ticket"
-import type { NodeRealtimeBus } from "../../infrastructure/node/realtime-bus"
+} from "@zilobase/server/node-adapter-api"
+import type { NodeRealtimeBus } from "./realtime-bus"
 import { attachNodeCalendarRealtimeRuntime } from "./calendar-realtime-runtime"
 
 const env = {

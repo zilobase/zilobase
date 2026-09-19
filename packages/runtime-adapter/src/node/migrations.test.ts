@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import type { Database } from "../database";
+import type { Database } from "@zilobase/server/node-adapter-api";
+import { CORE_MIGRATION_SET } from "@zilobase/server/node-adapter-api";
 import {
-  CORE_MIGRATION_SET,
   assertMigrationSets,
   runMigrationSets,
 } from "./migrations";

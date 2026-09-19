@@ -124,6 +124,8 @@ export {
   createMeetingAudioTicket,
   MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
   MEETING_AUDIO_PROTOCOL,
+  MEETING_AUDIO_SOURCES,
+  meetingAudioSourceFromCode,
   verifyMeetingAudioTicket,
   type MeetingAudioTicketClaims,
 } from "../features/meetings/audio/meeting-audio-ticket";

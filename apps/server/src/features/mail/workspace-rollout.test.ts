@@ -2,7 +2,12 @@ import { getTableConfig } from "drizzle-orm/pg-core"
 import * as schema from "../../infrastructure/database/schema"
 import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
+import { createRequire } from "node:module"
+import path from "node:path"
 import { test } from "vitest"
+
+const require = createRequire(import.meta.url)
+const adapterNodeDir = path.dirname(require.resolve("@zilobase/runtime-adapter/node"))
 
 const readMailRouteSources = async () => (await Promise.all([
   "routes.ts", "connections/routes.ts", "route-support.ts",
@@ -42,7 +47,7 @@ test("workspace ownership gates every mailbox and permits identity reuse only th
 
 test("workspace rollout exposes maintenance for Node and alternate deployment adapters", async () => {
   const [coordinator, maintenance, adapter, realtime] = await Promise.all([
-    readFile(new URL("../../app/node/background-coordinator.ts", import.meta.url), "utf8"),
+    readFile(path.join(adapterNodeDir, "background-coordinator.ts"), "utf8"),
     readFile(new URL("../../app/background/maintenance.ts", import.meta.url), "utf8"),
     readFile(new URL("../../public/adapter-api.ts", import.meta.url), "utf8"),
     readFile(new URL("../../public/realtime-api.ts", import.meta.url), "utf8"),

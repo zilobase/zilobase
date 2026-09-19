@@ -7,27 +7,27 @@ const mocks = vi.hoisted(() => ({
   maintenance: vi.fn(),
   realtime: vi.fn(),
 }));
-vi.mock("../../infrastructure/database", () => ({
-  db: { select: () => ({ from: () => Object.assign(Promise.resolve([]), { where: async () => [] }) }) },
+vi.mock("@zilobase/server/node-adapter-api", () => ({
+  AI_JOB_HANDLERS: {},
+  advancePendingMailIndexes: vi.fn(),
+  boundedErrorCode: () => "Error",
   createDbClientForUrl: mocks.client,
+  db: { select: () => ({ from: () => Object.assign(Promise.resolve([]), { where: async () => [] }) }) },
+  drainAgentRuns: vi.fn(),
+  drainDatabaseAutomationEventWindows: vi.fn(),
+  drainDatabaseAutomationRuns: vi.fn(),
+  drainDatabaseRealtimeOutbox: mocks.realtime,
+  drainInProductNotificationOutbox: vi.fn(),
+  drainMailDatabaseSyncOutbox: vi.fn(),
+  drainNavigationRealtimeOutbox: vi.fn(),
+  runAiJobBatch: vi.fn(),
+  runDueBackgroundMaintenance: mocks.maintenance,
   runWithDbEnv: mocks.database,
 }));
-vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({ getDatabaseUrl: () => "postgres://localhost/test" }));
-vi.mock("../background/maintenance", () => ({ runDueBackgroundMaintenance: mocks.maintenance }));
-vi.mock("../../features/ai/jobs/ai-job-handlers", () => ({ AI_JOB_HANDLERS: {} }));
-vi.mock("../../features/ai/jobs/ai-jobs", () => ({ runAiJobBatch: vi.fn() }));
-vi.mock("../../features/ai/execution/agent-run-service", () => ({ drainAgentRuns: vi.fn() }));
-vi.mock("../../features/automations/triggers/event-evaluator", () => ({ drainDatabaseAutomationEventWindows: vi.fn() }));
-vi.mock("../../features/automations/execution/run-engine", () => ({ drainDatabaseAutomationRuns: vi.fn() }));
-vi.mock("../../features/databases/realtime/outbox", () => ({ drainDatabaseRealtimeOutbox: mocks.realtime }));
-vi.mock("../../features/mail/query/mail-index", () => ({ advancePendingMailIndexes: vi.fn() }));
-vi.mock("../../features/mail/database-sync/mail-database-sync-worker", () => ({ drainMailDatabaseSyncOutbox: vi.fn() }));
-vi.mock("../../features/notifications/outbox", () => ({ drainInProductNotificationOutbox: vi.fn() }));
-vi.mock("../../features/workspaces/navigation-realtime/outbox", () => ({ drainNavigationRealtimeOutbox: vi.fn() }));
-vi.mock("../../infrastructure/background/dispatch", () => ({ boundedErrorCode: () => "Error" }));
+vi.mock("../capabilities", () => ({ getDatabaseUrl: () => "postgres://localhost/test" }));
 
 import { createNodeBackgroundCoordinator } from "./background-coordinator";
-import type { RuntimeEnv } from "../../shared/config/config";
+import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
 
 beforeEach(() => {
   vi.useFakeTimers();

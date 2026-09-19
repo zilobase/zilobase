@@ -1,5 +1,10 @@
 import { expect, test } from "vitest";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import path from "node:path";
+
+const require = createRequire(import.meta.url);
+const adapterNodeDir = path.dirname(require.resolve("@zilobase/runtime-adapter/node"));
 
 const readSources = async (...files: string[]) => (await Promise.all(
   files.map((file) => readFile(new URL(file, import.meta.url), "utf8")),
@@ -79,7 +84,7 @@ test("webhook delivery encrypts headers, pins egress, and reuses stable retry ID
   const [engine, egress, nodeTransport, service] = await Promise.all([
     readRunEngine(),
     readFile(new URL("../actions/webhook-egress.ts", import.meta.url), "utf8"),
-    readFile(new URL("../../../app/node/pinned-webhook.ts", import.meta.url), "utf8"),
+    readFile(path.join(adapterNodeDir, "pinned-webhook.ts"), "utf8"),
     readAutomationService(),
   ]);
   expect(engine).toContain("decryptAutomationSecret");

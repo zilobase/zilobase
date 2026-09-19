@@ -6,7 +6,7 @@ import {
   attachNodeCollaborationRuntime,
   NODE_COLLABORATION_MAX_PAYLOAD_BYTES,
 } from "./collaboration-runtime";
-import { COLLABORATION_WEBSOCKET_PROTOCOL } from "../../shared/security/auth-headers";
+import { COLLABORATION_WEBSOCKET_PROTOCOL } from "@zilobase/server/node-adapter-api";
 
 test("serverful collaboration rejects unauthenticated upgrades", async () => {
   const fixture = await startFixture(async () => null);

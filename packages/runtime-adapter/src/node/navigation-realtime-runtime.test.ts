@@ -6,7 +6,7 @@ import {
   createNavigationRealtimeTicket,
   NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,
   NAVIGATION_REALTIME_PROTOCOL,
-} from "../../shared/security/navigation-realtime-ticket";
+} from "@zilobase/server/node-adapter-api";
 import { attachNodeNavigationRealtimeRuntime } from "./navigation-realtime-runtime";
 
 const env = { COLLABORATION_SECRET: "navigation-realtime-test-secret" };

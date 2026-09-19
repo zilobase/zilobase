@@ -76,39 +76,28 @@ vi.mock("./background-coordinator", () => ({
   publishNodeBackgroundNotification: mocks.publishBackground,
 }));
 vi.mock("./pinned-webhook", () => ({ fetchPinnedNodeWebhook: vi.fn() }));
-vi.mock("../../features/collaboration/service", () => ({
-  setCollaborationExtensionsFactory: mocks.setCollaborationFactory,
-}));
-vi.mock("../../features/instance/registration", () => ({
+vi.mock("@zilobase/server/node-adapter-api", () => ({
   assertSelfHostedProductionConfiguration: mocks.assertProduction,
-}));
-vi.mock("../../infrastructure/database", () => ({
   createDbClientForUrl: mocks.createDatabaseClient,
+  getAppEditionExtension: mocks.appEdition,
+  getBackgroundOperationalSnapshot: mocks.backgroundSnapshot,
+  renderPrometheusBackgroundMetrics: vi.fn(() => "zilobase_background_healthy 1\n"),
+  renderPrometheusDatabaseMetrics: vi.fn(() => ""),
   runWithDbEnv: mocks.runWithDbEnv,
+  setBackgroundReadinessProbe: mocks.setBackgroundProbe,
+  setCollaborationExtensionsFactory: mocks.setCollaborationFactory,
+  setRealtimeReadinessProbe: mocks.setRealtimeProbe,
 }));
-vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
+vi.mock("../capabilities", () => ({
   getDatabaseUrl: vi.fn((env: Record<string, unknown>) => env.DATABASE_URL),
   setRuntimeAdapter: mocks.setAdapter,
 }));
-vi.mock("../../shared/edition-extension-registry", () => ({
-  getAppEditionExtension: mocks.appEdition,
-}));
-vi.mock("../../infrastructure/node/migrations", () => ({ runMigrationSets: mocks.migrate }));
-vi.mock("../../infrastructure/node/realtime-bus", () => ({
+vi.mock("./migrations", () => ({ runMigrationSets: mocks.migrate }));
+vi.mock("./realtime-bus", () => ({
   createNodeRealtimeBus: vi.fn(() => mocks.createRealtimeBus()),
 }));
-vi.mock("../../infrastructure/node/collaboration-redis", () => ({
+vi.mock("./collaboration-redis", () => ({
   createNodeCollaborationExtensions: vi.fn(),
-}));
-vi.mock("../../infrastructure/realtime/readiness", () => ({
-  setRealtimeReadinessProbe: mocks.setRealtimeProbe,
-}));
-vi.mock("../../infrastructure/background/health", () => ({
-  getBackgroundOperationalSnapshot: mocks.backgroundSnapshot,
-  setBackgroundReadinessProbe: mocks.setBackgroundProbe,
-}));
-vi.mock("../../infrastructure/background/telemetry", () => ({
-  renderPrometheusBackgroundMetrics: vi.fn(() => "zilobase_background_healthy 1\n"),
 }));
 
 import { createNodeRuntime } from "./node-runtime";
@@ -148,13 +137,20 @@ describe("Node runtime HTTP transport", () => {
         });
       }),
     };
+    process.env.PORT = String(await freePort());
+    process.env.HOST = "127.0.0.1";
     const runtime = createNodeRuntime({
-      app: app as never,
+      loadApp: async () => app as never,
       migrationSets: [],
-      runtimeAdapter: {} as never,
+      baseAdapter: {} as never,
       webDistDir,
+      hooks: {
+        assertProductionConfig: mocks.assertProduction,
+        getEditionExtension: mocks.appEdition as never,
+      },
     });
-    const port = await listen(runtime.server);
+    await runtime.start();
+    const port = Number(process.env.PORT);
 
     const api = await fetch(`http://127.0.0.1:${port}/api/echo`, {
       body: "payload",
@@ -214,10 +210,14 @@ describe("Node runtime lifecycle", () => {
     process.env.DATABASE_URL = "postgresql://example.test/zilobase";
     const fallbackWebhook = vi.fn();
     const runtime = createNodeRuntime({
-      app: { fetch: vi.fn(async () => new Response("api")) } as never,
+      loadApp: async () => ({ fetch: vi.fn(async () => new Response("api")) }) as never,
       migrationSets: [{ id: "test", migrationsFolder: "/migrations", journalTable: "journal" }],
-      runtimeAdapter: { fetchAutomationWebhook: fallbackWebhook } as never,
+      baseAdapter: { fetchAutomationWebhook: fallbackWebhook } as never,
       webDistDir,
+      hooks: {
+        assertProductionConfig: mocks.assertProduction,
+        getEditionExtension: mocks.appEdition as never,
+      },
     });
 
     await runtime.migrate();
@@ -225,6 +225,7 @@ describe("Node runtime lifecycle", () => {
     expect(mocks.migrate).toHaveBeenCalledWith(mocks.databaseClient.db, runtime.migrationSets);
     expect(mocks.databaseClient.client.end).toHaveBeenCalledOnce();
 
+    await runtime.start();
     const adapter = mocks.setAdapter.mock.calls.at(-1)?.[0];
     expect(adapter.fetchAutomationWebhook).toBe(fallbackWebhook);
     await adapter.publishDatabaseMutation({ event: { id: "db" } });
@@ -236,7 +237,6 @@ describe("Node runtime lifecycle", () => {
     expect(mocks.navigationRealtime.publish).toHaveBeenCalled();
     expect(mocks.publishBackground).toHaveBeenCalled();
 
-    await runtime.start();
     expect(await (await fetch(`http://127.0.0.1:${port}/api/test`)).text()).toBe("api");
     expect(mocks.realtimeBus.connect).toHaveBeenCalledOnce();
     await runtime.close();
@@ -244,9 +244,9 @@ describe("Node runtime lifecycle", () => {
 
   it("rejects migration without a database URL and always closes a connected client", async () => {
     const runtime = createNodeRuntime({
-      app: { fetch: vi.fn() } as never,
+      loadApp: async () => ({ fetch: vi.fn() }) as never,
       migrationSets: [],
-      runtimeAdapter: {} as never,
+      baseAdapter: {} as never,
       webDistDir: await makeWebDist(),
     });
     delete process.env.DATABASE_URL;
@@ -263,13 +263,17 @@ describe("Node runtime lifecycle", () => {
     process.env.ZILOBASE_PROCESS_ROLE = "worker";
     process.env.BACKGROUND_HEALTH_PORT = String(await freePort());
     const runtime = createNodeRuntime({
-      app: { fetch: vi.fn() } as never,
+      loadApp: async () => ({ fetch: vi.fn() }) as never,
       migrationSets: [],
-      runtimeAdapter: {} as never,
+      baseAdapter: {} as never,
       webDistDir: await makeWebDist(),
+      hooks: {
+        assertProductionConfig: mocks.assertProduction,
+        getEditionExtension: mocks.appEdition as never,
+      },
     });
-    const adapter = mocks.setAdapter.mock.calls.at(-1)?.[0];
     await runtime.start();
+    const adapter = mocks.setAdapter.mock.calls.at(-1)?.[0];
     expect(runtime.server.listening).toBe(false);
     expect(mocks.coordinator.start).toHaveBeenCalledOnce();
     expect(mocks.realtimeBus.connect).toHaveBeenCalledOnce();
@@ -295,9 +299,9 @@ describe("Node runtime lifecycle", () => {
   it("validates process roles", async () => {
     process.env.ZILOBASE_PROCESS_ROLE = "invalid";
     expect(() => createNodeRuntime({
-      app: { fetch: vi.fn() } as never,
+      loadApp: async () => ({ fetch: vi.fn() }) as never,
       migrationSets: [],
-      runtimeAdapter: {} as never,
+      baseAdapter: {} as never,
       webDistDir: "/tmp/not-used",
     })).toThrow("ZILOBASE_PROCESS_ROLE must be all, api, or worker");
   });
@@ -309,9 +313,9 @@ describe("Node runtime lifecycle", () => {
     process.env.HOST = "127.0.0.1";
     mocks.createRealtimeBus.mockReturnValueOnce(null as never);
     const runtime = createNodeRuntime({
-      app: { fetch: vi.fn(async () => new Response("api")) } as never,
+      loadApp: async () => ({ fetch: vi.fn(async () => new Response("api")) }) as never,
       migrationSets: [],
-      runtimeAdapter: {} as never,
+      baseAdapter: {} as never,
       webDistDir: await makeWebDist(),
     });
 
@@ -329,9 +333,9 @@ describe("Node runtime lifecycle", () => {
       const webDistDir = await makeWebDist();
 
       expect(() => createNodeRuntime({
-        app: { fetch: vi.fn() } as never,
+        loadApp: async () => ({ fetch: vi.fn() }) as never,
         migrationSets: [],
-        runtimeAdapter: {} as never,
+        baseAdapter: {} as never,
         webDistDir,
       })).toThrow(
         "REALTIME_REDIS_URL is required when ZILOBASE_PROCESS_ROLE is api or worker",

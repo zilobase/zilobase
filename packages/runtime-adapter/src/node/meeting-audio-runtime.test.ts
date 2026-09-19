@@ -22,23 +22,21 @@ const transcriptSink = vi.hoisted(() => ({
   onDelta: vi.fn((_turn: TranscriptTurn) => undefined),
 }));
 
-vi.mock("../../features/meetings/lifecycle/meeting-service", () => ({
-  ...meetingService,
-  MEETING_RECORDER_LEASE_HEARTBEAT_MS: 30_000,
-}));
-
-vi.mock("../../infrastructure/database", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../../infrastructure/database")>();
+vi.mock("@zilobase/server/node-adapter-api", async () => {
+  // NOTE: never use importOriginal() on the node seam here: it cycles back
+  // through the adapter package and breaks mock identity for the runtime
+  // module. Real implementations come from the acyclic adapter-api surface.
+  const real = await import("@zilobase/server/adapter-api");
   return {
-    ...original,
+    ...meetingService,
+    MEETING_RECORDER_LEASE_HEARTBEAT_MS: 30_000,
     runWithDbEnv: vi.fn(async (_env, task: () => unknown) => task()),
-  };
-});
-
-vi.mock("../../features/meetings/transcription/meeting-realtime-transcription", async (importOriginal) => {
-  const original = await importOriginal<typeof import("../../features/meetings/transcription/meeting-realtime-transcription")>();
-  return {
-    ...original,
+    MEETING_AUDIO_AUTH_PROTOCOL_PREFIX: real.MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
+    MEETING_AUDIO_PROTOCOL: real.MEETING_AUDIO_PROTOCOL,
+    MEETING_AUDIO_SOURCES: real.MEETING_AUDIO_SOURCES,
+    createMeetingAudioTicket: real.createMeetingAudioTicket,
+    meetingAudioSourceFromCode: real.meetingAudioSourceFromCode,
+    verifyMeetingAudioTicket: real.verifyMeetingAudioTicket,
     createMeetingRealtimeTranscriptSink: vi.fn((_env, _claims, publishDelta) => ({
       onCompleted: transcriptSink.onCompleted,
       onDelta: (turn: Parameters<typeof transcriptSink.onDelta>[0]) => {
@@ -46,6 +44,12 @@ vi.mock("../../features/meetings/transcription/meeting-realtime-transcription", 
         publishDelta(turn);
       },
     })),
+    getMeetingOpenAiSafetyIdentifier: real.getMeetingOpenAiSafetyIdentifier,
+    getMeetingRealtimeTranscriptionConfig: real.getMeetingRealtimeTranscriptionConfig,
+    getMeetingRealtimeTranscriptionUrl: real.getMeetingRealtimeTranscriptionUrl,
+    getMeetingTranscriptionFailureCloseCode: real.getMeetingTranscriptionFailureCloseCode,
+    MeetingRealtimeTranscriber: real.MeetingRealtimeTranscriber,
+    trimAcceptedMeetingAudio: real.trimAcceptedMeetingAudio,
   };
 });
 
@@ -54,11 +58,11 @@ import {
   MEETING_AUDIO_AUTH_PROTOCOL_PREFIX,
   MEETING_AUDIO_PROTOCOL,
   type MeetingAudioTicketClaims,
-} from "../../features/meetings/audio/meeting-audio-ticket";
+} from "@zilobase/server/adapter-api";
 import type {
   MeetingRealtimeTranscriber,
   MeetingRealtimeTranscriberCallbacks,
-} from "../../features/meetings/transcription/meeting-realtime-transcription";
+} from "@zilobase/server/adapter-api";
 import { attachNodeMeetingAudioRuntime } from "./meeting-audio-runtime";
 
 const env = { COLLABORATION_SECRET: "meeting-audio-runtime-test-secret" };

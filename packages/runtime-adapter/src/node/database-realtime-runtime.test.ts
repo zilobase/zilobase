@@ -7,9 +7,9 @@ import {
   createDatabaseRealtimeTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
-} from "../../shared/security/database-realtime-ticket";
+} from "@zilobase/server/node-adapter-api";
 import { attachNodeDatabaseRealtimeRuntime } from "./database-realtime-runtime";
-import type { NodeRealtimeBus } from "../../infrastructure/node/realtime-bus";
+import type { NodeRealtimeBus } from "./realtime-bus";
 
 const env = { BETTER_AUTH_SECRET: "database-realtime-test-secret" };
 
