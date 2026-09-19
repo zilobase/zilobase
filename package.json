@@ -92,6 +92,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "postcss": "^8.5.26",
     "typescript": "6.0.3",
     "webdriverio": "^9.30.1",
