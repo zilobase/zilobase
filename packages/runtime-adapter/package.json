@@ -44,6 +44,10 @@
       "types": "./src/worker/handler.ts",
       "default": "./src/worker/handler.ts"
     },
+    "./worker/background-worker": {
+      "types": "./src/worker/background-worker.ts",
+      "default": "./src/worker/background-worker.ts"
+    },
     "./worker/web/gateway": {
       "default": "./src/worker/web/gateway.js"
     },
