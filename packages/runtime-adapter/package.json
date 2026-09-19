@@ -36,6 +36,14 @@
       "types": "./src/worker/index.ts",
       "default": "./src/worker/index.ts"
     },
+    "./worker/adapter": {
+      "types": "./src/worker/adapter.ts",
+      "default": "./src/worker/adapter.ts"
+    },
+    "./worker/handler": {
+      "types": "./src/worker/handler.ts",
+      "default": "./src/worker/handler.ts"
+    },
     "./worker/web/gateway": {
       "default": "./src/worker/web/gateway.js"
     },
