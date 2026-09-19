@@ -23,6 +23,7 @@ export function createWebGateway(options) {
   const apiOrigin = options?.apiOrigin;
   const demo = options?.demo ?? null;
   const demoFrameAncestors = demo?.frameAncestors ?? ["'self'"];
+  const demoFormActions = demo?.formActions ?? ["'self'"];
   const sharedCookieDomain = options?.sharedCookieDomain ?? null;
   const posthogProxy = options?.posthogProxy ?? false;
   if (!apiOrigin) throw new Error("createWebGateway requires apiOrigin");
@@ -68,7 +69,7 @@ export function createWebGateway(options) {
         const response = await env.ASSETS.fetch(
           new Request(new URL("/index.html", url), request),
         );
-        return demoOrigin ? applyDemoSecurityHeaders(response, demoFrameAncestors) : response;
+        return demoOrigin ? applyDemoSecurityHeaders(response, demoFrameAncestors, demoFormActions) : response;
       }
 
       const response = await env.ASSETS.fetch(request);
@@ -80,9 +81,9 @@ export function createWebGateway(options) {
         const fallback = await env.ASSETS.fetch(
           new Request(new URL("/index.html", url), request),
         );
-        return demoOrigin ? applyDemoSecurityHeaders(fallback, demoFrameAncestors) : fallback;
+        return demoOrigin ? applyDemoSecurityHeaders(fallback, demoFrameAncestors, demoFormActions) : fallback;
       }
-      return demoOrigin ? applyDemoSecurityHeaders(response, demoFrameAncestors) : response;
+      return demoOrigin ? applyDemoSecurityHeaders(response, demoFrameAncestors, demoFormActions) : response;
     },
   };
 }
@@ -172,13 +173,13 @@ function rewriteApiResponse(response, { demoOrigin, sharedCookieDomain }) {
   });
 }
 
-function applyDemoSecurityHeaders(response, frameAncestors) {
+function applyDemoSecurityHeaders(response, frameAncestors, formActions) {
   const headers = new Headers(response.headers);
   if (headers.get("content-type")?.includes("text/html")) {
     headers.delete("x-frame-options");
     headers.set(
       "content-security-policy",
-      `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors ${frameAncestors.join(" ")}; base-uri 'self'; form-action 'self'`,
+      `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-ancestors ${frameAncestors.join(" ")}; base-uri 'self'; form-action ${formActions.join(" ")}`,
     );
     headers.set(
       "permissions-policy",
