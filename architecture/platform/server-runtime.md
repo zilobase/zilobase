@@ -62,9 +62,10 @@ Community Cloudflare deployment uses the [worker templates](../../packages/runti
 
 ## Invariants and failure handling
 
-Runtime ports are installed through `runWithRuntimePorts` for concurrent
-requests and `setRuntimePorts` for process composition. `ServerRuntimeAdapter`,
-its ambient context, and Worker adapter factories have been removed.
+Runtime ports are installed through `runWithRuntimePorts` for every request and
+background invocation. Lookup outside an explicit async scope fails; there is
+no process-global port object. `ServerRuntimeAdapter`, its ambient context, and
+Worker adapter factories have been removed.
 
 Object storage, mail delivery, webhook egress, and MCP egress now require an
 explicit runtime provider. The Node side owns S3, SMTP/console mail, and pinned
@@ -142,9 +143,9 @@ See [testing and quality](../setup/testing-and-quality.md) and the adapter's [un
 ## Internal organization
 
 [Runtime ports](../../packages/runtime-ports/src/index.ts) contain the neutral
-contracts; [runtime context](../../packages/runtime-adapter/src/context.ts)
-owns process fallback and request-scoped selection; [capabilities](../../packages/runtime-adapter/src/capabilities.ts)
-are compatibility-named thin port lookups. Meeting and database realtime wire
+contracts, including runtime readiness; [runtime context](../../packages/runtime-adapter/src/context.ts)
+owns explicit async-scope selection; [capabilities](../../packages/runtime-adapter/src/capabilities.ts)
+are thin required-port lookups. Meeting and database realtime wire
 types live in [shared contracts](../../apps/server/src/shared/contracts), with
 compatibility type re-exports at feature entrypoints. Infrastructure no longer
 imports feature implementations or feature-owned wire declarations.

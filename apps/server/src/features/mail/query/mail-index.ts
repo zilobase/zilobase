@@ -199,7 +199,7 @@ export async function publishMailIndexUpdate(
       eq(gmailWorkspaceConnection.gmailAccountId, gmailAccount.id),
     )
     .where(eq(gmailAccount.id, gmailAccountId))
-  await Promise.all(rows.map((event) => publishMailNotification(env, event)))
+  await Promise.all(rows.map((event) => publishMailNotification(event)))
 }
 
 async function advanceBackfill(

@@ -148,6 +148,10 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
       }),
       meetings: createWorkerMeetings(env),
       outbound: createWorkerOutboundFetch(),
+      readiness: {
+        background: () => ({ coordinatorReady: null, listenerReady: null }),
+        realtime: () => true,
+      },
       telemetry: createWorkerTelemetry({
         env,
         reportError: (_runtimeEnv, error, properties) => reportError(env, {

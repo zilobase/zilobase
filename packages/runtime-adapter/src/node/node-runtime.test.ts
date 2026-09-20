@@ -60,10 +60,7 @@ const mocks = vi.hoisted(() => {
     publishBackground: vi.fn(async () => undefined),
     realtimeBus,
     runWithDbEnv: vi.fn(async (_env: unknown, operation: () => unknown) => operation()),
-    setPorts: vi.fn(),
-    setBackgroundProbe: vi.fn(),
     setCollaborationFactory: vi.fn(),
-    setRealtimeProbe: vi.fn(),
   };
 });
 
@@ -98,13 +95,10 @@ vi.mock("@zilobase/server/node-adapter-api", () => ({
   renderPrometheusBackgroundMetrics: vi.fn(() => "zilobase_background_healthy 1\n"),
   renderPrometheusDatabaseMetrics: vi.fn(() => ""),
   runWithDbEnv: mocks.runWithDbEnv,
-  setBackgroundReadinessProbe: mocks.setBackgroundProbe,
   setCollaborationExtensionsFactory: mocks.setCollaborationFactory,
-  setRealtimeReadinessProbe: mocks.setRealtimeProbe,
 }));
 vi.mock("../capabilities", () => ({
-  getDatabaseUrl: vi.fn((env: Record<string, unknown>) => env.DATABASE_URL),
-  setRuntimePorts: mocks.setPorts,
+  runWithRuntimePorts: vi.fn((_ports: unknown, operation: () => unknown) => operation()),
 }));
 vi.mock("./migrations", () => ({ runMigrationSets: mocks.migrate }));
 vi.mock("./realtime-bus", () => ({
@@ -217,8 +211,6 @@ describe("Node runtime HTTP transport", () => {
     expect(mocks.collaboration.destroy).toHaveBeenCalledOnce();
     expect(mocks.databaseRealtime.destroy).toHaveBeenCalledOnce();
     expect(mocks.realtimeBus.close).toHaveBeenCalledOnce();
-    expect(mocks.setRealtimeProbe).toHaveBeenLastCalledWith(null);
-    expect(mocks.setBackgroundProbe).toHaveBeenLastCalledWith(null);
   });
 });
 
@@ -229,8 +221,12 @@ describe("Node runtime lifecycle", () => {
     process.env.PORT = String(port);
     process.env.HOST = "127.0.0.1";
     process.env.DATABASE_URL = "postgresql://example.test/zilobase";
+    let ports: Record<string, any> | undefined;
     const runtime = createNodeRuntime({
-      loadApp: async () => ({ fetch: vi.fn(async () => new Response("api")) }) as never,
+      loadApp: async (_env, runtimePorts) => {
+        ports = runtimePorts;
+        return { fetch: vi.fn(async () => new Response("api")) } as never;
+      },
       migrationSets: [{ id: "test", migrationsFolder: "/migrations", journalTable: "journal" }],
       webDistDir,
       hooks: {
@@ -245,11 +241,10 @@ describe("Node runtime lifecycle", () => {
     expect(mocks.databaseClient.client.end).toHaveBeenCalledOnce();
 
     await runtime.start();
-    const ports = mocks.setPorts.mock.calls.at(-1)?.[0];
-    await ports.fanout.publish("db:database", { id: "db" });
-    await ports.fanout.publish("mail:user", { id: "mail" });
-    await ports.fanout.publish("navigation:workspace", { id: "nav" });
-    await ports.jobs.dispatch([]);
+    await ports!.fanout.publish("db:database", { id: "db" });
+    await ports!.fanout.publish("mail:user", { id: "mail" });
+    await ports!.fanout.publish("navigation:workspace", { id: "nav" });
+    await ports!.jobs.dispatch([]);
     expect(mocks.databaseRealtime.publishMutation).toHaveBeenCalled();
     expect(mocks.mailRealtime.publishNotification).toHaveBeenCalled();
     expect(mocks.navigationRealtime.publish).toHaveBeenCalled();
@@ -279,8 +274,12 @@ describe("Node runtime lifecycle", () => {
   it("runs the background coordinator and internal health server", async () => {
     process.env.ZILOBASE_PROCESS_ROLE = "worker";
     process.env.BACKGROUND_HEALTH_PORT = String(await freePort());
+    let ports: Record<string, any> | undefined;
     const runtime = createNodeRuntime({
-      loadApp: async () => ({ fetch: vi.fn() }) as never,
+      loadApp: async (_env, runtimePorts) => {
+        ports = runtimePorts;
+        return { fetch: vi.fn() } as never;
+      },
       migrationSets: [],
       webDistDir: await makeWebDist(),
       hooks: {
@@ -292,7 +291,7 @@ describe("Node runtime lifecycle", () => {
     expect(runtime.server.listening).toBe(false);
     expect(mocks.coordinator.start).toHaveBeenCalledOnce();
     expect(mocks.realtimeBus.connect).toHaveBeenCalledOnce();
-    await mocks.setPorts.mock.calls.at(-1)?.[0].jobs.dispatch([{
+    await ports!.jobs.dispatch([{
       availableAt: new Date().toISOString(),
       cellId: "default",
       kind: "ai.job",

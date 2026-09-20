@@ -246,7 +246,7 @@ databaseReadRoutes.post("/:id/realtime-ticket", resourceWorkspace, async (c) => 
       ),
     },
   );
-  const websocketUrl = new URL(getDatabaseRealtimeWebSocketUrl(c.req.raw, c.env));
+  const websocketUrl = new URL(getDatabaseRealtimeWebSocketUrl(c.req.raw));
   websocketUrl.searchParams.set("database", record.id);
 
   return c.json({

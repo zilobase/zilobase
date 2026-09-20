@@ -17,8 +17,6 @@ export {
 } from "../features/collaboration/service";
 export { assertSelfHostedProductionConfiguration } from "../features/instance/registration";
 export { getAppEditionExtension } from "../shared/edition-extension-registry";
-export { setRealtimeReadinessProbe } from "../infrastructure/realtime/readiness";
-export { setBackgroundReadinessProbe } from "../infrastructure/background/health";
 export { renderPrometheusBackgroundMetrics } from "../infrastructure/background/telemetry";
 export { renderPrometheusDatabaseMetrics } from "../features/databases/observability";
 export { boundedErrorCode } from "../infrastructure/background/dispatch";

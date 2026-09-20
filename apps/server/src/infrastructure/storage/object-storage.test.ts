@@ -39,12 +39,9 @@ test("ObjectStorage.withEnv runs against the env storage client", async () => {
   }
 });
 
-test("ObjectStorage.checkReady prefers checkReady and falls back to head", async () => {
+test("ObjectStorage.checkReady delegates to the required storage readiness check", async () => {
   const ready = { checkReady: vi.fn(async () => undefined), head: vi.fn() };
-  const fallback = { head: vi.fn(async () => null) };
-  mocks.createImageStorage
-    .mockReturnValueOnce(ready)
-    .mockReturnValueOnce(fallback);
+  mocks.createImageStorage.mockReturnValue(ready);
   const runtime = createAppRuntime(ObjectStorage.layer);
 
   try {
@@ -53,11 +50,6 @@ test("ObjectStorage.checkReady prefers checkReady and falls back to head", async
     );
     assert.equal(ready.checkReady.mock.calls.length, 1);
     assert.equal(ready.head.mock.calls.length, 0);
-
-    await runtime.runPromise(
-      ObjectStorage.use((objectStorage) => objectStorage.checkReady({})),
-    );
-    assert.deepEqual(fallback.head.mock.calls[0], ["__zilobase_readiness__"]);
   } finally {
     await runtime.dispose();
   }

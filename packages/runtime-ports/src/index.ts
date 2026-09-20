@@ -232,6 +232,16 @@ export interface Telemetry {
   health(): Promise<Record<string, unknown>>;
 }
 
+export type BackgroundReadiness = {
+  coordinatorReady: boolean | null;
+  listenerReady: boolean | null;
+};
+
+export interface Readiness {
+  background(): BackgroundReadiness;
+  realtime(): boolean;
+}
+
 export interface Lifecycle {
   migrate(): Promise<void>;
   start(): Promise<void>;
@@ -257,6 +267,7 @@ export type Ports<Database = unknown> = {
   mailer: Mailer;
   meetings: Meetings;
   outbound: OutboundFetch;
+  readiness: Readiness;
   scheduler: Scheduler;
   telemetry: Telemetry;
   urls: UrlResolver;

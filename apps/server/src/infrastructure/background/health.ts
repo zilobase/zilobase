@@ -1,23 +1,10 @@
 import { sql } from "drizzle-orm";
+import { requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
 
 import type { RuntimeEnv } from "../../shared/config/config";
 import { db } from "../database";
 import { backgroundMaintenanceTask } from "../database/schema";
 import { getBackgroundCellId, type BackgroundLane } from "./contracts";
-
-type ReadinessProbe = () => {
-  coordinatorReady: boolean | null;
-  listenerReady: boolean | null;
-};
-let readinessProbe: ReadinessProbe | null = null;
-
-export function setBackgroundReadinessProbe(probe: ReadinessProbe | null) {
-  readinessProbe = probe;
-}
-
-export function isBackgroundCoordinatorReady() {
-  return readinessProbe?.().coordinatorReady !== false;
-}
 
 export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
   const now = new Date();
@@ -87,10 +74,8 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
     };
   });
   const lease = leases.rows[0];
-  const readiness = readinessProbe?.() ?? {
-    coordinatorReady: null,
-    listenerReady: null,
-  };
+  const readinessPort = requireRuntimePort("readiness");
+  const readiness = readinessPort.background();
   const heartbeat = maintenance.find((task) => task.taskKey === "background.snapshot");
   const heartbeatFresh = Boolean(
     heartbeat?.lastSucceededAt &&

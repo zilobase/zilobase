@@ -103,7 +103,6 @@ export {
   getMailRealtimeWebSocketUrl,
   getDatabaseUrl,
   runWithRuntimePorts,
-  setRuntimePorts,
   type OutboundEmailMessage,
   type MeetingRecorderRuntimeInput,
   type MeetingRecorderRuntimeState,

@@ -201,7 +201,7 @@ pageContentRoutes.post("/:id/collaboration-ticket", async (c) => {
     getOrCreateCollaborationDocumentState(existing.id),
   ]);
   const documentName = documentNameForPage(existing.id);
-  const websocketUrl = new URL(getCollaborationWebSocketUrl(c.req.raw, c.env));
+  const websocketUrl = new URL(getCollaborationWebSocketUrl(c.req.raw));
   websocketUrl.searchParams.set("document", documentName);
 
   return c.json({

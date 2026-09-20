@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
+import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
+import { createRuntimeEnv } from "@zilobase/runtime-adapter/env";
+import { createUrlResolver } from "@zilobase/runtime-adapter/url-resolver";
 
 import type { AppBindings } from "../../shared/types";
 
@@ -38,6 +41,8 @@ vi.mock("../ai/jobs/ai-jobs", () => ({
 import { meetingRoutes } from "./meeting-routes";
 
 const user = { id: "user-1" };
+const runtimeEnv = createRuntimeEnv({});
+const runtimePorts = { env: runtimeEnv, urls: createUrlResolver(runtimeEnv) };
 
 function appFor(authenticated = true) {
   const app = new Hono<AppBindings>();
@@ -48,8 +53,9 @@ function appFor(authenticated = true) {
     c.set("apiKey", null);
     c.set("editionExtension", null);
     c.set("requestId", "request-1");
+    c.set("runtimePorts", runtimePorts);
     c.set("serverTimings", []);
-    await next();
+    await runWithRuntimePorts(runtimePorts, next);
   });
   app.route("/meetings", meetingRoutes);
   return app;

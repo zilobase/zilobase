@@ -198,7 +198,7 @@ export type AppBindings = {
     requestId: string;
     editionExtension: ZilobaseEditionExtension | null;
     appPolicy: AppPolicy;
-    runtimePorts: Partial<Ports<any>> | null;
+    runtimePorts: Partial<Ports<any>>;
     serverTimings: string[];
     user: Auth["$Infer"]["Session"]["user"] | null;
     session: AuthSession | null;

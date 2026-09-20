@@ -15,7 +15,7 @@ mailRealtimeRoutes.post("/realtime-ticket", async (c) => {
     userId: owned.userId,
     workspaceId: owned.workspaceId,
   }, c.env)
-  const websocketUrl = new URL(getMailRealtimeWebSocketUrl(c.req.raw, c.env))
+  const websocketUrl = new URL(getMailRealtimeWebSocketUrl(c.req.raw))
   websocketUrl.searchParams.set("binding", owned.bindingId)
   return c.json({
     ...ticket,
@@ -26,4 +26,3 @@ mailRealtimeRoutes.post("/realtime-ticket", async (c) => {
     websocketUrl: websocketUrl.toString(),
   })
 })
-

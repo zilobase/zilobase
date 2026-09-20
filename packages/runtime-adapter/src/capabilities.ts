@@ -8,7 +8,6 @@ import type {
 export {
   getRuntimePorts,
   runWithRuntimePorts,
-  setRuntimePorts,
 } from "./context";
 export type {
   OutboundEmailMessage,
@@ -19,67 +18,51 @@ export type {
   MeetingTranscriptYjsSegment,
 } from "./contracts";
 
-function getStringEnv(env: RuntimeEnv, key: string): string | undefined {
-  const value = env[key];
-  return typeof value === "string" && value.length > 0 ? value : undefined;
-}
-
-function getRequiredStringEnv(env: RuntimeEnv, key: string): string {
-  const value = getStringEnv(env, key);
-  if (!value) {
-    throw new Error(`${key} is required`);
-  }
-  return value;
-}
-
 export function getDatabaseRealtimeWebSocketUrl(
   request: Request,
-  _env: RuntimeEnv,
 ) {
-  return requirePort("urls").getCollabUrl("database", request);
+  return requireRuntimePort("urls").getCollabUrl("database", request);
 }
 
 export function getCollaborationWebSocketUrl(
   request: Request,
-  _env: RuntimeEnv,
 ) {
-  return requirePort("urls").getCollabUrl("collaboration", request);
+  return requireRuntimePort("urls").getCollabUrl("collaboration", request);
 }
 
 export function getMeetingCollaborationWebSocketUrl(
   request: Request,
-  _env: RuntimeEnv,
 ) {
-  return requirePort("urls").getCollabUrl("meeting-collaboration", request);
+  return requireRuntimePort("urls").getCollabUrl("meeting-collaboration", request);
 }
 
 export function getMeetingAudioWebSocketUrl(
   request: Request,
-  _env: RuntimeEnv,
 ) {
-  return requirePort("urls").getCollabUrl("meeting-audio", request);
+  return requireRuntimePort("urls").getCollabUrl("meeting-audio", request);
 }
 
-export function getMailRealtimeWebSocketUrl(request: Request, _env: RuntimeEnv) {
-  return requirePort("urls").getCollabUrl("mail", request);
+export function getMailRealtimeWebSocketUrl(request: Request) {
+  return requireRuntimePort("urls").getCollabUrl("mail", request);
 }
 
 export function getNavigationRealtimeWebSocketUrl(
   request: Request,
-  _env: RuntimeEnv,
 ) {
-  return requirePort("urls").getCollabUrl("navigation", request);
+  return requireRuntimePort("urls").getCollabUrl("navigation", request);
 }
 
 export async function publishMailNotification(
-  _env: RuntimeEnv,
   event: MailNotificationEvent,
 ) {
-  await requirePort("fanout").publish(`mail:${event.userId}`, event);
+  await requireRuntimePort("fanout").publish(`mail:${event.userId}`, event);
 }
 
 export function getDatabaseUrl(env: RuntimeEnv) {
-  return getRuntimePorts().env?.get("DATABASE_URL") ?? getRequiredStringEnv(env, "DATABASE_URL");
+  const direct = env.DATABASE_URL;
+  if (typeof direct === "string" && direct.length > 0) return direct;
+  const runtimeEnv = requireRuntimePort("env");
+  return runtimeEnv.require("DATABASE_URL");
 }
 
 export async function fetchAutomationWebhook(input: {
@@ -89,7 +72,7 @@ export async function fetchAutomationWebhook(input: {
   timeoutMs: number;
   url: string;
 }) {
-  return requirePort("outbound").fetchWebhook({ ...input, method: "POST" });
+  return requireRuntimePort("outbound").fetchWebhook({ ...input, method: "POST" });
 }
 
 export async function fetchMcpRequest(input: {
@@ -100,18 +83,20 @@ export async function fetchMcpRequest(input: {
   timeoutMs: number;
   url: string;
 }) {
-  return requirePort("outbound").fetchMcp(input);
+  return requireRuntimePort("outbound").fetchMcp(input);
 }
 
-export function getCalendarRealtimeWebSocketUrl(request: Request, _env: RuntimeEnv) {
-  return requirePort("urls").getCollabUrl("calendar", request);
+export function getCalendarRealtimeWebSocketUrl(request: Request) {
+  return requireRuntimePort("urls").getCollabUrl("calendar", request);
 }
 
-export async function publishCalendarNotification(_env: RuntimeEnv, event: CalendarNotificationEvent) {
-  await requirePort("fanout").publish(`calendar:${event.bindingId}`, event);
+export async function publishCalendarNotification(event: CalendarNotificationEvent) {
+  await requireRuntimePort("fanout").publish(`calendar:${event.bindingId}`, event);
 }
 
-function requirePort<Key extends keyof ReturnType<typeof getRuntimePorts>>(key: Key) {
+export function requireRuntimePort<
+  Key extends keyof ReturnType<typeof getRuntimePorts>,
+>(key: Key) {
   const port = getRuntimePorts()[key];
   if (!port) throw new Error(`Runtime ${String(key)} port is required`);
   return port;

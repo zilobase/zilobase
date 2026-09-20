@@ -8,7 +8,6 @@ import {
   getDatabaseUrl,
   getRuntimePorts,
   runWithRuntimePorts,
-  setRuntimePorts,
 } from "@zilobase/runtime-adapter/capabilities";
 
 test("runtime URLs honor provider configuration and request-derived values", () => {
@@ -18,15 +17,15 @@ test("runtime URLs honor provider configuration and request-derived values", () 
     DATABASE_REALTIME_WEBSOCKET_URL: "wss://configured.example/database",
   });
   runWithRuntimePorts({ env: configuredEnv, urls: createUrlResolver(configuredEnv) }, () => {
-    assert.equal(getCollaborationWebSocketUrl(request, {}), "wss://configured.example/collaboration");
-    assert.equal(getDatabaseRealtimeWebSocketUrl(request, {}), "wss://configured.example/database");
+    assert.equal(getCollaborationWebSocketUrl(request), "wss://configured.example/collaboration");
+    assert.equal(getDatabaseRealtimeWebSocketUrl(request), "wss://configured.example/database");
   });
 
   const defaultEnv = createRuntimeEnv({});
   runWithRuntimePorts({ env: defaultEnv, urls: createUrlResolver(defaultEnv) }, () => {
-    assert.equal(getCollaborationWebSocketUrl(request, {}), "wss://api.example.com/collaboration");
+    assert.equal(getCollaborationWebSocketUrl(request), "wss://api.example.com/collaboration");
     assert.equal(
-      getDatabaseRealtimeWebSocketUrl(new Request("http://localhost:8787/original?ignored=true"), {}),
+      getDatabaseRealtimeWebSocketUrl(new Request("http://localhost:8787/original?ignored=true")),
       "ws://localhost:8787/database-collaboration",
     );
   });
@@ -34,25 +33,26 @@ test("runtime URLs honor provider configuration and request-derived values", () 
 
 test("runtime database configuration validates its fallback", () => {
   assert.equal(getDatabaseUrl({ DATABASE_URL: "postgres://direct" }), "postgres://direct");
-  assert.throws(() => getDatabaseUrl({}), /DATABASE_URL is required/);
+  const emptyEnv = createRuntimeEnv({});
+  assert.throws(
+    () => runWithRuntimePorts({ env: emptyEnv }, () => getDatabaseUrl({})),
+    /DATABASE_URL is required/,
+  );
 });
 
-test("request-scoped runtime ports override and restore the default", async () => {
-  const defaultEnv = createRuntimeEnv({ ZILOBASE_EDITION: "hosted" });
+test("runtime ports require an explicit scope", async () => {
   const requestEnv = createRuntimeEnv({ DATABASE_URL: "postgres://request", ZILOBASE_EDITION: "hosted" });
-  setRuntimePorts({ env: defaultEnv });
-  try {
-    assert.equal(getRuntimePorts().env, defaultEnv);
-    assert.equal(await runWithRuntimePorts({ env: requestEnv }, async () => {
+  assert.throws(() => getRuntimePorts(), /Runtime ports context is required/);
+  assert.equal(
+    await runWithRuntimePorts({ env: requestEnv }, async () => {
       await Promise.resolve();
       assert.equal(getRuntimePorts().env, requestEnv);
       assert.equal(getDatabaseUrl({}), "postgres://request");
       return "scoped";
-    }), "scoped");
-    assert.equal(getRuntimePorts().env, defaultEnv);
-  } finally {
-    setRuntimePorts({});
-  }
+    }),
+    "scoped",
+  );
+  assert.throws(() => getRuntimePorts(), /Runtime ports context is required/);
 });
 
 test("parallel runtime port contexts remain isolated", async () => {

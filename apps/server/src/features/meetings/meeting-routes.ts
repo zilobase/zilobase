@@ -210,7 +210,7 @@ meetingRoutes.post("/:id/collaboration-ticket", async (c) => {
       },
     );
     const websocketUrl = new URL(
-      getMeetingCollaborationWebSocketUrl(c.req.raw, c.env),
+      getMeetingCollaborationWebSocketUrl(c.req.raw),
     );
     websocketUrl.searchParams.set("document", documentName);
 
@@ -247,7 +247,7 @@ meetingRoutes.post("/:id/recorder/claim", async (c) => {
       },
       c.env,
     );
-    const websocketUrl = new URL(getMeetingAudioWebSocketUrl(c.req.raw, c.env));
+    const websocketUrl = new URL(getMeetingAudioWebSocketUrl(c.req.raw));
     websocketUrl.searchParams.set("meeting", lease.meeting.id);
 
     return c.json({

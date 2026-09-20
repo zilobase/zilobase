@@ -80,6 +80,12 @@ test("failed immediate publication retains the event and schedules retry", async
     {
       fanout: { publish: async () => { throw new Error("offline"); }, subscribe: vi.fn() } as never,
       jobs: { dispatch: vi.fn(), drain: vi.fn() },
+      telemetry: {
+        error: vi.fn(),
+        event: vi.fn(),
+        health: vi.fn(),
+        metrics: vi.fn(),
+      },
     },
     () => publishNavigationInvalidation(event, {}, executor as never),
   ), /offline/);

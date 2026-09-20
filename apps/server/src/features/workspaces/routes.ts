@@ -113,7 +113,7 @@ workspaceRoutes.post("/:workspaceId/navigation-realtime-ticket", async (c) => {
   const ticket = await createNavigationRealtimeTicket({ sessionId, userId: requestUser.id, workspaceId }, c.env, {
     maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(workspaceId, requestUser.id),
   });
-  const websocketUrl = new URL(getNavigationRealtimeWebSocketUrl(c.req.raw, c.env));
+  const websocketUrl = new URL(getNavigationRealtimeWebSocketUrl(c.req.raw));
   websocketUrl.searchParams.set("workspace", workspaceId);
   return c.json({ ...ticket, workspaceId, websocketProtocols: [NAVIGATION_REALTIME_PROTOCOL, `${NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket.token}`], websocketUrl: websocketUrl.toString() });
 });
