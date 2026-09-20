@@ -18,6 +18,7 @@ import {
   type WorkerEnvBindings,
 } from "./adapter";
 import { createWorkerJobs } from "./jobs";
+import { createWorkerTelemetry } from "./telemetry";
 
 export type BackgroundWorkerOptions<Env extends WorkerEnvBindings = WorkerEnvBindings> = {
   reportError?: (env: Env, error: unknown, context: Record<string, unknown>) => void | Promise<void>;
@@ -40,20 +41,20 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
   const adapter = createWorkerAdapter({ publishDatabaseMutations: true });
   setRuntimeAdapter(adapter);
 
-  const reportError = (env: Env, error: unknown, context: Record<string, unknown>) => {
-    if (opts.reportError) return opts.reportError(env, error, context);
-    console.warn(JSON.stringify({ event: "background.error", ...context }));
-  };
-
-  const reportEvent = (env: Env, event: string, props?: Record<string, unknown>) => {
-    if (opts.reportEvent) return opts.reportEvent(env, event, props);
-  };
+  const telemetryFor = (env: Env) => createWorkerTelemetry({
+    env,
+    reportError: opts.reportError,
+    reportEvent: opts.reportEvent,
+  });
 
   return {
     async queue(batch: MessageBatch<unknown>, env: Env) {
       try {
         const expectedLane = queueLanes[batch.queue];
-        await runWithRuntimePorts({ jobs: createWorkerJobs(env) }, () =>
+        await runWithRuntimePorts({
+          jobs: createWorkerJobs(env),
+          telemetry: telemetryFor(env),
+        }, () =>
           runWithRuntimeAdapter(adapter, () =>
             runWithDbEnv(env, async () => {
             await Promise.all(
@@ -67,7 +68,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                   !expectedLane ||
                   backgroundTaskLane(parsed.task.kind) !== expectedLane
                 ) {
-                  await reportEvent(env, "background_task_terminal", {
+                  await telemetryFor(env).event("background_task_terminal", {
                     code: parsed.ok
                       ? "BACKGROUND_TASK_LANE_MISMATCH"
                       : parsed.errorCode,
@@ -104,7 +105,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                   }
                   message.ack();
                   if (result.outcome === "terminal") {
-                    await reportEvent(env, "background_task_terminal", {
+                    await telemetryFor(env).event("background_task_terminal", {
                       code: result.errorCode ?? "BACKGROUND_TASK_TERMINAL",
                       kind: parsed.task.kind,
                     });
@@ -118,7 +119,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                     );
                   }
                 } catch (error) {
-                  await reportError(env, error, {
+                  await telemetryFor(env).error(error, {
                     code: boundedErrorCode(error),
                     kind: parsed.task.kind,
                     outcome: "retry",
@@ -139,7 +140,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
           ),
         );
       } catch (error) {
-        await reportError(env, error, {
+        await telemetryFor(env).error(error, {
           queue: batch.queue,
         });
         throw error;
@@ -147,7 +148,10 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
     },
     async scheduled(_controller: ScheduledController, env: Env) {
       try {
-        await runWithRuntimePorts({ jobs: createWorkerJobs(env) }, () =>
+        await runWithRuntimePorts({
+          jobs: createWorkerJobs(env),
+          telemetry: telemetryFor(env),
+        }, () =>
           runWithRuntimeAdapter(adapter, () =>
             runWithDbEnv(env, async () => {
             const result = await runDueBackgroundMaintenance({
@@ -167,7 +171,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
           ),
         );
       } catch (error) {
-        await reportError(env, error, {
+        await telemetryFor(env).error(error, {
           trigger: "scheduled",
         });
         throw error;

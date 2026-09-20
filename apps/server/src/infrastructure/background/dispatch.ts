@@ -10,6 +10,7 @@ export async function dispatchBackgroundTasks(
 ) {
   if (tasks.length === 0) return true;
   const jobs = getRuntimePorts().jobs;
+  const telemetry = getRuntimePorts().telemetry;
   if (!jobs) throw new Error("Runtime Jobs port is required");
   try {
     await jobs.dispatch(tasks);
@@ -20,11 +21,10 @@ export async function dispatchBackgroundTasks(
       outcome: "completed",
       runtime: env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node",
     });
-    console.info(JSON.stringify({
+    await telemetry?.event("background.dispatch", {
       count: tasks.length,
-      event: "background.dispatch",
       outcome: "completed",
-    }));
+    });
     return true;
   } catch (error) {
     for (const task of tasks) recordBackgroundCounter("dispatch_failure", {
@@ -35,12 +35,11 @@ export async function dispatchBackgroundTasks(
       outcome: "failed",
       runtime: env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node",
     });
-    console.warn(JSON.stringify({
+    await telemetry?.error(error, {
       code: boundedErrorCode(error),
       count: tasks.length,
-      event: "background.dispatch",
       outcome: "failed",
-    }));
+    });
     return false;
   }
 }

@@ -38,6 +38,8 @@ import { createWorkerHandler } from "./handler";
 import { createWorkerJobs } from "./jobs";
 import { createWorkerLifecycle } from "./lifecycle";
 import { createWorkerScheduler } from "./scheduler";
+import { createWorkerLimits } from "./limits";
+import { createWorkerTelemetry } from "./telemetry";
 
 export { routeCollaborationRequest } from "./features/collaboration/security";
 export type { CollaborationRouteEnv } from "./features/collaboration/security";
@@ -130,6 +132,21 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
     runtimePorts ??= {
       jobs: createWorkerJobs(env),
       lifecycle: createWorkerLifecycle(),
+      limits: createWorkerLimits(env),
+      telemetry: createWorkerTelemetry({
+        env,
+        reportError: (_runtimeEnv, error, properties) => reportError(env, {
+          code: String(properties.code ?? "WORKER_REQUEST_ERROR"),
+          error: error instanceof Error ? error : new Error(String(error)),
+          method: String(properties.method ?? "UNKNOWN"),
+          requestId: String(properties.request_id ?? "unknown"),
+          route: String(properties.route_group ?? "/"),
+          status: 500,
+          userId: null,
+          workspaceId: null,
+        }),
+        reportEvent: opts.reportEvent,
+      }),
     };
     if (execution && typeof execution === "object" && "waitUntil" in execution) {
       runtimePorts.scheduler = createWorkerScheduler(execution as ExecutionContext);
@@ -345,6 +362,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
               (collaborationRequest) =>
                 getCollaborationUserId(collaborationRequest, env),
               pageIdFromDocumentName,
+              portsFor(env).limits!,
             );
           }
 
@@ -358,15 +376,16 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
               (collaborationRequest) =>
                 getCollaborationUserId(collaborationRequest, env),
               meetingIdFromDocumentName,
+              portsFor(env).limits!,
             );
           }
 
           if (pathname === "/database-collaboration") {
-            return routeDatabaseRealtimeRequest(request, env as unknown as DatabaseRealtimeRouteEnv);
+            return routeDatabaseRealtimeRequest(request, env as unknown as DatabaseRealtimeRouteEnv, portsFor(env).limits!);
           }
 
           if (pathname === "/meeting-audio") {
-            return routeMeetingAudioRequest(request, env as unknown as MeetingAudioRouteEnv, ctx);
+            return routeMeetingAudioRequest(request, env as unknown as MeetingAudioRouteEnv, ctx, undefined, portsFor(env).limits!);
           }
 
           if (pathname === "/calendar-realtime") return routeCalendarRealtimeRequest(request, env as unknown as CalendarRealtimeRouteEnv);
@@ -381,19 +400,17 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
           return fetchApp(request, env, ctx);
         });
       } catch (error) {
-        await reportError(env, {
-          error,
+        await portsFor(env).telemetry!.error(error, {
+          code: "WORKER_REQUEST_ERROR",
           method: request.method,
-          requestId: request.headers.get("x-zilobase-request-id"),
-          route: routeGroup(request),
-        } as AppErrorReport);
-        if (opts.reportEvent) {
-          await opts.reportEvent(env, "worker_request_error", {
-            method: request.method,
-            request_id: request.headers.get("x-zilobase-request-id"),
-            route_group: routeGroup(request),
-          });
-        }
+          request_id: request.headers.get("x-zilobase-request-id"),
+          route_group: routeGroup(request),
+        });
+        await portsFor(env).telemetry!.event("worker_request_error", {
+          method: request.method,
+          request_id: request.headers.get("x-zilobase-request-id"),
+          route_group: routeGroup(request),
+        });
         throw error;
       }
     },

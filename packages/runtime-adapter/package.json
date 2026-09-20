@@ -56,9 +56,17 @@
       "types": "./src/worker/lifecycle.ts",
       "default": "./src/worker/lifecycle.ts"
     },
+    "./worker/limits": {
+      "types": "./src/worker/limits.ts",
+      "default": "./src/worker/limits.ts"
+    },
     "./worker/scheduler": {
       "types": "./src/worker/scheduler.ts",
       "default": "./src/worker/scheduler.ts"
+    },
+    "./worker/telemetry": {
+      "types": "./src/worker/telemetry.ts",
+      "default": "./src/worker/telemetry.ts"
     },
     "./worker/web/gateway": {
       "default": "./src/worker/web/gateway.js"

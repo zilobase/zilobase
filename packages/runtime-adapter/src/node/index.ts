@@ -26,6 +26,8 @@ export { createNodeImageStorage } from "./image-storage";
 export { createNodeMailer } from "./mailer";
 export { createNodeJobs } from "./jobs";
 export { createNodeScheduler } from "./scheduler";
+export { createNodeLimits } from "./limits";
+export { createNodeTelemetry, type NodeTelemetryOptions } from "./telemetry";
 export {
   createNodeBackgroundCoordinator,
   publishNodeBackgroundNotification,

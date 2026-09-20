@@ -4,6 +4,8 @@ import {
   verifyDatabaseRealtimeTicket,
   type DatabaseRealtimeTicketClaims,
 } from "@zilobase/server/realtime-api";
+import type { Limits } from "@zilobase/runtime-ports";
+import { createWorkerLimits } from "../../limits";
 
 export const MAX_DATABASE_REALTIME_MESSAGE_BYTES = 16 * 1024;
 const DATABASE_REALTIME_CLAIMS_HEADER =
@@ -24,6 +26,7 @@ export type DatabaseRealtimeRouteEnv = Record<string, unknown> & {
 export async function routeDatabaseRealtimeRequest(
   request: Request,
   env: DatabaseRealtimeRouteEnv,
+  limits: Limits = createWorkerLimits(env),
 ) {
   if (request.method !== "GET") {
     return new Response("Method Not Allowed", { status: 405 });
@@ -41,9 +44,11 @@ export async function routeDatabaseRealtimeRequest(
 
   const clientAddress = request.headers.get("cf-connecting-ip") ?? "local";
 
-  const { success } = await env.COLLABORATION_RATE_LIMITER.limit({
-    key: `database-realtime-connect:${clientAddress}`,
-  });
+  const success = await limits.consume(
+    `database-realtime-connect:${clientAddress}`,
+    60,
+    60_000,
+  );
 
   if (!success) {
     console.warn(JSON.stringify({
@@ -73,11 +78,13 @@ export async function routeDatabaseRealtimeRequest(
       throw new Error("Database realtime ticket scope does not match");
     }
 
-    const userRateLimit = await env.COLLABORATION_RATE_LIMITER.limit({
-      key: `database-realtime-user:${claims.user.id}:${databaseId}`,
-    });
+    const userAllowed = await limits.consume(
+      `database-realtime-user:${claims.user.id}:${databaseId}`,
+      60,
+      60_000,
+    );
 
-    if (!userRateLimit.success) {
+    if (!userAllowed) {
       return new Response("Too Many Requests", {
         headers: { "Retry-After": "60" },
         status: 429,

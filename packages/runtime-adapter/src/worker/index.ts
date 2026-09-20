@@ -24,6 +24,8 @@ export {
 export { createWorkerJobs, type WorkerJobsEnv } from "./jobs";
 export { createWorkerScheduler } from "./scheduler";
 export { createWorkerLifecycle } from "./lifecycle";
+export { createWorkerLimits, type WorkerLimitsEnv } from "./limits";
+export { createWorkerTelemetry, type WorkerTelemetryOptions } from "./telemetry";
 export { ChatAgent } from "./features/chat/chat-agent";
 export { PageCollaborationRoom } from "./features/collaboration/page-collaboration-room";
 export { MeetingCollaborationRoom } from "./features/collaboration/meeting-collaboration-room";

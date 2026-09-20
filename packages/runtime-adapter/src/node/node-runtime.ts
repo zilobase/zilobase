@@ -43,6 +43,8 @@ import {
 } from "./background-coordinator";
 import { createNodeJobs } from "./jobs";
 import { createNodeScheduler } from "./scheduler";
+import { createNodeLimits } from "./limits";
+import { createNodeTelemetry } from "./telemetry";
 
 export type NodeRuntimeOptions = {
   loadApp: (
@@ -120,7 +122,13 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     }
   });
   const realtimeBus = createRealtimeBus(env);
+  const limits = createNodeLimits(realtimeBus);
   assertNodeRealtimeTopology(processRole, realtimeBus);
+  ports.limits = limits;
+  ports.telemetry = createNodeTelemetry({
+    metrics: () => renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics(),
+    health: () => runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env)),
+  });
 
   type StartedRuntime = {
     collaboration: ReturnType<typeof attachNodeCollaborationRuntime>;
@@ -144,8 +152,9 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       editionExtension,
       passthroughPaths: ["/database-collaboration", "/mail-realtime", "/calendar-realtime", "/meeting-audio", "/navigation-realtime"],
       realtimeBus,
+      limits,
     });
-    const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, { realtimeBus });
+    const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, { limits, realtimeBus });
     const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
     const calendarRealtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus });
     const mailRealtime = attachNodeMailRealtimeRuntime(server, env, { realtimeBus });

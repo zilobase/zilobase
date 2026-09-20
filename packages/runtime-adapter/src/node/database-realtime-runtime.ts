@@ -5,6 +5,8 @@ import type {
 import type { Duplex } from "node:stream";
 import type { Message, Peer } from "crossws";
 import crossws from "crossws/adapters/node";
+import type { Limits } from "@zilobase/runtime-ports";
+import { createNodeLimits } from "./limits";
 
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
 import {
@@ -68,6 +70,7 @@ type NodeDatabaseRealtimeRuntimeOptions = {
     env: RuntimeEnv,
   ) => Promise<DatabaseRealtimeTicketClaims>;
   realtimeBus?: NodeRealtimeBus | null;
+  limits?: Limits;
 };
 
 export function attachNodeDatabaseRealtimeRuntime(
@@ -82,11 +85,9 @@ export function attachNodeDatabaseRealtimeRuntime(
   >();
   const rooms = new Map<string, DatabaseRoom>();
   const publishedVersions = new Map<string, number>();
-  const connectionLimiter = createConnectionLimiter(
-    options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
-  );
   const verifyTicket = options.verifyTicket ?? verifyDatabaseRealtimeTicket;
   const realtimeBus = options.realtimeBus ?? null;
+  const limits = options.limits ?? createNodeLimits(realtimeBus);
 
   const websocket = crossws({
     idleTimeout: 30,
@@ -118,13 +119,11 @@ export function attachNodeDatabaseRealtimeRuntime(
 
           const clientAddress = getClientAddress(request);
 
-          const ipAllowed = realtimeBus
-            ? await realtimeBus.consumeLimit(
-                `database:connection:ip:${clientAddress}`,
-                options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
-                CONNECTION_LIMIT_WINDOW_MS,
-              )
-            : connectionLimiter.allow(`ip:${clientAddress}`);
+          const ipAllowed = await limits.consume(
+            `database:connection:ip:${clientAddress}`,
+            options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
+            CONNECTION_LIMIT_WINDOW_MS,
+          );
 
           if (!ipAllowed) {
             throw new Response("Too Many Requests", {
@@ -133,13 +132,11 @@ export function attachNodeDatabaseRealtimeRuntime(
             });
           }
 
-          const userAllowed = realtimeBus
-            ? await realtimeBus.consumeLimit(
-                `database:connection:user:${claims.user.id}:${databaseId}`,
-                options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
-                CONNECTION_LIMIT_WINDOW_MS,
-              )
-            : connectionLimiter.allow(`user:${claims.user.id}:${databaseId}`);
+          const userAllowed = await limits.consume(
+            `database:connection:user:${claims.user.id}:${databaseId}`,
+            options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
+            CONNECTION_LIMIT_WINDOW_MS,
+          );
 
           if (!userAllowed) {
             throw new Response("Too Many Requests", {
@@ -792,39 +789,4 @@ function rejectUpgrade(
     `HTTP/1.1 ${status} ${statusText}\r\n` +
     "Connection: close\r\nContent-Length: 0\r\n\r\n",
   );
-}
-
-function createConnectionLimiter(limit: number) {
-  const entries = new Map<string, { count: number; windowStartedAt: number }>();
-
-  return {
-    allow(key: string) {
-      const now = Date.now();
-      const current = entries.get(key);
-
-      if (!current || now - current.windowStartedAt >= CONNECTION_LIMIT_WINDOW_MS) {
-        entries.set(key, { count: 1, windowStartedAt: now });
-        sweepExpiredEntries(entries, now);
-        return true;
-      }
-
-      if (current.count >= limit) return false;
-
-      current.count += 1;
-      return true;
-    },
-  };
-}
-
-function sweepExpiredEntries(
-  entries: Map<string, { count: number; windowStartedAt: number }>,
-  now: number,
-) {
-  if (entries.size < 1_000) return;
-
-  for (const [key, entry] of entries) {
-    if (now - entry.windowStartedAt >= CONNECTION_LIMIT_WINDOW_MS) {
-      entries.delete(key);
-    }
-  }
 }

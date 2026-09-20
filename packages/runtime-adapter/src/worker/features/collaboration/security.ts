@@ -1,4 +1,6 @@
 import { COLLABORATION_WEBSOCKET_PROTOCOL } from "@zilobase/server/adapter-api";
+import type { Limits } from "@zilobase/runtime-ports";
+import { createWorkerLimits } from "../../limits";
 
 export const MAX_COLLABORATION_MESSAGE_BYTES = 1024 * 1024;
 
@@ -20,6 +22,7 @@ export async function routeCollaborationRequest(
   env: CollaborationRouteEnv,
   authenticate: (request: Request) => Promise<string | null>,
   parsePageId: (documentName: string) => string | null,
+  limits: Limits = createWorkerLimits(env),
 ) {
   const startedAt = performance.now();
   const validation = validateCollaborationUpgradeRequest(request, parsePageId);
@@ -41,9 +44,11 @@ export async function routeCollaborationRequest(
   }
 
   const rateLimitStartedAt = performance.now();
-  const { success } = await env.COLLABORATION_RATE_LIMITER.limit({
-    key: `collaboration-connect:${userId}`,
-  });
+  const success = await limits.consume(
+    `collaboration-connect:${userId}`,
+    60,
+    60_000,
+  );
   const rateLimitMs = Math.round(performance.now() - rateLimitStartedAt);
 
   if (!success) {
