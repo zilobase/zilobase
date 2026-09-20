@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "vitest";
 
-import { runWithRuntimeAdapter } from "../../infrastructure/runtime/runtime-adapter";
+import { managedAppPolicy } from "../../shared/app-policy";
 import {
   assertBootstrapToken,
   assertSelfHostedProductionConfiguration,
@@ -39,7 +39,7 @@ test("bootstrap token is required and compared exactly", () => {
   );
 });
 
-test("production self-hosting requires a bootstrap token without changing hosted runtime", async () => {
+test("production self-hosting requires a bootstrap token without changing managed policy", () => {
   assert.throws(
     () => assertSelfHostedProductionConfiguration({ NODE_ENV: "production" }),
     /ZILOBASE_BOOTSTRAP_TOKEN must contain at least 32 characters/,
@@ -59,11 +59,12 @@ test("production self-hosting requires a bootstrap token without changing hosted
     }),
   );
 
-  await runWithRuntimeAdapter({ selfHosted: false }, async () => {
-    assert.doesNotThrow(() =>
-      assertSelfHostedProductionConfiguration({ NODE_ENV: "production" }),
-    );
-  });
+  assert.doesNotThrow(() =>
+    assertSelfHostedProductionConfiguration(
+      { NODE_ENV: "production" },
+      managedAppPolicy,
+    ),
+  );
 });
 
 test("concurrent and repeated bootstrap attempts create one administrator", async () => {

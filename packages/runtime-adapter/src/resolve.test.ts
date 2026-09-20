@@ -5,11 +5,13 @@ import { test } from "vitest";
 import { loadRuntime } from "./dispatcher";
 import { resolveRuntimeKind } from "./resolve";
 
-test("resolveRuntimeKind selects the worker runtime for edge signals", () => {
-  assert.equal(resolveRuntimeKind({ ZILOBASE_RUNTIME_KIND: "edge" }), "worker");
-  assert.equal(resolveRuntimeKind({ HYPERDRIVE: { connectionString: "postgres://x" } }), "worker");
-  assert.equal(resolveRuntimeKind({ PAGE_COLLABORATION: {} }), "worker");
-  assert.equal(resolveRuntimeKind({ CHAT_AGENT: {} }), "worker");
+test("resolveRuntimeKind selects only an explicitly configured worker runtime", () => {
+  assert.equal(resolveRuntimeKind({ ZILOBASE_RUNTIME_KIND: "worker" }), "worker");
+  assert.equal(resolveRuntimeKind({ HYPERDRIVE: { connectionString: "postgres://x" } }), "node");
+  assert.throws(
+    () => resolveRuntimeKind({ ZILOBASE_RUNTIME_KIND: "edge" }),
+    /node.*worker/,
+  );
 });
 
 test("resolveRuntimeKind defaults to node", () => {

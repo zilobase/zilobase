@@ -7,7 +7,7 @@ import {
   getInstanceAdministrationSettings,
   shouldCreateOpenRegistrationMembership,
 } from "../instance/registration";
-import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
+import { isCommunityRegistration } from "../../shared/app-policy";
 import type { AppBindings } from "../../shared/types";
 import { MembershipService } from "../memberships";
 import { activeMembershipCondition } from "../memberships";
@@ -30,6 +30,7 @@ sessionRoutes.get("/", (c) => timed(c, "route_session_total", async () => {
         user.emailVerified,
         session?.id,
         c.get("editionExtension") ?? undefined,
+        isCommunityRegistration(c.get("appPolicy")),
       ),
     ),
     timed(
@@ -48,7 +49,7 @@ sessionRoutes.get("/", (c) => timed(c, "route_session_total", async () => {
   return c.json({
     demoMode: c.get("authMethod") === "demo",
     session: responseSession,
-    workspacePinned: isSelfHostedRuntime(),
+    workspacePinned: c.get("appPolicy").workspaceSelection === "pinned",
     user: {
       ...user,
       hasPassword,
@@ -62,8 +63,9 @@ async function ensurePinnedWorkspaceMembership(
   emailVerified: boolean,
   sessionId?: string | null,
   editionExtension?: AppBindings["Variables"]["editionExtension"],
+  workspacePinned = true,
 ) {
-  if (!isSelfHostedRuntime()) {
+  if (!workspacePinned) {
     return null;
   }
 

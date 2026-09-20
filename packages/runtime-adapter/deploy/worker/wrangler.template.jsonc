@@ -264,7 +264,7 @@
     "R2_BUCKET_NAME": "<R2_BUCKET_NAME>",
     "ZILOBASE_DEMO_ENABLED": "false",
     "ZILOBASE_CELL_ID": "default",
-    "ZILOBASE_RUNTIME_KIND": "edge",
+    "ZILOBASE_RUNTIME_KIND": "worker",
     "ZILOBASE_ENVIRONMENT": "production"
   },
   "routes": [

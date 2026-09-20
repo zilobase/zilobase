@@ -13,7 +13,7 @@ import {
   SELF_HOSTED_INVITATION_COOKIE,
   validateSelfHostedInvitationCandidate,
 } from "../instance/registration";
-import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
+import { isCommunityRegistration } from "../../shared/app-policy";
 import type { AppBindings } from "../../shared/types";
 import { readJsonBody } from "../../shared/http/request";
 import { expireTemporaryMemberships } from "../memberships";
@@ -155,6 +155,7 @@ authRoutes.post("/api/auth/set-password", async (c) => {
   return runWithDbEnv(c.env, async () => {
     const auth = await createAuth(c.env, c.req.raw, undefined, {
       editionExtension: c.get("editionExtension") ?? undefined,
+      policy: c.get("appPolicy"),
     });
 
     return auth.api.setPassword({
@@ -173,7 +174,11 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
   const { request, rewritten } = await getWorkspaceAuthRequest(c.req.raw);
 
   return runWithDbEnv(c.env, async () => {
-    if (await isBlockedSelfHostedWorkspaceCreate(c.env, request)) {
+    if (await isBlockedSelfHostedWorkspaceCreate(
+      c.env,
+      request,
+      isCommunityRegistration(c.get("appPolicy")),
+    )) {
       return c.json(
         {
           error: "Self-hosted deployments can only have one workspace.",
@@ -182,7 +187,11 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
       );
     }
 
-    const invitation = await prepareSocialRegistration(c.env, request);
+    const invitation = await prepareSocialRegistration(
+      c.env,
+      request,
+      isCommunityRegistration(c.get("appPolicy")),
+    );
 
     if (!invitation.allowed) {
       return c.json(
@@ -193,6 +202,7 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
 
     const auth = await createAuth(c.env, request, undefined, {
       editionExtension: c.get("editionExtension") ?? undefined,
+      policy: c.get("appPolicy"),
     });
 
     if (new URL(request.url).pathname.startsWith("/api/auth/organization/")) {
@@ -214,11 +224,12 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
 async function prepareSocialRegistration(
   env: Record<string, unknown>,
   request: Request,
+  communityRegistration: boolean,
 ) {
   const url = new URL(request.url);
 
   if (
-    !isSelfHostedRuntime() ||
+    !communityRegistration ||
     request.method !== "POST" ||
     url.pathname !== "/api/auth/sign-in/social"
   ) {
@@ -249,6 +260,7 @@ function serveOAuthMetadata(
     await ensureOfficialClipperClient(db, getPrimaryClientOrigin(c.env));
     const auth = await createAuth(c.env, c.req.raw, undefined, {
       editionExtension: c.get("editionExtension") ?? undefined,
+      policy: c.get("appPolicy"),
     });
 
     return createHandler(auth)(c.req.raw);
@@ -295,11 +307,12 @@ function applySocialInvitationCookie(
 async function isBlockedSelfHostedWorkspaceCreate(
   env: Record<string, unknown>,
   request: Request,
+  communityRegistration: boolean,
 ) {
   const url = new URL(request.url);
 
   return (
-    isSelfHostedRuntime() &&
+    communityRegistration &&
     request.method === "POST" &&
     url.pathname === "/api/auth/organization/create" &&
     Boolean((await getInstanceAdministrationSettings(env)).pinnedWorkspaceId)

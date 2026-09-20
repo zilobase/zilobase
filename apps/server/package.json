@@ -66,6 +66,7 @@
     "@zilobase/features": "file:../../packages/features",
     "@zilobase/html-to-page": "file:../../packages/html-to-page",
     "@zilobase/page-context": "file:../../packages/page-context",
+    "@zilobase/runtime-ports": "file:../../packages/runtime-ports",
     "@zilobase/runtime-adapter": "file:../../packages/runtime-adapter",
     "ai": "^6.0.193",
     "better-auth": "1.7.3",

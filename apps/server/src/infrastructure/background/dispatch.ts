@@ -18,7 +18,7 @@ export async function dispatchBackgroundTasks(
       kind: task.kind,
       lane: backgroundTaskLane(task.kind),
       outcome: "completed",
-      runtime: env.ZILOBASE_RUNTIME_KIND === "edge" ? "edge" : "node",
+      runtime: env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node",
     });
     console.info(JSON.stringify({
       count: tasks.length,
@@ -33,7 +33,7 @@ export async function dispatchBackgroundTasks(
       kind: task.kind,
       lane: backgroundTaskLane(task.kind),
       outcome: "failed",
-      runtime: env.ZILOBASE_RUNTIME_KIND === "edge" ? "edge" : "node",
+      runtime: env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node",
     });
     console.warn(JSON.stringify({
       code: boundedErrorCode(error),

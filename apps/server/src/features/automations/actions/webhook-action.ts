@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { type DatabaseAutomationAction } from "@zilobase/features/automations";
 import { getAutomationWebhookHttpDomains, isAutomationWebhooksEnabled, type RuntimeEnv } from "../../../shared/config/config";
-import { isSelfHostedRuntime } from "../../../infrastructure/runtime/runtime-adapter";
 import { db } from "../../../infrastructure/database";
 import { databaseAutomationDelivery, automationSecret, page } from "../../../infrastructure/database/schema";
 import { decryptAutomationSecret } from "./secret-crypto";
@@ -101,7 +100,7 @@ export async function executeWebhookAction(
     "x-zilobase-run-id": context.run.id,
     "x-zilobase-schema-version": "1",
   };
-  const allowHttpDomains = isSelfHostedRuntime() ? getAutomationWebhookHttpDomains(env) : new Set<string>();
+  const allowHttpDomains = getAutomationWebhookHttpDomains(env);
   const attempt = (receipt?.attempts ?? 0) + 1;
   await db.update(databaseAutomationDelivery).set({
     attempts: sql`${databaseAutomationDelivery.attempts} + 1`,

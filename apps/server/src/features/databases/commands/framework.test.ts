@@ -200,7 +200,7 @@ test("committed commands enqueue delivery without publishing a socket event inli
   })) as DatabaseCommandDispatcher
   await executeDatabaseCommand({
     actorId: "user-1",
-    env: { ZILOBASE_RUNTIME_KIND: "edge" },
+    env: { ZILOBASE_RUNTIME_KIND: "worker" },
     request,
     scope: { databaseId: "database-1", dataSourceId: null },
   }, {

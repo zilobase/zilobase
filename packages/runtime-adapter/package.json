@@ -62,6 +62,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@zilobase/runtime-ports": "file:../runtime-ports",
     "hono": "^4.13.7"
   },
   "peerDependencies": {

@@ -18,7 +18,8 @@ import type {
   ZilobaseEditionExtension,
 } from "../../shared/types";
 import { MembershipService } from "../memberships";
-import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
+import type { AppPolicy } from "@zilobase/runtime-ports";
+import { communityAppPolicy, isCommunityRegistration } from "../../shared/app-policy";
 import {
   ensureInstanceSettings,
   INSTANCE_SETTINGS_ROW_ID,
@@ -117,11 +118,14 @@ export async function bootstrapSelfHostedInstance(
   });
 }
 
-export function assertSelfHostedProductionConfiguration(env: RuntimeEnv) {
+export function assertSelfHostedProductionConfiguration(
+  env: RuntimeEnv,
+  policy: AppPolicy = communityAppPolicy,
+) {
   const bootstrapToken = getStringEnv(env, "ZILOBASE_BOOTSTRAP_TOKEN");
 
   if (
-    isSelfHostedRuntime() &&
+    isCommunityRegistration(policy) &&
     getStringEnv(env, "NODE_ENV") === "production" &&
     (!bootstrapToken || bootstrapToken.length < 32)
   ) {
@@ -232,8 +236,9 @@ export async function updateInstanceAdministrationSettings(input: {
 export async function evaluateSelfHostedRegistration(
   env: RuntimeEnv,
   input: { email: string; invitationId?: string | null },
+  policy: AppPolicy = communityAppPolicy,
 ): Promise<RegistrationDecision> {
-  if (!isSelfHostedRuntime()) {
+  if (!isCommunityRegistration(policy)) {
     return { allowed: true, invitationId: null };
   }
 
@@ -306,8 +311,9 @@ export function isInvitationUnexpired(expiresAt: Date | null, now = new Date()) 
 export async function validateSelfHostedInvitationCandidate(
   env: RuntimeEnv,
   invitationId: string | null,
+  policy: AppPolicy = communityAppPolicy,
 ): Promise<RegistrationDecision> {
-  if (!isSelfHostedRuntime()) {
+  if (!isCommunityRegistration(policy)) {
     return { allowed: true, invitationId: null };
   }
 

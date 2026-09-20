@@ -35,8 +35,8 @@ import {
   evaluateSelfHostedRegistration,
   readInvitationIdFromCookieHeader,
 } from "../instance/registration";
-import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
 import type { EditionExtensionOptions } from "../../shared/types";
+import { communityAppPolicy, isCommunityRegistration } from "../../shared/app-policy";
 import {
   parseMembershipAccessExpiry,
   TemporaryMembershipValidationError,
@@ -179,7 +179,8 @@ function sharedAuthOptions(
             candidate: { email: string },
             context: { body?: unknown; request?: Request } | null,
           ) {
-            if (!isSelfHostedRuntime()) {
+            const policy = options.policy ?? communityAppPolicy;
+            if (!isCommunityRegistration(policy)) {
               return;
             }
 
@@ -197,7 +198,7 @@ function sharedAuthOptions(
             const decision = await evaluateSelfHostedRegistration(env, {
               email: candidate.email,
               invitationId,
-            });
+            }, policy);
 
             if (!decision.allowed) {
               throw new APIError("FORBIDDEN", {

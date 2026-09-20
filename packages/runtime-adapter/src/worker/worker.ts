@@ -17,6 +17,7 @@ import {
   type ServerRuntimeAdapter,
   type ZilobaseEditionExtension,
 } from "@zilobase/server/adapter-api";
+import type { AppPolicy } from "@zilobase/runtime-ports";
 
 import { CalendarNotificationRoom } from "./features/calendar-realtime/calendar-notification-room";
 import { routeCalendarRealtimeRequest, type CalendarRealtimeRouteEnv } from "./features/calendar-realtime/security";
@@ -77,12 +78,21 @@ export type WorkerRuntimeOptions<Env extends WorkerEnvBindings = WorkerEnvBindin
     };
   }) => Promise<{ code: string; message: string; status: number } | null>;
   cors?: { isAllowedOrigin: (env: Env, origin: string) => boolean };
+  policy?: AppPolicy;
+};
+
+const communityWorkerPolicy: AppPolicy = {
+  compression: false,
+  registration: "bootstrap",
+  webhookHttpDomains: new Set(),
+  workspaceSelection: "pinned",
 };
 
 export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
   opts: WorkerRuntimeOptions<Env>,
 ): { fetch: (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response> } {
   const adapter = opts.adapter ?? createWorkerAdapter();
+  const policy = opts.policy ?? communityWorkerPolicy;
   // Durable Object callbacks are invoked outside the module fetch handler, so
   // retain the bootstrap default while request handlers use isolated contexts.
   setRuntimeAdapter(adapter);
@@ -130,6 +140,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
       const extension = resolveEditionExtension(env);
       const auth = await createAuth(env, request, database, {
         ...(extension ? { editionExtension: extension } : {}),
+        policy,
       });
       const session = await auth.api.getSession({
         headers: await getServerAuthHeaders(auth, request.headers),
@@ -203,6 +214,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
       const extension = resolveEditionExtension(env);
       const auth = await createAuth(env, request, database, {
         ...(extension ? { editionExtension: extension } : {}),
+        policy,
       });
       const session = await auth.api.getSession({ headers: authHeaders });
       const workspaceId =
