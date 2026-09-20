@@ -32,6 +32,7 @@ export function createWorkerFanout(env: WorkerEnvBindings): FanoutBus {
         await namespace.getByName(id).publishInvalidation(payload as never);
         return;
       }
+      if (kind === "notification") return;
       if (kind === "page") {
         const namespace = env.PAGE_COLLABORATION;
         if (!namespace) throw new Error("PAGE_COLLABORATION binding is required");

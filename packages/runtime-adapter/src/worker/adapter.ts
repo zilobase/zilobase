@@ -15,6 +15,7 @@ import {
   type StoredImageMetadata,
 } from "@zilobase/server/adapter-api";
 import type { NavigationRealtimeInvalidateEvent } from "@zilobase/server/realtime-api";
+import type { WorkerR2Bucket } from "./image-storage";
 export type WorkerHyperdriveBinding = { connectionString: string };
 
 type CloudflareR2Object = {
@@ -47,10 +48,15 @@ export type WorkerEnvBindings = Record<string, unknown> & {
   EMAIL?: CloudflareBindings["EMAIL"];
   ZILOBASE_DEV_EMAIL_SINK_URL?: string;
   HYPERDRIVE?: WorkerHyperdriveBinding;
-  IMAGE_BUCKET?: CloudflareR2Bucket;
+  IMAGE_BUCKET?: WorkerR2Bucket;
   IMAGE_STORAGE_MODE?: "s3" | "binding";
   PAGE_COLLABORATION?: {
     getByName(name: string): {
+      appendPageComment(input: {
+        author: { email: string | null; id: string; image: string | null; name: string | null };
+        body: string;
+        pageId: string;
+      }): Promise<{ messageId: string; threadId: string }>;
       fetch(request: Request): Promise<Response>;
       replacePageContent(
         content: unknown,

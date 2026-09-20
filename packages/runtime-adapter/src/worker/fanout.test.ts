@@ -19,7 +19,11 @@ describe("worker FanoutBus", () => {
 
   it("routes page commands to the page room", async () => {
     const replacePageContent = vi.fn(async () => undefined);
-    const getByName = vi.fn(() => ({ fetch: vi.fn(), replacePageContent }));
+    const getByName = vi.fn(() => ({
+      appendPageComment: vi.fn(),
+      fetch: vi.fn(),
+      replacePageContent,
+    }));
     const fanout = createWorkerFanout({ PAGE_COLLABORATION: { getByName } });
     const command = { content: { type: "doc" }, pageId: "page-1", userId: "user-1" };
     await fanout.publish("page:page-1:replace", command);

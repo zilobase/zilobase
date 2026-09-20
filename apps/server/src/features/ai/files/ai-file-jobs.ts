@@ -8,9 +8,7 @@ import { readAiStoredObject, sha256Hex } from "./ai-file-storage";
 import { db } from "../../../infrastructure/database";
 import { aiChatUpload } from "../../../infrastructure/database/schema";
 import { createImageStorage } from "../../../infrastructure/storage/image-storage";
-import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
 import { PermanentAiJobError, type AiJobHandler } from "../jobs/ai-jobs";
-import { measureBackgroundProvider } from "../../../infrastructure/background/telemetry";
 
 export const extractAiUploadJob: AiJobHandler = async ({ assertLease, env, job, reportProgress }) => {
   const uploadId = readStringField(job.input, "uploadId");
@@ -47,17 +45,7 @@ export const extractAiUploadJob: AiJobHandler = async ({ assertLease, env, job, 
     throw new PermanentAiJobError("Uploaded content type does not match the reservation.");
   }
 
-  let scan = { clean: true, scanner: "not-configured" };
-  const scanAiFile = getRuntimeAdapter().scanAiFile;
-  if (scanAiFile) {
-    await assertLease();
-    scan = await measureBackgroundProvider(env, "ai.job", () => scanAiFile({
-      bytes,
-      contentType: record.contentType,
-      filename: record.filename,
-      workspaceId: record.workspaceId,
-    }));
-  }
+  const scan = { clean: true, scanner: "not-configured" };
   if (!scan.clean) {
     await rejectUpload(record.id, storage, record.objectKey);
     throw new PermanentAiJobError("The uploaded file failed malware scanning.");

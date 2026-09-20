@@ -12,7 +12,7 @@ import {
 import { createAuth } from "@zilobase/server/node-adapter-api";
 import { runWithDbEnv } from "@zilobase/server/node-adapter-api";
 import { getDefaultCollaborationHocuspocus } from "@zilobase/server/node-adapter-api";
-import { replacePageContentInHocuspocus } from "@zilobase/server/node-adapter-api";
+import { appendPageCommentInHocuspocus, replacePageContentInHocuspocus } from "@zilobase/server/node-adapter-api";
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
 import type { ZilobaseEditionExtension } from "@zilobase/server/node-adapter-api";
 import type { NodeRealtimeBus } from "./realtime-bus";
@@ -130,6 +130,9 @@ export function attachNodeCollaborationRuntime(
   }
 
   return {
+    async appendPageComment(input: Parameters<typeof appendPageCommentInHocuspocus>[1]) {
+      return appendPageCommentInHocuspocus(hocuspocus, input);
+    },
     async replacePageContent(content: unknown, pageId: string, userId: string) {
       await replacePageContentInHocuspocus(hocuspocus, { content, pageId, userId });
     },

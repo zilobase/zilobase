@@ -167,15 +167,15 @@ test.skipIf(!enabled)("expired sync tokens preserve cached canonical events unti
 
 test.skipIf(!enabled)("outbox retries failed publication and emits only currently owned scope metadata", async () => {
   const { drainCalendarOutbox } = await import("./realtime/outbox");
-  const { runWithRuntimeAdapter } = await import("../../infrastructure/runtime/runtime-adapter");
+  const { runWithRuntimePorts } = await import("../../infrastructure/runtime/runtime-adapter");
   const env = { CALENDAR_ENABLED: "true", CALENDAR_ENABLED_WORKSPACE_IDS: workspaceId };
   await database!.update(schema.calendarNotificationOutbox).set({ nextAttemptAt: new Date(0) });
-  await runWithDb(database!, () => runWithRuntimeAdapter({ publishCalendarNotification: async () => { throw new Error("bus unavailable") } }, () => drainCalendarOutbox(env)));
+  await runWithDb(database!, () => runWithRuntimePorts({ fanout: { publish: async () => { throw new Error("bus unavailable") } } as never }, () => drainCalendarOutbox(env)));
   const pending = await database!.select().from(schema.calendarNotificationOutbox);
   expect(pending.length).toBeGreaterThan(0); expect(pending.every(row => row.attempts === 1)).toBe(true);
   await database!.update(schema.calendarNotificationOutbox).set({ nextAttemptAt: new Date(0) });
   const published: unknown[] = [];
-  await runWithDb(database!, () => runWithRuntimeAdapter({ publishCalendarNotification: async ({ event }) => { published.push(event) } }, () => drainCalendarOutbox(env)));
+  await runWithDb(database!, () => runWithRuntimePorts({ fanout: { publish: async (_channel: string, event: unknown) => { published.push(event) } } as never }, () => drainCalendarOutbox(env)));
   expect(await database!.select().from(schema.calendarNotificationOutbox)).toHaveLength(0);
   expect(published.length).toBeGreaterThan(0);
   for (const event of published) expect(Object.keys(event as object).sort()).toEqual(["accountId", "bindingId", "calendarId", "generation", "revision", "userId", "workspaceId"]);

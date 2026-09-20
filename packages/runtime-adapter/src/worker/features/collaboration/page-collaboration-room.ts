@@ -9,6 +9,7 @@ import {
   createCollaborationHocuspocus,
   pageIdFromDocumentName,
   replacePageContentInHocuspocus,
+  appendPageCommentInHocuspocus,
   type AppBindings,
   type CollaborationContext,
   type CollaborationDocumentPersistence,
@@ -289,6 +290,11 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
       pageId,
       userId,
     });
+  }
+
+  async appendPageComment(input: Parameters<typeof appendPageCommentInHocuspocus>[1]) {
+    await this.restoreConnections();
+    return appendPageCommentInHocuspocus(this.hocuspocus, input);
   }
 
   private createConnection(

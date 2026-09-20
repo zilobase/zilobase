@@ -16,15 +16,16 @@ The accepted target is explicit dependency inversion through
 [`@zilobase/runtime-ports`](../../packages/runtime-ports). The migration is
 tracked by [ADR 0008](../decisions/0008-runtime-ports-and-controller-inversion.md):
 feature controllers consume narrow port slices while Node and Worker modules
-provide mechanism. New code must not add optional methods to
-`ServerRuntimeAdapter` while the old surface is removed.
+provide mechanism. The migration intentionally permits breaking API changes:
+the platform has no production users, so compatibility shims must not preserve
+runtime-aware feature APIs or slow removal of the old adapter surface.
 
 Both runtimes live in [`@zilobase/runtime-adapter`](../../packages/runtime-adapter) as isolated subpaths:
 
 ```text
 @zilobase/runtime-adapter
-├── .            # contracts, context, capabilities, resolve, dispatcher (no heavy deps)
-├── ./contracts  # ServerRuntimeAdapter, WorkerEnvBindings, wire payloads
+├── .            # port context, capabilities, resolve, dispatcher (no heavy deps)
+├── ./contracts  # compatibility wire payloads during the final deletion pass
 ├── ./resolve    # resolveRuntimeKind(env): "node" | "worker"
 ├── ./node       # createNodeRuntime, startNodeServer, websocket runtimes, migrations
 └── ./worker     # createWorker, createBackgroundWorker, DO rooms, web gateway
@@ -32,13 +33,16 @@ Both runtimes live in [`@zilobase/runtime-adapter`](../../packages/runtime-adapt
 
 `node/*` never imports `worker/*` and vice versa; the root entrypoint imports neither side. `dispatcher.ts` loads one side through dynamic `import()` only. The adapter consumes `@zilobase/server` surfaces (`adapter-api`, `node-adapter-api`) and never reaches into server source relatively; `community-boundary` tests enforce the split. `resolveRuntimeKind` selects `"worker"` only for explicit `ZILOBASE_RUNTIME_KIND=worker` and otherwise defaults to `"node"`; bindings are never used as runtime detection.
 
-`createNodeRuntime` takes `loadApp` plus hook overrides (edition extension, production-config assert, realtime bus, collaboration extensions, pinned webhook/MCP transports, background coordinator) with community defaults; `apps/server` passes Zilobase wiring through hooks in [serverful.ts](../../apps/server/src/entrypoints/serverful.ts). `createWorker`/`createBackgroundWorker` take the same shape of seams (adapter, edition extension, error/event reporters, demo guard, session-policy denial, CORS). Community registration/workspace behavior and managed hosted behavior are explicit `AppPolicy` values passed to app and Worker construction; runtime kind no longer selects product policy.
+`createNodeRuntime` takes `loadApp` plus hook overrides (edition extension, production-config assert, realtime bus, collaboration extensions, pinned webhook/MCP transports, background coordinator) with community defaults; `apps/server` passes Zilobase wiring through hooks in [serverful.ts](../../apps/server/src/entrypoints/serverful.ts). `createWorker`/`createBackgroundWorker` compose Worker providers directly and take product seams (edition extension, error/event reporters, demo guard, session-policy denial, CORS), not a generic runtime adapter. Community registration/workspace behavior and managed hosted behavior are explicit `AppPolicy` values passed to app and Worker construction; runtime kind no longer selects product policy.
 
 Community Cloudflare deployment uses the [worker templates](../../packages/runtime-adapter/deploy/worker/README.md); see the [Cloudflare self-host runbook](../../docs/runbooks/cloudflare-selfhost.md). Durable Object migration history (`v1..v14 + calendar-v1`) is frozen; `template-parity` tests pin templates to the hosted composition.
 
 ## Invariants and failure handling
 
-The runtime adapter supplies optional capabilities with capability-specific fallback/error rules. runWithRuntimeAdapter scopes an adapter using AsyncLocalStorage; setRuntimeAdapter supplies a process fallback. Preserve the distinction for concurrent requests.
+Runtime ports are installed through `runWithRuntimePorts` for concurrent
+requests and `setRuntimePorts` for process composition. Feature code never
+looks up a `ServerRuntimeAdapter`; compatibility exports remain isolated from
+production call paths until their final package removal.
 
 Object storage, mail delivery, webhook egress, and MCP egress now require an
 explicit runtime provider. The Node side owns S3, SMTP/console mail, and pinned
@@ -97,6 +101,14 @@ live in `@zilobase/features/ai-chat/agent-room`. The Cloudflare `AIChatAgent`
 class is only a host adapter around that shared behavior, so neither identity
 validation nor message reconciliation depends on Durable Object APIs.
 
+Composition now supplies `Env`, `UrlResolver`, `ImageStorage`, `Mailer`,
+`OutboundFetch`, and document RPC providers. Node maps `DATABASE_URL`, S3,
+SMTP, pinned network transports, and resident Hocuspocus; Workers map
+Hyperdrive, R2, Email, Worker fetch options, and named Durable Objects. The
+hosted repository composes `createWorker` directly and no longer constructs a
+`createWorkerAdapter`. URL and storage helpers are thin port lookups, and
+calendar/mail/navigation/in-product publication uses `FanoutBus` channels.
+
 Shared [HTTP input handling](../../apps/server/src/shared/http/auth.ts) authenticates before parsing required JSON objects, including the existing array acceptance. JSON schema routes can use [hono/validator](../../apps/server/src/shared/http/json.ts) so a missing `Content-Type: application/json` is 400 rather than an empty object. Migrated JSON POST routes decode with [parseJsonBody](../../apps/server/src/shared/http/schema-json.ts). Feature routes retain operation-specific validation and authorization.
 
 `app.onError` maps database-unavailable failures to 503, [HTTP-facing domain errors](../../apps/server/src/shared/http/route-error.ts) (status 4xx/5xx, `HTTPException`, Zod issues) to their existing JSON bodies, and everything else to a generic 500. Isolated feature-route tests attach the same mapper with `attachHttpRouteErrorHandler`. The JSON body limit is 32 MiB so mail compose can carry base64 attachments; oversized bodies return 413. The pure [SHA-256 encoder](../../apps/server/src/shared/crypto/sha256.ts) is shared by provider credentials and OAuth state hashing; encryption, credentials and provider lifecycle remain feature-owned.
@@ -107,7 +119,13 @@ See [testing and quality](../setup/testing-and-quality.md) and the adapter's [un
 
 ## Internal organization
 
-[Runtime contracts](../../packages/runtime-adapter/src/contracts.ts) contain the adapter interface and wire payloads; [runtime context](../../packages/runtime-adapter/src/context.ts) owns process fallback and request-scoped selection; [capabilities](../../packages/runtime-adapter/src/capabilities.ts) implement the capability helpers. The `apps/server` runtime modules re-export the adapter package for one release for compatibility. Meeting and database realtime wire types live in [shared contracts](../../apps/server/src/shared/contracts), with compatibility type re-exports at the feature entrypoints. Infrastructure no longer imports feature implementations or feature-owned wire declarations.
+[Runtime ports](../../packages/runtime-ports/src/index.ts) contain the neutral
+contracts; [runtime context](../../packages/runtime-adapter/src/context.ts)
+owns process fallback and request-scoped selection; [capabilities](../../packages/runtime-adapter/src/capabilities.ts)
+are compatibility-named thin port lookups. Meeting and database realtime wire
+types live in [shared contracts](../../apps/server/src/shared/contracts), with
+compatibility type re-exports at feature entrypoints. Infrastructure no longer
+imports feature implementations or feature-owned wire declarations.
 
 The [app binding declaration](../../apps/server/src/shared/types.ts) intentionally infers session types from the authentication feature and exposes the canonical Drizzle database type for edition hooks. These are type-only contracts, with a focused `server-bindings` dependency exception; concrete runtime modules do not import authentication implementation code.
 

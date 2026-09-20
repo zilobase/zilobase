@@ -1,4 +1,4 @@
-import { getRuntimeAdapter } from "./context";
+import { getRuntimePorts } from "./context";
 import type {
   CalendarNotificationEvent,
   MailNotificationEvent,
@@ -38,148 +38,52 @@ function getRequiredStringEnv(env: RuntimeEnv, key: string): string {
 
 export function getDatabaseRealtimeWebSocketUrl(
   request: Request,
-  env: RuntimeEnv,
+  _env: RuntimeEnv,
 ) {
-  const explicitUrl = getStringEnv(env, "DATABASE_REALTIME_WEBSOCKET_URL");
-
-  if (explicitUrl) return explicitUrl;
-
-  const configured = getRuntimeAdapter().getDatabaseRealtimeWebSocketUrl?.(
-    request,
-    env,
-  );
-
-  if (configured) return configured;
-
-  const url = new URL(request.url);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/database-collaboration";
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+  return requirePort("urls").getCollabUrl("database", request);
 }
 
 export function getCollaborationWebSocketUrl(
   request: Request,
-  env: RuntimeEnv,
+  _env: RuntimeEnv,
 ) {
-  const explicitUrl = getStringEnv(env, "COLLABORATION_WEBSOCKET_URL");
-
-  if (explicitUrl) {
-    return explicitUrl;
-  }
-
-  const configured = getRuntimeAdapter().getCollaborationWebSocketUrl?.(
-    request,
-    env,
-  );
-
-  if (configured) {
-    return configured;
-  }
-
-  const url = new URL(request.url);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/collaboration";
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+  return requirePort("urls").getCollabUrl("collaboration", request);
 }
 
 export function getMeetingCollaborationWebSocketUrl(
   request: Request,
-  env: RuntimeEnv,
+  _env: RuntimeEnv,
 ) {
-  const explicitUrl = getStringEnv(env, "MEETING_COLLABORATION_WEBSOCKET_URL");
-
-  if (explicitUrl) return explicitUrl;
-
-  const configured = getRuntimeAdapter().getMeetingCollaborationWebSocketUrl?.(
-    request,
-    env,
-  );
-
-  if (configured) return configured;
-
-  const url = new URL(request.url);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/meeting-collaboration";
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+  return requirePort("urls").getCollabUrl("meeting-collaboration", request);
 }
 
 export function getMeetingAudioWebSocketUrl(
   request: Request,
-  env: RuntimeEnv,
+  _env: RuntimeEnv,
 ) {
-  const explicitUrl = getStringEnv(env, "MEETING_AUDIO_WEBSOCKET_URL");
-
-  if (explicitUrl) return explicitUrl;
-
-  const configured = getRuntimeAdapter().getMeetingAudioWebSocketUrl?.(
-    request,
-    env,
-  );
-
-  if (configured) return configured;
-
-  const url = new URL(request.url);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/meeting-audio";
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+  return requirePort("urls").getCollabUrl("meeting-audio", request);
 }
 
-export function getMailRealtimeWebSocketUrl(request: Request, env: RuntimeEnv) {
-  const configured = getRuntimeAdapter().getMailRealtimeWebSocketUrl?.(
-    request,
-    env,
-  );
-  if (configured) return configured;
-  const url = new URL(request.url);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/mail-realtime";
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+export function getMailRealtimeWebSocketUrl(request: Request, _env: RuntimeEnv) {
+  return requirePort("urls").getCollabUrl("mail", request);
 }
 
 export function getNavigationRealtimeWebSocketUrl(
   request: Request,
-  env: RuntimeEnv,
+  _env: RuntimeEnv,
 ) {
-  const explicitUrl = getStringEnv(env, "NAVIGATION_REALTIME_WEBSOCKET_URL");
-  if (explicitUrl) return explicitUrl;
-  const configured = getRuntimeAdapter().getNavigationRealtimeWebSocketUrl?.(
-    request,
-    env,
-  );
-  if (configured) return configured;
-  const url = new URL(request.url);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/navigation-realtime";
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+  return requirePort("urls").getCollabUrl("navigation", request);
 }
 
 export async function publishMailNotification(
-  env: RuntimeEnv,
+  _env: RuntimeEnv,
   event: MailNotificationEvent,
 ) {
-  await getRuntimeAdapter().publishMailNotification?.({ env, event });
+  await requirePort("fanout").publish(`mail:${event.userId}`, event);
 }
 
 export function getDatabaseUrl(env: RuntimeEnv) {
-  const adapterUrl = getRuntimeAdapter().getDatabaseUrl?.(env);
-
-  if (adapterUrl) {
-    return adapterUrl;
-  }
-
-  return getRequiredStringEnv(env, "DATABASE_URL");
+  return getRuntimePorts().env?.get("DATABASE_URL") ?? getRequiredStringEnv(env, "DATABASE_URL");
 }
 
 export async function fetchAutomationWebhook(input: {
@@ -189,9 +93,7 @@ export async function fetchAutomationWebhook(input: {
   timeoutMs: number;
   url: string;
 }) {
-  const adapter = getRuntimeAdapter();
-  if (adapter.fetchAutomationWebhook) return adapter.fetchAutomationWebhook(input);
-  throw new Error("A pinned webhook transport is required");
+  return requirePort("outbound").fetchWebhook({ ...input, method: "POST" });
 }
 
 export async function fetchMcpRequest(input: {
@@ -202,13 +104,11 @@ export async function fetchMcpRequest(input: {
   timeoutMs: number;
   url: string;
 }) {
-  const adapter = getRuntimeAdapter();
-  if (adapter.fetchMcpRequest) return adapter.fetchMcpRequest(input);
-  throw new Error("A secure MCP transport is required for MCP connections");
+  return requirePort("outbound").fetchMcp(input);
 }
 
 export function isSelfHostedRuntime() {
-  return getRuntimeAdapter().selfHosted !== false;
+  return getRuntimePorts().env?.get("ZILOBASE_EDITION") !== "hosted";
 }
 
 export function getConfiguredImageStorageMode(env: RuntimeEnv) {
@@ -225,22 +125,16 @@ export function getConfiguredImageStorageMode(env: RuntimeEnv) {
   throw new Error("IMAGE_STORAGE_MODE must be either 's3' or 'binding'");
 }
 
-export function getCalendarRealtimeWebSocketUrl(request: Request, env: RuntimeEnv) {
-  const configured = getRuntimeAdapter().getCalendarRealtimeWebSocketUrl?.(
-    request,
-    env,
-  );
-  if (configured) return configured;
-  const url = new URL(request.url);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/calendar-realtime";
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+export function getCalendarRealtimeWebSocketUrl(request: Request, _env: RuntimeEnv) {
+  return requirePort("urls").getCollabUrl("calendar", request);
 }
 
-export async function publishCalendarNotification(env: RuntimeEnv, event: CalendarNotificationEvent) {
-  const publish = getRuntimeAdapter().publishCalendarNotification;
-  if (!publish) throw new Error("Calendar realtime publisher unavailable");
-  await publish({ env, event });
+export async function publishCalendarNotification(_env: RuntimeEnv, event: CalendarNotificationEvent) {
+  await requirePort("fanout").publish(`calendar:${event.bindingId}`, event);
+}
+
+function requirePort<Key extends keyof ReturnType<typeof getRuntimePorts>>(key: Key) {
+  const port = getRuntimePorts()[key];
+  if (!port) throw new Error(`Runtime ${String(key)} port is required`);
+  return port;
 }

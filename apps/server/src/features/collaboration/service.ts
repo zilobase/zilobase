@@ -14,7 +14,7 @@ import {
   page,
   pageCollaborationDocument,
 } from "../../infrastructure/database/schema";
-import { getRuntimeAdapter, getRuntimePorts } from "../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "../../infrastructure/runtime/runtime-adapter";
 import type { MeetingTranscriptYjsSegment } from "../../infrastructure/runtime/runtime-adapter";
 import type { RuntimeEnv } from "../../shared/config/config";
 import {
@@ -378,9 +378,9 @@ export async function appendPageComment(input: {
   env: RuntimeEnv;
   pageId: string;
 }) {
-  const adapter = getRuntimeAdapter();
-  if (adapter.applyPageCommentUpdate) return adapter.applyPageCommentUpdate(input);
-  return appendPageCommentInHocuspocus(getDefaultCollaborationHocuspocus(input.env), input);
+  const documents = getRuntimePorts().documents;
+  if (!documents) throw new Error("Runtime Documents port is required");
+  return documents.appendPageComment(input);
 }
 
 export async function replaceMeetingSummary(input: {

@@ -6,21 +6,22 @@ import {
   runDueBackgroundMaintenance,
   runWithBackgroundTraceContext,
   runWithDbEnv,
-  runWithRuntimeAdapter,
   runWithRuntimePorts,
-  setRuntimeAdapter,
   type AppBindings,
   type BackgroundLane,
 } from "@zilobase/server/adapter-api";
 
-import {
-  createWorkerAdapter,
-  type WorkerEnvBindings,
-} from "./adapter";
+import type { WorkerEnvBindings } from "./adapter";
 import { createWorkerJobs } from "./jobs";
 import { createWorkerTelemetry } from "./telemetry";
 import { createWorkerFanout } from "./fanout";
 import { createWorkerMeetings } from "./meetings";
+import { createRuntimeEnv } from "../env";
+import { createUrlResolver } from "../url-resolver";
+import { createWorkerImageStorage } from "./image-storage";
+import { createWorkerMailer } from "./mailer";
+import { createWorkerOutboundFetch } from "./outbound-fetch";
+import { createWorkerDocuments } from "./documents";
 
 export type BackgroundWorkerOptions<Env extends WorkerEnvBindings = WorkerEnvBindings> = {
   reportError?: (env: Env, error: unknown, context: Record<string, unknown>) => void | Promise<void>;
@@ -40,27 +41,37 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
   queue(batch: MessageBatch<unknown>, env: Env): Promise<void>;
   scheduled(controller: ScheduledController, env: Env): Promise<void>;
 } {
-  const adapter = createWorkerAdapter();
-  setRuntimeAdapter(adapter);
-
   const telemetryFor = (env: Env) => createWorkerTelemetry({
     env,
     reportError: opts.reportError,
     reportEvent: opts.reportEvent,
   });
 
+  const portsFor = (env: Env): Partial<import("@zilobase/runtime-ports").Ports> => {
+    const runtimeEnv = createRuntimeEnv(env, {
+      DATABASE_URL: () => env.HYPERDRIVE?.connectionString,
+      ZILOBASE_EDITION: () => "hosted",
+    });
+    return {
+      ...(env.IMAGE_BUCKET ? { blobs: createWorkerImageStorage(env.IMAGE_BUCKET) } : {}),
+      documents: createWorkerDocuments(env),
+      env: runtimeEnv,
+      jobs: createWorkerJobs(env),
+      fanout: createWorkerFanout(env),
+      mailer: createWorkerMailer({ binding: env.EMAIL, developmentSinkUrl: env.ZILOBASE_DEV_EMAIL_SINK_URL }),
+      meetings: createWorkerMeetings(env),
+      outbound: createWorkerOutboundFetch(),
+      telemetry: telemetryFor(env),
+      urls: createUrlResolver(runtimeEnv),
+    };
+  };
+
   return {
     async queue(batch: MessageBatch<unknown>, env: Env) {
       try {
         const expectedLane = queueLanes[batch.queue];
-        await runWithRuntimePorts({
-          jobs: createWorkerJobs(env),
-          fanout: createWorkerFanout(env),
-          meetings: createWorkerMeetings(env),
-          telemetry: telemetryFor(env),
-        }, () =>
-          runWithRuntimeAdapter(adapter, () =>
-            runWithDbEnv(env, async () => {
+        await runWithRuntimePorts(portsFor(env), () =>
+          runWithDbEnv(env, async () => {
             await Promise.all(
               batch.messages.map(async (message) => {
                 const parsed = parseBackgroundTask(
@@ -141,7 +152,6 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
               }),
             );
             }),
-          ),
         );
       } catch (error) {
         await telemetryFor(env).error(error, {
@@ -152,14 +162,8 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
     },
     async scheduled(_controller: ScheduledController, env: Env) {
       try {
-        await runWithRuntimePorts({
-          jobs: createWorkerJobs(env),
-          fanout: createWorkerFanout(env),
-          meetings: createWorkerMeetings(env),
-          telemetry: telemetryFor(env),
-        }, () =>
-          runWithRuntimeAdapter(adapter, () =>
-            runWithDbEnv(env, async () => {
+        await runWithRuntimePorts(portsFor(env), () =>
+          runWithDbEnv(env, async () => {
             const result = await runDueBackgroundMaintenance({
               env,
               workerId: `cloudflare-maintenance:${crypto.randomUUID()}`,
@@ -174,7 +178,6 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
               );
             }
             }),
-          ),
         );
       } catch (error) {
         await telemetryFor(env).error(error, {

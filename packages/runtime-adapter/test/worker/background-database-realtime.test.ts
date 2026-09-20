@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  adapter: null as Record<string, (...args: any[]) => any> | null,
   processTask: vi.fn(),
 }));
 
@@ -18,17 +17,10 @@ vi.mock("@zilobase/server/adapter-api", async (importOriginal) => {
     runWithDbEnv: vi.fn(
       async (_env: unknown, operation: () => Promise<unknown>) => operation(),
     ),
-    runWithRuntimeAdapter: vi.fn(
-      async (_adapter: unknown, operation: () => Promise<unknown>) => operation(),
-    ),
-    setRuntimeAdapter: vi.fn((adapter: typeof mocks.adapter) => {
-      mocks.adapter = adapter;
-    }),
   };
 });
 
 import { createBackgroundWorker } from "../../src/worker/background-worker";
-import { createWorkerAdapter } from "../../src/worker/adapter";
 import { createWorkerJobs } from "../../src/worker/jobs";
 import { getRuntimePorts } from "../../src/context";
 
@@ -74,12 +66,9 @@ describe("database realtime queue delivery", () => {
         getByName: vi.fn(() => ({ publishMutation })),
       },
     };
-    const apiAdapter = createWorkerAdapter();
-
     await createWorkerJobs(env).dispatch([task]);
     expect(queued).toEqual([task]);
     expect(publishMutation).not.toHaveBeenCalled();
-    expect(apiAdapter.publishDatabaseMutation).toBeUndefined();
 
     mocks.processTask.mockImplementationOnce(async () => {
       await getRuntimePorts().fanout?.publish(`db:${event.databaseId}`, event);

@@ -10,12 +10,9 @@ import {
   pageIdFromDocumentName,
   runWithDbClient,
   runWithDbEnv,
-  runWithRuntimeAdapter,
   runWithRuntimePorts,
-  setRuntimeAdapter,
   type AppBindings,
   type AppErrorReport,
-  type ServerRuntimeAdapter,
   type ZilobaseEditionExtension,
 } from "@zilobase/server/adapter-api";
 import type { AppPolicy, Ports } from "@zilobase/runtime-ports";
@@ -33,7 +30,7 @@ import { MailNotificationRoom } from "./features/mail-realtime/mail-notification
 import { routeMailRealtimeRequest, type MailRealtimeRouteEnv } from "./features/mail-realtime/security";
 import { NavigationNotificationRoom } from "./features/navigation-realtime/navigation-notification-room";
 import { routeNavigationRealtimeRequest, type NavigationRealtimeRouteEnv } from "./features/navigation-realtime/security";
-import { createWorkerAdapter, type WorkerEnvBindings } from "./adapter";
+import type { WorkerEnvBindings } from "./adapter";
 import { createWorkerHandler } from "./handler";
 import { createWorkerJobs } from "./jobs";
 import { createWorkerLifecycle } from "./lifecycle";
@@ -42,6 +39,12 @@ import { createWorkerLimits } from "./limits";
 import { createWorkerTelemetry } from "./telemetry";
 import { createWorkerFanout } from "./fanout";
 import { createWorkerMeetings } from "./meetings";
+import { createRuntimeEnv } from "../env";
+import { createUrlResolver } from "../url-resolver";
+import { createWorkerImageStorage } from "./image-storage";
+import { createWorkerMailer } from "./mailer";
+import { createWorkerOutboundFetch } from "./outbound-fetch";
+import { createWorkerDocuments } from "./documents";
 
 export { routeCollaborationRequest } from "./features/collaboration/security";
 export type { CollaborationRouteEnv } from "./features/collaboration/security";
@@ -66,7 +69,6 @@ export type FetchableApp = {
 
 export type WorkerRuntimeOptions<Env extends WorkerEnvBindings = WorkerEnvBindings> = {
   loadApp: (env: Env, ports: Partial<Ports>) => Promise<FetchableApp>;
-  adapter?: ServerRuntimeAdapter;
   getEditionExtension?: (env: Env) => ZilobaseEditionExtension | undefined;
   reportError?: (env: Env, report: AppErrorReport) => void | Promise<void>;
   reportEvent?: (env: Env, event: string, props?: Record<string, unknown>) => void | Promise<void>;
@@ -99,11 +101,7 @@ const communityWorkerPolicy: AppPolicy = {
 export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
   opts: WorkerRuntimeOptions<Env>,
 ): { fetch: (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response> } {
-  const adapter = opts.adapter ?? createWorkerAdapter();
   const policy = opts.policy ?? communityWorkerPolicy;
-  // Durable Object callbacks are invoked outside the module fetch handler, so
-  // retain the bootstrap default while request handlers use isolated contexts.
-  setRuntimeAdapter(adapter);
 
   let editionExtension: ZilobaseEditionExtension | null | undefined;
   let extensionResolved = false;
@@ -131,12 +129,25 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
 
   let runtimePorts: Partial<Ports> | null = null;
   const portsFor = (env: Env, execution?: unknown): Partial<Ports> => {
-    runtimePorts ??= {
+    if (!runtimePorts) {
+      const runtimeEnv = createRuntimeEnv(env, {
+        DATABASE_URL: () => env.HYPERDRIVE?.connectionString,
+        ZILOBASE_EDITION: () => "hosted",
+      });
+      runtimePorts = {
+      ...(env.IMAGE_BUCKET ? { blobs: createWorkerImageStorage(env.IMAGE_BUCKET) } : {}),
+      documents: createWorkerDocuments(env),
+      env: runtimeEnv,
       jobs: createWorkerJobs(env),
       fanout: createWorkerFanout(env),
       lifecycle: createWorkerLifecycle(),
       limits: createWorkerLimits(env),
+      mailer: createWorkerMailer({
+        binding: env.EMAIL,
+        developmentSinkUrl: env.ZILOBASE_DEV_EMAIL_SINK_URL,
+      }),
       meetings: createWorkerMeetings(env),
+      outbound: createWorkerOutboundFetch(),
       telemetry: createWorkerTelemetry({
         env,
         reportError: (_runtimeEnv, error, properties) => reportError(env, {
@@ -151,7 +162,9 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
         }),
         reportEvent: opts.reportEvent,
       }),
-    };
+      urls: createUrlResolver(runtimeEnv),
+      };
+    }
     if (execution && typeof execution === "object" && "waitUntil" in execution) {
       runtimePorts.scheduler = createWorkerScheduler(execution as ExecutionContext);
     }
@@ -341,7 +354,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
     async fetch(request: Request, env: Env, ctx: ExecutionContext) {
       request = withRequestId(request);
       try {
-        return await runWithRuntimeAdapter(adapter, () => {
+        return await (async () => {
           const pathname = new URL(request.url).pathname;
 
           if (opts.demoGuard?.isDemoRequest(request, env)) {
@@ -402,7 +415,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
           }
 
           return fetchApp(request, env, ctx);
-        });
+        })();
       } catch (error) {
         await portsFor(env).telemetry!.error(error, {
           code: "WORKER_REQUEST_ERROR",

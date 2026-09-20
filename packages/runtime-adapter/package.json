@@ -20,6 +20,10 @@
       "types": "./src/context.ts",
       "default": "./src/context.ts"
     },
+    "./env": {
+      "types": "./src/env.ts",
+      "default": "./src/env.ts"
+    },
     "./dispatcher": {
       "types": "./src/dispatcher.ts",
       "default": "./src/dispatcher.ts"
@@ -63,6 +67,22 @@
     "./worker/meetings": {
       "types": "./src/worker/meetings.ts",
       "default": "./src/worker/meetings.ts"
+    },
+    "./worker/documents": {
+      "types": "./src/worker/documents.ts",
+      "default": "./src/worker/documents.ts"
+    },
+    "./worker/image-storage": {
+      "types": "./src/worker/image-storage.ts",
+      "default": "./src/worker/image-storage.ts"
+    },
+    "./worker/mailer": {
+      "types": "./src/worker/mailer.ts",
+      "default": "./src/worker/mailer.ts"
+    },
+    "./worker/outbound-fetch": {
+      "types": "./src/worker/outbound-fetch.ts",
+      "default": "./src/worker/outbound-fetch.ts"
     },
     "./worker/limits": {
       "types": "./src/worker/limits.ts",

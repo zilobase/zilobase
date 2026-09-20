@@ -24,6 +24,7 @@ export { fetchPinnedNodeWebhook } from "./pinned-webhook";
 export { fetchPinnedNodeMcp, resolvePublicNodeMcpAddress, buildPinnedMcpRequestOptions, isPinnedMcpRemoteAddress } from "./pinned-mcp";
 export { createNodeImageStorage } from "./image-storage";
 export { createNodeMailer } from "./mailer";
+export { createNodeOutboundFetch } from "./outbound-fetch";
 export { createNodeJobs } from "./jobs";
 export { createNodeScheduler } from "./scheduler";
 export { createNodeLimits } from "./limits";

@@ -215,6 +215,14 @@ export interface Meetings {
   applySummary(input: { content: unknown; meetingId: string; userId: string }): Promise<void>;
 }
 
+export interface Documents {
+  appendPageComment(input: {
+    author: { email: string | null; id: string; image: string | null; name: string | null };
+    body: string;
+    pageId: string;
+  }): Promise<{ messageId: string; threadId: string }>;
+}
+
 export type TelemetryProperties = Record<string, boolean | number | string | null | undefined>;
 
 export interface Telemetry {
@@ -239,6 +247,7 @@ export type Ports<Database = unknown> = {
   blobs: ImageStorage;
   context: RequestContext<Database>;
   db: DbScope<Database>;
+  documents: Documents;
   env: Env;
   fanout: FanoutBus;
   http: HttpHost;

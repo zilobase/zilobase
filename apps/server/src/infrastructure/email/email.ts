@@ -1,7 +1,7 @@
 import type { OutboundEmailMessage } from "@zilobase/runtime-ports";
 
 import { getStringEnv, type RuntimeEnv } from "../../shared/config/config";
-import { getRuntimeAdapter } from "../runtime/runtime-adapter";
+import { getRuntimePorts } from "../runtime/runtime-adapter";
 
 type EmailMessage = {
   to: string;
@@ -19,9 +19,9 @@ export async function sendEmail(env: RuntimeEnv, email: EmailMessage) {
     text: email.text,
     to: email.to,
   };
-  const send = getRuntimeAdapter().sendEmail;
-  if (!send) throw new Error("Mailer provider is required");
-  await send({ env, message });
+  const mailer = getRuntimePorts().mailer;
+  if (!mailer) throw new Error("Runtime Mailer port is required");
+  await mailer.send(message);
 }
 
 function textToHtml(value: string) {

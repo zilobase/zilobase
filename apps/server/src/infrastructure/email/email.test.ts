@@ -11,7 +11,7 @@ vi.mock("nodemailer", () => ({
 }));
 
 import { sendEmail } from "./email";
-import { setRuntimeAdapter, type OutboundEmailMessage } from "../runtime/runtime-adapter";
+import { runWithRuntimePorts, type OutboundEmailMessage } from "../runtime/runtime-adapter";
 import { createNodeMailer } from "@zilobase/runtime-adapter/node";
 
 const message = {
@@ -50,21 +50,16 @@ test("validates SMTP configuration before connecting", async () => {
   );
 });
 
-test("delegates email delivery to the runtime adapter when configured", async () => {
+test("delegates email delivery to the runtime mailer port", async () => {
   let delivered: OutboundEmailMessage | undefined;
 
-  setRuntimeAdapter({
-    async sendEmail({ message: outbound }) {
+  await runWithRuntimePorts({
+    mailer: { async send(outbound) {
       delivered = outbound;
-    },
-    selfHosted: false,
-  });
-
-  try {
+    } },
+  }, async () => {
     await sendEmail({ EMAIL_FROM: "Zilobase <hello@zilobase.com>" }, message);
-  } finally {
-    setRuntimeAdapter({});
-  }
+  });
 
   assert.deepEqual(delivered, {
     from: "Zilobase <hello@zilobase.com>",

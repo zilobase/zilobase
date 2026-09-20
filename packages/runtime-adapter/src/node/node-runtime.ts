@@ -24,9 +24,7 @@ import {
 } from "@zilobase/server/node-adapter-api";
 import {
   getDatabaseUrl,
-  setRuntimeAdapter,
   setRuntimePorts,
-  type ServerRuntimeAdapter,
 } from "../capabilities";
 import { attachNodeNavigationRealtimeRuntime } from "./navigation-realtime-runtime";
 import { isNodeApiPath } from "./api-routing";
@@ -46,6 +44,9 @@ import { createNodeScheduler } from "./scheduler";
 import { createNodeLimits } from "./limits";
 import { createNodeTelemetry } from "./telemetry";
 import { createNodeFanout } from "./fanout";
+import { createNodeOutboundFetch } from "./outbound-fetch";
+import { createRuntimeEnv } from "../env";
+import { createUrlResolver } from "../url-resolver";
 
 export type NodeRuntimeOptions = {
   loadApp: (
@@ -53,7 +54,6 @@ export type NodeRuntimeOptions = {
     ports: Partial<Ports>,
   ) => Promise<Hono<any>>;
   migrationSets: readonly MigrationSet[];
-  baseAdapter?: ServerRuntimeAdapter;
   webDistDir?: string;
   hooks?: {
     getEditionExtension?: (app: Hono<any>) => ZilobaseEditionExtension | undefined;
@@ -63,14 +63,14 @@ export type NodeRuntimeOptions = {
     setCollaborationExtensionsFactory?: typeof defaultSetCollaborationExtensionsFactory;
     setRealtimeReadinessProbe?: typeof defaultSetRealtimeReadinessProbe;
     setBackgroundReadinessProbe?: typeof defaultSetBackgroundReadinessProbe;
-    fetchPinnedWebhook?: ServerRuntimeAdapter["fetchAutomationWebhook"];
-    fetchPinnedMcp?: ServerRuntimeAdapter["fetchMcpRequest"];
+    fetchPinnedWebhook?: Ports["outbound"]["fetchWebhook"];
+    fetchPinnedMcp?: Ports["outbound"]["fetchMcp"];
     createBackgroundCoordinator?: (env: Record<string, unknown>) => NodeBackgroundCoordinator | null;
   };
 };
 
 export function createNodeRuntime(options: NodeRuntimeOptions) {
-  const { migrationSets, baseAdapter = {}, webDistDir = "", hooks = {} } = options;
+  const { migrationSets, webDistDir = "", hooks = {} } = options;
   const env = process.env as Record<string, unknown>;
   const processRole = readProcessRole(process.env.ZILOBASE_PROCESS_ROLE);
   const port = readPort(process.env.PORT) ?? 3000;
@@ -86,9 +86,17 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     ?? ((hookEnv) => processRole === "api" ? null : createNodeBackgroundCoordinator(hookEnv));
   let backgroundCoordinatorRef: NodeBackgroundCoordinator | null = null;
   const ports: Partial<Ports> = {
+    blobs: createLazyImageStorage(() => createNodeImageStorage(env)),
+    env: createRuntimeEnv(env),
     jobs: createNodeJobs(env, () => backgroundCoordinatorRef),
+    mailer: createNodeMailer(env),
+    outbound: createNodeOutboundFetch({
+      fetchMcp: fetchPinnedMcp,
+      fetchWebhook: fetchPinnedWebhook,
+    }),
     scheduler: createNodeScheduler(),
   };
+  ports.urls = createUrlResolver(ports.env!);
   setRuntimePorts(ports);
   let appPromise: Promise<Hono<any>> | null = null;
   const loadApp = (): Promise<Hono<any>> => (appPromise ??= options.loadApp(env, ports));
@@ -150,12 +158,16 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     if (kind === "calendar") return state.calendarRealtime.publishNotification(payload as never);
     if (kind === "mail") return state.mailRealtime.publishNotification(payload as never);
     if (kind === "navigation") return state.navigationRealtime.publish(payload as never);
+    if (kind === "notification") return;
     if (kind === "page") {
       const command = payload as { content: unknown; pageId: string; userId: string };
       return state.collaboration.replacePageContent(command.content, command.pageId, command.userId);
     }
     throw new Error(`Unsupported fanout channel: ${channel}`);
   });
+  ports.documents = {
+    appendPageComment: async (input) => (await ensureStarted()).collaboration.appendPageComment(input),
+  };
 
   async function ensureStarted(): Promise<StartedRuntime> {
     if (started) return started;
@@ -176,18 +188,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const navigationRealtime = attachNodeNavigationRealtimeRuntime(server, env, { realtimeBus });
     const backgroundCoordinator = createBackgroundCoordinator(env);
     backgroundCoordinatorRef = backgroundCoordinator;
-    const effectiveRuntimeAdapter: ServerRuntimeAdapter = {
-      ...baseAdapter,
-      createImageStorage: baseAdapter.createImageStorage ?? createNodeImageStorage,
-      getImageStorageMode: baseAdapter.getImageStorageMode ?? (() => "s3"),
-      sendEmail: baseAdapter.sendEmail ?? (({ env: mailEnv, message }) =>
-        createNodeMailer(mailEnv).send(message)),
-      fetchAutomationWebhook: baseAdapter.fetchAutomationWebhook ?? fetchPinnedWebhook,
-      fetchMcpRequest: baseAdapter.fetchMcpRequest ?? fetchPinnedMcp,
-      publishCalendarNotification: ({ event }) => calendarRealtime.publishNotification(event),
-      publishMailNotification: ({ event }) => mailRealtime.publishNotification(event),
-      publishNavigationInvalidation: ({ event }) => navigationRealtime.publish(event),
-    };
     const backgroundAdminServer = backgroundCoordinator
       ? createBackgroundAdminServer(
           env,
@@ -196,7 +196,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
         )
       : null;
 
-    setRuntimeAdapter(effectiveRuntimeAdapter);
     setBackgroundReadinessProbe(() => backgroundCoordinator?.readiness() ?? {
       coordinatorReady: null,
       listenerReady: null,
@@ -282,6 +281,21 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
   };
   ports.lifecycle = runtime;
   return runtime;
+}
+
+function createLazyImageStorage(factory: () => Ports["blobs"]): Ports["blobs"] {
+  let storage: Ports["blobs"] | undefined;
+  const get = () => storage ??= factory();
+  return {
+    get mode() { return get().mode; },
+    checkReady: () => get().checkReady(),
+    createReadUrl: (options) => get().createReadUrl(options),
+    createUploadUrl: (options) => get().createUploadUrl(options),
+    delete: (objectKey) => get().delete(objectKey),
+    get: (objectKey) => get().get(objectKey),
+    head: (objectKey) => get().head(objectKey),
+    putObject: (options) => get().putObject(options),
+  };
 }
 
 type ProcessRole = "all" | "api" | "worker";

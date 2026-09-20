@@ -30,6 +30,10 @@ export { createWorkerRoomHost, type WorkerRoomHost, type WorkerRoomPeer } from "
 export { createWorkerRoomState } from "./room-state";
 export { createWorkerFanout } from "./fanout";
 export { createWorkerMeetings } from "./meetings";
+export { createWorkerImageStorage, type WorkerR2Bucket, type WorkerR2Object } from "./image-storage";
+export { createWorkerMailer, type WorkerEmailBinding } from "./mailer";
+export { createWorkerOutboundFetch } from "./outbound-fetch";
+export { createWorkerDocuments } from "./documents";
 export { ChatAgent } from "./features/chat/chat-agent";
 export { PageCollaborationRoom } from "./features/collaboration/page-collaboration-room";
 export { MeetingCollaborationRoom } from "./features/collaboration/meeting-collaboration-room";

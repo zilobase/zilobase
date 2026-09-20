@@ -150,6 +150,7 @@ export function createFakePorts<Database = unknown>(options: {
     blobs,
     context: { run: async (_scope, operation) => operation() },
     db,
+    documents: { appendPageComment: unavailable("documents.appendPageComment") },
     dispatched,
     drained,
     env: {
