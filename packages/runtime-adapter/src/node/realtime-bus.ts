@@ -76,7 +76,10 @@ class RedisNodeRealtimeBus implements NodeRealtimeBus {
     }
     handlers.add(handler);
 
+    let active = true;
     return async () => {
+      if (!active) return;
+      active = false;
       const current = this.handlers.get(channel);
       current?.delete(handler);
       if (current?.size) return;
