@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
+    "@zilobase/runtime-ports": "file:../runtime-ports",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -304,6 +305,10 @@
     "./calendar-layout": {
       "types": "./src/calendar-layout/index.ts",
       "default": "./src/calendar-layout/index.ts"
+    },
+    "./runtime/room-kernel": {
+      "types": "./src/runtime/room-kernel.ts",
+      "default": "./src/runtime/room-kernel.ts"
     }
   }
 }

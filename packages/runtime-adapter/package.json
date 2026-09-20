@@ -64,6 +64,14 @@
       "types": "./src/worker/scheduler.ts",
       "default": "./src/worker/scheduler.ts"
     },
+    "./worker/room-host": {
+      "types": "./src/worker/room-host.ts",
+      "default": "./src/worker/room-host.ts"
+    },
+    "./worker/room-state": {
+      "types": "./src/worker/room-state.ts",
+      "default": "./src/worker/room-state.ts"
+    },
     "./worker/telemetry": {
       "types": "./src/worker/telemetry.ts",
       "default": "./src/worker/telemetry.ts"

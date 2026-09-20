@@ -9,6 +9,7 @@ import type {
   RoomHost,
   RoomMessage,
   RoomPeer,
+  RoomPorts,
   RoomState,
   RuntimeEnv,
   Scheduler,
@@ -105,17 +106,21 @@ export class FakeScheduler implements Scheduler {
 export function createFakePorts<Database = unknown>(options: {
   database?: Database;
   env?: RuntimeEnv;
-} = {}): Ports<Database> & {
+} = {}): Ports<Database> & RoomPorts<unknown, Database> & {
   dispatched: BackgroundTask[];
   drained: BackgroundLane[];
   fanout: FakeFanoutBus;
+  host: FakeRoomHost;
   scheduler: FakeScheduler;
+  state: FakeRoomState;
 } {
   const env = options.env ?? {};
   const database = options.database as Database;
   const dispatched: BackgroundTask[] = [];
   const drained: BackgroundLane[] = [];
   const fanout = new FakeFanoutBus();
+  const host = new FakeRoomHost();
+  const state = new FakeRoomState();
   const scheduler = new FakeScheduler();
   const db: DbScope<Database> = {
     run: async (_env, operation) => operation(database),
@@ -161,6 +166,7 @@ export function createFakePorts<Database = unknown>(options: {
       fetch: async (api, request, runtimeEnv, execution) => api.fetch(request, runtimeEnv, execution),
       close: async () => undefined,
     },
+    host,
     jobs: {
       dispatch: async (tasks) => { dispatched.push(...tasks); },
       drain: async (lane) => { drained.push(lane); },
@@ -174,6 +180,7 @@ export function createFakePorts<Database = unknown>(options: {
       fetchMcp: unavailable("outbound.fetchMcp"),
     },
     scheduler,
+    state,
     telemetry: {
       error: () => undefined,
       event: () => undefined,
