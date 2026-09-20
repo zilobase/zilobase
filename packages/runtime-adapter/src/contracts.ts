@@ -131,12 +131,6 @@ export type ServerRuntimeAdapter = {
     filename: string;
     workspaceId: string;
   }): Promise<{ clean: boolean; scanner: string }>;
-  applyPageContentUpdate?(input: {
-    content: unknown;
-    env: RuntimeEnv;
-    pageId: string;
-    userId: string;
-  }): Promise<void>;
   applyPageCommentUpdate?(input: {
     author: { email: string | null; id: string; image: string | null; name: string | null };
     body: string;

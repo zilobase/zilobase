@@ -1,7 +1,6 @@
 import {
   type DatabaseMutationEventV2,
   type BackgroundTaskV1,
-  documentNameForPage,
   type ImageStorage,
   type ImageUploadTarget,
   isMailFeatureEnabled,
@@ -265,16 +264,6 @@ export function createWorkerAdapter(
         throw new Error("NAVIGATION_NOTIFICATION_ROOM binding is required");
       }
       await namespace.getByName(event.workspaceId).publishInvalidation(event);
-    },
-    async applyPageContentUpdate({ content, env, pageId, userId }) {
-      const namespace = (env as WorkerEnvBindings).PAGE_COLLABORATION;
-      if (!namespace) {
-        throw new Error("PAGE_COLLABORATION binding is required");
-      }
-
-      await namespace
-        .getByName(documentNameForPage(pageId))
-        .replacePageContent(content, pageId, userId);
     },
     createImageStorage(env) {
       const cloudflareEnv = env as WorkerEnvBindings;

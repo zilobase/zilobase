@@ -32,6 +32,19 @@ export function createWorkerFanout(env: WorkerEnvBindings): FanoutBus {
         await namespace.getByName(id).publishInvalidation(payload as never);
         return;
       }
+      if (kind === "page") {
+        const namespace = env.PAGE_COLLABORATION;
+        if (!namespace) throw new Error("PAGE_COLLABORATION binding is required");
+        const [pageId, operation] = id.split(":");
+        if (!pageId || operation !== "replace") throw new Error(`Invalid page fanout channel: ${channel}`);
+        const command = payload as { content: unknown; pageId: string; userId: string };
+        await namespace.getByName(`page:${pageId}`).replacePageContent(
+          command.content,
+          command.pageId,
+          command.userId,
+        );
+        return;
+      }
       throw new Error(`Unsupported fanout channel: ${channel}`);
     },
     async subscribe() {

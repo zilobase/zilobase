@@ -14,7 +14,7 @@ import {
   page,
   pageCollaborationDocument,
 } from "../../infrastructure/database/schema";
-import { getRuntimeAdapter } from "../../infrastructure/runtime/runtime-adapter";
+import { getRuntimeAdapter, getRuntimePorts } from "../../infrastructure/runtime/runtime-adapter";
 import type { MeetingTranscriptYjsSegment } from "../../infrastructure/runtime/runtime-adapter";
 import type { RuntimeEnv } from "../../shared/config/config";
 import {
@@ -363,15 +363,13 @@ export async function replacePageContent(input: {
   pageId: string;
   userId: string;
 }) {
-  const adapter = getRuntimeAdapter();
-
-  if (adapter.applyPageContentUpdate) {
-    await adapter.applyPageContentUpdate(input);
-    return;
-  }
-
-  const hocuspocus = getDefaultCollaborationHocuspocus(input.env);
-  await replacePageContentInHocuspocus(hocuspocus, input);
+  const fanout = getRuntimePorts().fanout;
+  if (!fanout) throw new Error("Runtime FanoutBus port is required");
+  await fanout.publish(`page:${input.pageId}:replace`, {
+    content: input.content,
+    pageId: input.pageId,
+    userId: input.userId,
+  });
 }
 
 export async function appendPageComment(input: {

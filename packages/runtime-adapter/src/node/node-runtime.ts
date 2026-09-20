@@ -150,6 +150,10 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     if (kind === "calendar") return state.calendarRealtime.publishNotification(payload as never);
     if (kind === "mail") return state.mailRealtime.publishNotification(payload as never);
     if (kind === "navigation") return state.navigationRealtime.publish(payload as never);
+    if (kind === "page") {
+      const command = payload as { content: unknown; pageId: string; userId: string };
+      return state.collaboration.replacePageContent(command.content, command.pageId, command.userId);
+    }
     throw new Error(`Unsupported fanout channel: ${channel}`);
   });
 
