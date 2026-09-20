@@ -6,7 +6,6 @@ import type { Duplex } from "node:stream";
 import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 import type { Limits } from "@zilobase/runtime-ports";
-import { createNodeLimits } from "../../limits";
 
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
 import {
@@ -69,7 +68,7 @@ type NodeDatabaseRealtimeRuntimeOptions = {
     env: RuntimeEnv,
   ) => Promise<DatabaseRealtimeTicketClaims>;
   realtimeBus: NodeRealtimeBus;
-  limits?: Limits;
+  limits: Limits;
 };
 
 export function attachNodeDatabaseRealtimeRuntime(
@@ -86,7 +85,7 @@ export function attachNodeDatabaseRealtimeRuntime(
   const publishedVersions = new Map<string, number>();
   const verifyTicket = options.verifyTicket ?? verifyDatabaseRealtimeTicket;
   const realtimeBus = options.realtimeBus;
-  const limits = options.limits ?? createNodeLimits(realtimeBus);
+  const limits = options.limits;
 
   const websocket = crossws({
     idleTimeout: 30,

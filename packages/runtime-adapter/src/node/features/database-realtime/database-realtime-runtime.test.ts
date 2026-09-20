@@ -240,7 +240,12 @@ async function startFixture(
   realtimeBus: NodeRealtimeBus = new TestRealtimeBroker().createBus(),
 ) {
   const server = createServer((_request, response) => response.end());
-  const runtime = attachNodeDatabaseRealtimeRuntime(server, env, { realtimeBus });
+  const runtime = attachNodeDatabaseRealtimeRuntime(server, env, {
+    limits: {
+      consume: (key, limit, windowMs) => realtimeBus.consumeLimit(key, limit, windowMs),
+    },
+    realtimeBus,
+  });
 
   await listen(server);
   const address = server.address();

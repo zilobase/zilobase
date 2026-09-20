@@ -177,7 +177,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const collaboration = attachNodeCollaborationRuntime(server, env, {
       editionExtension,
       passthroughPaths: ["/database-collaboration", "/mail-realtime", "/calendar-realtime", "/meeting-audio", "/navigation-realtime"],
-      realtimeBus,
       limits,
     });
     const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, { limits, realtimeBus });

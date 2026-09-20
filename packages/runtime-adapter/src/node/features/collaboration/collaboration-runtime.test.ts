@@ -79,10 +79,18 @@ async function startFixture(
   pathname = "/collaboration",
 ) {
   const server = createServer((_request, response) => response.end());
+  const realtimeBus = createTestRealtimeBus();
   const collaboration = attachNodeCollaborationRuntime(
     server,
     {},
-    { authenticate, connectionLimit, realtimeBus: createTestRealtimeBus() },
+    {
+      authenticate,
+      connectionLimit,
+      limits: {
+        consume: (key, limit, windowMs) =>
+          realtimeBus.consumeLimit(key, limit, windowMs),
+      },
+    },
   );
 
   await listen(server);
