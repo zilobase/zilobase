@@ -4,6 +4,7 @@ import { createServer, type IncomingMessage } from "node:http";
 import { Readable } from "node:stream";
 import path from "node:path";
 import type { Hono } from "hono";
+import type { Ports } from "@zilobase/runtime-ports";
 
 import { attachNodeCollaborationRuntime } from "./collaboration-runtime";
 import { attachNodeDatabaseRealtimeRuntime } from "./database-realtime-runtime";
@@ -24,6 +25,7 @@ import {
 import {
   getDatabaseUrl,
   setRuntimeAdapter,
+  setRuntimePorts,
   type ServerRuntimeAdapter,
 } from "../capabilities";
 import { attachNodeNavigationRealtimeRuntime } from "./navigation-realtime-runtime";
@@ -37,12 +39,16 @@ import { createNodeImageStorage } from "./image-storage";
 import { createNodeMailer } from "./mailer";
 import {
   createNodeBackgroundCoordinator,
-  publishNodeBackgroundNotification,
   type NodeBackgroundCoordinator,
 } from "./background-coordinator";
+import { createNodeJobs } from "./jobs";
+import { createNodeScheduler } from "./scheduler";
 
 export type NodeRuntimeOptions = {
-  loadApp: (env: Record<string, unknown>) => Promise<Hono<any>>;
+  loadApp: (
+    env: Record<string, unknown>,
+    ports: Partial<Ports>,
+  ) => Promise<Hono<any>>;
   migrationSets: readonly MigrationSet[];
   baseAdapter?: ServerRuntimeAdapter;
   webDistDir?: string;
@@ -75,8 +81,14 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
   const fetchPinnedMcp = hooks.fetchPinnedMcp ?? fetchPinnedNodeMcp;
   const createBackgroundCoordinator = hooks.createBackgroundCoordinator
     ?? ((hookEnv) => processRole === "api" ? null : createNodeBackgroundCoordinator(hookEnv));
+  let backgroundCoordinatorRef: NodeBackgroundCoordinator | null = null;
+  const ports: Partial<Ports> = {
+    jobs: createNodeJobs(env, () => backgroundCoordinatorRef),
+    scheduler: createNodeScheduler(),
+  };
+  setRuntimePorts(ports);
   let appPromise: Promise<Hono<any>> | null = null;
-  const loadApp = (): Promise<Hono<any>> => (appPromise ??= options.loadApp(env));
+  const loadApp = (): Promise<Hono<any>> => (appPromise ??= options.loadApp(env, ports));
   const server = createServer(async (incoming, outgoing) => {
     try {
       const request = toRequest(incoming, port);
@@ -139,6 +151,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const mailRealtime = attachNodeMailRealtimeRuntime(server, env, { realtimeBus });
     const navigationRealtime = attachNodeNavigationRealtimeRuntime(server, env, { realtimeBus });
     const backgroundCoordinator = createBackgroundCoordinator(env);
+    backgroundCoordinatorRef = backgroundCoordinator;
     const effectiveRuntimeAdapter: ServerRuntimeAdapter = {
       ...baseAdapter,
       createImageStorage: baseAdapter.createImageStorage ?? createNodeImageStorage,
@@ -152,10 +165,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       publishCalendarNotification: ({ event }) => calendarRealtime.publishNotification(event),
       publishMailNotification: ({ event }) => mailRealtime.publishNotification(event),
       publishNavigationInvalidation: ({ event }) => navigationRealtime.publish(event),
-      dispatchBackgroundTasks: ({ env: dispatchEnv, tasks }) =>
-        backgroundCoordinator
-          ? backgroundCoordinator.dispatch(tasks)
-          : publishNodeBackgroundNotification(dispatchEnv, tasks),
     };
     const backgroundAdminServer = backgroundCoordinator
       ? createBackgroundAdminServer(
@@ -185,7 +194,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     return started;
   }
 
-  return {
+  const runtime = {
     server,
     migrationSets,
     async migrate() {
@@ -238,6 +247,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       setRealtimeReadinessProbe(null);
       setBackgroundReadinessProbe(null);
       started = null;
+      backgroundCoordinatorRef = null;
       await new Promise<void>((resolve, reject) => {
         if (!server.listening) {
           resolve();
@@ -248,6 +258,8 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       });
     },
   };
+  ports.lifecycle = runtime;
+  return runtime;
 }
 
 type ProcessRole = "all" | "api" | "worker";

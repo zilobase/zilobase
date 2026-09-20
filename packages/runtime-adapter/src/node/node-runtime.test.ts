@@ -50,6 +50,7 @@ const mocks = vi.hoisted(() => {
     realtimeBus,
     runWithDbEnv: vi.fn(async (_env: unknown, operation: () => unknown) => operation()),
     setAdapter: vi.fn(),
+    setPorts: vi.fn(),
     setBackgroundProbe: vi.fn(),
     setCollaborationFactory: vi.fn(),
     setRealtimeProbe: vi.fn(),
@@ -91,6 +92,7 @@ vi.mock("@zilobase/server/node-adapter-api", () => ({
 vi.mock("../capabilities", () => ({
   getDatabaseUrl: vi.fn((env: Record<string, unknown>) => env.DATABASE_URL),
   setRuntimeAdapter: mocks.setAdapter,
+  setRuntimePorts: mocks.setPorts,
 }));
 vi.mock("./migrations", () => ({ runMigrationSets: mocks.migrate }));
 vi.mock("./realtime-bus", () => ({
@@ -231,7 +233,7 @@ describe("Node runtime lifecycle", () => {
     await adapter.publishDatabaseMutation({ event: { id: "db" } });
     await adapter.publishMailNotification({ event: { id: "mail" } });
     await adapter.publishNavigationInvalidation({ event: { id: "nav" } });
-    await adapter.dispatchBackgroundTasks({ env: {}, tasks: [] });
+    await mocks.setPorts.mock.calls.at(-1)?.[0].jobs.dispatch([]);
     expect(mocks.databaseRealtime.publishMutation).toHaveBeenCalled();
     expect(mocks.mailRealtime.publishNotification).toHaveBeenCalled();
     expect(mocks.navigationRealtime.publish).toHaveBeenCalled();
@@ -277,7 +279,13 @@ describe("Node runtime lifecycle", () => {
     expect(runtime.server.listening).toBe(false);
     expect(mocks.coordinator.start).toHaveBeenCalledOnce();
     expect(mocks.realtimeBus.connect).toHaveBeenCalledOnce();
-    await adapter.dispatchBackgroundTasks({ env: {}, tasks: [{ availableAt: new Date().toISOString(), kind: "ai.run" }] });
+    await mocks.setPorts.mock.calls.at(-1)?.[0].jobs.dispatch([{
+      availableAt: new Date().toISOString(),
+      cellId: "default",
+      kind: "ai.job",
+      resourceId: "job",
+      version: 1,
+    }]);
     expect(mocks.coordinator.dispatch).toHaveBeenCalledOnce();
 
     const origin = `http://127.0.0.1:${process.env.BACKGROUND_HEALTH_PORT}`;

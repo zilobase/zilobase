@@ -126,10 +126,6 @@ export type ServerRuntimeAdapter = {
     userId: string;
     workspaceId: string;
   }): Promise<void>;
-  dispatchBackgroundTasks?(input: {
-    env: RuntimeEnv;
-    tasks: BackgroundTaskV1[];
-  }): Promise<void>;
   scanAiFile?(input: {
     bytes: Uint8Array;
     contentType: string;

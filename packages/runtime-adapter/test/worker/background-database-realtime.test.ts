@@ -29,6 +29,7 @@ vi.mock("@zilobase/server/adapter-api", async (importOriginal) => {
 
 import { createBackgroundWorker } from "../../src/worker/background-worker";
 import { createWorkerAdapter } from "../../src/worker/adapter";
+import { createWorkerJobs } from "../../src/worker/jobs";
 
 const backgroundWorker = createBackgroundWorker();
 
@@ -74,7 +75,7 @@ describe("database realtime queue delivery", () => {
     };
     const apiAdapter = createWorkerAdapter();
 
-    await apiAdapter.dispatchBackgroundTasks?.({ env, tasks: [task] });
+    await createWorkerJobs(env).dispatch([task]);
     expect(queued).toEqual([task]);
     expect(publishMutation).not.toHaveBeenCalled();
     expect(apiAdapter.publishDatabaseMutation).toBeUndefined();

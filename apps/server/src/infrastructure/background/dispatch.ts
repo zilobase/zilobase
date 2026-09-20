@@ -1,5 +1,5 @@
 import type { RuntimeEnv } from "../../shared/config/config";
-import { getRuntimeAdapter } from "../runtime/runtime-adapter";
+import { getRuntimePorts } from "../runtime/runtime-adapter";
 import type { BackgroundTaskV1 } from "./contracts";
 import { backgroundTaskLane, getBackgroundCellId } from "./contracts";
 import { recordBackgroundCounter } from "./telemetry";
@@ -9,10 +9,10 @@ export async function dispatchBackgroundTasks(
   tasks: readonly BackgroundTaskV1[],
 ) {
   if (tasks.length === 0) return true;
-  const dispatch = getRuntimeAdapter().dispatchBackgroundTasks;
-  if (!dispatch) return false;
+  const jobs = getRuntimePorts().jobs;
+  if (!jobs) throw new Error("Runtime Jobs port is required");
   try {
-    await dispatch({ env, tasks: [...tasks] });
+    await jobs.dispatch(tasks);
     for (const task of tasks) recordBackgroundCounter("enqueue", {
       cell: getBackgroundCellId(env),
       kind: task.kind,

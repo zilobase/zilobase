@@ -48,6 +48,18 @@
       "types": "./src/worker/background-worker.ts",
       "default": "./src/worker/background-worker.ts"
     },
+    "./worker/jobs": {
+      "types": "./src/worker/jobs.ts",
+      "default": "./src/worker/jobs.ts"
+    },
+    "./worker/lifecycle": {
+      "types": "./src/worker/lifecycle.ts",
+      "default": "./src/worker/lifecycle.ts"
+    },
+    "./worker/scheduler": {
+      "types": "./src/worker/scheduler.ts",
+      "default": "./src/worker/scheduler.ts"
+    },
     "./worker/web/gateway": {
       "default": "./src/worker/web/gateway.js"
     },

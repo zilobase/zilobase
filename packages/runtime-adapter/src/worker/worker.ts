@@ -11,13 +11,14 @@ import {
   runWithDbClient,
   runWithDbEnv,
   runWithRuntimeAdapter,
+  runWithRuntimePorts,
   setRuntimeAdapter,
   type AppBindings,
   type AppErrorReport,
   type ServerRuntimeAdapter,
   type ZilobaseEditionExtension,
 } from "@zilobase/server/adapter-api";
-import type { AppPolicy } from "@zilobase/runtime-ports";
+import type { AppPolicy, Ports } from "@zilobase/runtime-ports";
 
 import { CalendarNotificationRoom } from "./features/calendar-realtime/calendar-notification-room";
 import { routeCalendarRealtimeRequest, type CalendarRealtimeRouteEnv } from "./features/calendar-realtime/security";
@@ -34,6 +35,9 @@ import { NavigationNotificationRoom } from "./features/navigation-realtime/navig
 import { routeNavigationRealtimeRequest, type NavigationRealtimeRouteEnv } from "./features/navigation-realtime/security";
 import { createWorkerAdapter, type WorkerEnvBindings } from "./adapter";
 import { createWorkerHandler } from "./handler";
+import { createWorkerJobs } from "./jobs";
+import { createWorkerLifecycle } from "./lifecycle";
+import { createWorkerScheduler } from "./scheduler";
 
 export { routeCollaborationRequest } from "./features/collaboration/security";
 export type { CollaborationRouteEnv } from "./features/collaboration/security";
@@ -57,7 +61,7 @@ export type FetchableApp = {
 };
 
 export type WorkerRuntimeOptions<Env extends WorkerEnvBindings = WorkerEnvBindings> = {
-  loadApp: (env: Env) => Promise<FetchableApp>;
+  loadApp: (env: Env, ports: Partial<Ports>) => Promise<FetchableApp>;
   adapter?: ServerRuntimeAdapter;
   getEditionExtension?: (env: Env) => ZilobaseEditionExtension | undefined;
   reportError?: (env: Env, report: AppErrorReport) => void | Promise<void>;
@@ -121,18 +125,30 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
     );
   };
 
+  let runtimePorts: Partial<Ports> | null = null;
+  const portsFor = (env: Env, execution?: unknown): Partial<Ports> => {
+    runtimePorts ??= {
+      jobs: createWorkerJobs(env),
+      lifecycle: createWorkerLifecycle(),
+    };
+    if (execution && typeof execution === "object" && "waitUntil" in execution) {
+      runtimePorts.scheduler = createWorkerScheduler(execution as ExecutionContext);
+    }
+    return runtimePorts;
+  };
   const appHandler = createWorkerHandler<Env, FetchableApp>({
     authenticateAgentRequest: (request, lobby, env) =>
       authenticateAgentRequest(request, lobby, env),
     authorizeAgentRequest: (request, lobby, env) =>
       authorizeAgentRequest(request, lobby, env),
     getAgentCorsHeaders: (env, request) => getAgentCorsHeaders(env, request),
-    loadApp: opts.loadApp,
+    loadApp: (env) => opts.loadApp(env, portsFor(env)),
   });
 
   async function fetchApp(request: Request, env: Env, ctx: unknown) {
-    return runWithDbRequest(env, () =>
-      appHandler.fetch(request, env, ctx));
+    return runWithRuntimePorts(portsFor(env, ctx), () =>
+      runWithDbRequest(env, () =>
+        appHandler.fetch(request, env, ctx)));
   }
 
   async function getCollaborationUserId(request: Request, env: Env) {

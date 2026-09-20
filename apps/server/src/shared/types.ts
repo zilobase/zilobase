@@ -84,7 +84,7 @@ export type EditionExtensionOptions = {
   editionExtension?: ZilobaseEditionExtension;
   errorReporter?: AppErrorReporter;
   policy?: AppPolicy;
-  ports?: Ports<Database>;
+  ports?: Partial<Ports<any>>;
 };
 
 export type AppErrorReport = {
@@ -198,7 +198,7 @@ export type AppBindings = {
     requestId: string;
     editionExtension: ZilobaseEditionExtension | null;
     appPolicy: AppPolicy;
-    runtimePorts: Ports<Database> | null;
+    runtimePorts: Partial<Ports<any>> | null;
     serverTimings: string[];
     user: Auth["$Infer"]["Session"]["user"] | null;
     session: AuthSession | null;

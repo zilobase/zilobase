@@ -5,7 +5,14 @@ import type {
   RuntimeEnv,
 } from "./contracts";
 
-export { getRuntimeAdapter, runWithRuntimeAdapter, setRuntimeAdapter } from "./context";
+export {
+  getRuntimeAdapter,
+  getRuntimePorts,
+  runWithRuntimeAdapter,
+  runWithRuntimePorts,
+  setRuntimeAdapter,
+  setRuntimePorts,
+} from "./context";
 export type {
   OutboundEmailMessage,
   ServerRuntimeAdapter,

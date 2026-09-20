@@ -7,6 +7,7 @@ import {
   runWithBackgroundTraceContext,
   runWithDbEnv,
   runWithRuntimeAdapter,
+  runWithRuntimePorts,
   setRuntimeAdapter,
   type AppBindings,
   type BackgroundLane,
@@ -16,6 +17,7 @@ import {
   createWorkerAdapter,
   type WorkerEnvBindings,
 } from "./adapter";
+import { createWorkerJobs } from "./jobs";
 
 export type BackgroundWorkerOptions<Env extends WorkerEnvBindings = WorkerEnvBindings> = {
   reportError?: (env: Env, error: unknown, context: Record<string, unknown>) => void | Promise<void>;
@@ -51,8 +53,9 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
     async queue(batch: MessageBatch<unknown>, env: Env) {
       try {
         const expectedLane = queueLanes[batch.queue];
-        await runWithRuntimeAdapter(adapter, () =>
-          runWithDbEnv(env, async () => {
+        await runWithRuntimePorts({ jobs: createWorkerJobs(env) }, () =>
+          runWithRuntimeAdapter(adapter, () =>
+            runWithDbEnv(env, async () => {
             await Promise.all(
               batch.messages.map(async (message) => {
                 const parsed = parseBackgroundTask(
@@ -132,7 +135,8 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                 }
               }),
             );
-          }),
+            }),
+          ),
         );
       } catch (error) {
         await reportError(env, error, {
@@ -143,8 +147,9 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
     },
     async scheduled(_controller: ScheduledController, env: Env) {
       try {
-        await runWithRuntimeAdapter(adapter, () =>
-          runWithDbEnv(env, async () => {
+        await runWithRuntimePorts({ jobs: createWorkerJobs(env) }, () =>
+          runWithRuntimeAdapter(adapter, () =>
+            runWithDbEnv(env, async () => {
             const result = await runDueBackgroundMaintenance({
               env,
               workerId: `cloudflare-maintenance:${crypto.randomUUID()}`,
@@ -158,7 +163,8 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                 }),
               );
             }
-          }),
+            }),
+          ),
         );
       } catch (error) {
         await reportError(env, error, {

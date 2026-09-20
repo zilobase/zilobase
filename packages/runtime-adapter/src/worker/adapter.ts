@@ -1,6 +1,5 @@
 import {
   type DatabaseMutationEventV2,
-  backgroundTaskLane,
   type BackgroundTaskV1,
   documentNameForPage,
   type ImageStorage,
@@ -152,26 +151,6 @@ export function createWorkerAdapter(
         redirect: "manual",
         signal,
       });
-    },
-    async dispatchBackgroundTasks({ env, tasks }) {
-      const bindings = env as WorkerEnvBindings;
-      await Promise.all(tasks.map(async (task) => {
-        const lane = backgroundTaskLane(task.kind);
-        const queue = lane === "fast"
-          ? bindings.BACKGROUND_FAST
-          : lane === "automation"
-            ? bindings.AUTOMATION_RUNS
-            : lane === "ai"
-              ? bindings.AI_JOBS
-              : bindings.MAIL_JOBS;
-        if (!queue) throw new Error(`BACKGROUND_${lane.toUpperCase()}_QUEUE_REQUIRED`);
-        const delaySeconds = Math.max(
-          0,
-          Math.min(43_200, Math.ceil((Date.parse(task.availableAt) - Date.now()) / 1_000)),
-        );
-        if (delaySeconds > 0) await queue.send(task, { delaySeconds });
-        else await queue.send(task);
-      }));
     },
     async claimMeetingRecorderSession({ env, ...input }) {
       return meetingRoom(env, input.meetingId).claimRecorder(input);

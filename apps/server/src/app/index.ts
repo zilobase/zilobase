@@ -22,6 +22,7 @@ import type { EditionExtensionOptions } from "../shared/types";
 import { demoWriteGuard } from "../features/demo/write-guard";
 import { runWithBackgroundTraceContext } from "../infrastructure/background/contracts";
 import { communityAppPolicy } from "../shared/app-policy";
+import { runWithRuntimePorts } from "../infrastructure/runtime/runtime-adapter";
 
 export function createApp(options: EditionExtensionOptions = {}) {
   const app = new Hono<AppBindings>();
@@ -37,11 +38,13 @@ export function createApp(options: EditionExtensionOptions = {}) {
       next,
     ),
   );
-  app.use("*", async (c, next) => {
+  app.use("*", (c, next) => {
     c.set("editionExtension", options.editionExtension ?? null);
     c.set("appPolicy", appPolicy);
     c.set("runtimePorts", options.ports ?? null);
-    await next();
+    return options.ports
+      ? runWithRuntimePorts(options.ports, next)
+      : next();
   });
   app.use("*", createCorsMiddleware());
   app.use(

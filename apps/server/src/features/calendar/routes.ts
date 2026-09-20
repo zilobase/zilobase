@@ -87,7 +87,7 @@ calendarProviderRoutes.post("/google/webhook", async c => {
  return c.body(null, accepted ? 204 : 403);
 });
 
-calendarRoutes.get("/configuration", c => { const runtime = getRuntimeAdapter(); return c.json(inspectCalendarConfiguration(c.env, { background: Boolean(runtime.dispatchBackgroundTasks), realtime: Boolean(runtime.publishCalendarNotification) })) });
+calendarRoutes.get("/configuration", c => { const runtime = getRuntimeAdapter(); return c.json(inspectCalendarConfiguration(c.env, { background: Boolean(c.get("runtimePorts")?.jobs), realtime: Boolean(runtime.publishCalendarNotification) })) });
 
 function calendarErrorStatus(status: number): 400 | 401 | 403 | 404 | 409 | 412 | 429 | 502 { const supported = [400, 401, 403, 404, 409, 412, 429] as const; return supported.find(code => code === status) ?? 502 }
 

@@ -21,6 +21,9 @@ export {
   createBackgroundWorker,
   type BackgroundWorkerOptions,
 } from "./background-worker";
+export { createWorkerJobs, type WorkerJobsEnv } from "./jobs";
+export { createWorkerScheduler } from "./scheduler";
+export { createWorkerLifecycle } from "./lifecycle";
 export { ChatAgent } from "./features/chat/chat-agent";
 export { PageCollaborationRoom } from "./features/collaboration/page-collaboration-room";
 export { MeetingCollaborationRoom } from "./features/collaboration/meeting-collaboration-room";

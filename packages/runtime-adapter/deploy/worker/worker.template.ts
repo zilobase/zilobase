@@ -27,7 +27,7 @@ export {
 
 const worker = createWorker({
   adapter: createWorkerAdapter(),
-  loadApp: async () => createApp(),
+  loadApp: async (_env, ports) => createApp({ ports }),
 });
 
 export default {
