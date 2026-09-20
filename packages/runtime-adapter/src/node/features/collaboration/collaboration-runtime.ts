@@ -15,9 +15,9 @@ import { getDefaultCollaborationHocuspocus } from "@zilobase/server/node-adapter
 import { appendPageCommentInHocuspocus, replacePageContentInHocuspocus } from "@zilobase/server/node-adapter-api";
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
 import type { ZilobaseEditionExtension } from "@zilobase/server/node-adapter-api";
-import type { NodeRealtimeBus } from "./realtime-bus";
+import type { NodeRealtimeBus } from "../../realtime-bus";
 import type { Limits } from "@zilobase/runtime-ports";
-import { createNodeLimits } from "./limits";
+import { createNodeLimits } from "../../limits";
 
 export const NODE_COLLABORATION_MAX_PAYLOAD_BYTES = 1024 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;

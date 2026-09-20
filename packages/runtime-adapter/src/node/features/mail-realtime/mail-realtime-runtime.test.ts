@@ -4,22 +4,21 @@ import { createConnection } from "node:net"
 import { test } from "vitest"
 
 import {
-  createCalendarRealtimeTicket,
-  CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX,
-  CALENDAR_REALTIME_PROTOCOL,
+  createMailRealtimeTicket,
+  MAIL_REALTIME_AUTH_PROTOCOL_PREFIX,
+  MAIL_REALTIME_PROTOCOL,
 } from "@zilobase/server/node-adapter-api"
-import type { NodeRealtimeBus } from "./realtime-bus"
-import { attachNodeCalendarRealtimeRuntime } from "./calendar-realtime-runtime"
+import type { NodeRealtimeBus } from "../../realtime-bus"
+import { attachNodeMailRealtimeRuntime } from "./mail-realtime-runtime"
 
 const env = {
-  COLLABORATION_SECRET: "calendar-realtime-test-secret",
-  CALENDAR_ENABLED: "true",
-  CALENDAR_ENABLED_WORKSPACE_IDS: "workspace-1",
+  COLLABORATION_SECRET: "mail-realtime-test-secret",
+  MAIL_ENABLED: "true",
 }
 
-test("calendar realtime is unavailable when the feature is disabled", async () => {
+test("mail realtime is unavailable when the feature is disabled", async () => {
   const server = createServer((_request, response) => response.end())
-  const runtime = attachNodeCalendarRealtimeRuntime(server, {
+  const runtime = attachNodeMailRealtimeRuntime(server, {
     COLLABORATION_SECRET: env.COLLABORATION_SECRET,
   })
   await listen(server)
@@ -29,7 +28,7 @@ test("calendar realtime is unavailable when the feature is disabled", async () =
   try {
     assert.equal(
       await requestUpgradeStatus(
-        `ws://127.0.0.1:${address.port}/calendar-realtime?binding=binding-1`,
+        `ws://127.0.0.1:${address.port}/mail-realtime?binding=binding-1`,
       ),
       404,
     )
@@ -39,7 +38,7 @@ test("calendar realtime is unavailable when the feature is disabled", async () =
   }
 })
 
-test("calendar realtime rejects missing tickets and tickets for another connection", async () => {
+test("mail realtime rejects missing tickets and tickets for another connection", async () => {
   const fixture = await startFixture()
   const ticket = await createTicket("connection-2")
 
@@ -53,33 +52,30 @@ test("calendar realtime rejects missing tickets and tickets for another connecti
   }
 })
 
-test("calendar realtime broadcasts only connection ID and revision locally", async () => {
+test("mail realtime broadcasts only connection ID and revision locally", async () => {
   const fixture = await startFixture()
-  const first = new CalendarRealtimeClient(fixture.url, await createTicket("connection-1"))
-  const second = new CalendarRealtimeClient(fixture.url, await createTicket("connection-1"))
+  const first = new MailRealtimeClient(fixture.url, await createTicket("connection-1"))
+  const second = new MailRealtimeClient(fixture.url, await createTicket("connection-1"))
 
   try {
     await Promise.all([first.opened, second.opened])
-    await Promise.all([first.next("calendar.ready"), second.next("calendar.ready")])
+    await Promise.all([first.next("mail.ready"), second.next("mail.ready")])
     await fixture.runtime.publishNotification({
       bindingId: "binding-1",
-      accountId: "connection-1",
-      calendarId: "primary",
-      generation: 1,
+      connectionId: "connection-1",
       revision: 7,
       userId: "user-1",
       workspaceId: "workspace-1",
     })
     const [one, two] = await Promise.all([
-      first.next("calendar.invalidate"),
-      second.next("calendar.invalidate"),
+      first.next("mail.invalidate"),
+      second.next("mail.invalidate"),
     ])
     assert.deepEqual(one, {
       bindingId: "binding-1",
-      calendarId: "primary",
-      generation: 1,
+      connectionId: "connection-1",
       revision: 7,
-      type: "calendar.invalidate",
+      type: "mail.invalidate",
       workspaceId: "workspace-1",
     })
     assert.deepEqual(two, one)
@@ -90,25 +86,23 @@ test("calendar realtime broadcasts only connection ID and revision locally", asy
   }
 })
 
-test("calendar realtime fans out through the multi-node realtime bus", async () => {
+test("mail realtime fans out through the multi-node realtime bus", async () => {
   const broker = new TestRealtimeBroker()
   const publisher = await startFixture(broker.createBus())
   const subscriber = await startFixture(broker.createBus())
-  const client = new CalendarRealtimeClient(subscriber.url, await createTicket("connection-1"))
+  const client = new MailRealtimeClient(subscriber.url, await createTicket("connection-1"))
 
   try {
     await client.opened
-    await client.next("calendar.ready")
+    await client.next("mail.ready")
     await publisher.runtime.publishNotification({
       bindingId: "binding-1",
-      accountId: "connection-1",
-      calendarId: "primary",
-      generation: 1,
+      connectionId: "connection-1",
       revision: 9,
       userId: "user-1",
       workspaceId: "workspace-1",
     })
-    assert.equal((await client.next("calendar.invalidate")).revision, 9)
+    assert.equal((await client.next("mail.invalidate")).revision, 9)
   } finally {
     client.close()
     await Promise.all([publisher.close(), subscriber.close()])
@@ -117,7 +111,7 @@ test("calendar realtime fans out through the multi-node realtime bus", async () 
 
 async function startFixture(realtimeBus?: NodeRealtimeBus) {
   const server = createServer((_request, response) => response.end())
-  const runtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus })
+  const runtime = attachNodeMailRealtimeRuntime(server, env, { realtimeBus })
   await listen(server)
   const address = server.address()
   assert(address && typeof address === "object")
@@ -127,7 +121,7 @@ async function startFixture(realtimeBus?: NodeRealtimeBus) {
       await closeServer(server)
     },
     runtime,
-    url: `ws://127.0.0.1:${address.port}/calendar-realtime?binding=binding-1`,
+    url: `ws://127.0.0.1:${address.port}/mail-realtime?binding=binding-1`,
   }
 }
 
@@ -135,7 +129,7 @@ class TestRealtimeBroker {
   private readonly channels = new Map<string, Set<{ handler: (payload: unknown) => void; instance: symbol }>>()
 
   createBus(): NodeRealtimeBus {
-    const instance = Symbol("calendar-realtime-instance")
+    const instance = Symbol("mail-realtime-instance")
     return {
       async close() {},
       async connect() {},
@@ -160,7 +154,7 @@ class TestRealtimeBroker {
   }
 }
 
-class CalendarRealtimeClient {
+class MailRealtimeClient {
   readonly websocket: WebSocket
   readonly opened: Promise<void>
   private readonly messages: Array<Record<string, unknown>> = []
@@ -194,17 +188,17 @@ class CalendarRealtimeClient {
   }
 }
 
-function createTicket(accountId: string) {
-  return createCalendarRealtimeTicket({
-    bindingId: accountId === "connection-1" ? "binding-1" : "binding-2",
-    accountId,
+function createTicket(connectionId: string) {
+  return createMailRealtimeTicket({
+    bindingId: connectionId === "connection-1" ? "binding-1" : "binding-2",
+    connectionId,
     userId: "user-1",
     workspaceId: "workspace-1",
   }, env).then((result) => result.ticket)
 }
 
 function protocols(ticket: string) {
-  return [CALENDAR_REALTIME_PROTOCOL, `${CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket}`]
+  return [MAIL_REALTIME_PROTOCOL, `${MAIL_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket}`]
 }
 
 function waitForOpen(socket: WebSocket) {

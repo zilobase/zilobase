@@ -1,5 +1,5 @@
 import type { Server as HttpServer } from "node:http";
-import type { MailNotificationEvent } from "../capabilities";
+import type { MailNotificationEvent } from "../../../capabilities";
 import {
   MAIL_REALTIME_AUTH_PROTOCOL_PREFIX,
   MAIL_REALTIME_PROTOCOL,
@@ -9,8 +9,8 @@ import {
   recordMailMetric,
   type RuntimeEnv,
 } from "@zilobase/server/node-adapter-api";
-import { attachNodeNotificationRuntime } from "./notification-runtime";
-import { mailRealtimeChannel, type NodeRealtimeBus } from "./realtime-bus";
+import { attachNodeNotificationRuntime } from "../../notification-runtime";
+import { mailRealtimeChannel, type NodeRealtimeBus } from "../../realtime-bus";
 
 const PING = JSON.stringify({ type: "mail.ping" });
 const PONG = JSON.stringify({ type: "mail.pong" });

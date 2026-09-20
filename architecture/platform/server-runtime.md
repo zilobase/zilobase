@@ -27,9 +27,20 @@ Both runtimes live in [`@zilobase/runtime-adapter`](../../packages/runtime-adapt
 ├── .            # port context, capabilities, resolve, dispatcher (no heavy deps)
 ├── ./contracts  # runtime-independent wire payloads
 ├── ./resolve    # resolveRuntimeKind(env): "node" | "worker"
-├── ./node       # createNodeRuntime, startNodeServer, websocket runtimes, migrations
+├── ./node       # createNodeRuntime, startNodeServer, migrations, shared mechanism
+│   └── ./node/features  # per-feature websocket runtimes (mirrors worker/features)
 └── ./worker     # createWorker, createBackgroundWorker, DO rooms, web gateway
+    └── ./worker/features  # per-feature rooms + security
 ```
+
+`node/features/` mirrors `worker/features/` by feature name
+(`calendar-realtime`, `collaboration`, `database-realtime`, `mail-realtime`,
+`meeting-audio`, `navigation-realtime`). Shared mechanism stays flat on both
+sides (`realtime-bus`, `room-host`, `room-state`, `notification-runtime`,
+`jobs`, `scheduler`, `fanout`, `limits`, `telemetry`, `mailer`,
+`outbound-fetch`, `image-storage`); only the factory entrypoints
+(`node-runtime`, `server`, `background-coordinator` vs `worker`,
+`background-worker`, `handler`) differ, as the targets require.
 
 `node/*` never imports `worker/*` and vice versa; the root entrypoint imports neither side. `dispatcher.ts` loads one side through dynamic `import()` only. The adapter consumes `@zilobase/server` surfaces (`adapter-api`, `node-adapter-api`) and never reaches into server source relatively; `community-boundary` tests enforce the split. `resolveRuntimeKind` selects `"worker"` only for explicit `ZILOBASE_RUNTIME_KIND=worker` and otherwise defaults to `"node"`; bindings are never used as runtime detection.
 

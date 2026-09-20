@@ -6,7 +6,7 @@ import type { Duplex } from "node:stream";
 import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 import type { Limits } from "@zilobase/runtime-ports";
-import { createNodeLimits } from "./limits";
+import { createNodeLimits } from "../../limits";
 
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
 import {
@@ -31,7 +31,7 @@ import {
   databaseRealtimeChannel,
   type NodeRealtimeBus,
   type RealtimeSubscription,
-} from "./realtime-bus";
+} from "../../realtime-bus";
 
 const DEFAULT_CONNECTION_LIMIT = 60;
 const CONNECTION_LIMIT_WINDOW_MS = 60_000;

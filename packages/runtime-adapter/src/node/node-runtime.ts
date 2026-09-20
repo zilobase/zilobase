@@ -6,11 +6,11 @@ import path from "node:path";
 import type { Hono } from "hono";
 import type { Ports } from "@zilobase/runtime-ports";
 
-import { attachNodeCollaborationRuntime } from "./collaboration-runtime";
-import { attachNodeDatabaseRealtimeRuntime } from "./database-realtime-runtime";
-import { attachNodeMeetingAudioRuntime } from "./meeting-audio-runtime";
-import { attachNodeCalendarRealtimeRuntime } from "./calendar-realtime-runtime";
-import { attachNodeMailRealtimeRuntime } from "./mail-realtime-runtime";
+import { attachNodeCollaborationRuntime } from "./features/collaboration/collaboration-runtime";
+import { attachNodeDatabaseRealtimeRuntime } from "./features/database-realtime/database-realtime-runtime";
+import { attachNodeMeetingAudioRuntime } from "./features/meeting-audio/meeting-audio-runtime";
+import { attachNodeCalendarRealtimeRuntime } from "./features/calendar-realtime/calendar-realtime-runtime";
+import { attachNodeMailRealtimeRuntime } from "./features/mail-realtime/mail-realtime-runtime";
 import {
   createDbClientForUrl,
   runWithDbEnv,
@@ -26,11 +26,11 @@ import {
   getDatabaseUrl,
   setRuntimePorts,
 } from "../capabilities";
-import { attachNodeNavigationRealtimeRuntime } from "./navigation-realtime-runtime";
+import { attachNodeNavigationRealtimeRuntime } from "./features/navigation-realtime/navigation-realtime-runtime";
 import { isNodeApiPath } from "./api-routing";
 import { runMigrationSets, type MigrationSet } from "./migrations";
 import { createNodeRealtimeBus, type NodeRealtimeBus } from "./realtime-bus";
-import { createNodeCollaborationExtensions } from "./collaboration-redis";
+import { createNodeCollaborationExtensions } from "./features/collaboration/collaboration-redis";
 import { fetchPinnedNodeWebhook } from "./pinned-webhook";
 import { fetchPinnedNodeMcp } from "./pinned-mcp";
 import { createNodeImageStorage } from "./image-storage";

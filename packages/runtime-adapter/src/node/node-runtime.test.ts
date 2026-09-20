@@ -64,22 +64,22 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("./collaboration-runtime", () => ({
+vi.mock("./features/collaboration/collaboration-runtime", () => ({
   attachNodeCollaborationRuntime: vi.fn(() => mocks.collaboration),
 }));
-vi.mock("./database-realtime-runtime", () => ({
+vi.mock("./features/database-realtime/database-realtime-runtime", () => ({
   attachNodeDatabaseRealtimeRuntime: vi.fn(() => mocks.databaseRealtime),
 }));
-vi.mock("./meeting-audio-runtime", () => ({
+vi.mock("./features/meeting-audio/meeting-audio-runtime", () => ({
   attachNodeMeetingAudioRuntime: vi.fn(() => mocks.meetingAudio),
 }));
-vi.mock("./calendar-realtime-runtime", () => ({
+vi.mock("./features/calendar-realtime/calendar-realtime-runtime", () => ({
   attachNodeCalendarRealtimeRuntime: vi.fn(() => mocks.calendarRealtime),
 }));
-vi.mock("./mail-realtime-runtime", () => ({
+vi.mock("./features/mail-realtime/mail-realtime-runtime", () => ({
   attachNodeMailRealtimeRuntime: vi.fn(() => mocks.mailRealtime),
 }));
-vi.mock("./navigation-realtime-runtime", () => ({
+vi.mock("./features/navigation-realtime/navigation-realtime-runtime", () => ({
   attachNodeNavigationRealtimeRuntime: vi.fn(() => mocks.navigationRealtime),
 }));
 vi.mock("./background-coordinator", () => ({
@@ -107,7 +107,7 @@ vi.mock("./migrations", () => ({ runMigrationSets: mocks.migrate }));
 vi.mock("./realtime-bus", () => ({
   createNodeRealtimeBus: vi.fn(() => mocks.createRealtimeBus()),
 }));
-vi.mock("./collaboration-redis", () => ({
+vi.mock("./features/collaboration/collaboration-redis", () => ({
   createNodeCollaborationExtensions: vi.fn(),
 }));
 

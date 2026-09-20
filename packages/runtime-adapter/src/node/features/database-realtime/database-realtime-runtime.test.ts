@@ -9,7 +9,7 @@ import {
   DATABASE_REALTIME_PROTOCOL,
 } from "@zilobase/server/node-adapter-api";
 import { attachNodeDatabaseRealtimeRuntime } from "./database-realtime-runtime";
-import type { NodeRealtimeBus } from "./realtime-bus";
+import type { NodeRealtimeBus } from "../../realtime-bus";
 
 const env = { BETTER_AUTH_SECRET: "database-realtime-test-secret" };
 

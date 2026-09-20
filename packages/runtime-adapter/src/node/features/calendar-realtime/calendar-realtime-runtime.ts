@@ -1,5 +1,5 @@
 import type { Server as HttpServer } from "node:http";
-import type { CalendarNotificationEvent } from "../capabilities";
+import type { CalendarNotificationEvent } from "../../../capabilities";
 import {
   CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX,
   CALENDAR_REALTIME_PROTOCOL,
@@ -8,8 +8,8 @@ import {
   isCalendarFeatureEnabled,
   type RuntimeEnv,
 } from "@zilobase/server/node-adapter-api";
-import { attachNodeNotificationRuntime } from "./notification-runtime";
-import { calendarRealtimeChannel, type NodeRealtimeBus } from "./realtime-bus";
+import { attachNodeNotificationRuntime } from "../../notification-runtime";
+import { calendarRealtimeChannel, type NodeRealtimeBus } from "../../realtime-bus";
 
 const PING = JSON.stringify({ type: "calendar.ping" });
 const PONG = JSON.stringify({ type: "calendar.pong" });

@@ -8,8 +8,8 @@ import {
   type NavigationRealtimeTicketClaims,
   type RuntimeEnv,
 } from "@zilobase/server/node-adapter-api";
-import { attachNodeNotificationRuntime } from "./notification-runtime";
-import { navigationRealtimeChannel, type NodeRealtimeBus } from "./realtime-bus";
+import { attachNodeNotificationRuntime } from "../../notification-runtime";
+import { navigationRealtimeChannel, type NodeRealtimeBus } from "../../realtime-bus";
 
 const PONG = JSON.stringify({ type: "realtime.pong" });
 
