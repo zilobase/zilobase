@@ -12,6 +12,13 @@ Migrated HTTP edges decode untrusted input with Schema and map tagged errors to 
 
 ## Unified runtime adapter
 
+The accepted target is explicit dependency inversion through
+[`@zilobase/runtime-ports`](../../packages/runtime-ports). The migration is
+tracked by [ADR 0008](../decisions/0008-runtime-ports-and-controller-inversion.md):
+feature controllers consume narrow port slices while Node and Worker modules
+provide mechanism. New code must not add optional methods to
+`ServerRuntimeAdapter` while the old surface is removed.
+
 Both runtimes live in [`@zilobase/runtime-adapter`](../../packages/runtime-adapter) as isolated subpaths:
 
 ```text

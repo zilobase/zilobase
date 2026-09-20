@@ -5,7 +5,7 @@ import ts from "typescript";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const baselinePath = join(root, "scripts/refactor/public-exports-baseline.json");
-const packages = ["apps/server", "packages/features", "packages/html-to-page", "packages/page-context", "packages/markdown-text-splitter", "packages/tiptap-comment-extension"];
+const packages = ["apps/server", "packages/features", "packages/html-to-page", "packages/page-context", "packages/markdown-text-splitter", "packages/runtime-ports", "packages/tiptap-comment-extension"];
 
 function markdownFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
