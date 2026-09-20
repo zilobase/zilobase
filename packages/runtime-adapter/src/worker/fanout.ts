@@ -1,5 +1,5 @@
 import type { FanoutBus } from "@zilobase/runtime-ports";
-import type { WorkerEnvBindings } from "./adapter";
+import type { WorkerEnvBindings } from "./bindings";
 
 export function createWorkerFanout(env: WorkerEnvBindings): FanoutBus {
   return {

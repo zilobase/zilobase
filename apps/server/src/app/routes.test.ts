@@ -17,7 +17,6 @@ const mocks = vi.hoisted(() => ({
   privileged: vi.fn(),
   selectResults: [] as unknown[][],
   whereQueries: [] as SQL[],
-  selfHosted: vi.fn(),
 }));
 
 vi.mock("../features/access", () => ({
@@ -31,9 +30,6 @@ vi.mock("../features/api-keys/api-keys", () => ({
   rejectMismatchedApiKeyWorkspace: () => null,
 }));
 vi.mock("../features/auth", () => ({ createAuth: vi.fn() }));
-vi.mock("../infrastructure/runtime/runtime-adapter", () => ({
-  isSelfHostedRuntime: mocks.selfHosted,
-}));
 vi.mock("../infrastructure/database", () => ({
   db: {
     select() {
@@ -61,6 +57,7 @@ vi.mock("../infrastructure/database", () => ({
       return builder;
     },
   },
+  runWithDbEnv: async (_env: unknown, operation: () => unknown) => operation(),
 }));
 
 import { apiKeyRoutes } from "../features/api-keys/routes";
@@ -84,8 +81,6 @@ beforeEach(() => {
   mocks.insertResults.length = 0;
   mocks.selectResults.length = 0;
   mocks.whereQueries.length = 0;
-  mocks.selfHosted.mockReset();
-  mocks.selfHosted.mockReturnValue(false);
 });
 
 function appFor(
@@ -98,6 +93,12 @@ function appFor(
     c.set("session", null);
     c.set("authMethod", options.authMethod ?? "session");
     c.set("apiKey", null);
+    c.set("appPolicy", {
+      compression: false,
+      registration: "managed",
+      webhookHttpDomains: new Set(),
+      workspaceSelection: "switchable",
+    });
     c.set("serverTimings", []);
     await next();
   });

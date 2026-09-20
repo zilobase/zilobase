@@ -78,7 +78,7 @@
     "env": "dotenvx",
     "release": "npm run tokens:check && npm run test:community-boundary && node scripts/release/release.mjs",
     "version:set": "node scripts/release/set-version.mjs",
-    "test:architecture": "node --test scripts/refactor/check-architecture.test.mjs && node scripts/refactor/check-architecture.mjs",
+    "test:architecture": "node --test scripts/refactor/check-architecture.test.mjs scripts/refactor/check-runtime-ports.test.mjs && node scripts/refactor/check-architecture.mjs && node scripts/refactor/check-runtime-ports.mjs",
     "test:mail:integration": "node scripts/mail/test-integration.mjs",
     "test:mail:browser": "playwright test --config scripts/mail/e2e/playwright.config.mjs",
     "test:calendar:integration": "node scripts/calendar/test-integration.mjs",

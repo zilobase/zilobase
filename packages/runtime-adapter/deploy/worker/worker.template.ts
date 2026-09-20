@@ -5,7 +5,6 @@
 import { createApp } from "@zilobase/server/adapter-api";
 import {
   createWorker,
-  createWorkerAdapter,
   ChatAgent,
   PageCollaborationRoom,
   MeetingCollaborationRoom,
@@ -26,7 +25,6 @@ export {
 };
 
 const worker = createWorker({
-  adapter: createWorkerAdapter(),
   loadApp: async (_env, ports) => createApp({ ports }),
 });
 

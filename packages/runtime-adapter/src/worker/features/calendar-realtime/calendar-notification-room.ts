@@ -5,7 +5,7 @@ import {
   type CalendarRealtimeTicketClaims,
 } from "@zilobase/server/realtime-api";
 
-import type { WorkerEnvBindings } from "../../adapter";
+import type { WorkerEnvBindings } from "../../bindings";
 import { readCalendarRealtimeClaims } from "./security";
 import { createNotificationRoom } from "@zilobase/features/runtime/notification-room";
 import { createWorkerRoomHost, type WorkerRoomHost } from "../../room-host";

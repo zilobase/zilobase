@@ -1,5 +1,3 @@
-import type { NavigationRealtimeInvalidateEvent } from "@zilobase/features/pages/navigation-realtime";
-
 // Canonical runtime contracts for `@zilobase/runtime-adapter`.
 // Moved from `apps/server/src/infrastructure/runtime/contracts.ts`.
 // This file intentionally uses `import type` only and defines its own
@@ -101,72 +99,6 @@ export type OutboundEmailMessage = {
   subject: string;
   text: string;
   to: string;
-};
-
-export type ServerRuntimeAdapter = {
-  fetchMcpRequest?(input: {
-    body: string | null;
-    headers: Record<string, string>;
-    method: string;
-    signal?: AbortSignal;
-    timeoutMs: number;
-    url: string;
-  }): Promise<Response>;
-  fetchAutomationWebhook?(input: {
-    body: string;
-    headers: Record<string, string>;
-    pinnedAddress: string;
-    timeoutMs: number;
-    url: string;
-  }): Promise<Response>;
-  publishInProductNotification?(input: {
-    env: RuntimeEnv;
-    notificationId: string;
-    userId: string;
-    workspaceId: string;
-  }): Promise<void>;
-  scanAiFile?(input: {
-    bytes: Uint8Array;
-    contentType: string;
-    filename: string;
-    workspaceId: string;
-  }): Promise<{ clean: boolean; scanner: string }>;
-  applyPageCommentUpdate?(input: {
-    author: { email: string | null; id: string; image: string | null; name: string | null };
-    body: string;
-    env: RuntimeEnv;
-    pageId: string;
-  }): Promise<{ messageId: string; threadId: string }>;
-  createImageStorage?(env: RuntimeEnv): ImageStorage | null;
-  getCollaborationWebSocketUrl?(request: Request, env: RuntimeEnv): string;
-  getDatabaseRealtimeWebSocketUrl?(
-    request: Request,
-    env: RuntimeEnv,
-  ): string;
-  getMeetingCollaborationWebSocketUrl?(
-    request: Request,
-    env: RuntimeEnv,
-  ): string;
-  getMeetingAudioWebSocketUrl?(request: Request, env: RuntimeEnv): string;
-  getCalendarRealtimeWebSocketUrl?(request: Request, env: RuntimeEnv): string;
-  publishCalendarNotification?(input: { env: RuntimeEnv; event: CalendarNotificationEvent }): Promise<void>;
-  getMailRealtimeWebSocketUrl?(request: Request, env: RuntimeEnv): string;
-  getNavigationRealtimeWebSocketUrl?(request: Request, env: RuntimeEnv): string;
-  getDatabaseUrl?(env: RuntimeEnv): string | null | undefined;
-  getImageStorageMode?(env: RuntimeEnv): "s3" | "binding" | null | undefined;
-  publishMailNotification?(input: {
-    env: RuntimeEnv;
-    event: MailNotificationEvent;
-  }): Promise<void>;
-  publishNavigationInvalidation?(input: {
-    env: RuntimeEnv;
-    event: NavigationRealtimeInvalidateEvent;
-  }): Promise<void>;
-  sendEmail?(input: {
-    env: RuntimeEnv;
-    message: OutboundEmailMessage;
-  }): Promise<void>;
-  selfHosted?: false;
 };
 
 export type MailNotificationEvent = {

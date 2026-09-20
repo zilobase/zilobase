@@ -11,7 +11,7 @@ import {
   type BackgroundLane,
 } from "@zilobase/server/adapter-api";
 
-import type { WorkerEnvBindings } from "./adapter";
+import type { WorkerEnvBindings } from "./bindings";
 import { createWorkerJobs } from "./jobs";
 import { createWorkerTelemetry } from "./telemetry";
 import { createWorkerFanout } from "./fanout";

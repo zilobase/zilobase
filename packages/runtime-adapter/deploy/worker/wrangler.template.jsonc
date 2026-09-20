@@ -88,94 +88,17 @@
   },
   "migrations": [
     {
-      "tag": "v1",
+      "tag": "runtime-ports-v1",
       "new_sqlite_classes": [
-        "WorkspaceCollaborationRoom"
-      ]
-    },
-    {
-      "tag": "v2",
-      "new_sqlite_classes": [
-        "DatabaseRealtimeRoom"
-      ]
-    },
-    {
-      "tag": "v3",
-      "new_sqlite_classes": [
-        "WorkspaceRealtimeRoom"
-      ]
-    },
-    {
-      "tag": "v4",
-      "new_sqlite_classes": [
-        "ChatAgent"
-      ]
-    },
-    {
-      "tag": "v5",
-      "deleted_classes": [
-        "WorkspaceRealtimeRoom"
-      ]
-    },
-    {
-      "tag": "v6",
-      "new_sqlite_classes": [
-        "WorkspaceLiveRoom"
-      ],
-      "deleted_classes": [
-        "WorkspaceCollaborationRoom",
-        "DatabaseRealtimeRoom"
-      ]
-    },
-    {
-      "tag": "v7",
-      "deleted_classes": [
-        "WorkspaceLiveRoom"
-      ]
-    },
-    {
-      "tag": "v8",
-      "new_sqlite_classes": [
+        "CalendarNotificationRoom",
+        "ChatAgent",
+        "DatabaseCollaborationRoom",
+        "MailNotificationRoom",
+        "MeetingCollaborationRoom",
+        "NavigationNotificationRoom",
         "PageCollaborationRoom"
       ]
-    },
-    {
-      "tag": "v9",
-      "new_sqlite_classes": [
-        "DatabaseCollaborationRoom"
-      ]
-    },
-    {
-      "tag": "v10",
-      "new_sqlite_classes": [
-        "MeetingCollaborationRoom"
-      ]
-    },
-    {
-      "tag": "v11",
-      "new_sqlite_classes": [
-        "MeetingAudioRoom"
-      ]
-    },
-    {
-      "tag": "v12",
-      "deleted_classes": [
-        "MeetingAudioRoom"
-      ]
-    },
-    {
-      "tag": "v13",
-      "new_sqlite_classes": [
-        "MailNotificationRoom"
-      ]
-    },
-    {
-      "tag": "v14",
-      "new_sqlite_classes": [
-        "NavigationNotificationRoom"
-      ]
-    },
-    { "tag": "calendar-v1", "new_sqlite_classes": ["CalendarNotificationRoom"] }
+    }
   ],
   "queues": {
     "producers": [

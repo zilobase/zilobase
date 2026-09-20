@@ -24,9 +24,13 @@ for the file table):
 - `web.template.jsonc` → `web-wrangler.jsonc`
 - `worker.template.ts`, `background.template.ts`, `web.template.js` → your entries
 
-Durable Object bindings, `migrations` (`v1..v14 + calendar-v1`), queue names,
+Durable Object bindings, the `runtime-ports-v1` fresh-install migration, queue names,
 rate limits, and module aliases must stay verbatim; only credentials,
 hostnames, buckets, placement, and routes are placeholders.
+
+The baseline requires a new Worker namespace. Recreate an unused namespace
+that recorded the retired migration chain, or choose a new Worker script name;
+the reset does not affect PostgreSQL or R2 data.
 
 ## 2. Provision resources
 

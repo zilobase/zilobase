@@ -1,6 +1,6 @@
 import type { BackgroundLane, BackgroundTask, Jobs } from "@zilobase/runtime-ports";
 import { backgroundTaskLane } from "@zilobase/server/adapter-api";
-import type { WorkerEnvBindings } from "./adapter";
+import type { WorkerEnvBindings } from "./bindings";
 
 type BackgroundQueue = {
   send(message: BackgroundTask, options?: { delaySeconds?: number }): Promise<void>;

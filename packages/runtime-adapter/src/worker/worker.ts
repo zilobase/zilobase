@@ -30,7 +30,7 @@ import { MailNotificationRoom } from "./features/mail-realtime/mail-notification
 import { routeMailRealtimeRequest, type MailRealtimeRouteEnv } from "./features/mail-realtime/security";
 import { NavigationNotificationRoom } from "./features/navigation-realtime/navigation-notification-room";
 import { routeNavigationRealtimeRequest, type NavigationRealtimeRouteEnv } from "./features/navigation-realtime/security";
-import type { WorkerEnvBindings } from "./adapter";
+import type { WorkerEnvBindings } from "./bindings";
 import { createWorkerHandler } from "./handler";
 import { createWorkerJobs } from "./jobs";
 import { createWorkerLifecycle } from "./lifecycle";

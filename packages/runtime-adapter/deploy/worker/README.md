@@ -37,7 +37,12 @@ Copy these templates next to your worker entries and replace every
    then background (`-c background-wrangler.jsonc`), then web
    (`-c web-wrangler.jsonc`).
 
-Durable Object bindings, `migrations` (`v1..v14 + calendar-v1`), queue
+Durable Object bindings, the fresh-install `runtime-ports-v1` migration, queue
 names, rate limits, and module `alias` entries are byte-identical to the
 hosted composition — only credentials, hostnames, buckets, placement, and
 routes are placeholders. `template-parity` tests guard this invariant.
+
+`runtime-ports-v1` is deliberately a fresh namespace baseline. Do not apply it
+to a Worker script that already recorded the retired `v1..v14` chain; delete
+and recreate that unused Worker namespace or choose a new script name first.
+This reset does not delete PostgreSQL rows or R2 objects.

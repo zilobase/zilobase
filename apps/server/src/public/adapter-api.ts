@@ -97,21 +97,16 @@ export {
 } from "../infrastructure/storage/image-storage";
 export {
   getCollaborationWebSocketUrl,
-  getConfiguredImageStorageMode,
   getDatabaseRealtimeWebSocketUrl,
   getMeetingAudioWebSocketUrl,
   getMeetingCollaborationWebSocketUrl,
   getMailRealtimeWebSocketUrl,
   getDatabaseUrl,
-  getRuntimeAdapter,
-  runWithRuntimeAdapter,
   runWithRuntimePorts,
-  setRuntimeAdapter,
   setRuntimePorts,
   type OutboundEmailMessage,
   type MeetingRecorderRuntimeInput,
   type MeetingRecorderRuntimeState,
-  type ServerRuntimeAdapter,
   type MailNotificationEvent,
 } from "../infrastructure/runtime/runtime-adapter";
 export {

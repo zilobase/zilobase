@@ -25,7 +25,7 @@ Both runtimes live in [`@zilobase/runtime-adapter`](../../packages/runtime-adapt
 ```text
 @zilobase/runtime-adapter
 ├── .            # port context, capabilities, resolve, dispatcher (no heavy deps)
-├── ./contracts  # compatibility wire payloads during the final deletion pass
+├── ./contracts  # runtime-independent wire payloads
 ├── ./resolve    # resolveRuntimeKind(env): "node" | "worker"
 ├── ./node       # createNodeRuntime, startNodeServer, websocket runtimes, migrations
 └── ./worker     # createWorker, createBackgroundWorker, DO rooms, web gateway
@@ -35,14 +35,13 @@ Both runtimes live in [`@zilobase/runtime-adapter`](../../packages/runtime-adapt
 
 `createNodeRuntime` takes `loadApp` plus hook overrides (edition extension, production-config assert, realtime bus, collaboration extensions, pinned webhook/MCP transports, background coordinator) with community defaults; `apps/server` passes Zilobase wiring through hooks in [serverful.ts](../../apps/server/src/entrypoints/serverful.ts). `createWorker`/`createBackgroundWorker` compose Worker providers directly and take product seams (edition extension, error/event reporters, demo guard, session-policy denial, CORS), not a generic runtime adapter. Community registration/workspace behavior and managed hosted behavior are explicit `AppPolicy` values passed to app and Worker construction; runtime kind no longer selects product policy.
 
-Community Cloudflare deployment uses the [worker templates](../../packages/runtime-adapter/deploy/worker/README.md); see the [Cloudflare self-host runbook](../../docs/runbooks/cloudflare-selfhost.md). Durable Object migration history (`v1..v14 + calendar-v1`) is frozen; `template-parity` tests pin templates to the hosted composition.
+Community Cloudflare deployment uses the [worker templates](../../packages/runtime-adapter/deploy/worker/README.md); see the [Cloudflare self-host runbook](../../docs/runbooks/cloudflare-selfhost.md). The breaking reset replaces unused Durable Object history with one `runtime-ports-v1` fresh-install baseline; `template-parity` tests pin templates to the hosted composition.
 
 ## Invariants and failure handling
 
 Runtime ports are installed through `runWithRuntimePorts` for concurrent
-requests and `setRuntimePorts` for process composition. Feature code never
-looks up a `ServerRuntimeAdapter`; compatibility exports remain isolated from
-production call paths until their final package removal.
+requests and `setRuntimePorts` for process composition. `ServerRuntimeAdapter`,
+its ambient context, and Worker adapter factories have been removed.
 
 Object storage, mail delivery, webhook egress, and MCP egress now require an
 explicit runtime provider. The Node side owns S3, SMTP/console mail, and pinned

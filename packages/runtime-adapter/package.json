@@ -24,6 +24,10 @@
       "types": "./src/env.ts",
       "default": "./src/env.ts"
     },
+    "./url-resolver": {
+      "types": "./src/url-resolver.ts",
+      "default": "./src/url-resolver.ts"
+    },
     "./dispatcher": {
       "types": "./src/dispatcher.ts",
       "default": "./src/dispatcher.ts"
@@ -39,10 +43,6 @@
     "./worker": {
       "types": "./src/worker/index.ts",
       "default": "./src/worker/index.ts"
-    },
-    "./worker/adapter": {
-      "types": "./src/worker/adapter.ts",
-      "default": "./src/worker/adapter.ts"
     },
     "./worker/handler": {
       "types": "./src/worker/handler.ts",

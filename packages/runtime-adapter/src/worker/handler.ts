@@ -1,6 +1,6 @@
 import { routeAgentRequest } from "agents";
 
-import type { WorkerEnvBindings } from "./adapter";
+import type { WorkerEnvBindings } from "./bindings";
 
 type FetchableApp = {
   fetch(

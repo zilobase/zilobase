@@ -14,7 +14,7 @@ import {
   type CollaborationContext,
   type CollaborationDocumentPersistence,
 } from "@zilobase/server/adapter-api";
-import type { WorkerEnvBindings } from "../../adapter";
+import type { WorkerEnvBindings } from "../../bindings";
 import {
   selectCollaborationWebSocketProtocol,
   validateCollaborationMessage,

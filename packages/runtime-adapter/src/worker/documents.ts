@@ -1,5 +1,5 @@
 import type { Documents } from "@zilobase/runtime-ports";
-import type { WorkerEnvBindings } from "./adapter";
+import type { WorkerEnvBindings } from "./bindings";
 
 export function createWorkerDocuments(env: WorkerEnvBindings): Documents {
   return {

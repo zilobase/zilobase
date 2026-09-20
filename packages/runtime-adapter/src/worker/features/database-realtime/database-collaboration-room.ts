@@ -16,7 +16,7 @@ import {
   type DatabasePresence,
 } from "@zilobase/features/databases/realtime/room-protocol";
 
-import type { WorkerEnvBindings } from "../../adapter";
+import type { WorkerEnvBindings } from "../../bindings";
 import {
   readDatabaseRealtimeClaims,
   validateDatabaseRealtimeMessage,

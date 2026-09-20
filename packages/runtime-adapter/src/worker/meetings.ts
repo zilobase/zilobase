@@ -1,5 +1,5 @@
 import type { Meetings } from "@zilobase/runtime-ports";
-import type { WorkerEnvBindings } from "./adapter";
+import type { WorkerEnvBindings } from "./bindings";
 
 export function createWorkerMeetings(env: WorkerEnvBindings): Meetings {
   const room = (meetingId: string) => {

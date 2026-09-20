@@ -12,7 +12,7 @@ test("external consumer entrypoints retain their runtime exports", () => {
     "createAuth",
     "MembershipService",
     "TeamspaceService",
-    "setRuntimeAdapter",
+    "setRuntimePorts",
   ]);
   assertExports(adapterApi, [
     "createApp",

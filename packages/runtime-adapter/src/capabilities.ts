@@ -6,16 +6,12 @@ import type {
 } from "./contracts";
 
 export {
-  getRuntimeAdapter,
   getRuntimePorts,
-  runWithRuntimeAdapter,
   runWithRuntimePorts,
-  setRuntimeAdapter,
   setRuntimePorts,
 } from "./context";
 export type {
   OutboundEmailMessage,
-  ServerRuntimeAdapter,
   MailNotificationEvent,
   CalendarNotificationEvent,
   MeetingRecorderRuntimeInput,
@@ -105,24 +101,6 @@ export async function fetchMcpRequest(input: {
   url: string;
 }) {
   return requirePort("outbound").fetchMcp(input);
-}
-
-export function isSelfHostedRuntime() {
-  return getRuntimePorts().env?.get("ZILOBASE_EDITION") !== "hosted";
-}
-
-export function getConfiguredImageStorageMode(env: RuntimeEnv) {
-  const configured = getStringEnv(env, "IMAGE_STORAGE_MODE");
-
-  if (!configured) {
-    return null;
-  }
-
-  if (configured === "s3" || configured === "binding") {
-    return configured;
-  }
-
-  throw new Error("IMAGE_STORAGE_MODE must be either 's3' or 'binding'");
 }
 
 export function getCalendarRealtimeWebSocketUrl(request: Request, _env: RuntimeEnv) {
