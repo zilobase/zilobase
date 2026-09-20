@@ -1,7 +1,7 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { Client, Pool } from "pg";
-import { getDatabaseUrl } from "../runtime/runtime-adapter";
+import { getDatabaseUrl } from "@zilobase/runtime-adapter/capabilities";
 import * as schema from "./schema";
 
 type DbEnv = Record<string, unknown>;

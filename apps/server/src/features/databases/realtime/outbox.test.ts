@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 
-import { runWithRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
+import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import { drainDatabaseRealtimeOutbox } from "./outbox";
 import {
   databaseMutationEvent,

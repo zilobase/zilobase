@@ -30,7 +30,7 @@ vi.mock(  "../../../shared/security/database-realtime-ticket", () => ({
   DATABASE_REALTIME_PROTOCOL: "zilobase.database.v2",
   verifyDatabaseRealtimeTicket: mocks.verifyTicket,
 }));
-vi.mock(  "../../../infrastructure/runtime/runtime-adapter", () => ({
+vi.mock(  "@zilobase/runtime-adapter/capabilities", () => ({
   getDatabaseRealtimeWebSocketUrl: () => "ws://localhost/realtime",
 }));
 vi.mock(  "../../../infrastructure/database", () => {

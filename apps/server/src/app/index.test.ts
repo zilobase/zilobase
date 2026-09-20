@@ -3,7 +3,7 @@ import { test, vi } from "vitest";
 import { Hono } from "hono";
 
 import { appErrorHandler, createApp, createAppErrorHandler } from "./";
-import { isNodeApiPath } from "../infrastructure/node/api-routing";
+import { isNodeApiPath } from "@zilobase/runtime-adapter/node";
 import type { AppBindings } from "../shared/types";
 import type { ZilobaseEditionExtension } from "../shared/types";
 

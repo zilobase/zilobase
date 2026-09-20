@@ -7,7 +7,7 @@ import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
-import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import { databaseMutationEventFromJournalRow } from "./journal-event";
 
 const DELIVERY_LEASE_MS = 2 * 60 * 1000;

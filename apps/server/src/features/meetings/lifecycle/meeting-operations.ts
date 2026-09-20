@@ -11,7 +11,7 @@ import { db } from "../../../infrastructure/database";
 import { meeting, page } from "../../../infrastructure/database/schema";
 import { upsertPageItemPlacement } from "../../pages/placements";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
-import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import { isMeetingRecordingActive } from "./meeting-state";
 import type { MeetingPatch, MeetingStatus } from "../contracts/meeting-types";
 import { getMeetingForUser } from "./meeting-access";

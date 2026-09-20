@@ -8,7 +8,7 @@ import {
 } from "../../../infrastructure/database/schema";
 
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
-import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import {
   clampMeetingDuration,
   isMeetingRecordingActive,

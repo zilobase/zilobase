@@ -167,7 +167,7 @@ test.skipIf(!enabled)("expired sync tokens preserve cached canonical events unti
 
 test.skipIf(!enabled)("outbox retries failed publication and emits only currently owned scope metadata", async () => {
   const { drainCalendarOutbox } = await import("./realtime/outbox");
-  const { runWithRuntimePorts } = await import("../../infrastructure/runtime/runtime-adapter");
+  const { runWithRuntimePorts } = await import("@zilobase/runtime-adapter/capabilities");
   const env = { CALENDAR_ENABLED: "true", CALENDAR_ENABLED_WORKSPACE_IDS: workspaceId };
   await database!.update(schema.calendarNotificationOutbox).set({ nextAttemptAt: new Date(0) });
   await runWithDb(database!, () => runWithRuntimePorts({ fanout: { publish: async () => { throw new Error("bus unavailable") } } as never }, () => drainCalendarOutbox(env)));

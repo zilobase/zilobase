@@ -1,5 +1,5 @@
 import type { RuntimeEnv } from "../../shared/config/config";
-import { getRuntimePorts } from "../runtime/runtime-adapter";
+import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import type { BackgroundTaskV1 } from "./contracts";
 import { backgroundTaskLane, getBackgroundCellId } from "./contracts";
 import { recordBackgroundCounter } from "./telemetry";

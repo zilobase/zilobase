@@ -3,7 +3,7 @@ import type { NavigationRealtimeInvalidateEvent } from "@zilobase/features/pages
 
 import { db } from "../../../infrastructure/database"
 import { navigationRealtimeOutbox } from "../../../infrastructure/database/schema"
-import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter"
+import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities"
 import type { RuntimeEnv } from "../../../shared/config/config"
 import { createBackgroundTask } from "../../../infrastructure/background/contracts"
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch"

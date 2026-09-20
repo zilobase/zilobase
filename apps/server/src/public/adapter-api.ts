@@ -108,7 +108,7 @@ export {
   type MeetingRecorderRuntimeInput,
   type MeetingRecorderRuntimeState,
   type MailNotificationEvent,
-} from "../infrastructure/runtime/runtime-adapter";
+} from "@zilobase/runtime-adapter/capabilities";
 export {
   createDatabaseRealtimeTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
@@ -205,7 +205,7 @@ export {
   type MeetingCollaborationTicketClaims,
   type PageCollaborationTicketClaims,
 } from "../features/collaboration/service";
-export type { MeetingTranscriptYjsSegment } from "../infrastructure/runtime/runtime-adapter";
+export type { MeetingTranscriptYjsSegment } from "@zilobase/runtime-adapter/capabilities";
 export {
   BACKGROUND_TASK_KINDS,
   backgroundTaskLane,
@@ -228,7 +228,7 @@ export { getBackgroundOperationalSnapshot } from "../infrastructure/background/h
 export type { AppBindings } from "../shared/types";
 
 export { isCalendarFeatureEnabled } from "../shared/config/config";
-export { getCalendarRealtimeWebSocketUrl, publishCalendarNotification, type CalendarNotificationEvent } from "../infrastructure/runtime/runtime-adapter";
+export { getCalendarRealtimeWebSocketUrl, publishCalendarNotification, type CalendarNotificationEvent } from "@zilobase/runtime-adapter/capabilities";
 export { advancePendingCalendars } from "../features/calendar/sync/sync";
 
 export { maintainCalendarWatches } from "../features/calendar/realtime/watches";

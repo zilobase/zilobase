@@ -22,7 +22,7 @@ import type { EditionExtensionOptions } from "../shared/types";
 import { demoWriteGuard } from "../features/demo/write-guard";
 import { runWithBackgroundTraceContext } from "../infrastructure/background/contracts";
 import { communityAppPolicy } from "../shared/app-policy";
-import { runWithRuntimePorts } from "../infrastructure/runtime/runtime-adapter";
+import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 
 export function createApp(options: EditionExtensionOptions = {}) {
   const app = new Hono<AppBindings>();

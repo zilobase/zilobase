@@ -3,7 +3,7 @@ import { calendarWatchExpiry } from "./watch-health";
 import { Hono } from "hono";
 import type { AppBindings } from "../../../shared/types";
 import { requireCalendarBinding } from "../connections/ownership";
-import { getCalendarRealtimeWebSocketUrl } from "../../../infrastructure/runtime/runtime-adapter";
+import { getCalendarRealtimeWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
 import { createCalendarRealtimeTicket, CALENDAR_REALTIME_PROTOCOL, CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX } from "./calendar-realtime-ticket";
 export const calendarRealtimeRoutes = new Hono<AppBindings>();
 calendarRealtimeRoutes.post("/connections/:bindingId/realtime-ticket", async c => {

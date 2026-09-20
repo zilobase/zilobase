@@ -8,7 +8,7 @@ import { database, dataSource, databaseProperty, databaseRow, page, pageProperty
 import type { AppBindings } from "../../shared/types";
 import { readJsonBody } from "../../shared/http/request";
 import { createCollaborationTicket, documentNameForPage, getOrCreateCollaborationDocumentState, replacePageContent } from "../collaboration/service";
-import { getCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
+import { getCollaborationWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
 import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../workspaces/navigation-realtime/outbox";
 import { commitDatabaseMutationBatch } from "../databases/core";
 import { lockDatabaseAutomationFactRows } from "../automations/triggers/event-capture";

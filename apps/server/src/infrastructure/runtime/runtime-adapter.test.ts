@@ -9,7 +9,7 @@ import {
   getRuntimePorts,
   runWithRuntimePorts,
   setRuntimePorts,
-} from "./runtime-adapter";
+} from "@zilobase/runtime-adapter/capabilities";
 
 test("runtime URLs honor provider configuration and request-derived values", () => {
   const request = new Request("https://api.example.com/path?secret=value#fragment");

@@ -1,4 +1,4 @@
-import { fetchAutomationWebhook } from "../../../infrastructure/runtime/runtime-adapter";
+import { fetchAutomationWebhook } from "@zilobase/runtime-adapter/capabilities";
 import { requestSignal } from "../../../shared/http/request";
 
 const MAX_RESPONSE_BYTES = 1024 * 1024;

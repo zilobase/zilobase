@@ -3,7 +3,7 @@ import type { MailReminder } from "@zilobase/features/mail/organization";
 
 import { db } from "../../../infrastructure/database"
 import { gmailAccount, mailReminder } from "../../../infrastructure/database/schema"
-import { publishMailNotification } from "../../../infrastructure/runtime/runtime-adapter"
+import { publishMailNotification } from "@zilobase/runtime-adapter/capabilities"
 import type { RuntimeEnv } from "../../../shared/config/config"
 import type { createGmailGateway } from "../provider/gmail-gateway"
 

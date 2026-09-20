@@ -15,8 +15,8 @@ import {
   createCollaborationTicket,
   documentNameForMeeting,
 } from "../collaboration/service";
-import { getMeetingCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
-import { getMeetingAudioWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
+import { getMeetingCollaborationWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
+import { getMeetingAudioWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
 import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
 import type { AppBindings } from "../../shared/types";
 import { parseJsonBody } from "../../shared/http/schema-json";

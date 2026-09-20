@@ -30,7 +30,7 @@ import {
 } from "../memberships";
 import { sendEmail } from "../../infrastructure/email/email";
 import { getPrimaryClientOrigin } from "../../shared/config/config";
-import { getNavigationRealtimeWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
+import { getNavigationRealtimeWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
 import {
   createNavigationRealtimeTicket,
   NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,

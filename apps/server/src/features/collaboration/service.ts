@@ -14,8 +14,8 @@ import {
   page,
   pageCollaborationDocument,
 } from "../../infrastructure/database/schema";
-import { getRuntimePorts } from "../../infrastructure/runtime/runtime-adapter";
-import type { MeetingTranscriptYjsSegment } from "../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
+import type { MeetingTranscriptYjsSegment } from "@zilobase/runtime-adapter/capabilities";
 import type { RuntimeEnv } from "../../shared/config/config";
 import {
   createCollaborationTicket,

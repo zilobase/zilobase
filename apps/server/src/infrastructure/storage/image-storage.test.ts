@@ -35,7 +35,7 @@ import {
   resolveImageStorageMode,
   type ImageStorage,
 } from "./image-storage";
-import { runWithRuntimePorts } from "../runtime/runtime-adapter";
+import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import { createNodeImageStorage } from "@zilobase/runtime-adapter/node";
 
 const s3Env = {

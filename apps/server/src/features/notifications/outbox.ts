@@ -3,7 +3,7 @@ import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import type { RuntimeEnv } from "../../shared/config/config";
 import { db } from "../../infrastructure/database";
 import { inProductNotificationOutbox } from "../../infrastructure/database/schema";
-import { getRuntimePorts } from "../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 
 export async function drainInProductNotificationOutbox(
   env: RuntimeEnv,

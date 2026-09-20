@@ -14,7 +14,7 @@ import {
   DATABASE_REALTIME_PROTOCOL,
   verifyDatabaseRealtimeTicket,
 } from   "../../../shared/security/database-realtime-ticket";
-import { getDatabaseRealtimeWebSocketUrl } from   "../../../infrastructure/runtime/runtime-adapter";
+import { getDatabaseRealtimeWebSocketUrl } from   "@zilobase/runtime-adapter/capabilities";
 import { getDatabaseRecord } from  "../access/database-access";
 import type { AppBindings } from   "../../../shared/types";
 import { readJsonBody } from   "../../../shared/http/request";

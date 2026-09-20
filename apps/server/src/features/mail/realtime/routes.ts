@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { AppBindings } from "../../../shared/types";
 import { createMailRealtimeTicket, MAIL_REALTIME_AUTH_PROTOCOL_PREFIX, MAIL_REALTIME_PROTOCOL } from "./mail-realtime-ticket";
-import { getMailRealtimeWebSocketUrl } from "../../../infrastructure/runtime/runtime-adapter";
+import { getMailRealtimeWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
 import { requireOwnedConnection } from "../route-support";
 
 export const mailRealtimeRoutes = new Hono<AppBindings>();

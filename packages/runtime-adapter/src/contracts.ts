@@ -1,5 +1,4 @@
 // Canonical runtime contracts for `@zilobase/runtime-adapter`.
-// Moved from `apps/server/src/infrastructure/runtime/contracts.ts`.
 // This file intentionally uses `import type` only and defines its own
 // minimal structural types so the workerd bundle never pulls
 // `ioredis` / `ws` / `pg` / `aws-sdk` via a static server import.

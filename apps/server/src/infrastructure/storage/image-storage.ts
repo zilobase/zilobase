@@ -5,7 +5,7 @@ import type {
 } from "@zilobase/runtime-ports";
 
 import type { RuntimeEnv } from "../../shared/config/config";
-import { getRuntimePorts } from "../runtime/runtime-adapter";
+import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 
 export type StoredImageObject = StoredObjectMetadata & { body: ReadableStream };
 export type StoredImageMetadata = StoredObjectMetadata;
