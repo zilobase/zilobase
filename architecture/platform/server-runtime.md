@@ -86,6 +86,12 @@ the resident Hocuspocus page room and Workers invoke the named page Durable
 Object. The command payload and routing are runtime-neutral, while socket
 hibernation remains a Worker host concern.
 
+Meeting recorder ownership and transcript/summary document RPCs use
+`Ports.meetings`. The Worker provider targets the meeting Durable Object for
+claim/transition/release/get/apply operations; serverful Node retains the
+database lease and resident Hocuspocus implementation. Meeting feature code no
+longer calls optional meeting methods on `ServerRuntimeAdapter`.
+
 Shared [HTTP input handling](../../apps/server/src/shared/http/auth.ts) authenticates before parsing required JSON objects, including the existing array acceptance. JSON schema routes can use [hono/validator](../../apps/server/src/shared/http/json.ts) so a missing `Content-Type: application/json` is 400 rather than an empty object. Migrated JSON POST routes decode with [parseJsonBody](../../apps/server/src/shared/http/schema-json.ts). Feature routes retain operation-specific validation and authorization.
 
 `app.onError` maps database-unavailable failures to 503, [HTTP-facing domain errors](../../apps/server/src/shared/http/route-error.ts) (status 4xx/5xx, `HTTPException`, Zod issues) to their existing JSON bodies, and everything else to a generic 500. Isolated feature-route tests attach the same mapper with `attachHttpRouteErrorHandler`. The JSON body limit is 32 MiB so mail compose can carry base64 attachments; oversized bodies return 413. The pure [SHA-256 encoder](../../apps/server/src/shared/crypto/sha256.ts) is shared by provider credentials and OAuth state hashing; encryption, credentials and provider lifecycle remain feature-owned.

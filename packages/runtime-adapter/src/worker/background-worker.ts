@@ -20,6 +20,7 @@ import {
 import { createWorkerJobs } from "./jobs";
 import { createWorkerTelemetry } from "./telemetry";
 import { createWorkerFanout } from "./fanout";
+import { createWorkerMeetings } from "./meetings";
 
 export type BackgroundWorkerOptions<Env extends WorkerEnvBindings = WorkerEnvBindings> = {
   reportError?: (env: Env, error: unknown, context: Record<string, unknown>) => void | Promise<void>;
@@ -55,6 +56,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
         await runWithRuntimePorts({
           jobs: createWorkerJobs(env),
           fanout: createWorkerFanout(env),
+          meetings: createWorkerMeetings(env),
           telemetry: telemetryFor(env),
         }, () =>
           runWithRuntimeAdapter(adapter, () =>
@@ -153,6 +155,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
         await runWithRuntimePorts({
           jobs: createWorkerJobs(env),
           fanout: createWorkerFanout(env),
+          meetings: createWorkerMeetings(env),
           telemetry: telemetryFor(env),
         }, () =>
           runWithRuntimeAdapter(adapter, () =>

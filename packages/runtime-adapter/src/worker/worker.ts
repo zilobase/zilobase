@@ -41,6 +41,7 @@ import { createWorkerScheduler } from "./scheduler";
 import { createWorkerLimits } from "./limits";
 import { createWorkerTelemetry } from "./telemetry";
 import { createWorkerFanout } from "./fanout";
+import { createWorkerMeetings } from "./meetings";
 
 export { routeCollaborationRequest } from "./features/collaboration/security";
 export type { CollaborationRouteEnv } from "./features/collaboration/security";
@@ -135,6 +136,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
       fanout: createWorkerFanout(env),
       lifecycle: createWorkerLifecycle(),
       limits: createWorkerLimits(env),
+      meetings: createWorkerMeetings(env),
       telemetry: createWorkerTelemetry({
         env,
         reportError: (_runtimeEnv, error, properties) => reportError(env, {

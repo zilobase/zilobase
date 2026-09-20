@@ -18,10 +18,12 @@ vi.mock("../../access", () => ({
   canAccessPageInWorkspace: async () => state.allowed,
 }));
 vi.mock("../../../infrastructure/runtime/runtime-adapter", () => ({
-  getRuntimeAdapter: () => ({
-    claimMeetingRecorderSession: state.claim,
-    transitionMeetingRecorderSession: state.transition,
-    releaseMeetingRecorderSession: state.release,
+  getRuntimePorts: () => ({
+    meetings: {
+      claim: state.claim,
+      transition: state.transition,
+      release: state.release,
+    },
   }),
 }));
 vi.mock("../../collaboration/service", () => ({

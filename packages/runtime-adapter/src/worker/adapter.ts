@@ -153,29 +153,6 @@ export function createWorkerAdapter(
         signal,
       });
     },
-    async claimMeetingRecorderSession({ env, ...input }) {
-      return meetingRoom(env, input.meetingId).claimRecorder(input);
-    },
-    async applyMeetingTranscriptUpdate({
-      draftItemId,
-      env,
-      meetingId,
-      segment,
-      userId,
-    }) {
-      const namespace = (env as WorkerEnvBindings).MEETING_COLLABORATION;
-      if (!namespace) throw new Error("MEETING_COLLABORATION binding is required");
-      await namespace
-        .getByName(`meeting:${meetingId}`)
-        .appendMeetingTranscript(draftItemId, meetingId, segment, userId);
-    },
-    async applyMeetingSummaryUpdate({ content, env, meetingId, userId }) {
-      const namespace = (env as WorkerEnvBindings).MEETING_COLLABORATION;
-      if (!namespace) throw new Error("MEETING_COLLABORATION binding is required");
-      await namespace
-        .getByName(`meeting:${meetingId}`)
-        .replaceMeetingSummary(content, meetingId, userId);
-    },
     getMeetingAudioWebSocketUrl(request) {
       const url = new URL(request.url);
       url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
@@ -197,34 +174,6 @@ export function createWorkerAdapter(
       url.pathname = "/navigation-realtime";
       url.search = "";
       return url.toString();
-    },
-    async getMeetingRecorderSession({ env, meetingId }) {
-      return meetingRoom(env, meetingId).getRecorderState();
-    },
-    async releaseMeetingRecorderSession({ env, leaseId, meetingId, userId }) {
-      if (!leaseId) throw new Error("Recorder lease is required");
-      await meetingRoom(env, meetingId).releaseRecorder({
-        leaseId,
-        meetingId,
-        userId,
-      });
-    },
-    async transitionMeetingRecorderSession({
-      action,
-      durationMs,
-      env,
-      leaseId,
-      meetingId,
-      userId,
-    }) {
-      if (!leaseId) throw new Error("Recorder lease is required");
-      return meetingRoom(env, meetingId).transitionRecorder({
-        action,
-        durationMs,
-        leaseId,
-        meetingId,
-        userId,
-      });
     },
     async sendEmail({ env, message }) {
       const bindings = env as WorkerEnvBindings;
@@ -290,12 +239,6 @@ export function createWorkerAdapter(
     },
     ...(options.selfHosted === false ? { selfHosted: false as const } : {}),
   };
-}
-
-function meetingRoom(env: Parameters<NonNullable<ServerRuntimeAdapter["getDatabaseUrl"]>>[0], meetingId: string) {
-  const namespace = (env as WorkerEnvBindings).MEETING_COLLABORATION;
-  if (!namespace) throw new Error("MEETING_COLLABORATION binding is required");
-  return namespace.getByName(`meeting:${meetingId}`);
 }
 
 function parseEmailAddress(value: OutboundEmailMessage["from"]): EmailAddress {

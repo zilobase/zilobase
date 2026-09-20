@@ -5,7 +5,7 @@ import { db } from "../../../infrastructure/database";
 import { meeting } from "../../../infrastructure/database/schema";
 
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
-import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
 import { clampMeetingDuration, getNextMeetingStatus } from "./meeting-state";
 import type {
   MeetingLifecycleAction,
@@ -38,7 +38,7 @@ export async function transitionMeeting(input: {
   }
 
   const runtime = input.env
-    ? getRuntimeAdapter().transitionMeetingRecorderSession
+    ? getRuntimePorts().meetings
     : undefined;
   if (runtime && input.action === "start") {
     try {
@@ -61,10 +61,9 @@ export async function transitionMeeting(input: {
     }
     const action = input.action;
     const state = await runRecorderRuntimeMutation(() =>
-      runtime({
+      runtime.transition({
         action,
         durationMs: input.durationMs,
-        env: input.env!,
         leaseId: input.leaseId,
         meetingId: existing.id,
         userId: input.userId,

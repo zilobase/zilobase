@@ -389,9 +389,9 @@ export async function replaceMeetingSummary(input: {
   meetingId: string;
   userId: string;
 }) {
-  const adapter = getRuntimeAdapter();
-  if (adapter.applyMeetingSummaryUpdate) {
-    await adapter.applyMeetingSummaryUpdate(input);
+  const meetings = getRuntimePorts().meetings;
+  if (meetings) {
+    await meetings.applySummary(input);
     return;
   }
   await replaceMeetingSummaryInHocuspocus(
@@ -407,9 +407,9 @@ export async function appendMeetingTranscript(input: {
   segment: MeetingTranscriptYjsSegment;
   userId: string;
 }) {
-  const adapter = getRuntimeAdapter();
-  if (adapter.applyMeetingTranscriptUpdate) {
-    await adapter.applyMeetingTranscriptUpdate(input);
+  const meetings = getRuntimePorts().meetings;
+  if (meetings) {
+    await meetings.applyTranscript(input);
     return;
   }
   await appendMeetingTranscriptInHocuspocus(

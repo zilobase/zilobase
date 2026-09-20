@@ -137,24 +137,6 @@ export type ServerRuntimeAdapter = {
     env: RuntimeEnv;
     pageId: string;
   }): Promise<{ messageId: string; threadId: string }>;
-  applyMeetingSummaryUpdate?(input: {
-    content: unknown;
-    env: RuntimeEnv;
-    meetingId: string;
-    userId: string;
-  }): Promise<void>;
-  applyMeetingTranscriptUpdate?(input: {
-    draftItemId?: string;
-    env: RuntimeEnv;
-    meetingId: string;
-    segment: MeetingTranscriptYjsSegment;
-    userId: string;
-  }): Promise<void>;
-  claimMeetingRecorderSession?(input: MeetingRecorderRuntimeInput & {
-    recorderImage?: string | null;
-    recorderName?: string;
-    workspaceId: string;
-  }): Promise<MeetingRecorderRuntimeState>;
   createImageStorage?(env: RuntimeEnv): ImageStorage | null;
   getCollaborationWebSocketUrl?(request: Request, env: RuntimeEnv): string;
   getDatabaseRealtimeWebSocketUrl?(
@@ -170,10 +152,6 @@ export type ServerRuntimeAdapter = {
   publishCalendarNotification?(input: { env: RuntimeEnv; event: CalendarNotificationEvent }): Promise<void>;
   getMailRealtimeWebSocketUrl?(request: Request, env: RuntimeEnv): string;
   getNavigationRealtimeWebSocketUrl?(request: Request, env: RuntimeEnv): string;
-  getMeetingRecorderSession?(input: {
-    env: RuntimeEnv;
-    meetingId: string;
-  }): Promise<MeetingRecorderRuntimeState | null>;
   getDatabaseUrl?(env: RuntimeEnv): string | null | undefined;
   getImageStorageMode?(env: RuntimeEnv): "s3" | "binding" | null | undefined;
   publishMailNotification?(input: {
@@ -184,20 +162,10 @@ export type ServerRuntimeAdapter = {
     env: RuntimeEnv;
     event: NavigationRealtimeInvalidateEvent;
   }): Promise<void>;
-  releaseMeetingRecorderSession?(
-    input: MeetingRecorderRuntimeInput,
-  ): Promise<void>;
   sendEmail?(input: {
     env: RuntimeEnv;
     message: OutboundEmailMessage;
   }): Promise<void>;
-  transitionMeetingRecorderSession?(input: MeetingRecorderRuntimeInput & {
-    action: Extract<
-      MeetingLifecycleAction,
-      "pause" | "resume" | "start" | "stop"
-    >;
-    durationMs?: number;
-  }): Promise<MeetingRecorderRuntimeState>;
   selfHosted?: false;
 };
 

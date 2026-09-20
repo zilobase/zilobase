@@ -11,7 +11,7 @@ import { db } from "../../../infrastructure/database";
 import { meeting, page } from "../../../infrastructure/database/schema";
 import { upsertPageItemPlacement } from "../../pages/placements";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
-import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
 import { isMeetingRecordingActive } from "./meeting-state";
 import type { MeetingPatch, MeetingStatus } from "../contracts/meeting-types";
 import { getMeetingForUser } from "./meeting-access";
@@ -163,10 +163,7 @@ export async function deleteMeeting(input: {
   );
 
   if (input.env) {
-    const runtimeState = await getRuntimeAdapter().getMeetingRecorderSession?.({
-      env: input.env,
-      meetingId: existing.id,
-    });
+    const runtimeState = await getRuntimePorts().meetings?.get(existing.id);
     if (
       runtimeState &&
       ["claimed", "recording", "paused", "finishing"].includes(

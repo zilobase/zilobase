@@ -60,6 +60,10 @@
       "types": "./src/worker/lifecycle.ts",
       "default": "./src/worker/lifecycle.ts"
     },
+    "./worker/meetings": {
+      "types": "./src/worker/meetings.ts",
+      "default": "./src/worker/meetings.ts"
+    },
     "./worker/limits": {
       "types": "./src/worker/limits.ts",
       "default": "./src/worker/limits.ts"

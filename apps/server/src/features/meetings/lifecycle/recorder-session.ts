@@ -8,7 +8,7 @@ import {
 } from "../../../infrastructure/database/schema";
 
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
-import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
 import {
   clampMeetingDuration,
   isMeetingRecordingActive,
@@ -35,7 +35,7 @@ export async function claimMeetingRecorder(input: {
   );
   const now = new Date();
   const runtime = input.env
-    ? getRuntimeAdapter().claimMeetingRecorderSession
+    ? getRuntimePorts().meetings
     : undefined;
 
   // A serverful process can disappear before its audio socket sends stop. The
@@ -103,8 +103,7 @@ export async function claimMeetingRecorder(input: {
   }
   if (runtime) {
     const claimed = await runRecorderRuntimeMutation(() =>
-      runtime({
-        env: input.env!,
+      runtime.claim({
         meetingId: existing.id,
         recorderImage: input.recorderImage,
         recorderName: input.recorderName,
@@ -212,7 +211,7 @@ export async function releaseMeetingRecorder(input: {
   userId: string;
 }) {
   const runtime = input.env
-    ? getRuntimeAdapter().releaseMeetingRecorderSession
+    ? getRuntimePorts().meetings
     : undefined;
   if (runtime) {
     const existing = await getMeetingForUser(
@@ -221,8 +220,7 @@ export async function releaseMeetingRecorder(input: {
       "edit",
     );
     await runRecorderRuntimeMutation(() =>
-      runtime({
-        env: input.env!,
+      runtime.release({
         leaseId: input.leaseId,
         meetingId: input.meetingId,
         userId: input.userId,
