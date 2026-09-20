@@ -29,6 +29,7 @@ const dependencyImages = [
   "quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z",
   "quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z",
   "axllent/mailpit:v1.27.8",
+  "valkey/valkey:8-alpine",
 ];
 
 export async function startKubernetes(target = "community", options = {}) {
@@ -121,6 +122,7 @@ async function deployKubernetesProfile(options = {}) {
     S3_ACCESS_KEY_ID: "zilobase",
     S3_SECRET_ACCESS_KEY: secrets.COMMUNITY_MINIO_PASSWORD,
     SMTP_PASSWORD: "",
+    REALTIME_REDIS_URL: `redis://valkey.${profile.namespace}.svc.cluster.local:6379`,
   });
   await helmDeploy(image);
 }
@@ -288,7 +290,7 @@ async function applySecret(namespace, name, values) {
 }
 
 async function waitForDependencies(namespace) {
-  for (const deployment of ["postgres", "minio", "mailpit"]) {
+  for (const deployment of ["postgres", "minio", "mailpit", "valkey"]) {
     await run("kubectl", [
       "-n", namespace, "rollout", "status", `deployment/${deployment}`, "--timeout=5m",
     ]);
