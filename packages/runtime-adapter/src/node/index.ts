@@ -30,6 +30,7 @@ export { createNodeLimits } from "./limits";
 export { createNodeTelemetry, type NodeTelemetryOptions } from "./telemetry";
 export { createNodeRoomHost, type NodeRoomHost, type NodeRoomPeer } from "./room-host";
 export { createNodeRoomState } from "./room-state";
+export { createNodeFanout } from "./fanout";
 export {
   createNodeBackgroundCoordinator,
   publishNodeBackgroundNotification,

@@ -119,7 +119,6 @@ export type WorkerEnvBindings = Record<string, unknown> & {
 };
 
 export type WorkerAdapterOptions = {
-  publishDatabaseMutations?: boolean;
   /** Pass `false` for hosted compositions. Defaults to self-hosted (absent). */
   selfHosted?: boolean;
 };
@@ -248,20 +247,6 @@ export function createWorkerAdapter(
         from: parseEmailAddress(message.from),
       });
     },
-    ...(options.publishDatabaseMutations
-      ? {
-          async publishDatabaseMutation({ env, event }) {
-            const namespace = (env as WorkerEnvBindings)
-              .DATABASE_COLLABORATION;
-
-            if (!namespace) {
-              throw new Error("DATABASE_COLLABORATION binding is required");
-            }
-
-            await namespace.getByName(event.databaseId).publishMutation(event);
-          },
-        } satisfies Pick<ServerRuntimeAdapter, "publishDatabaseMutation">
-      : {}),
     async publishCalendarNotification({ env, event }) {
       if (!isCalendarFeatureEnabled(env, event.workspaceId)) return;
       const namespace = (env as WorkerEnvBindings).CALENDAR_NOTIFICATION_ROOM;

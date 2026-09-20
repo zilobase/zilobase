@@ -7,7 +7,7 @@ import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
-import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
 import { databaseMutationEventFromJournalRow } from "./journal-event";
 
 const DELIVERY_LEASE_MS = 2 * 60 * 1000;
@@ -18,9 +18,9 @@ export async function drainDatabaseRealtimeOutbox(
   options?: { database?: typeof db; limit?: number; outboxId?: string },
 ) {
   const executor = options?.database ?? db;
-  const publish = getRuntimeAdapter().publishDatabaseMutation;
+  const fanout = getRuntimePorts().fanout;
 
-  if (!publish) {
+  if (!fanout) {
     recordDatabaseGauge("outbox_backlog", 0);
     recordDatabaseGauge("outbox_oldest_age_ms", 0);
     return {
@@ -84,10 +84,8 @@ export async function drainDatabaseRealtimeOutbox(
       if (!journalEvent) {
         throw new Error("Database mutation journal event is unavailable");
       }
-      await publish({
-        env,
-        event: databaseMutationEventFromJournalRow(journalEvent),
-      });
+      const event = databaseMutationEventFromJournalRow(journalEvent);
+      await fanout.publish(`db:${event.databaseId}`, event);
       deleteIds.push(entry.id);
       delivered += 1;
     } catch (error) {

@@ -28,6 +28,7 @@ export { createWorkerLimits, type WorkerLimitsEnv } from "./limits";
 export { createWorkerTelemetry, type WorkerTelemetryOptions } from "./telemetry";
 export { createWorkerRoomHost, type WorkerRoomHost, type WorkerRoomPeer } from "./room-host";
 export { createWorkerRoomState } from "./room-state";
+export { createWorkerFanout } from "./fanout";
 export { ChatAgent } from "./features/chat/chat-agent";
 export { PageCollaborationRoom } from "./features/collaboration/page-collaboration-room";
 export { MeetingCollaborationRoom } from "./features/collaboration/meeting-collaboration-room";

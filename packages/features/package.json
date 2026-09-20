@@ -210,6 +210,10 @@
       "types": "./src/databases/contracts.ts",
       "default": "./src/databases/contracts.ts"
     },
+    "./databases/realtime/room-protocol": {
+      "types": "./src/databases/realtime/room-protocol.ts",
+      "default": "./src/databases/realtime/room-protocol.ts"
+    },
     "./mail/query-contracts": {
       "types": "./src/mail/query-contracts.ts",
       "default": "./src/mail/query-contracts.ts"

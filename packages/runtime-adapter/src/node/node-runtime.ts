@@ -45,6 +45,7 @@ import { createNodeJobs } from "./jobs";
 import { createNodeScheduler } from "./scheduler";
 import { createNodeLimits } from "./limits";
 import { createNodeTelemetry } from "./telemetry";
+import { createNodeFanout } from "./fanout";
 
 export type NodeRuntimeOptions = {
   loadApp: (
@@ -141,6 +142,16 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     backgroundAdminServer: ReturnType<typeof createBackgroundAdminServer> | null;
   };
   let started: StartedRuntime | null = null;
+  ports.fanout = createNodeFanout(realtimeBus, async (channel, payload) => {
+    const state = await ensureStarted();
+    const separator = channel.indexOf(":");
+    const kind = channel.slice(0, separator);
+    if (kind === "db") return state.databaseRealtime.publishMutation(payload as never);
+    if (kind === "calendar") return state.calendarRealtime.publishNotification(payload as never);
+    if (kind === "mail") return state.mailRealtime.publishNotification(payload as never);
+    if (kind === "navigation") return state.navigationRealtime.publish(payload as never);
+    throw new Error(`Unsupported fanout channel: ${channel}`);
+  });
 
   async function ensureStarted(): Promise<StartedRuntime> {
     if (started) return started;
@@ -169,8 +180,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
         createNodeMailer(mailEnv).send(message)),
       fetchAutomationWebhook: baseAdapter.fetchAutomationWebhook ?? fetchPinnedWebhook,
       fetchMcpRequest: baseAdapter.fetchMcpRequest ?? fetchPinnedMcp,
-      publishDatabaseMutation: ({ event }) =>
-        databaseRealtime.publishMutation(event),
       publishCalendarNotification: ({ event }) => calendarRealtime.publishNotification(event),
       publishMailNotification: ({ event }) => mailRealtime.publishNotification(event),
       publishNavigationInvalidation: ({ event }) => navigationRealtime.publish(event),

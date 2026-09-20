@@ -1,4 +1,3 @@
-import type { DatabaseMutationEventV2 } from "@zilobase/features/databases/contracts";
 import type { NavigationRealtimeInvalidateEvent } from "@zilobase/features/pages/navigation-realtime";
 
 // Canonical runtime contracts for `@zilobase/runtime-adapter`.
@@ -183,10 +182,6 @@ export type ServerRuntimeAdapter = {
   }): Promise<MeetingRecorderRuntimeState | null>;
   getDatabaseUrl?(env: RuntimeEnv): string | null | undefined;
   getImageStorageMode?(env: RuntimeEnv): "s3" | "binding" | null | undefined;
-  publishDatabaseMutation?(input: {
-    env: RuntimeEnv;
-    event: DatabaseMutationEventV2;
-  }): Promise<void>;
   publishMailNotification?(input: {
     env: RuntimeEnv;
     event: MailNotificationEvent;

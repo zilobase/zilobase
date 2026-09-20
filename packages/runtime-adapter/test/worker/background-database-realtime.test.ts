@@ -30,6 +30,7 @@ vi.mock("@zilobase/server/adapter-api", async (importOriginal) => {
 import { createBackgroundWorker } from "../../src/worker/background-worker";
 import { createWorkerAdapter } from "../../src/worker/adapter";
 import { createWorkerJobs } from "../../src/worker/jobs";
+import { getRuntimePorts } from "../../src/context";
 
 const backgroundWorker = createBackgroundWorker();
 
@@ -81,7 +82,7 @@ describe("database realtime queue delivery", () => {
     expect(apiAdapter.publishDatabaseMutation).toBeUndefined();
 
     mocks.processTask.mockImplementationOnce(async () => {
-      await mocks.adapter?.publishDatabaseMutation({ env, event });
+      await getRuntimePorts().fanout?.publish(`db:${event.databaseId}`, event);
       return { outcome: "completed" };
     });
     const message = queueMessage(queued[0]);

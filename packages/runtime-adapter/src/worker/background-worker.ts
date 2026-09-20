@@ -19,6 +19,7 @@ import {
 } from "./adapter";
 import { createWorkerJobs } from "./jobs";
 import { createWorkerTelemetry } from "./telemetry";
+import { createWorkerFanout } from "./fanout";
 
 export type BackgroundWorkerOptions<Env extends WorkerEnvBindings = WorkerEnvBindings> = {
   reportError?: (env: Env, error: unknown, context: Record<string, unknown>) => void | Promise<void>;
@@ -38,7 +39,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
   queue(batch: MessageBatch<unknown>, env: Env): Promise<void>;
   scheduled(controller: ScheduledController, env: Env): Promise<void>;
 } {
-  const adapter = createWorkerAdapter({ publishDatabaseMutations: true });
+  const adapter = createWorkerAdapter();
   setRuntimeAdapter(adapter);
 
   const telemetryFor = (env: Env) => createWorkerTelemetry({
@@ -53,6 +54,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
         const expectedLane = queueLanes[batch.queue];
         await runWithRuntimePorts({
           jobs: createWorkerJobs(env),
+          fanout: createWorkerFanout(env),
           telemetry: telemetryFor(env),
         }, () =>
           runWithRuntimeAdapter(adapter, () =>
@@ -150,6 +152,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
       try {
         await runWithRuntimePorts({
           jobs: createWorkerJobs(env),
+          fanout: createWorkerFanout(env),
           telemetry: telemetryFor(env),
         }, () =>
           runWithRuntimeAdapter(adapter, () =>

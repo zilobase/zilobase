@@ -52,6 +52,10 @@
       "types": "./src/worker/jobs.ts",
       "default": "./src/worker/jobs.ts"
     },
+    "./worker/fanout": {
+      "types": "./src/worker/fanout.ts",
+      "default": "./src/worker/fanout.ts"
+    },
     "./worker/lifecycle": {
       "types": "./src/worker/lifecycle.ts",
       "default": "./src/worker/lifecycle.ts"

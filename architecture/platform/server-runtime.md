@@ -73,6 +73,13 @@ adapt peers into the same controller for ping/pong, expiry pruning, validation,
 recipient selection, and broadcast; authentication and wire-specific payload
 encoding remain small composition options.
 
+Database mutation delivery now targets `Ports.fanout` with `db:<databaseId>`
+channels. Node fanout reaches the local room and Redis-backed cross-instance
+topology; Worker fanout invokes the database Durable Object and intentionally
+uses a no-op subscription because the object is the single writer. JSON frame
+validation, presence validation/serialization, and message-rate windows are
+one feature-owned protocol module shared by both room hosts.
+
 Shared [HTTP input handling](../../apps/server/src/shared/http/auth.ts) authenticates before parsing required JSON objects, including the existing array acceptance. JSON schema routes can use [hono/validator](../../apps/server/src/shared/http/json.ts) so a missing `Content-Type: application/json` is 400 rather than an empty object. Migrated JSON POST routes decode with [parseJsonBody](../../apps/server/src/shared/http/schema-json.ts). Feature routes retain operation-specific validation and authorization.
 
 `app.onError` maps database-unavailable failures to 503, [HTTP-facing domain errors](../../apps/server/src/shared/http/route-error.ts) (status 4xx/5xx, `HTTPException`, Zod issues) to their existing JSON bodies, and everything else to a generic 500. Isolated feature-route tests attach the same mapper with `attachHttpRouteErrorHandler`. The JSON body limit is 32 MiB so mail compose can carry base64 attachments; oversized bodies return 413. The pure [SHA-256 encoder](../../apps/server/src/shared/crypto/sha256.ts) is shared by provider credentials and OAuth state hashing; encryption, credentials and provider lifecycle remain feature-owned.

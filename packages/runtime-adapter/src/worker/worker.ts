@@ -40,6 +40,7 @@ import { createWorkerLifecycle } from "./lifecycle";
 import { createWorkerScheduler } from "./scheduler";
 import { createWorkerLimits } from "./limits";
 import { createWorkerTelemetry } from "./telemetry";
+import { createWorkerFanout } from "./fanout";
 
 export { routeCollaborationRequest } from "./features/collaboration/security";
 export type { CollaborationRouteEnv } from "./features/collaboration/security";
@@ -131,6 +132,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
   const portsFor = (env: Env, execution?: unknown): Partial<Ports> => {
     runtimePorts ??= {
       jobs: createWorkerJobs(env),
+      fanout: createWorkerFanout(env),
       lifecycle: createWorkerLifecycle(),
       limits: createWorkerLimits(env),
       telemetry: createWorkerTelemetry({
