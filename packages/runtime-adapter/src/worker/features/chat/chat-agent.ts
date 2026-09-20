@@ -1,4 +1,10 @@
 import { AIChatAgent, type ChatResponseResult } from "@cloudflare/ai-chat";
+import {
+  buildOwnedChatAgentRequest,
+  haveSameChatMessageOrder,
+  mergeCanonicalChatMessages,
+  parseChatAgentInstanceName,
+} from "@zilobase/features/ai-chat/agent-room";
 import type { UIMessage } from "ai";
 import {
   coerceAiChatRequestBody,
@@ -10,7 +16,6 @@ import {
   touchAiChatThreadActivity,
   type AppBindings,
 } from "@zilobase/server/adapter-api";
-import { parseChatAgentInstanceName } from "./chat-agent-identity";
 
 type ChatAgentEnv = Cloudflare.Env &
   Omit<AppBindings["Bindings"], "IMAGE_BUCKET"> & {
@@ -58,16 +63,12 @@ export class ChatAgent extends AIChatAgent<ChatAgentEnv> {
     onFinish: Parameters<AIChatAgent<ChatAgentEnv>["onChatMessage"]>[0],
     options?: Parameters<AIChatAgent<ChatAgentEnv>["onChatMessage"]>[1],
   ) {
-    const identity = this.identity;
-    const requestBody = {
-      ...coerceAiChatRequestBody(options?.body),
-      threadId: identity?.threadId ?? null,
-      userId: identity?.userId ?? null,
-      workspaceId: identity?.workspaceId ?? null,
-    };
-    const threadId = identity?.threadId ?? null;
+    const requestBody = buildOwnedChatAgentRequest(
+      this.name,
+      coerceAiChatRequestBody(options?.body),
+    );
 
-    if (!identity || !threadId) {
+    if (!requestBody) {
       return Response.json(
         { error: "Chat agent identity is invalid." },
         { status: 404 },
@@ -76,7 +77,7 @@ export class ChatAgent extends AIChatAgent<ChatAgentEnv> {
 
     const hydratedMessages = await this.mergeWithCanonicalMessages(this.messages);
 
-    if (!haveSameMessageOrder(hydratedMessages, this.messages)) {
+    if (!haveSameChatMessageOrder(hydratedMessages, this.messages)) {
       await super.persistMessages(hydratedMessages, [], {
         _deleteStaleRows: true,
       });
@@ -119,26 +120,4 @@ export class ChatAgent extends AIChatAgent<ChatAgentEnv> {
   private get threadId() {
     return this.identity?.threadId ?? null;
   }
-}
-
-export function mergeCanonicalChatMessages(
-  canonicalMessages: readonly UIMessage[],
-  localMessages: readonly UIMessage[],
-) {
-  const merged = new Map(canonicalMessages.map((message) => [message.id, message]));
-
-  for (const message of localMessages) {
-    merged.set(message.id, message);
-  }
-
-  return [...merged.values()];
-}
-
-function haveSameMessageOrder(
-  left: readonly UIMessage[],
-  right: readonly UIMessage[],
-) {
-  return left.length === right.length && left.every(
-    (message, index) => message.id === right[index]?.id,
-  );
 }

@@ -19,10 +19,10 @@ import {
   type ZilobaseEditionExtension,
 } from "@zilobase/server/adapter-api";
 import type { AppPolicy, Ports } from "@zilobase/runtime-ports";
+import { parseChatAgentInstanceName } from "@zilobase/features/ai-chat/agent-room";
 
 import { CalendarNotificationRoom } from "./features/calendar-realtime/calendar-notification-room";
 import { routeCalendarRealtimeRequest, type CalendarRealtimeRouteEnv } from "./features/calendar-realtime/security";
-import { parseChatAgentInstanceName } from "./features/chat/chat-agent-identity";
 import { PageCollaborationRoom } from "./features/collaboration/page-collaboration-room";
 import { MeetingCollaborationRoom } from "./features/collaboration/meeting-collaboration-room";
 import { routeCollaborationRequest, type CollaborationRouteEnv } from "./features/collaboration/security";

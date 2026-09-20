@@ -36,9 +36,9 @@ vi.mock("@zilobase/server/adapter-api", () => ({
 }));
 
 import {
-  ChatAgent,
   mergeCanonicalChatMessages,
-} from "../../src/worker/features/chat/chat-agent";
+} from "@zilobase/features/ai-chat/agent-room";
+import { ChatAgent } from "../../src/worker/features/chat/chat-agent";
 
 function createAgent() {
   return new ChatAgent(
