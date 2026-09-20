@@ -22,7 +22,7 @@ export type RoomControllerHandlers<Attachment = unknown> = {
 
 export function createRoomController<Attachment = unknown>(
   roomId: string,
-  ports: RoomPorts<Attachment>,
+  ports: Pick<RoomPorts<Attachment>, "host" | "telemetry">,
   handlers: RoomControllerHandlers<Attachment>,
 ): RoomController {
   let started = false;

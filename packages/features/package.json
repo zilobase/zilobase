@@ -309,6 +309,10 @@
     "./runtime/room-kernel": {
       "types": "./src/runtime/room-kernel.ts",
       "default": "./src/runtime/room-kernel.ts"
+    },
+    "./runtime/notification-room": {
+      "types": "./src/runtime/notification-room.ts",
+      "default": "./src/runtime/notification-room.ts"
     }
   }
 }

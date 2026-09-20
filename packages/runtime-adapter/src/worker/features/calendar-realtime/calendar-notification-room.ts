@@ -7,15 +7,43 @@ import {
 
 import type { WorkerEnvBindings } from "../../adapter";
 import { readCalendarRealtimeClaims } from "./security";
+import { createNotificationRoom } from "@zilobase/features/runtime/notification-room";
+import { createWorkerRoomHost, type WorkerRoomHost } from "../../room-host";
+import { createWorkerTelemetry } from "../../telemetry";
 
 type SocketAttachment = { claims: CalendarRealtimeTicketClaims };
 const PING = JSON.stringify({ type: "calendar.ping" });
 const PONG = JSON.stringify({ type: "calendar.pong" });
 
 export class CalendarNotificationRoom extends DurableObject<WorkerEnvBindings> {
+  private readonly host: WorkerRoomHost<SocketAttachment>;
+  private readonly room: ReturnType<typeof createNotificationRoom<CalendarRealtimeTicketClaims, CalendarNotificationEvent>>;
+
   constructor(ctx: DurableObjectState, env: WorkerEnvBindings) {
     super(ctx, env);
-
+    this.host = createWorkerRoomHost(ctx);
+    this.room = createNotificationRoom("calendar", {
+      host: this.host,
+      telemetry: createWorkerTelemetry({ env }),
+    }, {
+      encode: (event) => JSON.stringify({
+        bindingId: event.bindingId,
+        calendarId: event.calendarId,
+        generation: event.generation,
+        revision: event.revision,
+        type: "calendar.invalidate",
+        workspaceId: event.workspaceId,
+      }),
+      errorReason: "Calendar realtime WebSocket error",
+      expiredReason: "Calendar realtime ticket expired",
+      matches: (claims, event) => claims.bindingId === event.bindingId &&
+        claims.userId === event.userId && claims.workspaceId === event.workspaceId &&
+        claims.accountId === event.accountId,
+      ping: PING,
+      pong: PONG,
+      validate: isValidNotification,
+    });
+    void this.room.controller.start();
   }
 
   async fetch(request: Request) {
@@ -31,9 +59,9 @@ export class CalendarNotificationRoom extends DurableObject<WorkerEnvBindings> {
     this.pruneExpiredSockets();
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
-    server.serializeAttachment({ claims } satisfies SocketAttachment);
-    this.ctx.acceptWebSocket(server);
-    server.send(JSON.stringify({ type: "calendar.ready" }));
+    const peer = this.host.accept(crypto.randomUUID(), request, server);
+    peer.setAttachment({ claims });
+    this.host.send(peer, JSON.stringify({ type: "calendar.ready" }));
     return new Response(null, {
       headers: { "Sec-WebSocket-Protocol": CALENDAR_REALTIME_PROTOCOL },
       status: 101,
@@ -42,58 +70,30 @@ export class CalendarNotificationRoom extends DurableObject<WorkerEnvBindings> {
   }
 
   publishNotification(event: CalendarNotificationEvent) {
-    if (
-      !event ||
-      typeof event.bindingId !== "string" ||
-      typeof event.calendarId !== "string" || !Number.isSafeInteger(event.generation) ||
-      !Number.isSafeInteger(event.revision) ||
-      event.revision < 0
-    ) throw new Error("Invalid calendar notification event");
-    this.pruneExpiredSockets();
-    const payload = JSON.stringify({
-      bindingId: event.bindingId,
-      calendarId: event.calendarId,
-      workspaceId: event.workspaceId,
-      generation: event.generation,
-      revision: event.revision,
-      type: "calendar.invalidate",
-    });
-    for (const socket of this.ctx.getWebSockets()) {
-      const attachment = readAttachment(socket);
-      if (attachment?.claims.bindingId === event.bindingId && attachment.claims.userId === event.userId && attachment.claims.workspaceId === event.workspaceId && attachment.claims.accountId === event.accountId) socket.send(payload);
-    }
+    this.room.publish(event);
   }
 
-  webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
-    if (typeof message !== "string" || message.length > 4_096) {
-      socket.close(1003, "Invalid calendar realtime message");
-      return;
-    }
-    const attachment = readAttachment(socket);
-    if (!attachment || attachment.claims.exp <= Date.now()) {
-      socket.close(1008, "Calendar realtime ticket expired");
-      return;
-    }
-    if (message === PING) socket.send(PONG);
-    if (message !== PING) socket.close(1003, "Unsupported calendar realtime message");
+  async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
+    await this.host.messageEvent(socket, message);
   }
 
-  webSocketClose() {}
+  async webSocketClose(socket: WebSocket, code: number, reason: string, wasClean: boolean) {
+    await this.host.closeEvent(socket, { code, reason, wasClean });
+  }
 
-  webSocketError(socket: WebSocket) {
-    socket.close(1011, "Calendar realtime WebSocket error");
+  async webSocketError(socket: WebSocket, error: unknown) {
+    await this.host.errorEvent(socket, error);
   }
 
   private pruneExpiredSockets() {
-    for (const socket of this.ctx.getWebSockets()) {
-      if ((readAttachment(socket)?.claims.exp ?? 0) <= Date.now()) {
-        socket.close(1008, "Calendar realtime ticket expired");
-      }
-    }
+    this.room.pruneExpired();
   }
 }
 
-function readAttachment(socket: WebSocket) {
-  const value = socket.deserializeAttachment() as SocketAttachment | null;
-  return value?.claims ? value : null;
+function isValidNotification(event: unknown): event is CalendarNotificationEvent {
+  if (!event || typeof event !== "object") return false;
+  const value = event as Record<string, unknown>;
+  return typeof value.bindingId === "string" && typeof value.calendarId === "string" &&
+    Number.isSafeInteger(value.generation) && Number.isSafeInteger(value.revision) &&
+    (value.revision as number) >= 0;
 }

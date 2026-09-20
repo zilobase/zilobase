@@ -46,23 +46,34 @@ export function createWorkerRoomHost<Attachment = unknown>(
     if (!peer) throw new Error("WebSocket was not accepted by this room host");
     return peer;
   };
+  const register = (
+    id: string,
+    request: Request,
+    socket: HibernatableSocket,
+    accept: boolean,
+  ) => {
+    let attachment = (socket.deserializeAttachment?.() ?? null) as Attachment | null;
+    const peer: WorkerRoomPeer<Attachment> = {
+      id,
+      request,
+      socket,
+      getAttachment: () => attachment,
+      setAttachment(value) {
+        attachment = value;
+        socket.serializeAttachment?.(value);
+      },
+    };
+    bySocket.set(socket, peer);
+    peers.add(peer);
+    if (accept) context.acceptWebSocket(socket);
+    return peer;
+  };
+  context.getWebSockets().forEach((socket, index) => {
+    register(`restored-${index}`, new Request("https://room.invalid"), socket, false);
+  });
   return {
     accept(id, request, socket) {
-      let attachment = (socket.deserializeAttachment?.() ?? null) as Attachment | null;
-      const peer: WorkerRoomPeer<Attachment> = {
-        id,
-        request,
-        socket,
-        getAttachment: () => attachment,
-        setAttachment(value) {
-          attachment = value;
-          socket.serializeAttachment?.(value);
-        },
-      };
-      bySocket.set(socket, peer);
-      peers.add(peer);
-      context.acceptWebSocket(socket);
-      return peer;
+      return register(id, request, socket, true);
     },
     async closeEvent(socket, event) {
       const peer = peerFor(socket);

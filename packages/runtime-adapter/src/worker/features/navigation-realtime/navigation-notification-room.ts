@@ -7,15 +7,36 @@ import {
 
 import type { WorkerEnvBindings } from "../../adapter";
 import { readNavigationRealtimeClaims } from "./security";
+import { createNotificationRoom } from "@zilobase/features/runtime/notification-room";
+import { createWorkerRoomHost, type WorkerRoomHost } from "../../room-host";
+import { createWorkerTelemetry } from "../../telemetry";
 
 type SocketAttachment = { claims: NavigationRealtimeTicketClaims };
 const PING = JSON.stringify({ type: "realtime.ping" });
 const PONG = JSON.stringify({ type: "realtime.pong" });
 
 export class NavigationNotificationRoom extends DurableObject<WorkerEnvBindings> {
+  private readonly host: WorkerRoomHost<SocketAttachment>;
+  private readonly room: ReturnType<typeof createNotificationRoom<NavigationRealtimeTicketClaims, NavigationRealtimeInvalidateEvent>>;
+
   constructor(ctx: DurableObjectState, env: WorkerEnvBindings) {
     super(ctx, env);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PING, PONG));
+    this.host = createWorkerRoomHost(ctx);
+    this.room = createNotificationRoom("navigation", {
+      host: this.host,
+      telemetry: createWorkerTelemetry({ env }),
+    }, {
+      encode: (event) => JSON.stringify(event),
+      errorReason: "Navigation realtime WebSocket error",
+      expiredReason: "Navigation realtime ticket expired",
+      invalidEventReason: "Invalid navigation invalidation event",
+      matches: (claims, event) => claims.workspaceId === event.workspaceId,
+      ping: PING,
+      pong: PONG,
+      validate: isValidEvent,
+    });
+    void this.room.controller.start();
   }
 
   async fetch(request: Request) {
@@ -33,9 +54,9 @@ export class NavigationNotificationRoom extends DurableObject<WorkerEnvBindings>
     this.pruneExpiredSockets();
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
-    server.serializeAttachment({ claims } satisfies SocketAttachment);
-    this.ctx.acceptWebSocket(server);
-    server.send(JSON.stringify({
+    const peer = this.host.accept(crypto.randomUUID(), request, server);
+    peer.setAttachment({ claims });
+    this.host.send(peer, JSON.stringify({
       protocolVersion: 1,
       sessionId: claims.sessionId,
       type: "navigation.ready",
@@ -49,49 +70,24 @@ export class NavigationNotificationRoom extends DurableObject<WorkerEnvBindings>
   }
 
   publishInvalidation(event: NavigationRealtimeInvalidateEvent) {
-    if (!isValidEvent(event)) throw new Error("Invalid navigation invalidation event");
-    this.pruneExpiredSockets();
-    const payload = JSON.stringify(event);
-    for (const socket of this.ctx.getWebSockets()) {
-      if (readAttachment(socket)?.claims.workspaceId === event.workspaceId) {
-        socket.send(payload);
-      }
-    }
+    this.room.publish(event);
   }
 
-  webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
-    if (typeof message !== "string" || message.length > 4_096) {
-      socket.close(1003, "Invalid navigation realtime message");
-      return;
-    }
-    const attachment = readAttachment(socket);
-    if (!attachment || attachment.claims.exp <= Date.now()) {
-      socket.close(1008, "Navigation realtime ticket expired");
-      return;
-    }
-    if (message !== PING) {
-      socket.close(1003, "Unsupported navigation realtime message");
-    }
+  async webSocketMessage(socket: WebSocket, message: string | ArrayBuffer) {
+    await this.host.messageEvent(socket, message);
   }
 
-  webSocketClose() {}
+  async webSocketClose(socket: WebSocket, code: number, reason: string, wasClean: boolean) {
+    await this.host.closeEvent(socket, { code, reason, wasClean });
+  }
 
-  webSocketError(socket: WebSocket) {
-    socket.close(1011, "Navigation realtime WebSocket error");
+  async webSocketError(socket: WebSocket, error: unknown) {
+    await this.host.errorEvent(socket, error);
   }
 
   private pruneExpiredSockets() {
-    for (const socket of this.ctx.getWebSockets()) {
-      if ((readAttachment(socket)?.claims.exp ?? 0) <= Date.now()) {
-        socket.close(1008, "Navigation realtime ticket expired");
-      }
-    }
+    this.room.pruneExpired();
   }
-}
-
-function readAttachment(socket: WebSocket) {
-  const value = socket.deserializeAttachment() as SocketAttachment | null;
-  return value?.claims ? value : null;
 }
 
 function isValidEvent(value: unknown): value is NavigationRealtimeInvalidateEvent {
