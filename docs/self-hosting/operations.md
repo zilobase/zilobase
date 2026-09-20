@@ -13,7 +13,7 @@ docker compose --env-file .env.selfhost -f docker-compose.yml -f docker-compose.
 ```
 
 Use `/health` for process liveness and `/ready` for Postgres, object-storage,
-and configured realtime-broker readiness. Follow logs without printing the environment:
+and required realtime-broker readiness. Follow logs without printing the environment:
 
 ```sh
 docker compose --env-file .env.selfhost logs --tail 200 --follow zilobase
@@ -36,17 +36,19 @@ environment-variable table and rollout checks are in
 [architecture map](../../architecture/README.md) to inspect current capability enforcement.
 
 For Helm, run `helm lint`, render the proposed values, and use
-`helm upgrade --install --wait`. Keep `replicaCount: 1` unless
-`realtime.enabled` points at a healthy operator-managed Valkey or Redis Secret;
-the chart rejects an unsafe multi-replica configuration. Inspect the migration
-hook and `/ready` before ending the maintenance window.
+`helm upgrade --install --wait`. The `realtime.existingSecret` must provide a
+reachable Redis/Valkey URL for every replica; the chart rejects an empty Secret
+reference. Inspect the migration hook and `/ready` before ending the
+maintenance window.
 
 ## Database realtime and background roles
 
-The default single-process `all` role can deliver database events without
-Redis. Split `api` and `worker` roles, or more than one API replica, require the
-same reachable `REALTIME_REDIS_URL` in every process. Treat `/ready` failure in
-that topology as a deployment failure; do not bypass the broker check.
+Every Node role, including the default single-process `all` role, requires a
+valid and reachable `REALTIME_REDIS_URL`. Use the same endpoint for split `api`
+and `worker` roles and all replicas. Missing or invalid configuration stops
+boot. A live broker outage returns 503 from `/ready` while the process stays up
+and reconnects; investigate `realtime_redis_error`, restore the broker, and
+confirm readiness recovers without restarting the application.
 
 Worker-only processes expose `/health`, `/ready`, and `/metrics` on their
 background admin listener. Monitor database commit/enqueue latency, ordering
@@ -107,9 +109,9 @@ application image without restoring the matching database backup.
 The bundled Node server runs Gmail watch renewal, full-mailbox indexing, and the
 database-sync outbox in its maintenance loop. Custom runtime adapters
 must schedule the exported `renewGmailWatches`, `advancePendingMailIndexes`, and
-`drainMailDatabaseSyncOutbox` functions at least once per minute. Multi-replica
-deployments require the shared realtime broker so workspace/binding-scoped mail
-events reach the correct realtime room.
+`drainMailDatabaseSyncOutbox` functions at least once per minute. Every Node
+deployment uses the shared realtime broker so workspace/binding-
+scoped mail events reach the correct realtime room.
 
 Monitor the non-PII `mail.watch_health`, `mail.index`, `mail.database_sync`,
 `mail.webhook_rejection`, `mail.quota_failure`, `mail.cursor_reset`, and

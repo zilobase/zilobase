@@ -30,9 +30,10 @@ A failed publication does not fail the HTTP mutation; the outbox records the
 attempt and the scheduled drainer retries with bounded exponential backoff.
 Delivery is at least once, so duplicate and reordered invalidations are safe.
 
-Node keeps only rooms for workspaces with connected clients. Redis/Valkey is
-used for cross-process fanout when configured. Without that bus, realtime is
-single-process and reconnect reconciliation remains the safety net.
+Node keeps only rooms for workspaces with connected clients. Every Node role
+uses Redis/Valkey fanout, including a single `all` process. Local publication
+happens once before Redis publication, and the bus ignores its own instance
+envelope; reconnect reconciliation remains the safety net for missed events.
 
 Hosted transports are supplied by deployment adapters outside this repository.
 They preserve the same authenticated workspace-room contract and generic
@@ -55,7 +56,7 @@ responses through their existing cache paths.
    `navigation_realtime_*` structured logs.
 3. Deploy the Node or hosted-adapter transport and verify workspace isolation.
 4. Enable `VITE_FEATURE_NAVIGATION_REALTIME` for a client cohort, then expand.
-5. Enable multi-node Node deployments only after Redis/Valkey fanout is proven.
+5. Verify Redis/Valkey fanout and readiness recovery before enabling traffic.
 
 Rollback by disabling `VITE_FEATURE_NAVIGATION_REALTIME` and, if necessary,
 removing the transport route from traffic. HTTP writes and reads continue to

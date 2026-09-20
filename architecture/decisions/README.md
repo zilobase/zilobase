@@ -10,3 +10,4 @@ Record a lasting decision when its rejected alternatives explain the implementat
 - [Query-hashed database windows](0006-query-hashed-database-windows.md)
 - [Unified runtime adapter](0007-unified-runtime-adapter.md)
 - [Runtime ports and controller inversion](0008-runtime-ports-and-controller-inversion.md)
+- [Mandatory Redis bus for Node realtime](0009-mandatory-node-realtime-redis.md)

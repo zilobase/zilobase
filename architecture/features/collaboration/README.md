@@ -7,7 +7,7 @@
 
 ## Main flow
 
-The [document codec](../../../apps/server/src/features/collaboration/document-codec.ts) owns Yjs/ProseMirror encoding, normalization and materialization without persistence or AI imports. Agent profile creation consumes this interface directly. The [runtime implementation](../../../apps/server/src/features/collaboration/service.ts) retains document storage, live-document replacement and trigger dispatch, with compatibility re-exports for existing codec consumers. Node runtime attachment exposes the websocket transport; the web editor consumes collaborative documents through its lifecycle modules.
+The [document codec](../../../apps/server/src/features/collaboration/document-codec.ts) owns Yjs/ProseMirror encoding, normalization and materialization without persistence or AI imports. Agent profile creation consumes this interface directly. The [runtime implementation](../../../apps/server/src/features/collaboration/service.ts) retains document storage, live-document replacement and trigger dispatch, with compatibility re-exports for existing codec consumers. The [Node runtime attachment](../../../packages/runtime-adapter/src/node/features/collaboration/collaboration-runtime.ts) exposes the websocket transport. Every Node role uses Redis-backed admission limits from the shared runtime bus; Hocuspocus retains separate library-managed Redis extension connections for document synchronization. The web editor consumes collaborative documents through its lifecycle modules.
 
 ## Authorization and persistence
 

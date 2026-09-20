@@ -70,10 +70,10 @@ See [Domains and TLS](./domain.md) before exposing the stack and
 ## Kubernetes with Helm
 
 The MIT chart at `deploy/helm/zilobase` installs only the Community application.
-It requires operator-managed PostgreSQL and S3-compatible object storage; the
-chart does not install either dependency and is not offered through Console
-Downloads. Pin the public image by digest and create the referenced Secret
-before installation:
+It requires operator-managed PostgreSQL, S3-compatible object storage, and
+Redis/Valkey; the chart does not install those dependencies and is not offered
+through Console Downloads. Pin the public image by digest and create the
+referenced Secret before installation:
 
 ```sh
 helm lint deploy/helm/zilobase
@@ -89,25 +89,25 @@ helm upgrade --install zilobase deploy/helm/zilobase \
 ```
 
 The existing Secret defaults to `zilobase` and must contain `DATABASE_URL`,
-`BETTER_AUTH_SECRET`, `ZILOBASE_BOOTSTRAP_TOKEN`, `S3_ACCESS_KEY_ID`, and
-`S3_SECRET_ACCESS_KEY`; `SMTP_PASSWORD` is optional. Keep secret values out of
-Helm values and shell history. If PostgreSQL or S3 uses a private CA, place only
-the public CA in a ConfigMap and set `trustedCa.configMapName`.
+`REALTIME_REDIS_URL`, `BETTER_AUTH_SECRET`, `ZILOBASE_BOOTSTRAP_TOKEN`,
+`S3_ACCESS_KEY_ID`, and `S3_SECRET_ACCESS_KEY`; `SMTP_PASSWORD` is optional.
+`realtime.existingSecret` may select a different Secret and
+`realtime.secretKey` may select a different key. Keep secret values out of Helm
+values and shell history. If PostgreSQL, S3, or Redis uses a private CA, place
+only the public CA in a ConfigMap and set `trustedCa.configMapName`.
 
-The default remains one application replica with `Recreate` upgrades. To run
-multiple replicas, provide an externally managed Valkey or Redis endpoint in a
-Secret and set `realtime.enabled=true`, `realtime.existingSecret`, and
-`replicaCount`. The chart rejects multiple replicas without this shared
-realtime bus. HA deployments use rolling updates, a disruption budget, shared
-Hocuspocus and database-realtime fan-out, and distributed connection limits.
+The default remains one application replica with `Recreate` upgrades, and it
+uses the required externally managed Valkey or Redis endpoint just like a
+multi-replica deployment. Set `replicaCount` to enable rolling updates and a
+disruption budget. All Node deployments use shared Hocuspocus and
+database-realtime fan-out plus distributed connection limits.
 Your Ingress must preserve WebSocket `Upgrade`/`Connection` headers and use the
 provided one-hour idle timeouts. Set the NetworkPolicy PostgreSQL, S3, SMTP,
 Valkey, and kubelet-probe CIDRs to the narrow addresses used by your cluster.
 
-For a local broker-backed test, start the optional Compose profile with
-`REALTIME_REDIS_URL=redis://valkey:6379 docker compose --profile ha ...`. The
-profile is for development only and does not make a single Compose application
-container highly available.
+The base Compose stack starts Valkey automatically and defaults
+`REALTIME_REDIS_URL` to `redis://valkey:6379`. Override the URL when using an
+external broker; no optional profile or manual broker step is required.
 
 Back up PostgreSQL and the object bucket as a pair before every upgrade. A Helm
 rollback does not reverse database migrations; use an older binary only when

@@ -44,7 +44,19 @@ sides (`realtime-bus`, `room-host`, `room-state`, `notification-runtime`,
 
 `node/*` never imports `worker/*` and vice versa; the root entrypoint imports neither side. `dispatcher.ts` loads one side through dynamic `import()` only. The adapter consumes `@zilobase/server` surfaces (`adapter-api`, `node-adapter-api`) and never reaches into server source relatively; `community-boundary` tests enforce the split. `resolveRuntimeKind` selects `"worker"` only for explicit `ZILOBASE_RUNTIME_KIND=worker` and otherwise defaults to `"node"`; bindings are never used as runtime detection.
 
-`createNodeRuntime` takes `loadApp` plus hook overrides (edition extension, production-config assert, realtime bus, collaboration extensions, pinned webhook/MCP transports, background coordinator) with community defaults; `apps/server` passes Zilobase wiring through hooks in [serverful.ts](../../apps/server/src/entrypoints/serverful.ts). `createWorker`/`createBackgroundWorker` compose Worker providers directly and take product seams (edition extension, error/event reporters, demo guard, session-policy denial, CORS), not a generic runtime adapter. Community registration/workspace behavior and managed hosted behavior are explicit `AppPolicy` values passed to app and Worker construction; runtime kind no longer selects product policy.
+`createNodeRuntime` takes `loadApp` plus hook overrides (edition extension,
+production-config assert, a non-nullable realtime bus, collaboration extensions,
+pinned webhook/MCP transports, background coordinator) with community defaults;
+`apps/server` passes Zilobase wiring through hooks in
+[serverful.ts](../../apps/server/src/entrypoints/serverful.ts). The default bus
+factory validates `REALTIME_REDIS_URL` for every Node role before startup and
+the same bus instance supplies fanout, notification subscriptions, distributed
+limits, and readiness. `createWorker`/`createBackgroundWorker` compose Worker
+providers directly and take product seams (edition extension, error/event
+reporters, demo guard, session-policy denial, CORS), not a generic runtime
+adapter. Community registration/workspace behavior and managed hosted behavior
+are explicit `AppPolicy` values passed to app and Worker construction; runtime
+kind no longer selects product policy.
 
 Community Cloudflare deployment uses the [worker templates](../../packages/runtime-adapter/deploy/worker/README.md); see the [Cloudflare self-host runbook](../../docs/runbooks/cloudflare-selfhost.md). The breaking reset replaces unused Durable Object history with one `runtime-ports-v1` fresh-install baseline; `template-parity` tests pin templates to the hosted composition.
 
@@ -68,9 +80,9 @@ the runtime factories expose lifecycle through `Ports.lifecycle`. The app's
 port object is installed in AsyncLocalStorage for non-HTTP feature calls and in
 the Hono request variables for handlers.
 
-Realtime admission uses `Ports.limits`: Node selects Redis-backed counters for
-split deployments and a fixed-window process counter for all-in-one mode;
-Workers adapt the Rate Limit binding. Runtime factories also install
+Realtime admission uses `Ports.limits`: every Node role uses Redis-backed
+counters from the runtime realtime bus, while Workers adapt the Rate Limit
+binding. Runtime factories also install
 `Ports.telemetry`, so request and background error/event reporting no longer
 branches on hosted versus self-hosted execution.
 

@@ -2,9 +2,9 @@
 
 The public deployment packages the core Node application and web assets. Instance bootstrap establishes initial administration and registration policy. Operators own persistent database/storage configuration and backups. An internal refactor must preserve bootstrap, readiness, migration and upgrade entrypoints. [Self-host management](../../scripts/selfhost/manage.mjs) creates a private development environment and owns Compose up/logs/down/reset/test dispatch. [End-to-end testing](../../scripts/selfhost/test.mjs) uses isolated project names, temporary state, local object storage and mail capture, and cleans up its own stack. [Upgrade testing](../../scripts/selfhost/test-upgrade.mjs) requires explicit previous/current images and verifies page, object, and protocol-v2 database-row data across image replacement.
 
-One Node process in the `all` role can deliver database realtime events without
-Redis. Split `api`/`worker` roles or multiple API replicas require a shared
-Redis/Valkey broker and fail realtime readiness when it is unavailable. The
+Every Node process role requires a shared Redis/Valkey broker, including one
+`all` process. Missing or invalid configuration stops boot; an unavailable
+broker fails application and background readiness while the clients reconnect. The
 background admin listener exposes `/health`, `/ready`, and sanitized `/metrics`
 for worker-only deployments. Runtime details are in the
 [database operations guide](../../docs/databases/operations.md).

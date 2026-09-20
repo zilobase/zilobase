@@ -26,8 +26,8 @@ See [tests or test configuration](../../apps/server/src/infrastructure/backgroun
 
 The processor delegates mail indexing/sync, database realtime, navigation realtime and notification tasks to each feature's background module. Those modules own the post-drain persistence checks and retry deadlines. [Task result handling](../../apps/server/src/infrastructure/background/task-result.ts) shares the identical completed/retry interpretation of an outbox row; it does not claim work or change leases. [Processor tests](../../apps/server/src/app/background/processor.test.ts) exercise the dispatch interface before and after the move. Node websocket attachment remains separate for each protocol.
 
-A single-process Node `all` runtime may dispatch database events in process.
-Split Node roles and multiple API replicas publish through Redis/Valkey. The
-managed Cloud runtime schedules a Queue consumer, whose background Worker alone
-publishes through the per-database Durable Object. See the
+A Node background handler publishes locally and through the required
+Redis/Valkey bus in every process topology, including the single-process `all`
+role. The managed Cloud runtime schedules a Queue consumer, whose background
+Worker alone publishes through the per-database Durable Object. See the
 [database operations guide](../../docs/databases/operations.md).
