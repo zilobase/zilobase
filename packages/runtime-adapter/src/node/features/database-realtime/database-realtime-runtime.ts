@@ -68,14 +68,14 @@ type NodeDatabaseRealtimeRuntimeOptions = {
     token: string,
     env: RuntimeEnv,
   ) => Promise<DatabaseRealtimeTicketClaims>;
-  realtimeBus?: NodeRealtimeBus | null;
+  realtimeBus: NodeRealtimeBus;
   limits?: Limits;
 };
 
 export function attachNodeDatabaseRealtimeRuntime(
   server: HttpServer,
   env: RuntimeEnv,
-  options: NodeDatabaseRealtimeRuntimeOptions = {},
+  options: NodeDatabaseRealtimeRuntimeOptions,
 ) {
   const attachments = new WeakMap<Peer, SocketAttachment>();
   const messageRates = new WeakMap<
@@ -85,7 +85,7 @@ export function attachNodeDatabaseRealtimeRuntime(
   const rooms = new Map<string, DatabaseRoom>();
   const publishedVersions = new Map<string, number>();
   const verifyTicket = options.verifyTicket ?? verifyDatabaseRealtimeTicket;
-  const realtimeBus = options.realtimeBus ?? null;
+  const realtimeBus = options.realtimeBus;
   const limits = options.limits ?? createNodeLimits(realtimeBus);
 
   const websocket = crossws({
@@ -311,7 +311,7 @@ export function attachNodeDatabaseRealtimeRuntime(
       publishedVersions.set(event.databaseId, event.version);
       pruneExpiredPeers(room, attachments, realtimeBus);
       broadcast(room, event, attachments);
-      await realtimeBus?.publish(databaseRealtimeChannel(event.databaseId), event);
+      await realtimeBus.publish(databaseRealtimeChannel(event.databaseId), event);
     },
   };
 }
@@ -391,7 +391,7 @@ function updatePresence(
   message: Record<string, unknown>,
   rooms: Map<string, DatabaseRoom>,
   attachments: WeakMap<Peer, SocketAttachment>,
-  realtimeBus: NodeRealtimeBus | null,
+  realtimeBus: NodeRealtimeBus,
 ) {
   if (!attachment.claims.canEdit) return;
 
@@ -427,7 +427,7 @@ function clearPresence(
   attachment: SocketAttachment,
   rooms: Map<string, DatabaseRoom>,
   attachments: WeakMap<Peer, SocketAttachment>,
-  realtimeBus: NodeRealtimeBus | null,
+  realtimeBus: NodeRealtimeBus,
 ) {
   if (!attachment.presence) return;
 
@@ -452,7 +452,7 @@ function removePeer(
   peer: Peer,
   rooms: Map<string, DatabaseRoom>,
   attachments: WeakMap<Peer, SocketAttachment>,
-  realtimeBus: NodeRealtimeBus | null,
+  realtimeBus: NodeRealtimeBus,
 ) {
   const attachment = attachments.get(peer);
 
@@ -511,7 +511,7 @@ function broadcast(
 function pruneExpiredPeers(
   room: DatabaseRoom,
   attachments: WeakMap<Peer, SocketAttachment>,
-  realtimeBus: NodeRealtimeBus | null,
+  realtimeBus: NodeRealtimeBus,
 ) {
   const now = Date.now();
 
@@ -563,11 +563,11 @@ function getOrCreateRoom(
 async function ensureRoomSubscription(
   room: DatabaseRoom,
   databaseId: string,
-  realtimeBus: NodeRealtimeBus | null,
+  realtimeBus: NodeRealtimeBus,
   attachments: WeakMap<Peer, SocketAttachment>,
   publishedVersions: Map<string, number>,
 ) {
-  if (!realtimeBus || room.unsubscribe) return;
+  if (room.unsubscribe) return;
   room.subscription ??= realtimeBus
     .subscribe(databaseRealtimeChannel(databaseId), (payload) => {
       receiveRealtimeBusMessage(
@@ -630,7 +630,7 @@ function receiveRealtimeBusMessage(
 
 function publishPresenceHeartbeat(
   attachment: SocketAttachment,
-  realtimeBus: NodeRealtimeBus | null,
+  realtimeBus: NodeRealtimeBus,
 ) {
   if (!attachment.presence) return;
   attachment.updatedAt = Date.now();
@@ -643,11 +643,10 @@ function publishPresenceHeartbeat(
 }
 
 function publishRealtimeBus(
-  realtimeBus: NodeRealtimeBus | null,
+  realtimeBus: NodeRealtimeBus,
   databaseId: string,
   payload: unknown,
 ) {
-  if (!realtimeBus) return;
   void realtimeBus
     .publish(databaseRealtimeChannel(databaseId), payload)
     .catch(logRealtimeBusError);

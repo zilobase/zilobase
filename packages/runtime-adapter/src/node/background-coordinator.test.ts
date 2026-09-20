@@ -15,6 +15,8 @@ describe("Node background coordinator architecture", () => {
     const source = await readFile(new URL("./node-runtime.ts", import.meta.url), "utf8");
     expect(source).toContain('type ProcessRole = "all" | "api" | "worker"');
     expect(source).toContain('if (!value || value === "all") return "all"');
+    expect(source).toContain("await realtimeBus.connect()");
+    expect(source).not.toContain("assertNodeRealtimeTopology");
     expect(source).toContain("BACKGROUND_HEALTH_PORT");
   });
 });

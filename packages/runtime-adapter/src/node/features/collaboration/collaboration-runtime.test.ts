@@ -7,6 +7,7 @@ import {
   NODE_COLLABORATION_MAX_PAYLOAD_BYTES,
 } from "./collaboration-runtime";
 import { COLLABORATION_WEBSOCKET_PROTOCOL } from "@zilobase/server/node-adapter-api";
+import type { NodeRealtimeBus } from "../../realtime-bus";
 
 test("serverful collaboration rejects unauthenticated upgrades", async () => {
   const fixture = await startFixture(async () => null);
@@ -81,7 +82,7 @@ async function startFixture(
   const collaboration = attachNodeCollaborationRuntime(
     server,
     {},
-    { authenticate, connectionLimit },
+    { authenticate, connectionLimit, realtimeBus: createTestRealtimeBus() },
   );
 
   await listen(server);
@@ -94,6 +95,22 @@ async function startFixture(
       await closeServer(server);
     },
     url: `ws://127.0.0.1:${address.port}${pathname}?document=page%3Atest`,
+  };
+}
+
+function createTestRealtimeBus(): NodeRealtimeBus {
+  const counts = new Map<string, number>();
+  return {
+    async close() {},
+    async connect() {},
+    async consumeLimit(key, limit) {
+      const count = (counts.get(key) ?? 0) + 1;
+      counts.set(key, count);
+      return count <= limit;
+    },
+    isReady() { return true; },
+    async publish() {},
+    async subscribe() { return async () => {}; },
   };
 }
 

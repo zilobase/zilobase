@@ -28,17 +28,17 @@ type NodeCollaborationRuntimeOptions = {
   connectionLimit?: number;
   passthroughPaths?: readonly string[];
   editionExtension?: ZilobaseEditionExtension;
-  realtimeBus?: NodeRealtimeBus | null;
+  realtimeBus: NodeRealtimeBus;
   limits?: Limits;
 };
 
 export function attachNodeCollaborationRuntime(
   server: HttpServer,
   env: RuntimeEnv,
-  options: NodeCollaborationRuntimeOptions = {},
+  options: NodeCollaborationRuntimeOptions,
 ) {
   const hocuspocus = getDefaultCollaborationHocuspocus(env);
-  const limits = options.limits ?? createNodeLimits(options.realtimeBus ?? null);
+  const limits = options.limits ?? createNodeLimits(options.realtimeBus);
   const websocket = crossws({
     serverOptions: {
       maxPayload: NODE_COLLABORATION_MAX_PAYLOAD_BYTES,

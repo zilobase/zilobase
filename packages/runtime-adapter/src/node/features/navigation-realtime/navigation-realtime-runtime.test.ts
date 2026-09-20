@@ -7,6 +7,7 @@ import {
   NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,
   NAVIGATION_REALTIME_PROTOCOL,
 } from "@zilobase/server/node-adapter-api";
+import type { NodeRealtimeBus } from "../../realtime-bus";
 import { attachNodeNavigationRealtimeRuntime } from "./navigation-realtime-runtime";
 
 const env = { COLLABORATION_SECRET: "navigation-realtime-test-secret" };
@@ -57,7 +58,9 @@ test("navigation realtime broadcasts generic invalidations only within a workspa
 
 async function startFixture(workspaceId: string) {
   const server = createServer((_request, response) => response.end());
-  const runtime = attachNodeNavigationRealtimeRuntime(server, env);
+  const runtime = attachNodeNavigationRealtimeRuntime(server, env, {
+    realtimeBus: createTestRealtimeBus(),
+  });
   await listen(server);
   const address = server.address();
   assert(address && typeof address === "object");
@@ -68,6 +71,17 @@ async function startFixture(workspaceId: string) {
     },
     runtime,
     url: `ws://127.0.0.1:${address.port}/navigation-realtime?workspace=${workspaceId}`,
+  };
+}
+
+function createTestRealtimeBus(): NodeRealtimeBus {
+  return {
+    async close() {},
+    async connect() {},
+    async consumeLimit() { return true; },
+    isReady() { return true; },
+    async publish() {},
+    async subscribe() { return async () => {}; },
   };
 }
 

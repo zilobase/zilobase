@@ -1,15 +1,11 @@
 import { Redis as RedisExtension } from "@hocuspocus/extension-redis";
 import type { Extension } from "@hocuspocus/server";
 
-import { getStringEnv, type RuntimeEnv } from "@zilobase/server/node-adapter-api";
+import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
+import { getRealtimeRedisUrl } from "../../realtime-bus";
 
 export function createNodeCollaborationExtensions(env: RuntimeEnv): Extension[] {
-  const value = getStringEnv(env, "REALTIME_REDIS_URL");
-  if (!value) return [];
-  const url = new URL(value);
-  if (url.protocol !== "redis:" && url.protocol !== "rediss:") {
-    throw new Error("REALTIME_REDIS_URL must use redis:// or rediss://");
-  }
+  const url = new URL(getRealtimeRedisUrl(env));
   const database = url.pathname.slice(1);
   return [new RedisExtension({
     host: url.hostname,

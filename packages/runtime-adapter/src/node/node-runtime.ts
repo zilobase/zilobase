@@ -58,7 +58,7 @@ export type NodeRuntimeOptions = {
   hooks?: {
     getEditionExtension?: (app: Hono<any>) => ZilobaseEditionExtension | undefined;
     assertProductionConfig?: (env: Record<string, unknown>) => void;
-    createRealtimeBus?: (env: Record<string, unknown>) => NodeRealtimeBus | null;
+    createRealtimeBus?: (env: Record<string, unknown>) => NodeRealtimeBus;
     createCollaborationExtensions?: typeof createNodeCollaborationExtensions;
     setCollaborationExtensionsFactory?: typeof defaultSetCollaborationExtensionsFactory;
     setRealtimeReadinessProbe?: typeof defaultSetRealtimeReadinessProbe;
@@ -132,7 +132,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
   });
   const realtimeBus = createRealtimeBus(env);
   const limits = createNodeLimits(realtimeBus);
-  assertNodeRealtimeTopology(processRole, realtimeBus);
   ports.limits = limits;
   ports.telemetry = createNodeTelemetry({
     metrics: () => renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics(),
@@ -174,7 +173,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const app = await loadApp();
     const editionExtension = hooks.getEditionExtension?.(app);
     setCollaborationExtensionsFactory(createCollaborationExtensions);
-    setRealtimeReadinessProbe(() => realtimeBus?.isReady() ?? true);
+    setRealtimeReadinessProbe(() => realtimeBus.isReady());
     const collaboration = attachNodeCollaborationRuntime(server, env, {
       editionExtension,
       passthroughPaths: ["/database-collaboration", "/mail-realtime", "/calendar-realtime", "/meeting-audio", "/navigation-realtime"],
@@ -192,7 +191,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       ? createBackgroundAdminServer(
           env,
           backgroundCoordinator,
-          () => realtimeBus?.isReady() ?? true,
+          () => realtimeBus.isReady(),
         )
       : null;
 
@@ -236,7 +235,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     },
     async start() {
       const state = await ensureStarted();
-      await realtimeBus?.connect();
+      await realtimeBus.connect();
       await state.backgroundCoordinator?.start();
       await state.backgroundAdminServer?.start();
       if (processRole === "worker") {
@@ -264,7 +263,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       await started?.mailRealtime.destroy();
       await started?.navigationRealtime.destroy();
       await started?.collaboration.destroy();
-      await realtimeBus?.close();
+      await realtimeBus.close();
       setRealtimeReadinessProbe(null);
       setBackgroundReadinessProbe(null);
       started = null;
@@ -304,17 +303,6 @@ function readProcessRole(value: string | undefined): ProcessRole {
   if (!value || value === "all") return "all";
   if (value === "api" || value === "worker") return value;
   throw new Error("ZILOBASE_PROCESS_ROLE must be all, api, or worker");
-}
-
-function assertNodeRealtimeTopology(
-  processRole: ProcessRole,
-  realtimeBus: NodeRealtimeBus | null,
-) {
-  if (processRole !== "all" && !realtimeBus) {
-    throw new Error(
-      "REALTIME_REDIS_URL is required when ZILOBASE_PROCESS_ROLE is api or worker",
-    );
-  }
 }
 
 function createBackgroundAdminServer(

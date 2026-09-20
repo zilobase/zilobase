@@ -34,7 +34,7 @@ type Room<Claims extends { exp: number }, Event> = {
 
 export function attachNodeNotificationRuntime<Claims extends { exp: number }, Event>(
   server: HttpServer,
-  bus: NodeRealtimeBus | null,
+  bus: NodeRealtimeBus,
   options: NotificationRuntimeOptions<Claims, Event>,
 ) {
   const rooms = new Map<string, Room<Claims, Event>>();
@@ -61,11 +61,9 @@ export function attachNodeNotificationRuntime<Claims extends { exp: number }, Ev
           await notification.controller.start();
           room = { host, notification };
           rooms.set(roomId, room);
-          if (bus) {
-            room.unsubscribe = await bus.subscribe(options.channel(roomId), (payload) => {
-              if (options.isRemoteEvent(payload, roomId)) notification.publish(payload);
-            });
-          }
+          room.unsubscribe = await bus.subscribe(options.channel(roomId), (payload) => {
+            if (options.isRemoteEvent(payload, roomId)) notification.publish(payload);
+          });
         }
         const runtimePeer = room.host.connect(peer.id, peer.request as Request, peer as never);
         runtimePeer.setAttachment({ claims });
@@ -134,7 +132,7 @@ export function attachNodeNotificationRuntime<Claims extends { exp: number }, Ev
     async publish(event: Event) {
       const roomId = options.eventRoomId(event);
       rooms.get(roomId)?.notification.publish(event);
-      await bus?.publish(options.channel(roomId), event);
+      await bus.publish(options.channel(roomId), event);
     },
   };
 }

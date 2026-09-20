@@ -21,7 +21,10 @@ const mocks = vi.hoisted(() => {
   const realtimeBus = {
     close: vi.fn(async () => undefined),
     connect: vi.fn(async () => undefined),
+    consumeLimit: vi.fn(async () => true),
     isReady: vi.fn(() => true),
+    publish: vi.fn(async () => undefined),
+    subscribe: vi.fn(async () => async () => undefined),
   };
   return {
     appEdition: vi.fn(() => null),
@@ -38,7 +41,7 @@ const mocks = vi.hoisted(() => {
     },
     coordinator,
     createDatabaseClient: vi.fn(() => databaseClient),
-    createRealtimeBus: vi.fn(() => realtimeBus),
+    createRealtimeBus: vi.fn((_env?: Record<string, unknown>) => realtimeBus),
     databaseClient,
     databaseRealtime: {
       destroy: vi.fn(async () => undefined),
@@ -105,7 +108,7 @@ vi.mock("../capabilities", () => ({
 }));
 vi.mock("./migrations", () => ({ runMigrationSets: mocks.migrate }));
 vi.mock("./realtime-bus", () => ({
-  createNodeRealtimeBus: vi.fn(() => mocks.createRealtimeBus()),
+  createNodeRealtimeBus: vi.fn((env: Record<string, unknown>) => mocks.createRealtimeBus(env)),
 }));
 vi.mock("./features/collaboration/collaboration-redis", () => ({
   createNodeCollaborationExtensions: vi.fn(),
@@ -120,11 +123,19 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env = { ...originalEnvironment };
   process.env.ZILOBASE_PROCESS_ROLE = "api";
+  process.env.REALTIME_REDIS_URL = "redis://127.0.0.1:6379";
   delete process.env.PORT;
   delete process.env.BACKGROUND_HEALTH_PORT;
   mocks.coordinator.readiness.mockReturnValue({ coordinatorReady: true, listenerReady: true });
   mocks.backgroundSnapshot.mockResolvedValue({ healthy: true });
-  mocks.createRealtimeBus.mockReturnValue(mocks.realtimeBus);
+  mocks.createRealtimeBus.mockImplementation((env?: Record<string, unknown>) => {
+    if (!env?.REALTIME_REDIS_URL) {
+      throw new Error(
+        "REALTIME_REDIS_URL is required for every Node runtime and must use redis:// or rediss://",
+      );
+    }
+    return mocks.realtimeBus;
+  });
   mocks.realtimeBus.isReady.mockReturnValue(true);
 });
 
@@ -315,12 +326,22 @@ describe("Node runtime lifecycle", () => {
     })).toThrow("ZILOBASE_PROCESS_ROLE must be all, api, or worker");
   });
 
-  it("allows one all-in-one process without Redis", async () => {
+  it("requires Redis for the all-in-one process", async () => {
+    process.env.ZILOBASE_PROCESS_ROLE = "all";
+    delete process.env.REALTIME_REDIS_URL;
+
+    expect(() => createNodeRuntime({
+      loadApp: async () => ({ fetch: vi.fn() }) as never,
+      migrationSets: [],
+      webDistDir: "/tmp/not-used",
+    })).toThrow("REALTIME_REDIS_URL is required for every Node runtime");
+  });
+
+  it("starts the all-in-one process with Redis", async () => {
     process.env.ZILOBASE_PROCESS_ROLE = "all";
     process.env.PORT = String(await freePort());
     process.env.BACKGROUND_HEALTH_PORT = String(await freePort());
     process.env.HOST = "127.0.0.1";
-    mocks.createRealtimeBus.mockReturnValueOnce(null as never);
     const runtime = createNodeRuntime({
       loadApp: async () => ({ fetch: vi.fn(async () => new Response("api")) }) as never,
       migrationSets: [],
@@ -329,26 +350,9 @@ describe("Node runtime lifecycle", () => {
 
     await runtime.start();
     expect(runtime.server.listening).toBe(true);
-    expect(mocks.realtimeBus.connect).not.toHaveBeenCalled();
+    expect(mocks.realtimeBus.connect).toHaveBeenCalledOnce();
     await runtime.close();
   });
-
-  it.each(["api", "worker"] as const)(
-    "requires Redis for the split %s role",
-    async (processRole) => {
-      process.env.ZILOBASE_PROCESS_ROLE = processRole;
-      mocks.createRealtimeBus.mockReturnValueOnce(null as never);
-      const webDistDir = await makeWebDist();
-
-      expect(() => createNodeRuntime({
-        loadApp: async () => ({ fetch: vi.fn() }) as never,
-        migrationSets: [],
-        webDistDir,
-      })).toThrow(
-        "REALTIME_REDIS_URL is required when ZILOBASE_PROCESS_ROLE is api or worker",
-      );
-    },
-  );
 });
 
 async function makeWebDist() {

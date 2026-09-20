@@ -35,7 +35,12 @@ class RedisNodeRealtimeBus implements NodeRealtimeBus {
   private readonly subscriber: Redis;
 
   constructor(url: string) {
-    const options = { enableReadyCheck: true, lazyConnect: true, maxRetriesPerRequest: 3 };
+    const options = {
+      enableReadyCheck: true,
+      lazyConnect: true,
+      maxRetriesPerRequest: 3,
+      retryStrategy: realtimeRedisRetryDelay,
+    };
     this.command = new Redis(url, options);
     this.subscriber = new Redis(url, options);
     this.command.on("error", logRedisError);
@@ -93,23 +98,59 @@ class RedisNodeRealtimeBus implements NodeRealtimeBus {
 
   async close() {
     this.handlers.clear();
-    await Promise.allSettled([this.command.quit(), this.subscriber.quit()]);
+    await Promise.allSettled([
+      closeRedisClient(this.command),
+      closeRedisClient(this.subscriber),
+    ]);
   }
 }
 
-export function createNodeRealtimeBus(env: RuntimeEnv) {
+export function createNodeRealtimeBus(env: RuntimeEnv): NodeRealtimeBus {
   const url = getRealtimeRedisUrl(env);
-  return url ? new RedisNodeRealtimeBus(url) : null;
+  return new RedisNodeRealtimeBus(url);
 }
 
-export function getRealtimeRedisUrl(env: RuntimeEnv) {
-  const value = getStringEnv(env, "REALTIME_REDIS_URL");
-  if (!value) return null;
-  const url = new URL(value);
-  if (url.protocol !== "redis:" && url.protocol !== "rediss:") {
-    throw new Error("REALTIME_REDIS_URL must use redis:// or rediss://");
+export function getRealtimeRedisUrl(env: RuntimeEnv): string {
+  const value = getStringEnv(env, "REALTIME_REDIS_URL")?.trim();
+  if (!value) {
+    throw new Error(
+      "REALTIME_REDIS_URL is required for every Node runtime and must use redis:// or rediss://",
+    );
   }
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("REALTIME_REDIS_URL must be a valid redis:// or rediss:// URL");
+  }
+  if (
+    (url.protocol !== "redis:" && url.protocol !== "rediss:") ||
+    !url.hostname
+  ) {
+    throw new Error("REALTIME_REDIS_URL must be a valid redis:// or rediss:// URL");
+  }
+
   return url.toString();
+}
+
+function realtimeRedisRetryDelay(attempt: number) {
+  const exponential = Math.min(100 * 2 ** Math.min(attempt - 1, 5), 3_000);
+  return exponential + Math.floor(Math.random() * 250);
+}
+
+async function closeRedisClient(client: Redis) {
+  if (client.status === "end") return;
+  if (client.status !== "ready") {
+    client.disconnect(false);
+    return;
+  }
+
+  try {
+    await client.quit();
+  } finally {
+    client.disconnect(false);
+  }
 }
 
 export function databaseRealtimeChannel(databaseId: string) {

@@ -17,9 +17,9 @@ const PONG = JSON.stringify({ type: "calendar.pong" });
 export function attachNodeCalendarRealtimeRuntime(
   server: HttpServer,
   env: RuntimeEnv,
-  options: { realtimeBus?: NodeRealtimeBus | null } = {},
+  options: { realtimeBus: NodeRealtimeBus },
 ) {
-  const runtime = attachNodeNotificationRuntime<CalendarRealtimeTicketClaims, CalendarNotificationEvent>(server, options.realtimeBus ?? null, {
+  const runtime = attachNodeNotificationRuntime<CalendarRealtimeTicketClaims, CalendarNotificationEvent>(server, options.realtimeBus, {
     async authenticate(request) {
       const bindingId = new URL(request.url).searchParams.get("binding");
       const token = readTicket(request.headers);
