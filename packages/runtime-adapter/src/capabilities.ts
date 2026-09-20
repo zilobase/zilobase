@@ -29,10 +29,6 @@ function getRequiredStringEnv(env: RuntimeEnv, key: string): string {
   return value;
 }
 
-function requestSignal(timeoutMs: number): AbortSignal {
-  return AbortSignal.timeout(timeoutMs);
-}
-
 export function getDatabaseRealtimeWebSocketUrl(
   request: Request,
   env: RuntimeEnv,
@@ -188,17 +184,7 @@ export async function fetchAutomationWebhook(input: {
 }) {
   const adapter = getRuntimeAdapter();
   if (adapter.fetchAutomationWebhook) return adapter.fetchAutomationWebhook(input);
-  if (adapter.selfHosted !== false) {
-    throw new Error("A pinned webhook transport is required for self-hosted automations");
-  }
-  return fetch(input.url, {
-    body: input.body,
-    headers: input.headers,
-    method: "POST",
-    redirect: "manual",
-    signal: requestSignal(input.timeoutMs),
-    ...({ cf: { resolveOverride: input.pinnedAddress } } as Record<string, unknown>),
-  });
+  throw new Error("A pinned webhook transport is required");
 }
 
 export async function fetchMcpRequest(input: {

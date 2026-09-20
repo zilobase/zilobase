@@ -33,6 +33,8 @@ import { createNodeRealtimeBus, type NodeRealtimeBus } from "./realtime-bus";
 import { createNodeCollaborationExtensions } from "./collaboration-redis";
 import { fetchPinnedNodeWebhook } from "./pinned-webhook";
 import { fetchPinnedNodeMcp } from "./pinned-mcp";
+import { createNodeImageStorage } from "./image-storage";
+import { createNodeMailer } from "./mailer";
 import {
   createNodeBackgroundCoordinator,
   publishNodeBackgroundNotification,
@@ -139,6 +141,10 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const backgroundCoordinator = createBackgroundCoordinator(env);
     const effectiveRuntimeAdapter: ServerRuntimeAdapter = {
       ...baseAdapter,
+      createImageStorage: baseAdapter.createImageStorage ?? createNodeImageStorage,
+      getImageStorageMode: baseAdapter.getImageStorageMode ?? (() => "s3"),
+      sendEmail: baseAdapter.sendEmail ?? (({ env: mailEnv, message }) =>
+        createNodeMailer(mailEnv).send(message)),
       fetchAutomationWebhook: baseAdapter.fetchAutomationWebhook ?? fetchPinnedWebhook,
       fetchMcpRequest: baseAdapter.fetchMcpRequest ?? fetchPinnedMcp,
       publishDatabaseMutation: ({ event }) =>

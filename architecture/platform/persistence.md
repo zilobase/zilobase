@@ -6,6 +6,11 @@ The database module creates pooled self-hosted connections or standalone runtime
 
 Start at the [entrypoint](../../apps/server/src/infrastructure/database/index.ts); follow the [implementation](../../apps/server/src/infrastructure/database/schema.ts) and [related modules](../../apps/server/drizzle).
 
+Database client lifetime is selected only by explicit runtime configuration:
+Node uses the process pool and `ZILOBASE_RUNTIME_KIND=worker` uses a standalone
+Hyperdrive connection per request. Database bindings are not runtime-detection
+signals.
+
 ## Invariants and failure handling
 
 Standalone PostgreSQL clients attach an error listener before connecting so a disconnect between queries is logged as `database.connection` instead of becoming an uncaught event. Failed connection attempts and queries still reject to their callers; the listener does not retry transactions.

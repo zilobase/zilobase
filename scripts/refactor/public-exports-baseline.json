@@ -136,10 +136,6 @@
       "value": true,
       "type": false
     },
-    "createS3ImageStorage": {
-      "value": true,
-      "type": false
-    },
     "Database": {
       "value": false,
       "type": true
@@ -811,10 +807,6 @@
       "type": false
     },
     "createMeetingRealtimeTranscriptSink": {
-      "value": true,
-      "type": false
-    },
-    "createS3ImageStorage": {
       "value": true,
       "type": false
     },
@@ -1492,10 +1484,6 @@
       "value": true,
       "type": false
     },
-    "createS3ImageStorage": {
-      "value": true,
-      "type": false
-    },
     "Database": {
       "value": false,
       "type": true
@@ -2167,10 +2155,6 @@
       "type": false
     },
     "createMeetingRealtimeTranscriptSink": {
-      "value": true,
-      "type": false
-    },
-    "createS3ImageStorage": {
       "value": true,
       "type": false
     },
@@ -2857,10 +2841,6 @@
       "type": false
     },
     "createNodeRuntime": {
-      "value": true,
-      "type": false
-    },
-    "createS3ImageStorage": {
       "value": true,
       "type": false
     },
@@ -3559,10 +3539,6 @@
       "type": false
     },
     "createNodeRuntime": {
-      "value": true,
-      "type": false
-    },
-    "createS3ImageStorage": {
       "value": true,
       "type": false
     },

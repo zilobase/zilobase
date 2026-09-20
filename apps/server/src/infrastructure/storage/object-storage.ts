@@ -41,10 +41,5 @@ export class ObjectStorage extends Context.Service<
 }
 
 async function checkObjectStorageReady(storage: ImageStorage) {
-  if (storage.checkReady) {
-    await storage.checkReady();
-    return;
-  }
-
-  await storage.head("__zilobase_readiness__");
+  await storage.checkReady();
 }

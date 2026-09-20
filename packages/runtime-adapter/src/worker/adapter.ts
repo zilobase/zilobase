@@ -130,6 +130,29 @@ export function createWorkerAdapter(
   options: WorkerAdapterOptions = {},
 ): ServerRuntimeAdapter {
   return {
+    async fetchAutomationWebhook(input) {
+      return fetch(input.url, {
+        body: input.body,
+        headers: input.headers,
+        method: "POST",
+        redirect: "manual",
+        signal: AbortSignal.timeout(input.timeoutMs),
+        ...({ cf: { resolveOverride: input.pinnedAddress } } as Record<string, unknown>),
+      });
+    },
+    async fetchMcpRequest(input) {
+      const timeout = AbortSignal.timeout(input.timeoutMs);
+      const signal = input.signal
+        ? AbortSignal.any([input.signal, timeout])
+        : timeout;
+      return fetch(input.url, {
+        body: input.body,
+        headers: input.headers,
+        method: input.method,
+        redirect: "manual",
+        signal,
+      });
+    },
     async dispatchBackgroundTasks({ env, tasks }) {
       const bindings = env as WorkerEnvBindings;
       await Promise.all(tasks.map(async (task) => {
@@ -369,6 +392,10 @@ class R2BindingImageStorage implements ImageStorage {
   readonly mode = "binding" as const;
 
   constructor(private readonly bucket: CloudflareR2Bucket) {}
+
+  async checkReady() {
+    await this.bucket.head("__zilobase_readiness__");
+  }
 
   async createUploadUrl(
     _options: Parameters<ImageStorage["createUploadUrl"]>[0],

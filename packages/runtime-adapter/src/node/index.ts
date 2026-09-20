@@ -22,6 +22,8 @@ export {
 export { createNodeCollaborationExtensions } from "./collaboration-redis";
 export { fetchPinnedNodeWebhook } from "./pinned-webhook";
 export { fetchPinnedNodeMcp, resolvePublicNodeMcpAddress, buildPinnedMcpRequestOptions, isPinnedMcpRemoteAddress } from "./pinned-mcp";
+export { createNodeImageStorage } from "./image-storage";
+export { createNodeMailer } from "./mailer";
 export {
   createNodeBackgroundCoordinator,
   publishNodeBackgroundNotification,

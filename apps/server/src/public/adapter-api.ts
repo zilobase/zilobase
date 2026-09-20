@@ -88,7 +88,6 @@ export {
 } from "../features/instance/service";
 export {
   createImageStorage,
-  createS3ImageStorage,
   resolveImageStorageMode,
   type ImageStorage,
   type ImageStorageMode,

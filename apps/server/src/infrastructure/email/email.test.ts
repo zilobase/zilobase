@@ -12,6 +12,7 @@ vi.mock("nodemailer", () => ({
 
 import { sendEmail } from "./email";
 import { setRuntimeAdapter, type OutboundEmailMessage } from "../runtime/runtime-adapter";
+import { createNodeMailer } from "@zilobase/runtime-adapter/node";
 
 const message = {
   subject: "Welcome",
@@ -21,14 +22,14 @@ const message = {
 
 mail.createTransport.mockReturnValue({ sendMail: mail.sendMail });
 
-test("prints email locally when SMTP is not configured", async () => {
+test("node mailer reports email locally when SMTP is not configured", async () => {
   const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
 
   try {
-    await sendEmail({}, message);
+    await createNodeMailer({}).send({ ...message, from: "Zilobase", html: "<p>Thanks</p>" });
 
-    assert.equal(info.mock.calls.length, 5);
-    assert.equal(info.mock.calls[1]?.[0], "To: user@example.com");
+    assert.equal(info.mock.calls.length, 1);
+    assert.match(String(info.mock.calls[0]?.[0]), /mail\.local/);
   } finally {
     info.mockRestore();
   }
@@ -36,15 +37,15 @@ test("prints email locally when SMTP is not configured", async () => {
 
 test("validates SMTP configuration before connecting", async () => {
   await assert.rejects(
-    sendEmail({ SMTP_HOST: "smtp.example.com", SMTP_PORT: "invalid" }, message),
+    Promise.resolve().then(() => createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_PORT: "invalid" })),
     /SMTP_PORT must be an integer/,
   );
   await assert.rejects(
-    sendEmail({ SMTP_HOST: "smtp.example.com", SMTP_USER: "user" }, message),
+    Promise.resolve().then(() => createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_USER: "user" })),
     /SMTP_USER and SMTP_PASSWORD must be configured together/,
   );
   await assert.rejects(
-    sendEmail({ SMTP_HOST: "smtp.example.com", SMTP_SECURE: "maybe" }, message),
+    Promise.resolve().then(() => createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_SECURE: "maybe" })),
     /SMTP_SECURE must be either true or false/,
   );
 });
@@ -78,7 +79,7 @@ test("SMTP delivery applies authentication, TLS, ports, and HTML escaping", asyn
   mail.createTransport.mockClear();
   mail.sendMail.mockClear();
 
-  await sendEmail(
+  await createNodeMailer(
     {
       SMTP_HOST: " smtp.example.com ",
       SMTP_PASSWORD: "password",
@@ -86,11 +87,13 @@ test("SMTP delivery applies authentication, TLS, ports, and HTML escaping", asyn
       SMTP_SECURE: "false",
       SMTP_USER: " user ",
     },
-    {
+    ).send({
+      ...message,
+      from: "Zilobase",
+      html: "<p>&lt;&amp;&gt;&quot;&#039;<br>next</p>",
       ...message,
       text: "<&>\"'\nnext",
-    },
-  );
+    });
 
   assert.deepEqual(mail.createTransport.mock.calls[0]?.[0], {
     auth: { pass: "password", user: "user" },
@@ -106,21 +109,20 @@ test("SMTP delivery applies authentication, TLS, ports, and HTML escaping", asyn
     "<p>&lt;&amp;&gt;&quot;&#039;<br>next</p>",
   );
 
-  await sendEmail(
-    { SMTP_HOST: "smtp.example.com", SMTP_SECURE: "true" },
-    message,
-  );
+  await createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_SECURE: "true" })
+    .send({ ...message, from: "Zilobase", html: "<p>Thanks</p>" });
   assert.equal(mail.createTransport.mock.calls[1]?.[0].secure, true);
   assert.equal(mail.createTransport.mock.calls[1]?.[0].auth, undefined);
 
-  await sendEmail({ SMTP_HOST: "smtp.example.com", SMTP_PORT: "465" }, message);
+  await createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_PORT: "465" })
+    .send({ ...message, from: "Zilobase", html: "<p>Thanks</p>" });
   assert.equal(mail.createTransport.mock.calls[2]?.[0].secure, true);
 });
 
 test("SMTP ports reject out-of-range integers", async () => {
   for (const port of ["0", "65536", "1.5"]) {
     await assert.rejects(
-      sendEmail({ SMTP_HOST: "smtp.example.com", SMTP_PORT: port }, message),
+      Promise.resolve().then(() => createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_PORT: port })),
       /SMTP_PORT must be an integer between 1 and 65535/,
     );
   }
