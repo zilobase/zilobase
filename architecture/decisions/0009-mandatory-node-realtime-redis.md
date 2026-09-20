@@ -23,6 +23,8 @@ Every Node process role (`all`, `api`, and `worker`) requires a valid
 one non-nullable realtime bus and shares it with fanout, notification rooms,
 database realtime, background publication, readiness, and distributed limits.
 The Hocuspocus Redis extension keeps its own library-managed connections.
+Those integration-owned clients use the same bounded reconnect and
+`realtime_redis_error` logging policy as the runtime bus.
 
 Publishing remains local-first and then publishes an envelope through Redis.
 Each bus owns an instance ID and ignores envelopes from itself, so an `all`

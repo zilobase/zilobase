@@ -35,16 +35,8 @@ class RedisNodeRealtimeBus implements NodeRealtimeBus {
   private readonly subscriber: Redis;
 
   constructor(url: string) {
-    const options = {
-      enableReadyCheck: true,
-      lazyConnect: true,
-      maxRetriesPerRequest: 3,
-      retryStrategy: realtimeRedisRetryDelay,
-    };
-    this.command = new Redis(url, options);
-    this.subscriber = new Redis(url, options);
-    this.command.on("error", logRedisError);
-    this.subscriber.on("error", logRedisError);
+    this.command = createNodeRealtimeRedisClient(url);
+    this.subscriber = createNodeRealtimeRedisClient(url);
     this.subscriber.on("message", (channel, raw) => {
       const envelope = parseEnvelope(raw);
       if (!envelope || envelope.source === this.instanceId) return;
@@ -113,6 +105,17 @@ export function createNodeRealtimeBus(env: RuntimeEnv): NodeRealtimeBus {
   return new RedisNodeRealtimeBus(url);
 }
 
+function createNodeRealtimeRedisClient(url: string): Redis {
+  const client = new Redis(url, {
+    enableReadyCheck: true,
+    lazyConnect: true,
+    maxRetriesPerRequest: 3,
+    retryStrategy: realtimeRedisRetryDelay,
+  });
+  client.on("error", logRealtimeRedisError);
+  return client;
+}
+
 export function getRealtimeRedisUrl(env: RuntimeEnv): string {
   const value = getStringEnv(env, "REALTIME_REDIS_URL")?.trim();
   if (!value) {
@@ -137,7 +140,7 @@ export function getRealtimeRedisUrl(env: RuntimeEnv): string {
   return url.toString();
 }
 
-function realtimeRedisRetryDelay(attempt: number) {
+export function realtimeRedisRetryDelay(attempt: number) {
   const exponential = Math.min(100 * 2 ** Math.min(attempt - 1, 5), 3_000);
   return exponential + Math.floor(Math.random() * 250);
 }
@@ -179,7 +182,7 @@ function parseEnvelope(raw: string): RealtimeEnvelope | null {
   }
 }
 
-function logRedisError(error: Error) {
+export function logRealtimeRedisError(error: Error) {
   console.error(JSON.stringify({
     error: error.message,
     event: "realtime_redis_error",

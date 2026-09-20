@@ -27,8 +27,10 @@ After startup, the command and subscriber clients reconnect with bounded,
 jittered backoff; errors are structured as `realtime_redis_error`. `/ready` and
 the background admin `/ready` fail while either client is unavailable. Shutdown
 closes both clients. The Hocuspocus Redis extension retains its library-managed
-connections; other Node fanout, notification, and rate-limit features reuse the
-single runtime bus.
+connections for document synchronization, but those clients use the same
+bounded reconnect and structured-error policy and close with the extension.
+Other Node fanout, notification, and rate-limit features reuse the single
+runtime bus.
 
 Database clients deduplicate HTTP acknowledgements and socket echoes by event
 identity/version, fill gaps from the mutation journal, and perform a scoped
