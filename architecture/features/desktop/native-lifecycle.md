@@ -12,7 +12,7 @@
 
 [OAuth](../../../apps/desktop/src-tauri/src/auth/oauth.rs) owns one active authorization attempt, cancellation and completion. [Loopback transport](../../../apps/desktop/src-tauri/src/auth/oauth/loopback.rs), [callback validation](../../../apps/desktop/src-tauri/src/auth/callback.rs) and [token exchange](../../../apps/desktop/src-tauri/src/auth/oauth/token_exchange.rs) retain distinct request limits and validation responsibilities. Authentication uses the selected server identity and preserves state, issuer and PKCE checks.
 
-[Keyring](../../../apps/desktop/src-tauri/src/auth/keyring.rs) owns credential reads/writes/deletion and account naming. Service `com.zilobase` and legacy account names remain compatible. Server profile snapshots contain navigation/workspace state; session credentials remain in the keyring. Web sign-out/server replacement ordering is described in [desktop integration](README.md) and [offline behavior](../offline/README.md).
+[Keyring](../../../apps/desktop/src-tauri/src/auth/keyring.rs) owns credential reads/writes/deletion and account naming. Service `com.zilobase` and legacy account names remain compatible. Server profile snapshots contain navigation/workspace state; session credentials remain in the keyring. Web sign-out/server replacement ordering is described in [desktop integration](README.md).
 
 ## Diagnostics
 

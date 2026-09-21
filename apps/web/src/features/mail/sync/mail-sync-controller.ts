@@ -16,7 +16,7 @@ import {
 import { ApiError, apiFetch, getApiRequestHeaders, toApiUrl } from "@/platform/network/api"
 import { desktopNetworkFetch } from "@/platform/network"
 import { describeDesktopError, recordDesktopDiagnostic } from "@/features/desktop/diagnostics/index"
-import { getConnectivityState, subscribeConnectivity } from "@/features/offline/model"
+import { getConnectivityState, subscribeConnectivity } from "@/platform/network/connectivity"
 import { clearMailReconciliation, deleteMailLabelFromCache, deleteMailMessageFromCache, deleteMailThreadFromCache, openMailDatabase, optimisticallyModifyThread, queueMailReconciliation, reconcileMailMessage, restoreMailMutation, upsertFullMailThread, type MailDatabase } from "../storage/mail-database";
 import { safeMailDownloadFilename } from "../messages/mail-attachment"
 import { loadMailThreadOnce } from "../messages/mail-thread-loader"

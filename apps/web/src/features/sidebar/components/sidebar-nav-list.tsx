@@ -11,7 +11,7 @@ import {
   type ReactNode,
 } from "react"
 import { Link } from "@tanstack/react-router"
-import { ArrowUpRightIcon, ChevronRightIcon, HardDriveDownloadIcon } from "@/shared/components/icons"
+import { ArrowUpRightIcon, ChevronRightIcon } from "@/shared/components/icons"
 
 import { getSidebarDatabaseViewSearchId } from "@/features/sidebar/model/database-view-navigation"
 import {
@@ -30,7 +30,6 @@ import {
   SidebarNavItemAction,
 } from "@/shared/ui/sidebar-nav-item-action"
 import { cn } from "@/shared/lib/utils"
-import { useOfflineManifest } from "@/features/offline/index"
 
 export type SidebarNavItem = NavigationItem<ReactNode>
 
@@ -271,26 +270,14 @@ function SidebarNavRow({
 }
 
 function ItemIndicators({ item }: { item: SidebarNavItem }) {
-  const manifest = useOfflineManifest()
   const showAiMode = item.zilobaseai && !item.isDatabase
-  const availableOffline = !item.isMeeting && manifest.items.some((entry) =>
-    item.isDatabase
-      ? entry.kind === "database" && entry.id === item.databaseId
-      : entry.kind === "page" && entry.id === item.pageId,
-  )
 
-  if (!showAiMode && !item.isLinked && !availableOffline) {
+  if (!showAiMode && !item.isLinked) {
     return null
   }
 
   return (
     <span className="ml-auto flex shrink-0 items-center gap-1.5 transition-opacity group-hover/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu]:focus-visible]/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:opacity-0">
-      {availableOffline ? (
-        <HardDriveDownloadIcon
-          aria-label="Available offline"
-          className="size-3.5 text-content-secondary"
-        />
-      ) : null}
       {showAiMode ? (
         <span className="text-xs text-content-secondary">
           {item.zilobaseai}

@@ -50,10 +50,6 @@ import { SelectionAiPreview } from "../extensions/selection-ai-preview"
 import { SlashCommand } from "../extensions/slash-command"
 import { VideoBlock } from "../extensions/video-block"
 import type { OpenPageOptions } from "@/features/pages"
-import {
-  OfflineStructureGuard,
-  shouldEnableOfflineStructureGuard,
-} from "@/features/offline/index"
 import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
 
 export type BaseExtensionsOptions = {
@@ -128,12 +124,6 @@ export const createBaseExtensions = ({
             ]
           : []),
       ]
-    : []),
-  ...(shouldEnableOfflineStructureGuard({
-    contentEditable: editable,
-    structuralEditingEnabled,
-  })
-    ? [OfflineStructureGuard]
     : []),
   PendingPageEmbeds,
   CommentExtension.configure({

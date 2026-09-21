@@ -43,7 +43,6 @@ export function register({ readSource, assert, loadModule, test }) {
           order.push("commit");
           return { changed: true, server: prepared.server };
         },
-        destroyRealtime: () => order.push("stop-websockets"),
         forgetCredentials: () => order.push("forget-memory"),
         reload: (path) => order.push(`reload:${path}`),
         revokeOldSession: async (server) => {
@@ -57,7 +56,6 @@ export function register({ readSource, assert, loadModule, test }) {
       "revoke",
       "stop-network",
       "unmount",
-      "stop-websockets",
       "cancel-queries",
       "clear-indexeddb",
       "clear-stores",
@@ -79,11 +77,10 @@ export function register({ readSource, assert, loadModule, test }) {
       clearIndexedData: async () => order.push("deleted"),
       clearStores: async () => undefined,
       commitCandidate: async () => ({ changed: true, server: prepared.server }),
-      destroyRealtime: () => undefined,
       forgetCredentials: () => undefined,
       reload: () => undefined,
       revokeOldSession: async () => {
-        throw new Error("offline");
+        throw new Error("revocation failed");
       },
     });
     assert.deepEqual(order, ["stopped", "deleted"]);
@@ -147,9 +144,8 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(replacement, /useAppStore\.persist\.clearStorage\(\)/);
     assert.match(replacement, /useAuthFlowStore\.persist\.clearStorage\(\)/);
     assert.match(replacement, /window\.sessionStorage\.clear\(\)/);
-    assert.match(controller, /Sync drafts and change/);
-    assert.match(controller, /Export recovery and change/);
-    assert.match(controller, /Discard drafts/);
+    assert.match(replacement, /clearIndexedDataForServer/);
+    assert.match(controller, /Change server/);
     assert.match(controller, /Cancel/);
     assert.match(handler, /getCurrent\(\)/);
     assert.match(handler, /onOpenUrl\(openFirstValidPath\)/);

@@ -36,7 +36,6 @@ import { useDatabaseViewNavigation } from "../views/use-database-view-navigation
 import { useDatabaseMetadata } from "../access/use-database-metadata"
 import type { OpenPageOptions } from "@/features/pages"
 import { useTitleDraft } from "@/features/pages/hooks/index"
-import { useConnectivity, useOfflineManifest } from "@/features/offline/index"
 
 export default function DatabasePage() {
   const { databaseId } = useParams({ from: "/d/$databaseId" })
@@ -58,8 +57,6 @@ export default function DatabasePage() {
 }
 
 function AuthenticatedDatabasePage() {
-  const connectivity = useConnectivity()
-  const offlineManifest = useOfflineManifest()
   const { databaseId } = useParams({ from: "/d/$databaseId" })
   const { view: activeDatabaseViewId } = useSearch({
     from: "/d/$databaseId",
@@ -87,18 +84,6 @@ function AuthenticatedDatabasePage() {
   }
 
   if (isLoading) {
-    if (
-      (connectivity === "offline" || connectivity === "service-unavailable") &&
-      !offlineManifest.items.some(
-        (item) => item.kind === "database" && item.id === databaseId,
-      )
-    ) {
-      return (
-        <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center px-4 text-sm text-content-secondary">
-          Not available offline.
-        </main>
-      )
-    }
     return (
       <main className="min-h-[calc(100svh-3rem)] animate-in fade-in duration-200">
         <DatabasePageSkeleton />
@@ -301,7 +286,6 @@ export function DatabaseMainPane({
   onOpenPage: (pageId: string, options?: OpenPageOptions) => void
   readOnly?: boolean
 }) {
-  const connectivity = useConnectivity()
   const {
     activeViewId: localActiveViewId,
     selectView: selectLocalView,
@@ -342,7 +326,6 @@ export function DatabaseMainPane({
   const databaseDeleted = Boolean(payload?.database.deletedAt)
   const editable =
     !readOnly &&
-    connectivity === "online" &&
     !databaseDeleted &&
     !databasePage?.deletedAt &&
     !isDatabaseLocked(payload?.database) &&

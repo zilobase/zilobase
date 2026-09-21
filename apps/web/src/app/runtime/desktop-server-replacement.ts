@@ -3,12 +3,11 @@ import {
   forgetDesktopAuthCredentials,
   getDesktopAuthToken,
 } from "@/platform/auth/desktop-auth-token";
-import { destroyDesktopOfflineConnections } from "@/features/offline/index";
 import {
   beginDesktopServerNetworkShutdown,
   desktopNetworkFetch,
 } from "@/platform/network/desktop-network";
-import { clearDesktopServerIndexedData } from "@/features/offline/index";
+import { clearIndexedDataForServer } from "@/platform/storage/indexed-data-cleanup";
 import { queryClient } from "@/app/query-client";
 import {
   commitDesktopServerCandidate,
@@ -29,10 +28,9 @@ export function createDesktopServerReplacementDependencies(input: {
     beforeLocalCleanup: input.beforeLocalCleanup,
     beginNetworkShutdown: beginDesktopServerNetworkShutdown,
     cancelQueries: () => queryClient.cancelQueries(),
-    clearIndexedData: clearDesktopServerIndexedData,
+    clearIndexedData: () => clearIndexedDataForServer(getSelectedDesktopServer()),
     clearStores: clearDesktopServerBrowserState,
     commitCandidate: commitDesktopServerCandidate,
-    destroyRealtime: destroyDesktopOfflineConnections,
     forgetCredentials: forgetDesktopAuthCredentials,
     reload: input.reload,
     revokeOldSession: bestEffortRevokeDesktopSession,

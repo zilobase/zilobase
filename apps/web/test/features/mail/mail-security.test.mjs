@@ -19,16 +19,20 @@ export function register({ assert, loadModule, readSource, readWorkspace, test }
   })
 
   test("disconnect, logout, and desktop replacement all close mail caches before deletion", async () => {
-    const [workspaceSettings, offlineStore, mailDatabase, mailController] = await Promise.all([
+    const [workspaceSettings, indexedCleanup, mailDatabase, mailController] = await Promise.all([
       readSource("/src/features/workspaces/settings/workspace-mail-connection-state.ts"),
-      readSource("/src/features/offline/model/offline-store.ts"),
+      readSource("/src/platform/storage/indexed-data-cleanup.ts"),
       readSource("/src/features/mail/storage/mail-database.ts"),
       readSource("/src/features/mail/sync/mail-sync-controller.ts"),
     ])
     assert.match(workspaceSettings, /method: "DELETE"/)
     assert.match(workspaceSettings, /destroyMailDatabase/)
-    assert.match(offlineStore, /clearAllOfflineData[^]*deleteIndexedDatabasesForPrefix/)
-    assert.match(await readSource("/src/app/runtime/configure-sessions.ts"), /configureOfflineStorageCleanup\([\s\S]*prepareMailDatabasesForDeletion\(prefix\)/)
+    assert.match(indexedCleanup, /prepareMailDatabasesForDeletion/)
+    assert.match(indexedCleanup, /prepareCalendarDatabasesForDeletion/)
+    assert.match(indexedCleanup, /deleteIndexedDatabasesForPrefix/)
+    assert.match(indexedCleanup, /zilobase:v1:/)
+    assert.match(indexedCleanup, /server\.instanceId/)
+    assert.match(await readSource("/src/app/runtime/desktop-server-replacement.ts"), /clearIndexedDataForServer/)
     assert.match(mailDatabase, /BroadcastChannel/)
     assert.doesNotMatch(mailController, /closeMailDatabase/)
     assert.match(mailController, /cleanup only cancels this React consumer/)

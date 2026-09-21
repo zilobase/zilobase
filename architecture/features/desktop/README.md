@@ -15,7 +15,7 @@ Persisted selected-server/account state and keychain credentials have different 
 
 ## Side effects, failures and recovery
 
-Deep-link completion, network failures, server replacement and window cleanup have distinct recovery flows. [App runtime composition](../../../apps/web/src/app/runtime) owns query cancellation, offline teardown, cache cleanup, credential forgetting and reload ordering. Desktop feature modules own replacement requests and switch progress; startup installs the concrete switch executor before rendering.
+Deep-link completion, network failures, server replacement and window cleanup have distinct recovery flows. [App runtime composition](../../../apps/web/src/app/runtime) owns query cancellation, cache cleanup, credential forgetting and reload ordering. Desktop feature modules own replacement requests and switch progress; startup installs the concrete switch executor before rendering.
 
 ## Verification and change points
 

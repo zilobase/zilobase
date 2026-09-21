@@ -1,7 +1,7 @@
 import { useNavigationItemActions } from "../commands/use-navigation-item-actions";
 import { ItemShareDropdown } from "./item-share-dropdown";
 
-import { CheckIcon, ChevronsLeftIcon, ChevronsRightIcon, CircleAlertIcon, CloudCheckIcon, LoaderCircleIcon, LockIcon, MoreHorizontalIcon, MessageSquareTextIcon, SparklesIcon, StarIcon, WifiOffIcon } from "@/shared/components/icons";
+import { CheckIcon, ChevronsLeftIcon, ChevronsRightIcon, LockIcon, MoreHorizontalIcon, MessageSquareTextIcon, SparklesIcon, StarIcon } from "@/shared/components/icons";
 
 import { Button } from "@/shared/ui/button";
 import {
@@ -29,13 +29,6 @@ import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
 import { usePageCommentsSnapshot } from "@/features/comments/index";
 import { Switch } from "@/shared/ui/switch";
-
-import { OfflineAvailabilityAction } from "@/features/offline/index";
-import {
-  useConnectivity,
-  useOfflineManifest,
-  useOfflineSessionLocked,
-} from "@/features/offline/index";
 
 import { zilobaseAiModeLabels, type ZilobaseAiMode } from "@zilobase/features/pages";
 
@@ -69,40 +62,13 @@ export function NavActions({
   const { item, favorite, lock, layout, aiMode, moreMenu, trash } = useNavigationItemActions({databaseId, pageId, meetingId});
 
 const isMobile = useIsMobile();
-const manifest = useOfflineManifest();
-const connectivity = useConnectivity();
-const offlineSessionLocked = useOfflineSessionLocked();
 const comments = usePageCommentsSnapshot(pageId);
 const openDiscussionCount = comments.threads.filter((thread) => !thread.resolvedAt).length;
   const discussionsActionLabel = discussionsOpen
     ? "Close discussions"
     : "Open discussions";
-  const offlineItem = item.isDatabase
-    ? manifest.items.find(
-        (item) => item.kind === "database" && item.id === databaseId,
-      )
-    : manifest.items.find(
-        (item) => item.kind === "page" && item.id === item.pageId,
-      );
-
   return (
     <div className="flex items-center gap-2 text-sm">
-      {offlineItem ? (
-        <>
-          <OfflineHeaderStatus
-            blocked={Boolean(offlineItem.blocked)}
-            connectivity={connectivity}
-            dirty={Boolean(offlineItem.dirty)}
-            sessionLocked={offlineSessionLocked}
-          />
-          <span
-            aria-hidden="true"
-            className="hidden text-xs text-content-secondary md:inline"
-          >
-            ·
-          </span>
-        </>
-      ) : null}
       <div className="hidden text-sm font-medium text-content-secondary md:inline-block">
         Edited recently
       </div>
@@ -184,12 +150,6 @@ const openDiscussionCount = comments.threads.filter((thread) => !thread.resolved
               align="end"
               className="w-64 overflow-hidden rounded-lg p-1"
             >
-              <OfflineAvailabilityAction
-                databaseId={databaseId}
-                name={item.displayName}
-                pageId={item.pageId}
-                workspaceId={item.workspaceId}
-              />
               <DropDrawerItem
                 disabled={!lock.canToggle || lock.pending}
                 onSelect={(event) => {
@@ -277,75 +237,6 @@ const openDiscussionCount = comments.threads.filter((thread) => !thread.resolved
           </AlertDialog>
         </>
       ) : null}
-    </div>
-  );
-}
-
-function OfflineHeaderStatus({
-  blocked,
-  connectivity,
-  dirty,
-  sessionLocked,
-}: {
-  blocked: boolean;
-  connectivity: ReturnType<typeof useConnectivity>;
-  dirty: boolean;
-  sessionLocked: boolean;
-}) {
-  const status = sessionLocked
-    ? {
-        className: "text-action-danger-text",
-        icon: WifiOffIcon,
-        label: "Session expired",
-        title: "Offline session expired — reconnect and sign in",
-      }
-    : blocked
-      ? {
-          className: "text-action-danger-text",
-          icon: CircleAlertIcon,
-          label: "Sync blocked",
-          title: "Sync blocked — page access may have changed",
-        }
-      : connectivity === "offline" || connectivity === "service-unavailable"
-        ? {
-            className: "text-content-secondary",
-            icon: WifiOffIcon,
-            label: "Offline",
-            title: "Offline — this item is stored on this Mac",
-          }
-        : connectivity === "checking" || dirty
-          ? {
-              className: "text-content-secondary",
-              icon: LoaderCircleIcon,
-              label: "Syncing",
-              title: "Syncing offline changes",
-            }
-          : {
-              className: "text-content-secondary",
-              icon: CloudCheckIcon,
-              label: "Synced",
-              title: "Available offline and synced",
-            };
-  const StatusIcon = status.icon;
-
-  return (
-    <div
-      aria-live="polite"
-      className={cn(
-        "flex shrink-0 items-center gap-1.5 text-xs/relaxed font-normal",
-        status.className,
-      )}
-      role="status"
-      title={status.title}
-    >
-      <StatusIcon
-        aria-hidden="true"
-        className={cn(
-          "size-3.5",
-          StatusIcon === LoaderCircleIcon && "animate-spin",
-        )}
-      />
-      <span className="hidden sm:inline">{status.label}</span>
     </div>
   );
 }

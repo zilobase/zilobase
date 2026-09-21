@@ -87,7 +87,6 @@ import { cn } from "@/shared/lib/utils"
 import { getApiErrorMessage } from "@/platform/network/api"
 import { PageIconDisplay } from "@/features/pages/index"
 import { getTeamspaceSidebarPermissions } from "@/features/teamspaces/model/teamspace-sidebar-permissions"
-import { OfflineAvailabilityAction } from "@/features/offline/index"
 import { SidebarSectionMenu } from "./sidebar-section-menu"
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 import { getConfiguredSidebarItems } from "../model/sidebar-section-items"
@@ -676,12 +675,6 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
             <ArrowUpRightIcon className="text-content-secondary" />
             <span>Open in New Tab</span>
           </DropDrawerItem>
-          <OfflineAvailabilityAction
-            databaseId={item.isDatabase ? item.databaseId : null}
-            name={displayName}
-            pageId={item.pageId}
-            workspaceId={workspaceId}
-          />
           {!item.isDatabase && !item.isDatabaseView && item.pageId ? (
             <DropDrawerSub>
               <DropDrawerSubTrigger>

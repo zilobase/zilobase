@@ -6,10 +6,7 @@ import {
   CheckIcon,
   DownloadIcon,
   FolderOpenIcon,
-  HardDriveIcon,
   ServerIcon,
-  Trash2Icon,
-  UploadIcon,
 } from "@/shared/components/icons"
 import { toast } from "sonner"
 
@@ -46,16 +43,7 @@ import {
   exportDesktopDiagnostics,
   openDesktopDiagnosticsFolder,
 } from "@/features/desktop/diagnostics/index"
-import {
-  clearAllOfflineData,
-  clearDesktopServerIndexedData,
-  disableOfflineWorkspace,
-  enableOfflineWorkspace,
-  getConnectivityState,
-  hasUnsyncedOfflineItems,
-  isDesktopOfflineSupported,
-} from "@/features/offline/index"
-import { importRecoveryArchive } from "@/features/offline/index"
+import { clearIndexedDataForServer } from "@/platform/storage/indexed-data-cleanup"
 import { DesktopConnectServerDialog } from "@/features/desktop/components/index"
 import { clearDesktopPersistKeys } from "@/features/desktop/persistence/index"
 import {
@@ -67,9 +55,6 @@ import {
 import { executeDesktopServerSwitch } from "@/features/desktop/server/index"
 import { useQueryClient } from "@tanstack/react-query"
 import { useAppStore } from "@/features/desktop/state/app-store"
-import { useOfflineManifest } from "@/features/offline/index"
-import { useSession } from "@zilobase/features/auth/react";
-import { useWorkspaces } from "@zilobase/features/workspaces/react";
 import {
   appearanceModes,
   themeFamilies,
@@ -93,12 +78,6 @@ export default function PreferencesSettingsPage() {
 
       <div className="mx-auto grid w-full max-w-3xl gap-6">
         <AppearanceSection />
-        {isDesktopOfflineSupported() ? (
-          <>
-            <Separator />
-            <OfflineAccessSection />
-          </>
-        ) : null}
         {isDesktopApp() ? (
           <>
             <Separator />
@@ -111,7 +90,6 @@ export default function PreferencesSettingsPage() {
     </main>
   )
 }
-
 function DesktopServerSection() {
   const queryClient = useQueryClient()
   const [connectOpen, setConnectOpen] = React.useState(false)
@@ -133,7 +111,7 @@ function DesktopServerSection() {
   const removeProfile = async (profile: DesktopServerProfile) => {
     setPending(true)
     try {
-      await clearDesktopServerIndexedData(profile.server)
+      await clearIndexedDataForServer(profile.server)
       clearDesktopPersistKeys(profile.server.instanceId)
       await removeDesktopServerProfile({
         apiOrigin: profile.server.apiOrigin,
@@ -164,7 +142,7 @@ function DesktopServerSection() {
         <p className="max-w-2xl text-sm text-content-secondary">
           Switch between saved servers without signing out of the others.
           Removing a server from this device deletes only that instance&apos;s
-          credentials, cached data, offline documents, and tabs.
+          credentials, cached data, and tabs.
         </p>
       </div>
       <div className="grid gap-2">
@@ -254,11 +232,7 @@ function DesktopServerSection() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               This signs out of that instance and deletes only its local
-              credentials, cache, offline documents, and tabs. Other saved
-              servers stay on this device.
-              {removing && hasUnsyncedOfflineItems() && removing.active
-                ? " Unsynced local drafts on this server will be deleted."
-                : ""}
+              credentials, cache, and tabs. Other saved servers stay on this device.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -545,179 +519,4 @@ function ThemePreviewPane({
       </div>
     </div>
   )
-}
-
-function OfflineAccessSection() {
-  const queryClient = useQueryClient()
-  const { data: sessionData } = useSession()
-  const { data: workspaces = [] } = useWorkspaces()
-  const manifest = useOfflineManifest()
-  const [pendingId, setPendingId] = React.useState<string | null>(null)
-  const importInput = React.useRef<HTMLInputElement | null>(null)
-  const [storageUsage, setStorageUsage] = React.useState<number | null>(null)
-  const dirtyCount = manifest.items.filter(
-    (item) => item.kind === "page" && (item.dirty || item.blocked),
-  ).length
-
-  React.useEffect(() => {
-    void navigator.storage?.estimate?.().then((estimate) => {
-      setStorageUsage(estimate.usage ?? null)
-    })
-  }, [manifest.items])
-
-  const toggleWorkspace = async (workspace: (typeof workspaces)[number]) => {
-    const enabled = manifest.workspaces.some((item) => item.id === workspace.id)
-    setPendingId(workspace.id)
-    try {
-      if (enabled) {
-        const removedItems = manifest.items.filter(
-          (item) => item.workspaceId === workspace.id,
-        )
-        await disableOfflineWorkspace(workspace.id)
-        queryClient.removeQueries({ queryKey: ["pages", workspace.id] })
-        for (const item of removedItems) {
-          queryClient.removeQueries({
-            queryKey: [item.kind === "page" ? "page" : "database", item.id],
-          })
-        }
-      } else {
-        if (
-          getConnectivityState() !== "online" ||
-          !sessionData?.session ||
-          !sessionData.user
-        ) {
-          throw new Error("Connect and sign in before enabling offline access.")
-        }
-        await enableOfflineWorkspace({
-          accountId: sessionData.user.id,
-          session: {
-            session: sessionData.session,
-            user: sessionData.user,
-            validatedAt: new Date().toISOString(),
-            workspacePinned: sessionData.workspacePinned,
-          },
-          workspace: {
-            id: workspace.id,
-            name: workspace.name,
-            slug: workspace.slug,
-          },
-        })
-      }
-    } catch (error) {
-      toast.error(getApiErrorMessage(error))
-    } finally {
-      setPendingId(null)
-    }
-  }
-
-  const removeAll = async () => {
-    if (dirtyCount) {
-      toast.error("Sync or export local drafts before removing offline data.")
-      return
-    }
-    if (!window.confirm("Remove all offline content stored for this account?")) return
-    await clearAllOfflineData()
-    toast.success("Offline data removed from this Mac.")
-  }
-
-  return (
-    <section className="grid gap-4">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
-        <div className="space-y-1">
-          <h3 className="flex items-center gap-2 font-heading text-base font-medium">
-            <HardDriveIcon className="size-4" />
-            Offline access on this Mac
-          </h3>
-          <p className="max-w-2xl text-sm text-content-secondary">
-            Choose workspaces that may store downloaded pages and databases locally.
-            Content is not application-encrypted; protection relies on your macOS
-            account and FileVault.
-            {storageUsage !== null
-              ? ` Approximate app storage: ${formatBytes(storageUsage)}.`
-              : ""}
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <input
-            accept=".zip,application/zip"
-            className="hidden"
-            onChange={async (event) => {
-              const file = event.target.files?.[0]
-              if (!file) return
-              try {
-                const results = await importRecoveryArchive(file)
-                const failed = results.filter((result) => !result.success)
-                if (failed.length) {
-                  toast.error(`${failed.length} page(s) could not be imported.`)
-                } else {
-                  toast.success(`${results.length} page(s) imported and synced.`)
-                }
-              } catch (error) {
-                toast.error(getApiErrorMessage(error))
-              }
-              event.target.value = ""
-            }}
-            ref={importInput}
-            type="file"
-          />
-          <Button
-            onClick={() => importInput.current?.click()}
-            type="button"
-            variant="outline"
-          >
-            <UploadIcon /> Import recovery
-          </Button>
-          <Button
-            disabled={!manifest.workspaces.length}
-            onClick={() => void removeAll()}
-            type="button"
-            variant="outline"
-          >
-            <Trash2Icon /> Remove all
-          </Button>
-        </div>
-      </div>
-      <div className="divide-y rounded-md border">
-        {workspaces.map((workspace) => {
-          const enabled = manifest.workspaces.some((item) => item.id === workspace.id)
-          const items = manifest.items.filter((item) => item.workspaceId === workspace.id)
-          const lastSync = items
-            .map((item) => item.lastSyncedAt)
-            .filter((value): value is string => Boolean(value))
-            .sort()
-            .at(-1)
-          return (
-            <div className="flex items-center justify-between gap-3 p-3" key={workspace.id}>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{workspace.name}</p>
-                <p className="text-xs text-content-secondary">
-                  {items.length} downloaded · {items.filter((item) => item.dirty || item.blocked).length} unsynced
-                  {lastSync ? ` · Last sync ${new Date(lastSync).toLocaleString()}` : ""}
-                </p>
-              </div>
-              <Button
-                disabled={pendingId === workspace.id}
-                onClick={() => void toggleWorkspace(workspace)}
-                type="button"
-                variant={enabled ? "outline" : "default"}
-              >
-                {pendingId === workspace.id ? <Spinner /> : null}
-                {enabled ? "Disable" : "Enable"}
-              </Button>
-            </div>
-          )
-        })}
-      </div>
-      <p className="text-xs text-content-secondary">
-        Offline access ends when the cached session expires. Drafts stay stored but
-        locked until you reconnect and sign in.
-      </p>
-    </section>
-  )
-}
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }

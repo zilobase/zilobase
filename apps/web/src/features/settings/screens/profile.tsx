@@ -1,21 +1,11 @@
 import * as React from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { CameraIcon, DownloadIcon, LogOutIcon, Trash2Icon } from "@/shared/components/icons"
+import { CameraIcon, LogOutIcon, Trash2Icon } from "@/shared/components/icons"
 import { toast } from "sonner"
 
 import { SettingsHeader } from "../components/settings-header"
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
 import { Button } from "@/shared/ui/button"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
 
 import {
   Field,
@@ -32,19 +22,8 @@ import {
   removeProfileImage,
   uploadProfileImage,
 } from "@/platform/network/image-upload"
-import {
-  clearAllOfflineData,
-  getConnectivityState,
-} from "@/features/offline/index"
-import {
-  downloadRecoveryArchive,
-  syncDirtyOfflinePages,
-} from "@/features/offline/index"
-import { clearApiAuthToken } from "@/platform/network/api"
+import { clearAllIndexedData } from "@/platform/storage/indexed-data-cleanup"
 import { useQueryClient } from "@tanstack/react-query"
-import { useAppStore } from "@/features/desktop/state/app-store"
-import { useOfflineManifest } from "@/features/offline/index"
-import posthog from "@/shared/lib/posthog"
 import { sessionQueryKey, type SessionResponse } from "@zilobase/features/auth";
 import { useSession, useSignOut, useUpdateUserProfile } from "@zilobase/features/auth/react";
 
@@ -53,31 +32,11 @@ export default function ProfileSettingsPage() {
   const navigate = useNavigate()
   const { data: sessionData } = useSession()
   const signOut = useSignOut()
-  const manifest = useOfflineManifest()
-  const [logoutDialog, setLogoutDialog] = React.useState<"choices" | "discard" | null>(null)
-
-  const handleSignOut = () => {
-    if (manifest.items.some((item) => item.kind === "page" && (item.dirty || item.blocked))) {
-      setLogoutDialog("choices")
-      return
-    }
-    void finishSignOut()
-  }
 
   const finishSignOut = async () => {
-    if (getConnectivityState() !== "online") {
-      posthog?.reset()
-      await clearApiAuthToken()
-      await clearAllOfflineData()
-      queryClient.clear()
-      useAppStore.getState().resetAccountState()
-      toast.info("Local data was cleared. The remote session will expire normally.")
-      await navigate({ to: "/login", replace: true })
-      return
-    }
     signOut.mutate(undefined, {
       onSuccess: async () => {
-        await clearAllOfflineData()
+        await clearAllIndexedData().catch(() => undefined)
         queryClient.clear()
         void navigate({ to: "/login", replace: true })
       },
@@ -106,7 +65,7 @@ export default function ProfileSettingsPage() {
       <div className="mx-auto mt-auto flex w-full max-w-3xl justify-end pt-2">
         <Button
           disabled={signOut.isPending}
-          onClick={handleSignOut}
+          onClick={() => void finishSignOut()}
           type="button"
           variant="destructive"
         >
@@ -114,55 +73,6 @@ export default function ProfileSettingsPage() {
           {signOut.isPending ? "Logging out..." : "Log out"}
         </Button>
       </div>
-      <AlertDialog open={logoutDialog !== null} onOpenChange={(open) => !open && setLogoutDialog(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {logoutDialog === "discard" ? "Discard unsynced changes?" : "Unsynced offline changes"}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {logoutDialog === "discard"
-                ? "This permanently deletes the local drafts from this Mac and cannot be undone."
-                : "Logging out would remove local content. Sync it or export a recovery archive first."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          {logoutDialog === "choices" ? (
-            <div className="grid gap-2">
-              <Button
-                onClick={async () => {
-                  const results = await syncDirtyOfflinePages().catch((error) => {
-                    toast.error(getApiErrorMessage(error)); return null
-                  })
-                  if (results?.every((result) => result.success)) await finishSignOut()
-                  else if (results) toast.error("Some drafts could not be synced. Export them before logging out.")
-                }}
-                type="button"
-              >Reconnect and sync</Button>
-              <Button
-                onClick={async () => {
-                  try {
-                    await downloadRecoveryArchive()
-                    await finishSignOut()
-                  } catch (error) { toast.error(getApiErrorMessage(error)) }
-                }}
-                type="button"
-                variant="outline"
-              ><DownloadIcon /> Export recovery and continue</Button>
-              <Button onClick={() => setLogoutDialog("discard")} type="button" variant="destructive">
-                Discard changes
-              </Button>
-            </div>
-          ) : null}
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            {logoutDialog === "discard" ? (
-              <AlertDialogAction onClick={() => void finishSignOut()} variant="destructive">
-                Permanently discard and log out
-              </AlertDialogAction>
-            ) : null}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </main>
   )
 }

@@ -1,17 +1,15 @@
 import type { HocuspocusProvider, StatesArray } from "@hocuspocus/provider"
 import type * as Y from "yjs"
-import type { CollaborationTicket, connectLocalPageDocument } from "@/features/offline/index"
+import type { CollaborationTicket, connectCollaborationDocument } from "./collaboration-connection"
 import type { CollaborationStatus, CollaborationUser } from "./collaboration-contracts"
 
-// Production uses the offline connection owner and request runtime; tests control
+// Production uses the collaboration connection owner and request runtime; tests control
 // ticket completion, provider events and deferred startup through the same seam.
 type ConnectionServices = {
   applyTicket: (document: Y.Doc, ticket: CollaborationTicket) => void
-  connect: typeof connectLocalPageDocument
+  connect: typeof connectCollaborationDocument
   getTicket: (pageId: string, signal?: AbortSignal) => Promise<CollaborationTicket>
   isAccessDenied: (reason: unknown) => boolean
-  markBlocked: (pageId: string) => void
-  recordConfirmed: (pageId: string, document: Y.Doc) => void
   schedule: (start: () => void) => () => void
 }
 
@@ -22,14 +20,12 @@ type ConnectionState = {
   synced: (synced: boolean) => void
   unsyncedChanges: (count: number) => void
   users: (users: CollaborationUser[]) => void
-  confirmed: () => void
 }
 
 export function startPageConnection({
-  document, downloaded, pageId, preparedTicket, user, state, services,
+  document, pageId, preparedTicket, user, state, services,
 }: {
   document: Y.Doc
-  downloaded: boolean
   pageId: string
   preparedTicket: CollaborationTicket | null
   user: { avatar?: string | null; color: string; id: string; name: string }
@@ -42,34 +38,26 @@ export function startPageConnection({
   state.status("connecting")
   state.error(null)
 
-  const confirmDocument = () => {
-    state.confirmed()
-    services.recordConfirmed(pageId, document)
-  }
   const authenticationFailed = (reason: string) => {
     if (disposed) return
     state.status("blocked")
     state.error(reason)
-    if (downloaded) services.markBlocked(pageId)
   }
   const unsyncedChanges = (count: number) => {
     if (disposed) return
     state.unsyncedChanges(count)
-    if (downloaded && count === 0 && activeProvider?.synced) confirmDocument()
   }
   const synced = ({ state: ready }: { state: boolean }) => {
     if (disposed || !ready) return
     state.synced(true)
-    if (downloaded && !activeProvider?.hasUnsyncedChanges) confirmDocument()
   }
   const failed = (reason: unknown) => {
     if (disposed) return
     const blocked = services.isAccessDenied(reason)
-    state.status(blocked ? "blocked" : downloaded ? "local" : "disconnected")
-    state.error(blocked || !downloaded
-      ? reason instanceof Error ? reason.message : "Could not start collaboration."
-      : null)
-    if (downloaded && blocked) services.markBlocked(pageId)
+    state.status(blocked ? "blocked" : "disconnected")
+    state.error(
+      reason instanceof Error ? reason.message : "Could not start collaboration.",
+    )
   }
   const attach = (ticket: CollaborationTicket) => {
     if (disposed) return

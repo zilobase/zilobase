@@ -19,7 +19,6 @@ export type DesktopServerReplacementDependencies = {
     changed: boolean;
     server: DesktopServer;
   }>;
-  destroyRealtime: () => void;
   forgetCredentials: () => void;
   reload: (path: string) => void;
   revokeOldSession: (server: DesktopServer) => Promise<void>;
@@ -48,7 +47,6 @@ export async function executeDesktopServerReplacement(
   await dependencies.revokeOldSession(currentServer).catch(() => undefined);
   dependencies.beginNetworkShutdown();
   await dependencies.beforeLocalCleanup();
-  dependencies.destroyRealtime();
   await dependencies.cancelQueries();
   await dependencies.clearIndexedData();
   await dependencies.clearStores();

@@ -8,7 +8,7 @@ import { useEffect, useState, useCallback, useSyncExternalStore, useRef } from "
 import { useLiveQuery } from "dexie-react-hooks";
 import type { CalendarConnection } from "@zilobase/features/calendar";
 import { apiFetch, toApiUrl } from "@/platform/network/api";
-import { getConnectivityState, subscribeConnectivity } from "@/features/offline/model";
+import { getConnectivityState, subscribeConnectivity } from "@/platform/network/connectivity";
 import { openCalendarDatabase, readCalendarRangeCache, type CalendarDatabase } from "../storage/calendar-database";
 import { synchronizeCalendarCache } from "./calendar-cache-sync";
 export function useCalendarCache(connection: CalendarConnection, userId: string, start: string, end: string, options?: { target?: CalendarWindow | null; hiddenKeys: string[] }) {

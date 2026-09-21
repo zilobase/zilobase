@@ -1,5 +1,6 @@
 import * as React from "react"
 import { ThemeProvider, useTheme } from "next-themes"
+import { QueryClientProvider } from "@tanstack/react-query"
 
 import { Toaster } from "@/shared/ui/sonner"
 import { TooltipProvider } from "@/shared/ui/tooltip"
@@ -10,7 +11,6 @@ import { DesktopUpdater } from "@/features/desktop/components/index"
 import { WebFeaturesProvider } from "@/app/providers/features-provider"
 import { queryClient } from "@/app/query-client"
 import { ShortcutProvider } from "@/shared/shortcuts"
-import { OfflineQueryProvider } from "@/features/offline/index"
 import { getThemeColorScheme, selectableThemeIds } from "@/shared/lib/themes"
 import {
   ThemeFamilyProvider,
@@ -31,7 +31,7 @@ installDemoCache(queryClient)
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
     <AppIconProvider>
-      <OfflineQueryProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
         <WebFeaturesProvider>
           <SessionDatabaseProvider>
             <PostHogIdentitySync />
@@ -64,7 +64,7 @@ export function AppProviders({ children }: React.PropsWithChildren) {
             </ShortcutProvider>
           </SessionDatabaseProvider>
         </WebFeaturesProvider>
-      </OfflineQueryProvider>
+      </QueryClientProvider>
     </AppIconProvider>
   )
 }

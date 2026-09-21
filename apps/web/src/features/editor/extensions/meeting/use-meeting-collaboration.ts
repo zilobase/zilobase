@@ -7,9 +7,9 @@ import { collaborationColor } from "../../collaboration/color"
 import { apiFetch } from "@/platform/network/api"
 import {
   applyTicketState,
-  connectLocalPageDocument,
+  connectCollaborationDocument,
   type CollaborationTicket,
-} from "@/features/offline/index"
+} from "../../collaboration/collaboration-connection"
 
 function getMeetingTicket(meetingId: string, signal?: AbortSignal) {
   return apiFetch<CollaborationTicket>(
@@ -58,7 +58,7 @@ export function useMeetingCollaboration(
       .then((ticket) => {
         if (disposed) return
         applyTicketState(nextDocument, ticket)
-        activeProvider = connectLocalPageDocument({
+        activeProvider = connectCollaborationDocument({
           autoConnect: false,
           document: nextDocument,
           onAuthenticationFailed: (reason) => {
