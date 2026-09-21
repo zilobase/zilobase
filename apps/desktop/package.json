@@ -1,15 +1,26 @@
 {
   "name": "@zilobase/desktop",
   "version": "0.0.55",
+  "main": "electron/main/index.mjs",
   "license": "MIT",
   "scripts": {
     "dev": "dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tauri dev",
     "build": "npm run tokens:check --prefix ../.. && dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tauri build",
     "test:selfhost": "node e2e/selfhost.mjs",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "dev:electron": "electron .",
+    "build:electron": "npm run build --prefix ../web && electron-builder --config electron-builder.yml",
+    "pack:electron": "electron-builder --dir --config electron-builder.yml"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "1.75.1",
-    "@tauri-apps/cli": "^2"
+    "@tauri-apps/cli": "^2",
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "electron-log": "^5.4.4",
+    "electron-store": "^11.0.2",
+    "electron-updater": "^6.8.9"
   }
 }

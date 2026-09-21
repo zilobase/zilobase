@@ -1,4 +1,4 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { invoke, isDesktopApp } from "@/platform/desktop/native"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
@@ -8,7 +8,7 @@ let authToken: string | null = null
 let authOwner: string | null = null
 
 export async function initializeDesktopAuthToken() {
-  if (!isTauri()) return
+  if (!isDesktopApp()) return
 
   const startedAt = performance.now()
   recordDesktopDiagnostic("keyring.initialization", { status: "started" })
@@ -35,7 +35,7 @@ export async function initializeDesktopAuthToken() {
 }
 
 export async function reloadDesktopAuthCredentials() {
-  if (!isTauri()) return
+  if (!isDesktopApp()) return
 
   ;[authToken, authOwner] = await Promise.all([
     invoke<string | null>("get_auth_token"),
@@ -52,20 +52,20 @@ export function getDesktopAuthOwner() {
 }
 
 export async function setDesktopAuthOwner(owner: string) {
-  if (!isTauri()) return
+  if (!isDesktopApp()) return
   authOwner = owner
   await invoke("set_auth_owner", { owner })
 }
 
 export async function setDesktopAuthToken(token: string) {
-  if (!isTauri()) return
+  if (!isDesktopApp()) return
 
   authToken = token
   await invoke("set_auth_token", { token })
 }
 
 export async function clearDesktopAuthToken() {
-  if (!isTauri()) return
+  if (!isDesktopApp()) return
 
   authToken = null
   authOwner = null

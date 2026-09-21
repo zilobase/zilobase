@@ -313,6 +313,7 @@ export function AppSidebar({
         actions={workspaceId ? <NotificationCenter workspaceId={workspaceId} /> : null}
         className={hasOverlayTitleBar ? "shrink-0 pt-9" : "shrink-0"}
         data-tauri-drag-region={hasOverlayTitleBar ? "deep" : undefined}
+        data-desktop-drag-region={hasOverlayTitleBar ? "" : undefined}
         navigation={!customizing ? <SidebarLayoutTabs activeTabId={activeTab.id} onOpenSearch={openSearch} onSelectTab={selectNavigationTab} tabs={layout.tabs} /> : null}
       >
         <WorkspaceSwitcher onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} />

@@ -1,4 +1,4 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { invoke, isDesktopApp } from "@/platform/desktop/native"
 
 type DiagnosticLevel = "error" | "info" | "warn"
 type DiagnosticValue = boolean | number | string | null | undefined
@@ -33,7 +33,7 @@ let appReady = false
 let startupTimer: number | undefined
 
 export function installDesktopDiagnostics() {
-  if (installed || typeof window === "undefined" || !isTauri()) return
+  if (installed || typeof window === "undefined" || !isDesktopApp()) return
   installed = true
 
   recordDesktopDiagnostic("renderer.started", {
@@ -75,7 +75,7 @@ export function markDesktopRootMounted() {
 }
 
 export function markDesktopAppReady() {
-  if (appReady || !isTauri()) return
+  if (appReady || !isDesktopApp()) return
   appReady = true
   window.clearTimeout(startupTimer)
   const elapsedMs = desktopStartupElapsedMs()
@@ -123,7 +123,7 @@ export function recordDesktopDiagnostic(
   fields: DiagnosticFields = {},
   level: DiagnosticLevel = "info",
 ) {
-  if (!isTauri()) return
+  if (!isDesktopApp()) return
   if (!formatDesktopDiagnostic(event, fields)) return
 
   void invoke("record_renderer_diagnostic", { event, fields, level }).catch(

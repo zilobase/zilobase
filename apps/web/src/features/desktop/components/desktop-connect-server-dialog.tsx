@@ -1,5 +1,5 @@
 import * as React from "react"
-import { isTauri } from "@tauri-apps/api/core"
+import { isDesktopApp } from "@/platform/desktop/native"
 
 import { Button } from "@/shared/ui/button"
 import {
@@ -43,7 +43,7 @@ export function DesktopConnectServerDialog({
   const [profiles, setProfiles] = React.useState<DesktopServerProfile[]>([])
 
   React.useEffect(() => {
-    if (!open || !isTauri()) return
+    if (!open || !isDesktopApp()) return
     let disposed = false
     void listDesktopServerProfiles()
       .then((result) => {

@@ -12,6 +12,8 @@ Native command names, deep links, keychain identifiers and persisted server conf
 
 The server allows the exact `zilo-desktop://app` client origin for the Electron migration alongside the two Tauri origins. The new origin is included in CORS and authentication trusted origins; lookalike hosts are rejected. The current shipped native host remains Tauri until the Electron cutover.
 
+The experimental [Electron host](../../apps/desktop/electron/main/index.mjs) creates one sandboxed main window and serves the packaged web build from a standard secure local protocol. Its [preload](../../apps/desktop/electron/preload/index.cjs) exposes the versioned desktop bridge; the [web adapter](../../apps/web/src/platform/desktop/native.ts) routes supported operations to that bridge or the shipped Tauri runtime. Electron packaging configuration lives in [electron-builder.yml](../../apps/desktop/electron-builder.yml). Native services beyond window/deep-link handling remain under development, so Electron packages are not yet released.
+
 ## Verification
 
 See [tests or test configuration](../../apps/desktop/e2e/selfhost.mjs) and [testing and quality](../setup/testing-and-quality.md). [Architecture index](../README.md).

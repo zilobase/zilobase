@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect } from "react"
-import { isTauri } from "@tauri-apps/api/core"
+import { isDesktopApp } from "@/platform/desktop/native"
 import { useRouter, useRouterState } from "@tanstack/react-router"
 import { useShallow } from "zustand/react/shallow"
 
@@ -41,7 +41,7 @@ export function DesktopTabs({
       tabs: state.desktopTabs,
     })),
   )
-  const desktopApp = isTauri()
+  const desktopApp = isDesktopApp()
   const macDesktopApp = desktopApp && navigator.userAgent.includes("Mac")
 
   useEffect(() => {
@@ -111,6 +111,7 @@ export function DesktopTabs({
       <div
         className="min-w-0 flex-1 self-stretch"
         data-tauri-drag-region="deep"
+          data-desktop-drag-region=""
       />
     </DesktopWindowTitlebar>
   )
@@ -203,7 +204,7 @@ export function useOpenInNewTab() {
 
   return useCallback(
     ({ href, title }: { href: string; title: string }) => {
-      if (!isTauri()) {
+      if (!isDesktopApp()) {
         window.open(href, "_blank", "noopener")
         return
       }

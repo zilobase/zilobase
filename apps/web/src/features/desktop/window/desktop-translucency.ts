@@ -1,4 +1,4 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { invoke, isDesktopApp } from "@/platform/desktop/native"
 
 export const DEFAULT_DESKTOP_TRANSLUCENCY = 0
 export const MAX_DESKTOP_TRANSLUCENCY = 40
@@ -37,7 +37,7 @@ export async function setDesktopTranslucency(value: number): Promise<number> {
     }
   }
 
-  if (isTauri()) {
+  if (isDesktopApp()) {
     await invoke("set_window_opacity", {
       opacity: 1 - translucency / 100,
     })
@@ -47,6 +47,6 @@ export async function setDesktopTranslucency(value: number): Promise<number> {
 }
 
 export async function initializeDesktopTranslucency(): Promise<void> {
-  if (!isTauri()) return
+  if (!isDesktopApp()) return
   await setDesktopTranslucency(getDesktopTranslucency())
 }

@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core"
+import { invoke } from "@/platform/desktop/native"
 
 import { isDesktopApp } from "../../../platform/environment"
 

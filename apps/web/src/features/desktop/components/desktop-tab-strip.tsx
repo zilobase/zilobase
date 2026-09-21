@@ -107,6 +107,7 @@ export function DesktopTabStrip({
           draggingTabId ? "overflow-visible" : "overflow-hidden",
         )}
         data-tauri-drag-region="deep"
+          data-desktop-drag-region=""
         onReorder={onReorderTabs}
         role="tablist"
         values={tabIds}

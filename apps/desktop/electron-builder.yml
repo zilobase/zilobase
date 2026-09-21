@@ -1,0 +1,49 @@
+appId: com.zilobase
+productName: zilobase-client
+directories:
+  output: dist-electron
+files:
+  - electron/main/**/*
+  - electron/preload/**/*
+  - package.json
+extraResources:
+  - from: ../web/dist
+    to: web
+    filter:
+      - "**/*"
+asar: true
+mac:
+  icon: src-tauri/icons/icon.icns
+  hardenedRuntime: true
+  extendInfo:
+    NSMicrophoneUsageDescription: Zilobase uses your microphone to transcribe meetings you choose to record.
+    NSAudioCaptureUsageDescription: Zilobase uses meeting audio to create a transcript after everyone has been notified.
+    CFBundleURLTypes:
+      - CFBundleURLSchemes:
+          - zilobase
+  target:
+    - dmg
+    - zip
+    - pkg
+win:
+  icon: src-tauri/icons/icon.ico
+  target:
+    - nsis
+    - msi
+  protocols:
+    - name: Zilobase
+      schemes:
+        - zilobase
+linux:
+  icon: src-tauri/icons
+  category: Office
+  mimeTypes:
+    - x-scheme-handler/zilobase
+  target:
+    - AppImage
+    - deb
+    - rpm
+publish:
+  provider: github
+  owner: zilobase
+  repo: zilobase

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { calendarApiBasePath, calendarKeys, type CalendarConnection } from "@zilobase/features/calendar";
 import { apiFetch, toApiUrl, getApiErrorMessage } from "@/platform/network/api";
 import { isDesktopApp } from "@/platform/environment";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/platform/desktop/native";
 import { toast } from "sonner";
 export function useCalendarAccounts(workspaceId: string) {
   const { data: session } = useSession();

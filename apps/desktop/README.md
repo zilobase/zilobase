@@ -2,6 +2,16 @@
 
 The desktop app checks the latest GitHub release on launch. When a newer signed build is available, it offers to download, install, and restart the app.
 
+## Experimental Electron shell
+
+The Electron implementation is under development and is not part of the release
+pipeline. Start the web dev server on port 1420, then run
+`npm run dev:electron --workspace @zilobase/desktop`. Build a local package with
+`npm run build:electron --workspace @zilobase/desktop`. These commands currently
+exercise the window, protocol, preload boundary, and renderer adapter; native
+authentication, server profiles, capture, diagnostics, and updates are not yet
+connected.
+
 ## Browser sign-in
 
 Desktop authentication uses the selected Zilobase server's authorization-code

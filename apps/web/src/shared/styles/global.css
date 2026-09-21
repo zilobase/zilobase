@@ -295,6 +295,7 @@
   [data-slot="slider-thumb"],
   [data-slot="scroll-area-thumb"],
   [data-tauri-drag-region],
+  [data-desktop-drag-region],
   .react-flow__node.draggable,
   .react-flow__pane.draggable
 ) {
@@ -307,11 +308,20 @@
   [data-slot="slider-thumb"],
   [data-slot="scroll-area-thumb"],
   [data-tauri-drag-region],
+  [data-desktop-drag-region],
   .react-flow__node.draggable,
   .react-flow__pane.draggable
 ):active,
 :where([data-dragging="true"], [aria-grabbed="true"]) {
   cursor: grabbing;
+}
+
+[data-desktop-drag-region] {
+  -webkit-app-region: drag;
+}
+
+[data-desktop-drag-region] :is(button, a, input, select, textarea, [role="tab"], [role="button"], [contenteditable="true"]) {
+  -webkit-app-region: no-drag;
 }
 
 [data-slot="resizable-handle"][aria-orientation="vertical"] {

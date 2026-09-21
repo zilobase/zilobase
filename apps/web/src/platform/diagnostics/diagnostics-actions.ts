@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core"
+import { invoke } from "@/platform/desktop/native"
 
 export function openDesktopDiagnosticsFolder() {
   return invoke("open_diagnostics_folder")

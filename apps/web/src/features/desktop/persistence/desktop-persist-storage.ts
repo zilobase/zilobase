@@ -1,4 +1,4 @@
-import { isTauri } from "@tauri-apps/api/core"
+import { isDesktopApp } from "@/platform/desktop/native"
 import { createJSONStorage, type StateStorage } from "zustand/middleware"
 
 import { desktopPersistKey } from "../../../platform/server/desktop-server"
@@ -23,7 +23,7 @@ function createDesktopScopedStorage(): StateStorage {
 export function desktopPersistOptions(name: string) {
   return {
     name,
-    skipHydration: typeof window !== "undefined" && isTauri(),
+    skipHydration: typeof window !== "undefined" && isDesktopApp(),
     storage: createJSONStorage(() => createDesktopScopedStorage()),
   }
 }

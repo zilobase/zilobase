@@ -1,5 +1,4 @@
-import { isTauri } from "@tauri-apps/api/core"
-import type { Update } from "@tauri-apps/plugin-updater"
+import { checkUpdate, isDesktopApp, relaunch } from "@/platform/desktop/native"
 import { useEffect } from "react"
 import { toast } from "sonner"
 import {
@@ -11,7 +10,7 @@ let updateCheckStarted = false
 
 export function DesktopUpdater() {
   useEffect(() => {
-    if (!isTauri() || updateCheckStarted) return
+    if (!isDesktopApp() || updateCheckStarted) return
 
     updateCheckStarted = true
     void checkForUpdate()
@@ -24,8 +23,7 @@ async function checkForUpdate() {
   const startedAt = performance.now()
   recordDesktopDiagnostic("updater.check", { status: "started" })
   try {
-    const { check } = await import("@tauri-apps/plugin-updater")
-    const update = await check()
+    const update = await checkUpdate()
 
     if (!update) {
       recordDesktopDiagnostic("updater.check", {
@@ -61,7 +59,7 @@ async function checkForUpdate() {
   }
 }
 
-async function installUpdate(update: Update) {
+async function installUpdate(update: NonNullable<Awaited<ReturnType<typeof checkUpdate>>>) {
   const toastId = toast.loading("Downloading Zilobase update…")
   const startedAt = performance.now()
   recordDesktopDiagnostic("updater.install", { status: "started" })
@@ -74,7 +72,6 @@ async function installUpdate(update: Update) {
     })
     toast.loading("Restarting Zilobase…", { id: toastId })
 
-    const { relaunch } = await import("@tauri-apps/plugin-process")
     await relaunch()
   } catch (error) {
     recordDesktopDiagnostic(

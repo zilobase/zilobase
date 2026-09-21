@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke } from "@/platform/desktop/native";
 
 import { toast } from "sonner";
 import { useSession } from "@zilobase/features/auth/react";

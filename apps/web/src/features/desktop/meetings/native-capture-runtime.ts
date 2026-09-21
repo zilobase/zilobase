@@ -1,5 +1,5 @@
-import { invoke as nativeInvoke } from "@tauri-apps/api/core";
-import { listen as nativeListen } from "@tauri-apps/api/event";
+import { invoke as nativeInvoke } from "@/platform/desktop/native";
+import { listen as nativeListen } from "@/platform/desktop/native";
 import type { MeetingCaptureRuntime } from "@/features/meetings/capture/capture-runtime";
 import type {
   MeetingCaptureStatus,

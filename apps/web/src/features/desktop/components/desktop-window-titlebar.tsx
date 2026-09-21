@@ -2,14 +2,14 @@
 
 import type { ReactNode } from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { isTauri } from "@tauri-apps/api/core"
-import { getCurrentWindow } from "@tauri-apps/api/window"
+import { isDesktopApp } from "@/platform/desktop/native"
+import { getCurrentWindow } from "@/platform/desktop/native"
 import { CopyIcon, MinusIcon, SquareIcon, XIcon } from "@/shared/components/icons"
 
 import { cn } from "@/shared/lib/utils"
 
 export function isLinuxDesktopApp() {
-  return isTauri() && navigator.userAgent.includes("Linux")
+  return isDesktopApp() && navigator.userAgent.includes("Linux")
 }
 
 export function DesktopWindowTitlebar({
@@ -71,6 +71,7 @@ export function DesktopWindowTitlebar({
       }
       data-desktop-tabs={variant === "tabs" ? "" : undefined}
       data-tauri-drag-region="deep"
+          data-desktop-drag-region=""
       onMouseDown={(event) => {
         if (
           !linuxDesktopApp ||

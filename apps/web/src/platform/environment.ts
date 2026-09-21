@@ -1,5 +1,1 @@
-import { isTauri } from "@tauri-apps/api/core"
-
-export function isDesktopApp() {
-  return isTauri()
-}
+export { isDesktopApp, isElectronDesktop } from "./desktop/native"

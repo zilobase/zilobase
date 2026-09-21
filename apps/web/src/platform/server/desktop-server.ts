@@ -1,4 +1,4 @@
-import { invoke, isTauri } from "@tauri-apps/api/core"
+import { invoke, isDesktopApp } from "@/platform/desktop/native"
 import packageJson from "../../../package.json"
 import { desktopNetworkFetch } from "../network/desktop-network"
 
@@ -76,7 +76,7 @@ let discoveredRuntimeDesktopServer: DesktopServer | null = null
 let runtimeDiscoveryPromise: Promise<DesktopServer> | null = null
 
 export async function initializeDesktopServer() {
-  if (!isTauri()) return null
+  if (!isDesktopApp()) return null
 
   try {
     selectedDesktopServer = validateDesktopServer(
@@ -90,7 +90,7 @@ export async function initializeDesktopServer() {
 }
 
 export async function prepareDesktopServerCandidate(serverUrl: string) {
-  if (!isTauri()) {
+  if (!isDesktopApp()) {
     throw new DesktopServerError(
       "desktop_required",
       "Custom desktop servers can only be selected in Zilobase Desktop.",
@@ -120,12 +120,12 @@ export async function prepareDesktopServerCandidate(serverUrl: string) {
 }
 
 export async function discardDesktopServerCandidate(candidateId: string) {
-  if (!isTauri()) return
+  if (!isDesktopApp()) return
   await invoke("discard_desktop_server_candidate", { candidateId })
 }
 
 export async function commitDesktopServerCandidate(candidateId: string) {
-  if (!isTauri()) {
+  if (!isDesktopApp()) {
     throw new DesktopServerError(
       "desktop_required",
       "Custom desktop servers can only be selected in Zilobase Desktop.",
@@ -149,7 +149,7 @@ export function getSelectedDesktopServer() {
 }
 
 export async function listDesktopServerProfiles(): Promise<DesktopServerProfileList> {
-  if (!isTauri()) {
+  if (!isDesktopApp()) {
     return { activeInstanceId: "", profiles: [] }
   }
 
@@ -169,7 +169,7 @@ export async function switchDesktopServerProfile(input: {
   path?: string | null
   workspaceId?: string | null
 }) {
-  if (!isTauri()) {
+  if (!isDesktopApp()) {
     throw new DesktopServerError(
       "desktop_required",
       "Saved desktop servers can only be switched in Zilobase Desktop.",
@@ -196,7 +196,7 @@ export async function updateDesktopServerProfileSnapshot(input: {
   lastPath?: string | null
   workspaces: DesktopServerWorkspaceSnapshot[]
 }) {
-  if (!isTauri()) return
+  if (!isDesktopApp()) return
 
   try {
     await invoke("update_desktop_server_profile_snapshot", {
@@ -213,7 +213,7 @@ export async function removeDesktopServerProfile(input: {
   apiOrigin: string
   instanceId: string
 }) {
-  if (!isTauri()) {
+  if (!isDesktopApp()) {
     throw new DesktopServerError(
       "desktop_required",
       "Saved desktop servers can only be removed in Zilobase Desktop.",

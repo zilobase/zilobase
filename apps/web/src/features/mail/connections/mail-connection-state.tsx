@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { invoke } from "@tauri-apps/api/core"
+import { invoke } from "@/platform/desktop/native"
 import { mailApiBasePath, type MailConnection } from "@zilobase/features/mail"
 import { toast } from "sonner"
 

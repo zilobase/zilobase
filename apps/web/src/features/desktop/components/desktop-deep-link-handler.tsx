@@ -1,6 +1,6 @@
 import { useEffect } from "react"
-import { isTauri } from "@tauri-apps/api/core"
-import { getCurrent, onOpenUrl } from "@tauri-apps/plugin-deep-link"
+import { isDesktopApp } from "@/platform/desktop/native"
+import { getCurrent, onOpenUrl } from "@/platform/desktop/native"
 
 import { resolveDesktopDeepLinkAction } from "../deep-links/desktop-deep-link"
 import { recordDesktopDiagnostic } from "../../../platform/diagnostics/desktop-diagnostics"
@@ -13,7 +13,7 @@ export function DesktopDeepLinkHandler({
   openPath: (path: string) => void
 }) {
   useEffect(() => {
-    if (!isTauri()) return
+    if (!isDesktopApp()) return
 
     let disposed = false
     let unlisten: (() => void) | undefined
