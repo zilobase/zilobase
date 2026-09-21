@@ -11,7 +11,7 @@ import {
 } from "./mcp-scope";
 
 describe("MCP connection scopes", () => {
-  it("keeps the legacy agent profile id as the credential AAD binding", () => {
+  it("binds an agent credential to its workspace and profile", () => {
     const connection = {
       agentProfileId: "agent-1",
       scopeType: "agent",
@@ -20,7 +20,7 @@ describe("MCP connection scopes", () => {
     };
 
     expect(getMcpScopeFromConnection(connection)).toEqual(agentMcpScope("agent-1"));
-    expect(getMcpCredentialScopeId(connection)).toBe("agent-1");
+    expect(getMcpCredentialScopeId(connection)).toBe("agent:workspace-1:agent-1");
     expect(getMcpScopeRef(agentMcpScope("agent-1"))).toEqual({
       type: "agent",
       agentProfileId: "agent-1",

@@ -7,7 +7,7 @@
 
 ## Main flow
 
-The browser demo transport overlays reads and intercepts selected mutations. Server demo modules define request identity, seed data and write guards. [App providers](../../../apps/web/src/app/providers/app-providers.tsx) install the demo cache once during module initialization, before rendering providers. Demo presentation does not import the app query client. App composition selects demo behavior. The [request classifier](../../../apps/server/src/features/demo/request.ts) requires the configured demo flag and matching header; feature operations consume the resulting auth method. The [demo transport](../../../apps/web/src/features/demo/transport.ts) stays behind app-installed runtime policy rather than selecting itself inside authentication or offline storage.
+The browser demo transport overlays reads and intercepts selected mutations. Server demo modules define request identity, seed data and write guards. [App providers](../../../apps/web/src/app/providers/app-providers.tsx) install the demo cache once during module initialization, before rendering providers. Demo presentation does not import the app query client. App composition selects demo behavior. The [request classifier](../../../apps/server/src/features/demo/request.ts) requires the configured demo flag and matching header; feature operations consume the resulting auth method. The [demo transport](../../../apps/web/src/features/demo/transport.ts) stays behind app-installed runtime policy rather than selecting itself inside authentication.
 
 ## Authorization and persistence
 

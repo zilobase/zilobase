@@ -1,7 +1,6 @@
 export type { BackgroundQueue, WorkerEnvBindings, WorkerHyperdriveBinding } from "./bindings";
 export {
   createWorkerHandler,
-  createCloudflareWorkerHandler,
 } from "./handler";
 export {
   createWorker,

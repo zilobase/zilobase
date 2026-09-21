@@ -21,10 +21,6 @@ export const mailViewIds = [
 ] as const
 
 export const sidebarSectionIds = ["recents", "favorites", "private", "shared"] as const
-export const sidebarItemIds = [
-  "askAi", "meetings", "tasks", ...sidebarSectionIds,
-  "calendar", "templates", "trash", "help",
-] as const
 export const sidebarSectionLimits = [5, 10, 15, 20, 50, 100] as const
 export const sidebarSectionSorts = ["lastEdited", "alphabetical"] as const
 export const sidebarTabIconIds = [
@@ -38,7 +34,6 @@ export const sidebarSectionKinds = [
 
 export type LibraryView = (typeof libraryViewIds)[number]
 export type MailView = (typeof mailViewIds)[number]
-export type SidebarItemId = (typeof sidebarItemIds)[number]
 export type SidebarSectionId = (typeof sidebarSectionIds)[number]
 export type SidebarSectionKind = (typeof sidebarSectionKinds)[number]
 export type SidebarSectionLimit = (typeof sidebarSectionLimits)[number]
@@ -94,16 +89,6 @@ export type SidebarConfig = {
   libraryView: LibraryView
   version: 3
   workspaceLayouts: Record<string, SidebarWorkspaceLayout>
-}
-
-/** @deprecated Only used by pre-v2 sidebar presentation components. */
-export type LegacySidebarConfig = {
-  hiddenItems: SidebarItemId[]
-  libraryView: LibraryView
-  sectionLimits: Record<SidebarSectionId, SidebarSectionLimit>
-  sectionOrder: SidebarSectionId[]
-  sectionSorts: Record<SidebarSectionId, SidebarSectionSort>
-  taskDatabaseIds: string[]
 }
 
 const defaultSections: SidebarSection[] = [
@@ -179,15 +164,13 @@ export const defaultSidebarConfig: SidebarConfig = {
 
 export function normalizeSidebarConfig(value: unknown): SidebarConfig {
   const config = isRecord(value) ? value : {}
-  if (Object.keys(config).length === 0) {
+  if (config.version !== 3) {
     return {
       ...defaultSidebarConfig,
       defaultLayout: cloneSidebarWorkspaceLayout(defaultSidebarWorkspaceLayout),
       workspaceLayouts: {},
     }
   }
-  if (config.version === 2) return migrateCombinedSidebarSections(config)
-  if (config.version !== 3) return migrateLegacySidebarConfig(config)
 
   const layouts = isRecord(config.workspaceLayouts) ? config.workspaceLayouts : {}
   return {
@@ -408,82 +391,6 @@ function normalizeSection(value: unknown): SidebarSection | null {
   }
 }
 
-function migrateLegacySidebarConfig(config: Record<string, unknown>): SidebarConfig {
-  const hiddenItems = new Set(uniqueValidValues(config.hiddenItems, sidebarItemIds))
-  const limits = isRecord(config.sectionLimits) ? config.sectionLimits : {}
-  const sorts = isRecord(config.sectionSorts) ? config.sectionSorts : {}
-  const sections = completeLegacySectionOrder(config.sectionOrder)
-    .filter((kind) => !hiddenItems.has(kind))
-    .map((kind) => ({
-      id: `default-${kind}`,
-      kind,
-      limit: isIncluded(limits[kind], sidebarSectionLimits) ? limits[kind] : 10,
-      sort: isIncluded(sorts[kind], sidebarSectionSorts) ? sorts[kind] : "lastEdited",
-    })) satisfies SidebarSection[]
-  const routeItems = ["askAi", "meetings", "tasks", "trash"] as const
-  const shortcuts = routeItems
-    .filter((item) => !hiddenItems.has(item))
-    .map((item) => ({
-      id: `default-${item.replace(/[A-Z]/g, (character) => `-${character.toLowerCase()}`)}`,
-      target: { route: item === "askAi" ? "ai" : item, type: "route" },
-    })) as SidebarShortcut[]
-  shortcuts.splice(3, 0, { id: "default-library", target: { type: "library", view: "recents" } })
-
-  return {
-    defaultLayout: normalizeSidebarWorkspaceLayout({
-      tabs: [{ icon: "home", id: "home", name: "Home", sections: splitCombinedSections(sections), shortcuts }],
-      taskDatabaseIds: uniqueStrings(config.taskDatabaseIds).slice(0, 10),
-    }),
-    libraryView: isIncluded(config.libraryView, libraryViewIds) ? config.libraryView : "recents",
-    version: 3,
-    workspaceLayouts: {},
-  }
-}
-
-function migrateCombinedSidebarSections(config: Record<string, unknown>): SidebarConfig {
-  const migrateLayout = (value: unknown) => {
-    const layout = normalizeSidebarWorkspaceLayout(value)
-    return {
-      ...layout,
-      tabs: layout.tabs.map((tab) => ({
-        ...tab,
-        sections: splitCombinedSections(tab.sections),
-      })),
-    }
-  }
-  const layouts = isRecord(config.workspaceLayouts) ? config.workspaceLayouts : {}
-  return {
-    defaultLayout: migrateLayout(config.defaultLayout),
-    libraryView: isIncluded(config.libraryView, libraryViewIds) ? config.libraryView : "recents",
-    version: 3,
-    workspaceLayouts: Object.fromEntries(
-      Object.entries(layouts)
-        .filter(([workspaceId]) => isSafeId(workspaceId))
-        .slice(0, 64)
-        .map(([workspaceId, layout]) => [workspaceId, migrateLayout(layout)]),
-    ),
-  }
-}
-
-function splitCombinedSections(sections: SidebarSection[]): SidebarSection[] {
-  if (sections.some((section) => section.kind === "teamspaces")) return sections
-  const shared = sections.find((section) => section.kind === "shared")
-  if (!shared || shared.kind === "databaseView") return sections
-  const sharedIndex = sections.indexOf(shared)
-  const ids = new Set(sections.map((section) => section.id))
-  let id = "migrated-teamspaces"
-  let suffix = 2
-  while (ids.has(id)) id = `migrated-teamspaces-${suffix++}`
-  const next = [...sections]
-  next.splice(sharedIndex + 1, 0, {
-    id,
-    kind: "teamspaces",
-    limit: shared.limit,
-    sort: shared.sort,
-  })
-  return next
-}
-
 function normalizeSidebarIcon(value: unknown): string | undefined {
   if (isIncluded(value, sidebarTabIconIds)) return value
   if (
@@ -512,11 +419,6 @@ function uniqueStrings(value: unknown): string[] {
   return [...new Set(value.filter(isSafeId))]
 }
 
-function completeLegacySectionOrder(value: unknown): SidebarSectionId[] {
-  const configured = uniqueValidValues(value, sidebarSectionIds)
-  return [...configured, ...sidebarSectionIds.filter((id) => !configured.includes(id))]
-}
-
 function uniqueById<T extends { id: string }>(items: Array<T | null>): T[] {
   const seen = new Set<string>()
   return items.filter((item): item is T => {
@@ -524,11 +426,6 @@ function uniqueById<T extends { id: string }>(items: Array<T | null>): T[] {
     seen.add(item.id)
     return true
   })
-}
-
-function uniqueValidValues<T extends string>(value: unknown, allowed: readonly T[]): T[] {
-  if (!Array.isArray(value)) return []
-  return [...new Set(value.filter((item): item is T => isIncluded(item, allowed)))]
 }
 
 function isIncluded<T>(value: unknown, allowed: readonly T[]): value is T {

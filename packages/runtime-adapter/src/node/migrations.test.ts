@@ -38,7 +38,7 @@ test("migration sets run core first and keep separate journals", async () => {
     "__zilobase_test_edition_migrations",
   ]);
   assert.equal(calls[1]?.folder, "/private/migrations");
-  assert.equal(statements.length, 3);
+  assert.equal(statements.length, 2);
 });
 
 test("migration sets reject private-first and shared-journal configurations", () => {

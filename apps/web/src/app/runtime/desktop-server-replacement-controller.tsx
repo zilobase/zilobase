@@ -1,7 +1,5 @@
 import { createDesktopServerReplacementDependencies } from "./desktop-server-replacement";
 import * as React from "react";
-import { DownloadIcon, RefreshCwIcon, Trash2Icon } from "@/shared/components/icons";
-import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -13,7 +11,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
-import { Button } from "@/shared/ui/button";
 import { Spinner } from "@/shared/ui/spinner";
 import { getApiErrorMessage } from "@/platform/network/api";
 import {
@@ -37,10 +34,6 @@ import {
 } from "../../features/desktop/server/desktop-server-replacement-core";
 import { executeDesktopServerSwitch } from "../../features/desktop/server/desktop-server-switch";
 import { cancelDesktopBrowserSignIn } from "../../features/desktop/auth/browser-authorization";
-import {
-  downloadRecoveryArchive,
-  syncDirtyOfflinePages,
-} from "@/features/offline/index";
 
 
 type ReplacementContext = {
@@ -54,12 +47,9 @@ type ReplacementState =
   | ({
       phase:
         | "confirm"
-        | "drafts"
         | "discard"
-        | "exporting"
         | "rechecking"
-        | "replacing"
-        | "syncing";
+        | "replacing";
     } & ReplacementContext)
   | { phase: "error"; message: string }
   | { phase: "fatal"; message: string };
@@ -249,38 +239,9 @@ export function DesktopServerReplacementController({
     [openPath],
   );
 
-  const syncAndReplace = async (context: ReplacementContext) => {
-    setState({ ...context, phase: "syncing" });
-    try {
-      const results = await syncDirtyOfflinePages();
-      if (!results.every((result) => result.success)) {
-        throw new Error(
-          "Some drafts could not be synced. Export them or cancel.",
-        );
-      }
-      await replaceServer(context);
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-      setState({ ...context, phase: "drafts" });
-    }
-  };
-
-  const exportAndReplace = async (context: ReplacementContext) => {
-    setState({ ...context, phase: "exporting" });
-    try {
-      await downloadRecoveryArchive();
-      await replaceServer(context);
-    } catch (error) {
-      toast.error(getApiErrorMessage(error));
-      setState({ ...context, phase: "drafts" });
-    }
-  };
-
   const context = "prepared" in state ? state : null;
   const busy =
     state.phase === "verifying" ||
-    state.phase === "syncing" ||
-    state.phase === "exporting" ||
     state.phase === "rechecking" ||
     state.phase === "replacing";
 
@@ -299,40 +260,14 @@ export function DesktopServerReplacementController({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {state.phase === "drafts" && context ? (
-          <div className="grid gap-2">
-            <Button onClick={() => void syncAndReplace(context)} type="button">
-              <RefreshCwIcon /> Sync drafts and change
-            </Button>
-            <Button
-              onClick={() => void exportAndReplace(context)}
-              type="button"
-              variant="outline"
-            >
-              <DownloadIcon /> Export recovery and change
-            </Button>
-            <Button
-              onClick={() => setState({ ...context, phase: "discard" })}
-              type="button"
-              variant="destructive"
-            >
-              <Trash2Icon /> Discard drafts
-            </Button>
-          </div>
-        ) : null}
-
         {busy ? (
           <div className="flex items-center gap-2 text-sm text-content-secondary">
             <Spinner />
             {state.phase === "verifying"
               ? "Checking discovery metadata, TLS, and compatibility..."
-              : state.phase === "syncing"
-                ? "Syncing local drafts with the current server..."
-                : state.phase === "exporting"
-                  ? "Creating a local recovery archive..."
-                  : state.phase === "rechecking"
-                    ? "Rechecking the server before removing local data..."
-                    : "Switching servers..."}
+              : state.phase === "rechecking"
+                ? "Rechecking the server before removing local data..."
+                : "Switching servers..."}
           </div>
         ) : null}
 
@@ -378,18 +313,12 @@ function replacementTitle(state: ReplacementState) {
       return "Verify Zilobase server";
     case "confirm":
       return `Change to ${state.prepared.server.displayName}?`;
-    case "drafts":
-      return "Unsynced offline drafts";
     case "discard":
-      return "Discard drafts and change server?";
+      return "Discard local data and change server?";
     case "replacing":
       return "Changing server";
     case "rechecking":
       return "Reverify before changing";
-    case "syncing":
-      return "Sync drafts before changing";
-    case "exporting":
-      return "Export drafts before changing";
     case "error":
       return "Server could not be verified";
     case "fatal":
@@ -404,19 +333,13 @@ function replacementDescription(state: ReplacementState) {
     case "verifying":
       return "Your existing connection will not be changed during verification.";
     case "confirm":
-      return "This signs out of the current server and permanently removes its credentials, cached data, offline documents, tabs, and local session state from this device.";
-    case "drafts":
-      return "Changing servers is blocked until you sync, export, or explicitly discard these local changes.";
+      return "This signs out of the current server and permanently removes its credentials, cached data, tabs, and local session state from this device.";
     case "discard":
-      return "These local drafts cannot be recovered unless you exported them first.";
+      return "Changing servers permanently removes local data for the current server.";
     case "replacing":
       return "Keep Zilobase open while local data and credentials for the previous server are removed.";
     case "rechecking":
       return "The current connection remains untouched until this final compatibility check succeeds.";
-    case "syncing":
-      return "Zilobase will change servers only after every local draft is synchronized.";
-    case "exporting":
-      return "Save the recovery archive somewhere safe before Zilobase removes local data.";
     case "error":
     case "fatal":
       return state.message;
@@ -435,8 +358,6 @@ function afterReactTeardown() {
 
 function isReplacementBusy(state: ReplacementState) {
   return (
-    state.phase === "syncing" ||
-    state.phase === "exporting" ||
     state.phase === "rechecking" ||
     state.phase === "replacing"
   );

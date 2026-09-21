@@ -26,7 +26,7 @@ pub(crate) use contracts::{
     DesktopServer, DesktopServerProfileList, DesktopServerProfileView,
     DesktopServerWorkspaceSnapshot,
 };
-use contracts::{DesktopServerConfig, DiscoveryDocument, LegacyDesktopServerConfig};
+use contracts::{DesktopServerConfig, DiscoveryDocument};
 use discovery::*;
 pub(crate) use profile_state::is_cloud_server;
 use profile_state::*;
@@ -34,7 +34,6 @@ use profile_state::*;
 const CONFIG_FILE_NAME: &str = "desktop-server.json";
 const DEV_CONFIG_FILE_NAME: &str = "desktop-server.dev.json";
 const CONFIG_VERSION: u8 = 2;
-const LEGACY_CONFIG_VERSION: u8 = 1;
 const MAX_PROFILE_WORKSPACES: usize = 50;
 const DISCOVERY_PATH: &str = "/.well-known/zilobase";
 const MAX_DISCOVERY_BYTES: usize = 64 * 1024;
@@ -318,6 +317,22 @@ mod tests {
     }
 
     #[test]
+    fn rejects_unsupported_saved_configuration_versions() {
+        let bytes = serde_json::to_vec(&serde_json::json!({
+            "version": 1,
+            "server": default_server(),
+        }))
+        .expect("configuration json");
+
+        let error = parse_config(&bytes).expect_err("version 1 must be rejected");
+        assert_eq!(error.code, "server_configuration_error");
+        assert_eq!(
+            error.message,
+            "The saved desktop server configuration uses an unsupported version."
+        );
+    }
+
+    #[test]
     fn debug_recognizes_a_discovered_local_server_after_its_instance_id_changes() {
         #[cfg(debug_assertions)]
         {
@@ -406,33 +421,6 @@ mod tests {
             .profiles
             .iter()
             .any(|profile| profile.server == replacement));
-    }
-
-    #[test]
-    fn migrates_legacy_single_server_config() {
-        let directory = tempfile::tempdir().expect("temporary directory");
-        let server = default_server();
-        let legacy = serde_json::json!({
-            "version": 1,
-            "server": server,
-        });
-        std::fs::write(
-            config_path(directory.path()),
-            serde_json::to_vec_pretty(&legacy).expect("legacy json"),
-        )
-        .expect("write legacy config");
-
-        let (config, migrated) =
-            parse_config(&std::fs::read(config_path(directory.path())).expect("read legacy"))
-                .expect("parse legacy");
-        assert!(migrated);
-        assert_eq!(config.version, 2);
-        assert_eq!(config.profiles.len(), 1);
-        assert_eq!(config.profiles[0].server, server);
-        assert_eq!(
-            load_or_initialize_from_directory(directory.path()).expect("migrated active"),
-            server
-        );
     }
 
     #[test]

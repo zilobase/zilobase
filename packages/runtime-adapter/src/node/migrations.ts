@@ -26,8 +26,6 @@ export async function runMigrationSets(
   );
 
   try {
-    await adoptLegacyCoreJournal(database);
-
     for (const migrationSet of migrationSets) {
       await runner(database, {
         migrationsFolder: migrationSet.migrationsFolder,
@@ -39,20 +37,6 @@ export async function runMigrationSets(
       sql`select pg_advisory_unlock(hashtext('zilobase-database-migrations'))`,
     );
   }
-}
-
-async function adoptLegacyCoreJournal(database: Database) {
-  await database.execute(sql.raw(`
-    do $$
-    begin
-      if to_regclass('drizzle.__zilobase_core_migrations') is null
-        and to_regclass('drizzle.__drizzle_migrations') is not null then
-        alter table drizzle.__drizzle_migrations
-          rename to __zilobase_core_migrations;
-      end if;
-    end
-    $$;
-  `));
 }
 
 export function assertMigrationSets(migrationSets: readonly MigrationSet[]) {

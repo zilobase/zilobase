@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 import type { ApiFetcher } from "./api-fetcher";
-import { databaseAccessQueryKey } from "../databases/queries";
+import { databaseAccessQueryKey } from "../databases/queries/queries";
 import { applyPageFavoriteToNav } from "../pages/nav-delta";
 import {
   zilobaseAiPagesQueryKey,
@@ -9,10 +9,8 @@ import {
   pageQueryKey,
   pagesRootQueryKey,
   pagesQueryKey,
-  type Page,
-  type PageDetail,
-  type PageNavigationPayload,
 } from "../pages/queries";
+import type { Page, PageDetail, PageNavigationPayload } from "../pages/contracts";
 
 export type DeletedItemIds = {
   deletedDatabaseIds: string[];

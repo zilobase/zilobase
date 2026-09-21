@@ -3,7 +3,7 @@ import { useSyncExternalStore } from "react"
 
 import { useZilobaseFeatures } from "../../shared/context"
 import { pageQueryKey } from "../../pages/queries"
-import type { PageDetail, PagePropertiesPayload } from "../../pages/queries"
+import type { PageDetail, PagePropertiesPayload } from "../../pages/contracts"
 import { pagePropertiesQueryKey } from "../../pages/queries"
 
 function subscribeToPageQueries(

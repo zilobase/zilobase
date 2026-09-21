@@ -1,16 +1,13 @@
 import type { SidebarNavItem } from "./sidebar-nav-item"
-import type {
-  LegacySidebarConfig,
-  SidebarSectionId,
-} from "@zilobase/features/user-settings"
+import type { SidebarSectionId, SidebarSectionSort } from "@zilobase/features/user-settings"
 
 export function getConfiguredSidebarItems<Icon>(
   items: SidebarNavItem<Icon>[],
   sectionId: SidebarSectionId,
-  config: LegacySidebarConfig,
+  presentation: { limit: number; sort: SidebarSectionSort },
 ) {
   const sorted = [...items].sort((first, second) => {
-    if (config.sectionSorts[sectionId] === "alphabetical") {
+    if (presentation.sort === "alphabetical") {
       return getDisplayName(first).localeCompare(getDisplayName(second), undefined, {
         sensitivity: "base",
       })
@@ -23,7 +20,7 @@ export function getConfiguredSidebarItems<Icon>(
     return getTime(second.updatedAt) - getTime(first.updatedAt)
   })
 
-  return sorted.slice(0, config.sectionLimits[sectionId])
+  return sorted.slice(0, presentation.limit)
 }
 
 function getDisplayName(item: SidebarNavItem) {

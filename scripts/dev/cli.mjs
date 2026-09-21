@@ -38,13 +38,13 @@ try {
   if (command === "doctor") await doctor();
   else if (command === "setup") {
     await ensureDependencies();
-    await ensureDevelopmentEnvironment({ reportLegacy: true });
+    await ensureDevelopmentEnvironment({ reportEnvironmentConflicts: true });
     await installGitHooks();
     await printEnvironmentCheck();
   } else if (command === "hooks") {
     await installGitHooks();
   } else if (command === "env-setup") {
-    await ensureDevelopmentEnvironment({ reportLegacy: true });
+    await ensureDevelopmentEnvironment({ reportEnvironmentConflicts: true });
     await printEnvironmentCheck();
   } else if (command === "setup-check") {
     await doctor();

@@ -1,4 +1,5 @@
 export {
+  resolveActiveWorkspaceId,
   useWorkspaces,
   useActiveWorkspaceId,
   useWorkspaceAccessTargets,

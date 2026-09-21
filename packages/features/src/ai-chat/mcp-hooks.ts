@@ -15,7 +15,6 @@ import type {
 } from "./mcp-contract"
 import type {
   CustomAgentConversationMessage,
-  CustomAgentLegacyConversation,
   CustomAgentResourceAccess,
   CustomAgentRevision,
   CustomAgentRun,
@@ -68,28 +67,6 @@ export function useCreateAiAgentProfile() {
   )
 }
 
-export function useUpdateAiAgentProfile(agentId: string | null) {
-  return useAgentMutation<Partial<Pick<AiAgentProfileDetail, "name" | "description" | "instructions" | "defaultModel" | "icon" | "cover" | "iconPosition">>, { agent: AiAgentProfileDetail }>(
-    () => `/api/ai/agents/${encodeURIComponent(agentId!)}`,
-    "PATCH",
-    agentId,
-  )
-}
-
-export function useReplaceAiAgentProfileAccess(agentId: string | null) {
-  return useAgentMutation<{
-    grants: Array<{
-      principalId: string
-      principalType: "user" | "team"
-      role: "editor" | "user"
-    }>
-  }, { agent: AiAgentProfileDetail }>(
-    () => `/api/ai/agents/${encodeURIComponent(agentId!)}/access`,
-    "PUT",
-    agentId,
-  )
-}
-
 export function useTransferAiAgentProfile(agentId: string | null) {
   return useAgentMutation<{ newOwnerUserId: string }, { agent: AiAgentProfileDetail }>(
     () => `/api/ai/agents/${encodeURIComponent(agentId!)}/transfer`,
@@ -101,7 +78,6 @@ export function useTransferAiAgentProfile(agentId: string | null) {
 export function useArchiveAiAgentProfile(agentId: string | null) {
   return useAgentMutation<Record<string, never>, { result: {
     archived: boolean
-    hasExistingThreads: boolean
   } }>(
     () => `/api/ai/agents/${encodeURIComponent(agentId!)}/archive`,
     "POST",
@@ -111,10 +87,6 @@ export function useArchiveAiAgentProfile(agentId: string | null) {
 
 export function useCustomAgentConversation(agentId: string | null) {
   return useCustomAgentQuery<{ messages: CustomAgentConversationMessage[] }>(agentId, "conversation", 1_500)
-}
-
-export function useCustomAgentLegacyConversations(agentId: string | null) {
-  return useCustomAgentQuery<{ conversations: CustomAgentLegacyConversation[] }>(agentId, "legacy-conversations")
 }
 
 export function useCustomAgentRevisions(agentId: string | null) {

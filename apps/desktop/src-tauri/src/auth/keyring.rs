@@ -6,31 +6,31 @@ use tauri::AppHandle;
 use crate::server::{self, DesktopServer};
 
 const AUTH_SERVICE: &str = "com.zilobase";
-pub(crate) const LEGACY_AUTH_ACCOUNT: &str = "session";
-pub(crate) const LEGACY_AUTH_OWNER_ACCOUNT: &str = "session-owner";
+pub(crate) const AUTH_TOKEN_ACCOUNT: &str = "session";
+pub(crate) const AUTH_OWNER_ACCOUNT: &str = "session-owner";
 
 #[tauri::command]
 pub(crate) fn get_auth_token(app: AppHandle) -> Result<Option<String>, String> {
     let server = load_credential_server(&app)?;
-    get_server_keyring_value(&server, LEGACY_AUTH_ACCOUNT, "session_token")
+    get_server_keyring_value(&server, AUTH_TOKEN_ACCOUNT, "session_token")
 }
 
 #[tauri::command]
 pub(crate) fn set_auth_token(app: AppHandle, token: Option<String>) -> Result<(), String> {
     let server = load_credential_server(&app)?;
-    set_server_keyring_value(&server, LEGACY_AUTH_ACCOUNT, "session_token", token)
+    set_server_keyring_value(&server, AUTH_TOKEN_ACCOUNT, "session_token", token)
 }
 
 #[tauri::command]
 pub(crate) fn get_auth_owner(app: AppHandle) -> Result<Option<String>, String> {
     let server = load_credential_server(&app)?;
-    get_server_keyring_value(&server, LEGACY_AUTH_OWNER_ACCOUNT, "session_owner")
+    get_server_keyring_value(&server, AUTH_OWNER_ACCOUNT, "session_owner")
 }
 
 #[tauri::command]
 pub(crate) fn set_auth_owner(app: AppHandle, owner: Option<String>) -> Result<(), String> {
     let server = load_credential_server(&app)?;
-    set_server_keyring_value(&server, LEGACY_AUTH_OWNER_ACCOUNT, "session_owner", owner)
+    set_server_keyring_value(&server, AUTH_OWNER_ACCOUNT, "session_owner", owner)
 }
 
 fn get_keyring_value(account: &str, value_kind: &str) -> Result<Option<String>, String> {
@@ -124,38 +124,20 @@ fn load_credential_server(app: &AppHandle) -> Result<DesktopServer, String> {
 
 pub(crate) fn get_server_keyring_value(
     server: &DesktopServer,
-    legacy_account: &str,
+    account_name: &str,
     value_kind: &str,
 ) -> Result<Option<String>, String> {
-    let account = scoped_keyring_account(server, legacy_account);
-    let scoped = get_keyring_value(&account, value_kind)?;
-
-    if scoped.is_some() || !server::is_cloud_server(server) {
-        return Ok(scoped);
-    }
-
-    let legacy = get_keyring_value(legacy_account, value_kind)?;
-    if let Some(value) = legacy {
-        set_keyring_value(&account, value_kind, Some(value.clone()))?;
-        set_keyring_value(legacy_account, value_kind, None)?;
-        log::info!(
-            target: "zilobase::keyring",
-            "[diagnostics] event=keyring.migration status=success value_kind={value_kind}"
-        );
-        return Ok(Some(value));
-    }
-
-    Ok(None)
+    get_keyring_value(&scoped_keyring_account(server, account_name), value_kind)
 }
 
 pub(crate) fn set_server_keyring_value(
     server: &DesktopServer,
-    legacy_account: &str,
+    account_name: &str,
     value_kind: &str,
     value: Option<String>,
 ) -> Result<(), String> {
     set_keyring_value(
-        &scoped_keyring_account(server, legacy_account),
+        &scoped_keyring_account(server, account_name),
         value_kind,
         value,
     )
@@ -164,25 +146,20 @@ pub(crate) fn set_server_keyring_value(
 pub(crate) fn delete_server_keyring_credentials(server: &DesktopServer) -> Result<(), String> {
     let mut first_error = None;
     for (account, value_kind) in [
-        (LEGACY_AUTH_ACCOUNT, "session_token"),
-        (LEGACY_AUTH_OWNER_ACCOUNT, "session_owner"),
+        (AUTH_TOKEN_ACCOUNT, "session_token"),
+        (AUTH_OWNER_ACCOUNT, "session_owner"),
     ] {
         if let Err(error) = set_server_keyring_value(server, account, value_kind, None) {
             first_error.get_or_insert(error);
-        }
-        if server::is_cloud_server(server) {
-            if let Err(error) = set_keyring_value(account, value_kind, None) {
-                first_error.get_or_insert(error);
-            }
         }
     }
 
     first_error.map_or(Ok(()), Err)
 }
 
-fn scoped_keyring_account(server: &DesktopServer, legacy_account: &str) -> String {
+fn scoped_keyring_account(server: &DesktopServer, account_name: &str) -> String {
     let digest = Sha256::digest(format!("{}\0{}", server.issuer, server.instance_id).as_bytes());
-    format!("{legacy_account}:{digest:x}")
+    format!("{account_name}:{digest:x}")
 }
 
 fn log_keyring_failure(

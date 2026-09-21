@@ -2,13 +2,6 @@ import type { UIMessage } from "ai";
 
 export type AiChatThread = {
   id: string
-  agentProfileId: string | null
-  agentProfile: {
-    icon: unknown | null
-    id: string
-    name: string
-    status: "active" | "archived"
-  } | null
   title: string
   pinned: boolean
   pinnedAt: string | null
@@ -21,11 +14,6 @@ export type AiChatFeedback = {
   messageId: string
   rating: -1 | 1
   reason: string | null
-}
-
-export type AiAgentPreference = {
-  instructions: string
-  responseStyle: "concise" | "balanced" | "detailed"
 }
 
 export type AiChatThreadsResponse = {

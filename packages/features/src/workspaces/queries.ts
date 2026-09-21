@@ -1,19 +1,4 @@
 import type { Workspace, WorkspaceAccessTargetsPayload, WorkspaceInvitation, WorkspaceGuest, WorkspaceGuestPolicy, WorkspaceGuestRequest } from "./contracts";
-export type {
-  Workspace,
-  WorkspaceRole,
-  InvitableWorkspaceRole,
-  WorkspaceMember,
-  WorkspaceTeam,
-  WorkspaceAccessTargetsPayload,
-  WorkspaceInvitation,
-  WorkspaceMemberMutationResponse,
-  WorkspaceGuest,
-  GuestInviteMode,
-  WorkspaceGuestPolicy,
-  WorkspaceGuestRequest,
-  AcceptWorkspaceInvitationResponse,
-} from "./contracts";
 import { queryOptions } from "@tanstack/react-query"
 
 import type { ApiFetcher, ZilobaseAuthClient } from "../shared/context"

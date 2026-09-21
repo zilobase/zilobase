@@ -56,13 +56,13 @@ function dayCountCommands(input: { view: CalendarView; date: string; search: { d
   return ([-1, 1] as const).map(direction => ({ id: `days:${direction}`, label: direction > 0 ? "Show more days" : "Show fewer days", disabled: input.view !== "week" || (input.search.days ?? 7) + direction < 1 || (input.search.days ?? 7) + direction > 31, run: () => input.route({ date: input.date, view: input.view, align: input.search.align, days: (input.search.days ?? 7) + direction }) }));
 }
 function hourHeightCommands(input: { preferences: CalendarPreferences; pending: boolean; onPreferences?: (value: CalendarPreferences) => Promise<unknown>; save: (value: CalendarPreferences) => Promise<void> }): CalendarCommand[] {
-  return [{ label: "Taller hours", height: Math.min(120, (input.preferences.hourHeight ?? 48) + 8) }, { label: "Denser hours", height: Math.max(32, (input.preferences.hourHeight ?? 48) - 8) }, { label: "Reset hour height", height: 48 }].map(({ label, height }) => ({ id: label, label, disabled: !input.onPreferences || input.pending, run: () => void input.save({ ...input.preferences, hourHeight: height }) }));
+  return [{ label: "Taller hours", height: Math.min(120, input.preferences.hourHeight + 8) }, { label: "Denser hours", height: Math.max(32, input.preferences.hourHeight - 8) }, { label: "Reset hour height", height: 48 }].map(({ label, height }) => ({ id: label, label, disabled: !input.onPreferences || input.pending, run: () => void input.save({ ...input.preferences, hourHeight: height }) }));
 }
 function visibilityCommands(input: { preferences: CalendarPreferences; pending: boolean; onPreferences?: (value: CalendarPreferences) => Promise<unknown>; save: (value: CalendarPreferences) => Promise<void> }): CalendarCommand[] {
   return (["showWeekends", "showDeclined", "showWeekNumbers"] as const).map(key => ({ id: key, label: `${input.preferences[key] ? "Hide" : "Show"} ${key === "showWeekends" ? "weekends" : key === "showDeclined" ? "declined events" : "week numbers"}`, disabled: !input.onPreferences || input.pending, run: () => void input.save({ ...input.preferences, [key]: !input.preferences[key] }) }));
 }
 function zoneCommands(input: { preferences: CalendarPreferences; pending: boolean; onPreferences?: (value: CalendarPreferences) => Promise<unknown>; save: (value: CalendarPreferences) => Promise<void> }): CalendarCommand[] {
-  const columns = input.preferences.timeZoneColumns ?? [input.preferences.timeZone, ...input.preferences.secondaryTimeZones].map(zone => ({ zone, label: zone }));
+  const columns = input.preferences.timeZoneColumns;
   return columns.map(column => ({ id: `zone:${column.zone}`, label: `Make ${column.label} the primary time zone`, disabled: !input.onPreferences || input.pending || input.preferences.timeZone === column.zone, run: () => void input.save(calendarTravelPreferences(input.preferences, column.zone)) }));
 }
 function invokeCalendarCommand(commands: CalendarCommand[], id: string, event: KeyboardEvent) {

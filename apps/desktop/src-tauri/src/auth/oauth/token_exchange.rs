@@ -106,13 +106,12 @@ pub(super) fn persist_session_credentials(
     token: &str,
     owner: &str,
 ) -> Result<(), DesktopOAuthError> {
-    let previous_owner =
-        get_server_keyring_value(server, LEGACY_AUTH_OWNER_ACCOUNT, "session_owner")
-            .map_err(|_| DesktopOAuthError::credential_store_failed())?;
+    let previous_owner = get_server_keyring_value(server, AUTH_OWNER_ACCOUNT, "session_owner")
+        .map_err(|_| DesktopOAuthError::credential_store_failed())?;
 
     set_server_keyring_value(
         server,
-        LEGACY_AUTH_OWNER_ACCOUNT,
+        AUTH_OWNER_ACCOUNT,
         "session_owner",
         Some(owner.to_string()),
     )
@@ -120,18 +119,14 @@ pub(super) fn persist_session_credentials(
 
     if set_server_keyring_value(
         server,
-        LEGACY_AUTH_ACCOUNT,
+        AUTH_TOKEN_ACCOUNT,
         "session_token",
         Some(token.to_string()),
     )
     .is_err()
     {
-        let _ = set_server_keyring_value(
-            server,
-            LEGACY_AUTH_OWNER_ACCOUNT,
-            "session_owner",
-            previous_owner,
-        );
+        let _ =
+            set_server_keyring_value(server, AUTH_OWNER_ACCOUNT, "session_owner", previous_owner);
         return Err(DesktopOAuthError::credential_store_failed());
     }
 

@@ -82,7 +82,7 @@ test("resolveWorkspaceAiModel delegates selected and default models", async () =
   });
 });
 
-test("automatic selection respects a workspace's enabled legacy models", async () => {
+test("automatic selection respects a workspace's explicitly enabled models", async () => {
   mocks.workspaceConfig = [{
     baseUrl: null,
     enabled: true,

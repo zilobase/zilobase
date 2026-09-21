@@ -89,14 +89,6 @@
       "types": "./src/databases/index.ts",
       "default": "./src/databases/index.ts"
     },
-    "./databases/automations": {
-      "types": "./src/automations/index.ts",
-      "default": "./src/automations/index.ts"
-    },
-    "./databases/automations/react": {
-      "types": "./src/automations/react/index.ts",
-      "default": "./src/automations/react/index.ts"
-    },
     "./automations": {
       "types": "./src/automations/index.ts",
       "default": "./src/automations/index.ts"
@@ -132,10 +124,6 @@
     "./databases/view-evaluation": {
       "types": "./src/databases/views/view-evaluation.ts",
       "default": "./src/databases/views/view-evaluation.ts"
-    },
-    "./databases/queries": {
-      "types": "./src/databases/queries/index.ts",
-      "default": "./src/databases/queries/index.ts"
     },
     "./meetings": {
       "types": "./src/meetings/index.ts",

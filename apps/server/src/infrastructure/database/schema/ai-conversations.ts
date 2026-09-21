@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { workspace } from "./workspaces";
 import { user } from "./authentication";
-import { aiAgentProfile } from "./ai-agents";
 import { timestampColumns } from "./columns";
 
 export const aiChatThread = pgTable(
@@ -15,10 +14,6 @@ export const aiChatThread = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    agentProfileId: text("agent_profile_id").references(
-      () => aiAgentProfile.id,
-      { onDelete: "restrict" },
-    ),
     title: text("title").notNull().default("New chat"),
     nextMessageSequence: integer("next_message_sequence").notNull().default(0),
     pinnedAt: timestamp("pinned_at", { withTimezone: true }),
@@ -41,11 +36,6 @@ export const aiChatThread = pgTable(
       table.userId,
       table.archivedAt,
       table.deletedAt,
-      table.lastActivityAt,
-    ),
-    index("ai_chat_thread_agent_profile_idx").on(
-      table.agentProfileId,
-      table.userId,
       table.lastActivityAt,
     ),
   ],
@@ -96,32 +86,6 @@ export const aiChatThreadSummary = pgTable(
   },
   (table) => [
     uniqueIndex("ai_chat_thread_summary_thread_unique").on(table.threadId),
-  ],
-);
-
-export const aiAgentUserPreference = pgTable(
-  "ai_agent_user_preference",
-  {
-    id: text("id").primaryKey(),
-    workspaceId: text("workspace_id")
-      .notNull()
-      .references(() => workspace.id, { onDelete: "cascade" }),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    instructions: text("instructions").notNull().default(""),
-    responseStyle: text("response_style").notNull().default("concise"),
-    ...timestampColumns(),
-  },
-  (table) => [
-    uniqueIndex("ai_agent_user_preference_workspace_user_unique").on(
-      table.workspaceId,
-      table.userId,
-    ),
-    check(
-      "ai_agent_user_preference_response_style_check",
-      sql`${table.responseStyle} in ('concise', 'balanced', 'detailed')`,
-    ),
   ],
 );
 

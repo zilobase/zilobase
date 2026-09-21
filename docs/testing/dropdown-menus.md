@@ -15,7 +15,7 @@ select/status property-value control used by mail and automation controls.
 
 | Page / app area | Controls to open and test |
 | --- | --- |
-| Every workspace: sidebar | Workspace/server switcher; page and favorite actions; sharing/permissions; offline availability; section options (Sort and Show now open as subpages); sidebar customization, shortcuts, library views, move-to-tab and database pickers. |
+| Every workspace: sidebar | Workspace/server switcher; page and favorite actions; sharing/permissions; section options (Sort and Show now open as subpages); sidebar customization, shortcuts, library views, move-to-tab and database pickers. |
 | Page editor: header and navigation | Page actions, overflow breadcrumbs, embedded item presentation (inline/peek/full page), page layout database picker and save scope. |
 | Page editor: blocks | Drag-handle action menu and nested menus, paste-as choices, code-block language, meeting options. Slash-command suggestions remain unchanged. |
 | Page editor: comments | Comment edit/delete menu, discussion filtering. |
@@ -171,10 +171,6 @@ Every direct shared-menu consumer found in the web application is listed below.
 ### Oauth
 
 - [features/oauth/screens/consent.tsx](../../apps/web/src/features/oauth/screens/consent.tsx) — select
-
-### Offline
-
-- [features/offline/components/offline-availability-action.tsx](../../apps/web/src/features/offline/components/offline-availability-action.tsx) — dropdrawer
 
 ### Pages
 

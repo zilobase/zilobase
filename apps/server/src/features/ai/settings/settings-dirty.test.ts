@@ -24,9 +24,9 @@ describe("agent configuration dirty state", () => {
     expect(hasAgentConfigurationChanges({ ...saved, instructions: "Autosaved", connectors: [{ connectionId: "gmail", alwaysAllowEnabled: false, tools: [] }] }, saved)).toBe(true);
     expect(hasAgentConfigurationChanges({ ...saved, name: "Renamed agent" }, saved)).toBe(true);
   });
-  it("retains draft handling for legacy unlinked instructions", () => {
-    const legacy = emptySettingsDefinition();
-    expect(hasAgentConfigurationChanges({ ...legacy, instructions: "Proposed instructions" }, legacy)).toBe(true);
+  it("treats unlinked instruction text as a configuration change", () => {
+    const saved = emptySettingsDefinition();
+    expect(hasAgentConfigurationChanges({ ...saved, instructions: "Proposed instructions" }, saved)).toBe(true);
   });
 });
 

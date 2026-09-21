@@ -5,8 +5,8 @@ export function calendarTravelPreferences(value: CalendarPreferences, zone: stri
   const canonical = (name: string) => new Intl.DateTimeFormat("en", { timeZone: name }).resolvedOptions().timeZone;
   const target = canonical(zone);
   if (canonical(value.timeZone) === target) return value;
-  const columns = value.timeZoneColumns ?? [...new Set([value.timeZone, ...value.secondaryTimeZones])].map(zone => ({ zone, label: zone.split("/").at(-1)!.replaceAll("_", " ") }));
+  const columns = value.timeZoneColumns;
   const primary = columns.find(column => canonical(column.zone) === target) ?? { zone, label: zone.split("/").at(-1)!.replaceAll("_", " ") };
   const timeZoneColumns = [primary, ...columns.filter(column => canonical(column.zone) !== target)].slice(0, 4);
-  return { ...value, timeZone: primary.zone, timeZoneColumns, secondaryTimeZones: timeZoneColumns.slice(1).map(column => column.zone) };
+  return { ...value, timeZone: primary.zone, timeZoneColumns };
 }

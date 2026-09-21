@@ -16,6 +16,7 @@ import {
   stopDevelopmentChildren,
   stopDevelopmentProvider,
   waitForDevelopmentProvider,
+  withSharedRealtimeRedis,
 } from "./providers.mjs";
 
 export async function startDevelopmentWorkspace() {
@@ -70,7 +71,10 @@ export async function startDevelopmentWorkspace() {
     for (const provider of providers) {
       if (stopping) break;
       console.info(`Starting optional development provider: ${provider.id}...`);
-      const child = startDevelopmentProvider(provider);
+      const child = startDevelopmentProvider(
+        provider,
+        withSharedRealtimeRedis(process.env, nodeEnvironment),
+      );
       children.push(child);
       startedProviders.push(provider);
       await waitForDevelopmentProvider(provider, child);

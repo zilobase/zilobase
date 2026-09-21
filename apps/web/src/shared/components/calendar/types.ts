@@ -12,16 +12,15 @@ export type CalendarDisplayPreferences = {
   prefetchLeadMs?: number;
   bufferBefore?: number;
   bufferAfter?: number;
-  timeZoneColumns?: { zone: string; label: string }[];
+  timeZoneColumns: { zone: string; label: string }[];
   alignStart?: boolean;
   visibleDayCount?: number;
-  hourHeight?: number;
+  hourHeight: number;
   timeZone: string;
   timeFormat: "12" | "24";
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   showWeekends: boolean;
   showWeekNumbers: boolean;
-  secondaryTimeZones: string[];
 };
 export type CalendarRange = { start: string; end: string };
 export type CalendarSurfaceProps = {

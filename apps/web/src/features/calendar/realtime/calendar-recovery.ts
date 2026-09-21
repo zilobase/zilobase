@@ -43,7 +43,7 @@ function createCalendarRecovery(database: CalendarDatabase, refresh: Refresh, is
   const connect = async () => {
     if (stopped || !leader || !isOnline()) return;
     try {
-      const ticket = await apiFetch<{ websocketUrl: string; websocketProtocols: string[]; expiresAt: string; providerWatchExpiresAt?: string | null }>(`${calendarApiBasePath(scope.workspaceId)}/connections/${encodeURIComponent(scope.bindingId)}/realtime-ticket`, { method: "POST" });
+      const ticket = await apiFetch<{ websocketUrl: string; websocketProtocols: string[]; expiresAt: string; providerWatchExpiresAt: string | null }>(`${calendarApiBasePath(scope.workspaceId)}/connections/${encodeURIComponent(scope.bindingId)}/realtime-ticket`, { method: "POST" });
       if (stopped || !leader) return;
       watchExpiresAt = Date.parse(ticket.providerWatchExpiresAt ?? "") || 0;
       attachCalendarSocket(ticket, () => ({ stopped, socket, leader }), next => { socket = next; }, receivedHealth, invalidation, scope, channel, () => { lastPong = 0; scheduleReconnect(); }, socketHealthy, interval => { heartbeat = interval; }, heartbeat);

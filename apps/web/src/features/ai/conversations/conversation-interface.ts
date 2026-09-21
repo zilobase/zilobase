@@ -28,8 +28,6 @@ export type ChatbotProps = {
 };
 
 export type ChatbotConversationInput = ChatbotProps & {
-  initialAgentProfileId: string | null;
-  initialAgentProfileName: string | null;
   initialFeedback: AiChatFeedback[];
   initialMessages: UIMessage[];
 };

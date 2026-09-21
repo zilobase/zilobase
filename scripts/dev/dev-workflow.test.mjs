@@ -17,8 +17,6 @@ import {
 } from "./dashboard.mjs";
 import {
   createFromTemplateIfMissing,
-  migrateGeneratedNodeEnvironment,
-  migrateGeneratedMailEnvironment,
   profileEnvironment,
 } from "./env.mjs";
 import {
@@ -37,6 +35,7 @@ import {
   DEVELOPMENT_PROVIDER_FILE,
   discoverDevelopmentProviders,
   validateDevelopmentProvider,
+  withSharedRealtimeRedis,
 } from "./providers.mjs";
 
 test("the Node profile uses stable local ports and identity", () => {
@@ -101,23 +100,6 @@ test("development database commands use the journal-aware migration runner", asy
   assert.match(serverPackage.scripts["db:reset"], /npm run db:migrate$/u);
 });
 
-test("setup migrates the obsolete generated Node demo default", async () => {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "zilobase-node-env-test-"));
-  const filename = path.join(directory, "node.env");
-  await writeFile(
-    filename,
-    'ZILOBASE_DEMO_ENABLED="true"\nPRESERVED_VALUE="yes"\n',
-    { mode: 0o600 },
-  );
-
-  assert.equal(await migrateGeneratedNodeEnvironment(filename), true);
-  const migrated = parse(await readFile(filename, "utf8"));
-  assert.equal(migrated.ZILOBASE_DEMO_ENABLED, "false");
-  assert.equal(migrated.PRESERVED_VALUE, "yes");
-  assert.equal((await stat(filename)).mode & 0o777, 0o600);
-  assert.equal(await migrateGeneratedNodeEnvironment(filename), false);
-});
-
 test("studio inspects the Node development database", () => {
   const services = resolveStudioServices();
   assert.deepEqual(services.map((service) => service.name), ["node"]);
@@ -157,6 +139,15 @@ test("workspace providers may expose only loopback readiness URLs", () => {
     schemaVersion: 1,
     start: ["node", "scripts/start.mjs"],
   }, "/tmp/provider"), /loopback readiness URLs/);
+});
+
+test("workspace providers inherit the generated shared Redis URL", () => {
+  const environment = withSharedRealtimeRedis(
+    { REALTIME_REDIS_URL: "redis://stale:6379", PROVIDER_SETTING: "kept" },
+    { REALTIME_REDIS_URL: "redis://127.0.0.1:16379" },
+  );
+  assert.equal(environment.REALTIME_REDIS_URL, "redis://127.0.0.1:16379");
+  assert.equal(environment.PROVIDER_SETTING, "kept");
 });
 
 test("development hub combines public and provider-owned runtime details", async () => {
@@ -323,12 +314,6 @@ test("mail flags belong to the operator rather than generated infrastructure", a
   for (const profile of Object.values(localProfiles)) {
     assert.equal(profileEnvironment(profile, {}).MAIL_ENABLED, undefined);
   }
-  const directory = await mkdtemp(path.join(os.tmpdir(), "zilobase-mail-env-"));
-  const filename = path.join(directory, "node.env");
-  await writeFile(filename, 'MAIL_ENABLED="false"\nDATABASE_URL="preserved"\n');
-  assert.equal(await migrateGeneratedMailEnvironment(filename), true);
-  assert.deepEqual(parse(await readFile(filename, "utf8")), { DATABASE_URL: "preserved" });
-  assert.equal(await migrateGeneratedMailEnvironment(filename), false);
 });
 
 test("public mail development uses one origin without proxying back into its tunnel", () => {

@@ -15,23 +15,27 @@ describe("standalone Custom Agent migration boundary", () => {
     expect(migration).toMatch(/"turn_id" IS NOT NULL\)::int \+ \("agent_run_id" IS NOT NULL\)::int/);
   });
 
-  it("keeps Universal Ask AI personal-only at thread creation", async () => {
+  it("keeps Universal Ask AI personal-only in persistence and thread creation", async () => {
     const routes = await readFile(new URL("src/features/ai/conversations/thread-routes.ts", root), "utf8");
+    const threadSchema = await readFile(new URL("src/infrastructure/database/schema/ai-conversations.ts", root), "utf8");
+    const migration = await readFile(new URL("drizzle/0096_personal_chat_threads.sql", root), "utf8");
     expect(routes).toContain("const createThreadSchema = z.object({");
-    expect(routes).toContain("agentProfileId: null");
     const schema = routes.slice(
       routes.indexOf("const createThreadSchema"),
       routes.indexOf("const renameThreadSchema"),
     );
     expect(schema).not.toContain("agentProfileId");
+    expect(threadSchema).not.toContain("agentProfileId");
+    expect(migration).toContain('DROP COLUMN "agent_profile_id"');
   });
 
-  it("keeps migrated agent chats private and exposes them read-only under the agent", async () => {
-    const conversation = await readFile(new URL("src/features/ai/conversations/agent-conversation-service.ts", root), "utf8");
-    const routes = await readFile(new URL("src/features/ai/agents/routes.ts", root), "utf8");
-    expect(conversation).toContain('eq(aiAgentConversation.visibility, "legacy_private")');
-    expect(conversation).toContain("eq(aiAgentConversation.legacyOwnerUserId, input.userId)");
-    expect(routes).toContain('/agents/:agentId/legacy-conversations');
+  it("keeps exactly one canonical conversation per agent", async () => {
+    const migration = await readFile(new URL("drizzle/0095_remove_ai_compatibility.sql", root), "utf8");
+    const schema = await readFile(new URL("src/infrastructure/database/schema/ai-agents.ts", root), "utf8");
+    expect(migration).toContain('CREATE UNIQUE INDEX "ai_agent_conversation_profile_unique"');
+    expect(schema).toContain('uniqueIndex("ai_agent_conversation_profile_unique").on(table.profileId)');
+    expect(schema).not.toContain("legacyOwnerUserId");
+    expect(schema).not.toContain("legacyThreadId");
   });
 
   it("uses only agent-principal checks in native run tools", async () => {

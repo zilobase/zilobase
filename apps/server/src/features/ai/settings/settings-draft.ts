@@ -24,7 +24,7 @@ import { AgentProfileError } from "../agents/agent-profile-service";
 
 import { markdownToPageContent } from "../conversion/markdown-to-page-content";
 import { type SettingsActor, authorizeSettings } from "./settings-access";
-import { ensureSettingsBaseline } from "./settings-baseline";
+import { getSettingsRecord } from "./settings-record";
 import { readSettings } from "./settings-read";
 import { settingsConflict } from "./settings-versioning";
 import { mergeSettingsPatch } from "./settings-definition";
@@ -49,7 +49,7 @@ export async function updateSettingsDraft(
   createInstruction = false,
 ) {
   await authorizeSettings(a, true);
-  const settings = await ensureSettingsBaseline(a);
+  const settings = await getSettingsRecord(a);
   const proposalBase = input.origin === "ai" ? await readSettings(a) : null;
   await db.transaction(async (tx) => {
     const { saved, draft } = await loadLockedSettingsDraft(
@@ -184,7 +184,7 @@ export async function discardSettingsDraft(
   env?: RuntimeEnv,
 ) {
   await authorizeSettings(a, true);
-  const settings = await ensureSettingsBaseline(a);
+  const settings = await getSettingsRecord(a);
   const current = await readSettings(a);
   await db.transaction(async (tx) => {
     const { draft } = await loadLockedSettingsDraft(tx, settings.id, a.userId);

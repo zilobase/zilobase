@@ -26,8 +26,7 @@ use token_exchange::*;
 use super::callback::{constant_time_eq, parse_callback, ParsedCallback, CALLBACK_PATH};
 use crate::{
     auth::keyring::{
-        get_server_keyring_value, set_server_keyring_value, LEGACY_AUTH_ACCOUNT,
-        LEGACY_AUTH_OWNER_ACCOUNT,
+        get_server_keyring_value, set_server_keyring_value, AUTH_OWNER_ACCOUNT, AUTH_TOKEN_ACCOUNT,
     },
     server::{
         is_cloud_server, is_development_server, load_or_initialize_desktop_server, DesktopServer,

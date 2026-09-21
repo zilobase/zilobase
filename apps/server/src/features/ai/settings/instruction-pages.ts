@@ -1,13 +1,10 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { AgentSettingsDefinition } from "@zilobase/features/ai-chat/settings-contract";
 import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-markdown";
 import { db } from "../../../infrastructure/database";
 import {
   page,
-  pageCollaborationDocument,
-  aiSettings,
 } from "../../../infrastructure/database/schema";
-import { encodePageContentAsYjs } from "../../collaboration/service";
 import {
   canAccessPageInWorkspace,
   canAccessDatabaseInWorkspace,
@@ -155,69 +152,4 @@ export async function hydrateInstructionPage(
         ? []
         : resources.map((r) => ({ ...r, accessLevel: "view" as const })),
   };
-}
-export function hasInstructionContent(d: AgentSettingsDefinition): boolean {
-  const hasContent = (node: unknown): boolean => {
-    if (!node || typeof node !== "object") return false;
-    const value = node as { type?: string; text?: string; content?: unknown[] };
-    if (value.text?.trim()) return true;
-    if (value.type && !["doc", "paragraph", "text"].includes(value.type)) return true;
-    return value.content?.some(hasContent) ?? false;
-  };
-  return !!d.instructions.trim() || hasContent(d.instructionDocument);
-}
-export async function ensureInstructionPage(
-  a: Actor,
-  settingsId: string,
-  d: AgentSettingsDefinition,
-) {
-  if (d.instructionPageId) return d.instructionPageId;
-  const scopeKey =
-    a.scope === "personal" ? `personal:${a.userId}` : `agent:${a.scope}`;
-  return db.transaction(async (tx) => {
-    await tx
-      .select()
-      .from(aiSettings)
-      .where(eq(aiSettings.id, settingsId))
-      .for("update");
-    const [existing] = await tx
-      .select()
-      .from(page)
-      .where(
-        and(
-          eq(page.workspaceId, a.workspaceId),
-          isNull(page.deletedAt),
-          sql`${page.metadata}->>'agentInstructionsScope' = ${scopeKey}`,
-        ),
-      );
-    if (existing) return existing.id;
-    // Only legacy content needs migration. Empty scopes stay unlinked.
-    if (!hasInstructionContent(d)) return undefined;
-    const id = crypto.randomUUID();
-    await tx
-      .insert(page)
-      .values({
-        id,
-        workspaceId: a.workspaceId,
-        createdById: a.userId,
-        type: "pageblock",
-        name:
-          d.instructionTitle === "Instructions"
-            ? ""
-            : (d.instructionTitle ?? ""),
-        content: d.instructionDocument,
-        metadata: {
-          zilobaseai: "instruction",
-          agentInstructionsScope: scopeKey,
-        },
-      });
-    await tx
-      .insert(pageCollaborationDocument)
-      .values({
-        pageId: id,
-        state: Buffer.from(encodePageContentAsYjs(d.instructionDocument)),
-        updatedAt: new Date(),
-      });
-    return id;
-  });
 }

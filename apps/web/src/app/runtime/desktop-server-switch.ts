@@ -5,7 +5,6 @@ import {
   resolveDesktopServerSwitchPath,
   switchDesktopServerProfile,
 } from "@/platform/server/desktop-server"
-import { destroyDesktopOfflineConnections } from "@/features/offline/index"
 import { queryClient } from "@/app/query-client"
 
 import type { DesktopServerSwitchRequest } from "@/features/desktop/server/desktop-server-switch"
@@ -14,7 +13,6 @@ export async function switchDesktopServerSession(
   request: DesktopServerSwitchRequest,
 ) {
   beginDesktopServerNetworkShutdown()
-  destroyDesktopOfflineConnections()
   await queryClient.cancelQueries()
 
   if (request.candidateId) {

@@ -2,8 +2,7 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 const SAFE_NUMERIC_FIELDS: [&str; 3] = ["duration_ms", "elapsed_ms", "http_status"];
-const SAFE_BOOLEAN_FIELDS: [&str; 6] = [
-    "offline_supported",
+const SAFE_BOOLEAN_FIELDS: [&str; 5] = [
     "owner_present",
     "session_present",
     "token_present",

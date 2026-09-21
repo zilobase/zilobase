@@ -11,7 +11,6 @@ const safeNumericFields = new Set([
   "http_status",
 ])
 const safeBooleanFields = new Set([
-  "offline_supported",
   "owner_present",
   "session_present",
   "token_present",

@@ -1,7 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("timezone edits preserve primary-first storage, reject aliases and never truncate saved travel", async () => {
     const { withZoneColumns, saveTravelZone, zoneDescription } = await loadModule("/src/features/calendar/preferences/time-zone-model.ts");
-    const value = { timeZone: "Asia/Kolkata", secondaryTimeZones: [], timeZoneColumns: [{ zone: "Asia/Kolkata", label: "Home" }] };
+    const value = { timeZone: "Asia/Kolkata", timeZoneColumns: [{ zone: "Asia/Kolkata", label: "Home" }] };
     assert.throws(() => withZoneColumns(value, [...value.timeZoneColumns, { zone: "Asia/Calcutta", label: "Duplicate" }]));
     const next = saveTravelZone(value, "Europe/London", true);
     assert.equal(next.timeZone, "Europe/London");

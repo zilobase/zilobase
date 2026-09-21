@@ -1,5 +1,5 @@
 import { getAgentToolDescriptor } from "@zilobase/features/ai-chat/tool-registry";
-import { smoothStream, streamText, type UIMessage } from "ai";
+import { smoothStream, streamText } from "ai";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import * as z from "zod";
@@ -10,10 +10,8 @@ import {
 } from "../providers/ai-provider";
 import { canAccessPage, getMembership, getPageRecord } from "../../access";
 import { db, runWithDbEnv } from "../../../infrastructure/database";
-import { getStringEnv } from "../../../shared/config/config";
 import type { AppBindings } from "../../../shared/types";
-import { readJsonBody } from "../../../shared/http/request";
-import { coerceAiChatRequestBody, runAiChatTurn } from "./chat-service";
+import { runAiChatTurn } from "./chat-service";
 import {
   appendCanonicalUserMessage,
   getAiChatThreadForUser,
@@ -65,60 +63,6 @@ const createAgentTurnSchema = z.object({
 export const aiRoutes = new Hono<AppBindings>();
 
 aiRoutes.route("/", aiFileRoutes);
-
-aiRoutes.post("/chat", async (c) => {
-  if (getStringEnv(c.env, "AI_LEGACY_CHAT_ENABLED") !== "true") {
-    return c.json(
-      {
-        code: "LEGACY_CHAT_DISABLED",
-        error:
-          "This client uses a retired AI chat protocol. Refresh or update the application.",
-      },
-      410,
-    );
-  }
-  const auth = await requireActiveWorkspace(c);
-
-  if ("response" in auth) {
-    return auth.response;
-  }
-
-  const rawBody = await readJsonBody(c.req);
-
-  if (!rawBody || typeof rawBody !== "object") {
-    return c.json({ error: "Request body must be valid JSON" }, 400);
-  }
-
-  const raw = rawBody as Record<string, unknown>;
-  const requestedWorkspaceId =
-    typeof raw.workspaceId === "string" ? raw.workspaceId.trim() : null;
-
-  if (requestedWorkspaceId && requestedWorkspaceId !== auth.workspaceId) {
-    return c.json({ error: "Forbidden" }, 403);
-  }
-
-  const messages = Array.isArray(raw.messages)
-    ? (raw.messages as UIMessage[])
-    : [];
-
-  if (messages.length === 0) {
-    return c.json({ error: "messages is required" }, 400);
-  }
-
-  const requestBody = coerceAiChatRequestBody({
-    ...raw,
-    userId: auth.user.id,
-    workspaceId: auth.workspaceId,
-  });
-
-  return runAiChatTurn({
-    abortSignal: c.req.raw.signal,
-    env: c.env,
-    messages,
-    requestBody,
-    withDb: (fn) => runWithDbEnv(c.env, fn),
-  });
-});
 
 aiRoutes.post("/threads/:threadId/turns", async (c) => {
   const auth = await requireActiveWorkspace(c);
@@ -307,7 +251,7 @@ aiRoutes.post("/threads/:threadId/actions/:actionId/approve", async (c) => {
     });
     const tools = buildRegisteredAgentTools(
       {
-        agentProfileId: thread?.agentProfileId ?? null,
+        agentProfileId: null,
         editablePageIds: [],
         env: c.env,
         primaryPageId: null,

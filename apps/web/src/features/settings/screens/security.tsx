@@ -5,7 +5,7 @@ import { toast } from "sonner"
 
 import { clearApiAuthToken, getApiErrorMessage } from "@/platform/network/api"
 import { useAppStore } from "@/features/desktop/state/app-store"
-import { clearAllOfflineData } from "@/features/offline"
+import { clearAllIndexedData } from "@/platform/storage/indexed-data-cleanup"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   AlertDialog,
@@ -225,7 +225,7 @@ function DeleteAccountSection({
         onError: (mutationError) => setError(getApiErrorMessage(mutationError)),
         onSuccess: async () => {
           await clearApiAuthToken()
-          await clearAllOfflineData()
+          await clearAllIndexedData().catch(() => undefined)
           queryClient.clear()
           useAppStore.getState().resetAccountState()
           setOpen(false)

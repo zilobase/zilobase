@@ -26,13 +26,11 @@ describe("MCP execution context", () => {
     expect(await isMcpExecutionContextAllowed({ ...input, env: { AI_MCP_ENABLED: "false" } }, "read")).toBe(false);
     expect(select).not.toHaveBeenCalled();
   });
-  it("requires the personal owner and an existing personal thread", async () => {
+  it("requires the personal owner and an existing thread", async () => {
     expect(await isMcpExecutionContextAllowed({ ...input, userId: "other" }, "read")).toBe(false);
     expect(select).not.toHaveBeenCalled();
     expect(await isMcpExecutionContextAllowed(input, "read")).toBe(false);
-    limit.mockResolvedValue([{ agentProfileId: "legacy-agent" }]);
-    expect(await isMcpExecutionContextAllowed(input, "read")).toBe(false);
-    limit.mockResolvedValue([{ agentProfileId: null }]);
+    limit.mockResolvedValue([{ id: "thread" }]);
     expect(await isMcpExecutionContextAllowed(input, "read")).toBe(true);
   });
   it("requires both deployment and workspace permission for writes", async () => {
@@ -40,7 +38,7 @@ describe("MCP execution context", () => {
     const writeInput = { ...input, env: { ...input.env, AI_MCP_EXTERNAL_WRITES_ENABLED: "true" } };
     limit.mockResolvedValueOnce([{ enabled: false }]);
     expect(await isMcpExecutionContextAllowed(writeInput, "write")).toBe(false);
-    limit.mockResolvedValueOnce([{ enabled: true }]).mockResolvedValueOnce([{ agentProfileId: null }]);
+    limit.mockResolvedValueOnce([{ enabled: true }]).mockResolvedValueOnce([{ id: "thread" }]);
     expect(await isMcpExecutionContextAllowed(writeInput, "write")).toBe(true);
   });
   it("requires the queued run's exact tool grant", async () => {

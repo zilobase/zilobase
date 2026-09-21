@@ -7,16 +7,6 @@ import { queryClient } from "@/app/query-client";
 import { webAuthClient } from "@/app/providers/features-provider";
 import { useAppStore } from "@/features/desktop/state/app-store";
 import { ApiError, NetworkUnavailableError, apiFetch } from "@/platform/network/api";
-import {
-  resolveOfflineFallback,
-  waitForSettledConnectivity,
-} from "@/features/offline/index";
-import {
-  getConnectivityState,
-  getOfflineManifest,
-  getValidOfflineSession,
-  subscribeConnectivity,
-} from "@/features/offline/index";
 import { getMostRecentItemPath } from "@/features/library/model/recent-navigation";
 import { decidePublishedShareAccess } from "@/features/pages/publication/published-share-access";
 
@@ -59,34 +49,12 @@ export function applyDatabaseShareAccess(databaseId: string) {
 }
 
 export async function getFreshSession(options?: { optional?: boolean }) {
-  const connectivity = await getStartupConnectivity();
-  const cached = getValidOfflineSession();
-  const decision = resolveOfflineFallback(connectivity, cached);
-  if (decision.type === "fallback") {
-    return {
-      session: decision.value.session,
-      user: decision.value.user,
-      workspacePinned: decision.value.workspacePinned,
-    };
-  }
-  if (decision.type === "unavailable") {
-    if (options?.optional) return { session: null, user: null };
-    throw new NetworkUnavailableError();
-  }
-
   try {
     return await queryClient.fetchQuery({
       ...sessionQueryOptions(webAuthClient),
       staleTime: NAVIGATION_AUTH_STALE_TIME,
     });
   } catch (error) {
-    if (error instanceof NetworkUnavailableError && cached) {
-      return {
-        session: cached.session,
-        user: cached.user,
-        workspacePinned: cached.workspacePinned,
-      };
-    }
     if (options?.optional && error instanceof NetworkUnavailableError) {
       return { session: null, user: null };
     }
@@ -95,26 +63,12 @@ export async function getFreshSession(options?: { optional?: boolean }) {
 }
 
 export async function getWorkspaces() {
-  const connectivity = await getStartupConnectivity();
-  const cached = getOfflineManifest().workspaces;
-  const decision = resolveOfflineFallback(
-    connectivity,
-    getValidOfflineSession() ? cached : null,
-  );
-  if (decision.type === "fallback") return decision.value;
-  if (decision.type === "unavailable") {
-    throw new NetworkUnavailableError();
-  }
-
   try {
     return await queryClient.fetchQuery({
       ...workspacesQueryOptions(webAuthClient),
       staleTime: NAVIGATION_AUTH_STALE_TIME,
     });
   } catch (error) {
-    if (error instanceof NetworkUnavailableError && getValidOfflineSession()) {
-      return cached;
-    }
     throw error;
   }
 }
@@ -135,13 +89,10 @@ export async function getDefaultAppPath(
   const options = pagesQueryOptions(apiFetch, workspaceId);
 
   try {
-    const navigation =
-      getConnectivityState() !== "online"
-        ? queryClient.getQueryData(options.queryKey)
-        : await queryClient.fetchQuery({
-            ...options,
-            staleTime: NAVIGATION_AUTH_STALE_TIME,
-          });
+    const navigation = await queryClient.fetchQuery({
+      ...options,
+      staleTime: NAVIGATION_AUTH_STALE_TIME,
+    });
 
     return navigation
       ? getMostRecentItemPath(navigation) ?? "/recents"
@@ -167,13 +118,6 @@ async function applyPublishedShareAccess(isPublished: () => Promise<boolean>) {
   }
 
   return decision.type;
-}
-
-function getStartupConnectivity() {
-  return waitForSettledConnectivity({
-    getState: getConnectivityState,
-    subscribe: subscribeConnectivity,
-  });
 }
 
 async function isPagePublished(pageId: string) {

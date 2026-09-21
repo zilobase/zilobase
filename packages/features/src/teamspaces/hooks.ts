@@ -11,10 +11,8 @@ import {
   teamspaceSettingsQueryOptions,
   teamspacesQueryKey,
   teamspacesQueryOptions,
-  type Teamspace,
-  type TeamspaceAccessMode,
-  type TeamspaceRole,
 } from "./queries"
+import type { Teamspace, TeamspaceAccessMode, TeamspaceRole } from "./contracts"
 
 export function useTeamspaces(workspaceId: string | null | undefined) {
   const { apiFetch } = useZilobaseFeatures()

@@ -7,16 +7,7 @@ function createDesktopScopedStorage(): StateStorage {
   return {
     getItem: (name) => {
       if (typeof localStorage === "undefined") return null
-      const scoped = desktopPersistKey(name)
-      const current = localStorage.getItem(scoped)
-      if (current != null) return current
-      if (scoped === name) return null
-      const legacy = localStorage.getItem(name)
-      if (legacy != null) {
-        localStorage.setItem(scoped, legacy)
-        return legacy
-      }
-      return null
+      return localStorage.getItem(desktopPersistKey(name))
     },
     removeItem: (name) => {
       if (typeof localStorage === "undefined") return

@@ -1,5 +1,4 @@
 import type { AppSearchResult, AppSearchResultType } from "./contracts";
-export type { AppSearchResult, AppSearchResultType } from "./contracts";
 import { queryOptions } from "@tanstack/react-query"
 
 import type { ApiFetcher } from "../shared/api-fetcher"

@@ -171,7 +171,7 @@ describe("resolveOAuthBearer", () => {
 
 
 describe("OAuth route boundary", () => {
-  test.each(["/api/keys", "/api/ai/chat", "/user-settings", "/workspaces/ws/mail", "/workspaces/ws/teamspaces"])("blocks delegated access to %s", async (path) => {
+  test.each(["/api/keys", "/user-settings", "/workspaces/ws/mail", "/workspaces/ws/teamspaces"])("blocks delegated access to %s", async (path) => {
     const app = new Hono<AppBindings>();
     app.use("*", async (c, next) => {
       c.set("authMethod", "oauth");

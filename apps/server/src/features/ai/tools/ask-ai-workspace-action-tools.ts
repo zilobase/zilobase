@@ -170,16 +170,11 @@ export function resolveWorkspacePageUpdateMarkdown(
     "afterMarkdown" | "editMode" | "replaceText" | "searchText"
   >,
 ) {
-  const patchReplacement =
-    input.replaceText ??
-    (input.editMode === "patch" ? input.afterMarkdown : undefined);
   return resolvePageEditMarkdown({
     afterMarkdown: input.afterMarkdown,
     beforeMarkdown,
     editMode: input.editMode,
-    // Earlier agent prompts used afterMarkdown as the patch replacement.
-    // Continue to execute those reviewed inputs without silently deleting text.
-    replaceText: patchReplacement,
+    replaceText: input.replaceText,
     searchText:
       input.editMode === "patch"
         ? expandTaskSectionSearch(beforeMarkdown, input.searchText)

@@ -85,11 +85,6 @@ export const aiAgentConversation = pgTable(
     profileId: text("profile_id")
       .notNull()
       .references(() => aiAgentProfile.id, { onDelete: "cascade" }),
-    visibility: text("visibility").notNull().default("shared"),
-    legacyOwnerUserId: text("legacy_owner_user_id").references(() => user.id, {
-      onDelete: "set null",
-    }),
-    legacyThreadId: text("legacy_thread_id"),
     nextMessageSequence: integer("next_message_sequence").notNull().default(0),
     lastActivityAt: timestamp("last_activity_at", { withTimezone: true })
       .$defaultFn(() => new Date())
@@ -97,19 +92,10 @@ export const aiAgentConversation = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("ai_agent_conversation_shared_unique")
-      .on(table.profileId)
-      .where(sql`${table.visibility} = 'shared'`),
-    uniqueIndex("ai_agent_conversation_legacy_thread_unique")
-      .on(table.legacyThreadId)
-      .where(sql`${table.legacyThreadId} is not null`),
+    uniqueIndex("ai_agent_conversation_profile_unique").on(table.profileId),
     index("ai_agent_conversation_profile_activity_idx").on(
       table.profileId,
       table.lastActivityAt,
-    ),
-    check(
-      "ai_agent_conversation_visibility_check",
-      sql`${table.visibility} in ('shared', 'legacy_private')`,
     ),
   ],
 );

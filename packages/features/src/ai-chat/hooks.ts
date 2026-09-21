@@ -4,17 +4,10 @@ import { useZilobaseFeatures } from "../shared/context"
 import { useActiveWorkspaceId } from "../workspaces/hooks"
 import {
   aiChatThreadMessagesQueryKey,
-  aiAgentPreferenceQueryKey,
-  aiAgentPreferenceQueryOptions,
   aiChatThreadsQueryKey,
   aiChatThreadsQueryOptions,
-  type AiChatThread,
-  type AiChatThreadResponse,
-  type AiChatThreadMessagesResponse,
-  type AiChatThreadsResponse,
-  type AiAgentPreference,
-  type AiChatFeedback,
 } from "./queries"
+import type { AiChatThread, AiChatThreadResponse, AiChatThreadMessagesResponse, AiChatThreadsResponse, AiChatFeedback } from "./contracts"
 
 export function useAiChatThreads(options?: { enabled?: boolean; search?: string }) {
   const { apiFetch } = useZilobaseFeatures()
@@ -23,39 +16,6 @@ export function useAiChatThreads(options?: { enabled?: boolean; search?: string 
   return useQuery({
     ...aiChatThreadsQueryOptions(apiFetch, workspaceId, options?.search),
     enabled: Boolean(workspaceId) && (options?.enabled ?? true),
-  })
-}
-
-export function useAiAgentPreference() {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
-
-  return useQuery(aiAgentPreferenceQueryOptions(apiFetch, workspaceId))
-}
-
-export function useUpdateAiAgentPreference() {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (preference: AiAgentPreference) =>
-      apiFetch<{ preference: AiAgentPreference }>("/api/ai/preferences", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(workspaceId
-            ? { "x-zilobase-workspace-id": workspaceId }
-            : {}),
-        },
-        body: JSON.stringify(preference),
-      }).then((result) => result.preference),
-    onSuccess: (preference) => {
-      queryClient.setQueryData(
-        aiAgentPreferenceQueryKey(workspaceId),
-        preference,
-      )
-    },
   })
 }
 

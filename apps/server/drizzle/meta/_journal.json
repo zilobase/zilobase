@@ -659,6 +659,13 @@
       "when": 1789632000000,
       "tag": "0094_undo_database_source_stream",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1789632000001,
+      "tag": "0095_remove_ai_compatibility",
+      "breakpoints": true
     }
   ]
 }

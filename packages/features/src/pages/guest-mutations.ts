@@ -7,8 +7,8 @@ import {
   pageGuestInvitationQueryKey,
   pageGuestInvitationsQueryKey,
   pageGuestRequestsQueryKey,
-  type AccessLevel,
 } from "./queries";
+import type { AccessLevel } from "./contracts";
 
 export function useInvitePageGuest() {
   const { apiFetch, queryClient } = useZilobaseFeatures();

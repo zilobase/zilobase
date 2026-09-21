@@ -1,7 +1,6 @@
 import {
   getStoredIconColor,
   isSvgIcon,
-  normalizeStoredIconPresentation,
   sanitizeStoredSvg,
 } from "@/shared/lib/page-icon-utils"
 
@@ -67,7 +66,7 @@ function createEmojiSvg(icon: string) {
 }
 
 function prepareStoredSvg(icon: string, color?: string) {
-  const sanitized = normalizeStoredIconPresentation(sanitizeStoredSvg(icon))
+  const sanitized = sanitizeStoredSvg(icon)
 
   if (!sanitized) return null
 

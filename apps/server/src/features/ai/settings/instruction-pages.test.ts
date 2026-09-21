@@ -3,7 +3,6 @@ import { emptySettingsDefinition } from "@zilobase/features/ai-chat/settings-con
 const state = vi.hoisted(() => ({
   records: [] as unknown[][],
   denied: new Set<string>(),
-  inserts: [] as unknown[],
 }));
 vi.mock("../../../infrastructure/database", () => {
   const db: any = {
@@ -11,17 +10,12 @@ vi.mock("../../../infrastructure/database", () => {
       const result = Promise.resolve(state.records.shift() ?? []);
       return Object.assign(result, { for: () => result });
     } }) }),
-    insert: () => ({ values: async (value: unknown) => { state.inserts.push(value); } }),
-    transaction: async (fn: (tx: unknown) => unknown) => fn(db),
   };
   return { db };
 });
 vi.mock("../../access", () => ({
   canAccessPageInWorkspace: async (id: string) => !state.denied.has(id),
   canAccessDatabaseInWorkspace: async (id: string) => !state.denied.has(id),
-}));
-vi.mock("../../collaboration/service", () => ({
-  encodePageContentAsYjs: () => new Uint8Array(),
 }));
 vi.mock("../agents/agent-profile-service", () => ({
   AgentProfileError: class extends Error {
@@ -36,8 +30,6 @@ vi.mock("../agents/agent-profile-service", () => ({
 }));
 import {
   allInstructionResources,
-  hasInstructionContent,
-  ensureInstructionPage,
   hydrateInstructionPage,
   instructionReferences,
 } from "./instruction-pages";
@@ -47,30 +39,9 @@ const database = "33333333-3333-4333-8333-333333333333";
 const actor = { scope: "agent", workspaceId: "workspace", userId: "owner" };
 beforeEach(() => {
   state.records = [];
-  state.inserts = [];
   state.denied.clear();
 });
 describe("linked instruction pages", () => {
-  it("leaves empty scopes unlinked and reuses existing blank pages", async () => {
-    expect(await ensureInstructionPage(actor, "settings", emptySettingsDefinition())).toBeUndefined();
-    expect(state.inserts).toHaveLength(0);
-    state.records = [[], [{ id: root }]];
-    expect(await ensureInstructionPage(actor, "settings", emptySettingsDefinition())).toBe(root);
-    expect(state.inserts).toHaveLength(0);
-  });
-  it("migrates legacy nonempty content with a collaboration document", async () => {
-    const content = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Legacy" }] }] };
-    expect(await ensureInstructionPage(actor, "settings", { ...emptySettingsDefinition(), instructionDocument: content })).toBeTruthy();
-    expect(state.inserts).toHaveLength(2);
-    expect(state.inserts[0]).toMatchObject({ content });
-  });
-  it("does not migrate empty documents but preserves text and non-text blocks", () => {
-    const d = emptySettingsDefinition();
-    expect(hasInstructionContent(d)).toBe(false);
-    expect(hasInstructionContent({ ...d, instructionDocument: { type: "doc", content: [{ type: "paragraph" }] } })).toBe(false);
-    expect(hasInstructionContent({ ...d, instructions: "Existing instructions" })).toBe(true);
-    expect(hasInstructionContent({ ...d, instructionDocument: { type: "doc", content: [{ type: "database", attrs: { databaseId: database } }] } })).toBe(true);
-  });
   it("extracts native links, embedded pages and databases without duplicate grants", () => {
     expect(
       instructionReferences({

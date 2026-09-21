@@ -16,7 +16,7 @@ Content access and persistence belong to the underlying page/database queries. L
 
 ## Side effects, failures and recovery
 
-Opening a library database selects its side pane; pages follow the existing embedded-page policy, while agents and meetings use their own routes. These commands remain distinct from ordinary sidebar copy/open links. Offline filtering keeps downloaded page/database rows and does not grant additional access. The synthetic database view disables realtime tickets and uses local configuration state. Failures follow the underlying query, mutation and routing behavior.
+Opening a library database selects its side pane; pages follow the existing embedded-page policy, while agents and meetings use their own routes. These commands remain distinct from ordinary sidebar copy/open links. The synthetic database view disables realtime tickets and uses local configuration state. Failures follow the underlying query, mutation and routing behavior.
 
 ## Verification and change points
 

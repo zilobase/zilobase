@@ -3,8 +3,8 @@ import type { QueryClient } from "@tanstack/react-query"
 import { applyNavDelta, type NavDelta } from "./nav-delta"
 import {
   pagesNavRootQueryKey,
-  type PageNavigationPayload,
 } from "./queries"
+import type { PageNavigationPayload } from "./contracts"
 export * from "./navigation-realtime-contract"
 
 export function applyNavigationDeltaToCache(

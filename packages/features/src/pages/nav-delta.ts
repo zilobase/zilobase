@@ -3,7 +3,7 @@ import type {
   PageDatabase,
   PageItemPlacement,
   PageNavigationPayload,
-} from "./queries";
+} from "./contracts";
 
 export type NavDelta = {
   removeDatabaseIds?: string[];

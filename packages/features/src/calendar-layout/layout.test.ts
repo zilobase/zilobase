@@ -50,7 +50,7 @@ test("midnight clipping preserves exclusive ends and DST ambiguity remains expli
 });
 test("retired and absent views normalize to Week", async () => {
   const { normalizeCalendarView } = await import("./index");
-  assert.equal(normalizeCalendarView("agenda"), "week");
+  assert.equal(normalizeCalendarView("invalid"), "week");
   assert.equal(normalizeCalendarView(undefined), "week");
   assert.equal(normalizeCalendarView("month"), "month");
   assert.equal(normalizeCalendarView("day"), "day");

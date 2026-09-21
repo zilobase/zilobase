@@ -4,22 +4,9 @@ import { test } from "vitest";
 
 import { normalizeThreadSearch } from "./chat-persistence";
 import {
-  AI_AGENT_INSTRUCTIONS_MAX_CHARS,
   AI_CHAT_FEEDBACK_REASON_MAX_CHARS,
   normalizeFeedbackReason,
-  normalizeInstructions,
-  normalizeResponseStyle,
 } from "./agent-experience";
-
-test("agent preferences normalize bounded user input", () => {
-  assert.equal(normalizeInstructions("  Keep it practical.\r\n  "), "Keep it practical.");
-  assert.equal(
-    normalizeInstructions("a".repeat(AI_AGENT_INSTRUCTIONS_MAX_CHARS + 10)).length,
-    AI_AGENT_INSTRUCTIONS_MAX_CHARS,
-  );
-  assert.equal(normalizeResponseStyle("detailed"), "detailed");
-  assert.equal(normalizeResponseStyle("unknown"), "concise");
-});
 
 test("feedback reasons are compact and bounded", () => {
   assert.equal(normalizeFeedbackReason("  Missing   citations  "), "Missing citations");
@@ -35,15 +22,21 @@ test("chat history search is normalized and bounded", () => {
   assert.equal(normalizeThreadSearch("x".repeat(100))?.length, 80);
 });
 
-test("teammate experience migration enforces durable ownership constraints", async () => {
+test("teammate experience migration enforces durable feedback constraints", async () => {
   const migration = await readFile(
     new URL("../../../../drizzle/0053_ai_teammate_experience.sql", import.meta.url),
     "utf8",
   );
 
-  assert.match(migration, /ai_agent_user_preference_workspace_user_unique/);
-  assert.match(migration, /ai_agent_user_preference_response_style_check/);
   assert.match(migration, /ai_chat_feedback_user_message_unique/);
   assert.match(migration, /ai_chat_feedback_rating_check/);
   assert.match(migration, /REFERENCES "public"\."ai_chat_message"/);
+});
+
+test("canonical settings migration removes the superseded preference store", async () => {
+  const migration = await readFile(
+    new URL("../../../../drizzle/0097_canonical_ai_settings.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /DROP TABLE "ai_agent_user_preference"/);
 });

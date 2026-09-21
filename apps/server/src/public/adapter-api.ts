@@ -74,6 +74,13 @@ export {
 } from "../infrastructure/database";
 export type { Database, DatabaseClient } from "../infrastructure/database";
 export {
+  editionPersistencePort,
+  type EditionDatabase,
+  type EditionInstance,
+  type EditionMembership,
+  type EditionPersistencePort,
+} from "../shared/edition-persistence";
+export {
   DATABASE_UNAVAILABLE_CODE,
   DATABASE_UNAVAILABLE_MESSAGE,
   getDatabaseErrorCode,

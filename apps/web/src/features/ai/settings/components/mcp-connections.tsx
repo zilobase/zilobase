@@ -12,7 +12,6 @@ import {
   type AiAgentProfileDetail,
   type McpConnectionScopeRef,
   type McpConnectionSummary,
-  mcpScopeApiPath,
   type McpToolPolicy,
 } from "@zilobase/features/ai-chat";
 import {
@@ -21,6 +20,7 @@ import {
   useMcpCatalog,
   useMcpConnectionMutation,
   useMcpConnections,
+  mcpScopeApiPath,
 } from "@zilobase/features/ai-chat/react";
 import { useSession } from "@zilobase/features/auth/react";
 

@@ -37,7 +37,6 @@ import { useCreatePage, usePageNavigation } from "@zilobase/features/pages/react
 
 import { defaultUserSettings, normalizeSidebarConfig } from "@zilobase/features/user-settings";
 import { useUpdateUserSettings, useUserSettings } from "@zilobase/features/user-settings/react";
-import { useConnectivity, useOfflineManifest } from "@/features/offline/index";
 
 import { useTeamspaces } from "@zilobase/features/teamspaces/react";
 import { useAiAgentProfiles, useCreateAiAgentProfile } from "@zilobase/features/ai-chat/react";
@@ -54,13 +53,6 @@ export default function RecentsPage({
   const navigate = useNavigate();
   const location = useLocation();
   const workspaceId = useActiveWorkspaceId();
-  const connectivity = useConnectivity();
-  const offlineManifest = useOfflineManifest();
-  const offlineMode =
-    connectivity === "offline" || connectivity === "service-unavailable";
-  const downloadedItems = offlineManifest.items.filter(
-    (item) => item.workspaceId === workspaceId,
-  );
   const { data: userSettings = defaultUserSettings, isLoading: settingsLoading } =
     useUserSettings();
   const updateUserSettings = useUpdateUserSettings();
@@ -130,30 +122,14 @@ export default function RecentsPage({
   );
   const rows = useMemo(
     () => {
-      const builtRows = buildHomepageRows(
+      return buildHomepageRows(
         navigation ?? { databases: [], pages: [], placements: [] },
         meetingsPayload?.meetings ?? [],
         customAgents,
         mode,
       );
-      if (!offlineMode) return builtRows;
-      const pageIds = new Set(
-        downloadedItems
-          .filter((item) => item.kind === "page")
-          .map((item) => item.id),
-      );
-      const databaseIds = new Set(
-        downloadedItems
-          .filter((item) => item.kind === "database")
-          .map((item) => item.id),
-      );
-      return builtRows.filter(
-        (row) =>
-          (row.openPageId && pageIds.has(row.openPageId)) ||
-          (row.openDatabaseId && databaseIds.has(row.openDatabaseId)),
-      );
     },
-    [customAgents, downloadedItems, meetingsPayload?.meetings, navigation, mode, offlineMode],
+    [customAgents, meetingsPayload?.meetings, navigation, mode],
   );
   const pageTitle = mode === "trash" ? "Trash" : "Library";
 
@@ -356,19 +332,6 @@ export default function RecentsPage({
     openPage(pageId, { databaseId: sidePaneDatabaseId });
   };
 
-  if (offlineMode && downloadedItems.length === 0) {
-    return (
-      <main className="flex min-h-[calc(100svh-3rem)] flex-1 items-center justify-center px-6">
-        <div className="max-w-md space-y-2 text-center">
-          <h1 className="font-heading text-xl font-medium">No offline items yet</h1>
-          <p className="text-sm text-content-secondary">
-            Reconnect, then use a page or database menu to make it available offline.
-          </p>
-        </div>
-      </main>
-    );
-  }
-
   return (
     <>
     <PageSidePaneLayout
@@ -509,7 +472,7 @@ export default function RecentsPage({
                       {mode === "home" && activeViewId === "teamspaces" ? (
                         <Button
                           className="mt-2 shrink-0"
-                          disabled={offlineMode || !workspaceId}
+                          disabled={!workspaceId}
                           onClick={() => setCreateTeamspaceOpen(true)}
                           type="button"
                         >
@@ -520,8 +483,7 @@ export default function RecentsPage({
                           <DropdownMenuTrigger asChild>
                             <Button
                               className="database-new-button mt-2 shrink-0"
-                              disabled={offlineMode || !workspaceId || isCreating}
-                              title={offlineMode ? "Creating items requires a connection." : undefined}
+                              disabled={!workspaceId || isCreating}
                               trailingDivider
                               type="button"
                             >

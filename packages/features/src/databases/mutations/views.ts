@@ -2,8 +2,8 @@ import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
 import {
   pagesNavRootQueryKey,
-  type PageNavigationPayload,
 } from "../../pages/queries";
+import type { PageNavigationPayload } from "../../pages/contracts";
 import { useDatabaseSessionId } from "../queries/session";
 import type { DatabaseViewEntity } from "../core/entities";
 import { findDataSourceBootstrap } from "./scope";

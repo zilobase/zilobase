@@ -1,4 +1,4 @@
-import { Effect, Schema, SchemaTransformation } from "effect";
+import { Schema, SchemaTransformation } from "effect";
 import { Hono } from "hono";
 import { and, eq } from "drizzle-orm";
 import { defaultCalendarPreferences } from "@zilobase/features/calendar";
@@ -29,41 +29,34 @@ const TimeZoneColumn = Schema.Struct({
 });
 
 const CalendarPreferencesBase = Schema.Struct({
-  promptTimeZoneChanges: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
-  timeZoneColumns: Schema.optionalKey(
-    Schema.Array(TimeZoneColumn).pipe(
-      Schema.check(Schema.isMinLength(1), Schema.isMaxLength(4)),
-      Schema.check(
-        Schema.makeFilter(
-          (columns) =>
-            new Set(columns.map((column) => column.zone)).size === columns.length
-              ? undefined
-              : "Time zones must be unique",
-        ),
+  promptTimeZoneChanges: Schema.Boolean,
+  timeZoneColumns: Schema.Array(TimeZoneColumn).pipe(
+    Schema.check(Schema.isMinLength(1), Schema.isMaxLength(4)),
+    Schema.check(
+      Schema.makeFilter(
+        (columns) =>
+          new Set(columns.map((column) => column.zone)).size === columns.length
+            ? undefined
+            : "Time zones must be unique",
       ),
     ),
   ),
-  todayAlignment: Schema.Literals(["week", "start"]).pipe(Schema.withDecodingDefault(Effect.succeed("week" as const))),
+  todayAlignment: Schema.Literals(["week", "start"]),
   meetingPreviewMinutes: Schema.Int.pipe(
     Schema.check(Schema.isGreaterThanOrEqualTo(0), Schema.isLessThanOrEqualTo(1440)),
-    Schema.withDecodingDefault(Effect.succeed(15)),
   ),
-  mapsProvider: Schema.Literals(["google", "apple"]).pipe(Schema.withDecodingDefault(Effect.succeed("google" as const))),
+  mapsProvider: Schema.Literals(["google", "apple"]),
   hourHeight: Schema.Int.pipe(
     Schema.check(Schema.isGreaterThanOrEqualTo(32), Schema.isLessThanOrEqualTo(120)),
-    Schema.withDecodingDefault(Effect.succeed(48)),
   ),
   accountOrder: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
     Schema.check(Schema.isMaxLength(500)),
-    Schema.withDecodingDefault(Effect.succeed([] as string[])),
   ),
   calendarOrder: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
     Schema.check(Schema.isMaxLength(500)),
-    Schema.withDecodingDefault(Effect.succeed([] as string[])),
   ),
   collapsedAccountIds: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
     Schema.check(Schema.isMaxLength(500)),
-    Schema.withDecodingDefault(Effect.succeed([] as string[])),
   ),
   calendarColors: Schema.Record(
     Schema.String.pipe(Schema.check(Schema.isMaxLength(1024))),
@@ -75,18 +68,11 @@ const CalendarPreferencesBase = Schema.Struct({
           Object.keys(value).length <= 500 ? undefined : "Too many calendar colors",
       ),
     ),
-    Schema.withDecodingDefault(Effect.succeed({})),
   ),
   removedCalendarKeys: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
     Schema.check(Schema.isMaxLength(500)),
-    Schema.withDecodingDefault(Effect.succeed([] as string[])),
   ),
-  view: Schema.Union([
-    Schema.Literal("day"),
-    Schema.Literal("week"),
-    Schema.Literal("month"),
-    Schema.Literal("agenda").transform("week" as const),
-  ]),
+  view: Schema.Literals(["day", "week", "month"]),
   hiddenCalendarKeys: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
     Schema.check(Schema.isMaxLength(500)),
   ),
@@ -97,7 +83,6 @@ const CalendarPreferencesBase = Schema.Struct({
   showWeekNumbers: Schema.Boolean,
   timeFormat: Schema.Literals(["12", "24"]),
   timeZone: TimeZone,
-  secondaryTimeZones: Schema.Array(TimeZone).pipe(Schema.check(Schema.isMaxLength(3))),
   remindersEnabled: Schema.Boolean,
 });
 
@@ -107,23 +92,17 @@ export const calendarPreferencesSchema = {
   ...CalendarPreferencesBase,
   parse: (input: unknown): CalendarPreferences => {
     const raw = Schema.decodeUnknownSync(CalendarPreferencesBase)(input);
-    const columns: CalendarTimeZoneColumn[] = raw.timeZoneColumns
-      ? raw.timeZoneColumns.map((c) => ({ zone: c.zone, label: c.label }))
-      : [...new Set([raw.timeZone, ...raw.secondaryTimeZones])].map((zone) => ({
-          zone,
-          label: zone.split("/").at(-1)!.replaceAll("_", " "),
-        }));
+    const columns: CalendarTimeZoneColumn[] = raw.timeZoneColumns.map((c) => ({ zone: c.zone, label: c.label }));
     return {
       ...raw,
       timeZoneColumns: columns,
       timeZone: columns[0]!.zone,
-      secondaryTimeZones: columns.slice(1).map((column) => column.zone),
-      accountOrder: raw.accountOrder ? [...raw.accountOrder] : [],
-      calendarOrder: raw.calendarOrder ? [...raw.calendarOrder] : [],
-      collapsedAccountIds: raw.collapsedAccountIds ? [...raw.collapsedAccountIds] : [],
-      removedCalendarKeys: raw.removedCalendarKeys ? [...raw.removedCalendarKeys] : [],
+      accountOrder: [...raw.accountOrder],
+      calendarOrder: [...raw.calendarOrder],
+      collapsedAccountIds: [...raw.collapsedAccountIds],
+      removedCalendarKeys: [...raw.removedCalendarKeys],
       hiddenCalendarKeys: [...raw.hiddenCalendarKeys],
-      calendarColors: raw.calendarColors ? { ...raw.calendarColors } : {},
+      calendarColors: { ...raw.calendarColors },
     };
   },
   safeParse: (input: unknown): { success: true; data: CalendarPreferences } | { success: false; error: unknown } => {
@@ -137,7 +116,7 @@ export const calendarPreferencesSchema = {
 export const calendarPreferenceRoutes = new Hono<AppBindings>();
 calendarPreferenceRoutes.get("/preferences", async c => {
   const [row] = await db.select().from(calendarPreference).where(and(eq(calendarPreference.userId, c.get("user")!.id), eq(calendarPreference.workspaceId, c.req.param("workspaceId")!)));
-  return c.json(calendarPreferencesSchema.parse({ ...defaultCalendarPreferences(), ...row?.data }));
+  return c.json(calendarPreferencesSchema.parse(row ? row.data : defaultCalendarPreferences()));
 });
 calendarPreferenceRoutes.put("/preferences", async c => {
   const data = calendarPreferencesSchema.parse(await c.req.json());

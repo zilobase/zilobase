@@ -256,7 +256,6 @@ export async function ensureInitialAgentRevision(input: {
         lastActivityAt: now,
         profileId: input.profileId,
         updatedAt: now,
-        visibility: "shared",
       })
       .onConflictDoNothing();
     return revisionId;

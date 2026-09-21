@@ -45,6 +45,8 @@ export {
 } from "./mutations/rows";
 export { useDatabaseEntityCommandState } from "./mutations/pending";
 export { useDatabaseSessionId } from "./queries/session";
+export { DbProvider } from "./queries/session";
+export type { DbProviderProps } from "./queries/session";
 export { useDatabaseBootstrap } from "./queries/bootstrap";
 export { useDatabaseRecords } from "./queries/records";
 export { useDatabaseAccess } from "./queries/query-hooks";

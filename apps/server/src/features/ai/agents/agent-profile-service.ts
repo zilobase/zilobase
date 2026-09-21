@@ -6,6 +6,7 @@ import type {
   AiAgentProfileSummary,
   McpConnectionSummary,
 } from "@zilobase/features/ai-chat/mcp-contract";
+import { emptySettingsDefinition } from "@zilobase/features/ai-chat/settings-contract";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "../../../infrastructure/database";
@@ -16,7 +17,8 @@ import {
   aiAgentProfile,
   aiAgentProfileAccess,
   aiAgentRevision,
-  aiChatThread,
+  aiSettings,
+  aiSettingsVersion,
   aiMcpConnection,
   itemVisit,
   member,
@@ -28,7 +30,6 @@ import {
   compileAgentDefinition,
   definitionForProfile,
   hashAgentDefinition,
-  normalizeAgentDefinition,
 } from "./agent-definition";
 
 const ROLE_RANK: Record<AiAgentProfileRole, number> = {
@@ -127,12 +128,26 @@ export async function createAgentProfile(input: {
     name: input.name,
   };
   const definition = definitionForProfile(values);
+  const instructionPageId = input.instructions?.trim()
+    ? crypto.randomUUID()
+    : undefined;
+  const instructionDocument = markdownToPageContent(input.instructions ?? "");
+  const settingsDefinition = {
+    ...emptySettingsDefinition(),
+    name: values.name,
+    description: values.description,
+    icon: values.icon,
+    cover: values.cover,
+    iconPosition: values.iconPosition,
+    instructions: values.instructions,
+    instructionDocument,
+    ...(instructionPageId ? { instructionPageId } : {}),
+  };
+  const settingsId = crypto.randomUUID();
   await db.transaction(async (tx) => {
-    if (input.instructions?.trim()) {
-    const instructionPageId = crypto.randomUUID();
-    const content = markdownToPageContent(input.instructions ?? "");
-    await tx.insert(page).values({ id: instructionPageId, workspaceId: input.workspaceId, createdById: input.ownerUserId, type: "pageblock", name: "", content, metadata: { zilobaseai: "instruction", agentInstructionsScope: `agent:${id}` } });
-    await tx.insert(pageCollaborationDocument).values({ pageId: instructionPageId, state: Buffer.from(encodePageContentAsYjs(content)), updatedAt: now });
+    if (instructionPageId) {
+      await tx.insert(page).values({ id: instructionPageId, workspaceId: input.workspaceId, createdById: input.ownerUserId, type: "pageblock", name: "", content: instructionDocument, metadata: { zilobaseai: "instruction", agentInstructionsScope: `agent:${id}` } });
+      await tx.insert(pageCollaborationDocument).values({ pageId: instructionPageId, state: Buffer.from(encodePageContentAsYjs(instructionDocument)), updatedAt: now });
     }
     await tx.insert(aiAgentProfile).values({
       ...values,
@@ -157,13 +172,29 @@ export async function createAgentProfile(input: {
     });
     await tx.update(aiAgentProfile).set({ currentRevisionId: revisionId })
       .where(eq(aiAgentProfile.id, id));
+    await tx.insert(aiSettings).values({
+      id: settingsId,
+      workspaceId: input.workspaceId,
+      scope: `agent:${id}`,
+      definition: settingsDefinition,
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await tx.insert(aiSettingsVersion).values({
+      id: crypto.randomUUID(),
+      settingsId,
+      definition: settingsDefinition,
+      version: 1,
+      createdByUserId: input.ownerUserId,
+      createdAt: now,
+    });
     await tx.insert(aiAgentConversation).values({
       createdAt: now,
       id: conversationId,
       lastActivityAt: now,
       profileId: id,
       updatedAt: now,
-      visibility: "shared",
     });
   });
   return getAgentProfileDetail({
@@ -268,105 +299,6 @@ export async function getAgentProfileDetail(input: {
   };
 }
 
-export async function updateAgentProfile(input: {
-  cover?: string | null;
-  defaultModel?: string;
-  description?: string;
-  icon?: unknown;
-  iconPosition?: "inline" | "top";
-  instructions?: string;
-  name?: string;
-  profileId: string;
-  userId: string;
-  workspaceId: string;
-}) {
-  await requireAgentProfileRole({ ...input, minimum: "editor" });
-  const now = new Date();
-  const revisionId = crypto.randomUUID();
-  await db.transaction(async (tx) => {
-    // Configuration reads and version allocation share a lock to prevent lost edits.
-    const [profile] = await tx.select().from(aiAgentProfile).where(and(
-      eq(aiAgentProfile.id, input.profileId),
-      eq(aiAgentProfile.workspaceId, input.workspaceId),
-      eq(aiAgentProfile.status, "active"),
-    )).limit(1).for("update");
-    if (!profile) throw new AgentProfileError("agent_not_found", "Agent not found.", 404);
-    const [currentRevision] = profile.currentRevisionId
-      ? await tx.select({ definition: aiAgentRevision.definition }).from(aiAgentRevision).where(and(
-          eq(aiAgentRevision.id, profile.currentRevisionId),
-          eq(aiAgentRevision.profileId, profile.id),
-        )).limit(1)
-      : [];
-    const current = currentRevision?.definition && typeof currentRevision.definition === "object"
-      ? normalizeAgentDefinition(currentRevision.definition)
-      : definitionForProfile(profile);
-    const editableKeys = ["cover", "defaultModel", "description", "icon", "iconPosition", "instructions", "name"] as const;
-    const patch = Object.fromEntries(editableKeys.filter((key) => input[key] !== undefined).map((key) => [key, input[key]]));
-    const definition = normalizeAgentDefinition({ ...current, ...patch });
-    const version = profile.version + 1;
-    await tx.insert(aiAgentRevision).values({
-      compiledDefinition: compileAgentDefinition(definition),
-      createdAt: now,
-      createdByUserId: input.userId,
-      definition,
-      definitionHash: hashAgentDefinition(definition),
-      id: revisionId,
-      profileId: input.profileId,
-      version,
-    });
-    await tx.update(aiAgentProfile).set({
-      cover: definition.cover,
-      currentRevisionId: revisionId,
-      defaultModel: definition.defaultModel,
-      description: definition.description,
-      icon: definition.icon,
-      iconPosition: definition.iconPosition,
-      instructions: definition.instructions,
-      name: definition.name,
-      updatedAt: now,
-      version,
-    }).where(eq(aiAgentProfile.id, input.profileId));
-  });
-  return getAgentProfileDetail(input);
-}
-
-export async function replaceAgentProfileAccess(input: {
-  grants: Array<{
-    principalId: string;
-    principalType: "user" | "team";
-    role: "editor" | "user";
-  }>;
-  profileId: string;
-  userId: string;
-  workspaceId: string;
-}) {
-  await requireAgentProfileRole({ ...input, minimum: "editor" });
-  await validateAccessPrincipals(input.workspaceId, input.grants);
-  const now = new Date();
-  await db.transaction(async (tx) => {
-    await tx.delete(aiAgentProfileAccess).where(
-      eq(aiAgentProfileAccess.profileId, input.profileId),
-    );
-    if (input.grants.length > 0) {
-      await tx.insert(aiAgentProfileAccess).values(input.grants.map((grant) => ({
-        createdAt: now,
-        createdByUserId: input.userId,
-        id: crypto.randomUUID(),
-        principalId: grant.principalId,
-        principalType: grant.principalType,
-        profileId: input.profileId,
-        role: grant.role,
-        updatedAt: now,
-      })));
-    }
-    await tx.update(aiAgentProfile).set({
-      updatedAt: now,
-      version: sql`${aiAgentProfile.version} + 1`,
-    }).where(eq(aiAgentProfile.id, input.profileId));
-  });
-  return getAgentProfileDetail(input);
-}
-
 export async function transferAgentProfileOwnership(input: {
   newOwnerUserId: string;
   profileId: string;
@@ -400,11 +332,6 @@ export async function archiveAgentProfile(input: {
 }) {
   await requireAgentProfileRole({ ...input, minimum: "owner" });
   const now = new Date();
-  const [activeThread] = await db.select({ id: aiChatThread.id }).from(aiChatThread)
-    .where(and(
-      eq(aiChatThread.agentProfileId, input.profileId),
-      isNull(aiChatThread.deletedAt),
-    )).limit(1);
   await db.transaction(async (tx) => {
     await tx.update(aiAgentProfile).set({
       archivedAt: now,
@@ -418,7 +345,7 @@ export async function archiveAgentProfile(input: {
       updatedAt: now,
     }).where(eq(aiMcpConnection.agentProfileId, input.profileId));
   });
-  return { archived: true, hasExistingThreads: Boolean(activeThread) };
+  return { archived: true };
 }
 
 export async function duplicateAgentProfile(input: {

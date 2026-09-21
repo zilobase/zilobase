@@ -61,11 +61,6 @@ import type { OpenPageOptions } from "../navigation/open-page-options";
 import { usePageCollaboration } from "@/features/editor/collaboration/use-page-collaboration";
 import { isHostedDemoRuntime } from "@/features/demo";
 import { canEditOnlineDatabase } from "@/features/editor/database-editability";
-import {
-  useConnectivity,
-  useOfflineManifest,
-  useOfflineSessionLocked,
-} from "@/features/offline/index";
 import { createPageCommentController } from "@/features/comments/index";
 import { usePageCommentsRegistry } from "@/features/comments/index";
 import { useTitleDraft } from "../hooks/use-title-draft";
@@ -110,9 +105,6 @@ export function PageEditorPane({
   pageId,
 }: PageEditorPaneProps) {
   const demoMode = isHostedDemoRuntime();
-  const connectivity = useConnectivity();
-  const offlineSessionLocked = useOfflineSessionLocked();
-  const offlineManifest = useOfflineManifest();
   const { data: page, isLoading } = usePage(pageId);
   const { data: session } = useSession();
   const { data: accessLevel } = usePageAccessLevel(pageId, {
@@ -432,8 +424,6 @@ export function PageEditorPane({
     !demoMode &&
     collaborationEnabled &&
     !collaboration.error &&
-    connectivity === "online" &&
-    !collaboration.downloaded &&
     (!collaboration.document || !collaboration.provider);
 
   useEffect(() => {
@@ -457,12 +447,7 @@ export function PageEditorPane({
       observer.disconnect();
     };
   }, [focusMeetingId, isLoading, page?.id, waitingForCollaboration]);
-  const offlineEditing =
-    collaboration.downloaded &&
-    (connectivity !== "online" || collaboration.status === "blocked");
   const databaseEditingReady = canEditOnlineDatabase({
-    connectivity,
-    offlineSessionLocked,
     pageEditable,
   });
 
@@ -751,19 +736,6 @@ export function PageEditorPane({
   }, [createPage, page, pageEditable]);
 
   if (isLoading || waitingForCollaboration) {
-    if (
-      !waitingForCollaboration &&
-      (connectivity === "offline" || connectivity === "service-unavailable") &&
-      !offlineManifest.items.some(
-        (item) => item.kind === "page" && item.id === pageId,
-      )
-    ) {
-      return (
-        <section className={`${className ?? ""} flex items-center justify-center px-4 text-sm text-content-secondary`}>
-          Not available offline.
-        </section>
-      );
-    }
     return (
       <section className={cn(className, "animate-in fade-in duration-200")}>
         <PageEditorSkeleton fullWidth={Boolean(userSettings?.pageFullWidth)} />
@@ -824,12 +796,12 @@ export function PageEditorPane({
         databaseIds={pageDatabaseIds}
         editorContentRef={editorContentRef}
         editable={pageEditable && liveEditingReady}
-        contentEditable={pageEditable && liveEditingReady && !offlineSessionLocked}
-        metadataEditable={pageEditable && liveEditingReady && !offlineEditing}
-        structuralEditingEnabled={pageEditable && liveEditingReady && !offlineEditing}
-        commentsEditable={pageEditable && liveEditingReady && !offlineEditing && enableComments}
+        contentEditable={pageEditable && liveEditingReady}
+        metadataEditable={pageEditable && liveEditingReady}
+        structuralEditingEnabled={pageEditable && liveEditingReady}
+        commentsEditable={pageEditable && liveEditingReady && enableComments}
         databaseEditable={databaseEditingReady}
-        enableComments={enableComments && !offlineEditing}
+        enableComments={enableComments}
         hideEditorContent={hideEditorContent}
         getStructuralBlockDeleteAction={getStructuralBlockDeleteAction}
         onEditorReady={handleEditorReady}

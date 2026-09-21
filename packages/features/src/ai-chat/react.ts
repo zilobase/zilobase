@@ -1,7 +1,5 @@
 export {
   useAiChatThreads,
-  useAiAgentPreference,
-  useUpdateAiAgentPreference,
   useCreateAiChatThread,
   useRenameAiChatThread,
   useArchiveAiChatThread,
@@ -14,12 +12,9 @@ export {
   useAiAgentProfiles,
   useAiAgentProfile,
   useCreateAiAgentProfile,
-  useUpdateAiAgentProfile,
-  useReplaceAiAgentProfileAccess,
   useTransferAiAgentProfile,
   useArchiveAiAgentProfile,
   useCustomAgentConversation,
-  useCustomAgentLegacyConversations,
   useCustomAgentRevisions,
   useCustomAgentResources,
   useCustomAgentTriggers,
@@ -42,3 +37,5 @@ export {
   useMcpActivity,
   useMcpConnectionMutation,
 } from "./mcp-hooks";
+export { aiAgentProfilesQueryKey, mcpScopeApiPath } from "./mcp-hooks";
+export { upsertAiChatThreadInCache } from "./hooks";

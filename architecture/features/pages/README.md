@@ -22,7 +22,7 @@ Writes can change hierarchy, database associations and navigation state. Preserv
 
 ## Client mutation ownership
 
-Page mutations are grouped by access, guests, placement, content/lifecycle and activity. The [legacy mutation entrypoint](../../../packages/features/src/pages/mutation-hooks.ts) preserves exports; React bindings select each operation family directly. Access mutations share invalidation of detail and access queries; guest invitation/request invalidation remains distinct. Content and favorite rollbacks retain their existing snapshot scopes.
+Page mutations are grouped by access, guests, placement, content/lifecycle and activity. The [React entrypoint](../../../packages/features/src/pages/react.ts) exports each operation family directly; the page root exposes contracts and pure query builders, not hooks. Access mutations share invalidation of detail and access queries; guest invitation/request invalidation remains distinct. Content and favorite rollbacks retain their existing snapshot scopes.
 
 ## Verification and change points
 
@@ -35,6 +35,8 @@ Update this guide when ownership, interfaces, authorization, persistence or cros
 [Route screens](../../../apps/web/src/features/pages/screens) contain the page route and invitation acceptance. The [page route](../../../apps/web/src/features/pages/screens/page.tsx) chooses the authorized viewer mode. Embedded consumers import the [editor pane](../../../apps/web/src/features/pages/pane/page-editor-pane.tsx) and [shared-page chrome](../../../apps/web/src/features/pages/publication/shared-page-header.tsx) directly. URLs and route parameters are unchanged.
 
 [Pane state and composition](../../../apps/web/src/features/pages/pane/page-side-pane.tsx), [pane headers](../../../apps/web/src/features/pages/pane/page-pane-header.tsx), and [embedded dialogs](../../../apps/web/src/features/pages/pane/embedded-page-dialog.tsx) have separate interfaces. [Layout editing](../../../apps/web/src/features/pages/layout/index.ts) and [layout sidebar state](../../../apps/web/src/features/pages/layout/page-layout-sidebar.tsx) likewise remain separate entrypoints so importing state does not load editor/rendering composition. Server [page-layout routes](../../../apps/server/src/features/page-layouts/routes.ts) decode scope params and save JSON with Schema; invalid writes still return `{ error: "Invalid layout." }`. Cross-feature callers use these interfaces; feature internals import their concrete siblings. The old mixed context barrel is removed. Publication preferences and sharing access remain under publication, while breadcrumb and hierarchy derivation live beside navigation paths.
+
+Page width and embedded-item placement are viewer preferences; obsolete page-metadata switches are ignored and no compatibility predicate is exported. Stored SVG icons render only the canonical sanitized representation produced by the current icon writer.
 
 ## Page loading and presentation
 

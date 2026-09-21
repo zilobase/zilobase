@@ -17,7 +17,6 @@ import { CalendarAccountsSidebar } from "@/features/calendar/connections/calenda
 import { RemovedCalendars } from "@/features/calendar/preferences/removed-calendars";
 import { useCalendarPreferences } from "@/features/calendar/preferences/use-calendar-preferences";
 import { SidebarProvider } from "@/shared/ui/sidebar";
-import { setConnectivityState } from "@/features/offline/model";
 import { createRoot } from "react-dom/client";
 import { createRootRoute, createRoute, createRouter, RouterProvider, Outlet, createMemoryHistory } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -25,7 +24,6 @@ import { CalendarSchedule } from "@/features/calendar/views/calendar-schedule";
 import { defaultCalendarPreferences } from "@zilobase/features/calendar";
 import "@/shared/styles/global.css";
 import "@/app/styles.css";
-setConnectivityState("online");
 const preferences = defaultCalendarPreferences("Asia/Kolkata");
 const connections = [{ workspaceId: "workspace", bindingId: "binding", accountId: "account", email: "calendar@example.test", status: "connected" as const, pushAvailable: false }];
 function FixtureSchedule(props: Parameters<typeof CalendarSchedule>[0]) {
@@ -60,4 +58,4 @@ const router = createRouter({ routeTree: root.addChildren([app.addChildren([cale
 const queryClient = new QueryClient();
 const auth = { getSession: async () => ({ user: { id: "user" } }) } as ZilobaseAuthClient;
 createRoot(document.getElementById("root")!).render(<QueryClientProvider client={queryClient}><ZilobaseFeaturesProvider value={{ queryClient, auth, apiFetch }}><ShortcutProvider><CalendarWorkspaceProvider><RouterProvider router={router} /></CalendarWorkspaceProvider></ShortcutProvider></ZilobaseFeaturesProvider></QueryClientProvider>);
-Object.assign(window, { calendarFixture: { search: () => router.state.location.search, select: (event: string) => router.navigate({ to: "/calendar", search: { date: "2026-09-09", view: "week", binding: "binding", calendar: "primary", event } }), navigate: (view: string, date = "2026-09-09") => router.navigate({ to: "/calendar", search: { view, date } }), offline: () => setConnectivityState("offline") } });
+Object.assign(window, { calendarFixture: { search: () => router.state.location.search, select: (event: string) => router.navigate({ to: "/calendar", search: { date: "2026-09-09", view: "week", binding: "binding", calendar: "primary", event } }), navigate: (view: string, date = "2026-09-09") => router.navigate({ to: "/calendar", search: { view, date } }) } });

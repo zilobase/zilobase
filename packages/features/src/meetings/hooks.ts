@@ -5,12 +5,8 @@ import {
   meetingKeys,
   meetingQueryOptions,
   workspaceMeetingsQueryOptions,
-  type CreateMeetingInput,
-  type MeetingLifecycleAction,
-  type MeetingPatch,
-  type MeetingResponse,
-  type MeetingRecorderClaim,
 } from "./queries"
+import type { CreateMeetingInput, MeetingLifecycleAction, MeetingPatch, MeetingResponse, MeetingRecorderClaim } from "./contracts"
 import {
   pageQueryKey,
   pagesNavRootQueryKey,

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { wallTime, addCalendarDays, dayInstant, calendarDays } from "./time";
+import { wallTime, addCalendarDays, dayInstant, calendarDays } from "../calendar-layout/time";
 test("IANA conversion rejects nonexistent and ambiguous DST wall times", () => {
   assert.throws(() => wallTime("2026-03-08", "02:30", "America/New_York"));
   assert.throws(() => wallTime("2026-11-01", "01:30", "America/New_York"));

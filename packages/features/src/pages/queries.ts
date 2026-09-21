@@ -1,32 +1,4 @@
 import type { ZilobaseAiMode, PageDatabase, PageItemPlacement, Page, ZilobaseAiPageSummary, PagePropertiesPayload, AccessLevel, PageAccessPayload, PageAccessTargetsPayload, PagePersonAccessTargetsPayload, PageGuestInvitation, PageGuestInvitationDetail, PageGuestRequest, PagesDeletedFilter, PageDetail } from "./contracts";
-export type {
-  ZilobaseAiMode,
-  PageDatabaseView,
-  PageDatabase,
-  PageItemPlacement,
-  Page,
-  PageNavigationPayload,
-  PageCreator,
-  ZilobaseAiPageSummary,
-  PageProperty,
-  PagePropertyValue,
-  PagePropertiesPayload,
-  PagePropertyPresenceTarget,
-  AccessLevel,
-  AccessTargetType,
-  PageAccessRule,
-  PageAccessPayload,
-  PageAccessTargetMember,
-  PageAccessTargetTeam,
-  PageAccessTargetsPayload,
-  PagePersonAccessTargetsPayload,
-  PageAccessTargetGuest,
-  PageGuestInvitation,
-  PageGuestInvitationDetail,
-  PageGuestRequest,
-  PagesDeletedFilter,
-  PageDetail,
-} from "./contracts";
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 
 import {
@@ -34,15 +6,8 @@ import {
   ActiveWorkspaceMismatchError,
 } from "../shared/api-errors";
 import type { ApiFetcher } from "../shared/api-fetcher";
-import type { EmbeddedItemsOpenAs, PageMetadata } from "./item-relationships";
+import type { EmbeddedItemsOpenAs } from "./item-relationships";
 
-export type {
-  EmbeddedItemsOpenAs,
-  ItemRef,
-  NavItemKind,
-  PageIconPosition,
-  PageMetadata,
-} from "./item-relationships";
 
 export const zilobaseAiModeLabels: Record<ZilobaseAiMode, string> = {
   instruction: "Use as instruction",
@@ -73,14 +38,9 @@ export function getPrimaryPageParentId(
   );
 }
 
-export function usesUserFullWidthPreference() {
-  return true;
-}
-
 export function resolvePageFullWidth(
   page:
     | {
-        metadata?: PageMetadata | null;
         publishedOwnerPreferences?: { pageFullWidth: boolean } | null;
       }
     | null
@@ -92,12 +52,7 @@ export function resolvePageFullWidth(
   );
 }
 
-export function usesUserEmbeddedItemsPreference() {
-  return true;
-}
-
 export function resolveEmbeddedItemsOpenAs(
-  _page: { metadata?: PageMetadata | null } | null | undefined,
   userEmbeddedItemsPreference: EmbeddedItemsOpenAs | null | undefined,
 ) {
   return userEmbeddedItemsPreference ?? "sidepanel";

@@ -23,33 +23,21 @@ export function register({ assert, loadModule, test }) {
         updatedAt: "2026-08-02T00:00:00Z",
       },
     ]
-    const config = {
-      sectionLimits: { recents: 10, favorites: 10, private: 5, shared: 10 },
-      sectionSorts: {
-        recents: "lastEdited",
-        favorites: "lastEdited",
-        private: "alphabetical",
-        shared: "lastEdited",
-      },
-    }
-
     assert.deepEqual(
-      getConfiguredSidebarItems(items, "recents", config).map(
+      getConfiguredSidebarItems(items, "recents", { limit: 10, sort: "lastEdited" }).map(
         (item) => item.id,
       ),
       ["1", "3", "2"],
     )
     assert.deepEqual(
-      getConfiguredSidebarItems(items, "private", config).map(
+      getConfiguredSidebarItems(items, "private", { limit: 5, sort: "alphabetical" }).map(
         (item) => item.id,
       ),
       ["2", "3", "1"],
     )
     assert.deepEqual(
-      getConfiguredSidebarItems(items, "shared", {
-        ...config,
-        sectionLimits: { ...config.sectionLimits, shared: 2 },
-      }).map((item) => item.id),
+      getConfiguredSidebarItems(items, "shared", { limit: 2, sort: "lastEdited" })
+        .map((item) => item.id),
       ["2", "3"],
     )
   })

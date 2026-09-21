@@ -1,5 +1,6 @@
 import * as React from "react"
 import { ThemeProvider, useTheme } from "next-themes"
+import { QueryClientProvider } from "@tanstack/react-query"
 
 import { Toaster } from "@/shared/ui/sonner"
 import { TooltipProvider } from "@/shared/ui/tooltip"
@@ -10,7 +11,6 @@ import { DesktopUpdater } from "@/features/desktop/components/index"
 import { WebFeaturesProvider } from "@/app/providers/features-provider"
 import { queryClient } from "@/app/query-client"
 import { ShortcutProvider } from "@/shared/shortcuts"
-import { OfflineQueryProvider } from "@/features/offline/index"
 import { getThemeColorScheme, selectableThemeIds } from "@/shared/lib/themes"
 import {
   ThemeFamilyProvider,
@@ -21,7 +21,7 @@ import { DemoExperience, installDemoCache } from "@/features/demo"
 import { useNavigationRealtime } from "@zilobase/features/pages/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useSession } from "@zilobase/features/auth/react";
-import { DbProvider } from "@zilobase/features/databases";
+import { DbProvider } from "@zilobase/features/databases/react";
 import { useZilobaseFeatures } from "@zilobase/features";
 
 import posthog from "@/shared/lib/posthog"
@@ -31,7 +31,7 @@ installDemoCache(queryClient)
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
     <AppIconProvider>
-      <OfflineQueryProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
         <WebFeaturesProvider>
           <SessionDatabaseProvider>
             <PostHogIdentitySync />
@@ -64,7 +64,7 @@ export function AppProviders({ children }: React.PropsWithChildren) {
             </ShortcutProvider>
           </SessionDatabaseProvider>
         </WebFeaturesProvider>
-      </OfflineQueryProvider>
+      </QueryClientProvider>
     </AppIconProvider>
   )
 }

@@ -16,6 +16,9 @@ socket plus presence). Automations were promoted out of the
 database section to [packages/features/src/automations](../../../packages/features/src/automations),
 [apps/server/src/features/automations](../../../apps/server/src/features/automations),
 and [apps/web/src/features/automations](../../../apps/web/src/features/automations).
+The published database root exposes model contracts and query builders; client
+hooks and the session provider are published only through the database `/react`
+entrypoint. The unused mixed `/databases/queries` barrel is no longer published.
 
 Server routes live in `databases/http/` (`routes.ts`, `core-routes.ts`,
 `read-routes.ts`, `command-routes.ts`, `support.ts`); command handlers are

@@ -18,7 +18,7 @@ import {
 const templates = [
   [path.join(coreDir, ".env.development.example"), repoEnvironmentFiles.node],
 ];
-let legacyConflictsReported = false;
+let environmentConflictsReported = false;
 const optionalCredentialKeys = [
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
@@ -51,25 +51,19 @@ export async function ensureDevelopmentEnvironment(options = {}) {
     }),
   );
 
-  await migrateGeneratedNodeEnvironment();
-
   const nodeEnvironment = await ensureGeneratedFile(
     generatedEnvironmentFiles.node,
     () => profileEnvironment(localProfiles.node, dependencies),
   );
-  await migrateGeneratedEmailSender();
   await ensureGeneratedFile(generatedEnvironmentFiles.kubernetes, () => ({
     COMMUNITY_BETTER_AUTH_SECRET: secret(48),
     COMMUNITY_BOOTSTRAP_TOKEN: secret(48),
     COMMUNITY_POSTGRES_PASSWORD: secret(32),
     COMMUNITY_MINIO_PASSWORD: secret(32),
   }), { prune: true });
-  await removeGeneratedOptionalCredentials();
-  await migrateGeneratedMailEnvironment(generatedEnvironmentFiles.node);
-  await migrateGeneratedPortDefaults();
-  if (options.reportLegacy && !legacyConflictsReported) {
-    await reportLegacyConflicts("node", nodeEnvironment);
-    legacyConflictsReported = true;
+  if (options.reportEnvironmentConflicts && !environmentConflictsReported) {
+    await reportEnvironmentConflicts("node", nodeEnvironment);
+    environmentConflictsReported = true;
   }
 }
 
@@ -185,38 +179,6 @@ export function profileEnvironment(profile, dependencies) {
   };
 }
 
-export async function migrateGeneratedMailEnvironment(filename) {
-  if (!(await exists(filename))) return false;
-  const values = await readSimpleEnv(filename);
-  if (!("MAIL_ENABLED" in values)) return false;
-  delete values.MAIL_ENABLED;
-  await writeFile(filename, serializeEnv(values), { mode: 0o600 });
-  return true;
-}
-
-export async function migrateGeneratedNodeEnvironment(
-  filename = generatedEnvironmentFiles.node,
-) {
-  if (!(await exists(filename))) return false;
-
-  const values = await readSimpleEnv(filename);
-  if (values.ZILOBASE_DEMO_ENABLED !== "true") return false;
-
-  values.ZILOBASE_DEMO_ENABLED = "false";
-  await writeFile(filename, serializeEnv(values), { mode: 0o600 });
-  return true;
-}
-
-async function migrateGeneratedEmailSender() {
-  for (const filename of [generatedEnvironmentFiles.node]) {
-    if (!(await exists(filename))) continue;
-    const values = await readSimpleEnv(filename);
-    if (values.EMAIL_FROM !== "Zilobase <hello@zilobase.local>") continue;
-    values.EMAIL_FROM = "Zilobase <no-reply@zilobase.com>";
-    await writeFile(filename, serializeEnv(values), { mode: 0o600 });
-  }
-}
-
 async function ensureGeneratedFile(filename, values, options = {}) {
   const resolved = values();
   if (await exists(filename)) {
@@ -237,71 +199,17 @@ async function ensureGeneratedFile(filename, values, options = {}) {
   return resolved;
 }
 
-async function migrateGeneratedPortDefaults() {
-  const replacements = new Map([
-    ["54320", "15432"],
-    ["9100", "19100"],
-    ["9101", "19101"],
-    ["8025", "18025"],
-    ["1025", "11025"],
-  ]);
-  for (const filename of [
-    generatedEnvironmentFiles.dependencies,
-    generatedEnvironmentFiles.node,
-  ]) {
-    if (!(await exists(filename))) continue;
-    const values = await readSimpleEnv(filename);
-    let changed = false;
-    if (
-      filename === generatedEnvironmentFiles.dependencies &&
-      !values.MAILPIT_SMTP_PORT
-    ) {
-      values.MAILPIT_SMTP_PORT = "11025";
-      changed = true;
-    }
-    for (const [key, value] of Object.entries(values)) {
-      let next = value;
-      if (replacements.has(value)) next = replacements.get(value);
-      if (key.endsWith("URL") || key.includes("CONNECTION_STRING") || key.endsWith("ENDPOINT")) {
-        for (const [before, after] of replacements) {
-          next = next.replaceAll(`:${before}`, `:${after}`);
-        }
-      }
-      if (next !== value) {
-        values[key] = next;
-        changed = true;
-      }
-    }
-    if (changed) await writeFile(filename, serializeEnv(values), { mode: 0o600 });
-  }
-}
-
-async function removeGeneratedOptionalCredentials() {
-  for (const filename of [generatedEnvironmentFiles.node]) {
-    if (!(await exists(filename))) continue;
-    const values = await readSimpleEnv(filename);
-    let changed = false;
-    for (const key of optionalCredentialKeys) {
-      if (key in values) {
-        delete values[key];
-        changed = true;
-      }
-    }
-    if (changed) await writeFile(filename, serializeEnv(values), { mode: 0o600 });
-  }
-}
-
-async function reportLegacyConflicts(name, generated) {
+async function reportEnvironmentConflicts(name, generated) {
   const filename = repoEnvironmentFiles[name];
   if (!(await exists(filename))) return;
-  const legacy = await readSimpleEnv(filename);
+  const repositoryEnvironment = await readSimpleEnv(filename);
   const conflicts = Object.keys(generated)
     .filter((key) => !optionalCredentialKeys.includes(key))
-    .filter((key) => legacy[key] !== undefined && legacy[key] !== generated[key])
+    .filter((key) => repositoryEnvironment[key] !== undefined && repositoryEnvironment[key] !== generated[key])
     .sort();
   if (conflicts.length) {
     console.warn(
-      `Legacy ${path.relative(coreDir, filename)} values are ignored by the unified ` +
+      `${path.relative(coreDir, filename)} values are ignored by the generated ` +
       `${name} profile: ${conflicts.join(", ")}. Shell overrides still win.`,
     );
   }

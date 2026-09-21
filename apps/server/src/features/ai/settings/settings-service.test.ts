@@ -1,12 +1,10 @@
 vi.mock("./instruction-pages", () => ({
-  ensureInstructionPage: vi.fn(async () => undefined as string | undefined),
   hydrateInstructionPage: async (_actor: unknown, definition: unknown) => definition,
   allInstructionResources: (definition: { resources: unknown[]; instructionResources?: unknown[] }) => [...definition.resources, ...(definition.instructionResources ?? [])],
 }));
 vi.mock("../../collaboration/service", () => ({ replacePageContent: vi.fn(), encodePageContentAsYjs: () => new Uint8Array() }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { replacePageContent } from "../../collaboration/service";
-import { ensureInstructionPage } from "./instruction-pages";
 import { emptySettingsDefinition } from "@zilobase/features/ai-chat/settings-contract";
 
 const memory = vi.hoisted(() => ({
@@ -181,7 +179,6 @@ function seed(scope = "personal:alice") {
   ];
 }
 beforeEach(() => {
-  vi.mocked(ensureInstructionPage).mockResolvedValue(undefined);
   memory.tables = {};
   memory.role = "owner";
   memory.member = true;
@@ -189,53 +186,24 @@ beforeEach(() => {
   memory.failMaterialization = false;
   seed();
 });
-describe("settings baseline migration", () => {
-  it("imports personal instructions once and records the initial version", async () => {
+describe("canonical settings records", () => {
+  it("creates an empty personal settings record and initial version once", async () => {
     memory.tables.ai_settings = [];
-    memory.tables.ai_agent_user_preference = [{ workspaceId: "workspace", userId: "alice", instructions: "Personal guidance" }];
-    memory.tables.page = [{ id: "instruction", workspaceId: "workspace", name: "Legacy guide", content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Page guidance" }] }] } }];
     const first = await readSettings(actor);
-    expect(first.saved.instructions).toContain("Personal guidance");
-    expect(first.saved.instructions).toContain("Legacy guide");
-    expect(first.saved.instructions).toContain("Page guidance");
+    expect(first.saved).toEqual(emptySettingsDefinition());
     expect(first.version).toBe(1);
-    memory.tables.ai_agent_user_preference[0]!.instructions = "Later legacy change";
     expect((await readSettings(actor)).saved).toEqual(first.saved);
     expect(memory.tables.ai_settings).toHaveLength(1);
     expect(memory.tables.ai_settings_version).toHaveLength(1);
   });
-  it("omits inaccessible legacy instruction pages", async () => {
+  it("rejects a custom agent without its canonical settings record", async () => {
     memory.tables.ai_settings = [];
-    memory.resourceAllowed = false;
-    memory.tables.page = [{ id: "private", workspaceId: "workspace", name: "Private guide", content: null }];
-    expect((await readSettings(actor)).saved.instructions).toBe("");
-  });
-  it("preserves custom-agent profile versions when initializing settings", async () => {
-    memory.tables.ai_settings = [];
-    memory.tables.ai_agent_profile = [{ id: "agent", name: "Existing agent", description: "Legacy profile", icon: null, cover: null, iconPosition: "inline", instructions: "Agent guidance", version: 4 }];
-    const result = await readSettings({ ...actor, scope: "agent" });
-    expect(result.version).toBe(4);
-    expect(result.saved.name).toBe("Existing agent");
-    expect(result.saved.instructions).toBe("Agent guidance");
-    expect(memory.tables.ai_settings_version[0]!.version).toBe(4);
-  });
-  it("does not create a baseline for a missing custom agent", async () => {
-    memory.tables.ai_settings = [];
-    await expect(readSettings({ ...actor, scope: "missing" })).rejects.toMatchObject({ code: "agent_not_found" });
+    await expect(readSettings({ ...actor, scope: "missing" })).rejects.toMatchObject({ code: "agent_settings_missing" });
     expect(memory.tables.ai_settings).toHaveLength(0);
     expect(memory.tables.ai_settings_version).toBeUndefined();
   });
 });
 describe("private settings drafts", () => {
-  it("treats a migrated source link as the saved baseline without publishing a version", async () => {
-    const pageId = "11111111-1111-4111-8111-111111111111";
-    vi.mocked(ensureInstructionPage).mockResolvedValue(pageId);
-    const result = await readSettings(actor);
-    expect(result.definition.instructionPageId).toBe(pageId);
-    expect(result.saved.instructionPageId).toBe(pageId);
-    expect(memory.tables.ai_settings_version).toBeUndefined();
-    expect(memory.tables.ai_settings[0]!.definition).not.toHaveProperty("instructionPageId");
-  });
   it("persists AI provenance across reloads and manual configuration edits, then clears it on Save", async () => {
     await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 0, patch: { description: "Manual description" } });
     await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 1, patch: { name: "AI name" }, origin: "ai" });
@@ -577,14 +545,4 @@ describe("private settings drafts", () => {
     ).toBe(true);
     expect(sameSettings([1, 2], [2, 1])).toBe(false);
   });
-});
-
-
-it("ignores retired model/style fields without creating an unchanged version", async () => {
-  Object.assign(memory.tables.ai_settings[0].definition as object, { defaultModel: "openai:gpt-4o", responseStyle: "detailed" });
-  const state = await readSettings(actor);
-  expect(state.definition).not.toHaveProperty("defaultModel");
-  expect(state.definition).not.toHaveProperty("responseStyle");
-  const draft = await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 0, patch: { description: "" } });
-  expect((await publishSettings(actor, draft)).version).toBe(1);
 });

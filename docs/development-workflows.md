@@ -47,6 +47,9 @@ preserving data.
 Valkey is started and configured automatically. The generated Node environment
 sets `REALTIME_REDIS_URL`; no separate Redis command or manual `.env` edit is
 needed for `npm run dev`.
+The workspace launcher passes the generated Redis URL to optional sibling
+providers as well. A provider can still set its own runtime environment for
+standalone development, but the one-command workspace uses shared Valkey.
 
 The development hub shows runtime health, ports, supporting services, setup
 tokens, and generated local credentials. It binds only to `127.0.0.1`; do not

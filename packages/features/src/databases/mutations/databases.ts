@@ -12,8 +12,8 @@ import { applyNavigationDeltaToCache } from  "../../pages/navigation-realtime";
 import {
   pagesNavRootQueryKey,
   pagesQueryKey,
-  type PageNavigationPayload,
 } from  "../../pages/queries";
+import type { PageNavigationPayload } from "../../pages/contracts";
 import { useDatabaseSessionId } from "../queries/session";
 import type { DatabaseHostEntity, DataSourceEntity } from "../core/entities";
 import { executeDatabaseCommand } from "./execute";

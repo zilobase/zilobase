@@ -40,29 +40,26 @@ import {
 import { SidebarNavItemAction } from "@/shared/ui/sidebar-nav-item-action"
 import { useOpenInNewTab } from "@/features/desktop/components/index"
 import { getSidebarExpansionStorageKey } from "../model/sidebar-expansion-state"
-import { SidebarSectionMenu } from "./sidebar-section-menu"
 import { getConfiguredSidebarItems } from "../model/sidebar-section-items"
 import { SidebarLibraryLink } from "./sidebar-library-link"
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
-import type { LegacySidebarConfig } from "@zilobase/features/user-settings"
+import type { SidebarSectionLimit, SidebarSectionSort } from "@zilobase/features/user-settings"
 
 export function NavFavorites({
   favorites,
+  limit,
   onRemoveDatabaseFavorite,
   onRemoveFavorite,
-  onCustomizeSidebar,
-  onSidebarConfigChange,
-  sidebarConfig,
   sectionStorageKey,
+  sort,
   workspaceId,
 }: {
   favorites: SidebarNavItem[]
+  limit: SidebarSectionLimit
   onRemoveDatabaseFavorite: (databaseId: string) => void
   onRemoveFavorite: (pageId: string) => void
-  onCustomizeSidebar?: () => void
-  onSidebarConfigChange?: (config: LegacySidebarConfig) => void
-  sidebarConfig?: LegacySidebarConfig
   sectionStorageKey?: string
+  sort: SidebarSectionSort
   workspaceId: string | null
 }) {
   const [open, setOpen] = useSidebarSectionOpen(sectionStorageKey ?? `zilobase:sidebar-section:favorites:${workspaceId ?? "default"}`)
@@ -74,9 +71,7 @@ export function NavFavorites({
     location.pathname,
     location.search,
   )
-  const displayedFavorites = sidebarConfig
-    ? getConfiguredSidebarItems(favorites, "favorites", sidebarConfig)
-    : favorites
+  const displayedFavorites = getConfiguredSidebarItems(favorites, "favorites", { limit, sort })
 
   return (
     <Collapsible asChild onOpenChange={setOpen} open={open}>
@@ -96,25 +91,10 @@ export function NavFavorites({
               </button>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          {sidebarConfig && onSidebarConfigChange && onCustomizeSidebar ? (
-            <SidebarSectionMenu
-              className="right-2"
-              config={sidebarConfig}
-              onChange={onSidebarConfigChange}
-              onCustomize={onCustomizeSidebar}
-              sectionId="favorites"
-            />
-          ) : null}
           <SidebarLibraryLink
-            className={
-              sidebarConfig && onSidebarConfigChange && onCustomizeSidebar
-                ? "right-9"
-                : "right-2"
-            }
+            className="right-2"
             label="Favorites"
-            onSidebarConfigChange={onSidebarConfigChange}
             sectionId="favorites"
-            sidebarConfig={sidebarConfig}
           />
         </div>
         <CollapsibleContent className="pb-4 pt-0.5">

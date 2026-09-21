@@ -36,7 +36,7 @@ export async function captureAgentMcpToolGrants(profileId: string, workspaceId: 
   }));
 }
 
-/** Missing/legacy snapshots fail closed. Live permission checks still apply. */
+/** Missing or malformed snapshots fail closed. Live permission checks still apply. */
 export function findAgentMcpToolGrant(
   permissionSnapshot: unknown,
   identity: { connectionId: string; externalName: string; schemaHash: string; classification: string },

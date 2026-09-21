@@ -2,7 +2,6 @@ import type { UIMessage } from "ai";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import * as z from "zod";
-import { inArray } from "drizzle-orm";
 
 import {
   archiveAiChatThread,
@@ -15,11 +14,8 @@ import {
   setAiChatThreadPinned,
 } from "./chat-persistence";
 import {
-  AI_AGENT_INSTRUCTIONS_MAX_CHARS,
   AI_CHAT_FEEDBACK_REASON_MAX_CHARS,
-  getAiAgentPreference,
   listAiChatFeedback,
-  saveAiAgentPreference,
   saveAiChatFeedback,
 } from "./agent-experience";
 import {
@@ -29,8 +25,6 @@ import {
 } from "../actions/agent-operations";
 import { getMembership, isPrivilegedOrgRole } from "../../access";
 import type { AppBindings } from "../../../shared/types";
-import { db } from "../../../infrastructure/database";
-import { aiAgentProfile } from "../../../infrastructure/database/schema";
 
 const createThreadSchema = z.object({
   title: z.string().trim().max(120).optional(),
@@ -41,10 +35,6 @@ const renameThreadSchema = z.object({
 });
 
 const pinThreadSchema = z.object({ pinned: z.boolean() });
-const preferenceSchema = z.object({
-  instructions: z.string().max(AI_AGENT_INSTRUCTIONS_MAX_CHARS),
-  responseStyle: z.enum(["concise", "balanced", "detailed"]),
-});
 const feedbackSchema = z.object({
   rating: z.union([z.literal(-1), z.literal(1)]),
   reason: z.string().trim().max(AI_CHAT_FEEDBACK_REASON_MAX_CHARS).optional(),
@@ -142,14 +132,8 @@ aiThreadRoutes.get("/threads", async (c) => {
     auth.user.id,
     c.req.query("q"),
   );
-  const personalThreads = threads.filter((thread) => thread.agentProfileId === null);
-  const agentProfiles = await loadAgentProfileMetadata(personalThreads.map((thread) => thread.agentProfileId));
-
   return c.json({
-    threads: personalThreads.map((thread) => serializeThread(
-      thread,
-      thread.agentProfileId ? agentProfiles.get(thread.agentProfileId) ?? null : null,
-    )),
+    threads: threads.map(serializeThread),
   });
 });
 
@@ -167,7 +151,6 @@ aiThreadRoutes.post("/threads", async (c) => {
   }
 
   const thread = await createAiChatThread({
-    agentProfileId: null,
     workspaceId: auth.workspaceId,
     title: body.data.title,
     userId: auth.user.id,
@@ -177,12 +160,7 @@ aiThreadRoutes.post("/threads", async (c) => {
     return c.json({ error: "Failed to create AI thread" }, 500);
   }
 
-  return c.json({ thread: serializeThread(
-    thread,
-    thread.agentProfileId
-      ? (await loadAgentProfileMetadata([thread.agentProfileId])).get(thread.agentProfileId) ?? null
-      : null,
-  ) }, 201);
+  return c.json({ thread: serializeThread(thread) }, 201);
 });
 
 aiThreadRoutes.patch("/threads/:threadId", async (c) => {
@@ -209,12 +187,7 @@ aiThreadRoutes.patch("/threads/:threadId", async (c) => {
     return c.json({ error: "Thread not found" }, 404);
   }
 
-  return c.json({ thread: serializeThread(
-    thread,
-    thread.agentProfileId
-      ? (await loadAgentProfileMetadata([thread.agentProfileId])).get(thread.agentProfileId) ?? null
-      : null,
-  ) });
+  return c.json({ thread: serializeThread(thread) });
 });
 
 aiThreadRoutes.post("/threads/:threadId/archive", async (c) => {
@@ -261,12 +234,7 @@ aiThreadRoutes.put("/threads/:threadId/pin", async (c) => {
     return c.json({ error: "Thread not found" }, 404);
   }
 
-  return c.json({ thread: serializeThread(
-    thread,
-    thread.agentProfileId
-      ? (await loadAgentProfileMetadata([thread.agentProfileId])).get(thread.agentProfileId) ?? null
-      : null,
-  ) });
+  return c.json({ thread: serializeThread(thread) });
 });
 
 aiThreadRoutes.delete("/threads/:threadId", async (c) => {
@@ -318,12 +286,7 @@ aiThreadRoutes.get("/threads/:threadId/messages", async (c) => {
   return c.json({
     feedback,
     messages: messages as UIMessage[],
-    thread: serializeThread(
-      thread,
-      thread.agentProfileId
-        ? (await loadAgentProfileMetadata([thread.agentProfileId])).get(thread.agentProfileId) ?? null
-        : null,
-    ),
+    thread: serializeThread(thread),
   });
 });
 
@@ -358,43 +321,6 @@ aiThreadRoutes.put(
     return c.json({ feedback });
   },
 );
-
-aiThreadRoutes.get("/preferences", async (c) => {
-  const auth = await requireActiveWorkspace(c);
-
-  if ("response" in auth) {
-    return auth.response;
-  }
-
-  return c.json({
-    preference: await getAiAgentPreference({
-      userId: auth.user.id,
-      workspaceId: auth.workspaceId,
-    }),
-  });
-});
-
-aiThreadRoutes.put("/preferences", async (c) => {
-  const auth = await requireActiveWorkspace(c);
-
-  if ("response" in auth) {
-    return auth.response;
-  }
-
-  const body = await parseJson(c, preferenceSchema);
-
-  if (!body.success) {
-    return body.response;
-  }
-
-  return c.json({
-    preference: await saveAiAgentPreference({
-      ...body.data,
-      userId: auth.user.id,
-      workspaceId: auth.workspaceId,
-    }),
-  });
-});
 
 async function requireActiveWorkspace(c: Context<AppBindings>) {
   const user = c.get("user");
@@ -462,25 +388,14 @@ async function parseJson<T extends z.ZodType>(
 
 function serializeThread(thread: {
   id: string;
-  agentProfileId: string | null;
   title: string;
   pinnedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   lastActivityAt: Date;
-}, agentProfile: {
-  icon: unknown | null;
-  id: string;
-  name: string;
-  status: string;
-} | null) {
+}) {
   return {
     id: thread.id,
-    agentProfileId: thread.agentProfileId,
-    agentProfile: agentProfile ? {
-      ...agentProfile,
-      status: agentProfile.status === "archived" ? "archived" as const : "active" as const,
-    } : null,
     title: thread.title,
     pinnedAt: thread.pinnedAt?.toISOString() ?? null,
     pinned: Boolean(thread.pinnedAt),
@@ -488,21 +403,4 @@ function serializeThread(thread: {
     updatedAt: thread.updatedAt.toISOString(),
     lastActivityAt: thread.lastActivityAt.toISOString(),
   };
-}
-
-async function loadAgentProfileMetadata(ids: Array<string | null>) {
-  const uniqueIds = [...new Set(ids.filter((id): id is string => Boolean(id)))];
-  if (uniqueIds.length === 0) return new Map<string, {
-    icon: unknown | null;
-    id: string;
-    name: string;
-    status: string;
-  }>();
-  const profiles = await db.select({
-    icon: aiAgentProfile.icon,
-    id: aiAgentProfile.id,
-    name: aiAgentProfile.name,
-    status: aiAgentProfile.status,
-  }).from(aiAgentProfile).where(inArray(aiAgentProfile.id, uniqueIds));
-  return new Map(profiles.map((profile) => [profile.id, profile]));
 }

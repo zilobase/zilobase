@@ -87,9 +87,9 @@ export function CalendarTimeline({ days, target, eventsByDay, zoneControls, onVi
   anchorRef.current = anchor;
 
   const preferences = actions.preferences;
-  const hourHeight = preferences.hourHeight ?? 48;
+  const hourHeight = preferences.hourHeight;
   const headerHeight = 32 + (collapsed ? 24 : 96);
-  const rail = 24 + 56 * (1 + preferences.secondaryTimeZones.length);
+  const rail = 24 + 56 * preferences.timeZoneColumns.length;
   const visibleCount = Math.max(1, preferences.visibleDayCount ?? 7);
   const columnWidth = Math.max(1, (width - rail) / visibleCount);
   const weekdays = preferences.showWeekends;

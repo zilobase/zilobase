@@ -47,45 +47,32 @@ export function register({ assert, loadModule, test }) {
       installRequestPolicy({ intercept: () => ({ handled: false }), observe: () => {}, transformResponse: (_path, value) => value })
     }
   })
-  test("application composition preserves desktop offline policy and demo precedence", async () => {
+  test("application composition preserves demo precedence and reports transport failures", async () => {
     const runtime = await loadModule("/apps/web/test/support/network-runtime.ts")
     const originalFetch = globalThis.fetch
-    const originalTauri = Object.getOwnPropertyDescriptor(globalThis, "isTauri")
     const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window")
-    const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator")
     const window = new EventTarget()
-    Object.defineProperty(globalThis, "isTauri", { configurable: true, value: true })
     Object.defineProperty(globalThis, "window", { configurable: true, value: window })
-    Object.defineProperty(globalThis, "navigator", { configurable: true, value: { userAgent: "Mac", onLine: true } })
     const statuses = []
     window.addEventListener("zilobase:authentication-required", () => statuses.push("authentication"))
     try {
       runtime.configureApplicationRequests()
-      runtime.setConnectivityState("offline")
-      globalThis.fetch = async () => { throw new Error("offline mutation reached transport") }
+      globalThis.fetch = async () => { throw new TypeError("unreachable") }
       await assert.rejects(runtime.apiFetch("/pages", { method: "POST" }), runtime.NetworkUnavailableError)
       runtime.installDemoTransport({ interceptMutation: () => ({ handled: true, value: "demo" }), applyReadOverlay: (_path, value) => value })
       assert.equal(await runtime.apiFetch("/pages", { method: "POST" }), "demo")
       runtime.installDemoTransport({ interceptMutation: () => ({ handled: false }), applyReadOverlay: (_path, value) => value })
       globalThis.fetch = async () => new Response("denied", { status: 401 })
       await assert.rejects(runtime.apiFetch("/pages"), runtime.ApiError)
-      assert.equal(runtime.getConnectivityState(), "online")
       assert.deepEqual(statuses, ["authentication"])
       globalThis.fetch = async () => new Response("unavailable", { status: 503 })
       await assert.rejects(runtime.apiFetch("/pages"), runtime.ApiError)
-      assert.equal(runtime.getConnectivityState(), "online")
       globalThis.fetch = async () => { throw new TypeError("unreachable") }
       await assert.rejects(runtime.apiFetch("/pages"), runtime.NetworkUnavailableError)
-      assert.equal(runtime.getConnectivityState(), "service-unavailable")
     } finally {
       globalThis.fetch = originalFetch
-      if (originalTauri) Object.defineProperty(globalThis, "isTauri", originalTauri)
-      else delete globalThis.isTauri
       if (originalWindow) Object.defineProperty(globalThis, "window", originalWindow)
       else delete globalThis.window
-      if (originalNavigator) Object.defineProperty(globalThis, "navigator", originalNavigator)
-      else delete globalThis.navigator
-      runtime.setConnectivityState("online")
       runtime.installRequestPolicy({ intercept: () => ({ handled: false }), observe: () => {}, transformResponse: (_path, value) => value })
     }
   })

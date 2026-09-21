@@ -6,6 +6,8 @@
 
 [Tool implementations](../../../apps/server/src/features/ai/tools) apply page/database operations and [file routes](../../../apps/server/src/features/ai/files/routes.ts) handle AI file interactions. Resource permissions and persisted run state remain server-owned. Web conversation state renders streaming output and approvals; it must not duplicate the server's execution policy.
 
+Page writes use `replaceText` for patch mode and `afterMarkdown` only for explicit full-page replacements. The server does not reinterpret full-page fields as patch replacements.
+
 When changing this flow, cover permission denial, approval requirements, cancellation, connector revocation and durable run recovery. Preserve existing tool names and shared contracts. Tests beside agent/MCP modules are the implementation-level starting point; the [operations guide](../../../docs/ai/ask-ai-operations.md) describes runtime diagnosis.
 
 ## Durable run interface and implementation

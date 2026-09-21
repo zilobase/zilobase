@@ -7,12 +7,12 @@ export function zoneDescription(zone: string, date: Date) {
   return { offset: part("longOffset"), name: part("long"), city: zoneCity(zone) };
 }
 export function zoneColumns(value: CalendarPreferences): CalendarTimeZoneColumn[] {
-  return value.timeZoneColumns ?? [value.timeZone, ...value.secondaryTimeZones].map(zone => ({ zone, label: zoneCity(zone) }));
+  return value.timeZoneColumns;
 }
 export function withZoneColumns(value: CalendarPreferences, columns: CalendarTimeZoneColumn[]): CalendarPreferences {
   if (!columns.length || columns.length > 4) throw new Error("Display one to four time zones. Remove a zone before adding another.");
   if (new Set(columns.map(c => canonicalZone(c.zone))).size !== columns.length) throw new Error("That time zone is already displayed.");
-  return { ...value, timeZoneColumns: columns, timeZone: columns[0]!.zone, secondaryTimeZones: columns.slice(1).map(c => c.zone) };
+  return { ...value, timeZoneColumns: columns, timeZone: columns[0]!.zone };
 }
 export function saveTravelZone(value: CalendarPreferences, zone: string, primary: boolean) {
   const columns = zoneColumns(value), existing = columns.find(c => canonicalZone(c.zone) === canonicalZone(zone));
