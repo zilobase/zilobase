@@ -1,4 +1,4 @@
-import { app, shell } from "electron";
+import { app, shell, systemPreferences } from "electron";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import os from "node:os";
@@ -136,8 +136,17 @@ export function registerCaptureHandlers(handle, emit) {
   handle("desktop:capture:permissions", call("permissions", 10_000));
   handle("desktop:capture:start", async (config) => {
     if (!config || typeof config !== "object") throw desktopError("invalid_argument", "The meeting capture configuration is invalid.");
+    if (typeof config.meetingId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(config.meetingId) ||
+        (config.captureMicrophone != null && typeof config.captureMicrophone !== "boolean") ||
+        (config.captureSystemAudio != null && typeof config.captureSystemAudio !== "boolean")) {
+      throw desktopError("invalid_argument", "The meeting capture configuration is invalid.");
+    }
     if (config.audioWebsocketUrl != null || config.audioTicket != null) {
       validateTransport(config.audioWebsocketUrl, config.audioTicket);
+    }
+    if (process.platform === "darwin" && (config.captureMicrophone !== false || config.captureSystemAudio === true)) {
+      const granted = await systemPreferences.askForMediaAccess("microphone");
+      if (!granted) throw desktopError("microphone_access_denied", "Allow microphone access in macOS Settings to record meeting audio.");
     }
     const state = await send("start", config, emit, 15_000);
     lastState = state;

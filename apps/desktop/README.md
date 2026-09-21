@@ -26,6 +26,9 @@ selected profile. A second origin can be supplied as
 `ZILOBASE_E2E_ADDITIONAL_SERVER`. Live OAuth, microphone/loopback capture,
 signed installers and update installation still require manual parity checks
 before Electron can replace Tauri.
+On macOS, starting input capture requests microphone permission through the
+Electron host before it launches the native sidecar. If macOS previously denied
+access, enable it in System Settings and restart the app.
 
 ### Electron signing and update feed
 

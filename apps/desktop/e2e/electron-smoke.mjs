@@ -43,6 +43,10 @@ try {
   assert.equal(capture.phase, "idle");
   assert.deepEqual(await page.evaluate(() => window.zilobaseDesktop.capture.recoverable()), []);
   await assert.rejects(
+    page.evaluate(() => window.zilobaseDesktop.capture.start({ meetingId: "../invalid" })),
+    /meeting capture configuration is invalid/i,
+  );
+  await assert.rejects(
     page.evaluate(() => window.zilobaseDesktop.capture.deleteLocal("../invalid")),
     /Invalid meeting identifier/,
   );
