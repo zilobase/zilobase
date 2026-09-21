@@ -15,15 +15,18 @@ describe("standalone Custom Agent migration boundary", () => {
     expect(migration).toMatch(/"turn_id" IS NOT NULL\)::int \+ \("agent_run_id" IS NOT NULL\)::int/);
   });
 
-  it("keeps Universal Ask AI personal-only at thread creation", async () => {
+  it("keeps Universal Ask AI personal-only in persistence and thread creation", async () => {
     const routes = await readFile(new URL("src/features/ai/conversations/thread-routes.ts", root), "utf8");
+    const threadSchema = await readFile(new URL("src/infrastructure/database/schema/ai-conversations.ts", root), "utf8");
+    const migration = await readFile(new URL("drizzle/0096_personal_chat_threads.sql", root), "utf8");
     expect(routes).toContain("const createThreadSchema = z.object({");
-    expect(routes).toContain("agentProfileId: null");
     const schema = routes.slice(
       routes.indexOf("const createThreadSchema"),
       routes.indexOf("const renameThreadSchema"),
     );
     expect(schema).not.toContain("agentProfileId");
+    expect(threadSchema).not.toContain("agentProfileId");
+    expect(migration).toContain('DROP COLUMN "agent_profile_id"');
   });
 
   it("keeps exactly one canonical conversation per agent", async () => {

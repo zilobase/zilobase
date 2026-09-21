@@ -247,11 +247,10 @@ describe("standalone agent ownership and revisions", () => {
       lastErrorCode: "ownership_changed",
     });
   });
-  it("archives an agent and disables its connectors without deleting legacy chats", async () => {
-    state.rows = [[profile], [{ id: "legacy-thread" }]];
+  it("archives an agent and disables its connectors", async () => {
+    state.rows = [[profile]];
     expect(await archiveAgentProfile(input)).toEqual({
       archived: true,
-      hasExistingThreads: true,
     });
     expect(state.writes[0]).toMatchObject({ status: "archived" });
     expect(state.writes[1]).toMatchObject({ state: "disabled" });

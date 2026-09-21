@@ -11,12 +11,7 @@ import { useChatbotConversation } from "../use-chatbot-conversation";
 import type { ChatbotConversationInput } from "../conversation-interface";
 
 export function ChatbotConversationController(props: ChatbotConversationInput) {
-  const {
-    isSidebar = false,
-    beforeComposer,
-    initialAgentProfileName,
-    initialAgentProfileId,
-  } = props;
+  const { isSidebar = false, beforeComposer } = props;
   const {
     rootRef,
     hasMessages,
@@ -38,20 +33,18 @@ export function ChatbotConversationController(props: ChatbotConversationInput) {
           {!hasMessages && (
             <div className="mx-auto mb-6 grid w-full max-w-3xl justify-items-center gap-3 px-4 text-center">
               <div className="flex size-12 items-center justify-center rounded-2xl bg-surface-secondary text-lg font-semibold">
-                {(initialAgentProfileName ?? "AI").slice(0, 2).toUpperCase()}
+                AI
               </div>
               <div>
                 <h1 className="font-heading text-2xl font-semibold tracking-tight">
                   {getGreeting(session?.user?.name)}
                 </h1>
                 <p className="mt-1 text-sm text-content-secondary">
-                  {initialAgentProfileName
-                    ? `Chat privately with ${initialAgentProfileName}.`
-                    : "Search, create, and work across your Zilobase workspace."}
+                  Search, create, and work across your Zilobase workspace.
                 </p>
               </div>
               <div className="flex max-w-2xl flex-wrap justify-center gap-2">
-                {starterPrompts(Boolean(initialAgentProfileId)).map(
+                {starterPrompts.map(
                   (prompt) => (
                     <Button
                       key={prompt}
@@ -97,16 +90,8 @@ function getGreeting(name?: string | null) {
   return firstName ? `${greeting}, ${firstName}` : greeting;
 }
 
-function starterPrompts(agentSelected: boolean) {
-  return agentSelected
-    ? [
-        "What can you help me with?",
-        "Review my priorities",
-        "Draft the next steps",
-      ]
-    : [
-        "Summarize my workspace",
-        "Find relevant information",
-        "Create a project plan",
-      ];
-}
+const starterPrompts = [
+  "Summarize my workspace",
+  "Find relevant information",
+  "Create a project plan",
+];

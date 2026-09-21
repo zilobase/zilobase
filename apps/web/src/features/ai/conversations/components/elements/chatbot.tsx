@@ -64,8 +64,6 @@ const Chatbot = (props: ChatbotProps) => {
     return (
       <ChatbotConversationController
         {...props}
-        initialAgentProfileId={null}
-        initialAgentProfileName={null}
         initialMessages={emptyAgentChatMessages}
         initialFeedback={[]}
         key={initialMessagesKey}
@@ -88,12 +86,6 @@ const Chatbot = (props: ChatbotProps) => {
   return (
     <ChatbotConversationController
       {...props}
-      initialAgentProfileId={
-        threadMessagesQuery.data?.thread.agentProfileId ?? null
-      }
-      initialAgentProfileName={
-        threadMessagesQuery.data?.thread.agentProfile?.name ?? null
-      }
       initialMessages={seededInitialMessages.messages}
       initialFeedback={queriedInitialFeedback}
       key={initialMessagesKey}

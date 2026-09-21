@@ -2,9 +2,9 @@
 
 ## Interface and ownership
 
-[Chatbot](../../../apps/web/src/features/ai/conversations/components/elements/chatbot.tsx) keeps the existing component interface and compatibility export for `PendingInitialChatSubmission`. It loads thread messages and seeds one initial snapshot per workspace/thread key. [Conversation presentation](../../../apps/web/src/features/ai/conversations/components/chatbot-conversation.tsx) renders the welcome state, scrolling history and composer. It receives the existing message/composer props from [conversation orchestration](../../../apps/web/src/features/ai/conversations/use-chatbot-conversation.ts); reusable elements retain their interfaces.
+[Chatbot](../../../apps/web/src/features/ai/conversations/components/elements/chatbot.tsx) loads personal-thread messages and seeds one initial snapshot per workspace/thread key. [Conversation presentation](../../../apps/web/src/features/ai/conversations/components/chatbot-conversation.tsx) renders the welcome state, scrolling history and composer. It receives message/composer props from [conversation orchestration](../../../apps/web/src/features/ai/conversations/use-chatbot-conversation.ts).
 
-The internal [conversation interface](../../../apps/web/src/features/ai/conversations/conversation-interface.ts) defines loading and controller inputs without importing their implementations. The shared package's conversation-adapter contracts and the `@zilobase/ai-conversation-adapter` selection remain unchanged.
+The internal [conversation interface](../../../apps/web/src/features/ai/conversations/conversation-interface.ts) defines loading and controller inputs without importing their implementations. Personal threads have no Custom Agent identity or metadata; standalone agent conversations use the agent screens and agent conversation contracts.
 
 ## Local state owners
 

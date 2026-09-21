@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { workspace } from "./workspaces";
 import { user } from "./authentication";
-import { aiAgentProfile } from "./ai-agents";
 import { timestampColumns } from "./columns";
 
 export const aiChatThread = pgTable(
@@ -15,10 +14,6 @@ export const aiChatThread = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
-    agentProfileId: text("agent_profile_id").references(
-      () => aiAgentProfile.id,
-      { onDelete: "restrict" },
-    ),
     title: text("title").notNull().default("New chat"),
     nextMessageSequence: integer("next_message_sequence").notNull().default(0),
     pinnedAt: timestamp("pinned_at", { withTimezone: true }),
@@ -41,11 +36,6 @@ export const aiChatThread = pgTable(
       table.userId,
       table.archivedAt,
       table.deletedAt,
-      table.lastActivityAt,
-    ),
-    index("ai_chat_thread_agent_profile_idx").on(
-      table.agentProfileId,
-      table.userId,
       table.lastActivityAt,
     ),
   ],

@@ -27,7 +27,7 @@ vi.mock("../../access", () => ({
 vi.mock("../files/routes", () => ({ aiFileRoutes: new Hono() }));
 vi.mock("./chat-persistence", () => ({
   appendCanonicalUserMessage: async () => ({ id: "message" }),
-  getAiChatThreadForUser: async () => state.thread ? ({ agentProfileId: null }) : null,
+  getAiChatThreadForUser: async () => state.thread ? ({ id: "thread" }) : null,
   loadAiChatThreadMessages: async () => [],
 }));
 vi.mock("../actions/agent-operations", () => ({

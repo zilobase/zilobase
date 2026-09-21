@@ -100,7 +100,6 @@ export function useTransferAiAgentProfile(agentId: string | null) {
 export function useArchiveAiAgentProfile(agentId: string | null) {
   return useAgentMutation<Record<string, never>, { result: {
     archived: boolean
-    hasExistingThreads: boolean
   } }>(
     () => `/api/ai/agents/${encodeURIComponent(agentId!)}/archive`,
     "POST",

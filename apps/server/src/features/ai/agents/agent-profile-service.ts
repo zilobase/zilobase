@@ -16,7 +16,6 @@ import {
   aiAgentProfile,
   aiAgentProfileAccess,
   aiAgentRevision,
-  aiChatThread,
   aiMcpConnection,
   itemVisit,
   member,
@@ -399,11 +398,6 @@ export async function archiveAgentProfile(input: {
 }) {
   await requireAgentProfileRole({ ...input, minimum: "owner" });
   const now = new Date();
-  const [activeThread] = await db.select({ id: aiChatThread.id }).from(aiChatThread)
-    .where(and(
-      eq(aiChatThread.agentProfileId, input.profileId),
-      isNull(aiChatThread.deletedAt),
-    )).limit(1);
   await db.transaction(async (tx) => {
     await tx.update(aiAgentProfile).set({
       archivedAt: now,
@@ -417,7 +411,7 @@ export async function archiveAgentProfile(input: {
       updatedAt: now,
     }).where(eq(aiMcpConnection.agentProfileId, input.profileId));
   });
-  return { archived: true, hasExistingThreads: Boolean(activeThread) };
+  return { archived: true };
 }
 
 export async function duplicateAgentProfile(input: {

@@ -8,11 +8,11 @@
 
 ## Main flow
 
-Chat/thread routes connect conversations to agent execution, context, tools and files. Shared contracts describe conversations and settings; the web conversation adapter owns transport and live client state.
+Personal chat/thread routes connect conversations to agent execution, context, tools and files. Standalone Custom Agents use their own conversation store and routes. Shared contracts describe conversations and settings; the web conversation adapter owns transport and live client state.
 
 ## Authorization and persistence
 
-Agent profiles, revisions, conversations, runs, settings drafts and connector access are separate persisted concerns. Each agent has one canonical conversation keyed by profile; private migrated threads and their read-only route are not part of the model. Tools resolve actor/resource authority on the server; client visibility is not permission to execute.
+Agent profiles, revisions, conversations, runs, settings drafts and connector access are separate persisted concerns. Each agent has one canonical conversation keyed by profile. Personal `ai_chat_thread` rows cannot reference agent profiles, so the two conversation models do not overlap. Tools resolve actor/resource authority on the server; client visibility is not permission to execute.
 
 Agent profile creation imports the collaboration [document codec](../../../apps/server/src/features/collaboration/document-codec.ts), avoiding a dependency on collaboration runtime dispatch and its agent triggers. Settings presentation enters through the active settings screens; unused legacy AI sidebar sections and unconsumed MCP wrappers are removed.
 
@@ -44,6 +44,6 @@ Update this guide when ownership, interfaces, authorization, persistence or cros
 
 MCP is grouped into [connections](../../../apps/server/src/features/ai/mcp/connections) for configuration, credentials, OAuth, catalog and materialization; [execution](../../../apps/server/src/features/ai/mcp/execution) for tool binding, approval and run snapshots; and [transport](../../../apps/server/src/features/ai/mcp/transport) for the client, errors and secure egress. The scope policy stays at the MCP capability root because connection and execution paths both use it. HTTP composition enters through `mcp/routes.ts`.
 
-The [web interface](../../../apps/web/src/features/ai/index.ts) retains `useAiChatThreadState`; routing enters screens explicitly. Existing conversation element interfaces remain intact, including reusable UI primitives. The shared package name and `ai-chat` subpaths remain stable. Vite adapter selection and the web harness resolve the conversation location explicitly. Chat writes use the single canonical thread-turn endpoint.
+The [web interface](../../../apps/web/src/features/ai/index.ts) exports `useAiChatThreadState`; routing enters screens explicitly. Reusable conversation primitives stay internal to the feature. The shared package name and `ai-chat` subpaths remain stable. Vite adapter selection and the web harness resolve the conversation location explicitly. Personal chat writes use the single canonical thread-turn endpoint.
 
 The pure [draft action rules](../../../apps/web/src/features/ai/settings/model/draft-actions.ts) distinguish card visibility, save/discard availability and mutation busy state. [Behavioral tests](../../../apps/web/test/features/ai/settings-actions.test.mjs) cover pending runs, conflicts and read-only actors; the rendered actions retain mutation and toast ownership.

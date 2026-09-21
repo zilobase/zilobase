@@ -251,7 +251,7 @@ aiRoutes.post("/threads/:threadId/actions/:actionId/approve", async (c) => {
     });
     const tools = buildRegisteredAgentTools(
       {
-        agentProfileId: thread?.agentProfileId ?? null,
+        agentProfileId: null,
         editablePageIds: [],
         env: c.env,
         primaryPageId: null,

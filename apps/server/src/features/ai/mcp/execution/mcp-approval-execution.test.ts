@@ -140,7 +140,7 @@ beforeEach(async () => {
 describe("approved MCP execution", () => {
   it("executes exactly the integrity-checked personal tool arguments", async () => {
     state.rows = [
-      [{ userId: "user", workspaceId: "workspace", agentProfileId: null }],
+      [{ userId: "user", workspaceId: "workspace" }],
       [context],
       [{ id: "receipt" }],
     ];
@@ -170,9 +170,8 @@ describe("approved MCP execution", () => {
     expect(state.execute).not.toHaveBeenCalled();
   });
   it.each([
-    { userId: "other", workspaceId: "workspace", agentProfileId: null },
-    { userId: "user", workspaceId: "other", agentProfileId: null },
-    { userId: "user", workspaceId: "workspace", agentProfileId: "agent" },
+    { userId: "other", workspaceId: "workspace" },
+    { userId: "user", workspaceId: "other" },
   ])("rejects a mismatched thread: %j", async (thread) => {
     state.rows = [[thread]];
     await expect(execute()).rejects.toThrow("chat context");
@@ -184,7 +183,7 @@ describe("approved MCP execution", () => {
     { schemaHash: "changed" },
   ])("rejects a changed tool: %j", async (snapshot) => {
     state.rows = [
-      [{ userId: "user", workspaceId: "workspace", agentProfileId: null }],
+      [{ userId: "user", workspaceId: "workspace" }],
       [{ ...context, snapshot: { ...context.snapshot, ...snapshot } }],
     ];
     await expect(execute()).rejects.toThrow("changed");
@@ -192,7 +191,7 @@ describe("approved MCP execution", () => {
   });
   it("rejects an inactive credential owner", async () => {
     state.rows = [
-      [{ userId: "user", workspaceId: "workspace", agentProfileId: null }],
+      [{ userId: "user", workspaceId: "workspace" }],
       [context],
     ];
     state.member.mockResolvedValueOnce(null);
@@ -200,7 +199,7 @@ describe("approved MCP execution", () => {
   });
   it("rechecks live write policy", async () => {
     state.rows = [
-      [{ userId: "user", workspaceId: "workspace", agentProfileId: null }],
+      [{ userId: "user", workspaceId: "workspace" }],
       [
         {
           ...context,
@@ -213,7 +212,7 @@ describe("approved MCP execution", () => {
   });
   it("rejects changed encrypted arguments or their hash", async () => {
     state.rows = [
-      [{ userId: "user", workspaceId: "workspace", agentProfileId: null }],
+      [{ userId: "user", workspaceId: "workspace" }],
       [context],
     ];
     action.inputHash = "forged";
@@ -222,7 +221,7 @@ describe("approved MCP execution", () => {
   });
   it("records ambiguous write outcomes without declaring success", async () => {
     state.rows = [
-      [{ userId: "user", workspaceId: "workspace", agentProfileId: null }],
+      [{ userId: "user", workspaceId: "workspace" }],
       [context],
       [],
     ];

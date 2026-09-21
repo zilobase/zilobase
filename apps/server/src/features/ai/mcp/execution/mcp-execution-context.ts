@@ -47,11 +47,11 @@ export async function isMcpExecutionContextAllowed(input: {
     }));
   }
   if (!input.threadId || input.scope.type !== "personal" || input.scope.userId !== input.userId) return false;
-  const [thread] = await db.select({ agentProfileId: aiChatThread.agentProfileId })
+  const [thread] = await db.select({ id: aiChatThread.id })
     .from(aiChatThread).where(and(
       eq(aiChatThread.id, input.threadId),
       eq(aiChatThread.workspaceId, input.workspaceId),
       eq(aiChatThread.userId, input.scope.userId),
     )).limit(1);
-  return Boolean(thread && thread.agentProfileId === null);
+  return Boolean(thread);
 }

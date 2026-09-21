@@ -167,7 +167,6 @@ export async function executeApprovedMcpAction(input: {
   if (!action.threadId) throw new Error("MCP approval context is invalid.");
   const [thread] = await db
     .select({
-      agentProfileId: aiChatThread.agentProfileId,
       userId: aiChatThread.userId,
       workspaceId: aiChatThread.workspaceId,
     })
@@ -178,9 +177,7 @@ export async function executeApprovedMcpAction(input: {
     !thread ||
     thread.workspaceId !== input.workspaceId ||
     thread.userId !== input.userId ||
-    (scope.type === "agent"
-      ? thread.agentProfileId !== scope.agentProfileId
-      : thread.agentProfileId !== null)
+    scope.type !== "personal"
   ) {
     throw new Error("MCP approval does not match its chat context.");
   }
