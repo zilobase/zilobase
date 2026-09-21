@@ -10,6 +10,13 @@ policy egress is always rendered for the configured broker CIDR and port.
 
 Keep rendered configuration consistent with the application; do not move deployment entrypoints solely for cosmetic grouping.
 
+The root `.dockerignore` excludes Electron packages and native capture build
+outputs. These local desktop artifacts are not inputs to the web/server image;
+including them greatly increases the Compose build context and can leak host
+architecture binaries into container builds.
+The container dependency install skips Electron and Playwright browser binary
+downloads because the server image uses neither desktop runtime.
+
 ## Ownership
 
 - [Entrypoint/configuration](../../deploy/helm/zilobase/Chart.yaml)

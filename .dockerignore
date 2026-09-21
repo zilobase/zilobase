@@ -6,6 +6,9 @@
 **/.cache
 **/.DS_Store
 apps/desktop/src-tauri/target
+apps/desktop/dist-electron
+apps/desktop/electron/sidecar/target
+apps/desktop/electron/bin
 coverage
 .env.selfhost
 .env.selfhost.development

@@ -144,6 +144,10 @@ After the one-time setup page is complete, open the printed
 `http://127.0.0.1:8787` under **Change server**. No desktop rebuild or
 provider credentials are needed. Stop the stack with `npm run selfhost:down`;
 the saved instance and desktop session remain valid after the next start.
+The Compose image builds the web and server only. Its Docker context excludes
+local Electron packages and capture build outputs, and the container install
+skips Electron and Playwright browser downloads. Build and test desktop
+artifacts on the host using the Electron commands above.
 
 ## One-time GitHub setup
 
