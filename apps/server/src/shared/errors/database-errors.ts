@@ -1,4 +1,9 @@
 const DATABASE_UNAVAILABLE_CODES = new Set([
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "ETIMEDOUT",
   "53300",
   "57P03",
   "08000",
@@ -24,14 +29,17 @@ export const DATABASE_UNAVAILABLE_MESSAGE =
   "The database is temporarily unavailable.";
 
 export function isDatabaseUnavailableError(error: unknown) {
-  let current = error;
+  const pending = [error];
   const seen = new Set<unknown>();
 
-  while (current && typeof current === "object" && !seen.has(current)) {
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current || typeof current !== "object" || seen.has(current)) continue;
     seen.add(current);
     const record = current as {
       cause?: unknown;
       code?: unknown;
+      errors?: unknown;
       message?: unknown;
     };
 
@@ -53,21 +61,29 @@ export function isDatabaseUnavailableError(error: unknown) {
       return true;
     }
 
-    current = record.cause;
+    pending.push(record.cause);
+    if (Array.isArray(record.errors)) pending.push(...record.errors);
   }
 
   return false;
 }
 
 export function getDatabaseErrorCode(error: unknown) {
-  let current = error;
+  const pending = [error];
   const seen = new Set<unknown>();
 
-  while (current && typeof current === "object" && !seen.has(current)) {
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current || typeof current !== "object" || seen.has(current)) continue;
     seen.add(current);
-    const record = current as { cause?: unknown; code?: unknown };
+    const record = current as {
+      cause?: unknown;
+      code?: unknown;
+      errors?: unknown;
+    };
     if (typeof record.code === "string") return record.code;
-    current = record.cause;
+    pending.push(record.cause);
+    if (Array.isArray(record.errors)) pending.push(...record.errors);
   }
 
   return null;

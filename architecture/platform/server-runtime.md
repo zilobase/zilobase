@@ -139,6 +139,12 @@ Shared [HTTP input handling](../../apps/server/src/shared/http/auth.ts) authenti
 
 `app.onError` maps database-unavailable failures to 503, [HTTP-facing domain errors](../../apps/server/src/shared/http/route-error.ts) (status 4xx/5xx, `HTTPException`, Zod issues) to their existing JSON bodies, and everything else to a generic 500. Isolated feature-route tests attach the same mapper with `attachHttpRouteErrorHandler`. The JSON body limit is 32 MiB so mail compose can carry base64 attachments; oversized bodies return 413. The pure [SHA-256 encoder](../../apps/server/src/shared/crypto/sha256.ts) is shared by provider credentials and OAuth state hashing; encryption, credentials and provider lifecycle remain feature-owned.
 
+Worker entrypoints apply the same database-unavailable classification before
+returning upgrade or application responses. PostgreSQL protocol failures,
+connection refusal/reset/timeout errors, and nested `AggregateError` members
+produce a retryable `503` instead of escaping through the local WebSocket
+loopback as an opaque Miniflare error.
+
 ## Verification
 
 See [testing and quality](../setup/testing-and-quality.md) and the adapter's [unit tests](../../packages/runtime-adapter/test) plus colocated [node tests](../../packages/runtime-adapter/src/node) and [worker tests](../../packages/runtime-adapter/test/worker). [Architecture index](../README.md).

@@ -24,6 +24,13 @@ test("recognizes PostgreSQL and nested pool availability failures", () => {
     DATABASE_UNAVAILABLE_MESSAGE,
     "The database is temporarily unavailable.",
   );
+
+  const refused = Object.assign(new Error("connect ECONNREFUSED"), {
+    code: "ECONNREFUSED",
+  });
+  const aggregate = new AggregateError([refused], "connection failed");
+  assert.equal(isDatabaseUnavailableError(aggregate), true);
+  assert.equal(getDatabaseErrorCode(aggregate), "ECONNREFUSED");
 });
 
 test("does not hide ordinary application errors", () => {

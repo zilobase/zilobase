@@ -45,6 +45,7 @@ import { createWorkerImageStorage } from "./image-storage";
 import { createWorkerMailer } from "./mailer";
 import { createWorkerOutboundFetch } from "./outbound-fetch";
 import { createWorkerDocuments } from "./documents";
+import { createWorkerDatabaseUnavailableResponse } from "./request-error";
 
 export { routeCollaborationRequest } from "./features/collaboration/security";
 export type { CollaborationRouteEnv } from "./features/collaboration/security";
@@ -421,6 +422,12 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
           return fetchApp(request, env, ctx);
         })();
       } catch (error) {
+        const unavailable = createWorkerDatabaseUnavailableResponse(
+          error,
+          request,
+        );
+        if (unavailable) return unavailable;
+
         await portsFor(env).telemetry!.error(error, {
           code: "WORKER_REQUEST_ERROR",
           method: request.method,
