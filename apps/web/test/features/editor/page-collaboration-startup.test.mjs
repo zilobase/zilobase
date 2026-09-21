@@ -8,6 +8,8 @@ export function register({ assert, readSource, test }) {
       source,
       /const cancelPreparation = scheduleRealtimeAfterPagePaint\(\(\) => void prepare\(\)\)/,
     )
+    assert.match(source, /if \(preparationStarted\) return/)
+    assert.match(source, /preparationStarted = true/)
     assert.equal(
       source.match(/^\s*void prepare\(\)\s*$/gm)?.length ?? 0,
       0,
