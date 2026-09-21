@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { DatabaseSetupCard } from "../../setup/components/database-setup-card"
 import { DatabaseViewProvider } from "../state/database-view-context"
 import { DatabaseViewSkeleton } from "./database-view-skeleton"
@@ -51,6 +52,10 @@ export function DatabaseView(props: DatabaseViewProps) {
   } = useDatabaseViewController(props)
   const hiddenDeletedDatabase =
     databaseDeleted && props.hideWhenDeleted === true
+
+  useEffect(() => {
+    if (hiddenDeletedDatabase) props.onDeleted?.()
+  }, [hiddenDeletedDatabase, props.onDeleted])
 
   if (hiddenDeletedDatabase) {
     return (

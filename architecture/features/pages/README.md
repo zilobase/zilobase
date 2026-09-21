@@ -53,9 +53,9 @@ query update from replacing the document between creation and insertion.
 Successful page/database embedding in [placement mutations](../../../packages/features/src/pages/placement-mutations.ts) invalidates navigation in the background. Editor callers can complete as soon as the embed request succeeds; navigation refetch latency or failure does not hold the mutation open or report a committed embed as rejected. [Mutation latency tests](../../../packages/features/src/pages/placement-mutations.test.ts) exercise this ordering with a real mutation observer and controlled save/refresh promises.
 
 Soft-deleting a database does not delete an otherwise active page that embeds
-it. The page's Yjs database node remains the stable restore anchor, while the
-database feature owns its content-hidden trash presentation, toolbar restore
-control, and edit lock. Shared lifecycle
-cache handling refreshes deleted-aware database reads on delete and both active
-and deleted-aware reads on restore; restoration therefore does not depend on a
-page reload, navigation change, or realtime delivery.
+it. Deletion through the block menu removes the database node in the same undo
+operation as the resource transition. A stale node discovered after an external
+or completed deletion is removed from the collaborative document without adding
+a new editor-history entry. Deleted databases never start record-window or
+realtime subscriptions. Shared lifecycle cache handling still refreshes
+deleted-aware reads on delete and both active and deleted-aware reads on restore.

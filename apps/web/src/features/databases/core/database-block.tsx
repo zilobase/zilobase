@@ -4,7 +4,7 @@ import {
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
 } from "@tiptap/react"
-import { useSyncExternalStore } from "react"
+import { useCallback, useSyncExternalStore } from "react"
 
 import { hasDatabasePageDragPayload } from "../interactions/database-page-drop"
 import { DatabaseView } from "../views/components/database-view"
@@ -30,6 +30,7 @@ function isDatabasePageDragEvent(event: Event) {
 function DatabaseBlockView({
   editor,
   extension,
+  getPos,
   node,
   updateAttributes,
 }: ReactNodeViewProps) {
@@ -45,6 +46,26 @@ function DatabaseBlockView({
     options.editorRuntime?.getEditable ??
       (() => options.editable !== false && editor.isEditable)
   )
+  const removeDeletedBlock = useCallback(() => {
+    if (!isEditable) return
+
+    const pos = getPos()
+    if (typeof pos !== "number") return
+
+    const currentNode = editor.state.doc.nodeAt(pos)
+    if (
+      currentNode?.type.name !== "databaseBlock" ||
+      currentNode.attrs.databaseId !== databaseId
+    ) {
+      return
+    }
+
+    editor.view.dispatch(
+      editor.state.tr
+        .delete(pos, pos + currentNode.nodeSize)
+        .setMeta("addToHistory", false),
+    )
+  }, [databaseId, editor, getPos, isEditable])
 
   return (
     <NodeViewWrapper
@@ -58,6 +79,7 @@ function DatabaseBlockView({
         editable={isEditable}
         hideWhenDeleted
         includeDeleted
+        onDeleted={removeDeletedBlock}
         onOpenPage={(pageId) =>
           options.onOpenPage?.(pageId, { databaseId })
         }

@@ -1,5 +1,5 @@
 export function register({ assert, readSource, readWorkspace, test }) {
-  test("deleted embedded databases are hidden while full-page trash remains restorable", async () => {
+  test("deleted embedded databases are purged while full-page trash remains restorable", async () => {
     const [block, controller, screen, view, toolbarActions, restoreButton, styles, cache] = await Promise.all([
       readSource("/src/features/databases/core/database-block.tsx"),
       readSource(
@@ -15,10 +15,20 @@ export function register({ assert, readSource, readWorkspace, test }) {
 
     assert.match(block, /hideWhenDeleted/)
     assert.match(block, /includeDeleted/)
+    assert.match(block, /onDeleted=\{removeDeletedBlock\}/)
+    assert.match(block, /setMeta\("addToHistory", false\)/)
     assert.match(styles, /node-databaseBlock:has\(\[data-database-deleted="true"\]\)/)
     assert.doesNotMatch(block, /canRestoreDeleted=/)
     assert.doesNotMatch(block, /includeDeleted=\{isEditable\}/)
     assert.match(controller, /Boolean\(bootstrap\?\.database\.deletedAt\)/)
+    assert.match(
+      controller,
+      /databaseId && !databaseDeleted && resolvedActiveViewId && activeDataSourceId/,
+    )
+    assert.match(
+      controller,
+      /realtimeEnabled: Boolean\(bootstrap\) && !databaseDeleted/,
+    )
     assert.match(
       controller,
       /requestedEditable\s*&&\s*!databaseDeleted\s*&&\s*!isDatabaseLocked/,
@@ -28,6 +38,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
       /!databaseDeleted \? \([\s\S]*?className="database-scroll-section"/,
     )
     assert.match(view, /databaseDeleted && props\.hideWhenDeleted === true/)
+    assert.match(view, /if \(hiddenDeletedDatabase\) props\.onDeleted\?\.\(\)/)
     assert.match(view, /data-database-deleted="true"/)
     assert.match(view, /deletedDatabaseId=\{databaseDeleted \? databaseId : null\}/)
     assert.match(toolbarActions, /<DatabaseTrashRestoreButton/)

@@ -61,11 +61,12 @@ A database is page-backed; data sources, rows, views and property values are sep
 Row/property changes can update realtime outboxes, automations and page navigation. The common [database commit helper](../../../apps/server/src/features/databases/core/commit.ts) gives internal writers a shared server-generated command ID and atomically stores a v2 journal event before its delivery-only outbox reference. Partial internal deltas become scoped reset events so downstream v2 consumers never ingest partial entities. Delivery requires the canonical journal event and publishes protocol v2 only; missing history is retried instead of falling back to a payload-only message. Preserve mutation origin and transaction ordering. Database realtime revisions and cache reconciliation prevent stale UI after writes.
 
 Database deletion is a reversible lifecycle transition. The database, its rows,
-and nested descendants are soft-deleted as one batch. Page Yjs documents can
-still contain references to a deleted database, so the
+and nested descendants are soft-deleted as one batch. If a page Yjs document
+still contains a deleted database reference, the
 [database node view](../../../apps/web/src/features/databases/core/database-block.tsx)
-performs a lifecycle-aware read and removes those references from page layout;
-it does not expose a permanent restore shell. Deleting an embedded structural
+removes that reference without recording another editor undo step. Deleted
+references do not load record windows or request realtime tickets, and they do
+not expose a permanent restore shell. Deleting an embedded structural
 block records its editor removal and database lifecycle transition as one undo
 entry. Ctrl+Z restores both while that page's undo entry exists, and redo
 removes both again. Direct full-page trash access retains the explicit

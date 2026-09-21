@@ -79,6 +79,7 @@ export type DatabaseViewProps = {
   fullPage?: boolean
   includeDeleted?: boolean
   hideWhenDeleted?: boolean
+  onDeleted?: () => void
   onActiveViewIdChange?: (viewId: string | null) => void
   onOpenPage?: (
     pageId: string,
@@ -194,7 +195,7 @@ export function useDatabaseViewController({
     includeDeletedDatabases,
   )
   const recordWindow = useDatabaseRecords(
-    databaseId && resolvedActiveViewId && activeDataSourceId
+    databaseId && !databaseDeleted && resolvedActiveViewId && activeDataSourceId
       ? {
           databaseId,
           dataSourceId: activeDataSourceId,
@@ -976,6 +977,7 @@ export function useDatabaseViewController({
     hostDatabaseId: bootstrap?.database.id ?? databaseId,
     hostDatabaseName: bootstrap?.database.name,
     hostDatabaseWorkspaceId: bootstrap?.database.workspaceId,
+    realtimeEnabled: Boolean(bootstrap) && !databaseDeleted,
     hostViews: bootstrap?.views ?? [],
     isAddingDatabaseProperty: addProperty.isPending,
     isAddingDatabaseRow: addRow.isPending,

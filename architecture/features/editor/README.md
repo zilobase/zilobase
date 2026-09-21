@@ -60,15 +60,16 @@ ran before the editor handle existed. While the collaboration provider reports
 unacknowledged changes, the editor registers a browser reload guard instead of
 allowing silent data loss.
 
-Soft-deleted database references can remain in collaborative page documents,
-but their [node view](../../../apps/web/src/features/databases/core/database-block.tsx)
-removes them from layout instead of presenting permanent tombstones. The drag
-menu treats an embedded database deletion as one history operation: it removes
-the editor node without creating a second global undo entry and pairs that node
-history with the database trash/restore mutation through
+Soft-deleted database references discovered in collaborative page documents are
+removed by their [node view](../../../apps/web/src/features/databases/core/database-block.tsx)
+without creating a new undo entry or starting deleted-resource realtime work.
+The drag menu treats an embedded database deletion as one history operation: it
+removes the editor node without creating a second global undo entry and pairs
+that node history with the database trash/restore mutation through
 [structural-block delete history](../../../apps/web/src/features/editor/drag-drop/structural-block-delete-history.ts).
-Ctrl+Z and redo therefore transition the resource and editor node together;
-when the page undo scope is reset, no restore affordance remains in its content.
+Ctrl+Z and redo therefore transition the resource and editor node together.
+References left by deletion outside that page scope are permanent cleanup, so a
+later page edit or reload cannot resurrect the deleted embed.
 
 [Column controls](../../../apps/web/src/features/editor/toolbar/column-controls.tsx) coalesce pointer events into one animation frame before applying hover state. Existing control targets take precedence over geometric hit testing, and active drag/pointer/menu states suppress hover changes. Frame cancellation and listener cleanup remain in the effect.
 
