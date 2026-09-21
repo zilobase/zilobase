@@ -3,14 +3,24 @@ import type {
   Server as HttpServer,
 } from "node:http";
 import type { Duplex } from "node:stream";
-import type { Message, Peer } from "crossws";
+import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
+import type { Limits } from "@zilobase/runtime-ports";
+import { createNodeLimits } from "../../limits";
 
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
 import {
   databaseMutationEventV2Schema,
   type DatabaseMutationEventV2,
 } from "@zilobase/features/databases/contracts";
+import {
+  consumeDatabaseMessageAllowance,
+  isDatabasePresence,
+  MAX_DATABASE_REALTIME_MESSAGE_BYTES,
+  toDatabaseCollaborator,
+  validateDatabaseRealtimeMessage,
+  type DatabasePresence,
+} from "@zilobase/features/databases/realtime/room-protocol";
 import {
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
@@ -21,21 +31,12 @@ import {
   databaseRealtimeChannel,
   type NodeRealtimeBus,
   type RealtimeSubscription,
-} from "./realtime-bus";
+} from "../../realtime-bus";
 
-const NODE_DATABASE_REALTIME_MAX_MESSAGE_BYTES = 16 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;
 const CONNECTION_LIMIT_WINDOW_MS = 60_000;
-const MESSAGE_RATE_LIMIT = 30;
-const MESSAGE_RATE_WINDOW_MS = 1_000;
 const MAX_DATABASE_ID_LENGTH = 128;
 const MAX_TICKET_BYTES = 8 * 1024;
-
-type DatabasePresence = {
-  columnKey: string;
-  rowId: string;
-  viewId: string | null;
-};
 
 type SocketAttachment = {
   claims: DatabaseRealtimeTicketClaims;
@@ -68,6 +69,7 @@ type NodeDatabaseRealtimeRuntimeOptions = {
     env: RuntimeEnv,
   ) => Promise<DatabaseRealtimeTicketClaims>;
   realtimeBus?: NodeRealtimeBus | null;
+  limits?: Limits;
 };
 
 export function attachNodeDatabaseRealtimeRuntime(
@@ -82,16 +84,14 @@ export function attachNodeDatabaseRealtimeRuntime(
   >();
   const rooms = new Map<string, DatabaseRoom>();
   const publishedVersions = new Map<string, number>();
-  const connectionLimiter = createConnectionLimiter(
-    options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
-  );
   const verifyTicket = options.verifyTicket ?? verifyDatabaseRealtimeTicket;
   const realtimeBus = options.realtimeBus ?? null;
+  const limits = options.limits ?? createNodeLimits(realtimeBus);
 
   const websocket = crossws({
     idleTimeout: 30,
     serverOptions: {
-      maxPayload: NODE_DATABASE_REALTIME_MAX_MESSAGE_BYTES,
+      maxPayload: MAX_DATABASE_REALTIME_MESSAGE_BYTES,
     },
     hooks: {
       async upgrade(request) {
@@ -118,13 +118,11 @@ export function attachNodeDatabaseRealtimeRuntime(
 
           const clientAddress = getClientAddress(request);
 
-          const ipAllowed = realtimeBus
-            ? await realtimeBus.consumeLimit(
-                `database:connection:ip:${clientAddress}`,
-                options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
-                CONNECTION_LIMIT_WINDOW_MS,
-              )
-            : connectionLimiter.allow(`ip:${clientAddress}`);
+          const ipAllowed = await limits.consume(
+            `database:connection:ip:${clientAddress}`,
+            options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
+            CONNECTION_LIMIT_WINDOW_MS,
+          );
 
           if (!ipAllowed) {
             throw new Response("Too Many Requests", {
@@ -133,13 +131,11 @@ export function attachNodeDatabaseRealtimeRuntime(
             });
           }
 
-          const userAllowed = realtimeBus
-            ? await realtimeBus.consumeLimit(
-                `database:connection:user:${claims.user.id}:${databaseId}`,
-                options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
-                CONNECTION_LIMIT_WINDOW_MS,
-              )
-            : connectionLimiter.allow(`user:${claims.user.id}:${databaseId}`);
+          const userAllowed = await limits.consume(
+            `database:connection:user:${claims.user.id}:${databaseId}`,
+            options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
+            CONNECTION_LIMIT_WINDOW_MS,
+          );
 
           if (!userAllowed) {
             throw new Response("Too Many Requests", {
@@ -207,7 +203,7 @@ export function attachNodeDatabaseRealtimeRuntime(
         }));
       },
       async message(peer, rawMessage) {
-        const validation = validateDatabaseRealtimeMessage(rawMessage);
+        const validation = validateDatabaseRealtimeMessage(rawMessage.rawData as string | ArrayBuffer);
 
         if (!validation.ok) {
           peer.close(validation.code, validation.reason);
@@ -221,7 +217,7 @@ export function attachNodeDatabaseRealtimeRuntime(
           return;
         }
 
-        if (!consumeMessageAllowance(peer, messageRates)) {
+        if (!consumeDatabaseMessageAllowance(peer, messageRates)) {
           clearPresence(peer, attachment, rooms, attachments, realtimeBus);
           peer.close(1008, "Database realtime message rate exceeded");
           return;
@@ -353,44 +349,6 @@ function readUpgradeContext(peer: Peer) {
     : null;
 }
 
-function validateDatabaseRealtimeMessage(rawMessage: Message) {
-  if (typeof rawMessage.rawData !== "string") {
-    return {
-      code: 1003,
-      ok: false as const,
-      reason: "JSON messages are required",
-    };
-  }
-
-  const messageBytes = new TextEncoder().encode(rawMessage.rawData).byteLength;
-
-  if (messageBytes > NODE_DATABASE_REALTIME_MAX_MESSAGE_BYTES) {
-    return {
-      code: 1009,
-      ok: false as const,
-      reason: "Database realtime message is too large",
-    };
-  }
-
-  try {
-    const value = JSON.parse(rawMessage.rawData) as unknown;
-
-    return value && typeof value === "object"
-      ? { message: value as Record<string, unknown>, ok: true as const }
-      : {
-        code: 1007,
-        ok: false as const,
-        reason: "Invalid JSON message",
-      };
-  } catch {
-    return {
-      code: 1007,
-      ok: false as const,
-      reason: "Invalid JSON message",
-    };
-  }
-}
-
 async function refreshAuthentication(
   peer: Peer,
   attachment: SocketAttachment,
@@ -442,7 +400,7 @@ function updatePresence(
     return;
   }
 
-  if (!isPresence(message.presence)) {
+  if (!isDatabasePresence(message.presence)) {
     peer.close(1007, "Invalid database presence");
     return;
   }
@@ -455,7 +413,7 @@ function updatePresence(
   if (!room) return;
 
   const event = {
-    collaborator: toCollaborator(attachment),
+    collaborator: toDatabaseCollaborator(attachment),
     databaseId: attachment.databaseId,
     protocolVersion: 2,
     type: "presence.update",
@@ -524,7 +482,7 @@ function readPeers(
     const attachment = attachments.get(candidate);
 
     return attachment && attachment.claims.exp > now && attachment.presence
-      ? [toCollaborator(attachment)]
+      ? [toDatabaseCollaborator(attachment)]
       : [];
   });
   return [...local, ...room.remotePresence.values()];
@@ -581,22 +539,6 @@ function pruneExpiredPeers(
       peer.close(1008, "Database realtime authentication expired");
     }
   }
-}
-
-function consumeMessageAllowance(
-  peer: Peer,
-  messageRates: WeakMap<Peer, { count: number; startedAt: number }>,
-) {
-  const now = Date.now();
-  const current = messageRates.get(peer);
-
-  if (!current || now - current.startedAt >= MESSAGE_RATE_WINDOW_MS) {
-    messageRates.set(peer, { count: 1, startedAt: now });
-    return true;
-  }
-
-  current.count += 1;
-  return current.count <= MESSAGE_RATE_LIMIT;
 }
 
 function getOrCreateRoom(
@@ -693,7 +635,7 @@ function publishPresenceHeartbeat(
   if (!attachment.presence) return;
   attachment.updatedAt = Date.now();
   publishRealtimeBus(realtimeBus, attachment.databaseId, {
-    collaborator: toCollaborator(attachment),
+    collaborator: toDatabaseCollaborator(attachment),
     databaseId: attachment.databaseId,
     protocolVersion: 2,
     type: "presence.update",
@@ -725,7 +667,7 @@ function isCollaborator(value: unknown): value is DatabaseCollaborator {
   return typeof collaborator.connectedAt === "string" &&
     typeof collaborator.sessionId === "string" &&
     typeof collaborator.updatedAt === "string" &&
-    isPresence(collaborator.presence) &&
+    isDatabasePresence(collaborator.presence) &&
     Boolean(collaborator.user && typeof collaborator.user === "object");
 }
 
@@ -744,34 +686,6 @@ function validateMutationEvent(
   }
 }
 
-function isPresence(value: unknown): value is DatabasePresence {
-  if (!value || typeof value !== "object") return false;
-
-  const presence = value as Record<string, unknown>;
-
-  return (
-    typeof presence.columnKey === "string" &&
-    presence.columnKey.length > 0 && presence.columnKey.length <= 128 &&
-    typeof presence.rowId === "string" &&
-    presence.rowId.length > 0 && presence.rowId.length <= 128 &&
-    (presence.viewId === null ||
-      (typeof presence.viewId === "string" && presence.viewId.length <= 128))
-  );
-}
-
-function toCollaborator(attachment: SocketAttachment) {
-  if (!attachment.presence) {
-    throw new Error("Cannot serialize empty database presence");
-  }
-
-  return {
-    connectedAt: new Date(attachment.connectedAt).toISOString(),
-    presence: attachment.presence,
-    sessionId: attachment.claims.sessionId,
-    updatedAt: new Date(attachment.updatedAt ?? Date.now()).toISOString(),
-    user: attachment.claims.user,
-  };
-}
 
 function getClientAddress(request: Request) {
   const forwarded = request.headers.get("x-forwarded-for")
@@ -792,39 +706,4 @@ function rejectUpgrade(
     `HTTP/1.1 ${status} ${statusText}\r\n` +
     "Connection: close\r\nContent-Length: 0\r\n\r\n",
   );
-}
-
-function createConnectionLimiter(limit: number) {
-  const entries = new Map<string, { count: number; windowStartedAt: number }>();
-
-  return {
-    allow(key: string) {
-      const now = Date.now();
-      const current = entries.get(key);
-
-      if (!current || now - current.windowStartedAt >= CONNECTION_LIMIT_WINDOW_MS) {
-        entries.set(key, { count: 1, windowStartedAt: now });
-        sweepExpiredEntries(entries, now);
-        return true;
-      }
-
-      if (current.count >= limit) return false;
-
-      current.count += 1;
-      return true;
-    },
-  };
-}
-
-function sweepExpiredEntries(
-  entries: Map<string, { count: number; windowStartedAt: number }>,
-  now: number,
-) {
-  if (entries.size < 1_000) return;
-
-  for (const [key, entry] of entries) {
-    if (now - entry.windowStartedAt >= CONNECTION_LIMIT_WINDOW_MS) {
-      entries.delete(key);
-    }
-  }
 }

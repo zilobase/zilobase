@@ -1,5 +1,5 @@
 import type { RuntimeEnv } from "../../shared/config/config";
-import { getRuntimeAdapter } from "../runtime/runtime-adapter";
+import { getRuntimePorts } from "../runtime/runtime-adapter";
 import type { BackgroundTaskV1 } from "./contracts";
 import { backgroundTaskLane, getBackgroundCellId } from "./contracts";
 import { recordBackgroundCounter } from "./telemetry";
@@ -9,22 +9,22 @@ export async function dispatchBackgroundTasks(
   tasks: readonly BackgroundTaskV1[],
 ) {
   if (tasks.length === 0) return true;
-  const dispatch = getRuntimeAdapter().dispatchBackgroundTasks;
-  if (!dispatch) return false;
+  const jobs = getRuntimePorts().jobs;
+  const telemetry = getRuntimePorts().telemetry;
+  if (!jobs) throw new Error("Runtime Jobs port is required");
   try {
-    await dispatch({ env, tasks: [...tasks] });
+    await jobs.dispatch(tasks);
     for (const task of tasks) recordBackgroundCounter("enqueue", {
       cell: getBackgroundCellId(env),
       kind: task.kind,
       lane: backgroundTaskLane(task.kind),
       outcome: "completed",
-      runtime: env.ZILOBASE_RUNTIME_KIND === "edge" ? "edge" : "node",
+      runtime: env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node",
     });
-    console.info(JSON.stringify({
+    await telemetry?.event("background.dispatch", {
       count: tasks.length,
-      event: "background.dispatch",
       outcome: "completed",
-    }));
+    });
     return true;
   } catch (error) {
     for (const task of tasks) recordBackgroundCounter("dispatch_failure", {
@@ -33,14 +33,13 @@ export async function dispatchBackgroundTasks(
       kind: task.kind,
       lane: backgroundTaskLane(task.kind),
       outcome: "failed",
-      runtime: env.ZILOBASE_RUNTIME_KIND === "edge" ? "edge" : "node",
+      runtime: env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node",
     });
-    console.warn(JSON.stringify({
+    await telemetry?.error(error, {
       code: boundedErrorCode(error),
       count: tasks.length,
-      event: "background.dispatch",
       outcome: "failed",
-    }));
+    });
     return false;
   }
 }

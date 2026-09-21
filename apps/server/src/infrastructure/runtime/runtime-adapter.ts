@@ -5,7 +5,6 @@ export * from "@zilobase/runtime-adapter/capabilities";
 export * from "@zilobase/runtime-adapter/context";
 export type {
   OutboundEmailMessage,
-  ServerRuntimeAdapter,
   MailNotificationEvent,
   CalendarNotificationEvent,
   MeetingRecorderRuntimeInput,

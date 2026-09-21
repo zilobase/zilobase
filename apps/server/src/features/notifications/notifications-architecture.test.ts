@@ -12,7 +12,7 @@ test("notifications use a durable inbox, delivery receipt, and polling-safe outb
   expect(migration).toContain('CREATE TABLE "in_product_notification_outbox"');
   expect(service).toContain("databaseAutomationDelivery");
   expect(service).toContain("onConflictDoNothing()");
-  expect(outbox).toContain("publishInProductNotification");
+  expect(outbox).toContain("notification:${row.userId}");
   expect(outbox).toContain("nextAttemptAt");
   expect(routes).toContain('notifications/:notificationId/read');
 });

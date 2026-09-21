@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 
-import { runWithRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { runWithRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
 import {
   drainNavigationRealtimeOutbox,
   enqueueNavigationInvalidation,
@@ -52,8 +52,8 @@ test("immediate publication deletes delivered events", async () => {
   };
   const publish = vi.fn(async () => undefined);
 
-  assert.equal(await runWithRuntimeAdapter(
-    { publishNavigationInvalidation: publish },
+  assert.equal(await runWithRuntimePorts(
+    { fanout: { publish, subscribe: vi.fn() } as never },
     () => publishNavigationInvalidation(event, { ENV: "test" }, executor as never),
   ), true);
   assert.equal(publish.mock.calls.length, 1);
@@ -76,8 +76,11 @@ test("failed immediate publication retains the event and schedules retry", async
     },
   };
 
-  await assert.rejects(runWithRuntimeAdapter(
-    { publishNavigationInvalidation: async () => { throw new Error("offline"); } },
+  await assert.rejects(runWithRuntimePorts(
+    {
+      fanout: { publish: async () => { throw new Error("offline"); }, subscribe: vi.fn() } as never,
+      jobs: { dispatch: vi.fn(), drain: vi.fn() },
+    },
     () => publishNavigationInvalidation(event, {}, executor as never),
   ), /offline/);
   assert.deepEqual(updates, [{
@@ -121,8 +124,8 @@ test("scheduled drain retries a retained event", async () => {
   };
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-  const result = await runWithRuntimeAdapter(
-    { publishNavigationInvalidation: async () => { throw new Error("offline"); } },
+  const result = await runWithRuntimePorts(
+    { fanout: { publish: async () => { throw new Error("offline"); }, subscribe: vi.fn() } as never },
     () => drainNavigationRealtimeOutbox({}, { database: executor as never }),
   );
 

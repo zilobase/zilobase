@@ -233,6 +233,7 @@ desktopAuthRoutes.post("/desktop/authorize/switch", async (c) => {
 
   const auth = await createAuth(c.env, c.req.raw, undefined, {
     editionExtension: c.get("editionExtension") ?? undefined,
+    policy: c.get("appPolicy"),
   });
   const signOut = await auth.api.signOut({
     asResponse: true,
@@ -306,6 +307,7 @@ desktopAuthRoutes.post("/api/auth/desktop/token", async (c) => {
 
         const auth = await createAuth(c.env, c.req.raw, undefined, {
           editionExtension: c.get("editionExtension") ?? undefined,
+          policy: c.get("appPolicy"),
         });
         const authContext = await auth.$context;
         const session = await authContext.internalAdapter.createSession(

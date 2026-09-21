@@ -21,6 +21,6 @@ test("Node maintenance advances bounded full-mailbox index work", async () => {
 })
 
 test("Node maintenance drains database synchronization work", async () => {
-  const runtime = await readFile(new URL("./background-coordinator.ts", import.meta.url), "utf8")
+  const runtime = await readFile(new URL("../../background-coordinator.ts", import.meta.url), "utf8")
   assert.match(runtime, /drainMailDatabaseSyncOutbox\(env/)
 })

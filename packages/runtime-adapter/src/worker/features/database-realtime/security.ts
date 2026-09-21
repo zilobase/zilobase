@@ -4,8 +4,13 @@ import {
   verifyDatabaseRealtimeTicket,
   type DatabaseRealtimeTicketClaims,
 } from "@zilobase/server/realtime-api";
+import type { Limits } from "@zilobase/runtime-ports";
+import { createWorkerLimits } from "../../limits";
 
-export const MAX_DATABASE_REALTIME_MESSAGE_BYTES = 16 * 1024;
+export {
+  MAX_DATABASE_REALTIME_MESSAGE_BYTES,
+  validateDatabaseRealtimeMessage,
+} from "@zilobase/features/databases/realtime/room-protocol";
 const DATABASE_REALTIME_CLAIMS_HEADER =
   "x-zilobase-database-realtime-claims";
 const MAX_TICKET_BYTES = 8 * 1024;
@@ -24,6 +29,7 @@ export type DatabaseRealtimeRouteEnv = Record<string, unknown> & {
 export async function routeDatabaseRealtimeRequest(
   request: Request,
   env: DatabaseRealtimeRouteEnv,
+  limits: Limits = createWorkerLimits(env),
 ) {
   if (request.method !== "GET") {
     return new Response("Method Not Allowed", { status: 405 });
@@ -41,9 +47,11 @@ export async function routeDatabaseRealtimeRequest(
 
   const clientAddress = request.headers.get("cf-connecting-ip") ?? "local";
 
-  const { success } = await env.COLLABORATION_RATE_LIMITER.limit({
-    key: `database-realtime-connect:${clientAddress}`,
-  });
+  const success = await limits.consume(
+    `database-realtime-connect:${clientAddress}`,
+    60,
+    60_000,
+  );
 
   if (!success) {
     console.warn(JSON.stringify({
@@ -73,11 +81,13 @@ export async function routeDatabaseRealtimeRequest(
       throw new Error("Database realtime ticket scope does not match");
     }
 
-    const userRateLimit = await env.COLLABORATION_RATE_LIMITER.limit({
-      key: `database-realtime-user:${claims.user.id}:${databaseId}`,
-    });
+    const userAllowed = await limits.consume(
+      `database-realtime-user:${claims.user.id}:${databaseId}`,
+      60,
+      60_000,
+    );
 
-    if (!userRateLimit.success) {
+    if (!userAllowed) {
       return new Response("Too Many Requests", {
         headers: { "Retry-After": "60" },
         status: 429,
@@ -151,32 +161,4 @@ function isTicketClaims(
     typeof (claims.user as Record<string, unknown>).id === "string" &&
     typeof claims.workspaceId === "string"
   );
-}
-
-export function validateDatabaseRealtimeMessage(
-  rawMessage: string | ArrayBuffer,
-) {
-  if (typeof rawMessage !== "string") {
-    return { code: 1003, ok: false as const, reason: "JSON messages are required" };
-  }
-
-  const messageBytes = new TextEncoder().encode(rawMessage).byteLength;
-
-  if (messageBytes > MAX_DATABASE_REALTIME_MESSAGE_BYTES) {
-    return {
-      code: 1009,
-      ok: false as const,
-      reason: "Database realtime message is too large",
-    };
-  }
-
-  try {
-    const value = JSON.parse(rawMessage) as unknown;
-
-    return value && typeof value === "object"
-      ? { message: value as Record<string, unknown>, ok: true as const }
-      : { code: 1007, ok: false as const, reason: "Invalid JSON message" };
-  } catch {
-    return { code: 1007, ok: false as const, reason: "Invalid JSON message" };
-  }
 }

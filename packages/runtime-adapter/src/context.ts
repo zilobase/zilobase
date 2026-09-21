@@ -1,20 +1,19 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import type { ServerRuntimeAdapter } from "./contracts";
+import type { Ports } from "@zilobase/runtime-ports";
+let runtimePorts: Partial<Ports> = {};
+const runtimePortsStore = new AsyncLocalStorage<Partial<Ports>>();
 
-let runtimeAdapter: ServerRuntimeAdapter = {};
-const runtimeAdapterStore = new AsyncLocalStorage<ServerRuntimeAdapter>();
-
-export function setRuntimeAdapter(adapter: ServerRuntimeAdapter) {
-  runtimeAdapter = adapter;
+export function setRuntimePorts(ports: Partial<Ports>) {
+  runtimePorts = ports;
 }
 
-export function runWithRuntimeAdapter<T>(
-  adapter: ServerRuntimeAdapter,
+export function runWithRuntimePorts<T>(
+  ports: Partial<Ports>,
   callback: () => T,
 ) {
-  return runtimeAdapterStore.run(adapter, callback);
+  return runtimePortsStore.run(ports, callback);
 }
 
-export function getRuntimeAdapter() {
-  return runtimeAdapterStore.getStore() ?? runtimeAdapter;
+export function getRuntimePorts() {
+  return runtimePortsStore.getStore() ?? runtimePorts;
 }

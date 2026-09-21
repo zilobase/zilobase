@@ -60,3 +60,11 @@ apps/desktop/src-tauri/local-resources/
 
 # Generated renderer snapshot for calendar benchmark comparisons
 .dev/calendar-baseline/
+
+# structure guardrails (RESTRUCTURE_PLAN Pass 0)
+.wrangler/
+.wrangler.deploy-*.json
+.astro/
+coverage/
+*.tsbuildinfo
+graft/.cache/

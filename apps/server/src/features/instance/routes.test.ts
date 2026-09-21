@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
 import type { AppBindings } from "../../shared/types";
+import { communityAppPolicy, managedAppPolicy } from "../../shared/app-policy";
 import { responseJson } from "../../test-support/response";
 
 const mocks = vi.hoisted(() => {
@@ -18,15 +19,11 @@ const mocks = vi.hoisted(() => {
     discovery: vi.fn(),
     membership: vi.fn(),
     readSettings: vi.fn(),
-    selfHosted: vi.fn(),
     updateSettings: vi.fn(),
   };
 });
 
 vi.mock("../access", () => ({ getMembership: mocks.membership }));
-vi.mock("../../infrastructure/runtime/runtime-adapter", () => ({
-  isSelfHostedRuntime: mocks.selfHosted,
-}));
 vi.mock("./service", () => ({
   getZilobaseDiscoveryDocument: mocks.discovery,
 }));
@@ -53,7 +50,6 @@ const settings = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.selfHosted.mockReturnValue(true);
   mocks.membership.mockResolvedValue({ role: "owner" });
   mocks.readSettings.mockResolvedValue(settings);
   mocks.updateSettings.mockResolvedValue({
@@ -64,11 +60,13 @@ beforeEach(() => {
 
 function appFor(options: {
   authMethod?: "apiKey" | "session" | null;
+  hosted?: boolean;
   user?: { id: string } | null;
 } = {}) {
   const app = new Hono<AppBindings>();
   app.use("*", async (c, next) => {
     c.set("authMethod", options.authMethod ?? "session");
+    c.set("appPolicy", options.hosted ? managedAppPolicy : communityAppPolicy);
     c.set("apiKey", null);
     c.set("requestId", "request-1");
     c.set("serverTimings", []);
@@ -155,14 +153,12 @@ test("the owner can read and update registration mode", async () => {
 });
 
 test("hosted runtime does not expose self-host administration", async () => {
-  mocks.selfHosted.mockReturnValue(false);
-
   assert.equal(
-    (await appFor().request("/api/instance/settings")).status,
+    (await appFor({ hosted: true }).request("/api/instance/settings")).status,
     404,
   );
   assert.equal(
-    (await appFor({ user: null }).request("/api/instance/bootstrap", {
+    (await appFor({ hosted: true, user: null }).request("/api/instance/bootstrap", {
       body: "{}",
       headers: { "content-type": "application/json" },
       method: "POST",

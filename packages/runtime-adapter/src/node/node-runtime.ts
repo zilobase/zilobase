@@ -4,12 +4,13 @@ import { createServer, type IncomingMessage } from "node:http";
 import { Readable } from "node:stream";
 import path from "node:path";
 import type { Hono } from "hono";
+import type { Ports } from "@zilobase/runtime-ports";
 
-import { attachNodeCollaborationRuntime } from "./collaboration-runtime";
-import { attachNodeDatabaseRealtimeRuntime } from "./database-realtime-runtime";
-import { attachNodeMeetingAudioRuntime } from "./meeting-audio-runtime";
-import { attachNodeCalendarRealtimeRuntime } from "./calendar-realtime-runtime";
-import { attachNodeMailRealtimeRuntime } from "./mail-realtime-runtime";
+import { attachNodeCollaborationRuntime } from "./features/collaboration/collaboration-runtime";
+import { attachNodeDatabaseRealtimeRuntime } from "./features/database-realtime/database-realtime-runtime";
+import { attachNodeMeetingAudioRuntime } from "./features/meeting-audio/meeting-audio-runtime";
+import { attachNodeCalendarRealtimeRuntime } from "./features/calendar-realtime/calendar-realtime-runtime";
+import { attachNodeMailRealtimeRuntime } from "./features/mail-realtime/mail-realtime-runtime";
 import {
   createDbClientForUrl,
   runWithDbEnv,
@@ -23,26 +24,36 @@ import {
 } from "@zilobase/server/node-adapter-api";
 import {
   getDatabaseUrl,
-  setRuntimeAdapter,
-  type ServerRuntimeAdapter,
+  setRuntimePorts,
 } from "../capabilities";
-import { attachNodeNavigationRealtimeRuntime } from "./navigation-realtime-runtime";
+import { attachNodeNavigationRealtimeRuntime } from "./features/navigation-realtime/navigation-realtime-runtime";
 import { isNodeApiPath } from "./api-routing";
 import { runMigrationSets, type MigrationSet } from "./migrations";
 import { createNodeRealtimeBus, type NodeRealtimeBus } from "./realtime-bus";
-import { createNodeCollaborationExtensions } from "./collaboration-redis";
+import { createNodeCollaborationExtensions } from "./features/collaboration/collaboration-redis";
 import { fetchPinnedNodeWebhook } from "./pinned-webhook";
 import { fetchPinnedNodeMcp } from "./pinned-mcp";
+import { createNodeImageStorage } from "./image-storage";
+import { createNodeMailer } from "./mailer";
 import {
   createNodeBackgroundCoordinator,
-  publishNodeBackgroundNotification,
   type NodeBackgroundCoordinator,
 } from "./background-coordinator";
+import { createNodeJobs } from "./jobs";
+import { createNodeScheduler } from "./scheduler";
+import { createNodeLimits } from "./limits";
+import { createNodeTelemetry } from "./telemetry";
+import { createNodeFanout } from "./fanout";
+import { createNodeOutboundFetch } from "./outbound-fetch";
+import { createRuntimeEnv } from "../env";
+import { createUrlResolver } from "../url-resolver";
 
 export type NodeRuntimeOptions = {
-  loadApp: (env: Record<string, unknown>) => Promise<Hono<any>>;
+  loadApp: (
+    env: Record<string, unknown>,
+    ports: Partial<Ports>,
+  ) => Promise<Hono<any>>;
   migrationSets: readonly MigrationSet[];
-  baseAdapter?: ServerRuntimeAdapter;
   webDistDir?: string;
   hooks?: {
     getEditionExtension?: (app: Hono<any>) => ZilobaseEditionExtension | undefined;
@@ -52,14 +63,14 @@ export type NodeRuntimeOptions = {
     setCollaborationExtensionsFactory?: typeof defaultSetCollaborationExtensionsFactory;
     setRealtimeReadinessProbe?: typeof defaultSetRealtimeReadinessProbe;
     setBackgroundReadinessProbe?: typeof defaultSetBackgroundReadinessProbe;
-    fetchPinnedWebhook?: ServerRuntimeAdapter["fetchAutomationWebhook"];
-    fetchPinnedMcp?: ServerRuntimeAdapter["fetchMcpRequest"];
+    fetchPinnedWebhook?: Ports["outbound"]["fetchWebhook"];
+    fetchPinnedMcp?: Ports["outbound"]["fetchMcp"];
     createBackgroundCoordinator?: (env: Record<string, unknown>) => NodeBackgroundCoordinator | null;
   };
 };
 
 export function createNodeRuntime(options: NodeRuntimeOptions) {
-  const { migrationSets, baseAdapter = {}, webDistDir = "", hooks = {} } = options;
+  const { migrationSets, webDistDir = "", hooks = {} } = options;
   const env = process.env as Record<string, unknown>;
   const processRole = readProcessRole(process.env.ZILOBASE_PROCESS_ROLE);
   const port = readPort(process.env.PORT) ?? 3000;
@@ -73,8 +84,22 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
   const fetchPinnedMcp = hooks.fetchPinnedMcp ?? fetchPinnedNodeMcp;
   const createBackgroundCoordinator = hooks.createBackgroundCoordinator
     ?? ((hookEnv) => processRole === "api" ? null : createNodeBackgroundCoordinator(hookEnv));
+  let backgroundCoordinatorRef: NodeBackgroundCoordinator | null = null;
+  const ports: Partial<Ports> = {
+    blobs: createLazyImageStorage(() => createNodeImageStorage(env)),
+    env: createRuntimeEnv(env),
+    jobs: createNodeJobs(env, () => backgroundCoordinatorRef),
+    mailer: createNodeMailer(env),
+    outbound: createNodeOutboundFetch({
+      fetchMcp: fetchPinnedMcp,
+      fetchWebhook: fetchPinnedWebhook,
+    }),
+    scheduler: createNodeScheduler(),
+  };
+  ports.urls = createUrlResolver(ports.env!);
+  setRuntimePorts(ports);
   let appPromise: Promise<Hono<any>> | null = null;
-  const loadApp = (): Promise<Hono<any>> => (appPromise ??= options.loadApp(env));
+  const loadApp = (): Promise<Hono<any>> => (appPromise ??= options.loadApp(env, ports));
   const server = createServer(async (incoming, outgoing) => {
     try {
       const request = toRequest(incoming, port);
@@ -106,7 +131,13 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     }
   });
   const realtimeBus = createRealtimeBus(env);
+  const limits = createNodeLimits(realtimeBus);
   assertNodeRealtimeTopology(processRole, realtimeBus);
+  ports.limits = limits;
+  ports.telemetry = createNodeTelemetry({
+    metrics: () => renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics(),
+    health: () => runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env)),
+  });
 
   type StartedRuntime = {
     collaboration: ReturnType<typeof attachNodeCollaborationRuntime>;
@@ -119,6 +150,24 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     backgroundAdminServer: ReturnType<typeof createBackgroundAdminServer> | null;
   };
   let started: StartedRuntime | null = null;
+  ports.fanout = createNodeFanout(realtimeBus, async (channel, payload) => {
+    const state = await ensureStarted();
+    const separator = channel.indexOf(":");
+    const kind = channel.slice(0, separator);
+    if (kind === "db") return state.databaseRealtime.publishMutation(payload as never);
+    if (kind === "calendar") return state.calendarRealtime.publishNotification(payload as never);
+    if (kind === "mail") return state.mailRealtime.publishNotification(payload as never);
+    if (kind === "navigation") return state.navigationRealtime.publish(payload as never);
+    if (kind === "notification") return;
+    if (kind === "page") {
+      const command = payload as { content: unknown; pageId: string; userId: string };
+      return state.collaboration.replacePageContent(command.content, command.pageId, command.userId);
+    }
+    throw new Error(`Unsupported fanout channel: ${channel}`);
+  });
+  ports.documents = {
+    appendPageComment: async (input) => (await ensureStarted()).collaboration.appendPageComment(input),
+  };
 
   async function ensureStarted(): Promise<StartedRuntime> {
     if (started) return started;
@@ -130,27 +179,15 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       editionExtension,
       passthroughPaths: ["/database-collaboration", "/mail-realtime", "/calendar-realtime", "/meeting-audio", "/navigation-realtime"],
       realtimeBus,
+      limits,
     });
-    const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, { realtimeBus });
+    const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, { limits, realtimeBus });
     const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
     const calendarRealtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus });
     const mailRealtime = attachNodeMailRealtimeRuntime(server, env, { realtimeBus });
     const navigationRealtime = attachNodeNavigationRealtimeRuntime(server, env, { realtimeBus });
     const backgroundCoordinator = createBackgroundCoordinator(env);
-    const effectiveRuntimeAdapter: ServerRuntimeAdapter = {
-      ...baseAdapter,
-      fetchAutomationWebhook: baseAdapter.fetchAutomationWebhook ?? fetchPinnedWebhook,
-      fetchMcpRequest: baseAdapter.fetchMcpRequest ?? fetchPinnedMcp,
-      publishDatabaseMutation: ({ event }) =>
-        databaseRealtime.publishMutation(event),
-      publishCalendarNotification: ({ event }) => calendarRealtime.publishNotification(event),
-      publishMailNotification: ({ event }) => mailRealtime.publishNotification(event),
-      publishNavigationInvalidation: ({ event }) => navigationRealtime.publish(event),
-      dispatchBackgroundTasks: ({ env: dispatchEnv, tasks }) =>
-        backgroundCoordinator
-          ? backgroundCoordinator.dispatch(tasks)
-          : publishNodeBackgroundNotification(dispatchEnv, tasks),
-    };
+    backgroundCoordinatorRef = backgroundCoordinator;
     const backgroundAdminServer = backgroundCoordinator
       ? createBackgroundAdminServer(
           env,
@@ -159,7 +196,6 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
         )
       : null;
 
-    setRuntimeAdapter(effectiveRuntimeAdapter);
     setBackgroundReadinessProbe(() => backgroundCoordinator?.readiness() ?? {
       coordinatorReady: null,
       listenerReady: null,
@@ -179,7 +215,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     return started;
   }
 
-  return {
+  const runtime = {
     server,
     migrationSets,
     async migrate() {
@@ -232,6 +268,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       setRealtimeReadinessProbe(null);
       setBackgroundReadinessProbe(null);
       started = null;
+      backgroundCoordinatorRef = null;
       await new Promise<void>((resolve, reject) => {
         if (!server.listening) {
           resolve();
@@ -241,6 +278,23 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
         server.close((error) => (error ? reject(error) : resolve()));
       });
     },
+  };
+  ports.lifecycle = runtime;
+  return runtime;
+}
+
+function createLazyImageStorage(factory: () => Ports["blobs"]): Ports["blobs"] {
+  let storage: Ports["blobs"] | undefined;
+  const get = () => storage ??= factory();
+  return {
+    get mode() { return get().mode; },
+    checkReady: () => get().checkReady(),
+    createReadUrl: (options) => get().createReadUrl(options),
+    createUploadUrl: (options) => get().createUploadUrl(options),
+    delete: (objectKey) => get().delete(objectKey),
+    get: (objectKey) => get().get(objectKey),
+    head: (objectKey) => get().head(objectKey),
+    putObject: (options) => get().putObject(options),
   };
 }
 

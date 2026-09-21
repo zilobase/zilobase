@@ -9,3 +9,4 @@ Record a lasting decision when its rejected alternatives explain the implementat
 - [Poke-and-refetch database client](0005-poke-and-refetch-database-client.md)
 - [Query-hashed database windows](0006-query-hashed-database-windows.md)
 - [Unified runtime adapter](0007-unified-runtime-adapter.md)
+- [Runtime ports and controller inversion](0008-runtime-ports-and-controller-inversion.md)

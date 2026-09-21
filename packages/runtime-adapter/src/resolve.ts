@@ -3,9 +3,10 @@ export type RuntimeKind = "node" | "worker";
 export function resolveRuntimeKind(
   env: Record<string, unknown>,
 ): RuntimeKind {
-  if (env.ZILOBASE_RUNTIME_KIND === "edge") return "worker";
-  if (env.HYPERDRIVE) return "worker";
-  if (env.PAGE_COLLABORATION) return "worker";
-  if (env.CHAT_AGENT) return "worker";
-  return "node";
+  const configured = env.ZILOBASE_RUNTIME_KIND;
+  if (configured === undefined || configured === "" || configured === "node") {
+    return "node";
+  }
+  if (configured === "worker") return "worker";
+  throw new Error("ZILOBASE_RUNTIME_KIND must be either 'node' or 'worker'");
 }

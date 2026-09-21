@@ -195,6 +195,7 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv) {
       for (const task of tasks) scheduleLane(backgroundTaskLane(task.kind), new Date(task.availableAt));
       await publishNodeBackgroundNotification(env, tasks);
     },
+    drain: drainLane,
     readiness() {
       return { coordinatorReady: running && !stopping, listenerReady };
     },

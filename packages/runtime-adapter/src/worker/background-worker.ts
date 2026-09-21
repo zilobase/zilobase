@@ -6,16 +6,22 @@ import {
   runDueBackgroundMaintenance,
   runWithBackgroundTraceContext,
   runWithDbEnv,
-  runWithRuntimeAdapter,
-  setRuntimeAdapter,
+  runWithRuntimePorts,
   type AppBindings,
   type BackgroundLane,
 } from "@zilobase/server/adapter-api";
 
-import {
-  createWorkerAdapter,
-  type WorkerEnvBindings,
-} from "./adapter";
+import type { WorkerEnvBindings } from "./bindings";
+import { createWorkerJobs } from "./jobs";
+import { createWorkerTelemetry } from "./telemetry";
+import { createWorkerFanout } from "./fanout";
+import { createWorkerMeetings } from "./meetings";
+import { createRuntimeEnv } from "../env";
+import { createUrlResolver } from "../url-resolver";
+import { createWorkerImageStorage } from "./image-storage";
+import { createWorkerMailer } from "./mailer";
+import { createWorkerOutboundFetch } from "./outbound-fetch";
+import { createWorkerDocuments } from "./documents";
 
 export type BackgroundWorkerOptions<Env extends WorkerEnvBindings = WorkerEnvBindings> = {
   reportError?: (env: Env, error: unknown, context: Record<string, unknown>) => void | Promise<void>;
@@ -35,23 +41,36 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
   queue(batch: MessageBatch<unknown>, env: Env): Promise<void>;
   scheduled(controller: ScheduledController, env: Env): Promise<void>;
 } {
-  const adapter = createWorkerAdapter({ publishDatabaseMutations: true });
-  setRuntimeAdapter(adapter);
+  const telemetryFor = (env: Env) => createWorkerTelemetry({
+    env,
+    reportError: opts.reportError,
+    reportEvent: opts.reportEvent,
+  });
 
-  const reportError = (env: Env, error: unknown, context: Record<string, unknown>) => {
-    if (opts.reportError) return opts.reportError(env, error, context);
-    console.warn(JSON.stringify({ event: "background.error", ...context }));
-  };
-
-  const reportEvent = (env: Env, event: string, props?: Record<string, unknown>) => {
-    if (opts.reportEvent) return opts.reportEvent(env, event, props);
+  const portsFor = (env: Env): Partial<import("@zilobase/runtime-ports").Ports> => {
+    const runtimeEnv = createRuntimeEnv(env, {
+      DATABASE_URL: () => env.HYPERDRIVE?.connectionString,
+      ZILOBASE_EDITION: () => "hosted",
+    });
+    return {
+      ...(env.IMAGE_BUCKET ? { blobs: createWorkerImageStorage(env.IMAGE_BUCKET) } : {}),
+      documents: createWorkerDocuments(env),
+      env: runtimeEnv,
+      jobs: createWorkerJobs(env),
+      fanout: createWorkerFanout(env),
+      mailer: createWorkerMailer({ binding: env.EMAIL, developmentSinkUrl: env.ZILOBASE_DEV_EMAIL_SINK_URL }),
+      meetings: createWorkerMeetings(env),
+      outbound: createWorkerOutboundFetch(),
+      telemetry: telemetryFor(env),
+      urls: createUrlResolver(runtimeEnv),
+    };
   };
 
   return {
     async queue(batch: MessageBatch<unknown>, env: Env) {
       try {
         const expectedLane = queueLanes[batch.queue];
-        await runWithRuntimeAdapter(adapter, () =>
+        await runWithRuntimePorts(portsFor(env), () =>
           runWithDbEnv(env, async () => {
             await Promise.all(
               batch.messages.map(async (message) => {
@@ -64,7 +83,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                   !expectedLane ||
                   backgroundTaskLane(parsed.task.kind) !== expectedLane
                 ) {
-                  await reportEvent(env, "background_task_terminal", {
+                  await telemetryFor(env).event("background_task_terminal", {
                     code: parsed.ok
                       ? "BACKGROUND_TASK_LANE_MISMATCH"
                       : parsed.errorCode,
@@ -101,7 +120,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                   }
                   message.ack();
                   if (result.outcome === "terminal") {
-                    await reportEvent(env, "background_task_terminal", {
+                    await telemetryFor(env).event("background_task_terminal", {
                       code: result.errorCode ?? "BACKGROUND_TASK_TERMINAL",
                       kind: parsed.task.kind,
                     });
@@ -115,7 +134,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                     );
                   }
                 } catch (error) {
-                  await reportError(env, error, {
+                  await telemetryFor(env).error(error, {
                     code: boundedErrorCode(error),
                     kind: parsed.task.kind,
                     outcome: "retry",
@@ -132,10 +151,10 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                 }
               }),
             );
-          }),
+            }),
         );
       } catch (error) {
-        await reportError(env, error, {
+        await telemetryFor(env).error(error, {
           queue: batch.queue,
         });
         throw error;
@@ -143,7 +162,7 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
     },
     async scheduled(_controller: ScheduledController, env: Env) {
       try {
-        await runWithRuntimeAdapter(adapter, () =>
+        await runWithRuntimePorts(portsFor(env), () =>
           runWithDbEnv(env, async () => {
             const result = await runDueBackgroundMaintenance({
               env,
@@ -158,10 +177,10 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
                 }),
               );
             }
-          }),
+            }),
         );
       } catch (error) {
-        await reportError(env, error, {
+        await telemetryFor(env).error(error, {
           trigger: "scheduled",
         });
         throw error;

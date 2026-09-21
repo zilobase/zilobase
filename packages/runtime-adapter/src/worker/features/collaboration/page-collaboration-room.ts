@@ -9,11 +9,12 @@ import {
   createCollaborationHocuspocus,
   pageIdFromDocumentName,
   replacePageContentInHocuspocus,
+  appendPageCommentInHocuspocus,
   type AppBindings,
   type CollaborationContext,
   type CollaborationDocumentPersistence,
 } from "@zilobase/server/adapter-api";
-import type { WorkerEnvBindings } from "../../adapter";
+import type { WorkerEnvBindings } from "../../bindings";
 import {
   selectCollaborationWebSocketProtocol,
   validateCollaborationMessage,
@@ -289,6 +290,11 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
       pageId,
       userId,
     });
+  }
+
+  async appendPageComment(input: Parameters<typeof appendPageCommentInHocuspocus>[1]) {
+    await this.restoreConnections();
+    return appendPageCommentInHocuspocus(this.hocuspocus, input);
   }
 
   private createConnection(

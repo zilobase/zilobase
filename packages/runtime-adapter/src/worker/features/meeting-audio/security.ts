@@ -5,6 +5,8 @@ import {
   type MeetingAudioTicketClaims,
 } from "@zilobase/server/realtime-api";
 import type { RuntimeEnv } from "@zilobase/server/adapter-api";
+import type { Limits } from "@zilobase/runtime-ports";
+import { createWorkerLimits } from "../../limits";
 
 export const MEETING_AUDIO_CLAIMS_HEADER = "x-zilobase-meeting-audio-claims";
 const MAX_TICKET_BYTES = 8 * 1024;
@@ -26,6 +28,7 @@ export async function routeMeetingAudioRequest(
     claims: MeetingAudioTicketClaims,
     env: MeetingAudioRouteEnv,
   ) => Promise<Response>,
+  limits: Limits = createWorkerLimits(env),
 ) {
   if (request.method !== "GET") {
     return new Response("Method Not Allowed", { status: 405 });
@@ -46,10 +49,12 @@ export async function routeMeetingAudioRequest(
   }
 
   const clientAddress = request.headers.get("cf-connecting-ip") ?? "local";
-  const rate = await env.COLLABORATION_RATE_LIMITER.limit({
-    key: `meeting-audio:${clientAddress}:${meetingId}`,
-  });
-  if (!rate.success) {
+  const allowed = await limits.consume(
+    `meeting-audio:${clientAddress}:${meetingId}`,
+    60,
+    60_000,
+  );
+  if (!allowed) {
     return new Response("Too Many Requests", {
       headers: { "Retry-After": "60" },
       status: 429,

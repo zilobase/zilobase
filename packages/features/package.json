@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",
+    "@zilobase/runtime-ports": "file:../runtime-ports",
     "zod": "^4.4.3"
   },
   "devDependencies": {
@@ -51,6 +52,10 @@
     "./ai-chat/agent-contract": {
       "types": "./src/ai-chat/agent-contract.ts",
       "default": "./src/ai-chat/agent-contract.ts"
+    },
+    "./ai-chat/agent-room": {
+      "types": "./src/ai-chat/agent-room.ts",
+      "default": "./src/ai-chat/agent-room.ts"
     },
     "./ai-chat/mcp-contract": {
       "types": "./src/ai-chat/mcp-contract.ts",
@@ -209,6 +214,10 @@
       "types": "./src/databases/contracts.ts",
       "default": "./src/databases/contracts.ts"
     },
+    "./databases/realtime/room-protocol": {
+      "types": "./src/databases/realtime/room-protocol.ts",
+      "default": "./src/databases/realtime/room-protocol.ts"
+    },
     "./mail/query-contracts": {
       "types": "./src/mail/query-contracts.ts",
       "default": "./src/mail/query-contracts.ts"
@@ -304,6 +313,14 @@
     "./calendar-layout": {
       "types": "./src/calendar-layout/index.ts",
       "default": "./src/calendar-layout/index.ts"
+    },
+    "./runtime/room-kernel": {
+      "types": "./src/runtime/room-kernel.ts",
+      "default": "./src/runtime/room-kernel.ts"
+    },
+    "./runtime/notification-room": {
+      "types": "./src/runtime/notification-room.ts",
+      "default": "./src/runtime/notification-room.ts"
     }
   }
 }

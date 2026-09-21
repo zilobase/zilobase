@@ -32,11 +32,11 @@ vi.mock("@aws-sdk/s3-request-presigner", () => ({
 
 import {
   createImageStorage,
-  createS3ImageStorage,
   resolveImageStorageMode,
   type ImageStorage,
 } from "./image-storage";
-import { runWithRuntimeAdapter } from "../runtime/runtime-adapter";
+import { runWithRuntimePorts } from "../runtime/runtime-adapter";
+import { createNodeImageStorage } from "@zilobase/runtime-adapter/node";
 
 const s3Env = {
   S3_ACCESS_KEY_ID: "access-key",
@@ -53,7 +53,7 @@ beforeEach(() => {
 });
 
 test("S3 signs browser URLs with the public endpoint and keeps an internal client", async () => {
-  const storage = createS3ImageStorage({
+  const storage = createNodeImageStorage({
     ...s3Env,
     S3_PUBLIC_ENDPOINT: "https://objects.example.com",
   });
@@ -86,27 +86,23 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test("runtime storage overrides S3 and mode resolution has stable fallbacks", () => {
+test("runtime storage is required and reports its provider mode", () => {
   const adapterStorage = { mode: "binding" } as ImageStorage;
 
-  runWithRuntimeAdapter(
-    {
-      createImageStorage: () => adapterStorage,
-      getImageStorageMode: () => "binding",
-    },
+  runWithRuntimePorts(
+    { blobs: adapterStorage },
     () => {
       assert.equal(createImageStorage({}), adapterStorage);
       assert.equal(resolveImageStorageMode({}), "binding");
     },
   );
 
-  assert.equal(resolveImageStorageMode({}), "s3");
-  assert.equal(resolveImageStorageMode({ IMAGE_STORAGE_MODE: "s3" }), "s3");
+  assert.throws(() => createImageStorage({}), /port is required/);
 });
 
 test("S3 storage reports every missing configuration value", () => {
   assert.throws(
-    () => createS3ImageStorage({}),
+    () => createNodeImageStorage({}),
     /S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_BUCKET_NAME, S3_ENDPOINT/,
   );
 });
@@ -114,7 +110,7 @@ test("S3 storage reports every missing configuration value", () => {
 test("S3 storage creates upload and safe inline read URLs", async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-08-02T00:00:00.000Z"));
-  const storage = createS3ImageStorage(s3Env);
+  const storage = createNodeImageStorage(s3Env);
 
   assert.deepEqual(
     await storage.createUploadUrl({
@@ -161,7 +157,7 @@ test("S3 storage creates upload and safe inline read URLs", async () => {
 
 test("S3 delete and head operations map SDK responses", async () => {
   const uploadedAt = new Date("2026-08-02T00:00:00.000Z");
-  const storage = createS3ImageStorage(s3Env);
+  const storage = createNodeImageStorage(s3Env);
   aws.send.mockResolvedValueOnce(undefined).mockResolvedValueOnce({
     ContentLength: 42,
     ContentType: "image/webp",
@@ -183,7 +179,7 @@ test("S3 delete and head operations map SDK responses", async () => {
 });
 
 test("S3 readiness verifies that the configured bucket is accessible", async () => {
-  const storage = createS3ImageStorage(s3Env);
+  const storage = createNodeImageStorage(s3Env);
   aws.send.mockResolvedValueOnce(undefined);
 
   await storage.checkReady?.();
@@ -194,7 +190,7 @@ test("S3 readiness verifies that the configured bucket is accessible", async () 
 });
 
 test("S3 head treats both not-found shapes as absent and rethrows failures", async () => {
-  const storage = createS3ImageStorage(s3Env);
+  const storage = createNodeImageStorage(s3Env);
   aws.send
     .mockRejectedValueOnce({ $metadata: { httpStatusCode: 404 } })
     .mockRejectedValueOnce({ name: "NotFound" })
@@ -213,7 +209,7 @@ test("S3 head treats both not-found shapes as absent and rethrows failures", asy
 });
 
 test("S3 reads map response metadata, absence, and invalid responses", async () => {
-  const storage = createS3ImageStorage(s3Env);
+  const storage = createNodeImageStorage(s3Env);
   vi.stubGlobal(
     "fetch",
     vi.fn()
@@ -253,7 +249,7 @@ test("S3 reads map response metadata, absence, and invalid responses", async () 
 });
 
 test("direct S3 uploads are rejected in favor of presigned URLs", async () => {
-  const storage = createImageStorage(s3Env);
+  const storage = createNodeImageStorage(s3Env);
 
   await assert.rejects(
     storage.putObject({

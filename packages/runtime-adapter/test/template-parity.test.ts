@@ -44,6 +44,13 @@ describe("template parity with the hosted composition", () => {
       prod.migrations.map((entry: { tag: string }) => entry.tag),
     );
     expect(template.migrations).toEqual(prod.migrations);
+    expect(template.migrations).toHaveLength(1);
+    expect(template.migrations[0]).toEqual({
+      tag: "runtime-ports-v1",
+      new_sqlite_classes: template.durable_objects.bindings
+        .map((binding: { class_name: string }) => binding.class_name)
+        .sort(),
+    });
     expect(template.durable_objects).toEqual(prod.durable_objects);
     expect(template.queues).toEqual(prod.queues);
     expect(template.ratelimits).toEqual(prod.ratelimits);

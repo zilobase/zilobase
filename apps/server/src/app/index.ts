@@ -21,10 +21,12 @@ import type { AppBindings, AppErrorReporter } from "../shared/types";
 import type { EditionExtensionOptions } from "../shared/types";
 import { demoWriteGuard } from "../features/demo/write-guard";
 import { runWithBackgroundTraceContext } from "../infrastructure/background/contracts";
-import { isSelfHostedRuntime } from "../infrastructure/runtime/runtime-adapter";
+import { communityAppPolicy } from "../shared/app-policy";
+import { runWithRuntimePorts } from "../infrastructure/runtime/runtime-adapter";
 
 export function createApp(options: EditionExtensionOptions = {}) {
   const app = new Hono<AppBindings>();
+  const appPolicy = options.policy ?? communityAppPolicy;
   registerAppEditionExtension(app, options.editionExtension);
 
   app.use("*", (c, next) =>
@@ -36,9 +38,13 @@ export function createApp(options: EditionExtensionOptions = {}) {
       next,
     ),
   );
-  app.use("*", async (c, next) => {
+  app.use("*", (c, next) => {
     c.set("editionExtension", options.editionExtension ?? null);
-    await next();
+    c.set("appPolicy", appPolicy);
+    c.set("runtimePorts", options.ports ?? null);
+    return options.ports
+      ? runWithRuntimePorts(options.ports, next)
+      : next();
   });
   app.use("*", createCorsMiddleware());
   app.use(
@@ -59,7 +65,7 @@ export function createApp(options: EditionExtensionOptions = {}) {
       onError: (c) => c.json({ error: "Request body is too large" }, 413),
     }),
   );
-  if (isSelfHostedRuntime()) {
+  if (appPolicy.compression) {
     app.use("*", compress({ contentTypeFilter: /^application\/json/i }));
   }
   app.use("*", methodNotAllowed({ app }));

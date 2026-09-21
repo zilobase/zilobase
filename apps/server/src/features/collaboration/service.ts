@@ -14,7 +14,7 @@ import {
   page,
   pageCollaborationDocument,
 } from "../../infrastructure/database/schema";
-import { getRuntimeAdapter } from "../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "../../infrastructure/runtime/runtime-adapter";
 import type { MeetingTranscriptYjsSegment } from "../../infrastructure/runtime/runtime-adapter";
 import type { RuntimeEnv } from "../../shared/config/config";
 import {
@@ -363,15 +363,13 @@ export async function replacePageContent(input: {
   pageId: string;
   userId: string;
 }) {
-  const adapter = getRuntimeAdapter();
-
-  if (adapter.applyPageContentUpdate) {
-    await adapter.applyPageContentUpdate(input);
-    return;
-  }
-
-  const hocuspocus = getDefaultCollaborationHocuspocus(input.env);
-  await replacePageContentInHocuspocus(hocuspocus, input);
+  const fanout = getRuntimePorts().fanout;
+  if (!fanout) throw new Error("Runtime FanoutBus port is required");
+  await fanout.publish(`page:${input.pageId}:replace`, {
+    content: input.content,
+    pageId: input.pageId,
+    userId: input.userId,
+  });
 }
 
 export async function appendPageComment(input: {
@@ -380,9 +378,9 @@ export async function appendPageComment(input: {
   env: RuntimeEnv;
   pageId: string;
 }) {
-  const adapter = getRuntimeAdapter();
-  if (adapter.applyPageCommentUpdate) return adapter.applyPageCommentUpdate(input);
-  return appendPageCommentInHocuspocus(getDefaultCollaborationHocuspocus(input.env), input);
+  const documents = getRuntimePorts().documents;
+  if (!documents) throw new Error("Runtime Documents port is required");
+  return documents.appendPageComment(input);
 }
 
 export async function replaceMeetingSummary(input: {
@@ -391,9 +389,9 @@ export async function replaceMeetingSummary(input: {
   meetingId: string;
   userId: string;
 }) {
-  const adapter = getRuntimeAdapter();
-  if (adapter.applyMeetingSummaryUpdate) {
-    await adapter.applyMeetingSummaryUpdate(input);
+  const meetings = getRuntimePorts().meetings;
+  if (meetings) {
+    await meetings.applySummary(input);
     return;
   }
   await replaceMeetingSummaryInHocuspocus(
@@ -409,9 +407,9 @@ export async function appendMeetingTranscript(input: {
   segment: MeetingTranscriptYjsSegment;
   userId: string;
 }) {
-  const adapter = getRuntimeAdapter();
-  if (adapter.applyMeetingTranscriptUpdate) {
-    await adapter.applyMeetingTranscriptUpdate(input);
+  const meetings = getRuntimePorts().meetings;
+  if (meetings) {
+    await meetings.applyTranscript(input);
     return;
   }
   await appendMeetingTranscriptInHocuspocus(

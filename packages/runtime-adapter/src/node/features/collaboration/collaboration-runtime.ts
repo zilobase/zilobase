@@ -12,9 +12,12 @@ import {
 import { createAuth } from "@zilobase/server/node-adapter-api";
 import { runWithDbEnv } from "@zilobase/server/node-adapter-api";
 import { getDefaultCollaborationHocuspocus } from "@zilobase/server/node-adapter-api";
+import { appendPageCommentInHocuspocus, replacePageContentInHocuspocus } from "@zilobase/server/node-adapter-api";
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
 import type { ZilobaseEditionExtension } from "@zilobase/server/node-adapter-api";
-import type { NodeRealtimeBus } from "./realtime-bus";
+import type { NodeRealtimeBus } from "../../realtime-bus";
+import type { Limits } from "@zilobase/runtime-ports";
+import { createNodeLimits } from "../../limits";
 
 export const NODE_COLLABORATION_MAX_PAYLOAD_BYTES = 1024 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;
@@ -26,6 +29,7 @@ type NodeCollaborationRuntimeOptions = {
   passthroughPaths?: readonly string[];
   editionExtension?: ZilobaseEditionExtension;
   realtimeBus?: NodeRealtimeBus | null;
+  limits?: Limits;
 };
 
 export function attachNodeCollaborationRuntime(
@@ -34,9 +38,7 @@ export function attachNodeCollaborationRuntime(
   options: NodeCollaborationRuntimeOptions = {},
 ) {
   const hocuspocus = getDefaultCollaborationHocuspocus(env);
-  const connectionLimiter = createConnectionLimiter(
-    options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
-  );
+  const limits = options.limits ?? createNodeLimits(options.realtimeBus ?? null);
   const websocket = crossws({
     serverOptions: {
       maxPayload: NODE_COLLABORATION_MAX_PAYLOAD_BYTES,
@@ -111,13 +113,11 @@ export function attachNodeCollaborationRuntime(
       return;
     }
 
-    const connectionAllowed = options.realtimeBus
-      ? await options.realtimeBus.consumeLimit(
-          `collaboration:connection:${userId}`,
-          options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
-          CONNECTION_LIMIT_WINDOW_MS,
-        )
-      : connectionLimiter.allow(userId);
+    const connectionAllowed = await limits.consume(
+      `collaboration:connection:${userId}`,
+      options.connectionLimit ?? DEFAULT_CONNECTION_LIMIT,
+      CONNECTION_LIMIT_WINDOW_MS,
+    );
 
     if (!connectionAllowed) {
       rejectUpgrade(socket, 429, "Too Many Requests", {
@@ -130,6 +130,12 @@ export function attachNodeCollaborationRuntime(
   }
 
   return {
+    async appendPageComment(input: Parameters<typeof appendPageCommentInHocuspocus>[1]) {
+      return appendPageCommentInHocuspocus(hocuspocus, input);
+    },
+    async replacePageContent(content: unknown, pageId: string, userId: string) {
+      await replacePageContentInHocuspocus(hocuspocus, { content, pageId, userId });
+    },
     async destroy() {
       await new Promise<void>((resolve) => {
         hocuspocus.configuration.extensions.push({
@@ -205,42 +211,6 @@ function rejectUpgrade(
   socket.end(`HTTP/1.1 ${status} ${statusText}\r\n${responseHeaders}\r\n\r\n`);
 }
 
-function createConnectionLimiter(limit: number) {
-  const entries = new Map<string, { count: number; windowStartedAt: number }>();
-
-  return {
-    allow(userId: string) {
-      const now = Date.now();
-      const current = entries.get(userId);
-
-      if (!current || now - current.windowStartedAt >= CONNECTION_LIMIT_WINDOW_MS) {
-        entries.set(userId, { count: 1, windowStartedAt: now });
-        sweepExpiredEntries(entries, now);
-        return true;
-      }
-
-      if (current.count >= limit) {
-        return false;
-      }
-
-      current.count += 1;
-      return true;
-    },
-  };
-}
-
-function sweepExpiredEntries(
-  entries: Map<string, { count: number; windowStartedAt: number }>,
-  now: number,
-) {
-  if (entries.size < 1_000) return;
-
-  for (const [userId, entry] of entries) {
-    if (now - entry.windowStartedAt >= CONNECTION_LIMIT_WINDOW_MS) {
-      entries.delete(userId);
-    }
-  }
-}
 
 type CollaborationPeer = {
   _zilobaseCollaboration?: {

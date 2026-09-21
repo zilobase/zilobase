@@ -118,7 +118,7 @@
     "EMAIL_FROM": "Zilobase <<NO_REPLY_EMAIL>>",
     "IMAGE_STORAGE_MODE": "binding",
     "ZILOBASE_CELL_ID": "default",
-    "ZILOBASE_RUNTIME_KIND": "edge",
+    "ZILOBASE_RUNTIME_KIND": "worker",
     "ZILOBASE_ENVIRONMENT": "production"
   }
 }

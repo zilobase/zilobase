@@ -5,7 +5,14 @@ import ts from "typescript";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const baselinePath = join(root, "scripts/refactor/public-exports-baseline.json");
-const packages = ["apps/server", "packages/features", "packages/html-to-page", "packages/page-context", "packages/markdown-text-splitter", "packages/tiptap-comment-extension"];
+const packages = ["apps/server", "packages/features", "packages/html-to-page", "packages/page-context", "packages/markdown-text-splitter", "packages/runtime-ports", "packages/tiptap-comment-extension"];
+const intentionalRuntimePortBreaks = new Set([
+  "getConfiguredImageStorageMode",
+  "getRuntimeAdapter",
+  "runWithRuntimeAdapter",
+  "ServerRuntimeAdapter",
+  "setRuntimeAdapter",
+]);
 
 function markdownFiles(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -100,8 +107,11 @@ export function compareExports(baseline, current) {
     if (!current[entry]) { errors.push(`Removed export condition/subpath: ${entry}`); continue; }
     for (const [name, shape] of Object.entries(symbols)) {
       const next = current[entry][name];
-      if (!next) errors.push(`Removed export: ${entry} ${name}`);
-      else if ((shape.value && !next.value) || (shape.type && !next.type)) errors.push(`Changed export kind: ${entry} ${name}`);
+      if (!next) {
+        if (!intentionalRuntimePortBreaks.has(name)) errors.push(`Removed export: ${entry} ${name}`);
+        continue;
+      }
+      if ((shape.value && !next.value) || (shape.type && !next.type)) errors.push(`Changed export kind: ${entry} ${name}`);
     }
   }
   return errors;

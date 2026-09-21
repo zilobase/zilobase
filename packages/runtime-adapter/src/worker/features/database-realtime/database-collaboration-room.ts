@@ -9,8 +9,14 @@ import {
   databaseMutationEventV2Schema,
   type DatabaseMutationEventV2,
 } from "@zilobase/features/databases";
+import {
+  consumeDatabaseMessageAllowance,
+  isDatabasePresence,
+  toDatabaseCollaborator,
+  type DatabasePresence,
+} from "@zilobase/features/databases/realtime/room-protocol";
 
-import type { WorkerEnvBindings } from "../../adapter";
+import type { WorkerEnvBindings } from "../../bindings";
 import {
   readDatabaseRealtimeClaims,
   validateDatabaseRealtimeMessage,
@@ -19,12 +25,6 @@ import {
 type DatabaseCollaborationEnv = Cloudflare.Env &
   AppBindings["Bindings"] &
   WorkerEnvBindings;
-
-type DatabasePresence = {
-  columnKey: string;
-  rowId: string;
-  viewId: string | null;
-};
 
 type SocketAttachment = {
   claims: DatabaseRealtimeTicketClaims;
@@ -35,8 +35,6 @@ type SocketAttachment = {
 };
 
 const LAST_PUBLISHED_VERSION_KEY = "lastPublishedVersion";
-const MESSAGE_RATE_LIMIT = 30;
-const MESSAGE_RATE_WINDOW_MS = 1_000;
 const REALTIME_PING_MESSAGE = JSON.stringify({ type: "realtime.ping" });
 const REALTIME_PONG_MESSAGE = JSON.stringify({ type: "realtime.pong" });
 
@@ -139,7 +137,7 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
       return;
     }
 
-    if (!this.consumeMessageAllowance(ws)) {
+    if (!consumeDatabaseMessageAllowance(ws, this.messageRates)) {
       this.clearPresence(ws);
       ws.close(1008, "Database realtime message rate exceeded");
       return;
@@ -237,7 +235,7 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
       return;
     }
 
-    if (!isPresence(message.presence)) {
+    if (!isDatabasePresence(message.presence)) {
       ws.close(1007, "Invalid database presence");
       return;
     }
@@ -246,7 +244,7 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
     attachment.updatedAt = Date.now();
     writeAttachment(ws, attachment);
     this.broadcast({
-      collaborator: toCollaborator(attachment),
+      collaborator: toDatabaseCollaborator(attachment),
       databaseId: attachment.databaseId,
       protocolVersion: 2,
       type: "presence.update",
@@ -277,7 +275,7 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
       return attachment?.databaseId === databaseId &&
         attachment.claims.exp > Date.now() &&
         attachment.presence
-        ? [toCollaborator(attachment)]
+        ? [toDatabaseCollaborator(attachment)]
         : [];
     });
   }
@@ -301,19 +299,6 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
     }
 
     return this.lastPublishedVersion;
-  }
-
-  private consumeMessageAllowance(ws: WebSocket) {
-    const now = Date.now();
-    const current = this.messageRates.get(ws);
-
-    if (!current || now - current.startedAt >= MESSAGE_RATE_WINDOW_MS) {
-      this.messageRates.set(ws, { count: 1, startedAt: now });
-      return true;
-    }
-
-    current.count += 1;
-    return current.count <= MESSAGE_RATE_LIMIT;
   }
 
   private pruneExpiredSockets() {
@@ -373,34 +358,4 @@ function readAttachment(ws: WebSocket): SocketAttachment | null {
 
 function writeAttachment(ws: WebSocket, attachment: SocketAttachment) {
   ws.serializeAttachment(attachment);
-}
-
-function isPresence(value: unknown): value is DatabasePresence {
-  if (!value || typeof value !== "object") return false;
-  const presence = value as Record<string, unknown>;
-
-  return (
-    typeof presence.columnKey === "string" &&
-    presence.columnKey.length > 0 && presence.columnKey.length <= 128 &&
-    typeof presence.rowId === "string" &&
-    presence.rowId.length > 0 && presence.rowId.length <= 128 &&
-    (presence.viewId === null ||
-      (typeof presence.viewId === "string" && presence.viewId.length <= 128))
-  );
-}
-
-function toCollaborator(attachment: SocketAttachment) {
-  const claims = attachment.claims;
-
-  if (!claims || !attachment.presence) {
-    throw new Error("Cannot serialize empty database presence");
-  }
-
-  return {
-    connectedAt: new Date(attachment.connectedAt).toISOString(),
-    presence: attachment.presence,
-    sessionId: claims.sessionId,
-    updatedAt: new Date(attachment.updatedAt ?? Date.now()).toISOString(),
-    user: claims.user,
-  };
 }

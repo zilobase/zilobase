@@ -98,6 +98,7 @@ apiKeyRoutes.post("/", async (c) => {
 
   const auth = await createAuth(c.env, c.req.raw, undefined, {
     editionExtension: c.get("editionExtension") ?? undefined,
+    policy: c.get("appPolicy"),
   });
   const key = await auth.api.createApiKey({
     body: {

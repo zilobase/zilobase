@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildChatAgentInstanceName,
   parseChatAgentInstanceName,
-} from "../../src/worker/features/chat/chat-agent-identity";
+} from "@zilobase/features/ai-chat/agent-room";
 
 const identity = {
   threadId: "11111111-1111-4111-8111-111111111111",

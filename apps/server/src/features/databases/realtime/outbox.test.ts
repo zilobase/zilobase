@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 
-import { runWithRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { runWithRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
 import { drainDatabaseRealtimeOutbox } from "./outbox";
 import {
   databaseMutationEvent,
@@ -23,6 +23,18 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
+
+function withFanout<T>(
+  publish: (input: { event: unknown }) => void | Promise<void>,
+  operation: () => T,
+) {
+  return runWithRuntimePorts({
+    fanout: {
+      publish: (_channel, event) => Promise.resolve(publish({ event })),
+      subscribe: async () => () => {},
+    },
+  }, operation);
+}
 
 test("outbox draining is a no-op without a publish adapter", async () => {
   assert.deepEqual(await drainDatabaseRealtimeOutbox({}, { database: {} as never }), {
@@ -133,8 +145,8 @@ test("outbox draining claims bounded batches and reports empty health", async ()
   const state = drainExecutor([]);
   const publish = vi.fn(async (_input: unknown) => undefined);
 
-  const result = await runWithRuntimeAdapter(
-    { publishDatabaseMutation: publish },
+  const result = await withFanout(
+    publish,
     () =>
       drainDatabaseRealtimeOutbox({}, {
         database: state.executor as never,
@@ -175,8 +187,8 @@ test("journal-backed deliveries publish the canonical v2 event", async () => {
     }],
   );
   const publish = vi.fn(async (_input: unknown) => undefined);
-  await runWithRuntimeAdapter(
-    { publishDatabaseMutation: publish },
+  await withFanout(
+    publish,
     () => drainDatabaseRealtimeOutbox({}, { database: state.executor as never }),
   );
   assert.deepEqual((publish.mock.calls[0]?.[0] as { event: unknown }).event, {
@@ -205,8 +217,8 @@ test("outbox delivery retries when its journal event is unavailable", async () =
   const publish = vi.fn(async (_input: unknown) => undefined);
   const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
-  const result = await runWithRuntimeAdapter(
-    { publishDatabaseMutation: publish },
+  const result = await withFanout(
+    publish,
     () => drainDatabaseRealtimeOutbox({}, { database: state.executor as never }),
   );
 
@@ -239,8 +251,8 @@ test("outbox draining delivers, retries, discards, and reports health", async ()
     .spyOn(console, "error")
     .mockImplementation(() => undefined);
 
-  const result = await runWithRuntimeAdapter(
-    { publishDatabaseMutation: publish },
+  const result = await withFanout(
+    publish,
     () =>
       drainDatabaseRealtimeOutbox({ ENV: "test" }, {
         database: state.executor as never,
@@ -284,8 +296,8 @@ test("outbox draining groups retries by backoff attempt", async () => {
     .spyOn(console, "error")
     .mockImplementation(() => undefined);
 
-  const result = await runWithRuntimeAdapter(
-    { publishDatabaseMutation: async () => { throw new Error("temporary"); } },
+  const result = await withFanout(
+    async () => { throw new Error("temporary"); },
     () =>
       drainDatabaseRealtimeOutbox({}, {
         database: state.executor as never,

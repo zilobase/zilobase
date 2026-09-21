@@ -2,7 +2,7 @@ import { Hono, type Context } from "hono";
 import { Schema, SchemaTransformation } from "effect";
 
 import { getMembership } from "../access";
-import { isSelfHostedRuntime } from "../../infrastructure/runtime/runtime-adapter";
+import { isCommunityRegistration } from "../../shared/app-policy";
 import type { AppBindings } from "../../shared/types";
 import { parseJsonBody } from "../../shared/http/schema-json";
 import {
@@ -78,7 +78,7 @@ instanceRoutes.get("/.well-known/zilobase", async (c) => {
 });
 
 instanceRoutes.post("/api/instance/bootstrap", async (c) => {
-  if (!isSelfHostedRuntime()) {
+  if (!isCommunityRegistration(c.get("appPolicy"))) {
     return c.json({ error: "Not found" }, 404);
   }
 
@@ -147,7 +147,7 @@ instanceRoutes.patch("/api/instance/settings", async (c) => {
 });
 
 async function requireSelfHostedOwner(c: Context<AppBindings>) {
-  if (!isSelfHostedRuntime()) {
+  if (!isCommunityRegistration(c.get("appPolicy"))) {
     return c.json({ error: "Not found" }, 404);
   }
 

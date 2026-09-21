@@ -1,5 +1,6 @@
 import type { BetterAuthPlugin } from "better-auth";
 import type { Hono } from "hono";
+import type { AppPolicy, Ports } from "@zilobase/runtime-ports";
 
 import type { Auth } from "../features/auth";
 // The public edition contract exposes the canonical Drizzle database type.
@@ -82,6 +83,8 @@ export type ZilobaseEditionExtension = {
 export type EditionExtensionOptions = {
   editionExtension?: ZilobaseEditionExtension;
   errorReporter?: AppErrorReporter;
+  policy?: AppPolicy;
+  ports?: Partial<Ports<any>>;
 };
 
 export type AppErrorReport = {
@@ -194,6 +197,8 @@ export type AppBindings = {
     oauthScopes: string[] | null;
     requestId: string;
     editionExtension: ZilobaseEditionExtension | null;
+    appPolicy: AppPolicy;
+    runtimePorts: Partial<Ports<any>> | null;
     serverTimings: string[];
     user: Auth["$Infer"]["Session"]["user"] | null;
     session: AuthSession | null;

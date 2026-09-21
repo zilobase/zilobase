@@ -88,7 +88,6 @@ export {
 } from "../features/instance/service";
 export {
   createImageStorage,
-  createS3ImageStorage,
   resolveImageStorageMode,
   type ImageStorage,
   type ImageStorageMode,
@@ -98,19 +97,16 @@ export {
 } from "../infrastructure/storage/image-storage";
 export {
   getCollaborationWebSocketUrl,
-  getConfiguredImageStorageMode,
   getDatabaseRealtimeWebSocketUrl,
   getMeetingAudioWebSocketUrl,
   getMeetingCollaborationWebSocketUrl,
   getMailRealtimeWebSocketUrl,
   getDatabaseUrl,
-  getRuntimeAdapter,
-  runWithRuntimeAdapter,
-  setRuntimeAdapter,
+  runWithRuntimePorts,
+  setRuntimePorts,
   type OutboundEmailMessage,
   type MeetingRecorderRuntimeInput,
   type MeetingRecorderRuntimeState,
-  type ServerRuntimeAdapter,
   type MailNotificationEvent,
 } from "../infrastructure/runtime/runtime-adapter";
 export {

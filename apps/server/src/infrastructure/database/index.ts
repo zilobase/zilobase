@@ -1,7 +1,7 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { Client, Pool } from "pg";
-import { getDatabaseUrl, isSelfHostedRuntime } from "../runtime/runtime-adapter";
+import { getDatabaseUrl } from "../runtime/runtime-adapter";
 import * as schema from "./schema";
 
 type DbEnv = Record<string, unknown>;
@@ -33,9 +33,9 @@ export const db = new Proxy({} as Database, {
 export function createDbClient(env: DbEnv) {
   const connectionString = getConnectionString(env);
 
-  return isSelfHostedRuntime()
-    ? createPooledDbClientForUrl(connectionString)
-    : createDbClientForUrl(connectionString, { queryTimeoutMillis: 15_000 });
+  return env.ZILOBASE_RUNTIME_KIND === "worker"
+    ? createDbClientForUrl(connectionString, { queryTimeoutMillis: 15_000 })
+    : createPooledDbClientForUrl(connectionString);
 }
 
 /**

@@ -26,7 +26,7 @@ async function main() {
   });
 
   const runtime = await startNodeServer({
-    loadApp: async () => createApp(),
+    loadApp: async (_env, ports) => createApp({ ports }),
     migrationSets: [CORE_MIGRATION_SET],
     webDistDir:
       process.env.ZILOBASE_WEB_DIST_DIR ?? path.resolve("apps/web/dist"),

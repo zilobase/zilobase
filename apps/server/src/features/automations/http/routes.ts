@@ -13,7 +13,7 @@ import type { AppBindings } from "../../../shared/types";
 import { readJsonBody } from "../../../shared/http/request";
 import { getMembership } from "../../access";
 import { getAutomationWebhookHttpDomains, isAutomationSlackEnabled, isAutomationWebhooksEnabled, isDatabaseAutomationsFeatureEnabled, isMailFeatureEnabled } from "../../../shared/config/config";
-import { isSelfHostedRuntime } from "../../../infrastructure/runtime/runtime-adapter";
+import { isCommunityRegistration } from "../../../shared/app-policy";
 import { requireDatabaseRouteUser } from "../../databases/http/support";
 import {
   createDatabaseAutomation,
@@ -253,7 +253,9 @@ function mailEnabled(c: Context<AppBindings>) {
 }
 
 function webhookHttpDomains(c: Context<AppBindings>) {
-  return isSelfHostedRuntime() ? getAutomationWebhookHttpDomains(c.env ?? {}) : new Set<string>();
+  return isCommunityRegistration(c.get("appPolicy"))
+    ? getAutomationWebhookHttpDomains(c.env ?? {})
+    : new Set<string>();
 }
 
 async function handle(

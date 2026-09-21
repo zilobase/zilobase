@@ -161,6 +161,6 @@ function backgroundAttributes(
     kind,
     lane: backgroundTaskLane(kind),
     outcome,
-    runtime: env.ZILOBASE_RUNTIME_KIND === "edge" ? "edge" : "node",
+    runtime: env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node",
   };
 }

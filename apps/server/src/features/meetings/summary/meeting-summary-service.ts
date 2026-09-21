@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { resolveWorkspaceAiModel, type ResolvedAiModel } from "../../ai/providers/ai-provider";
 import { replaceMeetingSummary } from "../../collaboration/service";
-import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
 import { db } from "../../../infrastructure/database";
 import { meeting, meetingTranscriptSegment } from "../../../infrastructure/database/schema";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
@@ -43,10 +43,7 @@ export async function generateMeetingSummary(input: {
       409,
     );
   }
-  const runtimeState = await getRuntimeAdapter().getMeetingRecorderSession?.({
-    env: input.env,
-    meetingId: record.id,
-  });
+  const runtimeState = await getRuntimePorts().meetings?.get(record.id);
   if (
     runtimeState &&
     ["claimed", "recording", "paused", "finishing"].includes(runtimeState.status)

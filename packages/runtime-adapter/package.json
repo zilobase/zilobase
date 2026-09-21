@@ -20,6 +20,14 @@
       "types": "./src/context.ts",
       "default": "./src/context.ts"
     },
+    "./env": {
+      "types": "./src/env.ts",
+      "default": "./src/env.ts"
+    },
+    "./url-resolver": {
+      "types": "./src/url-resolver.ts",
+      "default": "./src/url-resolver.ts"
+    },
     "./dispatcher": {
       "types": "./src/dispatcher.ts",
       "default": "./src/dispatcher.ts"
@@ -36,10 +44,6 @@
       "types": "./src/worker/index.ts",
       "default": "./src/worker/index.ts"
     },
-    "./worker/adapter": {
-      "types": "./src/worker/adapter.ts",
-      "default": "./src/worker/adapter.ts"
-    },
     "./worker/handler": {
       "types": "./src/worker/handler.ts",
       "default": "./src/worker/handler.ts"
@@ -47,6 +51,58 @@
     "./worker/background-worker": {
       "types": "./src/worker/background-worker.ts",
       "default": "./src/worker/background-worker.ts"
+    },
+    "./worker/jobs": {
+      "types": "./src/worker/jobs.ts",
+      "default": "./src/worker/jobs.ts"
+    },
+    "./worker/fanout": {
+      "types": "./src/worker/fanout.ts",
+      "default": "./src/worker/fanout.ts"
+    },
+    "./worker/lifecycle": {
+      "types": "./src/worker/lifecycle.ts",
+      "default": "./src/worker/lifecycle.ts"
+    },
+    "./worker/meetings": {
+      "types": "./src/worker/meetings.ts",
+      "default": "./src/worker/meetings.ts"
+    },
+    "./worker/documents": {
+      "types": "./src/worker/documents.ts",
+      "default": "./src/worker/documents.ts"
+    },
+    "./worker/image-storage": {
+      "types": "./src/worker/image-storage.ts",
+      "default": "./src/worker/image-storage.ts"
+    },
+    "./worker/mailer": {
+      "types": "./src/worker/mailer.ts",
+      "default": "./src/worker/mailer.ts"
+    },
+    "./worker/outbound-fetch": {
+      "types": "./src/worker/outbound-fetch.ts",
+      "default": "./src/worker/outbound-fetch.ts"
+    },
+    "./worker/limits": {
+      "types": "./src/worker/limits.ts",
+      "default": "./src/worker/limits.ts"
+    },
+    "./worker/scheduler": {
+      "types": "./src/worker/scheduler.ts",
+      "default": "./src/worker/scheduler.ts"
+    },
+    "./worker/room-host": {
+      "types": "./src/worker/room-host.ts",
+      "default": "./src/worker/room-host.ts"
+    },
+    "./worker/room-state": {
+      "types": "./src/worker/room-state.ts",
+      "default": "./src/worker/room-state.ts"
+    },
+    "./worker/telemetry": {
+      "types": "./src/worker/telemetry.ts",
+      "default": "./src/worker/telemetry.ts"
     },
     "./worker/web/gateway": {
       "default": "./src/worker/web/gateway.js"
@@ -62,14 +118,23 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@zilobase/runtime-ports": "file:../runtime-ports",
     "hono": "^4.13.7"
   },
   "peerDependencies": {
+    "@aws-sdk/client-s3": "*",
+    "@aws-sdk/s3-request-presigner": "*",
     "@zilobase/features": "*",
     "@zilobase/server": "*",
     "react": "^19.1.0"
   },
   "peerDependenciesMeta": {
+    "@aws-sdk/client-s3": {
+      "optional": true
+    },
+    "@aws-sdk/s3-request-presigner": {
+      "optional": true
+    },
     "@cloudflare/ai-chat": {
       "optional": true
     },
@@ -91,6 +156,9 @@
     "ioredis": {
       "optional": true
     },
+    "nodemailer": {
+      "optional": true
+    },
     "pg": {
       "optional": true
     },
@@ -99,18 +167,22 @@
     }
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1070.0",
+    "@aws-sdk/s3-request-presigner": "^3.1070.0",
     "@cloudflare/ai-chat": "^0.11.0",
     "@cloudflare/workers-types": "^4.20250929.0",
     "@cloudflare/vitest-pool-workers": "^0.22.0",
     "@hocuspocus/extension-redis": "^4.6.0",
     "@hocuspocus/server": "^4.3.0",
     "@types/node": "^25.9.1",
+    "@types/nodemailer": "^7.0.12",
     "@zilobase/features": "file:../features",
     "@zilobase/server": "file:../../apps/server",
     "agents": "^0.22.0",
     "crossws": "^0.4.9",
     "drizzle-orm": "^0.45.2",
     "ioredis": "^5.11.1",
+    "nodemailer": "^9.0.3",
     "pg": "^8.21.0",
     "typescript": "6.0.3",
     "vitest": "^4.1.11",

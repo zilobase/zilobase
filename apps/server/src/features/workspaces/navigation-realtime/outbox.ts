@@ -3,7 +3,7 @@ import type { NavigationRealtimeInvalidateEvent } from "@zilobase/features/pages
 
 import { db } from "../../../infrastructure/database"
 import { navigationRealtimeOutbox } from "../../../infrastructure/database/schema"
-import { getRuntimeAdapter } from "../../../infrastructure/runtime/runtime-adapter"
+import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter"
 import type { RuntimeEnv } from "../../../shared/config/config"
 import { createBackgroundTask } from "../../../infrastructure/background/contracts"
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch"
@@ -30,10 +30,10 @@ export async function publishNavigationInvalidation(
   env: RuntimeEnv,
   executor = db,
 ) {
-  const publish = getRuntimeAdapter().publishNavigationInvalidation
+  const publish = getRuntimePorts().fanout
   if (!publish) return false
   try {
-    await publish({ env, event })
+    await publish.publish(`navigation:${event.workspaceId}`, event)
     await executor.delete(navigationRealtimeOutbox)
       .where(eq(navigationRealtimeOutbox.id, event.eventId))
   } catch (error) {
@@ -59,7 +59,7 @@ export async function drainNavigationRealtimeOutbox(
   options?: { database?: typeof db; limit?: number; outboxId?: string },
 ) {
   const executor = options?.database ?? db
-  const publish = getRuntimeAdapter().publishNavigationInvalidation
+  const publish = getRuntimePorts().fanout
   if (!publish) return emptyHealth()
   const attemptedAt = new Date()
   const entries = await executor.transaction(async (tx) => {
@@ -85,7 +85,8 @@ export async function drainNavigationRealtimeOutbox(
   const retries = new Map<number, string[]>()
   for (const entry of entries) {
     try {
-      await publish({ env, event: toNavigationRealtimeEvent(entry) })
+      const event = toNavigationRealtimeEvent(entry)
+      await publish.publish(`navigation:${event.workspaceId}`, event)
       delivered.push(entry.id)
     } catch (error) {
       if (entry.attempts >= MAX_ATTEMPTS) discarded.push(entry.id)

@@ -5,10 +5,10 @@ import {
   prepareAgentTurnRequest,
   type AgentConversationInput,
 } from "@zilobase/features/ai-chat/conversation-adapter";
+import { buildChatAgentInstanceName } from "@zilobase/features/ai-chat/agent-room";
 import { useAgent } from "agents/react";
 import type { UIMessage } from "ai";
 
-import { buildChatAgentInstanceName } from "../features/chat/chat-agent-identity";
 
 export function useAgentConversation(input: AgentConversationInput) {
   const ready = Boolean(input.threadId && input.userId && input.workspaceId);

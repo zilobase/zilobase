@@ -31,25 +31,15 @@
   },
   "migrations": [
     {
-      "tag": "v1",
-      "new_sqlite_classes": ["DatabaseCollaborationRoom"]
-    },
-    {
-      "tag": "v2",
-      "new_sqlite_classes": ["PageCollaborationRoom"]
-    },
-    {
-      "tag": "v3",
-      "new_sqlite_classes": ["MeetingCollaborationRoom"]
-    },
-    {
-      "tag": "v4",
-      "new_sqlite_classes": ["MailNotificationRoom"]
-    },
-    {
-      "tag": "v5",
-      "new_sqlite_classes": ["NavigationNotificationRoom"]
-    },
-    { "tag": "calendar-v1", "new_sqlite_classes": ["CalendarNotificationRoom"] }
+      "tag": "runtime-ports-v1",
+      "new_sqlite_classes": [
+        "CalendarNotificationRoom",
+        "DatabaseCollaborationRoom",
+        "MailNotificationRoom",
+        "MeetingCollaborationRoom",
+        "NavigationNotificationRoom",
+        "PageCollaborationRoom"
+      ]
+    }
   ]
 }

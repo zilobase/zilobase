@@ -14,6 +14,7 @@
     "packages/html-to-page",
     "packages/markdown-text-splitter",
     "packages/page-context",
+    "packages/runtime-ports",
     "packages/runtime-adapter",
     "packages/tiptap-comment-extension"
   ],
@@ -60,6 +61,7 @@
     "test:databases:acceptance": "node scripts/databases/test-acceptance.mjs",
     "test:databases:acceptance:full": "node scripts/databases/test-acceptance.mjs --full",
     "db:migrate": "npm run db:migrate --workspace @zilobase/server",
+    "deps:check": "node scripts/check-dep-alignment.mjs --check-all",
     "db:studio": "node scripts/dev/cli.mjs studio",
     "selfhost:up": "node scripts/selfhost/manage.mjs up",
     "selfhost:logs": "node scripts/selfhost/manage.mjs logs",
@@ -68,7 +70,7 @@
     "test:selfhost": "node scripts/selfhost/manage.mjs test",
     "test:selfhost:upgrade": "node scripts/selfhost/test-upgrade.mjs",
     "test:dev-workflow": "node --test scripts/dev/dev-workflow.test.mjs",
-    "test:tooling": "node --test scripts/dev/dev-workflow.test.mjs scripts/selfhost/cookie-jar.test.mjs scripts/release/set-version.test.mjs scripts/git/pre-push.test.mjs",
+    "test:tooling": "node --test scripts/dev/dev-workflow.test.mjs scripts/selfhost/cookie-jar.test.mjs scripts/release/set-version.test.mjs scripts/git/pre-push.test.mjs scripts/check-dep-alignment.test.mjs",
     "test:k8s:community": "node scripts/dev/cli.mjs k8s-smoke --target community",
     "test:mail:deployment": "node --test scripts/mail/gmail-deployment-config.test.mjs && node scripts/mail/check-documentation.mjs",
     "test:community-boundary": "node --test scripts/community-boundary.test.mjs && node scripts/check-community-boundary.mjs",
@@ -76,7 +78,7 @@
     "env": "dotenvx",
     "release": "npm run tokens:check && npm run test:community-boundary && node scripts/release/release.mjs",
     "version:set": "node scripts/release/set-version.mjs",
-    "test:architecture": "node --test scripts/refactor/check-architecture.test.mjs && node scripts/refactor/check-architecture.mjs",
+    "test:architecture": "node --test scripts/refactor/check-architecture.test.mjs scripts/refactor/check-runtime-ports.test.mjs && node scripts/refactor/check-architecture.mjs && node scripts/refactor/check-runtime-ports.mjs",
     "test:mail:integration": "node scripts/mail/test-integration.mjs",
     "test:mail:browser": "playwright test --config scripts/mail/e2e/playwright.config.mjs",
     "test:calendar:integration": "node scripts/calendar/test-integration.mjs",
@@ -97,5 +99,8 @@
     "typescript": "6.0.3",
     "webdriverio": "^9.30.1",
     "ws": "^8.21.0"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }
