@@ -156,7 +156,10 @@ test("allowed origins include configured clients and local Expo development", ()
   assert.equal(isAllowedClientOrigin(env, "https://app.example.com"), true);
   assert.equal(isAllowedClientOrigin(env, "tauri://localhost"), true);
   assert.equal(isAllowedClientOrigin(env, "http://tauri.localhost"), true);
+  assert.equal(isAllowedClientOrigin(env, "zilo-desktop://app"), true);
   assert.equal(isAllowedClientOrigin(env, "tauri://attacker"), false);
+  assert.equal(isAllowedClientOrigin(env, "zilo-desktop://attacker"), false);
+  assert.equal(isAllowedClientOrigin(env, "zilo-desktop://app.attacker"), false);
   assert.equal(isAllowedClientOrigin(env, "not a URL"), false);
   assert.equal(isAllowedClientOrigin(env, "exp://localhost:8081"), true);
   assert.equal(isAllowedClientOrigin(env, "exps://192.168.1.3"), true);
@@ -192,6 +195,7 @@ test("trusted origins add development clients only for local requests", () => {
     "https://app.example.com",
     "tauri://localhost",
     "http://tauri.localhost",
+    "zilo-desktop://app",
     "mobile://",
     "mobile://*",
   ]);

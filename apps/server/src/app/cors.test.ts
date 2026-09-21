@@ -36,13 +36,20 @@ test("production CORS allows configured origins and rejects others", async () =>
     /set-auth-token/i,
   );
   assert.equal(rejected.headers.has("access-control-allow-origin"), false);
+
+  const electronLookalike = await app.request(
+    "https://api.example.com/",
+    { headers: { origin: "zilo-desktop://app.attacker" } },
+    env,
+  );
+  assert.equal(electronLookalike.headers.has("access-control-allow-origin"), false);
 });
 
 test("production CORS allows only the exact desktop webview origins", async () => {
   const app = corsApp();
   const env = { CLIENT_URL: "https://app.example.com" };
 
-  for (const origin of ["tauri://localhost", "http://tauri.localhost"]) {
+  for (const origin of ["tauri://localhost", "http://tauri.localhost", "zilo-desktop://app"]) {
     const response = await app.request(
       "https://api.example.com/",
       { headers: { origin } },
