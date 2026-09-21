@@ -37,9 +37,13 @@ await run("npx", [
   "src/features/databases/database-read-routes.test.ts",
   "src/features/databases/history/service.test.ts",
   "src/features/databases/realtime/outbox.test.ts",
-  "src/app/node/database-realtime-runtime.test.ts",
-  "src/app/node/node-runtime.test.ts",
 ], { cwd: path.join(repositoryRoot, "apps", "server") })
+await run("npx", [
+  "vitest",
+  "run",
+  "src/node/features/database-realtime/database-realtime-runtime.test.ts",
+  "src/node/node-runtime.test.ts",
+], { cwd: path.join(repositoryRoot, "packages", "runtime-adapter") })
 await run("npm", ["test", "--workspace", "@zilobase/web"], {
   env: {
     ...process.env,

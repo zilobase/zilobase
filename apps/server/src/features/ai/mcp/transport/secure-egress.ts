@@ -1,6 +1,6 @@
 import type { FetchLike } from "@modelcontextprotocol/client";
 
-import { fetchMcpRequest } from "../../../../infrastructure/runtime/runtime-adapter";
+import { fetchMcpRequest } from "@zilobase/runtime-adapter/capabilities";
 import { isBlockedAddress } from "../../../automations/actions/webhook-egress";
 import { MCP_LIMITS } from "../connections/config";
 

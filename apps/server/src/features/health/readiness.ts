@@ -6,8 +6,7 @@ import { db } from "../../infrastructure/database";
 import { Db } from "../../infrastructure/database/db";
 import { appMemoMap, createAppRuntime } from "../../infrastructure/effect";
 import { ObjectStorage } from "../../infrastructure/storage/object-storage";
-import { isRealtimeReady } from "../../infrastructure/realtime/readiness";
-import { isBackgroundCoordinatorReady } from "../../infrastructure/background/health";
+import { requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
 
 export type ReadinessResult = {
   checks: {
@@ -70,12 +69,15 @@ export const evaluateReadiness = Effect.fn("evaluateReadiness")(
       ],
       { concurrency: "unbounded" },
     );
+    const readiness = requireRuntimePort("readiness");
     const checks: ReadinessResult["checks"] = {
       database,
       objectStorage,
-      realtime: isRealtimeReady(env) ? "ok" : "unavailable",
+      realtime: readiness.realtime() ? "ok" : "unavailable",
     };
-    if (!isBackgroundCoordinatorReady()) checks.background = "unavailable";
+    if (readiness.background().coordinatorReady === false) {
+      checks.background = "unavailable";
+    }
 
     return {
       checks,

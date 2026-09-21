@@ -3,7 +3,7 @@ import type { NavigationRealtimeInvalidateEvent } from "@zilobase/features/pages
 
 import { db } from "../../../infrastructure/database"
 import { navigationRealtimeOutbox } from "../../../infrastructure/database/schema"
-import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter"
+import { requireRuntimePort } from "@zilobase/runtime-adapter/capabilities"
 import type { RuntimeEnv } from "../../../shared/config/config"
 import { createBackgroundTask } from "../../../infrastructure/background/contracts"
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch"
@@ -30,8 +30,7 @@ export async function publishNavigationInvalidation(
   env: RuntimeEnv,
   executor = db,
 ) {
-  const publish = getRuntimePorts().fanout
-  if (!publish) return false
+  const publish = requireRuntimePort("fanout")
   try {
     await publish.publish(`navigation:${event.workspaceId}`, event)
     await executor.delete(navigationRealtimeOutbox)
@@ -59,8 +58,7 @@ export async function drainNavigationRealtimeOutbox(
   options?: { database?: typeof db; limit?: number; outboxId?: string },
 ) {
   const executor = options?.database ?? db
-  const publish = getRuntimePorts().fanout
-  if (!publish) return emptyHealth()
+  const publish = requireRuntimePort("fanout")
   const attemptedAt = new Date()
   const entries = await executor.transaction(async (tx) => {
     const ready = await tx.select().from(navigationRealtimeOutbox)

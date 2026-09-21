@@ -15,6 +15,8 @@ import {
   type CollaborationDocumentPersistence,
 } from "@zilobase/server/adapter-api";
 import type { WorkerEnvBindings } from "../../bindings";
+import { runWithRuntimePorts } from "../../../context";
+import { createWorkerRuntimePorts } from "../../runtime-ports";
 import {
   selectCollaborationWebSocketProtocol,
   validateCollaborationMessage,
@@ -54,6 +56,11 @@ type PendingConnection = {
   resolve(): void;
 };
 
+type PendingMessage = {
+  promise: Promise<void>;
+  resolve(): void;
+};
+
 const AUTH_MESSAGE_TYPE_TOKEN = 0;
 const AUTH_TIMEOUT_MS = 15_000;
 const UNAUTHENTICATED_TIMEOUT_MS = 60_000;
@@ -62,8 +69,10 @@ const TOKEN_REFRESH_GRACE_MS = 30_000;
 
 export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   protected readonly hocuspocus;
+  private readonly runtimePorts;
   private readonly connections = new Map<WebSocket, LiveConnection>();
   private readonly pendingConnections = new Map<string, PendingConnection>();
+  private readonly pendingMessages = new Map<string, PendingMessage[]>();
   private awarenessRestored = false;
 
   constructor(
@@ -72,6 +81,10 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     persistence?: CollaborationDocumentPersistence,
   ) {
     super(ctx, env);
+    this.runtimePorts = createWorkerRuntimePorts(env, {
+      execution: ctx,
+      storage: ctx.storage,
+    });
     this.hocuspocus = createCollaborationHocuspocus(env, persistence);
     this.hocuspocus.configuration.extensions.push({
       connected: async ({ context }) => {
@@ -82,6 +95,18 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
           this.pendingConnections.get(connectionId)?.resolve();
         }
       },
+      afterHandleMessage: async ({ context }) => {
+        const connectionId = (context as HibernationContext)
+          .hibernationConnectionId;
+        const pending = connectionId
+          ? this.pendingMessages.get(connectionId)?.shift()
+          : undefined;
+
+        pending?.resolve();
+        if (connectionId && this.pendingMessages.get(connectionId)?.length === 0) {
+          this.pendingMessages.delete(connectionId);
+        }
+      },
     } satisfies Extension<CollaborationContext>);
   }
 
@@ -90,6 +115,10 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   }
 
   async fetch(request: Request) {
+    return this.runWithRoomRuntime(() => this.handleFetch(request));
+  }
+
+  private async handleFetch(request: Request) {
     const startedAt = performance.now();
     const validation = validateCollaborationUpgradeRequest(
       request,
@@ -127,6 +156,14 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   }
 
   async webSocketMessage(ws: WebSocket, rawMessage: string | ArrayBuffer) {
+    return this.runWithRoomRuntime(() =>
+      this.handleWebSocketMessage(ws, rawMessage));
+  }
+
+  private async handleWebSocketMessage(
+    ws: WebSocket,
+    rawMessage: string | ArrayBuffer,
+  ) {
     const validation = validateCollaborationMessage(rawMessage);
 
     if (!validation.ok) {
@@ -169,7 +206,10 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
 
     if (metadata?.type === MessageType.Auth && hadLiveConnection) {
       this.pendingConnections.get(attachment.connectionId)?.armTimeout();
-      this.connections.get(ws)?.client.handleMessage(message);
+      const connection = this.connections.get(ws);
+      if (connection) {
+        await this.handleLiveMessage(connection, attachment, message);
+      }
     }
 
     const restoreStartedAt = performance.now();
@@ -185,11 +225,24 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     }
 
     if (metadata?.type !== MessageType.Auth) {
-      this.connections.get(ws)?.client.handleMessage(message);
+      const connection = this.connections.get(ws);
+      if (connection) {
+        await this.handleLiveMessage(connection, attachment, message);
+      }
     }
   }
 
   async webSocketClose(
+    ws: WebSocket,
+    code: number,
+    reason: string,
+    wasClean: boolean,
+  ) {
+    return this.runWithRoomRuntime(() =>
+      this.handleWebSocketClose(ws, code, reason, wasClean));
+  }
+
+  private async handleWebSocketClose(
     ws: WebSocket,
     code: number,
     reason: string,
@@ -210,23 +263,32 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
       }));
     }
 
-    this.closeConnection(ws, code, reason);
+    await this.closeConnection(ws, code, reason);
     await this.scheduleMaintenance();
   }
 
   async webSocketError(ws: WebSocket, error: unknown) {
+    return this.runWithRoomRuntime(() =>
+      this.handleWebSocketError(ws, error));
+  }
+
+  private async handleWebSocketError(ws: WebSocket, error: unknown) {
     const attachment = readAttachment(ws);
     console.error(JSON.stringify({
       documentName: attachment?.documentName,
       error: error instanceof Error ? error.message : String(error),
       event: "collaboration_websocket_error",
     }));
-    this.closeConnection(ws, 1011, "Collaboration WebSocket error");
+    await this.closeConnection(ws, 1011, "Collaboration WebSocket error");
     ws.close(1011, "Collaboration WebSocket error");
     await this.scheduleMaintenance();
   }
 
   async alarm() {
+    return this.runWithRoomRuntime(() => this.handleAlarm());
+  }
+
+  private async handleAlarm() {
     const now = Date.now();
 
     for (const ws of this.ctx.getWebSockets()) {
@@ -250,7 +312,7 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
         if (
           attachment.tokenRefreshRequestedAt + TOKEN_REFRESH_GRACE_MS <= now
         ) {
-          this.closeConnection(
+          await this.closeConnection(
             ws,
             1008,
             "Collaboration authentication refresh timed out",
@@ -284,6 +346,15 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     pageId: string,
     userId: string,
   ) {
+    return this.runWithRoomRuntime(() =>
+      this.handleReplacePageContent(content, pageId, userId));
+  }
+
+  private async handleReplacePageContent(
+    content: unknown,
+    pageId: string,
+    userId: string,
+  ) {
     await this.restoreConnections();
     await replacePageContentInHocuspocus(this.hocuspocus, {
       content,
@@ -293,8 +364,18 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   }
 
   async appendPageComment(input: Parameters<typeof appendPageCommentInHocuspocus>[1]) {
+    return this.runWithRoomRuntime(() => this.handleAppendPageComment(input));
+  }
+
+  private async handleAppendPageComment(
+    input: Parameters<typeof appendPageCommentInHocuspocus>[1],
+  ) {
     await this.restoreConnections();
     return appendPageCommentInHocuspocus(this.hocuspocus, input);
+  }
+
+  protected runWithRoomRuntime<T>(run: () => T): T {
+    return runWithRuntimePorts(this.runtimePorts, run);
   }
 
   private createConnection(
@@ -365,6 +446,43 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     return this.connections.get(ws) ?? this.createConnection(ws, attachment);
   }
 
+  private handleLiveMessage(
+    connection: LiveConnection,
+    attachment: SocketAttachment,
+    message: Uint8Array,
+  ) {
+    let resolve!: () => void;
+    let reject!: (reason: unknown) => void;
+    const promise = new Promise<void>((complete, fail) => {
+      resolve = complete;
+      reject = fail;
+    });
+    const timeout = setTimeout(
+      () => reject(new Error("Collaboration message processing timed out")),
+      AUTH_TIMEOUT_MS,
+    );
+    const pending = {
+      promise,
+      resolve: () => {
+        clearTimeout(timeout);
+        resolve();
+      },
+    };
+    const queue = this.pendingMessages.get(attachment.connectionId) ?? [];
+    queue.push(pending);
+    this.pendingMessages.set(attachment.connectionId, queue);
+    connection.client.handleMessage(message);
+    return promise.finally(() => {
+      clearTimeout(timeout);
+      const current = this.pendingMessages.get(attachment.connectionId);
+      const index = current?.indexOf(pending) ?? -1;
+      if (current && index >= 0) current.splice(index, 1);
+      if (current?.length === 0) {
+        this.pendingMessages.delete(attachment.connectionId);
+      }
+    });
+  }
+
   protected async restoreConnections(skipAwarenessFor?: WebSocket) {
     const ready: Promise<void>[] = [];
 
@@ -392,15 +510,47 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     }
   }
 
-  private closeConnection(ws: WebSocket, code: number, reason: string) {
+  private async closeConnection(ws: WebSocket, code: number, reason: string) {
     const attachment = readAttachment(ws);
-    this.connections.get(ws)?.client.handleClose({ code, reason });
-    this.connections.delete(ws);
+    const connection = this.connections.get(ws);
 
-    if (attachment) {
-      this.pendingConnections
-        .get(attachment.connectionId)
-        ?.reject(new Error(reason || "Collaboration connection closed"));
+    try {
+      if (connection) {
+        // ClientConnection processes frames asynchronously. A browser reload can
+        // deliver the close event while its final Yjs update is still queued, so
+        // drain that queue and synchronously run the pending document store before
+        // releasing the Hocuspocus connection. Durable Objects may hibernate as
+        // soon as this event completes; an in-memory debounce is not a durability
+        // boundary.
+        const pending = attachment
+          ? this.pendingMessages.get(attachment.connectionId) ?? []
+          : [];
+        await Promise.all(pending.map((message) => message.promise));
+        const document = attachment
+          ? this.hocuspocus.documents.get(attachment.documentName)
+          : undefined;
+
+        if (document) {
+          await this.hocuspocus.storeDocumentHooks(document, {
+            clientsCount: document.getConnectionsCount(),
+            document,
+            documentName: document.name,
+            instance: this.hocuspocus,
+            lastContext: {},
+            lastTransactionOrigin: null,
+          }, true);
+        }
+      }
+    } finally {
+      connection?.client.handleClose({ code, reason });
+      this.connections.delete(ws);
+
+      if (attachment) {
+        this.pendingMessages.delete(attachment.connectionId);
+        this.pendingConnections
+          .get(attachment.connectionId)
+          ?.reject(new Error(reason || "Collaboration connection closed"));
+      }
     }
   }
 

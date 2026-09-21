@@ -7,7 +7,7 @@ import {
   databaseMutationEvent,
   databaseRealtimeOutbox,
 } from "../../../infrastructure/database/schema";
-import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
+import { requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
 import { databaseMutationEventFromJournalRow } from "./journal-event";
 
 const DELIVERY_LEASE_MS = 2 * 60 * 1000;
@@ -18,20 +18,7 @@ export async function drainDatabaseRealtimeOutbox(
   options?: { database?: typeof db; limit?: number; outboxId?: string },
 ) {
   const executor = options?.database ?? db;
-  const fanout = getRuntimePorts().fanout;
-
-  if (!fanout) {
-    recordDatabaseGauge("outbox_backlog", 0);
-    recordDatabaseGauge("outbox_oldest_age_ms", 0);
-    return {
-      backlog: 0,
-      delivered: 0,
-      discarded: 0,
-      failed: 0,
-      maxAttempts: 0,
-      oldestAgeMs: 0,
-    };
-  }
+  const fanout = requireRuntimePort("fanout");
 
   const attemptedAt = new Date();
   const entries = await executor.transaction(async (tx) => {

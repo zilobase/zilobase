@@ -64,6 +64,7 @@ test("the Node profile disables demo seeding", () => {
     POSTGRES_HOST_PORT: "15432",
     POSTGRES_PASSWORD: "postgres-password",
     POSTGRES_USER: "postgres-user",
+    VALKEY_HOST_PORT: "16379",
   };
 
   assert.equal(
@@ -73,6 +74,10 @@ test("the Node profile disables demo seeding", () => {
   assert.equal(
     profileEnvironment(localProfiles.node, dependencies).MEETING_BLOCK_ENABLED,
     "true",
+  );
+  assert.equal(
+    profileEnvironment(localProfiles.node, dependencies).REALTIME_REDIS_URL,
+    "redis://127.0.0.1:16379",
   );
 });
 

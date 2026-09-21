@@ -36,12 +36,17 @@ The Node profile uses these defaults:
 | PostgreSQL | `127.0.0.1:15432` |
 | Object storage | `http://127.0.0.1:19100` |
 | Mailpit | `http://127.0.0.1:18025` |
+| Valkey | `redis://127.0.0.1:16379` |
 | Development hub | `http://127.0.0.1:1418` |
 
 The supervisor prefixes child-process output and shuts down the remaining
 processes if a required child exits. Press Ctrl-C once for an orderly shutdown.
 `npm run dev:down` stops local processes and dependency containers while
 preserving data.
+
+Valkey is started and configured automatically. The generated Node environment
+sets `REALTIME_REDIS_URL`; no separate Redis command or manual `.env` edit is
+needed for `npm run dev`.
 
 The development hub shows runtime health, ports, supporting services, setup
 tokens, and generated local credentials. It binds only to `127.0.0.1`; do not

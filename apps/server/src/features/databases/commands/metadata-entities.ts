@@ -30,6 +30,7 @@ export async function getDatabaseHostEntity(context: EntityReadContext, database
     accessLevel: null,
     config: host.config ?? null,
     createdAt: timestamp(host.createdAt),
+    deletedAt: host.deletedAt ? timestamp(host.deletedAt) : null,
     id: host.id,
     name: host.name,
     pageId: host.pageId,

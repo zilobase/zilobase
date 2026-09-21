@@ -16,9 +16,9 @@ const PONG = JSON.stringify({ type: "realtime.pong" });
 export function attachNodeNavigationRealtimeRuntime(
   server: HttpServer,
   env: RuntimeEnv,
-  options: { realtimeBus?: NodeRealtimeBus | null } = {},
+  options: { realtimeBus: NodeRealtimeBus },
 ) {
-  const runtime = attachNodeNotificationRuntime<NavigationRealtimeTicketClaims, NavigationRealtimeInvalidateEvent>(server, options.realtimeBus ?? null, {
+  const runtime = attachNodeNotificationRuntime<NavigationRealtimeTicketClaims, NavigationRealtimeInvalidateEvent>(server, options.realtimeBus, {
     async authenticate(request) {
       const workspaceId = new URL(request.url).searchParams.get("workspace");
       const token = readTicket(request.headers);

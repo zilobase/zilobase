@@ -4,7 +4,7 @@
 
 The processor maps task kinds to automation, agent, AI-job, mail, Calendar, realtime and notification operations. The [Calendar handler](../../apps/server/src/features/calendar/background.ts) accepts event and calendar-list work through the existing `calendar.sync` task kind and drains completed revision notifications before returning. Durable dirty markers retain recovery when webhook dispatch fails. It records queue/execution telemetry and converts pending outbox state into completed or retry outcomes. Node coordination supplies dispatch and maintenance.
 
-Start at the [entrypoint](../../apps/server/src/app/background/processor.ts); follow the [implementation](../../apps/server/src/infrastructure/background/contracts.ts) and [related modules](../../apps/server/src/app/node/background-coordinator.ts).
+Start at the [entrypoint](../../apps/server/src/app/background/processor.ts); follow the [implementation](../../apps/server/src/infrastructure/background/contracts.ts) and the [Node coordinator](../../packages/runtime-adapter/src/node/background-coordinator.ts).
 
 ## Invariants and failure handling
 
@@ -26,8 +26,8 @@ See [tests or test configuration](../../apps/server/src/infrastructure/backgroun
 
 The processor delegates mail indexing/sync, database realtime, navigation realtime and notification tasks to each feature's background module. Those modules own the post-drain persistence checks and retry deadlines. [Task result handling](../../apps/server/src/infrastructure/background/task-result.ts) shares the identical completed/retry interpretation of an outbox row; it does not claim work or change leases. [Processor tests](../../apps/server/src/app/background/processor.test.ts) exercise the dispatch interface before and after the move. Node websocket attachment remains separate for each protocol.
 
-A single-process Node `all` runtime may dispatch database events in process.
-Split Node roles and multiple API replicas publish through Redis/Valkey. The
-managed Cloud runtime schedules a Queue consumer, whose background Worker alone
-publishes through the per-database Durable Object. See the
+A Node background handler publishes locally and through the required
+Redis/Valkey bus in every process topology, including the single-process `all`
+role. The managed Cloud runtime schedules a Queue consumer, whose background
+Worker alone publishes through the per-database Durable Object. See the
 [database operations guide](../../docs/databases/operations.md).

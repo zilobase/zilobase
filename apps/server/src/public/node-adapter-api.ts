@@ -1,13 +1,11 @@
 export * from "./adapter-api";
 export {
   assertMigrationSets,
+  createNodeRuntime,
   runMigrationSets,
   type MigrationSet,
-} from "../infrastructure/node/migrations";
-export {
-  createNodeRuntime,
   type NodeRuntimeOptions,
-} from "../app/node/node-runtime";
+} from "@zilobase/runtime-adapter/node";
 
 // Node-seam values consumed by `@zilobase/runtime-adapter/node`.
 // The adapter package imports these (and only these) server surfaces;
@@ -19,8 +17,6 @@ export {
 } from "../features/collaboration/service";
 export { assertSelfHostedProductionConfiguration } from "../features/instance/registration";
 export { getAppEditionExtension } from "../shared/edition-extension-registry";
-export { setRealtimeReadinessProbe } from "../infrastructure/realtime/readiness";
-export { setBackgroundReadinessProbe } from "../infrastructure/background/health";
 export { renderPrometheusBackgroundMetrics } from "../infrastructure/background/telemetry";
 export { renderPrometheusDatabaseMetrics } from "../features/databases/observability";
 export { boundedErrorCode } from "../infrastructure/background/dispatch";
@@ -74,7 +70,7 @@ export { getStringEnv } from "../shared/config/config";
 // at `apps/server/drizzle`, so it lives here (not in the adapter package).
 // The adapter consumes it through `NodeRuntimeOptions.migrationSets`.
 import { fileURLToPath } from "node:url";
-import type { MigrationSet } from "../infrastructure/node/migrations";
+import type { MigrationSet } from "@zilobase/runtime-adapter/node";
 
 export const CORE_MIGRATION_SET: MigrationSet = {
   id: "core",

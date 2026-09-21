@@ -146,9 +146,9 @@ environment and no Node-to-Cloudflare event bridge is introduced.
   background Worker reads the journal-backed outbox and invokes the per-database
   Durable Object, which broadcasts to clients.
 - Self-hosted: the API commits and schedules background work. A worker publishes
-  through Redis to Node websocket rooms. A single-process `all` role may use an
-  in-memory bus; split `api`/`worker` roles and multiple API replicas require
-  Redis and fail realtime readiness when it is absent.
+  through Redis to Node websocket rooms. Every Node role uses this bus,
+  including a single-process `all` deployment; unavailable command or
+  subscriber clients fail realtime readiness while reconnecting.
 
 HTTP requests never await Redis publication, Durable Object calls or websocket
 broadcast. Failed scheduling leaves the outbox entry available for recovery.

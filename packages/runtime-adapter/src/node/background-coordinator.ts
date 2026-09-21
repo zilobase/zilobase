@@ -1,5 +1,6 @@
 import { advancePendingCalendars } from "@zilobase/server/node-adapter-api";
 import { eq, inArray, min, sql } from "drizzle-orm";
+import type { Ports } from "@zilobase/runtime-ports";
 
 import { AI_JOB_HANDLERS } from "@zilobase/server/node-adapter-api";
 import { runAiJobBatch } from "@zilobase/server/node-adapter-api";
@@ -23,7 +24,7 @@ import {
   mailDatabaseSyncOutbox,
   navigationRealtimeOutbox,
 } from "@zilobase/server/node-adapter-api";
-import { getDatabaseUrl } from "../capabilities";
+import { runWithRuntimePorts } from "../capabilities";
 import { runDueBackgroundMaintenance } from "@zilobase/server/node-adapter-api";
 import { backgroundTaskLane, type BackgroundLane, type BackgroundTaskV1 } from "@zilobase/server/node-adapter-api";
 import { boundedErrorCode } from "@zilobase/server/node-adapter-api";
@@ -33,7 +34,10 @@ const LANES: BackgroundLane[] = ["fast", "automation", "ai", "mail"];
 
 export type NodeBackgroundCoordinator = ReturnType<typeof createNodeBackgroundCoordinator>;
 
-export function createNodeBackgroundCoordinator(env: RuntimeEnv) {
+export function createNodeBackgroundCoordinator(
+  env: RuntimeEnv,
+  ports: Partial<Ports>,
+) {
   const workerId = `node-background:${process.pid}:${crypto.randomUUID()}`;
   const timers = new Map<BackgroundLane, ReturnType<typeof setTimeout>>();
   const timerDueAt = new Map<BackgroundLane, number>();
@@ -73,59 +77,63 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv) {
 
   const drainLane = async (lane: BackgroundLane) => {
     if (stopping) return;
-    try {
-      await runWithDbEnv(env, async () => {
-        const concurrency = laneConcurrency(env, lane);
-        if (lane === "fast") {
-          await settleLaneOperations(lane, [
-            { name: "database_automation_events", run: () => drainDatabaseAutomationEventWindows(env, { limit: concurrency * 4, workerId: `${workerId}:events` }) },
-            { name: "database_realtime", run: () => drainDatabaseRealtimeOutbox(env, { limit: concurrency * 8 }) },
-            { name: "navigation_realtime", run: () => drainNavigationRealtimeOutbox(env, { limit: concurrency * 8 }) },
-            { name: "in_product_notifications", run: () => drainInProductNotificationOutbox(env, { limit: concurrency * 8 }) },
-          ]);
-        } else if (lane === "automation") {
-          await settleLaneOperations(lane, [
-            { name: "database_automations", run: () => drainDatabaseAutomationRuns(env, { limit: concurrency, workerId: `${workerId}:automation` }) },
-            { name: "agent_runs", run: () => drainAgentRuns(env, { limit: concurrency, workerId: `${workerId}:agent` }) },
-          ]);
-        } else if (lane === "ai") {
-          await runAiJobBatch({ env, handlers: AI_JOB_HANDLERS, limit: concurrency, workerId: `${workerId}:ai` });
-        } else {
-          await settleLaneOperations(lane, [
-            { name: "calendar_sync", run: () => advancePendingCalendars(env) },
-            { name: "mail_index", run: () => advancePendingMailIndexes(env, concurrency) },
-            { name: "mail_database_sync", run: () => drainMailDatabaseSyncOutbox(env, { limit: concurrency, workerId: `${workerId}:mail` }) },
-          ]);
-        }
-        const next = await nextLaneDueAt(lane);
-        if (next) scheduleLane(lane, new Date(Math.max(next.getTime(), Date.now() + 250)));
-      });
-    } catch (error) {
-      console.warn(JSON.stringify({
-        code: boundedErrorCode(error),
-        event: "background.node_lane",
-        lane,
-        outcome: "failed",
-      }));
-      scheduleLane(lane, new Date(Date.now() + 5_000));
-    }
+    return runWithRuntimePorts(ports, async () => {
+      try {
+        await runWithDbEnv(env, async () => {
+          const concurrency = laneConcurrency(env, lane);
+          if (lane === "fast") {
+            await settleLaneOperations(lane, [
+              { name: "database_automation_events", run: () => drainDatabaseAutomationEventWindows(env, { limit: concurrency * 4, workerId: `${workerId}:events` }) },
+              { name: "database_realtime", run: () => drainDatabaseRealtimeOutbox(env, { limit: concurrency * 8 }) },
+              { name: "navigation_realtime", run: () => drainNavigationRealtimeOutbox(env, { limit: concurrency * 8 }) },
+              { name: "in_product_notifications", run: () => drainInProductNotificationOutbox(env, { limit: concurrency * 8 }) },
+            ]);
+          } else if (lane === "automation") {
+            await settleLaneOperations(lane, [
+              { name: "database_automations", run: () => drainDatabaseAutomationRuns(env, { limit: concurrency, workerId: `${workerId}:automation` }) },
+              { name: "agent_runs", run: () => drainAgentRuns(env, { limit: concurrency, workerId: `${workerId}:agent` }) },
+            ]);
+          } else if (lane === "ai") {
+            await runAiJobBatch({ env, handlers: AI_JOB_HANDLERS, limit: concurrency, workerId: `${workerId}:ai` });
+          } else {
+            await settleLaneOperations(lane, [
+              { name: "calendar_sync", run: () => advancePendingCalendars(env) },
+              { name: "mail_index", run: () => advancePendingMailIndexes(env, concurrency) },
+              { name: "mail_database_sync", run: () => drainMailDatabaseSyncOutbox(env, { limit: concurrency, workerId: `${workerId}:mail` }) },
+            ]);
+          }
+          const next = await nextLaneDueAt(lane);
+          if (next) scheduleLane(lane, new Date(Math.max(next.getTime(), Date.now() + 250)));
+        });
+      } catch (error) {
+        console.warn(JSON.stringify({
+          code: boundedErrorCode(error),
+          event: "background.node_lane",
+          lane,
+          outcome: "failed",
+        }));
+        scheduleLane(lane, new Date(Date.now() + 5_000));
+      }
+    });
   };
 
   const reconcile = async () => {
     if (stopping) return;
-    try {
-      await Promise.allSettled(LANES.map((lane) => drainLane(lane)));
-      await runWithDbEnv(env, () => runDueBackgroundMaintenance({ env, workerId }));
-      await recalculateLaneTimers();
-    } catch (error) {
-      // A database outage must not terminate startup or a timer callback.
-      // The recovery sweep retries maintenance and recalculates lane timers.
-      console.warn(JSON.stringify({
-        code: boundedErrorCode(error),
-        event: "background.node_reconcile",
-        outcome: "failed",
-      }));
-    }
+    return runWithRuntimePorts(ports, async () => {
+      try {
+        await Promise.allSettled(LANES.map((lane) => drainLane(lane)));
+        await runWithDbEnv(env, () => runDueBackgroundMaintenance({ env, workerId }));
+        await recalculateLaneTimers();
+      } catch (error) {
+        // A database outage must not terminate startup or a timer callback.
+        // The recovery sweep retries maintenance and recalculates lane timers.
+        console.warn(JSON.stringify({
+          code: boundedErrorCode(error),
+          event: "background.node_reconcile",
+          outcome: "failed",
+        }));
+      }
+    });
   };
 
   const recalculateLaneTimers = () => runWithDbEnv(env, async () => {
@@ -146,8 +154,8 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv) {
 
   const connectListener = async () => {
     if (stopping) return;
-    const databaseUrl = getDatabaseUrl(env);
-    if (!databaseUrl) throw new Error("DATABASE_URL is required");
+    if (!ports.env) throw new Error("Runtime env port is required");
+    const databaseUrl = ports.env.require("DATABASE_URL");
     const next = createDbClientForUrl(databaseUrl);
     try {
       await next.client.connect();

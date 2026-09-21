@@ -44,15 +44,33 @@ sides (`realtime-bus`, `room-host`, `room-state`, `notification-runtime`,
 
 `node/*` never imports `worker/*` and vice versa; the root entrypoint imports neither side. `dispatcher.ts` loads one side through dynamic `import()` only. The adapter consumes `@zilobase/server` surfaces (`adapter-api`, `node-adapter-api`) and never reaches into server source relatively; `community-boundary` tests enforce the split. `resolveRuntimeKind` selects `"worker"` only for explicit `ZILOBASE_RUNTIME_KIND=worker` and otherwise defaults to `"node"`; bindings are never used as runtime detection.
 
-`createNodeRuntime` takes `loadApp` plus hook overrides (edition extension, production-config assert, realtime bus, collaboration extensions, pinned webhook/MCP transports, background coordinator) with community defaults; `apps/server` passes Zilobase wiring through hooks in [serverful.ts](../../apps/server/src/entrypoints/serverful.ts). `createWorker`/`createBackgroundWorker` compose Worker providers directly and take product seams (edition extension, error/event reporters, demo guard, session-policy denial, CORS), not a generic runtime adapter. Community registration/workspace behavior and managed hosted behavior are explicit `AppPolicy` values passed to app and Worker construction; runtime kind no longer selects product policy.
+`createNodeRuntime` takes `loadApp` plus hook overrides (edition extension,
+production-config assert, a non-nullable realtime bus, collaboration extensions,
+pinned webhook/MCP transports, background coordinator) with community defaults;
+`apps/server` passes Zilobase wiring through hooks in
+[serverful.ts](../../apps/server/src/entrypoints/serverful.ts). The default bus
+factory validates `REALTIME_REDIS_URL` for every Node role before startup and
+the same bus instance supplies fanout, notification subscriptions, distributed
+limits, and readiness. `createWorker`/`createBackgroundWorker` compose Worker
+providers directly and take product seams (edition extension, error/event
+reporters, demo guard, session-policy denial, CORS), not a generic runtime
+adapter. Community registration/workspace behavior and managed hosted behavior
+are explicit `AppPolicy` values passed to app and Worker construction; runtime
+kind no longer selects product policy.
 
 Community Cloudflare deployment uses the [worker templates](../../packages/runtime-adapter/deploy/worker/README.md); see the [Cloudflare self-host runbook](../../docs/runbooks/cloudflare-selfhost.md). The breaking reset replaces unused Durable Object history with one `runtime-ports-v1` fresh-install baseline; `template-parity` tests pin templates to the hosted composition.
 
 ## Invariants and failure handling
 
-Runtime ports are installed through `runWithRuntimePorts` for concurrent
-requests and `setRuntimePorts` for process composition. `ServerRuntimeAdapter`,
-its ambient context, and Worker adapter factories have been removed.
+Runtime ports are installed through `runWithRuntimePorts` around the complete
+Worker request dispatcher and every Node request or background invocation.
+That Worker scope includes ordinary Hono requests, agent dispatch, and all
+WebSocket upgrade authentication before routing to Durable Objects.
+Collaboration Durable Objects install the same Worker port set around each
+socket, alarm, and RPC event because those events execute as separate Worker
+invocations. Lookup outside an explicit async scope fails; there is no
+process-global port object. `ServerRuntimeAdapter`, its ambient context, and
+Worker adapter factories have been removed.
 
 Object storage, mail delivery, webhook egress, and MCP egress now require an
 explicit runtime provider. The Node side owns S3, SMTP/console mail, and pinned
@@ -68,9 +86,9 @@ the runtime factories expose lifecycle through `Ports.lifecycle`. The app's
 port object is installed in AsyncLocalStorage for non-HTTP feature calls and in
 the Hono request variables for handlers.
 
-Realtime admission uses `Ports.limits`: Node selects Redis-backed counters for
-split deployments and a fixed-window process counter for all-in-one mode;
-Workers adapt the Rate Limit binding. Runtime factories also install
+Realtime admission uses `Ports.limits`: every Node role uses Redis-backed
+counters from the runtime realtime bus, while Workers adapt the Rate Limit
+binding. Runtime factories also install
 `Ports.telemetry`, so request and background error/event reporting no longer
 branches on hosted versus self-hosted execution.
 
@@ -98,7 +116,10 @@ Page content replacement is also a room command rather than an optional
 runtime-adapter callback. Features publish `page:<pageId>:replace`; Node invokes
 the resident Hocuspocus page room and Workers invoke the named page Durable
 Object. The command payload and routing are runtime-neutral, while socket
-hibernation remains a Worker host concern.
+hibernation remains a Worker host concern. The Worker host keeps message
+completion inside the WebSocket event lifetime and flushes the Hocuspocus
+document store before a closing socket is released; its debounce timer is not
+treated as a durability boundary.
 
 Meeting recorder ownership and transcript/summary document RPCs use
 `Ports.meetings`. The Worker provider targets the meeting Durable Object for
@@ -123,6 +144,12 @@ Shared [HTTP input handling](../../apps/server/src/shared/http/auth.ts) authenti
 
 `app.onError` maps database-unavailable failures to 503, [HTTP-facing domain errors](../../apps/server/src/shared/http/route-error.ts) (status 4xx/5xx, `HTTPException`, Zod issues) to their existing JSON bodies, and everything else to a generic 500. Isolated feature-route tests attach the same mapper with `attachHttpRouteErrorHandler`. The JSON body limit is 32 MiB so mail compose can carry base64 attachments; oversized bodies return 413. The pure [SHA-256 encoder](../../apps/server/src/shared/crypto/sha256.ts) is shared by provider credentials and OAuth state hashing; encryption, credentials and provider lifecycle remain feature-owned.
 
+Worker entrypoints apply the same database-unavailable classification before
+returning upgrade or application responses. PostgreSQL protocol failures,
+connection refusal/reset/timeout errors, and nested `AggregateError` members
+produce a retryable `503` instead of escaping through the local WebSocket
+loopback as an opaque Miniflare error.
+
 ## Verification
 
 See [testing and quality](../setup/testing-and-quality.md) and the adapter's [unit tests](../../packages/runtime-adapter/test) plus colocated [node tests](../../packages/runtime-adapter/src/node) and [worker tests](../../packages/runtime-adapter/test/worker). [Architecture index](../README.md).
@@ -130,9 +157,9 @@ See [testing and quality](../setup/testing-and-quality.md) and the adapter's [un
 ## Internal organization
 
 [Runtime ports](../../packages/runtime-ports/src/index.ts) contain the neutral
-contracts; [runtime context](../../packages/runtime-adapter/src/context.ts)
-owns process fallback and request-scoped selection; [capabilities](../../packages/runtime-adapter/src/capabilities.ts)
-are compatibility-named thin port lookups. Meeting and database realtime wire
+contracts, including runtime readiness; [runtime context](../../packages/runtime-adapter/src/context.ts)
+owns explicit async-scope selection; [capabilities](../../packages/runtime-adapter/src/capabilities.ts)
+are thin required-port lookups. Meeting and database realtime wire
 types live in [shared contracts](../../apps/server/src/shared/contracts), with
 compatibility type re-exports at feature entrypoints. Infrastructure no longer
 imports feature implementations or feature-owned wire declarations.

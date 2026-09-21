@@ -14,8 +14,11 @@ import {
   page,
   pageCollaborationDocument,
 } from "../../infrastructure/database/schema";
-import { getRuntimePorts } from "../../infrastructure/runtime/runtime-adapter";
-import type { MeetingTranscriptYjsSegment } from "../../infrastructure/runtime/runtime-adapter";
+import {
+  getRuntimePorts,
+  requireRuntimePort,
+} from "@zilobase/runtime-adapter/capabilities";
+import type { MeetingTranscriptYjsSegment } from "@zilobase/runtime-adapter/capabilities";
 import type { RuntimeEnv } from "../../shared/config/config";
 import {
   createCollaborationTicket,
@@ -363,8 +366,7 @@ export async function replacePageContent(input: {
   pageId: string;
   userId: string;
 }) {
-  const fanout = getRuntimePorts().fanout;
-  if (!fanout) throw new Error("Runtime FanoutBus port is required");
+  const fanout = requireRuntimePort("fanout");
   await fanout.publish(`page:${input.pageId}:replace`, {
     content: input.content,
     pageId: input.pageId,
@@ -378,8 +380,7 @@ export async function appendPageComment(input: {
   env: RuntimeEnv;
   pageId: string;
 }) {
-  const documents = getRuntimePorts().documents;
-  if (!documents) throw new Error("Runtime Documents port is required");
+  const documents = requireRuntimePort("documents");
   return documents.appendPageComment(input);
 }
 

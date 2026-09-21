@@ -1,5 +1,4 @@
-{{- if and (gt (int .Values.replicaCount) 1) (not .Values.realtime.enabled) }}{{ fail "realtime.enabled must be true when replicaCount is greater than one" }}{{ end }}
-{{- if and .Values.realtime.enabled (eq .Values.realtime.existingSecret "") }}{{ fail "realtime.existingSecret is required when realtime.enabled is true" }}{{ end }}
+{{- if eq .Values.realtime.existingSecret "" }}{{ fail "realtime.existingSecret is required for every Node deployment" }}{{ end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

@@ -12,8 +12,8 @@ environment and there is no Node-to-Cloudflare event bridge.
 
 | Deployment | Database delivery path | Broker requirement |
 | --- | --- | --- |
-| One Node process in the `all` role | PostgreSQL outbox -> in-process background coordinator -> local WebSocket rooms | Redis is optional |
-| Split Node `api` and `worker` roles, or multiple API replicas | PostgreSQL outbox -> background worker -> Redis/Valkey -> API WebSocket rooms | `REALTIME_REDIS_URL` is required; readiness fails without it |
+| One Node process in the `all` role | PostgreSQL outbox -> in-process background coordinator -> local WebSocket room + Redis/Valkey publication | `REALTIME_REDIS_URL` is required; self-published Redis envelopes are ignored by instance ID |
+| Split Node `api` and `worker` roles, or multiple API replicas | PostgreSQL outbox -> background worker -> Redis/Valkey -> API WebSocket rooms | The same `REALTIME_REDIS_URL` is required in every process; readiness fails while it is unavailable |
 | Managed Cloudflare | API Worker -> fast Queue -> background Worker -> per-database Durable Object -> WebSocket clients | The Queue and Durable Object bindings are required |
 
 The HTTP request path never publishes to Redis, calls a Durable Object, or
@@ -127,7 +127,7 @@ and logs must never contain property values.
 | --- | --- |
 | Presence works but collaborator cells remain stale | Presence and mutation delivery share a socket but have separate paths. Confirm `runtime.startup` reports `zilobase.database.v2` and the current schema target, then inspect `background.node_lane_operation` for `database_realtime` or the Cloud Queue/DO path. In local development, restart `npm run dev`; the supervised API now watches server/database-client/migration changes and migrates before listening. |
 | Commands commit but cards update late on other clients | Compare commit and enqueue latency, then inspect outbox backlog/oldest age and the background worker. Leave rows for the recovery sweep. |
-| Split Node roles are not ready | Configure one reachable `REALTIME_REDIS_URL` for every API and worker process. A single `all` process may intentionally run without Redis. |
+| A Node role is not ready | Confirm every `all`, `api`, and `worker` process has the same reachable `REALTIME_REDIS_URL`. Inspect `realtime_redis_error`; readiness should recover after the broker reconnects. |
 | Frequent `WINDOW_STALE` responses | Occasional conflicts are normal during active sorting, filtering, or writes. A sustained rate suggests a refetch loop or rapidly changing view configuration. |
 | Repeated invalidations without settling | Check socket delivery and journal cleanup. Verify retention is seven days/newest 10,000 and that no producer emits partial entities. A refetch loop or rapidly changing view configuration can also keep the version moving. |
 | `ROW_MOVE_CONFLICT` | An anchor was deleted, foreign, reversed, or changed concurrently. Reload the source ordering and retry using current visible neighbors. |

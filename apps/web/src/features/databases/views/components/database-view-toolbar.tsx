@@ -67,7 +67,7 @@ import { DatabaseViewToolbarButton } from "./database-view-toolbar-button";
 
 import {
   captureDatabaseViewScroll,
-  restoreDatabaseViewScroll,
+  restoreDatabaseViewScrollAfterLayout,
   type DatabaseViewScrollSnapshot,
 } from "../controller/database-view-scroll";
 
@@ -97,7 +97,13 @@ function ToolbarMenuRow({
   );
 }
 
-export function DatabaseViewToolbar() {
+export function DatabaseViewToolbar({
+  canRestoreDeleted = false,
+  deletedDatabaseId = null,
+}: {
+  canRestoreDeleted?: boolean;
+  deletedDatabaseId?: string | null;
+} = {}) {
   const navigate = useNavigate();
   const databaseTitleInputRef = useRef<HTMLInputElement | null>(null);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
@@ -249,8 +255,8 @@ export function DatabaseViewToolbar() {
       return;
     }
 
-    restoreDatabaseViewScroll(scrollSnapshot);
     pendingViewScrollRef.current = null;
+    return restoreDatabaseViewScrollAfterLayout(scrollSnapshot);
   }, [activeViewTabId]);
 
   useLayoutEffect(() => {
@@ -945,6 +951,8 @@ export function DatabaseViewToolbar() {
           ) : null}
         </div>
         <DatabaseToolbarActions
+          canRestoreDeleted={canRestoreDeleted}
+          deletedDatabaseId={deletedDatabaseId}
           settingsOpen={localViewSettingsOpen}
           onSettingsOpenChange={setLocalViewSettingsOpen}
           onPreviewForm={() => setFormPreviewOpen(true)}

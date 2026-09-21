@@ -3,7 +3,7 @@ import type { MailReminder } from "@zilobase/features/mail/organization";
 
 import { db } from "../../../infrastructure/database"
 import { gmailAccount, mailReminder } from "../../../infrastructure/database/schema"
-import { publishMailNotification } from "../../../infrastructure/runtime/runtime-adapter"
+import { publishMailNotification } from "@zilobase/runtime-adapter/capabilities"
 import type { RuntimeEnv } from "../../../shared/config/config"
 import type { createGmailGateway } from "../provider/gmail-gateway"
 
@@ -53,7 +53,7 @@ export async function advanceMailReminders(input: { bindingId: string; connectio
   }
   if (fired.length) {
     const [account] = await db.update(gmailAccount).set({ mailboxRevision: sql`${gmailAccount.mailboxRevision} + 1`, updatedAt: new Date() }).where(eq(gmailAccount.id, input.connectionId)).returning({ revision: gmailAccount.mailboxRevision })
-    if (account) await publishMailNotification(input.env, { bindingId: input.bindingId, connectionId: input.connectionId, revision: account.revision, userId: input.userId, workspaceId: input.workspaceId })
+    if (account) await publishMailNotification({ bindingId: input.bindingId, connectionId: input.connectionId, revision: account.revision, userId: input.userId, workspaceId: input.workspaceId })
   }
   return { fired }
 }

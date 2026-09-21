@@ -15,9 +15,7 @@ import { getDefaultCollaborationHocuspocus } from "@zilobase/server/node-adapter
 import { appendPageCommentInHocuspocus, replacePageContentInHocuspocus } from "@zilobase/server/node-adapter-api";
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
 import type { ZilobaseEditionExtension } from "@zilobase/server/node-adapter-api";
-import type { NodeRealtimeBus } from "../../realtime-bus";
 import type { Limits } from "@zilobase/runtime-ports";
-import { createNodeLimits } from "../../limits";
 
 export const NODE_COLLABORATION_MAX_PAYLOAD_BYTES = 1024 * 1024;
 const DEFAULT_CONNECTION_LIMIT = 60;
@@ -28,17 +26,16 @@ type NodeCollaborationRuntimeOptions = {
   connectionLimit?: number;
   passthroughPaths?: readonly string[];
   editionExtension?: ZilobaseEditionExtension;
-  realtimeBus?: NodeRealtimeBus | null;
-  limits?: Limits;
+  limits: Limits;
 };
 
 export function attachNodeCollaborationRuntime(
   server: HttpServer,
   env: RuntimeEnv,
-  options: NodeCollaborationRuntimeOptions = {},
+  options: NodeCollaborationRuntimeOptions,
 ) {
   const hocuspocus = getDefaultCollaborationHocuspocus(env);
-  const limits = options.limits ?? createNodeLimits(options.realtimeBus ?? null);
+  const limits = options.limits;
   const websocket = crossws({
     serverOptions: {
       maxPayload: NODE_COLLABORATION_MAX_PAYLOAD_BYTES,

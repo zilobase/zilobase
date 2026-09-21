@@ -5,6 +5,10 @@ import type { SlashCommandItem } from "../extensions/slash-command"
 import { createDatabaseSetupBlockContent } from "@/features/databases"
 
 import type { DragHandleTarget } from "../toolbar/toolbar-contracts"
+import {
+  runStructuralInsertion,
+  type StructuralInsertionPendingChange,
+} from "./structural-insertion"
 
 function getColumnCount(title: string) {
   const match = title.match(/^([2-4]) Columns$/)
@@ -178,45 +182,51 @@ export async function insertBlockFromPlus(
   options: {
     onCreateDatabase?: () => Promise<string | null>
     onCreateMeeting?: () => Promise<string | null>
+    onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   } = {},
 ) {
   const isEmptyTextBlock = target.node.isTextblock && target.node.content.size === 0
-  const databaseId =
-    item.title === "Database" && options.onCreateDatabase
-      ? await options.onCreateDatabase()
-      : undefined
-  const meetingId =
-    item.title === "Meeting notes" && options.onCreateMeeting
-      ? await options.onCreateMeeting()
-      : undefined
-  const content =
-    item.title === "Database"
-      ? databaseId
-        ? blockContentForItem(item, { databaseId })
-        : null
-      : item.title === "Meeting notes"
-        ? meetingId
-          ? blockContentForItem(item, { meetingId })
-          : null
-        : blockContentForItem(item)
 
-  if (!content) {
+  const insert = (content: Content | null) => {
+    if (!content) {
+      return
+    }
+
+    if (isEmptyTextBlock) {
+      editor
+        .chain()
+        .focus()
+        .deleteRange({ from: target.pos, to: target.pos + target.node.nodeSize })
+        .insertContentAt(target.pos, content)
+        .run()
+      selectInsertedBlock(editor, target.pos, item)
+      return
+    }
+
+    const insertPos = target.pos + target.node.nodeSize
+
+    editor.chain().focus().insertContentAt(insertPos, content).run()
+    selectInsertedBlock(editor, insertPos, item)
+  }
+
+  if (item.title === "Database") {
+    await runStructuralInsertion({
+      create: options.onCreateDatabase,
+      insert: (databaseId) =>
+        insert(blockContentForItem(item, { databaseId })),
+      onPendingChange: options.onStructuralInsertionPendingChange,
+    })
     return
   }
 
-  if (isEmptyTextBlock) {
-    editor
-      .chain()
-      .focus()
-      .deleteRange({ from: target.pos, to: target.pos + target.node.nodeSize })
-      .insertContentAt(target.pos, content)
-      .run()
-    selectInsertedBlock(editor, target.pos, item)
+  if (item.title === "Meeting notes") {
+    await runStructuralInsertion({
+      create: options.onCreateMeeting,
+      insert: (meetingId) => insert(blockContentForItem(item, { meetingId })),
+      onPendingChange: options.onStructuralInsertionPendingChange,
+    })
     return
   }
 
-  const insertPos = target.pos + target.node.nodeSize
-
-  editor.chain().focus().insertContentAt(insertPos, content).run()
-  selectInsertedBlock(editor, insertPos, item)
+  insert(blockContentForItem(item))
 }

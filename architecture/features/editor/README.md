@@ -27,7 +27,7 @@ Page composition supplies content, editability, metadata callbacks and collabora
 
 ## Authorization and persistence
 
-The editor receives access and editability decisions; server authorization remains authoritative. Yjs collaboration, offline storage and page persistence own durability. Structural blocks retain page/database associations. Locks, comments and database editing have distinct gates; moving their UI does not unify those policies.
+The editor receives access and editability decisions; server authorization remains authoritative. Yjs collaboration and page persistence own durability. Structural blocks retain page/database associations. Locks, comments and database editing have distinct gates; moving their UI does not unify those policies.
 
 ## Side effects, failures and recovery
 
@@ -50,6 +50,26 @@ A prepared ticket is consumed once. Provider creation applies ticket state first
 [Connection lifecycle tests](../../../apps/web/test/features/editor/connection-session.test.mjs) cover these orderings, denial, late completion and presence deduplication. [Handle tests](../../../apps/web/test/features/editor/page-editor-handle.test.mjs) cover write gating, content callbacks, readiness and current preview controls. Keyboard and clipboard structural protection continues to share [the protected-block guard](../../../apps/web/src/features/editor/paste/protected-structural-blocks.ts), and markdown restoration continues to use page-context; their distinct selection and document-conversion semantics remain separate.
 
 [Block conversion](../../../apps/web/src/features/editor/commands/block-insert.ts) owns replacement content for the drag menu. Paragraph/heading conversions preserve nonblank text; other block types retain their existing insertion defaults. The menu owns selection and the single delete/insert command chain. [Conversion tests](../../../apps/web/test/features/editor/block-conversion.test.mjs) preserve text, whitespace and fallback behavior.
+
+Database and meeting creation use the shared [structural-insertion transaction](../../../apps/web/src/features/editor/commands/structural-insertion.ts) for both slash commands and the block menu. The transaction remains pending until the created structural node is in the editor, allowing page hierarchy recovery to defer competing full-document restoration. Its [tests](../../../apps/web/test/features/editor/structural-insertion.test.mjs) cover successful ordering and failure cleanup.
+
+Page composition reruns hierarchy recovery when the editor instance becomes
+ready, rather than relying on a later navigation update. A committed database
+placement therefore cannot remain absent after reload merely because recovery
+ran before the editor handle existed. While the collaboration provider reports
+unacknowledged changes, the editor registers a browser reload guard instead of
+allowing silent data loss.
+
+Soft-deleted database references discovered in collaborative page documents are
+removed by their [node view](../../../apps/web/src/features/databases/core/database-block.tsx)
+without creating a new undo entry or starting deleted-resource realtime work.
+The drag menu treats an embedded database deletion as one history operation: it
+removes the editor node without creating a second global undo entry and pairs
+that node history with the database trash/restore mutation through
+[structural-block delete history](../../../apps/web/src/features/editor/drag-drop/structural-block-delete-history.ts).
+Ctrl+Z and redo therefore transition the resource and editor node together.
+References left by deletion outside that page scope are permanent cleanup, so a
+later page edit or reload cannot resurrect the deleted embed.
 
 [Column controls](../../../apps/web/src/features/editor/toolbar/column-controls.tsx) coalesce pointer events into one animation frame before applying hover state. Existing control targets take precedence over geometric hit testing, and active drag/pointer/menu states suppress hover changes. Frame cancellation and listener cleanup remain in the effect.
 

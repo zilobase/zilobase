@@ -1,6 +1,6 @@
 # Unified runtime adapter
 
-Status: accepted.
+Status: superseded by [ADR 0008](0008-runtime-ports-and-controller-inversion.md).
 
 ## Context
 
@@ -27,7 +27,7 @@ The private repo becomes `zilobase-cloud` (`@zilobase/cloud`): thin `createWorke
 ## Consequences
 
 - No behavior change in production during the move; Durable Object migration tags `v1..v14 + calendar-v1`, queue names, and route paths are frozen.
-- `apps/server` keeps deprecated re-export shims for one release; `adapter-api`/`node-adapter-api` are the only server surfaces the adapter consumes.
+- The temporary `apps/server` re-export shims were retired after the runtime-port reset; `adapter-api`/`node-adapter-api` remain the only server surfaces the adapter consumes.
 - Vitest `importOriginal()` must not be used on the cyclic `node-adapter-api` seam in adapter tests (it breaks mock identity for the runtime module); source real implementations from the acyclic `adapter-api` surface instead.
 - Follow-ups live outside this decision: deeper room-level inversion, publishing the adapter to a registry, and the GitHub-side `zilobase-cloud` repo rename.
 

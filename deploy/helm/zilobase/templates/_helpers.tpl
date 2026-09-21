@@ -59,10 +59,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 - name: GMAIL_TOKEN_ENCRYPTION_KEY
   valueFrom: { secretKeyRef: { name: {{ .Values.existingSecret | quote }}, key: {{ .Values.secretKeys.gmailTokenEncryptionKey | quote }} } }
 {{- end }}
-{{- if .Values.realtime.enabled }}
 - name: REALTIME_REDIS_URL
   valueFrom: { secretKeyRef: { name: {{ .Values.realtime.existingSecret | quote }}, key: {{ .Values.realtime.secretKey | quote }} } }
-{{- end }}
 {{- if .Values.trustedCa.configMapName }}
 - { name: NODE_EXTRA_CA_CERTS, value: "/etc/zilobase/trusted-ca/ca.crt" }
 {{- end }}

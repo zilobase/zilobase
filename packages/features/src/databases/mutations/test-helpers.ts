@@ -141,6 +141,7 @@ export function setTestDatabaseClientState(
       accessLevel: payload.database.accessLevel ?? null,
       config: payload.database.config ?? {},
       createdAt: payload.database.createdAt,
+      deletedAt: payload.database.deletedAt ?? null,
       id: payload.database.id,
       name: payload.database.name,
       pageId: payload.database.pageId,

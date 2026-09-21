@@ -24,6 +24,7 @@ const host = {
   accessLevel: "edit" as const,
   config: {},
   createdAt: now,
+  deletedAt: null,
   id: "database-1",
   name: "Projects",
   pageId: "page-root",
@@ -211,6 +212,32 @@ test("property hooks use source commands and translate positions to anchors", as
     ])
   } finally {
     for (const runtime of [add, update, archive]) runtime.queryClient.clear()
+  }
+})
+
+test("appended property commands never send optimistic placeholder anchors", async () => {
+  const sent: Array<{ path: string; request: DatabaseCommandRequest }> = []
+  const { mutation, queryClient } = createMutationTestRuntime(
+    useAddDatabaseProperty,
+    commandApi(sent),
+  )
+  setTestDatabaseClientState(queryClient, createTestDatabasePayload())
+  try {
+    await mutation.mutateAsync({
+      databaseId: "data-source-1",
+      name: "Created",
+      type: "date",
+    })
+    assert.deepEqual(sent[0]?.request.command, {
+      afterPropertyId: "column-name",
+      beforePropertyId: null,
+      config: null,
+      name: "Created",
+      propertyType: "date",
+      type: "property.create",
+    })
+  } finally {
+    queryClient.clear()
   }
 })
 

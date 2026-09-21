@@ -21,7 +21,7 @@ test("calendar realtime is unavailable when the feature is disabled", async () =
   const server = createServer((_request, response) => response.end())
   const runtime = attachNodeCalendarRealtimeRuntime(server, {
     COLLABORATION_SECRET: env.COLLABORATION_SECRET,
-  })
+  }, { realtimeBus: new TestRealtimeBroker().createBus() })
   await listen(server)
   const address = server.address()
   assert(address && typeof address === "object")
@@ -115,7 +115,9 @@ test("calendar realtime fans out through the multi-node realtime bus", async () 
   }
 })
 
-async function startFixture(realtimeBus?: NodeRealtimeBus) {
+async function startFixture(
+  realtimeBus: NodeRealtimeBus = new TestRealtimeBroker().createBus(),
+) {
   const server = createServer((_request, response) => response.end())
   const runtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus })
   await listen(server)

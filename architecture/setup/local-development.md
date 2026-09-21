@@ -5,6 +5,11 @@ The development CLI coordinates dependency containers and local Node processes. 
 [Desktop profile startup](../../scripts/desktop/profile.mjs) reuses the development configuration, while the [macOS debug runner](../../scripts/desktop/run-signed-macos-debug.mjs) owns local signing and launch. The CLI owns setup/status/logs/down/reset behavior; setup also installs the
 path-filtered Git commit and push hooks. The runbook explains when to use each command. Reset commands are destructive operational actions, not refactor verification.
 
+The normal `npm run dev` dependency set includes PostgreSQL, MinIO, Mailpit,
+and Valkey. Generated Node configuration points `REALTIME_REDIS_URL` at the
+loopback Valkey port, so source development exercises the same mandatory bus
+topology as self-hosted deployments without a manual broker step.
+
 ## Ownership
 
 - [Entrypoint/configuration](../../scripts/dev/cli.mjs)

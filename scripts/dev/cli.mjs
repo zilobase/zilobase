@@ -121,6 +121,7 @@ async function ensureDependencies() {
       "postgres",
       "minio",
       "mailpit",
+      "valkey",
     ], {
       cwd: coreDir,
       stdio: "inherit",

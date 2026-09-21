@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { AppBindings } from "../../../shared/types";
 import { createMailRealtimeTicket, MAIL_REALTIME_AUTH_PROTOCOL_PREFIX, MAIL_REALTIME_PROTOCOL } from "./mail-realtime-ticket";
-import { getMailRealtimeWebSocketUrl } from "../../../infrastructure/runtime/runtime-adapter";
+import { getMailRealtimeWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
 import { requireOwnedConnection } from "../route-support";
 
 export const mailRealtimeRoutes = new Hono<AppBindings>();
@@ -15,7 +15,7 @@ mailRealtimeRoutes.post("/realtime-ticket", async (c) => {
     userId: owned.userId,
     workspaceId: owned.workspaceId,
   }, c.env)
-  const websocketUrl = new URL(getMailRealtimeWebSocketUrl(c.req.raw, c.env))
+  const websocketUrl = new URL(getMailRealtimeWebSocketUrl(c.req.raw))
   websocketUrl.searchParams.set("binding", owned.bindingId)
   return c.json({
     ...ticket,
@@ -26,4 +26,3 @@ mailRealtimeRoutes.post("/realtime-ticket", async (c) => {
     websocketUrl: websocketUrl.toString(),
   })
 })
-

@@ -35,6 +35,8 @@ services:
         condition: service_healthy
       minio-init:
         condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
     environment:
       HOST: 0.0.0.0
       PORT: 3000
@@ -49,7 +51,7 @@ services:
       ZILOBASE_BACKGROUND_AI_CONCURRENCY: ${ZILOBASE_BACKGROUND_AI_CONCURRENCY:-2}
       ZILOBASE_BACKGROUND_MAIL_CONCURRENCY: ${ZILOBASE_BACKGROUND_MAIL_CONCURRENCY:-2}
       DATABASE_URL: postgres://${POSTGRES_USER:?Set POSTGRES_USER}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB}
-      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-}
+      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://valkey:6379}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET to at least 32 random characters}
       ZILOBASE_BOOTSTRAP_TOKEN: ${ZILOBASE_BOOTSTRAP_TOKEN:?Set ZILOBASE_BOOTSTRAP_TOKEN to at least 32 random characters}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL to the public application origin}
@@ -179,7 +181,6 @@ services:
 
   valkey:
     image: valkey/valkey:8-alpine
-    profiles: ["ha"]
     restart: unless-stopped
     command: ["valkey-server", "--save", "", "--appendonly", "no"]
     healthcheck:

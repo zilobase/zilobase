@@ -18,9 +18,9 @@ const PONG = JSON.stringify({ type: "mail.pong" });
 export function attachNodeMailRealtimeRuntime(
   server: HttpServer,
   env: RuntimeEnv,
-  options: { realtimeBus?: NodeRealtimeBus | null } = {},
+  options: { realtimeBus: NodeRealtimeBus },
 ) {
-  const runtime = attachNodeNotificationRuntime<MailRealtimeTicketClaims, MailNotificationEvent>(server, options.realtimeBus ?? null, {
+  const runtime = attachNodeNotificationRuntime<MailRealtimeTicketClaims, MailNotificationEvent>(server, options.realtimeBus, {
     async authenticate(request) {
       const bindingId = new URL(request.url).searchParams.get("binding");
       const token = readTicket(request.headers);

@@ -15,7 +15,12 @@ import {
   meetingIdFromDocumentName,
   verifyCollaborationTicket,
 } from "./service";
-import { getCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
+import {
+  getCollaborationWebSocketUrl,
+  runWithRuntimePorts,
+} from "@zilobase/runtime-adapter/capabilities";
+import { createRuntimeEnv } from "@zilobase/runtime-adapter/env";
+import { createUrlResolver } from "@zilobase/runtime-adapter/url-resolver";
 
 const env = { BETTER_AUTH_SECRET: "test-collaboration-secret" };
 
@@ -333,13 +338,15 @@ test("a finalized transcript clears only its matching live Yjs draft", () => {
 });
 
 test("explicit WebSocket URL overrides a rewritten request host", () => {
-  assert.equal(
-    getCollaborationWebSocketUrl(
+  const runtimeEnv = createRuntimeEnv({
+    COLLABORATION_WEBSOCKET_URL: "ws://localhost:3000/collaboration",
+  });
+  assert.equal(runWithRuntimePorts(
+    { env: runtimeEnv, urls: createUrlResolver(runtimeEnv) },
+    () => getCollaborationWebSocketUrl(
       new Request("http://api.zilobase.com/pages/page-1/collaboration-ticket"),
-      {
-        COLLABORATION_WEBSOCKET_URL: "ws://localhost:3000/collaboration",
-      },
     ),
+  ),
     "ws://localhost:3000/collaboration",
   );
 });

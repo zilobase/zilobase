@@ -1,5 +1,5 @@
 import type { RuntimeEnv } from "../../shared/config/config";
-import { getRuntimePorts } from "../runtime/runtime-adapter";
+import { requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
 import type { BackgroundTaskV1 } from "./contracts";
 import { backgroundTaskLane, getBackgroundCellId } from "./contracts";
 import { recordBackgroundCounter } from "./telemetry";
@@ -9,9 +9,8 @@ export async function dispatchBackgroundTasks(
   tasks: readonly BackgroundTaskV1[],
 ) {
   if (tasks.length === 0) return true;
-  const jobs = getRuntimePorts().jobs;
-  const telemetry = getRuntimePorts().telemetry;
-  if (!jobs) throw new Error("Runtime Jobs port is required");
+  const jobs = requireRuntimePort("jobs");
+  const telemetry = requireRuntimePort("telemetry");
   try {
     await jobs.dispatch(tasks);
     for (const task of tasks) recordBackgroundCounter("enqueue", {
@@ -21,7 +20,7 @@ export async function dispatchBackgroundTasks(
       outcome: "completed",
       runtime: env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node",
     });
-    await telemetry?.event("background.dispatch", {
+    await telemetry.event("background.dispatch", {
       count: tasks.length,
       outcome: "completed",
     });
@@ -35,7 +34,7 @@ export async function dispatchBackgroundTasks(
       outcome: "failed",
       runtime: env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node",
     });
-    await telemetry?.error(error, {
+    await telemetry.error(error, {
       code: boundedErrorCode(error),
       count: tasks.length,
       outcome: "failed",

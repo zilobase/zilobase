@@ -19,10 +19,9 @@
     },
     "realtime": {
       "type": "object",
-      "required": ["enabled", "existingSecret", "secretKey", "networkCIDR", "port"],
+      "required": ["existingSecret", "secretKey", "networkCIDR", "port"],
       "properties": {
-        "enabled": { "type": "boolean" },
-        "existingSecret": { "type": "string" },
+        "existingSecret": { "type": "string", "minLength": 1 },
         "secretKey": { "type": "string", "minLength": 1 },
         "networkCIDR": { "type": "string", "minLength": 3 },
         "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
@@ -95,18 +94,6 @@
             "externalUrl": { "pattern": "^https://" },
             "s3Endpoint": { "pattern": "^https://" },
             "s3PublicEndpoint": { "pattern": "^https://" }
-          }
-        }
-      }
-    }
-  }, {
-    "if": { "properties": { "replicaCount": { "minimum": 2 } } },
-    "then": {
-      "properties": {
-        "realtime": {
-          "properties": {
-            "enabled": { "const": true },
-            "existingSecret": { "type": "string", "minLength": 1 }
           }
         }
       }

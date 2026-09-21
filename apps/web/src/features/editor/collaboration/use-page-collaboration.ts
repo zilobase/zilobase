@@ -65,6 +65,7 @@ export function usePageCollaboration({
     }
 
     let disposed = false
+    let preparationStarted = false
     const controller = new AbortController()
     let local: Awaited<ReturnType<typeof openLocalPageDocument>> | null = null
     let ephemeral: Y.Doc | null = null
@@ -83,6 +84,9 @@ export function usePageCollaboration({
     }
 
     const prepare = async () => {
+      if (preparationStarted) return
+      preparationStarted = true
+
       try {
         if (downloaded && workspaceId) {
           local = await openLocalPageDocument(workspaceId, pageId)

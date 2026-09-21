@@ -180,6 +180,10 @@ export function createFakePorts<Database = unknown>(options: {
       fetchWebhook: unavailable("outbound.fetchWebhook"),
       fetchMcp: unavailable("outbound.fetchMcp"),
     },
+    readiness: {
+      background: () => ({ coordinatorReady: null, listenerReady: null }),
+      realtime: () => true,
+    },
     scheduler,
     state,
     telemetry: {

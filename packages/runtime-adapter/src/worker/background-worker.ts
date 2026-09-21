@@ -61,6 +61,10 @@ export function createBackgroundWorker<Env extends WorkerEnvBindings = WorkerEnv
       mailer: createWorkerMailer({ binding: env.EMAIL, developmentSinkUrl: env.ZILOBASE_DEV_EMAIL_SINK_URL }),
       meetings: createWorkerMeetings(env),
       outbound: createWorkerOutboundFetch(),
+      readiness: {
+        background: () => ({ coordinatorReady: null, listenerReady: null }),
+        realtime: () => true,
+      },
       telemetry: telemetryFor(env),
       urls: createUrlResolver(runtimeEnv),
     };

@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -418,6 +419,7 @@ export function DatabaseSetupCard({
 }: DatabaseSetupCardProps) {
   const [view, setView] = useState<SetupView>("main");
   const csvInputRef = useRef<HTMLInputElement>(null);
+  const promptInputRef = useRef<HTMLTextAreaElement>(null);
   const [prompt, setPrompt] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMoreTemplates, setShowMoreTemplates] = useState(false);
@@ -427,6 +429,12 @@ export function DatabaseSetupCard({
   >(null);
   const [creatingLinkView, setCreatingLinkView] = useState(false);
   const [linkViewName, setLinkViewName] = useState("");
+
+  useLayoutEffect(() => {
+    if (view === "main") {
+      promptInputRef.current?.focus({ preventScroll: true });
+    }
+  }, [view]);
 
   const applyTemplate = useApplyDatabaseTemplate();
   const updateDatabase = useUpdateDataSource();
@@ -737,11 +745,11 @@ export function DatabaseSetupCard({
           >
             <div className="relative w-full min-w-0 flex-1 self-stretch">
               <PromptInputTextarea
-                autoFocus
                 className="database-setup-prompt-textarea"
                 disabled={isSubmitting}
                 onChange={(event) => setPrompt(event.currentTarget.value)}
                 placeholder="Describe what you want to build..."
+                ref={promptInputRef}
                 value={prompt}
               />
             </div>

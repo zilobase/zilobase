@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 
-import { runWithRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
+import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import { drainDatabaseRealtimeOutbox } from "./outbox";
 import {
   databaseMutationEvent,
@@ -36,15 +36,12 @@ function withFanout<T>(
   }, operation);
 }
 
-test("outbox draining is a no-op without a publish adapter", async () => {
-  assert.deepEqual(await drainDatabaseRealtimeOutbox({}, { database: {} as never }), {
-    backlog: 0,
-    delivered: 0,
-    discarded: 0,
-    failed: 0,
-    maxAttempts: 0,
-    oldestAgeMs: 0,
-  });
+test("outbox draining requires a fanout provider", async () => {
+  await assert.rejects(
+    () => runWithRuntimePorts({}, () =>
+      drainDatabaseRealtimeOutbox({}, { database: {} as never })),
+    /Runtime fanout port is required/,
+  );
 });
 
 function drainExecutor(

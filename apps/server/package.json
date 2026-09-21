@@ -30,7 +30,7 @@
     "test:insert-database-block": "vitest run src/features/databases/setup/insert-database-block.test.ts",
     "test:database-property-config": "vitest run src/features/databases/schema/config.test.ts",
     "test:databases": "vitest run src/features/databases/schema/config.test.ts src/features/databases/core/commit.test.ts src/features/databases/setup/insert-database-block.test.ts",
-    "test:collaboration": "vitest run src/features/collaboration src/app/node/collaboration-runtime.test.ts",
+    "test:collaboration": "vitest run src/features/collaboration",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:coverage:full": "COVERAGE_FULL=1 vitest run --coverage",

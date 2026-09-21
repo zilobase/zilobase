@@ -21,7 +21,10 @@ const mocks = vi.hoisted(() => {
   const realtimeBus = {
     close: vi.fn(async () => undefined),
     connect: vi.fn(async () => undefined),
+    consumeLimit: vi.fn(async () => true),
     isReady: vi.fn(() => true),
+    publish: vi.fn(async () => undefined),
+    subscribe: vi.fn(async () => async () => undefined),
   };
   return {
     appEdition: vi.fn(() => null),
@@ -38,7 +41,7 @@ const mocks = vi.hoisted(() => {
     },
     coordinator,
     createDatabaseClient: vi.fn(() => databaseClient),
-    createRealtimeBus: vi.fn(() => realtimeBus),
+    createRealtimeBus: vi.fn((_env?: Record<string, unknown>) => realtimeBus),
     databaseClient,
     databaseRealtime: {
       destroy: vi.fn(async () => undefined),
@@ -57,10 +60,7 @@ const mocks = vi.hoisted(() => {
     publishBackground: vi.fn(async () => undefined),
     realtimeBus,
     runWithDbEnv: vi.fn(async (_env: unknown, operation: () => unknown) => operation()),
-    setPorts: vi.fn(),
-    setBackgroundProbe: vi.fn(),
     setCollaborationFactory: vi.fn(),
-    setRealtimeProbe: vi.fn(),
   };
 });
 
@@ -95,17 +95,14 @@ vi.mock("@zilobase/server/node-adapter-api", () => ({
   renderPrometheusBackgroundMetrics: vi.fn(() => "zilobase_background_healthy 1\n"),
   renderPrometheusDatabaseMetrics: vi.fn(() => ""),
   runWithDbEnv: mocks.runWithDbEnv,
-  setBackgroundReadinessProbe: mocks.setBackgroundProbe,
   setCollaborationExtensionsFactory: mocks.setCollaborationFactory,
-  setRealtimeReadinessProbe: mocks.setRealtimeProbe,
 }));
 vi.mock("../capabilities", () => ({
-  getDatabaseUrl: vi.fn((env: Record<string, unknown>) => env.DATABASE_URL),
-  setRuntimePorts: mocks.setPorts,
+  runWithRuntimePorts: vi.fn((_ports: unknown, operation: () => unknown) => operation()),
 }));
 vi.mock("./migrations", () => ({ runMigrationSets: mocks.migrate }));
 vi.mock("./realtime-bus", () => ({
-  createNodeRealtimeBus: vi.fn(() => mocks.createRealtimeBus()),
+  createNodeRealtimeBus: vi.fn((env: Record<string, unknown>) => mocks.createRealtimeBus(env)),
 }));
 vi.mock("./features/collaboration/collaboration-redis", () => ({
   createNodeCollaborationExtensions: vi.fn(),
@@ -120,11 +117,19 @@ beforeEach(() => {
   vi.clearAllMocks();
   process.env = { ...originalEnvironment };
   process.env.ZILOBASE_PROCESS_ROLE = "api";
+  process.env.REALTIME_REDIS_URL = "redis://127.0.0.1:6379";
   delete process.env.PORT;
   delete process.env.BACKGROUND_HEALTH_PORT;
   mocks.coordinator.readiness.mockReturnValue({ coordinatorReady: true, listenerReady: true });
   mocks.backgroundSnapshot.mockResolvedValue({ healthy: true });
-  mocks.createRealtimeBus.mockReturnValue(mocks.realtimeBus);
+  mocks.createRealtimeBus.mockImplementation((env?: Record<string, unknown>) => {
+    if (!env?.REALTIME_REDIS_URL) {
+      throw new Error(
+        "REALTIME_REDIS_URL is required for every Node runtime and must use redis:// or rediss://",
+      );
+    }
+    return mocks.realtimeBus;
+  });
   mocks.realtimeBus.isReady.mockReturnValue(true);
 });
 
@@ -206,8 +211,6 @@ describe("Node runtime HTTP transport", () => {
     expect(mocks.collaboration.destroy).toHaveBeenCalledOnce();
     expect(mocks.databaseRealtime.destroy).toHaveBeenCalledOnce();
     expect(mocks.realtimeBus.close).toHaveBeenCalledOnce();
-    expect(mocks.setRealtimeProbe).toHaveBeenLastCalledWith(null);
-    expect(mocks.setBackgroundProbe).toHaveBeenLastCalledWith(null);
   });
 });
 
@@ -218,8 +221,12 @@ describe("Node runtime lifecycle", () => {
     process.env.PORT = String(port);
     process.env.HOST = "127.0.0.1";
     process.env.DATABASE_URL = "postgresql://example.test/zilobase";
+    let ports: Record<string, any> | undefined;
     const runtime = createNodeRuntime({
-      loadApp: async () => ({ fetch: vi.fn(async () => new Response("api")) }) as never,
+      loadApp: async (_env, runtimePorts) => {
+        ports = runtimePorts;
+        return { fetch: vi.fn(async () => new Response("api")) } as never;
+      },
       migrationSets: [{ id: "test", migrationsFolder: "/migrations", journalTable: "journal" }],
       webDistDir,
       hooks: {
@@ -234,11 +241,10 @@ describe("Node runtime lifecycle", () => {
     expect(mocks.databaseClient.client.end).toHaveBeenCalledOnce();
 
     await runtime.start();
-    const ports = mocks.setPorts.mock.calls.at(-1)?.[0];
-    await ports.fanout.publish("db:database", { id: "db" });
-    await ports.fanout.publish("mail:user", { id: "mail" });
-    await ports.fanout.publish("navigation:workspace", { id: "nav" });
-    await ports.jobs.dispatch([]);
+    await ports!.fanout.publish("db:database", { id: "db" });
+    await ports!.fanout.publish("mail:user", { id: "mail" });
+    await ports!.fanout.publish("navigation:workspace", { id: "nav" });
+    await ports!.jobs.dispatch([]);
     expect(mocks.databaseRealtime.publishMutation).toHaveBeenCalled();
     expect(mocks.mailRealtime.publishNotification).toHaveBeenCalled();
     expect(mocks.navigationRealtime.publish).toHaveBeenCalled();
@@ -268,8 +274,12 @@ describe("Node runtime lifecycle", () => {
   it("runs the background coordinator and internal health server", async () => {
     process.env.ZILOBASE_PROCESS_ROLE = "worker";
     process.env.BACKGROUND_HEALTH_PORT = String(await freePort());
+    let ports: Record<string, any> | undefined;
     const runtime = createNodeRuntime({
-      loadApp: async () => ({ fetch: vi.fn() }) as never,
+      loadApp: async (_env, runtimePorts) => {
+        ports = runtimePorts;
+        return { fetch: vi.fn() } as never;
+      },
       migrationSets: [],
       webDistDir: await makeWebDist(),
       hooks: {
@@ -281,7 +291,7 @@ describe("Node runtime lifecycle", () => {
     expect(runtime.server.listening).toBe(false);
     expect(mocks.coordinator.start).toHaveBeenCalledOnce();
     expect(mocks.realtimeBus.connect).toHaveBeenCalledOnce();
-    await mocks.setPorts.mock.calls.at(-1)?.[0].jobs.dispatch([{
+    await ports!.jobs.dispatch([{
       availableAt: new Date().toISOString(),
       cellId: "default",
       kind: "ai.job",
@@ -315,12 +325,22 @@ describe("Node runtime lifecycle", () => {
     })).toThrow("ZILOBASE_PROCESS_ROLE must be all, api, or worker");
   });
 
-  it("allows one all-in-one process without Redis", async () => {
+  it("requires Redis for the all-in-one process", async () => {
+    process.env.ZILOBASE_PROCESS_ROLE = "all";
+    delete process.env.REALTIME_REDIS_URL;
+
+    expect(() => createNodeRuntime({
+      loadApp: async () => ({ fetch: vi.fn() }) as never,
+      migrationSets: [],
+      webDistDir: "/tmp/not-used",
+    })).toThrow("REALTIME_REDIS_URL is required for every Node runtime");
+  });
+
+  it("starts the all-in-one process with Redis", async () => {
     process.env.ZILOBASE_PROCESS_ROLE = "all";
     process.env.PORT = String(await freePort());
     process.env.BACKGROUND_HEALTH_PORT = String(await freePort());
     process.env.HOST = "127.0.0.1";
-    mocks.createRealtimeBus.mockReturnValueOnce(null as never);
     const runtime = createNodeRuntime({
       loadApp: async () => ({ fetch: vi.fn(async () => new Response("api")) }) as never,
       migrationSets: [],
@@ -329,26 +349,9 @@ describe("Node runtime lifecycle", () => {
 
     await runtime.start();
     expect(runtime.server.listening).toBe(true);
-    expect(mocks.realtimeBus.connect).not.toHaveBeenCalled();
+    expect(mocks.realtimeBus.connect).toHaveBeenCalledOnce();
     await runtime.close();
   });
-
-  it.each(["api", "worker"] as const)(
-    "requires Redis for the split %s role",
-    async (processRole) => {
-      process.env.ZILOBASE_PROCESS_ROLE = processRole;
-      mocks.createRealtimeBus.mockReturnValueOnce(null as never);
-      const webDistDir = await makeWebDist();
-
-      expect(() => createNodeRuntime({
-        loadApp: async () => ({ fetch: vi.fn() }) as never,
-        migrationSets: [],
-        webDistDir,
-      })).toThrow(
-        "REALTIME_REDIS_URL is required when ZILOBASE_PROCESS_ROLE is api or worker",
-      );
-    },
-  );
 });
 
 async function makeWebDist() {

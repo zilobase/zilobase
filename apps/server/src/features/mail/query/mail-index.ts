@@ -21,7 +21,7 @@ import {
 import { normalizeGmailThread } from "../provider/mail-normalize"
 import { enqueueMailDatabaseSyncForIndexedThread } from "../database-sync/mail-database-sync-worker"
 import { recordMailMetric } from "../mail-metrics"
-import { publishMailNotification } from "../../../infrastructure/runtime/runtime-adapter"
+import { publishMailNotification } from "@zilobase/runtime-adapter/capabilities"
 import { recordRecoveredBackgroundLease } from "../../../infrastructure/background/telemetry"
 
 const BACKFILL_PAGE_SIZE = 20
@@ -199,7 +199,7 @@ export async function publishMailIndexUpdate(
       eq(gmailWorkspaceConnection.gmailAccountId, gmailAccount.id),
     )
     .where(eq(gmailAccount.id, gmailAccountId))
-  await Promise.all(rows.map((event) => publishMailNotification(env, event)))
+  await Promise.all(rows.map((event) => publishMailNotification(event)))
 }
 
 async function advanceBackfill(

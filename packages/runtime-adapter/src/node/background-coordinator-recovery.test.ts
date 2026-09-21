@@ -24,10 +24,19 @@ vi.mock("@zilobase/server/node-adapter-api", () => ({
   runDueBackgroundMaintenance: mocks.maintenance,
   runWithDbEnv: mocks.database,
 }));
-vi.mock("../capabilities", () => ({ getDatabaseUrl: () => "postgres://localhost/test" }));
+vi.mock("../capabilities", () => ({
+  runWithRuntimePorts: (_ports: unknown, operation: () => unknown) => operation(),
+}));
 
 import { createNodeBackgroundCoordinator } from "./background-coordinator";
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
+
+const ports = {
+  env: {
+    get: () => "postgres://localhost/test",
+    require: () => "postgres://localhost/test",
+  },
+};
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -52,7 +61,7 @@ afterEach(() => {
 
 it("survives a maintenance connection timeout at startup and retries", async () => {
   mocks.maintenance.mockRejectedValueOnce(new Error("Connection terminated due to connection timeout"));
-  const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv);
+  const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv, ports);
   try {
     await expect(coordinator.start()).resolves.toBeUndefined();
     await vi.advanceTimersByTimeAsync(30_000);
@@ -66,7 +75,7 @@ it("survives a maintenance connection timeout at startup and retries", async () 
 it("handles a periodic maintenance rejection without an unhandled promise and recovers", async () => {
   mocks.maintenance.mockResolvedValueOnce(undefined)
     .mockRejectedValueOnce(new Error("Connection terminated due to connection timeout"));
-  const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv);
+  const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv, ports);
   try {
     await coordinator.start();
     await vi.advanceTimersByTimeAsync(60_000);
@@ -79,7 +88,7 @@ it("handles a periodic maintenance rejection without an unhandled promise and re
 
 it("identifies a failed database realtime drainer without logging payload values", async () => {
   mocks.realtime.mockRejectedValueOnce(new Error("cell value must stay private"));
-  const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv);
+  const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv, ports);
   try {
     await coordinator.start();
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(

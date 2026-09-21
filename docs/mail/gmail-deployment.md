@@ -163,8 +163,9 @@ npm run mail:config:check -- --env-file=.env.selfhost
 docker compose --env-file .env.selfhost config --quiet
 ```
 
-For a multi-replica deployment, also configure `REALTIME_REDIS_URL` so mailbox
-invalidations reach sockets connected to every replica.
+Configure the required `REALTIME_REDIS_URL` for every Node deployment so
+mailbox invalidations use the same bus path in one or many replicas. The base
+Compose stack supplies its bundled Valkey URL automatically.
 
 ### Community Helm
 

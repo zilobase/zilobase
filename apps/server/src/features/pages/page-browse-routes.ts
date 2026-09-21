@@ -425,6 +425,7 @@ pageBrowseRoutes.get("/", async (c) => {
   }
   const placements = buildNavigationPlacements({
     placementRecords,
+    visibleDatabaseIds: activeDatabaseIds,
   });
 
   return c.json({

@@ -61,3 +61,5 @@ Each guide follows a capability through its web, shared-package, server and nati
 ## Decisions and maintenance
 
 [Architecture decisions](decisions/README.md) explain lasting tradeoffs. Update the affected guide with each implementation change and verify local links. These guides describe current behavior, not pending refactor passes.
+
+The Node realtime topology is fixed by [ADR 0009](decisions/0009-mandatory-node-realtime-redis.md): every Node role uses the required Redis/Valkey bus, while the Worker/Durable Object topology remains independent.

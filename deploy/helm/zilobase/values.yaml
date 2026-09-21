@@ -8,8 +8,7 @@ debug:
   port: 9229
 
 realtime:
-  enabled: false
-  existingSecret: ""
+  existingSecret: zilobase
   secretKey: REALTIME_REDIS_URL
   networkCIDR: 10.0.0.0/8
   port: 6379

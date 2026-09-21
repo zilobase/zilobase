@@ -298,6 +298,10 @@
     @apply min-w-0;
   }
 
+  .tiptap-editor .node-databaseBlock:has([data-database-deleted="true"]) {
+    display: none;
+  }
+
   .tiptap-editor .node-databaseBlock .database-block-shell {
     @apply min-w-0 overflow-visible bg-transparent;
   }

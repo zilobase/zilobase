@@ -15,16 +15,13 @@ import {
   createDbClientForUrl,
   runWithDbEnv,
   setCollaborationExtensionsFactory as defaultSetCollaborationExtensionsFactory,
-  setRealtimeReadinessProbe as defaultSetRealtimeReadinessProbe,
-  setBackgroundReadinessProbe as defaultSetBackgroundReadinessProbe,
   getBackgroundOperationalSnapshot,
   renderPrometheusBackgroundMetrics,
   renderPrometheusDatabaseMetrics,
   type ZilobaseEditionExtension,
 } from "@zilobase/server/node-adapter-api";
 import {
-  getDatabaseUrl,
-  setRuntimePorts,
+  runWithRuntimePorts,
 } from "../capabilities";
 import { attachNodeNavigationRealtimeRuntime } from "./features/navigation-realtime/navigation-realtime-runtime";
 import { isNodeApiPath } from "./api-routing";
@@ -58,14 +55,15 @@ export type NodeRuntimeOptions = {
   hooks?: {
     getEditionExtension?: (app: Hono<any>) => ZilobaseEditionExtension | undefined;
     assertProductionConfig?: (env: Record<string, unknown>) => void;
-    createRealtimeBus?: (env: Record<string, unknown>) => NodeRealtimeBus | null;
+    createRealtimeBus?: (env: Record<string, unknown>) => NodeRealtimeBus;
     createCollaborationExtensions?: typeof createNodeCollaborationExtensions;
     setCollaborationExtensionsFactory?: typeof defaultSetCollaborationExtensionsFactory;
-    setRealtimeReadinessProbe?: typeof defaultSetRealtimeReadinessProbe;
-    setBackgroundReadinessProbe?: typeof defaultSetBackgroundReadinessProbe;
     fetchPinnedWebhook?: Ports["outbound"]["fetchWebhook"];
     fetchPinnedMcp?: Ports["outbound"]["fetchMcp"];
-    createBackgroundCoordinator?: (env: Record<string, unknown>) => NodeBackgroundCoordinator | null;
+    createBackgroundCoordinator?: (
+      env: Record<string, unknown>,
+      ports: Partial<Ports>,
+    ) => NodeBackgroundCoordinator | null;
   };
 };
 
@@ -76,28 +74,37 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
   const port = readPort(process.env.PORT) ?? 3000;
   const hostname = process.env.HOST ?? "0.0.0.0";
   const setCollaborationExtensionsFactory = hooks.setCollaborationExtensionsFactory ?? defaultSetCollaborationExtensionsFactory;
-  const setRealtimeReadinessProbe = hooks.setRealtimeReadinessProbe ?? defaultSetRealtimeReadinessProbe;
-  const setBackgroundReadinessProbe = hooks.setBackgroundReadinessProbe ?? defaultSetBackgroundReadinessProbe;
   const createRealtimeBus = hooks.createRealtimeBus ?? createNodeRealtimeBus;
   const createCollaborationExtensions = hooks.createCollaborationExtensions ?? createNodeCollaborationExtensions;
   const fetchPinnedWebhook = hooks.fetchPinnedWebhook ?? fetchPinnedNodeWebhook;
   const fetchPinnedMcp = hooks.fetchPinnedMcp ?? fetchPinnedNodeMcp;
   const createBackgroundCoordinator = hooks.createBackgroundCoordinator
-    ?? ((hookEnv) => processRole === "api" ? null : createNodeBackgroundCoordinator(hookEnv));
+    ?? ((hookEnv, runtimePorts) => processRole === "api"
+      ? null
+      : createNodeBackgroundCoordinator(hookEnv, runtimePorts));
   let backgroundCoordinatorRef: NodeBackgroundCoordinator | null = null;
+  const realtimeBus = createRealtimeBus(env);
+  const limits = createNodeLimits(realtimeBus);
   const ports: Partial<Ports> = {
     blobs: createLazyImageStorage(() => createNodeImageStorage(env)),
     env: createRuntimeEnv(env),
     jobs: createNodeJobs(env, () => backgroundCoordinatorRef),
+    limits,
     mailer: createNodeMailer(env),
     outbound: createNodeOutboundFetch({
       fetchMcp: fetchPinnedMcp,
       fetchWebhook: fetchPinnedWebhook,
     }),
+    readiness: {
+      background: () => backgroundCoordinatorRef?.readiness() ?? {
+        coordinatorReady: null,
+        listenerReady: null,
+      },
+      realtime: () => realtimeBus.isReady(),
+    },
     scheduler: createNodeScheduler(),
   };
   ports.urls = createUrlResolver(ports.env!);
-  setRuntimePorts(ports);
   let appPromise: Promise<Hono<any>> | null = null;
   const loadApp = (): Promise<Hono<any>> => (appPromise ??= options.loadApp(env, ports));
   const server = createServer(async (incoming, outgoing) => {
@@ -130,13 +137,10 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       outgoing.end(JSON.stringify({ error: "Internal server error" }));
     }
   });
-  const realtimeBus = createRealtimeBus(env);
-  const limits = createNodeLimits(realtimeBus);
-  assertNodeRealtimeTopology(processRole, realtimeBus);
-  ports.limits = limits;
   ports.telemetry = createNodeTelemetry({
     metrics: () => renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics(),
-    health: () => runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env)),
+    health: () => runWithRuntimePorts(ports, () =>
+      runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env))),
   });
 
   type StartedRuntime = {
@@ -174,11 +178,9 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const app = await loadApp();
     const editionExtension = hooks.getEditionExtension?.(app);
     setCollaborationExtensionsFactory(createCollaborationExtensions);
-    setRealtimeReadinessProbe(() => realtimeBus?.isReady() ?? true);
     const collaboration = attachNodeCollaborationRuntime(server, env, {
       editionExtension,
       passthroughPaths: ["/database-collaboration", "/mail-realtime", "/calendar-realtime", "/meeting-audio", "/navigation-realtime"],
-      realtimeBus,
       limits,
     });
     const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, { limits, realtimeBus });
@@ -186,20 +188,17 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const calendarRealtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus });
     const mailRealtime = attachNodeMailRealtimeRuntime(server, env, { realtimeBus });
     const navigationRealtime = attachNodeNavigationRealtimeRuntime(server, env, { realtimeBus });
-    const backgroundCoordinator = createBackgroundCoordinator(env);
+    const backgroundCoordinator = createBackgroundCoordinator(env, ports);
     backgroundCoordinatorRef = backgroundCoordinator;
     const backgroundAdminServer = backgroundCoordinator
       ? createBackgroundAdminServer(
           env,
           backgroundCoordinator,
-          () => realtimeBus?.isReady() ?? true,
+          ports,
+          () => realtimeBus.isReady(),
         )
       : null;
 
-    setBackgroundReadinessProbe(() => backgroundCoordinator?.readiness() ?? {
-      coordinatorReady: null,
-      listenerReady: null,
-    });
     hooks.assertProductionConfig?.(env);
 
     started = {
@@ -219,11 +218,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     server,
     migrationSets,
     async migrate() {
-      const databaseUrl = getDatabaseUrl(env);
-
-      if (!databaseUrl) {
-        throw new Error("DATABASE_URL is required");
-      }
+      const databaseUrl = ports.env!.require("DATABASE_URL");
 
       const databaseClient = createDbClientForUrl(databaseUrl);
       await databaseClient.client.connect();
@@ -236,7 +231,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     },
     async start() {
       const state = await ensureStarted();
-      await realtimeBus?.connect();
+      await realtimeBus.connect();
       await state.backgroundCoordinator?.start();
       await state.backgroundAdminServer?.start();
       if (processRole === "worker") {
@@ -264,9 +259,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       await started?.mailRealtime.destroy();
       await started?.navigationRealtime.destroy();
       await started?.collaboration.destroy();
-      await realtimeBus?.close();
-      setRealtimeReadinessProbe(null);
-      setBackgroundReadinessProbe(null);
+      await realtimeBus.close();
       started = null;
       backgroundCoordinatorRef = null;
       await new Promise<void>((resolve, reject) => {
@@ -306,20 +299,10 @@ function readProcessRole(value: string | undefined): ProcessRole {
   throw new Error("ZILOBASE_PROCESS_ROLE must be all, api, or worker");
 }
 
-function assertNodeRealtimeTopology(
-  processRole: ProcessRole,
-  realtimeBus: NodeRealtimeBus | null,
-) {
-  if (processRole !== "all" && !realtimeBus) {
-    throw new Error(
-      "REALTIME_REDIS_URL is required when ZILOBASE_PROCESS_ROLE is api or worker",
-    );
-  }
-}
-
 function createBackgroundAdminServer(
   env: Record<string, unknown>,
   coordinator: ReturnType<typeof createNodeBackgroundCoordinator>,
+  ports: Partial<Ports>,
   isRealtimeReady: () => boolean,
 ) {
   const port = readPort(process.env.BACKGROUND_HEALTH_PORT) ?? 3001;
@@ -338,7 +321,8 @@ function createBackgroundAdminServer(
       return;
     }
     try {
-      const snapshot = await runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env));
+      const snapshot = await runWithRuntimePorts(ports, () =>
+        runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env)));
       const ready = coordinator.readiness();
       response.statusCode = request.url === "/ready" &&
           (!snapshot.healthy || !ready.listenerReady || !isRealtimeReady())

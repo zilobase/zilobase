@@ -4,6 +4,11 @@ Server configuration is interpreted by shared/config; the development tooling se
 
 Browser feature flags affect bundled presentation. Authentication, workspace authorization, demo writes and instance bootstrap remain server decisions. Operational runbooks own secret provisioning, encryption and deployment commands; architecture documents link to them rather than reproduce credentials or command sequences. Preserve encrypted environment files, key names and default semantics during source moves.
 
+`REALTIME_REDIS_URL` is required configuration for every Node runtime role and
+accepts only `redis://` or `rediss://` URLs. It is not a Worker binding: the
+Cloudflare runtime continues to use Queues, Durable Objects, and its Rate Limit
+binding. Source-development setup generates the local Node URL automatically.
+
 ## Ownership
 
 External AI connectors use the [MCP connection configuration](../features/ai/execution-and-mcp.md) and provider-specific OAuth credentials. Development templates and runtime secret allowlists follow the credentials consumed by those implementations.

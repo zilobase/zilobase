@@ -40,8 +40,25 @@ Update this guide when ownership, interfaces, authorization, persistence or cros
 
 The page route selects authenticated, guest or public presentation from the existing route context. [Authenticated composition](../../../apps/web/src/features/pages/screens/authenticated-page.tsx) retains workspace gates for both main and side panes. [Shared-page composition](../../../apps/web/src/features/pages/publication/shared-page.tsx) owns its resettable pane provider and guest/public chrome, preserving the different read-only flags and delayed side-pane mounting. Breadcrumb labels use the canonical icon/label formatter.
 
-[PageEditorPane](../../../apps/web/src/features/pages/pane/page-editor-pane.tsx) keeps page queries, commands, metadata drafts and editor integration local to the pane. [Editability rules](../../../apps/web/src/features/pages/pane/page-editability.ts) distinguish body edits from comment permissions: locks stop body edits, while read-only views and deleted pages stop both. Editor-level collaboration/offline guards remain separate.
+[PageEditorPane](../../../apps/web/src/features/pages/pane/page-editor-pane.tsx) keeps page queries, commands, metadata drafts and editor integration local to the pane. [Editability rules](../../../apps/web/src/features/pages/pane/page-editability.ts) distinguish body edits from comment permissions: locks stop body edits, while read-only views and deleted pages stop both. Editor-level collaboration guards remain separate.
 
 [Content recovery](../../../apps/web/src/features/pages/pane/page-content-recovery.ts) is shared by missing database and meeting block restoration. It restores meaningful saved content only into an effectively empty editor, stops when the editor refuses a write, and preserves live content. Its narrow content-handle interface is exercised by [behavioral tests](../../../apps/web/test/features/pages/page-content-recovery.test.mjs). Content-save timing, comments and collaboration lifecycles are unchanged.
 
+Locally created database and meeting blocks form one structural-insertion
+transaction from the create request through the Tiptap insertion. Page hierarchy
+recovery defers while that transaction is active, then rechecks live editor
+content before restoring a missing block. This prevents a navigation or meeting
+query update from replacing the document between creation and insertion.
+
 Successful page/database embedding in [placement mutations](../../../packages/features/src/pages/placement-mutations.ts) invalidates navigation in the background. Editor callers can complete as soon as the embed request succeeds; navigation refetch latency or failure does not hold the mutation open or report a committed embed as rejected. [Mutation latency tests](../../../packages/features/src/pages/placement-mutations.test.ts) exercise this ordering with a real mutation observer and controlled save/refresh promises.
+
+Soft-deleting a database does not delete an otherwise active page that embeds
+it. Deletion through the block menu removes the database node in the same undo
+operation as the resource transition. A stale node discovered after an external
+or completed deletion is removed from the collaborative document without adding
+a new editor-history entry. Deleted databases never start record-window or
+realtime subscriptions. Active navigation also omits placements whose database
+endpoint is not in the active database payload, so structural recovery cannot
+reinsert a tombstoned database block and append a new trailing paragraph on
+each page load. Shared lifecycle cache handling still refreshes deleted-aware
+reads on delete and both active and deleted-aware reads on restore.

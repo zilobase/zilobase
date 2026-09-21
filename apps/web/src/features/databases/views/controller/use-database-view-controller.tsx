@@ -78,6 +78,8 @@ export type DatabaseViewProps = {
   editable?: boolean
   fullPage?: boolean
   includeDeleted?: boolean
+  hideWhenDeleted?: boolean
+  onDeleted?: () => void
   onActiveViewIdChange?: (viewId: string | null) => void
   onOpenPage?: (
     pageId: string,
@@ -89,6 +91,7 @@ export type DatabaseViewProps = {
   workspaceId?: string | null
   setupMode?: boolean
   showExpandButton?: boolean
+  canRestoreDeleted?: boolean
   showTitle?: boolean
   pageId?: string | null
 }
@@ -145,7 +148,11 @@ export function useDatabaseViewController({
     }),
     [bootstrap],
   )
-  const editable = requestedEditable && !isDatabaseLocked(bootstrap?.database)
+  const databaseDeleted = Boolean(bootstrap?.database.deletedAt)
+  const editable =
+    requestedEditable &&
+    !databaseDeleted &&
+    !isDatabaseLocked(bootstrap?.database)
   const [draftDatabaseTitle, setDraftDatabaseTitle] = useState("New database")
   const [draftViewTitle, setDraftViewTitle] = useState("Table")
   const [activeViewId, setActiveViewId] = useState<string | null>(
@@ -188,7 +195,7 @@ export function useDatabaseViewController({
     includeDeletedDatabases,
   )
   const recordWindow = useDatabaseRecords(
-    databaseId && resolvedActiveViewId && activeDataSourceId
+    databaseId && !databaseDeleted && resolvedActiveViewId && activeDataSourceId
       ? {
           databaseId,
           dataSourceId: activeDataSourceId,
@@ -970,6 +977,7 @@ export function useDatabaseViewController({
     hostDatabaseId: bootstrap?.database.id ?? databaseId,
     hostDatabaseName: bootstrap?.database.name,
     hostDatabaseWorkspaceId: bootstrap?.database.workspaceId,
+    realtimeEnabled: Boolean(bootstrap) && !databaseDeleted,
     hostViews: bootstrap?.views ?? [],
     isAddingDatabaseProperty: addProperty.isPending,
     isAddingDatabaseRow: addRow.isPending,
@@ -1055,6 +1063,7 @@ export function useDatabaseViewController({
       : "database-block-shell",
     context: databaseViewContext,
     dataSourceSetupOpen,
+    databaseDeleted,
     databaseId,
     error: recordWindow.error ?? bootstrapState.error,
     isError:

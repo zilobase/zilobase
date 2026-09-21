@@ -24,7 +24,7 @@ const authEnv = {
 };
 const dbClient = createDbClientForUrl(databaseUrl);
 const db = dbClient.db;
-const app = createApp();
+const app = createApp({ ports: {} });
 
 type FlowResponse<T = unknown> = {
   data: T;

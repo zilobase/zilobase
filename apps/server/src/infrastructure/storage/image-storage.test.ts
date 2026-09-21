@@ -35,7 +35,7 @@ import {
   resolveImageStorageMode,
   type ImageStorage,
 } from "./image-storage";
-import { runWithRuntimePorts } from "../runtime/runtime-adapter";
+import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import { createNodeImageStorage } from "@zilobase/runtime-adapter/node";
 
 const s3Env = {
@@ -97,7 +97,10 @@ test("runtime storage is required and reports its provider mode", () => {
     },
   );
 
-  assert.throws(() => createImageStorage({}), /port is required/);
+  assert.throws(
+    () => runWithRuntimePorts({}, () => createImageStorage({})),
+    /Runtime blobs port is required/,
+  );
 });
 
 test("S3 storage reports every missing configuration value", () => {

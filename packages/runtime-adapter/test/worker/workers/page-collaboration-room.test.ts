@@ -5,6 +5,14 @@ import {
   runInDurableObject,
 } from "cloudflare:test";
 import { afterEach, describe, expect, it } from "vitest";
+import { writeAuthentication } from "@hocuspocus/common";
+import { MessageType } from "@hocuspocus/server";
+import {
+  createEncoder,
+  toUint8Array,
+  writeVarString,
+  writeVarUint,
+} from "lib0/encoding";
 
 import { PageCollaborationRoom } from "../../../src/worker/features/collaboration/page-collaboration-room";
 
@@ -34,6 +42,14 @@ function nextClose(socket: WebSocket) {
   });
 }
 
+function authenticationMessage(documentName: string) {
+  const encoder = createEncoder();
+  writeVarString(encoder, documentName);
+  writeVarUint(encoder, MessageType.Auth);
+  writeAuthentication(encoder, "test-ticket");
+  return toUint8Array(encoder);
+}
+
 describe("PageCollaborationRoom in the Workers runtime", () => {
   it("preserves socket attachments across hibernation", async () => {
     const stub = env.PAGE_COLLABORATION.getByName("page:page-1");
@@ -49,6 +65,37 @@ describe("PageCollaborationRoom in the Workers runtime", () => {
       });
     });
     socket.close(1000, "done");
+  });
+
+  it("flushes the page document before releasing a closing socket", async () => {
+    const stub = env.PAGE_COLLABORATION.getByName("page:close-flush");
+    const socket = await stub.fetch(
+      "https://example.com/collaboration?document=page:close-flush",
+      { headers: { Upgrade: "websocket" } },
+    ).then((response) => {
+      if (!response.webSocket) throw new Error("Expected a WebSocket upgrade");
+      response.webSocket.accept();
+      return response.webSocket;
+    });
+
+    socket.send(authenticationMessage("page:close-flush"));
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    socket.close(1000, "reload");
+
+    await expect.poll(
+      () => runInDurableObject(stub, (instance: PageCollaborationRoom) => {
+        const room = instance as unknown as {
+          hocuspocus: {
+            runtimePortChecks: number;
+            storeDocumentCalls: number;
+          };
+        };
+        return {
+          runtimePortChecks: room.hocuspocus.runtimePortChecks,
+          storeDocumentCalls: room.hocuspocus.storeDocumentCalls,
+        };
+      }),
+    ).toEqual({ runtimePortChecks: 1, storeDocumentCalls: 1 });
   });
 
   it("closes a socket that misses its authentication refresh grace period", async () => {

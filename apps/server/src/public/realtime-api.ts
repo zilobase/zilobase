@@ -18,7 +18,7 @@ export {
   verifyMailRealtimeTicket,
   type MailRealtimeTicketClaims,
 } from "../features/mail/realtime/mail-realtime-ticket";
-export type { MailNotificationEvent } from "../infrastructure/runtime/runtime-adapter";
+export type { MailNotificationEvent } from "@zilobase/runtime-adapter/capabilities";
 export {
   NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX,
   NAVIGATION_REALTIME_PROTOCOL,
@@ -44,4 +44,4 @@ import type { MeetingStatus } from "../features/meetings/contracts/meeting-types
 
 export { isCalendarFeatureEnabled } from "../shared/config/config";
 export { createCalendarRealtimeTicket, verifyCalendarRealtimeTicket, CALENDAR_REALTIME_PROTOCOL, CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX, type CalendarRealtimeTicketClaims } from "../features/calendar/realtime/calendar-realtime-ticket";
-export type { CalendarNotificationEvent } from "../infrastructure/runtime/runtime-adapter";
+export type { CalendarNotificationEvent } from "@zilobase/runtime-adapter/capabilities";

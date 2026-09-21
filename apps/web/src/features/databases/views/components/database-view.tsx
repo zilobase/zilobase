@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { DatabaseSetupCard } from "../../setup/components/database-setup-card"
 import { DatabaseViewProvider } from "../state/database-view-context"
 import { DatabaseViewSkeleton } from "./database-view-skeleton"
@@ -31,6 +32,7 @@ export function DatabaseView(props: DatabaseViewProps) {
     className,
     context,
     dataSourceSetupOpen,
+    databaseDeleted,
     databaseId,
     error,
     handleDatabaseBlockDragOver,
@@ -48,6 +50,24 @@ export function DatabaseView(props: DatabaseViewProps) {
     viewType,
     pageId,
   } = useDatabaseViewController(props)
+  const hiddenDeletedDatabase =
+    databaseDeleted && props.hideWhenDeleted === true
+
+  useEffect(() => {
+    if (hiddenDeletedDatabase) props.onDeleted?.()
+  }, [hiddenDeletedDatabase, props.onDeleted])
+
+  if (hiddenDeletedDatabase) {
+    return (
+      <DatabaseViewProvider value={context}>
+        <div
+          className="hidden"
+          contentEditable={false}
+          data-database-deleted="true"
+        />
+      </DatabaseViewProvider>
+    )
+  }
 
   return (
     <DatabaseViewProvider value={context}>
@@ -58,50 +78,55 @@ export function DatabaseView(props: DatabaseViewProps) {
         onDrop={handleDatabaseBlockDrop}
       >
         <div className="database-toolbar-section">
-          <DatabaseViewToolbar />
+          <DatabaseViewToolbar
+            canRestoreDeleted={props.canRestoreDeleted === true}
+            deletedDatabaseId={databaseDeleted ? databaseId : null}
+          />
         </div>
-        <div className="database-scroll-section">
-          {!databaseId ? (
-            <div className="database-empty-state">
-              <span>Database reference missing.</span>
-            </div>
-          ) : isLoading ? (
-            <DatabaseViewSkeleton viewType={viewType} />
-          ) : isError ? (
-            <div className="database-empty-state">
-              <span>
-                {error instanceof Error
-                  ? error.message
-                  : "This database is unavailable."}
-              </span>
-            </div>
-          ) : !viewData ? (
-            <div className="database-empty-state">
-              <span>This database is unavailable.</span>
-            </div>
-          ) : (
-            <DatabaseViewContent viewType={viewType} />
-          )}
-          {setupMode && databaseId ? (
-            <DatabaseSetupCard
-              databaseId={databaseId}
-              onComplete={onSetupComplete ?? (() => {})}
-              onDismiss={onDismissSetup ?? (() => {})}
-              workspaceId={workspaceId}
-              pageId={pageId}
-            />
-          ) : null}
-          {dataSourceSetupOpen && databaseId ? (
-            <DatabaseSetupCard
-              databaseId={databaseId}
-              onComplete={onDataSourceSetupClose}
-              onDismiss={onDataSourceSetupClose}
-              onSelectDataSource={onDataSourceSetupSelect}
-              workspaceId={workspaceId}
-              pageId={pageId}
-            />
-          ) : null}
-        </div>
+        {!databaseDeleted ? (
+          <div className="database-scroll-section">
+            {!databaseId ? (
+              <div className="database-empty-state">
+                <span>Database reference missing.</span>
+              </div>
+            ) : isLoading ? (
+              <DatabaseViewSkeleton viewType={viewType} />
+            ) : isError ? (
+              <div className="database-empty-state">
+                <span>
+                  {error instanceof Error
+                    ? error.message
+                    : "This database is unavailable."}
+                </span>
+              </div>
+            ) : !viewData ? (
+              <div className="database-empty-state">
+                <span>This database is unavailable.</span>
+              </div>
+            ) : (
+              <DatabaseViewContent viewType={viewType} />
+            )}
+            {setupMode && databaseId ? (
+              <DatabaseSetupCard
+                databaseId={databaseId}
+                onComplete={onSetupComplete ?? (() => {})}
+                onDismiss={onDismissSetup ?? (() => {})}
+                workspaceId={workspaceId}
+                pageId={pageId}
+              />
+            ) : null}
+            {dataSourceSetupOpen && databaseId ? (
+              <DatabaseSetupCard
+                databaseId={databaseId}
+                onComplete={onDataSourceSetupClose}
+                onDismiss={onDataSourceSetupClose}
+                onSelectDataSource={onDataSourceSetupSelect}
+                workspaceId={workspaceId}
+                pageId={pageId}
+              />
+            ) : null}
+          </div>
+        ) : null}
         {sourcePropertyDialog}
       </div>
     </DatabaseViewProvider>

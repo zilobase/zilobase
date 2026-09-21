@@ -1,4 +1,5 @@
 import { Hono, type ErrorHandler } from "hono";
+import type { Ports } from "@zilobase/runtime-ports";
 import { bodyLimit } from "hono/body-limit";
 import { compress } from "hono/compress";
 import { methodNotAllowed } from "hono/method-not-allowed";
@@ -22,9 +23,11 @@ import type { EditionExtensionOptions } from "../shared/types";
 import { demoWriteGuard } from "../features/demo/write-guard";
 import { runWithBackgroundTraceContext } from "../infrastructure/background/contracts";
 import { communityAppPolicy } from "../shared/app-policy";
-import { runWithRuntimePorts } from "../infrastructure/runtime/runtime-adapter";
+import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 
-export function createApp(options: EditionExtensionOptions = {}) {
+export function createApp(
+  options: EditionExtensionOptions & { ports: Partial<Ports<any>> },
+) {
   const app = new Hono<AppBindings>();
   const appPolicy = options.policy ?? communityAppPolicy;
   registerAppEditionExtension(app, options.editionExtension);
@@ -41,10 +44,8 @@ export function createApp(options: EditionExtensionOptions = {}) {
   app.use("*", (c, next) => {
     c.set("editionExtension", options.editionExtension ?? null);
     c.set("appPolicy", appPolicy);
-    c.set("runtimePorts", options.ports ?? null);
-    return options.ports
-      ? runWithRuntimePorts(options.ports, next)
-      : next();
+    c.set("runtimePorts", options.ports);
+    return runWithRuntimePorts(options.ports, next);
   });
   app.use("*", createCorsMiddleware());
   app.use(

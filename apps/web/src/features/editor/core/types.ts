@@ -13,6 +13,7 @@ import type { PageIconPosition } from "@zilobase/features/pages"
 import type { OpenPageOptions } from "@/features/pages"
 import type { PageCommentController } from "@/features/comments/index"
 import type * as Y from "yjs"
+import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
 
 export type EditorCollaboration = {
   document: Y.Doc
@@ -73,6 +74,11 @@ export type StructuralBlockDeleteRequest = {
 
 export type StructuralBlockDeleteAction = "move-to-trash" | "remove-link"
 
+export type StructuralBlockDeleteHistory = {
+  redo: () => Promise<void>
+  undo: () => Promise<void>
+}
+
 export type EditorProps = {
   commentController?: PageCommentController
   content?: unknown
@@ -113,8 +119,9 @@ export type EditorProps = {
   ) => StructuralBlockDeleteAction
   onDeleteStructuralBlock?: (
     request: StructuralBlockDeleteRequest,
-  ) => Promise<void>
+  ) => Promise<StructuralBlockDeleteHistory | void>
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   onTitleChange?: (title: string) => void
   workspaceId?: string | null
   title?: string
@@ -135,6 +142,7 @@ export type UseEditorExtensionsOptions = {
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   workspaceId?: string | null
   pageId?: string | null
 }

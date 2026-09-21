@@ -178,6 +178,10 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   }
 
   override async fetch(request: Request) {
+    return this.runWithRoomRuntime(() => this.handleMeetingFetch(request));
+  }
+
+  private async handleMeetingFetch(request: Request) {
     const claims = readMeetingAudioClaims(request.headers);
     return claims && new URL(request.url).pathname === "/meeting-audio"
       ? this.openAudioSession(claims)
@@ -185,6 +189,14 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   }
 
   override async webSocketMessage(
+    ws: WebSocket,
+    rawMessage: string | ArrayBuffer,
+  ) {
+    return this.runWithRoomRuntime(() =>
+      this.handleMeetingWebSocketMessage(ws, rawMessage));
+  }
+
+  private async handleMeetingWebSocketMessage(
     ws: WebSocket,
     rawMessage: string | ArrayBuffer,
   ) {
@@ -211,6 +223,16 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
     reason: string,
     wasClean: boolean,
   ) {
+    return this.runWithRoomRuntime(() =>
+      this.handleMeetingWebSocketClose(ws, code, reason, wasClean));
+  }
+
+  private async handleMeetingWebSocketClose(
+    ws: WebSocket,
+    code: number,
+    reason: string,
+    wasClean: boolean,
+  ) {
     const attachment = readAudioAttachment(ws);
     if (!attachment) return super.webSocketClose(ws, code, reason, wasClean);
 
@@ -222,6 +244,11 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   }
 
   override async webSocketError(ws: WebSocket, error: unknown) {
+    return this.runWithRoomRuntime(() =>
+      this.handleMeetingWebSocketError(ws, error));
+  }
+
+  private async handleMeetingWebSocketError(ws: WebSocket, error: unknown) {
     const attachment = readAudioAttachment(ws);
     if (!attachment) return super.webSocketError(ws, error);
 
@@ -237,6 +264,16 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   }
 
   claimRecorder(input: {
+    meetingId: string;
+    recorderImage?: string | null;
+    recorderName?: string;
+    userId: string;
+    workspaceId: string;
+  }): MeetingRecorderRuntimeState {
+    return this.runWithRoomRuntime(() => this.handleClaimRecorder(input));
+  }
+
+  private handleClaimRecorder(input: {
     meetingId: string;
     recorderImage?: string | null;
     recorderName?: string;
@@ -259,6 +296,10 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   }
 
   getRecorderState(): MeetingRecorderRuntimeState | null {
+    return this.runWithRoomRuntime(() => this.handleGetRecorderState());
+  }
+
+  private handleGetRecorderState(): MeetingRecorderRuntimeState | null {
     const recorder = this.roomStorage.getRecorder();
     if (!recorder) return null;
     const recoverable = recorder.status !== "claimed" ||
@@ -269,6 +310,14 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   }
 
   releaseRecorder(input: {
+    leaseId: string;
+    meetingId: string;
+    userId: string;
+  }) {
+    return this.runWithRoomRuntime(() => this.handleReleaseRecorder(input));
+  }
+
+  private handleReleaseRecorder(input: {
     leaseId: string;
     meetingId: string;
     userId: string;
@@ -284,6 +333,16 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   }
 
   transitionRecorder(input: {
+    action: "pause" | "resume" | "start" | "stop";
+    durationMs?: number;
+    leaseId: string;
+    meetingId: string;
+    userId: string;
+  }): MeetingRecorderRuntimeState {
+    return this.runWithRoomRuntime(() => this.handleTransitionRecorder(input));
+  }
+
+  private handleTransitionRecorder(input: {
     action: "pause" | "resume" | "start" | "stop";
     durationMs?: number;
     leaseId: string;
@@ -320,6 +379,15 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
     meetingId: string,
     userId: string,
   ) {
+    return this.runWithRoomRuntime(() =>
+      this.handleReplaceMeetingSummary(content, meetingId, userId));
+  }
+
+  private async handleReplaceMeetingSummary(
+    content: unknown,
+    meetingId: string,
+    userId: string,
+  ) {
     await this.restoreConnections();
     await replaceMeetingSummaryInHocuspocus(this.hocuspocus, {
       content,
@@ -329,6 +397,21 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   }
 
   async appendMeetingTranscript(
+    draftItemId: string | undefined,
+    meetingId: string,
+    segment: MeetingTranscriptYjsSegment,
+    userId: string,
+  ) {
+    return this.runWithRoomRuntime(() =>
+      this.handleAppendMeetingTranscript(
+        draftItemId,
+        meetingId,
+        segment,
+        userId,
+      ));
+  }
+
+  private async handleAppendMeetingTranscript(
     draftItemId: string | undefined,
     meetingId: string,
     segment: MeetingTranscriptYjsSegment,

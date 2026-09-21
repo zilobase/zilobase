@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { resolveWorkspaceAiModel, type ResolvedAiModel } from "../../ai/providers/ai-provider";
 import { replaceMeetingSummary } from "../../collaboration/service";
-import { getRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
+import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import { db } from "../../../infrastructure/database";
 import { meeting, meetingTranscriptSegment } from "../../../infrastructure/database/schema";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";

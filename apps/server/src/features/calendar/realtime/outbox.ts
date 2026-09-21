@@ -1,7 +1,7 @@
 import { and, eq, lte } from "drizzle-orm";
 import { db } from "../../../infrastructure/database";
 import { calendarBinding, calendarNotificationOutbox } from "../../../infrastructure/database/schema";
-import { publishCalendarNotification } from "../../../infrastructure/runtime/runtime-adapter";
+import { publishCalendarNotification } from "@zilobase/runtime-adapter/capabilities";
 import { isCalendarFeatureEnabled, type RuntimeEnv } from "../../../shared/config/config";
 export async function drainCalendarOutbox(env: RuntimeEnv) {
   if (!isCalendarFeatureEnabled(env)) return;
@@ -11,7 +11,7 @@ export async function drainCalendarOutbox(env: RuntimeEnv) {
     if (!claimed) continue;
     try {
       const bindings = await db.select().from(calendarBinding).where(eq(calendarBinding.accountId, row.accountId));
-      for (const binding of bindings) if (isCalendarFeatureEnabled(env, binding.workspaceId)) await publishCalendarNotification(env, { bindingId: binding.id, userId: binding.userId, workspaceId: binding.workspaceId, accountId: row.accountId, calendarId: row.calendarId, revision: row.revision, generation: row.generation });
+      for (const binding of bindings) if (isCalendarFeatureEnabled(env, binding.workspaceId)) await publishCalendarNotification({ bindingId: binding.id, userId: binding.userId, workspaceId: binding.workspaceId, accountId: row.accountId, calendarId: row.calendarId, revision: row.revision, generation: row.generation });
       await db.delete(calendarNotificationOutbox).where(eq(calendarNotificationOutbox.id, row.id));
     } catch { await db.update(calendarNotificationOutbox).set({ nextAttemptAt: new Date(Date.now() + Math.min(300_000, 1000 * 2 ** Math.min(row.attempts, 9))) }).where(eq(calendarNotificationOutbox.id, row.id)) }
   }

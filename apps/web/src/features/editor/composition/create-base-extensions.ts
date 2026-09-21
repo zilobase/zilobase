@@ -54,6 +54,7 @@ import {
   OfflineStructureGuard,
   shouldEnableOfflineStructureGuard,
 } from "@/features/offline/index"
+import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
 
 export type BaseExtensionsOptions = {
   collaboration?: import("../core/types").EditorCollaboration
@@ -66,6 +67,7 @@ export type BaseExtensionsOptions = {
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   onTocUpdate: (items: TableOfContentDataItem[]) => void
   workspaceId?: string | null
   pageId?: string | null
@@ -100,6 +102,7 @@ export const createBaseExtensions = ({
   onCreatePage,
   onEmbedPage,
   onOpenPage,
+  onStructuralInsertionPendingChange,
   onTocUpdate,
   workspaceId,
   pageId,
@@ -214,6 +217,7 @@ export const createBaseExtensions = ({
           onCreateMeeting: createEditorMeeting,
           onCreatePage,
           onOpenPage,
+          onStructuralInsertionPendingChange,
           workspaceId,
         }),
       ]

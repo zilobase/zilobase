@@ -47,6 +47,7 @@ export async function ensureDevelopmentEnvironment(options = {}) {
       MINIO_CONSOLE_PORT: "19101",
       MAILPIT_SMTP_PORT: "11025",
       MAILPIT_UI_PORT: "18025",
+      VALKEY_HOST_PORT: "16379",
     }),
   );
 
@@ -120,6 +121,7 @@ export async function checkEnvironment() {
       "BETTER_AUTH_URL",
       "CLIENT_URL",
       "COLLABORATION_SECRET",
+      "REALTIME_REDIS_URL",
     ];
     const missing = required.filter((key) => !env[key]?.trim());
     results.push({ name, missing });
@@ -143,6 +145,7 @@ export function profileEnvironment(profile, dependencies) {
     `@127.0.0.1:${dependencies.POSTGRES_HOST_PORT}/${profile.database}`;
   const common = {
     DATABASE_URL: databaseUrl,
+    REALTIME_REDIS_URL: `redis://127.0.0.1:${dependencies.VALKEY_HOST_PORT}`,
     BETTER_AUTH_SECRET: secret(48),
     ZILOBASE_BOOTSTRAP_TOKEN: secret(48),
     COLLABORATION_SECRET: secret(48),

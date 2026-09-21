@@ -14,7 +14,6 @@ export default defineConfig({
         "src/infrastructure/database/schema.ts",
         "src/infrastructure/database/schema/**",
         "src/entrypoints/**",
-        "src/app/node/server.ts",
       ],
       include: ["src/**/*.ts"],
       provider: "v8",

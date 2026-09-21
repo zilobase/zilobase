@@ -20,7 +20,7 @@ flowchart TD
 
 The web [composition root](../apps/web/src/app) selects providers, routes and edition behavior. [Server composition](../apps/server/src/app/index.ts) installs middleware and mounts [feature routes](../apps/server/src/app/routes.ts). Session authentication identifies the caller; feature authorization determines which operations that caller may perform. Authentication alone does not grant access to every page in a workspace.
 
-[Database context](../apps/server/src/infrastructure/database/index.ts) scopes Drizzle access to a request or explicit background invocation. Streaming work needs an independent context when it outlives request middleware. [Runtime context](../apps/server/src/infrastructure/runtime/runtime-adapter.ts) supplies runtime-dependent capabilities; its scoped adapter takes precedence over the process fallback.
+[Database context](../apps/server/src/infrastructure/database/index.ts) scopes Drizzle access to a request or explicit background invocation. Streaming work needs an independent context when it outlives request middleware. [Runtime context](../packages/runtime-adapter/src/context.ts) supplies runtime-dependent capabilities only inside an explicit request or background scope; ambient process fallback is not supported.
 
 Realtime is not a single protocol: page collaboration uses Yjs/Hocuspocus, while database, navigation and mail modules have their own events and recovery. Durable background records and outboxes coordinate work whose lifetime exceeds an HTTP request.
 

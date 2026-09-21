@@ -1,6 +1,6 @@
 import { extractDatabaseIds } from "@zilobase/page-context"
 
-type DatabasePlacement = {
+export type DatabasePlacement = {
   itemId: string
   itemKind: string
   parentId: string

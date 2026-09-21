@@ -891,6 +891,7 @@ function buildTasksViewData({
         accessLevel: "full",
         config: databaseConfig,
         createdAt: "",
+        deletedAt: null,
         id: TASKS_DATABASE_ID,
         name: "My Tasks",
         pageId: null,

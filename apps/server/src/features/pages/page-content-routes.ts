@@ -8,7 +8,7 @@ import { database, dataSource, databaseProperty, databaseRow, page, pageProperty
 import type { AppBindings } from "../../shared/types";
 import { readJsonBody } from "../../shared/http/request";
 import { createCollaborationTicket, documentNameForPage, getOrCreateCollaborationDocumentState, replacePageContent } from "../collaboration/service";
-import { getCollaborationWebSocketUrl } from "../../infrastructure/runtime/runtime-adapter";
+import { getCollaborationWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
 import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../workspaces/navigation-realtime/outbox";
 import { commitDatabaseMutationBatch } from "../databases/core";
 import { lockDatabaseAutomationFactRows } from "../automations/triggers/event-capture";
@@ -201,7 +201,7 @@ pageContentRoutes.post("/:id/collaboration-ticket", async (c) => {
     getOrCreateCollaborationDocumentState(existing.id),
   ]);
   const documentName = documentNameForPage(existing.id);
-  const websocketUrl = new URL(getCollaborationWebSocketUrl(c.req.raw, c.env));
+  const websocketUrl = new URL(getCollaborationWebSocketUrl(c.req.raw));
   websocketUrl.searchParams.set("document", documentName);
 
   return c.json({

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 
-import { runWithRuntimePorts } from "../../../infrastructure/runtime/runtime-adapter";
+import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import {
   drainNavigationRealtimeOutbox,
   enqueueNavigationInvalidation,
@@ -80,6 +80,12 @@ test("failed immediate publication retains the event and schedules retry", async
     {
       fanout: { publish: async () => { throw new Error("offline"); }, subscribe: vi.fn() } as never,
       jobs: { dispatch: vi.fn(), drain: vi.fn() },
+      telemetry: {
+        error: vi.fn(),
+        event: vi.fn(),
+        health: vi.fn(),
+        metrics: vi.fn(),
+      },
     },
     () => publishNavigationInvalidation(event, {}, executor as never),
   ), /offline/);

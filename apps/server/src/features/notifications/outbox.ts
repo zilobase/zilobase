@@ -3,7 +3,7 @@ import { and, asc, eq, inArray, lte } from "drizzle-orm";
 import type { RuntimeEnv } from "../../shared/config/config";
 import { db } from "../../infrastructure/database";
 import { inProductNotificationOutbox } from "../../infrastructure/database/schema";
-import { getRuntimePorts } from "../../infrastructure/runtime/runtime-adapter";
+import { requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
 
 export async function drainInProductNotificationOutbox(
   env: RuntimeEnv,
@@ -17,12 +17,12 @@ export async function drainInProductNotificationOutbox(
     lte(inProductNotificationOutbox.nextAttemptAt, now),
   )).orderBy(asc(inProductNotificationOutbox.createdAt)).limit(limit);
   if (!rows.length) return { published: 0, retained: 0 };
-  const publish = getRuntimePorts().fanout;
+  const publish = requireRuntimePort("fanout");
   let published = 0;
   const publishedIds: string[] = [];
   for (const row of rows) {
     try {
-      await publish?.publish(`notification:${row.userId}`, {
+      await publish.publish(`notification:${row.userId}`, {
         notificationId: row.notificationId,
         userId: row.userId,
         workspaceId: row.workspaceId,

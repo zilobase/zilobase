@@ -19,6 +19,7 @@ export const useEditorExtensions = ({
   onCreatePage,
   onEmbedPage,
   onOpenPage,
+  onStructuralInsertionPendingChange,
   workspaceId,
   pageId,
 }: UseEditorExtensionsOptions) => {
@@ -37,6 +38,7 @@ export const useEditorExtensions = ({
         onCreatePage,
         onEmbedPage,
         onOpenPage,
+        onStructuralInsertionPendingChange,
         onTocUpdate: setTocItems,
         workspaceId,
         pageId,
@@ -52,6 +54,7 @@ export const useEditorExtensions = ({
       onCreatePage,
       onEmbedPage,
       onOpenPage,
+      onStructuralInsertionPendingChange,
       workspaceId,
       pageId,
     ],

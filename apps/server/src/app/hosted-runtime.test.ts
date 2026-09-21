@@ -38,7 +38,7 @@ test("the hosted fetch adapter exposes discovery and readiness without a session
     ok: true,
     service: "zilobase-server",
   });
-  const app = createApp();
+  const app = createApp({ ports: {} });
 
   const discovery = await app.request(
     "https://api.example.com/.well-known/zilobase",

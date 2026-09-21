@@ -17,7 +17,7 @@ const state = vi.hoisted(() => ({
 vi.mock("../../access", () => ({
   canAccessPageInWorkspace: async () => state.allowed,
 }));
-vi.mock("../../../infrastructure/runtime/runtime-adapter", () => ({
+vi.mock("@zilobase/runtime-adapter/capabilities", () => ({
   getRuntimePorts: () => ({
     meetings: {
       claim: state.claim,

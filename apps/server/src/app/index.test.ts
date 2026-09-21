@@ -3,12 +3,12 @@ import { test, vi } from "vitest";
 import { Hono } from "hono";
 
 import { appErrorHandler, createApp, createAppErrorHandler } from "./";
-import { isNodeApiPath } from "../infrastructure/node/api-routing";
+import { isNodeApiPath } from "@zilobase/runtime-adapter/node";
 import type { AppBindings } from "../shared/types";
 import type { ZilobaseEditionExtension } from "../shared/types";
 
 test("createApp registers every public feature route group", () => {
-  const routes = createApp().routes.map(
+  const routes = createApp({ ports: {} }).routes.map(
     ({ method, path }) => `${method} ${path}`,
   );
 
@@ -58,7 +58,7 @@ test("createApp registers every public feature route group", () => {
 });
 
 test("every registered Hono route is a Node API path", () => {
-  for (const { path, method } of createApp().routes) {
+  for (const { path, method } of createApp({ ports: {} }).routes) {
     if (path === "/*" || path === "/" || (method === "ALL" && path.endsWith("/*"))) continue;
     const concrete = path.replace(/:[^/]+/g, "id");
     assert.equal(isNodeApiPath(concrete.startsWith("/") ? concrete : `/${concrete}`), true, path);
@@ -66,7 +66,7 @@ test("every registered Hono route is a Node API path", () => {
 });
 
 test("createApp keeps global middleware ahead of feature routes", () => {
-  const routes = createApp().routes;
+  const routes = createApp({ ports: {} }).routes;
   const firstFeatureRoute = routes.findIndex(({ path }) => path !== "/*");
 
   assert.ok(firstFeatureRoute >= 6);
@@ -97,7 +97,7 @@ test("createApp maps domain HTTP errors instead of a generic 500", async () => {
 });
 
 test("createApp sets API security headers", async () => {
-  const response = await createApp().request("/health");
+  const response = await createApp({ ports: {} }).request("/health");
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
@@ -106,7 +106,7 @@ test("createApp sets API security headers", async () => {
 });
 
 test("createApp rejects oversized JSON bodies", async () => {
-  const response = await createApp().request("/session", {
+  const response = await createApp({ ports: {} }).request("/session", {
     method: "POST",
     headers: {
       "content-length": String(33 * 1024 * 1024),
@@ -120,7 +120,7 @@ test("createApp rejects oversized JSON bodies", async () => {
 });
 
 test("createApp returns 405 when a path exists for another method", async () => {
-  const response = await createApp().request("/health", { method: "POST" });
+  const response = await createApp({ ports: {} }).request("/health", { method: "POST" });
 
   assert.equal(response.status, 405);
   assert.match(response.headers.get("allow") ?? "", /GET/i);
@@ -128,7 +128,7 @@ test("createApp returns 405 when a path exists for another method", async () => 
 
 test("createApp registers a compile-time edition after public routes", () => {
   const extension = createTestEditionExtension();
-  const routes = createApp({ editionExtension: extension }).routes.map(
+  const routes = createApp({ editionExtension: extension, ports: {} }).routes.map(
     ({ method, path }) => `${method} ${path}`,
   );
 

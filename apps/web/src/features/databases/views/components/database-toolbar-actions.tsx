@@ -19,12 +19,17 @@ import {
 
 import { DatabaseAutomationManager } from "../../../automations";
 import { useDatabaseAutomationCapability } from "@zilobase/features/automations/react";
+import { DatabaseTrashRestoreButton } from "../../core/database-trash-restore-button";
 
 export function DatabaseToolbarActions({
+  canRestoreDeleted,
+  deletedDatabaseId,
   onPreviewForm,
   settingsOpen,
   onSettingsOpenChange,
 }: {
+  canRestoreDeleted: boolean;
+  deletedDatabaseId: string | null;
   onPreviewForm: () => void;
   settingsOpen: boolean;
   onSettingsOpenChange: (open: boolean) => void;
@@ -103,6 +108,8 @@ export function DatabaseToolbarActions({
           />
           <DatabaseRowCreationControl onPreviewForm={onPreviewForm} />
         </>
+      ) : canRestoreDeleted && deletedDatabaseId ? (
+        <DatabaseTrashRestoreButton databaseId={deletedDatabaseId} />
       ) : null}
       {showExpandButton && expandDatabaseId ? (
         <Button

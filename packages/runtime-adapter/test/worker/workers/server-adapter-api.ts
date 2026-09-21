@@ -1,3 +1,5 @@
+import { getRuntimePorts } from "../../../src/context";
+
 function pageIdFromDocumentName(documentName: string) {
   return documentName.startsWith("page:") ? documentName.slice(5) : null;
 }
@@ -9,22 +11,43 @@ function meetingIdFromDocumentName(documentName: string) {
 function createCollaborationHocuspocus() {
   const hocuspocus = {
     configuration: { extensions: [] as unknown[] },
+    documents: new Map<string, {
+      getConnectionsCount(): number;
+      name: string;
+    }>(),
     handledConnections: 0,
     pageReplacementCalls: 0,
+    runtimePortChecks: 0,
     summaryReplacementCalls: 0,
+    storeDocumentCalls: 0,
     transcriptAppendCalls: 0,
-    async storeDocumentHooks() {},
+    async storeDocumentHooks() {
+      hocuspocus.storeDocumentCalls += 1;
+    },
     async unloadDocument() {},
-    handleConnection(_socket: WebSocket, _request: Request, context: unknown) {
+    handleConnection(_socket: WebSocket, request: Request, context: unknown) {
       hocuspocus.handledConnections += 1;
+      const documentName = new URL(request.url).searchParams.get("document") ?? "";
+      if (documentName && !hocuspocus.documents.has(documentName)) {
+        hocuspocus.documents.set(documentName, {
+          getConnectionsCount: () => 1,
+          name: documentName,
+        });
+      }
       return {
         handleClose() {},
         handleMessage() {
+          getRuntimePorts();
+          hocuspocus.runtimePortChecks += 1;
           for (const extension of hocuspocus.configuration.extensions) {
             const connected = (extension as {
               connected?: (input: { context: unknown }) => Promise<void> | void;
             }).connected;
             if (connected) void connected({ context });
+            const afterHandleMessage = (extension as {
+              afterHandleMessage?: (input: { context: unknown }) => Promise<void> | void;
+            }).afterHandleMessage;
+            if (afterHandleMessage) void afterHandleMessage({ context });
           }
         },
         pingInterval: setInterval(() => undefined, 60_000),
