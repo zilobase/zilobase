@@ -41,6 +41,7 @@ import { cn } from "@/shared/lib/utils"
 import { UndoHistoryScope } from "@/shared/shortcuts"
 import { toast } from "sonner"
 import { DatabaseBlockDropDialog, type PendingDatabaseBlockDrop } from "./database-block-drop-dialog"
+import { hasPendingCollaborationChanges } from "../collaboration/collaboration-readiness"
 
 export function Editor({
   afterMetadata,
@@ -107,12 +108,26 @@ export function Editor({
   const activeLinkedTab = layoutConfig?.linkedTabs.find(
     (tab) => tab.id === activeLayoutTab,
   )
+  const collaborationHasPendingChanges =
+    hasPendingCollaborationChanges(collaboration)
 
   useEffect(() => {
     if (layoutConfig?.structure !== "tabbed" || (activeLayoutTab !== "content" && !activeLinkedTab)) {
       setActiveLayoutTab("content")
     }
   }, [activeLayoutTab, activeLinkedTab, layoutConfig?.structure])
+
+  useEffect(() => {
+    if (!collaborationHasPendingChanges) return
+
+    const preventUnsyncedReload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ""
+    }
+
+    window.addEventListener("beforeunload", preventUnsyncedReload)
+    return () => window.removeEventListener("beforeunload", preventUnsyncedReload)
+  }, [collaborationHasPendingChanges])
 
   const { databaseEditorRuntime, editorRuntimeRef } = useEditorRuntime(databaseEditable)
   const { createEditorDatabase, handleDatabasePageDrop } =

@@ -59,6 +59,7 @@ import type {
 } from "@/features/editor/core/types";
 import type { OpenPageOptions } from "../navigation/open-page-options";
 import { usePageCollaboration } from "@/features/editor/collaboration/use-page-collaboration";
+import { isPageCollaborationReady } from "@/features/editor/collaboration/collaboration-readiness";
 import { isHostedDemoRuntime } from "@/features/demo";
 import { canEditOnlineDatabase } from "@/features/editor/database-editability";
 import {
@@ -403,9 +404,7 @@ export function PageEditorPane({
     };
   }, [commentController, commentsRegistry, pageId]);
   const liveEditingReady =
-    demoMode ||
-    !pageEditable ||
-    Boolean(collaboration.document && !collaboration.error);
+    demoMode || !pageEditable || isPageCollaborationReady(collaboration);
   const waitingForCollaboration =
     !demoMode &&
     collaborationEnabled &&
@@ -806,7 +805,7 @@ export function PageEditorPane({
         metadataEditable={pageEditable && liveEditingReady && !offlineEditing}
         structuralEditingEnabled={pageEditable && liveEditingReady && !offlineEditing}
         commentsEditable={pageEditable && liveEditingReady && !offlineEditing && enableComments}
-        databaseEditable={databaseEditingReady}
+        databaseEditable={databaseEditingReady && liveEditingReady}
         enableComments={enableComments && !offlineEditing}
         hideEditorContent={hideEditorContent}
         getStructuralBlockDeleteAction={getStructuralBlockDeleteAction}
