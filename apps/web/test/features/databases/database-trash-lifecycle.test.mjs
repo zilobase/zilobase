@@ -13,10 +13,9 @@ export function register({ assert, readSource, readWorkspace, test }) {
       readWorkspace("/packages/features/src/shared/item-action-cache.ts"),
     ])
 
-    assert.match(block, /useDatabaseMetadata\(databaseId, \{ includeDeleted: true \}\)/)
-    assert.match(block, /databaseLifecycle\?\.database\.deletedAt/)
-    assert.match(block, /data-database-deleted="true"/)
-    assert.match(styles, /node-databaseBlock:has\(> \[data-database-deleted="true"\]\)/)
+    assert.match(block, /hideWhenDeleted/)
+    assert.match(block, /includeDeleted/)
+    assert.match(styles, /node-databaseBlock:has\(\[data-database-deleted="true"\]\)/)
     assert.doesNotMatch(block, /canRestoreDeleted=/)
     assert.doesNotMatch(block, /includeDeleted=\{isEditable\}/)
     assert.match(controller, /Boolean\(bootstrap\?\.database\.deletedAt\)/)
@@ -28,6 +27,8 @@ export function register({ assert, readSource, readWorkspace, test }) {
       view,
       /!databaseDeleted \? \([\s\S]*?className="database-scroll-section"/,
     )
+    assert.match(view, /databaseDeleted && props\.hideWhenDeleted === true/)
+    assert.match(view, /data-database-deleted="true"/)
     assert.match(view, /deletedDatabaseId=\{databaseDeleted \? databaseId : null\}/)
     assert.match(toolbarActions, /<DatabaseTrashRestoreButton/)
     assert.match(toolbarActions, /editable \? \([\s\S]*?\) : canRestoreDeleted/)

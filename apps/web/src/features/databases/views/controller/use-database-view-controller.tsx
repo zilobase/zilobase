@@ -78,6 +78,7 @@ export type DatabaseViewProps = {
   editable?: boolean
   fullPage?: boolean
   includeDeleted?: boolean
+  hideWhenDeleted?: boolean
   onActiveViewIdChange?: (viewId: string | null) => void
   onOpenPage?: (
     pageId: string,

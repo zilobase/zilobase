@@ -6,7 +6,6 @@ import {
 } from "@tiptap/react"
 import { useSyncExternalStore } from "react"
 
-import { useDatabaseMetadata } from "../access/use-database-metadata"
 import { hasDatabasePageDragPayload } from "../interactions/database-page-drop"
 import { DatabaseView } from "../views/components/database-view"
 import type { DatabaseBlockOptions } from "./database-block-contracts"
@@ -38,8 +37,6 @@ function DatabaseBlockView({
   const databaseId = node.attrs.databaseId as string | null
   const setupMode = node.attrs.setupMode === true
   const showTitle = node.attrs.showTitle !== false
-  const { data: databaseLifecycle, isLoading: databaseLifecycleLoading } =
-    useDatabaseMetadata(databaseId, { includeDeleted: true })
   // Subscribe through the editor-owned runtime so this node view updates when read-only mode changes.
   const isEditable = useSyncExternalStore(
     options.editorRuntime?.subscribe ?? (() => () => {}),
@@ -49,14 +46,7 @@ function DatabaseBlockView({
       (() => options.editable !== false && editor.isEditable)
   )
 
-  return databaseLifecycleLoading || databaseLifecycle?.database.deletedAt ? (
-    <NodeViewWrapper
-      className="database-block hidden"
-      data-database-deleted="true"
-      data-database-id={databaseId ?? undefined}
-      data-type="databaseBlock"
-    />
-  ) : (
+  return (
     <NodeViewWrapper
       className="database-block"
       data-database-id={databaseId ?? undefined}
@@ -66,6 +56,8 @@ function DatabaseBlockView({
       <DatabaseView
         databaseId={databaseId}
         editable={isEditable}
+        hideWhenDeleted
+        includeDeleted
         onOpenPage={(pageId) =>
           options.onOpenPage?.(pageId, { databaseId })
         }

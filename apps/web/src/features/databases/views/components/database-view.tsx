@@ -49,6 +49,20 @@ export function DatabaseView(props: DatabaseViewProps) {
     viewType,
     pageId,
   } = useDatabaseViewController(props)
+  const hiddenDeletedDatabase =
+    databaseDeleted && props.hideWhenDeleted === true
+
+  if (hiddenDeletedDatabase) {
+    return (
+      <DatabaseViewProvider value={context}>
+        <div
+          className="hidden"
+          contentEditable={false}
+          data-database-deleted="true"
+        />
+      </DatabaseViewProvider>
+    )
+  }
 
   return (
     <DatabaseViewProvider value={context}>
