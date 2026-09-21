@@ -57,5 +57,8 @@ it. Deletion through the block menu removes the database node in the same undo
 operation as the resource transition. A stale node discovered after an external
 or completed deletion is removed from the collaborative document without adding
 a new editor-history entry. Deleted databases never start record-window or
-realtime subscriptions. Shared lifecycle cache handling still refreshes
-deleted-aware reads on delete and both active and deleted-aware reads on restore.
+realtime subscriptions. Active navigation also omits placements whose database
+endpoint is not in the active database payload, so structural recovery cannot
+reinsert a tombstoned database block and append a new trailing paragraph on
+each page load. Shared lifecycle cache handling still refreshes deleted-aware
+reads on delete and both active and deleted-aware reads on restore.

@@ -39,13 +39,24 @@ type PlacementExecutor = Pick<Database, "insert" | "update">;
 
 export function buildNavigationPlacements({
   placementRecords,
+  visibleDatabaseIds,
 }: {
   placementRecords: PlacementRecord[];
+  visibleDatabaseIds: ReadonlySet<string>;
 }): PageItemPlacementPayload[] {
   const placements = new Map<string, PageItemPlacementPayload>();
 
   for (const placement of placementRecords) {
     if (placement.deletedAt) {
+      continue;
+    }
+
+    if (
+      (placement.itemKind === "database" &&
+        !visibleDatabaseIds.has(placement.itemId)) ||
+      (placement.parentKind === "database" &&
+        !visibleDatabaseIds.has(placement.parentId))
+    ) {
       continue;
     }
 

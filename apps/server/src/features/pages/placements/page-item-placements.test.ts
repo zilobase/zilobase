@@ -46,6 +46,7 @@ test("buildNavigationPlacements keeps database row and page linked appearances",
         sourceRowId: null,
       },
     ],
+    visibleDatabaseIds: new Set(["database"]),
   });
 
   assert.deepEqual(
@@ -153,6 +154,7 @@ test("buildNavigationPlacements filters invalid records and keeps the first dupl
         position: 2,
       },
     ],
+    visibleDatabaseIds: new Set(["other", "parent"]),
   });
 
   assert.deepEqual(
@@ -161,6 +163,59 @@ test("buildNavigationPlacements filters invalid records and keeps the first dupl
       { id: "alpha", position: 2 },
       { id: "second", position: 2 },
     ],
+  );
+});
+
+test("buildNavigationPlacements excludes placements attached to hidden databases", () => {
+  const placements = buildNavigationPlacements({
+    placementRecords: [
+      {
+        id: "deleted-database",
+        itemId: "database-deleted",
+        itemKind: "database",
+        workspaceId: "workspace",
+        parentId: "page",
+        parentKind: "page",
+        placementKind: "primary",
+        position: 0,
+      },
+      {
+        id: "deleted-database-row",
+        itemId: "row-page",
+        itemKind: "page",
+        workspaceId: "workspace",
+        parentId: "database-deleted",
+        parentKind: "database",
+        placementKind: "database_row",
+        position: 0,
+      },
+      {
+        id: "active-database",
+        itemId: "database-active",
+        itemKind: "database",
+        workspaceId: "workspace",
+        parentId: "page",
+        parentKind: "page",
+        placementKind: "primary",
+        position: 1,
+      },
+      {
+        id: "linked-page",
+        itemId: "linked-page",
+        itemKind: "page",
+        workspaceId: "workspace",
+        parentId: "page",
+        parentKind: "page",
+        placementKind: "linked",
+        position: 2,
+      },
+    ],
+    visibleDatabaseIds: new Set(["database-active"]),
+  });
+
+  assert.deepEqual(
+    placements.map(({ id }) => id),
+    ["active-database", "linked-page"],
   );
 });
 
