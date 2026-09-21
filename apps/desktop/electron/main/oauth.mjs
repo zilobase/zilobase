@@ -1,6 +1,8 @@
-import { shell } from "electron";
+import { app, shell } from "electron";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import path from "node:path";
 import { activeServer, desktopError, loadConfig } from "./server.mjs";
 import { credentials } from "./credentials.mjs";
 
@@ -16,6 +18,14 @@ function matches(left, right) {
 function oneParameter(params, name) {
   const values = params.getAll(name);
   return values.length === 1 ? values[0] : null;
+}
+
+async function openAuthorizationUrl(url) {
+  if (process.env.ZILOBASE_E2E_USER_DATA && process.env.ZILOBASE_E2E_CAPTURE_BROWSER_URL === "1") {
+    await writeFile(path.join(app.getPath("userData"), "e2e-browser-authorization-url"), url, { mode: 0o600 });
+    return;
+  }
+  await shell.openExternal(url);
 }
 
 async function bindLoopback(handler) {
@@ -127,7 +137,7 @@ async function authorize(focusWindow) {
       ["response_type", "code"], ["state", state],
       ["code_challenge", challenge], ["code_challenge_method", "S256"],
     ]) authorizationUrl.searchParams.set(key, value);
-    await shell.openExternal(authorizationUrl.toString());
+    await openAuthorizationUrl(authorizationUrl.toString());
     const code = await callback;
     const tokenTimeout = setTimeout(() => controller.abort(), 15_000);
     let result;

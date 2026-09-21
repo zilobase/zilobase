@@ -23,7 +23,7 @@ Shared mutation tests render real hooks with React DOM's server renderer and exe
 
 Pull requests and main pushes run the complete `verify:architecture` suite.
 
-The [experimental Electron matrix](../../.github/workflows/electron-desktop.yml) builds an unpacked app on each desktop OS and runs the [packaged smoke](../../apps/desktop/e2e/electron-smoke.mjs). The [Electron self-host flow](../../apps/desktop/e2e/electron-selfhost.mjs) requires a running compatible server and is a separate integration command. These checks do not validate signed installers, OAuth browser redirects or live audio devices.
+The [experimental Electron matrix](../../.github/workflows/electron-desktop.yml) builds an unpacked app on each desktop OS and runs the [packaged smoke](../../apps/desktop/e2e/electron-smoke.mjs) and [OAuth loopback test](../../apps/desktop/e2e/electron-oauth.mjs). Its manually dispatched installer matrix also runs [artifact verification](../../scripts/desktop/verify-electron-candidate.mjs), including signature checks when signing credentials are supplied. The [Electron self-host flow](../../apps/desktop/e2e/electron-selfhost.mjs) requires a running compatible server and is a separate integration command. These checks do not exercise a real browser OAuth redirect, signed update installation or live audio devices.
 
 The [commit and push hooks](../../scripts/git/pre-push.mjs) select those
 pull-request jobs from staged files (`git commit`) or `origin/main...HEAD`

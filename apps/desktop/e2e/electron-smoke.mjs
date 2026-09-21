@@ -58,14 +58,18 @@ try {
   const capture = await page.evaluate(() => window.zilobaseDesktop.capture.state());
   assert.equal(capture.phase, "idle");
   assert.deepEqual(await page.evaluate(() => window.zilobaseDesktop.capture.recoverable()), []);
-  await assert.rejects(
-    page.evaluate(() => window.zilobaseDesktop.capture.start({ meetingId: "../invalid" })),
-    /meeting capture configuration is invalid/i,
-  );
-  await assert.rejects(
-    page.evaluate(() => window.zilobaseDesktop.capture.deleteLocal("../invalid")),
-    /Invalid meeting identifier/,
-  );
+  const invalidStart = await page.evaluate(async () => {
+    try { await window.zilobaseDesktop.capture.start({ meetingId: "../invalid" }); return null; }
+    catch (error) { return { code: error.code, message: error.message }; }
+  });
+  assert.equal(invalidStart?.code, "invalid_argument");
+  assert.match(invalidStart.message, /meeting capture configuration is invalid/i);
+  const invalidLocal = await page.evaluate(async () => {
+    try { await window.zilobaseDesktop.capture.deleteLocal("../invalid"); return null; }
+    catch (error) { return { code: error.code, message: error.message }; }
+  });
+  assert.equal(invalidLocal?.code, "capture_failed");
+  assert.match(invalidLocal.message, /Invalid meeting identifier/);
   await page.evaluate(() => window.zilobaseDesktop.auth.setToken("smoke-test-token"));
   assert.equal(await page.evaluate(() => window.zilobaseDesktop.auth.getToken()), "smoke-test-token");
   await page.evaluate(() => window.zilobaseDesktop.auth.setToken(null));

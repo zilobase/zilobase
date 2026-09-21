@@ -14,6 +14,13 @@ export type DesktopResult<T> =
   | { ok: true; value: T }
   | { ok: false; error: { code: DesktopFailureCode; message: string } };
 
+/** ContextBridge clones rejected values, so failures are plain serializable objects. */
+export type DesktopBridgeFailure = {
+  name: "DesktopError";
+  code: DesktopFailureCode;
+  message: string;
+};
+
 export type DesktopServer = {
   instanceId: string;
   displayName: string;

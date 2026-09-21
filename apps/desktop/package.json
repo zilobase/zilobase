@@ -13,7 +13,8 @@
     "build:electron:sidecar": "node electron/sidecar/build.mjs",
     "pack:electron": "node electron/sidecar/build.mjs && electron-builder --dir --config electron-builder.yml",
     "test:electron:smoke": "node e2e/electron-smoke.mjs",
-    "test:electron:selfhost": "node e2e/electron-selfhost.mjs"
+    "test:electron:selfhost": "node e2e/electron-selfhost.mjs",
+    "test:electron:oauth": "node e2e/electron-oauth.mjs"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "1.75.1",

@@ -18,6 +18,20 @@ Set `ZILOBASE_DESKTOP_BINARY` to the packaged executable and run
 user data and logs, and checks the preload, profile, second-instance link,
 credential, capture-idle, diagnostics export and `--diagnostics` CLI contracts. The experimental CI
 workflow runs it on all three desktop OSes.
+Run `npm run test:electron:oauth --workspace @zilobase/desktop` with the same
+packaged executable to test the loopback callback, state/issuer validation,
+PKCE token exchange, scoped session persistence, and diagnostic redaction
+against an isolated local authorization server. The test captures the browser
+URL inside its temporary profile; normal app launches still use the system
+browser.
+
+Run the **Experimental Electron desktop** GitHub Actions workflow manually to
+produce installer candidates for macOS Intel/Apple Silicon, Windows x64, and
+Linux x64/ARM64. Select `unsigned` for packaging review or `signed` for release
+acceptance. The workflow checks each installer format, update metadata, and the
+bundled native sidecar before uploading short-lived review artifacts. It never
+publishes a GitHub Release or changes the Tauri update feed. The package and
+metadata checks are in `scripts/desktop/verify-electron-candidate.mjs`.
 
 To test server selection against a running compatible self-hosted instance, set
 `ZILOBASE_E2E_SERVER` to its canonical origin and run
@@ -52,6 +66,17 @@ Windows signing needs a separate certificate through `WIN_CSC_LINK` and
 `TAURI_SIGNING_PRIVATE_KEY` cannot sign Electron updates. The macOS entitlements
 and helper signing paths are in `electron-builder.yml`. Verify the sidecar's
 microphone permission and hardened runtime on a notarized build before shipping.
+
+For the signed candidate workflow, provide these GitHub Actions secrets:
+`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`, `APPLE_PASSWORD`,
+`APPLE_TEAM_ID` (already used by Tauri), plus
+`APPLE_INSTALLER_CERTIFICATE` and `APPLE_INSTALLER_CERTIFICATE_PASSWORD` for PKG,
+and `WINDOWS_CERTIFICATE` and `WINDOWS_CERTIFICATE_PASSWORD` for Authenticode.
+The certificate values are base64 encoded `.p12`/`.pfx` files. The workflow
+fails before building if a required signing secret is absent. Its validation
+checks the macOS app signature/notarization ticket and PKG signer, and the
+Windows executable/installer signatures. Review these artifacts and run the
+device acceptance checks before changing the release workflow.
 
 ## Browser sign-in
 

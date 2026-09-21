@@ -3,9 +3,11 @@ const { contextBridge, ipcRenderer } = require("electron");
 async function call(channel, payload = {}) {
   const result = await ipcRenderer.invoke(channel, payload);
   if (result?.ok) return result.value;
-  const failure = new Error(result?.error?.message || "Desktop operation failed.");
-  failure.code = result?.error?.code || "operation_failed";
-  throw failure;
+  throw {
+    name: "DesktopError",
+    code: result?.error?.code || "operation_failed",
+    message: result?.error?.message || "Desktop operation failed.",
+  };
 }
 function subscribe(channel, callback) {
   const handler = (_event, value) => callback(value);

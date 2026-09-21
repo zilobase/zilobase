@@ -1,6 +1,16 @@
 name: Experimental Electron desktop
 
 on:
+  workflow_dispatch:
+    inputs:
+      signing:
+        description: Build unsigned review packages or signed release candidates
+        required: true
+        default: unsigned
+        type: choice
+        options:
+          - unsigned
+          - signed
   pull_request:
     paths:
       - "apps/desktop/electron/**"
@@ -32,7 +42,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          - os: macos-15-intel
             executable: apps/desktop/dist-electron/mac/zilobase-client.app/Contents/MacOS/zilobase-client
           - os: windows-2022
             executable: apps/desktop/dist-electron/win-unpacked/zilobase-client.exe
@@ -70,6 +80,9 @@ jobs:
       - name: Smoke packaged app (macOS and Windows)
         if: runner.os != 'Linux'
         run: npm run test:electron:smoke --workspace @zilobase/desktop
+      - name: Verify packaged browser authorization (macOS and Windows)
+        if: runner.os != 'Linux'
+        run: npm run test:electron:oauth --workspace @zilobase/desktop
       - name: Smoke packaged app with unlocked Secret Service (Linux)
         if: runner.os == 'Linux'
         shell: bash
@@ -84,4 +97,71 @@ jobs:
             eval "$keyring_env"
             export GNOME_KEYRING_CONTROL
             xvfb-run --auto-servernum npm run test:electron:smoke --workspace @zilobase/desktop
+            xvfb-run --auto-servernum npm run test:electron:oauth --workspace @zilobase/desktop
           '
+
+  installer-candidate:
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15-intel
+            name: mac-x64
+          - os: macos-15
+            name: mac-arm64
+          - os: windows-2022
+            name: windows-x64
+          - os: ubuntu-24.04
+            name: linux-x64
+          - os: ubuntu-24.04-arm
+            name: linux-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+      ZILOBASE_REQUIRE_SIGNING: ${{ inputs.signing == 'signed' && 'true' || 'false' }}
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      CSC_LINK: ${{ startsWith(matrix.name, 'mac-') && inputs.signing == 'signed' && secrets.APPLE_CERTIFICATE || '' }}
+      CSC_KEY_PASSWORD: ${{ startsWith(matrix.name, 'mac-') && inputs.signing == 'signed' && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+      CSC_INSTALLER_LINK: ${{ startsWith(matrix.name, 'mac-') && inputs.signing == 'signed' && secrets.APPLE_INSTALLER_CERTIFICATE || '' }}
+      CSC_INSTALLER_KEY_PASSWORD: ${{ startsWith(matrix.name, 'mac-') && inputs.signing == 'signed' && secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD || '' }}
+      APPLE_ID: ${{ startsWith(matrix.name, 'mac-') && inputs.signing == 'signed' && secrets.APPLE_ID || '' }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ startsWith(matrix.name, 'mac-') && inputs.signing == 'signed' && secrets.APPLE_PASSWORD || '' }}
+      APPLE_TEAM_ID: ${{ startsWith(matrix.name, 'mac-') && inputs.signing == 'signed' && secrets.APPLE_TEAM_ID || '' }}
+      WIN_CSC_LINK: ${{ matrix.name == 'windows-x64' && inputs.signing == 'signed' && secrets.WINDOWS_CERTIFICATE || '' }}
+      WIN_CSC_KEY_PASSWORD: ${{ matrix.name == 'windows-x64' && inputs.signing == 'signed' && secrets.WINDOWS_CERTIFICATE_PASSWORD || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/electron/sidecar -> target
+      - name: Install Linux packaging and audio dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libpipewire-0.3-dev libpulse-dev pkg-config rpm
+      - run: npm ci
+      - run: node scripts/desktop/verify-electron-candidate.mjs preflight
+      - run: npm run build:electron --workspace @zilobase/desktop -- --publish never
+      - run: node scripts/desktop/verify-electron-candidate.mjs verify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: electron-${{ inputs.signing }}-${{ matrix.name }}-${{ github.run_id }}
+          path: |
+            apps/desktop/dist-electron/*.dmg
+            apps/desktop/dist-electron/*.pkg
+            apps/desktop/dist-electron/*-mac.zip
+            apps/desktop/dist-electron/*.exe
+            apps/desktop/dist-electron/*.msi
+            apps/desktop/dist-electron/*.AppImage
+            apps/desktop/dist-electron/*.deb
+            apps/desktop/dist-electron/*.rpm
+            apps/desktop/dist-electron/latest*.yml
+          if-no-files-found: error
+          retention-days: 7
