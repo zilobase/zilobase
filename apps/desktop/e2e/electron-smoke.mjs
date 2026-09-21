@@ -41,6 +41,20 @@ try {
   const updated = await page.evaluate(() => window.zilobaseDesktop.server.list());
   assert.equal(updated.profiles[0].lastPath, "/notes");
   assert.equal(updated.profiles[0].workspaces[0].id, "smoke-workspace");
+  await page.evaluate(() => {
+    window.__electronSmokeLink = null;
+    window.zilobaseDesktop.deepLinks.onOpen((links) => { window.__electronSmokeLink = links[0]; });
+  });
+  await promisify(execFile)(executablePath, [
+    "zilobase://open?instance=zilobase-cloud&server=https%3A%2F%2Fapi.zilobase.com&path=%2Frecents%3Fprivate%3DSMOKE_LINK_SECRET",
+  ], {
+    env: { ...process.env, ZILOBASE_E2E_USER_DATA: userData, ZILOBASE_E2E_DISABLE_LEGACY: "1" },
+    timeout: 15_000,
+  });
+  await page.waitForFunction(() => window.__electronSmokeLink?.type === "open", null, { timeout: 10_000 });
+  assert.deepEqual(await page.evaluate(() => window.__electronSmokeLink), {
+    type: "open", serverUrl: "https://api.zilobase.com", instanceId: "zilobase-cloud", path: "/recents?private=SMOKE_LINK_SECRET",
+  });
   const capture = await page.evaluate(() => window.zilobaseDesktop.capture.state());
   assert.equal(capture.phase, "idle");
   assert.deepEqual(await page.evaluate(() => window.zilobaseDesktop.capture.recoverable()), []);
@@ -63,6 +77,7 @@ try {
     const entries = unzipSync(await readFile(archivePath));
     assert.ok(entries["diagnostics.json"]);
     assert.ok(!Object.values(entries).some((entry) => Buffer.from(entry).includes("SMOKE_SECRET_MUST_NOT_APPEAR")));
+    assert.ok(!Object.values(entries).some((entry) => Buffer.from(entry).includes("SMOKE_LINK_SECRET")));
   } finally { await unlink(archivePath); }
   await desktop.close();
   desktop = null;
