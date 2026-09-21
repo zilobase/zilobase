@@ -73,10 +73,6 @@ export function getPrimaryPageParentId(
   );
 }
 
-export function usesUserFullWidthPreference() {
-  return true;
-}
-
 export function resolvePageFullWidth(
   page:
     | {
@@ -90,10 +86,6 @@ export function resolvePageFullWidth(
   return Boolean(
     page?.publishedOwnerPreferences?.pageFullWidth ?? userFullWidthPreference,
   );
-}
-
-export function usesUserEmbeddedItemsPreference() {
-  return true;
 }
 
 export function resolveEmbeddedItemsOpenAs(

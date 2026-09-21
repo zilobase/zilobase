@@ -14624,14 +14624,6 @@
       "value": true,
       "type": false
     },
-    "usesUserEmbeddedItemsPreference": {
-      "value": true,
-      "type": false
-    },
-    "usesUserFullWidthPreference": {
-      "value": true,
-      "type": false
-    },
     "useUpdatePage": {
       "value": true,
       "type": false
@@ -15198,14 +15190,6 @@
       "value": true,
       "type": false
     },
-    "usesUserEmbeddedItemsPreference": {
-      "value": true,
-      "type": false
-    },
-    "usesUserFullWidthPreference": {
-      "value": true,
-      "type": false
-    },
     "useUpdatePage": {
       "value": true,
       "type": false
@@ -15752,14 +15736,6 @@
       "value": true,
       "type": false
     },
-    "usesUserEmbeddedItemsPreference": {
-      "value": true,
-      "type": false
-    },
-    "usesUserFullWidthPreference": {
-      "value": true,
-      "type": false
-    },
     "ZilobaseAiMode": {
       "value": false,
       "type": true
@@ -16019,14 +15995,6 @@
       "type": false
     },
     "resolvePageFullWidth": {
-      "value": true,
-      "type": false
-    },
-    "usesUserEmbeddedItemsPreference": {
-      "value": true,
-      "type": false
-    },
-    "usesUserFullWidthPreference": {
       "value": true,
       "type": false
     },

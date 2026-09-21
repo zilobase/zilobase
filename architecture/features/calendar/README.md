@@ -32,7 +32,7 @@ The lazy `/calendar` screen uses the existing workspace shell and shared control
 
 Account headers toggle persisted collapse; account and calendar menus provide keyboard-accessible Move up/Move down actions. Account organization uses account IDs; calendar ordering uses binding/calendar keys and preserves the saved ordering of other accounts. New sources append after saved sources.
 
-Calendar preference JSON also stores local color overrides and removed-calendar keys, scoped by binding/calendar identity. Older records normalize to empty additions. Calendar menus use shared inline submenus and the shared removal confirmation dialog. Eye visibility is temporary; removal hides the row and events until restored in Calendar settings. Both leave Google unchanged. A removed default is replaced using the shared writable-calendar resolver. Explicit event colors take precedence over local calendar colors.
+Calendar preference JSON stores the complete current preference shape, including labeled time-zone columns, local color overrides and removed-calendar keys scoped by binding/calendar identity. Incomplete or obsolete persisted shapes are rejected rather than upgraded during reads. Calendar menus use shared inline submenus and the shared removal confirmation dialog. Eye visibility is temporary; removal hides the row and events until restored in Calendar settings. Both leave Google unchanged. A removed default is replaced using the shared writable-calendar resolver. Explicit event colors take precedence over local calendar colors.
 
 ## Synchronization
 
@@ -158,7 +158,7 @@ The surface indexes only overlapping loaded days using binary search over timezo
 
 Virtual rows and columns keep their date keys across range extension. Focused timed columns remain pinned; root-owned pointer sessions and previews survive cell unmount. A shared minute clock updates current-time decorations independently of event layout. The faint wall-clock reference spans the timed timeline even away from today, with a strong segment on today.
 
-Calendar supports Day, Week and Month. Legacy Agenda routes normalize to Week. No year view is introduced.
+Calendar supports Day, Week and Month. Invalid route values normalize to Week. No year view is introduced.
 
 ## Loaded-date navigation
 

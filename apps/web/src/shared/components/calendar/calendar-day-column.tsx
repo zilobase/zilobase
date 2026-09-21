@@ -25,7 +25,7 @@ type Props = CalendarColumnActions & {
 };
 /** A stable date column in the shared timeline coordinate plane. */
 export const CalendarDayColumn = memo(function CalendarDayColumn({ day, items, preferences, prepared = true, canCreate, card, writable, onDay, onCreate, onChange, onError, allDayCollapsed, onExpandAllDay, viewportTop = 0, viewportHeight = 800 }: Props) {
-  const hourHeight = preferences.hourHeight ?? 48, pixelsPerMinute = hourHeight / 60;
+  const hourHeight = preferences.hourHeight, pixelsPerMinute = hourHeight / 60;
   const header = useRef<HTMLElement>(null), body = useRef<HTMLDivElement>(null);
   const slot = useRef<{ y: number; hour: number } | null>(null);
   const allDay = useMemo(() => items.filter(item => item.start.date), [items]);

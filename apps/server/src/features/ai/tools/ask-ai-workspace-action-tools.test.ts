@@ -20,22 +20,6 @@ test("workspace page updates default a missing display summary", () => {
   assert.equal(result.data.summary, "Updated page content.");
 });
 
-test("workspace patch updates accept legacy afterMarkdown replacements", () => {
-  const result = resolveWorkspacePageUpdateMarkdown(
-    "# Trip\n\n## Accommodation\n\nTBD\n\n## Budget\n\n$2,000",
-    {
-      afterMarkdown: "## Accommodation\n\n- Hotel Le Meurice",
-      editMode: "patch",
-      searchText: "## Accommodation\n\nTBD",
-    },
-  );
-
-  assert.equal(result.success, true);
-  if (!result.success) return;
-  assert.match(result.afterMarkdown, /Hotel Le Meurice/);
-  assert.match(result.afterMarkdown, /## Budget/);
-});
-
 test("workspace task patches replace the complete task section from one-item anchors", () => {
   const result = resolveWorkspacePageUpdateMarkdown(
     [
@@ -52,8 +36,8 @@ test("workspace task patches replace the complete task section from one-item anc
       "$2,000",
     ].join("\n"),
     {
-      afterMarkdown: "- [ ] Book flights\n- [ ] Reserve hotel\n- [ ] Pack essentials",
       editMode: "patch",
+      replaceText: "- [ ] Book flights\n- [ ] Reserve hotel\n- [ ] Pack essentials",
       searchText: "- Book flights",
     },
   );

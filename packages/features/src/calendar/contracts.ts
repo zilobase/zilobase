@@ -31,14 +31,14 @@ export type CalendarMutationResponse = { operationId: string; status: "pending" 
 export type CalendarColor = "red" | "orange" | "yellow" | "green" | "blue" | "purple" | "gray"
 export type CalendarTimeZoneColumn = { zone: string; label: string };
 export type CalendarPreferences = {
-  promptTimeZoneChanges?: boolean;
-  timeZoneColumns?: CalendarTimeZoneColumn[];
-  todayAlignment?: "week" | "start"; meetingPreviewMinutes?: number; mapsProvider?: "google" | "apple";
-  hourHeight?: number;
-  accountOrder?: string[]; calendarOrder?: string[]; collapsedAccountIds?: string[];
-  calendarColors?: Record<string, CalendarColor>; removedCalendarKeys?: string[];
+  promptTimeZoneChanges: boolean;
+  timeZoneColumns: CalendarTimeZoneColumn[];
+  todayAlignment: "week" | "start"; meetingPreviewMinutes: number; mapsProvider: "google" | "apple";
+  hourHeight: number;
+  accountOrder: string[]; calendarOrder: string[]; collapsedAccountIds: string[];
+  calendarColors: Record<string, CalendarColor>; removedCalendarKeys: string[];
   view: CalendarView; hiddenCalendarKeys: string[]; defaultCalendarKey: string | null;
   weekStartsOn: 0 | 1 | 2 | 3 | 4 | 5 | 6; showWeekends: boolean; showDeclined: boolean;
-  showWeekNumbers: boolean; timeFormat: "12" | "24"; timeZone: string; secondaryTimeZones: string[]; remindersEnabled: boolean;
+  showWeekNumbers: boolean; timeFormat: "12" | "24"; timeZone: string; remindersEnabled: boolean;
 }
 export type CalendarInvalidation = CalendarScope & { type: "calendar.invalidate"; calendarId: string; revision: number; generation: number }

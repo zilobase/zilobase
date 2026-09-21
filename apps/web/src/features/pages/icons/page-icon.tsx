@@ -10,7 +10,6 @@ import {
   getDatabaseIconConfig,
   getStoredIconColor,
   isSvgIcon,
-  normalizeStoredIconPresentation,
   sanitizeStoredSvg,
 } from "@/shared/lib/page-icon-utils"
 
@@ -44,7 +43,7 @@ export function PageIconDisplay({
   }
 
   if (isSvgIcon(value)) {
-    const sanitized = normalizeStoredIconPresentation(sanitizeStoredSvg(value))
+    const sanitized = sanitizeStoredSvg(value)
 
     if (!sanitized) {
       return null
