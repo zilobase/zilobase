@@ -13640,10 +13640,6 @@
       "value": true,
       "type": false
     },
-    "LegacySidebarConfig": {
-      "value": false,
-      "type": true
-    },
     "LibraryView": {
       "value": false,
       "type": true
@@ -13675,14 +13671,6 @@
     "SidebarConfig": {
       "value": false,
       "type": true
-    },
-    "SidebarItemId": {
-      "value": false,
-      "type": true
-    },
-    "sidebarItemIds": {
-      "value": true,
-      "type": false
     },
     "SidebarSection": {
       "value": false,
@@ -13794,10 +13782,6 @@
       "value": true,
       "type": false
     },
-    "LegacySidebarConfig": {
-      "value": false,
-      "type": true
-    },
     "LibraryView": {
       "value": false,
       "type": true
@@ -13829,14 +13813,6 @@
     "SidebarConfig": {
       "value": false,
       "type": true
-    },
-    "SidebarItemId": {
-      "value": false,
-      "type": true
-    },
-    "sidebarItemIds": {
-      "value": true,
-      "type": false
     },
     "SidebarSection": {
       "value": false,
@@ -13944,10 +13920,6 @@
       "value": true,
       "type": false
     },
-    "LegacySidebarConfig": {
-      "value": false,
-      "type": true
-    },
     "LibraryView": {
       "value": false,
       "type": true
@@ -13979,14 +13951,6 @@
     "SidebarConfig": {
       "value": false,
       "type": true
-    },
-    "SidebarItemId": {
-      "value": false,
-      "type": true
-    },
-    "sidebarItemIds": {
-      "value": true,
-      "type": false
     },
     "SidebarSection": {
       "value": false,
@@ -14074,10 +14038,6 @@
       "value": true,
       "type": false
     },
-    "LegacySidebarConfig": {
-      "value": false,
-      "type": true
-    },
     "LibraryView": {
       "value": false,
       "type": true
@@ -14109,14 +14069,6 @@
     "SidebarConfig": {
       "value": false,
       "type": true
-    },
-    "SidebarItemId": {
-      "value": false,
-      "type": true
-    },
-    "sidebarItemIds": {
-      "value": true,
-      "type": false
     },
     "SidebarSection": {
       "value": false,

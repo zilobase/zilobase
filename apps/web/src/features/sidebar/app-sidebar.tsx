@@ -86,11 +86,7 @@ import {
 } from "@zilobase/features/user-settings";
 import { useUpdateUserSettings, useUserSettings } from "@zilobase/features/user-settings/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
-import {
-  createSectionPresentationConfig,
-  readActiveSidebarTab,
-  writeActiveSidebarTab,
-} from "./model/sidebar-persistence"
+import { readActiveSidebarTab, writeActiveSidebarTab } from "./model/sidebar-persistence"
 import { isFeatureEnabled } from "@/shared/config/feature-flags"
 import { withoutMailFeatures } from "./model/sidebar-layout-model"
 import { WorkspaceMailNavigation } from "./components/workspace-mail-navigation"
@@ -271,15 +267,12 @@ export function AppSidebar({
   }, [activeTab.id, activeTab.sections, layout, sidebarConfig, updateUserSettings, workspaceId])
 
   const renderSection = (section: SidebarSection) => {
-    const legacyConfig = section.kind === "databaseView"
-      ? null
-      : createSectionPresentationConfig(sidebarConfig, layout, section)
-    const storageKey = `zilobase:sidebar-section:v2:${workspaceId ?? "default"}:${activeTab.id}:${section.id}`
+    const storageKey = `zilobase:sidebar-section:${workspaceId ?? "default"}:${activeTab.id}:${section.id}`
     if (section.kind === "databaseView") {
       return <SidebarDatabaseViewSection activePageId={getActivePageId(pathname)} currentUserId={session?.user?.id} key={section.id} section={section} storageKey={storageKey} />
     }
     if (section.kind === "favorites") {
-      return <NavFavorites favorites={favorites} key={section.id} onRemoveDatabaseFavorite={handleRemoveDatabaseFavorite} onRemoveFavorite={handleRemoveFavorite} sectionStorageKey={storageKey} sidebarConfig={legacyConfig!} workspaceId={workspaceId} />
+      return <NavFavorites favorites={favorites} key={section.id} limit={section.limit} onRemoveDatabaseFavorite={handleRemoveDatabaseFavorite} onRemoveFavorite={handleRemoveFavorite} sectionStorageKey={storageKey} sort={section.sort} workspaceId={workspaceId} />
     }
     if (section.kind === "meetings") {
       return <NavMeetings activeMeetingId={getActiveMeetingId(pathname, location.search)} key={section.id} meetings={(meetingsPayload?.meetings ?? []).slice(0, section.limit)} storageKey={storageKey} />
@@ -292,7 +285,7 @@ export function AppSidebar({
     }
     if (section.kind === "shared") {
       return pageSections.teamspacePages.length
-        ? <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={section.id} label={section.label || "Shared"} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pageSections.teamspacePages} sectionId="shared" sectionStorageKey={`${storageKey}:pages`} sidebarConfig={legacyConfig!} storageKey={`${storageKey}:pages:tree`} />
+        ? <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={section.id} label={section.label || "Shared"} limit={section.limit} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pageSections.teamspacePages} sectionId="shared" sectionStorageKey={`${storageKey}:pages`} sort={section.sort} storageKey={`${storageKey}:pages:tree`} />
         : null
     }
     if (section.kind === "teamspaces") {
@@ -302,12 +295,12 @@ export function AppSidebar({
         .slice(0, section.limit)
       return (
         <React.Fragment key={section.id}>
-          {sortedTeamspaces.map((teamspace) => <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={`${section.id}:${teamspace.id}`} label={teamspace.name} onCreateDatabase={() => void handleCreateDatabase(teamspace.id)} onCreatePage={() => void handleCreatePage(teamspace.id)} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pageSections.teamspacePagesById[teamspace.id] ?? []} sectionId="shared" sectionStorageKey={`${storageKey}:${teamspace.id}`} showCreateAction sidebarConfig={legacyConfig!} storageKey={`${storageKey}:${teamspace.id}:tree`} teamspace={teamspace} workspaceCanManage={Boolean(teamspaceSettings?.canManage)} workspaceId={workspaceId} />)}
+          {sortedTeamspaces.map((teamspace) => <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={`${section.id}:${teamspace.id}`} label={teamspace.name} limit={section.limit} onCreateDatabase={() => void handleCreateDatabase(teamspace.id)} onCreatePage={() => void handleCreatePage(teamspace.id)} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pageSections.teamspacePagesById[teamspace.id] ?? []} sectionId="shared" sectionStorageKey={`${storageKey}:${teamspace.id}`} showCreateAction sort={section.sort} storageKey={`${storageKey}:${teamspace.id}:tree`} teamspace={teamspace} workspaceCanManage={Boolean(teamspaceSettings?.canManage)} workspaceId={workspaceId} />)}
         </React.Fragment>
       )
     }
     const pages = section.kind === "recents" ? recents : pageSections.privatePages
-    return <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={section.id} label={section.label || (section.kind === "recents" ? "Recents" : "Private")} onCreateDatabase={section.kind === "private" ? handleCreateDatabase : undefined} onCreatePage={section.kind === "private" ? handleCreatePage : undefined} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pages} sectionId={section.kind} sectionStorageKey={storageKey} showCreateAction={section.kind === "private"} sidebarConfig={legacyConfig!} storageKey={`${storageKey}:tree`} />
+    return <NavPageSection activeDatabaseId={getActiveDatabaseId(pathname)} activeDatabaseViewId={getActiveDatabaseViewId(location.search)} activeMeetingId={getActiveMeetingId(pathname, location.search)} activePageId={getActivePageId(pathname)} databaseDropTargetId={databaseDropTargetId} key={section.id} label={section.label || (section.kind === "recents" ? "Recents" : "Private")} limit={section.limit} onCreateDatabase={section.kind === "private" ? handleCreateDatabase : undefined} onCreatePage={section.kind === "private" ? handleCreatePage : undefined} onDatabaseDropTargetChange={setDatabaseDropTargetId} onDropPageOnDatabase={handleDropPageOnDatabase} pages={pages} sectionId={section.kind} sectionStorageKey={storageKey} showCreateAction={section.kind === "private"} sort={section.sort} storageKey={`${storageKey}:tree`} />
   }
 
   const hasOverlayTitleBar =

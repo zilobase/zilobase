@@ -87,13 +87,13 @@ import { cn } from "@/shared/lib/utils"
 import { getApiErrorMessage } from "@/platform/network/api"
 import { PageIconDisplay } from "@/features/pages/index"
 import { getTeamspaceSidebarPermissions } from "@/features/teamspaces/model/teamspace-sidebar-permissions"
-import { SidebarSectionMenu } from "./sidebar-section-menu"
 import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
 import { getConfiguredSidebarItems } from "../model/sidebar-section-items"
 import { SidebarLibraryLink } from "./sidebar-library-link"
 import type {
-  LegacySidebarConfig,
   SidebarSectionId,
+  SidebarSectionLimit,
+  SidebarSectionSort,
 } from "@zilobase/features/user-settings"
 
 export type { SidebarNavItem } from "./sidebar-nav-list"
@@ -112,6 +112,7 @@ export function NavPageSection({
   activeMeetingId,
   databaseDropTargetId,
   label,
+  limit,
   teamspace,
   workspaceCanManage = false,
   workspaceId,
@@ -123,10 +124,8 @@ export function NavPageSection({
   showCreateAction = false,
   pages,
   sectionId,
-  sidebarConfig,
   sectionStorageKey,
-  onSidebarConfigChange,
-  onCustomizeSidebar,
+  sort,
   storageKey,
 }: {
   activeDatabaseId: string | null
@@ -135,6 +134,7 @@ export function NavPageSection({
   activeMeetingId?: string | null
   databaseDropTargetId: string | null
   label: string
+  limit: SidebarSectionLimit
   teamspace?: Teamspace
   workspaceCanManage?: boolean
   workspaceId?: string | null
@@ -146,19 +146,12 @@ export function NavPageSection({
   showCreateAction?: boolean
   pages: SidebarNavItem[]
   sectionId: SidebarSectionId
-  sidebarConfig?: LegacySidebarConfig
   sectionStorageKey?: string
-  onSidebarConfigChange?: (config: LegacySidebarConfig) => void
-  onCustomizeSidebar?: () => void
+  sort: SidebarSectionSort
   storageKey: string
 }) {
   const [sectionOpen, setSectionOpen] = useSidebarSectionOpen(sectionStorageKey ?? `${storageKey}:section`)
-  const displayedPages = sidebarConfig
-    ? getConfiguredSidebarItems(pages, sectionId, sidebarConfig)
-    : pages
-  const showSectionMenu = Boolean(
-    sidebarConfig && onSidebarConfigChange && onCustomizeSidebar,
-  )
+  const displayedPages = getConfiguredSidebarItems(pages, sectionId, { limit, sort })
   const getLinkProps = ({
     displayName,
     item,
@@ -351,13 +344,7 @@ export function NavPageSection({
               asChild
               className={cn(
                 "group-hover/section-header:bg-action-neutral-hover group-hover/section-header:text-action-on-neutral group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-action-neutral-hover group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-action-on-neutral",
-                showCreateAction
-                  ? showSectionMenu
-                    ? "pr-24"
-                    : "pr-16"
-                  : showSectionMenu
-                    ? "pr-16"
-                    : "pr-9",
+                showCreateAction ? "pr-16" : "pr-9",
               )}
             >
               <button
@@ -369,29 +356,10 @@ export function NavPageSection({
               </button>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          {sidebarConfig && onSidebarConfigChange && onCustomizeSidebar ? (
-            <SidebarSectionMenu
-              className={showCreateAction ? "right-9" : "right-2"}
-              config={sidebarConfig}
-              onChange={onSidebarConfigChange}
-              onCustomize={onCustomizeSidebar}
-              sectionId={sectionId}
-            />
-          ) : null}
           <SidebarLibraryLink
-            className={
-              showCreateAction
-                ? showSectionMenu
-                  ? "right-16"
-                  : "right-9"
-                : showSectionMenu
-                  ? "right-9"
-                  : "right-2"
-            }
+            className={showCreateAction ? "right-9" : "right-2"}
             label={label}
-            onSidebarConfigChange={onSidebarConfigChange}
             sectionId={sectionId}
-            sidebarConfig={sidebarConfig}
           />
           {showCreateAction ? (
             <DropDrawer>

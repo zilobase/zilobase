@@ -40,13 +40,12 @@ export function register({ readSource, assert, test }) {
   })
 
   test("sidebar rows, tabs, and buttons share the control radius", async () => {
-    const [button, sidebar, sidebarAction, sectionMenu, tabs] =
+    const [button, sidebar, sidebarAction, tabs] =
       await Promise.all(
         [
           "shared/ui/button.tsx",
           "shared/ui/sidebar.tsx",
           "shared/ui/sidebar-nav-item-action.tsx",
-          "features/sidebar/components/sidebar-section-menu.tsx",
           "shared/ui/app-tabs.tsx",
         ].map((path) =>
           readSource(`/src/${path}`),
@@ -58,7 +57,6 @@ export function register({ readSource, assert, test }) {
     assert.match(sidebar, /peer\/menu-button[^"\n]*rounded-md/)
     assert.doesNotMatch(sidebar, /rounded-\[calc\(var\(--radius-sm\)/)
     assert.match(sidebarAction, /rounded-md/)
-    assert.match(sectionMenu, /rounded-md/)
     assert.match(tabs, /relative inline-flex[^"\n]*rounded-md/)
   })
 

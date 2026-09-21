@@ -14,29 +14,16 @@ export function register({ assert, loadModule, test }) {
     )
   })
 
-  test("legacy sidebar settings migrate deterministically into Home", async () => {
-    const { normalizeSidebarConfig } = await loadModule(configPath)
+  test("unsupported sidebar settings reset to the canonical layout", async () => {
+    const { defaultSidebarConfig, normalizeSidebarConfig } = await loadModule(configPath)
     const input = {
-      hiddenItems: ["recents", "calendar", "unknown"],
+      version: 2,
       libraryView: "shared",
-      sectionLimits: { favorites: 15 },
-      sectionOrder: ["shared", "favorites"],
-      sectionSorts: { favorites: "alphabetical" },
-      taskDatabaseIds: ["tasks-1", "tasks-1"],
+      defaultLayout: { tabs: [], taskDatabaseIds: ["tasks-1"] },
+      workspaceLayouts: {},
     }
-    const first = normalizeSidebarConfig(input)
-    const second = normalizeSidebarConfig(input)
 
-    assert.deepEqual(first, second)
-    assert.equal(first.version, 3)
-    assert.equal(first.libraryView, "shared")
-    assert.deepEqual(first.defaultLayout.taskDatabaseIds, ["tasks-1"])
-    assert.deepEqual(
-      first.defaultLayout.tabs[0].sections.map((section) => section.kind),
-      ["shared", "teamspaces", "favorites", "private"],
-    )
-    assert.equal(first.defaultLayout.tabs[0].sections[2].limit, 15)
-    assert.equal(first.defaultLayout.tabs[0].sections[2].sort, "alphabetical")
+    assert.deepEqual(normalizeSidebarConfig(input), defaultSidebarConfig)
   })
 
   test("sidebar normalization enforces locked Home, AI, Mail, and Calendar tabs with payload caps", async () => {
@@ -96,25 +83,6 @@ export function register({ assert, loadModule, test }) {
     })
     assert.deepEqual(layout.tabs[0].sections.map((section) => section.kind), ["shared", "teamspaces"])
 
-    const migrated = normalizeSidebarConfig({
-      defaultLayout: {
-        tabs: [{
-          icon: "home",
-          id: "home",
-          name: "Home",
-          sections: [{ id: "old-shared", kind: "shared", limit: 15, sort: "alphabetical" }],
-          shortcuts: [],
-        }],
-        taskDatabaseIds: [],
-      },
-      libraryView: "shared",
-      version: 2,
-      workspaceLayouts: {},
-    })
-    assert.equal(migrated.version, 3)
-    assert.deepEqual(migrated.defaultLayout.tabs[0].sections.map((section) => section.kind), ["shared", "teamspaces"])
-    assert.equal(migrated.defaultLayout.tabs[0].sections[1].limit, 15)
-    assert.equal(migrated.defaultLayout.tabs[0].sections[1].sort, "alphabetical")
   })
 
   test("workspace layouts resolve independently and preserve the default fallback", async () => {
