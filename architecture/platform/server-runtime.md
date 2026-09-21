@@ -111,7 +111,10 @@ Page content replacement is also a room command rather than an optional
 runtime-adapter callback. Features publish `page:<pageId>:replace`; Node invokes
 the resident Hocuspocus page room and Workers invoke the named page Durable
 Object. The command payload and routing are runtime-neutral, while socket
-hibernation remains a Worker host concern.
+hibernation remains a Worker host concern. The Worker host keeps message
+completion inside the WebSocket event lifetime and flushes the Hocuspocus
+document store before a closing socket is released; its debounce timer is not
+treated as a durability boundary.
 
 Meeting recorder ownership and transcript/summary document RPCs use
 `Ports.meetings`. The Worker provider targets the meeting Durable Object for
