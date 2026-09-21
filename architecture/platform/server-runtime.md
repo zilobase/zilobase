@@ -62,9 +62,14 @@ Community Cloudflare deployment uses the [worker templates](../../packages/runti
 
 ## Invariants and failure handling
 
-Runtime ports are installed through `runWithRuntimePorts` for every request and
-background invocation. Lookup outside an explicit async scope fails; there is
-no process-global port object. `ServerRuntimeAdapter`, its ambient context, and
+Runtime ports are installed through `runWithRuntimePorts` around the complete
+Worker request dispatcher and every Node request or background invocation.
+That Worker scope includes ordinary Hono requests, agent dispatch, and all
+WebSocket upgrade authentication before routing to Durable Objects.
+Collaboration Durable Objects install the same Worker port set around each
+socket, alarm, and RPC event because those events execute as separate Worker
+invocations. Lookup outside an explicit async scope fails; there is no
+process-global port object. `ServerRuntimeAdapter`, its ambient context, and
 Worker adapter factories have been removed.
 
 Object storage, mail delivery, webhook egress, and MCP egress now require an

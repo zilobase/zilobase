@@ -15,6 +15,8 @@ import {
   type CollaborationDocumentPersistence,
 } from "@zilobase/server/adapter-api";
 import type { WorkerEnvBindings } from "../../bindings";
+import { runWithRuntimePorts } from "../../../context";
+import { createWorkerRuntimePorts } from "../../runtime-ports";
 import {
   selectCollaborationWebSocketProtocol,
   validateCollaborationMessage,
@@ -67,6 +69,7 @@ const TOKEN_REFRESH_GRACE_MS = 30_000;
 
 export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   protected readonly hocuspocus;
+  private readonly runtimePorts;
   private readonly connections = new Map<WebSocket, LiveConnection>();
   private readonly pendingConnections = new Map<string, PendingConnection>();
   private readonly pendingMessages = new Map<string, PendingMessage[]>();
@@ -78,6 +81,10 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     persistence?: CollaborationDocumentPersistence,
   ) {
     super(ctx, env);
+    this.runtimePorts = createWorkerRuntimePorts(env, {
+      execution: ctx,
+      storage: ctx.storage,
+    });
     this.hocuspocus = createCollaborationHocuspocus(env, persistence);
     this.hocuspocus.configuration.extensions.push({
       connected: async ({ context }) => {
@@ -108,6 +115,10 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   }
 
   async fetch(request: Request) {
+    return this.runWithRoomRuntime(() => this.handleFetch(request));
+  }
+
+  private async handleFetch(request: Request) {
     const startedAt = performance.now();
     const validation = validateCollaborationUpgradeRequest(
       request,
@@ -145,6 +156,14 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   }
 
   async webSocketMessage(ws: WebSocket, rawMessage: string | ArrayBuffer) {
+    return this.runWithRoomRuntime(() =>
+      this.handleWebSocketMessage(ws, rawMessage));
+  }
+
+  private async handleWebSocketMessage(
+    ws: WebSocket,
+    rawMessage: string | ArrayBuffer,
+  ) {
     const validation = validateCollaborationMessage(rawMessage);
 
     if (!validation.ok) {
@@ -219,6 +238,16 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     reason: string,
     wasClean: boolean,
   ) {
+    return this.runWithRoomRuntime(() =>
+      this.handleWebSocketClose(ws, code, reason, wasClean));
+  }
+
+  private async handleWebSocketClose(
+    ws: WebSocket,
+    code: number,
+    reason: string,
+    wasClean: boolean,
+  ) {
     const attachment = readAttachment(ws);
 
     const expectedClose = wasClean && (
@@ -239,6 +268,11 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   }
 
   async webSocketError(ws: WebSocket, error: unknown) {
+    return this.runWithRoomRuntime(() =>
+      this.handleWebSocketError(ws, error));
+  }
+
+  private async handleWebSocketError(ws: WebSocket, error: unknown) {
     const attachment = readAttachment(ws);
     console.error(JSON.stringify({
       documentName: attachment?.documentName,
@@ -251,6 +285,10 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   }
 
   async alarm() {
+    return this.runWithRoomRuntime(() => this.handleAlarm());
+  }
+
+  private async handleAlarm() {
     const now = Date.now();
 
     for (const ws of this.ctx.getWebSockets()) {
@@ -308,6 +346,15 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     pageId: string,
     userId: string,
   ) {
+    return this.runWithRoomRuntime(() =>
+      this.handleReplacePageContent(content, pageId, userId));
+  }
+
+  private async handleReplacePageContent(
+    content: unknown,
+    pageId: string,
+    userId: string,
+  ) {
     await this.restoreConnections();
     await replacePageContentInHocuspocus(this.hocuspocus, {
       content,
@@ -317,8 +364,18 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   }
 
   async appendPageComment(input: Parameters<typeof appendPageCommentInHocuspocus>[1]) {
+    return this.runWithRoomRuntime(() => this.handleAppendPageComment(input));
+  }
+
+  private async handleAppendPageComment(
+    input: Parameters<typeof appendPageCommentInHocuspocus>[1],
+  ) {
     await this.restoreConnections();
     return appendPageCommentInHocuspocus(this.hocuspocus, input);
+  }
+
+  protected runWithRoomRuntime<T>(run: () => T): T {
+    return runWithRuntimePorts(this.runtimePorts, run);
   }
 
   private createConnection(

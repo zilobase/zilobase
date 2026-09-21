@@ -85,11 +85,17 @@ describe("PageCollaborationRoom in the Workers runtime", () => {
     await expect.poll(
       () => runInDurableObject(stub, (instance: PageCollaborationRoom) => {
         const room = instance as unknown as {
-          hocuspocus: { storeDocumentCalls: number };
+          hocuspocus: {
+            runtimePortChecks: number;
+            storeDocumentCalls: number;
+          };
         };
-        return room.hocuspocus.storeDocumentCalls;
+        return {
+          runtimePortChecks: room.hocuspocus.runtimePortChecks,
+          storeDocumentCalls: room.hocuspocus.storeDocumentCalls,
+        };
       }),
-    ).toBe(1);
+    ).toEqual({ runtimePortChecks: 1, storeDocumentCalls: 1 });
   });
 
   it("closes a socket that misses its authentication refresh grace period", async () => {

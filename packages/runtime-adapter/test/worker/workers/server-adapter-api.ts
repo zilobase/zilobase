@@ -1,3 +1,5 @@
+import { getRuntimePorts } from "../../../src/context";
+
 function pageIdFromDocumentName(documentName: string) {
   return documentName.startsWith("page:") ? documentName.slice(5) : null;
 }
@@ -15,6 +17,7 @@ function createCollaborationHocuspocus() {
     }>(),
     handledConnections: 0,
     pageReplacementCalls: 0,
+    runtimePortChecks: 0,
     summaryReplacementCalls: 0,
     storeDocumentCalls: 0,
     transcriptAppendCalls: 0,
@@ -34,6 +37,8 @@ function createCollaborationHocuspocus() {
       return {
         handleClose() {},
         handleMessage() {
+          getRuntimePorts();
+          hocuspocus.runtimePortChecks += 1;
           for (const extension of hocuspocus.configuration.extensions) {
             const connected = (extension as {
               connected?: (input: { context: unknown }) => Promise<void> | void;

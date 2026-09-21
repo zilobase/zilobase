@@ -32,20 +32,9 @@ import { NavigationNotificationRoom } from "./features/navigation-realtime/navig
 import { routeNavigationRealtimeRequest, type NavigationRealtimeRouteEnv } from "./features/navigation-realtime/security";
 import type { WorkerEnvBindings } from "./bindings";
 import { createWorkerHandler } from "./handler";
-import { createWorkerJobs } from "./jobs";
-import { createWorkerLifecycle } from "./lifecycle";
 import { createWorkerScheduler } from "./scheduler";
-import { createWorkerLimits } from "./limits";
-import { createWorkerTelemetry } from "./telemetry";
-import { createWorkerFanout } from "./fanout";
-import { createWorkerMeetings } from "./meetings";
-import { createRuntimeEnv } from "../env";
-import { createUrlResolver } from "../url-resolver";
-import { createWorkerImageStorage } from "./image-storage";
-import { createWorkerMailer } from "./mailer";
-import { createWorkerOutboundFetch } from "./outbound-fetch";
-import { createWorkerDocuments } from "./documents";
 import { createWorkerDatabaseUnavailableResponse } from "./request-error";
+import { createWorkerRuntimePorts } from "./runtime-ports";
 
 export { routeCollaborationRequest } from "./features/collaboration/security";
 export type { CollaborationRouteEnv } from "./features/collaboration/security";
@@ -131,44 +120,21 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
   let runtimePorts: Partial<Ports> | null = null;
   const portsFor = (env: Env, execution?: unknown): Partial<Ports> => {
     if (!runtimePorts) {
-      const runtimeEnv = createRuntimeEnv(env, {
-        DATABASE_URL: () => env.HYPERDRIVE?.connectionString,
-        ZILOBASE_EDITION: () => "hosted",
+      runtimePorts = createWorkerRuntimePorts(env, {
+        telemetry: {
+          reportError: (_runtimeEnv, error, properties) => reportError(env, {
+            code: String(properties.code ?? "WORKER_REQUEST_ERROR"),
+            error: error instanceof Error ? error : new Error(String(error)),
+            method: String(properties.method ?? "UNKNOWN"),
+            requestId: String(properties.request_id ?? "unknown"),
+            route: String(properties.route_group ?? "/"),
+            status: 500,
+            userId: null,
+            workspaceId: null,
+          }),
+          reportEvent: opts.reportEvent,
+        },
       });
-      runtimePorts = {
-      ...(env.IMAGE_BUCKET ? { blobs: createWorkerImageStorage(env.IMAGE_BUCKET) } : {}),
-      documents: createWorkerDocuments(env),
-      env: runtimeEnv,
-      jobs: createWorkerJobs(env),
-      fanout: createWorkerFanout(env),
-      lifecycle: createWorkerLifecycle(),
-      limits: createWorkerLimits(env),
-      mailer: createWorkerMailer({
-        binding: env.EMAIL,
-        developmentSinkUrl: env.ZILOBASE_DEV_EMAIL_SINK_URL,
-      }),
-      meetings: createWorkerMeetings(env),
-      outbound: createWorkerOutboundFetch(),
-      readiness: {
-        background: () => ({ coordinatorReady: null, listenerReady: null }),
-        realtime: () => true,
-      },
-      telemetry: createWorkerTelemetry({
-        env,
-        reportError: (_runtimeEnv, error, properties) => reportError(env, {
-          code: String(properties.code ?? "WORKER_REQUEST_ERROR"),
-          error: error instanceof Error ? error : new Error(String(error)),
-          method: String(properties.method ?? "UNKNOWN"),
-          requestId: String(properties.request_id ?? "unknown"),
-          route: String(properties.route_group ?? "/"),
-          status: 500,
-          userId: null,
-          workspaceId: null,
-        }),
-        reportEvent: opts.reportEvent,
-      }),
-      urls: createUrlResolver(runtimeEnv),
-      };
     }
     if (execution && typeof execution === "object" && "waitUntil" in execution) {
       runtimePorts.scheduler = createWorkerScheduler(execution as ExecutionContext);
@@ -185,9 +151,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
   });
 
   async function fetchApp(request: Request, env: Env, ctx: unknown) {
-    return runWithRuntimePorts(portsFor(env, ctx), () =>
-      runWithDbRequest(env, () =>
-        appHandler.fetch(request, env, ctx)));
+    return runWithDbRequest(env, () => appHandler.fetch(request, env, ctx));
   }
 
   async function getCollaborationUserId(request: Request, env: Env) {
@@ -358,8 +322,8 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
   return {
     async fetch(request: Request, env: Env, ctx: ExecutionContext) {
       request = withRequestId(request);
-      try {
-        return await (async () => {
+      return runWithRuntimePorts(portsFor(env, ctx), async () => {
+        try {
           const pathname = new URL(request.url).pathname;
 
           if (opts.demoGuard?.isDemoRequest(request, env)) {
@@ -420,27 +384,34 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
           }
 
           return fetchApp(request, env, ctx);
-        })();
-      } catch (error) {
-        const unavailable = createWorkerDatabaseUnavailableResponse(
-          error,
-          request,
-        );
-        if (unavailable) return unavailable;
+        } catch (error) {
+          console.error(JSON.stringify({
+            error: error instanceof Error ? error.message : String(error),
+            event: "worker_request_error",
+            method: request.method,
+            request_id: request.headers.get("x-zilobase-request-id"),
+            route_group: routeGroup(request),
+          }));
+          const unavailable = createWorkerDatabaseUnavailableResponse(
+            error,
+            request,
+          );
+          if (unavailable) return unavailable;
 
-        await portsFor(env).telemetry!.error(error, {
-          code: "WORKER_REQUEST_ERROR",
-          method: request.method,
-          request_id: request.headers.get("x-zilobase-request-id"),
-          route_group: routeGroup(request),
-        });
-        await portsFor(env).telemetry!.event("worker_request_error", {
-          method: request.method,
-          request_id: request.headers.get("x-zilobase-request-id"),
-          route_group: routeGroup(request),
-        });
-        throw error;
-      }
+          await portsFor(env).telemetry!.error(error, {
+            code: "WORKER_REQUEST_ERROR",
+            method: request.method,
+            request_id: request.headers.get("x-zilobase-request-id"),
+            route_group: routeGroup(request),
+          });
+          await portsFor(env).telemetry!.event("worker_request_error", {
+            method: request.method,
+            request_id: request.headers.get("x-zilobase-request-id"),
+            route_group: routeGroup(request),
+          });
+          throw error;
+        }
+      });
     },
   };
 }
