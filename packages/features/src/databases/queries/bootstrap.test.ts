@@ -14,6 +14,7 @@ const bootstrap = {
     accessLevel: "full",
     config: {},
     createdAt: "2026-09-08T00:00:00.000Z",
+    deletedAt: null,
     id: "database-1",
     name: "Projects",
     pageId: null,

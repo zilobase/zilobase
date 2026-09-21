@@ -210,6 +210,7 @@ test("poke with version <= cached does not invalidate", () => {
           accessLevel: null,
           config: {},
           createdAt: "2026-09-08T00:00:00.000Z",
+          deletedAt: null,
           id: "database-1",
           name: "Projects",
           pageId: null,

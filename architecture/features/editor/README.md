@@ -27,7 +27,7 @@ Page composition supplies content, editability, metadata callbacks and collabora
 
 ## Authorization and persistence
 
-The editor receives access and editability decisions; server authorization remains authoritative. Yjs collaboration, offline storage and page persistence own durability. Structural blocks retain page/database associations. Locks, comments and database editing have distinct gates; moving their UI does not unify those policies.
+The editor receives access and editability decisions; server authorization remains authoritative. Yjs collaboration and page persistence own durability. Structural blocks retain page/database associations. Locks, comments and database editing have distinct gates; moving their UI does not unify those policies.
 
 ## Side effects, failures and recovery
 
@@ -52,6 +52,13 @@ A prepared ticket is consumed once. Provider creation applies ticket state first
 [Block conversion](../../../apps/web/src/features/editor/commands/block-insert.ts) owns replacement content for the drag menu. Paragraph/heading conversions preserve nonblank text; other block types retain their existing insertion defaults. The menu owns selection and the single delete/insert command chain. [Conversion tests](../../../apps/web/test/features/editor/block-conversion.test.mjs) preserve text, whitespace and fallback behavior.
 
 Database and meeting creation use the shared [structural-insertion transaction](../../../apps/web/src/features/editor/commands/structural-insertion.ts) for both slash commands and the block menu. The transaction remains pending until the created structural node is in the editor, allowing page hierarchy recovery to defer competing full-document restoration. Its [tests](../../../apps/web/test/features/editor/structural-insertion.test.mjs) cover successful ordering and failure cleanup.
+
+An embedded database node is also the restore anchor for a soft-deleted
+database. Deleting the database through navigation leaves that structural node
+in the page document; its [node view](../../../apps/web/src/features/databases/core/database-block.tsx)
+switches to the database feature's read-only trash presentation. Restoring the
+database reuses the same node and position. Explicitly deleting the structural
+block itself remains a separate editor operation.
 
 [Column controls](../../../apps/web/src/features/editor/toolbar/column-controls.tsx) coalesce pointer events into one animation frame before applying hover state. Existing control targets take precedence over geometric hit testing, and active drag/pointer/menu states suppress hover changes. Frame cancellation and listener cleanup remain in the effect.
 

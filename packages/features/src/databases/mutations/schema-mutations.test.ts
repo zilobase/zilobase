@@ -24,6 +24,7 @@ const host = {
   accessLevel: "edit" as const,
   config: {},
   createdAt: now,
+  deletedAt: null,
   id: "database-1",
   name: "Projects",
   pageId: "page-root",

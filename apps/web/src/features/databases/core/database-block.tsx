@@ -56,6 +56,7 @@ function DatabaseBlockView({
       <DatabaseView
         databaseId={databaseId}
         editable={isEditable}
+        includeDeleted={isEditable}
         onOpenPage={(pageId) =>
           options.onOpenPage?.(pageId, { databaseId })
         }
@@ -67,6 +68,7 @@ function DatabaseBlockView({
         workspaceId={options.workspaceId}
         setupMode={setupMode}
         showExpandButton
+        showTrashedBanner
         showTitle={showTitle}
         pageId={options.currentPageId}
       />

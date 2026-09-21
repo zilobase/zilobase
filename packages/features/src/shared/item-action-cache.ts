@@ -94,9 +94,17 @@ export async function invalidateDeletedItems({
   ]);
 
   for (const databaseId of result.deletedDatabaseIds) {
+    await queryClient.invalidateQueries({
+      predicate: (query) =>
+        query.queryKey[0] === "db" &&
+        query.queryKey.includes(databaseId) &&
+        query.queryKey[query.queryKey.length - 1] === true,
+    });
     queryClient.removeQueries({
       predicate: (query) =>
-        query.queryKey[0] === "db" && query.queryKey.includes(databaseId),
+        query.queryKey[0] === "db" &&
+        query.queryKey.includes(databaseId) &&
+        query.queryKey[query.queryKey.length - 1] !== true,
     });
     queryClient.removeQueries({
       queryKey: databaseAccessQueryKey(databaseId),
@@ -128,6 +136,12 @@ export async function invalidateRestoredItems({
           queryKey: zilobaseAiPagesQueryKey(workspaceId),
         })
       : Promise.resolve(),
+    ...result.restoredDatabaseIds.map((databaseId) =>
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "db" && query.queryKey.includes(databaseId),
+      }),
+    ),
     ...result.restoredDatabaseIds.map((databaseId) =>
       queryClient.invalidateQueries({
         queryKey: databaseAccessQueryKey(databaseId),

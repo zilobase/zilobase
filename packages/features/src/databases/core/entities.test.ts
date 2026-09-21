@@ -18,6 +18,7 @@ const host = {
   accessLevel: "edit" as const,
   config: {},
   createdAt: now,
+  deletedAt: null,
   id: "database-1",
   name: "Tasks",
   pageId: "page-host",
@@ -69,10 +70,22 @@ test("v2 bootstrap excludes monolithic row fields", () => {
   })
 
   assert.equal(parsed.database.id, "database-1")
+  assert.equal(parsed.database.deletedAt, null)
   assert.equal(
     databaseBootstrapResponseSchema.safeParse({ ...parsed, rows: [] }).success,
     false,
   )
+})
+
+test("bootstrap preserves the host database deletion state", () => {
+  const parsed = databaseBootstrapResponseSchema.parse({
+    database: { ...host, deletedAt: now },
+    dataSources: [],
+    properties: [],
+    views: [],
+  })
+
+  assert.equal(parsed.database.deletedAt, now)
 })
 
 test("record windows require complete atomic records and snapshot versions", () => {

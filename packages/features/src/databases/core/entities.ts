@@ -21,6 +21,7 @@ export const databaseHostEntitySchema = z
     accessLevel: z.enum(["view", "edit", "full"]).nullable(),
     config: z.unknown(),
     createdAt: timestampSchema,
+    deletedAt: timestampSchema.nullable(),
     id: entityIdSchema,
     name: z.string(),
     pageId: nullableEntityIdSchema,

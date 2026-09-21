@@ -89,6 +89,7 @@ export type DatabaseViewProps = {
   workspaceId?: string | null
   setupMode?: boolean
   showExpandButton?: boolean
+  showTrashedBanner?: boolean
   showTitle?: boolean
   pageId?: string | null
 }
@@ -145,7 +146,11 @@ export function useDatabaseViewController({
     }),
     [bootstrap],
   )
-  const editable = requestedEditable && !isDatabaseLocked(bootstrap?.database)
+  const databaseDeleted = Boolean(bootstrap?.database.deletedAt)
+  const editable =
+    requestedEditable &&
+    !databaseDeleted &&
+    !isDatabaseLocked(bootstrap?.database)
   const [draftDatabaseTitle, setDraftDatabaseTitle] = useState("New database")
   const [draftViewTitle, setDraftViewTitle] = useState("Table")
   const [activeViewId, setActiveViewId] = useState<string | null>(
@@ -1055,6 +1060,7 @@ export function useDatabaseViewController({
       : "database-block-shell",
     context: databaseViewContext,
     dataSourceSetupOpen,
+    databaseDeleted,
     databaseId,
     error: recordWindow.error ?? bootstrapState.error,
     isError:

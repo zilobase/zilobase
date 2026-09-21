@@ -239,6 +239,7 @@ export function buildHomepageViewData({
         accessLevel: "full",
         config: databaseConfig,
         createdAt: "",
+        deletedAt: null,
         id: homepageDatabaseId,
         name: mode === "trash" ? "Trash" : "Recents",
         workspaceId: workspaceId ?? homepageDatabaseId,

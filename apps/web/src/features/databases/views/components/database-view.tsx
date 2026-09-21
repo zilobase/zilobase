@@ -13,6 +13,7 @@ import {
   useDatabaseViewController,
   type DatabaseViewProps,
 } from "../controller/use-database-view-controller"
+import { DatabaseTrashBanner } from "../../core/database-trash-banner"
 
 export type { DatabaseViewProps }
 
@@ -31,6 +32,7 @@ export function DatabaseView(props: DatabaseViewProps) {
     className,
     context,
     dataSourceSetupOpen,
+    databaseDeleted,
     databaseId,
     error,
     handleDatabaseBlockDragOver,
@@ -57,6 +59,12 @@ export function DatabaseView(props: DatabaseViewProps) {
         onDragOver={handleDatabaseBlockDragOver}
         onDrop={handleDatabaseBlockDrop}
       >
+        {props.showTrashedBanner && databaseDeleted && databaseId ? (
+          <DatabaseTrashBanner
+            databaseId={databaseId}
+            showRestore={props.editable !== false}
+          />
+        ) : null}
         <div className="database-toolbar-section">
           <DatabaseViewToolbar />
         </div>

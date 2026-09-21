@@ -157,6 +157,7 @@ function hostEntity(
     accessLevel,
     config: record.config ?? null,
     createdAt: timestamp(record.createdAt),
+    deletedAt: nullableTimestamp(record.deletedAt),
     id: record.id,
     name: record.name,
     pageId: record.pageId,

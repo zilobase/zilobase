@@ -203,7 +203,26 @@ test("bootstrap reloads a preauthorized host inside the entity read snapshot", a
   })
   assert.equal(result.database.version, 8)
   assert.equal(result.database.name, "Committed")
+  assert.equal(result.database.deletedAt, null)
   assert.equal(inSnapshot, false)
+})
+
+test("bootstrap exposes a deleted host when deleted reads are requested", async () => {
+  const deleted = { ...databaseRecord(), deletedAt: instant }
+  const result = await getDatabaseBootstrapService({
+    accessLevel: "full",
+    databaseId: "database-1",
+    existingRecord: deleted,
+    includeDeleted: true,
+  }, {
+    getPayload: vi.fn(),
+    loadReadModel: async () => readModel({ rows: 0 }),
+    readSnapshot: async (read) => read(),
+    reloadRecord: async () => deleted,
+    requireAccess: vi.fn(),
+  })
+
+  assert.equal(result.database.deletedAt, instant.toISOString())
 })
 
 test("record windows use the host version from their read snapshot", async () => {

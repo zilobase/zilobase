@@ -11,7 +11,6 @@ import {
 } from "@/features/pages/pane/page-side-pane";
 import { Skeleton } from "@/shared/ui/skeleton"
 import { Button } from "@/shared/ui/button"
-import { TrashedItemBanner } from "@/features/pages/components/index"
 import { cn } from "@/shared/lib/utils"
 import {
   getDatabaseCover,
@@ -20,7 +19,6 @@ import {
 } from "@zilobase/features/databases"
 import { usePage, usePageAccessLevel } from "@zilobase/features/pages/react";
 import {
-  useRestoreDatabase,
   useUpdateDatabase,
   useUpdateDataSource,
 } from "@zilobase/features/databases/react";
@@ -32,7 +30,6 @@ import {
 } from "@/features/pages/pane/use-open-embedded-page";
 import { PageMetadata as PageMetadataView } from "../access/page-metadata"
 import { DatabaseView } from "../views/components/database-view"
-import { toast } from "sonner"
 import { PublicPaneTopbar, PublicPageBreadcrumb } from "@/features/pages/publication/shared-page-header";
 import { PageEditorPane } from "@/features/pages/pane/page-editor-pane";
 import { useDatabaseViewNavigation } from "../views/use-database-view-navigation"
@@ -40,6 +37,7 @@ import { useDatabaseMetadata } from "../access/use-database-metadata"
 import type { OpenPageOptions } from "@/features/pages"
 import { useTitleDraft } from "@/features/pages/hooks/index"
 import { useConnectivity, useOfflineManifest } from "@/features/offline/index"
+import { DatabaseTrashBanner } from "./database-trash-banner"
 
 export default function DatabasePage() {
   const { databaseId } = useParams({ from: "/d/$databaseId" })
@@ -322,7 +320,6 @@ export function DatabaseMainPane({
   const { data: accessLevel } = usePageAccessLevel(databasePageId)
   const updateDatabase = useUpdateDatabase()
   const updateDataSource = useUpdateDataSource()
-  const restoreDatabase = useRestoreDatabase()
   const [cover, setCover] = useState("")
   const [emoji, setEmoji] = useState("")
   const [embeddedViewId, setEmbeddedViewId] = useState<string | undefined>()
@@ -343,9 +340,11 @@ export function DatabaseMainPane({
     refetchOnMount: false,
   })
   const { data: sourceAccessLevel } = usePageAccessLevel(sourcePageId)
+  const databaseDeleted = Boolean(payload?.database.deletedAt)
   const editable =
     !readOnly &&
     connectivity === "online" &&
+    !databaseDeleted &&
     !databasePage?.deletedAt &&
     !isDatabaseLocked(payload?.database) &&
     (payload?.database.accessLevel === "edit" ||
@@ -446,32 +445,11 @@ export function DatabaseMainPane({
     selectLocalView(viewId)
   }
 
-  const restoreTrashedDatabase = () => {
-    if (!payload || restoreDatabase.isPending) {
-      return
-    }
-
-    restoreDatabase.mutate(payload.database.id, {
-      onSuccess: () => {
-        toast.success("Database restored.")
-      },
-      onError: (error) => {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Could not restore database.",
-        )
-      },
-    })
-  }
-
   return (
     <section className={cn(className, "animate-in fade-in-0 duration-300")}>
-      {databasePage?.deletedAt ? (
-        <TrashedItemBanner
-          itemLabel="database"
-          onRestore={restoreTrashedDatabase}
-          restoring={restoreDatabase.isPending}
+      {databaseDeleted ? (
+        <DatabaseTrashBanner
+          databaseId={databaseId}
           showRestore={!readOnly}
         />
       ) : null}
@@ -510,7 +488,7 @@ export function DatabaseMainPane({
           databaseId={databaseId}
           editable={editable}
           fullPage
-          includeDeleted={Boolean(databasePage?.deletedAt)}
+          includeDeleted={databaseDeleted}
           onActiveViewIdChange={updateActiveViewSearch}
           onOpenPage={onOpenPage}
           onShowTitleChange={
