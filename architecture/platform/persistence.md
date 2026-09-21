@@ -27,7 +27,7 @@ The stable [schema aggregate](../../apps/server/src/infrastructure/database/sche
 
 - Authentication and workspaces own identity, membership and teamspace tables.
 - Pages, page properties and placements are separate from database/data-source declarations. Placements refer to database rows without introducing a pages/databases initialization cycle.
-- Databases own a nullable fractional row-order key during the compatibility period, a durable versioned mutation journal, and idempotent command receipts. The legacy realtime outbox remains separate delivery state until its journal-reference migration.
+- Databases own a required fractional row-order key, a durable versioned mutation journal, and idempotent command receipts. The realtime outbox tracks delivery attempts by referencing committed journal events.
 - Mail connections, organization and synchronization own their respective tables; meetings and notifications own theirs.
 - AI agents, MCP, conversations, execution, files and settings retain separate persistence responsibilities.
 - Navigation, images, search, background work, instance settings and user settings own their focused tables.

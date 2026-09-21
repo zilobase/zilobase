@@ -78,7 +78,7 @@ Visible online clients use jittered recovery checks at approximately one minute 
 
 Localhost requires a reachable HTTPS webhook URL to receive Google notifications. Without `CALENDAR_WEBHOOK_URL`, local development intentionally uses fallback polling. Configure a reachable endpoint and restart the relevant runtimes before expecting push; no client change can make Google deliver to a private localhost address. Realtime tickets return `providerWatchExpiresAt` only for complete active coverage. Check actual external event convergence in addition to configuration booleans.
 
-The existing `calendar.sync` background resource payload supports `[accountId, calendarId]` and `[accountId, null]` for list refreshes. Deploy matching core code to task consumers before the webhook producer when rolling out across separate runtimes. Missing watch metadata on older realtime-ticket responses safely retains fallback polling. The metadata-only catalog endpoint must be deployed before the updated web client.
+The `calendar.sync` background resource payload uses `[accountId, calendarId]` and `[accountId, null]` for list refreshes. Realtime tickets always include nullable `providerWatchExpiresAt`; null means provider watch coverage is unavailable and the client retains recovery polling. Deploy matching core code to task consumers before the webhook producer when rolling out across separate runtimes. The metadata-only catalog endpoint must be deployed before the updated web client.
 
 ## Operations and recovery
 
