@@ -9,6 +9,9 @@ The normal `npm run dev` dependency set includes PostgreSQL, MinIO, Mailpit,
 and Valkey. Generated Node configuration points `REALTIME_REDIS_URL` at the
 loopback Valkey port, so source development exercises the same mandatory bus
 topology as self-hosted deployments without a manual broker step.
+The workspace launcher also forwards that generated Redis URL to discovered
+development providers, so their Node runtimes use the same shared Valkey
+instance under the one-command workspace.
 
 ## Ownership
 

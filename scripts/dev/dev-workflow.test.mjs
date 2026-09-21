@@ -35,6 +35,7 @@ import {
   DEVELOPMENT_PROVIDER_FILE,
   discoverDevelopmentProviders,
   validateDevelopmentProvider,
+  withSharedRealtimeRedis,
 } from "./providers.mjs";
 
 test("the Node profile uses stable local ports and identity", () => {
@@ -138,6 +139,15 @@ test("workspace providers may expose only loopback readiness URLs", () => {
     schemaVersion: 1,
     start: ["node", "scripts/start.mjs"],
   }, "/tmp/provider"), /loopback readiness URLs/);
+});
+
+test("workspace providers inherit the generated shared Redis URL", () => {
+  const environment = withSharedRealtimeRedis(
+    { REALTIME_REDIS_URL: "redis://stale:6379", PROVIDER_SETTING: "kept" },
+    { REALTIME_REDIS_URL: "redis://127.0.0.1:16379" },
+  );
+  assert.equal(environment.REALTIME_REDIS_URL, "redis://127.0.0.1:16379");
+  assert.equal(environment.PROVIDER_SETTING, "kept");
 });
 
 test("development hub combines public and provider-owned runtime details", async () => {

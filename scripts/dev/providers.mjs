@@ -51,6 +51,13 @@ export function startDevelopmentProvider(provider, environment = process.env) {
   });
 }
 
+export function withSharedRealtimeRedis(environment, nodeEnvironment) {
+  return {
+    ...environment,
+    REALTIME_REDIS_URL: nodeEnvironment.REALTIME_REDIS_URL,
+  };
+}
+
 export async function waitForDevelopmentProvider(provider, child) {
   const ready = Promise.all(provider.readiness.map((url) => waitForProviderUrl(url, child)));
   const exited = new Promise((_, reject) => {
