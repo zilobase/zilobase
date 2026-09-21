@@ -19,12 +19,17 @@ asar: true
 mac:
   icon: src-tauri/icons/icon.icns
   hardenedRuntime: true
+  entitlements: electron/entitlements.mac.plist
+  entitlementsInherit: electron/entitlements.mac.inherit.plist
+  binaries:
+    - Contents/Resources/sidecar/zilobase-desktop-sidecar
   extendInfo:
     NSMicrophoneUsageDescription: Zilobase uses your microphone to transcribe meetings you choose to record.
     NSAudioCaptureUsageDescription: Zilobase uses meeting audio to create a transcript after everyone has been notified.
     CFBundleURLTypes:
       - CFBundleURLSchemes:
           - zilobase
+        CFBundleURLName: com.zilobase
   target:
     - dmg
     - zip
@@ -41,6 +46,10 @@ win:
 linux:
   icon: src-tauri/icons
   category: Office
+  protocols:
+    - name: Zilobase
+      schemes:
+        - zilobase
   mimeTypes:
     - x-scheme-handler/zilobase
   target:

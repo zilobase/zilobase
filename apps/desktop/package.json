@@ -12,7 +12,8 @@
     "build:electron": "npm run build --prefix ../web && node electron/sidecar/build.mjs && electron-builder --config electron-builder.yml",
     "build:electron:sidecar": "node electron/sidecar/build.mjs",
     "pack:electron": "node electron/sidecar/build.mjs && electron-builder --dir --config electron-builder.yml",
-    "test:electron:smoke": "node e2e/electron-smoke.mjs"
+    "test:electron:smoke": "node e2e/electron-smoke.mjs",
+    "test:electron:selfhost": "node e2e/electron-selfhost.mjs"
   },
   "devDependencies": {
     "@dotenvx/dotenvx": "1.75.1",

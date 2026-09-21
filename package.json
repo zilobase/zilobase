@@ -29,6 +29,7 @@
     "test:web": "npm run test --workspace @zilobase/web",
     "test:update-local": "node scripts/desktop/test-update.mjs",
     "test:desktop:selfhost": "node apps/desktop/e2e/selfhost.mjs",
+    "test:desktop:electron:selfhost": "node apps/desktop/e2e/electron-selfhost.mjs",
     "tokens:sync": "node scripts/colors/sync-color-tokens.mjs",
     "tokens:check": "node scripts/colors/sync-color-tokens.mjs --check",
     "dev:desktop": "node scripts/desktop/dev.mjs",

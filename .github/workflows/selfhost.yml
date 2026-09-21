@@ -205,6 +205,29 @@ jobs:
             xvfb-run --auto-servernum npm run test:desktop:selfhost
           '
 
+      - name: Package experimental Electron desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run pack:electron --workspace @zilobase/desktop
+
+      - name: Drive packaged Electron through server selection
+        env:
+          ZILOBASE_DESKTOP_BINARY: ${{ github.workspace }}/apps/desktop/dist-electron/linux-unpacked/zilobase-client
+          ZILOBASE_E2E_SERVER: http://127.0.0.1:18787
+        shell: bash
+        run: |
+          dbus-run-session -- bash -c '
+            set -euo pipefail
+            unset GNOME_KEYRING_CONTROL
+            keyring_control=$(mktemp -d)
+            keyring_env=$(printf "%s" "zilobase-ci-keyring" | gnome-keyring-daemon --login --components=secrets --control-directory="$keyring_control")
+            eval "$keyring_env"
+            keyring_env=$(gnome-keyring-daemon --start --components=secrets --control-directory="$keyring_control")
+            eval "$keyring_env"
+            export GNOME_KEYRING_CONTROL
+            xvfb-run --auto-servernum npm run test:desktop:electron:selfhost
+          '
+
       - name: Upload packaged desktop diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

@@ -10,12 +10,44 @@ pipeline. Start the web dev server on port 1420, then run
 `npm run build:electron --workspace @zilobase/desktop`. The shell now includes
 server profiles, browser authorization, encrypted session storage, diagnostics,
 native notifications, an Electron update feed, and a supervised native meeting
-capture sidecar. The sidecar also reads legacy keyring entries. Live audio and
-release signing still need parity checks before Electron can replace Tauri. For an unsigned local package,
+capture sidecar. The sidecar also reads legacy keyring entries. For an unsigned local package,
 build the web app and sidecar first, then run
 `CSC_IDENTITY_AUTO_DISCOVERY=false npm run pack:electron --workspace @zilobase/desktop`.
 Set `ZILOBASE_DESKTOP_BINARY` to the packaged executable and run
-`npm run test:electron:smoke --workspace @zilobase/desktop`.
+`npm run test:electron:smoke --workspace @zilobase/desktop`. This uses temporary
+user data and checks the preload, profile, credential, capture-idle and diagnostics
+contracts. The experimental CI workflow runs it on all three desktop OSes.
+
+To test server selection against a running compatible self-hosted instance, set
+`ZILOBASE_E2E_SERVER` to its canonical origin and run
+`npm run test:electron:selfhost --workspace @zilobase/desktop`. The test opens
+the packaged Electron app with isolated user data and verifies discovery and the
+selected profile. A second origin can be supplied as
+`ZILOBASE_E2E_ADDITIONAL_SERVER`. Live OAuth, microphone/loopback capture,
+signed installers and update installation still require manual parity checks
+before Electron can replace Tauri.
+
+### Electron signing and update feed
+
+Electron Builder uses the same product identity (`com.zilobase`) and version as
+Tauri, but its update metadata (`latest-mac.yml`, `latest.yml`, `latest-linux.yml`)
+and installer formats differ from Tauri's signed `latest.json` feed. Keep Electron
+artifacts out of the live GitHub release until an explicit cutover; existing Tauri
+clients still need their own updater assets. The Electron updater expects signed
+DMG/ZIP on macOS, NSIS on Windows, and AppImage on Linux. MSI, PKG, DEB and RPM
+are manual distribution targets; they do not use this update flow.
+
+For a signed Electron release, map the existing Apple Developer ID Application
+certificate to `CSC_LINK` (`APPLE_CERTIFICATE`) and `CSC_KEY_PASSWORD`
+(`APPLE_CERTIFICATE_PASSWORD`). Map `APPLE_ID`, `APPLE_PASSWORD` to
+`APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` for notarization. PKG also
+needs a Developer ID Installer certificate as `CSC_INSTALLER_LINK` and
+`CSC_INSTALLER_KEY_PASSWORD`; the current Tauri secrets do not provide it.
+Windows signing needs a separate certificate through `WIN_CSC_LINK` and
+`WIN_CSC_KEY_PASSWORD`. The Tauri minisign key
+`TAURI_SIGNING_PRIVATE_KEY` cannot sign Electron updates. The macOS entitlements
+and helper signing paths are in `electron-builder.yml`. Verify the sidecar's
+microphone permission and hardened runtime on a notarized build before shipping.
 
 ## Browser sign-in
 

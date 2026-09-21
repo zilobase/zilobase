@@ -1,0 +1,87 @@
+name: Experimental Electron desktop
+
+on:
+  pull_request:
+    paths:
+      - "apps/desktop/electron/**"
+      - "apps/desktop/electron-builder.yml"
+      - "apps/desktop/e2e/electron-*.mjs"
+      - "apps/desktop/package.json"
+      - "apps/web/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/electron-desktop.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/desktop/electron/**"
+      - "apps/desktop/electron-builder.yml"
+      - "apps/desktop/e2e/electron-*.mjs"
+      - "apps/desktop/package.json"
+      - "apps/web/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/electron-desktop.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  packaged-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            executable: apps/desktop/dist-electron/mac/zilobase-client.app/Contents/MacOS/zilobase-client
+          - os: windows-2022
+            executable: apps/desktop/dist-electron/win-unpacked/zilobase-client.exe
+          - os: ubuntu-24.04
+            executable: apps/desktop/dist-electron/linux-unpacked/zilobase-client
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      NODE_OPTIONS: --max-old-space-size=4096
+      ZILOBASE_DESKTOP_BINARY: ${{ github.workspace }}/${{ matrix.executable }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/electron/sidecar -> target
+      - name: Install Linux audio and desktop dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dbus-x11 gnome-keyring libasound2-dev libpipewire-0.3-dev libpulse-dev libsecret-tools pkg-config xvfb
+      - run: npm ci
+      - run: cargo fmt --manifest-path apps/desktop/electron/sidecar/Cargo.toml --check
+      - run: cargo clippy --manifest-path apps/desktop/electron/sidecar/Cargo.toml --locked --all-targets -- -D warnings
+      - run: cargo test --manifest-path apps/desktop/electron/sidecar/Cargo.toml --locked
+      - run: npm run build --prefix apps/web
+      - run: npm run pack:electron --workspace @zilobase/desktop
+      - name: Smoke packaged app (macOS and Windows)
+        if: runner.os != 'Linux'
+        run: npm run test:electron:smoke --workspace @zilobase/desktop
+      - name: Smoke packaged app with unlocked Secret Service (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          dbus-run-session -- bash -c '
+            set -euo pipefail
+            unset GNOME_KEYRING_CONTROL
+            keyring_control=$(mktemp -d)
+            keyring_env=$(printf "%s" "zilobase-ci-keyring" | gnome-keyring-daemon --login --components=secrets --control-directory="$keyring_control")
+            eval "$keyring_env"
+            keyring_env=$(gnome-keyring-daemon --start --components=secrets --control-directory="$keyring_control")
+            eval "$keyring_env"
+            export GNOME_KEYRING_CONTROL
+            xvfb-run --auto-servernum npm run test:electron:smoke --workspace @zilobase/desktop
+          '

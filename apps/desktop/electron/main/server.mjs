@@ -115,7 +115,8 @@ export async function loadConfig() {
   const file = configPath();
   if (existsSync(file)) return readConfigFile(file);
   const legacy = legacyConfigPath();
-  if (legacy !== file && existsSync(legacy)) {
+  if (!(process.env.ZILOBASE_E2E_USER_DATA && process.env.ZILOBASE_E2E_DISABLE_LEGACY === "1") &&
+      legacy !== file && existsSync(legacy)) {
     const config = await readConfigFile(legacy);
     await writeConfig(config);
     await copyFile(legacy, file + ".legacy-backup");
