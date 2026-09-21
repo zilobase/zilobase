@@ -6164,19 +6164,11 @@
       "value": true,
       "type": false
     },
-    "ApplyDatabaseTemplateInput": {
-      "value": false,
-      "type": true
-    },
     "areFormulaValuesEqual": {
       "value": true,
       "type": false
     },
     "callEagerFormulaFunction": {
-      "value": true,
-      "type": false
-    },
-    "closeRealtimeSocket": {
       "value": true,
       "type": false
     },
@@ -6188,19 +6180,7 @@
       "value": true,
       "type": false
     },
-    "createCellPresenceByKey": {
-      "value": true,
-      "type": false
-    },
     "createDatabaseRowSnapshot": {
-      "value": true,
-      "type": false
-    },
-    "DATABASE_REALTIME_HEARTBEAT_MS": {
-      "value": true,
-      "type": false
-    },
-    "DATABASE_REALTIME_PING": {
       "value": true,
       "type": false
     },
@@ -6345,14 +6325,6 @@
       "type": false
     },
     "evaluateDatabasePropertyFilter": {
-      "value": true,
-      "type": false
-    },
-    "findDatabaseIdForRowPage": {
-      "value": true,
-      "type": false
-    },
-    "findDatabaseIdsForRowPage": {
       "value": true,
       "type": false
     },
@@ -6532,10 +6504,6 @@
       "value": true,
       "type": false
     },
-    "reconnectDelay": {
-      "value": true,
-      "type": false
-    },
     "regexMatches": {
       "value": true,
       "type": false
@@ -6556,10 +6524,6 @@
       "value": true,
       "type": false
     },
-    "samePresence": {
-      "value": true,
-      "type": false
-    },
     "shouldClearValuesForPropertyTypeChange": {
       "value": true,
       "type": false
@@ -6576,127 +6540,11 @@
       "value": true,
       "type": false
     },
-    "ticketFailureAction": {
-      "value": true,
-      "type": false
-    },
     "tokenizeFormula": {
       "value": true,
       "type": false
     },
     "uniqueFormulaList": {
-      "value": true,
-      "type": false
-    },
-    "updateDatabaseViewInNavigation": {
-      "value": true,
-      "type": false
-    },
-    "useAddDatabaseProperty": {
-      "value": true,
-      "type": false
-    },
-    "useAddDatabaseRow": {
-      "value": true,
-      "type": false
-    },
-    "useAddDatabaseView": {
-      "value": true,
-      "type": false
-    },
-    "useApplyDatabaseTemplate": {
-      "value": true,
-      "type": false
-    },
-    "useCreateDatabase": {
-      "value": true,
-      "type": false
-    },
-    "useCreateDatabaseDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useDatabaseAccess": {
-      "value": true,
-      "type": false
-    },
-    "useDatabaseIdForRowPage": {
-      "value": true,
-      "type": false
-    },
-    "useDatabaseRealtime": {
-      "value": true,
-      "type": false
-    },
-    "useDeleteDatabase": {
-      "value": true,
-      "type": false
-    },
-    "useDeleteDatabaseAccess": {
-      "value": true,
-      "type": false
-    },
-    "useDeleteDatabaseProperty": {
-      "value": true,
-      "type": false
-    },
-    "useDeleteDatabaseView": {
-      "value": true,
-      "type": false
-    },
-    "useDuplicateDatabaseProperty": {
-      "value": true,
-      "type": false
-    },
-    "useLinkDatabaseDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useMoveDatabaseRow": {
-      "value": true,
-      "type": false
-    },
-    "useReplaceDatabaseViewDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useRestoreDatabase": {
-      "value": true,
-      "type": false
-    },
-    "useSetDatabaseFavorite": {
-      "value": true,
-      "type": false
-    },
-    "useSetDatabasePublished": {
-      "value": true,
-      "type": false
-    },
-    "useUnlinkDatabaseDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateDatabase": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateDatabaseProperty": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateDatabasePropertyValue": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateDatabaseView": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useUpsertDatabaseAccess": {
       "value": true,
       "type": false
     },
@@ -6718,19 +6566,11 @@
       "value": true,
       "type": false
     },
-    "ApplyDatabaseTemplateInput": {
-      "value": false,
-      "type": true
-    },
     "areFormulaValuesEqual": {
       "value": true,
       "type": false
     },
     "callEagerFormulaFunction": {
-      "value": true,
-      "type": false
-    },
-    "closeRealtimeSocket": {
       "value": true,
       "type": false
     },
@@ -6742,19 +6582,7 @@
       "value": true,
       "type": false
     },
-    "createCellPresenceByKey": {
-      "value": true,
-      "type": false
-    },
     "createDatabaseRowSnapshot": {
-      "value": true,
-      "type": false
-    },
-    "DATABASE_REALTIME_HEARTBEAT_MS": {
-      "value": true,
-      "type": false
-    },
-    "DATABASE_REALTIME_PING": {
       "value": true,
       "type": false
     },
@@ -6899,14 +6727,6 @@
       "type": false
     },
     "evaluateDatabasePropertyFilter": {
-      "value": true,
-      "type": false
-    },
-    "findDatabaseIdForRowPage": {
-      "value": true,
-      "type": false
-    },
-    "findDatabaseIdsForRowPage": {
       "value": true,
       "type": false
     },
@@ -7086,10 +6906,6 @@
       "value": true,
       "type": false
     },
-    "reconnectDelay": {
-      "value": true,
-      "type": false
-    },
     "regexMatches": {
       "value": true,
       "type": false
@@ -7110,10 +6926,6 @@
       "value": true,
       "type": false
     },
-    "samePresence": {
-      "value": true,
-      "type": false
-    },
     "shouldClearValuesForPropertyTypeChange": {
       "value": true,
       "type": false
@@ -7130,127 +6942,11 @@
       "value": true,
       "type": false
     },
-    "ticketFailureAction": {
-      "value": true,
-      "type": false
-    },
     "tokenizeFormula": {
       "value": true,
       "type": false
     },
     "uniqueFormulaList": {
-      "value": true,
-      "type": false
-    },
-    "updateDatabaseViewInNavigation": {
-      "value": true,
-      "type": false
-    },
-    "useAddDatabaseProperty": {
-      "value": true,
-      "type": false
-    },
-    "useAddDatabaseRow": {
-      "value": true,
-      "type": false
-    },
-    "useAddDatabaseView": {
-      "value": true,
-      "type": false
-    },
-    "useApplyDatabaseTemplate": {
-      "value": true,
-      "type": false
-    },
-    "useCreateDatabase": {
-      "value": true,
-      "type": false
-    },
-    "useCreateDatabaseDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useDatabaseAccess": {
-      "value": true,
-      "type": false
-    },
-    "useDatabaseIdForRowPage": {
-      "value": true,
-      "type": false
-    },
-    "useDatabaseRealtime": {
-      "value": true,
-      "type": false
-    },
-    "useDeleteDatabase": {
-      "value": true,
-      "type": false
-    },
-    "useDeleteDatabaseAccess": {
-      "value": true,
-      "type": false
-    },
-    "useDeleteDatabaseProperty": {
-      "value": true,
-      "type": false
-    },
-    "useDeleteDatabaseView": {
-      "value": true,
-      "type": false
-    },
-    "useDuplicateDatabaseProperty": {
-      "value": true,
-      "type": false
-    },
-    "useLinkDatabaseDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useMoveDatabaseRow": {
-      "value": true,
-      "type": false
-    },
-    "useReplaceDatabaseViewDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useRestoreDatabase": {
-      "value": true,
-      "type": false
-    },
-    "useSetDatabaseFavorite": {
-      "value": true,
-      "type": false
-    },
-    "useSetDatabasePublished": {
-      "value": true,
-      "type": false
-    },
-    "useUnlinkDatabaseDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateDatabase": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateDatabaseProperty": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateDatabasePropertyValue": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateDatabaseView": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateDataSource": {
-      "value": true,
-      "type": false
-    },
-    "useUpsertDatabaseAccess": {
       "value": true,
       "type": false
     },
@@ -7945,106 +7641,6 @@
     "tokenizeFormula": {
       "value": true,
       "type": false
-    }
-  },
-  "@zilobase/features:./databases/queries:types": {
-    "DatabaseAccessPayload": {
-      "value": false,
-      "type": true
-    },
-    "databaseAccessQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "databaseAccessQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAccessRule": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseProperty": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRecord": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRow": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRowsPagination": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseView": {
-      "value": false,
-      "type": true
-    },
-    "DataSourceRecord": {
-      "value": false,
-      "type": true
-    },
-    "PageProperty": {
-      "value": false,
-      "type": true
-    },
-    "PagePropertyValue": {
-      "value": false,
-      "type": true
-    }
-  },
-  "@zilobase/features:./databases/queries:default": {
-    "DatabaseAccessPayload": {
-      "value": false,
-      "type": true
-    },
-    "databaseAccessQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "databaseAccessQueryOptions": {
-      "value": true,
-      "type": false
-    },
-    "DatabaseAccessRule": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseProperty": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRecord": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRow": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseRowsPagination": {
-      "value": false,
-      "type": true
-    },
-    "DatabaseView": {
-      "value": false,
-      "type": true
-    },
-    "DataSourceRecord": {
-      "value": false,
-      "type": true
-    },
-    "PageProperty": {
-      "value": false,
-      "type": true
-    },
-    "PagePropertyValue": {
-      "value": false,
-      "type": true
     }
   },
   "@zilobase/features:./meetings:types": {

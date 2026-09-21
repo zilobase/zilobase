@@ -21,7 +21,7 @@ import { DemoExperience, installDemoCache } from "@/features/demo"
 import { useNavigationRealtime } from "@zilobase/features/pages/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useSession } from "@zilobase/features/auth/react";
-import { DbProvider } from "@zilobase/features/databases";
+import { DbProvider } from "@zilobase/features/databases/react";
 import { useZilobaseFeatures } from "@zilobase/features";
 
 import posthog from "@/shared/lib/posthog"

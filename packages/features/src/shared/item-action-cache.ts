@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 import type { ApiFetcher } from "./api-fetcher";
-import { databaseAccessQueryKey } from "../databases/queries";
+import { databaseAccessQueryKey } from "../databases/queries/queries";
 import { applyPageFavoriteToNav } from "../pages/nav-delta";
 import {
   zilobaseAiPagesQueryKey,

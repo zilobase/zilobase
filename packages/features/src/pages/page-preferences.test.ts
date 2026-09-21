@@ -9,9 +9,7 @@ import {
 test("full width always uses the viewer preference for editable workspace pages", () => {
   assert.equal(
     resolvePageFullWidth(
-      {
-        metadata: {},
-      },
+      {},
       false,
     ),
     false,
@@ -22,7 +20,6 @@ test("full width uses the published owner preference when provided", () => {
   assert.equal(
     resolvePageFullWidth(
       {
-        metadata: {},
         publishedOwnerPreferences: { pageFullWidth: true },
       },
       false,

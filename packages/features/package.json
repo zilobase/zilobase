@@ -125,10 +125,6 @@
       "types": "./src/databases/views/view-evaluation.ts",
       "default": "./src/databases/views/view-evaluation.ts"
     },
-    "./databases/queries": {
-      "types": "./src/databases/queries/index.ts",
-      "default": "./src/databases/queries/index.ts"
-    },
     "./meetings": {
       "types": "./src/meetings/index.ts",
       "default": "./src/meetings/index.ts"

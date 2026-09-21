@@ -25,6 +25,7 @@ Web TypeScript and Vite resolve shared feature subpaths through the package expo
 See [page-context and editor utility ownership](page-context-and-editor-utilities.md) for conversion invariants, structural content, splitter behavior and comment anchors.
 
 The `@zilobase/features/databases/appearance` entrypoint provides pure stored-config decisions for database lock state, emoji and cover. Navigation/library models can consume appearance without React bindings.
+The database feature root likewise exports data contracts, query builders and pure model helpers; its session provider and hooks belong to `@zilobase/features/databases/react`.
 
 The `@zilobase/features/calendar-layout` [entrypoint](../../packages/features/src/calendar-layout/index.ts) exposes provider-independent date, timezone and layout functions. The Calendar entrypoint re-exports the subset used by provider-aware consumers directly from that implementation.
 The layout index preserves day-array identity for unchanged memberships, normalizes immutable timing through weak references, and uses heap-based timed overlap placement. Its pure tests cover DST, exclusive boundaries and dense overlap inputs.
