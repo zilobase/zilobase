@@ -39,6 +39,13 @@ try {
   const updated = await page.evaluate(() => window.zilobaseDesktop.server.list());
   assert.equal(updated.profiles[0].lastPath, "/notes");
   assert.equal(updated.profiles[0].workspaces[0].id, "smoke-workspace");
+  const capture = await page.evaluate(() => window.zilobaseDesktop.capture.state());
+  assert.equal(capture.phase, "idle");
+  assert.deepEqual(await page.evaluate(() => window.zilobaseDesktop.capture.recoverable()), []);
+  await assert.rejects(
+    page.evaluate(() => window.zilobaseDesktop.capture.deleteLocal("../invalid")),
+    /Invalid meeting identifier/,
+  );
   await page.evaluate(() => window.zilobaseDesktop.auth.setToken("smoke-test-token"));
   assert.equal(await page.evaluate(() => window.zilobaseDesktop.auth.getToken()), "smoke-test-token");
   await page.evaluate(() => window.zilobaseDesktop.auth.setToken(null));

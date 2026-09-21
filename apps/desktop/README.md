@@ -9,9 +9,9 @@ pipeline. Start the web dev server on port 1420, then run
 `npm run dev:electron --workspace @zilobase/desktop`. Build a local package with
 `npm run build:electron --workspace @zilobase/desktop`. The shell now includes
 server profiles, browser authorization, encrypted session storage, diagnostics,
-native notifications, and an Electron update feed. The legacy keyring reader is
-built as a small Rust sidecar. Meeting capture and release signing still need
-parity checks before Electron can replace Tauri. For an unsigned local package,
+native notifications, an Electron update feed, and a supervised native meeting
+capture sidecar. The sidecar also reads legacy keyring entries. Live audio and
+release signing still need parity checks before Electron can replace Tauri. For an unsigned local package,
 build the web app and sidecar first, then run
 `CSC_IDENTITY_AUTO_DISCOVERY=false npm run pack:electron --workspace @zilobase/desktop`.
 Set `ZILOBASE_DESKTOP_BINARY` to the packaged executable and run

@@ -14,6 +14,8 @@ Native invocation and event listening form a production/test seam. Command names
 
 Transport reconnect and recording recovery have different lifetimes: a dropped socket can retry with queued frames while capture continues; an interrupted capture retains its meeting/session association and local artifacts. Native [capture](../../../apps/desktop/src-tauri/src/meetings/capture.rs), [transport](../../../apps/desktop/src-tauri/src/meetings/capture/transport.rs), [audio](../../../apps/desktop/src-tauri/src/meetings/audio.rs) and [recovery](../../../apps/desktop/src-tauri/src/meetings/recovery.rs) retain their existing ownership and serialized formats.
 
+The Electron host delegates audio to its [supervised sidecar](../../../apps/desktop/electron/main/capture.mjs). The sidecar's [capture engine](../../../apps/desktop/electron/sidecar/src/meetings/capture.rs) retains the 24 kHz frame, WebSocket replay, ticket rotation and WAV checkpoint behavior; its [recovery module](../../../apps/desktop/electron/sidecar/src/meetings/recovery.rs) reads the same local recordings and rejects checkpoint paths outside the meeting directory. The packaged smoke test checks IPC and recovery validation; live audio parity remains a release gate.
+
 ## Server session and transcript ownership
 
 The existing [meeting operations interface](../../../apps/server/src/features/meetings/lifecycle/meeting-service.ts) explicitly exports the following owners:

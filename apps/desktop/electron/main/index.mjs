@@ -9,6 +9,7 @@ import { registerOAuthHandlers } from "./oauth.mjs";
 import log from "electron-log/main.js";
 import { configureLogging, exportDiagnostics, registerDiagnosticsHandlers } from "./diagnostics.mjs";
 import { desktopError } from "./server.mjs";
+import { registerCaptureHandlers } from "./capture.mjs";
 
 const RENDERER_ORIGIN = "zilo-desktop://app";
 const DEV_ORIGIN = "http://localhost:1420";
@@ -202,6 +203,7 @@ function registerCoreIpc(registerUpdaterHandlers) {
   });
   registerDiagnosticsHandlers(handle);
   registerUpdaterHandlers(handle, (state) => mainWindow?.webContents.send("desktop:update:state", state));
+  registerCaptureHandlers(handle, (channel, payload) => mainWindow?.webContents.send(channel, payload));
   checkedHandler("desktop:notification:show", ({ title, body }) => {
     if (typeof title !== "string" || !title.trim() || title.length > 160 ||
         typeof body !== "string" || body.length > 1000) {

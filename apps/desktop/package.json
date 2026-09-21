@@ -8,10 +8,10 @@
     "build": "npm run tokens:check --prefix ../.. && dotenvx run --ignore=MISSING_ENV_FILE -f ../../.env.development --quiet -- tauri build",
     "test:selfhost": "node e2e/selfhost.mjs",
     "tauri": "tauri",
-    "dev:electron": "electron .",
+    "dev:electron": "node electron/sidecar/build.mjs && electron .",
     "build:electron": "npm run build --prefix ../web && node electron/sidecar/build.mjs && electron-builder --config electron-builder.yml",
     "build:electron:sidecar": "node electron/sidecar/build.mjs",
-    "pack:electron": "electron-builder --dir --config electron-builder.yml",
+    "pack:electron": "node electron/sidecar/build.mjs && electron-builder --dir --config electron-builder.yml",
     "test:electron:smoke": "node e2e/electron-smoke.mjs"
   },
   "devDependencies": {
