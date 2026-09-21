@@ -12,6 +12,7 @@ test("external consumer entrypoints retain their runtime exports", () => {
     "createAuth",
     "MembershipService",
     "TeamspaceService",
+    "editionPersistencePort",
     "runWithRuntimePorts",
   ]);
   assertExports(adapterApi, [
@@ -20,6 +21,7 @@ test("external consumer entrypoints retain their runtime exports", () => {
     "createCollaborationHocuspocus",
     "drainDatabaseAutomationRuns",
     "drainMailDatabaseSyncOutbox",
+    "editionPersistencePort",
   ]);
   assertExports(nodeAdapterApi, [
     "CORE_MIGRATION_SET",

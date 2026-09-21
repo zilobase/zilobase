@@ -12,6 +12,10 @@
 
 Membership records associate users with workspaces and roles. Callers must distinguish active membership from a row that exists but has expired. Database transactions can supply the concrete database dependency.
 
+Edition integrations use the published persistence port for typed membership
+counts and membership reads. Core retains the table mapping and SQL; external
+packages supply only the opaque database handle received from extension hooks.
+
 ## Side effects, failures and recovery
 
 Grants, revocations and expiry affect downstream access. Keep edition callbacks and temporary membership transitions in the owning module rather than copying membership writes into callers.

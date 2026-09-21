@@ -4,6 +4,11 @@
 
 External adapters compose the core server through its published exports. A server edition creates its Better Auth plugins asynchronously for each request through `createAuthPlugins({ database, env, request })`; plugins must not capture another request's database or environment. After core session normalization and active-membership validation, an edition may apply additional policy through `assertSession`. The hook receives the request and concrete session ID so assurance can be bound to the session that proved it while narrowly exempting its own factor-verification endpoint. It runs only for cookie/session authentication, never API keys, OAuth bearer tokens, or the hosted demo, and may return a stable 401/403 denial.
 
+The published edition persistence port keeps core schema ownership inside the
+server package. External editions pass the opaque database handle they receive
+from extension hooks and consume typed instance and membership results; they do
+not query core tables directly.
+
 Web composition selects edition behavior through the `@zilobase/edition-web` alias. `ZILOBASE_WEB_EDITION_MODULE` may point Vite and the web test harness at an external edition module; leaving it unset selects the empty community module beside its types under `apps/web/src/edition`. Additional login methods receive the shared email value and render immediately below the shared email field. Feature consumers may only use the edition contract.
 
 Start at the [entrypoint](../../apps/server/src/public/adapter-api.ts); follow the [implementation](../../apps/server/package.json) and [related modules](../../apps/web/src/edition/community-module.ts).
