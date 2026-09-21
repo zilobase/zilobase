@@ -140,6 +140,3 @@ function formatServerTiming(
     })
     .join(", ");
 }
-
-// Deprecated alias kept for one release; new code uses `createWorkerHandler`.
-export const createCloudflareWorkerHandler = createWorkerHandler;

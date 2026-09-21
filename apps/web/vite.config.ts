@@ -10,9 +10,6 @@ const devPort = readPort(process.env.VITE_DEV_PORT, 1420);
 const hmrPort = readPort(process.env.VITE_HMR_PORT, devPort + 1);
 const viteCacheDir = process.env.ZILOBASE_VITE_CACHE_DIR?.trim();
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
-const editorDir = fileURLToPath(
-  new URL("./src/features/editor", import.meta.url),
-);
 const pageContextDir = fileURLToPath(
   new URL("../../packages/page-context/src", import.meta.url),
 );
@@ -132,7 +129,6 @@ export default defineConfig(async () => ({
         find: "@zilobase/edition-web",
         replacement: editionWebModule,
       },
-      { find: "@/packages/editor", replacement: editorDir },
       { find: "@", replacement: srcDir },
       {
         find: "@zilobase/page-context",

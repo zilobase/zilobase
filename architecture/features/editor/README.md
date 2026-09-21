@@ -2,7 +2,7 @@
 
 ## Purpose, ownership and interfaces
 
-The browser editor composes Tiptap, structural blocks, comments, selection tools and Yjs collaboration. [The feature entrypoint](../../../apps/web/src/features/editor/index.ts) exposes `Editor` and `PageEditPreviewControls`. Internal consumers use `@/features/editor`; the legacy editor alias remains configured for compatibility. Local editor imports use relative paths.
+The browser editor composes Tiptap, structural blocks, comments, selection tools and Yjs collaboration. [The feature entrypoint](../../../apps/web/src/features/editor/index.ts) exposes `Editor` and `PageEditPreviewControls`. Internal consumers use `@/features/editor`; local editor imports use relative paths.
 
 | Capability | Owning modules |
 | --- | --- |

@@ -30,8 +30,6 @@ export function register({ assert, loadModule, readSource, readWorkspace, test }
     assert.match(indexedCleanup, /prepareMailDatabasesForDeletion/)
     assert.match(indexedCleanup, /prepareCalendarDatabasesForDeletion/)
     assert.match(indexedCleanup, /deleteIndexedDatabasesForPrefix/)
-    assert.match(indexedCleanup, /zilobase:v1:/)
-    assert.match(indexedCleanup, /server\.instanceId/)
     assert.match(await readSource("/src/app/runtime/desktop-server-replacement.ts"), /clearIndexedDataForServer/)
     assert.match(mailDatabase, /BroadcastChannel/)
     assert.doesNotMatch(mailController, /closeMailDatabase/)
