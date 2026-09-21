@@ -395,15 +395,35 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     message: Uint8Array,
   ) {
     let resolve!: () => void;
-    const promise = new Promise<void>((complete) => {
+    let reject!: (reason: unknown) => void;
+    const promise = new Promise<void>((complete, fail) => {
       resolve = complete;
+      reject = fail;
     });
-    const pending = { promise, resolve };
+    const timeout = setTimeout(
+      () => reject(new Error("Collaboration message processing timed out")),
+      AUTH_TIMEOUT_MS,
+    );
+    const pending = {
+      promise,
+      resolve: () => {
+        clearTimeout(timeout);
+        resolve();
+      },
+    };
     const queue = this.pendingMessages.get(attachment.connectionId) ?? [];
     queue.push(pending);
     this.pendingMessages.set(attachment.connectionId, queue);
     connection.client.handleMessage(message);
-    return promise;
+    return promise.finally(() => {
+      clearTimeout(timeout);
+      const current = this.pendingMessages.get(attachment.connectionId);
+      const index = current?.indexOf(pending) ?? -1;
+      if (current && index >= 0) current.splice(index, 1);
+      if (current?.length === 0) {
+        this.pendingMessages.delete(attachment.connectionId);
+      }
+    });
   }
 
   protected async restoreConnections(skipAwarenessFor?: WebSocket) {
