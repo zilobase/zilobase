@@ -86,14 +86,11 @@ pub(super) fn load_or_initialize_config(
     let path = config_path(directory);
     match fs::read(&path) {
         Ok(bytes) => {
-            let (mut config, migrated) = parse_config(&bytes)?;
+            let mut config = parse_config(&bytes)?;
             if cfg!(debug_assertions) && is_cloud_server(active_server(&config)) {
                 replace_active_server(&mut config, default_server());
                 write_config(directory, &config)?;
                 return Ok(refresh_development_config(directory, config));
-            }
-            if migrated {
-                write_config(directory, &config)?;
             }
             Ok(refresh_development_config(directory, config))
         }
@@ -109,9 +106,7 @@ pub(super) fn load_or_initialize_config(
     }
 }
 
-pub(super) fn parse_config(
-    bytes: &[u8],
-) -> Result<(DesktopServerConfig, bool), DesktopServerError> {
+pub(super) fn parse_config(bytes: &[u8]) -> Result<DesktopServerConfig, DesktopServerError> {
     if bytes.len() > MAX_DISCOVERY_BYTES {
         return Err(DesktopServerError::configuration(
             "The saved desktop server configuration is too large.",
@@ -124,16 +119,6 @@ pub(super) fn parse_config(
         .get("version")
         .and_then(serde_json::Value::as_u64)
         .unwrap_or(0);
-
-    if version == u64::from(LEGACY_CONFIG_VERSION) {
-        let legacy: LegacyDesktopServerConfig = serde_json::from_value(value).map_err(|_| {
-            DesktopServerError::configuration(
-                "The saved desktop server configuration is malformed.",
-            )
-        })?;
-        validate_persisted_server(&legacy.server)?;
-        return Ok((single_profile_config(&legacy.server), true));
-    }
 
     if version != u64::from(CONFIG_VERSION) {
         return Err(DesktopServerError::configuration(
@@ -156,7 +141,7 @@ pub(super) fn parse_config(
     if active_profile_index(&config).is_none() {
         config.active_instance_id = config.profiles[0].server.instance_id.clone();
     }
-    Ok((config, false))
+    Ok(config)
 }
 
 pub(super) fn validate_persisted_server(server: &DesktopServer) -> Result<(), DesktopServerError> {
@@ -288,10 +273,14 @@ pub(super) fn profile_list_from_config(config: &DesktopServerConfig) -> DesktopS
 }
 
 pub(super) fn server_has_credentials(server: &DesktopServer) -> bool {
-    crate::auth::keyring::get_server_keyring_value(server, "session", "session_token")
-        .ok()
-        .flatten()
-        .is_some_and(|value| !value.is_empty())
+    crate::auth::keyring::get_server_keyring_value(
+        server,
+        crate::auth::keyring::AUTH_TOKEN_ACCOUNT,
+        "session_token",
+    )
+    .ok()
+    .flatten()
+    .is_some_and(|value| !value.is_empty())
 }
 
 pub(super) fn unix_timestamp_secs() -> String {

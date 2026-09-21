@@ -57,14 +57,6 @@ pub(super) struct DesktopServerConfig {
     pub(super) profiles: Vec<DesktopServerProfile>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct LegacyDesktopServerConfig {
-    #[allow(dead_code)]
-    pub(super) version: u8,
-    pub(super) server: DesktopServer,
-}
-
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DesktopServerProfileView {
