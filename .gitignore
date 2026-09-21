@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 dist-electron
+apps/desktop/electron/bin/
+apps/desktop/electron/sidecar/target/
 coverage
 .vite
 .output

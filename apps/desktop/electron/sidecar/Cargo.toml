@@ -1,0 +1,16 @@
+[package]
+name = "zilobase-desktop-sidecar"
+version = "0.0.55"
+edition = "2021"
+
+[dependencies]
+base64 = "0.22"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["linux-native-sync-persistent"] }
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }

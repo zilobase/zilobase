@@ -125,7 +125,7 @@ export interface ZilobaseDesktopBridge {
     record(event: string, fields: Record<string, unknown>, level: "info" | "warn" | "error"): Promise<void>;
     info(): Promise<{ logDirectory: string }>;
     openFolder(): Promise<void>;
-    export(): Promise<{ path: string }>;
+    export(): Promise<string>;
   };
   readonly capture: {
     listDevices(): Promise<DesktopAudioDevice[]>;

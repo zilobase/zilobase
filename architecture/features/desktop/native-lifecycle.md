@@ -20,6 +20,14 @@
 
 [Diagnostics commands](../../../apps/desktop/src-tauri/src/diagnostics/mod.rs) select log directories, capture runtime metadata and create bounded archives for explicit CLI/UI requests. Archive limits, manifest schema and CLI flags are unchanged. Native diagnostics do not imply that arbitrary application logs are automatically scrubbed by renderer-event rules.
 
+## Electron implementation in progress
+
+The [Electron main entrypoint](../../../apps/desktop/electron/main/index.mjs) validates IPC sender frame and origin, installs a privileged asset protocol, enforces a response CSP, registers one application instance and passes only typed deep links to the renderer. The [preload bridge](../../../apps/desktop/electron/preload/index.cjs) exposes named operations under API version 1. [Server profiles](../../../apps/desktop/electron/main/server.mjs) keep configuration version 2 and import the Tauri config once; [credential storage](../../../apps/desktop/electron/main/credentials.mjs) encrypts each scoped profile's token and owner with Electron safeStorage and uses the [legacy sidecar](../../../apps/desktop/electron/sidecar/src/main.rs) to migrate scoped OS keyring entries. Linux plaintext safeStorage backends fail closed.
+
+[Browser authorization](../../../apps/desktop/electron/main/oauth.mjs) owns an ephemeral loopback listener, PKCE challenge, state and issuer checks, cancellation and token exchange. [Electron diagnostics](../../../apps/desktop/electron/main/diagnostics.mjs) filter renderer fields before logging and export bounded ZIPs; [updates](../../../apps/desktop/electron/main/updater.mjs) use the Electron Builder feed once packaging adds its platform metadata. The Tauri host remains the release target until capture and packaging parity is verified.
+
 ## Verification
 
 Run `verify:desktop` for Rust formatting, Clippy and tests. The native tests include loopback discovery, configuration round trips and version rejection, profile removal failure, candidate expiry, OAuth/callback behavior and diagnostic redaction. New snapshot/redaction cases passed before extraction. They use temporary files and controlled transports; they do not establish live keychain, packaged-app, device or browser smoke behavior. Follow [testing and quality](../../setup/testing-and-quality.md) and the existing [desktop E2E entrypoint](../../../apps/desktop/e2e/selfhost.mjs) for those checks.
+
+For Electron, build a local package and run the [isolated smoke test](../../../apps/desktop/e2e/electron-smoke.mjs). It exercises the packaged preload and main IPC, a profile snapshot round trip, encrypted credential round trip and diagnostic redaction without touching the release app's user data. OAuth and device capture still require separate live acceptance tests.

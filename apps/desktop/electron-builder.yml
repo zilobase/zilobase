@@ -11,6 +11,10 @@ extraResources:
     to: web
     filter:
       - "**/*"
+  - from: electron/bin
+    to: sidecar
+    filter:
+      - "**/*"
 asar: true
 mac:
   icon: src-tauri/icons/icon.icns

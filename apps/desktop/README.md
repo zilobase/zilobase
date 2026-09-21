@@ -7,10 +7,15 @@ The desktop app checks the latest GitHub release on launch. When a newer signed 
 The Electron implementation is under development and is not part of the release
 pipeline. Start the web dev server on port 1420, then run
 `npm run dev:electron --workspace @zilobase/desktop`. Build a local package with
-`npm run build:electron --workspace @zilobase/desktop`. These commands currently
-exercise the window, protocol, preload boundary, and renderer adapter; native
-authentication, server profiles, capture, diagnostics, and updates are not yet
-connected.
+`npm run build:electron --workspace @zilobase/desktop`. The shell now includes
+server profiles, browser authorization, encrypted session storage, diagnostics,
+native notifications, and an Electron update feed. The legacy keyring reader is
+built as a small Rust sidecar. Meeting capture and release signing still need
+parity checks before Electron can replace Tauri. For an unsigned local package,
+build the web app and sidecar first, then run
+`CSC_IDENTITY_AUTO_DISCOVERY=false npm run pack:electron --workspace @zilobase/desktop`.
+Set `ZILOBASE_DESKTOP_BINARY` to the packaged executable and run
+`npm run test:electron:smoke --workspace @zilobase/desktop`.
 
 ## Browser sign-in
 
