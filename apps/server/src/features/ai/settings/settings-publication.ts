@@ -1,6 +1,6 @@
 import { loadLockedSettingsDraft } from "./settings-versioning";
 
-import { ensureInstructionPage, hydrateInstructionPage } from "./instruction-pages";
+import { hydrateInstructionPage } from "./instruction-pages";
 import { eq } from "drizzle-orm";
 import { settingsDefinitionSchema } from "@zilobase/features/ai-chat/settings-contract";
 
@@ -8,7 +8,7 @@ import { db } from "../../../infrastructure/database";
 import { aiSettings, aiSettingsDraft, aiSettingsVersion } from "../../../infrastructure/database/schema";
 
 import { type SettingsActor, authorizeSettings } from "./settings-access";
-import { ensureSettingsBaseline } from "./settings-baseline";
+import { getSettingsRecord } from "./settings-record";
 import { settingsConflict } from "./settings-versioning";
 import { validateSettingsDefinition } from "./settings-validation";
 import { sameSettings } from "./settings-definition";
@@ -20,13 +20,7 @@ export async function publishSettings(
   input: { baseVersion: number; draftVersion: number },
 ) {
   await authorizeSettings(a, true);
-  const settings = await ensureSettingsBaseline(a);
-  const initialDefinition = settingsDefinitionSchema.parse(settings.definition);
-  const instructionPageId = await ensureInstructionPage(
-    a,
-    settings.id,
-    initialDefinition,
-  );
+  const settings = await getSettingsRecord(a);
   let pendingRun: string | null = null;
   await db.transaction(async (tx) => {
     const { saved, draft } = await loadLockedSettingsDraft(tx, settings.id, a.userId);
@@ -40,8 +34,6 @@ export async function publishSettings(
     let d = settingsDefinitionSchema.parse(
       draft?.definition ?? saved!.definition,
     );
-    // The link is stable before publication; source pages retain their own normal autosave.
-    if (!d.instructionPageId && instructionPageId) d = { ...d, instructionPageId };
     d = await hydrateInstructionPage(a, d);
     await validateSettingsDefinition(a, d);
     const changed = !sameSettings(

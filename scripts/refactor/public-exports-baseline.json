@@ -4468,18 +4468,6 @@
       "value": false,
       "type": true
     },
-    "AiAgentPreference": {
-      "value": false,
-      "type": true
-    },
-    "aiAgentPreferenceQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "aiAgentPreferenceQueryOptions": {
-      "value": true,
-      "type": false
-    },
     "AiAgentProfileDetail": {
       "value": false,
       "type": true
@@ -5288,10 +5276,6 @@
       "value": true,
       "type": false
     },
-    "useAiAgentPreference": {
-      "value": true,
-      "type": false
-    },
     "useAiAgentProfile": {
       "value": true,
       "type": false
@@ -5424,10 +5408,6 @@
       "value": true,
       "type": false
     },
-    "useReplaceAiAgentProfileAccess": {
-      "value": true,
-      "type": false
-    },
     "useRevertCustomAgentRevision": {
       "value": true,
       "type": false
@@ -5453,14 +5433,6 @@
       "type": false
     },
     "useTransferAiAgentProfile": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateAiAgentPreference": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateAiAgentProfile": {
       "value": true,
       "type": false
     },
@@ -5650,18 +5622,6 @@
       "value": false,
       "type": true
     },
-    "AiAgentPreference": {
-      "value": false,
-      "type": true
-    },
-    "aiAgentPreferenceQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "aiAgentPreferenceQueryOptions": {
-      "value": true,
-      "type": false
-    },
     "AiAgentProfileDetail": {
       "value": false,
       "type": true
@@ -6470,10 +6430,6 @@
       "value": true,
       "type": false
     },
-    "useAiAgentPreference": {
-      "value": true,
-      "type": false
-    },
     "useAiAgentProfile": {
       "value": true,
       "type": false
@@ -6606,10 +6562,6 @@
       "value": true,
       "type": false
     },
-    "useReplaceAiAgentProfileAccess": {
-      "value": true,
-      "type": false
-    },
     "useRevertCustomAgentRevision": {
       "value": true,
       "type": false
@@ -6635,14 +6587,6 @@
       "type": false
     },
     "useTransferAiAgentProfile": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateAiAgentPreference": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateAiAgentProfile": {
       "value": true,
       "type": false
     },
@@ -7080,18 +7024,6 @@
       "value": false,
       "type": true
     },
-    "AiAgentPreference": {
-      "value": false,
-      "type": true
-    },
-    "aiAgentPreferenceQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "aiAgentPreferenceQueryOptions": {
-      "value": true,
-      "type": false
-    },
     "AiAgentProfileDetail": {
       "value": false,
       "type": true
@@ -7460,10 +7392,6 @@
       "value": true,
       "type": false
     },
-    "useAiAgentPreference": {
-      "value": true,
-      "type": false
-    },
     "useAiAgentProfile": {
       "value": true,
       "type": false
@@ -7568,10 +7496,6 @@
       "value": true,
       "type": false
     },
-    "useReplaceAiAgentProfileAccess": {
-      "value": true,
-      "type": false
-    },
     "useRevertCustomAgentRevision": {
       "value": true,
       "type": false
@@ -7597,14 +7521,6 @@
       "type": false
     },
     "useTransferAiAgentProfile": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateAiAgentPreference": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateAiAgentProfile": {
       "value": true,
       "type": false
     },
@@ -7766,18 +7682,6 @@
       "value": false,
       "type": true
     },
-    "AiAgentPreference": {
-      "value": false,
-      "type": true
-    },
-    "aiAgentPreferenceQueryKey": {
-      "value": true,
-      "type": false
-    },
-    "aiAgentPreferenceQueryOptions": {
-      "value": true,
-      "type": false
-    },
     "AiAgentProfileDetail": {
       "value": false,
       "type": true
@@ -8146,10 +8050,6 @@
       "value": true,
       "type": false
     },
-    "useAiAgentPreference": {
-      "value": true,
-      "type": false
-    },
     "useAiAgentProfile": {
       "value": true,
       "type": false
@@ -8254,10 +8154,6 @@
       "value": true,
       "type": false
     },
-    "useReplaceAiAgentProfileAccess": {
-      "value": true,
-      "type": false
-    },
     "useRevertCustomAgentRevision": {
       "value": true,
       "type": false
@@ -8283,14 +8179,6 @@
       "type": false
     },
     "useTransferAiAgentProfile": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateAiAgentPreference": {
-      "value": true,
-      "type": false
-    },
-    "useUpdateAiAgentProfile": {
       "value": true,
       "type": false
     },

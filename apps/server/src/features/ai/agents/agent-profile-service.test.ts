@@ -6,10 +6,8 @@ import {
   getAgentProfileDetail,
   getAgentProfileRole,
   listAccessibleAgentProfiles,
-  replaceAgentProfileAccess,
   requireAgentProfileRole,
   transferAgentProfileOwnership,
-  updateAgentProfile,
 } from "./agent-profile-service";
 
 const state = vi.hoisted(() => ({
@@ -128,7 +126,7 @@ describe("standalone agent ownership and revisions", () => {
       workspaceId: "workspace",
     });
     expect(result).toBeNull(); // Readback has no fixture; verify the complete creation transaction.
-    expect(state.writes).toHaveLength(4);
+    expect(state.writes).toHaveLength(6);
     expect(state.writes.some((value) => "pageId" in value || "metadata" in value)).toBe(false);
     expect(state.writes[0]).toMatchObject({
       name: "New",
@@ -140,7 +138,8 @@ describe("standalone agent ownership and revisions", () => {
       version: 1,
       definition: { triggers: [], safeExecutionPreferences: {} },
     });
-    expect(state.writes[3]).toMatchObject({ profileId: expect.any(String) });
+    expect(state.writes[3]).toMatchObject({ scope: expect.stringMatching(/^agent:/) });
+    expect(state.writes[5]).toMatchObject({ profileId: expect.any(String) });
     expect(
       state.writes.some(
         (value) => "authenticatedByUserId" in value || "principalId" in value,
@@ -186,55 +185,6 @@ describe("standalone agent ownership and revisions", () => {
       lastVisitedAt: "2026-01-01T00:00:00.000Z",
     });
   });
-  it("creates a new revision for edits while retaining unedited fields", async () => {
-    state.rows = [
-      [profile],
-      [{ ...profile, version: 2 }],
-      [{ definition: { ...profile, instructions: "Latest committed instructions", triggers: [] } }],
-    ];
-    await updateAgentProfile({
-      ...input,
-      name: "Changed",
-      icon: null,
-      cover: null,
-    });
-    expect(state.writes[0]).toMatchObject({
-      version: 3,
-      definition: {
-        name: "Changed",
-        instructions: "Latest committed instructions",
-        cover: null,
-        icon: null,
-      },
-    });
-    expect(state.writes[1]).toMatchObject({ name: "Changed", version: 3 });
-  });
-  it("refuses a share grant to an unknown team", async () => {
-    state.rows = [[profile], []];
-    await expect(
-      replaceAgentProfileAccess({
-        ...input,
-        grants: [
-          { principalType: "team", principalId: "forged", role: "user" },
-        ],
-      }),
-    ).rejects.toThrow("workspace");
-    expect(state.writes).toEqual([]);
-  });
-  it("replaces verified grants transactionally", async () => {
-    state.rows = [[profile], [{ id: "team" }]];
-    await replaceAgentProfileAccess({
-      ...input,
-      grants: [{ principalType: "team", principalId: "team", role: "editor" }],
-    });
-    expect(state.writes[0]).toEqual([
-      expect.objectContaining({
-        profileId: "agent",
-        principalId: "team",
-        role: "editor",
-      }),
-    ]);
-  });
   it("requires reconnect after ownership transfer", async () => {
     state.rows = [[profile]];
     await transferAgentProfileOwnership({
@@ -263,6 +213,6 @@ describe("standalone agent ownership and revisions", () => {
       instructions: "Saved",
       ownerUserId: "owner",
     });
-    expect(state.writes).toHaveLength(6);
+    expect(state.writes).toHaveLength(8);
   });
 });

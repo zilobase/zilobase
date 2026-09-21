@@ -89,32 +89,6 @@ export const aiChatThreadSummary = pgTable(
   ],
 );
 
-export const aiAgentUserPreference = pgTable(
-  "ai_agent_user_preference",
-  {
-    id: text("id").primaryKey(),
-    workspaceId: text("workspace_id")
-      .notNull()
-      .references(() => workspace.id, { onDelete: "cascade" }),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    instructions: text("instructions").notNull().default(""),
-    responseStyle: text("response_style").notNull().default("concise"),
-    ...timestampColumns(),
-  },
-  (table) => [
-    uniqueIndex("ai_agent_user_preference_workspace_user_unique").on(
-      table.workspaceId,
-      table.userId,
-    ),
-    check(
-      "ai_agent_user_preference_response_style_check",
-      sql`${table.responseStyle} in ('concise', 'balanced', 'detailed')`,
-    ),
-  ],
-);
-
 export const aiChatFeedback = pgTable(
   "ai_chat_feedback",
   {

@@ -136,7 +136,6 @@ export {
   aiChatThread,
   aiChatMessage,
   aiChatThreadSummary,
-  aiAgentUserPreference,
   aiChatFeedback,
 } from "./schema/ai-conversations";
 export {

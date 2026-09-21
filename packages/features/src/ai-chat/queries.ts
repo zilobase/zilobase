@@ -1,8 +1,7 @@
-import type { AiAgentPreference, AiChatThreadsResponse, AiChatThreadMessagesResponse } from "./contracts";
+import type { AiChatThreadsResponse, AiChatThreadMessagesResponse } from "./contracts";
 export type {
   AiChatThread,
   AiChatFeedback,
-  AiAgentPreference,
   AiChatThreadsResponse,
   AiChatThreadResponse,
   AiChatThreadMessagesResponse,
@@ -21,10 +20,6 @@ export const aiChatThreadsQueryKey = (
   const normalized = search?.trim()
   return normalized ? [...base, "search", normalized] as const : base
 }
-
-export const aiAgentPreferenceQueryKey = (
-  workspaceId: string | null | undefined,
-) => ["workspaces", workspaceId ?? "none", "ai-chat", "preference"] as const
 
 export const aiChatThreadMessagesQueryKey = (
   workspaceId: string | null | undefined,
@@ -52,20 +47,6 @@ export const aiChatThreadsQueryOptions = (
         `/api/ai/threads${search?.trim() ? `?q=${encodeURIComponent(search.trim())}` : ""}`,
         workspaceRequestOptions(workspaceId, { signal }),
       ),
-  })
-
-export const aiAgentPreferenceQueryOptions = (
-  apiFetch: ApiFetcher,
-  workspaceId: string | null | undefined,
-) =>
-  queryOptions({
-    queryKey: aiAgentPreferenceQueryKey(workspaceId),
-    enabled: Boolean(workspaceId),
-    queryFn: ({ signal }) =>
-      apiFetch<{ preference: AiAgentPreference }>(
-        "/api/ai/preferences",
-        workspaceRequestOptions(workspaceId, { signal }),
-      ).then((result) => result.preference),
   })
 
 export const aiChatThreadMessagesQueryOptions = (

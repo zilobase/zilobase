@@ -14,7 +14,7 @@ Personal chat/thread routes connect conversations to agent execution, context, t
 
 Agent profiles, revisions, conversations, runs, settings drafts and connector access are separate persisted concerns. Each agent has one canonical conversation keyed by profile. Personal `ai_chat_thread` rows cannot reference agent profiles, so the two conversation models do not overlap. Tools resolve actor/resource authority on the server; client visibility is not permission to execute.
 
-Agent profile creation imports the collaboration [document codec](../../../apps/server/src/features/collaboration/document-codec.ts), avoiding a dependency on collaboration runtime dispatch and its agent triggers. Settings presentation enters through the active settings screens; unused legacy AI sidebar sections and unconsumed MCP wrappers are removed.
+Agent profile creation imports the collaboration [document codec](../../../apps/server/src/features/collaboration/document-codec.ts), avoiding a dependency on collaboration runtime dispatch and its agent triggers. It creates the canonical settings record and first settings version in the same transaction as the profile, execution revision and conversation. Settings presentation enters through the active settings screens.
 
 ## Side effects, failures and recovery
 

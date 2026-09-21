@@ -190,7 +190,7 @@ describe("durable model checkpoints", () => {
       expect(state.dispatch).not.toHaveBeenCalled();
     },
   );
-  it("fails closed for legacy waiting runs without a checkpoint", async () => {
+  it("fails closed for waiting runs without a checkpoint", async () => {
     state.run.status = "waiting_approval";
     expect(await resumeAgentRunAfterApproval(env, run.id)).toBe(false);
     expect(state.run.status).toBe("failed");

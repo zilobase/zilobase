@@ -29,10 +29,8 @@ import {
   getAgentProfileDetail,
   getAgentProfileRole,
   listAccessibleAgentProfiles,
-  replaceAgentProfileAccess,
   requireAgentProfileRole,
   transferAgentProfileOwnership,
-  updateAgentProfile,
 } from "./agent-profile-service";
 import {
   grantAgentResource,
@@ -64,18 +62,6 @@ const createSchema = z.object({
   iconPosition: z.enum(["inline", "top"]).optional(),
   instructions: z.string().max(20_000).optional(),
   name: z.string().trim().min(1).max(120),
-});
-const updateSchema = createSchema.partial();
-const accessSchema = z.object({
-  grants: z
-    .array(
-      z.object({
-        principalId: z.string().trim().min(1).max(160),
-        principalType: z.enum(["user", "team"]),
-        role: z.enum(["editor", "user"]),
-      }),
-    )
-    .max(200),
 });
 const transferSchema = z.object({
   newOwnerUserId: z.string().trim().min(1).max(160),
@@ -144,32 +130,6 @@ aiAgentProfileRoutes.get("/agents/:agentId", async (c) =>
     if (!agent)
       throw new AgentProfileError("agent_not_found", "Agent not found.", 404);
     return { agent };
-  }),
-);
-
-aiAgentProfileRoutes.patch("/agents/:agentId", async (c) =>
-  handle(c, async (auth) => {
-    const body = updateSchema.parse(await c.req.json());
-    return {
-      agent: await updateAgentProfile({
-        ...auth,
-        ...body,
-        profileId: c.req.param("agentId"),
-      }),
-    };
-  }),
-);
-
-aiAgentProfileRoutes.put("/agents/:agentId/access", async (c) =>
-  handle(c, async (auth) => {
-    const body = accessSchema.parse(await c.req.json());
-    return {
-      agent: await replaceAgentProfileAccess({
-        ...auth,
-        ...body,
-        profileId: c.req.param("agentId"),
-      }),
-    };
   }),
 );
 

@@ -1,7 +1,5 @@
 export {
   useAiChatThreads,
-  useAiAgentPreference,
-  useUpdateAiAgentPreference,
   useCreateAiChatThread,
   useRenameAiChatThread,
   useArchiveAiChatThread,
@@ -14,8 +12,6 @@ export {
   useAiAgentProfiles,
   useAiAgentProfile,
   useCreateAiAgentProfile,
-  useUpdateAiAgentProfile,
-  useReplaceAiAgentProfileAccess,
   useTransferAiAgentProfile,
   useArchiveAiAgentProfile,
   useCustomAgentConversation,

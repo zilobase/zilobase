@@ -16,11 +16,6 @@ export type AiChatFeedback = {
   reason: string | null
 }
 
-export type AiAgentPreference = {
-  instructions: string
-  responseStyle: "concise" | "balanced" | "detailed"
-}
-
 export type AiChatThreadsResponse = {
   threads: AiChatThread[]
 }

@@ -58,7 +58,7 @@ export function getMcpCredentialScopeId(
 ) {
   const scope = getMcpScopeFromConnection(connection);
   return scope.type === "agent"
-    ? scope.agentProfileId
+    ? `agent:${connection.workspaceId}:${scope.agentProfileId}`
     : `personal:${connection.workspaceId}:${scope.userId}`;
 }
 

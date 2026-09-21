@@ -14,11 +14,8 @@ import {
   setAiChatThreadPinned,
 } from "./chat-persistence";
 import {
-  AI_AGENT_INSTRUCTIONS_MAX_CHARS,
   AI_CHAT_FEEDBACK_REASON_MAX_CHARS,
-  getAiAgentPreference,
   listAiChatFeedback,
-  saveAiAgentPreference,
   saveAiChatFeedback,
 } from "./agent-experience";
 import {
@@ -38,10 +35,6 @@ const renameThreadSchema = z.object({
 });
 
 const pinThreadSchema = z.object({ pinned: z.boolean() });
-const preferenceSchema = z.object({
-  instructions: z.string().max(AI_AGENT_INSTRUCTIONS_MAX_CHARS),
-  responseStyle: z.enum(["concise", "balanced", "detailed"]),
-});
 const feedbackSchema = z.object({
   rating: z.union([z.literal(-1), z.literal(1)]),
   reason: z.string().trim().max(AI_CHAT_FEEDBACK_REASON_MAX_CHARS).optional(),
@@ -328,43 +321,6 @@ aiThreadRoutes.put(
     return c.json({ feedback });
   },
 );
-
-aiThreadRoutes.get("/preferences", async (c) => {
-  const auth = await requireActiveWorkspace(c);
-
-  if ("response" in auth) {
-    return auth.response;
-  }
-
-  return c.json({
-    preference: await getAiAgentPreference({
-      userId: auth.user.id,
-      workspaceId: auth.workspaceId,
-    }),
-  });
-});
-
-aiThreadRoutes.put("/preferences", async (c) => {
-  const auth = await requireActiveWorkspace(c);
-
-  if ("response" in auth) {
-    return auth.response;
-  }
-
-  const body = await parseJson(c, preferenceSchema);
-
-  if (!body.success) {
-    return body.response;
-  }
-
-  return c.json({
-    preference: await saveAiAgentPreference({
-      ...body.data,
-      userId: auth.user.id,
-      workspaceId: auth.workspaceId,
-    }),
-  });
-});
 
 async function requireActiveWorkspace(c: Context<AppBindings>) {
   const user = c.get("user");

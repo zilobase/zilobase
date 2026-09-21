@@ -67,28 +67,6 @@ export function useCreateAiAgentProfile() {
   )
 }
 
-export function useUpdateAiAgentProfile(agentId: string | null) {
-  return useAgentMutation<Partial<Pick<AiAgentProfileDetail, "name" | "description" | "instructions" | "defaultModel" | "icon" | "cover" | "iconPosition">>, { agent: AiAgentProfileDetail }>(
-    () => `/api/ai/agents/${encodeURIComponent(agentId!)}`,
-    "PATCH",
-    agentId,
-  )
-}
-
-export function useReplaceAiAgentProfileAccess(agentId: string | null) {
-  return useAgentMutation<{
-    grants: Array<{
-      principalId: string
-      principalType: "user" | "team"
-      role: "editor" | "user"
-    }>
-  }, { agent: AiAgentProfileDetail }>(
-    () => `/api/ai/agents/${encodeURIComponent(agentId!)}/access`,
-    "PUT",
-    agentId,
-  )
-}
-
 export function useTransferAiAgentProfile(agentId: string | null) {
   return useAgentMutation<{ newOwnerUserId: string }, { agent: AiAgentProfileDetail }>(
     () => `/api/ai/agents/${encodeURIComponent(agentId!)}/transfer`,

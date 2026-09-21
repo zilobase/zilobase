@@ -95,7 +95,9 @@ async function fixture(agent = false) {
     {
       authenticatedByUserId: "user",
       connectionId: "connection",
-      profileId: agent ? "agent" : "personal:workspace:user",
+      profileId: agent
+        ? "agent:workspace:agent"
+        : "personal:workspace:user",
       purpose: "approval:action",
       workspaceId: "workspace",
     },

@@ -77,7 +77,7 @@ export const settingsDefinitionSchema = z.object({
       }),
     )
     .max(100),
-});
+}).strict();
 export type AgentSettingsDefinition = z.infer<typeof settingsDefinitionSchema>;
 // Linked page content autosaves independently of the agent configuration draft.
 export function hasAgentConfigurationChanges(
