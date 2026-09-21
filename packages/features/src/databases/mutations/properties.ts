@@ -349,7 +349,10 @@ function resolvePropertyCreateAnchors(
   requestedPosition?: number,
 ) {
   const ids = (findDataSourceBootstrap(queryClient, dataSourceId)?.properties ?? [])
-    .filter((property) => property.dataSourceId === dataSourceId)
+    .filter((property) =>
+      property.dataSourceId === dataSourceId &&
+      !property.id.startsWith("optimistic-property-")
+    )
     .slice()
     .sort((left, right) => left.position - right.position)
     .map(({ id }) => id);

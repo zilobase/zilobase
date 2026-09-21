@@ -214,6 +214,32 @@ test("property hooks use source commands and translate positions to anchors", as
   }
 })
 
+test("appended property commands never send optimistic placeholder anchors", async () => {
+  const sent: Array<{ path: string; request: DatabaseCommandRequest }> = []
+  const { mutation, queryClient } = createMutationTestRuntime(
+    useAddDatabaseProperty,
+    commandApi(sent),
+  )
+  setTestDatabaseClientState(queryClient, createTestDatabasePayload())
+  try {
+    await mutation.mutateAsync({
+      databaseId: "data-source-1",
+      name: "Created",
+      type: "date",
+    })
+    assert.deepEqual(sent[0]?.request.command, {
+      afterPropertyId: "column-name",
+      beforePropertyId: null,
+      config: null,
+      name: "Created",
+      propertyType: "date",
+      type: "property.create",
+    })
+  } finally {
+    queryClient.clear()
+  }
+})
+
 test("stored template hooks share the structural source lane", async () => {
   const sent: Array<{ path: string; request: DatabaseCommandRequest }> = []
   const create = createMutationTestRuntime(useCreateDatabaseTemplate, commandApi(sent))
