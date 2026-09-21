@@ -58,4 +58,26 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.match(controller, /recordWindow\.status === "success"/)
     assert.match(controller, /bootstrapState\.status === "success"/)
   })
+
+  test("setup prompt autofocus does not move the containing page", async () => {
+    const setupCard = await readSource(
+      "/src/features/databases/setup/components/database-setup-card.tsx",
+    )
+    const slashCommand = await readSource(
+      "/src/features/editor/extensions/slash-command.tsx",
+    )
+    const databaseCommand = slashCommand.slice(
+      slashCommand.indexOf('title: "Database"'),
+    )
+
+    assert.doesNotMatch(setupCard, /<PromptInputTextarea\s+autoFocus/)
+    assert.match(
+      setupCard,
+      /promptInputRef\.current\?\.focus\(\{ preventScroll: true \}\)/,
+    )
+    assert.match(
+      databaseCommand,
+      /\.focus\(undefined, \{ scrollIntoView: false \}\)/,
+    )
+  })
 }

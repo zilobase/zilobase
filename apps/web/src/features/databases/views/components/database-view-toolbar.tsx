@@ -67,7 +67,7 @@ import { DatabaseViewToolbarButton } from "./database-view-toolbar-button";
 
 import {
   captureDatabaseViewScroll,
-  restoreDatabaseViewScroll,
+  restoreDatabaseViewScrollAfterLayout,
   type DatabaseViewScrollSnapshot,
 } from "../controller/database-view-scroll";
 
@@ -249,8 +249,8 @@ export function DatabaseViewToolbar() {
       return;
     }
 
-    restoreDatabaseViewScroll(scrollSnapshot);
     pendingViewScrollRef.current = null;
+    return restoreDatabaseViewScrollAfterLayout(scrollSnapshot);
   }, [activeViewTabId]);
 
   useLayoutEffect(() => {

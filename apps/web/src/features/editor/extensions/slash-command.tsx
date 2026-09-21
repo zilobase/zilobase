@@ -495,7 +495,7 @@ function createSlashCommandItems(
 
       editor
         .chain()
-        .focus()
+        .focus(undefined, { scrollIntoView: false })
         .deleteRange(range)
         .insertContentAt(range.from, createDatabaseSetupBlockContent(databaseId))
         .setTextSelection(range.from + 2)

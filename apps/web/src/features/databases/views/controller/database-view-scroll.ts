@@ -65,6 +65,38 @@ export function restoreDatabaseViewScroll(
   }
 }
 
+export function restoreDatabaseViewScrollAfterLayout(
+  snapshot: DatabaseViewScrollSnapshot | null,
+) {
+  restoreDatabaseViewScroll(snapshot)
+
+  if (!snapshot) {
+    return undefined
+  }
+
+  const ownerWindow = snapshot.scrollElement.ownerDocument.defaultView
+
+  if (!ownerWindow) {
+    return undefined
+  }
+
+  let secondFrame: number | undefined
+  const firstFrame = ownerWindow.requestAnimationFrame(() => {
+    restoreDatabaseViewScroll(snapshot)
+    secondFrame = ownerWindow.requestAnimationFrame(() => {
+      restoreDatabaseViewScroll(snapshot)
+    })
+  })
+
+  return () => {
+    ownerWindow.cancelAnimationFrame(firstFrame)
+
+    if (secondFrame !== undefined) {
+      ownerWindow.cancelAnimationFrame(secondFrame)
+    }
+  }
+}
+
 export function shouldRenderVirtualizedDatabaseRows({
   hasScrollElement,
   virtualRowCount,
