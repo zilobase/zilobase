@@ -54,11 +54,14 @@ import { setDatabasePageDragPayload } from "@/features/databases"
 import type { DragHandleTarget } from "../toolbar/toolbar-contracts"
 import type {
   StructuralBlockDeleteAction,
+  StructuralBlockDeleteHistory,
   StructuralBlockDeleteRequest,
 } from "../core/types"
 import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
 import { toast } from "sonner"
 import { ColorPicker } from "../toolbar/color-menu"
+import { useOptionalUndoHistory } from "@/shared/shortcuts"
+import { createStructuralBlockDeleteHistoryAction } from "./structural-block-delete-history"
 
 type PendingStructuralBlockDelete = StructuralBlockDeleteRequest & {
   action: StructuralBlockDeleteAction
@@ -136,8 +139,9 @@ export function DragBlockMenu({
   ) => StructuralBlockDeleteAction
   onDeleteStructuralBlock?: (
     request: StructuralBlockDeleteRequest,
-  ) => Promise<void>
+  ) => Promise<StructuralBlockDeleteHistory | void>
 }) {
+  const undoHistory = useOptionalUndoHistory()
   const menuRootRef = useRef<HTMLDivElement | null>(null)
   const [actionsOpen, setActionsOpen] = useState(false)
   const [search, setSearch] = useState("")
@@ -547,7 +551,7 @@ export function DragBlockMenu({
         throw new Error("This block cannot be deleted from this editor.")
       }
 
-      await onDeleteStructuralBlock({
+      const resourceHistory = await onDeleteStructuralBlock({
         id: pendingDelete.id,
         type: pendingDelete.type,
       })
@@ -555,14 +559,39 @@ export function DragBlockMenu({
       const match = findStructuralBlock(editor, pendingDelete)
 
       if (match?.node) {
-        editor
-          .chain()
-          .focus()
-          .deleteRange({
-            from: match.pos,
-            to: match.pos + match.node.nodeSize,
-          })
-          .run()
+        const deleteEditorBlock = () =>
+          editor
+            .chain()
+            .focus()
+            .deleteRange({
+              from: match.pos,
+              to: match.pos + match.node.nodeSize,
+            })
+            .run()
+
+        if (resourceHistory && undoHistory) {
+          undoHistory.runWithoutRecording(deleteEditorBlock)
+          undoHistory.pushAction(
+            createStructuralBlockDeleteHistoryAction({
+              editor: {
+                redo: () =>
+                  undoHistory.runWithoutRecording(() => editor.commands.redo()),
+                undo: () =>
+                  undoHistory.runWithoutRecording(() => editor.commands.undo()),
+              },
+              onError: (error) => {
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : "Could not update the deleted block.",
+                )
+              },
+              resource: resourceHistory,
+            }),
+          )
+        } else {
+          deleteEditorBlock()
+        }
       }
 
       setPendingDelete(null)

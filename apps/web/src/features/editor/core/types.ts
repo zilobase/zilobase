@@ -74,6 +74,11 @@ export type StructuralBlockDeleteRequest = {
 
 export type StructuralBlockDeleteAction = "move-to-trash" | "remove-link"
 
+export type StructuralBlockDeleteHistory = {
+  redo: () => Promise<void>
+  undo: () => Promise<void>
+}
+
 export type EditorProps = {
   commentController?: PageCommentController
   content?: unknown
@@ -114,7 +119,7 @@ export type EditorProps = {
   ) => StructuralBlockDeleteAction
   onDeleteStructuralBlock?: (
     request: StructuralBlockDeleteRequest,
-  ) => Promise<void>
+  ) => Promise<StructuralBlockDeleteHistory | void>
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
   onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   onTitleChange?: (title: string) => void

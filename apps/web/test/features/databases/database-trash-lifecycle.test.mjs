@@ -1,6 +1,6 @@
 export function register({ assert, readSource, readWorkspace, test }) {
-  test("deleted databases become read-only shells with an in-toolbar restore action", async () => {
-    const [block, controller, screen, view, toolbarActions, restoreButton, cache] = await Promise.all([
+  test("deleted embedded databases are hidden while full-page trash remains restorable", async () => {
+    const [block, controller, screen, view, toolbarActions, restoreButton, styles, cache] = await Promise.all([
       readSource("/src/features/databases/core/database-block.tsx"),
       readSource(
         "/src/features/databases/views/controller/use-database-view-controller.tsx",
@@ -9,11 +9,16 @@ export function register({ assert, readSource, readWorkspace, test }) {
       readSource("/src/features/databases/views/components/database-view.tsx"),
       readSource("/src/features/databases/views/components/database-toolbar-actions.tsx"),
       readSource("/src/features/databases/core/database-trash-restore-button.tsx"),
+      readSource("/src/features/databases/styles/database.css"),
       readWorkspace("/packages/features/src/shared/item-action-cache.ts"),
     ])
 
-    assert.match(block, /includeDeleted=\{isEditable\}/)
-    assert.match(block, /canRestoreDeleted=\{isEditable\}/)
+    assert.match(block, /useDatabaseMetadata\(databaseId, \{ includeDeleted: true \}\)/)
+    assert.match(block, /databaseLifecycle\?\.database\.deletedAt/)
+    assert.match(block, /data-database-deleted="true"/)
+    assert.match(styles, /node-databaseBlock:has\(> \[data-database-deleted="true"\]\)/)
+    assert.doesNotMatch(block, /canRestoreDeleted=/)
+    assert.doesNotMatch(block, /includeDeleted=\{isEditable\}/)
     assert.match(controller, /Boolean\(bootstrap\?\.database\.deletedAt\)/)
     assert.match(
       controller,
@@ -29,6 +34,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.match(restoreButton, /className="database-new-button"/)
     assert.doesNotMatch(restoreButton, /TrashedItemBanner/)
     assert.match(screen, /Boolean\(payload\?\.database\.deletedAt\)/)
+    assert.match(screen, /canRestoreDeleted=\{!readOnly\}/)
     assert.doesNotMatch(screen, /\{databasePage\?\.deletedAt \? \(/)
     assert.doesNotMatch(screen, /<DatabaseTrashBanner/)
     assert.match(cache, /query\.queryKey\[query\.queryKey\.length - 1\] === true/)

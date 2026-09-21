@@ -24,7 +24,10 @@ import {
   type PageIconPosition,
   type PageMetadata,
 } from "@zilobase/features/pages";
-import { useDeleteDatabase } from "@zilobase/features/databases/react";
+import {
+  useDeleteDatabase,
+  useRestoreDatabase,
+} from "@zilobase/features/databases/react";
 import {
   useDeleteMeeting,
   useWorkspaceMeetings,
@@ -140,6 +143,7 @@ export function PageEditorPane({
   const embedPageItem = useEmbedPageItem();
   const removePageEmbed = useRemovePageEmbed();
   const deleteDatabase = useDeleteDatabase();
+  const restoreDatabase = useRestoreDatabase();
   const deleteMeeting = useDeleteMeeting();
   const updatePage = useUpdatePage();
   const restorePage = useRestorePage();
@@ -219,23 +223,42 @@ export function PageEditorPane({
       }
 
       if (getStructuralBlockDeleteAction(request) === "remove-link") {
-        await removePageEmbed.mutateAsync({
+        const input = {
           hostPageId: page.id,
           itemId: request.id,
-          kind: "database",
-        });
-        return;
+          kind: "database" as const,
+        };
+
+        await removePageEmbed.mutateAsync(input);
+        return {
+          redo: async () => {
+            await removePageEmbed.mutateAsync(input);
+          },
+          undo: async () => {
+            await embedPageItem.mutateAsync(input);
+          },
+        };
       }
 
       await deleteDatabase.mutateAsync(request.id);
+      return {
+        redo: async () => {
+          await deleteDatabase.mutateAsync(request.id);
+        },
+        undo: async () => {
+          await restoreDatabase.mutateAsync(request.id);
+        },
+      };
     },
     [
       deleteDatabase,
       deleteMeeting,
+      embedPageItem,
       getStructuralBlockDeleteAction,
       page,
       pageEditable,
       removePageEmbed,
+      restoreDatabase,
     ],
   );
   const commentsRegistry = usePageCommentsRegistry();

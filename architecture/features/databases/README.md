@@ -61,16 +61,18 @@ A database is page-backed; data sources, rows, views and property values are sep
 Row/property changes can update realtime outboxes, automations and page navigation. The common [database commit helper](../../../apps/server/src/features/databases/core/commit.ts) gives internal writers a shared server-generated command ID and atomically stores a v2 journal event before its delivery-only outbox reference. Partial internal deltas become scoped reset events so downstream v2 consumers never ingest partial entities. Delivery requires the canonical journal event and publishes protocol v2 only; missing history is retried instead of falling back to a payload-only message. Preserve mutation origin and transaction ordering. Database realtime revisions and cache reconciliation prevent stale UI after writes.
 
 Database deletion is a reversible lifecycle transition. The database, its rows,
-and nested descendants are soft-deleted as one batch, while a database block in
-an otherwise active host page remains in the Yjs document as the stable restore
-location. Editable embedded blocks therefore read with `includeDeleted`, hide
-their record content, replace the normal blue New action with the shared
-[database restore control](../../../apps/web/src/features/databases/core/database-trash-restore-button.tsx),
-and force the database controller into read-only mode while `database.deletedAt`
-is set. Restore clears the deletion batch and invalidates every active and
-trash-aware bootstrap/window key through [shared item-action cache handling](../../../packages/features/src/shared/item-action-cache.ts),
-so the same block becomes live again without relocation or a realtime-dependent
-refresh. Public and other read-only embeds do not opt into deleted reads.
+and nested descendants are soft-deleted as one batch. Page Yjs documents can
+still contain references to a deleted database, so the
+[database node view](../../../apps/web/src/features/databases/core/database-block.tsx)
+performs a lifecycle-aware read and removes those references from page layout;
+it does not expose a permanent restore shell. Deleting an embedded structural
+block records its editor removal and database lifecycle transition as one undo
+entry. Ctrl+Z restores both while that page's undo entry exists, and redo
+removes both again. Direct full-page trash access retains the explicit
+[database restore control](../../../apps/web/src/features/databases/core/database-trash-restore-button.tsx).
+Restore clears the deletion batch and invalidates every active and trash-aware
+bootstrap/window key through [shared item-action cache handling](../../../packages/features/src/shared/item-action-cache.ts),
+without relying on a realtime refresh.
 
 Runtime topology, retention, recovery, metrics, and failure diagnosis are in
 the [database operations guide](../../../docs/databases/operations.md).

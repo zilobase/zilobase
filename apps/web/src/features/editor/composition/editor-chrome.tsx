@@ -16,6 +16,7 @@ import type {
   PasteChoiceState,
   SelectionAiDiffPreview,
   StructuralBlockDeleteAction,
+  StructuralBlockDeleteHistory,
   StructuralBlockDeleteRequest,
 } from "../core/types"
 import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
@@ -36,7 +37,7 @@ type EditorChromeProps = {
   onClosePasteChoice: () => void
   onDeleteStructuralBlock?: (
     request: StructuralBlockDeleteRequest,
-  ) => Promise<void>
+  ) => Promise<StructuralBlockDeleteHistory | void>
   onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
   onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   pageId?: string | null

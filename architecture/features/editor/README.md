@@ -53,13 +53,15 @@ A prepared ticket is consumed once. Provider creation applies ticket state first
 
 Database and meeting creation use the shared [structural-insertion transaction](../../../apps/web/src/features/editor/commands/structural-insertion.ts) for both slash commands and the block menu. The transaction remains pending until the created structural node is in the editor, allowing page hierarchy recovery to defer competing full-document restoration. Its [tests](../../../apps/web/test/features/editor/structural-insertion.test.mjs) cover successful ordering and failure cleanup.
 
-An embedded database node is also the restore anchor for a soft-deleted
-database. Deleting the database through navigation leaves that structural node
-in the page document; its [node view](../../../apps/web/src/features/databases/core/database-block.tsx)
-switches to the database feature's read-only shell, hides its records, and puts
-Restore in the normal New-action slot. Restoring the database reuses the same
-node and position. Explicitly deleting the structural
-block itself remains a separate editor operation.
+Soft-deleted database references can remain in collaborative page documents,
+but their [node view](../../../apps/web/src/features/databases/core/database-block.tsx)
+removes them from layout instead of presenting permanent tombstones. The drag
+menu treats an embedded database deletion as one history operation: it removes
+the editor node without creating a second global undo entry and pairs that node
+history with the database trash/restore mutation through
+[structural-block delete history](../../../apps/web/src/features/editor/drag-drop/structural-block-delete-history.ts).
+Ctrl+Z and redo therefore transition the resource and editor node together;
+when the page undo scope is reset, no restore affordance remains in its content.
 
 [Column controls](../../../apps/web/src/features/editor/toolbar/column-controls.tsx) coalesce pointer events into one animation frame before applying hover state. Existing control targets take precedence over geometric hit testing, and active drag/pointer/menu states suppress hover changes. Frame cancellation and listener cleanup remain in the effect.
 
