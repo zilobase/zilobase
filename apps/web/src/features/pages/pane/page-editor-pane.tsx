@@ -59,7 +59,6 @@ import type {
 } from "@/features/editor/core/types";
 import type { OpenPageOptions } from "../navigation/open-page-options";
 import { usePageCollaboration } from "@/features/editor/collaboration/use-page-collaboration";
-import { isPageCollaborationReady } from "@/features/editor/collaboration/collaboration-readiness";
 import { isHostedDemoRuntime } from "@/features/demo";
 import { canEditOnlineDatabase } from "@/features/editor/database-editability";
 import {
@@ -162,6 +161,7 @@ export function PageEditorPane({
   const pendingStructuralInsertionsRef = useRef(0);
   const [structuralInsertionRevision, setStructuralInsertionRevision] =
     useState(0);
+  const [editorReadyRevision, setEditorReadyRevision] = useState(0);
   const editorContentRef = useRef<(() => unknown) | null>(null);
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null);
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
@@ -176,6 +176,27 @@ export function PageEditorPane({
         pendingStructuralInsertionsRef.current + (pending ? 1 : -1),
       );
       setStructuralInsertionRevision((current) => current + 1);
+    },
+    [],
+  );
+
+  const handleEditorReady = useCallback(
+    (editor: import("@tiptap/core").Editor | null) => {
+      const editorChanged = Boolean(
+        editor && editorInstanceRef.current !== editor,
+      );
+
+      editorInstanceRef.current = editor;
+      lastSavedContentRef.current = editor
+        ? serializePageContent(editor.getJSON())
+        : null;
+      lastPageBlockIdsRef.current = editor
+        ? extractPageBlockIds(editor.getJSON())
+        : new Set();
+
+      if (editorChanged) {
+        setEditorReadyRevision((current) => current + 1);
+      }
     },
     [],
   );
@@ -404,7 +425,9 @@ export function PageEditorPane({
     };
   }, [commentController, commentsRegistry, pageId]);
   const liveEditingReady =
-    demoMode || !pageEditable || isPageCollaborationReady(collaboration);
+    demoMode ||
+    !pageEditable ||
+    Boolean(collaboration.document && !collaboration.error);
   const waitingForCollaboration =
     !demoMode &&
     collaborationEnabled &&
@@ -631,7 +654,7 @@ export function PageEditorPane({
     });
   }, [
     getEditorHandle,
-    liveEditingReady,
+    editorReadyRevision,
     navigation,
     page,
     pageEditable,
@@ -676,7 +699,7 @@ export function PageEditorPane({
     handle.setContentJson(nextContent);
   }, [
     getEditorHandle,
-    liveEditingReady,
+    editorReadyRevision,
     meetingsPayload,
     page,
     pageEditable,
@@ -805,19 +828,11 @@ export function PageEditorPane({
         metadataEditable={pageEditable && liveEditingReady && !offlineEditing}
         structuralEditingEnabled={pageEditable && liveEditingReady && !offlineEditing}
         commentsEditable={pageEditable && liveEditingReady && !offlineEditing && enableComments}
-        databaseEditable={databaseEditingReady && liveEditingReady}
+        databaseEditable={databaseEditingReady}
         enableComments={enableComments && !offlineEditing}
         hideEditorContent={hideEditorContent}
         getStructuralBlockDeleteAction={getStructuralBlockDeleteAction}
-        onEditorReady={(editor) => {
-          editorInstanceRef.current = editor;
-          lastSavedContentRef.current = editor
-            ? serializePageContent(editor.getJSON())
-            : null;
-          lastPageBlockIdsRef.current = editor
-            ? extractPageBlockIds(editor.getJSON())
-            : new Set();
-        }}
+        onEditorReady={handleEditorReady}
         emoji={emoji}
         iconPosition={iconPosition}
         fullWidth={hideChrome ? true : fullWidth}

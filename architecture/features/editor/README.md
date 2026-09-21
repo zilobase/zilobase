@@ -53,12 +53,12 @@ A prepared ticket is consumed once. Provider creation applies ticket state first
 
 Database and meeting creation use the shared [structural-insertion transaction](../../../apps/web/src/features/editor/commands/structural-insertion.ts) for both slash commands and the block menu. The transaction remains pending until the created structural node is in the editor, allowing page hierarchy recovery to defer competing full-document restoration. Its [tests](../../../apps/web/test/features/editor/structural-insertion.test.mjs) cover successful ordering and failure cleanup.
 
-Editable page surfaces require the collaboration document, provider and initial
-sync confirmation before enabling editor, metadata or embedded-database writes.
-That readiness transition also reruns hierarchy recovery after the editor handle
-exists, so a committed database placement cannot remain absent until some later
-navigation change. While the provider reports unacknowledged changes, the editor
-registers a browser reload guard instead of allowing silent data loss.
+Page composition reruns hierarchy recovery when the editor instance becomes
+ready, rather than relying on a later navigation update. A committed database
+placement therefore cannot remain absent after reload merely because recovery
+ran before the editor handle existed. While the collaboration provider reports
+unacknowledged changes, the editor registers a browser reload guard instead of
+allowing silent data loss.
 
 Soft-deleted database references can remain in collaborative page documents,
 but their [node view](../../../apps/web/src/features/databases/core/database-block.tsx)
