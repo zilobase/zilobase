@@ -15,6 +15,9 @@ const statuses = new Set(["complete", "disabled", "error", "missing", "started",
 const platforms = new Set(["linux", "macos", "windows", "unknown"]);
 
 export function logDirectory() {
+  if (process.env.ZILOBASE_E2E_USER_DATA) {
+    return path.join(path.resolve(process.env.ZILOBASE_E2E_USER_DATA), "logs");
+  }
   if (process.platform === "darwin") return path.join(os.homedir(), "Library", "Logs", "com.zilobase");
   if (process.platform === "win32") return path.join(process.env.LOCALAPPDATA || app.getPath("userData"), "com.zilobase", "logs");
   return path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share"), "com.zilobase", "logs");
@@ -87,7 +90,10 @@ export async function exportDiagnostics(outputDirectory) {
   };
   const entries = { "diagnostics.json": strToU8(JSON.stringify(manifest, null, 2)) };
   for (const name of files) entries[`logs/${name}`] = (await readFile(path.join(directory, name))).subarray(0, MAX_ARCHIVE_SIZE);
-  const targetDirectory = outputDirectory || app.getPath("downloads");
+  const targetDirectory = outputDirectory ||
+    (process.env.ZILOBASE_E2E_USER_DATA
+      ? path.join(path.resolve(process.env.ZILOBASE_E2E_USER_DATA), "downloads")
+      : app.getPath("downloads"));
   await mkdir(targetDirectory, { recursive: true });
   const output = path.join(targetDirectory, `zilobase-diagnostics-${Date.now()}-${process.pid}.zip`);
   await writeFile(output, zipSync(entries, { level: 0 }), { mode: 0o600 });

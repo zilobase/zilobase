@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, unlink } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, realpath, rm, unlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { unzipSync } from "fflate";
 import { _electron } from "playwright";
 
@@ -62,6 +64,20 @@ try {
     assert.ok(entries["diagnostics.json"]);
     assert.ok(!Object.values(entries).some((entry) => Buffer.from(entry).includes("SMOKE_SECRET_MUST_NOT_APPEAR")));
   } finally { await unlink(archivePath); }
+  await desktop.close();
+  desktop = null;
+  const { stdout } = await promisify(execFile)(executablePath, ["--diagnostics"], {
+    cwd: userData,
+    env: { ...process.env, ZILOBASE_E2E_USER_DATA: userData, ZILOBASE_E2E_DISABLE_LEGACY: "1" },
+    timeout: 15_000,
+  });
+  const cliArchive = stdout.trim().split(/\r?\n/).find((line) =>
+    line.includes("zilobase-diagnostics-") && line.endsWith(".zip"));
+  assert.ok(cliArchive, "CLI diagnostics returned an archive path");
+  assert.equal(await realpath(path.dirname(cliArchive)), await realpath(userData));
+  const cliEntries = unzipSync(await readFile(cliArchive));
+  assert.ok(cliEntries["diagnostics.json"]);
+  assert.ok(Object.keys(cliEntries).some((entry) => entry.startsWith("logs/")));
   console.info("Packaged Electron renderer and preload loaded successfully.");
 } finally {
   if (desktop) await desktop.close();

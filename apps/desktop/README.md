@@ -15,8 +15,9 @@ build the web app and sidecar first, then run
 `CSC_IDENTITY_AUTO_DISCOVERY=false npm run pack:electron --workspace @zilobase/desktop`.
 Set `ZILOBASE_DESKTOP_BINARY` to the packaged executable and run
 `npm run test:electron:smoke --workspace @zilobase/desktop`. This uses temporary
-user data and checks the preload, profile, credential, capture-idle and diagnostics
-contracts. The experimental CI workflow runs it on all three desktop OSes.
+user data and logs, and checks the preload, profile, credential, capture-idle,
+diagnostics export and `--diagnostics` CLI contracts. The experimental CI
+workflow runs it on all three desktop OSes.
 
 To test server selection against a running compatible self-hosted instance, set
 `ZILOBASE_E2E_SERVER` to its canonical origin and run
