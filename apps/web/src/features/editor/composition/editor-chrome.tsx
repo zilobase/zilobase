@@ -18,6 +18,7 @@ import type {
   StructuralBlockDeleteAction,
   StructuralBlockDeleteRequest,
 } from "../core/types"
+import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
 
 type EditorChromeProps = {
   blockDropLine: BlockDropLine | null
@@ -37,6 +38,7 @@ type EditorChromeProps = {
     request: StructuralBlockDeleteRequest,
   ) => Promise<void>
   onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   pageId?: string | null
   workspaceId?: string | null
   pasteChoice: PasteChoiceState | null
@@ -61,6 +63,7 @@ export function EditorChrome({
   onClosePasteChoice,
   onDeleteStructuralBlock,
   onSelectionAiPreviewChange,
+  onStructuralInsertionPendingChange,
   pageId,
   workspaceId,
   pasteChoice,
@@ -94,6 +97,9 @@ export function EditorChrome({
             onCreateMeeting={createEditorMeeting}
             onDeleteStructuralBlock={onDeleteStructuralBlock}
             onOpenChange={setPlusMenuOpen}
+            onStructuralInsertionPendingChange={
+              onStructuralInsertionPendingChange
+            }
             target={dragHandle.target}
           />
         </div>

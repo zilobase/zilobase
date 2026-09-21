@@ -80,6 +80,7 @@ export function Editor({
   getStructuralBlockDeleteAction,
   onDeleteStructuralBlock,
   onOpenPage,
+  onStructuralInsertionPendingChange,
   onTitleChange,
   workspaceId,
   title,
@@ -131,6 +132,7 @@ export function Editor({
       onCreatePage,
       onEmbedPage,
       onOpenPage,
+      onStructuralInsertionPendingChange,
       workspaceId,
       pageId,
     })
@@ -597,6 +599,9 @@ export function Editor({
           onClosePasteChoice={handleClosePasteChoice}
           onDeleteStructuralBlock={onDeleteStructuralBlock}
           onSelectionAiPreviewChange={handleSelectionAiPreviewChange}
+          onStructuralInsertionPendingChange={
+            onStructuralInsertionPendingChange
+          }
           pageId={pageId}
           workspaceId={workspaceId}
           pasteChoice={pasteChoice}

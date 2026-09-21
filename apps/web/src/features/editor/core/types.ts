@@ -13,6 +13,7 @@ import type { PageIconPosition } from "@zilobase/features/pages"
 import type { OpenPageOptions } from "@/features/pages"
 import type { PageCommentController } from "@/features/comments/index"
 import type * as Y from "yjs"
+import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
 
 export type EditorCollaboration = {
   document: Y.Doc
@@ -115,6 +116,7 @@ export type EditorProps = {
     request: StructuralBlockDeleteRequest,
   ) => Promise<void>
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   onTitleChange?: (title: string) => void
   workspaceId?: string | null
   title?: string
@@ -135,6 +137,7 @@ export type UseEditorExtensionsOptions = {
   onCreatePage?: () => Promise<CreatedPage>
   onEmbedPage?: (pageId: string) => void | Promise<void>
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   workspaceId?: string | null
   pageId?: string | null
 }

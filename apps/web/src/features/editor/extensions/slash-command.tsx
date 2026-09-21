@@ -48,6 +48,10 @@ import {
 } from "./embed-block"
 import { openAskAiPopover } from "./ask-ai-block"
 import type { CreatedPage } from "./page-block"
+import {
+  runStructuralInsertion,
+  type StructuralInsertionPendingChange,
+} from "../commands/structural-insertion"
 
 import { SlashCommandMenu } from "./slash-command-menu"
 
@@ -56,6 +60,7 @@ type SlashCommandOptions = {
   onCreateMeeting?: () => Promise<string | null>
   onCreatePage?: () => Promise<CreatedPage>
   onOpenPage?: (pageId: string) => void
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   workspaceId?: string | null
 }
 
@@ -467,19 +472,21 @@ function createSlashCommandItems(
     description: "Record, transcribe, and summarize a meeting",
     icon: CalendarDays,
     command: async ({ editor, range }) => {
-      const meetingId = await options.onCreateMeeting?.()
-
-      if (!meetingId) return
-
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertContentAt(range.from, {
-          type: "meetingBlock",
-          attrs: { meetingId },
-        })
-        .run()
+      await runStructuralInsertion({
+        create: options.onCreateMeeting,
+        insert: (meetingId) => {
+          editor
+            .chain()
+            .focus()
+            .deleteRange(range)
+            .insertContentAt(range.from, {
+              type: "meetingBlock",
+              attrs: { meetingId },
+            })
+            .run()
+        },
+        onPendingChange: options.onStructuralInsertionPendingChange,
+      })
     },
   },
   {
@@ -487,19 +494,22 @@ function createSlashCommandItems(
     description: "Table where every row is a page",
     icon: Database,
     command: async ({ editor, range }) => {
-      const databaseId = await options.onCreateDatabase?.()
-
-      if (!databaseId) {
-        return
-      }
-
-      editor
-        .chain()
-        .focus(undefined, { scrollIntoView: false })
-        .deleteRange(range)
-        .insertContentAt(range.from, createDatabaseSetupBlockContent(databaseId))
-        .setTextSelection(range.from + 2)
-        .run()
+      await runStructuralInsertion({
+        create: options.onCreateDatabase,
+        insert: (databaseId) => {
+          editor
+            .chain()
+            .focus(undefined, { scrollIntoView: false })
+            .deleteRange(range)
+            .insertContentAt(
+              range.from,
+              createDatabaseSetupBlockContent(databaseId),
+            )
+            .setTextSelection(range.from + 2)
+            .run()
+        },
+        onPendingChange: options.onStructuralInsertionPendingChange,
+      })
     },
   },
 ]
@@ -610,6 +620,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
       onCreateMeeting: undefined,
       onCreatePage: undefined,
       onOpenPage: undefined,
+      onStructuralInsertionPendingChange: undefined,
       workspaceId: undefined,
     }
   },

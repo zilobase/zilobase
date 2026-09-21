@@ -44,4 +44,10 @@ The page route selects authenticated, guest or public presentation from the exis
 
 [Content recovery](../../../apps/web/src/features/pages/pane/page-content-recovery.ts) is shared by missing database and meeting block restoration. It restores meaningful saved content only into an effectively empty editor, stops when the editor refuses a write, and preserves live content. Its narrow content-handle interface is exercised by [behavioral tests](../../../apps/web/test/features/pages/page-content-recovery.test.mjs). Content-save timing, comments and collaboration lifecycles are unchanged.
 
+Locally created database and meeting blocks form one structural-insertion
+transaction from the create request through the Tiptap insertion. Page hierarchy
+recovery defers while that transaction is active, then rechecks live editor
+content before restoring a missing block. This prevents a navigation or meeting
+query update from replacing the document between creation and insertion.
+
 Successful page/database embedding in [placement mutations](../../../packages/features/src/pages/placement-mutations.ts) invalidates navigation in the background. Editor callers can complete as soon as the embed request succeeds; navigation refetch latency or failure does not hold the mutation open or report a committed embed as rejected. [Mutation latency tests](../../../packages/features/src/pages/placement-mutations.test.ts) exercise this ordering with a real mutation observer and controlled save/refresh promises.

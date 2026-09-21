@@ -1,5 +1,8 @@
 import { resolvePageEditability } from "./page-editability";
-import { recoverPageEditorContent } from "./page-content-recovery";
+import {
+  recoverMissingPlacedDatabaseBlocks,
+  recoverPageEditorContent,
+} from "./page-content-recovery";
 import {
   useCallback,
   useEffect,
@@ -38,10 +41,7 @@ import {
   usePageNavigation,
   useResolvedPageLayout,
 } from "@zilobase/features/pages/react";
-import {
-  extractDatabaseIds,
-  insertDatabaseBlockInContent,
-} from "@zilobase/page-context";
+import { extractDatabaseIds } from "@zilobase/page-context";
 import { useSession } from "@zilobase/features/auth/react";
 import { useUserSettings } from "@zilobase/features/user-settings/react";
 import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry";
@@ -69,7 +69,6 @@ import { useTitleDraft } from "../hooks/use-title-draft";
 import { scrollToMeetingBlock } from "@/features/meetings/index";
 import {
   getMissingHostedMeetingIds,
-  getMissingPlacedDatabaseIds,
   getPlacedDatabaseIds,
   insertMeetingBlockInContent,
 } from "../navigation/page-hierarchy-blocks";
@@ -152,12 +151,29 @@ export function PageEditorPane({
   const lastPageBlockIdsRef = useRef<Set<string>>(new Set());
   const requestedDatabaseEmbedKeysRef = useRef<Set<string>>(new Set());
   const pendingContentRef = useRef<unknown>(null);
+  // Database/meeting creation publishes navigation data before the async editor
+  // command inserts its structural node. Keep hierarchy recovery from treating
+  // that short-lived state as lost content and replacing the live document.
+  const pendingStructuralInsertionsRef = useRef(0);
+  const [structuralInsertionRevision, setStructuralInsertionRevision] =
+    useState(0);
   const editorContentRef = useRef<(() => unknown) | null>(null);
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null);
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
   const paneRef = useRef<HTMLElement | null>(null);
   const { getEditorHandle, registerEditor, unregisterEditor } =
     usePageEditorRegistry();
+
+  const handleStructuralInsertionPendingChange = useCallback(
+    (pending: boolean) => {
+      pendingStructuralInsertionsRef.current = Math.max(
+        0,
+        pendingStructuralInsertionsRef.current + (pending ? 1 : -1),
+      );
+      setStructuralInsertionRevision((current) => current + 1);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!demoMode) return;
@@ -583,32 +599,29 @@ export function PageEditorPane({
       return;
     }
 
-    const restored = recoverPageEditorContent(handle, page.content);
-    if (!restored) return;
-    const { content } = restored;
-
-    const missingDatabaseIds = getMissingPlacedDatabaseIds(
-      content,
-      navigation.placements,
-      page.id,
-    );
-
-    if (missingDatabaseIds.length === 0) {
-      return;
-    }
-
-    let nextContent = content;
-
-    for (const databaseId of missingDatabaseIds) {
-      const inserted = insertDatabaseBlockInContent(nextContent, { databaseId });
-      nextContent = inserted.content;
-    }
-
-    handle.setContentJson(nextContent);
-  }, [getEditorHandle, liveEditingReady, navigation, page, pageEditable]);
+    recoverMissingPlacedDatabaseBlocks({
+      handle,
+      localStructuralInsertionPending:
+        pendingStructuralInsertionsRef.current > 0,
+      pageId: page.id,
+      placements: navigation.placements,
+      savedContent: page.content,
+    });
+  }, [
+    getEditorHandle,
+    liveEditingReady,
+    navigation,
+    page,
+    pageEditable,
+    structuralInsertionRevision,
+  ]);
 
   useEffect(() => {
     if (!pageEditable || !page || !meetingsPayload) {
+      return;
+    }
+
+    if (pendingStructuralInsertionsRef.current > 0) {
       return;
     }
 
@@ -645,6 +658,7 @@ export function PageEditorPane({
     meetingsPayload,
     page,
     pageEditable,
+    structuralInsertionRevision,
   ]);
 
   const embedLinkedPage = useCallback(
@@ -797,6 +811,9 @@ export function PageEditorPane({
         onIconPositionChange={updateIconPosition}
         onDeleteStructuralBlock={deleteStructuralBlock}
         onOpenPage={onOpenPage}
+        onStructuralInsertionPendingChange={
+          handleStructuralInsertionPendingChange
+        }
         onTitleChange={setName}
         workspaceId={page.workspaceId}
         title={name}

@@ -56,6 +56,7 @@ import type {
   StructuralBlockDeleteAction,
   StructuralBlockDeleteRequest,
 } from "../core/types"
+import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
 import { toast } from "sonner"
 import { ColorPicker } from "../toolbar/color-menu"
 
@@ -116,6 +117,7 @@ export function DragBlockMenu({
   onMenuStateChange,
   onCreateDatabase,
   onCreateMeeting,
+  onStructuralInsertionPendingChange,
   editorId,
   getStructuralBlockDeleteAction,
   onDeleteStructuralBlock,
@@ -128,6 +130,7 @@ export function DragBlockMenu({
   onMenuStateChange?: (open: boolean) => void
   onCreateDatabase?: () => Promise<string | null>
   onCreateMeeting?: () => Promise<string | null>
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
   getStructuralBlockDeleteAction?: (
     request: StructuralBlockDeleteRequest,
   ) => StructuralBlockDeleteAction
@@ -808,6 +811,7 @@ export function DragBlockMenu({
               void insertBlockFromPlus(editor, target, item, {
                 onCreateDatabase,
                 onCreateMeeting,
+                onStructuralInsertionPendingChange,
               })
               onOpenChange(false)
             }}
