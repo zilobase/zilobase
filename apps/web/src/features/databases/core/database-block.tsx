@@ -54,6 +54,7 @@ function DatabaseBlockView({
       data-type="databaseBlock"
     >
       <DatabaseView
+        canRestoreDeleted={isEditable}
         databaseId={databaseId}
         editable={isEditable}
         includeDeleted={isEditable}
@@ -68,7 +69,6 @@ function DatabaseBlockView({
         workspaceId={options.workspaceId}
         setupMode={setupMode}
         showExpandButton
-        showTrashedBanner
         showTitle={showTitle}
         pageId={options.currentPageId}
       />

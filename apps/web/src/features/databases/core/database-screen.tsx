@@ -37,7 +37,6 @@ import { useDatabaseMetadata } from "../access/use-database-metadata"
 import type { OpenPageOptions } from "@/features/pages"
 import { useTitleDraft } from "@/features/pages/hooks/index"
 import { useConnectivity, useOfflineManifest } from "@/features/offline/index"
-import { DatabaseTrashBanner } from "./database-trash-banner"
 
 export default function DatabasePage() {
   const { databaseId } = useParams({ from: "/d/$databaseId" })
@@ -447,12 +446,6 @@ export function DatabaseMainPane({
 
   return (
     <section className={cn(className, "animate-in fade-in-0 duration-300")}>
-      {databaseDeleted ? (
-        <DatabaseTrashBanner
-          databaseId={databaseId}
-          showRestore={!readOnly}
-        />
-      ) : null}
       <PageMetadataView
         allowIconPositionChange={false}
         cover={cover}
@@ -485,6 +478,7 @@ export function DatabaseMainPane({
       <div className="tiptap-editor px-5 pb-10 sm:px-8 md:px-20 lg:px-24">
         <DatabaseView
           activeViewId={embedded ? embeddedViewId : localActiveViewId}
+          canRestoreDeleted={!readOnly}
           databaseId={databaseId}
           editable={editable}
           fullPage

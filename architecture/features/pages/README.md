@@ -54,7 +54,8 @@ Successful page/database embedding in [placement mutations](../../../packages/fe
 
 Soft-deleting a database does not delete an otherwise active page that embeds
 it. The page's Yjs database node remains the stable restore anchor, while the
-database feature owns its trash presentation and edit lock. Shared lifecycle
+database feature owns its content-hidden trash presentation, toolbar restore
+control, and edit lock. Shared lifecycle
 cache handling refreshes deleted-aware database reads on delete and both active
 and deleted-aware reads on restore; restoration therefore does not depend on a
 page reload, navigation change, or realtime delivery.

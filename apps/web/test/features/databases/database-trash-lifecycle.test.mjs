@@ -1,25 +1,36 @@
 export function register({ assert, readSource, readWorkspace, test }) {
-  test("deleted databases remain visible as read-only restorable blocks", async () => {
-    const [block, controller, screen, view, cache] = await Promise.all([
+  test("deleted databases become read-only shells with an in-toolbar restore action", async () => {
+    const [block, controller, screen, view, toolbarActions, restoreButton, cache] = await Promise.all([
       readSource("/src/features/databases/core/database-block.tsx"),
       readSource(
         "/src/features/databases/views/controller/use-database-view-controller.tsx",
       ),
       readSource("/src/features/databases/core/database-screen.tsx"),
       readSource("/src/features/databases/views/components/database-view.tsx"),
+      readSource("/src/features/databases/views/components/database-toolbar-actions.tsx"),
+      readSource("/src/features/databases/core/database-trash-restore-button.tsx"),
       readWorkspace("/packages/features/src/shared/item-action-cache.ts"),
     ])
 
     assert.match(block, /includeDeleted=\{isEditable\}/)
-    assert.match(block, /showTrashedBanner/)
+    assert.match(block, /canRestoreDeleted=\{isEditable\}/)
     assert.match(controller, /Boolean\(bootstrap\?\.database\.deletedAt\)/)
     assert.match(
       controller,
       /requestedEditable\s*&&\s*!databaseDeleted\s*&&\s*!isDatabaseLocked/,
     )
-    assert.match(view, /databaseDeleted[\s\S]*?<DatabaseTrashBanner/)
+    assert.match(
+      view,
+      /!databaseDeleted \? \([\s\S]*?className="database-scroll-section"/,
+    )
+    assert.match(view, /deletedDatabaseId=\{databaseDeleted \? databaseId : null\}/)
+    assert.match(toolbarActions, /<DatabaseTrashRestoreButton/)
+    assert.match(toolbarActions, /editable \? \([\s\S]*?\) : canRestoreDeleted/)
+    assert.match(restoreButton, /className="database-new-button"/)
+    assert.doesNotMatch(restoreButton, /TrashedItemBanner/)
     assert.match(screen, /Boolean\(payload\?\.database\.deletedAt\)/)
     assert.doesNotMatch(screen, /\{databasePage\?\.deletedAt \? \(/)
+    assert.doesNotMatch(screen, /<DatabaseTrashBanner/)
     assert.match(cache, /query\.queryKey\[query\.queryKey\.length - 1\] === true/)
   })
 }

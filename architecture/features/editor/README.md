@@ -56,8 +56,9 @@ Database and meeting creation use the shared [structural-insertion transaction](
 An embedded database node is also the restore anchor for a soft-deleted
 database. Deleting the database through navigation leaves that structural node
 in the page document; its [node view](../../../apps/web/src/features/databases/core/database-block.tsx)
-switches to the database feature's read-only trash presentation. Restoring the
-database reuses the same node and position. Explicitly deleting the structural
+switches to the database feature's read-only shell, hides its records, and puts
+Restore in the normal New-action slot. Restoring the database reuses the same
+node and position. Explicitly deleting the structural
 block itself remains a separate editor operation.
 
 [Column controls](../../../apps/web/src/features/editor/toolbar/column-controls.tsx) coalesce pointer events into one animation frame before applying hover state. Existing control targets take precedence over geometric hit testing, and active drag/pointer/menu states suppress hover changes. Frame cancellation and listener cleanup remain in the effect.

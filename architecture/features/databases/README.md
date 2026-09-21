@@ -63,8 +63,9 @@ Row/property changes can update realtime outboxes, automations and page navigati
 Database deletion is a reversible lifecycle transition. The database, its rows,
 and nested descendants are soft-deleted as one batch, while a database block in
 an otherwise active host page remains in the Yjs document as the stable restore
-location. Editable embedded blocks therefore read with `includeDeleted`, render
-the shared [database trash banner](../../../apps/web/src/features/databases/core/database-trash-banner.tsx),
+location. Editable embedded blocks therefore read with `includeDeleted`, hide
+their record content, replace the normal blue New action with the shared
+[database restore control](../../../apps/web/src/features/databases/core/database-trash-restore-button.tsx),
 and force the database controller into read-only mode while `database.deletedAt`
 is set. Restore clears the deletion batch and invalidates every active and
 trash-aware bootstrap/window key through [shared item-action cache handling](../../../packages/features/src/shared/item-action-cache.ts),

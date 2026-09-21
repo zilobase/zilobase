@@ -89,7 +89,7 @@ export type DatabaseViewProps = {
   workspaceId?: string | null
   setupMode?: boolean
   showExpandButton?: boolean
-  showTrashedBanner?: boolean
+  canRestoreDeleted?: boolean
   showTitle?: boolean
   pageId?: string | null
 }
