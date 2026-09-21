@@ -37,7 +37,6 @@ function resolveOpenPagesAsFromCache(
   }
 
   return resolveEmbeddedItemsOpenAs(
-    page,
     userSettings.embeddedItemsOpenAs,
   )
 }

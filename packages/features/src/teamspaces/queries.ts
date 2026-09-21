@@ -1,11 +1,4 @@
 import type { Teamspace, TeamspacePrincipal, TeamspaceWorkspaceSettings } from "./contracts";
-export type {
-  TeamspaceAccessMode,
-  TeamspaceRole,
-  Teamspace,
-  TeamspacePrincipal,
-  TeamspaceWorkspaceSettings,
-} from "./contracts";
 import { queryOptions } from "@tanstack/react-query"
 
 import type { ApiFetcher } from "../shared/api-fetcher"

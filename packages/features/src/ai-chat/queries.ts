@@ -1,11 +1,4 @@
 import type { AiChatThreadsResponse, AiChatThreadMessagesResponse } from "./contracts";
-export type {
-  AiChatThread,
-  AiChatFeedback,
-  AiChatThreadsResponse,
-  AiChatThreadResponse,
-  AiChatThreadMessagesResponse,
-} from "./contracts";
 import { queryOptions } from "@tanstack/react-query"
 
 

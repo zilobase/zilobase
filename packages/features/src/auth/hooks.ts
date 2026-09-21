@@ -4,13 +4,8 @@ import { useZilobaseFeatures } from "../shared/context"
 import {
   sessionQueryKey,
   sessionQueryOptions,
-  type SessionResponse,
-  type SessionUser,
-  type SignInWithOtpInput,
-  type SignInWithPasswordInput,
-  type SignUpInput,
-  type VerifyEmailOtpInput,
 } from "./queries"
+import type { SessionResponse, SessionUser, SignInWithOtpInput, SignInWithPasswordInput, SignUpInput, VerifyEmailOtpInput } from "./contracts"
 
 export function useSession() {
   const { auth } = useZilobaseFeatures()

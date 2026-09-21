@@ -1,5 +1,4 @@
 import type { MailScope } from "./query-contracts";
-export type { MailScope } from "./query-contracts";
 import {
   infiniteQueryOptions,
   queryOptions,

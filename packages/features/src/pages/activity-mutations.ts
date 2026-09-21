@@ -6,10 +6,8 @@ import {
   pagesNavRootQueryKey,
   pagesQueryKey,
   pagesRootQueryKey,
-  type PageDetail,
-  type Page,
-  type PageNavigationPayload,
 } from "./queries";
+import type { PageDetail, Page, PageNavigationPayload } from "./contracts";
 import {
   applyPageFavoriteToNav,
   applyItemVisitToNav,

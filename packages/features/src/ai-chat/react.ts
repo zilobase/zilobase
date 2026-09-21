@@ -37,3 +37,5 @@ export {
   useMcpActivity,
   useMcpConnectionMutation,
 } from "./mcp-hooks";
+export { aiAgentProfilesQueryKey, mcpScopeApiPath } from "./mcp-hooks";
+export { upsertAiChatThreadInCache } from "./hooks";

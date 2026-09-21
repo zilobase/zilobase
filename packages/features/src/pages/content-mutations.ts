@@ -7,23 +7,15 @@ import {
 } from "../shared/item-action-cache";
 import { useDatabaseSessionId } from "../databases/queries/session";
 import { invalidateDatabaseQueries } from "../databases/mutations/invalidate";
-import {
-  defaultUserSettings,
-  userSettingsQueryKey,
-  type UserSettings,
-} from "../user-settings/queries";
 import { hasPageBodyContent } from "./content-state";
 import {
   pageQueryKey,
   zilobaseAiPagesQueryKey,
   pagesNavRootQueryKey,
   pagesRootQueryKey,
-  type PageDetail,
-  type AccessLevel,
-  type Page,
-  type PageNavigationPayload,
-  type PageMetadata,
 } from "./queries";
+import type { PageDetail, AccessLevel, Page, PageNavigationPayload } from "./contracts";
+import type { PageMetadata } from "./item-relationships";
 import {
   applyNavDelta,
   type NavDelta,
@@ -77,16 +69,7 @@ export function useCreatePage() {
       parentItemId,
       teamspaceId,
     }: CreatePageInput) => {
-      const userSettings =
-        queryClient.getQueryData<UserSettings>(userSettingsQueryKey) ??
-        defaultUserSettings;
-      const metadata: PageMetadata = {
-        embeddedItemsOpenAs: userSettings.embeddedItemsOpenAs,
-        fullWidth: Boolean(userSettings.pageFullWidth),
-        useUserEmbeddedItemsPreference: true,
-        useUserFullWidthPreference: true,
-        ...(inputMetadata ?? {}),
-      };
+      const metadata: PageMetadata = { ...(inputMetadata ?? {}) };
 
       if (emoji) {
         metadata.emoji = emoji;

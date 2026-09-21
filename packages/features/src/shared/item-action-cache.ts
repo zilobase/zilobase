@@ -9,10 +9,8 @@ import {
   pageQueryKey,
   pagesRootQueryKey,
   pagesQueryKey,
-  type Page,
-  type PageDetail,
-  type PageNavigationPayload,
 } from "../pages/queries";
+import type { Page, PageDetail, PageNavigationPayload } from "../pages/contracts";
 
 export type DeletedItemIds = {
   deletedDatabaseIds: string[];

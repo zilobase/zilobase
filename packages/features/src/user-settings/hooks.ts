@@ -5,8 +5,8 @@ import {
   defaultUserSettings,
   userSettingsQueryKey,
   userSettingsQueryOptions,
-  type UserSettings,
 } from "./queries"
+import type { UserSettings } from "./contracts"
 
 type UpdateUserSettingsInput = Partial<UserSettings>
 

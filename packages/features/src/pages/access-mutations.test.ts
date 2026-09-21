@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createMutationTestRuntime } from "../shared/mutation-runtime.test";
-import { useSetPagePublished } from "./mutation-hooks";
+import { useSetPagePublished } from "./access-mutations";
 import { pageAccessQueryKey, pageQueryKey } from "./queries";
 
 for (const isPublished of [true, false]) {

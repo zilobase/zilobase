@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "@zilobase/features";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import {
-  mcpScopeApiPath,
   type AgentSettingsDefinition,
   type McpConnectionScopeRef,
 } from "@zilobase/features/ai-chat";
@@ -14,6 +13,7 @@ import {
   useMcpCatalog,
   useMcpConnections,
   useApprovedMcpServers,
+  mcpScopeApiPath,
 } from "@zilobase/features/ai-chat/react";
 import {
   mailApiBasePath,

@@ -1,6 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 
-import type { PagePropertiesPayload } from "../../pages/queries";
+import type { PagePropertiesPayload } from "../../pages/contracts";
 import { databaseQueryRoot } from "../queries/keys";
 import { DatabaseReconciliationError } from "./execute";
 import { reportPendingError } from "./pending";

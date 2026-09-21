@@ -22,7 +22,7 @@ Writes can change hierarchy, database associations and navigation state. Preserv
 
 ## Client mutation ownership
 
-Page mutations are grouped by access, guests, placement, content/lifecycle and activity. The [legacy mutation entrypoint](../../../packages/features/src/pages/mutation-hooks.ts) preserves exports; React bindings select each operation family directly. Access mutations share invalidation of detail and access queries; guest invitation/request invalidation remains distinct. Content and favorite rollbacks retain their existing snapshot scopes.
+Page mutations are grouped by access, guests, placement, content/lifecycle and activity. The [React entrypoint](../../../packages/features/src/pages/react.ts) exports each operation family directly; the page root exposes contracts and pure query builders, not hooks. Access mutations share invalidation of detail and access queries; guest invitation/request invalidation remains distinct. Content and favorite rollbacks retain their existing snapshot scopes.
 
 ## Verification and change points
 

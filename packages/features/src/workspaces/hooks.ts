@@ -8,9 +8,6 @@ import {
   pagesRootQueryKey,
 } from "../pages/queries"
 import {
-  type AcceptWorkspaceInvitationResponse,
-  type GuestInviteMode,
-  type InvitableWorkspaceRole,
   workspaceAccessTargetsQueryKey,
   workspaceAccessTargetsQueryOptions,
   workspaceInvitationsQueryKey,
@@ -23,10 +20,8 @@ import {
   workspaceGuestRequestsQueryOptions,
   workspacesQueryKey,
   workspacesQueryOptions,
-  type Workspace,
-  type WorkspaceMemberMutationResponse,
-  type WorkspaceRole,
 } from "./queries"
+import type { AcceptWorkspaceInvitationResponse, GuestInviteMode, InvitableWorkspaceRole, Workspace, WorkspaceMemberMutationResponse, WorkspaceRole } from "./contracts"
 
 export function useWorkspaces() {
   const { auth } = useZilobaseFeatures()

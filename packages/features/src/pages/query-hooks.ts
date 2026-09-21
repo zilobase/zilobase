@@ -13,8 +13,8 @@ import {
   pageQueryOptions,
   pagesQueryOptions,
   zilobaseAiPagesQueryOptions,
-  type PagesDeletedFilter,
 } from "./queries";
+import type { PagesDeletedFilter } from "./contracts";
 
 export function usePages(
   workspaceId: string | null | undefined,

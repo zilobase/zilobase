@@ -6,7 +6,8 @@ import {
   applyNavigationDeltaToCache,
   isNavigationRealtimeEvent,
 } from "./navigation-realtime"
-import { pagesQueryKey, type PageNavigationPayload } from "./queries"
+import { pagesQueryKey } from "./queries"
+import type { PageNavigationPayload } from "./contracts"
 
 const page = {
   createdAt: "2026-08-31T00:00:00.000Z",

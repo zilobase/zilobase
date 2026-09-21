@@ -6,7 +6,7 @@ import {
   applyItemVisitToNav,
   applyPageFavoriteToNav,
 } from "./nav-delta"
-import type { Page, PageDatabase, PageNavigationPayload } from "./queries"
+import type { Page, PageDatabase, PageNavigationPayload } from "./contracts"
 
 const createdAt = "2026-06-01T00:00:00.000Z"
 

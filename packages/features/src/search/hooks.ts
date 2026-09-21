@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 
 import { useZilobaseFeatures } from "../shared/context"
 import { appSearchQueryOptions } from "./queries"
-import type { AppSearchResultType } from "./queries"
+import type { AppSearchResultType } from "./contracts"
 
 export function useAppSearchResults(
   workspaceId: string | null | undefined,

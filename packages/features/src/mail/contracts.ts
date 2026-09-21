@@ -190,3 +190,4 @@ export type MailSendResponse = {
   message: MailMessageRecord | null
   reused: boolean
 }
+export type { MailScope } from "./query-contracts";

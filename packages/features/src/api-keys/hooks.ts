@@ -5,9 +5,8 @@ import { useActiveWorkspaceId } from "../workspaces/hooks"
 import {
   apiKeysQueryKey,
   apiKeysQueryOptions,
-  type ApiKeyRecord,
-  type CreatedApiKeyRecord,
 } from "./queries"
+import type { ApiKeyRecord, CreatedApiKeyRecord } from "./contracts"
 
 export function useApiKeys(workspaceId?: string | null) {
   const { apiFetch } = useZilobaseFeatures()

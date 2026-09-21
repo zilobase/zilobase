@@ -6,12 +6,8 @@ import {
   aiChatThreadMessagesQueryKey,
   aiChatThreadsQueryKey,
   aiChatThreadsQueryOptions,
-  type AiChatThread,
-  type AiChatThreadResponse,
-  type AiChatThreadMessagesResponse,
-  type AiChatThreadsResponse,
-  type AiChatFeedback,
 } from "./queries"
+import type { AiChatThread, AiChatThreadResponse, AiChatThreadMessagesResponse, AiChatThreadsResponse, AiChatFeedback } from "./contracts"
 
 export function useAiChatThreads(options?: { enabled?: boolean; search?: string }) {
   const { apiFetch } = useZilobaseFeatures()

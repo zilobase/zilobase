@@ -10,10 +10,7 @@ test("full width always uses the viewer preference for editable workspace pages"
   assert.equal(
     resolvePageFullWidth(
       {
-        metadata: {
-          fullWidth: true,
-          useUserFullWidthPreference: false,
-        },
+        metadata: {},
       },
       false,
     ),
@@ -25,10 +22,7 @@ test("full width uses the published owner preference when provided", () => {
   assert.equal(
     resolvePageFullWidth(
       {
-        metadata: {
-          fullWidth: false,
-          useUserFullWidthPreference: false,
-        },
+        metadata: {},
         publishedOwnerPreferences: { pageFullWidth: true },
       },
       false,
@@ -39,15 +33,7 @@ test("full width uses the published owner preference when provided", () => {
 
 test("embedded page opening always uses the viewer preference", () => {
   assert.equal(
-    resolveEmbeddedItemsOpenAs(
-      {
-        metadata: {
-          embeddedItemsOpenAs: "dialog",
-          useUserEmbeddedItemsPreference: false,
-        },
-      },
-      "sidepanel",
-    ),
+    resolveEmbeddedItemsOpenAs("sidepanel"),
     "sidepanel",
   )
 })

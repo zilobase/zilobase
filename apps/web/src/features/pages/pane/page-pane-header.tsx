@@ -251,7 +251,7 @@ function PagePaneControls({
     useState<EmbeddedItemsOpenAs>(readPublishedEmbeddedItemsOpenAs);
   const mode = isPublishedFallback
     ? publishedEmbeddedItemsOpenAs
-    : resolveEmbeddedItemsOpenAs(page, userSettings.embeddedItemsOpenAs);
+    : resolveEmbeddedItemsOpenAs(userSettings.embeddedItemsOpenAs);
   const rowDatabaseId = pageId ? rowNavigationDatabaseId : null;
   const isDialogPane = !onClose;
   const rowPageIds = useRowNavigationPageIds(rowDatabaseId ?? null);

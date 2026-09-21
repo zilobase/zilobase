@@ -1,13 +1,4 @@
 
-export type {
-  SessionUser,
-  Session,
-  SessionResponse,
-  SignInWithOtpInput,
-  SignInWithPasswordInput,
-  SignUpInput,
-  VerifyEmailOtpInput,
-} from "./contracts";
 import { queryOptions } from "@tanstack/react-query"
 
 import type { ZilobaseAuthClient } from "../shared/context"

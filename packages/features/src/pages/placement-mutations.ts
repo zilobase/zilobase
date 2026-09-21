@@ -7,8 +7,8 @@ import {
   pageQueryKey,
   getPageFromDetail,
   pagesQueryKey,
-  type Page,
 } from "./queries";
+import type { Page } from "./contracts";
 
 export function useMovePageToTeamspace() {
   const { apiFetch, queryClient } = useZilobaseFeatures();

@@ -20,14 +20,10 @@ export type PageMetadata = {
   clip?: PageClipMetadata | null;
   cover?: string | null;
   emoji?: string | null;
-  embeddedItemsOpenAs?: EmbeddedItemsOpenAs | null;
-  fullWidth?: boolean | null;
   iconPosition?: PageIconPosition | null;
   locked?: boolean | null;
   meetingLocked?: boolean | null;
   zilobaseai?: "instruction" | "skill" | null;
-  useUserEmbeddedItemsPreference?: boolean | null;
-  useUserFullWidthPreference?: boolean | null;
 };
 
 export function isPageLocked(

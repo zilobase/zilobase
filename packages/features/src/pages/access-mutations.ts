@@ -4,9 +4,8 @@ import { useZilobaseFeatures } from "../shared/context";
 import {
   pageQueryKey,
   pageAccessQueryKey,
-  type AccessLevel,
-  type AccessTargetType,
 } from "./queries";
+import type { AccessLevel, AccessTargetType } from "./contracts";
 
 type UpsertPageAccessInput = {
   accessLevel: AccessLevel;
