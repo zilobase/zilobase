@@ -24,7 +24,6 @@ test("createApp registers every public feature route group", () => {
     "POST /desktop/authorize/consent",
     "POST /desktop/authorize/switch",
     "POST /api/auth/desktop/token",
-    "POST /api/ai/chat",
     "GET /api/ai/operations/limits",
     "GET /api/ai/operations/turns",
     "GET /api/ai/operations/turns/:turnId/tools",

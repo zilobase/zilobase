@@ -26,12 +26,13 @@ describe("standalone Custom Agent migration boundary", () => {
     expect(schema).not.toContain("agentProfileId");
   });
 
-  it("keeps migrated agent chats private and exposes them read-only under the agent", async () => {
-    const conversation = await readFile(new URL("src/features/ai/conversations/agent-conversation-service.ts", root), "utf8");
-    const routes = await readFile(new URL("src/features/ai/agents/routes.ts", root), "utf8");
-    expect(conversation).toContain('eq(aiAgentConversation.visibility, "legacy_private")');
-    expect(conversation).toContain("eq(aiAgentConversation.legacyOwnerUserId, input.userId)");
-    expect(routes).toContain('/agents/:agentId/legacy-conversations');
+  it("keeps exactly one canonical conversation per agent", async () => {
+    const migration = await readFile(new URL("drizzle/0095_remove_ai_compatibility.sql", root), "utf8");
+    const schema = await readFile(new URL("src/infrastructure/database/schema/ai-agents.ts", root), "utf8");
+    expect(migration).toContain('CREATE UNIQUE INDEX "ai_agent_conversation_profile_unique"');
+    expect(schema).toContain('uniqueIndex("ai_agent_conversation_profile_unique").on(table.profileId)');
+    expect(schema).not.toContain("legacyOwnerUserId");
+    expect(schema).not.toContain("legacyThreadId");
   });
 
   it("uses only agent-principal checks in native run tools", async () => {

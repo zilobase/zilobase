@@ -19,7 +19,6 @@ export {
   useTransferAiAgentProfile,
   useArchiveAiAgentProfile,
   useCustomAgentConversation,
-  useCustomAgentLegacyConversations,
   useCustomAgentRevisions,
   useCustomAgentResources,
   useCustomAgentTriggers,

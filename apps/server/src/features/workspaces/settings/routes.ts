@@ -146,7 +146,6 @@ workspaceSettingsRoutes.put("/ai/providers/:providerId", async (c) => {
     );
   }
   const values = {
-    apiKey: existing?.apiKey ?? null,
     baseUrl,
     credentialCiphertext: encrypted?.ciphertext ?? null,
     credentialFingerprint: encrypted?.fingerprint ?? null,

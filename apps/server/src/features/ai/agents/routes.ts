@@ -18,7 +18,6 @@ import { executeApprovedMcpAction } from "../mcp/execution/mcp-approval";
 import { resumeAgentRunAfterApproval } from "../execution/agent-run-checkpoint";
 import {
   listAgentConversation,
-  listLegacyAgentConversations,
   startManualAgentRun,
   submitAgentConversationMessage,
 } from "../conversations/agent-conversation-service";
@@ -212,15 +211,6 @@ aiAgentProfileRoutes.post("/agents/:agentId/duplicate", async (c) =>
 aiAgentProfileRoutes.get("/agents/:agentId/conversation", async (c) =>
   handle(c, async (auth) => ({
     messages: await listAgentConversation({
-      ...auth,
-      profileId: c.req.param("agentId"),
-    }),
-  })),
-);
-
-aiAgentProfileRoutes.get("/agents/:agentId/legacy-conversations", async (c) =>
-  handle(c, async (auth) => ({
-    conversations: await listLegacyAgentConversations({
       ...auth,
       profileId: c.req.param("agentId"),
     }),

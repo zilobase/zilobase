@@ -5,16 +5,15 @@ settings can reduce context but cannot raise a quota, extend retention, or add
 a tool.
 
 Chat uses server-owned canonical turns at
-`POST /api/ai/threads/:threadId/turns`. The legacy endpoint is disabled unless
-`AI_LEGACY_CHAT_ENABLED=true`; do not enable it for untrusted clients.
+`POST /api/ai/threads/:threadId/turns`; no alternate chat-write protocol is exposed.
 
 ## Provider credentials
 
 `OPENAI_API_KEY` is the managed fallback. Workspace owners and admins may save
 a workspace credential only when `AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY` is a
 base64-encoded 32-byte operator secret. Credentials are stored as versioned
-AES-GCM ciphertext and never returned by the API. Rotate legacy plaintext
-credentials through workspace settings; plaintext values are not executed.
+AES-GCM ciphertext and never returned by the API. Plaintext provider credentials
+are not stored or executed.
 Custom provider base URLs must be HTTPS origins listed in the comma-separated
 `AI_PROVIDER_ALLOWED_BASE_URLS` operator allowlist.
 

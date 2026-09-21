@@ -30,12 +30,7 @@ export async function listAgentConversation(input: {
   const [conversation] = await db
     .select()
     .from(aiAgentConversation)
-    .where(
-      and(
-        eq(aiAgentConversation.profileId, input.profileId),
-        eq(aiAgentConversation.visibility, "shared"),
-      ),
-    )
+    .where(eq(aiAgentConversation.profileId, input.profileId))
     .limit(1);
   if (!conversation)
     throw new AgentProfileError(
@@ -63,52 +58,6 @@ export async function listAgentConversation(input: {
   }));
 }
 
-export async function listLegacyAgentConversations(input: {
-  profileId: string;
-  userId: string;
-  workspaceId: string;
-}) {
-  await requireAgentProfileRole({ ...input, minimum: "user" });
-  const conversations = await db
-    .select()
-    .from(aiAgentConversation)
-    .where(
-      and(
-        eq(aiAgentConversation.profileId, input.profileId),
-        eq(aiAgentConversation.visibility, "legacy_private"),
-        eq(aiAgentConversation.legacyOwnerUserId, input.userId),
-      ),
-    )
-    .orderBy(asc(aiAgentConversation.createdAt));
-  return Promise.all(
-    conversations.map(async (conversation) => {
-      const messages = await db
-        .select()
-        .from(aiAgentConversationMessage)
-        .where(eq(aiAgentConversationMessage.conversationId, conversation.id))
-        .orderBy(asc(aiAgentConversationMessage.sequence));
-      return {
-        id: conversation.id,
-        lastActivityAt: conversation.lastActivityAt.toISOString(),
-        legacyThreadId: conversation.legacyThreadId!,
-        messages: messages.map((message) => ({
-          agentId: input.profileId,
-          authorUserId: message.authorUserId,
-          createdAt: message.createdAt.toISOString(),
-          id: message.id,
-          kind: message.kind,
-          parts: message.parts,
-          revisionId: message.revisionId,
-          role: message.role,
-          runId: message.runId,
-          sequence: message.sequence,
-          status: message.status,
-        })),
-      };
-    }),
-  );
-}
-
 export async function submitAgentConversationMessage(input: {
   clientId?: string | null;
   env?: RuntimeEnv;
@@ -132,7 +81,6 @@ export async function submitAgentConversationMessage(input: {
       .where(
         and(
           eq(aiAgentConversation.profileId, input.profileId),
-          eq(aiAgentConversation.visibility, "shared"),
           eq(aiAgentConversationMessage.clientId, input.clientId),
         ),
       )
@@ -274,12 +222,7 @@ export async function appendConversationMessage(input: {
     const [conversation] = await tx
       .select()
       .from(aiAgentConversation)
-      .where(
-        and(
-          eq(aiAgentConversation.profileId, input.profileId),
-          eq(aiAgentConversation.visibility, "shared"),
-        ),
-      )
+      .where(eq(aiAgentConversation.profileId, input.profileId))
       .limit(1)
       .for("update");
     if (!conversation)

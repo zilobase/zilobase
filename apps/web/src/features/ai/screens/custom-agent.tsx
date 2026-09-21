@@ -20,7 +20,6 @@ import {
 } from "@zilobase/features/ai-chat";
 import {
   useAiAgentProfile,
-  useCustomAgentLegacyConversations,
   useStartCustomAgentRun,
   useWorkspaceAiModels,
 } from "@zilobase/features/ai-chat/react";
@@ -200,7 +199,6 @@ function AgentChat({
   const [sending, setSending] = React.useState(false);
   const abort = React.useRef<AbortController | null>(null);
   const run = useStartCustomAgentRun(agentId);
-  const legacy = useCustomAgentLegacyConversations(agentId);
   const conversation = useQuery({
     queryKey: ["custom-agent-chat", workspaceId, agentId],
     queryFn: () =>
@@ -318,22 +316,6 @@ function AgentChat({
             visibleDiffToolCallId={null}
             workspaceId={workspaceId ?? null}
           />
-          {!!legacy.data?.conversations.length && (
-            <details className="my-4 text-sm">
-              <summary>Private legacy conversations</summary>
-              {legacy.data.conversations.map((c) => (
-                <div key={c.id}>
-                  {c.messages.map((m) => (
-                    <p className="whitespace-pre-wrap py-2" key={m.id}>
-                      {m.parts
-                        .map((p) => String((p as { text?: string }).text ?? ""))
-                        .join("\n")}
-                    </p>
-                  ))}
-                </div>
-              ))}
-            </details>
-          )}
           <div className="flex justify-end">
             <Button
               variant="ghost"

@@ -163,7 +163,6 @@ export async function createAgentProfile(input: {
       lastActivityAt: now,
       profileId: id,
       updatedAt: now,
-      visibility: "shared",
     });
   });
   return getAgentProfileDetail({

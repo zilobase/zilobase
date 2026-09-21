@@ -16,6 +16,8 @@ const state = vi.hoisted(() => ({
   prompts: [] as Record<string, unknown>[],
   skill: null as Record<string, unknown> | null,
   access: true,
+  thread: true,
+  existingTurn: null as Record<string, unknown> | null,
 }));
 vi.mock("../../access", () => ({
   getMembership: async () => (state.member ? { id: "member" } : null),
@@ -23,8 +25,15 @@ vi.mock("../../access", () => ({
   canAccessPage: async () => state.access,
 }));
 vi.mock("../files/routes", () => ({ aiFileRoutes: new Hono() }));
+vi.mock("./chat-persistence", () => ({
+  appendCanonicalUserMessage: async () => ({ id: "message" }),
+  getAiChatThreadForUser: async () => state.thread ? ({ agentProfileId: null }) : null,
+  loadAiChatThreadMessages: async () => [],
+}));
+vi.mock("../actions/agent-operations", () => ({
+  getAiAgentTurnByClientId: async () => state.existingTurn,
+}));
 vi.mock("./chat-service", () => ({
-  coerceAiChatRequestBody: (input: unknown) => input,
   runAiChatTurn: async (input: Record<string, unknown>) => {
     state.turns.push(input);
     return Response.json({ ok: true });
@@ -77,7 +86,7 @@ app.use("*", async (c, next) => {
   await next();
 });
 app.route("/", aiRoutes);
-const request = (path: string, body: unknown = {}, enabled = true) =>
+const request = (path: string, body: unknown = {}) =>
   app.request(
     path,
     {
@@ -88,7 +97,7 @@ const request = (path: string, body: unknown = {}, enabled = true) =>
       },
       body: JSON.stringify(body),
     },
-    { AI_LEGACY_CHAT_ENABLED: enabled ? "true" : "false" },
+    {},
   );
 beforeEach(() => {
   state.authorized = true;
@@ -108,30 +117,30 @@ beforeEach(() => {
   state.prompts = [];
   state.skill = null;
   state.access = true;
+  state.thread = true;
+  state.existingTurn = null;
 });
-test("legacy chat enforces retirement, ownership and message validation before dispatch", async () => {
-  assert.equal((await request("/chat", {}, false)).status, 410);
+test("canonical thread turns enforce membership, validation, ownership, and idempotency", async () => {
+  const path = "/threads/thread/turns";
+  const body = {
+    clientMessageId: "client-message",
+    clientTurnId: "00000000-0000-4000-8000-000000000001",
+    text: "Hello",
+  };
   state.authorized = false;
-  assert.equal((await request("/chat")).status, 401);
+  assert.equal((await request(path, body)).status, 401);
   state.authorized = true;
   state.member = false;
-  assert.equal((await request("/chat")).status, 403);
+  assert.equal((await request(path, body)).status, 403);
   state.member = true;
-  for (const body of [null, {}, { messages: [] }])
-    assert.equal((await request("/chat", body)).status, 400);
-  assert.equal(
-    (await request("/chat", { workspaceId: "other", messages: [{}] })).status,
-    403,
-  );
-  assert.equal(
-    (
-      await request("/chat", {
-        workspaceId: " workspace ",
-        messages: [{ id: "message", role: "user", parts: [] }],
-      })
-    ).status,
-    200,
-  );
+  assert.equal((await request(path, {})).status, 400);
+  state.thread = false;
+  assert.equal((await request(path, body)).status, 404);
+  state.thread = true;
+  state.existingTurn = { id: "turn", status: "completed" };
+  assert.equal((await request(path, body)).status, 409);
+  state.existingTurn = null;
+  assert.equal((await request(path, body)).status, 200);
   assert.equal(state.turns.length, 1);
   assert.equal(
     (state.turns[0].requestBody as Record<string, unknown>).userId,

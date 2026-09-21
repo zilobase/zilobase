@@ -89,13 +89,6 @@ export type CustomAgentConversationMessage = {
   createdAt: string
 }
 
-export type CustomAgentLegacyConversation = {
-  id: string
-  legacyThreadId: string
-  lastActivityAt: string
-  messages: CustomAgentConversationMessage[]
-}
-
 export type CustomAgentRunStatus =
   | "queued"
   | "running"

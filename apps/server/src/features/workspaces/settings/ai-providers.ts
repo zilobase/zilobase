@@ -23,7 +23,6 @@ export async function listAiProviderConfigs(workspaceId: string) {
     return {
       apiKeyConfigured: Boolean(row?.credentialCiphertext),
       credentialFingerprint: row?.credentialFingerprint ?? null,
-      legacyCredentialRequiresRotation: Boolean(row?.apiKey && !row.credentialCiphertext),
       baseUrl: row?.baseUrl ?? provider.baseUrl,
       enabled: row?.enabled ?? true,
       modelIds: Array.isArray(row?.modelIds)

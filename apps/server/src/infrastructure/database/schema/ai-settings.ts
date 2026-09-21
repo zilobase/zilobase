@@ -16,7 +16,6 @@ export const workspaceAiProviderConfig = pgTable(
     credentialIv: text("credential_iv"),
     credentialKeyVersion: text("credential_key_version"),
     credentialFingerprint: text("credential_fingerprint"),
-    apiKey: text("api_key"),
     baseUrl: text("base_url"),
     modelIds: jsonb("model_ids").$type<string[]>().notNull().default([]),
     ...timestampColumns(),

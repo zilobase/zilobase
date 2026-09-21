@@ -140,7 +140,7 @@ describe("standalone agent ownership and revisions", () => {
       version: 1,
       definition: { triggers: [], safeExecutionPreferences: {} },
     });
-    expect(state.writes[3]).toMatchObject({ visibility: "shared" });
+    expect(state.writes[3]).toMatchObject({ profileId: expect.any(String) });
     expect(
       state.writes.some(
         (value) => "authenticatedByUserId" in value || "principalId" in value,

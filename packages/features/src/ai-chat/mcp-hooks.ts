@@ -15,7 +15,6 @@ import type {
 } from "./mcp-contract"
 import type {
   CustomAgentConversationMessage,
-  CustomAgentLegacyConversation,
   CustomAgentResourceAccess,
   CustomAgentRevision,
   CustomAgentRun,
@@ -111,10 +110,6 @@ export function useArchiveAiAgentProfile(agentId: string | null) {
 
 export function useCustomAgentConversation(agentId: string | null) {
   return useCustomAgentQuery<{ messages: CustomAgentConversationMessage[] }>(agentId, "conversation", 1_500)
-}
-
-export function useCustomAgentLegacyConversations(agentId: string | null) {
-  return useCustomAgentQuery<{ conversations: CustomAgentLegacyConversation[] }>(agentId, "legacy-conversations")
 }
 
 export function useCustomAgentRevisions(agentId: string | null) {

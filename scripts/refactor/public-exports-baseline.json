@@ -4596,10 +4596,6 @@
       "value": false,
       "type": true
     },
-    "CustomAgentLegacyConversation": {
-      "value": false,
-      "type": true
-    },
     "CustomAgentResourceAccess": {
       "value": false,
       "type": true
@@ -5337,10 +5333,6 @@
       "type": false
     },
     "useCustomAgentConversation": {
-      "value": true,
-      "type": false
-    },
-    "useCustomAgentLegacyConversations": {
       "value": true,
       "type": false
     },
@@ -5786,10 +5778,6 @@
       "value": false,
       "type": true
     },
-    "CustomAgentLegacyConversation": {
-      "value": false,
-      "type": true
-    },
     "CustomAgentResourceAccess": {
       "value": false,
       "type": true
@@ -6527,10 +6515,6 @@
       "type": false
     },
     "useCustomAgentConversation": {
-      "value": true,
-      "type": false
-    },
-    "useCustomAgentLegacyConversations": {
       "value": true,
       "type": false
     },
@@ -7208,10 +7192,6 @@
       "value": false,
       "type": true
     },
-    "CustomAgentLegacyConversation": {
-      "value": false,
-      "type": true
-    },
     "CustomAgentResourceAccess": {
       "value": false,
       "type": true
@@ -7521,10 +7501,6 @@
       "type": false
     },
     "useCustomAgentConversation": {
-      "value": true,
-      "type": false
-    },
-    "useCustomAgentLegacyConversations": {
       "value": true,
       "type": false
     },
@@ -7902,10 +7878,6 @@
       "value": false,
       "type": true
     },
-    "CustomAgentLegacyConversation": {
-      "value": false,
-      "type": true
-    },
     "CustomAgentResourceAccess": {
       "value": false,
       "type": true
@@ -8215,10 +8187,6 @@
       "type": false
     },
     "useCustomAgentConversation": {
-      "value": true,
-      "type": false
-    },
-    "useCustomAgentLegacyConversations": {
       "value": true,
       "type": false
     },
@@ -8600,10 +8568,6 @@
       "value": false,
       "type": true
     },
-    "CustomAgentLegacyConversation": {
-      "value": false,
-      "type": true
-    },
     "CustomAgentResourceAccess": {
       "value": false,
       "type": true
@@ -8663,10 +8627,6 @@
       "type": true
     },
     "CustomAgentDetail": {
-      "value": false,
-      "type": true
-    },
-    "CustomAgentLegacyConversation": {
       "value": false,
       "type": true
     },
