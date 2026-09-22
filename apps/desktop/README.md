@@ -34,7 +34,8 @@ Chromium's unpacked `chrome-sandbox` helper to root ownership and mode `4755`.
 
 ## Release signing and updates
 
-The [release workflow](../../.github/workflows/release.yml) builds Electron
+The [release workflow](../../.github/workflows/release.yml) checks signing
+secret presence before publishing the server image, then builds Electron
 installers for macOS Intel and Apple Silicon, Windows x64, and Linux x64 and
 ARM64. It requires signed candidates, assembles Electron update feeds and
 uploads installers to a draft, publishing it only after every desktop build

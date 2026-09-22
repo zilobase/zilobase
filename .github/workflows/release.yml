@@ -16,8 +16,34 @@ permissions:
   packages: write
 
 jobs:
+  desktop-signing-preflight:
+    runs-on: ubuntu-24.04
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_INSTALLER_CERTIFICATE: ${{ secrets.APPLE_INSTALLER_CERTIFICATE }}
+      APPLE_INSTALLER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+    steps:
+      - name: Require all desktop signing credentials before publishing anything
+        shell: bash
+        run: |
+          missing=0
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_INSTALLER_CERTIFICATE APPLE_INSTALLER_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID WINDOWS_CERTIFICATE WINDOWS_CERTIFICATE_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::Missing repository signing secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
   image:
     name: Image (${{ matrix.arch }})
+    needs: desktop-signing-preflight
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     strategy:
@@ -181,324 +207,127 @@ jobs:
           --version "${{ steps.vars.outputs.version }}"
           --app-version "${{ steps.vars.outputs.version }}"
 
-      - name: Publish GitHub release
+      - name: Prepare draft GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           tag="${{ steps.vars.outputs.tag }}"
           if gh release view "$tag" >/dev/null 2>&1; then
+            if [[ "$(gh release view "$tag" --json isDraft --jq .isDraft)" != "true" ]]; then
+              echo "Refusing to replace assets on an already published release: $tag" >&2
+              exit 1
+            fi
             gh release edit "$tag" --title "Zilobase $tag" --notes-file release-notes.md
           else
-            gh release create "$tag" --title "Zilobase $tag" --notes-file release-notes.md
+            gh release create "$tag" --draft --title "Zilobase $tag" --notes-file release-notes.md
           fi
           gh release upload "$tag" dist/zilobase-*.tgz --clobber
 
-  desktop-platform-matrix:
+  desktop-electron-build:
     needs: release
-    name: Desktop validation (${{ matrix.name }})
+    name: Electron desktop (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Linux
+          - name: mac-x64
+            os: macos-15-intel
+          - name: mac-arm64
+            os: macos-15
+          - name: windows-x64
+            os: windows-2022
+          - name: linux-x64
             os: ubuntu-24.04
-          - name: macOS
-            os: macos-latest
-          - name: Windows
-            os: windows-latest
-
+          - name: linux-arm64
+            os: ubuntu-24.04-arm
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+      ZILOBASE_REQUIRE_SIGNING: "true"
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      CSC_LINK: ${{ startsWith(matrix.name, 'mac-') && secrets.APPLE_CERTIFICATE || '' }}
+      CSC_KEY_PASSWORD: ${{ startsWith(matrix.name, 'mac-') && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+      CSC_INSTALLER_LINK: ${{ startsWith(matrix.name, 'mac-') && secrets.APPLE_INSTALLER_CERTIFICATE || '' }}
+      CSC_INSTALLER_KEY_PASSWORD: ${{ startsWith(matrix.name, 'mac-') && secrets.APPLE_INSTALLER_CERTIFICATE_PASSWORD || '' }}
+      APPLE_ID: ${{ startsWith(matrix.name, 'mac-') && secrets.APPLE_ID || '' }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ startsWith(matrix.name, 'mac-') && secrets.APPLE_PASSWORD || '' }}
+      APPLE_TEAM_ID: ${{ startsWith(matrix.name, 'mac-') && secrets.APPLE_TEAM_ID || '' }}
+      WIN_CSC_LINK: ${{ matrix.name == 'windows-x64' && secrets.WINDOWS_CERTIFICATE || '' }}
+      WIN_CSC_KEY_PASSWORD: ${{ matrix.name == 'windows-x64' && secrets.WINDOWS_CERTIFICATE_PASSWORD || '' }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
-
-      - name: Install Linux dependencies
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/electron/sidecar -> target
+      - name: Install Linux packaging and audio dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libpipewire-0.3-dev libpulse-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+          sudo apt-get install -y libasound2-dev libclang-dev libdbus-1-dev libpipewire-0.3-dev libpulse-dev pkg-config rpm
+      - run: npm ci
+      - run: node scripts/desktop/verify-electron-candidate.mjs preflight
+      - run: npm run build --workspace @zilobase/desktop
+      - run: node scripts/desktop/verify-electron-candidate.mjs verify
+      - uses: actions/upload-artifact@v4
         with:
-          node-version: 22
-          cache: npm
+          name: electron-release-${{ matrix.name }}
+          path: |
+            apps/desktop/dist-electron/*.dmg
+            apps/desktop/dist-electron/*.pkg
+            apps/desktop/dist-electron/*-mac.zip
+            apps/desktop/dist-electron/*.exe
+            apps/desktop/dist-electron/*.msi
+            apps/desktop/dist-electron/*.AppImage
+            apps/desktop/dist-electron/*.deb
+            apps/desktop/dist-electron/*.rpm
+            apps/desktop/dist-electron/*.blockmap
+            apps/desktop/dist-electron/latest*.yml
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Validate desktop web and native code
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
-        run: |
-          npm run build
-          cargo check --locked --manifest-path apps/desktop/src-tauri/Cargo.toml
-
-  desktop-macos:
-    needs: [release, desktop-platform-matrix]
-    runs-on: macos-latest
-    timeout-minutes: 300
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Apple Silicon
-            target: aarch64-apple-darwin
-          - name: Intel
-            target: x86_64-apple-darwin
-
-    name: Desktop (${{ matrix.name }})
-
+  desktop-electron-publish:
+    needs: [release, desktop-electron-build]
+    runs-on: ubuntu-24.04
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
-
-      - name: Configure macOS signing
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        shell: bash
-        run: |
-          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
-            echo "Missing required GitHub Actions secret: TAURI_SIGNING_PRIVATE_KEY" >&2
-            exit 1
-          fi
-
-          if [ -z "$APPLE_CERTIFICATE" ]; then
-            echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
-            echo "Apple signing secrets are unavailable; using an ad-hoc signature."
-            exit 0
-          fi
-
-          for name in APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID KEYCHAIN_PASSWORD; do
-            if [ -z "${!name}" ]; then
-              echo "Missing required GitHub Actions secret: $name" >&2
-              exit 1
-            fi
-          done
-          echo "APPLE_ID=$APPLE_ID" >> "$GITHUB_ENV"
-          echo "APPLE_PASSWORD=$APPLE_PASSWORD" >> "$GITHUB_ENV"
-          echo "APPLE_TEAM_ID=$APPLE_TEAM_ID" >> "$GITHUB_ENV"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - uses: actions/download-artifact@v4
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-
-      - name: Cache Rust build artifacts
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri -> target
-
-      - name: Import Apple Developer ID certificate
-        if: env.APPLE_SIGNING_IDENTITY != '-'
+          pattern: electron-release-*
+          path: ${{ runner.temp }}/electron-candidates
+      - name: Assemble platform update feeds
+        shell: bash
+        run: node scripts/desktop/assemble-electron-release.mjs "$RUNNER_TEMP/electron-candidates" "$RUNNER_TEMP/electron-release"
+      - name: Preserve installed Tauri clients' last signed update feed
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          certificate_path="$RUNNER_TEMP/zilobase-certificate.p12"
-          keychain_path="$RUNNER_TEMP/zilobase-build.keychain-db"
-          echo "$APPLE_CERTIFICATE" | base64 --decode > "$certificate_path"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
-          security default-keychain -s "$keychain_path"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
-          # 6h lock, matching GitHub's Apple signing recipe. 1h is too short: app
-          # notarization can take longer, after which codesign of the DMG hangs.
-          security set-keychain-settings -lut 21600 "$keychain_path"
-          security list-keychains -d user -s "$keychain_path"
-          security import "$certificate_path" -k "$keychain_path" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$keychain_path"
-          signing_identity=$(security find-identity -v -p codesigning "$keychain_path" | awk -F'"' '/Developer ID Application/ { print $2; exit }')
-          if [ -z "$signing_identity" ]; then
-            echo "The certificate does not contain a Developer ID Application identity." >&2
-            exit 1
-          fi
-          echo "APPLE_SIGNING_IDENTITY=$signing_identity" >> "$GITHUB_ENV"
-
-      - name: Build and upload desktop app
-        uses: tauri-apps/tauri-action@v1
+          gh release download v0.0.55 -p latest.json -D "$RUNNER_TEMP/electron-release"
+          node -e 'const f=require("fs");const feed=JSON.parse(f.readFileSync(process.argv[1],"utf8"));if(feed.version!=="0.0.55")process.exit(1)' "$RUNNER_TEMP/electron-release/latest.json"
+      - name: Publish Electron installers and update feeds
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_OPTIONS: --max-old-space-size=4096 --use-system-ca
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
-        with:
-          args: --target ${{ matrix.target }}
-          projectPath: apps/desktop
-          releaseDraft: false
-          tagName: ${{ needs.release.outputs.tag }}
-
-  desktop-linux:
-    needs: [release, desktop-platform-matrix]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Linux x64
-            runner: ubuntu-24.04
-          - name: Linux ARM64
-            runner: ubuntu-24.04-arm
-
-    name: Desktop (${{ matrix.name }})
-    runs-on: ${{ matrix.runner }}
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
-
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            curl \
-            file \
-            libayatana-appindicator3-dev \
-            libasound2-dev \
-            libpipewire-0.3-dev \
-            libpulse-dev \
-            librsvg2-dev \
-            libssl-dev \
-            libwebkit2gtk-4.1-dev \
-            libxdo-dev \
-            patchelf \
-            wget \
-            xdg-utils
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust build artifacts
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri -> target
-
-      - name: Prefetch Linux AppImage tools
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.release.outputs.tag }}
         shell: bash
         run: |
-          case "$(uname -m)" in
-            x86_64) tools_arch="x86_64" ;;
-            aarch64 | arm64) tools_arch="aarch64" ;;
-            *)
-              echo "Unsupported Linux architecture: $(uname -m)" >&2
-              exit 1
-              ;;
-          esac
-
-          tools_dir="apps/desktop/src-tauri/target/.tauri"
-          mkdir -p "$tools_dir"
-
-          download_tool() {
-            local url="$1"
-            local output="$2"
-            curl \
-              --fail \
-              --location \
-              --retry 8 \
-              --retry-all-errors \
-              --retry-delay 2 \
-              --connect-timeout 20 \
-              --max-time 300 \
-              --output "$output" \
-              "$url"
-            chmod 0755 "$output"
-          }
-
-          download_tool \
-            "https://github.com/tauri-apps/binary-releases/releases/download/apprun-old/AppRun-${tools_arch}" \
-            "$tools_dir/AppRun-${tools_arch}"
-          download_tool \
-            "https://github.com/tauri-apps/binary-releases/releases/download/linuxdeploy/linuxdeploy-${tools_arch}.AppImage" \
-            "$tools_dir/linuxdeploy-${tools_arch}.AppImage"
-          download_tool \
-            "https://raw.githubusercontent.com/tauri-apps/linuxdeploy-plugin-gtk/master/linuxdeploy-plugin-gtk.sh" \
-            "$tools_dir/linuxdeploy-plugin-gtk.sh"
-
-      - name: Build and upload desktop app
-        uses: tauri-apps/tauri-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_OPTIONS: --max-old-space-size=4096 --use-system-ca
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
-        with:
-          args: --bundles deb,appimage
-          projectPath: apps/desktop
-          releaseDraft: false
-          tagName: ${{ needs.release.outputs.tag }}
-
-  desktop-windows:
-    needs: [release, desktop-platform-matrix]
-    name: Desktop (Windows x64)
-    runs-on: windows-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust build artifacts
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri -> target
-
-      - name: Build and upload desktop app
-        uses: tauri-apps/tauri-action@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_OPTIONS: --max-old-space-size=4096
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
-        with:
-          args: --bundles msi,nsis
-          projectPath: apps/desktop
-          releaseDraft: false
-          tagName: ${{ needs.release.outputs.tag }}
+          shopt -s nullglob
+          assets=("$RUNNER_TEMP"/electron-release/*)
+          test "${#assets[@]}" -gt 0
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
+          gh release edit "$RELEASE_TAG" --draft=false
