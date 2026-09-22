@@ -41,6 +41,10 @@ export function register({ readSource, assert, loadModule, test }) {
       ["two", "three", "one"],
     )
     assert.equal(reordered.activeDesktopTabId, "two")
+    assert.equal(
+      setDesktopTabOrderState(reordered, ["two", "three", "one"]),
+      reordered,
+    )
 
     useAppStore.setState({
       activeDesktopTabId: "two",
@@ -72,8 +76,13 @@ export function register({ readSource, assert, loadModule, test }) {
 
     assert.match(tabsSource, /DesktopTabStrip/)
     assert.match(tabStripSource, /data-desktop-tab-strip/)
-    assert.match(tabStripSource, /flex-\[1_1_15rem\]/)
-    assert.match(tabStripSource, /min-w-12 max-w-60/)
+    assert.match(tabStripSource, /flex-\[1_1_14rem\]/)
+    assert.match(tabStripSource, /min-w-12 max-w-56/)
+    assert.match(tabStripSource, /gap-2\.5/)
+    assert.match(tabStripSource, /rounded-t-md/)
+    assert.match(tabStripSource, /desktop-tab-inactive rounded-b-md/)
+    assert.match(tabStripSource, /onPointerEnter=\{onPreload\}/)
+    assert.match(tabStripSource, /onPointerDown=\{\(event\) => \{/)
     assert.match(tabStripSource, /motion\.button/)
     assert.match(tabStripSource, /layout="position"/)
     assert.match(tabStripSource, /onDragTransitionEnd/)
@@ -84,7 +93,14 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.doesNotMatch(tabStripSource, /onDragEnd=\{/)
     assert.doesNotMatch(tabStripSource, /left-\[calc\(100%/)
     assert.doesNotMatch(tabStripSource, /overflow-x-auto/)
-    assert.match(stylesSource, /--desktop-tab-trailing-width: 2\.5rem/)
+    assert.match(stylesSource, /--desktop-tab-trailing-width: 3\.25rem/)
+    assert.match(stylesSource, /--desktop-tab-slot-width: 14\.625rem/)
+    assert.match(stylesSource, /\.desktop-tab-active::before/)
+    assert.match(stylesSource, /\.desktop-tab-active::after/)
+    assert.match(stylesSource, /\.desktop-tab-inactive:has\(\+ \.desktop-tab-inactive\)::after/)
+    assert.match(tabsSource, /router\.preloadRoute/)
+    assert.match(tabsSource, /pendingNavigation\.current/)
+    assert.match(tabsSource, /event\.key === "Tab"/)
     assert.match(titlebarSource, /\{children\}/)
     assert.match(titlebarSource, /aria-label="Window controls"/)
     assert.doesNotMatch(sidebarSource, /top: "1\.75rem"/)

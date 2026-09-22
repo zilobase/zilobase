@@ -46,6 +46,7 @@ type DesktopTabStripProps = {
   macDesktopApp: boolean
   onCloneTab: (tab: DesktopTab) => void
   onCreateTab: () => void
+  onPreloadTab: (tab: DesktopTab) => void
   onRemoveTab: (tabId: string) => void
   onReorderTabs: (orderedTabIds: string[]) => void
   onSelectTab: (tab: DesktopTab) => void
@@ -57,6 +58,7 @@ export function DesktopTabStrip({
   macDesktopApp,
   onCloneTab,
   onCreateTab,
+  onPreloadTab,
   onRemoveTab,
   onReorderTabs,
   onSelectTab,
@@ -103,7 +105,7 @@ export function DesktopTabStrip({
         as="div"
         axis="x"
         className={cn(
-          "relative flex min-w-0 flex-1 self-stretch items-end gap-1",
+          "relative flex min-w-0 flex-1 self-stretch items-end gap-2.5 pl-1.5",
           draggingTabId ? "overflow-visible" : "overflow-hidden",
         )}
         data-desktop-drag-region=""
@@ -118,9 +120,11 @@ export function DesktopTabStrip({
             onClone={onCloneTab}
             onDragSettled={handleDragSettled}
             onDragStart={handleDragStart}
+            onPreload={onPreloadTab}
             onRemove={onRemoveTab}
             onSelect={onSelectTab}
             onTrailingOffsetChange={handleTrailingOffsetChange}
+            preloadEnabled={!draggingTabId}
             tab={tab}
             trailing={index === tabs.length - 1}
           />
@@ -140,9 +144,11 @@ const DesktopTabItem = memo(function DesktopTabItem({
   onClone,
   onDragSettled,
   onDragStart,
+  onPreload,
   onRemove,
   onSelect,
   onTrailingOffsetChange,
+  preloadEnabled,
   tab,
   trailing,
 }: {
@@ -150,9 +156,11 @@ const DesktopTabItem = memo(function DesktopTabItem({
   onClone: (tab: DesktopTab) => void
   onDragSettled: (tabId: string) => void
   onDragStart: (tabId: string) => void
+  onPreload: (tab: DesktopTab) => void
   onRemove: (tabId: string) => void
   onSelect: (tab: DesktopTab) => void
   onTrailingOffsetChange: (offset: number) => void
+  preloadEnabled: boolean
   tab: DesktopTab
   trailing: boolean
 }) {
@@ -170,11 +178,12 @@ const DesktopTabItem = memo(function DesktopTabItem({
     <Reorder.Item
       as="div"
       className={cn(
-        "group/tab relative flex h-8 min-w-12 max-w-60 flex-[1_1_15rem] cursor-grab items-center px-1 text-sm active:cursor-grabbing",
+        "desktop-tab-item group/tab relative flex h-8 min-w-12 max-w-56 flex-[1_1_14rem] cursor-grab items-center rounded-t-md px-1 text-[13px] leading-none select-none active:cursor-grabbing",
         active
-          ? "desktop-tab-active z-10 rounded-t-lg rounded-b-none border-x border-t border-stroke-default bg-surface-canvas text-content-primary"
-          : "rounded-md text-content-secondary hover:bg-effect-backdrop hover:text-content-primary",
+          ? "desktop-tab-active z-10 font-medium text-content-primary"
+          : "desktop-tab-inactive rounded-b-md text-content-primary hover:text-content-primary",
       )}
+      dragElastic={0.04}
       dragMomentum={false}
       onDragEnter={(event) => {
         if (hasEditorBlockDragData(event.dataTransfer)) onSelect(tab)
@@ -182,22 +191,23 @@ const DesktopTabItem = memo(function DesktopTabItem({
       onDragStart={() => onDragStart(tab.id)}
       onDragTransitionEnd={() => onDragSettled(tab.id)}
       style={{ x }}
+      transition={{ layout: { type: "spring", stiffness: 700, damping: 48 } }}
       value={tab.id}
       whileDrag={{ zIndex: 30 }}
     >
       <DesktopTabButton
         active={active}
         onClone={() => onClone(tab)}
+        onPreload={() => {
+          if (preloadEnabled) onPreload(tab)
+        }}
         onRemove={() => onRemove(tab.id)}
         onSelect={() => onSelect(tab)}
         tab={tab}
       />
       <button
         aria-label={`Close ${tab.title}`}
-        className={cn(
-          "shrink-0 rounded-sm p-1 hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:opacity-100 active:bg-action-neutral-pressed active:text-action-on-neutral",
-          active ? "opacity-100" : "opacity-0 group-hover/tab:opacity-100",
-        )}
+        className="desktop-tab-close flex size-6 shrink-0 items-center justify-center rounded-md text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
         onClick={() => onRemove(tab.id)}
         onPointerDown={stopReorderPointerDown}
         title="Close tab"
@@ -221,12 +231,13 @@ function DesktopNewTabButton({
   return (
     <motion.button
       aria-label="New tab"
-      className="ml-2 flex size-8 shrink-0 items-center justify-center rounded-md text-content-secondary hover:bg-effect-backdrop hover:text-content-primary"
+      className="ml-1 flex size-8 shrink-0 items-center justify-center rounded-md text-content-secondary hover:bg-effect-backdrop hover:text-content-primary"
       layout="position"
       onClick={onCreate}
       onPointerDown={stopReorderPointerDown}
       style={{ x: offset }}
       title={`New tab (${macDesktopApp ? "⌘T" : "Ctrl+T"})`}
+      transition={{ layout: { type: "spring", stiffness: 700, damping: 48 } }}
       type="button"
     >
       <PlusIcon className="size-4" />
@@ -237,12 +248,14 @@ function DesktopNewTabButton({
 function DesktopTabButton({
   active,
   onClone,
+  onPreload,
   onRemove,
   onSelect,
   tab,
 }: {
   active: boolean
   onClone: () => void
+  onPreload: () => void
   onRemove: () => void
   onSelect: () => void
   tab: DesktopTab
@@ -269,7 +282,7 @@ function DesktopTabButton({
       <TooltipTrigger asChild>
         <button
           aria-selected={active}
-          className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden px-2"
+          className="flex h-full min-w-0 flex-1 items-center gap-2 overflow-hidden pl-2 pr-1 text-left focus-visible:rounded-md"
           onAuxClick={(event) => {
             if (event.button === 1) onRemove()
           }}
@@ -283,6 +296,17 @@ function DesktopTabButton({
 
             onSelect()
           }}
+          onFocus={onPreload}
+          onPointerDown={(event) => {
+            if (
+              event.button === 0 &&
+              !event.metaKey &&
+              !event.ctrlKey &&
+              !event.altKey &&
+              !event.shiftKey
+            ) onSelect()
+          }}
+          onPointerEnter={onPreload}
           role="tab"
           type="button"
         >

@@ -60,8 +60,8 @@
 }
 
 [data-desktop-tab-strip] {
-  --desktop-tab-slot-width: 15.25rem;
-  --desktop-tab-trailing-width: 2.5rem;
+  --desktop-tab-slot-width: 14.625rem;
+  --desktop-tab-trailing-width: 3.25rem;
   flex: 0 1 auto;
   width: calc(
     var(--desktop-tab-count) * var(--desktop-tab-slot-width) +
@@ -151,34 +151,71 @@
   transition: none;
 }
 
+.desktop-tab-item {
+  container-type: inline-size;
+}
+
+.desktop-tab-active {
+  background-color: var(--zb-color-surface-background-canvas);
+}
+
+.desktop-tab-inactive {
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
 .desktop-tab-active::before,
 .desktop-tab-active::after {
   position: absolute;
   bottom: 0;
-  width: 9px;
-  height: 8px;
-  pointer-events: none;
+  width: var(--radius-md);
+  height: var(--radius-md);
   content: "";
+  pointer-events: none;
 }
 
 .desktop-tab-active::before {
-  left: -8px;
+  right: 100%;
   background: radial-gradient(
-    circle at 0 0,
-    transparent 7px,
-    var(--zb-color-border-stroke-default) 7px 8px,
-    var(--zb-color-surface-background-canvas) 8px
+    circle at top left,
+    transparent calc(var(--radius-md) - 0.5px),
+    var(--zb-color-surface-background-canvas) var(--radius-md)
   );
 }
 
 .desktop-tab-active::after {
-  right: -8px;
+  left: 100%;
   background: radial-gradient(
-    circle at 100% 0,
-    transparent 7px,
-    var(--zb-color-border-stroke-default) 7px 8px,
-    var(--zb-color-surface-background-canvas) 8px
+    circle at top right,
+    transparent calc(var(--radius-md) - 0.5px),
+    var(--zb-color-surface-background-canvas) var(--radius-md)
   );
+}
+
+.desktop-tab-inactive:has(+ .desktop-tab-inactive)::after {
+  position: absolute;
+  top: 9px;
+  right: -6px;
+  width: 1px;
+  height: 14px;
+  background-color: var(--zb-color-border-stroke-default);
+  content: "";
+  pointer-events: none;
+}
+
+.desktop-tab-inactive:hover {
+  background-color: var(--zb-color-action-background-neutral-hover);
+}
+
+@container (max-width: 100px) {
+  .desktop-tab-item:not(:hover) .desktop-tab-close:not(:focus-visible) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-tab-inactive {
+    transition: none;
+  }
 }
 
 /* Typography belongs to the shared component boundary so every import inherits

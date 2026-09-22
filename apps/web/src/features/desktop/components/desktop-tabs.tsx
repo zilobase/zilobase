@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { isDesktopApp } from "@/platform/desktop/native"
 import { useRouter, useRouterState } from "@tanstack/react-router"
 import { useShallow } from "zustand/react/shallow"
@@ -43,25 +43,32 @@ export function DesktopTabs({
   )
   const desktopApp = isDesktopApp()
   const macDesktopApp = desktopApp && navigator.userAgent.includes("Mac")
+  const pendingNavigation = useRef<{ from: string; to: string } | null>(null)
 
   useEffect(() => {
-    if (desktopApp) syncTab({ href, icon, title })
+    if (!desktopApp) return
+    const pending = pendingNavigation.current
+    if (pending && href === pending.from && href !== pending.to) return
+    pendingNavigation.current = null
+    syncTab({ href, icon, title })
   }, [desktopApp, href, icon, syncTab, title])
 
   const selectTab = useCallback(
     (tab: DesktopTab) => {
-      if (tab.id === activeTabId) return
+      if (tab.id === useAppStore.getState().activeDesktopTabId) return
+      pendingNavigation.current = { from: href, to: tab.href }
       activateTab(tab.id)
       router.history.push(tab.href)
     },
-    [activateTab, activeTabId, router.history],
+    [activateTab, href, router.history],
   )
   const openRouteInTab = useCallback(
     (input: Omit<DesktopTab, "id">) => {
+      pendingNavigation.current = { from: href, to: input.href }
       const tab = openTab(input)
       router.history.push(tab.href)
     },
-    [openTab, router.history],
+    [href, openTab, router.history],
   )
   const createTab = useCallback(() => {
     openRouteInTab({ href: "/recents", icon: null, title: "Recents" })
@@ -71,14 +78,25 @@ export function DesktopTabs({
       const wasActive = tabId === activeTabId
       const nextTab = closeTab(tabId)
 
-      if (wasActive && nextTab) router.history.push(nextTab.href)
+      if (wasActive && nextTab && nextTab.href !== href) {
+        pendingNavigation.current = { from: href, to: nextTab.href }
+        router.history.push(nextTab.href)
+      }
     },
-    [activeTabId, closeTab, router.history],
+    [activeTabId, closeTab, href, router.history],
   )
   const cloneTab = useCallback(
     (tab: DesktopTab) =>
       openRouteInTab({ href: tab.href, icon: tab.icon, title: tab.title }),
     [openRouteInTab],
+  )
+  const preloadTab = useCallback(
+    (tab: DesktopTab) => {
+      if (tab.id !== useAppStore.getState().activeDesktopTabId) {
+        void router.preloadRoute({ to: tab.href }).catch(() => {})
+      }
+    },
+    [router],
   )
 
   useDesktopTabShortcuts({
@@ -86,6 +104,8 @@ export function DesktopTabs({
     createTab,
     desktopApp,
     removeTab,
+    selectTab,
+    tabs,
   })
   useDesktopOpenInNewTabCapture({ desktopApp, openRouteInTab })
 
@@ -103,6 +123,7 @@ export function DesktopTabs({
         macDesktopApp={macDesktopApp}
         onCloneTab={cloneTab}
         onCreateTab={createTab}
+        onPreloadTab={preloadTab}
         onRemoveTab={removeTab}
         onReorderTabs={setTabOrder}
         onSelectTab={selectTab}
@@ -121,19 +142,42 @@ function useDesktopTabShortcuts({
   createTab,
   desktopApp,
   removeTab,
+  selectTab,
+  tabs,
 }: {
   activeTabId: string | null
   createTab: () => void
   desktopApp: boolean
   removeTab: (tabId: string) => void
+  selectTab: (tab: DesktopTab) => void
+  tabs: DesktopTab[]
 }) {
   useEffect(() => {
     if (!desktopApp) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        event.key === "Tab"
+      ) {
+        event.preventDefault()
+        const index = tabs.findIndex((tab) => tab.id === activeTabId)
+        const nextIndex =
+          (index + (event.shiftKey ? -1 : 1) + tabs.length) % tabs.length
+        if (tabs[nextIndex]) selectTab(tabs[nextIndex])
+        return
+      }
       if (!(event.metaKey || event.ctrlKey) || event.altKey) return
 
-      if (event.key.toLowerCase() === "t") {
+      if (!event.shiftKey && /^[1-9]$/.test(event.key)) {
+        const index = event.key === "9" ? tabs.length - 1 : Number(event.key) - 1
+        if (tabs[index]) {
+          event.preventDefault()
+          selectTab(tabs[index])
+        }
+      } else if (event.key.toLowerCase() === "t") {
         event.preventDefault()
         createTab()
       } else if (event.key.toLowerCase() === "w" && activeTabId) {
@@ -144,7 +188,7 @@ function useDesktopTabShortcuts({
 
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [activeTabId, createTab, desktopApp, removeTab])
+  }, [activeTabId, createTab, desktopApp, removeTab, selectTab, tabs])
 }
 
 function useDesktopOpenInNewTabCapture({

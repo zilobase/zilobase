@@ -62,6 +62,9 @@ export function setDesktopTabOrderState(
   ) {
     return state
   }
+  if (orderedTabIds.every((tabId, index) => tabId === state.desktopTabs[index].id)) {
+    return state
+  }
 
   const tabsById = new Map(state.desktopTabs.map((tab) => [tab.id, tab]))
   const desktopTabs: DesktopTab[] = []
