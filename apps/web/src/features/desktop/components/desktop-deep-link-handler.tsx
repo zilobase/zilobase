@@ -1,6 +1,6 @@
 import { useEffect } from "react"
-import { isDesktopApp } from "@/platform/desktop/native"
-import { getCurrent, onOpenUrl } from "@/platform/desktop/native"
+import { desktopBridge, isDesktopApp } from "@/platform/desktop/native"
+import type { DesktopDeepLink } from "../../../../../desktop/electron/shared/bridge"
 
 import { resolveDesktopDeepLinkAction } from "../deep-links/desktop-deep-link"
 import { recordDesktopDiagnostic } from "../../../platform/diagnostics/desktop-diagnostics"
@@ -41,13 +41,20 @@ export function DesktopDeepLinkHandler({
         return
       }
     }
-    void getCurrent().then((urls) => {
-      if (!disposed && urls) openFirstValidPath(urls)
+    const toUrl = (link: DesktopDeepLink) => {
+      const url = new URL(`zilobase://${link.type}`)
+      url.searchParams.set("server", link.serverUrl)
+      if (link.type === "open") {
+        url.searchParams.set("instance", link.instanceId)
+        url.searchParams.set("path", link.path)
+      }
+      return url.toString()
+    }
+    const bridge = desktopBridge().deepLinks
+    void bridge.getPending().then((links) => {
+      if (!disposed) openFirstValidPath(links.map(toUrl))
     })
-    void onOpenUrl(openFirstValidPath).then((stopListening) => {
-      if (disposed) stopListening()
-      else unlisten = stopListening
-    })
+    unlisten = bridge.onOpen((links) => openFirstValidPath(links.map(toUrl)))
 
     return () => {
       disposed = true

@@ -32,7 +32,7 @@ export function register({ assert, appPath, test }) {
         '@zilobase/features/workspaces/react':'export const useUpdateWorkspace=()=>runtime.update;',
         '@zilobase/features/auth/react':'export const useSession=()=>({data:runtime.session});',
         '@tanstack/react-query':'export const useQuery=()=>runtime.query;',
-        '@/platform/desktop/native':'export const invoke=(...args)=>runtime.invoke(...args);',
+        '@/platform/desktop/native':'export const desktopBridge=()=>({auth:{openMailUrl:url=>runtime.openMailUrl(url)}});',
         '@zilobase/features/mail':'export const mailApiBasePath=id=>`/workspaces/${id}/mail`; export const mailConnectionQueryOptions=()=>({});',
         '@/platform/network/api':'export const apiFetch=(...args)=>runtime.fetch(...args); export const getApiErrorMessage=error=>error.message; export const toApiUrl=()=>"https://api.example.test/";',
         '@/platform/environment':'export const isDesktopApp=()=>runtime.desktop;',
@@ -44,7 +44,7 @@ export function register({ assert, appPath, test }) {
     const module={exports:{}};
     new Function('require','module','exports',result.outputFiles[0].text)(createRequire(import.meta.url),module,module.exports);
     const calls=[];
-    const dependencies={calls,desktop:false,session:{user:{id:'user'}},update:{isPending:false,mutate(input,options){calls.push(['update',input]);options.onSuccess();}},query:{data:{status:'connected',connectionId:'connection',bindingId:'binding'},async refetch(){calls.push(['refetch']);}},async fetch(path,options){calls.push(['fetch',path,options]);return {authorizationUrl:'https://provider.example.test/auth'};},async invoke(...args){calls.push(['invoke',...args]);},async destroy(name){calls.push(['destroy',JSON.parse(name)]);}};
+    const dependencies={calls,desktop:false,session:{user:{id:'user'}},update:{isPending:false,mutate(input,options){calls.push(['update',input]);options.onSuccess();}},query:{data:{status:'connected',connectionId:'connection',bindingId:'binding'},async refetch(){calls.push(['refetch']);}},async fetch(path,options){calls.push(['fetch',path,options]);return {authorizationUrl:'https://provider.example.test/auth'};},async openMailUrl(url){calls.push(['openMailUrl',url]);},async destroy(name){calls.push(['destroy',JSON.parse(name)]);}};
     const capture=(kind,input,draft)=>module.exports.capture(kind,input,dependencies,draft);
     const workspace={id:'workspace',name:'Name',slug:'name',logo:null,metadata:null};
     const draft={name:' New name ',slug:' NEW-NAME ',logo:'',metadata:' notes '};
@@ -69,7 +69,7 @@ export function register({ assert, appPath, test }) {
       dependencies.desktop=true; calls.length=0;
       await capture('mail',{workspaceId:'workspace'}).connect();
       assert.equal(JSON.parse(calls[0][2].body).client,'desktop');
-      assert.equal(calls[1][1],'open_mail_authorization_url');
+      assert.deepEqual(calls[1],['openMailUrl','https://provider.example.test/auth']);
       dependencies.fetch=async()=>{throw new Error('denied');};calls.length=0;
       await capture('mail',{workspaceId:'workspace'}).disconnect();
       assert.deepEqual(calls,[['error','denied']]);

@@ -16,9 +16,7 @@ for (const file of versionedPackageFiles) {
 }
 
 for (const file of [
-  "apps/desktop/src-tauri/Cargo.toml",
   "apps/desktop/electron/sidecar/Cargo.toml",
-  "apps/desktop/src-tauri/tauri.conf.json",
 ]) {
   const text = readFileSync(file, "utf8").replace(/version = ".*?"|"version": ".*?"/, (match) =>
     match.startsWith('"') ? `"version": "${version}"` : `version = "${version}"`,
@@ -32,13 +30,6 @@ const serverVersion = readFileSync(serverVersionFile, "utf8").replace(
   `export const SERVER_VERSION = "${version}";`,
 )
 writeFileSync(serverVersionFile, serverVersion)
-
-const cargoLockFile = "apps/desktop/src-tauri/Cargo.lock"
-const cargoLock = readFileSync(cargoLockFile, "utf8").replace(
-  /(\[\[package\]\]\nname = "zilobase-client"\nversion = ")[^"]+("\n)/,
-  `$1${version}$2`,
-)
-writeFileSync(cargoLockFile, cargoLock)
 
 const sidecarLockFile = "apps/desktop/electron/sidecar/Cargo.lock"
 const sidecarLock = readFileSync(sidecarLockFile, "utf8").replace(

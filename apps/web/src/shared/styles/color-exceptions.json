@@ -22,21 +22,16 @@
   {
     "path": "apps/web/public",
     "owner": "Brand",
-    "reason": "Static Zilobase, Tauri, and Vite artwork is not runtime-themed UI."
+    "reason": "Static Zilobase and Vite artwork is not runtime-themed UI."
   },
   {
-    "path": "apps/desktop/src-tauri/icons",
+    "path": "apps/desktop/icons",
     "owner": "Desktop",
     "reason": "Packaged operating-system app icons are fixed Zilobase artwork."
   },
   {
     "path": "apps/server/src/features/desktop-auth/routes.ts#COLOR_TOKENS",
     "owner": "Authentication",
-    "reason": "Generated default light/dark fragment; edit color-tokens.css and run tokens:sync."
-  },
-  {
-    "path": "apps/desktop/src-tauri/src/auth/oauth.rs#COLOR_TOKENS",
-    "owner": "Desktop",
     "reason": "Generated default light/dark fragment; edit color-tokens.css and run tokens:sync."
   }
 ]

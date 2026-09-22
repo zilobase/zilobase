@@ -1,4 +1,4 @@
-import { invoke, isDesktopApp } from "@/platform/desktop/native"
+import { desktopBridge, isDesktopApp } from "@/platform/desktop/native"
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
@@ -38,8 +38,8 @@ export async function reloadDesktopAuthCredentials() {
   if (!isDesktopApp()) return
 
   ;[authToken, authOwner] = await Promise.all([
-    invoke<string | null>("get_auth_token"),
-    invoke<string | null>("get_auth_owner"),
+    desktopBridge().auth.getToken(),
+    desktopBridge().auth.getOwner(),
   ])
 }
 
@@ -54,14 +54,14 @@ export function getDesktopAuthOwner() {
 export async function setDesktopAuthOwner(owner: string) {
   if (!isDesktopApp()) return
   authOwner = owner
-  await invoke("set_auth_owner", { owner })
+  await desktopBridge().auth.setOwner(owner)
 }
 
 export async function setDesktopAuthToken(token: string) {
   if (!isDesktopApp()) return
 
   authToken = token
-  await invoke("set_auth_token", { token })
+  await desktopBridge().auth.setToken(token)
 }
 
 export async function clearDesktopAuthToken() {
@@ -70,8 +70,8 @@ export async function clearDesktopAuthToken() {
   authToken = null
   authOwner = null
   await Promise.all([
-    invoke("set_auth_token", { token: null }),
-    invoke("set_auth_owner", { owner: null }),
+    desktopBridge().auth.setToken(null),
+    desktopBridge().auth.setOwner(null),
   ])
 }
 

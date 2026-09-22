@@ -1,4 +1,4 @@
-import { invoke, isDesktopApp } from "@/platform/desktop/native"
+import { desktopBridge, isDesktopApp } from "@/platform/desktop/native"
 
 export const DEFAULT_DESKTOP_TRANSLUCENCY = 0
 export const MAX_DESKTOP_TRANSLUCENCY = 40
@@ -38,9 +38,7 @@ export async function setDesktopTranslucency(value: number): Promise<number> {
   }
 
   if (isDesktopApp()) {
-    await invoke("set_window_opacity", {
-      opacity: 1 - translucency / 100,
-    })
+    await desktopBridge().window.setOpacity(1 - translucency / 100)
   }
 
   return translucency

@@ -68,7 +68,7 @@ export function register({ assert, loadModule, readSource, test }) {
 
     assert.match(mailSource, /Connect your Gmail account/)
     assert.match(mailSource, /method: "POST"/)
-    assert.match(mailSource, /open_mail_authorization_url/)
+    assert.match(mailSource, /auth\.openMailUrl/)
     assert.match(mailSource, /Preparing your mailbox/)
     assert.match(mailSource, /<ConnectedMailbox connection=\{connectionQuery\.data\}/)
   })

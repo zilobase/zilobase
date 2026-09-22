@@ -77,7 +77,7 @@ test("server paths skip the web and desktop suites", () => {
 });
 
 test("desktop paths select cargo fmt, clippy, and tests", () => {
-  const selected = selectJobs(["apps/desktop/src-tauri/src/lib.rs"]);
+  const selected = selectJobs(["apps/desktop/electron/sidecar/src/main.rs"]);
   assert.ok(selected.some((job) => job.id === "desktop"));
   assert.equal(selected.some((job) => job.id === "web-and-packages"), false);
 });

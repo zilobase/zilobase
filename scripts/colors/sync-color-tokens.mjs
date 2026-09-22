@@ -11,7 +11,6 @@ const canonicalPath = path.join(
 )
 const targets = [
   path.join(repositoryRoot, "apps/server/src/features/desktop-auth/routes.ts"),
-  path.join(repositoryRoot, "apps/desktop/src-tauri/src/auth/oauth.rs"),
 ]
 const tokenNames = [
   "--zb-color-surface-background-canvas",

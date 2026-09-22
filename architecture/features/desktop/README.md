@@ -3,11 +3,12 @@
 ## Owning modules and interface
 
 - [apps/web/src/features/desktop](../../../apps/web/src/features/desktop)
-- [apps/desktop/src-tauri/src](../../../apps/desktop/src-tauri/src)
+- [apps/desktop/electron/main](../../../apps/desktop/electron/main)
+- [apps/desktop/electron/sidecar/src](../../../apps/desktop/electron/sidecar/src)
 
 ## Main flow
 
-Web desktop modules coordinate connection selection, native authentication, network transport, tabs, persistence, window behavior and diagnostics. The Tauri host supplies native commands and device integrations. [Native lifecycle](native-lifecycle.md) explains app composition, server contracts/profile state, configuration/discovery, authentication and diagnostics together.
+Web desktop modules coordinate connection selection, native authentication, network transport, tabs, persistence, window behavior and diagnostics. Electron main supplies the versioned preload bridge and supervises the audio sidecar. [Native lifecycle](native-lifecycle.md) explains app composition, server contracts/profile state, configuration/discovery, authentication and diagnostics together.
 
 ## Authorization and persistence
 
@@ -19,6 +20,6 @@ Deep-link completion, network failures, server replacement and window cleanup ha
 
 ## Verification and change points
 
-Start with [the existing tests or model](../../../apps/desktop/e2e/selfhost.mjs) and the adjacent tests in the owning modules. Exercise observable outcomes through the owning interface; a source assertion alone does not establish runtime behavior. Run the affected workspace scripts described in [testing and quality](../../setup/testing-and-quality.md).
+Start with [the packaged desktop smoke test](../../../apps/desktop/e2e/electron-smoke.mjs) and the adjacent tests in the owning modules. Exercise observable outcomes through the owning interface; a source assertion alone does not establish runtime behavior. Run the affected workspace scripts described in [testing and quality](../../setup/testing-and-quality.md).
 
 Update this guide when ownership, interfaces, authorization, persistence or cross-module flows change. [Architecture index](../../README.md).

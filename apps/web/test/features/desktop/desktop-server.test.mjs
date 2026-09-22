@@ -148,6 +148,5 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(login, /DesktopBrowserAuthScreen/)
     assert.match(signup, /DesktopBrowserAuthScreen/)
     assert.match(router, /throw redirect\(\{ to: "\/login" \}\)/)
-    assert.doesNotMatch(router, /isTauri\(\) \? "\/connect"/)
   })
 }

@@ -294,7 +294,6 @@
   [aria-grabbed="true"],
   [data-slot="slider-thumb"],
   [data-slot="scroll-area-thumb"],
-  [data-tauri-drag-region],
   [data-desktop-drag-region],
   .react-flow__node.draggable,
   .react-flow__pane.draggable
@@ -307,7 +306,6 @@
   [aria-grabbed="true"],
   [data-slot="slider-thumb"],
   [data-slot="scroll-area-thumb"],
-  [data-tauri-drag-region],
   [data-desktop-drag-region],
   .react-flow__node.draggable,
   .react-flow__pane.draggable

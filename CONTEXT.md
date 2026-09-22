@@ -2,6 +2,12 @@
 
 ## Domain Terms
 
+### Desktop bridge
+
+The versioned `window.zilobaseDesktop` API exposed by Electron preload to the
+sandboxed web renderer. Native operations cross this bridge through named,
+validated main-process IPC channels.
+
 ### Database view
 
 A Database view is the editor surface for viewing and changing a Database as a Table or Kanban board. It owns the active view, visible properties, row ordering, grouping, sorting, draft property values, and row/property/view commands for that surface.

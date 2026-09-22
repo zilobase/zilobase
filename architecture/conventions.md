@@ -12,7 +12,7 @@ A **module** presents one deliberate **interface**. That interface includes inva
 - Use relative imports inside a module and explicit documented entrypoints between features. An index exposes the module interface; it is not a dump of all implementation exports.
 - Keep contracts and pure models independent of React, browser state and server runtime code.
 - App composition owns feature orchestration. Shared code and runtime mechanisms must not import their feature callers.
-- Keep external package subpaths, HTTP routes, Tauri commands, environment keys and storage formats compatible during internal refactoring.
+- Keep external package subpaths, HTTP routes, desktop bridge channels, environment keys and storage formats compatible during internal refactoring.
 
 Web feature rules no longer allow app composition imports. Settings use the provider query client; app providers install demo cache behavior; edition alias consumers use the focused edition contract zone. Published compatibility exports remain intentional, while unused internal UI and wrappers are removed.
 

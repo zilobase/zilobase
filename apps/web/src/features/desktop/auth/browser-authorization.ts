@@ -1,4 +1,4 @@
-import { invoke } from "@/platform/desktop/native"
+import { desktopBridge } from "@/platform/desktop/native"
 
 import { isDesktopApp } from "../../../platform/environment"
 
@@ -26,7 +26,7 @@ export async function signInWithDesktopBrowser() {
   }
 
   try {
-    await invoke("start_browser_authorization")
+    await desktopBridge().auth.startBrowser()
     return "desktop" as const
   } catch (error) {
     throw normalizeDesktopOAuthError(error)
@@ -37,7 +37,7 @@ export async function cancelDesktopBrowserSignIn() {
   if (!isDesktopApp()) return
 
   try {
-    await invoke("cancel_browser_authorization")
+    await desktopBridge().auth.cancelBrowser()
   } catch (error) {
     throw normalizeDesktopOAuthError(error)
   }

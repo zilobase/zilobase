@@ -1,35 +1,44 @@
 # Desktop runtime
 
-## Interface and flow
+The [Electron main process](../../apps/desktop/electron/main/index.mjs) owns the
+900×650 main window, single-instance lock, `zilobase://` protocol handling,
+security policy and native integrations. The [sandboxed preload](../../apps/desktop/electron/preload/index.cjs)
+exposes API version 1 through `window.zilobaseDesktop`; the
+[web adapter](../../apps/web/src/platform/desktop/native.ts) is the renderer's
+only desktop entrypoint. `contextIsolation` and `sandbox` are enabled and Node
+integration is disabled. Main validates IPC sender frame and origin, enforces a
+CSP and permits only approved renderer permissions and navigation.
 
-The native Tauri host starts the web application and exposes native authentication, server selection, diagnostics and meeting capture. Web modules own the corresponding UI and orchestrate native operations. The [native lifecycle guide](../features/desktop/native-lifecycle.md) maps the serialized contracts, profile rules, persistence, authentication and diagnostic interfaces.
+[Server profiles](../../apps/desktop/electron/main/server.mjs) preserve version 2
+configuration, scoped snapshots, verified candidates and discovery rules. The
+server accepts the Electron `zilo-desktop://app` origin. It also accepts the two
+legacy Tauri origins for already installed clients; remove those only after a
+separate client retirement decision. Server replacement clears credentials and
+renderer state through the [desktop integration flow](../features/desktop/README.md).
 
-Start at the [entrypoint](../../apps/desktop/src-tauri/src/app/mod.rs); follow the [implementation](../../apps/desktop/src-tauri/src) and [related modules](../../apps/web/src/features/desktop).
+[Browser PKCE](../../apps/desktop/electron/main/oauth.mjs) uses a loopback
+listener and the system browser. [Credentials](../../apps/desktop/electron/main/credentials.mjs)
+use Electron `safeStorage`; the [sidecar](../../apps/desktop/electron/sidecar/src/main.rs)
+imports and deletes instance-scoped legacy keyring entries. [Diagnostics](../../apps/desktop/electron/main/diagnostics.mjs)
+filter renderer events and create bounded log archives. [Updates](../../apps/desktop/electron/main/updater.mjs)
+read Electron Builder feeds. The [release workflow](../../.github/workflows/release.yml)
+packages signed installers and assembles those feeds. The retained legacy
+`latest.json` keeps old clients' updater endpoint valid but does not upgrade a
+Tauri installation to Electron automatically.
 
-## Invariants and failure handling
-
-Native command names, deep links, keychain identifiers and persisted server configuration are compatibility interfaces. Server switching must release old connections and clear the appropriate cached account state.
-
-The server allows the exact `zilo-desktop://app` client origin for the Electron migration alongside the two Tauri origins. The new origin is included in CORS and authentication trusted origins; lookalike hosts are rejected. The current shipped native host remains Tauri until the Electron cutover.
-
-The experimental [Electron host](../../apps/desktop/electron/main/index.mjs) creates one sandboxed main window and serves the packaged web build from a standard secure local protocol. Its [preload](../../apps/desktop/electron/preload/index.cjs) exposes the versioned desktop bridge; the [web adapter](../../apps/web/src/platform/desktop/native.ts) routes supported operations to that bridge or the shipped Tauri runtime. Electron [server profiles](../../apps/desktop/electron/main/server.mjs), [browser PKCE](../../apps/desktop/electron/main/oauth.mjs), [encrypted credentials](../../apps/desktop/electron/main/credentials.mjs), [diagnostics](../../apps/desktop/electron/main/diagnostics.mjs), notifications and the [updater](../../apps/desktop/electron/main/updater.mjs) live in main. A small [sidecar](../../apps/desktop/electron/sidecar/src/main.rs) reads and deletes legacy OS keyring entries for migration. [electron-builder.yml](../../apps/desktop/electron-builder.yml) owns platform packaging and macOS helper signing; the [experimental matrix](../../.github/workflows/electron-desktop.yml) smokes unpacked packages without publishing them. Live capture and signed installers remain release gates.
-
-Manual matrix runs also build signed or unsigned installer candidates for review.
-Linux runners install the native D-Bus, libclang, and audio build dependencies; unsigned
-jobs clear empty certificate variables before packaging.
-Linux packaging pins the executable name to `zilobase-client`; deriving it
-from the scoped workspace package would produce a different launch path.
-Installer filenames also use the unscoped name so DEB and RPM files stay in the
-release directory.
-The Linux desktop entry uses `com.zilobase` for launcher and window association.
-ARM64 Linux candidates emit a separate `latest-linux-arm64.yml` update feed;
-the installer verifier selects the feed for the runner architecture. Linux
-smoke tests use an isolated GNOME Secret Service session for credential checks.
+[Meeting capture main](../../apps/desktop/electron/main/capture.mjs) validates
+requests and supervises the [native audio sidecar](../../apps/desktop/electron/sidecar/src/meetings/mod.rs).
+The sidecar keeps recording directories and checkpoint formats compatible with
+previous desktop versions. [Native lifecycle](../features/desktop/native-lifecycle.md)
+describes each boundary in detail.
 
 ## Verification
 
-The [capture host](../../apps/desktop/electron/main/capture.mjs) supervises a native [audio sidecar](../../apps/desktop/electron/sidecar/src/meetings/capture.rs) for devices, recording, transport, and checkpoint recovery. It uses the same recording directory and serialized artifacts as Tauri.
-
-The [packaged Electron smoke test](../../apps/desktop/e2e/electron-smoke.mjs) verifies origin, preload, profile state, encrypted storage and diagnostic redaction. The [Electron self-host test](../../apps/desktop/e2e/electron-selfhost.mjs) drives packaged server selection against a supplied Compose or staging origin; Tauri's [self-host test](../../apps/desktop/e2e/selfhost.mjs) remains the shipped flow. See [testing and quality](../setup/testing-and-quality.md). [Architecture index](../README.md).
-
-Calendar's running-app reminder host can deliver immediate native notifications through `tauri-plugin-notification`. The main-window capability grants the plugin API; the web settings flow requests OS permission explicitly. No native alarm is scheduled, so this adds no closed-app delivery guarantee. See the [Calendar guide](../features/calendar/README.md).
+The [packaged smoke](../../apps/desktop/e2e/electron-smoke.mjs) checks preload,
+origin, deep link, profile, credential, diagnostic and idle capture behavior.
+The [OAuth test](../../apps/desktop/e2e/electron-oauth.mjs) uses an isolated
+local authorization server. The [self-host test](../../apps/desktop/e2e/electron-selfhost.mjs)
+checks discovery and selection against a compatible server. [Electron CI](../../.github/workflows/electron-desktop.yml)
+runs packaged checks on each OS and verifies installer candidates. Live audio,
+notarized installation and update installation need separate OS acceptance.
+See [testing and quality](../setup/testing-and-quality.md).

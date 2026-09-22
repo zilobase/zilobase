@@ -4,7 +4,7 @@
 
 - [apps/server/src/features/meetings](../../../apps/server/src/features/meetings)
 - [apps/web/src/features/meetings](../../../apps/web/src/features/meetings)
-- [apps/desktop/src-tauri/src/meetings](../../../apps/desktop/src-tauri/src/meetings)
+- [apps/desktop/electron/sidecar/src/meetings](../../../apps/desktop/electron/sidecar/src/meetings)
 - [packages/features/src/meetings](../../../packages/features/src/meetings)
 
 ## Main flow
@@ -35,4 +35,4 @@ Server [lifecycle](../../../apps/server/src/features/meetings/lifecycle) owns ac
 
 The [web screen](../../../apps/web/src/features/meetings/screens/meeting.tsx) composes the meeting's page and controls. [Editor meeting rendering](../../../apps/web/src/features/editor/extensions/meeting/meeting-view.tsx) connects document/UI interactions with meeting commands. [Capture contracts and browser implementation](../../../apps/web/src/features/meetings/capture) remain independent of meeting routes; [application composition](../../../apps/web/src/app/runtime/configure-meeting-capture.ts) selects browser versus native capture before rendering. The shared capture hook observes that runtime; the desktop adapter owns native event subscriptions.
 
-The existing native modules already have distinct owners: [audio](../../../apps/desktop/src-tauri/src/meetings/audio.rs) handles signal processing, [capture](../../../apps/desktop/src-tauri/src/meetings/capture.rs) owns native commands/recording, its [devices](../../../apps/desktop/src-tauri/src/meetings/capture/devices.rs) and [transport](../../../apps/desktop/src-tauri/src/meetings/capture/transport.rs) implement capture mechanisms, and [recovery](../../../apps/desktop/src-tauri/src/meetings/recovery.rs) owns local session artifacts. Their command names, serialization and persisted files stay unchanged. Meeting lifecycle persistence, transcript transport and local capture recovery remain separate responsibilities across runtimes.
+The native sidecar has distinct owners: [audio](../../../apps/desktop/electron/sidecar/src/meetings/audio.rs) handles signal processing, [capture](../../../apps/desktop/electron/sidecar/src/meetings/capture.rs) owns recording, its [devices](../../../apps/desktop/electron/sidecar/src/meetings/capture/devices.rs) and [transport](../../../apps/desktop/electron/sidecar/src/meetings/capture/transport.rs) implement capture mechanisms, and [recovery](../../../apps/desktop/electron/sidecar/src/meetings/recovery.rs) owns local session artifacts. The Electron [capture host](../../../apps/desktop/electron/main/capture.mjs) supervises the sidecar; serialized recording files remain compatible. Meeting lifecycle persistence, transcript transport and local capture recovery remain separate responsibilities across runtimes.

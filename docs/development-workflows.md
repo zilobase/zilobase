@@ -85,8 +85,8 @@ not remove unrelated containers, databases, buckets, or Kubernetes clusters.
 
 ## Desktop development
 
-Use `npm run dev:desktop` to start a standalone local API and Tauri, or start
-the normal stack first and use `npm run dev:desktop:node` to attach Tauri to it.
+Use `npm run dev:desktop` to start a standalone local API and Electron, or start
+the normal stack first and use `npm run dev:desktop:node` to attach Electron to it.
 Do not run both desktop modes at the same time.
 
 ## Kubernetes validation

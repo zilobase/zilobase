@@ -17,7 +17,7 @@ extraResources:
       - "**/*"
 asar: true
 mac:
-  icon: src-tauri/icons/icon.icns
+  icon: icons/icon.icns
   hardenedRuntime: true
   entitlements: electron/entitlements.mac.plist
   entitlementsInherit: electron/entitlements.mac.inherit.plist
@@ -35,7 +35,7 @@ mac:
     - zip
     - pkg
 win:
-  icon: src-tauri/icons/icon.ico
+  icon: icons/icon.ico
   target:
     - nsis
     - msi
@@ -44,7 +44,7 @@ win:
       schemes:
         - zilobase
 linux:
-  icon: src-tauri/icons
+  icon: icons
   executableName: zilobase-client
   artifactName: zilobase-client-${version}-${arch}.${ext}
   syncDesktopName: true

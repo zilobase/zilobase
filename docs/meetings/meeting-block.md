@@ -100,7 +100,7 @@ Run these checks before release:
 npm run build --workspace @zilobase/server
 npm test --workspace @zilobase/server -- src/features/meetings
 npm run build --workspace @zilobase/web
-(cd apps/desktop/src-tauri && cargo check && cargo test meeting_capture --lib)
+npm run verify:desktop
 ```
 
 Manual acceptance still matters because CI cannot grant capture permission or validate physical and virtual audio devices. Cover each desktop OS, desktop Chrome/Edge/Safari/Firefox as offered, and mobile Safari/Chrome microphone fallback. Verify permission denial, a share without audio, device disconnect, network interruption, application restart recovery, a three-hour forced stop, and local audio deletion with archiving both off and on.

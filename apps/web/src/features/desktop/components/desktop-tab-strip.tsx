@@ -106,8 +106,7 @@ export function DesktopTabStrip({
           "relative flex min-w-0 flex-1 self-stretch items-end gap-1",
           draggingTabId ? "overflow-visible" : "overflow-hidden",
         )}
-        data-tauri-drag-region="deep"
-          data-desktop-drag-region=""
+        data-desktop-drag-region=""
         onReorder={onReorderTabs}
         role="tablist"
         values={tabIds}

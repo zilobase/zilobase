@@ -3,11 +3,7 @@ export function register({ assert, loadModule, test }) {
     const { resolveApiBaseUrl } = await loadModule("/src/platform/network/api.ts")
 
     assert.equal(
-      resolveApiBaseUrl(new URL("tauri://localhost/login")),
-      "https://api.zilobase.com",
-    )
-    assert.equal(
-      resolveApiBaseUrl(new URL("http://tauri.localhost/login")),
+      resolveApiBaseUrl(new URL("zilo-desktop://app/login")),
       "https://api.zilobase.com",
     )
   })
@@ -41,13 +37,13 @@ export function register({ assert, loadModule, test }) {
     }
 
     assert.equal(
-      resolveApiBaseUrl(new URL("tauri://localhost/login"), server),
+      resolveApiBaseUrl(new URL("zilo-desktop://app/login"), server),
       "http://127.0.0.1:8787",
     )
     assert.equal(
       resolveApiBaseUrl(new URL("http://localhost:1420/login"), server),
       "http://127.0.0.1:8787",
-      "Tauri dev must not fall back to the compile-time Vite API",
+      "Desktop dev must not fall back to the compile-time Vite API",
     )
   })
 

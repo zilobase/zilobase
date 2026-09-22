@@ -1,4 +1,4 @@
-import { checkUpdate, isDesktopApp, relaunch } from "@/platform/desktop/native"
+import { desktopBridge, isDesktopApp } from "@/platform/desktop/native"
 import { useEffect } from "react"
 import { toast } from "sonner"
 import {
@@ -23,7 +23,7 @@ async function checkForUpdate() {
   const startedAt = performance.now()
   recordDesktopDiagnostic("updater.check", { status: "started" })
   try {
-    const update = await checkUpdate()
+    const update = await desktopBridge().update.check()
 
     if (!update) {
       recordDesktopDiagnostic("updater.check", {
@@ -41,7 +41,7 @@ async function checkForUpdate() {
     toast.info(`Zilobase ${update.version} is available`, {
       action: {
         label: "Update and restart",
-        onClick: () => void installUpdate(update),
+        onClick: () => void installUpdate(),
       },
       description: update.body || "Install the latest version and reopen Zilobase.",
       duration: Infinity,
@@ -59,20 +59,20 @@ async function checkForUpdate() {
   }
 }
 
-async function installUpdate(update: NonNullable<Awaited<ReturnType<typeof checkUpdate>>>) {
+async function installUpdate() {
   const toastId = toast.loading("Downloading Zilobase update…")
   const startedAt = performance.now()
   recordDesktopDiagnostic("updater.install", { status: "started" })
 
   try {
-    await update.downloadAndInstall()
+    await desktopBridge().update.download()
     recordDesktopDiagnostic("updater.install", {
       duration_ms: performance.now() - startedAt,
       status: "success",
     })
     toast.loading("Restarting Zilobase…", { id: toastId })
 
-    await relaunch()
+    await desktopBridge().update.installRestart()
   } catch (error) {
     recordDesktopDiagnostic(
       "updater.install",

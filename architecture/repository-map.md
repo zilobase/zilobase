@@ -13,7 +13,7 @@
 | Published server interface | Entry points consumed by external runtime adapters | [public](../apps/server/src/public), [exports](../apps/server/package.json) |
 | Runtime adapter | Community Node and Cloudflare Worker runtimes, factories, and deploy templates | [runtime-adapter](../packages/runtime-adapter/src), [worker templates](../packages/runtime-adapter/deploy/worker) |
 | Runtime ports | Deployment-neutral contracts and provider conformance fixtures | [runtime-ports](../packages/runtime-ports/src) |
-| Native host | Authentication, server selection, recording and diagnostics | [Rust modules](../apps/desktop/src-tauri/src) |
+| Native host | Authentication, server selection, recording and diagnostics | [Electron main](../apps/desktop/electron/main) and [audio sidecar](../apps/desktop/electron/sidecar/src) |
 | Shared features | Contracts, pure rules, queries and React bindings | [features package](../packages/features/src) |
 | Page context | Structural page content and markdown conversion | [page-context](../packages/page-context/src) |
 | HTML to page | Webpage HTML sanitization and Tiptap JSON conversion for clips | [html-to-page](../packages/html-to-page/src) |

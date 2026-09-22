@@ -2,12 +2,12 @@
 
 Zilobase is a workspace application built around pages, structured databases,
 and collaborative editing. This repository contains the React web application,
-Hono server, Tauri desktop host, and shared TypeScript packages. Optional
+Hono server, Electron desktop host, and shared TypeScript packages. Optional
 integrations consume only published interfaces.
 
 ```mermaid
 flowchart TD
-  Desktop[Tauri desktop host] --> Web[React application]
+  Desktop[Electron desktop host] --> Web[React application]
   Web --> Client[Shared feature queries and mutations]
   Client --> HTTP[Hono routes and session middleware]
   HTTP --> Features[Feature operations and access decisions]

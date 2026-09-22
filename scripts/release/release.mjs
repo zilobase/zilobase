@@ -10,9 +10,6 @@ const releaseFiles = [
   ...versionedPackageFiles,
   "package-lock.json",
   "apps/server/src/shared/version.ts",
-  "apps/desktop/src-tauri/Cargo.toml",
-  "apps/desktop/src-tauri/Cargo.lock",
-  "apps/desktop/src-tauri/tauri.conf.json",
   "apps/desktop/electron/sidecar/Cargo.toml",
   "apps/desktop/electron/sidecar/Cargo.lock",
 ]

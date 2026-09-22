@@ -1,4 +1,4 @@
-import { invoke, isDesktopApp } from "@/platform/desktop/native"
+import { desktopBridge, isDesktopApp } from "@/platform/desktop/native"
 import packageJson from "../../../package.json"
 import { desktopNetworkFetch } from "../network/desktop-network"
 
@@ -80,7 +80,7 @@ export async function initializeDesktopServer() {
 
   try {
     selectedDesktopServer = validateDesktopServer(
-      await invoke<DesktopServer>("initialize_desktop_server"),
+      await desktopBridge().server.initialize(),
     )
     return selectedDesktopServer
   } catch (error) {
@@ -98,12 +98,7 @@ export async function prepareDesktopServerCandidate(serverUrl: string) {
   }
 
   try {
-    const prepared = await invoke<PreparedDesktopServer>(
-      "prepare_desktop_server_candidate",
-      {
-        serverUrl,
-      },
-    )
+    const prepared = await desktopBridge().server.prepare(serverUrl)
     if (!prepared || typeof prepared.candidateId !== "string") {
       throw new DesktopServerError(
         "invalid_server_metadata",
@@ -121,7 +116,7 @@ export async function prepareDesktopServerCandidate(serverUrl: string) {
 
 export async function discardDesktopServerCandidate(candidateId: string) {
   if (!isDesktopApp()) return
-  await invoke("discard_desktop_server_candidate", { candidateId })
+  await desktopBridge().server.discard(candidateId)
 }
 
 export async function commitDesktopServerCandidate(candidateId: string) {
@@ -133,10 +128,7 @@ export async function commitDesktopServerCandidate(candidateId: string) {
   }
 
   try {
-    const result = await invoke<DesktopServerCommit>(
-      "commit_desktop_server_candidate",
-      { candidateId },
-    )
+    const result = await desktopBridge().server.commit(candidateId)
     selectedDesktopServer = validateDesktopServer(result.server)
     return { changed: result.changed === true, server: selectedDesktopServer }
   } catch (error) {
@@ -154,9 +146,7 @@ export async function listDesktopServerProfiles(): Promise<DesktopServerProfileL
   }
 
   try {
-    const result = await invoke<DesktopServerProfileList>(
-      "list_desktop_server_profiles",
-    )
+    const result = await desktopBridge().server.list()
     return normalizeDesktopServerProfileList(result)
   } catch (error) {
     throw normalizeDesktopServerError(error)
@@ -178,7 +168,7 @@ export async function switchDesktopServerProfile(input: {
 
   try {
     selectedDesktopServer = validateDesktopServer(
-      await invoke<DesktopServer>("switch_desktop_server_profile", {
+      await desktopBridge().server.switch({
         apiOrigin: input.apiOrigin,
         instanceId: input.instanceId,
         path: input.path ?? null,
@@ -199,7 +189,7 @@ export async function updateDesktopServerProfileSnapshot(input: {
   if (!isDesktopApp()) return
 
   try {
-    await invoke("update_desktop_server_profile_snapshot", {
+    await desktopBridge().server.updateSnapshot({
       lastActiveWorkspaceId: input.lastActiveWorkspaceId ?? null,
       lastPath: input.lastPath ?? null,
       workspaces: input.workspaces,
@@ -222,7 +212,7 @@ export async function removeDesktopServerProfile(input: {
 
   try {
     selectedDesktopServer = validateDesktopServer(
-      await invoke<DesktopServer>("remove_desktop_server_profile", {
+      await desktopBridge().server.remove({
         apiOrigin: input.apiOrigin,
         instanceId: input.instanceId,
       }),
@@ -413,7 +403,7 @@ export function resolveRuntimeApiOrigin(
   location = typeof window !== "undefined" ? window.location : undefined,
   desktopServer = selectedDesktopServer,
 ) {
-  // Tauri development uses Vite's http://localhost origin, so the window URL
+  // Desktop development uses Vite's http://localhost origin, so the window URL
   // alone cannot distinguish it from a normal browser. A selected native
   // server is authoritative in both development and packaged desktop builds.
   if (desktopServer) {
@@ -440,8 +430,7 @@ export function isDesktopLocation(
   location: Pick<Location, "hostname" | "protocol"> | URL | undefined,
 ) {
   return (
-    location?.protocol === "tauri:" ||
-    location?.hostname === "tauri.localhost"
+    location?.protocol === "zilo-desktop:" && location.hostname === "app"
   )
 }
 

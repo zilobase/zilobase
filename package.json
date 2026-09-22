@@ -27,9 +27,7 @@
     "dev:clipper": "npm run dev --workspace @zilobase/clipper",
     "build:clipper": "npm run build --workspace @zilobase/clipper",
     "test:web": "npm run test --workspace @zilobase/web",
-    "test:update-local": "node scripts/desktop/test-update.mjs",
-    "test:desktop:selfhost": "node apps/desktop/e2e/selfhost.mjs",
-    "test:desktop:electron:selfhost": "node apps/desktop/e2e/electron-selfhost.mjs",
+    "test:desktop:selfhost": "node apps/desktop/e2e/electron-selfhost.mjs",
     "tokens:sync": "node scripts/colors/sync-color-tokens.mjs",
     "tokens:check": "node scripts/colors/sync-color-tokens.mjs --check",
     "dev:desktop": "node scripts/desktop/dev.mjs",
@@ -52,7 +50,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test:packages": "npm test --workspace @zilobase/features && npm test --workspace @zilobase/page-context && npm test --workspace @zilobase/html-to-page",
     "verify:core": "npm run tokens:check && npm run test:tooling && npm run test:community-boundary && npm run typecheck && npm run test:packages && npm run test:web && npm run build && npm run test:server",
-    "verify:desktop": "cargo fmt --manifest-path apps/desktop/src-tauri/Cargo.toml --check && cargo clippy --manifest-path apps/desktop/src-tauri/Cargo.toml --locked --all-targets -- -D warnings && cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml --locked",
+    "verify:desktop": "cargo fmt --manifest-path apps/desktop/electron/sidecar/Cargo.toml --check && cargo clippy --manifest-path apps/desktop/electron/sidecar/Cargo.toml --locked --all-targets -- -D warnings && cargo test --manifest-path apps/desktop/electron/sidecar/Cargo.toml --locked",
     "verify:architecture": "npm run test:architecture",
     "verify": "npm run verify:core && npm run verify:desktop && npm run verify:architecture",
     "verify:push": "node scripts/git/pre-push.mjs",
@@ -71,7 +69,7 @@
     "test:selfhost": "node scripts/selfhost/manage.mjs test",
     "test:selfhost:upgrade": "node scripts/selfhost/test-upgrade.mjs",
     "test:dev-workflow": "node --test scripts/dev/dev-workflow.test.mjs",
-    "test:tooling": "node --test scripts/dev/dev-workflow.test.mjs scripts/selfhost/cookie-jar.test.mjs scripts/release/set-version.test.mjs scripts/git/pre-push.test.mjs scripts/check-dep-alignment.test.mjs",
+    "test:tooling": "node --test scripts/dev/dev-workflow.test.mjs scripts/selfhost/cookie-jar.test.mjs scripts/release/set-version.test.mjs scripts/desktop/assemble-electron-release.test.mjs scripts/git/pre-push.test.mjs scripts/check-dep-alignment.test.mjs",
     "test:k8s:community": "node scripts/dev/cli.mjs k8s-smoke --target community",
     "test:mail:deployment": "node --test scripts/mail/gmail-deployment-config.test.mjs && node scripts/mail/check-documentation.mjs",
     "test:community-boundary": "node --test scripts/community-boundary.test.mjs && node scripts/check-community-boundary.mjs",
@@ -99,7 +97,8 @@
     "postcss": "^8.5.26",
     "typescript": "6.0.3",
     "webdriverio": "^9.30.1",
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
+    "yaml": "2.9.0"
   },
   "engines": {
     "node": ">=24.0.0"

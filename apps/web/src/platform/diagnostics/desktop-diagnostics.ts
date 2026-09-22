@@ -1,4 +1,4 @@
-import { invoke, isDesktopApp } from "@/platform/desktop/native"
+import { desktopBridge, isDesktopApp } from "@/platform/desktop/native"
 
 type DiagnosticLevel = "error" | "info" | "warn"
 type DiagnosticValue = boolean | number | string | null | undefined
@@ -83,7 +83,7 @@ export function markDesktopAppReady() {
     elapsed_ms: elapsedMs,
     status: "success",
   })
-  void invoke("mark_renderer_ready", { elapsedMs }).catch(() => {
+  void desktopBridge().diagnostics.rendererReady(elapsedMs).catch(() => {
     recordDesktopDiagnostic(
       "renderer.ready_signal",
       { error_type: "InvokeError", status: "error" },
@@ -126,7 +126,7 @@ export function recordDesktopDiagnostic(
   if (!isDesktopApp()) return
   if (!formatDesktopDiagnostic(event, fields)) return
 
-  void invoke("record_renderer_diagnostic", { event, fields, level }).catch(
+  void desktopBridge().diagnostics.record(event, fields, level).catch(
     () => undefined,
   )
 }

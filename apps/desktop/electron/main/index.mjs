@@ -18,6 +18,7 @@ const diagnosticsOnly = process.argv.includes("--diagnostics");
 const startedAt = Date.now();
 let mainWindow;
 let rendererReady = false;
+let deepLinkSubscribed = false;
 const pendingLinks = [];
 
 protocol.registerSchemesAsPrivileged([
@@ -68,7 +69,7 @@ function enqueueLinks(args) {
     log.info("[diagnostics] event=deep_link.received target=" + (link?.type ?? "other"));
     if (link) pendingLinks.push(link);
   }
-  if (rendererReady && pendingLinks.length) {
+  if (deepLinkSubscribed && pendingLinks.length) {
     mainWindow?.webContents.send("desktop:deep-link:opened", pendingLinks.splice(0));
   }
   if (mainWindow) {
@@ -186,6 +187,7 @@ function createWindow() {
     mainWindow.show();
     log.info("[diagnostics] event=webview.page_load status=success elapsed_ms=" + (Date.now() - startedAt));
   });
+  contents.on("did-start-loading", () => { deepLinkSubscribed = false; });
   for (const event of ["maximize", "unmaximize"]) {
     mainWindow.on(event, () => contents.send("desktop:window:state-changed", { maximized: mainWindow.isMaximized() }));
   }
@@ -217,9 +219,13 @@ function registerCoreIpc(registerUpdaterHandlers) {
     if (!Number.isFinite(elapsedMs) || elapsedMs < 0) throw new Error("Invalid elapsed time");
     rendererReady = true;
     log.info("[diagnostics] event=renderer.app_ready status=success elapsed_ms=" + Math.round(elapsedMs));
-    if (pendingLinks.length) mainWindow.webContents.send("desktop:deep-link:opened", pendingLinks.splice(0));
   });
   checkedHandler("desktop:deep-link:pending", () => pendingLinks.splice(0));
+  checkedHandler("desktop:deep-link:subscribe", () => {
+    deepLinkSubscribed = true;
+    if (pendingLinks.length) mainWindow.webContents.send("desktop:deep-link:opened", pendingLinks.splice(0));
+  });
+  checkedHandler("desktop:deep-link:unsubscribe", () => { deepLinkSubscribed = false; });
   checkedHandler("desktop:window:minimize", () => mainWindow.minimize());
   checkedHandler("desktop:window:toggle-maximize", () => mainWindow.isMaximized() ? mainWindow.unmaximize() : mainWindow.maximize());
   checkedHandler("desktop:window:close", () => mainWindow.close());

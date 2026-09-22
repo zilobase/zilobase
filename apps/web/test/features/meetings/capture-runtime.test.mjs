@@ -26,23 +26,33 @@ export function register({ assert, loadModule, test }) {
     const { createNativeMeetingCaptureRuntime } = await loadModule(
       "/src/features/desktop/meetings/native-capture-runtime.ts",
     );
-    const handlers = new Map(),
-      calls = [],
-      removed = [];
+    const handlers = new Map(), removed = [], calls = [];
     const runtime = createNativeMeetingCaptureRuntime({
-      invoke: async (command, args) => {
-        calls.push([command, args]);
-        if (command === "meeting_capture_state")
-          return { meetingId: "meeting", phase: "recording" };
-        if (command === "meeting_capture_list_devices") return [{ id: "mic" }];
-        if (command === "meeting_capture_recoverable_sessions")
-          return [
+      state: async () => ({ meetingId: "meeting", phase: "recording" }),
+      listDevices: async () => [{ id: "mic" }],
+      recoverable: async () => [
             { meetingId: "other" },
             { meetingId: "meeting", audioPath: "local" },
-          ];
-        return { meetingId: "meeting", phase: "recording" };
+          ],
+      refreshTransport: async (...args) => { calls.push(["refresh", args]); },
+      deleteLocal: async (meetingId) => { calls.push(["delete", meetingId]); },
+      onState: (callback) => {
+        const name = "meeting-capture-state";
+        handlers.set(name, callback);
+        return () => removed.push(name);
       },
-      listen: async (name, callback) => {
+      onLevel: (callback) => {
+        const name = "meeting-capture-level";
+        handlers.set(name, callback);
+        return () => removed.push(name);
+      },
+      onWarning: (callback) => {
+        const name = "meeting-capture-warning";
+        handlers.set(name, callback);
+        return () => removed.push(name);
+      },
+      onTranscript: (callback) => {
+        const name = "meeting-capture-transcript";
         handlers.set(name, callback);
         return () => removed.push(name);
       },
@@ -53,7 +63,7 @@ export function register({ assert, loadModule, test }) {
     assert.equal(state.status.meetingId, "meeting");
     assert.deepEqual(state.devices, [{ id: "mic" }]);
     assert.equal(state.recovery.audioPath, "local");
-    const emit = (name, payload) => handlers.get(name)({ payload });
+    const emit = (name, payload) => handlers.get(name)(payload);
     emit("meeting-capture-state", { meetingId: "other", phase: "paused" });
     assert.equal(state.status.phase, "recording");
     emit("meeting-capture-warning", { message: "Device interrupted" });
@@ -82,36 +92,33 @@ export function register({ assert, loadModule, test }) {
     emit("meeting-capture-state", { meetingId: "meeting", phase: "stopped" });
     assert.deepEqual(state.liveTranscripts, []);
     await runtime.refreshTransport("wss://capture.test", "ticket");
-    assert.deepEqual(calls.at(-1), [
-      "meeting_capture_refresh_transport",
-      { audioTicket: "ticket", audioWebsocketUrl: "wss://capture.test" },
-    ]);
+    assert.deepEqual(calls.at(-1), ["refresh", ["wss://capture.test", "ticket"]]);
     await runtime.deleteLocalFile("meeting");
-    assert.deepEqual(calls.at(-1), [
-      "meeting_capture_delete_local_file",
-      { meetingId: "meeting" },
-    ]);
+    assert.deepEqual(calls.at(-1), ["delete", "meeting"]);
     dispose();
     assert.equal(removed.length, 4);
   });
 
-  test("native subscriptions that finish after disposal are immediately released", async () => {
+  test("native capture discards async results after disposal", async () => {
     const { createNativeMeetingCaptureRuntime } = await loadModule(
       "/src/features/desktop/meetings/native-capture-runtime.ts",
     );
-    const resolvers = [],
-      removed = [];
+    const resolvers = [], removed = [];
+    const pending = () => new Promise((resolve) => resolvers.push(resolve));
     const runtime = createNativeMeetingCaptureRuntime({
-      invoke: async (command) =>
-        command === "meeting_capture_state" ? { meetingId: "meeting" } : [],
-      listen: (name) =>
-        new Promise((resolve) =>
-          resolvers.push(() => resolve(() => removed.push(name))),
-        ),
+      state: pending,
+      listDevices: pending,
+      recoverable: pending,
+      onState: () => () => removed.push("state"),
+      onLevel: () => () => removed.push("level"),
+      onWarning: () => () => removed.push("warning"),
+      onTranscript: () => () => removed.push("transcript"),
     });
     const { state, observer } = observedState();
     runtime.observe("meeting", observer)();
-    resolvers.forEach((resolve) => resolve());
+    resolvers[0]({ meetingId: "meeting" });
+    resolvers[1]([{ id: "mic" }]);
+    resolvers[2]([{ meetingId: "meeting" }]);
     await settled();
     assert.equal(state.status, null);
     assert.deepEqual(state.devices, []);

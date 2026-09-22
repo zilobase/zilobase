@@ -3,7 +3,7 @@
 import type { ReactNode } from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { isDesktopApp } from "@/platform/desktop/native"
-import { getCurrentWindow } from "@/platform/desktop/native"
+import { desktopBridge } from "@/platform/desktop/native"
 import { CopyIcon, MinusIcon, SquareIcon, XIcon } from "@/shared/components/icons"
 
 import { cn } from "@/shared/lib/utils"
@@ -23,33 +23,30 @@ export function DesktopWindowTitlebar({
 }) {
   const linuxDesktopApp = isLinuxDesktopApp()
   const [maximized, setMaximized] = useState(false)
-  const appWindow = useMemo(() => getCurrentWindow(), [])
+  const appWindow = useMemo(() => isDesktopApp() ? desktopBridge().window : null, [])
 
   const syncMaximizedState = useCallback(async () => {
-    setMaximized(await appWindow.isMaximized())
+    if (appWindow) setMaximized((await appWindow.getState()).maximized)
   }, [appWindow])
 
   const toggleMaximize = useCallback(async () => {
-    await appWindow.toggleMaximize()
+    await appWindow?.toggleMaximize()
     await syncMaximizedState()
   }, [appWindow, syncMaximizedState])
 
   useEffect(() => {
-    if (!linuxDesktopApp) return
+    if (!linuxDesktopApp || !appWindow) return
 
     let disposed = false
     let unlisten: (() => void) | undefined
 
     const updateMaximizedState = async () => {
-      const nextMaximized = await appWindow.isMaximized()
+      const nextMaximized = (await appWindow.getState()).maximized
       if (!disposed) setMaximized(nextMaximized)
     }
 
     void updateMaximizedState()
-    void appWindow.onResized(() => void updateMaximizedState()).then((stop) => {
-      if (disposed) stop()
-      else unlisten = stop
-    })
+    unlisten = appWindow.onState(() => void updateMaximizedState())
 
     return () => {
       disposed = true
@@ -70,8 +67,7 @@ export function DesktopWindowTitlebar({
         variant === "fallback" ? "" : undefined
       }
       data-desktop-tabs={variant === "tabs" ? "" : undefined}
-      data-tauri-drag-region="deep"
-          data-desktop-drag-region=""
+      data-desktop-drag-region=""
       onMouseDown={(event) => {
         if (
           !linuxDesktopApp ||
@@ -81,9 +77,10 @@ export function DesktopWindowTitlebar({
           return
         }
 
-        event.preventDefault()
-        if (event.detail === 2) void toggleMaximize()
-        else if (event.detail === 1) void appWindow.startDragging()
+        if (event.detail === 2) {
+          event.preventDefault()
+          void toggleMaximize()
+        }
       }}
     >
       {children}
@@ -96,7 +93,7 @@ export function DesktopWindowTitlebar({
           <button
             aria-label="Minimize window"
             className="flex h-full w-10 items-center justify-center text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral"
-            onClick={() => void appWindow.minimize()}
+            onClick={() => void appWindow?.minimize()}
             title="Minimize"
             type="button"
           >
@@ -118,7 +115,7 @@ export function DesktopWindowTitlebar({
           <button
             aria-label="Close window"
             className="flex h-full w-10 items-center justify-center text-content-secondary hover:bg-action-danger hover:text-action-on-danger"
-            onClick={() => void appWindow.close()}
+            onClick={() => void appWindow?.close()}
             title="Close"
             type="button"
           >

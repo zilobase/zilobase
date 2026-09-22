@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { invoke } from "@/platform/desktop/native"
+import { desktopBridge } from "@/platform/desktop/native"
 import { mailApiBasePath, type MailConnection } from "@zilobase/features/mail"
 import { toast } from "sonner"
 
@@ -35,7 +35,7 @@ export function MailConnectionState({ connection, error, loading, onConnected, w
         method: "POST",
       })
       if (isDesktopApp()) {
-        await invoke("open_mail_authorization_url", { authorizationUrl: result.authorizationUrl })
+        await desktopBridge().auth.openMailUrl(result.authorizationUrl)
         toast.info("Finish connecting Gmail in your browser.")
         setPending(false)
       } else window.location.assign(result.authorizationUrl)

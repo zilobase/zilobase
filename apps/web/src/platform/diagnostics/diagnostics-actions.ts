@@ -1,9 +1,9 @@
-import { invoke } from "@/platform/desktop/native"
+import { desktopBridge } from "@/platform/desktop/native"
 
 export function openDesktopDiagnosticsFolder() {
-  return invoke("open_diagnostics_folder")
+  return desktopBridge().diagnostics.openFolder()
 }
 
 export function exportDesktopDiagnostics() {
-  return invoke<string>("export_diagnostics")
+  return desktopBridge().diagnostics.export()
 }

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { calendarApiBasePath, calendarKeys, type CalendarConnection } from "@zilobase/features/calendar";
 import { apiFetch, toApiUrl, getApiErrorMessage } from "@/platform/network/api";
 import { isDesktopApp } from "@/platform/environment";
-import { invoke } from "@/platform/desktop/native";
+import { desktopBridge } from "@/platform/desktop/native";
 import { toast } from "sonner";
 export function useCalendarAccounts(workspaceId: string) {
   const { data: session } = useSession();
@@ -12,7 +12,7 @@ export function useCalendarAccounts(workspaceId: string) {
   const accounts = useQuery({ queryKey: calendarKeys.sources(session?.user?.id ?? "", workspaceId), enabled: Boolean(session?.user?.id), queryFn: ({ signal }) => apiFetch<{ connections: CalendarConnection[]; providerConfigured: boolean }>(`${base}/sources`, { signal }), staleTime: 30_000, refetchInterval: 30_000, retry: false });
   const connect = useMutation({ mutationFn: async () => {
     const { authorizationUrl } = await apiFetch<{ authorizationUrl: string }>(`${base}/connections/google/start`, { method: "POST", body: JSON.stringify({ client: isDesktopApp() ? "desktop" : "web" }) });
-    if (isDesktopApp()) await invoke("open_mail_authorization_url", { authorizationUrl });
+    if (isDesktopApp()) await desktopBridge().auth.openMailUrl(authorizationUrl);
     else window.location.assign(authorizationUrl);
   }, onError: error => toast.error(getApiErrorMessage(error)) });
   const disconnect = useMutation({ mutationFn: async (bindingId: string) => {

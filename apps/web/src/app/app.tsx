@@ -31,7 +31,6 @@ export default function App() {
       <DesktopWindowTitlebar variant="fallback">
         <div
           className="min-w-0 flex-1 self-stretch"
-          data-tauri-drag-region="deep"
           data-desktop-drag-region=""
         />
       </DesktopWindowTitlebar>

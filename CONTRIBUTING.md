@@ -68,7 +68,7 @@ npm run test:selfhost
   runtime mechanisms.
 - `apps/server/src/public`: compatibility entrypoints published by
   `@zilobase/server`.
-- `apps/desktop/src-tauri/src`: native app, auth, diagnostics, meeting, and
+- `apps/desktop/electron/main` and `apps/desktop/electron/sidecar/src`: native app, auth, diagnostics, meeting, and
   server-selection modules.
 - `packages/features`: published queries, mutations, cache behavior, and shared
   domain contracts.

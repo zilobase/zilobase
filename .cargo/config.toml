@@ -1,2 +1,0 @@
-[target.'cfg(target_os = "macos")']
-runner = "scripts/desktop/run-signed-macos-debug.mjs"

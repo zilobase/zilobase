@@ -147,7 +147,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(replacement, /clearIndexedDataForServer/);
     assert.match(controller, /Change server/);
     assert.match(controller, /Cancel/);
-    assert.match(handler, /getCurrent\(\)/);
-    assert.match(handler, /onOpenUrl\(openFirstValidPath\)/);
+    assert.match(handler, /bridge\.getPending\(\)/);
+    assert.match(handler, /bridge\.onOpen\(/);
   });
 }

@@ -4,8 +4,8 @@ export function register({ assert, readSource, readWorkspace, test }) {
       "/src/features/desktop/auth/browser-authorization.ts",
     )
 
-    assert.match(source, /invoke\("start_browser_authorization"\)/)
-    assert.match(source, /invoke\("cancel_browser_authorization"\)/)
+    assert.match(source, /desktopBridge\(\)\.auth\.startBrowser\(\)/)
+    assert.match(source, /desktopBridge\(\)\.auth\.cancelBrowser\(\)/)
     assert.doesNotMatch(source, /zilobase:\/\/auth/)
     assert.doesNotMatch(source, /GOOGLE_DESKTOP_CLIENT/)
   })
@@ -37,7 +37,6 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.match(login, /isDesktopApp\(\)/)
     assert.match(signup, /isDesktopApp\(\)/)
 
-    assert.doesNotMatch(loginForm, /isTauri/)
     assert.doesNotMatch(loginForm, /signInWithDesktopBrowser/)
     assert.match(loginForm, /signInWithGoogle/)
     assert.match(loginForm, /Continue with Google/)
@@ -55,7 +54,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.match(provider, /authFetch\("\/sign-out"/)
     assert.match(provider, /clearApiAuthToken/)
     assert.doesNotMatch(provider, /revokeSessions|signOutAll/)
-    assert.match(token, /invoke\("set_auth_token"/)
+    assert.match(token, /desktopBridge\(\)\.auth\.setToken\(/)
     assert.match(routes, /internalAdapter.createSession/)
     assert.doesNotMatch(routes, /deleteSession|revokeSessions/)
   })
@@ -71,29 +70,12 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.ok(providers > credentials)
   })
 
-  test("packaged self-host handoff accepts signed-out and connection-error startup", async () => {
-    const [source, routeErrorPage, publicRoutes] = await Promise.all([
-      readWorkspace("/apps/desktop/e2e/selfhost.mjs"),
+  test("desktop connection route accepts signed-out and connection-error startup", async () => {
+    const [routeErrorPage, publicRoutes] = await Promise.all([
       readSource("/src/app/routing/route-error-page.tsx"),
       readSource("/src/app/routing/route-groups/public-routes.tsx"),
     ])
 
-    assert.doesNotMatch(
-      source,
-      /h1\[normalize-space\(\)='Continue in your browser'\]/,
-    )
-    assert.match(
-      source,
-      /self::a or self::button.*normalize-space\(\)='Change server'/,
-    )
-    assert.match(
-      source,
-      /browser\.execute\(\(target\) => target\.click\(\), element\)/,
-    )
-    assert.match(source, /browser\.waitUntil/)
-    assert.match(source, /element = await browser\.\$\(selector\)/)
-    assert.match(source, /path: window\.location\.pathname/)
-    assert.doesNotMatch(source, /window\.location\.href/)
     assert.match(routeErrorPage, /navigate\(\{ to: "\/connect" \}\)/)
     assert.doesNotMatch(routeErrorPage, /window\.location\.assign\("\/connect"\)/)
     const connectRoute = publicRoutes.slice(

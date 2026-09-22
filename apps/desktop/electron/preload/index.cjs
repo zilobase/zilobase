@@ -47,7 +47,14 @@ const bridge = {
   },
   deepLinks: {
     getPending: invoke("desktop:deep-link:pending"),
-    onOpen: (callback) => subscribe("desktop:deep-link:opened", callback),
+    onOpen: (callback) => {
+      const stop = subscribe("desktop:deep-link:opened", callback);
+      void call("desktop:deep-link:subscribe").catch(() => {});
+      return () => {
+        stop();
+        void call("desktop:deep-link:unsubscribe").catch(() => {});
+      };
+    },
   },
   diagnostics: {
     rendererReady: (elapsedMs) => call("desktop:diagnostics:renderer-ready", { elapsedMs }),

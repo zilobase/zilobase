@@ -53,7 +53,6 @@ target
 .grok/
 .dev/ai-thread-logs/
 .dev/local/
-apps/desktop/src-tauri/local-resources/
 
 # Mail browser acceptance artifacts
 .dev/mail-e2e-results/

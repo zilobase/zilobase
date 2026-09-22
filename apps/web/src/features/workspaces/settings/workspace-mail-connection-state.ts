@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { useQuery } from "@tanstack/react-query";
-import { invoke } from "@/platform/desktop/native";
+import { desktopBridge } from "@/platform/desktop/native";
 
 import { toast } from "sonner";
 import { useSession } from "@zilobase/features/auth/react";
@@ -46,9 +46,7 @@ export function useWorkspaceMailConnection({
         },
       );
       if (isDesktopApp()) {
-        await invoke("open_mail_authorization_url", {
-          authorizationUrl: result.authorizationUrl,
-        });
+        await desktopBridge().auth.openMailUrl(result.authorizationUrl);
         toast.info("Finish connecting Gmail in your browser.");
         setConnecting(false);
       } else {

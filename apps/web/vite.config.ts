@@ -5,7 +5,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { aiDevTracePlugin } from "./vite/ai-dev-trace-plugin";
 
-const host = process.env.TAURI_DEV_HOST;
+const host = process.env.VITE_DEV_HOST;
 const devPort = readPort(process.env.VITE_DEV_PORT, 1420);
 const hmrPort = readPort(process.env.VITE_HMR_PORT, devPort + 1);
 const viteCacheDir = process.env.ZILOBASE_VITE_CACHE_DIR?.trim();
@@ -137,9 +137,7 @@ export default defineConfig(async () => ({
     ],
   },
 
-  // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
-  //
-  // 1. prevent Vite from obscuring rust errors
+  // Desktop development shares Vite's fixed local port with Electron.
   clearScreen: false,
   build: {
     manifest: true,
@@ -156,7 +154,7 @@ export default defineConfig(async () => ({
       },
     },
   },
-  // 2. tauri expects a fixed port, fail if that port is not available
+  // Electron waits for this port before opening its renderer.
   server: {
     port: devPort,
     strictPort: true,
@@ -212,8 +210,8 @@ export default defineConfig(async () => ({
           }
         : undefined,
     watch: {
-      // 3. tell Vite to ignore watching the desktop shell
-      ignored: ["**/src-tauri/**", "../desktop/src-tauri/**"],
+      // Native sidecar builds should not restart the web development server.
+      ignored: ["../desktop/electron/sidecar/target/**"],
     },
     fs: externalModuleDirectories.length > 0
       ? {
