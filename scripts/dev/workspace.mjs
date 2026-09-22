@@ -59,6 +59,7 @@ export async function startDevelopmentWorkspace() {
       env: process.env,
       stdio: "inherit",
     });
+    coreChild.zilobaseServiceName = "community";
     children.push(coreChild);
     await waitForDevelopmentProvider({
       id: "community",
@@ -75,6 +76,7 @@ export async function startDevelopmentWorkspace() {
         provider,
         withSharedRealtimeRedis(process.env, nodeEnvironment),
       );
+      child.zilobaseServiceName = provider.id;
       children.push(child);
       startedProviders.push(provider);
       await waitForDevelopmentProvider(provider, child);
@@ -118,9 +120,29 @@ export async function startDevelopmentWorkspace() {
     console.info(`Development hub ${dashboard.url}`);
     console.info("Ctrl-C stops every managed runtime and preserves local data.\n");
 
-    const result = await firstExit(children);
-    if (!stopping && result.error) throw result.error;
-    if (!stopping) throw new Error(`Development service exited with ${result.signal ?? result.code}.`);
+    const restarts = new Map();
+    while (!stopping) {
+      const result = await firstExit(children);
+      if (stopping) break;
+      const name = result.child?.zilobaseServiceName ?? "development service";
+      const provider = startedProviders.find((item) => item.id === name);
+      const attempts = restarts.get(name) ?? 0;
+      if (!provider || result.error || attempts >= 3) {
+        const detail = result.error ? result.error.message : (result.signal ?? result.code);
+        throw new Error(`${name} exited with ${detail}.`);
+      }
+      restarts.set(name, attempts + 1);
+      console.warn(`${name} exited with ${result.signal ?? result.code}. Restarting (${attempts + 1}/3).`);
+      const index = children.indexOf(result.child);
+      if (index >= 0) children.splice(index, 1);
+      const replacement = startDevelopmentProvider(
+        provider,
+        withSharedRealtimeRedis(process.env, nodeEnvironment),
+      );
+      replacement.zilobaseServiceName = provider.id;
+      children.push(replacement);
+      await waitForDevelopmentProvider(provider, replacement);
+    }
   } finally {
     await stop();
     for (const [signal, handler] of signalHandlers) process.off(signal, handler);
@@ -152,8 +174,8 @@ export async function launchDevelopmentWorkspace() {
 
 function firstExit(children) {
   return Promise.race(children.map((child) => new Promise((resolve) => {
-    child.once("error", (error) => resolve({ error }));
-    child.once("exit", (code, signal) => resolve({ code, signal }));
+    child.once("error", (error) => resolve({ child, error }));
+    child.once("exit", (code, signal) => resolve({ child, code, signal }));
   })));
 }
 
