@@ -15,8 +15,16 @@ The server allows the exact `zilo-desktop://app` client origin for the Electron 
 The experimental [Electron host](../../apps/desktop/electron/main/index.mjs) creates one sandboxed main window and serves the packaged web build from a standard secure local protocol. Its [preload](../../apps/desktop/electron/preload/index.cjs) exposes the versioned desktop bridge; the [web adapter](../../apps/web/src/platform/desktop/native.ts) routes supported operations to that bridge or the shipped Tauri runtime. Electron [server profiles](../../apps/desktop/electron/main/server.mjs), [browser PKCE](../../apps/desktop/electron/main/oauth.mjs), [encrypted credentials](../../apps/desktop/electron/main/credentials.mjs), [diagnostics](../../apps/desktop/electron/main/diagnostics.mjs), notifications and the [updater](../../apps/desktop/electron/main/updater.mjs) live in main. A small [sidecar](../../apps/desktop/electron/sidecar/src/main.rs) reads and deletes legacy OS keyring entries for migration. [electron-builder.yml](../../apps/desktop/electron-builder.yml) owns platform packaging and macOS helper signing; the [experimental matrix](../../.github/workflows/electron-desktop.yml) smokes unpacked packages without publishing them. Live capture and signed installers remain release gates.
 
 Manual matrix runs also build signed or unsigned installer candidates for review.
-Linux runners install the native D-Bus and audio build dependencies; unsigned
+Linux runners install the native D-Bus, libclang, and audio build dependencies; unsigned
 jobs clear empty certificate variables before packaging.
+Linux packaging pins the executable name to `zilobase-client`; deriving it
+from the scoped workspace package would produce a different launch path.
+Installer filenames also use the unscoped name so DEB and RPM files stay in the
+release directory.
+The Linux desktop entry uses `com.zilobase` for launcher and window association.
+ARM64 Linux candidates emit a separate `latest-linux-arm64.yml` update feed;
+the installer verifier selects the feed for the runner architecture. Linux
+smoke tests use an isolated GNOME Secret Service session for credential checks.
 
 ## Verification
 

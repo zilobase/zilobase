@@ -32,10 +32,21 @@ acceptance. The workflow checks each installer format, update metadata, and the
 bundled native sidecar before uploading short-lived review artifacts. It never
 publishes a GitHub Release or changes the Tauri update feed. The package and
 metadata checks are in `scripts/desktop/verify-electron-candidate.mjs`.
+Set `ZILOBASE_ELECTRON_DIST_DIR` when verifying a local candidate built to a
+temporary output directory, so an existing preview app can remain open.
 Unsigned candidate jobs clear empty signing variables before packaging;
 electron-builder otherwise interprets an empty macOS certificate value as a
-path. Linux runners install the D-Bus development package used by the native
-capture sidecar.
+path. Linux runners install the D-Bus and libclang development packages used
+by the native capture sidecar.
+Linux packages explicitly name the executable `zilobase-client` so unpacked
+builds and desktop launchers match the rest of the desktop release. Installer
+artifact names also use this unscoped name so DEB and RPM files are written to
+the release directory. The Linux desktop entry uses `com.zilobase` to match the
+window class. DEB and RPM metadata use the project homepage and
+`hello@zilobase.com` maintainer address.
+The installer verifier selects `latest-linux-arm64.yml` on ARM64 and
+`latest-linux.yml` on x64. Linux smoke CI starts an isolated GNOME Secret
+Service session so encrypted credential checks exercise a real keyring.
 
 To test server selection against a running compatible self-hosted instance, set
 `ZILOBASE_E2E_SERVER` to its canonical origin and run

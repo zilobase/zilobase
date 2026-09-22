@@ -45,6 +45,9 @@ win:
         - zilobase
 linux:
   icon: src-tauri/icons
+  executableName: zilobase-client
+  artifactName: zilobase-client-${version}-${arch}.${ext}
+  syncDesktopName: true
   category: Office
   protocols:
     - name: Zilobase

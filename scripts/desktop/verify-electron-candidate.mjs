@@ -21,14 +21,16 @@ if (mode === "preflight") {
   process.exit(0);
 }
 
-const root = path.resolve("apps/desktop/dist-electron");
+const root = path.resolve(process.env.ZILOBASE_ELECTRON_DIST_DIR || "apps/desktop/dist-electron");
 const version = JSON.parse(readFileSync("apps/desktop/package.json", "utf8")).version;
 const entries = readdirSync(root);
 const target = process.platform === "darwin"
   ? { extensions: [".dmg", ".pkg", "-mac.zip"], updateFile: "latest-mac.yml", unpacked: "mac" }
   : process.platform === "win32"
     ? { extensions: [".exe", ".msi"], updateFile: "latest.yml", unpacked: "win" }
-    : { extensions: [".AppImage", ".deb", ".rpm"], updateFile: "latest-linux.yml", unpacked: "linux" };
+    : { extensions: [".AppImage", ".deb", ".rpm"],
+      updateFile: process.arch === "arm64" ? "latest-linux-arm64.yml" : "latest-linux.yml",
+      unpacked: "linux" };
 
 for (const extension of target.extensions) {
   const found = entries.find((name) => name.includes(version) && name.endsWith(extension) &&

@@ -1,6 +1,10 @@
 {
   "name": "@zilobase/desktop",
   "version": "0.0.55",
+  "description": "Zilobase desktop client",
+  "homepage": "https://zilobase.com",
+  "author": "Zilobase <hello@zilobase.com>",
+  "desktopName": "com.zilobase",
   "main": "electron/main/index.mjs",
   "license": "MIT",
   "scripts": {
