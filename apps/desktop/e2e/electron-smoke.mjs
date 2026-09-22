@@ -45,6 +45,7 @@ try {
     window.__electronSmokeLink = null;
     window.zilobaseDesktop.deepLinks.onOpen((links) => { window.__electronSmokeLink = links[0]; });
   });
+  await page.evaluate(() => window.zilobaseDesktop.diagnostics.rendererReady(0));
   await promisify(execFile)(executablePath, [
     "zilobase://open?instance=zilobase-cloud&server=https%3A%2F%2Fapi.zilobase.com&path=%2Frecents%3Fprivate%3DSMOKE_LINK_SECRET",
   ], {
@@ -70,7 +71,11 @@ try {
   });
   assert.equal(invalidLocal?.code, "capture_failed");
   assert.match(invalidLocal.message, /Invalid meeting identifier/);
-  await page.evaluate(() => window.zilobaseDesktop.auth.setToken("smoke-test-token"));
+  const tokenWriteError = await page.evaluate(async () => {
+    try { await window.zilobaseDesktop.auth.setToken("smoke-test-token"); return null; }
+    catch (error) { return { code: error.code, message: error.message }; }
+  });
+  assert.equal(tokenWriteError, null, JSON.stringify(tokenWriteError));
   assert.equal(await page.evaluate(() => window.zilobaseDesktop.auth.getToken()), "smoke-test-token");
   await page.evaluate(() => window.zilobaseDesktop.auth.setToken(null));
   await page.evaluate(() => window.zilobaseDesktop.diagnostics.record("smoke.redaction", {

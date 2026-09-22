@@ -70,7 +70,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y dbus-x11 gnome-keyring libasound2-dev libdbus-1-dev libpipewire-0.3-dev libpulse-dev libsecret-tools pkg-config xvfb
+          sudo apt-get install -y dbus-x11 gnome-keyring libasound2-dev libclang-dev libdbus-1-dev libpipewire-0.3-dev libpulse-dev libsecret-tools pkg-config xvfb
       - run: npm ci
       - run: cargo fmt --manifest-path apps/desktop/electron/sidecar/Cargo.toml --check
       - run: cargo clippy --manifest-path apps/desktop/electron/sidecar/Cargo.toml --locked --all-targets -- -D warnings
@@ -89,6 +89,9 @@ jobs:
         run: |
           dbus-run-session -- bash -c '
             set -euo pipefail
+            export XDG_RUNTIME_DIR=$(mktemp -d)
+            chmod 700 "$XDG_RUNTIME_DIR"
+            export XDG_CURRENT_DESKTOP=GNOME
             unset GNOME_KEYRING_CONTROL
             keyring_control=$(mktemp -d)
             keyring_env=$(printf "%s" "zilobase-ci-keyring" | gnome-keyring-daemon --login --components=secrets --control-directory="$keyring_control")
@@ -145,7 +148,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libdbus-1-dev libpipewire-0.3-dev libpulse-dev pkg-config rpm
+          sudo apt-get install -y libasound2-dev libclang-dev libdbus-1-dev libpipewire-0.3-dev libpulse-dev pkg-config rpm
       - run: npm ci
       - run: node scripts/desktop/verify-electron-candidate.mjs preflight
       - name: Build Electron installer candidates
