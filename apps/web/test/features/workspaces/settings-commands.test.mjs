@@ -32,7 +32,7 @@ export function register({ assert, appPath, test }) {
         '@zilobase/features/workspaces/react':'export const useUpdateWorkspace=()=>runtime.update;',
         '@zilobase/features/auth/react':'export const useSession=()=>({data:runtime.session});',
         '@tanstack/react-query':'export const useQuery=()=>runtime.query;',
-        '@tauri-apps/api/core':'export const invoke=(...args)=>runtime.invoke(...args);',
+        '@/platform/desktop/native':'export const invoke=(...args)=>runtime.invoke(...args);',
         '@zilobase/features/mail':'export const mailApiBasePath=id=>`/workspaces/${id}/mail`; export const mailConnectionQueryOptions=()=>({});',
         '@/platform/network/api':'export const apiFetch=(...args)=>runtime.fetch(...args); export const getApiErrorMessage=error=>error.message; export const toApiUrl=()=>"https://api.example.test/";',
         '@/platform/environment':'export const isDesktopApp=()=>runtime.desktop;',
