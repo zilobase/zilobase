@@ -70,7 +70,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y dbus-x11 gnome-keyring libasound2-dev libpipewire-0.3-dev libpulse-dev libsecret-tools pkg-config xvfb
+          sudo apt-get install -y dbus-x11 gnome-keyring libasound2-dev libdbus-1-dev libpipewire-0.3-dev libpulse-dev libsecret-tools pkg-config xvfb
       - run: npm ci
       - run: cargo fmt --manifest-path apps/desktop/electron/sidecar/Cargo.toml --check
       - run: cargo clippy --manifest-path apps/desktop/electron/sidecar/Cargo.toml --locked --all-targets -- -D warnings
@@ -145,10 +145,17 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libpipewire-0.3-dev libpulse-dev pkg-config rpm
+          sudo apt-get install -y libasound2-dev libdbus-1-dev libpipewire-0.3-dev libpulse-dev pkg-config rpm
       - run: npm ci
       - run: node scripts/desktop/verify-electron-candidate.mjs preflight
-      - run: npm run build:electron --workspace @zilobase/desktop -- --publish never
+      - name: Build Electron installer candidates
+        shell: bash
+        run: |
+          if [ "$ZILOBASE_REQUIRE_SIGNING" = "false" ]; then
+            unset CSC_LINK CSC_KEY_PASSWORD CSC_INSTALLER_LINK CSC_INSTALLER_KEY_PASSWORD
+            unset WIN_CSC_LINK WIN_CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          fi
+          npm run build:electron --workspace @zilobase/desktop -- --publish never
       - run: node scripts/desktop/verify-electron-candidate.mjs verify
       - uses: actions/upload-artifact@v4
         with:

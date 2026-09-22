@@ -32,6 +32,10 @@ acceptance. The workflow checks each installer format, update metadata, and the
 bundled native sidecar before uploading short-lived review artifacts. It never
 publishes a GitHub Release or changes the Tauri update feed. The package and
 metadata checks are in `scripts/desktop/verify-electron-candidate.mjs`.
+Unsigned candidate jobs clear empty signing variables before packaging;
+electron-builder otherwise interprets an empty macOS certificate value as a
+path. Linux runners install the D-Bus development package used by the native
+capture sidecar.
 
 To test server selection against a running compatible self-hosted instance, set
 `ZILOBASE_E2E_SERVER` to its canonical origin and run

@@ -14,6 +14,10 @@ The server allows the exact `zilo-desktop://app` client origin for the Electron 
 
 The experimental [Electron host](../../apps/desktop/electron/main/index.mjs) creates one sandboxed main window and serves the packaged web build from a standard secure local protocol. Its [preload](../../apps/desktop/electron/preload/index.cjs) exposes the versioned desktop bridge; the [web adapter](../../apps/web/src/platform/desktop/native.ts) routes supported operations to that bridge or the shipped Tauri runtime. Electron [server profiles](../../apps/desktop/electron/main/server.mjs), [browser PKCE](../../apps/desktop/electron/main/oauth.mjs), [encrypted credentials](../../apps/desktop/electron/main/credentials.mjs), [diagnostics](../../apps/desktop/electron/main/diagnostics.mjs), notifications and the [updater](../../apps/desktop/electron/main/updater.mjs) live in main. A small [sidecar](../../apps/desktop/electron/sidecar/src/main.rs) reads and deletes legacy OS keyring entries for migration. [electron-builder.yml](../../apps/desktop/electron-builder.yml) owns platform packaging and macOS helper signing; the [experimental matrix](../../.github/workflows/electron-desktop.yml) smokes unpacked packages without publishing them. Live capture and signed installers remain release gates.
 
+Manual matrix runs also build signed or unsigned installer candidates for review.
+Linux runners install the native D-Bus and audio build dependencies; unsigned
+jobs clear empty certificate variables before packaging.
+
 ## Verification
 
 The [capture host](../../apps/desktop/electron/main/capture.mjs) supervises a native [audio sidecar](../../apps/desktop/electron/sidecar/src/meetings/capture.rs) for devices, recording, transport, and checkpoint recovery. It uses the same recording directory and serialized artifacts as Tauri.
