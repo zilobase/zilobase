@@ -1,4 +1,4 @@
-name: Experimental Electron desktop
+name: Electron desktop
 
 on:
   workflow_dispatch:
@@ -15,6 +15,7 @@ on:
     paths:
       - "apps/desktop/electron/**"
       - "apps/desktop/electron-builder.yml"
+      - "apps/desktop/icons/**"
       - "apps/desktop/e2e/electron-*.mjs"
       - "apps/desktop/package.json"
       - "apps/web/**"
@@ -26,6 +27,7 @@ on:
     paths:
       - "apps/desktop/electron/**"
       - "apps/desktop/electron-builder.yml"
+      - "apps/desktop/icons/**"
       - "apps/desktop/e2e/electron-*.mjs"
       - "apps/desktop/package.json"
       - "apps/web/**"
@@ -77,6 +79,13 @@ jobs:
       - run: cargo test --manifest-path apps/desktop/electron/sidecar/Cargo.toml --locked
       - run: npm run build --prefix apps/web
       - run: npm run pack:electron --workspace @zilobase/desktop
+      - name: Configure unpacked Linux Chromium sandbox helper
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          helper="$(dirname "$ZILOBASE_DESKTOP_BINARY")/chrome-sandbox"
+          sudo chown root:root "$helper"
+          sudo chmod 4755 "$helper"
       - name: Smoke packaged app (macOS and Windows)
         if: runner.os != 'Linux'
         run: npm run test:electron:smoke --workspace @zilobase/desktop
@@ -158,7 +167,7 @@ jobs:
             unset CSC_LINK CSC_KEY_PASSWORD CSC_INSTALLER_LINK CSC_INSTALLER_KEY_PASSWORD
             unset WIN_CSC_LINK WIN_CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
           fi
-          npm run build:electron --workspace @zilobase/desktop -- --publish never
+          npm run build:electron --workspace @zilobase/desktop
       - run: node scripts/desktop/verify-electron-candidate.mjs verify
       - uses: actions/upload-artifact@v4
         with:
@@ -172,6 +181,7 @@ jobs:
             apps/desktop/dist-electron/*.AppImage
             apps/desktop/dist-electron/*.deb
             apps/desktop/dist-electron/*.rpm
+            apps/desktop/dist-electron/*.blockmap
             apps/desktop/dist-electron/latest*.yml
           if-no-files-found: error
           retention-days: 7

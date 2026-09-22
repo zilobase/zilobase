@@ -12,72 +12,57 @@ jobs:
   desktop:
     name: Desktop package (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Linux
+          - name: linux-x64
             os: ubuntu-24.04
-            bundles: deb,appimage
-          - name: macOS
-            os: macos-latest
-            bundles: app,dmg
-          - name: Windows
-            os: windows-latest
-            bundles: msi,nsis
-
+          - name: linux-arm64
+            os: ubuntu-24.04-arm
+          - name: mac-x64
+            os: macos-15-intel
+          - name: mac-arm64
+            os: macos-15
+          - name: windows-x64
+            os: windows-2022
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+      ZILOBASE_REQUIRE_SIGNING: "false"
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential \
-            libasound2-dev \
-            libayatana-appindicator3-dev \
-            libpipewire-0.3-dev \
-            libpulse-dev \
-            librsvg2-dev \
-            libssl-dev \
-            libwebkit2gtk-4.1-dev \
-            libxdo-dev \
-            patchelf
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Rust build artifacts
-        uses: swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
         with:
-          workspaces: apps/desktop/src-tauri -> target
-
-      - name: Build installable desktop package
-        shell: bash
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
-        run: >-
-          npm run build --workspace @zilobase/desktop --
-          --bundles ${{ matrix.bundles }}
-          --config '{"bundle":{"createUpdaterArtifacts":false}}'
-
-      - name: Upload unsigned nightly package
-        uses: actions/upload-artifact@v4
+          workspaces: apps/desktop/electron/sidecar -> target
+      - name: Install Linux packaging and audio dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libclang-dev libdbus-1-dev libpipewire-0.3-dev libpulse-dev pkg-config rpm
+      - run: npm ci
+      - run: node scripts/desktop/verify-electron-candidate.mjs preflight
+      - run: npm run build --workspace @zilobase/desktop
+      - run: node scripts/desktop/verify-electron-candidate.mjs verify
+      - uses: actions/upload-artifact@v4
         with:
-          name: zilobase-nightly-${{ runner.os }}
-          path: apps/desktop/src-tauri/target/release/bundle
+          name: zilobase-nightly-${{ matrix.name }}
+          path: |
+            apps/desktop/dist-electron/*.dmg
+            apps/desktop/dist-electron/*.pkg
+            apps/desktop/dist-electron/*-mac.zip
+            apps/desktop/dist-electron/*.exe
+            apps/desktop/dist-electron/*.msi
+            apps/desktop/dist-electron/*.AppImage
+            apps/desktop/dist-electron/*.deb
+            apps/desktop/dist-electron/*.rpm
+            apps/desktop/dist-electron/*.blockmap
+            apps/desktop/dist-electron/latest*.yml
           if-no-files-found: error
           retention-days: 7

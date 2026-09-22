@@ -103,17 +103,13 @@ jobs:
             build-essential \
             dbus-x11 \
             gnome-keyring \
-            libayatana-appindicator3-dev \
             libasound2-dev \
+            libclang-dev \
+            libdbus-1-dev \
             libpipewire-0.3-dev \
             libpulse-dev \
             libsecret-tools \
-            librsvg2-dev \
-            libssl-dev \
-            libwebkit2gtk-4.1-dev \
-            libxdo-dev \
-            patchelf \
-            webkit2gtk-driver \
+            pkg-config \
             xvfb
 
       - name: Set up Node.js
@@ -128,50 +124,36 @@ jobs:
       - name: Cache Rust build artifacts
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: apps/desktop/src-tauri -> target
+          workspaces: apps/desktop/electron/sidecar -> target
 
-      - name: Install dependencies and Tauri WebDriver bridge
-        run: |
-          npm ci
-          cargo install tauri-driver --locked
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build production image and start Compose
         run: |
           docker build --tag "$ZILOBASE_SELFHOST_IMAGE" .
           node scripts/selfhost/manage.mjs up --no-build
 
-      - name: Build packaged Debian desktop
+      - name: Build packaged Electron desktop
         env:
           NODE_OPTIONS: --max-old-space-size=4096
-        run: >-
-          npm run build --workspace @zilobase/desktop --
-          --bundles deb
-          --config '{"bundle":{"createUpdaterArtifacts":false}}'
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run pack:electron --workspace @zilobase/desktop
 
-      - name: Extract packaged executable
+      - name: Configure packaged Chromium sandbox
         id: package
         shell: bash
         run: |
-          package_path=$(find apps/desktop/src-tauri/target/release/bundle/deb -name '*.deb' -print -quit)
-          if [ -z "$package_path" ]; then
-            echo "The Tauri Debian package was not created." >&2
-            exit 1
-          fi
-          package_root="$RUNNER_TEMP/zilobase-package"
-          mkdir -p "$package_root"
-          dpkg-deb --extract "$package_path" "$package_root"
-          application=$(find "$package_root" -path '*/usr/bin/zilobase-client' -type f -print -quit)
-          if [ -z "$application" ]; then
-            echo "The packaged desktop executable was not found." >&2
-            exit 1
-          fi
+          application="$GITHUB_WORKSPACE/apps/desktop/dist-electron/linux-unpacked/zilobase-client"
+          test -x "$application"
+          helper="$(dirname "$application")/chrome-sandbox"
+          sudo chown root:root "$helper"
+          sudo chmod 4755 "$helper"
           echo "application=$application" >> "$GITHUB_OUTPUT"
-          echo "package=$package_path" >> "$GITHUB_OUTPUT"
 
       - name: Drive packaged desktop through server selection
         env:
           ZILOBASE_DESKTOP_BINARY: ${{ steps.package.outputs.application }}
-          ZILOBASE_DESKTOP_PACKAGE: ${{ steps.package.outputs.package }}
           ZILOBASE_E2E_SERVER: http://127.0.0.1:18787
           ZILOBASE_E2E_ADDITIONAL_SERVER: ${{ github.event_name == 'schedule' && vars.ZILOBASE_STAGING_SERVER || '' }}
         shell: bash
@@ -180,6 +162,9 @@ jobs:
           # shellcheck disable=SC2016
           dbus-run-session -- bash -c '
             set -euo pipefail
+            export XDG_RUNTIME_DIR=$(mktemp -d)
+            chmod 700 "$XDG_RUNTIME_DIR"
+            export XDG_CURRENT_DESKTOP=GNOME
             unset GNOME_KEYRING_CONTROL
             keyring_control=$(mktemp -d)
             keyring_env=$(printf "%s" "zilobase-ci-keyring" | gnome-keyring-daemon --login --components=secrets --control-directory="$keyring_control")
