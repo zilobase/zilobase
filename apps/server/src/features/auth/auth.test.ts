@@ -15,6 +15,7 @@ describe("browser authentication configuration", () => {
       "https://app.example.com",
       "tauri://localhost",
       "http://tauri.localhost",
+      "zilo-desktop://app",
       "mobile://",
       "mobile://*",
     ]);
