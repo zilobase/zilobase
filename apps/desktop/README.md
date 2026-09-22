@@ -7,11 +7,12 @@ bundled audio sidecar. The web bundle is shared with the browser application.
 
 ## Develop and test
 
-From the repository root, run `npm run dev:desktop` to start a local API and
-Electron, or start the normal stack with `npm run dev` and then use
-`npm run dev:desktop:node` to attach Electron to that Node profile. Both desktop
-commands start Vite on port 1420. The debug default server is
-`http://localhost:3000`; packaged builds default to Zilobase Cloud.
+From the repository root, run `npm run dev:desktop`. It starts the same local
+workspace as `npm run dev`, then opens Electron on the Cloudflare web app at
+port 1422. Zilobase
+Cloud is the local Cloudflare runtime at `http://localhost:3010`. Choose custom
+server lists self-hosted Community and the other local server runtimes.
+Packaged builds default to Zilobase Cloud.
 
 `npm run verify:desktop` runs the audio sidecar's Rust formatting, Clippy and
 unit tests. To build an unsigned local app, build the web bundle and run

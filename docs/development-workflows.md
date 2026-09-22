@@ -85,9 +85,14 @@ not remove unrelated containers, databases, buckets, or Kubernetes clusters.
 
 ## Desktop development
 
-Use `npm run dev:desktop` to start a standalone local API and Electron, or start
-the normal stack first and use `npm run dev:desktop:node` to attach Electron to it.
-Do not run both desktop modes at the same time.
+`npm run dev:desktop` starts the same servers as `npm run dev`, then opens
+Electron on the local Cloudflare web app at `http://localhost:1422`. Do not run it at the same time as
+`npm run dev`; they use the same ports.
+
+In that desktop session, Zilobase Cloud is the local Cloudflare runtime at
+`http://localhost:3010`. **Choose custom server** lists self-hosted Community
+at `http://localhost:3000` and any other local server runtime the workspace
+started. Packaged builds still use `https://api.zilobase.com` for Zilobase Cloud.
 
 ## Kubernetes validation
 

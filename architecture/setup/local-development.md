@@ -2,7 +2,7 @@
 
 The development CLI coordinates dependency containers and local Node processes. [Profile configuration](../../scripts/dev/config.mjs) owns runtime ports, origins, database/bucket identities and generated-state locations. [Environment setup](../../scripts/dev/env.mjs) owns template creation and generated configuration; [process support](../../scripts/dev/process.mjs) owns subprocess shutdown, port availability and log redaction. [Local runtime orchestration](../../scripts/dev/local.mjs) and [Kubernetes orchestration](../../scripts/dev/k8s.mjs) keep their separate lifecycle semantics.
 
-[Desktop profile startup](../../scripts/desktop/profile.mjs) reuses the development configuration and launches the Electron host with Vite. The CLI owns setup/status/logs/down/reset behavior; setup also installs the
+[Desktop development](../../scripts/desktop/dev.mjs) starts the same workspace as `npm run dev` and then launches Electron. The CLI owns setup/status/logs/down/reset behavior; setup also installs the
 path-filtered Git commit and push hooks. The runbook explains when to use each command. Reset commands are destructive operational actions, not refactor verification.
 
 The normal `npm run dev` dependency set includes PostgreSQL, MinIO, Mailpit,

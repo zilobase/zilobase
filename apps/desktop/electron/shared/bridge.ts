@@ -114,6 +114,10 @@ export interface ZilobaseDesktopBridge {
     switch(input: { instanceId: string; apiOrigin: string; workspaceId?: string | null; path?: string | null }): Promise<DesktopServer>;
     updateSnapshot(input: { workspaces: DesktopWorkspaceSnapshot[]; lastActiveWorkspaceId?: string | null; lastPath?: string | null }): Promise<void>;
     remove(input: { instanceId: string; apiOrigin: string }): Promise<DesktopServer>;
+    developmentTargets(): Promise<{
+      cloudApiOrigin: string | null;
+      customServers: Array<{ label: string; url: string }>;
+    }>;
   };
   readonly window: {
     minimize(): Promise<void>;

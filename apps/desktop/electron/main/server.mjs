@@ -101,9 +101,60 @@ async function writeConfig(config) {
   await rename(temporary, file);
 }
 
+function loopbackOrigin(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const trimmed = value.trim();
+    const url = new URL(trimmed);
+    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    if (url.origin !== trimmed.replace(/\/$/, "") || url.username || url.password ||
+        url.protocol !== "http:" || !["localhost", "127.0.0.1", "::1"].includes(hostname)) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+function developmentTargets() {
+  if (app.isPackaged) return { cloudApiOrigin: null, customServers: [] };
+  let customServers = [];
+  try {
+    const parsed = JSON.parse(process.env.ZILOBASE_DESKTOP_DEV_SERVERS || "[]");
+    if (Array.isArray(parsed)) {
+      customServers = parsed.flatMap((item) => {
+        const url = loopbackOrigin(item?.url);
+        const label = typeof item?.label === "string" ? item.label.trim().replace(/\s+/g, " ") : "";
+        return url && label && label.length <= 80 ? [{ label, url }] : [];
+      }).slice(0, 8);
+    }
+  } catch {
+    customServers = [];
+  }
+  return { cloudApiOrigin: loopbackOrigin(process.env.VITE_API_URL), customServers };
+}
+
+async function alignUnpackagedCloud(config) {
+  if (app.isPackaged) return false;
+  const desired = builtInServer();
+  let changed = false;
+  for (const profile of config.profiles) {
+    if (profile.server.instanceId !== "zilobase-dev") continue;
+    if (profile.server.apiOrigin === desired.apiOrigin && profile.server.issuer === desired.issuer &&
+        profile.server.webOrigin === desired.webOrigin) continue;
+    profile.server = desired;
+    changed = true;
+  }
+  if (changed) await writeConfig(config);
+  return changed;
+}
+
 export async function loadConfig() {
   const file = configPath();
-  if (existsSync(file)) return readConfigFile(file);
+  if (existsSync(file)) {
+    const config = await readConfigFile(file);
+    await alignUnpackagedCloud(config);
+    return config;
+  }
   const server = builtInServer();
   const config = { version: 2, active_instance_id: server.instanceId, profiles: [
     { server, workspaces: [] },
@@ -173,6 +224,7 @@ function activeProfile(config) {
 
 export function registerServerHandlers(handle, credentials) {
   handle("desktop:server:initialize", async () => activeServer(await loadConfig()));
+  handle("desktop:server:development-targets", () => developmentTargets());
   handle("desktop:server:prepare", async ({ serverUrl }) => {
     const server = await verifyServer(serverUrl);
     const candidateId = randomBytes(16).toString("hex");

@@ -12,7 +12,7 @@ import { desktopError } from "./server.mjs";
 import { registerCaptureHandlers } from "./capture.mjs";
 
 const RENDERER_ORIGIN = "zilo-desktop://app";
-const DEV_ORIGIN = "http://localhost:1420";
+const DEV_ORIGIN = developmentRendererOrigin();
 const isDevelopment = !app.isPackaged;
 const diagnosticsOnly = process.argv.includes("--diagnostics");
 const startedAt = Date.now();
@@ -29,6 +29,26 @@ protocol.registerSchemesAsPrivileged([
 app.setName("zilobase-client");
 if (process.env.ZILOBASE_E2E_USER_DATA) {
   app.setPath("userData", path.resolve(process.env.ZILOBASE_E2E_USER_DATA));
+}
+
+function developmentRendererOrigin() {
+  const fallback = "http://localhost:1420";
+  const configured = process.env.ZILOBASE_DESKTOP_DEV_ORIGIN?.replace(/\/$/, "");
+  if (!configured) return fallback;
+  try {
+    const url = new URL(configured);
+    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    if (
+      url.origin === configured &&
+      url.protocol === "http:" &&
+      !url.username &&
+      !url.password &&
+      ["localhost", "127.0.0.1", "::1"].includes(hostname)
+    ) return configured;
+  } catch {
+    return fallback;
+  }
+  return fallback;
 }
 
 function parseDeepLink(value) {

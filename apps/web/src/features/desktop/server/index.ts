@@ -1,6 +1,7 @@
 export {
   applyActiveDesktopProfileWorkspace,
   desktopCloudConnectUrl,
+  desktopDevelopmentTargets,
   discoverRuntimeDesktopServer,
   getSelectedDesktopServer,
   initializeDesktopServer,

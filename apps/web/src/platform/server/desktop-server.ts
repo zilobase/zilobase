@@ -43,6 +43,16 @@ export type DesktopServerProfileList = {
   profiles: DesktopServerProfile[]
 }
 
+export type DesktopDevelopmentServer = {
+  label: string
+  url: string
+}
+
+export type DesktopDevelopmentTargets = {
+  cloudApiOrigin: string | null
+  customServers: DesktopDevelopmentServer[]
+}
+
 type DesktopServerFailure = {
   code?: unknown
   message?: unknown
@@ -70,13 +80,32 @@ export const CLOUD_DESKTOP_SERVER: DesktopServer = {
 }
 
 const DEFAULT_DEV_API_ORIGIN = "http://localhost:3000"
+const emptyDevelopmentTargets: DesktopDevelopmentTargets = {
+  cloudApiOrigin: null,
+  customServers: [],
+}
 
 let selectedDesktopServer: DesktopServer | null = null
+let developmentTargets = emptyDevelopmentTargets
 let discoveredRuntimeDesktopServer: DesktopServer | null = null
 let runtimeDiscoveryPromise: Promise<DesktopServer> | null = null
 
+export function desktopDevelopmentTargets() {
+  return developmentTargets
+}
+
 export async function initializeDesktopServer() {
   if (!isDesktopApp()) return null
+
+  if (import.meta.env.DEV) {
+    try {
+      developmentTargets = normalizeDevelopmentTargets(
+        await desktopBridge().server.developmentTargets(),
+      )
+    } catch {
+      developmentTargets = emptyDevelopmentTargets
+    }
+  }
 
   try {
     selectedDesktopServer = validateDesktopServer(
@@ -291,15 +320,67 @@ export function desktopDevelopmentApiOrigin() {
 
 export function desktopCloudConnectUrl(development = import.meta.env.DEV) {
   return development
-    ? desktopDevelopmentApiOrigin()
+    ? developmentCloudOrigin()
     : CLOUD_DESKTOP_SERVER.apiOrigin
+}
+
+function developmentCloudOrigin() {
+  return developmentTargets.cloudApiOrigin ?? desktopDevelopmentApiOrigin()
+}
+
+function normalizeDevelopmentTargets(value: unknown): DesktopDevelopmentTargets {
+  if (!value || typeof value !== "object") return emptyDevelopmentTargets
+  const record = value as {
+    cloudApiOrigin?: unknown
+    customServers?: unknown
+  }
+  const customServers = Array.isArray(record.customServers)
+    ? record.customServers.flatMap((item) => {
+        if (!item || typeof item !== "object") return []
+        const candidate = item as { label?: unknown; url?: unknown }
+        const label =
+          typeof candidate.label === "string"
+            ? candidate.label.trim().replace(/\s+/g, " ")
+            : ""
+        const url = loopbackHttpOrigin(candidate.url)
+        if (!label || label.length > 80 || !url) return []
+        return [{ label, url }]
+      }).slice(0, 8)
+    : []
+  return {
+    cloudApiOrigin: loopbackHttpOrigin(record.cloudApiOrigin),
+    customServers,
+  }
+}
+
+function loopbackHttpOrigin(value: unknown) {
+  if (typeof value !== "string") return null
+  try {
+    const trimmed = value.trim()
+    const url = new URL(trimmed)
+    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "")
+    if (
+      url.origin !== trimmed.replace(/\/$/, "") ||
+      url.username ||
+      url.password ||
+      url.protocol !== "http:" ||
+      (hostname !== "localhost" &&
+        hostname !== "127.0.0.1" &&
+        hostname !== "::1")
+    ) {
+      return null
+    }
+    return url.origin
+  } catch {
+    return null
+  }
 }
 
 export function isDesktopDevelopmentServer(
   server: DesktopServer | null | undefined,
 ) {
   if (!server) return false
-  const origin = desktopDevelopmentApiOrigin()
+  const origin = developmentCloudOrigin()
   const loopback = origin.replace("localhost", "127.0.0.1")
   return (
     server.instanceId === "zilobase-dev" ||

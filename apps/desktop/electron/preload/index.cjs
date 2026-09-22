@@ -36,6 +36,7 @@ const bridge = {
     switch: invoke("desktop:server:switch"),
     updateSnapshot: invoke("desktop:server:update-snapshot"),
     remove: invoke("desktop:server:remove"),
+    developmentTargets: invoke("desktop:server:development-targets"),
   },
   window: {
     minimize: invoke("desktop:window:minimize"),

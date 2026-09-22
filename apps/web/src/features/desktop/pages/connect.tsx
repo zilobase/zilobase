@@ -20,6 +20,7 @@ import {
 } from "@/features/desktop/server/index"
 import { requestDesktopServerReplacement } from "@/features/desktop/server/index"
 import { executeDesktopServerSwitch } from "@/features/desktop/server/index"
+import { DesktopDevCustomServerSelect } from "@/features/desktop/components/desktop-dev-custom-server-select"
 
 export default function ConnectPage() {
   const navigate = useNavigate()
@@ -114,6 +115,15 @@ export default function ConnectPage() {
               </Button>
             </Field>
           ))}
+
+          <DesktopDevCustomServerSelect
+            onSelect={(nextServerUrl) => {
+              requestDesktopServerReplacement({
+                path: "/login",
+                serverUrl: nextServerUrl,
+              })
+            }}
+          />
 
           <FieldSeparator>Or use a hosted server</FieldSeparator>
 

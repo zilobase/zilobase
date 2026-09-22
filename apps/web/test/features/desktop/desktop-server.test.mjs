@@ -124,7 +124,21 @@ export function register({ readSource, assert, loadModule, test }) {
     const source = await readSource("/src/features/desktop/components/desktop-connect-server-dialog.tsx")
 
     assert.match(source, /cloudAlreadySaved \? null/)
+    assert.match(source, /DesktopDevCustomServerSelect/)
     assert.doesNotMatch(source, /Switch to Zilobase Cloud/)
+  })
+
+  test("development custom servers are a dropdown supplied by the desktop host", async () => {
+    const [selector, server] = await Promise.all([
+      readSource("/src/features/desktop/components/desktop-dev-custom-server-select.tsx"),
+      readSource("/src/platform/server/desktop-server.ts"),
+    ])
+
+    assert.match(selector, /Choose custom server/)
+    assert.match(selector, /import\.meta\.env\.DEV/)
+    assert.match(selector, /desktopDevelopmentTargets\(\)/)
+    assert.match(server, /developmentTargets\.cloudApiOrigin/)
+    assert.match(server, /server\.developmentTargets\(\)/)
   })
 
   test("desktop auth picks a server before continuing in the browser", async () => {
@@ -138,6 +152,7 @@ export function register({ readSource, assert, loadModule, test }) {
 
     assert.match(connect, /Choose a server/)
     assert.match(connect, /Use Zilobase Cloud/)
+    assert.match(connect, /DesktopDevCustomServerSelect/)
     assert.match(connect, /desktopCloudConnectUrl/)
     assert.match(connect, /Verify and continue/)
     assert.match(connect, /continue in your browser/)

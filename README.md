@@ -137,8 +137,7 @@ Common commands:
 | `npm run test:web` | Run web tests. |
 | `npm run build:desktop` | Build the Electron desktop app. |
 | `npm run build:clipper` | Build the browser clipper. |
-| `npm run dev:desktop` | Start a standalone local API plus Electron. Do not combine with `dev`. |
-| `npm run dev:desktop:node` | Attach Electron to an already-running `dev` stack. |
+| `npm run dev:desktop` | Start the same local workspace as `dev`, then open Electron. Do not combine with `dev`. |
 | `npm run selfhost:up` | Build and start the loopback-only Compose stack. |
 | `npm run selfhost:logs` | Follow development stack logs. |
 | `npm run selfhost:down` | Stop containers and preserve data volumes. |
@@ -151,9 +150,13 @@ See the [unified local-development guide](./docs/development-workflows.md) for
 runtime URLs, debugger profiles, Kubernetes workflows, dotenvx precedence,
 failure recovery, and safe target-scoped resets.
 
-`npm run dev:desktop` talks to the local API at `http://localhost:3000`. Packaged
-releases default to Zilobase Cloud at `https://api.zilobase.com`. On the server
-screen, choose **Zilobase Cloud** or enter a hosted URL, or use a server's
+`npm run dev:desktop` opens Electron on the local Cloudflare web app at
+`http://localhost:1422`. Zilobase Cloud in that session is the local Cloudflare
+runtime at `http://localhost:3010`. **Choose custom server** lists self-hosted
+Community at `http://localhost:3000` and the other local server runtimes started
+with the workspace. Packaged releases default to Zilobase Cloud at
+`https://api.zilobase.com`. On the server screen, choose **Zilobase Cloud** or
+enter a hosted URL, or use a server's
 `zilobase://connect` link. Server metadata is stored in the operating system
 application-config directory; session credentials remain in the system keyring
 and are scoped to the saved instance. Custom servers require trusted HTTPS,

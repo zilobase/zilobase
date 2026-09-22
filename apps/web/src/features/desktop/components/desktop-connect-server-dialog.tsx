@@ -29,6 +29,7 @@ import {
   type DesktopServerProfile,
 } from "../../../platform/server/desktop-server"
 import { executeDesktopServerSwitch } from "../server/desktop-server-switch"
+import { DesktopDevCustomServerSelect } from "./desktop-dev-custom-server-select"
 
 export function DesktopConnectServerDialog({
   onOpenChange,
@@ -38,7 +39,7 @@ export function DesktopConnectServerDialog({
   open: boolean
 }) {
   const [serverUrl, setServerUrl] = React.useState("")
-  const [pending, setPending] = React.useState<"cloud" | "url" | null>(null)
+  const [pending, setPending] = React.useState<"cloud" | "url" | "custom" | null>(null)
   const [error, setError] = React.useState<string | null>(null)
   const [profiles, setProfiles] = React.useState<DesktopServerProfile[]>([])
 
@@ -61,8 +62,11 @@ export function DesktopConnectServerDialog({
     isCloudDesktopServer(profile.server),
   )
 
-  const connect = async (nextServerUrl: string) => {
-    setPending(nextServerUrl === desktopCloudConnectUrl() ? "cloud" : "url")
+  const connect = async (
+    nextServerUrl: string,
+    source: "url" | "custom" = "url",
+  ) => {
+    setPending(nextServerUrl === desktopCloudConnectUrl() ? "cloud" : source)
     setError(null)
     try {
       const prepared = await prepareDesktopServerCandidate(nextServerUrl)
@@ -110,20 +114,26 @@ export function DesktopConnectServerDialog({
         </DialogHeader>
         <FieldGroup className="py-2">
           {cloudAlreadySaved ? null : (
-            <>
-              <Field>
-                <Button
-                  disabled={pending !== null}
-                  onClick={() => void connect(desktopCloudConnectUrl())}
-                  type="button"
-                >
-                  {pending === "cloud"
-                    ? "Connecting..."
-                    : "Use Zilobase Cloud"}
-                </Button>
-              </Field>
-              <FieldSeparator>Or use a hosted server</FieldSeparator>
-            </>
+            <Field>
+              <Button
+                disabled={pending !== null}
+                onClick={() => void connect(desktopCloudConnectUrl())}
+                type="button"
+              >
+                {pending === "cloud"
+                  ? "Connecting..."
+                  : "Use Zilobase Cloud"}
+              </Button>
+            </Field>
+          )}
+          <DesktopDevCustomServerSelect
+            disabled={pending !== null}
+            onSelect={(nextServerUrl) => {
+              void connect(nextServerUrl, "custom")
+            }}
+          />
+          {cloudAlreadySaved ? null : (
+            <FieldSeparator>Or use a hosted server</FieldSeparator>
           )}
           <form
             className="grid gap-4"
