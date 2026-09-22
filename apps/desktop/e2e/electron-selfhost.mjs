@@ -18,7 +18,7 @@ try {
   await mkdir(diagnosticsDirectory, { recursive: true });
   desktop = await _electron.launch({
     executablePath,
-    env: { ...process.env, ZILOBASE_E2E_USER_DATA: userData, ZILOBASE_E2E_DISABLE_LEGACY: "1" },
+    env: { ...process.env, ZILOBASE_E2E_USER_DATA: userData },
     timeout: 30_000,
   });
   desktop.process().stdout?.on("data", (chunk) => process.stdout.write(chunk));

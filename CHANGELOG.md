@@ -372,7 +372,6 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 ### Fixed
 
 - Fixed desktop authorization consent redirects and callback validation for loopback clients without weakening the page's content security policy.
-- Fixed Tauri development builds so selecting a self-hosted server no longer falls back to the compiled Cloud API origin.
 - Preserved rapid page-title edits and stabilized desktop tab dragging.
 - Repaired self-host CI workflow contexts, backup ownership, and headless keyring initialization so deployment and packaged-desktop gates complete reliably.
 
@@ -464,8 +463,6 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 ### Fixed
 
-- Made Linux AppImage releases resilient to transient GitHub download failures by prefetching Tauri's architecture-specific packaging tools with bounded retries.
-- Reused the project-local Tauri tools directory across packaging steps so verified helpers are not downloaded again during the release build.
 
 ## 0.0.21
 

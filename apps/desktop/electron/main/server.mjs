@@ -1,8 +1,7 @@
 import { app } from "electron";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
-import { copyFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import semver from "semver";
 
@@ -21,15 +20,6 @@ function configName() {
 
 function configPath() {
   return path.join(app.getPath("userData"), configName());
-}
-
-function legacyConfigPath() {
-  const base = process.platform === "darwin"
-    ? path.join(os.homedir(), "Library", "Application Support")
-    : process.platform === "win32"
-      ? process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming")
-      : process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
-  return path.join(base, "com.zilobase", configName());
 }
 
 function builtInServer() {
@@ -114,14 +104,6 @@ async function writeConfig(config) {
 export async function loadConfig() {
   const file = configPath();
   if (existsSync(file)) return readConfigFile(file);
-  const legacy = legacyConfigPath();
-  if (!(process.env.ZILOBASE_E2E_USER_DATA && process.env.ZILOBASE_E2E_DISABLE_LEGACY === "1") &&
-      legacy !== file && existsSync(legacy)) {
-    const config = await readConfigFile(legacy);
-    await writeConfig(config);
-    await copyFile(legacy, file + ".legacy-backup");
-    return config;
-  }
   const server = builtInServer();
   const config = { version: 2, active_instance_id: server.instanceId, profiles: [
     { server, workspaces: [] },

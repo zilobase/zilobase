@@ -13,9 +13,7 @@ describe("browser authentication configuration", () => {
     ).toEqual([
       "https://api.example.com",
       "https://app.example.com",
-      "tauri://localhost",
-      "http://tauri.localhost",
-      "zilo-desktop://app",
+          "zilo-desktop://app",
       "mobile://",
       "mobile://*",
     ]);

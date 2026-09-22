@@ -53,8 +53,6 @@ function boundedPositiveInteger(env: RuntimeEnv, key: string, fallback: number, 
 }
 
 const DESKTOP_CLIENT_ORIGINS = [
-  "tauri://localhost",
-  "http://tauri.localhost",
   "zilo-desktop://app",
 ] as const;
 

@@ -41,12 +41,7 @@ ARM64. It requires signed candidates, assembles Electron update feeds and
 uploads installers to a draft, publishing it only after every desktop build
 and feed assembly passes. macOS automatic
 updates use ZIP metadata; Windows uses NSIS; Linux uses AppImage. PKG, MSI,
-DEB and RPM are manual installation formats. The release also retains the
-last signed Tauri `latest.json` feed for installed legacy clients; this keeps
-their updater endpoint valid but does **not** automatically replace them with
-Electron. Existing Tauri users must install Electron manually until a
-separately validated bridge release is available. Do not publish the cutover
-as a seamless upgrade.
+DEB and RPM are manual installation formats.
 
 Configure these GitHub Actions secrets before a signed candidate or release:
 
@@ -59,20 +54,15 @@ Configure these GitHub Actions secrets before a signed candidate or release:
 
 `APPLE_CERTIFICATE` and `APPLE_INSTALLER_CERTIFICATE` must include their private
 keys. Encode a `.p12` with `openssl base64 -A -in certificate.p12 -out
-certificate-base64.txt`; put the output in the corresponding secret. The
-Tauri minisign key is used only to authenticate older Tauri updates and cannot
-sign Electron releases. Signed candidates must pass the verifier, packaged
+certificate-base64.txt`; put the output in the corresponding secret.
+
+Signed candidates must pass the verifier, packaged
 OAuth tests, live microphone/system-audio capture and recovery, and update
 installation on every supported OS before publishing.
 
-The new runtime keeps the same `com.zilobase` identity, profile configuration
-format, local recording artifacts and scoped keyring account names. The
-[credential adapter](electron/main/credentials.mjs) imports old keyring entries
-through the bundled sidecar, then encrypts them with Electron `safeStorage`.
-On Linux, a plaintext or unavailable secret-store backend fails closed.
-Removing a server deletes both legacy and new scoped credentials. Keep the two
-Tauri client origins on the server allowlist while old installations remain in
-use.
+Credential files are scoped to each server and encrypted with Electron
+`safeStorage`. On Linux, a plaintext or unavailable secret-store backend fails
+closed. Recordings are stored under Electron user data.
 
 ## Authentication and server links
 

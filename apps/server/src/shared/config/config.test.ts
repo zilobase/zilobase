@@ -126,7 +126,7 @@ test("client origins are normalized, selected, and required", () => {
 test("canonical public origins are normalized and reject unsafe URL components", () => {
   const env = {
     BETTER_AUTH_URL: "https://API.Example.com:443/",
-    CLIENT_URL: "https://app.example.com/,tauri://localhost",
+    CLIENT_URL: "https://app.example.com/,zilo-desktop://app",
   };
 
   assert.equal(getCanonicalApiOrigin(env), "https://api.example.com");
@@ -142,7 +142,6 @@ test("canonical public origins are normalized and reject unsafe URL components",
     "https://example.com/subpath",
     "https://example.com?server=other",
     "https://example.com#fragment",
-    "tauri://localhost",
     "not a URL",
   ]) {
     assert.throws(() => getCanonicalHttpOrigin(origin), Error, origin);
@@ -154,10 +153,7 @@ test("allowed origins include configured clients and local Expo development", ()
 
   assert.equal(isAllowedClientOrigin(env, null), false);
   assert.equal(isAllowedClientOrigin(env, "https://app.example.com"), true);
-  assert.equal(isAllowedClientOrigin(env, "tauri://localhost"), true);
-  assert.equal(isAllowedClientOrigin(env, "http://tauri.localhost"), true);
   assert.equal(isAllowedClientOrigin(env, "zilo-desktop://app"), true);
-  assert.equal(isAllowedClientOrigin(env, "tauri://attacker"), false);
   assert.equal(isAllowedClientOrigin(env, "zilo-desktop://attacker"), false);
   assert.equal(isAllowedClientOrigin(env, "zilo-desktop://app.attacker"), false);
   assert.equal(isAllowedClientOrigin(env, "not a URL"), false);
@@ -193,8 +189,6 @@ test("trusted origins add development clients only for local requests", () => {
   assert.deepEqual(production, [
     "https://api.example.com",
     "https://app.example.com",
-    "tauri://localhost",
-    "http://tauri.localhost",
     "zilo-desktop://app",
     "mobile://",
     "mobile://*",

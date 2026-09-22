@@ -1,7 +1,6 @@
 import { app, shell, systemPreferences } from "electron";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { desktopError } from "./server.mjs";
 
@@ -28,13 +27,6 @@ function binaryPath() {
     : path.join(app.getAppPath(), "electron", "bin", name);
 }
 
-function legacyLocalData() {
-  if (process.env.ZILOBASE_E2E_USER_DATA) return path.resolve(process.env.ZILOBASE_E2E_USER_DATA);
-  if (process.platform === "darwin") return path.join(os.homedir(), "Library", "Application Support", "com.zilobase");
-  if (process.platform === "win32") return path.join(process.env.LOCALAPPDATA || app.getPath("userData"), "com.zilobase");
-  return path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share"), "com.zilobase");
-}
-
 function rejectPending() {
   for (const { reject, timer } of requests.values()) {
     clearTimeout(timer);
@@ -47,7 +39,7 @@ function startProcess(emit) {
   if (child && !child.killed) return child;
   const binary = binaryPath();
   if (!existsSync(binary)) throw desktopError("capture_unavailable", "The audio capture helper is unavailable.");
-  const worker = spawn(binary, ["--capture-service", legacyLocalData()], {
+  const worker = spawn(binary, ["--capture-service", app.getPath("userData")], {
     stdio: ["pipe", "pipe", "ignore"],
   });
   child = worker;

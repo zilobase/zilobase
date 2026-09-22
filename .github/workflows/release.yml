@@ -313,13 +313,6 @@ jobs:
       - name: Assemble platform update feeds
         shell: bash
         run: node scripts/desktop/assemble-electron-release.mjs "$RUNNER_TEMP/electron-candidates" "$RUNNER_TEMP/electron-release"
-      - name: Preserve installed Tauri clients' last signed update feed
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          gh release download v0.0.55 -p latest.json -D "$RUNNER_TEMP/electron-release"
-          node -e 'const f=require("fs");const feed=JSON.parse(f.readFileSync(process.argv[1],"utf8"));if(feed.version!=="0.0.55")process.exit(1)' "$RUNNER_TEMP/electron-release/latest.json"
       - name: Publish Electron installers and update feeds
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

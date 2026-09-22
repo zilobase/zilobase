@@ -10,26 +10,21 @@ integration is disabled. Main validates IPC sender frame and origin, enforces a
 CSP and permits only approved renderer permissions and navigation.
 
 [Server profiles](../../apps/desktop/electron/main/server.mjs) preserve version 2
-configuration, scoped snapshots, verified candidates and discovery rules. The
-server accepts the Electron `zilo-desktop://app` origin. It also accepts the two
-legacy Tauri origins for already installed clients; remove those only after a
-separate client retirement decision. Server replacement clears credentials and
-renderer state through the [desktop integration flow](../features/desktop/README.md).
+configuration, scoped snapshots, verified candidates and discovery rules.
+The server accepts the Electron `zilo-desktop://app` origin. Server replacement
+clears credentials and renderer state through the [desktop integration flow](../features/desktop/README.md).
 
 [Browser PKCE](../../apps/desktop/electron/main/oauth.mjs) uses a loopback
 listener and the system browser. [Credentials](../../apps/desktop/electron/main/credentials.mjs)
-use Electron `safeStorage`; the [sidecar](../../apps/desktop/electron/sidecar/src/main.rs)
-imports and deletes instance-scoped legacy keyring entries. [Diagnostics](../../apps/desktop/electron/main/diagnostics.mjs)
+use Electron `safeStorage`. [Diagnostics](../../apps/desktop/electron/main/diagnostics.mjs)
 filter renderer events and create bounded log archives. [Updates](../../apps/desktop/electron/main/updater.mjs)
 read Electron Builder feeds. The [release workflow](../../.github/workflows/release.yml)
-packages signed installers and assembles those feeds. The retained legacy
-`latest.json` keeps old clients' updater endpoint valid but does not upgrade a
-Tauri installation to Electron automatically.
+packages signed installers and assembles those feeds.
 
 [Meeting capture main](../../apps/desktop/electron/main/capture.mjs) validates
 requests and supervises the [native audio sidecar](../../apps/desktop/electron/sidecar/src/meetings/mod.rs).
-The sidecar keeps recording directories and checkpoint formats compatible with
-previous desktop versions. [Native lifecycle](../features/desktop/native-lifecycle.md)
+The sidecar stores recording directories and checkpoint files under Electron
+user data. [Native lifecycle](../features/desktop/native-lifecycle.md)
 describes each boundary in detail.
 
 ## Verification

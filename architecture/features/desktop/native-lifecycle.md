@@ -13,8 +13,7 @@ web features from the bridge.
 [Server profiles](../../../apps/desktop/electron/main/server.mjs) own version 2
 configuration, discovery, active-instance matching, workspace snapshots and
 verified candidate expiry. Development and packaged builds use separate
-filenames. The adapter imports an existing config once from the old location,
-then writes atomically under Electron user data. Discovery rejects redirects,
+filenames. Configuration is written atomically under Electron user data. Discovery rejects redirects,
 large responses and unsupported protocol/minimum versions; non-loopback origins
 must use HTTPS. Removing a profile deletes its scoped credentials first.
 
@@ -24,9 +23,7 @@ must use HTTPS. Removing a profile deletes its scoped credentials first.
 PKCE attempt at a time with an ephemeral loopback listener, state and issuer
 checks, cancellation and token exchange. The system browser handles the server
 login. [Credential storage](../../../apps/desktop/electron/main/credentials.mjs)
-uses `safeStorage` for scoped token and owner values and the
-[legacy sidecar](../../../apps/desktop/electron/sidecar/src/main.rs) to read and
-delete old OS keyring entries. Linux plaintext storage backends fail closed.
+uses `safeStorage` for scoped token and owner values. Linux plaintext storage backends fail closed.
 [Desktop integration](README.md) describes sign-out and server replacement
 ordering.
 
@@ -45,7 +42,7 @@ protocol registration, icons, installers and macOS hardened runtime.
 requests and supervises the bundled sidecar with bounded messages and
 timeouts. The [sidecar](../../../apps/desktop/electron/sidecar/src/meetings/mod.rs)
 owns CPAL devices, 24 kHz mixing, transport, WAV checkpointing and recovery.
-It retains the previous recording directory and serialized artifacts.
+It stores recordings under Electron user data.
 
 ## Verification
 

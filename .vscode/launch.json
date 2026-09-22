@@ -40,7 +40,7 @@
       "webRoot": "${workspaceFolder:zilobase}/apps/web"
     },
     {
-      "name": "Tauri: Node backend",
+      "name": "Electron: Node backend",
       "type": "node-terminal",
       "request": "launch",
       "command": "npm run dev:desktop:node",
@@ -54,7 +54,7 @@
     },
     {
       "name": "Debug: Node desktop",
-      "configurations": ["Attach: Node API", "Tauri: Node backend"]
+      "configurations": ["Attach: Node API", "Electron: Node backend"]
     }
   ]
 }

@@ -77,7 +77,7 @@ try {
     executablePath,
     env: {
       ...process.env, ZILOBASE_E2E_USER_DATA: userData,
-      ZILOBASE_E2E_DISABLE_LEGACY: "1", ZILOBASE_E2E_CAPTURE_BROWSER_URL: "1",
+      ZILOBASE_E2E_CAPTURE_BROWSER_URL: "1",
     },
     timeout: 30_000,
   });

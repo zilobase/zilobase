@@ -14,7 +14,7 @@ let desktop;
 try {
   desktop = await _electron.launch({
     executablePath,
-    env: { ...process.env, ZILOBASE_E2E_USER_DATA: userData, ZILOBASE_E2E_DISABLE_LEGACY: "1" },
+    env: { ...process.env, ZILOBASE_E2E_USER_DATA: userData },
     timeout: 30_000,
   });
   desktop.process().stdout?.on("data", (chunk) => process.stdout.write(chunk));
@@ -49,7 +49,7 @@ try {
   await promisify(execFile)(executablePath, [
     "zilobase://open?instance=zilobase-cloud&server=https%3A%2F%2Fapi.zilobase.com&path=%2Frecents%3Fprivate%3DSMOKE_LINK_SECRET",
   ], {
-    env: { ...process.env, ZILOBASE_E2E_USER_DATA: userData, ZILOBASE_E2E_DISABLE_LEGACY: "1" },
+    env: { ...process.env, ZILOBASE_E2E_USER_DATA: userData },
     timeout: 15_000,
   });
   await page.waitForFunction(() => window.__electronSmokeLink?.type === "open", null, { timeout: 10_000 });
@@ -92,7 +92,7 @@ try {
   desktop = null;
   const { stdout } = await promisify(execFile)(executablePath, ["--diagnostics"], {
     cwd: userData,
-    env: { ...process.env, ZILOBASE_E2E_USER_DATA: userData, ZILOBASE_E2E_DISABLE_LEGACY: "1" },
+    env: { ...process.env, ZILOBASE_E2E_USER_DATA: userData },
     timeout: 15_000,
   });
   const cliArchive = stdout.trim().split(/\r?\n/).find((line) =>

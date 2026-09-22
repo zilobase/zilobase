@@ -135,10 +135,10 @@ Common commands:
 | `npm run dev:status` | Inspect dependency and runtime health. |
 | `npm run build` | Type-check and build the web client and server. |
 | `npm run test:web` | Run web tests. |
-| `npm run build:desktop` | Build the Tauri desktop app. |
+| `npm run build:desktop` | Build the Electron desktop app. |
 | `npm run build:clipper` | Build the browser clipper. |
-| `npm run dev:desktop` | Start a standalone local API plus Tauri. Do not combine with `dev`. |
-| `npm run dev:desktop:node` | Attach Tauri to an already-running `dev` stack. |
+| `npm run dev:desktop` | Start a standalone local API plus Electron. Do not combine with `dev`. |
+| `npm run dev:desktop:node` | Attach Electron to an already-running `dev` stack. |
 | `npm run selfhost:up` | Build and start the loopback-only Compose stack. |
 | `npm run selfhost:logs` | Follow development stack logs. |
 | `npm run selfhost:down` | Stop containers and preserve data volumes. |
@@ -181,7 +181,7 @@ zilobase/
 |-- apps/
 |   |-- web       # Vite React web client
 |   |-- server    # Hono API, auth, persistence, AI, and realtime
-|   `-- desktop   # Tauri desktop shell
+|   `-- desktop   # Electron desktop shell
 |-- packages/
 |   |-- features  # Shared client feature hooks and cache logic
 |   |-- page-context

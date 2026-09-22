@@ -49,7 +49,7 @@ test("production CORS allows only the exact desktop webview origins", async () =
   const app = corsApp();
   const env = { CLIENT_URL: "https://app.example.com" };
 
-  for (const origin of ["tauri://localhost", "http://tauri.localhost", "zilo-desktop://app"]) {
+  for (const origin of ["zilo-desktop://app"]) {
     const response = await app.request(
       "https://api.example.com/",
       { headers: { origin } },
@@ -60,7 +60,7 @@ test("production CORS allows only the exact desktop webview origins", async () =
 
   const rejected = await app.request(
     "https://api.example.com/",
-    { headers: { origin: "tauri://attacker" } },
+    { headers: { origin: "zilo-desktop://attacker" } },
     env,
   );
   assert.equal(rejected.headers.has("access-control-allow-origin"), false);
