@@ -233,7 +233,7 @@ function SidebarNavRow({
                 type="button"
                 variant="disclosure"
               >
-                <ChevronRightIcon />
+                <ChevronRightIcon weight="fill" />
                 <span className="sr-only">
                   {expanded ? "Collapse" : "Expand"} {displayName}
                 </span>

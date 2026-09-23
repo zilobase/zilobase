@@ -267,7 +267,7 @@ export function NavPageSection({
                     type="button"
                     variant="disclosure"
                   >
-                    <ChevronRightIcon />
+                    <ChevronRightIcon weight="fill" />
                     <span className="sr-only">
                       {sectionOpen ? "Collapse" : "Expand"}{" "}
                       {teamspace.name}
