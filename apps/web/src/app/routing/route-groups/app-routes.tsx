@@ -1,4 +1,4 @@
-import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
+import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { isFeatureEnabled } from "@/shared/config/feature-flags";
 import { appRoute } from "../route-roots";
 import { validateCalendarSearch, validateAiSearch, validateLibrarySearch, validateMailSearch } from "../search-validators";
@@ -43,6 +43,8 @@ export const appRoutes = [
   createRoute({
     getParentRoute: () => appRoute,
     path: "/trash",
-    component: lazyRouteComponent(() => import("@/features/library/screens/trash")),
+    beforeLoad: () => {
+      throw redirect({ search: { view: "trash" }, to: "/recents" });
+    },
   }),
 ];

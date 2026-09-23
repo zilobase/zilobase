@@ -42,6 +42,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.equal(isShortcutActive(shortcut({ type: "library", view: "meetings" }), "/recents", { view: "meetings" }), true)
     assert.equal(isShortcutActive(shortcut({ type: "library", view: "recents" }), "/recents", { view: "meetings" }), false)
+    assert.equal(isShortcutActive(shortcut({ type: "library", view: "trash" }), "/recents", { view: "trash" }), true)
     assert.equal(isShortcutActive(shortcut({ type: "route", route: "meetings" }), "/recents", { view: "meetings" }), true)
     assert.equal(isShortcutActive(shortcut({ type: "route", route: "tasks" }), "/tasks", {}), true)
     assert.equal(isShortcutActive(shortcut({ type: "route", route: "settings" }), "/recents", {}, true), true)

@@ -7,6 +7,7 @@ export const libraryViewIds = [
   "shared",
   "teamspaces",
   "private",
+  "trash",
 ] as const
 
 export const mailViewIds = [
@@ -103,7 +104,7 @@ const defaultShortcuts: SidebarShortcut[] = [
   { id: "default-meetings", target: { route: "meetings", type: "route" } },
   { id: "default-tasks", target: { route: "tasks", type: "route" } },
   { id: "default-library", target: { type: "library", view: "recents" } },
-  { id: "default-trash", target: { route: "trash", type: "route" } },
+  { id: "default-trash", target: { type: "library", view: "trash" } },
 ]
 
 const defaultAiShortcuts: SidebarShortcut[] = [
@@ -294,7 +295,9 @@ function normalizeShortcut(value: unknown): SidebarShortcut | null {
 
   if (target.type === "action" && isIncluded(target.action, ["composeMail", "createPage", "createDatabase", "createChat"] as const)) {
     normalizedTarget = { action: target.action, type: "action" }
-  } else if (target.type === "route" && isIncluded(target.route, ["ai", "meetings", "tasks", "trash", "settings"] as const)) {
+  } else if (target.type === "route" && target.route === "trash") {
+    normalizedTarget = { type: "library", view: "trash" }
+  } else if (target.type === "route" && isIncluded(target.route, ["ai", "meetings", "tasks", "settings"] as const)) {
     normalizedTarget = { route: target.route, type: "route" }
   } else if (target.type === "library" && isIncluded(target.view, libraryViewIds)) {
     normalizedTarget = { type: "library", view: target.view }

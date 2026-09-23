@@ -99,6 +99,7 @@ export function register({ assert, loadModule, test }) {
   test("library view filters retain separate favourite, shared, private and teamspace decisions", async () => {
     const { applyHomepageView } = await load();
     const rows = [
+      { id: "teamspace-root", itemKind: "teamspace", teamspaceId: "team" },
       {
         id: "private",
         itemKind: "page",
@@ -126,7 +127,7 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(ids("favourites"), ["private", "team"]);
     assert.deepEqual(ids("shared"), ["shared"]);
     assert.deepEqual(ids("private"), ["private"]);
-    assert.deepEqual(ids("teamspaces"), ["team"]);
+    assert.deepEqual(ids("teamspaces"), ["teamspace-root", "team"]);
   });
   test("library hierarchy promotes missing parents and orders children inside their teamspace", async () => {
     const { buildTeamspaceLibraryRows } = await load();
@@ -164,6 +165,110 @@ export function register({ assert, loadModule, test }) {
       ],
     );
   });
+  test("Library tabs nest descendants and Teamspaces uses teamspace parent rows", async () => {
+    const {
+      buildHomepageRows,
+      buildHomepageViewData,
+      libraryParentPropertyId,
+    } = await load();
+    const { deriveDatabaseViewModel } = await loadModule(
+      "/src/features/databases/views/model/database-view-model.ts",
+    );
+    const page = (id, parentPageId, isFavorite) => ({
+      id,
+      name: id,
+      createdAt: "2026-09-01",
+      updatedAt: "2026-09-02",
+      workspaceId: "workspace",
+      type: "page",
+      teamspaceId: "team-a",
+      parentPageId,
+      isFavorite,
+    });
+    const teamspace = (id) => ({
+      id,
+      name: id,
+      workspaceId: "workspace",
+      createdAt: "2026-09-01",
+      updatedAt: "2026-09-02",
+      archivedAt: null,
+      icon: null,
+    });
+    const rows = buildHomepageRows({
+      pages: [
+        page("parent", null, true),
+        page("child", "parent", false),
+        page("grandchild", "child", false),
+        page("sibling", "parent", false),
+      ],
+      databases: [],
+      placements: [
+        {
+          id: "child-placement",
+          itemKind: "page",
+          itemId: "child",
+          parentKind: "page",
+          parentId: "parent",
+          placementKind: "primary",
+          position: 2,
+        },
+        {
+          id: "sibling-placement",
+          itemKind: "page",
+          itemId: "sibling",
+          parentKind: "page",
+          parentId: "parent",
+          placementKind: "primary",
+          position: 1,
+        },
+      ],
+    }, [], [], "home", [teamspace("team-a"), teamspace("empty")]);
+    const subItems = {
+      display: "nested",
+      enabled: true,
+      filter: "parents-only",
+      parentPropertyId: libraryParentPropertyId,
+      property: "parent-item",
+    };
+    const viewConfigs = {
+      favourites: { subItems },
+      teamspaces: { subItems },
+    };
+    const viewData = (activeViewId) => buildHomepageViewData({
+      activeViewId,
+      databaseConfig: {},
+      mode: "home",
+      workspaceId: "workspace",
+      propertyConfigs: {},
+      rows,
+      viewConfigs,
+    });
+    const teamspaceModel = deriveDatabaseViewModel({
+      activeViewId: "teamspaces",
+      viewData: viewData("teamspaces"),
+    });
+    assert.deepEqual(teamspaceModel.sortedItems.map((row) => row.id), [
+      "teamspace:team-a",
+      "page:parent",
+      "page:sibling",
+      "page:child",
+      "page:grandchild",
+      "teamspace:empty",
+    ]);
+    assert.equal(teamspaceModel.subItemDepthByRowId["page:grandchild"], 3);
+
+    const favouriteModel = deriveDatabaseViewModel({
+      activeViewId: "favourites",
+      viewData: viewData("favourites"),
+    });
+    assert.deepEqual(favouriteModel.sortedItems.map((row) => row.id), [
+      "page:parent",
+      "page:sibling",
+      "page:child",
+      "page:grandchild",
+    ]);
+    assert.equal(favouriteModel.subItemDepthByRowId["page:grandchild"], 2);
+  });
   test("library synthetic payload retains source summaries, view order and trash properties", async () => {
     const { buildHomepageRows, buildHomepageViewData } = await load();
     const rows = buildHomepageRows(
@@ -190,13 +295,13 @@ export function register({ assert, loadModule, test }) {
     assert.equal(viewData.bootstrap.database.id, "homepage");
     assert.deepEqual(
       viewData.bootstrap.views.map((view) => view.id),
-      ["recents", "favourites", "meetings", "skills", "instructions", "shared", "teamspaces", "private"],
+      ["recents", "favourites", "meetings", "skills", "instructions", "shared", "teamspaces", "private", "trash"],
     );
     assert.equal(viewData.records[0].id, "page:p");
     assert.equal(viewData.bootstrap.properties[0].property.config.custom, true);
     assert.deepEqual(viewData.bootstrap.views[0].config, { sorts: [] });
     const trash = buildHomepageViewData({
-      activeViewId: "recents",
+      activeViewId: "trash",
       databaseConfig: {},
       mode: "trash",
       workspaceId: null,

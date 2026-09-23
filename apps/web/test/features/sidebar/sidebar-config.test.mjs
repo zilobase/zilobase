@@ -26,6 +26,27 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(normalizeSidebarConfig(input), defaultSidebarConfig)
   })
 
+  test("legacy Trash route shortcuts normalize to the Library tab", async () => {
+    const { normalizeSidebarWorkspaceLayout } = await loadModule(configPath)
+    const layout = normalizeSidebarWorkspaceLayout({
+      tabs: [{
+        icon: "home",
+        id: "home",
+        name: "Home",
+        sections: [],
+        shortcuts: [
+          { id: "trash", target: { route: "trash", type: "route" } },
+        ],
+      }],
+      taskDatabaseIds: [],
+    })
+
+    assert.deepEqual(layout.tabs[0].shortcuts[0].target, {
+      type: "library",
+      view: "trash",
+    })
+  })
+
   test("sidebar normalization enforces locked Home, AI, Mail, and Calendar tabs with payload caps", async () => {
     const { normalizeSidebarConfig } = await loadModule(configPath)
     const tabs = Array.from({ length: 12 }, (_, index) => ({

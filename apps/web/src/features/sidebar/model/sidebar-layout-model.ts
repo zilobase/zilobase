@@ -29,6 +29,7 @@ export const libraryViewLabels: Record<LibraryView, string> = {
   recents: "Recents",
   shared: "Shared",
   teamspaces: "Teamspaces",
+  trash: "Trash",
 }
 
 export const mailViewLabels: Record<MailView, string> = {
@@ -90,6 +91,9 @@ export function isShortcutActive(
   if (target.route === "settings") return settingsOpen
   if (target.route === "meetings") {
     return pathname === "/recents" && search.view === "meetings"
+  }
+  if (target.route === "trash") {
+    return pathname === "/recents" && search.view === "trash"
   }
   return pathname === `/${target.route}`
 }

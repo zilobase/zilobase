@@ -1,5 +1,4 @@
-import { buildHomepageViewData, buildHomepageRows, isHomepageView, homepageViews as libraryViews, type RecentsMode } from "../model/library-model";
-import { TeamspacesLibraryTable } from "../components/teamspace-library-table";
+import { buildHomepageViewData, buildHomepageRows, isHomepageView, libraryParentPropertyId, homepageViews as libraryViews, type RecentsMode } from "../model/library-model";
 import { CreateTeamspaceDialog as CreateLibraryTeamspaceDialog } from "@/features/teamspaces/creation/index";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
@@ -45,11 +44,7 @@ const homepageViews = libraryViews.map(view => ({ ...view, icon: libraryViewIcon
 
 const emptyAsync = async () => undefined;
 
-export default function RecentsPage({
-  mode = "home",
-}: {
-  mode?: RecentsMode;
-}) {
+export default function RecentsPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const workspaceId = useActiveWorkspaceId();
@@ -60,10 +55,13 @@ export default function RecentsPage({
     () => normalizeSidebarConfig(userSettings.sidebarConfig),
     [userSettings.sidebarConfig],
   );
-  const requestedView =
-    mode === "home" && isHomepageView(location.search.view)
-      ? location.search.view
-      : null;
+  const requestedView = isHomepageView(location.search.view)
+    ? location.search.view
+    : null;
+  const [activeViewId, setActiveViewId] = useState<string | null>(() =>
+    requestedView ?? sidebarConfig.libraryView
+  );
+  const mode: RecentsMode = activeViewId === "trash" ? "trash" : "home";
   const { data: navigation, isLoading } = usePageNavigation(workspaceId, {
     deleted: mode === "trash" ? "only" : "active",
   });
@@ -87,7 +85,6 @@ export default function RecentsPage({
   });
   const createPageMutation = useCreatePage();
   const createDatabase = useCreateDatabase();
-  const [activeViewId, setActiveViewId] = useState<string | null>("recents");
   const [createTeamspaceOpen, setCreateTeamspaceOpen] = useState(false);
   const [databaseConfig, setDatabaseConfig] = useState<unknown>({
     nameColumn: {
@@ -114,7 +111,8 @@ export default function RecentsPage({
             display: "nested",
             enabled: true,
             filter: "parents-only",
-            property: "sub-item",
+            parentPropertyId: libraryParentPropertyId,
+            property: "parent-item",
           },
         },
       ]),
@@ -127,14 +125,15 @@ export default function RecentsPage({
         meetingsPayload?.meetings ?? [],
         customAgents,
         mode,
+        teamspaces,
       );
     },
-    [customAgents, meetingsPayload?.meetings, navigation, mode],
+    [customAgents, meetingsPayload?.meetings, navigation, mode, teamspaces],
   );
-  const pageTitle = mode === "trash" ? "Trash" : "Library";
+  const pageTitle = "Library";
 
   useEffect(() => {
-    if (mode !== "home" || location.pathname !== "/recents") return;
+    if (location.pathname !== "/recents") return;
 
     const nextView = requestedView ?? sidebarConfig.libraryView;
     setActiveViewId((current) => (current === nextView ? current : nextView));
@@ -147,7 +146,6 @@ export default function RecentsPage({
       });
     }
   }, [
-    mode,
     location.pathname,
     navigate,
     requestedView,
@@ -159,7 +157,6 @@ export default function RecentsPage({
     if (!viewId || !isHomepageView(viewId)) return;
 
     setActiveViewId(viewId);
-    if (mode !== "home") return;
 
     void navigate({
       replace: true,
@@ -303,6 +300,13 @@ export default function RecentsPage({
     );
 
     if (row) {
+      if (row.itemKind === "teamspace" && row.teamspaceId) {
+        void navigate({
+          search: { teamspace: row.teamspaceId, tab: "general" },
+          to: "/settings/teamspaces",
+        });
+        return;
+      }
       if (row.openAgentId) {
         void navigate({ params: { agentId: row.openAgentId }, to: "/agents/$agentId" });
         return;
@@ -523,12 +527,6 @@ export default function RecentsPage({
                     (activeViewId === "meetings" && meetingsLoading) ||
                     (activeViewId === "teamspaces" && teamspacesLoading) ? (
                       <DatabaseViewSkeleton viewType="table" />
-                    ) : activeViewId === "teamspaces" ? (
-                      <TeamspacesLibraryTable
-                        onOpenRow={openHomepagePage}
-                        rows={rows}
-                        teamspaces={teamspaces}
-                      />
                     ) : (
                       <DatabaseTableView />
                     )}

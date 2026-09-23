@@ -39,6 +39,7 @@ export const libraryViewIcons = {
   recents: HistoryIcon,
   shared: UsersIcon,
   teamspaces: Layers3Icon,
+  trash: Trash2Icon,
 } satisfies Record<LibraryView, typeof HistoryIcon>
 
 const sidebarTabIcons = {

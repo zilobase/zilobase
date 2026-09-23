@@ -79,6 +79,8 @@ export function SidebarShortcutList({
                 void navigate({ search: { view: target.view }, to: "/mail" });
               } else if (target.route === "meetings") {
                 void navigate({ search: { view: "meetings" }, to: "/recents" });
+              } else if (target.route === "trash") {
+                void navigate({ search: { view: "trash" }, to: "/recents" });
               } else if (target.route === "settings") {
                 onOpenSettings?.();
               } else {
@@ -86,9 +88,7 @@ export function SidebarShortcutList({
                   to:
                     target.route === "ai"
                       ? "/ai"
-                      : target.route === "tasks"
-                        ? "/tasks"
-                        : "/trash",
+                      : "/tasks",
                 });
               }
             };

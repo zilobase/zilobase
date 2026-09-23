@@ -4,7 +4,6 @@ const sidebarConfigPath = "/packages/features/src/user-settings/sidebar-config.t
 export function register({ readSource, assert, loadModule, test }) {
   const readLibrarySource = async () => (await Promise.all([
     readSource("/src/features/library/screens/recents.tsx"),
-    readSource("/src/features/library/components/teamspace-library-table.tsx"),
     readSource("/src/features/teamspaces/components/create-teamspace-dialog.tsx"),
   ])).join("\n")
   const readToolbarSource = async () =>
@@ -12,26 +11,46 @@ export function register({ readSource, assert, loadModule, test }) {
       readSource("/src/features/databases/views/components/database-view-toolbar.tsx"),
       readSource("/src/features/databases/views/components/database-view-toolbar-dialogs.tsx"),
     ])).join("\n")
-  test("Library Teamspaces uses a dedicated teamspace directory", async () => {
+  test("Library Teamspaces uses the shared hierarchy table", async () => {
     const source = await readLibrarySource()
-    assert.match(source, /activeViewId === "teamspaces"[\s\S]*<TeamspacesLibraryTable[\s\S]*rows=\{rows\}[\s\S]*teamspaces=\{teamspaces\}/)
-    assert.match(source, /Name[\s\S]*Description[\s\S]*Type[\s\S]*Access[\s\S]*Members/)
+    assert.match(source, /<DatabaseTableView \/>/)
+    assert.doesNotMatch(source, /<TeamspacesLibraryTable/)
     assert.match(source, /<Plus \/> New teamspace/)
     assert.match(source, /<CreateLibraryTeamspaceDialog/)
-    assert.match(source, /aria-expanded=\{expanded\}/)
-    assert.match(source, /buildTeamspaceLibraryRows\(rows, teamspace\.id\)/)
-    assert.match(source, /aria-label=\{`\$\{teamspace\.name\} contents`\}/)
-    assert.match(source, /className="database-table w-full min-w-full"/)
-    assert.match(source, /className="database-table-wrap min-w-\[58rem\] text-sm leading-5"/)
-    assert.doesNotMatch(source, /className="database-table-wrap tiptap-editor/)
-    assert.match(source, /<DatabasePageLink[\s\S]*onOpen=\{onOpenRow\}/)
   })
 
   test("Library keeps a full-page Library heading across tabs", async () => {
     const source = await readLibrarySource()
-    assert.match(source, /mode === "trash" \? "Trash" : "Library"/)
+    assert.match(source, /const pageTitle = "Library"/)
     assert.match(source, /<h1 className="min-h-10 py-0 text-4xl font-semibold/)
     assert.match(source, /showTitle: false/)
+  })
+
+  test("Trash is a Library tab backed by the deleted navigation query", async () => {
+    const { libraryViewIds, normalizeSidebarConfig } =
+      await loadModule(sidebarConfigPath)
+    const librarySource = await readLibrarySource()
+    const routes = await readSource(
+      "/src/app/routing/route-groups/app-routes.tsx",
+    )
+    const icons = await readSource(
+      "/src/features/sidebar/components/sidebar-layout-icons.tsx",
+    )
+
+    assert.ok(libraryViewIds.includes("trash"))
+    assert.match(librarySource, /activeViewId === "trash" \? "trash" : "home"/)
+    assert.match(librarySource, /deleted: mode === "trash" \? "only" : "active"/)
+    assert.match(routes, /path: "\/trash"[\s\S]*redirect\(\{ search: \{ view: "trash" \}, to: "\/recents" \}\)/)
+    assert.match(icons, /trash: Trash2Icon/)
+    assert.equal(
+      normalizeSidebarConfig({
+        defaultLayout: { tabs: [], taskDatabaseIds: [] },
+        libraryView: "trash",
+        version: 3,
+        workspaceLayouts: {},
+      }).libraryView,
+      "trash",
+    )
   })
 
   test("meetings, skills and instructions are supported and remembered Library views", async () => {
