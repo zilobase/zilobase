@@ -60,8 +60,8 @@
 }
 
 [data-desktop-tab-strip] {
-  --desktop-tab-slot-width: 14.625rem;
-  --desktop-tab-trailing-width: 3.25rem;
+  --desktop-tab-slot-width: 14rem;
+  --desktop-tab-trailing-width: 2.625rem;
   flex: 0 1 auto;
   width: calc(
     var(--desktop-tab-count) * var(--desktop-tab-slot-width) +
@@ -194,7 +194,8 @@
 .desktop-tab-inactive:has(+ .desktop-tab-inactive)::after {
   position: absolute;
   top: 9px;
-  right: -6px;
+  right: 0;
+  z-index: 1;
   width: 1px;
   height: 14px;
   background-color: var(--zb-color-border-stroke-default);

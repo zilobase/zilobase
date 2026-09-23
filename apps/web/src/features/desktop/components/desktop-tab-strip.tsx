@@ -105,7 +105,7 @@ export function DesktopTabStrip({
         as="div"
         axis="x"
         className={cn(
-          "relative flex min-w-0 flex-1 self-stretch items-end gap-2.5 pl-1.5",
+          "relative flex min-w-0 flex-1 self-stretch items-end pl-1.5",
           draggingTabId ? "overflow-visible" : "overflow-hidden",
         )}
         data-desktop-drag-region=""
