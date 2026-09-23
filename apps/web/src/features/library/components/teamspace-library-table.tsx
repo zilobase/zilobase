@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState, type CSSProperties } from "react";
 
 import {
   ChevronRight,
@@ -7,6 +7,7 @@ import {
   LockIcon,
   UsersIcon,
 } from "@/shared/components/icons";
+import { useResizableTableColumns } from "@/shared/hooks/use-resizable-table-columns";
 
 import { DatabasePageLink } from "@/features/databases";
 
@@ -22,6 +23,17 @@ import {
   getHomepageRowType,
   type HomepageRow,
 } from "../model/library-model";
+
+const teamspaceColumns = [
+  { id: "name", label: "Name", width: 280 },
+  { id: "description", label: "Description", width: 260 },
+  { id: "type", label: "Type", width: 140 },
+  { id: "access", label: "Access", width: 170 },
+  { id: "members", label: "Members", width: 110 },
+] as const;
+
+const teamspaceColumnKeys = teamspaceColumns.map((column) => column.id);
+
 export function TeamspacesLibraryTable({
   onOpenRow,
   rows,
@@ -32,6 +44,17 @@ export function TeamspacesLibraryTable({
   teamspaces: Teamspace[];
 }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const tableWrapRef = useRef<HTMLDivElement | null>(null);
+  const { columnWidths, startColumnResize, tableMinWidth } =
+    useResizableTableColumns({
+      columnKeys: teamspaceColumnKeys,
+      getDefaultWidth: (columnKey) =>
+        teamspaceColumns.find((column) => column.id === columnKey)?.width ??
+        140,
+      minWidth: 96,
+      tableWrapRef,
+    });
+
   if (teamspaces.length === 0) {
     return (
       <div className="py-16 text-center text-sm text-content-secondary">
@@ -42,34 +65,50 @@ export function TeamspacesLibraryTable({
 
   return (
     <div
+      ref={tableWrapRef}
       className="database-table-wrap min-w-[58rem] text-sm leading-5"
       data-vertical-lines="true"
     >
-      <table className="database-table w-full min-w-full">
+      <table
+        className="database-table"
+        style={
+          {
+            "--database-table-min-width": `${tableMinWidth}px`,
+          } as CSSProperties
+        }
+      >
         <colgroup>
-          <col className="w-[30%]" />
-          <col className="w-[28%]" />
-          <col className="w-[14%]" />
-          <col className="w-[17%]" />
-          <col className="w-[11%]" />
+          {teamspaceColumns.map((column) => (
+            <col
+              data-column-id={column.id}
+              key={column.id}
+              style={{
+                width: columnWidths[column.id] ?? column.width,
+              }}
+            />
+          ))}
         </colgroup>
         <thead>
           <tr>
-            <th className="database-name-header">
-              <div className="database-name-header-content">Name</div>
-            </th>
-            <th>
-              <div className="database-name-header-content">Description</div>
-            </th>
-            <th>
-              <div className="database-name-header-content">Type</div>
-            </th>
-            <th>
-              <div className="database-name-header-content">Access</div>
-            </th>
-            <th>
-              <div className="database-name-header-content">Members</div>
-            </th>
+            {teamspaceColumns.map((column) => (
+              <th
+                className={
+                  column.id === "name" ? "database-name-header" : undefined
+                }
+                key={column.id}
+              >
+                <div className="database-name-header-content">
+                  {column.label}
+                </div>
+                <span
+                  aria-hidden="true"
+                  className="database-column-resize-handle"
+                  onPointerDown={(event) =>
+                    startColumnResize(column.id, event)
+                  }
+                />
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>

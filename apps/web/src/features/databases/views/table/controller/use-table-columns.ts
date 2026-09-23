@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { databaseColumnMinWidth } from "../../model/column-dimensions";
+import { useResizableTableColumns } from "@/shared/hooks/use-resizable-table-columns";
 
 import { getDatabasePropertyOrder } from "../../model/database-view-config";
 
@@ -41,7 +42,6 @@ export function useTableColumns({
   saveDatabasePropertyOrder: (ids: string[]) => void
   addDatabaseProperty: (type?: string, label?: string, position?: number) => void
 }) {
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [pendingInsertProperty, setPendingInsertProperty] =
     useState<PendingInsertProperty | null>(null)
   const [pendingPropertyInsertOrder, setPendingPropertyInsertOrder] =
@@ -161,14 +161,16 @@ export function useTableColumns({
       }),
     [activeInsertProperty, canEditStructure, renderedColumnIds]
   )
-  const tableMinWidth = useMemo(
-    () =>
-      columnKeys.reduce(
-        (width, key) => width + getColumnWidth(columnWidths, key),
-        0
-      ),
-    [columnKeys, columnWidths]
-  )
+  const {
+    columnWidths,
+    startColumnResize,
+    tableMinWidth,
+  } = useResizableTableColumns({
+    columnKeys,
+    getDefaultWidth: (columnKey) => getColumnWidth({}, columnKey),
+    minWidth: databaseColumnMinWidth,
+    tableWrapRef,
+  })
   const getInlineTableContentWidth = useCallback(
     () => tableMinWidth,
     [tableMinWidth]
@@ -214,73 +216,6 @@ export function useTableColumns({
       setPendingInsertProperty(null)
     }
   }, [pendingInsertProperty, renderedProperties])
-  const startColumnResize = (
-    columnKey: string,
-    event: React.PointerEvent<HTMLSpanElement>
-  ) => {
-    if (!editable) {
-      return
-    }
-
-    event.preventDefault()
-    event.stopPropagation()
-
-    const startX = event.clientX
-    const startWidth = getColumnWidth(columnWidths, columnKey)
-    let nextWidth = startWidth
-    let animationFrame: number | null = null
-
-    const applyWidth = () => {
-      animationFrame = null
-      const wrapper = tableWrapRef.current
-
-      wrapper
-        ?.querySelectorAll<HTMLTableColElement>("col[data-column-id]")
-        .forEach((column) => {
-          if (column.dataset.columnId === columnKey) {
-            column.style.width = `${nextWidth}px`
-          }
-        })
-
-      wrapper
-        ?.querySelectorAll<HTMLElement>(".database-table")
-        .forEach((table) => {
-          table.style.setProperty(
-            "--database-table-min-width",
-            `${tableMinWidth + nextWidth - startWidth}px`
-          )
-        })
-    }
-
-    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
-      nextWidth = Math.max(
-        databaseColumnMinWidth,
-        startWidth + moveEvent.clientX - startX
-      )
-
-      if (animationFrame === null) {
-        animationFrame = requestAnimationFrame(applyWidth)
-      }
-    }
-
-    const removeListeners = () => {
-      if (animationFrame !== null) {
-        cancelAnimationFrame(animationFrame)
-        applyWidth()
-      }
-
-      setColumnWidths((widths) => ({ ...widths, [columnKey]: nextWidth }))
-      document.body.classList.remove("database-resize-cursor")
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", removeListeners)
-      window.removeEventListener("pointercancel", removeListeners)
-    }
-
-    document.body.classList.add("database-resize-cursor")
-    window.addEventListener("pointermove", handlePointerMove)
-    window.addEventListener("pointerup", removeListeners)
-    window.addEventListener("pointercancel", removeListeners)
-  }
   const handleEditingPropertyOpenChange = (
     headerScope: string,
     propertyKey: string,
