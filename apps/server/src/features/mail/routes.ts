@@ -1,6 +1,5 @@
 import { Hono } from "hono"
 
-import { isMailFeatureEnabled } from "../../shared/config/config"
 import type { AppBindings } from "../../shared/types"
 import { mailConnectionRoutes, mailProviderCallbackRoutes } from "./connections/routes"
 import { mailMessageRoutes } from "./compose/routes"
@@ -21,7 +20,7 @@ export const mailRoutes = new Hono<AppBindings>()
 export const mailProviderRoutes = new Hono<AppBindings>()
 
 mailRoutes.use("*", async (c, next) => {
-  if (!isMailFeatureEnabled(c.env) || !workspaceIdFromContext(c)) {
+  if (!workspaceIdFromContext(c)) {
     return c.json({ message: "Not found." }, 404)
   }
   await next()
@@ -32,7 +31,6 @@ mailRoutes.use("*", async (c, next) => {
 })
 
 mailProviderRoutes.use("*", async (c, next) => {
-  if (!isMailFeatureEnabled(c.env)) return c.json({ message: "Not found." }, 404)
   await next()
   c.header("Cache-Control", "private, no-store, max-age=0")
   c.header("Pragma", "no-cache")

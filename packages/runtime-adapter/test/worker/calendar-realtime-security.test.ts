@@ -36,25 +36,12 @@ function routeEnv() {
   const env = {
     BETTER_AUTH_SECRET: secret,
     COLLABORATION_SECRET: secret,
-    CALENDAR_ENABLED: "true",
-    CALENDAR_ENABLED_WORKSPACE_IDS: "workspace-1",
     CALENDAR_NOTIFICATION_ROOM: { getByName },
   } satisfies CalendarRealtimeRouteEnv;
   return { env, fetch, getByName };
 }
 
 describe("calendar realtime upgrade security", () => {
-  it("is unavailable when calendar is disabled", async () => {
-    const { env, getByName } = routeEnv();
-    const response = await routeCalendarRealtimeRequest(
-      await websocketRequest(),
-      { ...env, CALENDAR_ENABLED: "false" },
-    );
-
-    expect(response.status).toBe(404);
-    expect(getByName).not.toHaveBeenCalled();
-  });
-
   it("routes a signed owner ticket to the user-keyed room", async () => {
     const { env, fetch, getByName } = routeEnv();
     const response = await routeCalendarRealtimeRequest(await websocketRequest(), env);
@@ -84,8 +71,6 @@ describe("calendar realtime upgrade security", () => {
     expect((await routeCalendarRealtimeRequest(await websocketRequest(), {
       BETTER_AUTH_SECRET: secret,
       COLLABORATION_SECRET: secret,
-      CALENDAR_ENABLED: "true",
-    CALENDAR_ENABLED_WORKSPACE_IDS: "workspace-1",
     })).status).toBe(503);
   });
 });

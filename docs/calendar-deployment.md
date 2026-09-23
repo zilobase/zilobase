@@ -17,18 +17,13 @@ uses `https://api.zilobase.com/calendar/oauth/google/callback`. These server-sid
 flows do not require authorized JavaScript origins. Desktop uses the same Google
 callbacks; its application handoff is not a Google redirect URI.
 
-For local testing, set `MAIL_ENABLED=true`, `VITE_FEATURE_MAIL=true`,
-`CALENDAR_ENABLED=true`, and `VITE_FEATURE_CALENDAR=true` in each development
-environment file. `CALENDAR_ENABLED_WORKSPACE_IDS=*` allows all workspaces in
-the isolated local database. Restart the local API, background runner, and web
-development server after changing these settings. Production uses the pilot
-allowlist described below.
+Mail and Calendar are included in the local API, background runner, and web client. Restart those processes after changing Google credentials.
 
 1. Apply the normal additive database migrations (`npm run db:migrate`), including Calendar migrations 0087–0089. Take the normal database backup first. Do not undo migrations to disable rollout.
 2. Enable the Google Calendar API in a dedicated Google OAuth project/client. Register the exact canonical API origin plus `/calendar/oauth/google/callback` as an authorized redirect URI. Desktop uses the same web callback and then the existing `zilobase://open` handoff. Configure the normal canonical API/web origins for the deployment.
 3. Set server `CALENDAR_GOOGLE_CLIENT_ID`, `CALENDAR_GOOGLE_CLIENT_SECRET`, and `CALENDAR_TOKEN_ENCRYPTION_KEY`. The encryption key must be an independent base64-encoded 32-byte random key; keep it stable and in the deployment secret store. Mail credentials are not fallbacks. Back up the key securely; replacing it requires account reconnection.
 4. Set `CALENDAR_WEBHOOK_URL` to the publicly reachable HTTPS API origin plus `/calendar/google/webhook`. Preserve Google's `X-Goog-*` headers through the proxy. This endpoint authenticates channel secrets/resource identity; it does not use the user's browser session.
-5. Build the web client with `VITE_FEATURE_CALENDAR=true`. Set server `CALENDAR_ENABLED=true` and `CALENDAR_ENABLED_WORKSPACE_IDS` to an explicit comma-separated pilot workspace allowlist. Empty allowlists disable access. Reserve `*` for a separately approved general rollout.
+5. Build the web client. Calendar is included.
 6. Keep the existing background maintenance runner active. `calendar.sync_recovery` runs every minute under the existing durable maintenance lease and advances sync, maintains watches and drains notification receipts. Every Node role requires the shared Redis/Valkey bus for `/calendar-realtime`, including a single `all` process. Proxies must support WebSocket upgrade and at least the 20-second heartbeat interval.
 7. As a pilot user, request `GET /workspaces/:workspaceId/calendar/configuration`. All returned checks must pass. This authenticated endpoint exposes booleans only. It checks configuration presence/format and runtime capabilities; actual callback reachability and provider consent still require the live checks below.
 
@@ -84,9 +79,9 @@ The `calendar.sync` background resource payload uses `[accountId, calendarId]` a
 
 Server metrics are structured `calendar.*` records containing only a numeric value and success/failure outcome. Browser metrics are local `zilobase:calendar:metric` custom events; an existing telemetry integration can subscribe without including identity or event data. Implemented measurements cover sync lag, cache hits, range latency, watch expiry, reconnects, throttling, ambiguous writes and reminders. Use these with the existing background runner health; configuration readiness does not prove the runner is executing.
 
-Investigate growing sync lag/watch expiry and repeated throttling before expanding the allowlist. Reconnect revoked accounts through settings. Leave ambiguous operation receipts intact: status reconciliation checks provider markers/ETags and deterministic IDs; do not generate replacement operation IDs to force a retry. Following-series edits resume their saved steps. Cached canonical data remains stale during expired-token recovery until a complete replacement generation commits.
+Investigate growing sync lag, watch expiry, and repeated throttling. Reconnect revoked accounts through settings. Leave ambiguous operation receipts intact: status reconciliation checks provider markers/ETags and deterministic IDs; do not generate replacement operation IDs to force a retry. Following-series edits resume their saved steps. Cached canonical data remains stale during expired-token recovery until a complete replacement generation commits.
 
-Disable access with `CALENDAR_ENABLED=false` and rebuild without `VITE_FEATURE_CALENDAR` when removing the UI. Preserve data and encryption keys for a reversible rollback. Disconnect while enabled to stop watches and remove the binding/cache; the account is removed only after its final binding is deleted. Existing short-lived realtime tickets expire; invalidation packets contain revision metadata only. Mail flags and OAuth configuration remain independent.
+Preserve data and encryption keys if Calendar has to be taken out of a deployment. Disconnect an account to stop watches and remove the binding/cache; the account is removed only after its final binding is deleted. Existing short-lived realtime tickets expire; invalidation packets contain revision metadata only. Mail OAuth configuration remains independent.
 
 ## Supported boundaries
 

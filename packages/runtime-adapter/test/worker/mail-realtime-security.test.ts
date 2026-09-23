@@ -36,24 +36,12 @@ function routeEnv() {
   const env = {
     BETTER_AUTH_SECRET: secret,
     COLLABORATION_SECRET: secret,
-    MAIL_ENABLED: "true",
     MAIL_NOTIFICATION_ROOM: { getByName },
   } satisfies MailRealtimeRouteEnv;
   return { env, fetch, getByName };
 }
 
 describe("mail realtime upgrade security", () => {
-  it("is unavailable when mail is disabled", async () => {
-    const { env, getByName } = routeEnv();
-    const response = await routeMailRealtimeRequest(
-      await websocketRequest(),
-      { ...env, MAIL_ENABLED: "false" },
-    );
-
-    expect(response.status).toBe(404);
-    expect(getByName).not.toHaveBeenCalled();
-  });
-
   it("routes a signed owner ticket to the user-keyed room", async () => {
     const { env, fetch, getByName } = routeEnv();
     const response = await routeMailRealtimeRequest(await websocketRequest(), env);
@@ -83,7 +71,6 @@ describe("mail realtime upgrade security", () => {
     expect((await routeMailRealtimeRequest(await websocketRequest(), {
       BETTER_AUTH_SECRET: secret,
       COLLABORATION_SECRET: secret,
-      MAIL_ENABLED: "true",
     })).status).toBe(503);
   });
 });

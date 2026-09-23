@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { type AutomationValueExpression, type DatabaseAutomationAction } from "@zilobase/features/automations";
-import { isMailFeatureEnabled, type RuntimeEnv } from "../../../shared/config/config";
+import { type RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import { databaseAutomationDelivery, gmailAccount, gmailWorkspaceConnection, member, user } from "../../../infrastructure/database/schema";
 import { invalidateDatabaseAutomationDependencies } from "../service";
@@ -18,9 +18,6 @@ export async function executeGmailAction(
   action: Extract<DatabaseAutomationAction, { type: "send_gmail" }>,
   env: RuntimeEnv,
 ) {
-  if (!isMailFeatureEnabled(env)) {
-    throw new AutomationActionError("Gmail automation actions are disabled", "AUTOMATION_GMAIL_DISABLED");
-  }
   const ownerUserId = requireOwner(context.automation.ownerUserId);
   const [owned] = await db
     .select({ connection: gmailAccount })

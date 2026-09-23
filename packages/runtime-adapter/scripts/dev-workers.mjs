@@ -15,7 +15,6 @@ import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "@dotenvx/dotenvx";
 
 import { runCommand } from "./lib/run-command.mjs";
-import { isFeatureFlagEnabled } from "./lib/feature-flags.mjs";
 import { workerStackDevArgs } from "./lib/local-wrangler.mjs";
 import {
   requiredBackgroundRuntimeSecretNames,
@@ -38,8 +37,6 @@ const stackEnv = {
   ...process.env,
 };
 const temporaryDir = await mkdtemp(path.join(os.tmpdir(), "zilobase-dev-workers-"));
-const calendarEnabled = isFeatureFlagEnabled(stackEnv.CALENDAR_ENABLED);
-const mailEnabled = isFeatureFlagEnabled(stackEnv.MAIL_ENABLED);
 const workerStackEnvFile = path.join(temporaryDir, "worker-stack.env");
 const writeWorkerEnvFile = (file, names) => writeFile(
   file,
@@ -51,8 +48,8 @@ const writeWorkerEnvFile = (file, names) => writeFile(
 );
 await writeWorkerEnvFile(workerStackEnvFile, [
   ...new Set([
-    ...requiredRuntimeSecretNames({ mailEnabled, calendarEnabled }),
-    ...requiredBackgroundRuntimeSecretNames({ mailEnabled, calendarEnabled }),
+    ...requiredRuntimeSecretNames({ mailEnabled: true, calendarEnabled: true }),
+    ...requiredBackgroundRuntimeSecretNames({ mailEnabled: true, calendarEnabled: true }),
   ]),
 ]);
 stackEnv.ZILOBASE_WRANGLER_ENV_FILE = workerStackEnvFile;

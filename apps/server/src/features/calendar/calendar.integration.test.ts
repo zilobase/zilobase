@@ -35,7 +35,7 @@ test.skipIf(!enabled)("disconnect removes only its own binding and last account"
 import { beginCalendarOAuth, consumeCalendarOAuthAttempt, completeCalendarOAuth, CALENDAR_SCOPES } from "./provider/oauth";
 import * as identityVerifier from "../../shared/security/google-id-token";
 test.skipIf(!enabled)("OAuth commits verified accounts, rejects replay and missing scopes", async () => {
-  const env = { CALENDAR_ENABLED: "true", CALENDAR_ENABLED_WORKSPACE_IDS: workspaceId, CALENDAR_GOOGLE_CLIENT_ID: "fixture", CALENDAR_GOOGLE_CLIENT_SECRET: "fixture", CALENDAR_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 5).toString("base64"), BETTER_AUTH_URL: "http://localhost:3000", CLIENT_URL: "http://localhost:1420" };
+  const env = { CALENDAR_GOOGLE_CLIENT_ID: "fixture", CALENDAR_GOOGLE_CLIENT_SECRET: "fixture", CALENDAR_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 5).toString("base64"), BETTER_AUTH_URL: "http://localhost:3000", CLIENT_URL: "http://localhost:1420" };
   const verified = vi.spyOn(identityVerifier, "verifyGoogleIdToken").mockResolvedValue({ subject: "oauth-fixture", email: "oauth@example.test" });
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({ access_token: "access", refresh_token: "refresh", id_token: "identity", scope: CALENDAR_SCOPES.join(" ") })));
   try {
@@ -52,7 +52,7 @@ test.skipIf(!enabled)("OAuth commits verified accounts, rejects replay and missi
     expect(oauthAccounts).toHaveLength(1);
     expect((await database!.select().from(schema.calendarBinding)).filter(binding => binding.accountId === oauthAccounts[0]!.id)).toHaveLength(1);
     const cancel = new URL(await runWithDb(database!, () => beginCalendarOAuth(env, { userId, workspaceId, clientKind: "web" })));
-    const cancelled = await runWithDb(database!, () => consumeCalendarOAuthAttempt(env, cancel.searchParams.get("state")!));
+    const cancelled = await runWithDb(database!, () => consumeCalendarOAuthAttempt(cancel.searchParams.get("state")!));
     expect(cancelled.workspaceId).toBe(workspaceId);
     await expect(runWithDb(database!, () => completeCalendarOAuth(env, cancel.searchParams.get("state")!, "code"))).rejects.toThrow("expired_oauth_attempt");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ access_token: "access", refresh_token: "refresh", id_token: "identity", scope: "openid email" })));
@@ -65,7 +65,7 @@ import { CalendarGateway } from "./provider/gateway";
 import { advanceCalendarSync, refreshCalendarList } from "./sync/sync";
 import { readCalendarRange } from "./sync/ranges";
 test.skipIf(!enabled)("sync advances only final checkpoints and range cursors isolate accounts", async () => {
-  const env = { CALENDAR_ENABLED: "true", CALENDAR_ENABLED_WORKSPACE_IDS: workspaceId };
+  const env = {};
   let eventCalls = 0;
   const gateway = new CalendarGateway("fixture", async url => {
     if (String(url).includes("calendarList")) return Response.json({ items: [{ id: "primary", accessRole: "owner" }] });
@@ -155,7 +155,7 @@ test.skipIf(!enabled)("webhooks authenticate early callbacks, deduplicate replay
 });
 
 test.skipIf(!enabled)("expired sync tokens preserve cached canonical events until recovery commits", async () => {
-  const env = { CALENDAR_ENABLED: "true", CALENDAR_ENABLED_WORKSPACE_IDS: workspaceId };
+  const env = {};
   const before = await database!.select().from(schema.calendarEventRecord); expect(before.length).toBeGreaterThan(0);
   const expired = new CalendarGateway("fixture", async () => Response.json({}, { status: 410 }));
   await runWithDb(database!, () => advanceCalendarSync(env, secondAccount, "primary", expired));
@@ -168,14 +168,13 @@ test.skipIf(!enabled)("expired sync tokens preserve cached canonical events unti
 test.skipIf(!enabled)("outbox retries failed publication and emits only currently owned scope metadata", async () => {
   const { drainCalendarOutbox } = await import("./realtime/outbox");
   const { runWithRuntimePorts } = await import("@zilobase/runtime-adapter/capabilities");
-  const env = { CALENDAR_ENABLED: "true", CALENDAR_ENABLED_WORKSPACE_IDS: workspaceId };
   await database!.update(schema.calendarNotificationOutbox).set({ nextAttemptAt: new Date(0) });
-  await runWithDb(database!, () => runWithRuntimePorts({ fanout: { publish: async () => { throw new Error("bus unavailable") } } as never }, () => drainCalendarOutbox(env)));
+  await runWithDb(database!, () => runWithRuntimePorts({ fanout: { publish: async () => { throw new Error("bus unavailable") } } as never }, () => drainCalendarOutbox()));
   const pending = await database!.select().from(schema.calendarNotificationOutbox);
   expect(pending.length).toBeGreaterThan(0); expect(pending.every(row => row.attempts === 1)).toBe(true);
   await database!.update(schema.calendarNotificationOutbox).set({ nextAttemptAt: new Date(0) });
   const published: unknown[] = [];
-  await runWithDb(database!, () => runWithRuntimePorts({ fanout: { publish: async (_channel: string, event: unknown) => { published.push(event) } } as never }, () => drainCalendarOutbox(env)));
+  await runWithDb(database!, () => runWithRuntimePorts({ fanout: { publish: async (_channel: string, event: unknown) => { published.push(event) } } as never }, () => drainCalendarOutbox()));
   expect(await database!.select().from(schema.calendarNotificationOutbox)).toHaveLength(0);
   expect(published.length).toBeGreaterThan(0);
   for (const event of published) expect(Object.keys(event as object).sort()).toEqual(["accountId", "bindingId", "calendarId", "generation", "revision", "userId", "workspaceId"]);
@@ -245,14 +244,11 @@ test.skipIf(!enabled)("personal sources isolate owners, deduplicate accounts and
     { id: randomUUID(), userId: otherUser, workspaceId: remoteWorkspace, accountId: privateAccount },
     { id: randomUUID(), userId, workspaceId: expiredWorkspace, accountId: remoteAccount },
   ]);
-  const env = { CALENDAR_ENABLED: "true", CALENDAR_ENABLED_WORKSPACE_IDS: "*" };
-  const sources = await runWithDb(database!, () => personalCalendarSources(env, userId, workspaceId));
+  const sources = await runWithDb(database!, () => personalCalendarSources(userId, workspaceId));
   expect(sources.filter(source => source.accountId === secondAccount)).toHaveLength(1);
   expect(sources.find(source => source.accountId === secondAccount)?.workspaceId).toBe(workspaceId);
   expect(sources.find(source => source.accountId === remoteAccount)?.workspaceId).toBe(remoteWorkspace);
   expect(sources.some(source => source.accountId === privateAccount || source.workspaceId === expiredWorkspace)).toBe(false);
   expect(JSON.stringify(sources)).not.toContain("ciphertext");
-  const restricted = await runWithDb(database!, () => personalCalendarSources({ ...env, CALENDAR_ENABLED_WORKSPACE_IDS: workspaceId }, userId, workspaceId));
-  expect(restricted.some(source => source.accountId === remoteAccount)).toBe(false);
-  await expect(runWithDb(database!, () => personalCalendarSources(env, userId, expiredWorkspace))).rejects.toThrow("Workspace access required");
+  await expect(runWithDb(database!, () => personalCalendarSources(userId, expiredWorkspace))).rejects.toThrow("Workspace access required");
 });

@@ -12,7 +12,7 @@ import { Schema } from "effect";
 import { and, eq } from "drizzle-orm";
 import { db, runWithDbEnv } from "../../infrastructure/database";
 import { calendarAccount, calendarBinding } from "../../infrastructure/database/schema";
-import { isCalendarFeatureEnabled, getCanonicalWebOrigin, getStringEnv } from "../../shared/config/config";
+import { getCanonicalWebOrigin, getStringEnv } from "../../shared/config/config";
 import type { AppBindings } from "../../shared/types";
 import { requireCalendarMembership, CalendarAccessError, requireCalendarBinding, disconnectCalendarBinding } from "./connections/ownership";
 import { beginCalendarOAuth, consumeCalendarOAuthAttempt, completeCalendarOAuth, createCalendarGateway } from "./provider/oauth";
@@ -23,7 +23,6 @@ export const calendarProviderRoutes = new Hono<AppBindings>();
 for (const app of [calendarRoutes, calendarProviderRoutes]) {
   app.use("*", async (c, next) => {
     c.header("Cache-Control", "private, no-store, max-age=0"); c.header("Referrer-Policy", "no-referrer"); c.header("X-Content-Type-Options", "nosniff");
-    if (!isCalendarFeatureEnabled(c.env, c.req.param("workspaceId"))) return c.json({ message: "Not found." }, 404);
     await next();
   });
   app.onError((error, c) => {
@@ -42,7 +41,7 @@ calendarRoutes.get("/connections", async c => {
   return c.json({ connections: rows.map(({ binding, account }) => ({ bindingId: binding.id, workspaceId: binding.workspaceId, accountId: account.id, email: account.email, status: account.status, pushAvailable: false })), providerConfigured: Boolean(getStringEnv(c.env, "CALENDAR_GOOGLE_CLIENT_ID") && getStringEnv(c.env, "CALENDAR_GOOGLE_CLIENT_SECRET") && getStringEnv(c.env, "CALENDAR_TOKEN_ENCRYPTION_KEY")) });
 });
 calendarRoutes.get("/sources", async c => c.json({
-  connections: await personalCalendarSources(c.env, c.get("user")!.id, c.req.param("workspaceId")!),
+  connections: await personalCalendarSources(c.get("user")!.id, c.req.param("workspaceId")!),
   providerConfigured: Boolean(getStringEnv(c.env, "CALENDAR_GOOGLE_CLIENT_ID") && getStringEnv(c.env, "CALENDAR_GOOGLE_CLIENT_SECRET") && getStringEnv(c.env, "CALENDAR_TOKEN_ENCRYPTION_KEY")),
 }));
 const GoogleOAuthStart = Schema.Struct({
@@ -66,7 +65,7 @@ calendarRoutes.get("/connections/:bindingId/calendars", async c => {
 calendarProviderRoutes.get("/oauth/google/callback", async c => {
   const state = c.req.query("state"); if (!state) return c.json({ message: "Missing OAuth state." }, 400);
   if (c.req.query("error")) {
-    const attempt = await runWithDbEnv(c.env, () => consumeCalendarOAuthAttempt(c.env, state));
+    const attempt = await runWithDbEnv(c.env, () => consumeCalendarOAuthAttempt(state));
     return finishCalendarConnection(c, attempt, "cancelled");
   }
   const code = c.req.query("code"); if (!code) return c.json({ message: "Missing OAuth code." }, 400);

@@ -5,7 +5,6 @@ import {
   CALENDAR_REALTIME_PROTOCOL,
   verifyCalendarRealtimeTicket,
   type CalendarRealtimeTicketClaims,
-  isCalendarFeatureEnabled,
   type RuntimeEnv,
 } from "@zilobase/server/node-adapter-api";
 import { attachNodeNotificationRuntime } from "../../notification-runtime";
@@ -25,7 +24,7 @@ export function attachNodeCalendarRealtimeRuntime(
       const token = readTicket(request.headers);
       if (!bindingId || !token) throw new Response("Missing calendar realtime ticket", { status: 401 });
       const claims = await verifyCalendarRealtimeTicket(token, env);
-      if (claims.bindingId !== bindingId || !isCalendarFeatureEnabled(env, claims.workspaceId)) {
+      if (claims.bindingId !== bindingId) {
         throw new Response("Invalid calendar realtime ticket", { status: 403 });
       }
       return claims;
@@ -48,7 +47,6 @@ export function attachNodeCalendarRealtimeRuntime(
       pong: PONG,
       validate: (value): value is CalendarNotificationEvent => isNotification(value),
     },
-    enabled: () => isCalendarFeatureEnabled(env),
     eventRoomId: (event) => event.bindingId,
     isRemoteEvent: (value, roomId): value is CalendarNotificationEvent =>
       isNotification(value) && value.bindingId === roomId,
@@ -60,7 +58,7 @@ export function attachNodeCalendarRealtimeRuntime(
   return {
     destroy: runtime.destroy,
     async publishNotification(event: CalendarNotificationEvent) {
-      if (isCalendarFeatureEnabled(env)) await runtime.publish(event);
+      await runtime.publish(event);
     },
   };
 }

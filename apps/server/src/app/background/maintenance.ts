@@ -166,7 +166,7 @@ const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandl
   "membership.expiry": async () => {
     await expireTemporaryMemberships();
   },
-  "calendar.sync_recovery": async (env) => { await Promise.allSettled([advancePendingCalendars(env), maintainCalendarWatches(env), drainCalendarOutbox(env)]); },
+  "calendar.sync_recovery": async (env) => { await Promise.allSettled([advancePendingCalendars(env), maintainCalendarWatches(env), drainCalendarOutbox()]); },
   "mail.index_recovery": async (env) => {
     await advancePendingMailIndexes(env);
   },

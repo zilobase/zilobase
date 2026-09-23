@@ -1,8 +1,7 @@
 import { Buffer } from "node:buffer";
-import { getStringEnv, isCalendarFeatureEnabled, type RuntimeEnv } from "../../shared/config/config";
+import { getStringEnv, type RuntimeEnv } from "../../shared/config/config";
 export function inspectCalendarConfiguration(env: RuntimeEnv, capabilities: { background: boolean; realtime: boolean }) {
   const checks = {
-    enabled: isCalendarFeatureEnabled(env),
     oauth: Boolean(getStringEnv(env, "CALENDAR_GOOGLE_CLIENT_ID") && getStringEnv(env, "CALENDAR_GOOGLE_CLIENT_SECRET")),
     encryption: encryptionConfigured(getStringEnv(env, "CALENDAR_TOKEN_ENCRYPTION_KEY")),
     webhook: httpsUrl(getStringEnv(env, "CALENDAR_WEBHOOK_URL")),

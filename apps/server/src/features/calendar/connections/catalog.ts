@@ -1,11 +1,10 @@
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import { db } from "../../../infrastructure/database";
 import { calendarAccount, calendarBinding, member, workspace } from "../../../infrastructure/database/schema";
-import { isCalendarFeatureEnabled, type RuntimeEnv } from "../../../shared/config/config";
 import { requireCalendarMembership } from "./ownership";
 
 /** Every returned source remains addressable through its own workspace's authorized routes. */
-export async function personalCalendarSources(env: RuntimeEnv, userId: string, workspaceId: string) {
+export async function personalCalendarSources(userId: string, workspaceId: string) {
   await requireCalendarMembership(userId, workspaceId);
   const rows = await db.select({ binding: calendarBinding, account: calendarAccount, workspaceName: workspace.name })
     .from(calendarBinding)
@@ -16,7 +15,7 @@ export async function personalCalendarSources(env: RuntimeEnv, userId: string, w
   rows.sort((a, b) => Number(b.binding.workspaceId === workspaceId) - Number(a.binding.workspaceId === workspaceId) || a.binding.id.localeCompare(b.binding.id));
   const seen = new Set<string>();
   return rows.filter(({ binding, account }) => {
-    if (!isCalendarFeatureEnabled(env, binding.workspaceId) || seen.has(account.id)) return false;
+    if (seen.has(account.id)) return false;
     seen.add(account.id); return true;
   }).map(({ binding, account, workspaceName }) => ({
     workspaceId: binding.workspaceId, workspaceName, bindingId: binding.id,

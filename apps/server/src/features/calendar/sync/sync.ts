@@ -2,7 +2,7 @@ import { recordCalendarMetric } from "../metrics";
 import { and, eq, isNull, lt, or, sql, notInArray } from "drizzle-orm";
 import { db } from "../../../infrastructure/database";
 import { calendarAccount, calendarBinding, calendarEventRecord, calendarProviderCalendar, calendarNotificationOutbox } from "../../../infrastructure/database/schema";
-import { isCalendarFeatureEnabled, type RuntimeEnv } from "../../../shared/config/config";
+import { type RuntimeEnv } from "../../../shared/config/config";
 import { CalendarGateway, CalendarProviderError, normalizeEvent } from "../provider/gateway";
 import { createCalendarGateway } from "../provider/oauth";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
@@ -24,7 +24,7 @@ export async function queueCalendarSync(env: RuntimeEnv, accountId: string, cale
   await dispatchBackgroundTasks(env, [createBackgroundTask({ env, kind: "calendar.sync", resourceId: JSON.stringify([accountId, calendarId]) })]);
 }
 export async function advanceCalendarSync(env: RuntimeEnv, accountId: string, calendarId: string, suppliedGateway?: CalendarGateway): Promise<boolean> {
-  const owner = await syncOwner(env, accountId); if (!owner) return false;
+  const owner = await syncOwner(accountId); if (!owner) return false;
   const { account, binding } = owner;
   const scope = and(eq(calendarProviderCalendar.accountId, accountId), eq(calendarProviderCalendar.calendarId, calendarId));
   const leaseId = crypto.randomUUID();
@@ -61,14 +61,12 @@ export async function advanceCalendarSync(env: RuntimeEnv, accountId: string, ca
   }
 }
 export async function advancePendingCalendars(env: RuntimeEnv) {
-  if (!isCalendarFeatureEnabled(env)) return;
   const rows = await db.select().from(calendarProviderCalendar).where(or(sql`${calendarProviderCalendar.dirtyAt} is not null`, sql`${calendarProviderCalendar.pageToken} is not null`)).limit(10);
   for (const row of rows) await advanceCalendarSync(env, row.accountId, row.calendarId);
 }
 
-async function syncOwner(env: RuntimeEnv, accountId: string) {
-  const bindings = await db.select().from(calendarBinding).where(eq(calendarBinding.accountId, accountId));
-  const binding = bindings.find(row => isCalendarFeatureEnabled(env, row.workspaceId));
+async function syncOwner(accountId: string) {
+  const [binding] = await db.select().from(calendarBinding).where(eq(calendarBinding.accountId, accountId));
   if (!binding) return null;
   const [account] = await db.select().from(calendarAccount).where(eq(calendarAccount.id, accountId));
   if (!account || account.status !== "connected") return null;

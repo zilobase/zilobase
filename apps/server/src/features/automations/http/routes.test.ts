@@ -87,11 +87,11 @@ describe("database automation routes", () => {
     mocks.membership.mockResolvedValue({ id: "member-1" });
   });
 
-  it("reports the server-owned workspace capability", async () => {
+  it("reports the server-owned automation capability", async () => {
     const enabled = await app().request(
       "/database-1/automation-capability?workspaceId=workspace-1",
       undefined,
-      { DATABASE_AUTOMATIONS_ENABLED_WORKSPACE_IDS: "workspace-1" },
+      { DATABASE_AUTOMATIONS_ENABLED: "true" },
     );
     expect(enabled.status).toBe(200);
     expect(await enabled.json()).toEqual({ enabled: true });
@@ -109,12 +109,10 @@ describe("database automation routes", () => {
     expect((await app().request("/database-1/automations")).status).toBe(400);
   });
 
-  it("forwards the shared hosted and self-hosted Gmail capability gate", async () => {
+  it("forwards Gmail as an available automation action", async () => {
     mocks.catalog.mockResolvedValue({ actions: [], canManage: true, dataSourceId: "source-1" });
     const response = await app().request(
       "/database-1/automation-catalog?dataSourceId=source-1",
-      undefined,
-      { MAIL_ENABLED: "true" },
     );
     expect(response.status).toBe(200);
     expect(mocks.catalog).toHaveBeenCalledWith(expect.objectContaining({ gmailEnabled: true }));

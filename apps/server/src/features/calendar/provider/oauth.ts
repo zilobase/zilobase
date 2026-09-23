@@ -1,7 +1,7 @@
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "../../../infrastructure/database";
 import { calendarAccount, calendarBinding, calendarOauthAttempt } from "../../../infrastructure/database/schema";
-import { getRequiredStringEnv, getCanonicalApiOrigin, isCalendarFeatureEnabled, type RuntimeEnv } from "../../../shared/config/config";
+import { getRequiredStringEnv, getCanonicalApiOrigin, type RuntimeEnv } from "../../../shared/config/config";
 import { sha256Hex } from "../../../shared/crypto/sha256";
 import { verifyGoogleIdToken } from "../../../shared/security/google-id-token";
 import { encryptCalendarSecret, decryptCalendarSecret } from "./credentials";
@@ -19,15 +19,14 @@ export async function beginCalendarOAuth(env: RuntimeEnv, input: { userId: strin
   url.search = new URLSearchParams({ client_id: client(env).client_id, redirect_uri: redirectUri(env), response_type: "code", scope: CALENDAR_SCOPES.join(" "), state, code_challenge: challenge, code_challenge_method: "S256", access_type: "offline", prompt: "consent select_account" }).toString();
   return url.toString();
 }
-export async function consumeCalendarOAuthAttempt(env: RuntimeEnv, state: string) {
+export async function consumeCalendarOAuthAttempt(state: string) {
   const [attempt] = await db.update(calendarOauthAttempt).set({ consumedAt: new Date() }).where(and(eq(calendarOauthAttempt.stateHash, await sha256Hex(state)), isNull(calendarOauthAttempt.consumedAt), gt(calendarOauthAttempt.expiresAt, new Date()))).returning();
   if (!attempt) throw new CalendarProviderError(400, "expired_oauth_attempt");
-  if (!isCalendarFeatureEnabled(env, attempt.workspaceId)) throw new CalendarProviderError(403, "calendar_disabled");
   await requireCalendarMembership(attempt.userId, attempt.workspaceId);
   return attempt;
 }
 export async function completeCalendarOAuth(env: RuntimeEnv, state: string, code: string) {
-  const attempt = await consumeCalendarOAuthAttempt(env, state);
+  const attempt = await consumeCalendarOAuthAttempt(state);
   const verifier = await decryptCalendarSecret(env, attempt.verifier, { connectionId: attempt.id, userId: attempt.userId, purpose: "oauth_verifier" });
   const token = await exchange(env, { grant_type: "authorization_code", code, redirect_uri: redirectUri(env), code_verifier: verifier });
   if (!token.id_token || !token.refresh_token) throw new CalendarProviderError(400, "missing_google_consent");

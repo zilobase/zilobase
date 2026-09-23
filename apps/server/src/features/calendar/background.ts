@@ -3,7 +3,7 @@ import { db } from "../../infrastructure/database";
 import { calendarAccount, calendarBinding, calendarProviderCalendar, calendarWatchChannel } from "../../infrastructure/database/schema";
 import { createBackgroundTask, type BackgroundTaskResult } from "../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../infrastructure/background/dispatch";
-import { getStringEnv, isCalendarFeatureEnabled, type RuntimeEnv } from "../../shared/config/config";
+import { getStringEnv, type RuntimeEnv } from "../../shared/config/config";
 import { advanceCalendarSync, queueCalendarSync, refreshCalendarList } from "./sync/sync";
 import { createCalendarGateway } from "./provider/oauth";
 import { maintainAccountWatches } from "./realtime/watches";
@@ -23,12 +23,12 @@ export async function processCalendarSyncTask(env: RuntimeEnv, resourceId: strin
     const [state] = await db.select().from(calendarProviderCalendar).where(and(eq(calendarProviderCalendar.accountId, ids[0]), eq(calendarProviderCalendar.calendarId, ids[1])));
     if (state && (state.dirtyAt || state.pageToken)) pending = await advanceCalendarSync(env, ids[0], ids[1]);
   }
-  await drainCalendarOutbox(env);
+  await drainCalendarOutbox();
   return pending ? { outcome: "retry", availableAt: new Date(Date.now() + 5000).toISOString() } : { outcome: "completed" };
 }
 
 async function refreshAccountCalendars(env: RuntimeEnv, accountId: string) {
-  const binding = (await db.select().from(calendarBinding).where(eq(calendarBinding.accountId, accountId))).find(row => isCalendarFeatureEnabled(env, row.workspaceId));
+  const [binding] = await db.select().from(calendarBinding).where(eq(calendarBinding.accountId, accountId));
   const [account] = await db.select().from(calendarAccount).where(eq(calendarAccount.id, accountId));
   if (!binding || !account || account.status !== "connected") return;
   const checkpoint = new Date();

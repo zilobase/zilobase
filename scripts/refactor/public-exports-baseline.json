@@ -396,10 +396,6 @@
       "value": true,
       "type": false
     },
-    "isMailFeatureEnabled": {
-      "value": true,
-      "type": false
-    },
     "loadAiChatThreadMessages": {
       "value": true,
       "type": false
@@ -1067,10 +1063,6 @@
       "type": false
     },
     "isLoopbackHost": {
-      "value": true,
-      "type": false
-    },
-    "isMailFeatureEnabled": {
       "value": true,
       "type": false
     },
@@ -1744,10 +1736,6 @@
       "value": true,
       "type": false
     },
-    "isMailFeatureEnabled": {
-      "value": true,
-      "type": false
-    },
     "loadAiChatThreadMessages": {
       "value": true,
       "type": false
@@ -2415,10 +2403,6 @@
       "type": false
     },
     "isLoopbackHost": {
-      "value": true,
-      "type": false
-    },
-    "isMailFeatureEnabled": {
       "value": true,
       "type": false
     },
@@ -3101,10 +3085,6 @@
       "type": false
     },
     "isLoopbackHost": {
-      "value": true,
-      "type": false
-    },
-    "isMailFeatureEnabled": {
       "value": true,
       "type": false
     },
@@ -3802,10 +3782,6 @@
       "value": true,
       "type": false
     },
-    "isMailFeatureEnabled": {
-      "value": true,
-      "type": false
-    },
     "loadAiChatThreadMessages": {
       "value": true,
       "type": false
@@ -4124,10 +4100,6 @@
       "value": false,
       "type": true
     },
-    "isMailFeatureEnabled": {
-      "value": true,
-      "type": false
-    },
     "MAIL_REALTIME_AUTH_PROTOCOL_PREFIX": {
       "value": true,
       "type": false
@@ -4249,10 +4221,6 @@
     "DatabaseRealtimeTicketClaims": {
       "value": false,
       "type": true
-    },
-    "isMailFeatureEnabled": {
-      "value": true,
-      "type": false
     },
     "MAIL_REALTIME_AUTH_PROTOCOL_PREFIX": {
       "value": true,

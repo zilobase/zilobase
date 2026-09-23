@@ -52,10 +52,7 @@ export function workerStackDevArgs(env = {}) {
       AI_DEV_TOOLS_ENABLED: "true",
       AI_AGENT_DAILY_USAGE_LIMITS_ENABLED: "false",
       MEETING_BLOCK_ENABLED: "true",
-      CALENDAR_ENABLED: value(env, "CALENDAR_ENABLED", "false"),
-      CALENDAR_ENABLED_WORKSPACE_IDS: value(env, "CALENDAR_ENABLED_WORKSPACE_IDS", ""),
       CALENDAR_WEBHOOK_URL: value(env, "CALENDAR_WEBHOOK_URL", ""),
-      MAIL_ENABLED: value(env, "MAIL_ENABLED", "false"),
       ZILOBASE_DEV_EMAIL_SINK_URL: value(
         env,
         "ZILOBASE_DEV_EMAIL_SINK_URL",

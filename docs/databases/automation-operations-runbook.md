@@ -8,13 +8,13 @@ capability or render automation entry points. Compose and Helm deployments set
 `DATABASE_AUTOMATIONS_ENABLED=false` and
 `DATABASE_AUTOMATIONS_EXECUTION_DISABLED=true` explicitly.
 
-Management UI access is controlled by `DATABASE_AUTOMATIONS_ENABLED` or `DATABASE_AUTOMATIONS_ENABLED_WORKSPACE_IDS`. Provider actions have independent `MAIL_ENABLED`, `AUTOMATION_WEBHOOKS_ENABLED`, and `AUTOMATION_SLACK_ENABLED` gates. `DATABASE_AUTOMATIONS_EXECUTION_DISABLED=true` is the global execution kill switch: event capture continues for diagnosis, while event evaluation, schedule materialization, and run claiming stop. Re-enabling execution drains the existing durable backlog through normal leases and receipts.
+Management UI access is controlled by `DATABASE_AUTOMATIONS_ENABLED`. Gmail actions are available with Mail. Webhook and Slack actions have independent `AUTOMATION_WEBHOOKS_ENABLED` and `AUTOMATION_SLACK_ENABLED` gates. `DATABASE_AUTOMATIONS_EXECUTION_DISABLED=true` is the global execution kill switch: event capture continues for diagnosis, while event evaluation, schedule materialization, and run claiming stop. Re-enabling execution drains the existing durable backlog through normal leases and receipts.
 
-Roll out in this order: dark capture, internal workspaces, internal actions, schedules, Gmail, webhooks, Slack, hosted canary, self-hosted opt-in, then general availability. Roll back by disabling the affected connector first, then the execution kill switch if internal actions are also unsafe. Do not roll back migration `0073`–`0075` while definitions or runs remain; disabling capabilities is schema-compatible and rollback-safe.
+Roll out in this order: dark capture, internal actions, schedules, Gmail, webhooks, Slack, hosted canary, self-hosted opt-in, then general availability. Roll back by disabling the affected connector first, then the execution kill switch if internal actions are also unsafe. Do not roll back migration `0073`–`0075` while definitions or runs remain; disabling capabilities is schema-compatible and rollback-safe.
 
 ## Required configuration
 
-- Core: `DATABASE_URL`, the workspace capability gate, and the normal queue/background adapter.
+- Core: `DATABASE_URL`, `DATABASE_AUTOMATIONS_ENABLED`, and the normal queue/background adapter.
 - Operational health: a high-entropy `ZILOBASE_OPERATIONS_TOKEN` for the deployment-wide `GET /health/background` endpoint.
 - Retention: `DATABASE_AUTOMATION_STEP_RETENTION_DAYS` defaults to 7 (range 1–90); `DATABASE_AUTOMATION_RUN_RETENTION_DAYS` defaults to 30 (range 1–365).
 - Webhooks: `AUTOMATION_SECRET_ENCRYPTION_KEY`; self-hosted HTTP additionally requires exact `AUTOMATION_WEBHOOK_HTTP_DOMAINS` entries.

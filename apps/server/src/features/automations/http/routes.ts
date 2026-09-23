@@ -12,7 +12,7 @@ import {
 import type { AppBindings } from "../../../shared/types";
 import { readJsonBody } from "../../../shared/http/request";
 import { getMembership } from "../../access";
-import { getAutomationWebhookHttpDomains, isAutomationSlackEnabled, isAutomationWebhooksEnabled, isDatabaseAutomationsFeatureEnabled, isMailFeatureEnabled } from "../../../shared/config/config";
+import { getAutomationWebhookHttpDomains, isAutomationSlackEnabled, isAutomationWebhooksEnabled, isDatabaseAutomationsFeatureEnabled } from "../../../shared/config/config";
 import { isCommunityRegistration } from "../../../shared/app-policy";
 import { requireDatabaseRouteUser } from "../../databases/http/support";
 import {
@@ -46,7 +46,7 @@ databaseAutomationRoutes.get("/:databaseId/automation-capability", resourceWorks
     return c.json({ error: "Forbidden" }, 403);
   }
   return c.json({
-    enabled: isDatabaseAutomationsFeatureEnabled(c.env, workspaceId),
+    enabled: isDatabaseAutomationsFeatureEnabled(c.env),
   });
 });
 
@@ -73,7 +73,7 @@ databaseAutomationRoutes.post("/:databaseId/automations/validate", resourceWorks
     databaseId: c.req.param("databaseId"),
     dataSourceId: parsed.data.dataSourceId,
     definition: parsed.data.definition,
-    gmailEnabled: mailEnabled(c),
+    gmailEnabled: true,
     slackEnabled: isAutomationSlackEnabled(c.env ?? {}),
     webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
     userId: user.id,
@@ -108,7 +108,7 @@ databaseAutomationRoutes.post("/:databaseId/automations", resourceWorkspace, asy
       body: { ...parsed.data, idempotencyKey: idempotencyKey.value },
       databaseId: c.req.param("databaseId"),
       editionExtension: c.get("editionExtension") ?? undefined,
-      gmailEnabled: mailEnabled(c),
+      gmailEnabled: true,
       slackEnabled: isAutomationSlackEnabled(c.env ?? {}),
       webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
       userId: user.id,
@@ -175,7 +175,7 @@ databaseAutomationRoutes.patch("/:databaseId/automations/:automationId", resourc
     databaseId: c.req.param("databaseId"),
     editionExtension: c.get("editionExtension") ?? undefined,
     expectedVersion,
-    gmailEnabled: mailEnabled(c),
+    gmailEnabled: true,
     slackEnabled: isAutomationSlackEnabled(c.env ?? {}),
     webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
     userId: user.id,
@@ -191,7 +191,7 @@ for (const [path, paused] of [["pause", true], ["resume", false]] as const) {
       automationId: c.req.param("automationId"),
       databaseId: c.req.param("databaseId"),
       editionExtension: c.get("editionExtension") ?? undefined,
-      gmailEnabled: mailEnabled(c),
+      gmailEnabled: true,
       slackEnabled: isAutomationSlackEnabled(c.env ?? {}),
       webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
       paused,
@@ -214,7 +214,7 @@ databaseAutomationRoutes.post("/:databaseId/automations/:automationId/duplicate"
       databaseId: c.req.param("databaseId"),
       editionExtension: c.get("editionExtension") ?? undefined,
       idempotencyKey,
-      gmailEnabled: mailEnabled(c),
+      gmailEnabled: true,
       slackEnabled: isAutomationSlackEnabled(c.env ?? {}),
       webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
       userId: user.id,
@@ -241,16 +241,12 @@ databaseAutomationRoutes.get("/:databaseId/automation-catalog", resourceWorkspac
   return handle(c, () => getDatabaseAutomationCatalog({
     databaseId: c.req.param("databaseId"),
     dataSourceId,
-    gmailEnabled: mailEnabled(c),
+    gmailEnabled: true,
     slackEnabled: isAutomationSlackEnabled(c.env ?? {}),
     webhooksEnabled: isAutomationWebhooksEnabled(c.env ?? {}),
     userId: user.id,
   }));
 });
-
-function mailEnabled(c: Context<AppBindings>) {
-  return isMailFeatureEnabled(c.env ?? {});
-}
 
 function webhookHttpDomains(c: Context<AppBindings>) {
   return isCommunityRegistration(c.get("appPolicy"))

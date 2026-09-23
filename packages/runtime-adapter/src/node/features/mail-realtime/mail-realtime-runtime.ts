@@ -5,7 +5,6 @@ import {
   MAIL_REALTIME_PROTOCOL,
   verifyMailRealtimeTicket,
   type MailRealtimeTicketClaims,
-  isMailFeatureEnabled,
   recordMailMetric,
   type RuntimeEnv,
 } from "@zilobase/server/node-adapter-api";
@@ -45,7 +44,6 @@ export function attachNodeMailRealtimeRuntime(
       pong: PONG,
       validate: (value): value is MailNotificationEvent => isNotification(value),
     },
-    enabled: () => isMailFeatureEnabled(env),
     eventRoomId: (event) => event.bindingId,
     isRemoteEvent: (value, roomId): value is MailNotificationEvent =>
       isNotification(value) && value.bindingId === roomId,
@@ -67,7 +65,7 @@ export function attachNodeMailRealtimeRuntime(
   return {
     destroy: runtime.destroy,
     async publishNotification(event: MailNotificationEvent) {
-      if (isMailFeatureEnabled(env)) await runtime.publish(event);
+      await runtime.publish(event);
     },
   };
 }

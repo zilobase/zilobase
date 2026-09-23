@@ -21,7 +21,7 @@ const env = {
   GMAIL_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 2).toString("base64"),
 }
 
-test("mail HTTP routes are unavailable when the feature is disabled", async () => {
+test("mail HTTP routes require a workspace", async () => {
   const response = await mailRoutes.request("/connection", undefined, {})
 
   assert.equal(response.status, 404)

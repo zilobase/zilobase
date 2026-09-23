@@ -7,7 +7,7 @@ vi.mock("./realtime/outbox", () => ({ drainCalendarOutbox: mocks.drain }));
 vi.mock("./realtime/watches", () => ({ maintainAccountWatches: mocks.watches }));
 vi.mock("./provider/oauth", () => ({ createCalendarGateway: async () => ({}) }));
 import { dispatchCalendarWebhook, processCalendarSyncTask } from "./background";
-const env = { CALENDAR_ENABLED: "true", CALENDAR_ENABLED_WORKSPACE_IDS: "workspace", CALENDAR_WEBHOOK_URL: "https://api.example.test/calendar/google/webhook" };
+const env = { CALENDAR_WEBHOOK_URL: "https://api.example.test/calendar/google/webhook" };
 beforeEach(() => { vi.clearAllMocks(); mocks.where.mockReset(); mocks.advance.mockResolvedValue(false); });
 test("webhook dispatch uses the existing task kind for events and calendar-list changes", async () => {
   await dispatchCalendarWebhook(env, "account", null);
@@ -18,7 +18,7 @@ test("event tasks publish committed revisions immediately and retain paginated r
   mocks.advance.mockResolvedValueOnce(true);
   expect((await processCalendarSyncTask(env, '["account","primary"]')).outcome).toBe("retry");
   expect(mocks.advance).toHaveBeenCalledWith(env, "account", "primary");
-  expect(mocks.drain).toHaveBeenCalledWith(env);
+  expect(mocks.drain).toHaveBeenCalledWith();
   expect(mocks.advance.mock.invocationCallOrder[0]).toBeLessThan(mocks.drain.mock.invocationCallOrder[0]!);
 });
 test("deleted or already processed calendar tasks do not retry forever", async () => {

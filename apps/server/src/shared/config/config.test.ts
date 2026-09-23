@@ -14,7 +14,6 @@ import {
   isLocalDevelopmentHost,
   isLocalRequestOrigin,
   isLoopbackHost,
-  isMailFeatureEnabled,
   isAutomationWebhooksEnabled,
   isAutomationSlackEnabled,
   getAutomationWebhookHttpDomains,
@@ -22,12 +21,6 @@ import {
   isDatabaseAutomationExecutionEnabled,
   resolvePublicRequestUrl,
 } from "./config";
-
-test("mail is disabled unless explicitly enabled", () => {
-  assert.equal(isMailFeatureEnabled({}), false);
-  assert.equal(isMailFeatureEnabled({ MAIL_ENABLED: "false" }), false);
-  assert.equal(isMailFeatureEnabled({ MAIL_ENABLED: "TRUE" }), true);
-});
 
 test("automation webhooks and self-hosted HTTP domains are explicit", () => {
   assert.equal(isAutomationWebhooksEnabled({}), false);
@@ -239,10 +232,3 @@ test("string environment helpers reject empty and non-string values", () => {
   assert.throws(() => getRequiredStringEnv({}, "VALUE"), /VALUE is required/);
 });
 
-import { isCalendarFeatureEnabled } from "./config";
-test("calendar requires its independent flag and workspace rollout", () => {
-  assert.equal(isCalendarFeatureEnabled({ MAIL_ENABLED: "true" }, "w"), false);
-  assert.equal(isCalendarFeatureEnabled({ CALENDAR_ENABLED: "true" }, "w"), false);
-  assert.equal(isCalendarFeatureEnabled({ CALENDAR_ENABLED: "true", CALENDAR_ENABLED_WORKSPACE_IDS: "w" }, "w"), true);
-  assert.equal(isCalendarFeatureEnabled({ CALENDAR_ENABLED: "true", CALENDAR_ENABLED_WORKSPACE_IDS: "w" }, "other"), false);
-});

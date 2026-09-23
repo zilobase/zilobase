@@ -2,7 +2,7 @@ import { recordCalendarMetric } from "../metrics";
 import { and, eq, gt, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "../../../infrastructure/database";
 import { calendarAccount, calendarBinding, calendarWatchChannel, calendarProviderCalendar } from "../../../infrastructure/database/schema";
-import { isCalendarFeatureEnabled, getStringEnv, type RuntimeEnv } from "../../../shared/config/config";
+import { getStringEnv, type RuntimeEnv } from "../../../shared/config/config";
 import { sha256Hex } from "../../../shared/crypto/sha256";
 import { CalendarGateway, CalendarProviderError } from "../provider/gateway";
 import { createCalendarGateway } from "../provider/oauth";
@@ -52,7 +52,6 @@ export async function stopCalendarWatches(accountId: string, gateway: CalendarGa
   }
 }
 export async function maintainCalendarWatches(env: RuntimeEnv) {
-  if (!isCalendarFeatureEnabled(env)) return;
   const address = getStringEnv(env, "CALENDAR_WEBHOOK_URL");
   if (!address || new URL(address).protocol !== "https:") return;
   const accounts = await db.select().from(calendarAccount).where(eq(calendarAccount.status, "connected"));
@@ -75,7 +74,7 @@ async function retireChannels(channels: (typeof calendarWatchChannel.$inferSelec
 }
 
 export async function maintainAccountWatches(account: typeof calendarAccount.$inferSelect, env: RuntimeEnv, address: string) {
-      const binding = (await db.select().from(calendarBinding).where(eq(calendarBinding.accountId, account.id))).find(b => isCalendarFeatureEnabled(env, b.workspaceId));
+      const [binding] = await db.select().from(calendarBinding).where(eq(calendarBinding.accountId, account.id));
       if (!binding) return;
       let channels = await db.select().from(calendarWatchChannel).where(eq(calendarWatchChannel.accountId, account.id));
       let calendars = await db.select().from(calendarProviderCalendar).where(eq(calendarProviderCalendar.accountId, account.id));

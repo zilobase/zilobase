@@ -67,7 +67,6 @@ test("Gmail delivery reuses owned connections, stable receipts, and reconnect ha
     readAutomationService(),
   ]);
   expect(engine).toContain("sendGmailComposition");
-  expect(engine).toContain("isMailFeatureEnabled(env)");
   expect(engine).toContain('kind: "gmail"');
   expect(engine).toContain('status === "succeeded"');
   expect(engine).toContain('status: "reconnect_required"');

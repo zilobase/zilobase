@@ -310,12 +310,6 @@ test("database reset runs drop and create outside a shared transaction", () => {
   );
 });
 
-test("mail flags belong to the operator rather than generated infrastructure", async () => {
-  for (const profile of Object.values(localProfiles)) {
-    assert.equal(profileEnvironment(profile, {}).MAIL_ENABLED, undefined);
-  }
-});
-
 test("public mail development uses one origin without proxying back into its tunnel", () => {
   for (const profile of Object.values(localProfiles)) {
     const env = applyPublicDevelopmentOrigin({ ZILOBASE_DEV_PUBLIC_ORIGIN: "https://mail-dev.example.com" }, profile);

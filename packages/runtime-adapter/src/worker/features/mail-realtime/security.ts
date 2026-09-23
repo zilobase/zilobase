@@ -1,7 +1,6 @@
 import {
   MAIL_REALTIME_AUTH_PROTOCOL_PREFIX,
   MAIL_REALTIME_PROTOCOL,
-  isMailFeatureEnabled,
   verifyMailRealtimeTicket,
   type MailRealtimeTicketClaims,
 } from "@zilobase/server/realtime-api";
@@ -21,9 +20,6 @@ export async function routeMailRealtimeRequest(
   request: Request,
   env: MailRealtimeRouteEnv,
 ) {
-  if (!isMailFeatureEnabled(env)) {
-    return new Response("Not Found", { status: 404 });
-  }
   if (request.method !== "GET") {
     return new Response("Method Not Allowed", { status: 405 });
   }

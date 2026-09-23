@@ -112,7 +112,6 @@ export type AppBindings = {
     COLLABORATION_WEBSOCKET_URL?: string;
     DATABASE_REALTIME_WEBSOCKET_URL?: string;
     DATABASE_AUTOMATIONS_ENABLED?: string;
-    DATABASE_AUTOMATIONS_ENABLED_WORKSPACE_IDS?: string;
     DATABASE_URL?: string;
     EMAIL_FROM?: string;
     GOOGLE_CLIENT_ID?: string;
@@ -124,7 +123,6 @@ export type AppBindings = {
     GMAIL_PUBSUB_PUSH_AUDIENCE?: string;
     GMAIL_PUBSUB_SERVICE_ACCOUNT_EMAIL?: string;
     GMAIL_PUBSUB_SUBSCRIPTION?: string;
-    MAIL_ENABLED?: string;
     AI_AGENT_AUDIT_RETENTION_DAYS?: string;
     AI_AGENT_CLEANUP_BATCH_SIZE?: string;
     AI_AGENT_DAILY_USAGE_LIMITS_ENABLED?: string;

@@ -56,7 +56,6 @@ export {
   SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX,
 } from "../shared/security/auth-headers";
 export {
-  isMailFeatureEnabled,
   getCanonicalApiOrigin,
   getCanonicalHttpOrigin,
   getCanonicalWebOrigin,
@@ -233,7 +232,6 @@ export {
 export { getBackgroundOperationalSnapshot } from "../infrastructure/background/health";
 export type { AppBindings } from "../shared/types";
 
-export { isCalendarFeatureEnabled } from "../shared/config/config";
 export { getCalendarRealtimeWebSocketUrl, publishCalendarNotification, type CalendarNotificationEvent } from "@zilobase/runtime-adapter/capabilities";
 export { advancePendingCalendars } from "../features/calendar/sync/sync";
 

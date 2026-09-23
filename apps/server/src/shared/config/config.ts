@@ -1,9 +1,5 @@
 export type RuntimeEnv = Record<string, unknown>;
 
-export function isMailFeatureEnabled(env: RuntimeEnv) {
-  return getStringEnv(env, "MAIL_ENABLED")?.trim().toLowerCase() === "true";
-}
-
 export function isAutomationWebhooksEnabled(env: RuntimeEnv) {
   return getStringEnv(env, "AUTOMATION_WEBHOOKS_ENABLED")?.trim().toLowerCase() === "true";
 }
@@ -19,21 +15,11 @@ export function getAutomationWebhookHttpDomains(env: RuntimeEnv) {
     .filter(Boolean));
 }
 
-export function isDatabaseAutomationsFeatureEnabled(
-  env: RuntimeEnv,
-  workspaceId: string,
-) {
-  if (
-    getStringEnv(env, "DATABASE_AUTOMATIONS_ENABLED")
-      ?.trim()
-      .toLowerCase() === "true"
-  ) {
-    return true;
-  }
-  return (getStringEnv(env, "DATABASE_AUTOMATIONS_ENABLED_WORKSPACE_IDS") ?? "")
-    .split(",")
-    .map((id) => id.trim())
-    .some((id) => id === "*" || id === workspaceId);
+export function isDatabaseAutomationsFeatureEnabled(env: RuntimeEnv) {
+  return (
+    getStringEnv(env, "DATABASE_AUTOMATIONS_ENABLED")?.trim().toLowerCase() ===
+    "true"
+  );
 }
 
 export function isDatabaseAutomationExecutionEnabled(env: RuntimeEnv) {
@@ -345,8 +331,3 @@ function parseUrl(value: string) {
   }
 }
 
-export function isCalendarFeatureEnabled(env: RuntimeEnv, workspaceId?: string) {
-  if (getStringEnv(env, "CALENDAR_ENABLED")?.trim().toLowerCase() !== "true") return false;
-  const allowed = (getStringEnv(env, "CALENDAR_ENABLED_WORKSPACE_IDS") ?? "").split(",").map(id => id.trim()).filter(Boolean);
-  return workspaceId ? allowed.includes("*") || allowed.includes(workspaceId) : allowed.length > 0;
-}

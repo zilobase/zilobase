@@ -1,7 +1,6 @@
 import {
   CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX,
   CALENDAR_REALTIME_PROTOCOL,
-  isCalendarFeatureEnabled,
   verifyCalendarRealtimeTicket,
   type CalendarRealtimeTicketClaims,
 } from "@zilobase/server/realtime-api";
@@ -21,9 +20,6 @@ export async function routeCalendarRealtimeRequest(
   request: Request,
   env: CalendarRealtimeRouteEnv,
 ) {
-  if (!isCalendarFeatureEnabled(env)) {
-    return new Response("Not Found", { status: 404 });
-  }
   if (request.method !== "GET") {
     return new Response("Method Not Allowed", { status: 405 });
   }
@@ -43,7 +39,7 @@ export async function routeCalendarRealtimeRequest(
   }
   try {
     const claims = await verifyCalendarRealtimeTicket(ticket, env);
-    if (claims.bindingId !== bindingId || !isCalendarFeatureEnabled(env, claims.workspaceId)) {
+    if (claims.bindingId !== bindingId) {
       throw new Error("Calendar realtime ticket scope does not match");
     }
     const headers = new Headers(request.headers);

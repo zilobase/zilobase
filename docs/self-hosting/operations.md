@@ -100,8 +100,7 @@ owner can switch registration mode under **Settings → Team**.
 
 ## Workspace Mail
 
-Mail is workspace-scoped and remains hidden unless the web build enables
-`VITE_FEATURE_MAIL` and the API runtime sets `MAIL_ENABLED=true`. Apply every
+Mail is workspace-scoped and is included in the web client and API. Apply every
 database migration before enabling it; the workspace rollout migration removes
 the former unscoped credential table and cannot be rolled back by an older
 application image without restoring the matching database backup.

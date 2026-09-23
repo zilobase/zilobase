@@ -24,7 +24,7 @@ const enabled = Boolean(process.env.MAIL_TEST_DATABASE_URL)
 const pool = enabled ? new Pool({ connectionString: process.env.MAIL_TEST_DATABASE_URL }) : null
 const database = pool ? drizzle(pool, { schema }) : null
 const userId = randomUUID(), workspaceId = randomUUID(), otherWorkspaceId = randomUUID(), accountId = randomUUID()
-const env = { MAIL_ENABLED: "true", DATABASE_URL: process.env.MAIL_TEST_DATABASE_URL, BETTER_AUTH_URL: "http://localhost:3000", CLIENT_URL: "http://localhost:1420", GMAIL_GOOGLE_CLIENT_ID: "test.apps.googleusercontent.com", GMAIL_GOOGLE_CLIENT_SECRET: "fixture", GMAIL_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 3).toString("base64") }
+const env = { DATABASE_URL: process.env.MAIL_TEST_DATABASE_URL, BETTER_AUTH_URL: "http://localhost:3000", CLIENT_URL: "http://localhost:1420", GMAIL_GOOGLE_CLIENT_ID: "test.apps.googleusercontent.com", GMAIL_GOOGLE_CLIENT_SECRET: "fixture", GMAIL_TOKEN_ENCRYPTION_KEY: Buffer.alloc(32, 3).toString("base64") }
 let user: typeof schema.user.$inferSelect
 let account: typeof schema.gmailAccount.$inferSelect
 beforeAll(async () => {
