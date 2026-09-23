@@ -6,7 +6,6 @@ import {
   FileText,
   MoreHorizontal,
   Plus,
-  Search,
   Settings2,
   Sparkles,
 } from "@/shared/components/icons";
@@ -31,7 +30,10 @@ import { getDatabasePropertyType } from "../../../schema/property-catalog";
 import { hasDatabasePropertyEditSettings } from "../../../schema/configuration";
 import { DatabasePropertyEditSubmenu } from "../../../schema/editors/database-property-menu";
 import { DatabaseSearchableMenuItems } from "../../components/database-searchable-menu-items";
-import { type DatabaseSearchableMenuOption } from "../../menu-option-contracts";
+import {
+  PageDatabasePicker,
+  type PageDatabasePickerOption,
+} from "../../../components/page-database-picker";
 import { getDatabaseViewIcon } from "../../model/database-view-config";
 import {
   DataSourceAddGlyph,
@@ -49,7 +51,7 @@ import {
 import { ViewSettingsRow } from "./view-settings-row";
 import { SubItemsSettingsSection } from "./sub-items-settings";
 
-type LinkableDatabaseOption = DatabaseSearchableMenuOption & {
+type LinkableDatabaseOption = PageDatabasePickerOption & {
   database: PageDatabase;
   pageName: string;
 };
@@ -241,38 +243,17 @@ function LinkExistingDataSourcePicker({
     );
   }
 
-  return isLoadingPages ? (
-    <DropDrawerItem disabled>Loading data sources...</DropDrawerItem>
-  ) : (
-    <DatabaseSearchableMenuItems
+  return (
+    <PageDatabasePicker
+      ariaLabel="Search data sources"
+      className="h-[min(32rem,calc(100dvh-5rem))]"
       emptyMessage="No data sources available."
-      inputAriaLabel="Search data sources"
-      inputIcon={<Search className="size-4" />}
-      inputPlaceholder="Search data sources..."
-      open
+      heading="Data sources"
+      isLoading={isLoadingPages}
+      loadingMessage="Loading data sources..."
+      onSelect={(option) => setSelectedDatabaseId(option.value)}
       options={databaseOptions}
-      pinSearch
-      renderOption={(option) => {
-        const databaseOption = option as LinkableDatabaseOption;
-
-        return (
-          <DropDrawerItem
-            key={databaseOption.value}
-            onSelect={(event) => {
-              event.preventDefault();
-              setSelectedDatabaseId(databaseOption.value);
-            }}
-          >
-            {databaseOption.icon}
-            <div className="min-w-0 flex-1">
-              <div className="truncate">{databaseOption.label}</div>
-              <div className="truncate text-xs text-content-secondary">
-                {databaseOption.pageName}
-              </div>
-            </div>
-          </DropDrawerItem>
-        );
-      }}
+      placeholder="Search data sources..."
     />
   );
 }
@@ -318,10 +299,11 @@ export function DataSourceSettingsSection({
 
     return {
       database,
+      description: pageName,
       icon: getDatabaseIconNode(database) ?? (
         <PageIconDisplay size="sm" value={DEFAULT_DATABASE_ITEM_ICON} />
       ),
-      label: database.name,
+      label: database.name || "Untitled database",
       searchText: `${database.name} ${pageName}`.trim(),
       value: database.id,
       pageName,
@@ -347,57 +329,39 @@ export function DataSourceSettingsSection({
     setLinkExistingSession((session) => session + 1);
   }, [open]);
 
-  const renderDataSourcePicker = (options: LinkableDatabaseOption[]) =>
-    isLoadingPages ? (
-      <DropDrawerItem disabled>Loading databases...</DropDrawerItem>
-    ) : (
-      <DatabaseSearchableMenuItems
+  const renderDataSourcePicker = (options: LinkableDatabaseOption[]) => (
+    <PageDatabasePicker
+        ariaLabel="Search databases"
+        className="h-[min(32rem,calc(100dvh-5rem))]"
         emptyMessage="No databases available."
-        inputAriaLabel="Search databases"
-        inputIcon={<Search className="size-4" />}
-        inputPlaceholder="Search databases..."
-        open={open}
-        options={options}
-        pinSearch
-        renderOption={(option) => {
-          const databaseOption = option as LinkableDatabaseOption;
+        heading="Databases"
+        isLoading={isLoadingPages}
+        loadingMessage="Loading databases..."
+        onSelect={(databaseOption) => {
           const sourceView = databaseOption.database.views[0];
 
-          return (
-            <DropDrawerItem
-              disabled={!sourceView}
-              key={databaseOption.value}
-              onSelect={() => {
-                if (!sourceView) return;
+          if (!sourceView) return;
 
-                const sourceSelection = {
-                  dataSourceId: sourceView.dataSourceId,
-                  dataSourceName:
-                    databaseOption.database.name || "Untitled database",
-                  parentDatabaseId: databaseOption.database.id,
-                  viewId: sourceView.id,
-                  viewName: sourceView.name,
-                  viewType: sourceView.type,
-                };
+          const sourceSelection = {
+            dataSourceId: sourceView.dataSourceId,
+            dataSourceName:
+              databaseOption.database.name || "Untitled database",
+            parentDatabaseId: databaseOption.database.id,
+            viewId: sourceView.id,
+            viewName: sourceView.name,
+            viewType: sourceView.type,
+          };
 
-                onReplaceActiveViewSource(sourceSelection);
-                onCloseSettings();
-              }}
-            >
-              <div className="flex min-w-0 flex-1 items-start gap-2">
-                {databaseOption.icon}
-                <div className="min-w-0">
-                  <div className="truncate">{databaseOption.label}</div>
-                  <div className="truncate text-xs text-content-secondary">
-                    {databaseOption.pageName}
-                  </div>
-                </div>
-              </div>
-            </DropDrawerItem>
-          );
+          onReplaceActiveViewSource(sourceSelection);
+          onCloseSettings();
         }}
-      />
-    );
+        options={options.map((option) => ({
+          ...option,
+          disabled: option.database.views.length === 0,
+        }))}
+        placeholder="Search databases..."
+    />
+  );
 
   return (
     <>

@@ -20,7 +20,6 @@ import {
   BotIcon,
   CalendarDaysIcon,
   CheckIcon,
-  ChevronRightIcon,
   DatabaseIcon,
   FileIcon,
   GripVerticalIcon,
@@ -28,7 +27,6 @@ import {
   LibraryIcon,
   Layers3Icon,
   ListChecksIcon,
-  Loader2Icon,
   LockIcon,
   MessageSquareIcon,
   MoreHorizontalIcon,
@@ -43,6 +41,10 @@ import { toast } from "sonner"
 
 import { SidebarLayoutTabs } from "./sidebar-layout-tabs"
 import { DatabaseViewIcon } from "@/features/databases"
+import {
+  PageDatabasePicker,
+  type PageDatabasePickerOption,
+} from "@/features/databases/components/page-database-picker"
 import { libraryViewIcons, mailViewIcons, SidebarShortcutIcon, SidebarTabIcon } from "./sidebar-layout-icons"
 import {
   getSectionLabel,
@@ -80,11 +82,6 @@ import {
 import { Input } from "@/shared/ui/input"
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker"
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/shared/ui/collapsible"
-import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -92,7 +89,6 @@ import {
 import { Switch } from "@/shared/ui/switch"
 import { cn } from "@/shared/lib/utils"
 import { getDatabaseIconNode, getPageIconNode, PageIconDisplay } from "@/features/pages/index"
-import { type AppSearchResult } from "@zilobase/features/search";
 import { useAppSearchResults } from "@zilobase/features/search/react";
 import type { Page, PageDatabase, PageDatabaseView } from "@zilobase/features/pages"
 import {
@@ -462,7 +458,6 @@ function AddShortcutMenu({ databases, onAdd, pages, tabId, workspaceId }: { data
           <DropDrawerSub title="Library views"><DropDrawerSubTrigger><LibraryIcon />Library views</DropDrawerSubTrigger><DropDrawerSubContent className="w-56">{libraryViewIds.map((view) => { const Icon = libraryViewIcons[view]; return <DropDrawerItem key={view} onSelect={() => onAdd({ type: "library", view })}><Icon />{libraryViewLabels[view]}</DropDrawerItem> })}</DropDrawerSubContent></DropDrawerSub>
           <DropDrawerSub title="Pages"><DropDrawerSubTrigger><FileIcon />Page</DropDrawerSubTrigger><DropDrawerSubContent className="w-72 overflow-hidden p-0"><PageShortcutPicker onSelect={(pageId, label) => onAdd({ pageId, type: "page" }, label)} pages={pages} workspaceId={workspaceId} /></DropDrawerSubContent></DropDrawerSub>
           <DropDrawerSub title="Databases"><DropDrawerSubTrigger><DatabaseIcon />Database or view</DropDrawerSubTrigger><DropDrawerSubContent className="w-72 overflow-hidden p-0"><DatabasePicker databases={databases} onSelect={(database, view) => onAdd({ databaseId: database.id, type: "database", ...(view ? { viewId: view.id } : {}) }, view?.name.trim() || database.name.trim() || "Untitled database")} workspaceId={workspaceId} /></DropDrawerSubContent></DropDrawerSub>
-          <DropDrawerItem onSelect={() => onAdd({ route: "trash", type: "route" })}><Trash2Icon />Trash</DropDrawerItem>
           <DropDrawerItem onSelect={() => onAdd({ route: "settings", type: "route" })}><SettingsIcon />Settings</DropDrawerItem>
         </>
   return (
@@ -567,142 +562,105 @@ function PageShortcutPicker({ onSelect, pages, workspaceId }: { onSelect: (pageI
     () => new Map(pages.map((page) => [page.id, page])),
     [pages],
   )
-  const displayedPages = hasQuery
-    ? searchSettled
-      ? results
-      : []
-    : pages.slice(0, 50)
+  const displayedPages = hasQuery && searchSettled ? results : []
+  const options = React.useMemo(
+    () =>
+      (hasQuery ? displayedPages : pages.slice(0, 50)).map((entry) => {
+        if ("title" in entry) {
+          const page = pagesById.get(entry.id)
+          const label = entry.title.trim() || "Untitled"
+
+          return {
+            icon: page
+              ? getPageIconNode(page)
+              : entry.emoji
+                ? <PageIconDisplay size="sm" value={entry.emoji} />
+                : <FileIcon className="text-content-secondary" />,
+            label,
+            searchText: label,
+            value: entry.id,
+          }
+        }
+
+        const label = entry.name.trim() || "Untitled"
+
+        return {
+          icon: getPageIconNode(entry),
+          label,
+          searchText: label,
+          value: entry.id,
+        }
+      }),
+    [displayedPages, hasQuery, pages, pagesById],
+  )
+  const isSearching = hasQuery && (!searchSettled || isFetching)
 
   return (
-    <PickerPanel
+    <PageDatabasePicker
       ariaLabel="Search pages"
-      emptyLabel="No pages found"
-      isSearching={hasQuery && (!searchSettled || isFetching)}
+      className="h-[min(32rem,calc(100dvh-5rem))]"
+      emptyMessage={isSearching ? "Searching..." : "No pages found."}
+      filterOptions={false}
+      heading="Pages"
+      isSearching={isSearching}
+      loadingMessage="Loading pages..."
       onQueryChange={setQuery}
+      onSelect={(option) => onSelect(option.value, option.label)}
+      options={options}
+      placeholder="Search pages..."
       query={query}
-    >
-      {displayedPages.map((entry) => {
-        const result = isAppSearchResult(entry) ? entry : null
-        const page = result ? pagesById.get(result.id) : entry as Page
-        const id = result?.id ?? page?.id ?? ""
-        const label = (result?.title ?? page?.name ?? "").trim() || "Untitled"
-        return (
-          <DropDrawerItem key={id} onSelect={() => onSelect(id, label)}>
-            {page
-              ? getPageIconNode(page)
-              : result?.emoji
-                ? <PageIconDisplay size="sm" value={result.emoji} />
-                : <FileIcon className="text-content-secondary" />}
-            <span className="truncate">{label}</span>
-          </DropDrawerItem>
-        )
-      })}
-    </PickerPanel>
+    />
   )
 }
 
-function DatabasePicker({ databases, onSelect, workspaceId }: { databases: PageDatabase[]; onSelect: (database: PageDatabase, view?: PageDatabaseView) => void; workspaceId: string | null }) {
+function DatabasePicker({ databases, onSelect }: { databases: PageDatabase[]; onSelect: (database: PageDatabase, view?: PageDatabaseView) => void; workspaceId: string | null }) {
   const [query, setQuery] = React.useState("")
-  const debouncedQuery = useDebouncedValue(query.trim(), 250)
-  const hasQuery = Boolean(query.trim())
-  const searchSettled = query.trim() === debouncedQuery
-  const { data: results = [], isFetching } = useAppSearchResults(
-    workspaceId,
-    debouncedQuery,
-    hasQuery && searchSettled,
-    ["database"],
-  )
-  const databasesById = React.useMemo(
-    () => new Map(databases.map((database) => [database.id, database])),
+  const options = React.useMemo<
+    Array<PageDatabasePickerOption & {
+      database: PageDatabase
+      view?: PageDatabaseView
+    }>
+  >(
+    () =>
+      databases.flatMap((database) => {
+        const databaseLabel = database.name.trim() || "Untitled database"
+        const databaseOption = {
+          database,
+          description: "Database",
+          icon: getDatabaseIconNode(database) ?? <DatabaseIcon className="text-content-secondary" />,
+          label: databaseLabel,
+          searchText: `${databaseLabel} database`,
+          value: `database:${database.id}`,
+        }
+        const viewOptions = database.views.map((view) => ({
+          database,
+          description: databaseLabel,
+          icon: <DatabaseViewIcon className="text-content-secondary" view={view} />,
+          label: view.name.trim() || "Untitled view",
+          searchText: `${view.name} ${databaseLabel}`.trim(),
+          value: `view:${database.id}:${view.id}`,
+          view,
+        }))
+
+        return [databaseOption, ...viewOptions]
+      }),
     [databases],
   )
-  const displayedDatabases = hasQuery
-    ? searchSettled
-      ? results.flatMap((result) => {
-          const database = databasesById.get(result.id)
-          return database ? [database] : []
-        })
-      : []
-    : databases.slice(0, 50)
 
   return (
-    <PickerPanel
+    <PageDatabasePicker
       ariaLabel="Search databases and views"
-      emptyLabel="No databases found"
-      isSearching={hasQuery && (!searchSettled || isFetching)}
+      className="h-[min(32rem,calc(100dvh-5rem))]"
+      emptyMessage="No databases or views found."
+      heading="Databases and views"
+      loadingMessage="Loading databases..."
       onQueryChange={setQuery}
+      onSelect={(option) => onSelect(option.database, option.view)}
+      options={options}
+      placeholder="Search databases and views..."
       query={query}
-    >
-      {displayedDatabases.map((database) => (
-        <DatabasePickerRow database={database} defaultOpen={hasQuery} key={`${debouncedQuery}:${database.id}`} onSelect={onSelect} />
-      ))}
-    </PickerPanel>
+    />
   )
-}
-
-function DatabasePickerRow({ database, defaultOpen, onSelect }: { database: PageDatabase; defaultOpen: boolean; onSelect: (database: PageDatabase, view?: PageDatabaseView) => void }) {
-  const [open, setOpen] = React.useState(defaultOpen)
-  const hasViews = database.views.length > 0
-  const label = database.name.trim() || "Untitled database"
-
-  return (
-    <Collapsible onOpenChange={setOpen} open={open}>
-      <div className="group/database-picker-row relative">
-        <DropDrawerItem className={hasViews ? "pl-8" : undefined} onSelect={() => onSelect(database)}>
-          {getDatabaseIconNode(database) ?? <DatabaseIcon className="text-content-secondary" />}
-          <span className="truncate">{label}</span>
-        </DropDrawerItem>
-        {hasViews ? (
-          <CollapsibleTrigger asChild>
-            <button
-              aria-label={`${open ? "Collapse" : "Expand"} ${label}`}
-              className="absolute left-1 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-content-secondary outline-none hover:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring [&_svg]:size-3.5"
-              onClick={(event) => event.stopPropagation()}
-              onPointerDown={(event) => event.stopPropagation()}
-              type="button"
-            >
-              <ChevronRightIcon className={cn("transition-transform", open && "rotate-90")} />
-            </button>
-          </CollapsibleTrigger>
-        ) : null}
-      </div>
-      {hasViews ? (
-        <CollapsibleContent className="pl-3">
-          {database.views.map((view) => (
-            <DropDrawerItem inset key={view.id} onSelect={() => onSelect(database, view)}>
-              <DatabaseViewPickerIcon view={view} />
-              <span className="truncate">{view.name.trim() || "Untitled view"}</span>
-            </DropDrawerItem>
-          ))}
-        </CollapsibleContent>
-      ) : null}
-    </Collapsible>
-  )
-}
-
-function DatabaseViewPickerIcon({ view }: { view: PageDatabaseView }) {
-  return <DatabaseViewIcon className="text-content-secondary" view={view} />
-}
-
-function PickerPanel({ ariaLabel, children, emptyLabel, isSearching, onQueryChange, query }: { ariaLabel: string; children: React.ReactNode; emptyLabel: string; isSearching: boolean; onQueryChange: (query: string) => void; query: string }) {
-  const hasChildren = React.Children.count(children) > 0
-  return (
-    <div className="flex min-h-0 flex-col">
-      <div className="sticky top-0 z-10 shrink-0 bg-surface-overlay p-2">
-        <div className="relative">
-          <Input aria-label={ariaLabel} className="pr-8" onChange={(event) => onQueryChange(event.target.value)} onKeyDown={(event) => event.stopPropagation()} placeholder="Search…" value={query} />
-          {isSearching ? <Loader2Icon className="absolute right-2 top-1/2 size-4 -translate-y-1/2 animate-spin text-content-secondary" /> : null}
-        </div>
-      </div>
-      <div className="max-h-[min(28rem,calc(100vh-8rem))] min-h-0 overflow-y-auto overscroll-contain px-1 pb-1">
-        {hasChildren ? children : <p className="px-2 py-3 text-xs text-content-secondary">{isSearching ? "Searching…" : emptyLabel}</p>}
-      </div>
-    </div>
-  )
-}
-
-function isAppSearchResult(value: AppSearchResult | Page): value is AppSearchResult {
-  return "title" in value
 }
 
 function useDebouncedValue<T>(value: T, delay: number) {

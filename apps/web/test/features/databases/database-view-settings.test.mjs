@@ -181,7 +181,8 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(settings, /getDatabaseIconNode\(database\)/);
     assert.match(settings, /getDatabaseIconNode\(source\)/);
     assert.match(settings, /DEFAULT_DATABASE_ITEM_ICON/);
-    assert.match(settings, /pinSearch/);
+    assert.match(settings, /PageDatabasePicker/);
+    assert.match(settings, /h-\[min\(32rem,calc\(100dvh-5rem\)\)\]/);
     assert.match(menu, /defaultSubDisplayMode="inline"/);
     assert.match(
       menu,

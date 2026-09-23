@@ -5,7 +5,6 @@ import {
   Database,
   Hash,
   Plus,
-  Search,
 } from "@/shared/components/icons";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
@@ -40,8 +39,10 @@ import {
 } from "@zilobase/features/databases/react";
 import { usePageNavigation } from "@zilobase/features/pages/react";
 
-import { DatabaseSearchableMenuItems } from "../../../views/components/database-searchable-menu-items";
-import { type DatabaseSearchableMenuOption } from "../../../views/menu-option-contracts";
+import {
+  PageDatabasePicker,
+  type PageDatabasePickerOption,
+} from "../../../components/page-database-picker";
 import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
 import { useDatabaseMetadata } from "../../../access/use-database-metadata";
 import { useDatabaseSecondaryPayload } from "../../../records/use-database-secondary-payload";
@@ -52,7 +53,7 @@ import {
   relationPayloadFromViewData,
 } from "../../relations/model/database-relation-sync";
 
-type RelationDatabaseOption = DatabaseSearchableMenuOption & {
+type RelationDatabaseOption = PageDatabasePickerOption & {
   pageName: string;
 };
 
@@ -108,6 +109,7 @@ export function RelationPropertySettings({
         : "Standalone";
 
       return {
+        description: pageName,
         icon: <Database />,
         label: database.name || "Untitled database",
         pageName,
@@ -418,38 +420,29 @@ export function RelationPropertySettings({
   }
 
   if (isLoading) {
-    return <DropDrawerItem disabled>Loading databases...</DropDrawerItem>;
+    return (
+      <PageDatabasePicker
+        ariaLabel="Search relation databases"
+        emptyMessage="No databases available."
+        isLoading
+        loadingMessage="Loading databases..."
+        onSelect={() => undefined}
+        options={[]}
+        placeholder="Search databases..."
+      />
+    );
   }
 
   return (
-    <DatabaseSearchableMenuItems
+    <PageDatabasePicker
+      className="h-[min(32rem,calc(100dvh-5rem))]"
       emptyMessage="No databases available."
-      inputAriaLabel="Search relation databases"
-      inputIcon={<Search className="size-4" />}
-      inputPlaceholder="Search databases..."
-      open
+      ariaLabel="Search relation databases"
+      heading="Databases"
+      loadingMessage="Loading databases..."
+      onSelect={(option) => setSelectedDatabaseId(option.value)}
       options={databaseOptions}
-      renderOption={(option) => {
-        const databaseOption = option as RelationDatabaseOption;
-
-        return (
-          <DropDrawerItem
-            key={databaseOption.value}
-            onSelect={(event) => {
-              event.preventDefault();
-              setSelectedDatabaseId(databaseOption.value);
-            }}
-          >
-            <Database />
-            <div className="min-w-0 flex-1">
-              <div className="truncate">{databaseOption.label}</div>
-              <div className="truncate text-xs text-content-secondary">
-                {databaseOption.pageName}
-              </div>
-            </div>
-          </DropDrawerItem>
-        );
-      }}
+      placeholder="Search databases..."
     />
   );
 }

@@ -18,7 +18,6 @@ import {
   Loader2,
   MoreHorizontal,
   Plus,
-  Search,
   Sparkles,
   X,
 } from "@/shared/components/icons";
@@ -66,6 +65,7 @@ import {
   type DatabaseViewType,
 } from "../../views/view-settings/model/view-type-options";
 import { serializePropertyValue } from "../../schema/property-values";
+import { PageDatabasePicker } from "../../components/page-database-picker";
 
 type SetupView = "main" | "link";
 
@@ -484,17 +484,24 @@ export function DatabaseSetupCard({
       }));
   }, [databaseId, excludedDatabaseIds, navigation]);
 
-  const filteredLinkableDatabases = useMemo(() => {
-    const query = linkSearch.trim().toLowerCase();
-
-    if (!query) {
-      return linkableDatabases;
-    }
-
-    return linkableDatabases.filter(({ database, pageName }) =>
-      `${database.name} ${pageName}`.toLowerCase().includes(query),
-    );
-  }, [linkSearch, linkableDatabases]);
+  const linkableDatabaseOptions = useMemo(
+    () =>
+      linkableDatabases.map(({ database, pageName }) => ({
+        description: pageName,
+        disabled: isSubmitting,
+        icon:
+          getDatabaseIconNode(database) ?? (
+            <PageIconDisplay
+              size="sm"
+              value={DEFAULT_DATABASE_ITEM_ICON}
+            />
+          ),
+        label: database.name || "Untitled database",
+        searchText: `${database.name} ${pageName}`.trim(),
+        value: database.id,
+      })),
+    [isSubmitting, linkableDatabases],
+  );
 
   const finishSetup = useCallback(
     async ({
@@ -969,7 +976,7 @@ export function DatabaseSetupCard({
 
     return (
       <div className="flex max-h-[min(32rem,calc(100vh-5rem))] min-h-0 flex-col overflow-hidden px-1 pb-1">
-        <div className="shrink-0 space-y-2 bg-surface-card">
+        <div className="shrink-0 bg-surface-card">
           <SetupOptionButton
             icon={<ChevronLeft className="size-4 text-content-secondary" />}
             onClick={() => {
@@ -982,51 +989,20 @@ export function DatabaseSetupCard({
           >
             Back
           </SetupOptionButton>
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-content-secondary" />
-            <Input
-              className="h-9 pl-8"
-              onChange={(event) => setLinkSearch(event.currentTarget.value)}
-              placeholder="Search databases..."
-              value={linkSearch}
-            />
-          </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-2">
-          {isLoadingPages ? (
-            <div className="flex items-center justify-center gap-2 px-2 py-8 text-content-secondary text-sm">
-              <Loader2 className="size-4 animate-spin" />
-              Loading databases...
-            </div>
-          ) : filteredLinkableDatabases.length === 0 ? (
-            <div className="px-2 py-8 text-center text-content-secondary text-sm">
-              No databases available.
-            </div>
-          ) : (
-            filteredLinkableDatabases.map(({ database, pageName }) => (
-              <SetupOptionButton
-                disabled={isSubmitting}
-                icon={
-                  getDatabaseIconNode(database) ?? (
-                    <PageIconDisplay
-                      size="sm"
-                      value={DEFAULT_DATABASE_ITEM_ICON}
-                    />
-                  )
-                }
-                key={database.id}
-                onClick={() => setSelectedLinkDatabaseId(database.id)}
-              >
-                <span className="flex min-w-0 flex-col">
-                  <span className="truncate">{database.name}</span>
-                  <span className="truncate text-content-secondary text-xs">
-                    {pageName}
-                  </span>
-                </span>
-              </SetupOptionButton>
-            ))
-          )}
-        </div>
+        <PageDatabasePicker
+          ariaLabel="Search databases"
+          className="min-h-0 flex-1"
+          emptyMessage="No databases available."
+          heading="Databases"
+          isLoading={isLoadingPages}
+          loadingMessage="Loading databases..."
+          onQueryChange={setLinkSearch}
+          onSelect={(option) => setSelectedLinkDatabaseId(option.value)}
+          options={linkableDatabaseOptions}
+          placeholder="Search databases..."
+          query={linkSearch}
+        />
       </div>
     );
   };

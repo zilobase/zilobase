@@ -10,7 +10,6 @@ import {
   Kanban,
   List,
   Plus,
-  Search,
   Table2,
 } from "@/shared/components/icons"
 
@@ -23,7 +22,24 @@ import {
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { usePageNavigation } from "@zilobase/features/pages/react";
 import type { PageLayoutLinkedTab } from "@zilobase/features/pages"
-import { Input } from "@/shared/ui/input"
+import { PageDatabasePicker } from "../../components/page-database-picker"
+
+function getLinkedViewIcon(type: string) {
+  const ViewIcon =
+    type === "kanban"
+      ? Kanban
+      : type === "timeline"
+        ? CalendarRange
+        : type === "chart"
+          ? ChartPie
+          : type === "gallery"
+            ? GalleryThumbnails
+            : type === "list"
+              ? List
+              : Table2
+
+  return <ViewIcon className="size-4 text-content-secondary" />
+}
 
 export function LinkedDataSourcePicker({
   children,
@@ -43,15 +59,24 @@ export function LinkedDataSourcePicker({
   const databases = navigation?.databases ?? []
   const selectedDatabase = databases.find((database) => database.id === databaseId)
   const databaseOptions = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    return databases.filter((item) => !query || item.name.toLowerCase().includes(query))
-  }, [databases, search])
+    return databases.map((database) => ({
+      description: `${database.views.length} ${database.views.length === 1 ? "view" : "views"}`,
+      icon: <Database />,
+      label: database.name || "Untitled database",
+      searchText: database.name || "Untitled database",
+      value: database.id,
+    }))
+  }, [databases])
   const viewOptions = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    return (selectedDatabase?.views ?? []).filter(
-      (item) => !query || item.name.toLowerCase().includes(query),
-    )
-  }, [search, selectedDatabase?.views])
+    return (selectedDatabase?.views ?? []).map((view) => ({
+      description: selectedDatabase?.name || "Untitled database",
+      icon: getLinkedViewIcon(view.type),
+      label: view.name || "Untitled view",
+      searchText: `${view.name} ${selectedDatabase?.name ?? ""}`.trim(),
+      value: view.id,
+      view,
+    }))
+  }, [selectedDatabase])
 
   const close = () => {
     setOpen(false)
@@ -88,85 +113,56 @@ export function LinkedDataSourcePicker({
           </button>
         ) : (
           <>
-            <div className="flex items-center gap-2 border-b px-2 py-2">
-          {selectedDatabase ? (
-            <Button
-              aria-label="Back to databases"
-              onClick={() => { setDatabaseId(null); setSearch("") }}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <ArrowLeft />
-            </Button>
-          ) : null}
-          <Search className="size-4 text-content-secondary" />
-          <Input
-            aria-label={selectedDatabase ? "Search database views" : "Search databases"}
-            autoFocus
-            className="h-7 border-0 px-0 shadow-none focus-visible:ring-0"
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={selectedDatabase ? "Search views..." : "Search databases..."}
-            value={search}
-          />
-            </div>
-            <div className="max-h-80 overflow-y-auto p-1">
-          {selectedDatabase ? (
-            viewOptions.length ? viewOptions.map((option) => {
-              const ViewIcon =
-                option.type === "kanban"
-                  ? Kanban
-                  : option.type === "timeline"
-                    ? CalendarRange
-                    : option.type === "chart"
-                      ? ChartPie
-                      : option.type === "gallery"
-                        ? GalleryThumbnails
-                        : option.type === "list"
-                          ? List
-                          : Table2
-              return (
+            {selectedDatabase ? (
+              <div className="border-b p-1">
                 <button
                   className={cn(menuItemClassName, "w-full text-left hover:bg-action-neutral-hover")}
-                  key={option.id}
-                  onClick={() => {
-                    onSelect({
-                      id: `linked-${selectedDatabase.id}-${option.id}`,
-                      databaseId: selectedDatabase.id,
-                      databaseName: selectedDatabase.name || "Untitled database",
-                      viewId: option.id,
-                      viewName: option.name || "Untitled view",
-                      viewType: option.type,
-                    })
-                    close()
-                  }}
+                  onClick={() => { setDatabaseId(null); setSearch("") }}
                   type="button"
                 >
-                  <ViewIcon className="size-4 text-content-secondary" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">{option.name || "Untitled view"}</span>
-                    <span className="block truncate text-xs text-content-secondary">{selectedDatabase.name}</span>
-                  </span>
+                  <ArrowLeft />
+                  <span>Back to databases</span>
                 </button>
-              )
-            }) : <div className="px-3 py-8 text-center text-sm text-content-secondary">No views available.</div>
-          ) : databaseOptions.length ? databaseOptions.map((option) => (
-              <button
-                className={cn(menuItemClassName, "w-full text-left hover:bg-action-neutral-hover")}
-                key={option.id}
-                onClick={() => { setDatabaseId(option.id); setSearch("") }}
-                type="button"
-              >
-                <Database className="size-4 text-content-secondary" />
-                <span className="min-w-0 flex-1 truncate">{option.name || "Untitled database"}</span>
-                <span className="text-xs text-content-secondary">{option.views.length} views</span>
-              </button>
-          )) : (
-            <div className="px-3 py-8 text-center text-sm text-content-secondary">
-              No databases available.
-            </div>
-          )}
-            </div>
+              </div>
+            ) : null}
+            {selectedDatabase ? (
+              <PageDatabasePicker
+                ariaLabel="Search database views"
+                emptyMessage="No views available."
+                heading="Views"
+                loadingMessage="Loading views..."
+                onQueryChange={setSearch}
+                onSelect={({ view }) => {
+                  onSelect({
+                    id: `linked-${selectedDatabase.id}-${view.id}`,
+                    databaseId: selectedDatabase.id,
+                    databaseName: selectedDatabase.name || "Untitled database",
+                    viewId: view.id,
+                    viewName: view.name || "Untitled view",
+                    viewType: view.type,
+                  })
+                  close()
+                }}
+                options={viewOptions}
+                placeholder="Search views..."
+                query={search}
+              />
+            ) : (
+              <PageDatabasePicker
+                ariaLabel="Search databases"
+                emptyMessage="No databases available."
+                heading="Databases"
+                loadingMessage="Loading databases..."
+                onQueryChange={setSearch}
+                onSelect={(option) => {
+                  setDatabaseId(option.value)
+                  setSearch("")
+                }}
+                options={databaseOptions}
+                placeholder="Search databases..."
+                query={search}
+              />
+            )}
           </>
         )}
       </PopoverContent>

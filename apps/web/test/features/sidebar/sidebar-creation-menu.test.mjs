@@ -5,6 +5,9 @@ export function register({ readSource, assert, test }) {
     const sidebarPrimitiveSource = await readSource("/src/shared/ui/sidebar.tsx")
     const sidebarTabsSource = await readSource("/src/features/sidebar/components/sidebar-layout-tabs.tsx")
     const sidebarCustomizeSource = await readSource("/src/features/sidebar/components/sidebar-customize-panel.tsx")
+    const pageDatabasePickerSource = await readSource(
+      "/src/features/databases/components/page-database-picker.tsx",
+    )
     const runtimeSectionDragSource = await readSource(
       "/src/features/sidebar/components/runtime-section-drag-item.tsx",
     )
@@ -107,11 +110,10 @@ export function register({ readSource, assert, test }) {
     assert.match(addShortcutMenu, /<DatabasePicker/)
     assert.doesNotMatch(addShortcutMenu, /<SearchablePicker/)
     assert.match(sidebarCustomizeSource, /useAppSearchResults\(/)
-    assert.match(sidebarCustomizeSource, /sticky top-0 z-10 shrink-0 bg-surface-overlay/)
-    assert.match(sidebarCustomizeSource, /overflow-y-auto overscroll-contain/)
+    assert.match(sidebarCustomizeSource, /PageDatabasePicker/)
+    assert.match(pageDatabasePickerSource, /overscroll-contain/)
     assert.match(sidebarCustomizeSource, /getPageIconNode\(page\)/)
     assert.match(sidebarCustomizeSource, /getDatabaseIconNode\(database\)/)
-    assert.match(sidebarCustomizeSource, /<Collapsible onOpenChange=\{setOpen\} open=\{open\}>/)
     assert.match(sidebarCustomizeSource, /database\.views\.map\(\(view\) =>/)
     assert.match(runtimeSectionDragSource, /function RuntimeSectionDragItem/)
     assert.match(sidebarSource, /<SortableContext items=\{activeTab\.sections/)

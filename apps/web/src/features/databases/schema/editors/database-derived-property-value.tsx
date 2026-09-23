@@ -1,5 +1,4 @@
-import { useState } from "react"
-import { Check } from "@/shared/components/icons"
+import { useMemo, useState } from "react"
 import {
   type DatabasePropertyEntity,
   type DatabaseRecordEntity,
@@ -32,6 +31,10 @@ import {
   type DatabasePropertyValue,
 } from "../property-values"
 import { useDatabaseSecondaryPayload } from "../../records/use-database-secondary-payload"
+import {
+  PageDatabasePicker,
+  type PageDatabasePickerOption,
+} from "../../components/page-database-picker"
 
 type DatabaseRow = {
   createdAt: string
@@ -266,16 +269,23 @@ export function DatabaseRelationPropertyValue({
     isLoading,
   } = useDatabaseSecondaryPayload(
     relatedDatabaseId,
+    { loadAll: isOpen && Boolean(query.trim()) },
   )
-  const pageOptions = (relatedViewData?.records ?? []).filter(
-    (candidate) => candidate.pageId !== row.pageId
+  const pageOptions = useMemo(
+    () =>
+      (relatedViewData?.records ?? [])
+        .filter((candidate) => candidate.pageId !== row.pageId)
+        .map((candidate) => ({
+          icon: <RelationPageOptionIcon page={candidate.page} />,
+          label: candidate.page.name || "Untitled",
+          page: candidate.page,
+          searchText: candidate.page.name || "Untitled",
+          value: candidate.page.id,
+        } satisfies PageDatabasePickerOption & {
+          page: DatabaseRecordEntity["page"]
+        })),
+    [relatedViewData?.records, row.pageId],
   )
-  const normalizedQuery = query.trim().toLowerCase()
-  const filteredPageOptions = normalizedQuery
-    ? pageOptions.filter((row) =>
-        row.page.name.toLowerCase().includes(normalizedQuery)
-      )
-    : pageOptions
 
   const setOpen = (open: boolean) => {
     onOpenChange?.(open)
@@ -401,72 +411,37 @@ export function DatabaseRelationPropertyValue({
           )}
         </div>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 gap-1 p-1" sideOffset={0}>
-        <input
-          autoFocus
-          className="database-select-search"
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && filteredPageOptions[0]) {
-              event.preventDefault()
-              selectPage(filteredPageOptions[0].page)
-            }
-
-            if (event.key === "Escape") {
-              setOpen(false)
-            }
-          }}
+      <PopoverContent align="start" className="w-80 overflow-hidden p-0" sideOffset={0}>
+        <PageDatabasePicker
+          ariaLabel="Search relation pages"
+          emptyMessage={
+            relatedDatabaseId
+              ? "No pages found."
+              : "Configure a relation database first."
+          }
+          heading={multiple ? "Select pages" : "Select a page"}
+          isLoading={Boolean(relatedDatabaseId && isLoading && !relatedViewData)}
+          isSearching={Boolean(query.trim() && (hasMore || isFetchingNextPage))}
+          loadingMessage="Loading pages..."
+          onQueryChange={setQuery}
+          onSelect={(option) => selectPage(option.page)}
+          options={pageOptions}
           placeholder="Search for a page..."
-          value={query}
+          query={query}
+          selectedValues={selectedPageIds}
+          trailingContent={
+            hasMore && !query.trim() ? (
+              <button
+                className="flex w-full items-center justify-center px-3 py-2 text-xs text-content-secondary hover:bg-action-neutral-hover disabled:opacity-50"
+                disabled={isFetchingNextPage}
+                onClick={() => void fetchNextPage()}
+                type="button"
+              >
+                {isFetchingNextPage ? "Loading..." : "Load more pages"}
+              </button>
+            ) : null
+          }
         />
-        <div className="database-select-popover-label">
-          {multiple ? "Select pages" : "Select a page"}
-        </div>
-        <div className="database-select-options">
-          {!relatedDatabaseId ? (
-            <div className="px-2 py-1.5 text-sm text-content-secondary">
-              Configure a relation database first.
-            </div>
-          ) : isLoading ? (
-            <div className="px-2 py-1.5 text-sm text-content-secondary">
-              Loading pages...
-            </div>
-          ) : filteredPageOptions.length > 0 ? (
-            filteredPageOptions.map((row) => {
-              const isSelected = selectedPageIds.includes(row.page.id)
-
-              return (
-                <button
-                  className="database-select-option"
-                  data-selected={isSelected ? "true" : undefined}
-                  key={row.page.id}
-                  onClick={() => selectPage(row.page)}
-                  type="button"
-                >
-                  <RelationPageOptionIcon page={row.page} />
-                  <span className="truncate">{row.page.name || "Untitled"}</span>
-                  {isSelected ? (
-                    <Check className="database-select-option-check" />
-                  ) : null}
-                </button>
-              )
-            })
-          ) : (
-            <div className="px-2 py-1.5 text-sm text-content-secondary">
-              No pages found.
-            </div>
-          )}
-          {hasMore ? (
-            <button
-              className="database-select-option justify-center text-content-secondary"
-              disabled={isFetchingNextPage}
-              onClick={() => void fetchNextPage()}
-              type="button"
-            >
-              {isFetchingNextPage ? "Loading…" : "Load more pages"}
-            </button>
-          ) : null}
-        </div>
       </PopoverContent>
     </Popover>
   )
