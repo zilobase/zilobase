@@ -86,9 +86,12 @@ import {
 } from "@zilobase/features/user-settings";
 import { useUpdateUserSettings, useUserSettings } from "@zilobase/features/user-settings/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
+import {
+  hideUnconfiguredIntegrationTabs,
+  restoreUnconfiguredIntegrationTabs,
+} from "./model/sidebar-layout-model"
 import { readActiveSidebarTab, writeActiveSidebarTab } from "./model/sidebar-persistence"
-import { isFeatureEnabled } from "@/shared/config/feature-flags"
-import { withoutMailFeatures } from "./model/sidebar-layout-model"
+import { useIntegrationAvailability } from "./model/use-integration-availability"
 import { WorkspaceMailNavigation } from "./components/workspace-mail-navigation"
 import { NotificationCenter } from "@/features/notifications"
 
@@ -149,13 +152,14 @@ export function AppSidebar({
     () => normalizeSidebarConfig(userSettings.sidebarConfig),
     [userSettings.sidebarConfig],
   )
-  const layout = React.useMemo(
-    () => {
-      const resolved = resolveSidebarWorkspaceLayout(sidebarConfig, workspaceId)
-      const enabledLayout = isFeatureEnabled("mail") ? resolved : withoutMailFeatures(resolved)
-      return isFeatureEnabled("calendar") ? enabledLayout : { ...enabledLayout, tabs: enabledLayout.tabs.filter((tab) => tab.id !== "calendar") }
-    },
+  const storedLayout = React.useMemo(
+    () => resolveSidebarWorkspaceLayout(sidebarConfig, workspaceId),
     [sidebarConfig, workspaceId],
+  )
+  const integrations = useIntegrationAvailability(workspaceId)
+  const layout = React.useMemo(
+    () => hideUnconfiguredIntegrationTabs(storedLayout, integrations),
+    [integrations, storedLayout],
   )
   const { activeThreadId, setActiveThreadId } = useAiChatThreadState({ enabled: false })
   const activeAgentId = pathname.startsWith("/agents/") ? pathname.slice("/agents/".length).split("/")[0] ?? null : null
@@ -190,6 +194,12 @@ export function AppSidebar({
       setActiveTabId(staticTabId)
       return
     }
+    if (
+      integrations.settled &&
+      ((pathname === "/mail" && !integrations.mail) || (pathname === "/calendar" && !integrations.calendar))
+    ) {
+      void navigate({ search: { view: "recents" }, to: "/recents" })
+    }
     if (!staticTabId && isStaticSidebarTabId(activeTabId)) {
       const stored = readActiveSidebarTab(workspaceId)
       const next = layout.tabs.some((tab) => tab.id === stored) && !isStaticSidebarTabId(stored)
@@ -197,7 +207,7 @@ export function AppSidebar({
         : "home"
       setActiveTabId(next)
     }
-  }, [activeTabId, customizing, layout.tabs, pathname, workspaceId])
+  }, [activeTabId, customizing, integrations.calendar, integrations.mail, integrations.settled, layout.tabs, navigate, pathname, workspaceId])
   const activeTab = layout.tabs.find((tab) => tab.id === activeTabId) ?? layout.tabs[0]!
   const needsMeetings = activeTab.sections.some((section) => section.kind === "meetings")
   const { data: navigation } = usePageNavigation(workspaceId)
@@ -244,10 +254,14 @@ export function AppSidebar({
   const saveLayout = React.useCallback(async (nextLayout: typeof layout) => {
     if (!workspaceId) return
     await updateUserSettings.mutateAsync({
-      sidebarConfig: withSidebarWorkspaceLayout(sidebarConfig, workspaceId, nextLayout),
+      sidebarConfig: withSidebarWorkspaceLayout(
+        sidebarConfig,
+        workspaceId,
+        restoreUnconfiguredIntegrationTabs(storedLayout, nextLayout, integrations),
+      ),
     })
     setCustomizing(false)
-  }, [sidebarConfig, updateUserSettings, workspaceId])
+  }, [integrations, sidebarConfig, storedLayout, updateUserSettings, workspaceId])
   const handleRuntimeSectionDragEnd = React.useCallback(({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id || !workspaceId) return
     const from = activeTab.sections.findIndex((section) => section.id === active.id)
@@ -262,9 +276,13 @@ export function AppSidebar({
       tabs: layout.tabs.map((tab) => tab.id === activeTab.id ? { ...tab, sections } : tab),
     }
     void updateUserSettings.mutateAsync({
-      sidebarConfig: withSidebarWorkspaceLayout(sidebarConfig, workspaceId, nextLayout),
+      sidebarConfig: withSidebarWorkspaceLayout(
+        sidebarConfig,
+        workspaceId,
+        restoreUnconfiguredIntegrationTabs(storedLayout, nextLayout, integrations),
+      ),
     }).catch(showMutationError("Could not reorder sidebar sections."))
-  }, [activeTab.id, activeTab.sections, layout, sidebarConfig, updateUserSettings, workspaceId])
+  }, [activeTab.id, activeTab.sections, integrations, layout, sidebarConfig, storedLayout, updateUserSettings, workspaceId])
 
   const renderSection = (section: SidebarSection) => {
     const storageKey = `zilobase:sidebar-section:${workspaceId ?? "default"}:${activeTab.id}:${section.id}`

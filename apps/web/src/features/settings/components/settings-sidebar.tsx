@@ -11,8 +11,11 @@ import {
   Layers3Icon,
   LockIcon,
 } from "@/shared/components/icons"
-import type { ComponentType } from "react"
+import { useEffect, type ComponentType } from "react"
 import { useSession } from "@zilobase/features/auth/react";
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react"
+import { useIntegrationAvailability } from "@/features/sidebar/model/use-integration-availability"
+import { isSettingsSectionAvailable } from "../model/settings-section-availability"
 
 import {
   Avatar,
@@ -80,8 +83,20 @@ export function SettingsSidebar({
   onSectionChange: (section: SettingsSection) => void
 }) {
   const { data: sessionData } = useSession()
+  const workspaceId = useActiveWorkspaceId()
+  const integrations = useIntegrationAvailability(workspaceId)
   const profileTitle = sessionData?.user?.name.trim() || "Profile"
   const profileImage = sessionData?.user?.image
+  const visibleItems = settingsItems.filter((item) =>
+    isSettingsSectionAvailable(item.section, integrations),
+  )
+
+  useEffect(() => {
+    if (!integrations.settled) return
+    if (!isSettingsSectionAvailable(activeSection, integrations)) {
+      onSectionChange("preferences")
+    }
+  }, [activeSection, integrations, onSectionChange])
 
   return (
     <aside className="min-w-0 border-b border-stroke-default bg-surface-navigation text-content-primary sm:h-full sm:w-64 sm:border-r sm:border-b-0">
@@ -93,7 +108,7 @@ export function SettingsSidebar({
           <SidebarGroupContent>
             <nav aria-label="Settings sections">
               <SidebarMenu className="flex-row gap-1 overflow-x-auto sm:flex-col sm:gap-0.5 sm:overflow-x-visible">
-                {settingsItems.map((item) => {
+                {visibleItems.map((item) => {
                   const Icon = item.icon
                   const active = activeSection === item.section
 

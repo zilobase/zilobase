@@ -20,4 +20,4 @@ External AI connectors use the [MCP connection configuration](../features/ai/exe
 
 Command definitions remain in [package scripts](../../package.json); consult them for the current invocation. [Architecture index](../README.md).
 
-Calendar requires `CALENDAR_ENABLED=true`, `CALENDAR_ENABLED_WORKSPACE_IDS` (comma-separated IDs or `*`), and `VITE_FEATURE_CALENDAR=true` in the web build. Defaults leave Calendar unavailable.
+Calendar and Mail are always available. Google sync still needs the provider credentials in the server environment. Notion import and the web clipper stay off unless `VITE_FEATURE_NOTION_IMPORT` or `VITE_FEATURE_WEB_CLIPPER` is true.

@@ -21,19 +21,6 @@ export function readBooleanFeatureFlag(value: unknown, fallback = false) {
 
 export const appConfig = {
   featureFlags: {
-    databaseRealtime: readBooleanFeatureFlag(
-      import.meta.env.VITE_FEATURE_DATABASE_REALTIME,
-      true,
-    ),
-    navigationRealtime: readBooleanFeatureFlag(
-      import.meta.env.VITE_FEATURE_NAVIGATION_REALTIME,
-      true,
-    ),
-    calendar: readBooleanFeatureFlag(import.meta.env.VITE_FEATURE_CALENDAR, false),
-    mail: readBooleanFeatureFlag(
-      import.meta.env.VITE_FEATURE_MAIL,
-      false,
-    ),
     notionImport: readBooleanFeatureFlag(
       import.meta.env.VITE_FEATURE_NOTION_IMPORT,
       false,
@@ -41,10 +28,6 @@ export const appConfig = {
     webClipper: readBooleanFeatureFlag(
       import.meta.env.VITE_FEATURE_WEB_CLIPPER,
       false,
-    ),
-    teamspaces: readBooleanFeatureFlag(
-      import.meta.env.VITE_FEATURE_TEAMSPACES,
-      true,
     ),
   },
 } as const

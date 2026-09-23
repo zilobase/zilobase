@@ -1,5 +1,4 @@
 import { CalendarWorkspaceProvider } from "@/features/calendar/workspace/calendar-workspace";
-import { isFeatureEnabled } from "@/shared/config/feature-flags";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Dispatch, ReactNode, SetStateAction } from "react"
 import { Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router"
@@ -595,7 +594,7 @@ function AppLayoutContent({
           />
         </Suspense>
       ) : null}
-      {isFeatureEnabled("calendar") && <Suspense fallback={null}><CalendarReminderHost /></Suspense>}
+      <Suspense fallback={null}><CalendarReminderHost /></Suspense>
       <ResizablePanelGroup
         className="relative min-h-0 min-w-0 flex-1 overflow-hidden has-data-[desktop-tabs]:pt-9"
         orientation="horizontal"

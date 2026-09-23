@@ -49,8 +49,8 @@ export function register({ assert, loadModule, test }) {
     assert.equal(isShortcutActive(shortcut({ type: "action", action: "createPage" }), "/recents", {}), false)
   })
 
-  test("disabled mail removes its tab and shortcuts from every sidebar tab", async () => {
-    const { withoutMailFeatures } = await loadModule(
+  test("mail and calendar tabs stay hidden until their server environment is configured", async () => {
+    const { hideUnconfiguredIntegrationTabs, restoreUnconfiguredIntegrationTabs } = await loadModule(
       "/src/features/sidebar/model/sidebar-layout-model.ts",
     )
     const layout = {
@@ -61,17 +61,22 @@ export function register({ assert, loadModule, test }) {
           { id: "tasks", target: { route: "tasks", type: "route" } },
         ] },
         { icon: "mail", id: "mail", name: "Mail", sections: [], shortcuts: [] },
+        { icon: "calendar", id: "calendar", name: "Calendar", sections: [], shortcuts: [] },
       ],
       taskDatabaseIds: ["tasks"],
     }
 
-    assert.deepEqual(withoutMailFeatures(layout), {
-      tabs: [
-        { icon: "home", id: "home", name: "Home", sections: [], shortcuts: [
-          { id: "tasks", target: { route: "tasks", type: "route" } },
-        ] },
-      ],
-      taskDatabaseIds: ["tasks"],
-    })
+    const hidden = hideUnconfiguredIntegrationTabs(layout, { mail: false, calendar: false })
+    assert.deepEqual(hidden.tabs.map((tab) => tab.id), ["home"])
+    assert.deepEqual(hidden.tabs[0].shortcuts, [
+      { id: "tasks", target: { route: "tasks", type: "route" } },
+    ])
+
+    const mailOnly = hideUnconfiguredIntegrationTabs(layout, { mail: true, calendar: false })
+    assert.deepEqual(mailOnly.tabs.map((tab) => tab.id), ["home", "mail"])
+
+    const restored = restoreUnconfiguredIntegrationTabs(layout, hidden, { mail: false, calendar: false })
+    assert.deepEqual(restored.tabs.map((tab) => tab.id), ["home", "mail", "calendar"])
   })
+
 }

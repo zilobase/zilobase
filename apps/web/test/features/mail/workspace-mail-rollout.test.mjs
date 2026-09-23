@@ -17,13 +17,14 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.doesNotMatch(realtime, /workspaceId === "legacy"/)
   })
 
-  test("workspace settings exclusively owns connection removal", async () => {
-    const [settings, page] = await Promise.all([
+  test("mail settings owns connection removal", async () => {
+    const [settings, workspace, page] = await Promise.all([
+      readSource("/src/features/settings/screens/mail.tsx"),
       readSource("/src/features/workspaces/screens/workspace-settings.tsx"),
       readMailFeatureSource(readSource),
     ])
     assert.match(settings, /WorkspaceMailConnectionSection/)
-    assert.match(settings, /isFeatureEnabled\("mail"\)/)
+    assert.doesNotMatch(workspace, /WorkspaceMailConnectionSection/)
     assert.doesNotMatch(page, /Disconnect Gmail|disconnectMail|\/connection[^\n]*DELETE/)
   })
 }

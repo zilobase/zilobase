@@ -113,30 +113,54 @@ export function updateSidebarTab(
   }
 }
 
+export function hideUnconfiguredIntegrationTabs(
+  layout: SidebarWorkspaceLayout,
+  availability: { mail: boolean; calendar: boolean },
+): SidebarWorkspaceLayout {
+  return {
+    ...layout,
+    tabs: layout.tabs.flatMap((tab) => {
+      if (tab.id === "mail" && !availability.mail) return []
+      if (tab.id === "calendar" && !availability.calendar) return []
+      if (availability.mail || !tab.shortcuts.some((shortcut) => isMailShortcut(shortcut))) {
+        return [tab]
+      }
+      return [{
+        ...tab,
+        shortcuts: tab.shortcuts.filter((shortcut) => !isMailShortcut(shortcut)),
+      }]
+    }),
+  }
+}
+
+export function restoreUnconfiguredIntegrationTabs(
+  stored: SidebarWorkspaceLayout,
+  next: SidebarWorkspaceLayout,
+  availability: { mail: boolean; calendar: boolean },
+): SidebarWorkspaceLayout {
+  const hidden = stored.tabs.filter((tab) =>
+    (tab.id === "mail" && !availability.mail) ||
+    (tab.id === "calendar" && !availability.calendar),
+  )
+  if (hidden.length === 0) return next
+  const tabs = next.tabs.filter((tab) => !hidden.some((item) => item.id === tab.id))
+  const anchor = tabs.findIndex((tab) => tab.id === "ai")
+  tabs.splice(anchor >= 0 ? anchor + 1 : tabs.length, 0, ...hidden)
+  return { ...next, tabs }
+}
+
+function isMailShortcut(shortcut: SidebarShortcut) {
+  const target = shortcut.target
+  return target.type === "mail" ||
+    (target.type === "action" && target.action === "composeMail")
+}
+
 export function moveArrayItem<T>(items: T[], index: number, offset: -1 | 1) {
   const nextIndex = index + offset
   if (index < 0 || nextIndex < 0 || nextIndex >= items.length) return items
   const next = [...items]
   ;[next[index], next[nextIndex]] = [next[nextIndex]!, next[index]!]
   return next
-}
-
-export function withoutMailFeatures(
-  layout: SidebarWorkspaceLayout,
-): SidebarWorkspaceLayout {
-  return {
-    ...layout,
-    tabs: layout.tabs
-      .filter((tab) => tab.id !== "mail")
-      .map((tab) => ({
-        ...tab,
-        shortcuts: tab.shortcuts.filter((shortcut) => {
-          const target = shortcut.target
-          return target.type !== "mail" &&
-            !(target.type === "action" && target.action === "composeMail")
-        }),
-      })),
-  }
 }
 
 export function moveLayoutEntry(

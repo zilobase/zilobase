@@ -1,10 +1,9 @@
 export function register({ assert, loadModule, test }) {
-  test("notion import is disabled unless config enables it", async () => {
+  test("notion import and the web clipper stay disabled unless config enables them", async () => {
     const { isFeatureEnabled } = await loadModule("/src/shared/config/feature-flags.ts")
 
     assert.equal(isFeatureEnabled("notionImport"), false)
-    assert.equal(isFeatureEnabled("mail"), false)
-    assert.equal(isFeatureEnabled("teamspaces"), true)
+    assert.equal(isFeatureEnabled("webClipper"), false)
   })
 
   test("readBooleanFeatureFlag accepts common boolean config values", async () => {

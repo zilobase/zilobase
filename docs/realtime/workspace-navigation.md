@@ -55,10 +55,9 @@ responses through their existing cache paths.
 2. Deploy producers and the scheduled drainer; watch backlog age, attempts, and
    `navigation_realtime_*` structured logs.
 3. Deploy the Node or hosted-adapter transport and verify workspace isolation.
-4. Enable `VITE_FEATURE_NAVIGATION_REALTIME` for a client cohort, then expand.
+4. Ship the web client. Navigation realtime is on except in the hosted demo.
 5. Verify Redis/Valkey fanout and readiness recovery before enabling traffic.
 
-Rollback by disabling `VITE_FEATURE_NAVIGATION_REALTIME` and, if necessary,
-removing the transport route from traffic. HTTP writes and reads continue to
+Rollback by removing the transport route from traffic. HTTP writes and reads continue to
 work. Keep outbox rows during rollback so delivery can resume after the service
 is restored.

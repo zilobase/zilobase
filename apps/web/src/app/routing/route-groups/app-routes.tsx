@@ -1,10 +1,9 @@
 import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
-import { isFeatureEnabled } from "@/shared/config/feature-flags";
 import { appRoute } from "../route-roots";
 import { validateCalendarSearch, validateAiSearch, validateLibrarySearch, validateMailSearch } from "../search-validators";
 
 export const appRoutes = [
-  ...(isFeatureEnabled("calendar") ? [createRoute({ getParentRoute: () => appRoute, path: "/calendar", validateSearch: validateCalendarSearch, component: lazyRouteComponent(() => import("@/features/calendar/screens/calendar")) })] : []),
+  createRoute({ getParentRoute: () => appRoute, path: "/calendar", validateSearch: validateCalendarSearch, component: lazyRouteComponent(() => import("@/features/calendar/screens/calendar")) }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/ai",
@@ -27,14 +26,12 @@ export const appRoutes = [
     validateSearch: validateLibrarySearch,
     component: lazyRouteComponent(() => import("@/features/library/screens/recents")),
   }),
-  ...(isFeatureEnabled("mail")
-    ? [createRoute({
-        getParentRoute: () => appRoute,
-        path: "/mail",
-        validateSearch: validateMailSearch,
-        component: lazyRouteComponent(() => import("@/features/mail/screens/mail")),
-      })]
-    : []),
+  createRoute({
+    getParentRoute: () => appRoute,
+    path: "/mail",
+    validateSearch: validateMailSearch,
+    component: lazyRouteComponent(() => import("@/features/mail/screens/mail")),
+  }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/tasks",

@@ -1,7 +1,6 @@
 import { WorkspaceDetailsSection } from "../settings/workspace-details";
 import { WorkspaceImportSection } from "../settings/workspace-import";
 import { DeleteWorkspaceSection } from "../settings/delete-workspace";
-import { WorkspaceMailConnectionSection } from "../settings/workspace-mail-connection";
 import type { ReactNode } from "react";
 
 import { SettingsHeader } from "@/features/settings";
@@ -32,12 +31,6 @@ export default function WorkspaceSettingsPage({
       <div className="mx-auto grid w-full max-w-3xl gap-6">
         <WorkspaceDetailsSection workspace={workspace} />
         {policySettings}
-        {isFeatureEnabled("mail") ? (
-          <>
-            <Separator />
-            <WorkspaceMailConnectionSection workspaceId={activeWorkspaceId} />
-          </>
-        ) : null}
         {isFeatureEnabled("notionImport") ? (
           <>
             <Separator />
