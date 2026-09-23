@@ -11,6 +11,12 @@ not query core tables directly.
 
 Web composition selects edition behavior through the `@zilobase/edition-web` alias. `ZILOBASE_WEB_EDITION_MODULE` may point Vite and the web test harness at an external edition module; leaving it unset selects the empty community module beside its types under `apps/web/src/edition`. Additional login methods receive the shared email value and render immediately below the shared email field. Feature consumers may only use the edition contract.
 
+Edition-provided settings receive the host's edition-neutral page, section and
+row components. This keeps spacing, headings, descriptions and responsive row
+behavior aligned with core settings without exposing feature-specific internals.
+The adapter remains optional so independently rendered edition screens can
+provide a local fallback and older edition components remain compatible.
+
 Start at the [entrypoint](../../apps/server/src/public/adapter-api.ts); follow the [implementation](../../apps/server/package.json) and [related modules](../../apps/web/src/edition/community-module.ts).
 
 ## Invariants and failure handling

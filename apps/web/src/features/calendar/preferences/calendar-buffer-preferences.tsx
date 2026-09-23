@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import { useSession } from "@zilobase/features/auth/react";
 import { toApiUrl } from "@/platform/network/api";
 import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
+import { SettingsRow } from "@/features/settings";
 type CalendarBuffers = { before: number; after: number; monthBefore: number; monthAfter: number };
 const DEFAULT_CALENDAR_BUFFERS: CalendarBuffers = { before: 28, after: 28, monthBefore: 56, monthAfter: 56 };
 const changed = "calendar:buffers-changed";
@@ -21,5 +21,5 @@ export function useCalendarBuffers() {
 }
 export function CalendarBufferSettings() {
   const { value, save } = useCalendarBuffers();
-  return <details><summary className="cursor-pointer text-sm">Advanced date loading</summary><div className="mt-3 grid grid-cols-2 gap-3">{Object.entries({ before: "Days before", after: "Days after", monthBefore: "Month view: days before", monthAfter: "Month view: days after" }).map(([key, label]) => <Label key={key}>{label}<Input type="number" min={7} max={180} value={value[key as keyof CalendarBuffers]} onChange={event => { const count = Number(event.target.value); if (Number.isInteger(count) && count >= 7 && count <= 180) save({ ...value, [key]: count }); }} /></Label>)}</div></details>;
+  return <details className="py-1"><summary className="cursor-pointer text-sm font-medium">Advanced date loading</summary><div className="mt-2 grid gap-2">{Object.entries({ before: "Days before", after: "Days after", monthBefore: "Month view: days before", monthAfter: "Month view: days after" }).map(([key, label]) => <SettingsRow key={key} title={label}><Input aria-label={label} className="w-28" type="number" min={7} max={180} value={value[key as keyof CalendarBuffers]} onChange={event => { const count = Number(event.target.value); if (Number.isInteger(count) && count >= 7 && count <= 180) save({ ...value, [key]: count }); }} /></SettingsRow>)}</div></details>;
 }

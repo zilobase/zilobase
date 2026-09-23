@@ -38,6 +38,11 @@ The [server route composition](../../../apps/server/src/features/mail/routes.ts)
 
 The browser [mail screen](../../../apps/web/src/features/mail/screens/mail.tsx) composes these capabilities. [Mailbox](../../../apps/web/src/features/mail/mailbox) renders list/chrome, [messages](../../../apps/web/src/features/mail/messages) owns thread loading, viewing and actions, and [compose](../../../apps/web/src/features/mail/compose) owns composer state/rendering. [Organization](../../../apps/web/src/features/mail/organization), [connections](../../../apps/web/src/features/mail/connections) and [database sync](../../../apps/web/src/features/mail/database-sync) contain their focused controls. [Storage](../../../apps/web/src/features/mail/storage), [sync](../../../apps/web/src/features/mail/sync) and [realtime](../../../apps/web/src/features/mail/realtime) retain distinct cache, connection and coordination lifetimes.
 
+Mail settings use the canonical settings page, section and row components. The
+workspace connection controller continues to own connect, reconnect and
+confirmed disconnect behavior; the shared settings components own its shell,
+heading and row presentation.
+
 Shared mail contracts/queries/React entrypoints remain in the existing package. Published [background adapter exports](../../../apps/server/src/public/adapter-api.ts) and [realtime exports](../../../apps/server/src/public/realtime-api.ts) point to the owning capabilities without changing exported names. Provider formats, cache names, HTTP paths and security headers remain unchanged. [Route inventory tests](../../../apps/server/src/features/mail/route-inventory.test.ts) exercise actual composed routes; adjacent tests move with their implementations, and web tests remain under the feature test root.
 
 Indexed and grouped query routes validate through [query input rules](../../../apps/server/src/features/mail/query/query-input.ts), after resolving the workspace mail binding. Grouped queries intentionally ignore pagination fields. Filter normalization remains inside the route error handler. [Route tests](../../../apps/server/src/features/mail/query/routes.test.ts) preserve authorization order, field limits, empty strings and omitted fields.

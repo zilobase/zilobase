@@ -16,6 +16,7 @@ import { Spinner } from "@/shared/ui/spinner";
 import { getApiErrorMessage } from "@/platform/network/api";
 
 import { GoogleIcon } from "@/shared/components/google-icon";
+import { SettingsRow, SettingsSectionLayout } from "@/features/settings";
 
 export function WorkspaceMailConnectionSection({
   workspaceId,
@@ -35,24 +36,19 @@ export function WorkspaceMailConnectionSection({
   } = useWorkspaceMailConnection({ workspaceId });
 
   return (
-    <section className="grid gap-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 space-y-1">
-          <h3 className="font-heading text-base leading-snug font-medium">
-            Your mail connection
-          </h3>
-          <p className="text-sm text-content-secondary">
-            {connected
-              ? `${connection?.email ?? "Gmail"} is private to you in this workspace.`
-              : "Connect a private Gmail mailbox for this workspace."}
-          </p>
-          {connectionQuery.error ? (
-            <p className="text-xs text-feedback-danger-text">
-              {getApiErrorMessage(connectionQuery.error)}
-            </p>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
+    <SettingsSectionLayout
+      description={connected
+        ? "This mailbox is private to you in the current workspace."
+        : "Connect a private Gmail mailbox for this workspace."}
+      title="Your mail connection"
+    >
+      {connectionQuery.error ? (
+        <p className="text-xs text-feedback-danger-text">
+          {getApiErrorMessage(connectionQuery.error)}
+        </p>
+      ) : null}
+      <SettingsRow
+        action={<>
           {connected ? (
             <Button
               disabled={disconnecting}
@@ -82,8 +78,10 @@ export function WorkspaceMailConnectionSection({
                   ? "Change account"
                   : "Connect"}
           </Button>
-        </div>
-      </div>
+        </>}
+        description={connected ? "Connected" : connectionQuery.isLoading ? "Checking connection..." : "Not connected"}
+        title={connection?.email ?? "Gmail"}
+      />
 
       <AlertDialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
         <AlertDialogContent>
@@ -111,6 +109,6 @@ export function WorkspaceMailConnectionSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </section>
+    </SettingsSectionLayout>
   );
 }

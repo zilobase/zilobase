@@ -61,6 +61,16 @@ export const settingsRoutes = [
   }),
   createRoute({
     getParentRoute: () => appRoute,
+    path: "/settings/mail",
+    component: lazyRouteComponent(() => import("@/features/settings/screens/mail")),
+  }),
+  createRoute({
+    getParentRoute: () => appRoute,
+    path: "/settings/calendar",
+    component: lazyRouteComponent(() => import("@/features/settings/screens/calendar")),
+  }),
+  createRoute({
+    getParentRoute: () => appRoute,
     path: "/settings/teamspaces",
     validateSearch: validateTeamspaceSettingsSearch,
     component: lazyRouteComponent(() => import("@/features/teamspaces/screens/teamspaces")),

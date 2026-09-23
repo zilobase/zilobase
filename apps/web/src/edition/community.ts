@@ -1,4 +1,31 @@
-import type { ComponentType } from "react"
+import type { ComponentType, ReactNode } from "react"
+
+export type EditionSettingsUi = {
+  Page: ComponentType<{
+    children: ReactNode
+    className?: string
+    description: string
+    title: string
+  }>
+  Row: ComponentType<{
+    action?: ReactNode
+    children?: ReactNode
+    className?: string
+    description?: ReactNode
+    title: ReactNode
+  }>
+  Section: ComponentType<{
+    action?: ReactNode
+    children?: ReactNode
+    className?: string
+    description?: ReactNode
+    title: ReactNode
+  }>
+}
+
+export type EditionSettingsComponentProps = {
+  settingsUi?: EditionSettingsUi
+}
 
 export type EditionLoginMethodProps = {
   disabled: boolean
@@ -21,7 +48,8 @@ export type EditionWebModule = {
     path: string
   }[]
   settingsSections: readonly {
-    component: ComponentType
+    component: ComponentType<EditionSettingsComponentProps>
+    description?: string
     icon?: ComponentType<{ className?: string }>
     id: string
     title: string

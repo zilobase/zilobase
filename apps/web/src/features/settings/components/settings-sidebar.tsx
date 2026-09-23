@@ -1,6 +1,8 @@
 import {
   Building2Icon,
+  CalendarIcon,
   Code as CodeIcon,
+  MailIcon,
   KeyRoundIcon,
   Link2,
   SlidersHorizontalIcon,
@@ -39,6 +41,8 @@ export type CoreSettingsSection =
   | "oauth-apps"
   | "team"
   | "teamspaces"
+  | "mail"
+  | "calendar"
 export type SettingsSection = CoreSettingsSection | string
 
 const settingsItems: Array<{
@@ -59,6 +63,8 @@ const settingsItems: Array<{
   { title: "OAuth apps", section: "oauth-apps", icon: CodeIcon },
   { title: "Team", section: "team", icon: UsersIcon },
   { title: "Teamspaces", section: "teamspaces", icon: Layers3Icon },
+  { title: "Mail", section: "mail", icon: MailIcon },
+  { title: "Calendar", section: "calendar", icon: CalendarIcon },
   ...editionWebModule.settingsSections.map((section) => ({
     title: section.title,
     section: section.id,
