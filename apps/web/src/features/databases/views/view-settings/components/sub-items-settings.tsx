@@ -224,16 +224,16 @@ function SubItemsPreview() {
   return (
     <div className="rounded-md border bg-surface-subtle p-3 text-sm">
       <div className="flex items-center gap-2 font-medium">
-        <ChevronDown className="size-4 text-content-secondary" />
+        <ChevronDown className="size-4 text-content-secondary" weight="fill" />
         <span>Parent item</span>
       </div>
       <div className="ml-6 mt-2 grid gap-2 text-content-secondary">
         <div className="flex items-center gap-2">
-          <ChevronRight className="size-3.5" />
+          <ChevronRight className="size-3.5" weight="fill" />
           <span>Sub-item</span>
         </div>
         <div className="flex items-center gap-2">
-          <ChevronRight className="size-3.5" />
+          <ChevronRight className="size-3.5" weight="fill" />
           <span>Sub-item</span>
         </div>
       </div>

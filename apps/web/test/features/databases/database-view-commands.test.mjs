@@ -1927,14 +1927,15 @@ export function register({ assert, loadModule, test }) {
     assert.deepEqual(activeViewIds, ["view-list", "view-gallery"]);
   });
 
-  test("database view commands persist sub-item settings and create children", async () => {
+  test("database view commands wait for sub-item setup before creating children", async () => {
     const { getDatabaseViewCommands } = await loadModule(
       "/src/features/databases/records/view-commands.ts",
     );
     const addRow = createMutation();
     const updateDatabaseView = createMutation();
+    const errors = [];
     const commands = getDatabaseViewCommands({
-      notify: { error: () => {}, success: () => {} },
+      notify: { error: (message) => errors.push(message), success: () => {} },
       copyViewLink: async () => {},
       activeDatabaseFilters: [],
       activeDatabaseSorts: [],
@@ -1975,9 +1976,64 @@ export function register({ assert, loadModule, test }) {
       databaseId,
       databaseViewId: "view-1",
     });
+    assert.equal(addRow.calls.length, 0);
+    assert.deepEqual(errors, ["Sub-items are still being set up. Try again shortly."]);
+  });
+
+  test("database view commands create a sub-item with its parent relation", async () => {
+    const { getDatabaseViewCommands } = await loadModule(
+      "/src/features/databases/records/view-commands.ts",
+    );
+    const addRow = createMutation();
+    const updateValue = createMutation();
+    const commands = getDatabaseViewCommands({
+      notify: { error: () => {}, success: () => {} },
+      copyViewLink: async () => {},
+      activeDatabaseFilters: [],
+      activeDatabaseSorts: [],
+      activeView: {
+        config: {
+          subItems: {
+            display: "nested",
+            enabled: true,
+            filter: "parents-only",
+            parentPropertyId: "parent-property",
+            property: "sub-item",
+            subItemPropertyId: "sub-item-property",
+          },
+        },
+        id: "view-1",
+        name: "Table",
+        type: "table",
+      },
+      databaseId,
+      editable: true,
+      isKanbanView: false,
+      items: [{ id: "parent-row", pageId: "parent-page" }],
+      kanbanGroupProperty: null,
+      mutations: createMutations({ addRow, updateValue }),
+      viewData: createViewData(),
+      properties: [],
+      setActiveViewId: () => {},
+      setFilterPickerOpen: () => {},
+      setShowFilterPill: () => {},
+      setShowSortPill: () => {},
+      setSortPickerOpen: () => {},
+    });
+
+    commands.addDatabaseRow(undefined, undefined, "parent-row");
+
     assert.deepEqual(addRow.calls[0][0], {
       databaseId,
+      initialValues: [{ propertyId: "parent-property", value: "parent-page" }],
       title: "Untitled",
+    });
+    addRow.calls[0][1].onSuccess({ pageId: "child-page" });
+    assert.deepEqual(updateValue.calls[0][0], {
+      databaseId,
+      propertyId: "sub-item-property",
+      rowId: "parent-row",
+      value: ["child-page"],
     });
   });
 

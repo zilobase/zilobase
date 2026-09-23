@@ -1748,9 +1748,9 @@ export function DatabaseTableView() {
                               type="button"
                             >
                               {subItemsExpanded ? (
-                                <ChevronDown />
+                                <ChevronDown weight="fill" />
                               ) : (
-                                <ChevronRight />
+                                <ChevronRight weight="fill" />
                               )}
                             </button>
                           ) : null}
@@ -1800,9 +1800,19 @@ export function DatabaseTableView() {
                 <td colSpan={columnKeys.length}>
                   <button
                     className="database-sub-item-create"
-                    disabled={!databaseId}
+                    disabled={
+                      !databaseId ||
+                      !subItemsSettings.parentPropertyId ||
+                      !subItemsSettings.subItemPropertyId
+                    }
                     onClick={() =>
                       addDatabaseRow(undefined, undefined, parentRowId)
+                    }
+                    title={
+                      !subItemsSettings.parentPropertyId ||
+                      !subItemsSettings.subItemPropertyId
+                        ? "Setting up sub-items"
+                        : undefined
                     }
                     style={
                       {

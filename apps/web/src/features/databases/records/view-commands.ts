@@ -357,9 +357,21 @@ export function getDatabaseViewCommands({
       const subItemsSettings = getDatabaseSubItemsSettings(
         activeView?.config ?? databaseConfig,
       );
+      if (
+        parentRowId &&
+        (!subItemsSettings.parentPropertyId ||
+          !subItemsSettings.subItemPropertyId)
+      ) {
+        notify.error("Sub-items are still being set up. Try again shortly.");
+        return;
+      }
       const parentRow = parentRowId
         ? items.find((row) => row.id === parentRowId)
         : undefined;
+      if (parentRowId && !parentRow) {
+        notify.error("Parent item is no longer available.");
+        return;
+      }
       const parentRelation =
         parentRow &&
         subItemsSettings.parentPropertyId &&

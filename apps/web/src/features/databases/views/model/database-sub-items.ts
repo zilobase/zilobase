@@ -296,7 +296,6 @@ export function getDatabaseSubItemsView<Row extends SubItemRow>({
   if (
     usesRelationProperties &&
     propertyValuesByKey &&
-    settings.property === "parent-item" &&
     settings.parentPropertyId
   ) {
     for (const child of rows) {

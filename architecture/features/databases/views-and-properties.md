@@ -14,6 +14,10 @@
 
 The view controller selects a data source and view, derives visible rows/properties and supplies commands to presentation through the view context. Named view components preserve their distinct table, Kanban, timeline, chart, list, gallery and form behavior. Screens compose page metadata and the database surface.
 
+The [sub-item view model](../../../apps/web/src/features/databases/views/model/database-sub-items.ts) derives nesting from each row's single Parent item relation when configured, including the relation saved during child creation. It reads the inverse Sub-item relation only when no parent relation is configured. This keeps a new child nested before the follow-up inverse relation update and keeps an explicitly cleared parent authoritative. The table disables child creation until both relation properties are configured; [view commands](../../../apps/web/src/features/databases/records/view-commands.ts) also reject a child creation attempt during setup so it cannot become a root row.
+
+The current [view update command](../../../apps/server/src/features/databases/commands/structural/views.ts) calls [sub-item relation setup](../../../apps/server/src/features/databases/commands/structural/sub-items.ts) in the command transaction. Setup creates or reuses the source's Parent item and Sub-item relation properties, reconciles their existing values, saves the generated property IDs in the view config, and publishes property and record changes to linked hosts. The client can create children after that view update is reflected in its bootstrap data.
+
 Server [property operations](../../../apps/server/src/features/databases/schema), [row operations](../../../apps/server/src/features/databases/records), and [data sources](../../../apps/server/src/features/databases/data-sources) enforce persistence and access. UI visibility does not grant editability. A cell edit stays local `draft` state with an `isPending` indicator until POST plus refetch succeeds; failed writes keep the draft visible and surface through the save indicator as described in the [database overview](README.md).
 
 ## Tests and recovery

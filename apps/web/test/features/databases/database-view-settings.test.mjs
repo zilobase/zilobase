@@ -536,6 +536,41 @@ export function register({ readSource, assert, loadModule, test }) {
     );
   });
 
+  test("new sub-items nest from their parent relation before the inverse relation updates", async () => {
+    const { getDatabaseSubItemsView } = await loadModule(
+      "/src/features/databases/views/model/database-sub-items.ts",
+    );
+    const rows = [
+      createSubItemRow("parent", null, 0),
+      createSubItemRow("child", null, 1),
+      createSubItemRow("detached", null, 2),
+    ];
+    const view = getDatabaseSubItemsView({
+      filteredRows: rows,
+      hasFilters: false,
+      propertyValuesByKey: {
+        "page-child:parent-property": "page-parent",
+        "page-detached:parent-property": "",
+        "page-parent:sub-item-property": ["page-detached"],
+      },
+      rows,
+      settings: {
+        display: "nested",
+        enabled: true,
+        filter: "parents-only",
+        parentPropertyId: "parent-property",
+        property: "sub-item",
+        subItemPropertyId: "sub-item-property",
+      },
+      sortedRows: rows,
+    });
+
+    assert.deepEqual(view.parentRowIdsByRowId, { child: ["parent"] });
+    assert.deepEqual(view.childRowIdsByParentId, { parent: ["child"] });
+    assert.equal(view.depthByRowId.child, 1);
+    assert.equal(view.depthByRowId.detached, 0);
+  });
+
   test("database sub-item create rows follow the existing child rows", async () => {
     const { getSubItemCreateRowsAfterRow } = await loadModule(
       "/src/features/databases/views/model/database-sub-items.ts",

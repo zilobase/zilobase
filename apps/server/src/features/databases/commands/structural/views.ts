@@ -5,7 +5,9 @@ import { databaseDataSource, databaseView } from "../../../../infrastructure/dat
 import { ServiceMutationError } from "../../../../shared/errors/service-mutation-error"
 import type { DatabaseCommandContext, DatabaseCommandDispatchResult } from "../framework"
 import { getDatabaseViewEntity } from "../metadata-entities"
+import { sourceMutations } from "../source-command-state"
 import { resolveNeighborIndex, updateViewPositions } from "./ordering"
+import { ensureSubItemRelations } from "./sub-items"
 
 export async function orderedViews(context: DatabaseCommandContext) {
   return context.transaction.select({ id: databaseView.id }).from(databaseView)
@@ -61,13 +63,41 @@ export async function viewUpdate(
     eq(databaseView.id, command.viewId), eq(databaseView.databaseId, context.databaseId),
   )).limit(1)
   if (!view) throw new ServiceMutationError("Database view not found", 404)
+  const subItemSetup = command.patch.config !== undefined
+    ? await ensureSubItemRelations(context, view.dataSourceId, command.patch.config)
+    : null
   await context.transaction.update(databaseView).set({
-    ...(command.patch.config !== undefined ? { config: command.patch.config } : {}),
+    ...(command.patch.config !== undefined
+      ? { config: subItemSetup?.config ?? command.patch.config }
+      : {}),
     ...(command.patch.name !== undefined ? { name: command.patch.name } : {}),
     ...(command.patch.type !== undefined ? { type: command.patch.type } : {}),
     updatedAt: new Date(),
   }).where(eq(databaseView.id, view.id))
   const entity = await getDatabaseViewEntity(context, view.id)
+  if (subItemSetup) {
+    const mutations = await sourceMutations(
+      { ...context, dataSourceId: view.dataSourceId },
+      ["properties", "records"],
+      async () => ({
+        properties: subItemSetup.properties,
+        records: subItemSetup.records,
+      }),
+    )
+    const primary = mutations.find((mutation) => mutation.databaseId === context.databaseId)
+    if (primary) {
+      primary.areas.push("views")
+      primary.changes.views = [entity]
+    } else {
+      mutations.push({
+        areas: ["views"],
+        changes: { views: [entity] },
+        databaseId: context.databaseId,
+        dataSourceId: view.dataSourceId,
+      })
+    }
+    return { mutations, result: entity }
+  }
   return {
     mutations: [{ areas: ["views"], changes: { views: [entity] }, databaseId: context.databaseId, dataSourceId: view.dataSourceId }],
     result: entity,
@@ -123,4 +153,3 @@ export async function viewDelete(
     result: { viewId: command.viewId },
   }
 }
-
