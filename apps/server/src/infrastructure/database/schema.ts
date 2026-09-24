@@ -46,6 +46,7 @@ export {
   mailDatabaseSyncRecord,
   mailDatabaseSyncOutbox,
   mailIndexState,
+  mailMailboxChange,
   mailThreadIndex,
   mailMessage,
   mailLabel,

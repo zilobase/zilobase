@@ -7,7 +7,7 @@ import type {
   MailView,
 } from "@zilobase/features/mail";
 
-const MAIL_DATABASE_VERSION = 4;
+const MAIL_DATABASE_VERSION = 5;
 const openDatabases = new Map<string, MailDatabase>();
 const MAIL_LIFECYCLE_CHANNEL = "zilobase:mail-cache-lifecycle:v2";
 let lifecycleChannel: BroadcastChannel | null = null;
@@ -17,6 +17,7 @@ export type MailSyncStateRecord = {
   connectionId: string;
   key: "primary";
   lastSyncedAt: number | null;
+  revision: number;
   pendingMessageReconciliationIds?: string[];
   pendingThreadReconciliationIds?: string[];
   schemaVersion: number;
@@ -49,6 +50,7 @@ export class MailDatabase extends Dexie {
       })
       .upgrade((transaction) =>
         transaction.table("syncState").toCollection().modify({
+          revision: 0,
           schemaVersion: MAIL_DATABASE_VERSION,
         }),
       );
@@ -109,6 +111,7 @@ export async function openMailDatabase(
         connectionId: input.connectionId,
         key: "primary",
         lastSyncedAt: null,
+        revision: 0,
         schemaVersion: MAIL_DATABASE_VERSION,
         userId: input.userId,
         workspaceId,
@@ -132,6 +135,8 @@ export async function applyMailboxSnapshot(
     labels?: MailLabelRecord[];
     messages?: MailMessageRecord[];
     threads?: MailThreadSummary[];
+    resetRequired?: boolean;
+    toRevision?: number;
   },
 ) {
   await database.transaction(
@@ -142,6 +147,12 @@ export async function applyMailboxSnapshot(
     database.threads,
     async () => {
       if (response.labels?.length) await database.labels.bulkPut(response.labels);
+      if (response.resetRequired) {
+        await database.labels.clear();
+        await database.messages.clear();
+        await database.threads.clear();
+        if (response.labels?.length) await database.labels.bulkPut(response.labels);
+      }
       if (response.messages?.length) await mergeMessages(database, response.messages);
       if (response.threads?.length) await database.threads.bulkPut(response.threads);
       if (response.deletedMessageIds?.length) {
@@ -155,6 +166,7 @@ export async function applyMailboxSnapshot(
       await database.syncState.put({
         ...state,
         lastSyncedAt: Date.now(),
+        revision: response.toRevision ?? state.revision ?? 0,
       });
     },
   );

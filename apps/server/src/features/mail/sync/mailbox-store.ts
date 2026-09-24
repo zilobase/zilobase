@@ -1,7 +1,8 @@
-import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, notInArray, sql } from "drizzle-orm";
 import type {
   MailAddress,
   MailLabelRecord,
+  MailMailboxChanges,
   MailMessageRecord,
   MailThreadSummary,
 } from "@zilobase/features/mail/contracts";
@@ -10,6 +11,7 @@ import { db } from "../../../infrastructure/database";
 import {
   mailIndexState,
   mailLabel,
+  mailMailboxChange,
   mailMessage,
   mailThreadIndex,
 } from "../../../infrastructure/database/schema";
@@ -343,17 +345,119 @@ export async function loadMailboxUnsubscribeHeaders(gmailAccountId: string, gmai
   return message ?? null;
 }
 
-export async function commitMailboxRevision(gmailAccountId: string) {
+export type MailboxChangeSet = {
+  labelsChanged?: boolean;
+  messageIds?: Iterable<string>;
+  threadIds?: Iterable<string>;
+};
+
+export async function commitMailboxRevision(
+  gmailAccountId: string,
+  changes: MailboxChangeSet = {},
+) {
+  return db.transaction(async (transaction) => {
+    const [state] = await transaction
+      .update(mailIndexState)
+      .set({
+        committedRevision: sql`${mailIndexState.committedRevision} + 1`,
+        lastSuccessAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(mailIndexState.gmailAccountId, gmailAccountId))
+      .returning({ revision: mailIndexState.committedRevision });
+    const revision = state?.revision ?? 0;
+    if (!revision) return revision;
+    await transaction.insert(mailMailboxChange).values({
+      gmailAccountId,
+      id: `${gmailAccountId}:${revision}`,
+      labelsChanged: changes.labelsChanged ?? false,
+      messageIds: unique([...(changes.messageIds ?? [])]),
+      revision,
+      threadIds: unique([...(changes.threadIds ?? [])]),
+    });
+    return revision;
+  });
+}
+
+export async function loadMailboxChanges(
+  gmailAccountId: string,
+  afterRevision: number,
+  limit = 100,
+): Promise<MailMailboxChanges> {
   const [state] = await db
-    .update(mailIndexState)
-    .set({
-      committedRevision: sql`${mailIndexState.committedRevision} + 1`,
-      lastSuccessAt: new Date(),
-      updatedAt: new Date(),
-    })
+    .select({ revision: mailIndexState.committedRevision })
+    .from(mailIndexState)
     .where(eq(mailIndexState.gmailAccountId, gmailAccountId))
-    .returning({ revision: mailIndexState.committedRevision });
-  return state?.revision ?? 0;
+    .limit(1);
+  const currentRevision = state?.revision ?? 0;
+  const rows = await db
+    .select()
+    .from(mailMailboxChange)
+    .where(
+      and(
+        eq(mailMailboxChange.gmailAccountId, gmailAccountId),
+        gt(mailMailboxChange.revision, afterRevision),
+      ),
+    )
+    .orderBy(asc(mailMailboxChange.revision))
+    .limit(Math.max(1, Math.min(limit, 250)) + 1);
+  const resetRequired =
+    afterRevision > currentRevision ||
+    (afterRevision < currentRevision && rows[0]?.revision !== afterRevision + 1);
+  if (resetRequired) {
+    return {
+      deletedMessageIds: [],
+      deletedThreadIds: [],
+      fromRevision: afterRevision,
+      hasMore: false,
+      labels: await loadMailboxLabels(gmailAccountId),
+      messages: [],
+      resetRequired: true,
+      threads: [],
+      toRevision: currentRevision,
+    };
+  }
+  const selected = rows.slice(0, limit);
+  const messageIds = unique(selected.flatMap((row) => row.messageIds));
+  const threadIds = unique(selected.flatMap((row) => row.threadIds));
+  const messageRows = messageIds.length
+    ? await db
+        .select()
+        .from(mailMessage)
+        .where(
+          and(
+            eq(mailMessage.gmailAccountId, gmailAccountId),
+            inArray(mailMessage.gmailMessageId, messageIds),
+          ),
+        )
+    : [];
+  const effectiveThreadIds = unique([...threadIds, ...messageRows.map((row) => row.gmailThreadId)]);
+  const threadRows = effectiveThreadIds.length
+    ? await db
+        .select()
+        .from(mailThreadIndex)
+        .where(
+          and(
+            eq(mailThreadIndex.gmailAccountId, gmailAccountId),
+            inArray(mailThreadIndex.gmailThreadId, effectiveThreadIds),
+          ),
+        )
+    : [];
+  const existingMessages = new Set(messageRows.map((row) => row.gmailMessageId));
+  const existingThreads = new Set(threadRows.map((row) => row.gmailThreadId));
+  return {
+    deletedMessageIds: messageIds.filter((id) => !existingMessages.has(id)),
+    deletedThreadIds: effectiveThreadIds.filter((id) => !existingThreads.has(id)),
+    fromRevision: afterRevision,
+    hasMore: rows.length > selected.length,
+    labels: selected.some((row) => row.labelsChanged)
+      ? await loadMailboxLabels(gmailAccountId)
+      : [],
+    messages: messageRows.map(serializeMailboxMessage),
+    resetRequired: false,
+    threads: threadRows.map(serializeMailboxThread),
+    toRevision: selected.at(-1)?.revision ?? afterRevision,
+  };
 }
 
 export function mailThreadIndexRecord(

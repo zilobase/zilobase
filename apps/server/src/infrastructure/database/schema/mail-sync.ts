@@ -127,6 +127,28 @@ export const mailIndexState = pgTable(
   ],
 );
 
+export const mailMailboxChange = pgTable(
+  "mail_mailbox_change",
+  {
+    id: text("id").primaryKey(),
+    gmailAccountId: text("gmail_account_id")
+      .notNull()
+      .references(() => gmailAccount.id, { onDelete: "cascade" }),
+    revision: integer("revision").notNull(),
+    messageIds: jsonb("message_ids").$type<string[]>().notNull().default([]),
+    threadIds: jsonb("thread_ids").$type<string[]>().notNull().default([]),
+    labelsChanged: boolean("labels_changed").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("mail_mailbox_change_account_revision_unique").on(
+      table.gmailAccountId,
+      table.revision,
+    ),
+    index("mail_mailbox_change_created_idx").on(table.createdAt),
+  ],
+);
+
 export const mailThreadIndex = pgTable(
   "mail_thread_index",
   {

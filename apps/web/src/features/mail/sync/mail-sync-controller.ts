@@ -13,6 +13,7 @@ import type {
   MailFilterExpression,
   MailConnection,
   MailLabelRecord,
+  MailMailboxChanges,
   MailLabelWriteRequest,
   MailMessageRecord,
   MailMessageMutationResponse,
@@ -35,6 +36,7 @@ import {
 } from "@/features/desktop/diagnostics/index";
 import { getConnectivityState, subscribeConnectivity } from "@/platform/network/connectivity";
 import {
+  applyMailboxSnapshot,
   clearMailReconciliation,
   deleteMailLabelFromCache,
   deleteMailMessageFromCache,
@@ -135,24 +137,23 @@ export function useMailController(input: {
     setError(null);
     try {
       return await runMailRefreshOnce(database.name, async () => {
-        const { labels: nextLabels } = await apiFetch<{ labels: MailLabelRecord[] }>(
-          `${mailBasePath}/labels`,
-        );
-        await database.transaction("rw", database.labels, database.syncState, async () => {
-          await database.labels.clear();
-          if (nextLabels.length) await database.labels.bulkPut(nextLabels);
-          const state = await database.syncState.get("primary");
-          if (state)
-            await database.syncState.put({
-              ...state,
-              lastSyncedAt: Date.now(),
-            });
-        });
+        let state = await database.syncState.get("primary");
+        if (!state) throw new Error("Mail cache identity is missing.");
+        let labels: MailLabelRecord[] = [];
+        for (let page = 0; page < 100; page += 1) {
+          const changes = await apiFetch<MailMailboxChanges>(
+            `${mailBasePath}/changes?afterRevision=${state.revision ?? 0}&limit=100`,
+          );
+          await applyMailboxSnapshot(database, changes);
+          labels = changes.labels.length ? changes.labels : labels;
+          state = (await database.syncState.get("primary")) ?? state;
+          if (changes.resetRequired || !changes.hasMore) break;
+        }
         await invalidateMailListQueries(queryClient, {
           bindingId: input.connection.bindingId,
           workspaceId: input.connection.workspaceId,
         });
-        return { labels: nextLabels };
+        return { labels };
       });
     } catch (syncError) {
       if (syncError instanceof ApiError) {

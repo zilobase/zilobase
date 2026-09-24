@@ -23,6 +23,7 @@ import {
 } from "../database-sync/mail-database-sync-worker";
 import {
   commitMailboxRevision,
+  type MailboxChangeSet,
   applyMailboxLabelDelta,
   deleteMailboxMessage,
   mailboxMessageExists,
@@ -272,7 +273,7 @@ async function advanceBackfill(
       true,
     );
     if (recentThreads.length || (labels.labels?.length ?? 0) > 0) {
-      await commitMailboxRevision(state.gmailAccountId);
+      await commitMailboxRevision(state.gmailAccountId, changesForThreads(recentThreads, true));
     }
     const [started] = await db
       .update(mailIndexState)
@@ -327,7 +328,7 @@ async function advanceBackfill(
   const missingIds = threadIds.filter((id) => !completeIds.has(id));
   const threads = await gateway.getThreads(missingIds, "full");
   await upsertIndexedThreads(env, state.gmailAccountId, state.generation, threads, true);
-  if (threads.length) await commitMailboxRevision(state.gmailAccountId);
+  if (threads.length) await commitMailboxRevision(state.gmailAccountId, changesForThreads(threads));
   const indexedThreadCount = state.indexedThreadCount + threadIds.length;
   if (page.nextPageToken) {
     const [continued] = await db
@@ -404,8 +405,8 @@ async function advanceHistory(
     pageToken: existing.historyPageToken ?? undefined,
     startHistoryId,
   });
-  const changed = await applyHistoryPage(env, gateway, existing, page.history ?? []);
-  if (changed) await commitMailboxRevision(existing.gmailAccountId);
+  const changes = await applyHistoryPage(env, gateway, existing, page.history ?? []);
+  if (changes) await commitMailboxRevision(existing.gmailAccountId, changes);
   const cursor = page.historyId ?? existing.historyId;
   const pageToken = page.nextPageToken;
   const [updated] = await db
@@ -475,6 +476,7 @@ async function applyHistoryPage(
   }
 
   let changed = false;
+  const changedMessages = new Set<string>();
   const hydratedThreads = new Set<string>();
   for (const { messageId, threadId } of additions.values()) {
     if (await mailboxMessageExists(state.gmailAccountId, messageId)) continue;
@@ -491,6 +493,7 @@ async function applyHistoryPage(
         hydratedThreads.add(threadId);
       }
       changed = true;
+      changedMessages.add(messageId);
     } catch (error) {
       if (!(error instanceof GmailApiError) || error.status !== 404) throw error;
     }
@@ -502,7 +505,10 @@ async function applyHistoryPage(
       gmailMessageId: messageId,
       removeLabelIds: [...(removedLabels.get(messageId) ?? [])],
     });
-    if (applied) changed = true;
+    if (applied) {
+      changed = true;
+      changedMessages.add(messageId);
+    }
     if (applied || additions.has(messageId)) continue;
     const eventMessage = history
       .flatMap((event) => [...(event.labelsAdded ?? []), ...(event.labelsRemoved ?? [])])
@@ -513,19 +519,37 @@ async function applyHistoryPage(
       await upsertIndexedThreads(env, state.gmailAccountId, state.generation, [thread], true);
       hydratedThreads.add(eventMessage.threadId);
       changed = true;
+      for (const message of thread.messages ?? []) {
+        if (message.id) changedMessages.add(message.id);
+      }
     } catch (error) {
       if (!(error instanceof GmailApiError) || error.status !== 404) throw error;
     }
   }
   for (const messageId of deleted) {
-    if (await deleteMailboxMessage(state.gmailAccountId, messageId)) changed = true;
+    if (await deleteMailboxMessage(state.gmailAccountId, messageId)) {
+      changed = true;
+      changedMessages.add(messageId);
+    }
   }
   if (changed) {
     for (const threadId of affectedThreads) {
       await enqueueMailDatabaseSyncForThread(state.gmailAccountId, threadId, env);
     }
   }
-  return changed;
+  return changed
+    ? ({ messageIds: changedMessages, threadIds: affectedThreads } satisfies MailboxChangeSet)
+    : null;
+}
+
+function changesForThreads(threads: GmailThread[], labelsChanged = false): MailboxChangeSet {
+  return {
+    labelsChanged,
+    messageIds: threads.flatMap((thread) =>
+      (thread.messages ?? []).flatMap((message) => (message.id ? [message.id] : [])),
+    ),
+    threadIds: threads.flatMap((thread) => (thread.id ? [thread.id] : [])),
+  };
 }
 
 async function upsertIndexedThreads(

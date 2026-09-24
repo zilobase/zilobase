@@ -193,7 +193,9 @@ export async function advanceMailReminders(input: {
     if (updated) fired.push(serializeReminder(updated));
   }
   if (fired.length) {
-    const revision = await commitMailboxRevision(input.connectionId);
+    const revision = await commitMailboxRevision(input.connectionId, {
+      threadIds: fired.map((reminder) => reminder.threadId),
+    });
     await publishMailNotification({
       bindingId: input.bindingId,
       connectionId: input.connectionId,

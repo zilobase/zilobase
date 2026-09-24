@@ -128,6 +128,18 @@ export type MailBatchMutationResponse = {
   acceptedIds: string[];
 };
 
+export type MailMailboxChanges = {
+  deletedMessageIds: string[];
+  deletedThreadIds: string[];
+  fromRevision: number;
+  hasMore: boolean;
+  labels: MailLabelRecord[];
+  messages: MailMessageRecord[];
+  resetRequired: boolean;
+  threads: MailThreadSummary[];
+  toRevision: number;
+};
+
 export type MailLabelWriteRequest = {
   color?: { backgroundColor: string; textColor: string };
   labelListVisibility?: "labelHide" | "labelShow" | "labelShowIfUnread";

@@ -271,9 +271,7 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
     );
     void database
       .transaction("rw", database.threads, async () => {
-        const existing = await database.threads.bulkGet(threads.map((thread) => thread.id));
-        const missing = threads.filter((_thread, index) => !existing[index]);
-        if (missing.length) await database.threads.bulkPut(missing);
+        if (threads.length) await database.threads.bulkPut(threads);
       })
       .catch(showMailError);
   }, [controller.database, indexedMailQuery.data]);

@@ -17,19 +17,26 @@ Gmail watch / Pub/Sub / safety poll
   -> history.list from the committed account cursor
   -> fetch only new or unknown message/thread content
   -> transactional PostgreSQL mailbox projection
-  -> committed revision notification
-  -> browser query invalidation and local offline cache
+  -> durable mailbox change row and committed revision notification
+  -> browser revision catch-up and local offline cache
 ```
 
 OAuth connection requests the first account job. A bootstrap stores labels and the 50 newest Inbox threads with full bodies, marks the mailbox usable, then backfills All Mail in pages of 25. Backfill skips threads already fully hydrated and yields between pages. Ongoing work drains `history.list`; label-only and deletion events are applied locally without refetching complete threads.
 
-The query, thread, message, label and unsubscribe routes read PostgreSQL. Attachments, draft operations, message delivery and provider mutations remain explicit Gmail effects. The browser never submits Gmail history cursors or advances server work. Its Dexie database is an offline/read-through cache plus optimistic mutation journal.
+The query, thread, message, label and unsubscribe routes read PostgreSQL. The
+`/changes` feed returns current projections and deletion tombstones for every
+revision after the browser's device-local cursor. A client outside the retained
+change window resets only its canonical cache and then repopulates visible mail
+from indexed queries. Attachments, draft operations, message delivery and
+provider mutations remain explicit Gmail effects. The browser never submits
+Gmail history cursors or advances server work. Its Dexie database is an
+offline/read-through cache plus optimistic mutation journal.
 
 ## Persistence and invariants
 
 `mail_index_state` is the single account sync authority: desired/applied history IDs, bootstrap/backfill cursors, generation, lease, retry deadline, errors and committed revision live there. `gmail_account` stores credentials, connection health and watch timing only. `mail_message`, `mail_thread_index` and `mail_label` form the canonical mailbox read model.
 
-One expiring database lease permits one engine advance per account. Notification and queue duplication are safe: desired history is monotonic, equal/older notifications do not dispatch more work, resource IDs coalesce queued tasks, and message/thread upserts are idempotent. A mailbox revision is published only after local writes commit.
+One expiring database lease permits one engine advance per account. Notification and queue duplication are safe: desired history is monotonic, equal/older notifications do not dispatch more work, resource IDs coalesce queued tasks, and message/thread upserts are idempotent. Each committed revision has a durable `mail_mailbox_change` record; realtime is only a poke carrying that revision, and clients fill gaps through the feed.
 
 Gmail calls pass through the gateway quota guard. Account/user token buckets, method weights and full-jitter retry deadlines protect foreground and background traffic. HTTP 429 and quota-related 403 responses remain quota errors; only token rejection or HTTP 401 requires reconnection.
 

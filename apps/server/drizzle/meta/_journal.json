@@ -694,6 +694,13 @@
       "when": 1790208000002,
       "tag": "0101_mail_sync_state_cutover",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1790294400000,
+      "tag": "0102_mailbox_change_feed",
+      "breakpoints": true
     }
   ]
 }

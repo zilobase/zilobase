@@ -13,10 +13,26 @@ import {
   inspectOrExecuteUnsubscribeHeaders,
   MailUnsubscribeError,
 } from "../compose/safe-unsubscribe";
-import { loadMailboxUnsubscribeHeaders } from "../sync/mailbox-store";
+import { loadMailboxChanges, loadMailboxUnsubscribeHeaders } from "../sync/mailbox-store";
 import { requireWorkspaceMailBinding, safeGmailId } from "../route-support";
 
 export const mailQueryRoutes = new Hono<AppBindings>();
+
+mailQueryRoutes.get("/changes", async (c) => {
+  const owned = await requireWorkspaceMailBinding(c);
+  if (owned instanceof Response) return owned;
+  const afterRevision = Number(c.req.query("afterRevision") ?? "0");
+  const limit = Number(c.req.query("limit") ?? "100");
+  if (
+    !Number.isSafeInteger(afterRevision) ||
+    afterRevision < 0 ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 250
+  )
+    return c.json({ message: "A valid mailbox revision cursor is required." }, 400);
+  return c.json(await loadMailboxChanges(owned.connection.id, afterRevision, limit));
+});
 
 mailQueryRoutes.post("/threads/:threadId/unsubscribe", async (c) => {
   const owned = await requireWorkspaceMailBinding(c);

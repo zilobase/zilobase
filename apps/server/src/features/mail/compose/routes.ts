@@ -13,6 +13,7 @@ import {
   applyMailboxLabelDelta,
   applyMailboxThreadLabelDelta,
   commitMailboxRevision,
+  type MailboxChangeSet,
   deleteMailboxLabel,
   loadMailboxLabels,
   loadMailboxMessage,
@@ -95,7 +96,9 @@ mailMessageRoutes.post("/labels", async (c) => {
     const label = normalizeGmailLabels([await gateway.createLabel(body)])[0];
     if (!label) throw new GmailApiError("Gmail returned an invalid label.", 502, "provider_error");
     await upsertMailboxLabel(owned.connection.id, label);
-    await commitAndReconcile(c.env, owned.connection.id, "label_created");
+    await commitAndReconcile(c.env, owned.connection.id, "label_created", undefined, {
+      labelsChanged: true,
+    });
     return c.json({ label });
   });
 });
@@ -110,7 +113,9 @@ mailMessageRoutes.patch("/labels/:labelId", async (c) => {
     const label = normalizeGmailLabels([await gateway.updateLabel(labelId, body)])[0];
     if (!label) throw new GmailApiError("Gmail returned an invalid label.", 502, "provider_error");
     await upsertMailboxLabel(owned.connection.id, label);
-    await commitAndReconcile(c.env, owned.connection.id, "label_updated");
+    await commitAndReconcile(c.env, owned.connection.id, "label_updated", undefined, {
+      labelsChanged: true,
+    });
     return c.json({ label });
   });
 });
@@ -123,7 +128,9 @@ mailMessageRoutes.delete("/labels/:labelId", async (c) => {
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     await gateway.deleteLabel(labelId);
     await deleteMailboxLabel(owned.connection.id, labelId);
-    await commitAndReconcile(c.env, owned.connection.id, "label_deleted");
+    await commitAndReconcile(c.env, owned.connection.id, "label_deleted", undefined, {
+      labelsChanged: true,
+    });
     return c.json({ deletedId: labelId });
   });
 });
@@ -141,7 +148,9 @@ mailMessageRoutes.post("/threads/batch-modify", async (c) => {
         gmailAccountId: owned.connection.id,
         gmailThreadId: threadId,
       });
-    await commitAndReconcile(c.env, owned.connection.id, "thread_batch_modified");
+    await commitAndReconcile(c.env, owned.connection.id, "thread_batch_modified", undefined, {
+      threadIds: body.ids,
+    });
     return c.json({ acceptedIds: body.ids });
   });
 });
@@ -159,7 +168,9 @@ mailMessageRoutes.post("/messages/batch-modify", async (c) => {
         gmailAccountId: owned.connection.id,
         gmailMessageId: messageId,
       });
-    await commitAndReconcile(c.env, owned.connection.id, "message_batch_modified");
+    await commitAndReconcile(c.env, owned.connection.id, "message_batch_modified", undefined, {
+      messageIds: body.ids,
+    });
     return c.json({ acceptedIds: body.ids });
   });
 });
@@ -178,7 +189,9 @@ mailMessageRoutes.post("/threads/:threadId/modify", async (c) => {
       gmailAccountId: owned.connection.id,
       gmailThreadId: threadId,
     });
-    await commitAndReconcile(c.env, owned.connection.id, "thread_modified", result.historyId);
+    await commitAndReconcile(c.env, owned.connection.id, "thread_modified", result.historyId, {
+      threadIds: [threadId],
+    });
     const record = await loadMailboxThread(owned.connection.id, threadId);
     if (!record) return c.json({ message: "Mail thread not found." }, 404);
     return c.json({ messages: record.messages, thread: record.summary });
@@ -199,7 +212,9 @@ mailMessageRoutes.post("/messages/:messageId/modify", async (c) => {
       gmailAccountId: owned.connection.id,
       gmailMessageId: messageId,
     });
-    await commitAndReconcile(c.env, owned.connection.id, "message_modified", result.historyId);
+    await commitAndReconcile(c.env, owned.connection.id, "message_modified", result.historyId, {
+      messageIds: [messageId],
+    });
     const message = await loadMailboxMessage(owned.connection.id, messageId);
     return message ? c.json({ message }) : c.json({ message: "Mail message not found." }, 404);
   });
@@ -222,7 +237,9 @@ mailMessageRoutes.post("/threads/:threadId/action", async (c) => {
       gmailThreadId: threadId,
       removeLabelIds: body.action === "trash" ? ["INBOX"] : ["TRASH"],
     });
-    await commitAndReconcile(c.env, owned.connection.id, "thread_action", result.historyId);
+    await commitAndReconcile(c.env, owned.connection.id, "thread_action", result.historyId, {
+      threadIds: [threadId],
+    });
     const record = await loadMailboxThread(owned.connection.id, threadId);
     if (!record) return c.json({ message: "Mail thread not found." }, 404);
     return c.json({ messages: record.messages, thread: record.summary });
@@ -246,7 +263,9 @@ mailMessageRoutes.post("/messages/:messageId/action", async (c) => {
       gmailMessageId: messageId,
       removeLabelIds: body.action === "trash" ? ["INBOX"] : ["TRASH"],
     });
-    await commitAndReconcile(c.env, owned.connection.id, "message_action", result.historyId);
+    await commitAndReconcile(c.env, owned.connection.id, "message_action", result.historyId, {
+      messageIds: [messageId],
+    });
     const message = await loadMailboxMessage(owned.connection.id, messageId);
     return message ? c.json({ message }) : c.json({ message: "Mail message not found." }, 404);
   });
@@ -257,8 +276,9 @@ async function commitAndReconcile(
   gmailAccountId: string,
   reason: string,
   historyId?: string,
+  changes?: MailboxChangeSet,
 ) {
-  await commitMailboxRevision(gmailAccountId);
+  await commitMailboxRevision(gmailAccountId, changes);
   await publishMailIndexUpdate(env, gmailAccountId);
   await requestMailSync(env, { gmailAccountId, historyId, reason });
 }
