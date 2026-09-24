@@ -27,14 +27,18 @@ The query, thread, message, label and unsubscribe routes read PostgreSQL. The
 `/changes` feed returns current projections and deletion tombstones for every
 revision after the browser's device-local cursor. A client outside the retained
 change window resets only its canonical cache and then repopulates visible mail
-from indexed queries. Attachments, draft operations, message delivery and
-provider mutations remain explicit Gmail effects. The browser never submits
+from indexed queries. Draft writes remain explicit Gmail effects, but each
+successful write immediately updates the `mail_draft`, `mail_message` and thread
+projection before publishing a revision; draft list and open routes never scan
+Gmail. Gmail remains the draft authority, while IndexedDB retains only unsaved
+device recovery. Attachments, message delivery and provider mutations remain
+explicit Gmail effects. The browser never submits
 Gmail history cursors or advances server work. Its Dexie database is an
 offline/read-through cache plus optimistic mutation journal.
 
 ## Persistence and invariants
 
-`mail_index_state` is the single account sync authority: desired/applied history IDs, bootstrap/backfill cursors, generation, lease, retry deadline, errors and committed revision live there. `gmail_account` stores credentials, connection health and watch timing only. `mail_message`, `mail_thread_index` and `mail_label` form the canonical mailbox read model.
+`mail_index_state` is the single account sync authority: desired/applied history IDs, bootstrap/backfill cursors, generation, lease, retry deadline, errors and committed revision live there. `gmail_account` stores credentials, connection health and watch timing only. `mail_message`, `mail_thread_index`, `mail_label` and `mail_draft` form the canonical mailbox read model. Draft versions reject stale writes from another Zilobase device.
 
 One expiring database lease permits one engine advance per account. Notification and queue duplication are safe: desired history is monotonic, equal/older notifications do not dispatch more work, resource IDs coalesce queued tasks, and message/thread upserts are idempotent. Each committed revision has a durable `mail_mailbox_change` record; realtime is only a poke carrying that revision, and clients fill gaps through the feed.
 

@@ -55,24 +55,12 @@ export async function loadComposeAttachments(
 
 export async function loadDraftForThread(threadId: string, workspaceId?: string | null) {
   const base = mailApiBasePath(workspaceId);
-  let pageToken: string | undefined;
-  const seen = new Set<string>();
-  do {
-    const page = await apiFetch<{
-      drafts?: Array<{ id?: string; message?: { threadId?: string } }>;
-      nextPageToken?: string;
-    }>(`${base}/drafts${pageToken ? `?pageToken=${encodeURIComponent(pageToken)}` : ""}`);
-    const match = page.drafts?.find((draft) => draft.message?.threadId === threadId);
-    if (match?.id) {
-      const draft = await apiFetch<MailDraftResponse>(
-        `${base}/drafts/${encodeURIComponent(match.id)}`,
-      );
-      return loadComposeAttachments(draftSeed(draft.message, draft.draftId), workspaceId);
-    }
-    pageToken = page.nextPageToken;
-    if (pageToken && seen.has(pageToken))
-      throw new Error("Gmail returned a repeated draft cursor.");
-    if (pageToken) seen.add(pageToken);
-  } while (pageToken);
+  const page = await apiFetch<{ drafts: MailDraftResponse[] }>(`${base}/drafts`);
+  const draft = page.drafts.find((item) => item.message.threadId === threadId);
+  if (draft)
+    return loadComposeAttachments(
+      draftSeed(draft.message, draft.draftId, draft.version),
+      workspaceId,
+    );
   throw new Error("This draft no longer exists in Gmail. Refresh the mailbox.");
 }

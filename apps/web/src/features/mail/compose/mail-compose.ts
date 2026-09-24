@@ -7,6 +7,7 @@ import type {
 
 export type MailComposeSeed = {
   draftId?: string;
+  draftVersion?: number;
   clientOperationId?: string;
   attachments?: MailComposeAttachment[];
   attachmentReferences?: MailAttachmentMetadata[];
@@ -110,10 +111,15 @@ function dedupe(addresses: MailAddress[]) {
   });
 }
 
-export function draftSeed(message: MailMessageRecord, draftId: string): MailComposeSeed {
+export function draftSeed(
+  message: MailMessageRecord,
+  draftId: string,
+  draftVersion?: number,
+): MailComposeSeed {
   const operation = /^<zilobase\.([A-Za-z0-9_-]{8,128})@/.exec(message.messageIdHeader ?? "")?.[1];
   return {
     draftId,
+    draftVersion,
     clientOperationId: operation,
     to: message.to,
     cc: message.cc,

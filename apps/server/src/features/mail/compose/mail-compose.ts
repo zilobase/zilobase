@@ -28,7 +28,7 @@ export async function createGmailDraft(
 ): Promise<MailDraftResponse> {
   const mime = buildMailMime(input, connection.email);
   const draft = await gateway.createDraft({ message: mailResource(mime.raw, input.threadId) });
-  return normalizeDraft(await requireDraft(gateway, draft));
+  return normalizeDraft(await requireDraft(gateway, draft), input.clientOperationId);
 }
 
 export async function updateGmailDraft(
@@ -41,7 +41,11 @@ export async function updateGmailDraft(
   const draft = await gateway.updateDraft(draftId, {
     message: mailResource(mime.raw, input.threadId),
   });
-  return normalizeDraft(await requireDraft(gateway, draft, draftId));
+  return normalizeDraft(
+    await requireDraft(gateway, draft, draftId),
+    input.clientOperationId,
+    (input.draftVersion ?? 0) + 1,
+  );
 }
 
 export async function sendGmailComposition(input: {
@@ -119,12 +123,18 @@ async function requireDraft(gateway: GmailGateway, draft: GmailDraft, fallbackId
   return draft.message?.payload ? { ...draft, id } : gateway.getDraft(id);
 }
 
-export function normalizeDraft(draft: GmailDraft): MailDraftResponse {
+export function normalizeDraft(
+  draft: GmailDraft,
+  clientDraftId = draft.id ?? "",
+  version = 1,
+): MailDraftResponse {
   if (!draft.id || !draft.message)
     throw new GmailApiError("Gmail returned an invalid draft.", 502, "provider_error");
   return {
+    clientDraftId,
     draftId: draft.id,
     message: { ...normalizeGmailMessage(draft.message, true), draftId: draft.id },
+    version,
   };
 }
 

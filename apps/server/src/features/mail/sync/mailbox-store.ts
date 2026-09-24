@@ -3,6 +3,7 @@ import type {
   MailAddress,
   MailLabelRecord,
   MailMailboxChanges,
+  MailDraftResponse,
   MailMessageRecord,
   MailThreadSummary,
 } from "@zilobase/features/mail/contracts";
@@ -10,6 +11,7 @@ import type {
 import { db } from "../../../infrastructure/database";
 import {
   mailIndexState,
+  mailDraft,
   mailLabel,
   mailMailboxChange,
   mailMessage,
@@ -345,6 +347,159 @@ export async function loadMailboxUnsubscribeHeaders(gmailAccountId: string, gmai
   return message ?? null;
 }
 
+export class MailDraftConflictError extends Error {
+  readonly status = 409;
+
+  constructor() {
+    super("This draft changed on another device. Reload it or save your edits as a new draft.");
+    this.name = "MailDraftConflictError";
+  }
+}
+
+export async function requireMailboxDraftVersion(
+  gmailAccountId: string,
+  gmailDraftId: string,
+  expectedVersion: number | undefined,
+) {
+  const [draft] = await db
+    .select({ version: mailDraft.version })
+    .from(mailDraft)
+    .where(
+      and(eq(mailDraft.gmailAccountId, gmailAccountId), eq(mailDraft.gmailDraftId, gmailDraftId)),
+    )
+    .limit(1);
+  if (!draft || expectedVersion === undefined || draft.version !== expectedVersion)
+    throw new MailDraftConflictError();
+}
+
+export async function storeMailboxDraft(
+  gmailAccountId: string,
+  draft: MailDraftResponse,
+  expectedVersion?: number,
+) {
+  const [state, existing] = await Promise.all([
+    db
+      .select({ generation: mailIndexState.generation })
+      .from(mailIndexState)
+      .where(eq(mailIndexState.gmailAccountId, gmailAccountId))
+      .limit(1)
+      .then(([row]) => row),
+    db
+      .select()
+      .from(mailDraft)
+      .where(
+        and(
+          eq(mailDraft.gmailAccountId, gmailAccountId),
+          eq(mailDraft.gmailDraftId, draft.draftId),
+        ),
+      )
+      .limit(1)
+      .then(([row]) => row),
+  ]);
+  if (existing && expectedVersion !== undefined && existing.version !== expectedVersion)
+    throw new MailDraftConflictError();
+  const version = existing ? existing.version + 1 : 1;
+  const now = new Date();
+  const message = { ...draft.message, draftId: draft.draftId };
+  const messageRow = mailMessageRecord(gmailAccountId, state?.generation ?? 0, message);
+  await db.transaction(async (transaction) => {
+    await transaction
+      .insert(mailMessage)
+      .values(messageRow)
+      .onConflictDoUpdate({
+        set: messageUpdate(messageRow),
+        target: [mailMessage.gmailAccountId, mailMessage.gmailMessageId],
+      });
+    await transaction
+      .insert(mailDraft)
+      .values({
+        clientDraftId: draft.clientDraftId,
+        createdAt: now,
+        gmailAccountId,
+        gmailDraftId: draft.draftId,
+        gmailMessageId: message.id,
+        gmailThreadId: message.threadId,
+        id: `${gmailAccountId}:${draft.draftId}`,
+        providerWrittenAt: now,
+        updatedAt: now,
+        version,
+      })
+      .onConflictDoUpdate({
+        set: {
+          clientDraftId: draft.clientDraftId,
+          gmailMessageId: message.id,
+          gmailThreadId: message.threadId,
+          providerWrittenAt: now,
+          updatedAt: now,
+          version,
+        },
+        target: [mailDraft.gmailAccountId, mailDraft.gmailDraftId],
+      });
+  });
+  await rebuildMailboxThread(gmailAccountId, message.threadId);
+  return { ...draft, message, version } satisfies MailDraftResponse;
+}
+
+export async function loadMailboxDrafts(gmailAccountId: string): Promise<MailDraftResponse[]> {
+  const drafts = await db
+    .select()
+    .from(mailDraft)
+    .where(eq(mailDraft.gmailAccountId, gmailAccountId))
+    .orderBy(sql`${mailDraft.providerWrittenAt} desc`);
+  if (!drafts.length) return [];
+  const messages = await db
+    .select()
+    .from(mailMessage)
+    .where(
+      and(
+        eq(mailMessage.gmailAccountId, gmailAccountId),
+        inArray(
+          mailMessage.gmailMessageId,
+          drafts.map((draft) => draft.gmailMessageId),
+        ),
+      ),
+    );
+  const byId = new Map(messages.map((message) => [message.gmailMessageId, message]));
+  return drafts.flatMap((draft) => {
+    const message = byId.get(draft.gmailMessageId);
+    return message
+      ? [
+          {
+            clientDraftId: draft.clientDraftId,
+            draftId: draft.gmailDraftId,
+            message: serializeMailboxMessage(message),
+            version: draft.version,
+          },
+        ]
+      : [];
+  });
+}
+
+export async function loadMailboxDraft(gmailAccountId: string, gmailDraftId: string) {
+  const drafts = await loadMailboxDrafts(gmailAccountId);
+  return drafts.find((draft) => draft.draftId === gmailDraftId) ?? null;
+}
+
+export async function deleteMailboxDraft(gmailAccountId: string, gmailDraftId: string) {
+  const [draft] = await db
+    .delete(mailDraft)
+    .where(
+      and(eq(mailDraft.gmailAccountId, gmailAccountId), eq(mailDraft.gmailDraftId, gmailDraftId)),
+    )
+    .returning();
+  if (!draft) return null;
+  await db
+    .delete(mailMessage)
+    .where(
+      and(
+        eq(mailMessage.gmailAccountId, gmailAccountId),
+        eq(mailMessage.gmailMessageId, draft.gmailMessageId),
+      ),
+    );
+  await rebuildMailboxThread(gmailAccountId, draft.gmailThreadId);
+  return { messageId: draft.gmailMessageId, threadId: draft.gmailThreadId };
+}
+
 export type MailboxChangeSet = {
   labelsChanged?: boolean;
   messageIds?: Iterable<string>;
@@ -548,39 +703,44 @@ async function rebuildMailboxThread(gmailAccountId: string, gmailThreadId: strin
       return domain ? [domain] : [];
     }),
   );
-  await db
-    .update(mailThreadIndex)
-    .set({
-      attachmentCount: normalized.reduce((total, message) => total + message.attachmentCount, 0),
-      bccAddresses,
-      ccAddresses,
-      domains,
-      fromAddresses,
-      hydrationStatus: normalized.every((message) => message.hasFullBody) ? "complete" : "partial",
-      important: labels.includes("IMPORTANT"),
-      internalDate: latest.internalDate,
-      labelIds: labels,
-      latestMessageId: latest.id,
-      messageCount: normalized.length,
-      messageIds: normalized.map((message) => message.id),
-      receivedAt: new Date(latest.internalDate),
-      searchDocument: searchDocument(normalized, {
-        snippet: latest.snippet,
-        subject: latest.subject,
-      }),
-      snippet: latest.snippet.slice(0, 500),
-      starred: labels.includes("STARRED"),
+  const record = {
+    attachmentCount: normalized.reduce((total, message) => total + message.attachmentCount, 0),
+    bccAddresses,
+    ccAddresses,
+    createdAt: new Date(),
+    domains,
+    fromAddresses,
+    generation: Math.max(...messages.map((message) => message.generation)),
+    gmailAccountId,
+    gmailThreadId,
+    hasCalendarEvent: false,
+    hydrationStatus: normalized.every((message) => message.hasFullBody) ? "complete" : "partial",
+    id: `${gmailAccountId}:${gmailThreadId}`,
+    important: labels.includes("IMPORTANT"),
+    internalDate: latest.internalDate,
+    labelIds: labels,
+    latestMessageId: latest.id,
+    messageCount: normalized.length,
+    messageIds: normalized.map((message) => message.id),
+    receivedAt: new Date(latest.internalDate),
+    searchDocument: searchDocument(normalized, {
+      snippet: latest.snippet,
       subject: latest.subject,
-      toAddresses,
-      unread: labels.includes("UNREAD"),
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(mailThreadIndex.gmailAccountId, gmailAccountId),
-        eq(mailThreadIndex.gmailThreadId, gmailThreadId),
-      ),
-    );
+    }),
+    snippet: latest.snippet.slice(0, 500),
+    starred: labels.includes("STARRED"),
+    subject: latest.subject,
+    toAddresses,
+    unread: labels.includes("UNREAD"),
+    updatedAt: new Date(),
+  };
+  await db
+    .insert(mailThreadIndex)
+    .values(record)
+    .onConflictDoUpdate({
+      set: threadUpdate(record),
+      target: [mailThreadIndex.gmailAccountId, mailThreadIndex.gmailThreadId],
+    });
 }
 
 function mailMessageRecord(gmailAccountId: string, generation: number, message: MailMessageRecord) {

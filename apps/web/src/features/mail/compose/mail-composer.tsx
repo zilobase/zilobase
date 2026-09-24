@@ -49,6 +49,7 @@ export function MailComposer({
   const [bodyText, setBodyText] = useState(seed.bodyText ?? "");
   const [attachments, setAttachments] = useState<MailComposeAttachment[]>(seed.attachments ?? []);
   const [draftId, setDraftId] = useState<string | null>(seed.draftId ?? null);
+  const [draftVersion, setDraftVersion] = useState<number | undefined>(seed.draftVersion);
   const [showCopies, setShowCopies] = useState(Boolean(seed.cc?.length || seed.bcc?.length));
   const [saving, setSaving] = useState(false);
   const [attaching, setAttaching] = useState(false);
@@ -66,6 +67,7 @@ export function MailComposer({
         },
       );
       setDraftId(response.draftId);
+      setDraftVersion(response.version);
       void Promise.resolve(onDraftChanged?.()).catch(() => {});
       return response.draftId;
     });
@@ -81,6 +83,7 @@ export function MailComposer({
       cc: parseComposerAddresses(cc),
       clientOperationId: operationId.current,
       ...(draftId ? { draftId } : {}),
+      ...(draftVersion ? { draftVersion } : {}),
       ...(seed.inReplyTo ? { inReplyTo: seed.inReplyTo } : {}),
       ...(seed.references ? { references: seed.references } : {}),
       subject,
@@ -93,6 +96,7 @@ export function MailComposer({
       bodyText,
       cc,
       draftId,
+      draftVersion,
       seed.inReplyTo,
       seed.references,
       seed.threadId,

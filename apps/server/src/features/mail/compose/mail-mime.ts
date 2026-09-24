@@ -40,6 +40,12 @@ export function parseMailComposeRequest(
   const attachments = parseAttachments(input.attachments);
   const threadId = optionalGmailId(input.threadId);
   const draftId = optionalGmailId(input.draftId);
+  const draftVersion =
+    input.draftVersion === undefined
+      ? undefined
+      : Number.isSafeInteger(input.draftVersion) && Number(input.draftVersion) > 0
+        ? Number(input.draftVersion)
+        : fail("The draft version is invalid.");
   const inReplyTo = optionalMessageId(input.inReplyTo);
   const references =
     input.references === undefined
@@ -57,6 +63,7 @@ export function parseMailComposeRequest(
     cc,
     clientOperationId,
     ...(draftId ? { draftId } : {}),
+    ...(draftVersion ? { draftVersion } : {}),
     ...(inReplyTo ? { inReplyTo } : {}),
     ...(references ? { references } : {}),
     ...(replyTo ? { replyTo } : {}),

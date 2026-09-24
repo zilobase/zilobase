@@ -2,17 +2,18 @@ import { Hono } from "hono";
 import type { AppBindings } from "../../../shared/types";
 import { readJsonBody } from "../../../shared/http/request";
 import { GmailApiError } from "../provider/gmail-gateway";
-import {
-  normalizeDraft,
-  createGmailDraft,
-  sendGmailComposition,
-  updateGmailDraft,
-} from "./mail-compose";
+import { createGmailDraft, sendGmailComposition, updateGmailDraft } from "./mail-compose";
 import { normalizeGmailLabels } from "../provider/mail-normalize";
 import {
   applyMailboxLabelDelta,
   applyMailboxThreadLabelDelta,
   commitMailboxRevision,
+  deleteMailboxDraft,
+  loadMailboxDraft,
+  loadMailboxDrafts,
+  MailDraftConflictError,
+  requireMailboxDraftVersion,
+  storeMailboxDraft,
   type MailboxChangeSet,
   deleteMailboxLabel,
   loadMailboxLabels,
@@ -286,12 +287,7 @@ async function commitAndReconcile(
 mailMessageRoutes.get("/drafts", async (c) => {
   const owned = await requireOwnedConnection(c);
   if (owned instanceof Response) return owned;
-  const pageToken = c.req.query("pageToken");
-  if (pageToken && pageToken.length > 2048)
-    return c.json({ message: "Invalid draft cursor." }, 400);
-  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
-    c.json(await gateway.listDrafts(pageToken)),
-  );
+  return c.json({ drafts: await loadMailboxDrafts(owned.connection.id) });
 });
 
 mailMessageRoutes.get("/drafts/:draftId", async (c) => {
@@ -299,9 +295,8 @@ mailMessageRoutes.get("/drafts/:draftId", async (c) => {
   if (owned instanceof Response) return owned;
   const draftId = safeGmailId(c.req.param("draftId"));
   if (!draftId) return c.json({ message: "A valid Gmail draft ID is required." }, 400);
-  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
-    c.json(normalizeDraft(await gateway.getDraft(draftId))),
-  );
+  const draft = await loadMailboxDraft(owned.connection.id, draftId);
+  return draft ? c.json(draft) : c.json({ message: "Mail draft not found." }, 404);
 });
 
 mailMessageRoutes.post("/drafts", async (c) => {
@@ -309,9 +304,17 @@ mailMessageRoutes.post("/drafts", async (c) => {
   if (owned instanceof Response) return owned;
   const compose = parseCompose(c, await readJsonBody(c.req), false);
   if (compose instanceof Response) return compose;
-  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
-    c.json(await createGmailDraft(gateway, owned.connection, compose), 201),
-  );
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    const draft = await storeMailboxDraft(
+      owned.connection.id,
+      await createGmailDraft(gateway, owned.connection, compose),
+    );
+    await commitAndReconcile(c.env, owned.connection.id, "draft_created", undefined, {
+      messageIds: [draft.message.id],
+      threadIds: [draft.message.threadId],
+    });
+    return c.json(draft, 201);
+  });
 });
 
 mailMessageRoutes.put("/drafts/:draftId", async (c) => {
@@ -326,9 +329,25 @@ mailMessageRoutes.put("/drafts/:draftId", async (c) => {
   }
   if (compose.draftId && compose.draftId !== draftId)
     return c.json({ message: "The Gmail draft ID does not match." }, 400);
-  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
-    c.json(await updateGmailDraft(gateway, owned.connection, draftId, compose)),
-  );
+  try {
+    await requireMailboxDraftVersion(owned.connection.id, draftId, compose.draftVersion);
+    return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+      const draft = await storeMailboxDraft(
+        owned.connection.id,
+        await updateGmailDraft(gateway, owned.connection, draftId, compose),
+        compose.draftVersion,
+      );
+      await commitAndReconcile(c.env, owned.connection.id, "draft_updated", undefined, {
+        messageIds: [draft.message.id],
+        threadIds: [draft.message.threadId],
+      });
+      return c.json(draft);
+    });
+  } catch (error) {
+    if (error instanceof MailDraftConflictError)
+      return c.json({ code: "draft_conflict", message: error.message }, 409);
+    throw error;
+  }
 });
 
 mailMessageRoutes.delete("/drafts/:draftId", async (c) => {
@@ -338,6 +357,12 @@ mailMessageRoutes.delete("/drafts/:draftId", async (c) => {
   if (!draftId) return c.json({ message: "A valid Gmail draft ID is required." }, 400);
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     await gateway.deleteDraft(draftId);
+    const deleted = await deleteMailboxDraft(owned.connection.id, draftId);
+    if (deleted)
+      await commitAndReconcile(c.env, owned.connection.id, "draft_deleted", undefined, {
+        messageIds: [deleted.messageId],
+        threadIds: [deleted.threadId],
+      });
     return c.body(null, 204);
   });
 });
@@ -362,6 +387,14 @@ mailMessageRoutes.post("/drafts/:draftId/send", async (c) => {
       gateway,
       userId: owned.userId,
     });
+    const deleted = await deleteMailboxDraft(owned.connection.id, draftId);
+    if (deleted) {
+      await commitMailboxRevision(owned.connection.id, {
+        messageIds: [deleted.messageId],
+        threadIds: [deleted.threadId],
+      });
+      await publishMailIndexUpdate(c.env, owned.connection.id);
+    }
     await requestMailSync(c.env, {
       gmailAccountId: owned.connection.id,
       reason: "draft_sent",

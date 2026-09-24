@@ -160,6 +160,7 @@ export type MailComposeRequest = {
   cc: MailAddress[];
   clientOperationId: string;
   draftId?: string;
+  draftVersion?: number;
   inReplyTo?: string;
   references?: string[];
   replyTo?: MailAddress;
@@ -170,8 +171,10 @@ export type MailComposeRequest = {
 };
 
 export type MailDraftResponse = {
+  clientDraftId: string;
   draftId: string;
   message: MailMessageRecord;
+  version: number;
 };
 
 export type MailSendResponse = {

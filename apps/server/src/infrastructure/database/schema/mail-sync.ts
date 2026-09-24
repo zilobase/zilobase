@@ -149,6 +149,29 @@ export const mailMailboxChange = pgTable(
   ],
 );
 
+export const mailDraft = pgTable(
+  "mail_draft",
+  {
+    id: text("id").primaryKey(),
+    gmailAccountId: text("gmail_account_id")
+      .notNull()
+      .references(() => gmailAccount.id, { onDelete: "cascade" }),
+    gmailDraftId: text("gmail_draft_id").notNull(),
+    gmailMessageId: text("gmail_message_id").notNull(),
+    gmailThreadId: text("gmail_thread_id").notNull(),
+    clientDraftId: text("client_draft_id").notNull(),
+    version: integer("version").notNull().default(1),
+    providerWrittenAt: timestamp("provider_written_at", { withTimezone: true }).notNull(),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("mail_draft_account_draft_unique").on(table.gmailAccountId, table.gmailDraftId),
+    uniqueIndex("mail_draft_account_message_unique").on(table.gmailAccountId, table.gmailMessageId),
+    uniqueIndex("mail_draft_account_client_unique").on(table.gmailAccountId, table.clientDraftId),
+    index("mail_draft_account_thread_idx").on(table.gmailAccountId, table.gmailThreadId),
+  ],
+);
+
 export const mailThreadIndex = pgTable(
   "mail_thread_index",
   {
