@@ -38,9 +38,28 @@ import {
   encodeMailGroupCursor,
   encodeMailQueryCursor,
   MailQueryError,
+  parseMailSearch,
   queryIndexedMail,
   queryIndexedMailGroups,
 } from "./mail-query";
+
+test("mail search separates Gmail-style operators from full-text terms", () => {
+  assert.deepEqual(
+    parseMailSearch(
+      'quarterly "exact phrase" from:ada@example.com subject:"Board notes" is:unread has:attachment before:2026/09/01',
+    ),
+    {
+      operators: [
+        { name: "from", value: "ada@example.com" },
+        { name: "subject", value: "Board notes" },
+        { name: "is", value: "unread" },
+        { name: "has", value: "attachment" },
+        { name: "before", value: "2026/09/01" },
+      ],
+      terms: ["quarterly", "exact phrase"],
+    },
+  );
+});
 
 beforeEach(() => {
   mocks.selectResults.length = 0;

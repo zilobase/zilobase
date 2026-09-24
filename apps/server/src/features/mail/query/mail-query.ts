@@ -320,7 +320,79 @@ function mailThreadMatchesQuery(
 }
 
 function mailSearchPredicate(search: string) {
-  return sql`to_tsvector('simple', ${mailThreadIndex.searchDocument}) @@ websearch_to_tsquery('simple', ${search})`;
+  const parsed = parseMailSearch(search);
+  const predicates = parsed.terms.length
+    ? [
+        sql`to_tsvector('simple', ${mailThreadIndex.searchDocument}) @@ websearch_to_tsquery('simple', ${parsed.terms.join(" ")})`,
+      ]
+    : [];
+  for (const operator of parsed.operators) {
+    const value = operator.value.toLowerCase();
+    if (operator.name === "from")
+      predicates.push(sql`${mailThreadIndex.fromAddresses}::text ilike ${`%${value}%`}`);
+    else if (operator.name === "to")
+      predicates.push(sql`${mailThreadIndex.toAddresses}::text ilike ${`%${value}%`}`);
+    else if (operator.name === "subject")
+      predicates.push(sql`${mailThreadIndex.subject} ilike ${`%${operator.value}%`}`);
+    else if (operator.name === "has" && value === "attachment")
+      predicates.push(sql`${mailThreadIndex.attachmentCount} > 0`);
+    else if (operator.name === "is" && value === "unread")
+      predicates.push(eq(mailThreadIndex.unread, true));
+    else if (operator.name === "is" && value === "read")
+      predicates.push(eq(mailThreadIndex.unread, false));
+    else if (operator.name === "is" && value === "starred")
+      predicates.push(eq(mailThreadIndex.starred, true));
+    else if (operator.name === "is" && value === "important")
+      predicates.push(eq(mailThreadIndex.important, true));
+    else if (operator.name === "in" && searchLabel(value))
+      predicates.push(sql`${mailThreadIndex.labelIds} ? ${searchLabel(value)!}`);
+    else if ((operator.name === "before" || operator.name === "after") && searchDate(value)) {
+      const date = searchDate(value)!;
+      predicates.push(
+        operator.name === "before"
+          ? sql`${mailThreadIndex.internalDate} < ${date}`
+          : sql`${mailThreadIndex.internalDate} >= ${date}`,
+      );
+    }
+  }
+  return and(...predicates) ?? sql`true`;
+}
+
+export function parseMailSearch(search: string) {
+  const terms: string[] = [];
+  const operators: { name: string; value: string }[] = [];
+  const token = /(\w+):(?:"([^"]+)"|(\S+))|"([^"]+)"|(\S+)/g;
+  for (const match of search.matchAll(token)) {
+    const name = match[1]?.toLowerCase();
+    const value = match[2] ?? match[3];
+    if (
+      name &&
+      value &&
+      ["after", "before", "from", "has", "in", "is", "subject", "to"].includes(name)
+    )
+      operators.push({ name, value });
+    else terms.push(match[4] ?? match[5] ?? match[0]);
+  }
+  return { operators, terms };
+}
+
+function searchLabel(value: string) {
+  const labels = {
+    all: null,
+    drafts: "DRAFT",
+    inbox: "INBOX",
+    sent: "SENT",
+    spam: "SPAM",
+    starred: "STARRED",
+    trash: "TRASH",
+  } as const;
+  return labels[value as keyof typeof labels];
+}
+
+function searchDate(value: string) {
+  if (!/^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(value)) return null;
+  const time = new Date(`${value.replaceAll("/", "-")}T00:00:00Z`).getTime();
+  return Number.isFinite(time) ? time : null;
 }
 
 function serializeIndexedThread(

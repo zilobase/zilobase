@@ -80,7 +80,7 @@ export function MailboxTopbar({
               aria-label="Search mail"
               className="bg-transparent pl-8"
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder="Search mail"
+              placeholder="Search mail (try from:, is:unread, has:attachment)"
               value={query}
             />
           </div>

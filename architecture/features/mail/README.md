@@ -36,6 +36,11 @@ explicit Gmail effects. The browser never submits
 Gmail history cursors or advances server work. Its Dexie database is an
 offline/read-through cache plus optimistic mutation journal.
 
+Search is PostgreSQL-only and accepts ordinary full-text terms plus `from:`,
+`to:`, `subject:`, `has:attachment`, `is:read`, `is:unread`, `is:starred`,
+`is:important`, `in:`, `before:` and `after:` operators. Search completeness is
+reported against the bounded local index; entering a query never calls Gmail.
+
 Composition preserves both a plain-text alternative and sanitized rich HTML.
 The web editor supports basic formatting and links; the server removes active
 content before MIME generation and enforces the same body and attachment limits
