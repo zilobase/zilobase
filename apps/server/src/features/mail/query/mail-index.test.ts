@@ -48,11 +48,15 @@ test("mail index records snippets and queryable metadata but omits bodies", () =
 test("index work is bounded, resumable, history-driven, and deletion-safe", async () => {
   const source = await readFile(new URL("./mail-index.ts", import.meta.url), "utf8");
 
-  assert.match(source, /BACKFILL_PAGE_SIZE = 50/);
+  assert.match(source, /RECENT_INBOX_SIZE = 50/);
+  assert.match(source, /BACKFILL_PAGE_SIZE = 25/);
   assert.match(source, /MAX_HISTORY_PAGES_PER_ADVANCE = 5/);
   assert.match(source, /INDEX_LEASE_MS/);
   assert.match(source, /isNull\(mailIndexState\.leaseExpiresAt\)/);
   assert.match(source, /includeSpamTrash: true/);
+  assert.match(source, /labelIds: \["INBOX"\]/);
+  assert.match(source, /getThreads\(recentIds, "full"\)/);
+  assert.match(source, /hydrationStatus, "complete"/);
   assert.match(source, /nextPageToken: page\.nextPageToken/);
   assert.match(source, /historyPageToken: pageToken/);
   assert.match(source, /ne\(mailThreadIndex\.generation, state\.generation\)/);

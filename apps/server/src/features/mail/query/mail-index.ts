@@ -1,4 +1,4 @@
-import { and, asc, count, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { MailIndexProgress } from "@zilobase/features/mail/organization";
 
 import { db } from "../../../infrastructure/database";
@@ -18,15 +18,17 @@ import {
 } from "../provider/gmail-gateway";
 import { enqueueMailDatabaseSyncForIndexedThread } from "../database-sync/mail-database-sync-worker";
 import {
+  commitMailboxRevision,
   deleteMailboxThread,
   mailThreadIndexRecord,
+  replaceMailboxLabels,
   storeMailboxThread,
 } from "../sync/mailbox-store";
-import { recordMailMetric } from "../mail-metrics";
 import { publishMailNotification } from "@zilobase/runtime-adapter/capabilities";
 import { recordRecoveredBackgroundLease } from "../../../infrastructure/background/telemetry";
 
-const BACKFILL_PAGE_SIZE = 50;
+const RECENT_INBOX_SIZE = 50;
+const BACKFILL_PAGE_SIZE = 25;
 const MAX_HISTORY_PAGES_PER_ADVANCE = 5;
 const INDEX_LEASE_MS = 2 * 60 * 1_000;
 const INDEX_RECORD_VERSION = 1;
@@ -113,7 +115,12 @@ export async function advanceMailIndex(
   try {
     try {
       const gateway = await createGmailGateway(env, account, { trafficClass: "background" });
-      if (state.status === "ready" || state.status === "syncing") {
+      if (
+        (state.status === "ready" ||
+          state.status === "syncing" ||
+          state.status === "backfilling") &&
+        newerHistory(state.desiredHistoryId, state.appliedHistoryId ?? state.historyId)
+      ) {
         state = await advanceHistory(env, gateway, state);
       } else {
         state = await advanceBackfill(env, gateway, state);
@@ -123,17 +130,20 @@ export async function advanceMailIndex(
       return serializeProgress(state);
     } catch (error) {
       if (error instanceof GmailApiError && error.code === "history_cursor_invalid") {
-        await db.delete(mailThreadIndex).where(eq(mailThreadIndex.gmailAccountId, gmailAccountId));
         const [reset] = await db
           .update(mailIndexState)
           .set({
             completedAt: null,
+            appliedHistoryId: null,
+            backfillCompleteAt: null,
+            bootstrapHistoryId: null,
             historyId: null,
             historyPageToken: null,
             historyStartId: null,
             indexedThreadCount: 0,
             lastErrorCode: "history_cursor_invalid",
             nextPageToken: null,
+            recentReadyAt: null,
             status: "pending",
             updatedAt: new Date(),
           })
@@ -161,7 +171,12 @@ export async function advanceMailIndex(
   } finally {
     await db
       .update(mailIndexState)
-      .set({ leaseExpiresAt: nextAdvanceAt, leaseToken: null, updatedAt: new Date() })
+      .set({
+        leaseExpiresAt: nextAdvanceAt,
+        leaseToken: null,
+        nextAttemptAt: nextAdvanceAt ?? new Date(Date.now() + 5_000),
+        updatedAt: new Date(),
+      })
       .where(
         and(
           eq(mailIndexState.gmailAccountId, gmailAccountId),
@@ -171,54 +186,12 @@ export async function advanceMailIndex(
   }
 }
 
-export async function advancePendingMailIndexes(env: RuntimeEnv, limit = 5) {
-  const startedAt = Date.now();
-  const accounts = await db
-    .select({
-      id: gmailAccount.id,
-      notificationHistoryId: gmailAccount.notificationHistoryId,
-    })
-    .from(gmailAccount)
-    .where(eq(gmailAccount.status, "connected"))
-    .orderBy(asc(gmailAccount.updatedAt))
-    .limit(100);
-  let advanced = 0;
-  let failed = 0;
-  for (const account of accounts) {
-    if (advanced >= Math.max(1, Math.min(limit, 25))) break;
-    const state = await ensureMailIndexState(account.id);
-    if (
-      state.status === "ready" &&
-      (!account.notificationHistoryId || account.notificationHistoryId === state.historyId)
-    ) {
-      continue;
-    }
-    try {
-      await advanceMailIndex(env, account.id);
-      await publishMailIndexUpdate(env, account.id);
-      advanced += 1;
-    } catch {
-      advanced += 1;
-      failed += 1;
-    }
-  }
-  if (advanced) {
-    await recordMailMetric("index", {
-      code: failed ? "batch_partial_failure" : "batch_complete",
-      count: advanced,
-      durationMs: Date.now() - startedAt,
-      outcome: failed ? "failure" : "success",
-    });
-  }
-  return { advanced, failed };
-}
-
 export async function publishMailIndexUpdate(env: RuntimeEnv, gmailAccountId: string) {
   const rows = await db
     .select({
       bindingId: gmailWorkspaceConnection.id,
       connectionId: gmailAccount.id,
-      revision: gmailAccount.mailboxRevision,
+      revision: mailIndexState.committedRevision,
       userId: gmailAccount.userId,
       workspaceId: gmailWorkspaceConnection.workspaceId,
     })
@@ -227,13 +200,14 @@ export async function publishMailIndexUpdate(env: RuntimeEnv, gmailAccountId: st
       gmailWorkspaceConnection,
       eq(gmailWorkspaceConnection.gmailAccountId, gmailAccount.id),
     )
+    .innerJoin(mailIndexState, eq(mailIndexState.gmailAccountId, gmailAccount.id))
     .where(eq(gmailAccount.id, gmailAccountId));
   await Promise.all(rows.map((event) => publishMailNotification(event)));
 }
 
 async function advanceBackfill(
   env: RuntimeEnv,
-  gateway: Pick<GmailGateway, "getProfile" | "getThreads" | "listThreads">,
+  gateway: Pick<GmailGateway, "getProfile" | "getThreads" | "listLabels" | "listThreads">,
   existing: typeof mailIndexState.$inferSelect,
 ) {
   let state = existing;
@@ -242,17 +216,39 @@ async function advanceBackfill(
     state.generation === 0 ||
     (state.recordVersion ?? 0) < INDEX_RECORD_VERSION
   ) {
-    const profile = await gateway.getProfile();
+    const [profile, labels, recent] = await Promise.all([
+      gateway.getProfile(),
+      gateway.listLabels(),
+      gateway.listThreads({ labelIds: ["INBOX"], maxResults: RECENT_INBOX_SIZE }),
+    ]);
+    const bootstrapHistoryId =
+      state.bootstrapHistoryId ?? state.desiredHistoryId ?? profile.historyId ?? null;
+    const recentIds = (recent.threads ?? []).flatMap((thread) => (thread.id ? [thread.id] : []));
+    const recentThreads = await gateway.getThreads(recentIds, "full");
+    await replaceMailboxLabels(state.gmailAccountId, labels.labels ?? []);
+    await upsertIndexedThreads(
+      env,
+      state.gmailAccountId,
+      state.generation + 1,
+      recentThreads,
+      true,
+    );
+    if (recentThreads.length || (labels.labels?.length ?? 0) > 0) {
+      await commitMailboxRevision(state.gmailAccountId);
+    }
     const [started] = await db
       .update(mailIndexState)
       .set({
         completedAt: null,
+        appliedHistoryId: bootstrapHistoryId,
+        bootstrapHistoryId,
         generation: state.generation + 1,
-        historyId: profile.historyId ?? null,
-        indexedThreadCount: 0,
+        historyId: bootstrapHistoryId,
+        indexedThreadCount: recentThreads.length,
         lastErrorCode: null,
         nextPageToken: null,
         recordVersion: INDEX_RECORD_VERSION,
+        recentReadyAt: new Date(),
         resultSizeEstimate: profile.threadsTotal ?? null,
         startedAt: new Date(),
         status: "backfilling",
@@ -277,9 +273,24 @@ async function advanceBackfill(
     pageToken: state.nextPageToken ?? undefined,
   });
   const threadIds = (page.threads ?? []).flatMap((thread) => (thread.id ? [thread.id] : []));
-  const threads = await gateway.getThreads(threadIds, "metadata");
-  await upsertIndexedThreads(env, state.gmailAccountId, state.generation, threads);
-  const indexedThreadCount = state.indexedThreadCount + threads.length;
+  const complete = threadIds.length
+    ? await db
+        .select({ id: mailThreadIndex.gmailThreadId })
+        .from(mailThreadIndex)
+        .where(
+          and(
+            eq(mailThreadIndex.gmailAccountId, state.gmailAccountId),
+            eq(mailThreadIndex.hydrationStatus, "complete"),
+            inArray(mailThreadIndex.gmailThreadId, threadIds),
+          ),
+        )
+    : [];
+  const completeIds = new Set(complete.map(({ id }) => id));
+  const missingIds = threadIds.filter((id) => !completeIds.has(id));
+  const threads = await gateway.getThreads(missingIds, "full");
+  await upsertIndexedThreads(env, state.gmailAccountId, state.generation, threads, true);
+  if (threads.length) await commitMailboxRevision(state.gmailAccountId);
+  const indexedThreadCount = state.indexedThreadCount + threadIds.length;
   if (page.nextPageToken) {
     const [continued] = await db
       .update(mailIndexState)
@@ -312,11 +323,14 @@ async function advanceBackfill(
     .update(mailIndexState)
     .set({
       completedAt: new Date(),
+      backfillCompleteAt: new Date(),
       indexedThreadCount: Number(actual?.value ?? indexedThreadCount),
       lastErrorCode: null,
       nextPageToken: null,
       recordVersion: INDEX_RECORD_VERSION,
-      status: "ready",
+      status: newerHistory(state.desiredHistoryId, state.appliedHistoryId ?? state.historyId)
+        ? "syncing"
+        : "ready",
       updatedAt: new Date(),
     })
     .where(eq(mailIndexState.gmailAccountId, state.gmailAccountId))
@@ -370,7 +384,8 @@ async function advanceHistory(
             historyPageToken: null,
             historyStartId: null,
             lastErrorCode: null,
-            status: "ready",
+            appliedHistoryId: cursor,
+            status: existing.backfillCompleteAt ? "ready" : "backfilling",
             updatedAt: new Date(),
           },
     )
@@ -403,11 +418,18 @@ async function upsertIndexedThreads(
   gmailAccountId: string,
   generation: number,
   threads: GmailThread[],
+  includeBody = false,
 ) {
   for (const thread of threads) {
-    const row = await storeMailboxThread(gmailAccountId, generation, thread, false);
+    const row = await storeMailboxThread(gmailAccountId, generation, thread, includeBody);
     await enqueueMailDatabaseSyncForIndexedThread(row, env);
   }
+}
+
+function newerHistory(candidate: string | null, applied: string | null) {
+  if (!candidate) return false;
+  if (!applied) return true;
+  return BigInt(candidate) > BigInt(applied);
 }
 
 export { mailThreadIndexRecord } from "../sync/mailbox-store";
