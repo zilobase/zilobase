@@ -1,6 +1,7 @@
 import Link from "@tiptap/extension-link";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { useEffect } from "react";
 
 import { Bold, Italic, LinkIcon, ListIcon } from "@/shared/components/icons";
 import { Button } from "@/shared/ui/button";
@@ -23,8 +24,9 @@ export function MailRichEditor({
       onChange({ html: current.getHTML(), text: current.getText({ blockSeparator: "\n" }) }),
   });
 
+  useEffect(() => editor?.setEditable(!disabled), [disabled, editor]);
+
   if (!editor) return <div className="min-h-64" />;
-  if (editor.isEditable === disabled) editor.setEditable(!disabled);
 
   const setLink = () => {
     const previous = editor.getAttributes("link").href as string | undefined;

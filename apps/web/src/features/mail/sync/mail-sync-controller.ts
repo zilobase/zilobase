@@ -127,6 +127,14 @@ export function useMailController(input: {
     [database],
     [],
   );
+  const nextOutboxAttemptAt = useLiveQuery(
+    async () =>
+      database
+        ? ((await database.mutationOutbox.orderBy("nextAttemptAt").first())?.nextAttemptAt ?? null)
+        : null,
+    [database],
+    null,
+  );
 
   const runSync = useCallback(async () => {
     if (!database || !input.connection.connectionId || !online) return null;
@@ -533,14 +541,17 @@ export function useMailController(input: {
   ]);
 
   useEffect(() => {
-    if (!database || !online) return;
-    const timer = window.setTimeout(() => {
-      void drainMailMutationOutbox(database, mailBasePath)
-        .then(() => runSync())
-        .catch((outboxError) => setError(outboxError));
-    }, 0);
+    if (!database || !online || nextOutboxAttemptAt === null) return;
+    const timer = window.setTimeout(
+      () => {
+        void drainMailMutationOutbox(database, mailBasePath)
+          .then(() => runSync())
+          .catch((outboxError) => setError(outboxError));
+      },
+      Math.max(0, Math.min(2_147_483_647, nextOutboxAttemptAt - Date.now())),
+    );
     return () => window.clearTimeout(timer);
-  }, [database, mailBasePath, online, runSync]);
+  }, [database, mailBasePath, nextOutboxAttemptAt, online, runSync]);
 
   return {
     database,
