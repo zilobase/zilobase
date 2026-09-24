@@ -97,9 +97,13 @@ mailViewStatusRoutes.post("/threads/:threadId/remind", async (c) => {
         {
           reminder: await scheduleMailReminder({
             bindingId: owned.bindingId,
+            connectionId: owned.connection.id,
+            env: c.env,
             gateway,
             remindAt: new Date(body.remindAt as string),
             threadId,
+            userId: owned.userId,
+            workspaceId: owned.workspaceId,
           }),
         },
         201,
@@ -120,8 +124,12 @@ mailViewStatusRoutes.delete("/reminders/:reminderId", async (c) => {
       return c.json(
         await cancelMailReminder({
           bindingId: owned.bindingId,
+          connectionId: owned.connection.id,
+          env: c.env,
           gateway,
           reminderId: c.req.param("reminderId"),
+          userId: owned.userId,
+          workspaceId: owned.workspaceId,
         }),
       );
     } catch (error) {

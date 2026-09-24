@@ -18,10 +18,10 @@ test("seed view IDs are deterministic per binding", () => {
   assert.notEqual(seededMailViewId("binding-1", "inbox"), seededMailViewId("binding-2", "inbox"));
 });
 
-test("mail view service seeds protected Inbox plus Unread and Starred", async () => {
+test("mail view service seeds protected Inbox plus standard priority views", async () => {
   const source = await readFile(new URL("./mail-views.ts", import.meta.url), "utf8");
 
-  assert.match(source, /\["inbox", "unread", "starred"\] as const/);
+  assert.match(source, /\["inbox", "unread", "starred", "important"\] as const/);
   assert.match(source, /protected: template\.protected/);
   assert.match(source, /if \(existing\.protected\)/);
   assert.match(source, /Inbox cannot be deleted/);

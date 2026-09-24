@@ -611,14 +611,14 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
     }
     if (action.kind === "remind") {
       const defaultDate = new Date(Date.now() + 86_400_000).toISOString().slice(0, 16);
-      const selected = window.prompt("Remind me at (YYYY-MM-DDTHH:mm)", defaultDate)?.trim();
+      const selected = window.prompt("Snooze until (YYYY-MM-DDTHH:mm)", defaultDate)?.trim();
       if (!selected) return;
       const remindAt = new Date(selected);
       if (!Number.isFinite(remindAt.getTime()))
         throw new Error("Enter a valid reminder date and time.");
       await mailReminders.schedule({ remindAt: remindAt.toISOString(), threadId: thread.id });
       await controller.refresh();
-      toast.success("Reminder scheduled");
+      toast.success("Conversation snoozed");
       return;
     }
     if (action.kind === "unsubscribe") {

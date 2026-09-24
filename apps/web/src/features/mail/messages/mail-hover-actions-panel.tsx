@@ -44,7 +44,7 @@ export const mailHoverActionCatalog: Record<MailHoverActionKind, ActionMeta> = {
   bin: { description: "Move to trash or restore", icon: TrashIcon, label: "Trash" },
   command: { description: "Open command palette", icon: Code, label: "Command" },
   read_unread: { description: "Mark as read or unread", icon: MailIcon, label: "Read/unread" },
-  remind: { description: "Hide from Inbox until date", icon: Bell, label: "Remind" },
+  remind: { description: "Hide from Inbox until a chosen time", icon: Bell, label: "Snooze" },
   reply: { description: "Reply to sender", icon: CornerDownLeftIcon, label: "Reply" },
   spam: { description: "Report a thread as spam", icon: TriangleAlertIcon, label: "Mark as spam" },
   specific_label: {

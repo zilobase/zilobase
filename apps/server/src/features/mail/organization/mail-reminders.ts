@@ -25,9 +25,13 @@ export async function listMailReminders(bindingId: string) {
 
 export async function scheduleMailReminder(input: {
   bindingId: string;
+  connectionId: string;
+  env: RuntimeEnv;
   gateway: Gateway;
   remindAt: Date;
   threadId: string;
+  userId: string;
+  workspaceId: string;
 }) {
   if (
     !Number.isFinite(input.remindAt.getTime()) ||
@@ -64,8 +68,10 @@ export async function scheduleMailReminder(input: {
       set: { firedAt: null, remindAt: input.remindAt, status: "pending", updatedAt: now },
     })
     .returning();
+  let historyId: string | undefined;
   try {
-    await input.gateway.modifyThread(input.threadId, { removeLabelIds: ["INBOX"] });
+    historyId = (await input.gateway.modifyThread(input.threadId, { removeLabelIds: ["INBOX"] }))
+      .historyId;
   } catch (error) {
     if (existing) {
       await db
@@ -82,13 +88,37 @@ export async function scheduleMailReminder(input: {
     }
     throw error;
   }
+  await applyMailboxThreadLabelDelta({
+    gmailAccountId: input.connectionId,
+    gmailThreadId: input.threadId,
+    removeLabelIds: ["INBOX"],
+  });
+  const revision = await commitMailboxRevision(input.connectionId, {
+    threadIds: [input.threadId],
+  });
+  await publishMailNotification({
+    bindingId: input.bindingId,
+    connectionId: input.connectionId,
+    revision,
+    userId: input.userId,
+    workspaceId: input.workspaceId,
+  });
+  await requestMailSync(input.env, {
+    gmailAccountId: input.connectionId,
+    historyId,
+    reason: "reminder_scheduled",
+  });
   return serializeReminder(row!);
 }
 
 export async function cancelMailReminder(input: {
   bindingId: string;
+  connectionId: string;
+  env: RuntimeEnv;
   gateway: Gateway;
   reminderId: string;
+  userId: string;
+  workspaceId: string;
 }) {
   const [existing] = await db
     .select()
@@ -102,13 +132,35 @@ export async function cancelMailReminder(input: {
     )
     .limit(1);
   if (!existing) throw new MailReminderError("Mail reminder not found.", 404);
-  await input.gateway.modifyThread(existing.gmailThreadId, { addLabelIds: ["INBOX"] });
+  const historyId = (
+    await input.gateway.modifyThread(existing.gmailThreadId, { addLabelIds: ["INBOX"] })
+  ).historyId;
   const [row] = await db
     .update(mailReminder)
     .set({ status: "cancelled", updatedAt: new Date() })
     .where(and(eq(mailReminder.id, existing.id), eq(mailReminder.status, "pending")))
     .returning();
   if (!row) throw new MailReminderError("Mail reminder not found.", 404);
+  await applyMailboxThreadLabelDelta({
+    addLabelIds: ["INBOX"],
+    gmailAccountId: input.connectionId,
+    gmailThreadId: existing.gmailThreadId,
+  });
+  const revision = await commitMailboxRevision(input.connectionId, {
+    threadIds: [existing.gmailThreadId],
+  });
+  await publishMailNotification({
+    bindingId: input.bindingId,
+    connectionId: input.connectionId,
+    revision,
+    userId: input.userId,
+    workspaceId: input.workspaceId,
+  });
+  await requestMailSync(input.env, {
+    gmailAccountId: input.connectionId,
+    historyId,
+    reason: "reminder_cancelled",
+  });
   return { success: true as const };
 }
 
