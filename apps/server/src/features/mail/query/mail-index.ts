@@ -1,5 +1,4 @@
 import { and, asc, count, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
-import type { MailAddress } from "@zilobase/features/mail/contracts";
 import type { MailIndexProgress } from "@zilobase/features/mail/organization";
 
 import { db } from "../../../infrastructure/database";
@@ -15,11 +14,14 @@ import {
   GmailApiError,
   type GmailGateway,
   type GmailHistory,
-  type GmailPart,
   type GmailThread,
 } from "../provider/gmail-gateway";
-import { normalizeGmailThread } from "../provider/mail-normalize";
 import { enqueueMailDatabaseSyncForIndexedThread } from "../database-sync/mail-database-sync-worker";
+import {
+  deleteMailboxThread,
+  mailThreadIndexRecord,
+  storeMailboxThread,
+} from "../sync/mailbox-store";
 import { recordMailMetric } from "../mail-metrics";
 import { publishMailNotification } from "@zilobase/runtime-adapter/capabilities";
 import { recordRecoveredBackgroundLease } from "../../../infrastructure/background/telemetry";
@@ -391,14 +393,7 @@ async function refreshTouchedThreads(
       await upsertIndexedThreads(env, gmailAccountId, generation, [thread]);
     } catch (error) {
       if (!(error instanceof GmailApiError) || error.status !== 404) throw error;
-      await db
-        .delete(mailThreadIndex)
-        .where(
-          and(
-            eq(mailThreadIndex.gmailAccountId, gmailAccountId),
-            eq(mailThreadIndex.gmailThreadId, threadId),
-          ),
-        );
+      await deleteMailboxThread(gmailAccountId, threadId);
     }
   }
 }
@@ -410,98 +405,12 @@ async function upsertIndexedThreads(
   threads: GmailThread[],
 ) {
   for (const thread of threads) {
-    const row = mailThreadIndexRecord(gmailAccountId, generation, thread);
-    await db
-      .insert(mailThreadIndex)
-      .values(row)
-      .onConflictDoUpdate({
-        set: {
-          attachmentCount: row.attachmentCount,
-          bccAddresses: row.bccAddresses,
-          ccAddresses: row.ccAddresses,
-          domains: row.domains,
-          fromAddresses: row.fromAddresses,
-          generation,
-          hasCalendarEvent: row.hasCalendarEvent,
-          hydrationStatus: row.hydrationStatus,
-          important: row.important,
-          internalDate: row.internalDate,
-          labelIds: row.labelIds,
-          latestMessageId: row.latestMessageId,
-          messageCount: row.messageCount,
-          messageIds: row.messageIds,
-          receivedAt: row.receivedAt,
-          searchDocument: row.searchDocument,
-          snippet: row.snippet,
-          starred: row.starred,
-          subject: row.subject,
-          toAddresses: row.toAddresses,
-          unread: row.unread,
-          updatedAt: row.updatedAt,
-        },
-        target: [mailThreadIndex.gmailAccountId, mailThreadIndex.gmailThreadId],
-      });
+    const row = await storeMailboxThread(gmailAccountId, generation, thread, false);
     await enqueueMailDatabaseSyncForIndexedThread(row, env);
   }
 }
 
-export function mailThreadIndexRecord(
-  gmailAccountId: string,
-  generation: number,
-  thread: GmailThread,
-) {
-  const normalized = normalizeGmailThread(thread);
-  const { messages, summary } = normalized;
-  const fromAddresses = uniqueAddresses(
-    messages.flatMap((message) => (message.from ? [message.from] : [])),
-  );
-  const toAddresses = uniqueAddresses(messages.flatMap((message) => message.to));
-  const ccAddresses = uniqueAddresses(messages.flatMap((message) => message.cc));
-  const bccAddresses = uniqueAddresses(messages.flatMap((message) => message.bcc));
-  const domains = [
-    ...new Set(
-      [...fromAddresses, ...toAddresses, ...ccAddresses, ...bccAddresses]
-        .map(({ address }) => address.split("@")[1])
-        .filter((domain): domain is string => Boolean(domain)),
-    ),
-  ];
-  const now = new Date();
-  return {
-    attachmentCount: summary.attachmentCount,
-    bccAddresses,
-    ccAddresses,
-    createdAt: now,
-    domains,
-    fromAddresses,
-    generation,
-    gmailAccountId,
-    gmailThreadId: summary.id,
-    hasCalendarEvent: (thread.messages ?? []).some((message) => hasCalendarPart(message.payload)),
-    hydrationStatus: "complete",
-    id: `${gmailAccountId}:${summary.id}`,
-    important: summary.labelIds.includes("IMPORTANT"),
-    internalDate: summary.internalDate,
-    labelIds: summary.labelIds,
-    latestMessageId: summary.latestMessageId,
-    messageCount: summary.messageCount,
-    messageIds: summary.messageIds,
-    receivedAt: new Date(summary.internalDate),
-    searchDocument: [
-      summary.subject,
-      summary.snippet,
-      ...fromAddresses.flatMap(({ address, name }) => [address, name ?? ""]),
-      ...toAddresses.flatMap(({ address, name }) => [address, name ?? ""]),
-      ...ccAddresses.flatMap(({ address, name }) => [address, name ?? ""]),
-      ...bccAddresses.flatMap(({ address, name }) => [address, name ?? ""]),
-    ].join(" "),
-    snippet: summary.snippet.slice(0, 500),
-    starred: summary.starred,
-    subject: summary.subject,
-    toAddresses,
-    unread: summary.unread,
-    updatedAt: now,
-  };
-}
+export { mailThreadIndexRecord } from "../sync/mailbox-store";
 
 function collectTouchedThreadIds(history: GmailHistory[]) {
   const ids = new Set<string>();
@@ -516,20 +425,6 @@ function collectTouchedThreadIds(history: GmailHistory[]) {
     for (const entry of event.labelsRemoved ?? []) add(entry.message);
   }
   return ids;
-}
-
-function hasCalendarPart(part: GmailPart | undefined): boolean {
-  if (!part) return false;
-  return part.mimeType === "text/calendar" || (part.parts ?? []).some(hasCalendarPart);
-}
-
-function uniqueAddresses(addresses: MailAddress[]) {
-  const seen = new Set<string>();
-  return addresses.filter(({ address }) => {
-    if (seen.has(address)) return false;
-    seen.add(address);
-    return true;
-  });
 }
 
 function serializeProgress(state: typeof mailIndexState.$inferSelect): MailIndexProgress {
