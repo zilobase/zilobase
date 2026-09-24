@@ -134,7 +134,7 @@ export function ConversationToolbar({
       </Button>
       <Separator className="mx-1 data-[orientation=vertical]:h-4" orientation="vertical" />
       <MailActionButton
-        disabled={!online || mutating}
+        disabled={mutating}
         icon={<MailIcon />}
         label={thread.unread ? "Mark read" : "Mark unread"}
         onClick={() =>
@@ -145,7 +145,7 @@ export function ConversationToolbar({
         }
       />
       <MailActionButton
-        disabled={!online || mutating}
+        disabled={mutating}
         icon={<StarIcon weight={thread.starred ? "fill" : "regular"} />}
         label={thread.starred ? "Unstar" : "Star"}
         onClick={() =>
@@ -156,7 +156,7 @@ export function ConversationToolbar({
         }
       />
       <MailActionButton
-        disabled={!online || mutating}
+        disabled={mutating}
         icon={<ArchiveIcon />}
         label="Archive"
         onClick={() => onModifyThread(thread.id, { removeLabelIds: ["INBOX"] })}
@@ -174,7 +174,7 @@ export function ConversationToolbar({
         online={online}
       />
       <MailActionButton
-        disabled={!online || mutating}
+        disabled={mutating}
         icon={<TriangleAlertIcon />}
         label="Move to spam"
         onClick={() =>
@@ -182,7 +182,7 @@ export function ConversationToolbar({
         }
       />
       <MailActionButton
-        disabled={!online || mutating}
+        disabled={mutating}
         icon={thread.labelIds.includes("TRASH") ? <ArchiveIcon /> : <TrashIcon />}
         label={thread.labelIds.includes("TRASH") ? "Restore" : "Move to trash"}
         onClick={() =>
@@ -331,7 +331,6 @@ function MailThreadMessage({
             mutating={mutating}
             onAction={onActOnMessage}
             onModify={onModifyMessage}
-            online={online}
           />
         </div>
       </div>
@@ -404,14 +403,12 @@ function MailMessageActions({
   mutating,
   onAction,
   onModify,
-  online,
 }: {
   labels: MailLabelRecord[];
   message: MailMessageRecord;
   mutating: boolean;
   onAction: (messageId: string, action: "restore" | "trash") => Promise<void>;
   onModify: (messageId: string, modification: MailModifyRequest) => Promise<void>;
-  online: boolean;
 }) {
   const run = (operation: Promise<unknown>) => void operation.catch(showMailError);
   return (
@@ -419,7 +416,7 @@ function MailMessageActions({
       <DropdownMenuTrigger asChild>
         <Button
           aria-label="Message actions"
-          disabled={!online || mutating}
+          disabled={mutating}
           size="icon-sm"
           type="button"
           variant="ghost"

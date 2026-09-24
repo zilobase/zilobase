@@ -30,7 +30,6 @@ export function MailThreadRow({
   onModify,
   onOpen,
   onPrefetch,
-  online,
   propertyMembers = [],
   selected,
   thread,
@@ -128,7 +127,7 @@ export function MailThreadRow({
             .filter((action) => !action.hidden)
             .map((action) => (
               <MailActionButton
-                disabled={!online || mutating}
+                disabled={mutating}
                 icon={<MailHoverActionIcon action={action} />}
                 key={action.id}
                 label={hoverActionLabel(action, labels, thread)}
@@ -138,7 +137,7 @@ export function MailThreadRow({
         ) : (
           <>
             <MailActionButton
-              disabled={!online || mutating}
+              disabled={mutating}
               icon={<StarIcon weight={thread.starred ? "fill" : "regular"} />}
               label={thread.starred ? "Unstar thread" : "Star thread"}
               onClick={() =>
@@ -148,7 +147,7 @@ export function MailThreadRow({
               }
             />
             <MailActionButton
-              disabled={!online || mutating}
+              disabled={mutating}
               icon={<MailIcon />}
               label={thread.unread ? "Mark thread read" : "Mark thread unread"}
               onClick={() =>
@@ -158,7 +157,7 @@ export function MailThreadRow({
               }
             />
             <MailActionButton
-              disabled={!online || mutating}
+              disabled={mutating}
               icon={thread.labelIds.includes("TRASH") ? <ArchiveIcon /> : <TrashIcon />}
               label={thread.labelIds.includes("TRASH") ? "Restore thread" : "Move thread to trash"}
               onClick={() => onAction(thread.labelIds.includes("TRASH") ? "restore" : "trash")}

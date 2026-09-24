@@ -182,7 +182,7 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.doesNotMatch(mailSource, /controller\.error \? \(/);
   });
 
-  test("mail organization controls are online-only and available at thread, message, and batch scope", async () => {
+  test("mail organization controls use the durable outbox at thread, message, and batch scope", async () => {
     const [mailSource, controllerSource] = await Promise.all([
       readMailFeatureSource(readSource),
       readSource("/src/features/mail/sync/mail-sync-controller.ts"),
@@ -197,7 +197,9 @@ export function register({ assert, loadModule, readSource, test }) {
       mailSource,
       /function MailLabelMenu[\s\S]*Create label[\s\S]*Rename[\s\S]*Delete label/,
     );
-    assert.match(mailSource, /disabled=\{!online \|\| mutating\}/);
+    assert.doesNotMatch(mailSource, /disabled=\{!online \|\| mutating\}/);
+    assert.match(controllerSource, /enqueueMailMutation/);
+    assert.match(controllerSource, /drainMailMutationOutbox/);
     assert.match(controllerSource, /optimisticallyModifyThread[\s\S]*restoreMailMutation/);
     assert.match(controllerSource, /isDefiniteMailMutationFailure/);
   });

@@ -2,11 +2,8 @@ import { readCachedMailThreads } from "../storage/mail-cache-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateMailListQueries, mailKeys } from "@zilobase/features/mail";
 import { runMailRefreshOnce } from "./mail-refresh-queue";
-import {
-  isDefiniteMailMutationFailure,
-  runMailThreadMutation,
-  runMailMessageMutation,
-} from "./mail-mutations";
+import { isDefiniteMailMutationFailure } from "./mail-mutations";
+import { drainMailMutationOutbox } from "./mail-outbox";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import type {
@@ -41,12 +38,12 @@ import {
   deleteMailLabelFromCache,
   deleteMailMessageFromCache,
   deleteMailThreadFromCache,
+  enqueueMailMutation,
   mailThreadMatchesView,
   openMailDatabase,
   optimisticallyModifyThread,
-  queueMailReconciliation,
+  optimisticallyModifyMessage,
   reconcileMailMessage,
-  restoreMailMutation,
   upsertFullMailThread,
   type MailDatabase,
 } from "../storage/mail-database";
@@ -289,19 +286,16 @@ export function useMailController(input: {
 
   const modifyThread = useCallback(
     async (threadId: string, modification: MailModifyRequest) => {
-      if (!database || !online) throw new Error("Reconnect to organize mail.");
+      if (!database) throw new Error("Mail is still loading.");
       setMutating(true);
       try {
-        await runMailThreadMutation({
-          database,
-          threadId,
+        await optimisticallyModifyThread(database, threadId, modification);
+        await enqueueMailMutation(database, {
+          kind: "thread_modify",
           modification,
-          request: () =>
-            apiFetch<MailThreadMutationResponse>(
-              `${mailBasePath}/threads/${encodeURIComponent(threadId)}/modify`,
-              { body: JSON.stringify(modification), method: "POST" },
-            ),
+          targetId: threadId,
         });
+        if (online) await drainMailMutationOutbox(database, mailBasePath);
       } finally {
         setMutating(false);
         void runSync();
@@ -312,26 +306,20 @@ export function useMailController(input: {
 
   const batchModifyThreads = useCallback(
     async (threadIds: string[], modification: MailModifyRequest) => {
-      if (!database || !online) throw new Error("Reconnect to organize mail.");
+      if (!database) throw new Error("Mail is still loading.");
       if (!threadIds.length || threadIds.length > 50)
         throw new Error("Select between 1 and 50 Gmail threads.");
       setMutating(true);
-      const snapshots = [];
       try {
         for (const threadId of threadIds) {
-          snapshots.push(await optimisticallyModifyThread(database, threadId, modification));
+          await optimisticallyModifyThread(database, threadId, modification);
+          await enqueueMailMutation(database, {
+            kind: "thread_modify",
+            modification,
+            targetId: threadId,
+          });
         }
-        await apiFetch(`${mailBasePath}/threads/batch-modify`, {
-          body: JSON.stringify({ ...modification, ids: threadIds }),
-          method: "POST",
-        });
-        void runSync();
-      } catch (mutationError) {
-        if (isDefiniteMailMutationFailure(mutationError)) {
-          for (const snapshot of snapshots) await restoreMailMutation(database, snapshot);
-        }
-        await queueMailReconciliation(database, { threadIds });
-        throw mutationError;
+        if (online) await drainMailMutationOutbox(database, mailBasePath);
       } finally {
         setMutating(false);
         void runSync();
@@ -342,23 +330,21 @@ export function useMailController(input: {
 
   const actOnThread = useCallback(
     async (threadId: string, action: "restore" | "trash") => {
-      if (!database || !online) throw new Error("Reconnect to organize mail.");
+      if (!database) throw new Error("Mail is still loading.");
       const modification =
         action === "trash"
           ? { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] }
           : { removeLabelIds: ["TRASH"] };
       setMutating(true);
       try {
-        await runMailThreadMutation({
-          database,
-          threadId,
+        await optimisticallyModifyThread(database, threadId, modification);
+        await enqueueMailMutation(database, {
+          action,
+          kind: "thread_action",
           modification,
-          request: () =>
-            apiFetch<MailThreadMutationResponse>(
-              `${mailBasePath}/threads/${encodeURIComponent(threadId)}/action`,
-              { body: JSON.stringify({ action }), method: "POST" },
-            ),
+          targetId: threadId,
         });
+        if (online) await drainMailMutationOutbox(database, mailBasePath);
       } finally {
         setMutating(false);
         void runSync();
@@ -369,19 +355,16 @@ export function useMailController(input: {
 
   const modifyMessage = useCallback(
     async (messageId: string, modification: MailModifyRequest) => {
-      if (!database || !online) throw new Error("Reconnect to organize mail.");
+      if (!database) throw new Error("Mail is still loading.");
       setMutating(true);
       try {
-        await runMailMessageMutation({
-          database,
-          messageId,
+        await optimisticallyModifyMessage(database, messageId, modification);
+        await enqueueMailMutation(database, {
+          kind: "message_modify",
           modification,
-          request: () =>
-            apiFetch<MailMessageMutationResponse>(
-              `${mailBasePath}/messages/${encodeURIComponent(messageId)}/modify`,
-              { body: JSON.stringify(modification), method: "POST" },
-            ),
+          targetId: messageId,
         });
+        if (online) await drainMailMutationOutbox(database, mailBasePath);
       } finally {
         setMutating(false);
         void runSync();
@@ -392,23 +375,21 @@ export function useMailController(input: {
 
   const actOnMessage = useCallback(
     async (messageId: string, action: "restore" | "trash") => {
-      if (!database || !online) throw new Error("Reconnect to organize mail.");
+      if (!database) throw new Error("Mail is still loading.");
       const modification =
         action === "trash"
           ? { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] }
           : { removeLabelIds: ["TRASH"] };
       setMutating(true);
       try {
-        await runMailMessageMutation({
-          database,
-          messageId,
+        await optimisticallyModifyMessage(database, messageId, modification);
+        await enqueueMailMutation(database, {
+          action,
+          kind: "message_action",
           modification,
-          request: () =>
-            apiFetch<MailMessageMutationResponse>(
-              `${mailBasePath}/messages/${encodeURIComponent(messageId)}/action`,
-              { body: JSON.stringify({ action }), method: "POST" },
-            ),
+          targetId: messageId,
         });
+        if (online) await drainMailMutationOutbox(database, mailBasePath);
       } finally {
         setMutating(false);
         void runSync();
@@ -532,6 +513,16 @@ export function useMailController(input: {
     syncState?.pendingMessageReconciliationIds,
     syncState?.pendingThreadReconciliationIds,
   ]);
+
+  useEffect(() => {
+    if (!database || !online) return;
+    const timer = window.setTimeout(() => {
+      void drainMailMutationOutbox(database, mailBasePath)
+        .then(() => runSync())
+        .catch((outboxError) => setError(outboxError));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [database, mailBasePath, online, runSync]);
 
   return {
     database,

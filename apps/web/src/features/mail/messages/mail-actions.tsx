@@ -53,7 +53,7 @@ export function MailLabelMenu({
       <DropdownMenuTrigger asChild>
         <Button
           aria-label={modificationTarget ? "Apply labels" : "Manage Gmail labels"}
-          disabled={!online || mutating}
+          disabled={mutating || (!online && !modificationTarget)}
           size="icon-lg"
           title={modificationTarget ? "Labels" : "Manage labels"}
           type="button"

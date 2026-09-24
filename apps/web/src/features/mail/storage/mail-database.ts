@@ -7,7 +7,7 @@ import type {
   MailView,
 } from "@zilobase/features/mail";
 
-const MAIL_DATABASE_VERSION = 5;
+const MAIL_DATABASE_VERSION = 6;
 const openDatabases = new Map<string, MailDatabase>();
 const MAIL_LIFECYCLE_CHANNEL = "zilobase:mail-cache-lifecycle:v2";
 let lifecycleChannel: BroadcastChannel | null = null;
@@ -25,9 +25,21 @@ export type MailSyncStateRecord = {
   workspaceId: string;
 };
 
+export type MailMutationOutboxRecord = {
+  action?: "restore" | "trash";
+  attempts: number;
+  createdAt: number;
+  id: string;
+  kind: "message_action" | "message_modify" | "thread_action" | "thread_modify";
+  modification: MailModifyRequest;
+  nextAttemptAt: number;
+  targetId: string;
+};
+
 export class MailDatabase extends Dexie {
   labels!: EntityTable<MailLabelRecord, "id">;
   messages!: EntityTable<MailMessageRecord, "id">;
+  mutationOutbox!: EntityTable<MailMutationOutboxRecord, "id">;
   syncState!: EntityTable<MailSyncStateRecord, "key">;
   threads!: EntityTable<MailThreadSummary, "id">;
 
@@ -45,6 +57,7 @@ export class MailDatabase extends Dexie {
       .stores({
         labels: "id, name, type",
         messages: "id, threadId, draftId, date, internalDate, *labelIds, [threadId+internalDate]",
+        mutationOutbox: "id, [kind+targetId], createdAt, nextAttemptAt",
         syncState: "key, bindingId, connectionId, userId, workspaceId",
         threads: "id, internalDate, latestMessageId, unread, starred, *labelIds",
       })
@@ -170,6 +183,46 @@ export async function applyMailboxSnapshot(
       });
     },
   );
+}
+
+export async function enqueueMailMutation(
+  database: MailDatabase,
+  input: Omit<MailMutationOutboxRecord, "attempts" | "createdAt" | "id" | "nextAttemptAt">,
+) {
+  const now = Date.now();
+  const existing = input.kind.endsWith("_modify")
+    ? await database.mutationOutbox
+        .where("[kind+targetId]")
+        .equals([input.kind, input.targetId])
+        .first()
+    : null;
+  if (existing) {
+    const add = new Set(existing.modification.addLabelIds ?? []);
+    const remove = new Set(existing.modification.removeLabelIds ?? []);
+    for (const label of input.modification.addLabelIds ?? []) {
+      remove.delete(label);
+      add.add(label);
+    }
+    for (const label of input.modification.removeLabelIds ?? []) {
+      add.delete(label);
+      remove.add(label);
+    }
+    await database.mutationOutbox.put({
+      ...existing,
+      modification: { addLabelIds: [...add], removeLabelIds: [...remove] },
+      nextAttemptAt: now,
+    });
+    return existing.id;
+  }
+  const id = crypto.randomUUID();
+  await database.mutationOutbox.put({
+    ...input,
+    attempts: 0,
+    createdAt: now,
+    id,
+    nextAttemptAt: now,
+  });
+  return id;
 }
 
 export function mailThreadMatchesView(thread: MailThreadSummary, view: MailView) {

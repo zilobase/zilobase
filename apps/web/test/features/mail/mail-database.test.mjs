@@ -85,7 +85,7 @@ export function register({ assert, loadModule, test }) {
       key: "primary",
       lastSyncedAt: (await database.syncState.get("primary")).lastSyncedAt,
       revision: 0,
-      schemaVersion: 5,
+      schemaVersion: 6,
       userId: "user-1",
       workspaceId: "workspace-1",
     });
@@ -179,7 +179,7 @@ export function register({ assert, loadModule, test }) {
     await first.messages.put(mutationFixture().messages[0]);
     first.close();
     const rebuilt = await openMailDatabase(identity);
-    assert.equal((await rebuilt.syncState.get("primary")).schemaVersion, 5);
+    assert.equal((await rebuilt.syncState.get("primary")).schemaVersion, 6);
     assert.equal(await rebuilt.messages.count(), 0);
     await destroyMailDatabase(rebuilt.name);
   });

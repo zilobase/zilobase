@@ -80,7 +80,7 @@ export function MailboxTopbar({
               aria-label="Search mail"
               className="bg-transparent pl-8"
               onChange={(event) => onQueryChange(event.target.value)}
-              placeholder={online ? "Search Gmail" : "Search downloaded mail"}
+              placeholder="Search mail"
               value={query}
             />
           </div>
@@ -119,7 +119,7 @@ export function MailboxTopbar({
         >
           {indexProgress.status === "error"
             ? "Mail indexing paused. It will retry automatically."
-            : `Indexing full mailbox… ${indexProgress.indexedThreadCount}${indexProgress.resultSizeEstimate ? ` of about ${indexProgress.resultSizeEstimate}` : ""} threads`}
+            : `Indexing recent mail… ${indexProgress.indexedThreadCount} threads`}
         </div>
       ) : null}
 
@@ -129,25 +129,25 @@ export function MailboxTopbar({
             {batchCount} selected
           </span>
           <MailActionButton
-            disabled={!online || mutating}
+            disabled={mutating}
             icon={<MailIcon />}
             label="Mark selected read"
             onClick={() => onBatchModify({ removeLabelIds: ["UNREAD"] })}
           />
           <MailActionButton
-            disabled={!online || mutating}
+            disabled={mutating}
             icon={<StarIcon />}
             label="Star selected"
             onClick={() => onBatchModify({ addLabelIds: ["STARRED"] })}
           />
           <MailActionButton
-            disabled={!online || mutating}
+            disabled={mutating}
             icon={<ArchiveIcon />}
             label="Archive selected"
             onClick={() => onBatchModify({ removeLabelIds: ["INBOX"] })}
           />
           <MailActionButton
-            disabled={!online || mutating}
+            disabled={mutating}
             icon={<TriangleAlertIcon />}
             label="Move selected to spam"
             onClick={() => onBatchModify({ addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] })}
