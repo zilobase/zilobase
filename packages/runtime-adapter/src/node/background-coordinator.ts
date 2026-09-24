@@ -1,5 +1,5 @@
 import { advancePendingCalendars } from "@zilobase/server/node-adapter-api";
-import { eq, inArray, min, sql } from "drizzle-orm";
+import { eq, inArray, isNotNull, min, or, sql } from "drizzle-orm";
 import type { Ports } from "@zilobase/runtime-ports";
 
 import { AI_JOB_HANDLERS } from "@zilobase/server/node-adapter-api";
@@ -19,6 +19,7 @@ import {
   aiAgentRun,
   databaseAutomationEventWindow,
   databaseAutomationRun,
+  calendarProviderCalendar,
   databaseRealtimeOutbox,
   inProductNotificationOutbox,
   mailDatabaseSyncOutbox,
@@ -30,7 +31,7 @@ import { backgroundTaskLane, type BackgroundLane, type BackgroundTaskV1 } from "
 import { boundedErrorCode } from "@zilobase/server/node-adapter-api";
 
 const CHANNEL = "zilobase_background_v1";
-const LANES: BackgroundLane[] = ["fast", "automation", "ai", "mail"];
+const LANES: BackgroundLane[] = ["fast", "automation", "ai", "mail", "calendar"];
 
 export type NodeBackgroundCoordinator = ReturnType<typeof createNodeBackgroundCoordinator>;
 
@@ -95,11 +96,14 @@ export function createNodeBackgroundCoordinator(
             ]);
           } else if (lane === "ai") {
             await runAiJobBatch({ env, handlers: AI_JOB_HANDLERS, limit: concurrency, workerId: `${workerId}:ai` });
-          } else {
+          } else if (lane === "mail") {
             await settleLaneOperations(lane, [
-              { name: "calendar_sync", run: () => advancePendingCalendars(env) },
               { name: "mail_index", run: () => advancePendingMailIndexes(env, concurrency) },
               { name: "mail_database_sync", run: () => drainMailDatabaseSyncOutbox(env, { limit: concurrency, workerId: `${workerId}:mail` }) },
+            ]);
+          } else if (lane === "calendar") {
+            await settleLaneOperations(lane, [
+              { name: "calendar_sync", run: () => advancePendingCalendars(env) },
             ]);
           }
           const next = await nextLaneDueAt(lane);
@@ -284,7 +288,7 @@ function parseSignal(payload: string | undefined) {
 }
 
 function laneConcurrency(env: RuntimeEnv, lane: BackgroundLane) {
-  const defaults = { ai: 2, automation: 4, fast: 8, mail: 2 };
+  const defaults = { ai: 2, automation: 4, calendar: 2, fast: 8, mail: 2 };
   const key = `ZILOBASE_BACKGROUND_${lane.toUpperCase()}_CONCURRENCY`;
   const value = Number(env[key]);
   return Number.isInteger(value) ? Math.max(1, Math.min(value, 50)) : defaults[lane];
@@ -307,6 +311,12 @@ async function nextLaneDueAt(lane: BackgroundLane) {
   if (lane === "mail") {
     return (await db.select({ value: min(mailDatabaseSyncOutbox.nextAttemptAt) }).from(mailDatabaseSyncOutbox)
       .where(inArray(mailDatabaseSyncOutbox.status, ["pending", "retry"])))[0]?.value ?? null;
+  }
+  if (lane === "calendar") {
+    const [row] = await db.select({ dirtyAt: calendarProviderCalendar.dirtyAt }).from(calendarProviderCalendar)
+      .where(or(isNotNull(calendarProviderCalendar.dirtyAt), isNotNull(calendarProviderCalendar.pageToken)))
+      .limit(1);
+    return row ? row.dirtyAt ?? new Date() : null;
   }
   const values = await Promise.all([
     db.select({ value: min(databaseAutomationEventWindow.nextAttemptAt) }).from(databaseAutomationEventWindow)

@@ -14,6 +14,8 @@ describe("background task v1", () => {
     expect(backgroundTaskLane("agent.run")).toBe("automation");
     expect(backgroundTaskLane("ai.job")).toBe("ai");
     expect(backgroundTaskLane("mail.index")).toBe("mail");
+    expect(backgroundTaskLane("mail.database_sync")).toBe("mail");
+    expect(backgroundTaskLane("calendar.sync")).toBe("calendar");
   });
 
   it("rejects malformed, unknown, and cross-cell messages", () => {

@@ -20,8 +20,8 @@ Copy these templates next to your worker entries and replace every
 1. Create the resources the placeholders name:
    - Hyperdrive config for Postgres (`<HYPERDRIVE_ID>` via `wrangler hyperdrive create`),
    - R2 bucket (`<R2_BUCKET_NAME>`) plus a preview bucket for local dev,
-   - Four queues (`zilobase-background-fast`, `zilobase-ai-jobs`,
-     `zilobase-automation-runs`, `zilobase-mail-jobs`) with matching
+   - Five queues (`zilobase-background-fast`, `zilobase-ai-jobs`,
+     `zilobase-automation-runs`, `zilobase-mail-jobs`, `zilobase-calendar-jobs`) with matching
      dead-letter queues, as listed under `queues.consumers`,
    - Two rate-limiter bindings (namespace ids `1001`, `2001`).
 2. Set `vars` origins to your domains (`<API_ORIGIN>`, `<WEB_ORIGIN>`,

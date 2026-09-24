@@ -32,6 +32,7 @@ export {
   databaseAutomationRun,
   databaseRealtimeOutbox,
   inProductNotificationOutbox,
+  calendarProviderCalendar,
   mailDatabaseSyncOutbox,
   navigationRealtimeOutbox,
 } from "../infrastructure/database/schema";

@@ -19,6 +19,7 @@ export type WorkerEnvBindings = Record<string, unknown> & {
   BACKGROUND_FAST?: BackgroundQueue;
   AI_JOBS?: BackgroundQueue;
   AUTOMATION_RUNS?: BackgroundQueue;
+  CALENDAR_JOBS?: BackgroundQueue;
   MAIL_JOBS?: BackgroundQueue;
   EMAIL?: CloudflareBindings["EMAIL"];
   ZILOBASE_DEV_EMAIL_SINK_URL?: string;

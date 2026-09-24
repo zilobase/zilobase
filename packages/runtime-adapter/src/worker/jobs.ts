@@ -10,6 +10,7 @@ export type WorkerJobsEnv = WorkerEnvBindings & {
   BACKGROUND_FAST?: BackgroundQueue;
   AI_JOBS?: BackgroundQueue;
   AUTOMATION_RUNS?: BackgroundQueue;
+  CALENDAR_JOBS?: BackgroundQueue;
   MAIL_JOBS?: BackgroundQueue;
 };
 
@@ -41,5 +42,6 @@ function queueForLane(env: WorkerJobsEnv, lane: BackgroundLane) {
   if (lane === "fast") return env.BACKGROUND_FAST;
   if (lane === "automation") return env.AUTOMATION_RUNS;
   if (lane === "ai") return env.AI_JOBS;
+  if (lane === "calendar") return env.CALENDAR_JOBS;
   return env.MAIL_JOBS;
 }

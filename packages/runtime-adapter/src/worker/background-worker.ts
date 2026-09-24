@@ -32,6 +32,7 @@ const queueLanes: Record<string, BackgroundLane> = {
   "zilobase-ai-jobs": "ai",
   "zilobase-automation-runs": "automation",
   "zilobase-background-fast": "fast",
+  "zilobase-calendar-jobs": "calendar",
   "zilobase-mail-jobs": "mail",
 };
 

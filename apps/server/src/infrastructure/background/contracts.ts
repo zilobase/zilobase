@@ -27,7 +27,7 @@ export type BackgroundTaskV1 = {
   version: 1;
 };
 
-export type BackgroundLane = "fast" | "automation" | "ai" | "mail";
+export type BackgroundLane = "fast" | "automation" | "ai" | "mail" | "calendar";
 
 export type BackgroundTaskResult =
   | { outcome: "completed" | "noop" | "terminal"; errorCode?: string }
@@ -43,7 +43,8 @@ const traceContextStore = new AsyncLocalStorage<{
 export function backgroundTaskLane(kind: BackgroundTaskKind): BackgroundLane {
   if (kind === "automation.run" || kind === "agent.run") return "automation";
   if (kind === "ai.job") return "ai";
-  if (kind === "calendar.sync" || kind === "mail.index" || kind === "mail.database_sync") return "mail";
+  if (kind === "mail.index" || kind === "mail.database_sync") return "mail";
+  if (kind === "calendar.sync") return "calendar";
   return "fast";
 }
 

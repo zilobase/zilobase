@@ -2,7 +2,7 @@ export type RuntimeKind = "node" | "worker";
 export type RuntimeEnv = Record<string, unknown>;
 export type Unsubscribe = () => void | Promise<void>;
 
-export type BackgroundLane = "ai" | "automation" | "fast" | "mail";
+export type BackgroundLane = "ai" | "automation" | "calendar" | "fast" | "mail";
 
 export type BackgroundTask = {
   availableAt: string;

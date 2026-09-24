@@ -48,7 +48,8 @@
       { "binding": "BACKGROUND_FAST", "queue": "zilobase-background-fast" },
       { "binding": "AUTOMATION_RUNS", "queue": "zilobase-automation-runs" },
       { "binding": "AI_JOBS", "queue": "zilobase-ai-jobs" },
-      { "binding": "MAIL_JOBS", "queue": "zilobase-mail-jobs" }
+      { "binding": "MAIL_JOBS", "queue": "zilobase-mail-jobs" },
+      { "binding": "CALENDAR_JOBS", "queue": "zilobase-calendar-jobs" }
     ],
     "consumers": [
       {
@@ -82,6 +83,14 @@
         "max_concurrency": 10,
         "max_retries": 8,
         "dead_letter_queue": "zilobase-mail-jobs-dlq"
+      },
+      {
+        "queue": "zilobase-calendar-jobs",
+        "max_batch_size": 5,
+        "max_batch_timeout": 1,
+        "max_concurrency": 10,
+        "max_retries": 8,
+        "dead_letter_queue": "zilobase-calendar-jobs-dlq"
       }
     ]
   },
