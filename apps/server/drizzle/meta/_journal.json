@@ -673,6 +673,13 @@
       "when": 1789718400000,
       "tag": "0098_mail_thread_snippet",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1790208000000,
+      "tag": "0099_canonical_mailbox",
+      "breakpoints": true
     }
   ]
 }

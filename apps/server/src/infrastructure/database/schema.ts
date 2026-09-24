@@ -47,6 +47,9 @@ export {
   mailDatabaseSyncOutbox,
   mailIndexState,
   mailThreadIndex,
+  mailMessage,
+  mailLabel,
+  gmailApiBudget,
 } from "./schema/mail-sync";
 export { slackOauthAttempt, slackConnection } from "./schema/slack-connections";
 export {
