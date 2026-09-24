@@ -444,10 +444,10 @@ async function writeMappedValues(input: { dataSourceId: string; env: RuntimeEnv;
 }
 
 async function copyMappedAttachments(env: RuntimeEnv, gateway: GmailGateway, attachments: Array<{ attachmentId: string; filename: string; messageId: string; mimeType: string; size: number }>, record: SyncRecord, databaseId: string, userId: string, workspaceId: string) {
-  if (attachments.length > MAX_SYNC_ATTACHMENTS) throw new MailDatabaseSyncPausedError(`A thread can sync at most ${MAX_SYNC_ATTACHMENTS} attachments.`)
+  const limited = attachments.slice(0, MAX_SYNC_ATTACHMENTS)
   const storage = createImageStorage(env)
   const files: Array<{ id: string; name: string; url: string }> = []
-  for (const attachment of attachments) {
+  for (const attachment of limited) {
     const id = `mail-sync-asset:${record.id}:${attachment.messageId}:${attachment.attachmentId}`
     const filename = safeFilename(attachment.filename)
     const objectKey = `org/${encodeURIComponent(workspaceId)}/page/${encodeURIComponent(record.pageId)}/mail/${encodeURIComponent(id)}/${encodeURIComponent(filename)}`
