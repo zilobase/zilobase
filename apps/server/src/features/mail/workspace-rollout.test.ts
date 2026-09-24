@@ -70,7 +70,7 @@ test("workspace rollout exposes maintenance for Node and alternate deployment ad
   ]);
   for (const operation of [
     "renewGmailWatches",
-    "advancePendingMailIndexes",
+    "advancePendingMailSyncs",
     "drainMailDatabaseSyncOutbox",
   ]) {
     assert.match(`${coordinator}\n${maintenance}`, new RegExp(`${operation}\\(env`));

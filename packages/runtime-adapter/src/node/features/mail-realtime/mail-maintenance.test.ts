@@ -17,7 +17,7 @@ test("Node maintenance renews Gmail watches", async () => {
 
 test("Node maintenance advances bounded full-mailbox index work", async () => {
   const runtime = await readFile(maintenancePath, "utf8");
-  assert.match(runtime, /advancePendingMailIndexes\(env\)/);
+  assert.match(runtime, /advancePendingMailSyncs\(env\)/);
 });
 
 test("Node maintenance drains database synchronization work", async () => {

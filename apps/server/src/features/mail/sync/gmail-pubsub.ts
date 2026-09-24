@@ -3,9 +3,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { db, runWithDbEnv } from "../../../infrastructure/database";
 import { gmailAccount } from "../../../infrastructure/database/schema";
 import { getStringEnv, type RuntimeEnv } from "../../../shared/config/config";
-import { createBackgroundTask } from "../../../infrastructure/background/contracts";
-import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 import { verifyGoogleOidcToken } from "../provider/security/google-oidc-token";
+import { requestMailSync } from "./mail-sync-coordinator";
 
 const MAX_PUSH_BYTES = 64 * 1024;
 
@@ -40,7 +39,6 @@ export async function processGmailPubsubRequest(
     const updated = await db
       .update(gmailAccount)
       .set({
-        mailboxRevision: sql`${gmailAccount.mailboxRevision} + 1`,
         notificationHistoryId: notification.historyId,
         updatedAt: new Date(),
       })
@@ -53,17 +51,14 @@ export async function processGmailPubsubRequest(
       )
       .returning({
         connectionId: gmailAccount.id,
-        revision: gmailAccount.mailboxRevision,
         userId: gmailAccount.userId,
       });
     for (const account of updated) {
-      await dispatchBackgroundTasks(env, [
-        createBackgroundTask({
-          env,
-          kind: "mail.index",
-          resourceId: account.connectionId,
-        }),
-      ]);
+      await requestMailSync(env, {
+        gmailAccountId: account.connectionId,
+        historyId: notification.historyId,
+        reason: "pubsub",
+      });
     }
     return updated;
   });

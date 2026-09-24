@@ -130,7 +130,7 @@ export {
 export { drainNavigationRealtimeOutbox } from "../features/workspaces/navigation-realtime/outbox";
 export { expireTemporaryMemberships } from "../features/memberships";
 export { renewGmailWatches } from "../features/mail/sync/gmail-watch";
-export { advancePendingMailIndexes } from "../features/mail/query/mail-index";
+export { advancePendingMailSyncs } from "../features/mail/sync/mail-sync-coordinator";
 export { drainMailDatabaseSyncOutbox } from "../features/mail/database-sync/mail-database-sync-worker";
 export {
   getDatabaseAutomationEventCaptureMetrics,

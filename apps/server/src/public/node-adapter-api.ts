@@ -31,6 +31,7 @@ export {
   inProductNotificationOutbox,
   calendarProviderCalendar,
   mailDatabaseSyncOutbox,
+  mailIndexState,
   navigationRealtimeOutbox,
 } from "../infrastructure/database/schema";
 export { recordMailMetric } from "../features/mail/mail-metrics";

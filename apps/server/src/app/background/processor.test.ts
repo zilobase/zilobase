@@ -2,7 +2,9 @@ import { afterEach, expect, test, vi } from "vitest";
 
 const fake = vi.hoisted(() => ({
   rows: [] as unknown[][],
-  advance: vi.fn(async () => undefined),
+  advance: vi.fn(async (): Promise<{ outcome: "completed" | "noop" }> => ({
+    outcome: "completed",
+  })),
   publish: vi.fn(async () => undefined),
   mail: vi.fn(async () => undefined),
   database: vi.fn(async () => undefined),
@@ -30,9 +32,8 @@ vi.mock("../../features/automations/triggers/event-evaluator", () => ({
 vi.mock("../../features/automations/execution/run-engine", () => ({
   processDatabaseAutomationRun: vi.fn(),
 }));
-vi.mock("../../features/mail/query/mail-index", () => ({
-  advanceMailIndex: fake.advance,
-  publishMailIndexUpdate: fake.publish,
+vi.mock("../../features/mail/sync/mail-sync-coordinator", () => ({
+  processMailSyncTask: fake.advance,
 }));
 vi.mock("../../features/mail/database-sync/mail-database-sync-worker", () => ({
   drainMailDatabaseSyncOutbox: fake.mail,
@@ -69,25 +70,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test("mail indexing skips disconnected accounts without advancing or publishing", async () => {
-  fake.rows = [[{ id: "account", status: "reconnect_required" }]];
+test("mail indexing delegates account state and retry policy to the coordinator", async () => {
+  fake.advance.mockResolvedValueOnce({ outcome: "noop" });
   expect(await run("mail.index")).toEqual({ outcome: "noop" });
-  expect(fake.advance).not.toHaveBeenCalled();
-  expect(fake.publish).not.toHaveBeenCalled();
-});
-
-test("mail indexing publishes progress and retries until the index is ready", async () => {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
-  fake.rows = [[{ id: "account", status: "connected" }], [{ status: "building" }]];
-  expect(await run("mail.index")).toEqual({
-    outcome: "retry",
-    availableAt: "2026-01-01T00:00:05.000Z",
-  });
-  expect(fake.advance).toHaveBeenCalledWith({}, "account");
-  expect(fake.publish).toHaveBeenCalledWith({}, "account");
-  fake.rows = [[{ id: "account", status: "connected" }], [{ status: "ready" }]];
-  expect(await run("mail.index")).toEqual({ outcome: "completed" });
+  expect(fake.advance).toHaveBeenCalledWith({}, "resource");
 });
 
 test.each([

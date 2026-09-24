@@ -5,6 +5,7 @@ import { gmailAccount } from "../../../infrastructure/database/schema";
 import { getStringEnv, type RuntimeEnv } from "../../../shared/config/config";
 import { createGmailGateway, GmailApiError } from "../provider/gmail-gateway";
 import { recordMailMetric } from "../mail-metrics";
+import { requestMailSync } from "./mail-sync-coordinator";
 
 const RENEW_BEFORE_MS = 24 * 60 * 60 * 1_000;
 const RENEW_LOCK_MS = 10 * 60 * 1_000;
@@ -33,6 +34,11 @@ export async function initializeGmailWatch(
     })
     .where(eq(gmailAccount.id, connection.id));
   await recordMailMetric("watch_health", { connectionId: connection.id, outcome: "success" });
+  await requestMailSync(env, {
+    gmailAccountId: connection.id,
+    historyId: result.historyId,
+    reason: connection.notificationHistoryId ? "watch_renewal" : "oauth_bootstrap",
+  });
   return { expiration, historyId: result.historyId };
 }
 

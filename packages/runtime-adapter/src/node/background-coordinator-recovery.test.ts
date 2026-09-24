@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@zilobase/server/node-adapter-api", () => ({
   AI_JOB_HANDLERS: {},
-  advancePendingMailIndexes: vi.fn(),
+  advancePendingMailSyncs: vi.fn(),
   boundedErrorCode: () => "Error",
   createDbClientForUrl: mocks.client,
   db: {

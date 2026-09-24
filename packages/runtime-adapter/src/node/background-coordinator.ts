@@ -8,7 +8,7 @@ import { drainAgentRuns } from "@zilobase/server/node-adapter-api";
 import { drainDatabaseAutomationEventWindows } from "@zilobase/server/node-adapter-api";
 import { drainDatabaseAutomationRuns } from "@zilobase/server/node-adapter-api";
 import { drainDatabaseRealtimeOutbox } from "@zilobase/server/node-adapter-api";
-import { advancePendingMailIndexes } from "@zilobase/server/node-adapter-api";
+import { advancePendingMailSyncs } from "@zilobase/server/node-adapter-api";
 import { drainMailDatabaseSyncOutbox } from "@zilobase/server/node-adapter-api";
 import { drainInProductNotificationOutbox } from "@zilobase/server/node-adapter-api";
 import { drainNavigationRealtimeOutbox } from "@zilobase/server/node-adapter-api";
@@ -23,6 +23,7 @@ import {
   databaseRealtimeOutbox,
   inProductNotificationOutbox,
   mailDatabaseSyncOutbox,
+  mailIndexState,
   navigationRealtimeOutbox,
 } from "@zilobase/server/node-adapter-api";
 import { runWithRuntimePorts } from "../capabilities";
@@ -131,7 +132,7 @@ export function createNodeBackgroundCoordinator(env: RuntimeEnv, ports: Partial<
             });
           } else if (lane === "mail") {
             await settleLaneOperations(lane, [
-              { name: "mail_index", run: () => advancePendingMailIndexes(env, concurrency) },
+              { name: "mail_index", run: () => advancePendingMailSyncs(env, concurrency) },
               {
                 name: "mail_database_sync",
                 run: () =>
@@ -376,13 +377,21 @@ async function nextLaneDueAt(lane: BackgroundLane) {
     );
   }
   if (lane === "mail") {
+    const values = await Promise.all([
+      db
+        .select({ value: min(mailIndexState.nextAttemptAt) })
+        .from(mailIndexState)
+        .where(inArray(mailIndexState.status, ["pending", "backfilling", "syncing", "error"])),
+      db
+        .select({ value: min(mailDatabaseSyncOutbox.nextAttemptAt) })
+        .from(mailDatabaseSyncOutbox)
+        .where(inArray(mailDatabaseSyncOutbox.status, ["pending", "retry"])),
+    ]);
     return (
-      (
-        await db
-          .select({ value: min(mailDatabaseSyncOutbox.nextAttemptAt) })
-          .from(mailDatabaseSyncOutbox)
-          .where(inArray(mailDatabaseSyncOutbox.status, ["pending", "retry"]))
-      )[0]?.value ?? null
+      values
+        .flatMap((rows) => rows.map((row) => row.value))
+        .filter((value): value is Date => Boolean(value))
+        .sort((left, right) => left.getTime() - right.getTime())[0] ?? null
     );
   }
   if (lane === "calendar") {
