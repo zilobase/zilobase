@@ -66,7 +66,7 @@ const systemFolderDetails: Record<
   sent: { gmailLabelId: "SENT", icon: SendIcon, label: "Sent" },
   drafts: { gmailLabelId: "DRAFT", icon: FilePenLineIcon, label: "Drafts" },
   spam: { gmailLabelId: "SPAM", icon: BanIcon, label: "Spam" },
-  bin: { gmailLabelId: "TRASH", icon: Trash2Icon, label: "Bin" },
+  bin: { gmailLabelId: "TRASH", icon: Trash2Icon, label: "Trash" },
 };
 
 export function WorkspaceMailNavigation({

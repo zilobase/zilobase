@@ -46,6 +46,10 @@ and draft projections rather than Gmail's eventually consistent label counters.
 Trash restore removes `TRASH` without guessing that the message previously
 belonged in Inbox.
 
+Every binding is seeded with Inbox, Unread, Starred and Important views. Drafts,
+Sent, All Mail, Spam and Trash remain canonical system folders in the sidebar;
+the Trash wording is consistent across navigation and actions.
+
 One expiring database lease permits one engine advance per account. Notification and queue duplication are safe: desired history is monotonic, equal/older notifications do not dispatch more work, resource IDs coalesce queued tasks, and message/thread upserts are idempotent. Each committed revision has a durable `mail_mailbox_change` record; realtime is only a poke carrying that revision, and clients fill gaps through the feed.
 
 Gmail calls pass through the gateway quota guard. Account/user token buckets, method weights and full-jitter retry deadlines protect foreground and background traffic. HTTP 429 and quota-related 403 responses remain quota errors; only token rejection or HTTP 401 requires reconnection.

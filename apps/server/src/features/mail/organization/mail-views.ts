@@ -17,7 +17,7 @@ import { MailViewServiceError } from "./mail-view-errors";
 
 export { MailViewServiceError } from "./mail-view-errors";
 
-const seededTemplateIds = ["inbox", "unread", "starred"] as const;
+const seededTemplateIds = ["inbox", "unread", "starred", "important"] as const;
 
 export function seededMailViewId(
   bindingId: string,

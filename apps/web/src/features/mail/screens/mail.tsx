@@ -94,7 +94,7 @@ import {
 
 const organizationFolderDetails = {
   all_mail: { icon: MailIcon, label: "All Mail" },
-  bin: { icon: Trash2Icon, label: "Bin" },
+  bin: { icon: Trash2Icon, label: "Trash" },
   drafts: { icon: FilePenLineIcon, label: "Drafts" },
   sent: { icon: SendIcon, label: "Sent" },
   spam: { icon: BanIcon, label: "Spam" },

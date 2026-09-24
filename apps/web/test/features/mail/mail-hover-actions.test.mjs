@@ -38,6 +38,6 @@ export function register({ assert, readSource, test }) {
     assert.match(panel, /Choose a label/);
     assert.match(panel, /\["star", "bookmark", "heart", "tag"\]/);
     assert.match(panel, /When label is applied/);
-    for (const effect of ["Archive", "Bin", "No effect"]) assert.ok(panel.includes(effect));
+    for (const effect of ["Archive", "Trash", "No effect"]) assert.ok(panel.includes(effect));
   });
 }

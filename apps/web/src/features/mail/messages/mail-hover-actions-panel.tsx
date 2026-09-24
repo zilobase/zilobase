@@ -41,7 +41,7 @@ type ActionMeta = {
 export const mailHoverActionCatalog: Record<MailHoverActionKind, ActionMeta> = {
   any_label: { description: "Open the label picker", icon: TagIcon, label: "Any label" },
   archive: { description: "Move to archive or unarchive", icon: ArchiveIcon, label: "Archive" },
-  bin: { description: "Move to bin or restore", icon: TrashIcon, label: "Bin" },
+  bin: { description: "Move to trash or restore", icon: TrashIcon, label: "Trash" },
   command: { description: "Open command palette", icon: Code, label: "Command" },
   read_unread: { description: "Mark as read or unread", icon: MailIcon, label: "Read/unread" },
   remind: { description: "Hide from Inbox until date", icon: Bell, label: "Remind" },
@@ -253,7 +253,7 @@ function MailHoverActionEditor({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="archive">Archive</SelectItem>
-                <SelectItem value="bin">Bin</SelectItem>
+                <SelectItem value="bin">Trash</SelectItem>
                 <SelectItem value="none">No effect</SelectItem>
               </SelectContent>
             </Select>
