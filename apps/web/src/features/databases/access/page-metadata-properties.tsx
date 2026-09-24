@@ -137,7 +137,7 @@ export function PageMetadataProperties({
                     <span className="truncate">{property.name}</span>
                   </span>
                   <div
-                    className="relative min-w-0 rounded-xs"
+                    className="relative min-w-0 rounded-md transition-colors hover:bg-action-neutral-hover focus-within:bg-action-neutral-hover active:bg-action-neutral-pressed"
                     data-presence={
                       (propertyPresenceById[property.id]?.length ?? 0) > 0
                         ? "true"
