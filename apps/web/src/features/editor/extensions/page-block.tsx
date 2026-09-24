@@ -6,6 +6,7 @@ import {
 } from "@tiptap/react";
 import { LinkIcon, Loader2, Plus } from "@/shared/components/icons";
 import {
+  useCallback,
   useEffect,
   useRef,
   useSyncExternalStore,
@@ -86,10 +87,23 @@ function findCachedDatabaseRowPage(
 
 function useCachedDatabaseRowPage(pageId: string | null) {
   const { queryClient } = useZilobaseFeatures();
+  const subscribe = useCallback(
+    (onStoreChange: () => void) =>
+      queryClient.getQueryCache().subscribe((event) => {
+        if (event.query.queryKey[0] === databaseQueryRoot) {
+          onStoreChange();
+        }
+      }),
+    [queryClient],
+  );
+  const getSnapshot = useCallback(
+    () => findCachedDatabaseRowPage(queryClient, pageId),
+    [pageId, queryClient],
+  );
 
   return useSyncExternalStore(
-    (onStoreChange) => queryClient.getQueryCache().subscribe(onStoreChange),
-    () => findCachedDatabaseRowPage(queryClient, pageId),
+    subscribe,
+    getSnapshot,
     () => null,
   );
 }

@@ -7,7 +7,7 @@ import type {
 } from "../auth/contracts"
 
 export type ZilobaseAuthClient = {
-  getSession: () => Promise<SessionResponse>
+  getSession: (signal?: AbortSignal) => Promise<SessionResponse>
   requestSignInOtp: (email: string) => Promise<{ success: boolean }>
   signInWithOtp: (input: SignInWithOtpInput) => Promise<{ token: string; user: unknown }>
   signInWithPassword: (
@@ -30,8 +30,9 @@ export type ZilobaseAuthClient = {
   acceptWorkspaceInvitation: <TResponse>(input: {
     invitationId: string
   }) => Promise<TResponse>
-  listWorkspaces: <TWorkspace>() => Promise<TWorkspace[]>
+  listWorkspaces: <TWorkspace>(signal?: AbortSignal) => Promise<TWorkspace[]>
   listWorkspaceInvitations: <TInvitation>(
     workspaceId: string,
+    signal?: AbortSignal,
   ) => Promise<TInvitation[]>
 }

@@ -8,9 +8,9 @@ export const sessionQueryKey = ["session"] as const
 export const sessionQueryOptions = (auth: ZilobaseAuthClient) =>
   queryOptions({
     queryKey: sessionQueryKey,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       try {
-        return await auth.getSession()
+        return await auth.getSession(signal)
       } catch (error) {
         if (
           typeof error === "object" &&

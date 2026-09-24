@@ -61,8 +61,10 @@ export function useMailViews(input: MailHookScope) {
   })
 
   return {
-    ...query,
     createView: createMutation.mutateAsync,
+    data: query.data,
+    isSuccess: query.isSuccess,
+    refetch: query.refetch,
     savingView: createMutation.isPending || updateMutation.isPending,
     updateView: updateMutation.mutateAsync,
   }
@@ -99,8 +101,8 @@ export function useMailProperties(input: MailHookScope) {
     },
   })
   return {
-    ...query,
     createProperty: create.mutateAsync,
+    data: query.data,
     deleteProperty: remove.mutateAsync,
     mutating: create.isPending || update.isPending || remove.isPending || setThreadValue.isPending,
     setThreadValue: setThreadValue.mutateAsync,
@@ -126,7 +128,11 @@ export function useMailThreadProperties(input: MailHookScope & { threadId: strin
       void invalidateMailListQueries(queryClient, input)
     },
   })
-  return { ...query, setValue: mutation.mutateAsync, setting: mutation.isPending }
+  return {
+    data: query.data,
+    setValue: mutation.mutateAsync,
+    setting: mutation.isPending,
+  }
 }
 
 export function useMailReminders(input: MailHookScope) {
@@ -160,7 +166,11 @@ export function useMailReminders(input: MailHookScope) {
     const timer = window.setTimeout(() => advanceReminders(), Math.max(0, Math.min(2_147_483_647, nextReminderAt - Date.now() + 250)))
     return () => window.clearTimeout(timer)
   }, [advanceReminders, nextReminderAt])
-  return { ...query, cancel: cancel.mutateAsync, schedule: schedule.mutateAsync, working: schedule.isPending || cancel.isPending || isAdvancing }
+  return {
+    cancel: cancel.mutateAsync,
+    schedule: schedule.mutateAsync,
+    working: schedule.isPending || cancel.isPending || isAdvancing,
+  }
 }
 
 export function useMailGroups(input: MailHookScope & {

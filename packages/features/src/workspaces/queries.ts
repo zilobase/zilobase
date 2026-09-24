@@ -77,9 +77,9 @@ export const workspaceInvitationsQueryKey = (
 export const workspacesQueryOptions = (auth: ZilobaseAuthClient) =>
   queryOptions({
     queryKey: workspacesQueryKey,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       try {
-        const workspaces = await auth.listWorkspaces<Workspace | null>()
+        const workspaces = await auth.listWorkspaces<Workspace | null>(signal)
 
         return workspaces.filter(isWorkspace)
       } catch (error) {
@@ -146,11 +146,14 @@ export const workspaceInvitationsQueryOptions = (
   queryOptions({
     queryKey: workspaceInvitationsQueryKey(workspaceId),
     enabled: Boolean(workspaceId),
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!workspaceId) {
         return []
       }
 
-      return auth.listWorkspaceInvitations<WorkspaceInvitation>(workspaceId)
+      return auth.listWorkspaceInvitations<WorkspaceInvitation>(
+        workspaceId,
+        signal,
+      )
     },
   })

@@ -40,11 +40,12 @@ function withOAuthQuery<T extends Record<string, unknown>>(input: T) {
 }
 
 export const webAuthClient: ZilobaseAuthClient = {
-  getSession: async () => {
+  getSession: async (signal) => {
     const startedAt = performance.now()
     recordDesktopDiagnostic("session.request", { status: "started" })
     try {
       const session = await apiFetch<SessionResponse>("/session", {
+        signal,
         timeoutMs: 15_000,
       })
       recordDesktopDiagnostic("session.request", {
@@ -142,21 +143,27 @@ export const webAuthClient: ZilobaseAuthClient = {
           "/workspace/accept-invitation",
           input,
         ) as Promise<TResponse>,
-  listWorkspaces: <TWorkspace,>() =>
+  listWorkspaces: <TWorkspace,>(signal?: AbortSignal) =>
     isHostedDemoRuntime()
       ? apiFetch<{ workspace: Workspace }>("/demo/bootstrap", {
           method: "GET",
+          signal,
         }).then(({ workspace }) => [workspace] as TWorkspace[])
       : apiFetch<Workspace[]>("/api/auth/workspace/list", {
           method: "GET",
+          signal,
         }) as Promise<TWorkspace[]>,
-  listWorkspaceInvitations: <TInvitation,>(workspaceId: string) =>
+  listWorkspaceInvitations: <TInvitation,>(
+    workspaceId: string,
+    signal?: AbortSignal,
+  ) =>
     isHostedDemoRuntime()
       ? Promise.resolve([])
       : apiFetch<WorkspaceInvitation[]>(
           `/api/auth/workspace/list-invitations?workspaceId=${encodeURIComponent(workspaceId)}`,
           {
             method: "GET",
+            signal,
           },
         ) as Promise<TInvitation[]>,
 }
