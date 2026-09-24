@@ -99,8 +99,10 @@ mailViewStatusRoutes.post("/threads/:threadId/remind", async (c) => {
 mailViewStatusRoutes.delete("/reminders/:reminderId", async (c) => {
   const owned = await requireWorkspaceMailBinding(c)
   if (owned instanceof Response) return owned
-  try { return c.json(await cancelMailReminder(owned.bindingId, c.req.param("reminderId"))) }
-  catch (error) { if (error instanceof MailReminderError) return c.json({ message: error.message }, error.status); throw error }
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    try { return c.json(await cancelMailReminder({ bindingId: owned.bindingId, gateway, reminderId: c.req.param("reminderId") })) }
+    catch (error) { if (error instanceof MailReminderError) return c.json({ message: error.message }, error.status); throw error }
+  })
 })
 
 mailViewStatusRoutes.post("/reminders/advance", async (c) => {

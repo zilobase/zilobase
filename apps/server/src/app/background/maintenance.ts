@@ -16,6 +16,7 @@ import { drainDatabaseRealtimeOutbox } from "../../features/databases/realtime/o
 import { expireTemporaryMemberships } from "../../features/memberships";
 import { renewGmailWatches } from "../../features/mail/sync/gmail-watch";
 import { advancePendingMailIndexes } from "../../features/mail/query/mail-index";
+import { advanceDueMailReminders } from "../../features/mail/organization/mail-reminders";
 import { drainMailDatabaseSyncOutbox } from "../../features/mail/database-sync/mail-database-sync-worker";
 import { cleanupExpiredGmailSendOperations } from "../../features/mail/compose/mail-compose";
 import { drainInProductNotificationOutbox } from "../../features/notifications/outbox";
@@ -169,6 +170,7 @@ const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandl
   "calendar.sync_recovery": async (env) => { await Promise.allSettled([advancePendingCalendars(env), maintainCalendarWatches(env), drainCalendarOutbox()]); },
   "mail.index_recovery": async (env) => {
     await advancePendingMailIndexes(env);
+    await advanceDueMailReminders(env);
   },
   "gmail.watch_renewal": async (env) => {
     await renewGmailWatches(env);
