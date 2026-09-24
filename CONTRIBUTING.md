@@ -162,6 +162,8 @@ npm run verify:architecture
 Run the repository verification commands from the workspace root:
 
 ```sh
+npm run fmt                 # Format supported repository files with Oxfmt
+npm run fmt:check           # Check formatting without writing files
 npm run lint                # Oxlint plus shared-UI and TanStack Query plugins
 npm run verify:core         # TypeScript packages, web, and server
 npm run verify:desktop      # Rust formatting, clippy, and tests
@@ -172,6 +174,8 @@ npm run verify:push         # Path-filtered GitHub pull-request checks
 npm run verify:push -- --dry-run
 ```
 
+Oxfmt is configured in [`.oxfmtrc.json`](.oxfmtrc.json); generated snapshots,
+Helm templates, and agent/tool instruction trees stay outside its formatting scope.
 The design-system and TanStack Query plugins are configured in
 [`.oxlintrc.json`](.oxlintrc.json). Their policies belong there; shared UI
 appearance belongs in component variants and props rather than feature-level

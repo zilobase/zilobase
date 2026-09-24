@@ -38,14 +38,19 @@ test("docs-only changes still run always-on GitHub PR jobs", () => {
     selected.map((job) => job.id),
     ["community-boundary", "architecture"],
   );
+  assert.deepEqual(
+    selectedCommands(selected).map((entry) => entry.command.join(" ")),
+    ["npm run fmt:check", "npm run test:community-boundary", "npm run test:architecture"],
+  );
 });
 
 test("commit gate keeps cheap checks and skips web and desktop suites", () => {
   const selected = selectJobs(["package.json"], jobs, { commit: true });
-  assert.deepEqual(
-    selected.map((job) => job.id).sort(),
-    ["architecture", "community-boundary", "tooling"],
-  );
+  assert.deepEqual(selected.map((job) => job.id).sort(), [
+    "architecture",
+    "community-boundary",
+    "tooling",
+  ]);
 });
 
 test("parseArgs recognizes hook, staged, and dry-run flags", () => {
@@ -65,41 +70,60 @@ test("web paths select the web-and-packages workflow commands", () => {
   const selected = selectJobs(["apps/web/src/features/pages/Page.tsx"]);
   assert.ok(selected.some((job) => job.id === "web-and-packages"));
   assert.ok(selected.some((job) => job.id === "tokens"));
-  assert.equal(selected.some((job) => job.id === "desktop"), false);
-  assert.equal(selected.some((job) => job.id === "backend"), false);
+  assert.equal(
+    selected.some((job) => job.id === "desktop"),
+    false,
+  );
+  assert.equal(
+    selected.some((job) => job.id === "backend"),
+    false,
+  );
 });
 
 test("server paths skip the web and desktop suites", () => {
   const selected = selectJobs(["apps/server/src/features/pages/routes.ts"]);
   assert.ok(selected.some((job) => job.id === "architecture"));
-  assert.equal(selected.some((job) => job.id === "web-and-packages"), false);
-  assert.equal(selected.some((job) => job.id === "desktop"), false);
+  assert.equal(
+    selected.some((job) => job.id === "web-and-packages"),
+    false,
+  );
+  assert.equal(
+    selected.some((job) => job.id === "desktop"),
+    false,
+  );
 });
 
 test("desktop paths select cargo fmt, clippy, and tests", () => {
   const selected = selectJobs(["apps/desktop/electron/sidecar/src/main.rs"]);
   assert.ok(selected.some((job) => job.id === "desktop"));
-  assert.equal(selected.some((job) => job.id === "web-and-packages"), false);
+  assert.equal(
+    selected.some((job) => job.id === "web-and-packages"),
+    false,
+  );
 });
 
 test("package.json matches every path-filtered GitHub workflow", () => {
   const selected = selectJobs(["package.json"]);
-  assert.deepEqual(
-    selected.map((job) => job.id).sort(),
-    [
-      "architecture",
-      "community-boundary",
-      "desktop",
-      "tooling",
-      "web-and-packages",
-    ],
-  );
+  assert.deepEqual(selected.map((job) => job.id).sort(), [
+    "architecture",
+    "community-boundary",
+    "desktop",
+    "tooling",
+    "web-and-packages",
+  ]);
 });
 
 test("selected commands drop duplicates when two jobs share a script", () => {
   const commands = selectedCommands([
     { id: "a", name: "A", commands: [["npm", "run", "test:server"]] },
-    { id: "b", name: "B", commands: [["npm", "run", "test:server"], ["npm", "run", "typecheck"]] },
+    {
+      id: "b",
+      name: "B",
+      commands: [
+        ["npm", "run", "test:server"],
+        ["npm", "run", "typecheck"],
+      ],
+    },
   ]);
   assert.deepEqual(
     commands.map((entry) => entry.command.join(" ")),
@@ -173,7 +197,10 @@ test("dry-run lists commands without executing them", async () => {
     }),
   });
   assert.equal(result.skipped, false);
-  assert.deepEqual(result.jobs.map((job) => job.id), ["community-boundary", "architecture"]);
+  assert.deepEqual(
+    result.jobs.map((job) => job.id),
+    ["community-boundary", "architecture"],
+  );
   assert.deepEqual(ran, []);
 });
 
@@ -204,5 +231,11 @@ test("every catalog job points at an existing workflow or verify:core", () => {
     assert.ok(job.commands.length > 0, job.id);
     assert.ok(job.workflow.includes(".yml") || job.workflow.includes("package.json"), job.id);
   }
-  assert.equal(jobApplies(jobs.find((job) => job.id === "community-boundary"), []), true);
+  assert.equal(
+    jobApplies(
+      jobs.find((job) => job.id === "community-boundary"),
+      [],
+    ),
+    true,
+  );
 });

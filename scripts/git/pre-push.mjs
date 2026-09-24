@@ -35,7 +35,10 @@ export const jobs = [
     workflow: ".github/workflows/community-boundary.yml",
     commit: true,
     paths: null,
-    commands: [["npm", "run", "test:community-boundary"]],
+    commands: [
+      ["npm", "run", "fmt:check"],
+      ["npm", "run", "test:community-boundary"],
+    ],
   },
   {
     id: "architecture",
@@ -164,10 +167,14 @@ export function collectFilesFromPush(refs, { git, baseRef }) {
 
 export function collectFilesFromWorkingTree({ git, baseRef }) {
   const files = new Set(diffNames(git, baseRef, "HEAD"));
-  for (const file of splitNames(git(["diff", "--name-only", "--diff-filter=ACMR", "HEAD"]).stdout)) {
+  for (const file of splitNames(
+    git(["diff", "--name-only", "--diff-filter=ACMR", "HEAD"]).stdout,
+  )) {
     files.add(file);
   }
-  for (const file of splitNames(git(["diff", "--name-only", "--cached", "--diff-filter=ACMR"]).stdout)) {
+  for (const file of splitNames(
+    git(["diff", "--name-only", "--cached", "--diff-filter=ACMR"]).stdout,
+  )) {
     files.add(file);
   }
   for (const file of splitNames(git(["ls-files", "--others", "--exclude-standard"]).stdout)) {
@@ -190,7 +197,10 @@ function diffNames(git, baseRef, toSha) {
 }
 
 function splitNames(stdout) {
-  return (stdout ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  return (stdout ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
 }
 
 export async function runPushChecks({
@@ -212,7 +222,9 @@ export async function runPushChecks({
   log.info(`${dryRun ? "Would run" : "Running"} GitHub PR checks for this ${gate}:`);
   for (const job of selected) log.info(`  - ${job.name} (${job.workflow})`);
   if (!commit) {
-    log.info("Not run here: self-host Compose, Community Helm, nightly desktop packaging, release publishing.");
+    log.info(
+      "Not run here: self-host Compose, Community Helm, nightly desktop packaging, release publishing.",
+    );
   }
   log.info("Skip with git commit/push --no-verify or ZILOBASE_SKIP_HOOKS=1.");
 
