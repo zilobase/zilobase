@@ -56,6 +56,7 @@ import {
 import { MailLabelMenu, showMailError } from "../messages/mail-actions";
 import { loadComposeAttachments, loadDraftForThread } from "../compose/load-compose";
 import { MailComposer } from "../compose/mail-composer";
+import { loadLatestMailComposeRecovery } from "../compose/mail-compose-recovery";
 import {
   ConversationBody,
   ConversationToolbar,
@@ -296,7 +297,11 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
       return;
     }
     try {
-      setComposerSeed(await loadComposeAttachments(seed, connection.workspaceId));
+      const recovered =
+        Object.keys(seed).length === 0 && controller.database
+          ? await loadLatestMailComposeRecovery(controller.database)
+          : null;
+      setComposerSeed(await loadComposeAttachments(recovered ?? seed, connection.workspaceId));
     } catch (error) {
       showMailError(error);
     }
@@ -713,7 +718,7 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
                         mutating={controller.mutating}
                         onBatchModify={runBatch}
                         onClearBatch={() => setBatchSelection(new Set())}
-                        onCompose={() => setComposerSeed({})}
+                        onCompose={() => void beginCompose({})}
                         onQueryChange={setQuery}
                         onRefresh={() => void controller.refresh()}
                         online={controller.online}
@@ -916,8 +921,9 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
         }}
         thread={rowActionDialog?.thread ?? null}
       />
-      {composerSeed ? (
+      {composerSeed && controller.database ? (
         <MailComposer
+          database={controller.database}
           onClose={() => setComposerSeed(null)}
           onDraftChanged={async () => {
             await controller.refresh();

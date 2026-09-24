@@ -7,7 +7,7 @@ import type {
   MailView,
 } from "@zilobase/features/mail";
 
-const MAIL_DATABASE_VERSION = 6;
+const MAIL_DATABASE_VERSION = 7;
 const openDatabases = new Map<string, MailDatabase>();
 const MAIL_LIFECYCLE_CHANNEL = "zilobase:mail-cache-lifecycle:v2";
 let lifecycleChannel: BroadcastChannel | null = null;
@@ -36,7 +36,14 @@ export type MailMutationOutboxRecord = {
   targetId: string;
 };
 
+export type MailComposeRecoveryRecord = {
+  id: string;
+  updatedAt: number;
+  value: string;
+};
+
 export class MailDatabase extends Dexie {
+  composeRecovery!: EntityTable<MailComposeRecoveryRecord, "id">;
   labels!: EntityTable<MailLabelRecord, "id">;
   messages!: EntityTable<MailMessageRecord, "id">;
   mutationOutbox!: EntityTable<MailMutationOutboxRecord, "id">;
@@ -55,6 +62,7 @@ export class MailDatabase extends Dexie {
     super(name);
     this.version(MAIL_DATABASE_VERSION)
       .stores({
+        composeRecovery: "id, updatedAt",
         labels: "id, name, type",
         messages: "id, threadId, draftId, date, internalDate, *labelIds, [threadId+internalDate]",
         mutationOutbox: "id, [kind+targetId], createdAt, nextAttemptAt",

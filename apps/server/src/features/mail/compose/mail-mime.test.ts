@@ -12,6 +12,7 @@ const base = {
   attachments: [],
   bcc: [{ address: "hidden@example.com", name: "Hidden" }],
   bodyText: "Hello from Zilobase",
+  bodyHtml: '<p><strong>Hello</strong> from <a href="https://zilobase.com">Zilobase</a></p>',
   cc: [{ address: "copy@example.com", name: null }],
   clientOperationId: "operation_123456",
   inReplyTo: "<parent@example.com>",
@@ -36,6 +37,20 @@ test("MIME generation is stable for retries, encodes Unicode, keeps Bcc private,
   assert.match(raw, /In-Reply-To: <parent@example.com>/);
   assert.match(raw, /References: <root@example.com> <parent@example.com>/);
   assert.match(raw, /Message-ID: <zilobase\.operation_123456@example\.com>/);
+  assert.match(raw, /Content-Type: text\/html/);
+  assert.match(raw, /<strong>Hello<\/strong>/);
+});
+
+test("composition strips active HTML content before building MIME", () => {
+  const compose = parseMailComposeRequest(
+    {
+      ...base,
+      bodyHtml:
+        '<p onclick="steal()"><a href="javascript:steal()">Hello</a></p><script>steal()</script>',
+    },
+    { requireRecipient: true },
+  );
+  assert.equal(compose.bodyHtml, "<p><a>Hello</a></p>");
 });
 
 test("composition validation rejects malformed addresses and header injection", () => {

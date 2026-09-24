@@ -12,8 +12,8 @@ export type MailComposeSeed = {
   attachments?: MailComposeAttachment[];
   attachmentReferences?: MailAttachmentMetadata[];
   bcc?: MailAddress[];
+  bodyHtml?: string;
   bodyText?: string;
-  sourceHtml?: string;
   cc?: MailAddress[];
   inReplyTo?: string;
   references?: string[];
@@ -90,7 +90,7 @@ function forwardedSender(message: MailMessageRecord) {
 export function forwardSeed(message: MailMessageRecord): MailComposeSeed {
   const sender = forwardedSender(message);
   return {
-    sourceHtml: message.bodyText ? undefined : (message.bodyHtml ?? undefined),
+    bodyHtml: message.bodyHtml ?? undefined,
     attachmentReferences: (message.attachments ?? []).filter((attachment) => !attachment.inline),
     bodyText: `\n\n---------- Forwarded message ----------\nFrom: ${sender}\nDate: ${message.date ?? new Date(message.internalDate).toLocaleString()}\nSubject: ${message.subject}\nTo: ${formatComposerAddresses(message.to)}\n\n${forwardedBody(message)}`,
     subject: /^(fwd?|fw):/i.test(message.subject) ? message.subject : `Fwd: ${message.subject}`,
@@ -126,7 +126,7 @@ export function draftSeed(
     bcc: message.bcc,
     subject: message.subject,
     bodyText: message.bodyText ?? "",
-    sourceHtml: message.bodyText ? undefined : (message.bodyHtml ?? undefined),
+    bodyHtml: message.bodyHtml ?? undefined,
     threadId: message.threadId,
     inReplyTo: message.inReplyTo ?? undefined,
     references: message.references,

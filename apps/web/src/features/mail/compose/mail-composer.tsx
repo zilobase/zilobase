@@ -14,7 +14,6 @@ import { Loader2Icon, Paperclip, SendIcon, TrashIcon, XIcon } from "@/shared/com
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import { Textarea } from "@/shared/ui/textarea";
 
 import {
   formatComposerAddresses,
@@ -23,10 +22,14 @@ import {
 } from "./mail-compose";
 
 import { createDraftSession } from "./draft-session";
+import { deleteMailComposeRecovery, saveMailComposeRecovery } from "./mail-compose-recovery";
+import { MailRichEditor, mailTextToHtml } from "./mail-rich-editor";
+import type { MailDatabase } from "../storage/mail-database";
 
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 export function MailComposer({
+  database,
   onClose,
   onSent,
   onDraftChanged,
@@ -34,6 +37,7 @@ export function MailComposer({
   seed,
   workspaceId,
 }: {
+  database: MailDatabase;
   onClose: () => void;
   onDraftChanged?: () => Promise<void> | void;
   onSent: (response: MailSendResponse) => Promise<void> | void;
@@ -47,6 +51,7 @@ export function MailComposer({
   const [bcc, setBcc] = useState(() => formatComposerAddresses(seed.bcc ?? []));
   const [subject, setSubject] = useState(seed.subject ?? "");
   const [bodyText, setBodyText] = useState(seed.bodyText ?? "");
+  const [bodyHtml, setBodyHtml] = useState(seed.bodyHtml ?? mailTextToHtml(seed.bodyText ?? ""));
   const [attachments, setAttachments] = useState<MailComposeAttachment[]>(seed.attachments ?? []);
   const [draftId, setDraftId] = useState<string | null>(seed.draftId ?? null);
   const [draftVersion, setDraftVersion] = useState<number | undefined>(seed.draftVersion);
@@ -68,6 +73,7 @@ export function MailComposer({
       );
       setDraftId(response.draftId);
       setDraftVersion(response.version);
+      await deleteMailComposeRecovery(database, operationId.current);
       void Promise.resolve(onDraftChanged?.()).catch(() => {});
       return response.draftId;
     });
@@ -79,6 +85,7 @@ export function MailComposer({
     () => ({
       attachments,
       bcc: parseComposerAddresses(bcc),
+      bodyHtml,
       bodyText,
       cc: parseComposerAddresses(cc),
       clientOperationId: operationId.current,
@@ -93,6 +100,7 @@ export function MailComposer({
     [
       attachments,
       bcc,
+      bodyHtml,
       bodyText,
       cc,
       draftId,
@@ -108,6 +116,18 @@ export function MailComposer({
   const hasContent = Boolean(
     to.trim() || cc.trim() || bcc.trim() || subject || bodyText || attachments.length,
   );
+
+  useEffect(() => {
+    if (!hasContent || sendAttempt.current) return;
+    const timer = window.setTimeout(() => {
+      void saveMailComposeRecovery(database, operationId.current, {
+        ...compose,
+        draftId: draftId ?? undefined,
+        draftVersion,
+      }).catch(() => {});
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [compose, database, draftId, draftVersion, hasContent]);
 
   const saveDraft = async () => {
     if (!online || (!hasContent && !draftId) || sendAttempt.current) return draftId;
@@ -126,8 +146,8 @@ export function MailComposer({
     busy.current = true;
     setSending(true);
     try {
-      if (!online && hasContent && serialized !== lastSaved.current)
-        throw new Error("Reconnect to save this draft before closing.");
+      if (!online && hasContent)
+        await saveMailComposeRecovery(database, operationId.current, compose);
       await saveDraft();
       onClose();
     } catch (error) {
@@ -182,6 +202,7 @@ export function MailComposer({
         },
       );
       toast.success(response.reused ? "Message was already sent" : "Message sent");
+      await deleteMailComposeRecovery(database, operationId.current);
       onClose();
       void Promise.resolve(onSent(response)).catch(() =>
         toast.error("Message sent. Refresh the mailbox to update it."),
@@ -195,13 +216,15 @@ export function MailComposer({
   };
 
   const discard = async () => {
-    if (busy.current || attachmentLoad.current || !online) return;
+    if (busy.current || attachmentLoad.current || (!online && Boolean(draftId))) return;
     busy.current = true;
     setSending(true);
     try {
-      await session.current!.discard(async (id) => {
-        await apiFetch(`${mailBasePath}/drafts/${encodeURIComponent(id)}`, { method: "DELETE" });
-      });
+      if (online)
+        await session.current!.discard(async (id) => {
+          await apiFetch(`${mailBasePath}/drafts/${encodeURIComponent(id)}`, { method: "DELETE" });
+        });
+      await deleteMailComposeRecovery(database, operationId.current);
       void Promise.resolve(onDraftChanged?.()).catch(() => {});
       onClose();
     } catch (error) {
@@ -270,14 +293,14 @@ export function MailComposer({
           </Label>
           <Input
             autoFocus
-            disabled={!online || sending || Boolean(sendAttempt.current)}
+            disabled={sending || Boolean(sendAttempt.current)}
             id="mail-compose-to"
             onChange={(event) => setTo(event.target.value)}
             placeholder="name@example.com"
             value={to}
           />
           <Button
-            disabled={!online || sending || Boolean(sendAttempt.current)}
+            disabled={sending || Boolean(sendAttempt.current)}
             onClick={() => setShowCopies((value) => !value)}
             size="sm"
             type="button"
@@ -293,7 +316,7 @@ export function MailComposer({
                 Cc
               </Label>
               <Input
-                disabled={!online || sending || Boolean(sendAttempt.current)}
+                disabled={sending || Boolean(sendAttempt.current)}
                 id="mail-compose-cc"
                 onChange={(event) => setCc(event.target.value)}
                 value={cc}
@@ -304,7 +327,7 @@ export function MailComposer({
                 Bcc
               </Label>
               <Input
-                disabled={!online || sending || Boolean(sendAttempt.current)}
+                disabled={sending || Boolean(sendAttempt.current)}
                 id="mail-compose-bcc"
                 onChange={(event) => setBcc(event.target.value)}
                 value={bcc}
@@ -314,18 +337,18 @@ export function MailComposer({
         ) : null}
         <Input
           aria-label="Subject"
-          disabled={!online || sending || Boolean(sendAttempt.current)}
+          disabled={sending || Boolean(sendAttempt.current)}
           onChange={(event) => setSubject(event.target.value)}
           placeholder="Subject"
           value={subject}
         />
-        <Textarea
-          aria-label="Message body"
-          className="min-h-64 flex-1 resize-none"
-          disabled={!online || sending || Boolean(sendAttempt.current)}
-          onChange={(event) => setBodyText(event.target.value)}
-          placeholder="Write a message…"
-          value={bodyText}
+        <MailRichEditor
+          disabled={sending || Boolean(sendAttempt.current)}
+          initialHtml={bodyHtml}
+          onChange={(value) => {
+            setBodyHtml(value.html);
+            setBodyText(value.text);
+          }}
         />
         {attachments.length ? (
           <div className="flex flex-wrap gap-2">
@@ -359,7 +382,7 @@ export function MailComposer({
           <Label className="cursor-pointer">
             <input
               className="sr-only"
-              disabled={!online || sending || Boolean(sendAttempt.current)}
+              disabled={sending || Boolean(sendAttempt.current)}
               multiple
               onChange={(event) => void attach(event.target.files)}
               type="file"

@@ -31,6 +31,7 @@ export function parseMailComposeRequest(
       ? input.bodyText
       : null;
   if (bodyText === null) throw new MailComposeError("The message body is invalid.");
+  const bodyHtml = parseComposeHtml(input.bodyHtml);
   const clientOperationId =
     typeof input.clientOperationId === "string" &&
     /^[A-Za-z0-9_-]{8,128}$/.test(input.clientOperationId)
@@ -59,6 +60,7 @@ export function parseMailComposeRequest(
   return {
     attachments,
     bcc,
+    ...(bodyHtml ? { bodyHtml } : {}),
     bodyText,
     cc,
     clientOperationId,
@@ -92,6 +94,8 @@ export function buildMailMime(input: MailComposeRequest, senderEmail: string, da
   if (input.inReplyTo) message.setHeader("In-Reply-To", input.inReplyTo);
   if (input.references?.length) message.setHeader("References", input.references.join(" "));
   message.addMessage({ contentType: "text/plain", data: input.bodyText, encoding: "8bit" });
+  if (input.bodyHtml)
+    message.addMessage({ contentType: "text/html", data: input.bodyHtml, encoding: "8bit" });
   for (const attachment of input.attachments) {
     message.addAttachment({
       contentType: attachment.mimeType,
@@ -101,6 +105,20 @@ export function buildMailMime(input: MailComposeRequest, senderEmail: string, da
     });
   }
   return { raw: message.asEncoded(), rfcMessageId };
+}
+
+function parseComposeHtml(value: unknown) {
+  if (value === undefined || value === "") return undefined;
+  if (typeof value !== "string" || value.length > 5_000_000)
+    throw new MailComposeError("The HTML message body is invalid.");
+  return value
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<(script|style|iframe|object|embed|form)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
+    .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(
+      /\s+(href|src)\s*=\s*(["'])\s*(?:javascript:|vbscript:|data:text\/html)[\s\S]*?\2/gi,
+      "",
+    );
 }
 
 function parseAddresses(value: unknown): MailAddress[] {

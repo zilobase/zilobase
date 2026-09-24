@@ -156,6 +156,7 @@ export type MailComposeAttachment = {
 export type MailComposeRequest = {
   attachments: MailComposeAttachment[];
   bcc: MailAddress[];
+  bodyHtml?: string;
   bodyText: string;
   cc: MailAddress[];
   clientOperationId: string;
