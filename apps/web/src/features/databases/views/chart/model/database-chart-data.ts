@@ -1,56 +1,49 @@
-import type { DatabaseProperty } from "@zilobase/features/databases"
+import type { DatabaseProperty } from "@zilobase/features/databases";
 
-import {
-  cyclingColorTokens,
-  getPaletteColor,
-  type ColorTokenId,
-} from "@/shared/lib/color-tokens"
-import type { DatabasePropertyValue } from "../../../schema/property-values"
-import { formatDatabaseDateValue } from "../../../schema/model/database-date-config"
-import { getReadOnlyTimePropertyRawValue } from "../../../schema/model/read-only-time-property"
-import { getSelectOptions } from "../../kanban/model/database-kanban-config"
-import type {
-  DatabaseChartDateInterval,
-  DatabaseChartSort,
-} from "./database-chart-config"
+import { cyclingColorTokens, getPaletteColor, type ColorTokenId } from "@/shared/lib/color-tokens";
+import type { DatabasePropertyValue } from "../../../schema/property-values";
+import { formatDatabaseDateValue } from "../../../schema/model/database-date-config";
+import { getReadOnlyTimePropertyRawValue } from "../../../schema/model/read-only-time-property";
+import { getSelectOptions } from "../../kanban/model/database-kanban-config";
+import type { DatabaseChartDateInterval, DatabaseChartSort } from "./database-chart-config";
 
 export type DatabaseChartDataItem = {
-  color: string
-  count: number
-  name: string
-  [key: string]: string | number
-}
+  color: string;
+  count: number;
+  name: string;
+  [key: string]: string | number;
+};
 
 export type DatabaseChartSeriesItem = {
-  color: string
-  key: string
-  label: string
-}
+  color: string;
+  key: string;
+  label: string;
+};
 
 export type DatabaseChartPieSegment = {
-  color: string
-  name: string
-  value: number
-}
+  color: string;
+  name: string;
+  value: number;
+};
 
-type PersonNameMap = Map<string, string>
+type PersonNameMap = Map<string, string>;
 
 export type DatabaseChartRow = {
-  createdAt: string
-  id: string
+  createdAt: string;
+  id: string;
   page: {
-    createdAt?: string
-    name?: string
-    updatedAt?: string
-  }
-  pageId: string
-  updatedAt: string
-}
+    createdAt?: string;
+    name?: string;
+    updatedAt?: string;
+  };
+  pageId: string;
+  updatedAt: string;
+};
 
-export const DEFAULT_CHART_COLOR = "var(--zb-color-palette-text-blue)"
+export const DEFAULT_CHART_COLOR = "var(--zb-color-palette-text-blue)";
 
 function getChartColor(color?: string | null) {
-  return getPaletteColor(color) ?? DEFAULT_CHART_COLOR
+  return getPaletteColor(color) ?? DEFAULT_CHART_COLOR;
 }
 
 function getRawPropertyValue(
@@ -58,14 +51,11 @@ function getRawPropertyValue(
   property: DatabaseProperty,
   propertyValuesByKey: Record<string, DatabasePropertyValue>,
 ): DatabasePropertyValue {
-  if (
-    property.property.type === "created_time" ||
-    property.property.type === "edited_time"
-  ) {
-    return getReadOnlyTimePropertyRawValue(row, property.property.type)
+  if (property.property.type === "created_time" || property.property.type === "edited_time") {
+    return getReadOnlyTimePropertyRawValue(row, property.property.type);
   }
 
-  return propertyValuesByKey[`${row.pageId}:${property.property.id}`] ?? ""
+  return propertyValuesByKey[`${row.pageId}:${property.property.id}`] ?? "";
 }
 
 function formatPropertyPart(
@@ -74,7 +64,7 @@ function formatPropertyPart(
   personNamesById: PersonNameMap,
 ) {
   if (property.property.type === "person") {
-    return personNamesById.get(value) ?? value
+    return personNamesById.get(value) ?? value;
   }
 
   if (
@@ -82,10 +72,10 @@ function formatPropertyPart(
     property.property.type === "created_time" ||
     property.property.type === "edited_time"
   ) {
-    return formatDatabaseDateValue(value, property.property.config) || value
+    return formatDatabaseDateValue(value, property.property.config) || value;
   }
 
-  return value
+  return value;
 }
 
 function getChartLabelState({
@@ -94,37 +84,35 @@ function getChartLabelState({
   propertyValuesByKey,
   row,
 }: {
-  personNamesById: PersonNameMap
-  property: DatabaseProperty | null
-  propertyValuesByKey: Record<string, DatabasePropertyValue>
-  row: DatabaseChartRow
+  personNamesById: PersonNameMap;
+  property: DatabaseProperty | null;
+  propertyValuesByKey: Record<string, DatabasePropertyValue>;
+  row: DatabaseChartRow;
 }) {
   if (!property) {
-    const label = row.page.name?.trim() ?? ""
+    const label = row.page.name?.trim() ?? "";
 
-    return { isEmpty: !label, label: label || "Untitled" }
+    return { isEmpty: !label, label: label || "Untitled" };
   }
 
-  const value = getRawPropertyValue(row, property, propertyValuesByKey)
+  const value = getRawPropertyValue(row, property, propertyValuesByKey);
 
   if (property.property.type === "checkbox") {
     return {
       isEmpty: false,
       label: value === "true" ? "True" : "False",
-    }
+    };
   }
 
   const values = (Array.isArray(value) ? value : [value])
     .map((item) => item.trim())
-    .filter(Boolean)
-  const labels = values.map((item) =>
-    formatPropertyPart(item, property, personNamesById),
-  )
+    .filter(Boolean);
+  const labels = values.map((item) => formatPropertyPart(item, property, personNamesById));
 
   return {
     isEmpty: labels.length === 0,
     label: labels.length > 0 ? labels.join(", ") : "Empty",
-  }
+  };
 }
 
 function getChartGroupLabels({
@@ -134,33 +122,27 @@ function getChartGroupLabels({
   propertyValuesByKey,
   row,
 }: {
-  dateInterval?: DatabaseChartDateInterval
-  personNamesById: PersonNameMap
-  property: DatabaseProperty | null
-  propertyValuesByKey: Record<string, DatabasePropertyValue>
-  row: DatabaseChartRow
+  dateInterval?: DatabaseChartDateInterval;
+  personNamesById: PersonNameMap;
+  property: DatabaseProperty | null;
+  propertyValuesByKey: Record<string, DatabasePropertyValue>;
+  row: DatabaseChartRow;
 }) {
   if (!property) {
-    return [
-      getChartLabelState({ personNamesById, property, propertyValuesByKey, row })
-        .label,
-    ]
+    return [getChartLabelState({ personNamesById, property, propertyValuesByKey, row }).label];
   }
 
   if (property.property.type === "checkbox") {
-    return [
-      getChartLabelState({ personNamesById, property, propertyValuesByKey, row })
-        .label,
-    ]
+    return [getChartLabelState({ personNamesById, property, propertyValuesByKey, row }).label];
   }
 
-  const value = getRawPropertyValue(row, property, propertyValuesByKey)
+  const value = getRawPropertyValue(row, property, propertyValuesByKey);
   const values =
     dateInterval && isDateProperty(property)
       ? [Array.isArray(value) ? value[0] : value]
       : Array.isArray(value)
         ? value
-        : [value]
+        : [value];
   const labels = values
     .map((item) => item.trim())
     .filter(Boolean)
@@ -168,68 +150,57 @@ function getChartGroupLabels({
       dateInterval && isDateProperty(property)
         ? formatChartDateInterval(item, dateInterval)
         : formatPropertyPart(item, property, personNamesById),
-    )
+    );
 
-  return labels.length > 0
-    ? labels
-    : [`No ${property.property.name?.trim() || "property"}`]
+  return labels.length > 0 ? labels : [`No ${property.property.name?.trim() || "property"}`];
 }
 
 function isDateProperty(property: DatabaseProperty) {
-  return ["date", "created_time", "edited_time"].includes(
-    property.property.type,
-  )
+  return ["date", "created_time", "edited_time"].includes(property.property.type);
 }
 
-function formatChartDateInterval(
-  value: string,
-  interval: DatabaseChartDateInterval,
-) {
-  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
+function formatChartDateInterval(value: string, interval: DatabaseChartDateInterval) {
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
   const date = dateOnlyMatch
-    ? new Date(
-        Number(dateOnlyMatch[1]),
-        Number(dateOnlyMatch[2]) - 1,
-        Number(dateOnlyMatch[3]),
-      )
-    : new Date(value)
+    ? new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]))
+    : new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return value
+    return value;
   }
 
   if (interval === "year") {
-    return String(date.getFullYear())
+    return String(date.getFullYear());
   }
 
   if (interval === "quarter") {
-    return `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`
+    return `Q${Math.floor(date.getMonth() / 3) + 1} ${date.getFullYear()}`;
   }
 
   if (interval === "month") {
     return new Intl.DateTimeFormat(undefined, {
       month: "short",
       year: "numeric",
-    }).format(date)
+    }).format(date);
   }
 
   if (interval === "week") {
-    const weekStart = new Date(date)
-    const day = weekStart.getDay()
-    weekStart.setDate(weekStart.getDate() - (day === 0 ? 6 : day - 1))
+    const weekStart = new Date(date);
+    const day = weekStart.getDay();
+    weekStart.setDate(weekStart.getDate() - (day === 0 ? 6 : day - 1));
 
     return `Week of ${new Intl.DateTimeFormat(undefined, {
       day: "numeric",
       month: "short",
       year: "numeric",
-    }).format(weekStart)}`
+    }).format(weekStart)}`;
   }
 
   return new Intl.DateTimeFormat(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",
-  }).format(date)
+  }).format(date);
 }
 
 export function sortDatabaseChartData(
@@ -237,7 +208,7 @@ export function sortDatabaseChartData(
   sort: DatabaseChartSort = "value-desc",
 ) {
   if (sort === "manual") {
-    return [...data]
+    return [...data];
   }
 
   return [...data].sort((firstItem, secondItem) => {
@@ -245,14 +216,14 @@ export function sortDatabaseChartData(
       const comparison = firstItem.name.localeCompare(secondItem.name, undefined, {
         numeric: true,
         sensitivity: "base",
-      })
+      });
 
-      return sort === "axis-asc" ? comparison : -comparison
+      return sort === "axis-asc" ? comparison : -comparison;
     }
 
-    const comparison = firstItem.count - secondItem.count
-    return sort === "value-asc" ? comparison : -comparison
-  })
+    const comparison = firstItem.count - secondItem.count;
+    return sort === "value-asc" ? comparison : -comparison;
+  });
 }
 
 export function getChartMeasureValue(
@@ -261,43 +232,40 @@ export function getChartMeasureValue(
   propertyValuesByKey: Record<string, DatabasePropertyValue>,
 ) {
   if (!property) {
-    return 1
+    return 1;
   }
 
-  const value = getRawPropertyValue(row, property, propertyValuesByKey)
+  const value = getRawPropertyValue(row, property, propertyValuesByKey);
 
   if (property.property.type === "number") {
-    const numericValue = Array.isArray(value) ? value[0] : value
-    const parsedValue = Number(numericValue)
+    const numericValue = Array.isArray(value) ? value[0] : value;
+    const parsedValue = Number(numericValue);
 
-    return Number.isFinite(parsedValue) ? parsedValue : 0
+    return Number.isFinite(parsedValue) ? parsedValue : 0;
   }
 
   if (property.property.type === "checkbox") {
-    return value === "true" ? 1 : 0
+    return value === "true" ? 1 : 0;
   }
 
   if (Array.isArray(value)) {
-    return value.filter((item) => item.trim()).length
+    return value.filter((item) => item.trim()).length;
   }
 
-  return value.trim() ? 1 : 0
+  return value.trim() ? 1 : 0;
 }
 
-export function getChartValueColorKey(
-  property: DatabaseProperty | null,
-  label: string,
-) {
-  return `${property?.property.id ?? "name"}:${label}`
+export function getChartValueColorKey(property: DatabaseProperty | null, label: string) {
+  return `${property?.property.id ?? "name"}:${label}`;
 }
 
 function getChartSeriesKey(property: DatabaseProperty, label: string) {
   const labelKey = label
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
+    .replace(/^-|-$/g, "");
 
-  return `series-${property.property.id}-${labelKey || "empty"}`
+  return `series-${property.property.id}-${labelKey || "empty"}`;
 }
 
 export function getAutomaticChartColor(
@@ -306,33 +274,33 @@ export function getAutomaticChartColor(
 ): ColorTokenId {
   const colors = cyclingColorTokens.flatMap((color) =>
     color.value ? [color.value as ColorTokenId] : [],
-  )
-  const colorKey = getChartValueColorKey(property, label)
-  let hash = 2166136261
+  );
+  const colorKey = getChartValueColorKey(property, label);
+  let hash = 2166136261;
 
   for (let index = 0; index < colorKey.length; index += 1) {
-    hash ^= colorKey.charCodeAt(index)
-    hash = Math.imul(hash, 16777619)
+    hash ^= colorKey.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
   }
 
-  return colors[(hash >>> 0) % colors.length] ?? "blue"
+  return colors[(hash >>> 0) % colors.length] ?? "blue";
 }
 
 export function getColorVariant(color: string, index: number) {
-  const colorPercentages = [100, 82, 68, 54, 88, 74, 60, 46]
-  const colorPercentage = colorPercentages[index % colorPercentages.length]
+  const colorPercentages = [100, 82, 68, 54, 88, 74, 60, 46];
+  const colorPercentage = colorPercentages[index % colorPercentages.length];
 
   if (colorPercentage === 100) {
-    return color
+    return color;
   }
 
   const paletteId = color.match(
     /^var\(--zb-color-palette-text-(gray|brown|orange|yellow|green|blue|purple|pink|red)\)$/,
-  )?.[1]
+  )?.[1];
 
   return paletteId
     ? `var(--zb-color-palette-background-${paletteId}-variant-${colorPercentage})`
-    : color
+    : color;
 }
 
 export function getChartGroupProperty(
@@ -340,21 +308,17 @@ export function getChartGroupProperty(
   groupByPropertyId: string | undefined,
 ) {
   if (groupByPropertyId === "name") {
-    return null
+    return null;
   }
 
   return (
-    properties.find(
-      (property) => property.property.id === groupByPropertyId,
-    ) ??
+    properties.find((property) => property.property.id === groupByPropertyId) ??
     properties.find((property) =>
-      ["select", "status", "checkbox", "person"].includes(
-        property.property.type,
-      ),
+      ["select", "status", "checkbox", "person"].includes(property.property.type),
     ) ??
     properties.find((property) => property.property.type !== "number") ??
     null
-  )
+  );
 }
 
 function getOptionColor(
@@ -363,17 +327,15 @@ function getOptionColor(
   valueColors: Record<string, ColorTokenId>,
 ) {
   const configuredColor = property
-    ? getSelectOptions(property.property.config).find(
-        (option) => option.name === label,
-      )?.color
-    : undefined
+    ? getSelectOptions(property.property.config).find((option) => option.name === label)?.color
+    : undefined;
 
   return getChartColor(
     configuredColor && configuredColor !== "default"
       ? configuredColor
-      : valueColors[getChartValueColorKey(property, label)] ??
-          getAutomaticChartColor(property, label),
-  )
+      : (valueColors[getChartValueColorKey(property, label)] ??
+          getAutomaticChartColor(property, label)),
+  );
 }
 
 export function createChartData({
@@ -388,45 +350,38 @@ export function createChartData({
   sort,
   valueColors,
 }: {
-  groupByPropertyId?: string
-  hiddenGroupNames?: string[]
-  measurePropertyId?: string
-  omitZeroValues: boolean
-  personNamesById: PersonNameMap
-  properties: DatabaseProperty[]
-  propertyValuesByKey: Record<string, DatabasePropertyValue>
-  rows: DatabaseChartRow[]
-  sort?: DatabaseChartSort
-  valueColors: Record<string, ColorTokenId>
+  groupByPropertyId?: string;
+  hiddenGroupNames?: string[];
+  measurePropertyId?: string;
+  omitZeroValues: boolean;
+  personNamesById: PersonNameMap;
+  properties: DatabaseProperty[];
+  propertyValuesByKey: Record<string, DatabasePropertyValue>;
+  rows: DatabaseChartRow[];
+  sort?: DatabaseChartSort;
+  valueColors: Record<string, ColorTokenId>;
 }): DatabaseChartDataItem[] {
-  const groupProperty = getChartGroupProperty(properties, groupByPropertyId)
+  const groupProperty = getChartGroupProperty(properties, groupByPropertyId);
   const measureProperty =
     measurePropertyId === "count"
       ? null
-      : properties.find(
-          (property) => property.property.id === measurePropertyId,
-        ) ?? null
-  const counts = new Map<string, number>()
-  const colors = new Map<string, string>()
-  const selectOptions = groupProperty
-    ? getSelectOptions(groupProperty.property.config)
-    : []
-  const hiddenGroups = new Set(hiddenGroupNames)
+      : (properties.find((property) => property.property.id === measurePropertyId) ?? null);
+  const counts = new Map<string, number>();
+  const colors = new Map<string, string>();
+  const selectOptions = groupProperty ? getSelectOptions(groupProperty.property.config) : [];
+  const hiddenGroups = new Set(hiddenGroupNames);
 
   if (!omitZeroValues) {
     for (const option of selectOptions) {
-      counts.set(option.name, 0)
-      colors.set(
-        option.name,
-        getOptionColor(groupProperty, option.name, valueColors),
-      )
+      counts.set(option.name, 0);
+      colors.set(option.name, getOptionColor(groupProperty, option.name, valueColors));
     }
 
     if (groupProperty?.property.type === "checkbox") {
-      counts.set("True", 0)
-      counts.set("False", 0)
-      colors.set("True", getChartColor("green"))
-      colors.set("False", getChartColor("gray"))
+      counts.set("True", 0);
+      counts.set("False", 0);
+      colors.set("True", getChartColor("green"));
+      colors.set("False", getChartColor("gray"));
     }
   }
 
@@ -436,23 +391,19 @@ export function createChartData({
       property: groupProperty,
       propertyValuesByKey,
       row,
-    })
+    });
 
     if (omitZeroValues && isEmpty) {
-      continue
+      continue;
     }
 
-    const measureValue = getChartMeasureValue(
-      row,
-      measureProperty,
-      propertyValuesByKey,
-    )
+    const measureValue = getChartMeasureValue(row, measureProperty, propertyValuesByKey);
 
     if (omitZeroValues && measureValue === 0) {
-      continue
+      continue;
     }
 
-    counts.set(label, (counts.get(label) ?? 0) + measureValue)
+    counts.set(label, (counts.get(label) ?? 0) + measureValue);
 
     if (!colors.has(label)) {
       colors.set(
@@ -462,7 +413,7 @@ export function createChartData({
           : label === "False"
             ? getChartColor("gray")
             : getOptionColor(groupProperty, label, valueColors),
-      )
+      );
     }
   }
 
@@ -471,13 +422,9 @@ export function createChartData({
       color: colors.get(name) ?? DEFAULT_CHART_COLOR,
       count,
       name,
-    })).filter(
-      (item) =>
-        !hiddenGroups.has(item.name) &&
-        (!omitZeroValues || item.count > 0),
-    ),
+    })).filter((item) => !hiddenGroups.has(item.name) && (!omitZeroValues || item.count > 0)),
     sort,
-  ).slice(0, 12)
+  ).slice(0, 12);
 }
 
 export function createSplitChartData({
@@ -493,37 +440,37 @@ export function createSplitChartData({
   splitProperty,
   valueColors,
 }: {
-  axisProperty: DatabaseProperty | null
-  dateInterval?: DatabaseChartDateInterval
-  hiddenGroupNames?: string[]
-  measureProperty: DatabaseProperty | null
-  omitZeroValues: boolean
-  personNamesById: PersonNameMap
-  propertyValuesByKey: Record<string, DatabasePropertyValue>
-  rows: DatabaseChartRow[]
-  sort?: DatabaseChartSort
-  splitProperty: DatabaseProperty
-  valueColors: Record<string, ColorTokenId>
+  axisProperty: DatabaseProperty | null;
+  dateInterval?: DatabaseChartDateInterval;
+  hiddenGroupNames?: string[];
+  measureProperty: DatabaseProperty | null;
+  omitZeroValues: boolean;
+  personNamesById: PersonNameMap;
+  propertyValuesByKey: Record<string, DatabasePropertyValue>;
+  rows: DatabaseChartRow[];
+  sort?: DatabaseChartSort;
+  splitProperty: DatabaseProperty;
+  valueColors: Record<string, ColorTokenId>;
 }) {
-  const dataByAxisLabel = new Map<string, DatabaseChartDataItem>()
-  const hiddenGroups = new Set(hiddenGroupNames)
-  const seriesByLabel = new Map<string, DatabaseChartSeriesItem>()
+  const dataByAxisLabel = new Map<string, DatabaseChartDataItem>();
+  const hiddenGroups = new Set(hiddenGroupNames);
+  const seriesByLabel = new Map<string, DatabaseChartSeriesItem>();
   const getSeries = (label: string) => {
-    const existingSeries = seriesByLabel.get(label)
+    const existingSeries = seriesByLabel.get(label);
 
     if (existingSeries) {
-      return existingSeries
+      return existingSeries;
     }
 
     const series = {
       color: getOptionColor(splitProperty, label, valueColors),
       key: getChartSeriesKey(splitProperty, label),
       label,
-    }
+    };
 
-    seriesByLabel.set(label, series)
-    return series
-  }
+    seriesByLabel.set(label, series);
+    return series;
+  };
 
   for (const row of rows) {
     const { isEmpty, label: axisLabel } = getChartLabelState({
@@ -531,24 +478,20 @@ export function createSplitChartData({
       property: axisProperty,
       propertyValuesByKey,
       row,
-    })
+    });
 
     if (hiddenGroups.has(axisLabel)) {
-      continue
+      continue;
     }
 
     if (omitZeroValues && isEmpty) {
-      continue
+      continue;
     }
 
-    const measureValue = getChartMeasureValue(
-      row,
-      measureProperty,
-      propertyValuesByKey,
-    )
+    const measureValue = getChartMeasureValue(row, measureProperty, propertyValuesByKey);
 
     if (omitZeroValues && measureValue === 0) {
-      continue
+      continue;
     }
 
     if (
@@ -560,7 +503,7 @@ export function createSplitChartData({
         row,
       }).isEmpty
     ) {
-      continue
+      continue;
     }
 
     const splitLabels = getChartGroupLabels({
@@ -569,7 +512,7 @@ export function createSplitChartData({
       property: splitProperty,
       propertyValuesByKey,
       row,
-    })
+    });
 
     const item =
       dataByAxisLabel.get(axisLabel) ??
@@ -577,36 +520,34 @@ export function createSplitChartData({
         color: DEFAULT_CHART_COLOR,
         count: 0,
         name: axisLabel,
-      } satisfies DatabaseChartDataItem)
+      } satisfies DatabaseChartDataItem);
 
     for (const splitLabel of splitLabels) {
-      const series = getSeries(splitLabel)
-      item[series.key] = Number(item[series.key] ?? 0) + measureValue
-      item.count += measureValue
+      const series = getSeries(splitLabel);
+      item[series.key] = Number(item[series.key] ?? 0) + measureValue;
+      item.count += measureValue;
     }
 
-    dataByAxisLabel.set(axisLabel, item)
+    dataByAxisLabel.set(axisLabel, item);
   }
 
-  const series = Array.from(seriesByLabel.values())
+  const series = Array.from(seriesByLabel.values());
   const data = sortDatabaseChartData(
-    Array.from(dataByAxisLabel.values()).filter(
-      (item) => !omitZeroValues || item.count > 0,
-    ),
+    Array.from(dataByAxisLabel.values()).filter((item) => !omitZeroValues || item.count > 0),
     sort,
   )
     .slice(0, 12)
     .map((item) => {
-      const nextItem = { ...item }
+      const nextItem = { ...item };
 
       for (const seriesItem of series) {
-        nextItem[seriesItem.key] = Number(nextItem[seriesItem.key] ?? 0)
+        nextItem[seriesItem.key] = Number(nextItem[seriesItem.key] ?? 0);
       }
 
-      return nextItem
-    })
+      return nextItem;
+    });
 
-  return { data, series }
+  return { data, series };
 }
 
 export function createOuterPieSegments(
@@ -621,5 +562,5 @@ export function createOuterPieSegments(
         value: Number(item[seriesItem.key] ?? 0),
       }))
       .filter((segment) => segment.value > 0),
-  )
+  );
 }

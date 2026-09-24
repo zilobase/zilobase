@@ -1,9 +1,7 @@
 export function register({ assert, loadModule, test }) {
   test("mail condition edits preserve property defaults, scalar coercion and explicit empty values", async () => {
-    const {
-      changeMailFilterCondition: change,
-      defaultMailFilterValue: defaultValue,
-    } = await loadModule("/src/features/mail/organization/filter-condition.ts");
+    const { changeMailFilterCondition: change, defaultMailFilterValue: defaultValue } =
+      await loadModule("/src/features/mail/organization/filter-condition.ts");
     const properties = [
       { id: "checked", propertyType: "checkbox", valueOptions: [] },
       { id: "number", propertyType: "number", valueOptions: [] },
@@ -25,8 +23,7 @@ export function register({ assert, loadModule, test }) {
     assert.equal(defaultValue(properties[2]), "first");
     assert.equal(defaultValue(undefined), "");
     assert.deepEqual(
-      change(original, { propertyId: "checked", values: ["false"] }, properties)
-        .values,
+      change(original, { propertyId: "checked", values: ["false"] }, properties).values,
       [true],
     );
     assert.deepEqual(
@@ -37,35 +34,19 @@ export function register({ assert, loadModule, test }) {
       ).values,
       [true, false, false],
     );
+    assert.deepEqual(change(original, { propertyId: "number" }, properties).values, [0]);
     assert.deepEqual(
-      change(original, { propertyId: "number" }, properties).values,
-      [0],
-    );
-    assert.deepEqual(
-      change(
-        { ...original, propertyId: "number" },
-        { values: ["2.5", ""] },
-        properties,
-      ).values,
+      change({ ...original, propertyId: "number" }, { values: ["2.5", ""] }, properties).values,
       [2.5, 0],
     );
     assert.ok(
       Number.isNaN(
-        change(
-          { ...original, propertyId: "number" },
-          { values: ["invalid"] },
-          properties,
-        ).values[0],
+        change({ ...original, propertyId: "number" }, { values: ["invalid"] }, properties)
+          .values[0],
       ),
     );
-    assert.equal(
-      change(original, { propertyId: "categories" }, properties).operator,
-      "contains",
-    );
-    assert.deepEqual(
-      change(original, { propertyId: "missing" }, properties).values,
-      [""],
-    );
+    assert.equal(change(original, { propertyId: "categories" }, properties).operator, "contains");
+    assert.deepEqual(change(original, { propertyId: "missing" }, properties).values, [""]);
     const emptyId = change(
       original,
       { propertyId: "", operator: "is_not", values: [] },

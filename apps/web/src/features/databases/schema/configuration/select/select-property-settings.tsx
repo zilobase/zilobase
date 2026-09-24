@@ -2,11 +2,7 @@ import { ArrowDownUp, Plus } from "@/shared/components/icons";
 import { Reorder } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
-import {
-  DropDrawerItem,
-  DropDrawerLabel,
-  DropDrawerSeparator,
-} from "@/shared/ui/dropdrawer";
+import { DropDrawerItem, DropDrawerLabel, DropDrawerSeparator } from "@/shared/ui/dropdrawer";
 
 import { getNextDatabaseOptionColor } from "../../property-catalog";
 import type {
@@ -15,17 +11,10 @@ import type {
 } from "../../../views/model/database-view-config";
 import { OptionCreateInput } from "../shared/option-create-input";
 import { OptionEditorSubmenu } from "../shared/option-editor-submenu";
-import {
-  areSameOrderedIds,
-  haveSameIds,
-  reorderOptionsByIds,
-} from "../shared/option-order";
+import { areSameOrderedIds, haveSameIds, reorderOptionsByIds } from "../shared/option-order";
 import { PropertySettingSubmenu } from "../shared/property-setting-submenu";
 
-export type SelectOptionSortValue =
-  | "manual"
-  | "alphabetical"
-  | "reverse_alphabetical";
+export type SelectOptionSortValue = "manual" | "alphabetical" | "reverse_alphabetical";
 
 const selectOptionSortOptions = [
   { label: "Manual", value: "manual" },
@@ -53,18 +42,14 @@ export function SelectPropertySettings({
   useEffect(() => {
     if (
       draftOptionIds &&
-      (areSameOrderedIds(draftOptionIds, optionIds) ||
-        !haveSameIds(draftOptionIds, optionIds))
+      (areSameOrderedIds(draftOptionIds, optionIds) || !haveSameIds(draftOptionIds, optionIds))
     ) {
       draftOptionIdsRef.current = null;
       setDraftOptionIds(null);
     }
   }, [draftOptionIds, optionIds]);
 
-  const updateOption = (
-    optionId: string,
-    patch: Partial<DatabaseSelectOption>,
-  ) => {
+  const updateOption = (optionId: string, patch: Partial<DatabaseSelectOption>) => {
     const nextOptions = options.map((option) =>
       option.id === optionId ? { ...option, ...patch } : option,
     );
@@ -86,9 +71,7 @@ export function SelectPropertySettings({
   const updateSort = (selectOptionSort: SelectOptionSortValue) => {
     onUpdateConfig({
       options:
-        selectOptionSort === "manual"
-          ? options
-          : getSortedSelectOptions(options, selectOptionSort),
+        selectOptionSort === "manual" ? options : getSortedSelectOptions(options, selectOptionSort),
       selectOptionSort,
     });
   };
@@ -229,25 +212,14 @@ export function getSelectOptionSort(config: unknown): SelectOptionSortValue {
 
   const selectOptionSort = (config as DatabasePropertyConfig).selectOptionSort;
 
-  return isSelectOptionSortValue(selectOptionSort)
-    ? selectOptionSort
-    : "manual";
+  return isSelectOptionSortValue(selectOptionSort) ? selectOptionSort : "manual";
 }
 
-function isSelectOptionSortValue(
-  value: unknown,
-): value is SelectOptionSortValue {
-  return (
-    value === "manual" ||
-    value === "alphabetical" ||
-    value === "reverse_alphabetical"
-  );
+function isSelectOptionSortValue(value: unknown): value is SelectOptionSortValue {
+  return value === "manual" || value === "alphabetical" || value === "reverse_alphabetical";
 }
 
-function getSortedSelectOptions(
-  options: DatabaseSelectOption[],
-  sort: SelectOptionSortValue,
-) {
+function getSortedSelectOptions(options: DatabaseSelectOption[], sort: SelectOptionSortValue) {
   if (sort === "manual") {
     return options;
   }
@@ -258,7 +230,5 @@ function getSortedSelectOptions(
     }),
   );
 
-  return sort === "reverse_alphabetical"
-    ? sortedOptions.reverse()
-    : sortedOptions;
+  return sort === "reverse_alphabetical" ? sortedOptions.reverse() : sortedOptions;
 }

@@ -5,10 +5,7 @@ import { resultForDueRow } from "../../../infrastructure/background/task-result"
 import { db } from "../../../infrastructure/database";
 import { databaseRealtimeOutbox } from "../../../infrastructure/database/schema";
 
-export async function processDatabaseRealtimeTask(
-  env: RuntimeEnv,
-  resourceId: string,
-) {
+export async function processDatabaseRealtimeTask(env: RuntimeEnv, resourceId: string) {
   await drainDatabaseRealtimeOutbox(env, { limit: 1, outboxId: resourceId });
   return resultForDueRow(
     async () =>

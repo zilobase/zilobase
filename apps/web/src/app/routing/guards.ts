@@ -94,9 +94,7 @@ export async function getDefaultAppPath(
       staleTime: NAVIGATION_AUTH_STALE_TIME,
     });
 
-    return navigation
-      ? getMostRecentItemPath(navigation) ?? "/recents"
-      : "/recents";
+    return navigation ? (getMostRecentItemPath(navigation) ?? "/recents") : "/recents";
   } catch {
     return "/recents";
   }
@@ -122,10 +120,10 @@ async function applyPublishedShareAccess(isPublished: () => Promise<boolean>) {
 
 async function isPagePublished(pageId: string) {
   try {
-    const result = await apiFetch<{ published: boolean }>(
-      `/pages/${pageId}/published`,
-      { auth: false, method: "GET" },
-    );
+    const result = await apiFetch<{ published: boolean }>(`/pages/${pageId}/published`, {
+      auth: false,
+      method: "GET",
+    });
 
     return result.published;
   } catch (error) {
@@ -136,10 +134,10 @@ async function isPagePublished(pageId: string) {
 
 async function isDatabasePublished(databaseId: string) {
   try {
-    const result = await apiFetch<{ published: boolean }>(
-      `/databases/${databaseId}/published`,
-      { auth: false, method: "GET" },
-    );
+    const result = await apiFetch<{ published: boolean }>(`/databases/${databaseId}/published`, {
+      auth: false,
+      method: "GET",
+    });
 
     return result.published;
   } catch (error) {

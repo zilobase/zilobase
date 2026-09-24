@@ -30,10 +30,7 @@ const BootstrapInput = Schema.Struct({
   ),
   name: Schema.String.pipe(
     Schema.decode(SchemaTransformation.trim()),
-    Schema.check(
-      Schema.isMinLength(1, { message: "Name is required." }),
-      Schema.isMaxLength(100),
-    ),
+    Schema.check(Schema.isMinLength(1, { message: "Name is required." }), Schema.isMaxLength(100)),
   ),
   password: Schema.String.pipe(
     Schema.check(
@@ -57,9 +54,7 @@ const InstanceSettingsUpdate = Schema.Struct({
       Schema.check(Schema.isMinLength(1), Schema.isMaxLength(100)),
     ),
   ),
-  registrationMode: Schema.optionalKey(
-    Schema.Literals(["invite-only", "open"]),
-  ),
+  registrationMode: Schema.optionalKey(Schema.Literals(["invite-only", "open"])),
 }).check(
   Schema.makeFilter((value) =>
     value.displayName !== undefined || value.registrationMode !== undefined
@@ -85,10 +80,7 @@ instanceRoutes.post("/api/instance/bootstrap", async (c) => {
   const parsed = await parseJsonBody(c.req, BootstrapInput);
 
   if (!parsed.ok) {
-    return c.json(
-      { error: parsed.message || "Invalid bootstrap request." },
-      400,
-    );
+    return c.json({ error: parsed.message || "Invalid bootstrap request." }, 400);
   }
 
   try {
@@ -136,10 +128,7 @@ instanceRoutes.patch("/api/instance/settings", async (c) => {
   const parsed = await parseJsonBody(c.req, InstanceSettingsUpdate);
 
   if (!parsed.ok) {
-    return c.json(
-      { error: parsed.message || "Invalid settings request." },
-      400,
-    );
+    return c.json({ error: parsed.message || "Invalid settings request." }, 400);
   }
 
   const settings = await updateInstanceAdministrationSettings(parsed.data);
@@ -163,16 +152,12 @@ async function requireSelfHostedOwner(c: Context<AppBindings>) {
     return c.json({ error: "Instance bootstrap is incomplete." }, 409);
   }
 
-  const membership = await getMembership(
-    settings.pinnedWorkspaceId,
-    requestUser.id,
-  );
+  const membership = await getMembership(settings.pinnedWorkspaceId, requestUser.id);
 
   if (!canManageInstanceSettings(membership?.role)) {
     return c.json(
       {
-        error:
-          "Only the self-hosted instance owner can change server settings.",
+        error: "Only the self-hosted instance owner can change server settings.",
       },
       403,
     );

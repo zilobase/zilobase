@@ -68,9 +68,7 @@ export function matchesDatabaseAutomationEvent(
       now: input.now,
     });
   });
-  return definition.trigger.match === "all"
-    ? results.every(Boolean)
-    : results.some(Boolean);
+  return definition.trigger.match === "all" ? results.every(Boolean) : results.some(Boolean);
 }
 
 function matchesOperator(input: {
@@ -105,28 +103,18 @@ function matchesOperator(input: {
   const leftValues = list(value).map(normalizeText);
   const rightValues = list(operand).map(normalizeText);
   if (operator === "contains") {
-    return rightValues.some((right) =>
-      leftValues.some((item) => item.includes(right))
-    );
+    return rightValues.some((right) => leftValues.some((item) => item.includes(right)));
   }
   if (operator === "does_not_contain") {
-    return !rightValues.some((right) =>
-      leftValues.some((item) => item.includes(right))
-    );
+    return !rightValues.some((right) => leftValues.some((item) => item.includes(right)));
   }
   if (operator === "starts_with") {
-    return rightValues.some((right) =>
-      leftValues.some((item) => item.startsWith(right))
-    );
+    return rightValues.some((right) => leftValues.some((item) => item.startsWith(right)));
   }
   if (operator === "ends_with") {
-    return rightValues.some((right) =>
-      leftValues.some((item) => item.endsWith(right))
-    );
+    return rightValues.some((right) => leftValues.some((item) => item.endsWith(right)));
   }
-  const equal = rightValues.some((right) =>
-    leftValues.some((item) => item === right)
-  );
+  const equal = rightValues.some((right) => leftValues.some((item) => item === right));
   return operator === "is_not" ? !equal : equal;
 }
 
@@ -137,9 +125,12 @@ const isEmpty = (value: unknown) =>
   (Array.isArray(value) && value.length === 0);
 
 const normalizeText = (value: unknown) =>
-  String(value ?? "").normalize("NFKC").trim().toLocaleLowerCase();
+  String(value ?? "")
+    .normalize("NFKC")
+    .trim()
+    .toLocaleLowerCase();
 
-const list = (value: unknown): unknown[] => Array.isArray(value) ? value : [value];
+const list = (value: unknown): unknown[] => (Array.isArray(value) ? value : [value]);
 
 const number = (value: unknown) => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -163,9 +154,7 @@ function normalizeOperand(
   return ids.map((id) => {
     const option = options.find(
       (candidate) =>
-        candidate &&
-        typeof candidate === "object" &&
-        (candidate as { id?: unknown }).id === id,
+        candidate && typeof candidate === "object" && (candidate as { id?: unknown }).id === id,
     ) as { name?: unknown } | undefined;
     return typeof option?.name === "string" ? option.name : id;
   });
@@ -198,9 +187,10 @@ function matchesDate(
   }
   if (operand.type !== "date") return false;
   const right = new Date(operand.value);
-  const comparison = operand.precision === "date"
-    ? dayDistance(zonedDay(right, timezone), zonedDay(left, timezone))
-    : left.getTime() - right.getTime();
+  const comparison =
+    operand.precision === "date"
+      ? dayDistance(zonedDay(right, timezone), zonedDay(left, timezone))
+      : left.getTime() - right.getTime();
   if (operator === "is_not") return comparison !== 0;
   if (operator === "is_before") return comparison < 0;
   if (operator === "is_after") return comparison > 0;
@@ -224,8 +214,7 @@ function zonedDay(date: Date, timezone: string) {
   return Date.UTC(parts.year, parts.month - 1, parts.day);
 }
 
-const dayDistance = (start: number, end: number) =>
-  Math.round((end - start) / 86_400_000);
+const dayDistance = (start: number, end: number) => Math.round((end - start) / 86_400_000);
 
 const daysPerUnit = (unit: "day" | "week" | "month" | "year") =>
   unit === "day" ? 1 : unit === "week" ? 7 : unit === "month" ? 31 : 366;

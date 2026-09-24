@@ -64,15 +64,12 @@ export function DatabaseRollupPropertySettings({
         property.property.type === "relation",
     ) ?? [];
   const selectedRelationProperty =
-    getRollupRelationProperty(
-      relationProperties,
-      rollupConfig.relationPropertyId,
-    ) ?? relationProperties[0];
-  const relationConfig = getRelationConfig(
-    selectedRelationProperty?.property.config,
+    getRollupRelationProperty(relationProperties, rollupConfig.relationPropertyId) ??
+    relationProperties[0];
+  const relationConfig = getRelationConfig(selectedRelationProperty?.property.config);
+  const { data: relatedDatabase, isLoading: isLoadingRelatedDatabase } = useDatabaseMetadata(
+    relationConfig.relatedDatabaseId,
   );
-  const { data: relatedDatabase, isLoading: isLoadingRelatedDatabase } =
-    useDatabaseMetadata(relationConfig.relatedDatabaseId);
   const targetProperties = [
     { id: "name", name: "Name", type: "text" },
     ...(relatedDatabase?.properties ?? [])
@@ -92,10 +89,7 @@ export function DatabaseRollupPropertySettings({
   );
   const effectiveTargetProperty = selectedTargetProperty ?? targetProperties[0];
   const selectedTargetType = effectiveTargetProperty?.type ?? "text";
-  const calculation = getValidRollupCalculation(
-    rollupConfig.calculation,
-    selectedTargetType,
-  );
+  const calculation = getValidRollupCalculation(rollupConfig.calculation, selectedTargetType);
   const calculationOptions = getRollupCalculationsForType(selectedTargetType);
   const updateRollupConfig = (patch: Partial<DatabaseRollupConfig>) => {
     onUpdateConfig(
@@ -132,15 +126,10 @@ export function DatabaseRollupPropertySettings({
     });
   };
   const selectTarget = (targetPropertyId: string) => {
-    const nextTarget = targetProperties.find(
-      (property) => property.id === targetPropertyId,
-    );
+    const nextTarget = targetProperties.find((property) => property.id === targetPropertyId);
 
     updateRollupConfig({
-      calculation: getValidRollupCalculation(
-        rollupConfig.calculation,
-        nextTarget?.type ?? "text",
-      ),
+      calculation: getValidRollupCalculation(rollupConfig.calculation, nextTarget?.type ?? "text"),
       targetPropertyId,
     });
   };
@@ -151,11 +140,7 @@ export function DatabaseRollupPropertySettings({
     }
 
     if (relationProperties.length === 0) {
-      return (
-        <RollupPopoverMessage>
-          Add a relation property first.
-        </RollupPopoverMessage>
-      );
+      return <RollupPopoverMessage>Add a relation property first.</RollupPopoverMessage>;
     }
 
     return (
@@ -183,9 +168,7 @@ export function DatabaseRollupPropertySettings({
         />
         <RollupCalculationSelect
           calculation={calculation}
-          onValueChange={(nextCalculation) =>
-            updateRollupConfig({ calculation: nextCalculation })
-          }
+          onValueChange={(nextCalculation) => updateRollupConfig({ calculation: nextCalculation })}
           options={calculationOptions}
         />
       </div>
@@ -197,9 +180,7 @@ export function DatabaseRollupPropertySettings({
   }
 
   if (relationProperties.length === 0) {
-    return (
-      <DropDrawerItem disabled>Add a relation property first.</DropDrawerItem>
-    );
+    return <DropDrawerItem disabled>Add a relation property first.</DropDrawerItem>;
   }
 
   return (
@@ -227,9 +208,7 @@ export function DatabaseRollupPropertySettings({
       />
       <RollupCalculationSubmenu
         calculation={calculation}
-        onSelect={(nextCalculation) =>
-          updateRollupConfig({ calculation: nextCalculation })
-        }
+        onSelect={(nextCalculation) => updateRollupConfig({ calculation: nextCalculation })}
         options={calculationOptions}
       />
       {selectedTargetType === "number" ? (
@@ -298,10 +277,7 @@ function RollupSelect<TValue extends string>({
         {icon}
         {label}
       </span>
-      <Select
-        onValueChange={(nextValue) => onValueChange(nextValue as TValue)}
-        value={value}
-      >
+      <Select onValueChange={(nextValue) => onValueChange(nextValue as TValue)} value={value}>
         <SelectTrigger className="w-full">
           <SelectValue />
         </SelectTrigger>
@@ -318,9 +294,7 @@ function RollupSelect<TValue extends string>({
 }
 
 function RollupPopoverMessage({ children }: { children: ReactNode }) {
-  return (
-    <div className="px-1.5 py-1 text-sm text-content-secondary">{children}</div>
-  );
+  return <div className="px-1.5 py-1 text-sm text-content-secondary">{children}</div>;
 }
 
 function RollupCalculationSelect({
@@ -341,9 +315,7 @@ function RollupCalculationSelect({
         Calculate
       </span>
       <Select
-        onValueChange={(nextValue) =>
-          onValueChange(nextValue as RollupCalculation)
-        }
+        onValueChange={(nextValue) => onValueChange(nextValue as RollupCalculation)}
         value={calculation ?? options[0]?.value}
       >
         <SelectTrigger className="w-full">
@@ -380,8 +352,7 @@ function RollupCalculationSubmenu({
   onSelect: (value: RollupCalculation) => void;
   options: RollupCalculationOption[];
 }) {
-  const selectedOption =
-    options.find((option) => option.value === calculation) ?? options[0];
+  const selectedOption = options.find((option) => option.value === calculation) ?? options[0];
   const optionGroups = groupCalculationOptions(options);
 
   return (
@@ -468,26 +439,18 @@ function RollupCalculationItem({
 
 function groupCalculationOptions(options: RollupCalculationOption[]) {
   const visibleValues = new Set(options.map((option) => option.value));
-  const showOptions = rollupShowCalculations.filter((option) =>
-    visibleValues.has(option.value),
-  );
-  const countOptions = rollupCountCalculations.filter((option) =>
-    visibleValues.has(option.value),
-  );
+  const showOptions = rollupShowCalculations.filter((option) => visibleValues.has(option.value));
+  const countOptions = rollupCountCalculations.filter((option) => visibleValues.has(option.value));
   const percentOptions = rollupPercentCalculations.filter((option) =>
     visibleValues.has(option.value),
   );
-  const dateOptions = rollupDateCalculations.filter((option) =>
-    visibleValues.has(option.value),
-  );
+  const dateOptions = rollupDateCalculations.filter((option) => visibleValues.has(option.value));
   const groupedValues = new Set<RollupCalculation>(
     [...showOptions, ...countOptions, ...percentOptions, ...dateOptions].map(
       (option) => option.value,
     ),
   );
-  const otherOptions = options.filter(
-    (option) => !groupedValues.has(option.value),
-  );
+  const otherOptions = options.filter((option) => !groupedValues.has(option.value));
 
   return {
     groups: [

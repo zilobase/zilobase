@@ -1,17 +1,12 @@
 export function readActiveSidebarTab(workspaceId: string | null) {
   try {
-    return (
-      window.localStorage.getItem(activeTabStorageKey(workspaceId)) ?? "home"
-    );
+    return window.localStorage.getItem(activeTabStorageKey(workspaceId)) ?? "home";
   } catch {
     return "home";
   }
 }
 
-export function writeActiveSidebarTab(
-  workspaceId: string | null,
-  tabId: string,
-) {
+export function writeActiveSidebarTab(workspaceId: string | null, tabId: string) {
   try {
     window.localStorage.setItem(activeTabStorageKey(workspaceId), tabId);
   } catch {

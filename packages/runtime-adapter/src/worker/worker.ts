@@ -19,17 +19,35 @@ import type { AppPolicy, Ports } from "@zilobase/runtime-ports";
 import { parseChatAgentInstanceName } from "@zilobase/features/ai-chat/agent-room";
 
 import { CalendarNotificationRoom } from "./features/calendar-realtime/calendar-notification-room";
-import { routeCalendarRealtimeRequest, type CalendarRealtimeRouteEnv } from "./features/calendar-realtime/security";
+import {
+  routeCalendarRealtimeRequest,
+  type CalendarRealtimeRouteEnv,
+} from "./features/calendar-realtime/security";
 import { PageCollaborationRoom } from "./features/collaboration/page-collaboration-room";
 import { MeetingCollaborationRoom } from "./features/collaboration/meeting-collaboration-room";
-import { routeCollaborationRequest, type CollaborationRouteEnv } from "./features/collaboration/security";
+import {
+  routeCollaborationRequest,
+  type CollaborationRouteEnv,
+} from "./features/collaboration/security";
 import { DatabaseCollaborationRoom } from "./features/database-realtime/database-collaboration-room";
-import { routeDatabaseRealtimeRequest, type DatabaseRealtimeRouteEnv } from "./features/database-realtime/security";
-import { routeMeetingAudioRequest, type MeetingAudioRouteEnv } from "./features/meeting-audio/security";
+import {
+  routeDatabaseRealtimeRequest,
+  type DatabaseRealtimeRouteEnv,
+} from "./features/database-realtime/security";
+import {
+  routeMeetingAudioRequest,
+  type MeetingAudioRouteEnv,
+} from "./features/meeting-audio/security";
 import { MailNotificationRoom } from "./features/mail-realtime/mail-notification-room";
-import { routeMailRealtimeRequest, type MailRealtimeRouteEnv } from "./features/mail-realtime/security";
+import {
+  routeMailRealtimeRequest,
+  type MailRealtimeRouteEnv,
+} from "./features/mail-realtime/security";
 import { NavigationNotificationRoom } from "./features/navigation-realtime/navigation-notification-room";
-import { routeNavigationRealtimeRequest, type NavigationRealtimeRouteEnv } from "./features/navigation-realtime/security";
+import {
+  routeNavigationRealtimeRequest,
+  type NavigationRealtimeRouteEnv,
+} from "./features/navigation-realtime/security";
 import type { WorkerEnvBindings } from "./bindings";
 import { createWorkerHandler } from "./handler";
 import { createWorkerScheduler } from "./scheduler";
@@ -50,11 +68,7 @@ export {
 export { ChatAgent } from "./features/chat/chat-agent";
 
 export type FetchableApp = {
-  fetch(
-    request: Request,
-    env: Record<string, unknown>,
-    ctx: unknown,
-  ): Response | Promise<Response>;
+  fetch(request: Request, env: Record<string, unknown>, ctx: unknown): Response | Promise<Response>;
 };
 
 export type WorkerRuntimeOptions<Env extends WorkerEnvBindings = WorkerEnvBindings> = {
@@ -73,7 +87,11 @@ export type WorkerRuntimeOptions<Env extends WorkerEnvBindings = WorkerEnvBindin
     request: Request;
     database: unknown;
     session: {
-      session: { activeOrganizationId?: string | null; activeWorkspaceId?: string | null; id: string };
+      session: {
+        activeOrganizationId?: string | null;
+        activeWorkspaceId?: string | null;
+        id: string;
+      };
       user: { email?: string | null; id: string };
     };
   }) => Promise<{ code: string; message: string; status: number } | null>;
@@ -122,16 +140,17 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
     if (!runtimePorts) {
       runtimePorts = createWorkerRuntimePorts(env, {
         telemetry: {
-          reportError: (_runtimeEnv, error, properties) => reportError(env, {
-            code: String(properties.code ?? "WORKER_REQUEST_ERROR"),
-            error: error instanceof Error ? error : new Error(String(error)),
-            method: String(properties.method ?? "UNKNOWN"),
-            requestId: String(properties.request_id ?? "unknown"),
-            route: String(properties.route_group ?? "/"),
-            status: 500,
-            userId: null,
-            workspaceId: null,
-          }),
+          reportError: (_runtimeEnv, error, properties) =>
+            reportError(env, {
+              code: String(properties.code ?? "WORKER_REQUEST_ERROR"),
+              error: error instanceof Error ? error : new Error(String(error)),
+              method: String(properties.method ?? "UNKNOWN"),
+              requestId: String(properties.request_id ?? "unknown"),
+              route: String(properties.route_group ?? "/"),
+              status: 500,
+              userId: null,
+              workspaceId: null,
+            }),
           reportEvent: opts.reportEvent,
         },
       });
@@ -144,8 +163,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
   const appHandler = createWorkerHandler<Env, FetchableApp>({
     authenticateAgentRequest: (request, lobby, env) =>
       authenticateAgentRequest(request, lobby, env),
-    authorizeAgentRequest: (request, lobby, env) =>
-      authorizeAgentRequest(request, lobby, env),
+    authorizeAgentRequest: (request, lobby, env) => authorizeAgentRequest(request, lobby, env),
     getAgentCorsHeaders: (env, request) => getAgentCorsHeaders(env, request),
     loadApp: (env) => opts.loadApp(env, portsFor(env)),
   });
@@ -164,16 +182,13 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
       const session = await auth.api.getSession({
         headers: await getServerAuthHeaders(auth, request.headers),
       });
-      if (session?.user && await sessionPolicyDenial(env, request, database, session)) return null;
+      if (session?.user && (await sessionPolicyDenial(env, request, database, session)))
+        return null;
       return session?.user?.id ?? null;
     });
   }
 
-  async function authenticateAgentRequest(
-    request: Request,
-    _lobby: unknown,
-    env: Env,
-  ) {
+  async function authenticateAgentRequest(request: Request, _lobby: unknown, env: Env) {
     const authResult = await getAgentAuthContext(request, env);
 
     if (authResult instanceof Response) {
@@ -181,11 +196,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
     }
   }
 
-  async function authorizeAgentRequest(
-    request: Request,
-    _lobby: unknown,
-    env: Env,
-  ) {
+  async function authorizeAgentRequest(request: Request, _lobby: unknown, env: Env) {
     const authResult = await getAgentAuthContext(request, env);
 
     if (authResult instanceof Response) {
@@ -285,10 +296,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
 
   function isAgentOriginAllowed(env: Env, origin: string) {
     if (opts.cors) return opts.cors.isAllowedOrigin(env, origin);
-    return (
-      isAllowedClientOrigin(env, origin) ||
-      isLocalDevelopmentHost(getOriginHost(origin))
-    );
+    return isAllowedClientOrigin(env, origin) || isLocalDevelopmentHost(getOriginHost(origin));
   }
 
   async function sessionPolicyDenial(
@@ -296,7 +304,11 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
     request: Request,
     database: unknown,
     session: {
-      session: { activeOrganizationId?: string | null; activeWorkspaceId?: string | null; id: string };
+      session: {
+        activeOrganizationId?: string | null;
+        activeWorkspaceId?: string | null;
+        id: string;
+      };
       user: { email?: string | null; id: string };
     },
   ) {
@@ -304,19 +316,19 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
       return opts.getSessionPolicyDenial({ database, env, request, session });
     }
     const extension = resolveEditionExtension(env);
-    return extension?.assertSession?.({
-      authMethod: "session",
-      database: database as never,
-      request,
-      session: {
-        ...session.session,
-        activeWorkspaceId:
-          session.session.activeWorkspaceId ??
-          session.session.activeOrganizationId ??
-          null,
-      },
-      user: session.user,
-    }) ?? null;
+    return (
+      extension?.assertSession?.({
+        authMethod: "session",
+        database: database as never,
+        request,
+        session: {
+          ...session.session,
+          activeWorkspaceId:
+            session.session.activeWorkspaceId ?? session.session.activeOrganizationId ?? null,
+        },
+        user: session.user,
+      }) ?? null
+    );
   }
 
   return {
@@ -335,9 +347,9 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
               if (!opts.demoGuard.applyReadRateLimit) {
                 return fetchApp(request, env, ctx);
               }
-              return opts.demoGuard.applyReadRateLimit(request, env).then(
-                (limited) => limited ?? fetchApp(request, env, ctx),
-              );
+              return opts.demoGuard
+                .applyReadRateLimit(request, env)
+                .then((limited) => limited ?? fetchApp(request, env, ctx));
             }
           }
 
@@ -345,8 +357,7 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
             return routeCollaborationRequest(
               request,
               env as unknown as CollaborationRouteEnv,
-              (collaborationRequest) =>
-                getCollaborationUserId(collaborationRequest, env),
+              (collaborationRequest) => getCollaborationUserId(collaborationRequest, env),
               pageIdFromDocumentName,
               portsFor(env).limits!,
             );
@@ -356,46 +367,62 @@ export function createWorker<Env extends WorkerEnvBindings = WorkerEnvBindings>(
             return routeCollaborationRequest(
               request,
               {
-                COLLABORATION_RATE_LIMITER: (env as Record<string, unknown>).COLLABORATION_RATE_LIMITER,
+                COLLABORATION_RATE_LIMITER: (env as Record<string, unknown>)
+                  .COLLABORATION_RATE_LIMITER,
                 PAGE_COLLABORATION: (env as Record<string, unknown>).MEETING_COLLABORATION,
               } as unknown as CollaborationRouteEnv,
-              (collaborationRequest) =>
-                getCollaborationUserId(collaborationRequest, env),
+              (collaborationRequest) => getCollaborationUserId(collaborationRequest, env),
               meetingIdFromDocumentName,
               portsFor(env).limits!,
             );
           }
 
           if (pathname === "/database-collaboration") {
-            return routeDatabaseRealtimeRequest(request, env as unknown as DatabaseRealtimeRouteEnv, portsFor(env).limits!);
+            return routeDatabaseRealtimeRequest(
+              request,
+              env as unknown as DatabaseRealtimeRouteEnv,
+              portsFor(env).limits!,
+            );
           }
 
           if (pathname === "/meeting-audio") {
-            return routeMeetingAudioRequest(request, env as unknown as MeetingAudioRouteEnv, ctx, undefined, portsFor(env).limits!);
+            return routeMeetingAudioRequest(
+              request,
+              env as unknown as MeetingAudioRouteEnv,
+              ctx,
+              undefined,
+              portsFor(env).limits!,
+            );
           }
 
-          if (pathname === "/calendar-realtime") return routeCalendarRealtimeRequest(request, env as unknown as CalendarRealtimeRouteEnv);
+          if (pathname === "/calendar-realtime")
+            return routeCalendarRealtimeRequest(
+              request,
+              env as unknown as CalendarRealtimeRouteEnv,
+            );
           if (pathname === "/mail-realtime") {
             return routeMailRealtimeRequest(request, env as unknown as MailRealtimeRouteEnv);
           }
 
           if (pathname === "/navigation-realtime") {
-            return routeNavigationRealtimeRequest(request, env as unknown as NavigationRealtimeRouteEnv);
+            return routeNavigationRealtimeRequest(
+              request,
+              env as unknown as NavigationRealtimeRouteEnv,
+            );
           }
 
           return fetchApp(request, env, ctx);
         } catch (error) {
-          console.error(JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            event: "worker_request_error",
-            method: request.method,
-            request_id: request.headers.get("x-zilobase-request-id"),
-            route_group: routeGroup(request),
-          }));
-          const unavailable = createWorkerDatabaseUnavailableResponse(
-            error,
-            request,
+          console.error(
+            JSON.stringify({
+              error: error instanceof Error ? error.message : String(error),
+              event: "worker_request_error",
+              method: request.method,
+              request_id: request.headers.get("x-zilobase-request-id"),
+              route_group: routeGroup(request),
+            }),
           );
+          const unavailable = createWorkerDatabaseUnavailableResponse(error, request);
           if (unavailable) return unavailable;
 
           await portsFor(env).telemetry!.error(error, {
@@ -432,10 +459,7 @@ function withRequestId(request: Request) {
   return new Request(request, { headers });
 }
 
-async function runWithDbRequest<Env, T>(
-  env: Env,
-  callback: (database: never) => T,
-): Promise<T> {
+async function runWithDbRequest<Env, T>(env: Env, callback: (database: never) => T): Promise<T> {
   const client = createDbClient(env as never);
   return runWithDbClient(client, () => Promise.resolve(callback(client.db as never)));
 }
@@ -460,9 +484,7 @@ function getOriginHost(origin: string) {
 }
 
 function readAgentInstanceName(request: Request) {
-  const parts = new URL(request.url).pathname
-    .replace(/^\/+|\/+$/g, "")
-    .split("/");
+  const parts = new URL(request.url).pathname.replace(/^\/+|\/+$/g, "").split("/");
 
   return parts.length >= 3 && parts[0] === "agents" ? parts[2] : null;
 }

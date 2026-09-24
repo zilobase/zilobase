@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { workspace } from "./workspaces";
 import { dataSource } from "./databases";
 import { user } from "./authentication";
@@ -47,10 +57,7 @@ export const databaseAutomation = pgTable(
       table.status,
       table.updatedAt,
     ),
-    index("database_automation_schedule_due_idx").on(
-      table.status,
-      table.nextRunAt,
-    ),
+    index("database_automation_schedule_due_idx").on(table.status, table.nextRunAt),
     uniqueIndex("database_automation_create_idempotency_unique").on(
       table.createdById,
       table.dataSourceId,
@@ -82,19 +89,14 @@ export const databaseAutomationRevision = pgTable(
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("database_automation_revision_version_unique").on(
       table.automationId,
       table.version,
     ),
-    index("database_automation_revision_created_idx").on(
-      table.automationId,
-      table.createdAt,
-    ),
+    index("database_automation_revision_created_idx").on(table.automationId, table.createdAt),
     check(
       "database_automation_revision_version_check",
       sql`${table.version} > 0 and ${table.definitionVersion} > 0`,
@@ -114,9 +116,7 @@ export const databaseAutomationDependency = pgTable(
     dependencyType: text("dependency_type").notNull(),
     dependencyId: text("dependency_id").notNull(),
     usage: text("usage").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("database_automation_dependency_unique").on(
@@ -125,10 +125,7 @@ export const databaseAutomationDependency = pgTable(
       table.dependencyId,
       table.usage,
     ),
-    index("database_automation_dependency_lookup_idx").on(
-      table.dependencyType,
-      table.dependencyId,
-    ),
+    index("database_automation_dependency_lookup_idx").on(table.dependencyType, table.dependencyId),
     check(
       "database_automation_dependency_type_check",
       sql`${table.dependencyType} in ('data_source', 'database', 'view', 'property', 'option', 'user', 'group', 'gmail_connection', 'slack_connection', 'secret')`,
@@ -207,10 +204,9 @@ export const databaseAutomationRun = pgTable(
     dataSourceId: text("data_source_id")
       .notNull()
       .references(() => dataSource.id, { onDelete: "cascade" }),
-    eventWindowId: text("event_window_id").references(
-      () => databaseAutomationEventWindow.id,
-      { onDelete: "set null" },
-    ),
+    eventWindowId: text("event_window_id").references(() => databaseAutomationEventWindow.id, {
+      onDelete: "set null",
+    }),
     triggerRowId: text("trigger_row_id"),
     triggerPageId: text("trigger_page_id"),
     triggerActorId: text("trigger_actor_id"),
@@ -233,25 +229,15 @@ export const databaseAutomationRun = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("database_automation_run_event_unique").on(
-      table.eventWindowId,
-      table.automationId,
-    ),
+    uniqueIndex("database_automation_run_event_unique").on(table.eventWindowId, table.automationId),
     uniqueIndex("database_automation_run_occurrence_unique").on(
       table.automationId,
       table.occurrenceKey,
     ),
-    index("database_automation_run_claim_idx").on(
-      table.status,
-      table.availableAt,
-      table.leaseExpiresAt,
-      table.workspaceId,
-      table.createdAt,
-    ).where(sql`${table.status} in ('queued', 'running')`),
-    index("database_automation_run_history_idx").on(
-      table.automationId,
-      table.createdAt,
-    ),
+    index("database_automation_run_claim_idx")
+      .on(table.status, table.availableAt, table.leaseExpiresAt, table.workspaceId, table.createdAt)
+      .where(sql`${table.status} in ('queued', 'running')`),
+    index("database_automation_run_history_idx").on(table.automationId, table.createdAt),
     check(
       "database_automation_run_status_check",
       sql`${table.status} in ('queued', 'running', 'succeeded', 'failed', 'skipped', 'cancelled')`,
@@ -280,10 +266,7 @@ export const databaseAutomationStepRun = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("database_automation_step_run_action_unique").on(
-      table.runId,
-      table.actionId,
-    ),
+    uniqueIndex("database_automation_step_run_action_unique").on(table.runId, table.actionId),
     index("database_automation_step_run_status_idx").on(
       table.runId,
       table.status,
@@ -324,10 +307,7 @@ export const databaseAutomationDelivery = pgTable(
       table.actionId,
       table.destinationHash,
     ),
-    index("database_automation_delivery_ready_idx").on(
-      table.status,
-      table.nextAttemptAt,
-    ),
+    index("database_automation_delivery_ready_idx").on(table.status, table.nextAttemptAt),
     check(
       "database_automation_delivery_kind_check",
       sql`${table.kind} in ('notification', 'gmail', 'webhook', 'slack')`,

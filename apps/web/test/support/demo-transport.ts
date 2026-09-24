@@ -1,11 +1,8 @@
-import "../../src/features/demo/runtime"
+import "../../src/features/demo/runtime";
 
-export {
-  applyDemoReadOverlay,
-  interceptDemoMutation,
-} from "../../src/features/demo/transport"
+export { applyDemoReadOverlay, interceptDemoMutation } from "../../src/features/demo/transport";
 export {
   installDemoCache,
   isAllowedDemoParent,
   isHostedDemoRuntime,
-} from "../../src/features/demo/runtime"
+} from "../../src/features/demo/runtime";

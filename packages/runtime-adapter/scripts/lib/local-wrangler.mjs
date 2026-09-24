@@ -53,11 +53,7 @@ export function workerStackDevArgs(env = {}) {
       AI_AGENT_DAILY_USAGE_LIMITS_ENABLED: "false",
       MEETING_BLOCK_ENABLED: "true",
       CALENDAR_WEBHOOK_URL: value(env, "CALENDAR_WEBHOOK_URL", ""),
-      ZILOBASE_DEV_EMAIL_SINK_URL: value(
-        env,
-        "ZILOBASE_DEV_EMAIL_SINK_URL",
-        "",
-      ),
+      ZILOBASE_DEV_EMAIL_SINK_URL: value(env, "ZILOBASE_DEV_EMAIL_SINK_URL", ""),
       DATABASE_AUTOMATIONS_ENABLED: value(env, "DATABASE_AUTOMATIONS_ENABLED", "true"),
       DATABASE_AUTOMATIONS_EXECUTION_DISABLED: value(
         env,

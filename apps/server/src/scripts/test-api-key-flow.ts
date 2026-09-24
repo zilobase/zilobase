@@ -37,17 +37,16 @@ class CookieJar {
   private cookies = new Map<string, string>();
 
   header() {
-    return [...this.cookies.entries()]
-      .map(([name, value]) => `${name}=${value}`)
-      .join("; ");
+    return [...this.cookies.entries()].map(([name, value]) => `${name}=${value}`).join("; ");
   }
 
   store(headers: Headers) {
-    const getSetCookie = (headers as Headers & {
-      getSetCookie?: () => string[];
-    }).getSetCookie;
-    const values =
-      getSetCookie?.call(headers) ?? splitSetCookie(headers.get("set-cookie"));
+    const getSetCookie = (
+      headers as Headers & {
+        getSetCookie?: () => string[];
+      }
+    ).getSetCookie;
+    const values = getSetCookie?.call(headers) ?? splitSetCookie(headers.get("set-cookie"));
 
     for (const value of values) {
       const [cookie] = value.split(";");
@@ -57,10 +56,7 @@ class CookieJar {
         continue;
       }
 
-      this.cookies.set(
-        cookie.slice(0, separatorIndex),
-        cookie.slice(separatorIndex + 1),
-      );
+      this.cookies.set(cookie.slice(0, separatorIndex), cookie.slice(separatorIndex + 1));
     }
   }
 }
@@ -171,31 +167,22 @@ async function main() {
 
   console.info(`Created page ${createPage.data.page.id}`);
 
-  await appRequest(
-    `/pages?workspaceId=${encodeURIComponent(workspace.data.id)}`,
-    {
-      bearerToken: createdKey.data.key.key,
-      expectedStatus: 200,
-    },
-  );
+  await appRequest(`/pages?workspaceId=${encodeURIComponent(workspace.data.id)}`, {
+    bearerToken: createdKey.data.key.key,
+    expectedStatus: 200,
+  });
   console.info("API key can read its pinned workspace.");
 
-  await appRequest(
-    `/pages?workspaceId=${encodeURIComponent(otherWorkspace.data.id)}`,
-    {
-      bearerToken: createdKey.data.key.key,
-      expectedStatus: 403,
-    },
-  );
+  await appRequest(`/pages?workspaceId=${encodeURIComponent(otherWorkspace.data.id)}`, {
+    bearerToken: createdKey.data.key.key,
+    expectedStatus: 403,
+  });
   console.info("API key is rejected for a different workspace.");
 
-  await appRequest(
-    `/workspaces/${encodeURIComponent(otherWorkspace.data.id)}/access-targets`,
-    {
-      bearerToken: createdKey.data.key.key,
-      expectedStatus: 403,
-    },
-  );
+  await appRequest(`/workspaces/${encodeURIComponent(otherWorkspace.data.id)}/access-targets`, {
+    bearerToken: createdKey.data.key.key,
+    expectedStatus: 403,
+  });
   console.info("API key is rejected for mismatched workspace params.");
 
   await appRequest(`/api/keys/${encodeURIComponent(createdKey.data.key.id)}`, {
@@ -205,13 +192,10 @@ async function main() {
   });
   console.info("API key revoked.");
 
-  await appRequest(
-    `/pages?workspaceId=${encodeURIComponent(workspace.data.id)}`,
-    {
-      bearerToken: createdKey.data.key.key,
-      expectedStatus: 401,
-    },
-  );
+  await appRequest(`/pages?workspaceId=${encodeURIComponent(workspace.data.id)}`, {
+    bearerToken: createdKey.data.key.key,
+    expectedStatus: 401,
+  });
   console.info("Revoked API key is rejected.");
 
   console.info("API key flow test completed successfully.");
@@ -291,10 +275,7 @@ function getLocalAuthRequest(path: string, body: string | null | undefined) {
 
   const nextBody = { ...parsed } as Record<string, unknown>;
 
-  if (
-    typeof nextBody.workspaceId === "string" &&
-    typeof nextBody.organizationId !== "string"
-  ) {
+  if (typeof nextBody.workspaceId === "string" && typeof nextBody.organizationId !== "string") {
     nextBody.organizationId = nextBody.workspaceId;
     delete nextBody.workspaceId;
   }
@@ -302,11 +283,7 @@ function getLocalAuthRequest(path: string, body: string | null | undefined) {
   return { body: JSON.stringify(nextBody), path: authPath };
 }
 
-async function appJsonRequest<T>(
-  path: string,
-  body: unknown,
-  options: AppRequestOptions = {},
-) {
+async function appJsonRequest<T>(path: string, body: unknown, options: AppRequestOptions = {}) {
   return appRequest<T>(path, {
     ...options,
     body: JSON.stringify(body),

@@ -19,21 +19,13 @@ export async function fetchPinnedNodeMcp(input: {
   url: string;
 }) {
   const timeoutSignal = AbortSignal.timeout(input.timeoutMs);
-  const signal = input.signal
-    ? AbortSignal.any([input.signal, timeoutSignal])
-    : timeoutSignal;
+  const signal = input.signal ? AbortSignal.any([input.signal, timeoutSignal]) : timeoutSignal;
   const url = new URL(input.url);
-  if (url.protocol !== "https:")
-    throw new Error("MCP endpoints must use HTTPS");
-  const pinnedAddress = await abortable(
-    resolvePublicNodeMcpAddress(url.hostname),
-    signal,
-  );
+  if (url.protocol !== "https:") throw new Error("MCP endpoints must use HTTPS");
+  const pinnedAddress = await abortable(resolvePublicNodeMcpAddress(url.hostname), signal);
 
   return new Promise<Response>((resolve, reject) => {
-    const request = https.request(
-      buildPinnedMcpRequestOptions(input, pinnedAddress),
-    );
+    const request = https.request(buildPinnedMcpRequestOptions(input, pinnedAddress));
     const connectTimeout = setTimeout(
       () => request.destroy(new Error("MCP connection timed out")),
       Math.min(5_000, input.timeoutMs),
@@ -71,20 +63,13 @@ export async function fetchPinnedNodeMcp(input: {
           controller.enqueue(chunk);
         },
       });
-      const body = (
-        Readable.toWeb(response) as ReadableStream<Uint8Array>
-      ).pipeThrough(bounded);
+      const body = (Readable.toWeb(response) as ReadableStream<Uint8Array>).pipeThrough(bounded);
       const headers = webHeaders(response.headers);
       response.once("close", cleanup);
       response.once("end", cleanup);
       const status = response.statusCode ?? 502;
       const responseBody =
-        input.method === "HEAD" ||
-        status === 204 ||
-        status === 205 ||
-        status === 304
-          ? null
-          : body;
+        input.method === "HEAD" || status === 204 || status === 205 || status === 304 ? null : body;
       if (!responseBody) response.resume();
       resolve(
         new Response(responseBody, {
@@ -109,8 +94,7 @@ export async function fetchPinnedNodeMcp(input: {
 function webHeaders(source: IncomingHttpHeaders) {
   const headers = new Headers();
   for (const [name, value] of Object.entries(source)) {
-    if (value !== undefined)
-      headers.set(name, Array.isArray(value) ? value.join(", ") : value);
+    if (value !== undefined) headers.set(name, Array.isArray(value) ? value.join(", ") : value);
   }
   return headers;
 }
@@ -144,8 +128,7 @@ export function buildPinnedMcpRequestOptions(
   pinnedAddress: string,
 ): https.RequestOptions {
   const url = new URL(input.url);
-  if (url.protocol !== "https:")
-    throw new Error("MCP endpoints must use HTTPS");
+  if (url.protocol !== "https:") throw new Error("MCP endpoints must use HTTPS");
   const hostname = stripAddressBrackets(url.hostname);
   return {
     agent: false,
@@ -159,14 +142,8 @@ export function buildPinnedMcpRequestOptions(
   };
 }
 
-export function isPinnedMcpRemoteAddress(
-  remoteAddress: string,
-  pinnedAddress: string,
-) {
-  return (
-    normalizeSocketAddress(remoteAddress) ===
-    normalizeSocketAddress(pinnedAddress)
-  );
+export function isPinnedMcpRemoteAddress(remoteAddress: string, pinnedAddress: string) {
+  return normalizeSocketAddress(remoteAddress) === normalizeSocketAddress(pinnedAddress);
 }
 
 async function resolveSystemAddresses(hostname: string) {
@@ -188,9 +165,7 @@ function stripAddressBrackets(value: string) {
 }
 
 function abortReason(signal: AbortSignal) {
-  return signal.reason instanceof Error
-    ? signal.reason
-    : new DOMException("Aborted", "AbortError");
+  return signal.reason instanceof Error ? signal.reason : new DOMException("Aborted", "AbortError");
 }
 
 function abortable<T>(promise: Promise<T>, signal: AbortSignal) {

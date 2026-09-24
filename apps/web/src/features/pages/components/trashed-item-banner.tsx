@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState } from "react";
 
 import {
   AlertDialog,
@@ -9,15 +9,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
-import { Button } from "@/shared/ui/button"
+} from "@/shared/ui/alert-dialog";
+import { Button } from "@/shared/ui/button";
 
 type TrashedItemBannerProps = {
-  itemLabel: "database" | "page"
-  onRestore: () => void
-  restoring: boolean
-  showRestore?: boolean
-}
+  itemLabel: "database" | "page";
+  onRestore: () => void;
+  restoring: boolean;
+  showRestore?: boolean;
+};
 
 export function TrashedItemBanner({
   itemLabel,
@@ -25,7 +25,7 @@ export function TrashedItemBanner({
   restoring,
   showRestore = true,
 }: TrashedItemBannerProps) {
-  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
     <>
@@ -48,8 +48,7 @@ export function TrashedItemBanner({
           <AlertDialogHeader>
             <AlertDialogTitle>Restore {itemLabel}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This {itemLabel} will be moved out of trash and appear in your
-              active pages again.
+              This {itemLabel} will be moved out of trash and appear in your active pages again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -57,8 +56,8 @@ export function TrashedItemBanner({
             <AlertDialogAction
               disabled={restoring}
               onClick={() => {
-                onRestore()
-                setConfirmOpen(false)
+                onRestore();
+                setConfirmOpen(false);
               }}
             >
               Restore
@@ -67,5 +66,5 @@ export function TrashedItemBanner({
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

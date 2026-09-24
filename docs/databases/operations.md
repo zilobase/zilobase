@@ -10,11 +10,11 @@ can be rebuilt from bounded reads.
 Node and Cloudflare are alternative deployments. They do not serve the same
 environment and there is no Node-to-Cloudflare event bridge.
 
-| Deployment | Database delivery path | Broker requirement |
-| --- | --- | --- |
-| One Node process in the `all` role | PostgreSQL outbox -> in-process background coordinator -> local WebSocket room + Redis/Valkey publication | `REALTIME_REDIS_URL` is required; self-published Redis envelopes are ignored by instance ID |
-| Split Node `api` and `worker` roles, or multiple API replicas | PostgreSQL outbox -> background worker -> Redis/Valkey -> API WebSocket rooms | The same `REALTIME_REDIS_URL` is required in every process; readiness fails while it is unavailable |
-| Managed Cloudflare | API Worker -> fast Queue -> background Worker -> per-database Durable Object -> WebSocket clients | The Queue and Durable Object bindings are required |
+| Deployment                                                    | Database delivery path                                                                                    | Broker requirement                                                                                  |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| One Node process in the `all` role                            | PostgreSQL outbox -> in-process background coordinator -> local WebSocket room + Redis/Valkey publication | `REALTIME_REDIS_URL` is required; self-published Redis envelopes are ignored by instance ID         |
+| Split Node `api` and `worker` roles, or multiple API replicas | PostgreSQL outbox -> background worker -> Redis/Valkey -> API WebSocket rooms                             | The same `REALTIME_REDIS_URL` is required in every process; readiness fails while it is unavailable |
+| Managed Cloudflare                                            | API Worker -> fast Queue -> background Worker -> per-database Durable Object -> WebSocket clients         | The Queue and Durable Object bindings are required                                                  |
 
 The HTTP request path never publishes to Redis, calls a Durable Object, or
 broadcasts to sockets. It commits the command and schedules a fast background
@@ -90,14 +90,14 @@ do not delete pending outbox or journal data to clear an alert.
 
 ## Client and server ownership
 
-| Owner | State and responsibilities |
-| --- | --- |
-| TanStack Query `["db", …]` cache | Last successful database bootstrap plus record windows; never unsaved values |
-| TanStack Query or the existing subsystem | Authentication, access/sharing, favorites/navigation, automation definitions/history/secrets, AI, uploads, billing, admin, reporting, global search, and explicit complete-source export workflows |
-| Yjs collaboration | Page document content |
-| React-local ephemeral state | Cell drafts, presence, connection status, drag hover and geometry, selection, dialogs, and other transient UI state |
-| PostgreSQL | Canonical entities, versions, command receipts, mutation journal, and delivery outbox |
-| Redis/Valkey, Cloudflare Queue, and Durable Objects | Delivery and fanout only; never canonical database state |
+| Owner                                               | State and responsibilities                                                                                                                                                                         |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TanStack Query `["db", …]` cache                    | Last successful database bootstrap plus record windows; never unsaved values                                                                                                                       |
+| TanStack Query or the existing subsystem            | Authentication, access/sharing, favorites/navigation, automation definitions/history/secrets, AI, uploads, billing, admin, reporting, global search, and explicit complete-source export workflows |
+| Yjs collaboration                                   | Page document content                                                                                                                                                                              |
+| React-local ephemeral state                         | Cell drafts, presence, connection status, drag hover and geometry, selection, dialogs, and other transient UI state                                                                                |
+| PostgreSQL                                          | Canonical entities, versions, command receipts, mutation journal, and delivery outbox                                                                                                              |
+| Redis/Valkey, Cloudflare Queue, and Durable Objects | Delivery and fanout only; never canonical database state                                                                                                                                           |
 
 A thin session provider exists per authenticated application session. Query
 keys include the session id plus every business-scope value, and a session
@@ -123,17 +123,17 @@ and logs must never contain property values.
 
 ## Troubleshooting
 
-| Symptom | Checks and recovery |
-| --- | --- |
-| Presence works but collaborator cells remain stale | Presence and mutation delivery share a socket but have separate paths. Confirm `runtime.startup` reports `zilobase.database.v2` and the current schema target, then inspect `background.node_lane_operation` for `database_realtime` or the Cloud Queue/DO path. In local development, restart `npm run dev`; the supervised API now watches server/database-client/migration changes and migrates before listening. |
-| Commands commit but cards update late on other clients | Compare commit and enqueue latency, then inspect outbox backlog/oldest age and the background worker. Leave rows for the recovery sweep. |
-| A Node role is not ready | Confirm every `all`, `api`, and `worker` process has the same reachable `REALTIME_REDIS_URL`. Inspect `realtime_redis_error`; readiness should recover after the broker reconnects. |
-| Frequent `WINDOW_STALE` responses | Occasional conflicts are normal during active sorting, filtering, or writes. A sustained rate suggests a refetch loop or rapidly changing view configuration. |
-| Repeated invalidations without settling | Check socket delivery and journal cleanup. Verify retention is seven days/newest 10,000 and that no producer emits partial entities. A refetch loop or rapidly changing view configuration can also keep the version moving. |
-| `ROW_MOVE_CONFLICT` | An anchor was deleted, foreign, reversed, or changed concurrently. Reload the source ordering and retry using current visible neighbors. |
-| A v2 event has `requiresReset` | The client ignores the frame payload and refetches on the version bump. Do not attempt to infer a partial entity patch. |
-| Cloud acknowledgements succeed but sockets are quiet | Check Queue backlog and retry state, the background Worker binding, then the database Durable Object. The API Worker must not invoke the Durable Object directly. |
-| Outbox backlog grows while workers are healthy | Inspect retry/discard metrics and journal-event availability. Missing canonical history is a recovery fault, not a reason to synthesize a payload. |
+| Symptom                                                | Checks and recovery                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Presence works but collaborator cells remain stale     | Presence and mutation delivery share a socket but have separate paths. Confirm `runtime.startup` reports `zilobase.database.v2` and the current schema target, then inspect `background.node_lane_operation` for `database_realtime` or the Cloud Queue/DO path. In local development, restart `npm run dev`; the supervised API now watches server/database-client/migration changes and migrates before listening. |
+| Commands commit but cards update late on other clients | Compare commit and enqueue latency, then inspect outbox backlog/oldest age and the background worker. Leave rows for the recovery sweep.                                                                                                                                                                                                                                                                             |
+| A Node role is not ready                               | Confirm every `all`, `api`, and `worker` process has the same reachable `REALTIME_REDIS_URL`. Inspect `realtime_redis_error`; readiness should recover after the broker reconnects.                                                                                                                                                                                                                                  |
+| Frequent `WINDOW_STALE` responses                      | Occasional conflicts are normal during active sorting, filtering, or writes. A sustained rate suggests a refetch loop or rapidly changing view configuration.                                                                                                                                                                                                                                                        |
+| Repeated invalidations without settling                | Check socket delivery and journal cleanup. Verify retention is seven days/newest 10,000 and that no producer emits partial entities. A refetch loop or rapidly changing view configuration can also keep the version moving.                                                                                                                                                                                         |
+| `ROW_MOVE_CONFLICT`                                    | An anchor was deleted, foreign, reversed, or changed concurrently. Reload the source ordering and retry using current visible neighbors.                                                                                                                                                                                                                                                                             |
+| A v2 event has `requiresReset`                         | The client ignores the frame payload and refetches on the version bump. Do not attempt to infer a partial entity patch.                                                                                                                                                                                                                                                                                              |
+| Cloud acknowledgements succeed but sockets are quiet   | Check Queue backlog and retry state, the background Worker binding, then the database Durable Object. The API Worker must not invoke the Durable Object directly.                                                                                                                                                                                                                                                    |
+| Outbox backlog grows while workers are healthy         | Inspect retry/discard metrics and journal-event availability. Missing canonical history is a recovery fault, not a reason to synthesize a payload.                                                                                                                                                                                                                                                                   |
 
 ## Deployment and verification
 

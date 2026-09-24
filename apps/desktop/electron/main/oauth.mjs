@@ -22,7 +22,9 @@ function oneParameter(params, name) {
 
 async function openAuthorizationUrl(url) {
   if (process.env.ZILOBASE_E2E_USER_DATA && process.env.ZILOBASE_E2E_CAPTURE_BROWSER_URL === "1") {
-    await writeFile(path.join(app.getPath("userData"), "e2e-browser-authorization-url"), url, { mode: 0o600 });
+    await writeFile(path.join(app.getPath("userData"), "e2e-browser-authorization-url"), url, {
+      mode: 0o600,
+    });
     return;
   }
   await shell.openExternal(url);
@@ -39,7 +41,10 @@ async function bindLoopback(handler) {
         server.once("error", reject);
         server.listen(0, host, resolve);
       });
-      return { server, redirectUri: `http://${host === "::1" ? "[::1]" : host}:${server.address().port}/oauth/callback` };
+      return {
+        server,
+        redirectUri: `http://${host === "::1" ? "[::1]" : host}:${server.address().port}/oauth/callback`,
+      };
     } catch {
       server.close();
     }
@@ -58,15 +63,24 @@ async function readBoundedJson(response) {
     const { done, value } = await reader.read();
     if (done) break;
     length += value.length;
-    if (length > 65_536) throw desktopError("token_exchange_failed", "The token response is too large.");
+    if (length > 65_536)
+      throw desktopError("token_exchange_failed", "The token response is too large.");
     chunks.push(value);
   }
-  try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); }
-  catch { throw desktopError("token_exchange_failed", "The token response is invalid."); }
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+  } catch {
+    throw desktopError("token_exchange_failed", "The token response is invalid.");
+  }
 }
 
 async function authorize(focusWindow) {
-  const attempt = { controller: new AbortController(), server: null, rejectCallback: null, cancelled: false };
+  const attempt = {
+    controller: new AbortController(),
+    server: null,
+    rejectCallback: null,
+    cancelled: false,
+  };
   activeAttempt = attempt;
   const selected = activeServer(await loadConfig());
   if (attempt.cancelled) throw desktopError("cancelled", "Browser sign-in was cancelled.");
@@ -77,7 +91,10 @@ async function authorize(focusWindow) {
   let acceptCallback;
   let rejectCallback;
   let sawStateMismatch = false;
-  const callback = new Promise((resolve, reject) => { acceptCallback = resolve; rejectCallback = reject; });
+  const callback = new Promise((resolve, reject) => {
+    acceptCallback = resolve;
+    rejectCallback = reject;
+  });
   void callback.catch(() => {});
   const { server, redirectUri } = await bindLoopback((request, response) => {
     response.setHeader("Cache-Control", "no-store");
@@ -85,12 +102,15 @@ async function authorize(focusWindow) {
     response.setHeader("X-Content-Type-Options", "nosniff");
     if (!request.url || request.url.length > 8192 || request.method !== "GET") {
       response.writeHead(400).end("Invalid request.");
-      rejectCallback(desktopError("callback_rejected", "The browser returned an invalid response."));
+      rejectCallback(
+        desktopError("callback_rejected", "The browser returned an invalid response."),
+      );
       return;
     }
     let url;
-    try { url = new URL(request.url, redirectUri); }
-    catch {
+    try {
+      url = new URL(request.url, redirectUri);
+    } catch {
       response.writeHead(400).end("Invalid request.");
       return;
     }
@@ -106,13 +126,20 @@ async function authorize(focusWindow) {
     }
     if (oneParameter(url.searchParams, "iss") !== selected.issuer) {
       response.writeHead(400).end("Invalid sign-in issuer.");
-      rejectCallback(desktopError("issuer_mismatch", "The browser response came from another server."));
+      rejectCallback(
+        desktopError("issuer_mismatch", "The browser response came from another server."),
+      );
       return;
     }
     const providerError = oneParameter(url.searchParams, "error");
     if (providerError) {
       response.writeHead(400).end("Sign-in was not completed.");
-      rejectCallback(desktopError(providerError === "access_denied" ? "access_denied" : "server_sign_in_failed", "Browser sign-in was denied."));
+      rejectCallback(
+        desktopError(
+          providerError === "access_denied" ? "access_denied" : "server_sign_in_failed",
+          "Browser sign-in was denied.",
+        ),
+      );
       return;
     }
     const code = oneParameter(url.searchParams, "code");
@@ -127,40 +154,69 @@ async function authorize(focusWindow) {
   attempt.server = server;
   attempt.rejectCallback = rejectCallback;
   const timeout = setTimeout(() => {
-    rejectCallback(desktopError(sawStateMismatch ? "state_mismatch" : "callback_timeout", "Browser sign-in timed out."));
+    rejectCallback(
+      desktopError(
+        sawStateMismatch ? "state_mismatch" : "callback_timeout",
+        "Browser sign-in timed out.",
+      ),
+    );
   }, 300_000);
   try {
     if (attempt.cancelled) throw desktopError("cancelled", "Browser sign-in was cancelled.");
     const authorizationUrl = new URL(selected.apiOrigin + "/desktop/authorize");
     for (const [key, value] of [
-      ["client_id", "zilobase-desktop"], ["redirect_uri", redirectUri],
-      ["response_type", "code"], ["state", state],
-      ["code_challenge", challenge], ["code_challenge_method", "S256"],
-    ]) authorizationUrl.searchParams.set(key, value);
+      ["client_id", "zilobase-desktop"],
+      ["redirect_uri", redirectUri],
+      ["response_type", "code"],
+      ["state", state],
+      ["code_challenge", challenge],
+      ["code_challenge_method", "S256"],
+    ])
+      authorizationUrl.searchParams.set(key, value);
     await openAuthorizationUrl(authorizationUrl.toString());
     const code = await callback;
     const tokenTimeout = setTimeout(() => controller.abort(), 15_000);
     let result;
     try {
       const body = new URLSearchParams({
-        client_id: "zilobase-desktop", code, code_verifier: verifier,
-        grant_type: "authorization_code", redirect_uri: redirectUri,
+        client_id: "zilobase-desktop",
+        code,
+        code_verifier: verifier,
+        grant_type: "authorization_code",
+        redirect_uri: redirectUri,
       });
-      result = await readBoundedJson(await fetch(selected.apiOrigin + "/api/auth/desktop/token", {
-        method: "POST", body, redirect: "manual", signal: controller.signal,
-      }));
+      result = await readBoundedJson(
+        await fetch(selected.apiOrigin + "/api/auth/desktop/token", {
+          method: "POST",
+          body,
+          redirect: "manual",
+          signal: controller.signal,
+        }),
+      );
     } catch (error) {
       if (error?.code) throw error;
       throw desktopError("token_exchange_failed", "The server rejected the authorization code.");
-    } finally { clearTimeout(tokenTimeout); }
-    if (result.issuer !== selected.issuer ||
-        (!["zilobase-cloud", "zilobase-dev"].includes(selected.instanceId) && result.instance_id !== selected.instanceId)) {
+    } finally {
+      clearTimeout(tokenTimeout);
+    }
+    if (
+      result.issuer !== selected.issuer ||
+      (!["zilobase-cloud", "zilobase-dev"].includes(selected.instanceId) &&
+        result.instance_id !== selected.instanceId)
+    ) {
       throw desktopError("issuer_mismatch", "The token belongs to another server.");
     }
-    if (result.token_type !== "Bearer" || typeof result.access_token !== "string" ||
-        !result.access_token || result.access_token.length > 8192 ||
-        typeof result.user?.id !== "string" || !result.user.id || result.user.id.length > 256 ||
-        typeof result.expires_at !== "string" || result.expires_at.length > 64) {
+    if (
+      result.token_type !== "Bearer" ||
+      typeof result.access_token !== "string" ||
+      !result.access_token ||
+      result.access_token.length > 8192 ||
+      typeof result.user?.id !== "string" ||
+      !result.user.id ||
+      result.user.id.length > 256 ||
+      typeof result.expires_at !== "string" ||
+      result.expires_at.length > 64
+    ) {
       throw desktopError("token_exchange_failed", "The token response is invalid.");
     }
     await credentials.setSession(selected, result.access_token, result.user.id);
@@ -176,10 +232,15 @@ async function authorize(focusWindow) {
 
 export function registerOAuthHandlers(handle, focusWindow) {
   handle("desktop:auth:start-browser", async () => {
-    if (authorizationInProgress) throw desktopError("already_in_progress", "A browser sign-in is already in progress.");
+    if (authorizationInProgress)
+      throw desktopError("already_in_progress", "A browser sign-in is already in progress.");
     authorizationInProgress = true;
-    try { return await authorize(focusWindow); }
-    finally { authorizationInProgress = false; activeAttempt = null; }
+    try {
+      return await authorize(focusWindow);
+    } finally {
+      authorizationInProgress = false;
+      activeAttempt = null;
+    }
   });
   handle("desktop:auth:cancel-browser", () => {
     if (activeAttempt) activeAttempt.cancelled = true;
@@ -189,10 +250,18 @@ export function registerOAuthHandlers(handle, focusWindow) {
   });
   handle("desktop:auth:open-mail-url", async ({ authorizationUrl }) => {
     let url;
-    try { url = new URL(authorizationUrl); }
-    catch { throw desktopError("invalid_argument", "The authorization URL is invalid."); }
-    if (url.protocol !== "https:" || url.hostname !== "accounts.google.com" ||
-        url.pathname !== "/o/oauth2/v2/auth" || url.username || url.password) {
+    try {
+      url = new URL(authorizationUrl);
+    } catch {
+      throw desktopError("invalid_argument", "The authorization URL is invalid.");
+    }
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "accounts.google.com" ||
+      url.pathname !== "/o/oauth2/v2/auth" ||
+      url.username ||
+      url.password
+    ) {
       throw desktopError("invalid_argument", "The authorization URL is invalid.");
     }
     await shell.openExternal(url.toString());

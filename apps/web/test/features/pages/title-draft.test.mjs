@@ -1,17 +1,15 @@
 export function register({ assert, loadModule, test }) {
   test("title drafts retain spaces across stale source updates", async () => {
-    const { reduceTitleDraft } = await loadModule(
-      "/src/features/pages/hooks/use-title-draft.ts",
-    )
+    const { reduceTitleDraft } = await loadModule("/src/features/pages/hooks/use-title-draft.ts");
     const saved = {
       dirty: false,
       sourceId: "page-1",
       value: "Hello",
-    }
+    };
     const withSpace = reduceTitleDraft(saved, {
       type: "edit",
       value: "Hello ",
-    })
+    });
 
     assert.deepEqual(
       reduceTitleDraft(withSpace, {
@@ -24,18 +22,16 @@ export function register({ assert, loadModule, test }) {
         sourceId: "page-1",
         value: "Hello ",
       },
-    )
-  })
+    );
+  });
 
   test("stale title save acknowledgements do not replace newer typing", async () => {
-    const { reduceTitleDraft } = await loadModule(
-      "/src/features/pages/hooks/use-title-draft.ts",
-    )
+    const { reduceTitleDraft } = await loadModule("/src/features/pages/hooks/use-title-draft.ts");
     const current = {
       dirty: true,
       sourceId: "page-1",
       value: "Hello world",
-    }
+    };
 
     assert.deepEqual(
       reduceTitleDraft(current, {
@@ -45,13 +41,11 @@ export function register({ assert, loadModule, test }) {
         type: "saved",
       }),
       current,
-    )
-  })
+    );
+  });
 
   test("the latest title save cleans and normalizes its matching draft", async () => {
-    const { reduceTitleDraft } = await loadModule(
-      "/src/features/pages/hooks/use-title-draft.ts",
-    )
+    const { reduceTitleDraft } = await loadModule("/src/features/pages/hooks/use-title-draft.ts");
 
     assert.deepEqual(
       reduceTitleDraft(
@@ -72,13 +66,11 @@ export function register({ assert, loadModule, test }) {
         sourceId: "page-1",
         value: "Hello world",
       },
-    )
-  })
+    );
+  });
 
   test("title drafts reset when the edited source changes", async () => {
-    const { reduceTitleDraft } = await loadModule(
-      "/src/features/pages/hooks/use-title-draft.ts",
-    )
+    const { reduceTitleDraft } = await loadModule("/src/features/pages/hooks/use-title-draft.ts");
 
     assert.deepEqual(
       reduceTitleDraft(
@@ -98,6 +90,6 @@ export function register({ assert, loadModule, test }) {
         sourceId: "page-2",
         value: "Second page",
       },
-    )
-  })
+    );
+  });
 }

@@ -1,9 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import {
-  OFFICIAL_CLIPPER_CLIENT_ID,
-  officialClipperRedirectUris,
-} from "./oauth-clients";
+import { OFFICIAL_CLIPPER_CLIENT_ID, officialClipperRedirectUris } from "./oauth-clients";
 
 describe("official clipper oauth client", () => {
   test("always includes the web callback and local loopback", () => {

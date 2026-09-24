@@ -37,16 +37,9 @@ import {
   listAgentResources,
   removeAgentResource,
 } from "./agent-resource-service";
-import {
-  listAgentRevisions,
-  revertAgentRevision,
-} from "./agent-revision-service";
+import { listAgentRevisions, revertAgentRevision } from "./agent-revision-service";
 import { appendRunEvent } from "../execution/agent-run-records";
-import {
-  cancelAgentRun,
-  getAgentRunDetail,
-  listAgentRuns,
-} from "../execution/agent-run-service";
+import { cancelAgentRun, getAgentRunDetail, listAgentRuns } from "../execution/agent-run-service";
 import {
   listAgentTriggers,
   removeAgentTrigger,
@@ -127,8 +120,7 @@ aiAgentProfileRoutes.get("/agents/:agentId", async (c) =>
       ...auth,
       profileId: c.req.param("agentId"),
     });
-    if (!agent)
-      throw new AgentProfileError("agent_not_found", "Agent not found.", 404);
+    if (!agent) throw new AgentProfileError("agent_not_found", "Agent not found.", 404);
     return { agent };
   }),
 );
@@ -193,44 +185,46 @@ aiAgentProfileRoutes.post("/agents/:agentId/conversation/messages", async (c) =>
   ),
 );
 
-aiAgentProfileRoutes.post("/agents/:agentId/conversation/messages/stream", async c => handle(c, async auth => {
-  const body = messageSchema.parse(await c.req.json());
-  await requireAgentProfileRole({ ...auth, profileId: c.req.param("agentId"), minimum: "user" });
-  return streamSSE(
-    c,
-    (stream) =>
-      runWithIndependentDbEnv(c.env, async () => {
-        const abort = new AbortController();
-        stream.onAbort(() => abort.abort());
-        await submitAgentConversationMessage({
-          ...auth,
-          ...body,
-          env: c.env,
-          profileId: c.req.param("agentId"),
-          abortSignal: abort.signal,
-          onSettingsEvent: (event) =>
-            stream.writeSSE({ event: "settings", data: JSON.stringify(event) }),
-        });
-        await stream.writeSSE({ event: "complete", data: "{}" });
-      }),
-    async (error, stream) => {
-      if (stream.aborted) return;
-      console.error(
-        "Agent conversation request failed:",
-        error instanceof Error ? error.message : "Unknown error",
-      );
-      await stream.writeSSE({
-        event: "error",
-        data: JSON.stringify({
-          error:
-            error instanceof AgentProfileError
-              ? error.message
-              : "Could not complete this request. Please try again.",
+aiAgentProfileRoutes.post("/agents/:agentId/conversation/messages/stream", async (c) =>
+  handle(c, async (auth) => {
+    const body = messageSchema.parse(await c.req.json());
+    await requireAgentProfileRole({ ...auth, profileId: c.req.param("agentId"), minimum: "user" });
+    return streamSSE(
+      c,
+      (stream) =>
+        runWithIndependentDbEnv(c.env, async () => {
+          const abort = new AbortController();
+          stream.onAbort(() => abort.abort());
+          await submitAgentConversationMessage({
+            ...auth,
+            ...body,
+            env: c.env,
+            profileId: c.req.param("agentId"),
+            abortSignal: abort.signal,
+            onSettingsEvent: (event) =>
+              stream.writeSSE({ event: "settings", data: JSON.stringify(event) }),
+          });
+          await stream.writeSSE({ event: "complete", data: "{}" });
         }),
-      });
-    },
-  );
-}));
+      async (error, stream) => {
+        if (stream.aborted) return;
+        console.error(
+          "Agent conversation request failed:",
+          error instanceof Error ? error.message : "Unknown error",
+        );
+        await stream.writeSSE({
+          event: "error",
+          data: JSON.stringify({
+            error:
+              error instanceof AgentProfileError
+                ? error.message
+                : "Could not complete this request. Please try again.",
+          }),
+        });
+      },
+    );
+  }),
+);
 
 aiAgentProfileRoutes.get("/agents/:agentId/revisions", async (c) =>
   handle(c, async (auth) => ({
@@ -241,16 +235,14 @@ aiAgentProfileRoutes.get("/agents/:agentId/revisions", async (c) =>
   })),
 );
 
-aiAgentProfileRoutes.post(
-  "/agents/:agentId/revisions/:revisionId/revert",
-  async (c) =>
-    handle(c, async (auth) => ({
-      revision: await revertAgentRevision({
-        ...auth,
-        profileId: c.req.param("agentId"),
-        revisionId: c.req.param("revisionId"),
-      }),
-    })),
+aiAgentProfileRoutes.post("/agents/:agentId/revisions/:revisionId/revert", async (c) =>
+  handle(c, async (auth) => ({
+    revision: await revertAgentRevision({
+      ...auth,
+      profileId: c.req.param("agentId"),
+      revisionId: c.req.param("revisionId"),
+    }),
+  })),
 );
 
 aiAgentProfileRoutes.get("/agents/:agentId/resources", async (c) =>
@@ -275,22 +267,18 @@ aiAgentProfileRoutes.put("/agents/:agentId/resources", async (c) =>
   }),
 );
 
-aiAgentProfileRoutes.delete(
-  "/agents/:agentId/resources/:resourceId",
-  async (c) =>
-    handle(c, async (auth) => {
-      const resourceType = z
-        .enum(["page", "database"])
-        .parse(c.req.query("resourceType"));
-      return {
-        resources: await removeAgentResource({
-          ...auth,
-          profileId: c.req.param("agentId"),
-          resourceId: c.req.param("resourceId"),
-          resourceType,
-        }),
-      };
-    }),
+aiAgentProfileRoutes.delete("/agents/:agentId/resources/:resourceId", async (c) =>
+  handle(c, async (auth) => {
+    const resourceType = z.enum(["page", "database"]).parse(c.req.query("resourceType"));
+    return {
+      resources: await removeAgentResource({
+        ...auth,
+        profileId: c.req.param("agentId"),
+        resourceId: c.req.param("resourceId"),
+        resourceType,
+      }),
+    };
+  }),
 );
 
 aiAgentProfileRoutes.get("/agents/:agentId/triggers", async (c) =>
@@ -355,17 +343,15 @@ aiAgentProfileRoutes.delete("/agents/:agentId/triggers/:triggerId", async (c) =>
   ),
 );
 
-aiAgentProfileRoutes.post(
-  "/agents/:agentId/triggers/:triggerId/rotate-secret",
-  async (c) =>
-    handle(c, async (auth) =>
-      rotateAgentWebhookSecret({
-        ...auth,
-        env: c.env,
-        profileId: c.req.param("agentId"),
-        triggerId: c.req.param("triggerId"),
-      }),
-    ),
+aiAgentProfileRoutes.post("/agents/:agentId/triggers/:triggerId/rotate-secret", async (c) =>
+  handle(c, async (auth) =>
+    rotateAgentWebhookSecret({
+      ...auth,
+      env: c.env,
+      profileId: c.req.param("agentId"),
+      triggerId: c.req.param("triggerId"),
+    }),
+  ),
 );
 
 aiAgentProfileRoutes.get("/agents/:agentId/runs", async (c) =>
@@ -447,137 +433,125 @@ aiAgentProfileRoutes.post("/agents/:agentId/runs/:runId/cancel", async (c) =>
   })),
 );
 
-aiAgentProfileRoutes.post(
-  "/agents/:agentId/runs/:runId/actions/:actionId/approve",
-  async (c) =>
-    handle(c, async (auth) => {
-      const profileId = c.req.param("agentId");
-      const runId = c.req.param("runId");
-      await requireRunApprovalActor({ ...auth, profileId, runId });
-      const now = new Date();
-      const [action] = await db
-        .update(aiAgentPendingAction)
-        .set({
-          approvedAt: now,
-          status: "executing",
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(aiAgentPendingAction.id, c.req.param("actionId")),
-            eq(aiAgentPendingAction.agentRunId, runId),
-            eq(aiAgentPendingAction.agentProfileId, profileId),
-            eq(aiAgentPendingAction.workspaceId, auth.workspaceId),
-            eq(aiAgentPendingAction.status, "pending"),
-            gt(aiAgentPendingAction.expiresAt, now),
-          ),
-        )
-        .returning();
-      if (!action)
-        throw new AgentProfileError(
-          "agent_approval_unavailable",
-          "Approval is expired or was already handled.",
-          409,
-        );
-      try {
-        const result = await executeApprovedMcpAction({
-          action,
-          env: c.env,
-          userId: auth.userId,
-          workspaceId: auth.workspaceId,
-        });
-        await finishPendingAgentAction({
-          actionId: action.id,
-          ...(result.ok ? { result } : { error: result.summary, result }),
-        });
-        await resumeAgentRunAfterApproval(c.env, runId);
-        return {
-          actionId: action.id,
-          result,
-          status: result.ok ? "succeeded" : "failed",
-        };
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Approved connector action failed";
-        await finishPendingAgentAction({ actionId: action.id, error: message });
-        await resumeAgentRunAfterApproval(c.env, runId);
-        throw new AgentProfileError("agent_approval_failed", message, 409);
-      }
-    }),
+aiAgentProfileRoutes.post("/agents/:agentId/runs/:runId/actions/:actionId/approve", async (c) =>
+  handle(c, async (auth) => {
+    const profileId = c.req.param("agentId");
+    const runId = c.req.param("runId");
+    await requireRunApprovalActor({ ...auth, profileId, runId });
+    const now = new Date();
+    const [action] = await db
+      .update(aiAgentPendingAction)
+      .set({
+        approvedAt: now,
+        status: "executing",
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(aiAgentPendingAction.id, c.req.param("actionId")),
+          eq(aiAgentPendingAction.agentRunId, runId),
+          eq(aiAgentPendingAction.agentProfileId, profileId),
+          eq(aiAgentPendingAction.workspaceId, auth.workspaceId),
+          eq(aiAgentPendingAction.status, "pending"),
+          gt(aiAgentPendingAction.expiresAt, now),
+        ),
+      )
+      .returning();
+    if (!action)
+      throw new AgentProfileError(
+        "agent_approval_unavailable",
+        "Approval is expired or was already handled.",
+        409,
+      );
+    try {
+      const result = await executeApprovedMcpAction({
+        action,
+        env: c.env,
+        userId: auth.userId,
+        workspaceId: auth.workspaceId,
+      });
+      await finishPendingAgentAction({
+        actionId: action.id,
+        ...(result.ok ? { result } : { error: result.summary, result }),
+      });
+      await resumeAgentRunAfterApproval(c.env, runId);
+      return {
+        actionId: action.id,
+        result,
+        status: result.ok ? "succeeded" : "failed",
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Approved connector action failed";
+      await finishPendingAgentAction({ actionId: action.id, error: message });
+      await resumeAgentRunAfterApproval(c.env, runId);
+      throw new AgentProfileError("agent_approval_failed", message, 409);
+    }
+  }),
 );
 
-aiAgentProfileRoutes.post(
-  "/agents/:agentId/runs/:runId/actions/:actionId/reject",
-  async (c) =>
-    handle(c, async (auth) => {
-      const profileId = c.req.param("agentId");
-      const runId = c.req.param("runId");
-      await requireRunApprovalActor({ ...auth, profileId, runId });
-      const now = new Date();
-      const [action] = await db
-        .update(aiAgentPendingAction)
-        .set({
-          completedAt: now,
-          error: "Rejected by an authorized agent user.",
-          rejectedAt: now,
-          status: "rejected",
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(aiAgentPendingAction.id, c.req.param("actionId")),
-            eq(aiAgentPendingAction.agentRunId, runId),
-            eq(aiAgentPendingAction.agentProfileId, profileId),
-            eq(aiAgentPendingAction.workspaceId, auth.workspaceId),
-            eq(aiAgentPendingAction.status, "pending"),
-          ),
-        )
-        .returning();
-      if (!action)
-        throw new AgentProfileError(
-          "agent_approval_unavailable",
-          "Approval was already handled.",
-          409,
-        );
-      await db
-        .update(aiAgentRun)
-        .set({
-          completedAt: now,
-          errorCode: "AGENT_ACTION_REJECTED",
-          errorSummary: "A required action was rejected.",
-          leaseExpiresAt: null,
-          leaseOwner: null,
-          status: "failed",
-          updatedAt: now,
-        })
-        .where(
-          and(
-            eq(aiAgentRun.id, runId),
-            eq(aiAgentRun.status, "waiting_approval"),
-          ),
-        );
-      await db
-        .update(aiAgentConversationMessage)
-        .set({
-          parts: [
-            {
-              status: "failed",
-              text: "Run stopped because a required action was rejected.",
-              type: "run",
-            },
-          ],
-          status: "failed",
-          updatedAt: now,
-        })
-        .where(eq(aiAgentConversationMessage.runId, runId));
-      await appendRunEvent(runId, "approval_rejected", "shared", {
-        actionId: action.id,
-        actorUserId: auth.userId,
-      });
-      return { actionId: action.id, status: "rejected" };
-    }),
+aiAgentProfileRoutes.post("/agents/:agentId/runs/:runId/actions/:actionId/reject", async (c) =>
+  handle(c, async (auth) => {
+    const profileId = c.req.param("agentId");
+    const runId = c.req.param("runId");
+    await requireRunApprovalActor({ ...auth, profileId, runId });
+    const now = new Date();
+    const [action] = await db
+      .update(aiAgentPendingAction)
+      .set({
+        completedAt: now,
+        error: "Rejected by an authorized agent user.",
+        rejectedAt: now,
+        status: "rejected",
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(aiAgentPendingAction.id, c.req.param("actionId")),
+          eq(aiAgentPendingAction.agentRunId, runId),
+          eq(aiAgentPendingAction.agentProfileId, profileId),
+          eq(aiAgentPendingAction.workspaceId, auth.workspaceId),
+          eq(aiAgentPendingAction.status, "pending"),
+        ),
+      )
+      .returning();
+    if (!action)
+      throw new AgentProfileError(
+        "agent_approval_unavailable",
+        "Approval was already handled.",
+        409,
+      );
+    await db
+      .update(aiAgentRun)
+      .set({
+        completedAt: now,
+        errorCode: "AGENT_ACTION_REJECTED",
+        errorSummary: "A required action was rejected.",
+        leaseExpiresAt: null,
+        leaseOwner: null,
+        status: "failed",
+        updatedAt: now,
+      })
+      .where(and(eq(aiAgentRun.id, runId), eq(aiAgentRun.status, "waiting_approval")));
+    await db
+      .update(aiAgentConversationMessage)
+      .set({
+        parts: [
+          {
+            status: "failed",
+            text: "Run stopped because a required action was rejected.",
+            type: "run",
+          },
+        ],
+        status: "failed",
+        updatedAt: now,
+      })
+      .where(eq(aiAgentConversationMessage.runId, runId));
+    await appendRunEvent(runId, "approval_rejected", "shared", {
+      actionId: action.id,
+      actorUserId: auth.userId,
+    });
+    return { actionId: action.id, status: "rejected" };
+  }),
 );
 
 async function requireRunApprovalActor(input: {
@@ -598,12 +572,7 @@ async function requireRunApprovalActor(input: {
       ),
     )
     .limit(1);
-  if (!run)
-    throw new AgentProfileError(
-      "agent_run_not_found",
-      "Agent run not found.",
-      404,
-    );
+  if (!run) throw new AgentProfileError("agent_run_not_found", "Agent run not found.", 404);
   const role = await getAgentProfileRole(input);
   const allowed = run.initiatedByUserId
     ? run.initiatedByUserId === input.userId
@@ -625,8 +594,7 @@ async function handle(
   if (!user) return c.json({ error: "Unauthorized" }, 401);
   const workspaceId = requestedAiWorkspaceId(c);
   if (!workspaceId) return c.json({ error: "No active workspace" }, 409);
-  if (!(await getMembership(workspaceId, user.id)))
-    return c.json({ error: "Forbidden" }, 403);
+  if (!(await getMembership(workspaceId, user.id))) return c.json({ error: "Forbidden" }, 403);
   if (getStringEnv(c.env, "AI_CUSTOM_AGENTS_ENABLED") !== "true") {
     return c.json(
       {

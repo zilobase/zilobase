@@ -1,16 +1,12 @@
-import { useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react"
-import { Check, ChevronRight, HelpCircle } from "@/shared/components/icons"
-import type { DateRange } from "react-day-picker"
+import { useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Check, ChevronRight, HelpCircle } from "@/shared/components/icons";
+import type { DateRange } from "react-day-picker";
 
-import { Button } from "@/shared/ui/button"
-import { DateCalendar } from "@/shared/ui/calendar"
-import { Input } from "@/shared/ui/input"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
-import { Switch } from "@/shared/ui/switch"
+import { Button } from "@/shared/ui/button";
+import { DateCalendar } from "@/shared/ui/calendar";
+import { Input } from "@/shared/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Switch } from "@/shared/ui/switch";
 import {
   dateFormatOptions,
   formatDatabaseDateValueWithFormats,
@@ -22,22 +18,22 @@ import {
   type DatabaseDatePropertyConfig,
   type DateFormatValue,
   type TimeFormatValue,
-} from "../model/database-date-config"
-import { parseDatabaseDateValue } from "../model/database-date-value"
-import { firstScalarValue } from "../property-values"
+} from "../model/database-date-config";
+import { parseDatabaseDateValue } from "../model/database-date-value";
+import { firstScalarValue } from "../property-values";
 
 type DatabasePropertyDateProps = {
-  editable?: boolean
-  emptyLabel?: string
-  label: string
-  onOpenChange?: (open: boolean) => void
-  open?: boolean
-  onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown
-  onSelect: (value: string | string[]) => void
-  propertyConfig?: unknown
-  trigger?: ReactNode
-  value: string | string[]
-}
+  editable?: boolean;
+  emptyLabel?: string;
+  label: string;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
+  onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown;
+  onSelect: (value: string | string[]) => void;
+  propertyConfig?: unknown;
+  trigger?: ReactNode;
+  value: string | string[];
+};
 
 export function DatabasePropertyDate({
   editable = true,
@@ -51,122 +47,109 @@ export function DatabasePropertyDate({
   trigger,
   value,
 }: DatabasePropertyDateProps) {
-  const startDateInputRef = useRef<HTMLInputElement | null>(null)
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
-  const [isRange, setIsRange] = useState(Array.isArray(value) && value.length > 1)
-  const [draftStartValue, setDraftStartValue] = useState(getStartValue(value))
-  const [draftEndValue, setDraftEndValue] = useState(getEndValue(value))
-  const [draftStartTimeValue, setDraftStartTimeValue] = useState(
-    getStartTimeValue(value)
-  )
-  const [draftEndTimeValue, setDraftEndTimeValue] = useState(
-    getEndTimeValue(value)
-  )
-  const selectedRange = useMemo(() => parseDateRange(value), [value])
-  const dateFormat = getDateFormatConfig(propertyConfig)
-  const timeFormat = getTimeFormatConfig(propertyConfig)
-  const displayValue = formatDatabaseDateValueWithFormats(
-    value,
-    dateFormat,
-    timeFormat
-  )
-  const displayContent = displayValue ||
-    (emptyLabel ? (
-      <span className="text-content-secondary">{emptyLabel}</span>
-    ) : null)
-  const dateFormatLabel = getDateFormatLabel(dateFormat)
-  const timeFormatLabel = getTimeFormatLabel(timeFormat)
-  const hasTime = timeFormat !== "hidden"
-  const isOpen = controlledOpen ?? uncontrolledOpen
+  const startDateInputRef = useRef<HTMLInputElement | null>(null);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [isRange, setIsRange] = useState(Array.isArray(value) && value.length > 1);
+  const [draftStartValue, setDraftStartValue] = useState(getStartValue(value));
+  const [draftEndValue, setDraftEndValue] = useState(getEndValue(value));
+  const [draftStartTimeValue, setDraftStartTimeValue] = useState(getStartTimeValue(value));
+  const [draftEndTimeValue, setDraftEndTimeValue] = useState(getEndTimeValue(value));
+  const selectedRange = useMemo(() => parseDateRange(value), [value]);
+  const dateFormat = getDateFormatConfig(propertyConfig);
+  const timeFormat = getTimeFormatConfig(propertyConfig);
+  const displayValue = formatDatabaseDateValueWithFormats(value, dateFormat, timeFormat);
+  const displayContent =
+    displayValue ||
+    (emptyLabel ? <span className="text-content-secondary">{emptyLabel}</span> : null);
+  const dateFormatLabel = getDateFormatLabel(dateFormat);
+  const timeFormatLabel = getTimeFormatLabel(timeFormat);
+  const hasTime = timeFormat !== "hidden";
+  const isOpen = controlledOpen ?? uncontrolledOpen;
 
   const setOpen = (open: boolean) => {
-    if (controlledOpen === undefined) setUncontrolledOpen(open)
-    onOpenChange?.(open)
+    if (controlledOpen === undefined) setUncontrolledOpen(open);
+    onOpenChange?.(open);
 
     if (open) {
-      setIsRange(Boolean(getEndValue(value)))
-      setDraftStartValue(getStartValue(value))
-      setDraftEndValue(getEndValue(value))
-      setDraftStartTimeValue(getStartTimeValue(value))
-      setDraftEndTimeValue(getEndTimeValue(value))
+      setIsRange(Boolean(getEndValue(value)));
+      setDraftStartValue(getStartValue(value));
+      setDraftEndValue(getEndValue(value));
+      setDraftStartTimeValue(getStartTimeValue(value));
+      setDraftEndTimeValue(getEndTimeValue(value));
     }
-  }
+  };
 
   const commitDate = (
     date: Date | undefined,
     nextIsRange = isRange,
-    timeValue = hasTime ? draftStartTimeValue : ""
+    timeValue = hasTime ? draftStartTimeValue : "",
   ) => {
-    const nextValue = date ? toDateValue(date, timeValue) : ""
+    const nextValue = date ? toDateValue(date, timeValue) : "";
 
     if (nextIsRange) {
-      commitRange(nextValue, "", getTimeFromValue(nextValue), "")
-      return
+      commitRange(nextValue, "", getTimeFromValue(nextValue), "");
+      return;
     }
 
-    onSelect(nextValue)
-    setDraftStartValue(nextValue)
-    setDraftEndValue("")
-    setDraftStartTimeValue(getTimeFromValue(nextValue))
-    setDraftEndTimeValue("")
-  }
+    onSelect(nextValue);
+    setDraftStartValue(nextValue);
+    setDraftEndValue("");
+    setDraftStartTimeValue(getTimeFromValue(nextValue));
+    setDraftEndTimeValue("");
+  };
 
   const commitRange = (
     startValue: string,
     endValue: string,
     startTimeValue = draftStartTimeValue,
-    endTimeValue = draftEndTimeValue
+    endTimeValue = draftEndTimeValue,
   ) => {
-    const nextStartValue = parseDatabaseDateValue(startValue)
-    const nextEndValue = parseDatabaseDateValue(endValue)
+    const nextStartValue = parseDatabaseDateValue(startValue);
+    const nextEndValue = parseDatabaseDateValue(endValue);
     const serializedStartValue = nextStartValue
       ? toDateValue(nextStartValue, hasTime ? startTimeValue : "")
-      : ""
+      : "";
     const serializedEndValue = nextEndValue
       ? toDateValue(nextEndValue, hasTime ? endTimeValue : "")
-      : ""
+      : "";
 
     if (serializedStartValue && serializedEndValue) {
-      onSelect([serializedStartValue, serializedEndValue])
+      onSelect([serializedStartValue, serializedEndValue]);
     } else {
-      onSelect(serializedStartValue)
+      onSelect(serializedStartValue);
     }
 
-    setDraftStartValue(serializedStartValue)
-    setDraftEndValue(serializedEndValue)
-    setDraftStartTimeValue(getTimeFromValue(serializedStartValue))
-    setDraftEndTimeValue(getTimeFromValue(serializedEndValue))
-  }
+    setDraftStartValue(serializedStartValue);
+    setDraftEndValue(serializedEndValue);
+    setDraftStartTimeValue(getTimeFromValue(serializedStartValue));
+    setDraftEndTimeValue(getTimeFromValue(serializedEndValue));
+  };
 
   const commitCalendarRange = (range: DateRange | undefined) => {
-    const startValue = range?.from ? toDateValue(range.from) : ""
-    const endValue = range?.to ? toDateValue(range.to) : ""
+    const startValue = range?.from ? toDateValue(range.from) : "";
+    const endValue = range?.to ? toDateValue(range.to) : "";
 
-    commitRange(startValue, endValue)
-  }
+    commitRange(startValue, endValue);
+  };
 
   const updateDateFormat = async (dateFormat: DateFormatValue) => {
     if (!onPropertyConfigChange) {
-      return
+      return;
     }
 
-    await onPropertyConfigChange(
-      getDateConfigWithFormat(propertyConfig, { dateFormat })
-    )
-  }
+    await onPropertyConfigChange(getDateConfigWithFormat(propertyConfig, { dateFormat }));
+  };
 
   const updateTimeFormat = async (timeFormat: TimeFormatValue) => {
     if (!onPropertyConfigChange) {
-      return
+      return;
     }
 
-    await onPropertyConfigChange(
-      getDateConfigWithFormat(propertyConfig, { timeFormat })
-    )
-  }
+    await onPropertyConfigChange(getDateConfigWithFormat(propertyConfig, { timeFormat }));
+  };
 
   if (!editable) {
-    return <span className="database-date-cell-trigger">{displayContent}</span>
+    return <span className="database-date-cell-trigger">{displayContent}</span>;
   }
 
   return (
@@ -186,10 +169,10 @@ export function DatabasePropertyDate({
         align="start"
         className="w-72 gap-1 p-1"
         onOpenAutoFocus={(event) => {
-          event.preventDefault()
-          const input = startDateInputRef.current
-          input?.focus({ preventScroll: true })
-          input?.setSelectionRange(input.value.length, input.value.length)
+          event.preventDefault();
+          const input = startDateInputRef.current;
+          input?.focus({ preventScroll: true });
+          input?.setSelectionRange(input.value.length, input.value.length);
         }}
         sideOffset={0}
       >
@@ -200,14 +183,10 @@ export function DatabasePropertyDate({
               <Button
                 className="h-auto shrink-0 self-stretch active:not-aria-[haspopup]:translate-y-0"
                 onClick={(event) => {
-                  event.stopPropagation()
-                  const today = new Date()
+                  event.stopPropagation();
+                  const today = new Date();
 
-                  commitDate(
-                    today,
-                    isRange,
-                    hasTime ? getTimeValueFromDate(today) : ""
-                  )
+                  commitDate(today, isRange, hasTime ? getTimeValueFromDate(today) : "");
                 }}
                 size="xs"
                 type="button"
@@ -220,18 +199,18 @@ export function DatabasePropertyDate({
             label={`${label} start date`}
             onCommit={(nextValue) => {
               if (isRange) {
-                commitRange(nextValue, draftEndValue)
+                commitRange(nextValue, draftEndValue);
               } else {
-                const date = parseDatabaseDateValue(nextValue)
+                const date = parseDatabaseDateValue(nextValue);
                 const nextValueWithTime = date
                   ? toDateValue(date, hasTime ? draftStartTimeValue : "")
-                  : ""
+                  : "";
 
-                onSelect(nextValueWithTime)
-                setDraftStartValue(nextValueWithTime)
-                setDraftStartTimeValue(getTimeFromValue(nextValueWithTime))
-                setDraftEndValue("")
-                setDraftEndTimeValue("")
+                onSelect(nextValueWithTime);
+                setDraftStartValue(nextValueWithTime);
+                setDraftStartTimeValue(getTimeFromValue(nextValueWithTime));
+                setDraftEndValue("");
+                setDraftEndTimeValue("");
               }
             }}
             onValueChange={setDraftStartValue}
@@ -244,16 +223,16 @@ export function DatabasePropertyDate({
               label={`${label} start time`}
               onCommit={(nextValue) => {
                 if (isRange) {
-                  commitRange(draftStartValue, draftEndValue, nextValue)
-                  return
+                  commitRange(draftStartValue, draftEndValue, nextValue);
+                  return;
                 }
 
-                const date = parseDatabaseDateValue(draftStartValue)
-                const nextDateValue = date ? toDateValue(date, nextValue) : ""
+                const date = parseDatabaseDateValue(draftStartValue);
+                const nextDateValue = date ? toDateValue(date, nextValue) : "";
 
-                onSelect(nextDateValue)
-                setDraftStartValue(nextDateValue)
-                setDraftStartTimeValue(nextValue)
+                onSelect(nextDateValue);
+                setDraftStartValue(nextDateValue);
+                setDraftStartTimeValue(nextValue);
               }}
               onValueChange={setDraftStartTimeValue}
               value={draftStartTimeValue}
@@ -274,12 +253,7 @@ export function DatabasePropertyDate({
                   fieldLabel="End time"
                   label={`${label} end time`}
                   onCommit={(nextValue) =>
-                    commitRange(
-                      draftStartValue,
-                      draftEndValue,
-                      draftStartTimeValue,
-                      nextValue
-                    )
+                    commitRange(draftStartValue, draftEndValue, draftStartTimeValue, nextValue)
                   }
                   onValueChange={setDraftEndTimeValue}
                   value={draftEndTimeValue}
@@ -326,12 +300,12 @@ export function DatabasePropertyDate({
           <DatabaseDateRangeOption
             checked={isRange}
             onCheckedChange={(checked) => {
-              const nextIsRange = checked === true
+              const nextIsRange = checked === true;
 
-              setIsRange(nextIsRange)
+              setIsRange(nextIsRange);
 
               if (!nextIsRange) {
-                commitRange(draftStartValue, "")
+                commitRange(draftStartValue, "");
               }
             }}
           />
@@ -358,11 +332,11 @@ export function DatabasePropertyDate({
         <Button
           className="w-full justify-start rounded-md border-t"
           onClick={() => {
-            onSelect("")
-            setDraftStartValue("")
-            setDraftEndValue("")
-            setDraftStartTimeValue("")
-            setDraftEndTimeValue("")
+            onSelect("");
+            setDraftStartValue("");
+            setDraftEndValue("");
+            setDraftStartTimeValue("");
+            setDraftEndTimeValue("");
           }}
           type="button"
           variant="ghost"
@@ -375,18 +349,14 @@ export function DatabasePropertyDate({
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
-
-function getDateConfigWithFormat(
-  config: unknown,
-  nextConfig: DatabaseDatePropertyConfig
-) {
+function getDateConfigWithFormat(config: unknown, nextConfig: DatabaseDatePropertyConfig) {
   return {
     ...(config && typeof config === "object" ? config : {}),
     ...nextConfig,
-  }
+  };
 }
 
 function DateInput({
@@ -399,19 +369,21 @@ function DateInput({
   placeholder,
   value,
 }: {
-  action?: ReactNode
-  inputRef?: RefObject<HTMLInputElement | null>
-  fieldLabel: string
-  label: string
-  onCommit: (value: string) => void
-  onValueChange: (value: string) => void
-  placeholder: string
-  value: string
+  action?: ReactNode;
+  inputRef?: RefObject<HTMLInputElement | null>;
+  fieldLabel: string;
+  label: string;
+  onCommit: (value: string) => void;
+  onValueChange: (value: string) => void;
+  placeholder: string;
+  value: string;
 }) {
-  const id = useId()
+  const id = useId();
   return (
     <div className="grid gap-1 text-xs font-medium text-content-secondary">
-      <label className="px-1" htmlFor={id}>{fieldLabel}</label>
+      <label className="px-1" htmlFor={id}>
+        {fieldLabel}
+      </label>
       <div className="flex items-stretch gap-1">
         <Input
           aria-label={label}
@@ -422,10 +394,10 @@ function DateInput({
           onChange={(event) => onValueChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key !== "Enter") {
-              return
+              return;
             }
 
-            onCommit(value)
+            onCommit(value);
           }}
           placeholder={placeholder}
           value={value}
@@ -433,7 +405,7 @@ function DateInput({
         {action}
       </div>
     </div>
-  )
+  );
 }
 
 function TimeInput({
@@ -443,11 +415,11 @@ function TimeInput({
   onValueChange,
   value,
 }: {
-  fieldLabel: string
-  label: string
-  onCommit: (value: string) => void
-  onValueChange: (value: string) => void
-  value: string
+  fieldLabel: string;
+  label: string;
+  onCommit: (value: string) => void;
+  onValueChange: (value: string) => void;
+  value: string;
 }) {
   return (
     <label className="grid gap-1 text-xs font-medium text-content-secondary">
@@ -459,25 +431,25 @@ function TimeInput({
         onChange={(event) => onValueChange(event.target.value)}
         onKeyDown={(event) => {
           if (event.key !== "Enter") {
-            return
+            return;
           }
 
-          onCommit(value)
+          onCommit(value);
         }}
         step={60}
         type="time"
         value={value}
       />
     </label>
-  )
+  );
 }
 
 function DatabaseDateRangeOption({
   checked,
   onCheckedChange,
 }: {
-  checked: boolean
-  onCheckedChange: (checked: boolean) => void
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
 }) {
   return (
     <button
@@ -487,14 +459,9 @@ function DatabaseDateRangeOption({
       type="button"
     >
       <span>End date</span>
-      <Switch
-        checked={checked}
-        className="ml-auto pointer-events-none"
-        size="sm"
-        tabIndex={-1}
-      />
+      <Switch checked={checked} className="ml-auto pointer-events-none" size="sm" tabIndex={-1} />
     </button>
-  )
+  );
 }
 
 function DatabaseDateFormatOption<TValue extends string>({
@@ -504,14 +471,14 @@ function DatabaseDateFormatOption<TValue extends string>({
   selectedValue,
   value,
 }: {
-  label: string
-  onSelect: (value: TValue) => void
+  label: string;
+  onSelect: (value: TValue) => void;
   options: {
-    label: string
-    value: TValue
-  }[]
-  selectedValue: TValue
-  value: string
+    label: string;
+    value: TValue;
+  }[];
+  selectedValue: TValue;
+  value: string;
 }) {
   return (
     <Popover>
@@ -527,12 +494,7 @@ function DatabaseDateFormatOption<TValue extends string>({
           </span>
         </button>
       </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-64 p-1"
-        side="right"
-        sideOffset={4}
-      >
+      <PopoverContent align="start" className="w-64 p-1" side="right" sideOffset={4}>
         {options.map((option) => (
           <button
             className="flex w-full cursor-default items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm outline-hidden select-none hover:bg-action-neutral-hover hover:text-action-on-neutral"
@@ -541,14 +503,12 @@ function DatabaseDateFormatOption<TValue extends string>({
             type="button"
           >
             <span>{option.label}</span>
-            {option.value === selectedValue ? (
-              <Check className="ml-auto size-4" />
-            ) : null}
+            {option.value === selectedValue ? <Check className="ml-auto size-4" /> : null}
           </button>
         ))}
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 function DatabaseDateOption({
@@ -556,9 +516,9 @@ function DatabaseDateOption({
   label,
   value,
 }: {
-  children?: ReactNode
-  label: string
-  value?: string
+  children?: ReactNode;
+  label: string;
+  value?: string;
 }) {
   return (
     <div className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm">
@@ -570,58 +530,56 @@ function DatabaseDateOption({
         </span>
       )}
     </div>
-  )
+  );
 }
 
 function parseDateRange(value: string | string[]) {
-  const [startValue, endValue] = Array.isArray(value)
-    ? value
-    : [value, undefined]
+  const [startValue, endValue] = Array.isArray(value) ? value : [value, undefined];
 
   return {
     end: endValue ? parseDatabaseDateValue(endValue) : undefined,
     endTime: endValue ? getTimeFromValue(endValue) : "",
     start: startValue ? parseDatabaseDateValue(startValue) : undefined,
     startTime: startValue ? getTimeFromValue(startValue) : "",
-  }
+  };
 }
 
 function getStartValue(value: string | string[]) {
-  return firstScalarValue(value)
+  return firstScalarValue(value);
 }
 
 function getEndValue(value: string | string[]) {
-  return Array.isArray(value) ? value[1] ?? "" : ""
+  return Array.isArray(value) ? (value[1] ?? "") : "";
 }
 
 function getStartTimeValue(value: string | string[]) {
-  return getTimeFromValue(getStartValue(value))
+  return getTimeFromValue(getStartValue(value));
 }
 
 function getEndTimeValue(value: string | string[]) {
-  return getTimeFromValue(getEndValue(value))
+  return getTimeFromValue(getEndValue(value));
 }
 
 function getDateFromValue(value: string) {
-  return value.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? value
+  return value.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? value;
 }
 
 function getTimeFromValue(value: string) {
-  return value.match(/T(\d{2}:\d{2})/)?.[1] ?? ""
+  return value.match(/T(\d{2}:\d{2})/)?.[1] ?? "";
 }
 
 function toDateValue(date: Date, timeValue = "") {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-  const dateValue = `${year}-${month}-${day}`
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const dateValue = `${year}-${month}-${day}`;
 
-  return timeValue ? `${dateValue}T${timeValue}` : dateValue
+  return timeValue ? `${dateValue}T${timeValue}` : dateValue;
 }
 
 function getTimeValueFromDate(date: Date) {
-  const hours = String(date.getHours()).padStart(2, "0")
-  const minutes = String(date.getMinutes()).padStart(2, "0")
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
 
-  return `${hours}:${minutes}`
+  return `${hours}:${minutes}`;
 }

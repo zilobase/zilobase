@@ -4,10 +4,7 @@ import {
   type MeetingStatus,
 } from "../contracts/meeting-types";
 
-const transitions: Record<
-  MeetingLifecycleAction,
-  Partial<Record<MeetingStatus, MeetingStatus>>
-> = {
+const transitions: Record<MeetingLifecycleAction, Partial<Record<MeetingStatus, MeetingStatus>>> = {
   start: { idle: "recording", failed: "recording" },
   pause: { recording: "paused" },
   resume: { paused: "recording" },

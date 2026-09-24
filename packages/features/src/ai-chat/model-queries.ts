@@ -1,24 +1,24 @@
-import { queryOptions } from "@tanstack/react-query"
+import { queryOptions } from "@tanstack/react-query";
 
-import type { ApiFetcher } from "../shared/api-fetcher"
-import { workspaceRequestOptions } from "../workspaces/queries"
+import type { ApiFetcher } from "../shared/api-fetcher";
+import { workspaceRequestOptions } from "../workspaces/queries";
 
 export type WorkspaceAiChatModel = {
-  chef: string
-  chefSlug: string
-  description?: string
-  gatewayId: string
-  id: string
-  name: string
-  providers: string[]
-}
+  chef: string;
+  chefSlug: string;
+  description?: string;
+  gatewayId: string;
+  id: string;
+  name: string;
+  providers: string[];
+};
 
 export type WorkspaceAiModelsResponse = {
-  models: WorkspaceAiChatModel[]
-}
+  models: WorkspaceAiChatModel[];
+};
 
 export const aiModelsQueryKey = (workspaceId: string | null | undefined) =>
-  ["workspaces", workspaceId ?? "none", "ai-models"] as const
+  ["workspaces", workspaceId ?? "none", "ai-models"] as const;
 
 export const aiModelsQueryOptions = (
   apiFetch: ApiFetcher,
@@ -32,4 +32,4 @@ export const aiModelsQueryOptions = (
         "/api/workspace/settings/ai/models",
         workspaceRequestOptions(workspaceId, { signal }),
       ),
-  })
+  });

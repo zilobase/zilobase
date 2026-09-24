@@ -7,8 +7,8 @@ const mailFeatureFiles = [
   "/src/features/mail/mailbox/mailbox-thread-list.tsx",
   "/src/features/mail/mailbox/mailbox-topbar.tsx",
   "/src/features/mail/organization/mail-view-model.ts",
-]
+];
 
 export async function readMailFeatureSource(readSource) {
-  return (await Promise.all(mailFeatureFiles.map((file) => readSource(file)))).join("\n")
+  return (await Promise.all(mailFeatureFiles.map((file) => readSource(file)))).join("\n");
 }

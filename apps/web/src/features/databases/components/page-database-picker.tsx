@@ -1,9 +1,4 @@
-import {
-  useDeferredValue,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react"
+import { useDeferredValue, useMemo, useState, type ReactNode } from "react";
 
 import {
   Command,
@@ -12,23 +7,21 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@/shared/ui/command"
-import { Loader2 } from "@/shared/components/icons"
-import { cn } from "@/shared/lib/utils"
+} from "@/shared/ui/command";
+import { Loader2 } from "@/shared/components/icons";
+import { cn } from "@/shared/lib/utils";
 import {
   filterPageDatabasePickerOptions,
   type PageDatabasePickerSearchOption,
-} from "./page-database-picker-model"
+} from "./page-database-picker-model";
 
 export type PageDatabasePickerOption = PageDatabasePickerSearchOption & {
-  description?: string
-  disabled?: boolean
-  icon?: ReactNode
-}
+  description?: string;
+  disabled?: boolean;
+  icon?: ReactNode;
+};
 
-export function PageDatabasePicker<
-  TOption extends PageDatabasePickerOption,
->({
+export function PageDatabasePicker<TOption extends PageDatabasePickerOption>({
   ariaLabel,
   autoFocus = true,
   className,
@@ -46,45 +39,38 @@ export function PageDatabasePicker<
   selectedValues = [],
   trailingContent,
 }: {
-  ariaLabel: string
-  autoFocus?: boolean
-  className?: string
-  emptyMessage: string
-  filterOptions?: boolean
-  heading?: string
-  isLoading?: boolean
-  isSearching?: boolean
-  loadingMessage: string
-  onQueryChange?: (query: string) => void
-  onSelect: (option: TOption) => void
-  options: TOption[]
-  placeholder: string
-  query?: string
-  selectedValues?: string[]
-  trailingContent?: ReactNode
+  ariaLabel: string;
+  autoFocus?: boolean;
+  className?: string;
+  emptyMessage: string;
+  filterOptions?: boolean;
+  heading?: string;
+  isLoading?: boolean;
+  isSearching?: boolean;
+  loadingMessage: string;
+  onQueryChange?: (query: string) => void;
+  onSelect: (option: TOption) => void;
+  options: TOption[];
+  placeholder: string;
+  query?: string;
+  selectedValues?: string[];
+  trailingContent?: ReactNode;
 }) {
-  const [internalQuery, setInternalQuery] = useState("")
-  const query = controlledQuery ?? internalQuery
-  const deferredQuery = useDeferredValue(query)
+  const [internalQuery, setInternalQuery] = useState("");
+  const query = controlledQuery ?? internalQuery;
+  const deferredQuery = useDeferredValue(query);
   const displayedOptions = useMemo(
-    () =>
-      filterOptions
-        ? filterPageDatabasePickerOptions(options, deferredQuery)
-        : options,
+    () => (filterOptions ? filterPageDatabasePickerOptions(options, deferredQuery) : options),
     [deferredQuery, filterOptions, options],
-  )
-  const selected = useMemo(() => new Set(selectedValues), [selectedValues])
+  );
+  const selected = useMemo(() => new Set(selectedValues), [selectedValues]);
   const updateQuery = (nextQuery: string) => {
-    if (controlledQuery === undefined) setInternalQuery(nextQuery)
-    onQueryChange?.(nextQuery)
-  }
+    if (controlledQuery === undefined) setInternalQuery(nextQuery);
+    onQueryChange?.(nextQuery);
+  };
 
   return (
-    <Command
-      className={cn("min-h-0", className)}
-      shouldFilter={false}
-      variant="menu"
-    >
+    <Command className={cn("min-h-0", className)} shouldFilter={false} variant="menu">
       <div className="relative shrink-0">
         <CommandInput
           aria-label={ariaLabel}
@@ -111,9 +97,7 @@ export function PageDatabasePicker<
             <CommandGroup heading={heading}>
               {displayedOptions.map((option) => (
                 <CommandItem
-                  data-checked={
-                    selected.has(option.value) ? "true" : undefined
-                  }
+                  data-checked={selected.has(option.value) ? "true" : undefined}
                   disabled={option.disabled}
                   key={option.value}
                   onSelect={() => onSelect(option)}
@@ -140,5 +124,5 @@ export function PageDatabasePicker<
         )}
       </CommandList>
     </Command>
-  )
+  );
 }

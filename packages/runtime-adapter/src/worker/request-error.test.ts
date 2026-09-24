@@ -25,15 +25,17 @@ describe("Worker request errors", () => {
       code: "DATABASE_UNAVAILABLE",
       message: "The database is temporarily unavailable.",
     });
-    expect(log).toHaveBeenCalledWith(expect.stringContaining(
-      '"event":"database_connection_failed"',
-    ));
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining('"event":"database_connection_failed"'),
+    );
   });
 
   it("does not hide unrelated Worker failures", () => {
-    expect(createWorkerDatabaseUnavailableResponse(
-      new Error("unexpected"),
-      new Request("https://api.example.com/collaboration"),
-    )).toBeNull();
+    expect(
+      createWorkerDatabaseUnavailableResponse(
+        new Error("unexpected"),
+        new Request("https://api.example.com/collaboration"),
+      ),
+    ).toBeNull();
   });
 });

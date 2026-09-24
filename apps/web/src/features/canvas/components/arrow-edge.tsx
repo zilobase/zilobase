@@ -1,35 +1,35 @@
-import { useCallback, useEffect, useMemo, useRef } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   BaseEdge,
   EdgeToolbar,
   type EdgeProps,
   useInternalNode,
   useReactFlow,
-} from "@xyflow/react"
-import { Trash2Icon } from "@/shared/components/icons"
+} from "@xyflow/react";
+import { Trash2Icon } from "@/shared/components/icons";
 
 import {
   getCanvasColorOption,
   defaultCanvasStrokeStyle,
   defaultCanvasStrokeWidth,
-} from "../model/constants"
+} from "../model/constants";
 import {
   isCanvasConnectableNode,
   getNodeCenter,
   getNodeConnectionPoint,
   isPointInsideNode,
   isCanvasAnchorNode,
-} from "../model/canvas-geometry"
-import type { CanvasArrowEdge, CanvasEdge, CanvasNode } from "../model/types"
+} from "../model/canvas-geometry";
+import type { CanvasArrowEdge, CanvasEdge, CanvasNode } from "../model/types";
 
-const endpointSize = 14
+const endpointSize = 14;
 
-type DragEndpoint = "source" | "target"
+type DragEndpoint = "source" | "target";
 
 type EndpointPosition = {
-  x: number
-  y: number
-}
+  x: number;
+  y: number;
+};
 
 const endpointHandleIds = {
   source: {
@@ -40,38 +40,25 @@ const endpointHandleIds = {
     anchor: "anchor-target",
     shape: "shape-target",
   },
-} as const
+} as const;
 
-export function ArrowEdge({
-  data,
-  id,
-  selected,
-  source,
-  target,
-}: EdgeProps<CanvasArrowEdge>) {
-  const sourceNode = useInternalNode<CanvasNode>(source)
-  const targetNode = useInternalNode<CanvasNode>(target)
-  const {
-    deleteElements,
-    getNode,
-    getNodes,
-    screenToFlowPosition,
-    setEdges,
-    setNodes,
-  } =
-    useReactFlow<CanvasNode, CanvasEdge>()
+export function ArrowEdge({ data, id, selected, source, target }: EdgeProps<CanvasArrowEdge>) {
+  const sourceNode = useInternalNode<CanvasNode>(source);
+  const targetNode = useInternalNode<CanvasNode>(target);
+  const { deleteElements, getNode, getNodes, screenToFlowPosition, setEdges, setNodes } =
+    useReactFlow<CanvasNode, CanvasEdge>();
   const dragSessionRef = useRef<{
-    endpoint: DragEndpoint
-  } | null>(null)
-  const color = getCanvasColorOption(data?.color ?? "default")
+    endpoint: DragEndpoint;
+  } | null>(null);
+  const color = getCanvasColorOption(data?.color ?? "default");
 
   const positions = useMemo(() => {
     if (!sourceNode || !targetNode) {
-      return null
+      return null;
     }
 
-    const sourceCenter = getNodeCenter(sourceNode)
-    const targetCenter = getNodeCenter(targetNode)
+    const sourceCenter = getNodeCenter(sourceNode);
+    const targetCenter = getNodeCenter(targetNode);
 
     return {
       source: isCanvasConnectableNode(sourceNode)
@@ -80,41 +67,39 @@ export function ArrowEdge({
       target: isCanvasConnectableNode(targetNode)
         ? getNodeConnectionPoint(targetNode, sourceCenter)
         : targetCenter,
-    }
-  }, [sourceNode, targetNode])
+    };
+  }, [sourceNode, targetNode]);
 
   const path = useMemo(() => {
     if (!positions) {
-      return ""
+      return "";
     }
 
-    return `M ${positions.source.x} ${positions.source.y} L ${positions.target.x} ${positions.target.y}`
-  }, [positions])
+    return `M ${positions.source.x} ${positions.source.y} L ${positions.target.x} ${positions.target.y}`;
+  }, [positions]);
 
-  const markerId = `canvas-arrow-head-${id}`
+  const markerId = `canvas-arrow-head-${id}`;
   const labelPosition = useMemo(() => {
     if (!positions) {
-      return null
+      return null;
     }
 
     return {
       x: (positions.source.x + positions.target.x) / 2,
       y: (positions.source.y + positions.target.y) / 2,
-    }
-  }, [positions])
+    };
+  }, [positions]);
 
   const moveEndpoint = useCallback(
     (endpoint: DragEndpoint, nextPosition: EndpointPosition) => {
-      const currentNodeId = endpoint === "source" ? source : target
-      const currentNode = getNode(currentNodeId)
+      const currentNodeId = endpoint === "source" ? source : target;
+      const currentNode = getNode(currentNodeId);
       const nextAnchorNodeId = isCanvasAnchorNode(currentNode)
         ? currentNodeId
-        : `anchor-${id}-${endpoint}`
+        : `anchor-${id}-${endpoint}`;
 
       setNodes((currentNodes) => {
-        const existingAnchorIndex = currentNodes.findIndex(
-          (node) => node.id === nextAnchorNodeId,
-        )
+        const existingAnchorIndex = currentNodes.findIndex((node) => node.id === nextAnchorNodeId);
 
         if (existingAnchorIndex === -1) {
           return [
@@ -127,7 +112,7 @@ export function ArrowEdge({
               position: nextPosition,
               selectable: false,
             },
-          ]
+          ];
         }
 
         return currentNodes.map((node) =>
@@ -137,8 +122,8 @@ export function ArrowEdge({
                 position: nextPosition,
               }
             : node,
-        )
-      })
+        );
+      });
 
       setEdges((currentEdges) =>
         currentEdges.map((edge) =>
@@ -150,10 +135,10 @@ export function ArrowEdge({
               }
             : edge,
         ),
-      )
+      );
     },
     [getNode, id, setEdges, setNodes, source, target],
-  )
+  );
 
   const connectEndpoint = useCallback(
     (endpoint: DragEndpoint, nodeId: string) => {
@@ -167,17 +152,17 @@ export function ArrowEdge({
               }
             : edge,
         ),
-      )
+      );
     },
     [id, setEdges],
-  )
+  );
 
   useEffect(() => {
     const onMouseMove = (event: MouseEvent) => {
-      const session = dragSessionRef.current
+      const session = dragSessionRef.current;
 
       if (!session) {
-        return
+        return;
       }
 
       moveEndpoint(
@@ -186,50 +171,50 @@ export function ArrowEdge({
           x: event.clientX,
           y: event.clientY,
         }),
-      )
-    }
+      );
+    };
 
     const onMouseUp = (event: MouseEvent) => {
-      const session = dragSessionRef.current
+      const session = dragSessionRef.current;
 
       if (!session) {
-        return
+        return;
       }
 
-      dragSessionRef.current = null
+      dragSessionRef.current = null;
 
       const releasePosition = screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
-      })
-      const nextNode = getNearestShapeNode(releasePosition, getNodes())
+      });
+      const nextNode = getNearestShapeNode(releasePosition, getNodes());
 
       if (nextNode) {
-        connectEndpoint(session.endpoint, nextNode.id)
+        connectEndpoint(session.endpoint, nextNode.id);
       }
-    }
+    };
 
-    window.addEventListener("mousemove", onMouseMove)
-    window.addEventListener("mouseup", onMouseUp)
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
 
     return () => {
-      window.removeEventListener("mousemove", onMouseMove)
-      window.removeEventListener("mouseup", onMouseUp)
-    }
-  }, [connectEndpoint, getNodes, moveEndpoint, screenToFlowPosition])
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [connectEndpoint, getNodes, moveEndpoint, screenToFlowPosition]);
 
   if (!positions || !labelPosition) {
-    return null
+    return null;
   }
 
-  const strokeWidth = data?.strokeWidth ?? defaultCanvasStrokeWidth
-  const strokeStyle = data?.strokeStyle ?? defaultCanvasStrokeStyle
+  const strokeWidth = data?.strokeWidth ?? defaultCanvasStrokeWidth;
+  const strokeStyle = data?.strokeStyle ?? defaultCanvasStrokeStyle;
   const strokeDasharray =
     strokeStyle === "dashed"
       ? `${strokeWidth * 3} ${strokeWidth * 2}`
       : strokeStyle === "dotted"
         ? `${strokeWidth} ${strokeWidth * 1.6}`
-        : undefined
+        : undefined;
 
   return (
     <>
@@ -273,9 +258,9 @@ export function ArrowEdge({
             cy={positions.source.y}
             fill="var(--zb-color-surface-background-canvas)"
             onMouseDown={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              dragSessionRef.current = { endpoint: "source" }
+              event.preventDefault();
+              event.stopPropagation();
+              dragSessionRef.current = { endpoint: "source" };
             }}
             r={endpointSize / 2}
             stroke={color.stroke}
@@ -288,9 +273,9 @@ export function ArrowEdge({
             cy={positions.target.y}
             fill="var(--zb-color-surface-background-canvas)"
             onMouseDown={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              dragSessionRef.current = { endpoint: "target" }
+              event.preventDefault();
+              event.stopPropagation();
+              dragSessionRef.current = { endpoint: "target" };
             }}
             r={endpointSize / 2}
             stroke={color.stroke}
@@ -310,15 +295,15 @@ export function ArrowEdge({
         </button>
       </EdgeToolbar>
     </>
-  )
+  );
 }
 
 function getNearestShapeNode(position: EndpointPosition, nodes: CanvasNode[]) {
   for (const node of nodes) {
     if (isCanvasConnectableNode(node) && isPointInsideNode(position, node)) {
-      return node
+      return node;
     }
   }
 
-  return undefined
+  return undefined;
 }

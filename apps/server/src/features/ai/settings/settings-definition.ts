@@ -1,4 +1,7 @@
-import { settingsDefinitionSchema, type AgentSettingsDefinition } from "@zilobase/features/ai-chat/settings-contract";
+import {
+  settingsDefinitionSchema,
+  type AgentSettingsDefinition,
+} from "@zilobase/features/ai-chat/settings-contract";
 import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-markdown";
 
 import { markdownToPageContent } from "../conversion/markdown-to-page-content";

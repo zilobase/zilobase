@@ -11,11 +11,7 @@ import {
   notionActionLabel,
   type NotionActionDraft,
 } from "../actions/notion-action-model";
-import {
-  scheduleDefinition,
-  scheduleDraft,
-  type ScheduleDraft,
-} from "./schedule-model";
+import { scheduleDefinition, scheduleDraft, type ScheduleDraft } from "./schedule-model";
 
 export type TriggerDraft = {
   id: string;
@@ -35,10 +31,7 @@ export type TriggerPickerSelection =
     }
   | { type: "schedule" };
 
-export type EventTriggerPickerSelection = Exclude<
-  TriggerPickerSelection,
-  { type: "schedule" }
->;
+export type EventTriggerPickerSelection = Exclude<TriggerPickerSelection, { type: "schedule" }>;
 
 export type BuilderDraft = {
   actions: NotionActionDraft[];
@@ -73,9 +66,7 @@ export function triggerConfigurationTitle(
   return `${property.name} ${triggerOperatorLabel(trigger.operator).toLowerCase()}`;
 }
 
-export function triggerOperatorLabel(
-  operator: DatabaseAutomationTriggerOperator,
-) {
+export function triggerOperatorLabel(operator: DatabaseAutomationTriggerOperator) {
   if (operator === "was_edited") return "Is edited";
   if (operator === "is") return "Set to";
   return humanize(operator);
@@ -114,9 +105,8 @@ export const triggerFromSelection = (
           selection.operator ??
           (selection.propertyId === "any"
             ? "was_edited"
-            : (catalog?.properties.find(
-                (property) => property.id === selection.propertyId,
-              )?.operators[0] ?? "was_edited")),
+            : (catalog?.properties.find((property) => property.id === selection.propertyId)
+                ?.operators[0] ?? "was_edited")),
         propertyId: selection.propertyId,
         type: "property_edited",
       };
@@ -150,27 +140,24 @@ export function buildDefinition(
     )
   )
     return null;
-  const clauses: DatabaseAutomationEventTriggerClause[] = draft.triggers.map(
-    (trigger) =>
-      trigger.type === "page_added"
-        ? { id: trigger.id, type: "page_added" }
-        : {
-            id: trigger.id,
-            operator: trigger.operator,
-            propertyId: trigger.propertyId,
-            type: "property_edited",
-            ...(operandless.has(trigger.operator)
-              ? {}
-              : {
-                  operand: parseOperand(
-                    trigger.operands,
-                    catalog?.properties.find(
-                      (property) => property.id === trigger.propertyId,
-                    )?.type,
-                    trigger.operator,
-                  ),
-                }),
-          },
+  const clauses: DatabaseAutomationEventTriggerClause[] = draft.triggers.map((trigger) =>
+    trigger.type === "page_added"
+      ? { id: trigger.id, type: "page_added" }
+      : {
+          id: trigger.id,
+          operator: trigger.operator,
+          propertyId: trigger.propertyId,
+          type: "property_edited",
+          ...(operandless.has(trigger.operator)
+            ? {}
+            : {
+                operand: parseOperand(
+                  trigger.operands,
+                  catalog?.properties.find((property) => property.id === trigger.propertyId)?.type,
+                  trigger.operator,
+                ),
+              }),
+        },
   );
   const actions = draft.actions.map(actionForDefinition);
   const trigger: DatabaseAutomationDefinition["trigger"] =
@@ -206,8 +193,7 @@ function parseOperand(
       ? { entityType, ids: values, type: "entity_list" }
       : { entityType, id: value, type: "entity" };
   }
-  if (propertyType === "relation")
-    return { entityType: "page", id: value, type: "entity" };
+  if (propertyType === "relation") return { entityType: "page", id: value, type: "entity" };
   return value;
 }
 
@@ -226,23 +212,16 @@ export function nextTriggerOperands(
   if (operandless.has(operator)) return [];
   if (operator === "is_relative_to_today") {
     return [
-      trigger.operands[0]?.startsWith("relative:")
-        ? trigger.operands[0]
-        : "relative:this:week",
+      trigger.operands[0]?.startsWith("relative:") ? trigger.operands[0] : "relative:this:week",
     ];
   }
-  if (
-    ["multi_select", "person", "select", "status"].includes(propertyType ?? "")
-  ) {
+  if (["multi_select", "person", "select", "status"].includes(propertyType ?? "")) {
     return trigger.operands;
   }
   return trigger.operands.slice(0, operator === "is_between" ? 2 : 1);
 }
 
-export function generateName(
-  draft: BuilderDraft,
-  catalog?: DatabaseAutomationCatalog,
-) {
+export function generateName(draft: BuilderDraft, catalog?: DatabaseAutomationCatalog) {
   if (draft.triggerKind === "schedule") {
     return `${humanize(draft.schedule.frequency)} at ${draft.schedule.localTime} → ${draft.actions[0] ? notionActionLabel(draft.actions[0].action.type) : "Run actions"}`;
   }
@@ -262,50 +241,44 @@ export function draftFromDefinition(
   return {
     actions: definition.actions.map(notionActionDraftFromAction),
     customName: true,
-    match:
-      definition.trigger.kind === "event" ? definition.trigger.match : "any",
+    match: definition.trigger.kind === "event" ? definition.trigger.match : "any",
     name,
     schedule:
       definition.trigger.kind === "schedule"
         ? scheduleDraft(definition.trigger.schedule)
         : base.schedule,
-    scopeViewId:
-      definition.scope.type === "view" ? definition.scope.viewId : "",
+    scopeViewId: definition.scope.type === "view" ? definition.scope.viewId : "",
     triggerKind: definition.trigger.kind,
     triggers:
       definition.trigger.kind === "event"
-        ? definition.trigger.clauses.map(
-            (clause): TriggerDraft =>
-              clause.type === "page_added"
-                ? {
-                    id: clause.id,
-                    operands: [],
-                    operator: "was_edited",
-                    propertyId: "any",
-                    type: "page_added",
-                  }
-                : {
-                    id: clause.id,
-                    operands: triggerOperandValues(clause.operand),
-                    operator: clause.operator,
-                    propertyId: clause.propertyId,
-                    type: "property_edited",
-                  },
+        ? definition.trigger.clauses.map((clause): TriggerDraft =>
+            clause.type === "page_added"
+              ? {
+                  id: clause.id,
+                  operands: [],
+                  operator: "was_edited",
+                  propertyId: "any",
+                  type: "page_added",
+                }
+              : {
+                  id: clause.id,
+                  operands: triggerOperandValues(clause.operand),
+                  operator: clause.operator,
+                  propertyId: clause.propertyId,
+                  type: "property_edited",
+                },
           )
         : base.triggers,
   };
 }
 
-function triggerOperandValues(
-  operand: AutomationTriggerOperand | undefined,
-): string[] {
+function triggerOperandValues(operand: AutomationTriggerOperand | undefined): string[] {
   if (operand === undefined || operand === null) return [];
   if (typeof operand !== "object") return [String(operand)];
   if (operand.type === "entity") return [operand.id];
   if (operand.type === "entity_list") return operand.ids;
   if (operand.type === "date") return [operand.value.slice(0, 10)];
-  if (operand.type === "date_range")
-    return [operand.start.slice(0, 10), operand.end.slice(0, 10)];
+  if (operand.type === "date_range") return [operand.start.slice(0, 10), operand.end.slice(0, 10)];
   return [`relative:${operand.direction}:${operand.unit}`];
 }
 
@@ -353,8 +326,6 @@ function describeEventTrigger(
 ) {
   if (!trigger) return "Add trigger";
   if (trigger.type === "page_added") return "When page added";
-  const property = catalog?.properties.find(
-    (item) => item.id === trigger.propertyId,
-  )?.name;
+  const property = catalog?.properties.find((item) => item.id === trigger.propertyId)?.name;
   return `When ${property ?? "property"} edited`;
 }

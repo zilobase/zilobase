@@ -1,31 +1,28 @@
-import type { QueryClient } from "@tanstack/react-query"
+import type { QueryClient } from "@tanstack/react-query";
 
-import { applyNavDelta, type NavDelta } from "./nav-delta"
-import {
-  pagesNavRootQueryKey,
-} from "./queries"
-import type { PageNavigationPayload } from "./contracts"
-export * from "./navigation-realtime-contract"
+import { applyNavDelta, type NavDelta } from "./nav-delta";
+import { pagesNavRootQueryKey } from "./queries";
+import type { PageNavigationPayload } from "./contracts";
+export * from "./navigation-realtime-contract";
 
 export function applyNavigationDeltaToCache(
   queryClient: QueryClient,
   workspaceId: string,
   delta: NavDelta | null | undefined,
 ) {
-  if (!delta) return false
-  const queryKey = pagesNavRootQueryKey(workspaceId)
+  if (!delta) return false;
+  const queryKey = pagesNavRootQueryKey(workspaceId);
   const hasSnapshot = queryClient
     .getQueriesData<PageNavigationPayload>({ queryKey })
-    .some(([, current]) => current !== undefined)
+    .some(([, current]) => current !== undefined);
 
   if (!hasSnapshot) {
-    void queryClient.invalidateQueries({ queryKey })
-    return false
+    void queryClient.invalidateQueries({ queryKey });
+    return false;
   }
 
-  queryClient.setQueriesData<PageNavigationPayload | undefined>(
-    { queryKey },
-    (current) => applyNavDelta(current, delta),
-  )
-  return true
+  queryClient.setQueriesData<PageNavigationPayload | undefined>({ queryKey }, (current) =>
+    applyNavDelta(current, delta),
+  );
+  return true;
 }

@@ -1,116 +1,97 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { EyeIcon, EyeOffIcon } from "@/shared/components/icons"
+import { useState } from "react";
+import { EyeIcon, EyeOffIcon } from "@/shared/components/icons";
 
-import { Button } from "@/shared/ui/button"
-import { GoogleIcon } from "@/shared/components/google-icon"
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
-} from "@/shared/ui/field"
+import { Button } from "@/shared/ui/button";
+import { GoogleIcon } from "@/shared/components/google-icon";
+import { Field, FieldError, FieldGroup, FieldLabel, FieldSeparator } from "@/shared/ui/field";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@/shared/ui/input-group"
-import { Input } from "@/shared/ui/input"
-import { getApiErrorMessage } from "@/platform/network/api"
-import { getAuthReturnPath, signInWithGoogle } from "../lib/google-auth"
-import { readOAuthQuery } from "@/features/oauth/lib/oauth-query"
-import { cn } from "@/shared/lib/utils"
+} from "@/shared/ui/input-group";
+import { Input } from "@/shared/ui/input";
+import { getApiErrorMessage } from "@/platform/network/api";
+import { getAuthReturnPath, signInWithGoogle } from "../lib/google-auth";
+import { readOAuthQuery } from "@/features/oauth/lib/oauth-query";
+import { cn } from "@/shared/lib/utils";
 import { useRequestSignInOtp, useSignInWithPassword } from "@zilobase/features/auth/react";
-import { useAuthFlowStore } from "../state/auth-flow-store"
-import { editionWebModule } from "@zilobase/edition-web"
-import posthog from "@/shared/lib/posthog"
+import { useAuthFlowStore } from "../state/auth-flow-store";
+import { editionWebModule } from "@zilobase/edition-web";
+import posthog from "@/shared/lib/posthog";
 
-export function LoginForm({
-  className,
-  ...props
-}: React.ComponentProps<"form">) {
-  const signInWithPassword = useSignInWithPassword()
-  const requestSignInOtp = useRequestSignInOtp()
-  const setAuthFlow = useAuthFlowStore((state) => state.setAuthFlow)
-  const [email, setEmail] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [googleError, setGoogleError] = useState<unknown>(null)
-  const [isGooglePending, setIsGooglePending] = useState(false)
-  const isPending =
-    signInWithPassword.isPending ||
-    requestSignInOtp.isPending ||
-    isGooglePending
+export function LoginForm({ className, ...props }: React.ComponentProps<"form">) {
+  const signInWithPassword = useSignInWithPassword();
+  const requestSignInOtp = useRequestSignInOtp();
+  const setAuthFlow = useAuthFlowStore((state) => state.setAuthFlow);
+  const [email, setEmail] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [googleError, setGoogleError] = useState<unknown>(null);
+  const [isGooglePending, setIsGooglePending] = useState(false);
+  const isPending = signInWithPassword.isPending || requestSignInOtp.isPending || isGooglePending;
 
   async function handleGoogleSignIn() {
-    setGoogleError(null)
-    setIsGooglePending(true)
+    setGoogleError(null);
+    setIsGooglePending(true);
 
     try {
-      await signInWithGoogle(getAuthReturnPath("/recents"))
+      await signInWithGoogle(getAuthReturnPath("/recents"));
     } catch (error) {
-      setGoogleError(error)
-      setIsGooglePending(false)
+      setGoogleError(error);
+      setIsGooglePending(false);
     }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
 
-    const formData = new FormData(event.currentTarget)
+    const formData = new FormData(event.currentTarget);
     const submittedEmail = String(formData.get("email") ?? "")
       .trim()
-      .toLowerCase()
-    const password = String(formData.get("password") ?? "")
-    const returnTo = getAuthReturnPath("/recents")
+      .toLowerCase();
+    const password = String(formData.get("password") ?? "");
+    const returnTo = getAuthReturnPath("/recents");
 
     try {
       const result = await signInWithPassword.mutateAsync({
         email: submittedEmail,
         password,
-      })
-      posthog?.capture("signed_in", { method: "password" })
+      });
+      posthog?.capture("signed_in", { method: "password" });
       const redirectUrl =
-        result &&
-        typeof result === "object" &&
-        "url" in result &&
-        typeof result.url === "string"
+        result && typeof result === "object" && "url" in result && typeof result.url === "string"
           ? result.url
           : readOAuthQuery()
             ? `/oauth/consent${window.location.search}`
-            : returnTo
-      window.location.assign(redirectUrl)
+            : returnTo;
+      window.location.assign(redirectUrl);
     } catch {
       // React Query owns the visible error state.
     }
   }
 
   async function handleEmailOtpSignIn() {
-    const normalizedEmail = email.trim().toLowerCase()
-    if (!normalizedEmail) return
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) return;
 
     try {
-      await requestSignInOtp.mutateAsync(normalizedEmail)
-      posthog?.capture("sign_in_otp_requested")
+      await requestSignInOtp.mutateAsync(normalizedEmail);
+      posthog?.capture("sign_in_otp_requested");
       setAuthFlow({
         email: normalizedEmail,
         purpose: "sign-in",
         returnTo: getAuthReturnPath("/recents"),
-      })
-      window.location.assign("/otp")
+      });
+      window.location.assign("/otp");
     } catch {
       // React Query owns the visible error state.
     }
   }
 
   return (
-    <form
-      className={cn("flex flex-col gap-6", className)}
-      onSubmit={handleSubmit}
-      {...props}
-    >
+    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="email">Email address</FieldLabel>
@@ -155,13 +136,9 @@ export function LoginForm({
           </InputGroup>
         </Field>
 
-        {(signInWithPassword.isError ||
-          requestSignInOtp.isError ||
-          googleError != null) && (
+        {(signInWithPassword.isError || requestSignInOtp.isError || googleError != null) && (
           <FieldError>
-            {getApiErrorMessage(
-              signInWithPassword.error ?? requestSignInOtp.error ?? googleError,
-            )}
+            {getApiErrorMessage(signInWithPassword.error ?? requestSignInOtp.error ?? googleError)}
           </FieldError>
         )}
 
@@ -175,9 +152,7 @@ export function LoginForm({
             type="button"
             variant="outline"
           >
-            {requestSignInOtp.isPending
-              ? "Sending code..."
-              : "Email me a sign-in code"}
+            {requestSignInOtp.isPending ? "Sending code..." : "Email me a sign-in code"}
           </Button>
         </Field>
 
@@ -196,5 +171,5 @@ export function LoginForm({
         </Field>
       </FieldGroup>
     </form>
-  )
+  );
 }

@@ -36,10 +36,7 @@ function stripCommentMarks(value: unknown): unknown {
   );
 }
 
-export function buildPageDuplicateInput(
-  page: Page,
-  parentItemId: string | undefined,
-) {
+export function buildPageDuplicateInput(page: Page, parentItemId: string | undefined) {
   const metadata = (page.metadata ?? {}) as PageMetadata;
   return {
     content: clonePageContent(page.content ?? null),

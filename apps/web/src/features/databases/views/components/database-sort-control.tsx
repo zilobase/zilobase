@@ -1,10 +1,6 @@
 import { ArrowDownUp } from "@/shared/components/icons";
 import { Button } from "@/shared/ui/button";
-import {
-  DropDrawer,
-  DropDrawerContent,
-  DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer";
+import { DropDrawer, DropDrawerContent, DropDrawerTrigger } from "@/shared/ui/dropdrawer";
 import { DatabaseSearchableMenuItems } from "./database-searchable-menu-items";
 import {
   useDatabaseActionsContext,
@@ -48,9 +44,7 @@ export function DatabaseSortControl() {
   ) : (
     <Button
       aria-label={showSortPill ? "Hide sort pill" : "Show sort pill"}
-      className={
-        showSortPill ? "text-content-primary" : "text-content-secondary"
-      }
+      className={showSortPill ? "text-content-primary" : "text-content-secondary"}
       onClick={toggleSortPillVisibility}
       size="icon"
       type="button"

@@ -34,10 +34,7 @@ const databaseInstanceSettingsRepository: InstanceSettingsRepository = {
 
 export function ensureInstanceSettings(env: RuntimeEnv) {
   return runWithDbEnv(env, () =>
-    getOrCreateInstanceSettings(
-      resolveInitialDisplayName(env),
-      databaseInstanceSettingsRepository,
-    ),
+    getOrCreateInstanceSettings(resolveInitialDisplayName(env), databaseInstanceSettingsRepository),
   );
 }
 
@@ -66,13 +63,10 @@ export async function getOrCreateInstanceSettings(
 }
 
 function resolveInitialDisplayName(env: RuntimeEnv) {
-  const displayName =
-    getStringEnv(env, "ZILOBASE_INSTANCE_NAME")?.trim() ?? "Zilobase";
+  const displayName = getStringEnv(env, "ZILOBASE_INSTANCE_NAME")?.trim() ?? "Zilobase";
 
   if (!displayName || displayName.length > 100) {
-    throw new Error(
-      "ZILOBASE_INSTANCE_NAME must contain between 1 and 100 characters",
-    );
+    throw new Error("ZILOBASE_INSTANCE_NAME must contain between 1 and 100 characters");
   }
 
   return displayName;

@@ -37,9 +37,11 @@ export function WorkspaceMailConnectionSection({
 
   return (
     <SettingsSectionLayout
-      description={connected
-        ? "This mailbox is private to you in the current workspace."
-        : "Connect a private Gmail mailbox for this workspace."}
+      description={
+        connected
+          ? "This mailbox is private to you in the current workspace."
+          : "Connect a private Gmail mailbox for this workspace."
+      }
       title="Your mail connection"
     >
       {connectionQuery.error ? (
@@ -48,38 +50,46 @@ export function WorkspaceMailConnectionSection({
         </p>
       ) : null}
       <SettingsRow
-        action={<>
-          {connected ? (
+        action={
+          <>
+            {connected ? (
+              <Button
+                disabled={disconnecting}
+                onClick={() => setDisconnectOpen(true)}
+                type="button"
+                variant="outline"
+              >
+                Disconnect
+              </Button>
+            ) : null}
             <Button
-              disabled={disconnecting}
-              onClick={() => setDisconnectOpen(true)}
+              disabled={
+                !workspaceId ||
+                connecting ||
+                connectionQuery.isLoading ||
+                connection?.providerConfigured === false
+              }
+              onClick={() => void connect()}
               type="button"
-              variant="outline"
             >
-              Disconnect
+              <GoogleIcon />
+              {connecting
+                ? "Opening Google…"
+                : connection?.status === "reconnect_required"
+                  ? "Reconnect"
+                  : connected
+                    ? "Change account"
+                    : "Connect"}
             </Button>
-          ) : null}
-          <Button
-            disabled={
-              !workspaceId ||
-              connecting ||
-              connectionQuery.isLoading ||
-              connection?.providerConfigured === false
-            }
-            onClick={() => void connect()}
-            type="button"
-          >
-            <GoogleIcon />
-            {connecting
-              ? "Opening Google…"
-              : connection?.status === "reconnect_required"
-                ? "Reconnect"
-                : connected
-                  ? "Change account"
-                  : "Connect"}
-          </Button>
-        </>}
-        description={connected ? "Connected" : connectionQuery.isLoading ? "Checking connection..." : "Not connected"}
+          </>
+        }
+        description={
+          connected
+            ? "Connected"
+            : connectionQuery.isLoading
+              ? "Checking connection..."
+              : "Not connected"
+        }
         title={connection?.email ?? "Gmail"}
       />
 
@@ -88,15 +98,12 @@ export function WorkspaceMailConnectionSection({
           <AlertDialogHeader>
             <AlertDialogTitle>Disconnect Gmail?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the mailbox and its downloaded cache from this
-              workspace. The same Gmail account stays connected in any other
-              workspaces where you use it.
+              This removes the mailbox and its downloaded cache from this workspace. The same Gmail
+              account stays connected in any other workspaces where you use it.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={disconnecting}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={disconnecting}>Cancel</AlertDialogCancel>
             <Button
               disabled={disconnecting}
               onClick={() => void disconnect()}

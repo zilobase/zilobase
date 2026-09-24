@@ -1,28 +1,28 @@
-import { onlineManager } from "@tanstack/react-query"
+import { onlineManager } from "@tanstack/react-query";
 
-export type ConnectivityState = "online" | "offline"
+export type ConnectivityState = "online" | "offline";
 
 /** Online status for cached mail/calendar reads. Offline page drafts were removed. */
 export function getConnectivityState(): ConnectivityState {
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    return "offline"
+    return "offline";
   }
   if (onlineManager.isOnline() === false) {
-    return "offline"
+    return "offline";
   }
-  return "online"
+  return "online";
 }
 
 export function subscribeConnectivity(listener: () => void) {
-  const unsubscribeOnlineManager = onlineManager.subscribe(listener)
+  const unsubscribeOnlineManager = onlineManager.subscribe(listener);
   if (typeof window === "undefined") {
-    return unsubscribeOnlineManager
+    return unsubscribeOnlineManager;
   }
-  window.addEventListener("online", listener)
-  window.addEventListener("offline", listener)
+  window.addEventListener("online", listener);
+  window.addEventListener("offline", listener);
   return () => {
-    window.removeEventListener("online", listener)
-    window.removeEventListener("offline", listener)
-    unsubscribeOnlineManager()
-  }
+    window.removeEventListener("online", listener);
+    window.removeEventListener("offline", listener);
+    unsubscribeOnlineManager();
+  };
 }

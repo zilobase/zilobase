@@ -1,30 +1,30 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { OTPInput, OTPInputContext } from "input-otp"
+import * as React from "react";
+import { OTPInput, OTPInputContext } from "input-otp";
 
-import { cn } from "@/shared/lib/utils"
-import { MinusIcon } from "@/shared/components/icons"
+import { cn } from "@/shared/lib/utils";
+import { MinusIcon } from "@/shared/components/icons";
 
 function InputOTP({
   className,
   containerClassName,
   ...props
 }: React.ComponentProps<typeof OTPInput> & {
-  containerClassName?: string
+  containerClassName?: string;
 }) {
   return (
     <OTPInput
       data-slot="input-otp"
       containerClassName={cn(
         "cn-input-otp flex items-center has-disabled:opacity-50",
-        containerClassName
+        containerClassName,
       )}
       spellCheck={false}
       className={cn("disabled:cursor-not-allowed", className)}
       {...props}
     />
-  )
+  );
 }
 
 function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
@@ -33,11 +33,11 @@ function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="input-otp-group"
       className={cn(
         "flex items-center rounded-md has-aria-invalid:border-action-danger-border has-aria-invalid:ring-1 has-aria-invalid:ring-action-danger-border dark:has-aria-invalid:ring-action-danger-border",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 function InputOTPSlot({
@@ -45,10 +45,10 @@ function InputOTPSlot({
   className,
   ...props
 }: React.ComponentProps<"div"> & {
-  index: number
+  index: number;
 }) {
-  const inputOTPContext = React.useContext(OTPInputContext)
-  const { char, hasFakeCaret, isActive } = inputOTPContext?.slots[index] ?? {}
+  const inputOTPContext = React.useContext(OTPInputContext);
+  const { char, hasFakeCaret, isActive } = inputOTPContext?.slots[index] ?? {};
 
   return (
     <div
@@ -56,7 +56,7 @@ function InputOTPSlot({
       data-active={isActive}
       className={cn(
         "relative flex size-7 items-center justify-center border-y border-r border-control-border bg-control-background text-xs/relaxed transition-all outline-none first:rounded-l-md first:border-l last:rounded-r-md aria-invalid:border-action-danger-border data-[active=true]:z-10 data-[active=true]:border-action-focus-ring data-[active=true]:ring-1 data-[active=true]:ring-action-focus-ring data-[active=true]:aria-invalid:border-action-danger-border data-[active=true]:aria-invalid:ring-action-danger-border dark:bg-control-background dark:data-[active=true]:aria-invalid:ring-action-danger-border",
-        className
+        className,
       )}
       {...props}
     >
@@ -67,7 +67,7 @@ function InputOTPSlot({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function InputOTPSeparator({ ...props }: React.ComponentProps<"div">) {
@@ -78,10 +78,9 @@ function InputOTPSeparator({ ...props }: React.ComponentProps<"div">) {
       role="separator"
       {...props}
     >
-      <MinusIcon
-      />
+      <MinusIcon />
     </div>
-  )
+  );
 }
 
-export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator }
+export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator };

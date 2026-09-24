@@ -1,16 +1,14 @@
-"use client"
+"use client";
 
-import { mergeProps } from "@base-ui/react/merge-props"
-import { useRender } from "@base-ui/react/use-render"
-import { ChevronRight, MoreHorizontal } from "@/shared/components/icons"
-import type * as React from "react"
+import { mergeProps } from "@base-ui/react/merge-props";
+import { useRender } from "@base-ui/react/use-render";
+import { ChevronRight, MoreHorizontal } from "@/shared/components/icons";
+import type * as React from "react";
 
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
-export function Breadcrumb({
-  ...props
-}: React.ComponentProps<"nav">): React.ReactElement {
-  return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />
+export function Breadcrumb({ ...props }: React.ComponentProps<"nav">): React.ReactElement {
+  return <nav aria-label="breadcrumb" data-slot="breadcrumb" {...props} />;
 }
 
 export function BreadcrumbList({
@@ -26,7 +24,7 @@ export function BreadcrumbList({
       data-slot="breadcrumb-list"
       {...props}
     />
-  )
+  );
 }
 
 export function BreadcrumbItem({
@@ -39,7 +37,7 @@ export function BreadcrumbItem({
       data-slot="breadcrumb-item"
       {...props}
     />
-  )
+  );
 }
 
 export function BreadcrumbLink({
@@ -48,15 +46,18 @@ export function BreadcrumbLink({
   ...props
 }: useRender.ComponentProps<"a">): React.ReactElement {
   const defaultProps = {
-    className: cn("inline-flex items-center transition-colors hover:text-content-primary", className),
+    className: cn(
+      "inline-flex items-center transition-colors hover:text-content-primary",
+      className,
+    ),
     "data-slot": "breadcrumb-link",
-  }
+  };
 
   return useRender({
     defaultTagName: "a",
     props: mergeProps<"a">(defaultProps, props),
     render,
-  })
+  });
 }
 
 export function BreadcrumbPage({
@@ -70,7 +71,7 @@ export function BreadcrumbPage({
       data-slot="breadcrumb-page"
       {...props}
     />
-  )
+  );
 }
 
 export function BreadcrumbSeparator({
@@ -91,7 +92,7 @@ export function BreadcrumbSeparator({
     >
       {children ?? <ChevronRight />}
     </li>
-  )
+  );
 }
 
 export function BreadcrumbEllipsis({
@@ -109,5 +110,5 @@ export function BreadcrumbEllipsis({
       <MoreHorizontal className="size-4" />
       <span className="sr-only">More</span>
     </span>
-  )
+  );
 }

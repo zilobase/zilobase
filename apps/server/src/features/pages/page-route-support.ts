@@ -1,8 +1,20 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Context } from "hono";
-import { canAccessDatabaseInWorkspace, getPageRecord, rejectActiveWorkspaceMismatch } from "../access";
+import {
+  canAccessDatabaseInWorkspace,
+  getPageRecord,
+  rejectActiveWorkspaceMismatch,
+} from "../access";
 import { db } from "../../infrastructure/database";
-import { database, dataSource, databaseProperty, databaseRow, page, pageProperty, pagePropertyValue } from "../../infrastructure/database/schema";
+import {
+  database,
+  dataSource,
+  databaseProperty,
+  databaseRow,
+  page,
+  pageProperty,
+  pagePropertyValue,
+} from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
 import { loadWorkspacePageGraph } from "./graph/loader";
 
@@ -51,10 +63,7 @@ export const getPagePropertyPayload = async (
         property: pageProperty,
       })
       .from(databaseRow)
-      .innerJoin(
-        databaseProperty,
-        eq(databaseRow.dataSourceId, databaseProperty.dataSourceId),
-      )
+      .innerJoin(databaseProperty, eq(databaseRow.dataSourceId, databaseProperty.dataSourceId))
       .innerJoin(dataSource, eq(databaseRow.dataSourceId, dataSource.id))
       .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
       .where(
@@ -66,55 +75,36 @@ export const getPagePropertyPayload = async (
         ),
       )
       .orderBy(asc(pageProperty.createdAt)),
-    db
-      .select()
-      .from(pagePropertyValue)
-      .where(eq(pagePropertyValue.pageId, pageId)),
+    db.select().from(pagePropertyValue).where(eq(pagePropertyValue.pageId, pageId)),
   ]);
 
   const properties = Array.from(
-    new Map(
-      databaseProperties.map(({ property }) => [property.id, property]),
-    ).values(),
+    new Map(databaseProperties.map(({ property }) => [property.id, property])).values(),
   );
   const accessibleMemberships = (
     await Promise.all(
       memberships.map(async (membership) =>
-        (await canAccessDatabaseInWorkspace(
-          membership.databaseId,
-          workspaceId,
-          userId,
-          "view",
-        ))
+        (await canAccessDatabaseInWorkspace(membership.databaseId, workspaceId, userId, "view"))
           ? membership
           : null,
       ),
     )
-  ).filter((membership): membership is (typeof memberships)[number] =>
-    Boolean(membership),
-  );
-  const databaseIds = accessibleMemberships.map(
-    ({ databaseId }) => databaseId,
-  );
+  ).filter((membership): membership is (typeof memberships)[number] => Boolean(membership));
+  const databaseIds = accessibleMemberships.map(({ databaseId }) => databaseId);
   const databaseVersions = Object.fromEntries(
-    accessibleMemberships.map(({ databaseId, version }) => [
-      databaseId,
-      version,
-    ]),
+    accessibleMemberships.map(({ databaseId, version }) => [databaseId, version]),
   );
-  const presenceTargets = accessibleMemberships.map(
-    ({ databaseId, rowId }) => ({
-      databaseId,
-      propertyIds: [
-        ...new Set(
-          databaseProperties
-            .filter((item) => item.databaseId === databaseId)
-            .map(({ property }) => property.id),
-        ),
-      ],
-      rowId,
-    }),
-  );
+  const presenceTargets = accessibleMemberships.map(({ databaseId, rowId }) => ({
+    databaseId,
+    propertyIds: [
+      ...new Set(
+        databaseProperties
+          .filter((item) => item.databaseId === databaseId)
+          .map(({ property }) => property.id),
+      ),
+    ],
+    rowId,
+  }));
 
   return {
     databaseIds,
@@ -138,4 +128,3 @@ export const getNestedFavoriteTargetIds = async (
     pageIds,
   };
 };
-

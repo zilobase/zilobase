@@ -44,9 +44,9 @@ export async function routeCalendarRealtimeRequest(
     }
     const headers = new Headers(request.headers);
     headers.set(CLAIMS_HEADER, encodeURIComponent(JSON.stringify(claims)));
-    return env.CALENDAR_NOTIFICATION_ROOM
-      .getByName(claims.bindingId)
-      .fetch(new Request(request, { headers }));
+    return env.CALENDAR_NOTIFICATION_ROOM.getByName(claims.bindingId).fetch(
+      new Request(request, { headers }),
+    );
   } catch {
     return new Response("Invalid calendar realtime ticket", { status: 401 });
   }
@@ -58,9 +58,11 @@ export function readCalendarRealtimeClaims(headers: Headers): CalendarRealtimeTi
   try {
     const claims = JSON.parse(decodeURIComponent(encoded)) as Record<string, unknown>;
     return typeof claims.bindingId === "string" &&
-        typeof claims.userId === "string" && typeof claims.workspaceId === "string" && typeof claims.accountId === "string" &&
-        typeof claims.exp === "number"
-      ? claims as CalendarRealtimeTicketClaims
+      typeof claims.userId === "string" &&
+      typeof claims.workspaceId === "string" &&
+      typeof claims.accountId === "string" &&
+      typeof claims.exp === "number"
+      ? (claims as CalendarRealtimeTicketClaims)
       : null;
   } catch {
     return null;
@@ -72,10 +74,12 @@ function readAuthenticationProtocol(headers: Headers) {
     .split(",")
     .map((protocol) => protocol.trim());
   const authentication = protocols.find((protocol) =>
-    protocol.startsWith(CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX)
+    protocol.startsWith(CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX),
   );
   const ticket = authentication?.slice(CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX.length);
-  return protocols.includes(CALENDAR_REALTIME_PROTOCOL) && ticket && ticket.length <= MAX_TICKET_BYTES
+  return protocols.includes(CALENDAR_REALTIME_PROTOCOL) &&
+    ticket &&
+    ticket.length <= MAX_TICKET_BYTES
     ? ticket
     : null;
 }

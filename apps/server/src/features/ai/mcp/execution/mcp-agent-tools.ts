@@ -34,29 +34,46 @@ export async function buildMcpAgentTools(input: {
     ? agentMcpScope(input.agentProfileId)
     : personalMcpScope(input.userId);
   const policy = await getWorkspaceMcpPolicy(input.workspaceId);
-  const rows = await db.select({
-    connection: aiMcpConnection,
-    snapshot: aiMcpToolSnapshot,
-  }).from(aiMcpToolSnapshot).innerJoin(
-    aiMcpConnection,
-    eq(aiMcpConnection.id, aiMcpToolSnapshot.connectionId),
-  ).where(and(
-    eq(aiMcpConnection.scopeType, scope.type),
-    scope.type === "agent"
-      ? eq(aiMcpConnection.agentProfileId, scope.agentProfileId)
-      : eq(aiMcpConnection.scopeUserId, scope.userId),
-    eq(aiMcpConnection.workspaceId, input.workspaceId),
-    eq(aiMcpConnection.state, "connected"),
-    eq(aiMcpToolSnapshot.enabled, true),
-    eq(aiMcpToolSnapshot.available, true),
-  ));
-  const externalWritesEnabled = policy.externalWritesEnabled && isMcpExternalWritesEnabled(input.env);
-  const executable = rows.filter(({ snapshot }) =>
-    snapshot.classification === "read" || externalWritesEnabled
+  const rows = await db
+    .select({
+      connection: aiMcpConnection,
+      snapshot: aiMcpToolSnapshot,
+    })
+    .from(aiMcpToolSnapshot)
+    .innerJoin(aiMcpConnection, eq(aiMcpConnection.id, aiMcpToolSnapshot.connectionId))
+    .where(
+      and(
+        eq(aiMcpConnection.scopeType, scope.type),
+        scope.type === "agent"
+          ? eq(aiMcpConnection.agentProfileId, scope.agentProfileId)
+          : eq(aiMcpConnection.scopeUserId, scope.userId),
+        eq(aiMcpConnection.workspaceId, input.workspaceId),
+        eq(aiMcpConnection.state, "connected"),
+        eq(aiMcpToolSnapshot.enabled, true),
+        eq(aiMcpToolSnapshot.available, true),
+      ),
+    );
+  const externalWritesEnabled =
+    policy.externalWritesEnabled && isMcpExternalWritesEnabled(input.env);
+  const executable = rows.filter(
+    ({ snapshot }) => snapshot.classification === "read" || externalWritesEnabled,
   );
   const selected = executable
-    .map((row) => ({ row, score: relevanceScore(input.query, row.connection.serverLabel, row.snapshot.externalName, row.snapshot.description) }))
-    .sort((left, right) => right.score - left.score || left.row.snapshot.externalName.localeCompare(right.row.snapshot.externalName) || left.row.connection.id.localeCompare(right.row.connection.id))
+    .map((row) => ({
+      row,
+      score: relevanceScore(
+        input.query,
+        row.connection.serverLabel,
+        row.snapshot.externalName,
+        row.snapshot.description,
+      ),
+    }))
+    .sort(
+      (left, right) =>
+        right.score - left.score ||
+        left.row.snapshot.externalName.localeCompare(right.row.snapshot.externalName) ||
+        left.row.connection.id.localeCompare(right.row.connection.id),
+    )
     .slice(0, MCP_LIMITS.maxModelToolsPerTurn)
     .map(({ row }) => row);
   let callCount = 0;
@@ -73,7 +90,11 @@ export async function buildMcpAgentTools(input: {
     };
     auditDescriptors.set(namespacedName, descriptor);
     tools[namespacedName] = tool({
-      description: `[Untrusted external tool from ${connection.serverLabel}] ${snapshot.description}`.slice(0, 2_000),
+      description:
+        `[Untrusted external tool from ${connection.serverLabel}] ${snapshot.description}`.slice(
+          0,
+          2_000,
+        ),
       inputSchema: jsonSchema(snapshot.inputSchema as Parameters<typeof jsonSchema>[0]),
       execute: async (toolInput, options) => {
         input.progress?.startTool({
@@ -84,56 +105,79 @@ export async function buildMcpAgentTools(input: {
         try {
           callCount += 1;
           if (callCount > MCP_LIMITS.maxCallsPerTurn) {
-            return unavailable("mcp_call_limit", "This turn reached the eight-call connector limit.");
+            return unavailable(
+              "mcp_call_limit",
+              "This turn reached the eight-call connector limit.",
+            );
           }
           const alwaysAllowed = connection.alwaysAllowEnabled;
           const mustAsk = snapshot.executionMode === "always_ask" && !alwaysAllowed;
-          const [execution] = await input.withDb(() => db.select({ id: aiAgentToolExecution.id })
-            .from(aiAgentToolExecution).where(and(
-              eq(aiAgentToolExecution.turnId, input.agentTurnId),
-              eq(aiAgentToolExecution.toolCallId, options.toolCallId),
-            )).limit(1));
+          const [execution] = await input.withDb(() =>
+            db
+              .select({ id: aiAgentToolExecution.id })
+              .from(aiAgentToolExecution)
+              .where(
+                and(
+                  eq(aiAgentToolExecution.turnId, input.agentTurnId),
+                  eq(aiAgentToolExecution.toolCallId, options.toolCallId),
+                ),
+              )
+              .limit(1),
+          );
           const result = mustAsk
-            ? await input.withDb(() => requestMcpActionApproval({
-                connection,
-                env: input.env,
-                scope,
-                snapshot,
-                threadId: input.threadId,
-                toolCallId: options.toolCallId,
-                toolInput,
-                userId: input.userId,
-                workspaceId: input.workspaceId,
-              }))
-            : await input.withDb(() => executeMcpTool({
-                expectedPolicy: { classification: snapshot.classification, executionMode: snapshot.executionMode, alwaysAllowEnabled: connection.alwaysAllowEnabled },
-                connectionId: connection.id,
-                env: input.env,
-                externalName: snapshot.externalName,
-                schemaHash: snapshot.schemaHash,
-                scope,
-                threadId: input.threadId,
-                toolInput,
-                toolExecutionId: execution?.id,
-                userId: input.userId,
-                workspaceId: input.workspaceId,
-              }));
-          await input.withDb(() => recordMcpActivity({
-            actorUserId: input.userId,
-            connectionId: connection.id,
-            eventType: mustAsk ? "tool_approval_requested" : "tool_invoked",
-            metadata: {
-              classification: snapshot.classification,
-              executionMode: snapshot.executionMode,
-            },
-            outcome: result.error?.code === "mcp_write_outcome_unknown"
-              ? "outcome_unknown"
-              : result.ok ? "succeeded" : result.status,
-            providerLabel: connection.serverLabel,
-            scope,
-            toolName: snapshot.externalName,
-            workspaceId: input.workspaceId,
-          }));
+            ? await input.withDb(() =>
+                requestMcpActionApproval({
+                  connection,
+                  env: input.env,
+                  scope,
+                  snapshot,
+                  threadId: input.threadId,
+                  toolCallId: options.toolCallId,
+                  toolInput,
+                  userId: input.userId,
+                  workspaceId: input.workspaceId,
+                }),
+              )
+            : await input.withDb(() =>
+                executeMcpTool({
+                  expectedPolicy: {
+                    classification: snapshot.classification,
+                    executionMode: snapshot.executionMode,
+                    alwaysAllowEnabled: connection.alwaysAllowEnabled,
+                  },
+                  connectionId: connection.id,
+                  env: input.env,
+                  externalName: snapshot.externalName,
+                  schemaHash: snapshot.schemaHash,
+                  scope,
+                  threadId: input.threadId,
+                  toolInput,
+                  toolExecutionId: execution?.id,
+                  userId: input.userId,
+                  workspaceId: input.workspaceId,
+                }),
+              );
+          await input.withDb(() =>
+            recordMcpActivity({
+              actorUserId: input.userId,
+              connectionId: connection.id,
+              eventType: mustAsk ? "tool_approval_requested" : "tool_invoked",
+              metadata: {
+                classification: snapshot.classification,
+                executionMode: snapshot.executionMode,
+              },
+              outcome:
+                result.error?.code === "mcp_write_outcome_unknown"
+                  ? "outcome_unknown"
+                  : result.ok
+                    ? "succeeded"
+                    : result.status,
+              providerLabel: connection.serverLabel,
+              scope,
+              toolName: snapshot.externalName,
+              workspaceId: input.workspaceId,
+            }),
+          );
           return result;
         } finally {
           input.progress?.finishTool({ toolCallId: options.toolCallId });

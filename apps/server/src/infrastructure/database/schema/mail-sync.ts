@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { boolean, bigint, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  bigint,
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { gmailWorkspaceConnection, gmailAccount } from "./mail-connections";
 import { mailView } from "./mail-organization";
 import { dataSource } from "./databases";
@@ -27,9 +38,15 @@ export const mailDatabaseSyncRecord = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("mail_database_sync_record_view_thread_unique").on(table.viewId, table.gmailThreadId),
+    uniqueIndex("mail_database_sync_record_view_thread_unique").on(
+      table.viewId,
+      table.gmailThreadId,
+    ),
     index("mail_database_sync_record_binding_idx").on(table.bindingId, table.updatedAt),
-    index("mail_database_sync_record_destination_idx").on(table.destinationDataSourceId, table.databaseRowId),
+    index("mail_database_sync_record_destination_idx").on(
+      table.destinationDataSourceId,
+      table.databaseRowId,
+    ),
     check("mail_database_sync_record_status_check", sql`${table.status} in ('active', 'paused')`),
   ],
 );
@@ -56,13 +73,19 @@ export const mailDatabaseSyncOutbox = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("mail_database_sync_outbox_view_thread_unique").on(table.viewId, table.gmailThreadId),
+    uniqueIndex("mail_database_sync_outbox_view_thread_unique").on(
+      table.viewId,
+      table.gmailThreadId,
+    ),
     index("mail_database_sync_outbox_ready_idx").on(table.status, table.nextAttemptAt),
     index("mail_database_sync_outbox_binding_idx").on(table.bindingId, table.updatedAt),
     index("mail_database_sync_outbox_active_due_idx")
       .on(table.nextAttemptAt, table.leaseExpiresAt, table.createdAt)
       .where(sql`${table.status} in ('pending', 'processing', 'retry')`),
-    check("mail_database_sync_outbox_status_check", sql`${table.status} in ('pending', 'processing', 'retry', 'completed', 'paused')`),
+    check(
+      "mail_database_sync_outbox_status_check",
+      sql`${table.status} in ('pending', 'processing', 'retry', 'completed', 'paused')`,
+    ),
   ],
 );
 
@@ -129,17 +152,8 @@ export const mailThreadIndex = pgTable(
       table.gmailAccountId,
       table.gmailThreadId,
     ),
-    index("mail_thread_index_account_date_idx").on(
-      table.gmailAccountId,
-      table.internalDate,
-    ),
-    index("mail_thread_index_account_unread_idx").on(
-      table.gmailAccountId,
-      table.unread,
-    ),
-    index("mail_thread_index_account_starred_idx").on(
-      table.gmailAccountId,
-      table.starred,
-    ),
+    index("mail_thread_index_account_date_idx").on(table.gmailAccountId, table.internalDate),
+    index("mail_thread_index_account_unread_idx").on(table.gmailAccountId, table.unread),
+    index("mail_thread_index_account_starred_idx").on(table.gmailAccountId, table.starred),
   ],
 );

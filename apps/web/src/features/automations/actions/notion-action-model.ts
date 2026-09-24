@@ -4,7 +4,7 @@ import type {
   AutomationRichTextExpression,
   DatabaseAutomationAction,
   DatabaseAutomationCatalog,
-} from "@zilobase/features/automations"
+} from "@zilobase/features/automations";
 
 export type ActionType = DatabaseAutomationAction["type"];
 type WebhookHeaderDraft = {
@@ -41,75 +41,81 @@ export function createNotionActionDraft(
 ): NotionActionDraft {
   const id = crypto.randomUUID();
   const firstUserId = catalog?.users[0]?.id ?? "";
-  const firstGmailId = catalog?.gmailConnections.find(({ status }) => status === "connected")?.id ?? "";
-  const firstSlackId = catalog?.slackConnections.find(({ status }) => status === "connected")?.id ?? "";
+  const firstGmailId =
+    catalog?.gmailConnections.find(({ status }) => status === "connected")?.id ?? "";
+  const firstSlackId =
+    catalog?.slackConnections.find(({ status }) => status === "connected")?.id ?? "";
   const operation = defaultOperation();
-  const action: DatabaseAutomationAction = type === "edit_trigger_page"
-    ? { id, operations: [operation], type }
-    : type === "add_page"
-      ? { dataSourceId, id, operations: [], type }
-      : type === "edit_pages"
-        ? {
-            id,
-            operations: [operation],
-            target: defaultFilteredTarget(dataSourceId, id),
-            type,
-          }
-        : type === "send_notification"
+  const action: DatabaseAutomationAction =
+    type === "edit_trigger_page"
+      ? { id, operations: [operation], type }
+      : type === "add_page"
+        ? { dataSourceId, id, operations: [], type }
+        : type === "edit_pages"
           ? {
               id,
-              message: textExpression(""),
-              pageLink: { reference: "trigger_page", type: "reference" },
-              recipients: [{ type: "selected_user", userId: firstUserId }],
+              operations: [operation],
+              target: defaultFilteredTarget(dataSourceId, id),
               type,
             }
-          : type === "send_gmail"
+          : type === "send_notification"
             ? {
-                bcc: [],
-                cc: [],
-                connectionId: firstGmailId,
                 id,
                 message: textExpression(""),
-                subject: textExpression(""),
-                to: [{ type: "literal", value: "" }],
+                pageLink: { reference: "trigger_page", type: "reference" },
+                recipients: [{ type: "selected_user", userId: firstUserId }],
                 type,
               }
-            : type === "send_webhook"
+            : type === "send_gmail"
               ? {
-                  headers: [],
+                  bcc: [],
+                  cc: [],
+                  connectionId: firstGmailId,
                   id,
-                  payloadFields: [],
-                  selectedPropertyIds: [],
+                  message: textExpression(""),
+                  subject: textExpression(""),
+                  to: [{ type: "literal", value: "" }],
                   type,
-                  url: "https://",
                 }
-              : type === "send_slack"
+              : type === "send_webhook"
                 ? {
-                    channelId: "",
-                    connectionId: firstSlackId,
+                    headers: [],
                     id,
-                    message: { parts: [{ text: "", type: "text" }] },
+                    payloadFields: [],
+                    selectedPropertyIds: [],
                     type,
+                    url: "https://",
                   }
-                : {
-                    id,
-                    type: "define_variables",
-                    variables: [{ expression: { type: "literal", value: "" }, name: "Variable 1" }],
-                  };
+                : type === "send_slack"
+                  ? {
+                      channelId: "",
+                      connectionId: firstSlackId,
+                      id,
+                      message: { parts: [{ text: "", type: "text" }] },
+                      type,
+                    }
+                  : {
+                      id,
+                      type: "define_variables",
+                      variables: [
+                        { expression: { type: "literal", value: "" }, name: "Variable 1" },
+                      ],
+                    };
   return { action, webhookHeaders: [] };
 }
 
 export function notionActionDraftFromAction(action: DatabaseAutomationAction): NotionActionDraft {
   return {
     action,
-    webhookHeaders: action.type === "send_webhook"
-      ? action.headers.map((header) => ({
-          key: crypto.randomUUID(),
-          name: header.name,
-          secretId: header.secretId,
-          value: "",
-        }))
-      : [],
+    webhookHeaders:
+      action.type === "send_webhook"
+        ? action.headers.map((header) => ({
+            key: crypto.randomUUID(),
+            name: header.name,
+            secretId: header.secretId,
+            value: "",
+          }))
+        : [],
   };
 }
 
@@ -118,7 +124,7 @@ export function actionForDefinition(draft: NotionActionDraft): DatabaseAutomatio
   return {
     ...draft.action,
     headers: draft.webhookHeaders.flatMap(({ name, secretId }) =>
-      name.trim() && secretId ? [{ name: name.trim(), secretId }] : []
+      name.trim() && secretId ? [{ name: name.trim(), secretId }] : [],
     ),
   };
 }
@@ -131,7 +137,7 @@ export function resolveWebhookHeader(
   return {
     ...draft,
     webhookHeaders: draft.webhookHeaders.map((header) =>
-      header.key === key ? { ...header, secretId, value: "" } : header
+      header.key === key ? { ...header, secretId, value: "" } : header,
     ),
   };
 }
@@ -140,8 +146,25 @@ export function defaultOperation(propertyId = "name"): AutomationPropertyOperati
   return { mode: "set", propertyId, value: { type: "literal", value: "" } };
 }
 
-export function defaultFilteredTarget(dataSourceId: string, actionId: string): Extract<AutomationEditPagesTarget, { type: "filtered_data_source" }> {
-  return { dataSourceId, filter: { conditions: [{ id: `${actionId}-filter-${crypto.randomUUID()}`, operator: "is_not_empty", propertyId: "name", type: "condition" }], match: "all" }, type: "filtered_data_source" };
+export function defaultFilteredTarget(
+  dataSourceId: string,
+  actionId: string,
+): Extract<AutomationEditPagesTarget, { type: "filtered_data_source" }> {
+  return {
+    dataSourceId,
+    filter: {
+      conditions: [
+        {
+          id: `${actionId}-filter-${crypto.randomUUID()}`,
+          operator: "is_not_empty",
+          propertyId: "name",
+          type: "condition",
+        },
+      ],
+      match: "all",
+    },
+    type: "filtered_data_source",
+  };
 }
 
 function textExpression(text: string): AutomationRichTextExpression {

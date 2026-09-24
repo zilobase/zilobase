@@ -45,8 +45,7 @@ vi.mock("../../../infrastructure/database", () => {
       orderBy: () => q,
       where: () => q,
       limit: () => q,
-      then: (resolve: (value: unknown) => unknown) =>
-        resolve(state.rows.shift() ?? []),
+      then: (resolve: (value: unknown) => unknown) => resolve(state.rows.shift() ?? []),
     };
     return q;
   }
@@ -69,8 +68,7 @@ vi.mock("../../../infrastructure/database", () => {
         return q;
       },
     }),
-    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> =>
-      callback(db),
+    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> => callback(db),
   };
   return { db };
 });
@@ -178,9 +176,7 @@ describe("agent trigger registration and durable delivery", () => {
       config: {},
       label: "Edited",
     });
-    expect(state.apply.mock.calls[0]![0].definition.triggers[0].status).toBe(
-      "paused",
-    );
+    expect(state.apply.mock.calls[0]![0].definition.triggers[0].status).toBe("paused");
   });
   it.each(["database", "comment", "mention", "meeting"] as const)(
     "requires a resource grant for %s",
@@ -216,9 +212,7 @@ describe("agent trigger registration and durable delivery", () => {
     });
     state.rows = [[trigger], []];
     await removeAgentTrigger({ ...input, triggerId: "trigger" });
-    expect(state.apply.mock.calls[0]![0].definition.triggers).toEqual([
-      { id: "keep" },
-    ]);
+    expect(state.apply.mock.calls[0]![0].definition.triggers).toEqual([{ id: "keep" }]);
   });
   it("rotates webhook secrets without storing their plaintext", async () => {
     state.rows = [[{ ...trigger, kind: "webhook", webhookSecretId: "old" }]];
@@ -228,9 +222,9 @@ describe("agent trigger registration and durable delivery", () => {
     });
     expect(secret).toMatch(/^[a-f0-9]{64}$/);
     expect(JSON.stringify(state.writes)).not.toContain(secret);
-    await expect(
-      rotateAgentWebhookSecret({ ...input, triggerId: "missing" }),
-    ).rejects.toThrow("not found");
+    await expect(rotateAgentWebhookSecret({ ...input, triggerId: "missing" })).rejects.toThrow(
+      "not found",
+    );
   });
   it("recovers a receipt reserved before a queueing failure", async () => {
     state.rows = [[{ trigger }], [{ id: "previous-attempt", runId: null }]];
@@ -268,9 +262,7 @@ describe("agent trigger registration and durable delivery", () => {
       [{ trigger: scheduled }],
       [{ id: "receipt" }],
     ];
-    expect(
-      await enqueueDueAgentSchedules(env, new Date("2026-01-01T00:00:00Z")),
-    ).toBe(1);
+    expect(await enqueueDueAgentSchedules(env, new Date("2026-01-01T00:00:00Z"))).toBe(1);
     expect(state.writes.at(-1)).toMatchObject({
       nextRunAt: new Date("2026-01-02T00:00:00Z"),
     });
@@ -283,10 +275,7 @@ describe("agent trigger registration and durable delivery", () => {
   });
   it("keeps native triggers disabled by default", async () => {
     expect(
-      await dispatchDatabaseAgentMutationFacts(
-        {},
-        { eventKeyPrefix: "mutation", facts: [fact] },
-      ),
+      await dispatchDatabaseAgentMutationFacts({}, { eventKeyPrefix: "mutation", facts: [fact] }),
     ).toEqual({ accepted: 0 });
     expect(
       await dispatchMeetingCompletedAgentTriggers(
@@ -295,10 +284,7 @@ describe("agent trigger registration and durable delivery", () => {
       ),
     ).toEqual({ accepted: 0 });
     expect(
-      await dispatchPageCommentAgentTriggers(
-        {},
-        { pageId: "page", nextState: new Uint8Array() },
-      ),
+      await dispatchPageCommentAgentTriggers({}, { pageId: "page", nextState: new Uint8Array() }),
     ).toEqual({ accepted: 0 });
   });
   it("dispatches matching database changes and preserves event identity", async () => {
@@ -329,9 +315,7 @@ describe("agent trigger registration and durable delivery", () => {
         facts: [fact],
       }),
     ).toEqual({ accepted: 1 });
-    expect(state.enqueue.mock.calls[0]![0].occurrenceKey).toBe(
-      "mutation:0:trigger",
-    );
+    expect(state.enqueue.mock.calls[0]![0].occurrenceKey).toBe("mutation:0:trigger");
   });
   it("does not recursively trigger the originating agent", async () => {
     state.rows = [

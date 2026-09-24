@@ -67,10 +67,7 @@ const providerLogoSlugs: Record<string, string> = {
   together: "togetherai",
 };
 
-export function areMessagesEquivalent(
-  leftMessages: UIMessage[],
-  rightMessages: UIMessage[],
-) {
+export function areMessagesEquivalent(leftMessages: UIMessage[], rightMessages: UIMessage[]) {
   if (leftMessages === rightMessages) return true;
   if (leftMessages.length !== rightMessages.length) return false;
 
@@ -110,16 +107,10 @@ export function summarizeMessagesForDebug(messages: UIMessage[]) {
   };
 }
 
-export function logAiChatError(
-  source: string,
-  error: unknown,
-  context: Record<string, unknown>,
-) {
+export function logAiChatError(source: string, error: unknown, context: Record<string, unknown>) {
   const errorDetails = getErrorDetails(error);
 
-  console.groupCollapsed(
-    `[zilobase ai chat] ${source}: ${errorDetails.message}`,
-  );
+  console.groupCollapsed(`[zilobase ai chat] ${source}: ${errorDetails.message}`);
   console.error(error);
   console.info("error details", errorDetails);
   console.info("context", context);

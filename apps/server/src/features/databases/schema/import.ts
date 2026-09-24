@@ -1,19 +1,12 @@
-import {
-  defaultStatusOptions,
-  normalizePropertyConfig,
-} from "./config";
+import { defaultStatusOptions, normalizePropertyConfig } from "./config";
 import { isSelectLikePropertyType } from "./types";
 
 export const getPropertyNameKey = (name: string) => name.trim().toLowerCase();
 
-export const shouldInsertUnmatchedSourceProperty = (
-  mode: "duplicate" | "match",
-) => mode === "duplicate";
+export const shouldInsertUnmatchedSourceProperty = (mode: "duplicate" | "match") =>
+  mode === "duplicate";
 
-const readPropertyOptions = (
-  type: string,
-  config: unknown,
-): Record<string, unknown>[] => {
+const readPropertyOptions = (type: string, config: unknown): Record<string, unknown>[] => {
   const rawOptions =
     config && typeof config === "object" && "options" in config
       ? (config as { options?: unknown }).options
@@ -36,9 +29,7 @@ const readPropertyOptions = (
 const getOptionValueNames = (propertyType: string, value: unknown) => {
   if (propertyType === "multi_select") {
     return Array.isArray(value)
-      ? value.filter(
-          (item): item is string => typeof item === "string" && item.length > 0,
-        )
+      ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
       : typeof value === "string" && value.length > 0
         ? [value]
         : [];
@@ -47,9 +38,7 @@ const getOptionValueNames = (propertyType: string, value: unknown) => {
   if (propertyType === "select" || propertyType === "status") {
     const optionName = Array.isArray(value) ? value[0] : value;
 
-    return typeof optionName === "string" && optionName.length > 0
-      ? [optionName]
-      : [];
+    return typeof optionName === "string" && optionName.length > 0 ? [optionName] : [];
   }
 
   return [];
@@ -74,19 +63,13 @@ const getOptionId = (name: string, existingIds: Set<string>) => {
   return id;
 };
 
-export const normalizeValueForPropertyType = (
-  propertyType: string,
-  value: unknown,
-) => {
+export const normalizeValueForPropertyType = (propertyType: string, value: unknown) => {
   if (propertyType === "multi_select") {
     if (typeof value === "string") {
       return [value];
     }
 
-    return Array.isArray(value) &&
-      value.every((item) => typeof item === "string")
-      ? value
-      : null;
+    return Array.isArray(value) && value.every((item) => typeof item === "string") ? value : null;
   }
 
   if (propertyType === "select" || propertyType === "status") {
@@ -95,9 +78,7 @@ export const normalizeValueForPropertyType = (
     }
 
     if (Array.isArray(value)) {
-      return (
-        value.find((item): item is string => typeof item === "string") ?? null
-      );
+      return value.find((item): item is string => typeof item === "string") ?? null;
     }
 
     return null;
@@ -122,9 +103,7 @@ export const mergeSelectOptionsForValue = (
   }
 
   const options = readPropertyOptions(propertyType, config);
-  const existingNames = new Set(
-    options.map((option) => String(option.name).trim().toLowerCase()),
-  );
+  const existingNames = new Set(options.map((option) => String(option.name).trim().toLowerCase()));
   const existingIds = new Set(options.map((option) => String(option.id)));
   let changed = false;
 
@@ -158,10 +137,7 @@ export const mergeSelectOptionsForValue = (
   };
 };
 
-export const getDuplicatePropertyName = (
-  name: string,
-  existingNames: Set<string>,
-) => {
+export const getDuplicatePropertyName = (name: string, existingNames: Set<string>) => {
   const trimmedName = name.trim() || "Property";
   const baseName = `${trimmedName} copy`;
 

@@ -28,15 +28,13 @@ const Chatbot = (props: ChatbotProps) => {
     aiChatThreadMessagesQueryOptions(apiFetch, workspaceId, props.threadId),
   );
   const initialMessagesKey = `${workspaceId ?? "no-workspace"}:${props.threadId}`;
-  const queriedInitialMessages =
-    threadMessagesQuery.data?.messages ?? emptyAgentChatMessages;
+  const queriedInitialMessages = threadMessagesQuery.data?.messages ?? emptyAgentChatMessages;
   const queriedInitialFeedback = threadMessagesQuery.data?.feedback ?? [];
-  const [seededInitialMessages, setSeededInitialMessages] =
-    useState<SeededInitialMessages>(() => ({
-      key: initialMessagesKey,
-      messages: emptyAgentChatMessages,
-      ready: false,
-    }));
+  const [seededInitialMessages, setSeededInitialMessages] = useState<SeededInitialMessages>(() => ({
+    key: initialMessagesKey,
+    messages: emptyAgentChatMessages,
+    ready: false,
+  }));
 
   useEffect(() => {
     if (threadMessagesQuery.isLoading) {
@@ -54,11 +52,7 @@ const Chatbot = (props: ChatbotProps) => {
         ready: true,
       };
     });
-  }, [
-    initialMessagesKey,
-    queriedInitialMessages,
-    threadMessagesQuery.isLoading,
-  ]);
+  }, [initialMessagesKey, queriedInitialMessages, threadMessagesQuery.isLoading]);
 
   if (!props.threadId) {
     return (

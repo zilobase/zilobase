@@ -9,14 +9,8 @@ import {
 
 import { isSelectLikePropertyType } from "../model/property-defaults";
 import { hasDatabasePropertyTypeEditSettings, isDateLikePropertyType } from "../property-catalog";
-import {
-  getNumberPropertyConfig,
-  NumberPropertySettings,
-} from "./number/number-property-settings";
-import {
-  getDateFormatConfig,
-  getTimeFormatConfig,
-} from "../model/database-date-config";
+import { getNumberPropertyConfig, NumberPropertySettings } from "./number/number-property-settings";
+import { getDateFormatConfig, getTimeFormatConfig } from "../model/database-date-config";
 import {
   getShowFullUrl,
   getStatusDefaultOptionId,
@@ -24,14 +18,8 @@ import {
 } from "../../views/model/database-view-config";
 import { useDatabaseActionsContext } from "../../views/state/database-view-context";
 import { DatePropertySettings } from "./date/date-property-settings";
-import {
-  FilesPropertySettings,
-  getFilesPropertyConfig,
-} from "./files/files-property-settings";
-import {
-  getPersonPropertyConfig,
-  PersonPropertySettings,
-} from "./person/person-property-settings";
+import { FilesPropertySettings, getFilesPropertyConfig } from "./files/files-property-settings";
+import { getPersonPropertyConfig, PersonPropertySettings } from "./person/person-property-settings";
 import { RelationPropertySettings } from "./relation/relation-property-settings";
 import { DatabaseRollupPropertySettings } from "./rollup/rollup-property-settings";
 import {
@@ -39,10 +27,7 @@ import {
   getSelectOptionSort,
   SelectPropertySettings,
 } from "./select/select-property-settings";
-import {
-  getStatusOptions,
-  StatusPropertySettings,
-} from "./status/status-property-settings";
+import { getStatusOptions, StatusPropertySettings } from "./status/status-property-settings";
 import { UrlPropertySettings } from "./url/url-property-settings";
 
 type PropertySettingsProps = {
@@ -69,9 +54,7 @@ export function DatabasePropertyEditSubmenu({
   return (
     <DropDrawerSub displayMode={displayMode} title={title}>
       <DropDrawerSubTrigger>{children}</DropDrawerSubTrigger>
-      <DropDrawerSubContent
-        className={getPropertySettingsContentClassName(settingsProps.type)}
-      >
+      <DropDrawerSubContent className={getPropertySettingsContentClassName(settingsProps.type)}>
         <DatabasePropertySettings {...settingsProps} />
       </DropDrawerSubContent>
     </DropDrawerSub>
@@ -92,9 +75,7 @@ function DatabasePropertySettings({
   type,
   workspaceId,
 }: PropertySettingsProps) {
-  const {
-    updateDatabasePropertyConfig,
-  } = useDatabaseActionsContext()
+  const { updateDatabasePropertyConfig } = useDatabaseActionsContext();
   const updatePropertyConfig = (nextConfig: DatabasePropertyConfig) => {
     void updateDatabasePropertyConfig(databasePropertyId, nextConfig);
   };

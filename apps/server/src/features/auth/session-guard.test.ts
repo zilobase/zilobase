@@ -26,20 +26,12 @@ test("public root and auth paths bypass session resolution", async () => {
 
   assert.equal(await (await app.request("/")).text(), "root");
   assert.equal(await (await app.request("/desktop")).text(), "desktop");
+  assert.equal(await (await app.request("/api/auth/callback")).text(), "callback");
   assert.equal(
-    await (await app.request("/api/auth/callback")).text(),
-    "callback",
-  );
-  assert.equal(
-    await (
-      await app.request("/.well-known/oauth-authorization-server")
-    ).text(),
+    await (await app.request("/.well-known/oauth-authorization-server")).text(),
     "oauth",
   );
-  assert.equal(
-    await (await app.request("/.well-known/openid-configuration")).text(),
-    "oidc",
-  );
+  assert.equal(await (await app.request("/.well-known/openid-configuration")).text(), "oidc");
   assert.equal(sessionMiddleware.mock.calls.length, 0);
 });
 
@@ -75,14 +67,9 @@ test("browser consent resolves a session while the native token exchange stays p
   app.get("/desktop/authorize", (c) => c.text("authorize"));
   app.post("/api/auth/desktop/token", (c) => c.text("token"));
 
+  assert.equal(await (await app.request("/desktop/authorize")).text(), "authenticated");
   assert.equal(
-    await (await app.request("/desktop/authorize")).text(),
-    "authenticated",
-  );
-  assert.equal(
-    await (
-      await app.request("/api/auth/desktop/token", { method: "POST" })
-    ).text(),
+    await (await app.request("/api/auth/desktop/token", { method: "POST" })).text(),
     "token",
   );
   assert.equal(sessionMiddleware.mock.calls.length, 1);

@@ -1,10 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const coreDir = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
-);
+export const coreDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const stateDir = path.resolve(
   process.env.ZILOBASE_DEV_STATE_DIR ?? path.join(coreDir, ".dev", "local"),
 );

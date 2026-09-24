@@ -29,10 +29,7 @@ test("guest invitation policy resolves direct, approval, and owner-only modes", 
   assert.equal(resolveGuestInviteSubmission("direct", "member"), "invitation");
   assert.equal(resolveGuestInviteSubmission("request", "member"), "request");
   assert.equal(resolveGuestInviteSubmission("request", "owner"), "invitation");
-  assert.equal(
-    resolveGuestInviteSubmission("owners_only", "admin"),
-    "forbidden",
-  );
+  assert.equal(resolveGuestInviteSubmission("owners_only", "admin"), "forbidden");
   assert.equal(resolveGuestInviteSubmission("direct", null), "forbidden");
 });
 
@@ -44,30 +41,16 @@ test("page guest invitations require a pending, unexpired, matching email", () =
     status: "pending",
   };
 
+  assert.equal(canAcceptPageGuestInvitation(invitation, " Guest@Example.com ", now), true);
   assert.equal(
-    canAcceptPageGuestInvitation(invitation, " Guest@Example.com ", now),
-    true,
-  );
-  assert.equal(
-    canAcceptPageGuestInvitation(
-      { ...invitation, status: "accepted" },
-      invitation.email,
-      now,
-    ),
+    canAcceptPageGuestInvitation({ ...invitation, status: "accepted" }, invitation.email, now),
     false,
   );
   assert.equal(
-    canAcceptPageGuestInvitation(
-      { ...invitation, expiresAt: now },
-      invitation.email,
-      now,
-    ),
+    canAcceptPageGuestInvitation({ ...invitation, expiresAt: now }, invitation.email, now),
     false,
   );
-  assert.equal(
-    canAcceptPageGuestInvitation(invitation, "other@example.com", now),
-    false,
-  );
+  assert.equal(canAcceptPageGuestInvitation(invitation, "other@example.com", now), false);
 });
 
 test("page guest migration enforces explicit principals and invitation states", async () => {

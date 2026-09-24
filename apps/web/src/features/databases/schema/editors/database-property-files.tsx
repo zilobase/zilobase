@@ -1,18 +1,14 @@
-import { File as FileIcon, Link as LinkIcon, Loader2, Plus, X } from "@/shared/components/icons"
-import { useRef, useState } from "react"
+import { File as FileIcon, Link as LinkIcon, Loader2, Plus, X } from "@/shared/components/icons";
+import { useRef, useState } from "react";
 
-import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
-import { getApiErrorMessage } from "@/platform/network/api"
-import { uploadPageImage } from "@/platform/network/image-upload"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { getApiErrorMessage } from "@/platform/network/api";
+import { uploadPageImage } from "@/platform/network/image-upload";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 
-type FilesLimitValue = "one_file" | "no_limit"
+type FilesLimitValue = "one_file" | "no_limit";
 
 export function DatabasePropertyFiles({
   editable = true,
@@ -26,69 +22,69 @@ export function DatabasePropertyFiles({
   pageId,
   databaseId,
 }: {
-  databaseId?: string | null
-  editable?: boolean
-  emptyLabel?: string
-  label: string
-  onOpenChange?: (open: boolean) => void
-  onSelect: (value: string | string[]) => void
-  workspaceId?: string | null
-  propertyConfig?: unknown
-  value: string | string[]
-  pageId?: string | null
+  databaseId?: string | null;
+  editable?: boolean;
+  emptyLabel?: string;
+  label: string;
+  onOpenChange?: (open: boolean) => void;
+  onSelect: (value: string | string[]) => void;
+  workspaceId?: string | null;
+  propertyConfig?: unknown;
+  value: string | string[];
+  pageId?: string | null;
 }) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [isOpen, setIsOpen] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
-  const [linkUrl, setLinkUrl] = useState("")
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const filesLimit = getFilesLimit(propertyConfig)
-  const files = getFilesValue(value)
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const filesLimit = getFilesLimit(propertyConfig);
+  const files = getFilesValue(value);
 
   const setOpen = (open: boolean) => {
-    setIsOpen(open)
-    onOpenChange?.(open)
+    setIsOpen(open);
+    onOpenChange?.(open);
 
     if (!open) {
-      setLinkUrl("")
+      setLinkUrl("");
     }
-  }
+  };
 
   const commitFiles = (nextFiles: string[]) => {
-    onSelect(filesLimit === "one_file" ? (nextFiles[0] ?? "") : nextFiles)
-    setOpen(false)
-  }
+    onSelect(filesLimit === "one_file" ? (nextFiles[0] ?? "") : nextFiles);
+    setOpen(false);
+  };
 
   const addFile = (nextFileValue: string) => {
-    const normalizedValue = nextFileValue.trim()
+    const normalizedValue = nextFileValue.trim();
 
     if (!normalizedValue) {
-      return
+      return;
     }
 
     const nextFiles =
       filesLimit === "one_file"
         ? [normalizedValue]
-        : [...files.filter((file) => file !== normalizedValue), normalizedValue]
+        : [...files.filter((file) => file !== normalizedValue), normalizedValue];
 
-    commitFiles(nextFiles)
-  }
+    commitFiles(nextFiles);
+  };
 
   const removeFile = (fileValue: string) => {
-    const nextFiles = files.filter((file) => file !== fileValue)
+    const nextFiles = files.filter((file) => file !== fileValue);
 
-    onSelect(filesLimit === "one_file" ? (nextFiles[0] ?? "") : nextFiles)
-  }
+    onSelect(filesLimit === "one_file" ? (nextFiles[0] ?? "") : nextFiles);
+  };
 
   const readFile = async (file: File | undefined) => {
     if (!file) {
-      return
+      return;
     }
 
-    setUploadError(null)
+    setUploadError(null);
 
     if (file.type.startsWith("image/") && workspaceId && pageId) {
-      setIsUploading(true)
+      setIsUploading(true);
 
       try {
         const uploaded = await uploadPageImage({
@@ -96,59 +92,58 @@ export function DatabasePropertyFiles({
           file,
           workspaceId,
           pageId,
-        })
+        });
 
-        addFile(uploaded.url)
+        addFile(uploaded.url);
       } catch (error) {
-        setUploadError(getApiErrorMessage(error))
+        setUploadError(getApiErrorMessage(error));
       } finally {
-        setIsUploading(false)
+        setIsUploading(false);
       }
 
-      return
+      return;
     }
 
-    const reader = new FileReader()
+    const reader = new FileReader();
 
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        addFile(reader.result)
+        addFile(reader.result);
       }
-    }
+    };
 
-    reader.readAsDataURL(file)
-  }
+    reader.readAsDataURL(file);
+  };
 
-  const submitLink = () => addFile(linkUrl)
+  const submitLink = () => addFile(linkUrl);
 
-  const triggerContent = files.length > 0 ? (
-    files.map((file) => (
-      <span
-        className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-surface-canvas px-2 py-0.5 text-xs font-medium leading-4 text-content-primary"
-        key={file}
-      >
-        <FileIcon className="size-3.5 shrink-0" />
-        <span className="truncate">{getFileLabel(file)}</span>
+  const triggerContent =
+    files.length > 0 ? (
+      files.map((file) => (
+        <span
+          className="inline-flex max-w-full items-center gap-1.5 rounded-sm bg-surface-canvas px-2 py-0.5 text-xs font-medium leading-4 text-content-primary"
+          key={file}
+        >
+          <FileIcon className="size-3.5 shrink-0" />
+          <span className="truncate">{getFileLabel(file)}</span>
+        </span>
+      ))
+    ) : isOpen ? (
+      <span className="inline-flex items-center gap-1.5 text-content-secondary">
+        <Plus className="size-4 shrink-0" />
+        <span>Add a file or image</span>
       </span>
-    ))
-  ) : isOpen ? (
-    <span className="inline-flex items-center gap-1.5 text-content-secondary">
-      <Plus className="size-4 shrink-0" />
-      <span>Add a file or image</span>
-    </span>
-  ) : (
-    emptyLabel ? (
+    ) : emptyLabel ? (
       <span className="text-content-secondary">{emptyLabel}</span>
     ) : (
       <span aria-hidden="true" className="block min-h-5 w-full" />
-    )
-  )
+    );
 
   if (!editable) {
     return files.length > 0 ? (
       <div className="database-select-cell-trigger">
         {files.map((file) => {
-          const href = getFileHref(file)
+          const href = getFileHref(file);
 
           return (
             <a
@@ -162,7 +157,7 @@ export function DatabasePropertyFiles({
               <FileIcon className="size-3.5 shrink-0" />
               <span className="truncate">{getFileLabel(file)}</span>
             </a>
-          )
+          );
         })}
       </div>
     ) : (
@@ -173,7 +168,7 @@ export function DatabasePropertyFiles({
           <span aria-hidden="true" className="block min-h-5 w-full" />
         )}
       </span>
-    )
+    );
   }
 
   return (
@@ -191,21 +186,17 @@ export function DatabasePropertyFiles({
         align="start"
         className="w-[min(24rem,calc(100vw-2rem))] overflow-hidden p-0"
         onMouseDown={(event) => {
-          event.stopPropagation()
+          event.stopPropagation();
         }}
         onPointerDown={(event) => {
-          event.stopPropagation()
+          event.stopPropagation();
         }}
         sideOffset={0}
       >
         <Tabs defaultValue="upload">
           <TabsList className="mx-3 mt-3">
-            <TabsTrigger value="upload">
-              Upload
-            </TabsTrigger>
-            <TabsTrigger value="link">
-              Link
-            </TabsTrigger>
+            <TabsTrigger value="upload">Upload</TabsTrigger>
+            <TabsTrigger value="link">Link</TabsTrigger>
           </TabsList>
           <TabsContent className="space-y-3 p-3" value="upload">
             <div className="space-y-1">
@@ -229,8 +220,8 @@ export function DatabasePropertyFiles({
             <input
               className="sr-only"
               onChange={(event) => {
-                readFile(event.target.files?.[0])
-                event.target.value = ""
+                readFile(event.target.files?.[0]);
+                event.target.value = "";
               }}
               ref={fileInputRef}
               type="file"
@@ -239,9 +230,7 @@ export function DatabasePropertyFiles({
           <TabsContent className="space-y-3 p-3" value="link">
             <div className="space-y-1">
               <div className="text-sm font-medium text-content-primary">Link</div>
-              <div className="text-xs text-content-secondary">
-                Paste a public file URL.
-              </div>
+              <div className="text-xs text-content-secondary">Paste a public file URL.</div>
             </div>
             <div className="flex items-center gap-2">
               <LinkIcon className="size-4 shrink-0 text-content-secondary" />
@@ -250,8 +239,8 @@ export function DatabasePropertyFiles({
                 onChange={(event) => setLinkUrl(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
-                    event.preventDefault()
-                    submitLink()
+                    event.preventDefault();
+                    submitLink();
                   }
                 }}
                 placeholder="Paste file URL..."
@@ -266,7 +255,7 @@ export function DatabasePropertyFiles({
         {files.length > 0 ? (
           <div className="border-t p-2">
             {files.map((file) => {
-              const href = getFileHref(file)
+              const href = getFileHref(file);
 
               return (
                 <div
@@ -291,15 +280,14 @@ export function DatabasePropertyFiles({
                     <X className="size-4" />
                   </button>
                 </div>
-              )
+              );
             })}
           </div>
         ) : null}
       </PopoverContent>
     </Popover>
-  )
+  );
 }
-
 
 function getFilesLimit(config: unknown): FilesLimitValue {
   if (
@@ -308,61 +296,61 @@ function getFilesLimit(config: unknown): FilesLimitValue {
     "filesLimit" in config &&
     (config as { filesLimit?: unknown }).filesLimit === "one_file"
   ) {
-    return "one_file"
+    return "one_file";
   }
 
-  return "no_limit"
+  return "no_limit";
 }
 
 function getFilesValue(value: string | string[]) {
   if (Array.isArray(value)) {
     return value.filter(
-      (file): file is string => typeof file === "string" && file.trim().length > 0
-    )
+      (file): file is string => typeof file === "string" && file.trim().length > 0,
+    );
   }
 
-  return value.trim() ? [value.trim()] : []
+  return value.trim() ? [value.trim()] : [];
 }
 
 function getFileHref(value: string) {
-  const trimmedValue = value.trim()
+  const trimmedValue = value.trim();
 
   if (!trimmedValue || trimmedValue.startsWith("data:")) {
-    return trimmedValue
+    return trimmedValue;
   }
 
-  const hasProtocol = /^[a-z][a-z0-9+.-]*:/i.test(trimmedValue)
-  const href = hasProtocol ? trimmedValue : `https://${trimmedValue}`
+  const hasProtocol = /^[a-z][a-z0-9+.-]*:/i.test(trimmedValue);
+  const href = hasProtocol ? trimmedValue : `https://${trimmedValue}`;
 
   try {
-    return new URL(href).href
+    return new URL(href).href;
   } catch {
-    return trimmedValue
+    return trimmedValue;
   }
 }
 
 function getFileLabel(value: string) {
-  const trimmedValue = value.trim()
+  const trimmedValue = value.trim();
 
   if (!trimmedValue) {
-    return "File"
+    return "File";
   }
 
   if (trimmedValue.startsWith("data:")) {
-    const mimeType = trimmedValue.slice(5, trimmedValue.indexOf(";"))
+    const mimeType = trimmedValue.slice(5, trimmedValue.indexOf(";"));
 
-    return mimeType.startsWith("image/") ? "Uploaded image" : "Uploaded file"
+    return mimeType.startsWith("image/") ? "Uploaded image" : "Uploaded file";
   }
 
-  const href = getFileHref(trimmedValue)
+  const href = getFileHref(trimmedValue);
 
   try {
-    const url = new URL(href)
-    const segments = url.pathname.split("/").filter(Boolean)
-    const fileName = segments[segments.length - 1]
+    const url = new URL(href);
+    const segments = url.pathname.split("/").filter(Boolean);
+    const fileName = segments[segments.length - 1];
 
-    return fileName ? decodeURIComponent(fileName) : url.hostname
+    return fileName ? decodeURIComponent(fileName) : url.hostname;
   } catch {
-    return trimmedValue
+    return trimmedValue;
   }
 }

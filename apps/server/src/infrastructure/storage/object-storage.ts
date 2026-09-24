@@ -1,10 +1,7 @@
 import { Context, Effect, Layer, Schema } from "effect";
 
 import type { RuntimeEnv } from "../../shared/config/config";
-import {
-  createImageStorage,
-  type ImageStorage,
-} from "./image-storage";
+import { createImageStorage, type ImageStorage } from "./image-storage";
 
 export class ObjectStorageUnavailable extends Schema.TaggedError<ObjectStorageUnavailable>()(
   "ObjectStorageUnavailable",
@@ -24,10 +21,7 @@ export class ObjectStorage extends Context.Service<
   }
 >()("@zilobase/server/infrastructure/storage/ObjectStorage") {
   static readonly layer = Layer.succeed(this, {
-    withEnv: <A>(
-      env: RuntimeEnv,
-      operation: (storage: ImageStorage) => Promise<A>,
-    ) =>
+    withEnv: <A>(env: RuntimeEnv, operation: (storage: ImageStorage) => Promise<A>) =>
       Effect.tryPromise({
         try: () => operation(createImageStorage(env)),
         catch: (cause) => new ObjectStorageUnavailable({ cause }),

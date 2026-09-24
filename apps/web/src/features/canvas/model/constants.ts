@@ -1,12 +1,7 @@
-import type { Icon } from "@/shared/components/icons"
-import {
-  ArrowRightIcon,
-  CircleIcon,
-  DiamondIcon,
-  SquareIcon,
-} from "@/shared/components/icons"
+import type { Icon } from "@/shared/components/icons";
+import { ArrowRightIcon, CircleIcon, DiamondIcon, SquareIcon } from "@/shared/components/icons";
 
-import { getPaletteColor } from "@/shared/lib/color-tokens"
+import { getPaletteColor } from "@/shared/lib/color-tokens";
 
 import type {
   CanvasNodeColorId,
@@ -14,16 +9,16 @@ import type {
   CanvasStrokeStyle,
   CanvasStrokeWidth,
   CanvasTool,
-} from "./types"
+} from "./types";
 
 function canvasColorOption(
   id: CanvasNodeColorId,
   label: string,
 ): {
-  fill: string
-  id: CanvasNodeColorId
-  label: string
-  stroke: string
+  fill: string;
+  id: CanvasNodeColorId;
+  label: string;
+  stroke: string;
 } {
   if (id === "default") {
     return {
@@ -31,7 +26,7 @@ function canvasColorOption(
       label,
       fill: "transparent",
       stroke: "var(--zb-color-content-text-primary)",
-    }
+    };
   }
 
   return {
@@ -39,14 +34,14 @@ function canvasColorOption(
     label,
     fill: getPaletteColor(id) ?? "transparent",
     stroke: getPaletteColor(id) ?? "var(--zb-color-content-text-primary)",
-  }
+  };
 }
 
 export const canvasColorOptions: Array<{
-  fill: string
-  id: CanvasNodeColorId
-  label: string
-  stroke: string
+  fill: string;
+  id: CanvasNodeColorId;
+  label: string;
+  stroke: string;
 }> = [
   canvasColorOption("default", "Default"),
   canvasColorOption("yellow", "Yellow"),
@@ -56,53 +51,50 @@ export const canvasColorOptions: Array<{
   canvasColorOption("purple", "Purple"),
   canvasColorOption("orange", "Orange"),
   canvasColorOption("gray", "Gray"),
-]
+];
 
 export const canvasStrokeWidthOptions: Array<{
-  label: string
-  value: CanvasStrokeWidth
+  label: string;
+  value: CanvasStrokeWidth;
 }> = [
   { label: "Thin", value: 2 },
   { label: "Medium", value: 4 },
   { label: "Bold", value: 6 },
-]
+];
 
 export const canvasStrokeStyleOptions: Array<{
-  label: string
-  value: CanvasStrokeStyle
+  label: string;
+  value: CanvasStrokeStyle;
 }> = [
   { label: "Solid", value: "solid" },
   { label: "Dashed", value: "dashed" },
   { label: "Dotted", value: "dotted" },
-]
+];
 
-export const defaultCanvasStrokeWidth: CanvasStrokeWidth = 4
-export const defaultCanvasStrokeStyle: CanvasStrokeStyle = "solid"
-export const defaultCanvasSloppiness = "artist"
+export const defaultCanvasStrokeWidth: CanvasStrokeWidth = 4;
+export const defaultCanvasStrokeStyle: CanvasStrokeStyle = "solid";
+export const defaultCanvasSloppiness = "artist";
 
 const canvasShapeOptions: Array<{
-  icon: Icon
-  label: string
-  shape: CanvasShape
+  icon: Icon;
+  label: string;
+  shape: CanvasShape;
 }> = [
   { icon: CircleIcon, label: "Circle", shape: "circle" },
   { icon: SquareIcon, label: "Rectangle", shape: "rectangle" },
   { icon: DiamondIcon, label: "Diamond", shape: "diamond" },
-]
+];
 
-export const canvasShapeDimensions: Record<
-  CanvasShape,
-  { height: number; width: number }
-> = {
+export const canvasShapeDimensions: Record<CanvasShape, { height: number; width: number }> = {
   circle: { height: 108, width: 108 },
   rectangle: { height: 80, width: 136 },
   diamond: { height: 120, width: 120 },
-}
+};
 
 export const canvasToolOptions: Array<{
-  icon: Icon
-  label: string
-  tool: CanvasTool
+  icon: Icon;
+  label: string;
+  tool: CanvasTool;
 }> = [
   ...canvasShapeOptions.map(({ icon, label, shape }) => ({
     icon,
@@ -110,11 +102,8 @@ export const canvasToolOptions: Array<{
     tool: shape,
   })),
   { icon: ArrowRightIcon, label: "Arrow", tool: "arrow" },
-]
+];
 
 export function getCanvasColorOption(colorId: CanvasNodeColorId) {
-  return (
-    canvasColorOptions.find((option) => option.id === colorId) ??
-    canvasColorOptions[0]
-  )
+  return canvasColorOptions.find((option) => option.id === colorId) ?? canvasColorOptions[0];
 }

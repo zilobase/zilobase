@@ -35,9 +35,7 @@ export function readApiKeyWorkspaceId(metadata: unknown) {
 
   const workspaceId = (metadata as ApiKeyMetadata).workspaceId;
 
-  return typeof workspaceId === "string" && workspaceId.length > 0
-    ? workspaceId
-    : null;
+  return typeof workspaceId === "string" && workspaceId.length > 0 ? workspaceId : null;
 }
 
 function getApiKeyWorkspaceId(c: Context<AppBindings>) {

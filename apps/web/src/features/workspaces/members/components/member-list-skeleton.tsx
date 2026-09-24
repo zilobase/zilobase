@@ -1,10 +1,4 @@
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemGroup,
-  ItemMedia,
-} from "@/shared/ui/item";
+import { Item, ItemActions, ItemContent, ItemGroup, ItemMedia } from "@/shared/ui/item";
 
 import { Skeleton } from "@/shared/ui/skeleton";
 

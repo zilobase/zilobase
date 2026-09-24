@@ -108,7 +108,12 @@ test("meeting audio streams, pauses, resumes, and flushes a recording", async ()
     const delta = await deltaMessage;
     assert.equal(delta.itemId, "microphone:item-1");
     assert.equal(delta.source, "microphone");
-    await callbacks.onCompleted({ endSequence: 0, itemId: "item-1", startSequence: 0, text: "Hello" });
+    await callbacks.onCompleted({
+      endSequence: 0,
+      itemId: "item-1",
+      startSequence: 0,
+      text: "Hello",
+    });
     assert.equal(transcriptSink.onCompleted.mock.calls[0]?.[0].itemId, "microphone:item-1");
 
     client.send(JSON.stringify({ type: "recording.pause" }));
@@ -141,17 +146,28 @@ test("meeting audio closes malformed controls, sources, frames, and duplicate re
   try {
     const malformed = await openClient(fixture.url, await ticket({ leaseId: "malformed" }));
     malformed.send("not-json");
-    assert.deepEqual(await closed(malformed), { code: 1003, reason: "Invalid meeting audio control message" });
+    assert.deepEqual(await closed(malformed), {
+      code: 1003,
+      reason: "Invalid meeting audio control message",
+    });
 
     const invalidSources = await openClient(fixture.url, await ticket({ leaseId: "sources" }));
-    invalidSources.send(JSON.stringify({ sources: ["microphone", "microphone"], type: "recording.configure" }));
-    assert.deepEqual(await closed(invalidSources), { code: 1008, reason: "Invalid meeting audio sources" });
+    invalidSources.send(
+      JSON.stringify({ sources: ["microphone", "microphone"], type: "recording.configure" }),
+    );
+    assert.deepEqual(await closed(invalidSources), {
+      code: 1008,
+      reason: "Invalid meeting audio sources",
+    });
 
     const invalidFrame = await openClient(fixture.url, await ticket({ leaseId: "frame" }));
     invalidFrame.send(JSON.stringify({ sources: ["microphone"], type: "recording.configure" }));
     await nextMessage(invalidFrame, "meeting.ready");
     invalidFrame.send(Buffer.alloc(10));
-    assert.deepEqual(await closed(invalidFrame), { code: 1009, reason: "Invalid meeting audio frame" });
+    assert.deepEqual(await closed(invalidFrame), {
+      code: 1009,
+      reason: "Invalid meeting audio frame",
+    });
 
     const first = await openClient(fixture.url, await ticket({ leaseId: "reconnect" }));
     const firstClosed = closed(first);
@@ -195,13 +211,18 @@ class TestTranscriber {
 }
 
 async function ticket(overrides: Partial<Omit<MeetingAudioTicketClaims, "exp">> = {}) {
-  return (await createMeetingAudioTicket({
-    leaseId: "lease-1",
-    meetingId: "meeting-1",
-    userId: "user-1",
-    workspaceId: "workspace-1",
-    ...overrides,
-  }, env)).token;
+  return (
+    await createMeetingAudioTicket(
+      {
+        leaseId: "lease-1",
+        meetingId: "meeting-1",
+        userId: "user-1",
+        workspaceId: "workspace-1",
+        ...overrides,
+      },
+      env,
+    )
+  ).token;
 }
 
 function audioPacket(sequence: number, sourceCode: number) {
@@ -219,7 +240,9 @@ async function openClient(url: string, audioTicket: string) {
   openSockets.add(socket);
   await new Promise<void>((resolve, reject) => {
     socket.addEventListener("open", () => resolve(), { once: true });
-    socket.addEventListener("error", () => reject(new Error("WebSocket upgrade failed")), { once: true });
+    socket.addEventListener("error", () => reject(new Error("WebSocket upgrade failed")), {
+      once: true,
+    });
   });
   return socket;
 }
@@ -240,9 +263,13 @@ function nextMessage(socket: WebSocket, type: string) {
 
 function closed(socket: WebSocket) {
   return new Promise<{ code: number; reason: string }>((resolve) => {
-    socket.addEventListener("close", (event) => {
-      resolve({ code: event.code, reason: event.reason });
-    }, { once: true });
+    socket.addEventListener(
+      "close",
+      (event) => {
+        resolve({ code: event.code, reason: event.reason });
+      },
+      { once: true },
+    );
   });
 }
 
@@ -259,7 +286,9 @@ function listen(server: Server) {
 }
 
 function closeServer(server: Server) {
-  return new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  return new Promise<void>((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
 }
 
 function requestUpgradeStatus(url: string, audioTicket?: string) {
@@ -275,7 +304,8 @@ function requestUpgradeStatus(url: string, audioTicket?: string) {
         `GET ${target.pathname}${target.search} HTTP/1.1\r\n` +
           `Host: ${target.host}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n` +
           "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n" +
-          protocol + "\r\n",
+          protocol +
+          "\r\n",
       );
     });
     socket.on("data", (chunk) => {

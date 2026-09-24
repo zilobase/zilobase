@@ -14,20 +14,13 @@ import {
   actionFailure,
   isAutomationLeaseLost,
 } from "./action-error";
-import {
-  type ExecutionContext,
-  loadExecutionContext,
-} from "./execution-context";
+import { type ExecutionContext, loadExecutionContext } from "./execution-context";
 import { restoreStepOutput, requireOwner } from "../actions/action-values";
 
 import { renewRunLease } from "./run-claims";
 import { executeClaimedStep } from "./run-step";
 
-export async function executeClaimedRun(
-  runId: string,
-  workerId: string,
-  env: RuntimeEnv,
-) {
+export async function executeClaimedRun(runId: string, workerId: string, env: RuntimeEnv) {
   let leaseLost = false;
   let renewing = false;
   const heartbeat = setInterval(() => {
@@ -48,10 +41,7 @@ export async function executeClaimedRun(
     return await executeRunWithLease(runId, workerId, env, async () => {
       if (leaseLost || !(await renewRunLease(runId, workerId))) {
         leaseLost = true;
-        throw new AutomationActionError(
-          "Automation run lease was lost",
-          "AUTOMATION_LEASE_LOST",
-        );
+        throw new AutomationActionError("Automation run lease was lost", "AUTOMATION_LEASE_LOST");
       }
     });
   } finally {
@@ -106,15 +96,11 @@ async function executeRunWithLease(
         !Array.isArray(source.config) &&
         (source.config as { locked?: unknown }).locked === true)
     ) {
-      throw new AutomationActionError(
-        "The source database is locked",
-        "AUTOMATION_SOURCE_LOCKED",
-      );
+      throw new AutomationActionError("The source database is locked", "AUTOMATION_SOURCE_LOCKED");
     }
 
     for (const [actionIndex, action] of context.definition.actions.entries()) {
-      if (context.completedSteps.some((step) => step.actionId === action.id))
-        continue;
+      if (context.completedSteps.some((step) => step.actionId === action.id)) continue;
       const outcome = await executeClaimedStep(context, action, actionIndex, {
         workerId,
         env,
@@ -135,10 +121,7 @@ async function executeRunWithLease(
           updatedAt: now,
         })
         .where(
-          and(
-            eq(databaseAutomationRun.id, runId),
-            eq(databaseAutomationRun.leaseOwner, workerId),
-          ),
+          and(eq(databaseAutomationRun.id, runId), eq(databaseAutomationRun.leaseOwner, workerId)),
         );
       await tx
         .update(databaseAutomation)
@@ -148,8 +131,7 @@ async function executeRunWithLease(
     return "succeeded" as const;
   } catch (error) {
     if (isAutomationLeaseLost(error)) return "retry" as const;
-    if (error instanceof RetryableAutomationActionError)
-      return "retry" as const;
+    if (error instanceof RetryableAutomationActionError) return "retry" as const;
     const failure = actionFailure(error);
     await failClaimedRun(runId, workerId, failure, context.automation.id);
     return "failed" as const;
@@ -169,10 +151,7 @@ async function failClaimedRun(
         .select({ automationId: databaseAutomationRun.automationId })
         .from(databaseAutomationRun)
         .where(
-          and(
-            eq(databaseAutomationRun.id, runId),
-            eq(databaseAutomationRun.leaseOwner, workerId),
-          ),
+          and(eq(databaseAutomationRun.id, runId), eq(databaseAutomationRun.leaseOwner, workerId)),
         )
         .limit(1)
     )[0]?.automationId;
@@ -191,10 +170,7 @@ async function failClaimedRun(
         updatedAt: now,
       })
       .where(
-        and(
-          eq(databaseAutomationRun.id, runId),
-          eq(databaseAutomationRun.leaseOwner, workerId),
-        ),
+        and(eq(databaseAutomationRun.id, runId), eq(databaseAutomationRun.leaseOwner, workerId)),
       );
     await tx
       .update(databaseAutomation)
@@ -213,11 +189,7 @@ async function failClaimedRun(
   });
 }
 
-async function skipClaimedRun(
-  runId: string,
-  workerId: string,
-  skipReason: string,
-) {
+async function skipClaimedRun(runId: string, workerId: string, skipReason: string) {
   const now = new Date();
   await db
     .update(databaseAutomationRun)
@@ -230,9 +202,6 @@ async function skipClaimedRun(
       updatedAt: now,
     })
     .where(
-      and(
-        eq(databaseAutomationRun.id, runId),
-        eq(databaseAutomationRun.leaseOwner, workerId),
-      ),
+      and(eq(databaseAutomationRun.id, runId), eq(databaseAutomationRun.leaseOwner, workerId)),
     );
 }

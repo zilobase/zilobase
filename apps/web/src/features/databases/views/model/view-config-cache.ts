@@ -1,10 +1,10 @@
 type DatabaseViewConfigSource = {
-  config?: unknown
-  id: string
-}
+  config?: unknown;
+  id: string;
+};
 
 function getViewConfigCacheKey(databaseId: string, databaseViewId: string) {
-  return `${databaseId}:${databaseViewId}`
+  return `${databaseId}:${databaseViewId}`;
 }
 
 export function readLatestViewConfig({
@@ -14,18 +14,17 @@ export function readLatestViewConfig({
   fallbackConfig,
   views,
 }: {
-  cache: Map<string, unknown>
-  databaseId: string
-  databaseViewId: string
-  fallbackConfig: unknown
-  views: DatabaseViewConfigSource[] | undefined
+  cache: Map<string, unknown>;
+  databaseId: string;
+  databaseViewId: string;
+  fallbackConfig: unknown;
+  views: DatabaseViewConfigSource[] | undefined;
 }) {
-  const configKey = getViewConfigCacheKey(databaseId, databaseViewId)
+  const configKey = getViewConfigCacheKey(databaseId, databaseViewId);
 
   return cache.has(configKey)
     ? cache.get(configKey)
-    : (views?.find((view) => view.id === databaseViewId)?.config ??
-        fallbackConfig)
+    : (views?.find((view) => view.id === databaseViewId)?.config ?? fallbackConfig);
 }
 
 export function writeLatestViewConfig({
@@ -34,10 +33,10 @@ export function writeLatestViewConfig({
   databaseId,
   databaseViewId,
 }: {
-  cache: Map<string, unknown>
-  config: unknown
-  databaseId: string
-  databaseViewId: string
+  cache: Map<string, unknown>;
+  config: unknown;
+  databaseId: string;
+  databaseViewId: string;
 }) {
-  cache.set(getViewConfigCacheKey(databaseId, databaseViewId), config)
+  cache.set(getViewConfigCacheKey(databaseId, databaseViewId), config);
 }

@@ -33,6 +33,8 @@ describe("database automation persistence", () => {
       migration.indexOf('CREATE TABLE "database_automation_revision"'),
     );
     expect(automationTable).not.toMatch(/ciphertext|refresh_token|header_value/);
-    expect(migration).toMatch(/"automation_secret"[\s\S]*"ciphertext" text NOT NULL[\s\S]*"iv" text NOT NULL/);
+    expect(migration).toMatch(
+      /"automation_secret"[\s\S]*"ciphertext" text NOT NULL[\s\S]*"iv" text NOT NULL/,
+    );
   });
 });

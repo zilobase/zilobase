@@ -8,7 +8,10 @@ const env = { AUTOMATION_SECRET_ENCRYPTION_KEY: Buffer.alloc(32, 11).toString("b
 
 async function connection() {
   const encrypted = await encryptAutomationSecret(env, "xoxb-secret", {
-    ownerUserId: "user-1", purpose: "slack_access_token", secretId: "slack-1", workspaceId: "workspace-1",
+    ownerUserId: "user-1",
+    purpose: "slack_access_token",
+    secretId: "slack-1",
+    workspaceId: "workspace-1",
   });
   return {
     accessTokenCiphertext: encrypted.ciphertext,
@@ -32,7 +35,10 @@ describe("Slack automation provider", () => {
   it("uses hashed single-use state, encrypted S256 PKCE, exact scopes, and encrypted tokens", async () => {
     const [source, migration] = await Promise.all([
       readFile(new URL("./slack-provider.ts", import.meta.url), "utf8"),
-      readFile(new URL("../../../../drizzle/0075_automation_slack_connections.sql", import.meta.url), "utf8"),
+      readFile(
+        new URL("../../../../drizzle/0075_automation_slack_connections.sql", import.meta.url),
+        "utf8",
+      ),
     ]);
     expect(source).toContain('code_challenge_method: "S256"');
     expect(source).toContain("stateHash: await sha256Hex(state)");
@@ -48,16 +54,19 @@ describe("Slack automation provider", () => {
     let requestedUrl = "";
     const fetcher = vi.fn(async (url: string | URL | Request) => {
       requestedUrl = String(url);
-      return new Response(JSON.stringify({
-      channels: [
-        { id: "C1", name: "general" },
-        { id: "G1", is_private: true, name: "leadership" },
-        { id: "D1", is_im: true, name: "direct" },
-        { id: "G2", is_mpim: true, name: "group-dm" },
-      ],
-      ok: true,
-      response_metadata: { next_cursor: "" },
-      }), { headers: { "content-type": "application/json" } });
+      return new Response(
+        JSON.stringify({
+          channels: [
+            { id: "C1", name: "general" },
+            { id: "G1", is_private: true, name: "leadership" },
+            { id: "D1", is_im: true, name: "direct" },
+            { id: "G2", is_mpim: true, name: "group-dm" },
+          ],
+          ok: true,
+          response_metadata: { next_cursor: "" },
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
     }) as typeof fetch;
     await expect(listSlackChannels(env, await connection(), fetcher)).resolves.toEqual([
       { id: "C1", isPrivate: false, name: "general" },
@@ -74,17 +83,44 @@ describe("Slack automation provider", () => {
         headers: { "content-type": "application/json" },
       });
     }) as typeof fetch;
-    await expect(sendSlackMessage(env, await connection(), { channelId: "C1", deliveryId: "slack_delivery", text: "Hello" }, success)).resolves.toEqual({ channelId: "C1", messageTs: "123.456" });
+    await expect(
+      sendSlackMessage(
+        env,
+        await connection(),
+        { channelId: "C1", deliveryId: "slack_delivery", text: "Hello" },
+        success,
+      ),
+    ).resolves.toEqual({ channelId: "C1", messageTs: "123.456" });
     expect(requestedBody).toContain('"client_msg_id":"slack_delivery"');
 
-    await expect(sendSlackMessage(env, await connection(), { channelId: "C1", deliveryId: "slack_delivery", text: "Hello" }, async () => new Response(JSON.stringify({ error: "ratelimited", ok: false }), {
-      headers: { "content-type": "application/json", "retry-after": "3" }, status: 429,
-    }))).rejects.toMatchObject({ code: "SLACK_RATE_LIMITED", retryAfterMs: 3_000, retryable: true });
+    await expect(
+      sendSlackMessage(
+        env,
+        await connection(),
+        { channelId: "C1", deliveryId: "slack_delivery", text: "Hello" },
+        async () =>
+          new Response(JSON.stringify({ error: "ratelimited", ok: false }), {
+            headers: { "content-type": "application/json", "retry-after": "3" },
+            status: 429,
+          }),
+      ),
+    ).rejects.toMatchObject({ code: "SLACK_RATE_LIMITED", retryAfterMs: 3_000, retryable: true });
   });
 
   it("classifies revocation as terminal reconnect state", async () => {
-    await expect(sendSlackMessage(env, await connection(), { channelId: "C1", deliveryId: "slack_delivery", text: "Hello" }, async () => new Response(JSON.stringify({ error: "token_revoked", ok: false }), {
-      headers: { "content-type": "application/json" }, status: 200,
-    }))).rejects.toEqual(expect.objectContaining({ code: "SLACK_CONNECTION_REVOKED", retryable: false }));
+    await expect(
+      sendSlackMessage(
+        env,
+        await connection(),
+        { channelId: "C1", deliveryId: "slack_delivery", text: "Hello" },
+        async () =>
+          new Response(JSON.stringify({ error: "token_revoked", ok: false }), {
+            headers: { "content-type": "application/json" },
+            status: 200,
+          }),
+      ),
+    ).rejects.toEqual(
+      expect.objectContaining({ code: "SLACK_CONNECTION_REVOKED", retryable: false }),
+    );
   });
 });

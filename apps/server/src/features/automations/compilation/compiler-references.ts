@@ -9,7 +9,11 @@ export function optionReferenceIds(value: unknown): string[] {
   if (record.entityType === "option" && record.type === "entity" && typeof record.id === "string") {
     return [record.id];
   }
-  if (record.entityType === "option" && record.type === "entity_list" && Array.isArray(record.ids)) {
+  if (
+    record.entityType === "option" &&
+    record.type === "entity_list" &&
+    Array.isArray(record.ids)
+  ) {
     return [...new Set(record.ids.filter((id): id is string => typeof id === "string"))];
   }
   return Object.values(record).flatMap(optionReferenceIds);

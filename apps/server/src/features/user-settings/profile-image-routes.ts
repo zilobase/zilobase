@@ -36,10 +36,7 @@ profileImageRoutes.post("/image/uploads", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const input = await readProfileImageBody(
-    c.req.raw,
-    getProfileImageMaxBytes(c.env),
-  );
+  const input = await readProfileImageBody(c.req.raw, getProfileImageMaxBytes(c.env));
 
   if ("error" in input) {
     return c.json({ error: input.error }, 400);
@@ -53,25 +50,24 @@ profileImageRoutes.post("/image/uploads", async (c) => {
   });
   const storageMode = resolveImageStorageMode(c.env);
   const storage = createImageStorage(c.env);
-  const upload = storageMode === "s3"
-    ? await storage.createUploadUrl({
-        byteSize: input.byteSize,
-        contentType: input.contentType,
-        expiresInSeconds: getUploadUrlTtlSeconds(c.env),
-        objectKey,
-      })
-    : {
-        expiresAt: new Date(
-          Date.now() + getUploadUrlTtlSeconds(c.env) * 1000,
-        ).toISOString(),
-        headers: { "Content-Type": input.contentType },
-        method: "PUT" as const,
-        storageMode,
-        url: [
-          `/user-settings/profile/image/uploads/${imageId}/body`,
-          `?filename=${encodeURIComponent(input.filename)}`,
-        ].join(""),
-      };
+  const upload =
+    storageMode === "s3"
+      ? await storage.createUploadUrl({
+          byteSize: input.byteSize,
+          contentType: input.contentType,
+          expiresInSeconds: getUploadUrlTtlSeconds(c.env),
+          objectKey,
+        })
+      : {
+          expiresAt: new Date(Date.now() + getUploadUrlTtlSeconds(c.env) * 1000).toISOString(),
+          headers: { "Content-Type": input.contentType },
+          method: "PUT" as const,
+          storageMode,
+          url: [
+            `/user-settings/profile/image/uploads/${imageId}/body`,
+            `?filename=${encodeURIComponent(input.filename)}`,
+          ].join(""),
+        };
 
   return c.json({
     image: {
@@ -92,10 +88,7 @@ profileImageRoutes.put("/image/uploads/:imageId/body", async (c) => {
   }
 
   if (resolveImageStorageMode(c.env) !== "binding") {
-    return c.json(
-      { error: "Server upload route is only available in binding mode" },
-      409,
-    );
+    return c.json({ error: "Server upload route is only available in binding mode" }, 409);
   }
 
   const imageId = c.req.param("imageId");
@@ -145,10 +138,7 @@ profileImageRoutes.post("/image/uploads/:imageId/complete", async (c) => {
     return c.json({ error: "Invalid profile image id" }, 400);
   }
 
-  const input = await readProfileImageBody(
-    c.req.raw,
-    getProfileImageMaxBytes(c.env),
-  );
+  const input = await readProfileImageBody(c.req.raw, getProfileImageMaxBytes(c.env));
 
   if ("error" in input) {
     return c.json({ error: input.error }, 400);
@@ -168,17 +158,13 @@ profileImageRoutes.post("/image/uploads/:imageId/complete", async (c) => {
 
   if (
     object.byteSize !== undefined &&
-    (object.byteSize > input.byteSize ||
-      object.byteSize > getProfileImageMaxBytes(c.env))
+    (object.byteSize > input.byteSize || object.byteSize > getProfileImageMaxBytes(c.env))
   ) {
     await storage.delete(objectKey).catch(() => undefined);
     return c.json({ error: "Profile image is too large" }, 413);
   }
 
-  if (
-    object.contentType &&
-    normalizeContentType(object.contentType) !== input.contentType
-  ) {
+  if (object.contentType && normalizeContentType(object.contentType) !== input.contentType) {
     await storage.delete(objectKey).catch(() => undefined);
     return c.json({ error: "Uploaded profile image type does not match" }, 415);
   }
@@ -189,17 +175,9 @@ profileImageRoutes.post("/image/uploads/:imageId/complete", async (c) => {
     userId: currentUser.id,
   });
 
-  await db
-    .update(user)
-    .set({ image, updatedAt: new Date() })
-    .where(eq(user.id, currentUser.id));
+  await db.update(user).set({ image, updatedAt: new Date() }).where(eq(user.id, currentUser.id));
 
-  await deletePreviousProfileImage(
-    storage,
-    currentUser.image,
-    currentUser.id,
-    objectKey,
-  );
+  await deletePreviousProfileImage(storage, currentUser.image, currentUser.id, objectKey);
 
   return c.json({ image });
 });
@@ -211,10 +189,7 @@ profileImageRoutes.delete("/image", async (c) => {
     return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const previousObjectKey = getOwnedProfileImageObjectKey(
-    currentUser.image,
-    currentUser.id,
-  );
+  const previousObjectKey = getOwnedProfileImageObjectKey(currentUser.image, currentUser.id);
 
   await db
     .update(user)
@@ -222,10 +197,7 @@ profileImageRoutes.delete("/image", async (c) => {
     .where(eq(user.id, currentUser.id));
 
   if (previousObjectKey) {
-    await deleteProfileImageObject(
-      createImageStorage(c.env),
-      previousObjectKey,
-    );
+    await deleteProfileImageObject(createImageStorage(c.env), previousObjectKey);
   }
 
   return c.json({ image: null });
@@ -278,11 +250,8 @@ profileImageRoutes.get("/images/:userId/:imageId/:filename", async (c) => {
 async function readProfileImageBody(
   request: Request,
   maxBytes: number,
-): Promise<
-  | { byteSize: number; contentType: string; filename: string }
-  | { error: string }
-> {
-  const body = await request.json().catch(() => null) as ProfileImageBody | null;
+): Promise<{ byteSize: number; contentType: string; filename: string } | { error: string }> {
+  const body = (await request.json().catch(() => null)) as ProfileImageBody | null;
   const byteSize = readPositiveInteger(body?.byteSize);
   const contentType = normalizeContentType(readString(body?.contentType));
   const filename = sanitizeFilename(readString(body?.filename) ?? "image");
@@ -326,9 +295,7 @@ function sanitizeFilename(value: string) {
 }
 
 function getProfileImageMaxBytes(env: AppBindings["Bindings"]) {
-  const configured = readPositiveInteger(
-    getStringEnv(env, "IMAGE_UPLOAD_MAX_BYTES"),
-  );
+  const configured = readPositiveInteger(getStringEnv(env, "IMAGE_UPLOAD_MAX_BYTES"));
 
   return configured
     ? Math.min(configured, defaultMaxProfileImageBytes)
@@ -336,15 +303,13 @@ function getProfileImageMaxBytes(env: AppBindings["Bindings"]) {
 }
 
 function getUploadUrlTtlSeconds(env: AppBindings["Bindings"]) {
-  return readPositiveInteger(getStringEnv(env, "IMAGE_UPLOAD_URL_TTL_SECONDS")) ??
-    defaultUploadUrlTtlSeconds;
+  return (
+    readPositiveInteger(getStringEnv(env, "IMAGE_UPLOAD_URL_TTL_SECONDS")) ??
+    defaultUploadUrlTtlSeconds
+  );
 }
 
-function getProfileImagePath(options: {
-  filename: string;
-  imageId: string;
-  userId: string;
-}) {
+function getProfileImagePath(options: { filename: string; imageId: string; userId: string }) {
   return [
     "/user-settings/profile/images",
     encodeURIComponent(options.userId),
@@ -353,11 +318,7 @@ function getProfileImagePath(options: {
   ].join("/");
 }
 
-function getProfileImageObjectKey(options: {
-  filename: string;
-  imageId: string;
-  userId: string;
-}) {
+function getProfileImageObjectKey(options: { filename: string; imageId: string; userId: string }) {
   return [
     "users",
     encodeObjectKeySegment(options.userId),
@@ -372,9 +333,7 @@ function encodeObjectKeySegment(value: string) {
 }
 
 function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value,
-  );
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 async function deletePreviousProfileImage(
@@ -390,26 +349,18 @@ async function deletePreviousProfileImage(
   }
 }
 
-async function deleteProfileImageObject(
-  storage: ImageStorage,
-  objectKey: string,
-) {
+async function deleteProfileImageObject(storage: ImageStorage, objectKey: string) {
   await storage.delete(objectKey).catch((error) => {
     console.error("Failed to delete previous profile image", error);
   });
 }
 
-function getOwnedProfileImageObjectKey(
-  image: string | null | undefined,
-  userId: string,
-) {
+function getOwnedProfileImageObjectKey(image: string | null | undefined, userId: string) {
   if (!image) {
     return null;
   }
 
-  const match = image.match(
-    /^\/user-settings\/profile\/images\/([^/]+)\/([^/]+)\/([^/]+)$/,
-  );
+  const match = image.match(/^\/user-settings\/profile\/images\/([^/]+)\/([^/]+)\/([^/]+)$/);
 
   if (!match) {
     return null;

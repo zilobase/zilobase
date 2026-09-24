@@ -1,62 +1,54 @@
-import * as React from "react"
-import { Upload } from "@/shared/components/icons"
+import * as React from "react";
+import { Upload } from "@/shared/components/icons";
 
-import { IconColorGrid } from "@/shared/ui/icon-color-grid"
-import { IconSvgPreview } from "@/shared/ui/icon-svg-preview"
-import { cn } from "@/shared/lib/utils"
-import {
-  buildColoredIconSvg,
-  parseUploadedSvg,
-} from "@/shared/lib/page-icon-utils"
+import { IconColorGrid } from "@/shared/ui/icon-color-grid";
+import { IconSvgPreview } from "@/shared/ui/icon-svg-preview";
+import { cn } from "@/shared/lib/utils";
+import { buildColoredIconSvg, parseUploadedSvg } from "@/shared/lib/page-icon-utils";
 
 type IconUploadPickerProps = {
-  className?: string
-  onIconSelect: (svg: string) => void
-}
+  className?: string;
+  onIconSelect: (svg: string) => void;
+};
 
 type UploadedIcon = {
-  viewBox: string
-  content: string
-}
+  viewBox: string;
+  content: string;
+};
 
-export function IconUploadPicker({
-  className,
-  onIconSelect,
-}: IconUploadPickerProps) {
-  const inputRef = React.useRef<HTMLInputElement | null>(null)
-  const [dragActive, setDragActive] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
-  const [uploadedIcon, setUploadedIcon] = React.useState<UploadedIcon | null>(
-    null,
-  )
+export function IconUploadPicker({ className, onIconSelect }: IconUploadPickerProps) {
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const [dragActive, setDragActive] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [uploadedIcon, setUploadedIcon] = React.useState<UploadedIcon | null>(null);
 
   const loadSvgFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith(".svg") && file.type !== "image/svg+xml") {
-      setError("Upload an SVG file.")
-      return
+      setError("Upload an SVG file.");
+      return;
     }
 
-    const text = await file.text()
-    const parsed = parseUploadedSvg(text)
+    const text = await file.text();
+    const parsed = parseUploadedSvg(text);
 
     if (!parsed) {
-      setError("Could not read this SVG.")
-      return
+      setError("Could not read this SVG.");
+      return;
     }
 
-    setError(null)
-    setUploadedIcon(parsed)
-  }
+    setError(null);
+    setUploadedIcon(parsed);
+  };
 
   const handleFiles = (files: FileList | null) => {
-    const file = files?.[0]
+    const file = files?.[0];
 
     if (!file) {
-      return
+      return;
     }
 
-    void loadSvgFile(file)
-  }
+    void loadSvgFile(file);
+  };
 
   return (
     <div
@@ -69,8 +61,8 @@ export function IconUploadPicker({
         accept=".svg,image/svg+xml"
         className="hidden"
         onChange={(event) => {
-          handleFiles(event.target.files)
-          event.target.value = ""
+          handleFiles(event.target.files);
+          event.target.value = "";
         }}
         ref={inputRef}
         type="file"
@@ -87,21 +79,21 @@ export function IconUploadPicker({
             )}
             onClick={() => inputRef.current?.click()}
             onDragEnter={(event) => {
-              event.preventDefault()
-              setDragActive(true)
+              event.preventDefault();
+              setDragActive(true);
             }}
             onDragLeave={(event) => {
-              event.preventDefault()
-              setDragActive(false)
+              event.preventDefault();
+              setDragActive(false);
             }}
             onDragOver={(event) => {
-              event.preventDefault()
-              setDragActive(true)
+              event.preventDefault();
+              setDragActive(true);
             }}
             onDrop={(event) => {
-              event.preventDefault()
-              setDragActive(false)
-              handleFiles(event.dataTransfer.files)
+              event.preventDefault();
+              setDragActive(false);
+              handleFiles(event.dataTransfer.files);
             }}
             type="button"
           >
@@ -109,12 +101,8 @@ export function IconUploadPicker({
               <Upload className="size-5 text-content-secondary" />
             </span>
             <span className="space-y-1">
-              <span className="block text-sm font-medium">
-                Drop an SVG here
-              </span>
-              <span className="block text-xs text-content-secondary">
-                or click to upload
-              </span>
+              <span className="block text-sm font-medium">Drop an SVG here</span>
+              <span className="block text-xs text-content-secondary">or click to upload</span>
             </span>
           </button>
           {error ? (
@@ -132,8 +120,8 @@ export function IconUploadPicker({
             <button
               className="text-xs text-content-secondary transition-colors hover:text-content-primary"
               onClick={() => {
-                setUploadedIcon(null)
-                setError(null)
+                setUploadedIcon(null);
+                setError(null);
               }}
               type="button"
             >
@@ -160,7 +148,7 @@ export function IconUploadPicker({
                     content: uploadedIcon.content,
                     color: colorValue,
                   }),
-                )
+                );
               }}
               previewSize={28}
               viewBox={uploadedIcon.viewBox}
@@ -169,5 +157,5 @@ export function IconUploadPicker({
         </div>
       )}
     </div>
-  )
+  );
 }

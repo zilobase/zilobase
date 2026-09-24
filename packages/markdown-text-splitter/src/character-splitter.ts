@@ -11,20 +11,14 @@ export class CharacterTextSplitter extends TextSplitter {
   protected readonly isSeparatorRegex: boolean;
 
   public constructor(options: CharacterTextSplitterOptions = {}) {
-    const {
-      separator = "\n\n",
-      isSeparatorRegex = false,
-      ...textSplitterOptions
-    } = options;
+    const { separator = "\n\n", isSeparatorRegex = false, ...textSplitterOptions } = options;
     super(textSplitterOptions);
     this.separator = separator;
     this.isSeparatorRegex = isSeparatorRegex;
   }
 
   public splitText(text: string): string[] {
-    const separatorPattern = this.isSeparatorRegex
-      ? this.separator
-      : escapeRegExp(this.separator);
+    const separatorPattern = this.isSeparatorRegex ? this.separator : escapeRegExp(this.separator);
 
     const splits = splitTextWithRegex(text, separatorPattern, this.keepSeparator);
 
@@ -38,8 +32,7 @@ export class CharacterTextSplitter extends TextSplitter {
   }
 }
 
-export interface RecursiveCharacterTextSplitterOptions
-  extends TextSplitterOptions {
+export interface RecursiveCharacterTextSplitterOptions extends TextSplitterOptions {
   separators?: string[];
   keepSeparator?: boolean | "start" | "end";
   isSeparatorRegex?: boolean;
@@ -105,9 +98,7 @@ export class RecursiveCharacterTextSplitter extends TextSplitter {
     let nextSeparators: string[] = [];
 
     for (const [index, candidate] of separators.entries()) {
-      const separatorPattern = this.isSeparatorRegex
-        ? candidate
-        : escapeRegExp(candidate);
+      const separatorPattern = this.isSeparatorRegex ? candidate : escapeRegExp(candidate);
 
       if (!candidate) {
         separator = candidate;
@@ -121,9 +112,7 @@ export class RecursiveCharacterTextSplitter extends TextSplitter {
       }
     }
 
-    const separatorPattern = this.isSeparatorRegex
-      ? separator
-      : escapeRegExp(separator);
+    const separatorPattern = this.isSeparatorRegex ? separator : escapeRegExp(separator);
     const splits = splitTextWithRegex(text, separatorPattern, this.keepSeparator);
     const mergeSeparator = this.keepSeparator ? "" : separator;
     let goodSplits: string[] = [];

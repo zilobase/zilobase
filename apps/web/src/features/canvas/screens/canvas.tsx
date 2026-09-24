@@ -1,8 +1,8 @@
-import "@xyflow/react/dist/style.css"
+import "@xyflow/react/dist/style.css";
 
-import { ReactFlowProvider } from "@xyflow/react"
+import { ReactFlowProvider } from "@xyflow/react";
 
-import { FlowCanvas } from "../components/flow-canvas"
+import { FlowCanvas } from "../components/flow-canvas";
 
 export default function CanvasPage() {
   return (
@@ -11,5 +11,5 @@ export default function CanvasPage() {
         <FlowCanvas />
       </ReactFlowProvider>
     </main>
-  )
+  );
 }

@@ -32,9 +32,7 @@ class FakeRealtimeSocket implements RealtimeTranscriptionSocket {
   }
 
   emit(type: "close" | "error" | "message", payload: object = {}) {
-    const event = type === "message"
-      ? { data: JSON.stringify(payload) }
-      : payload;
+    const event = type === "message" ? { data: JSON.stringify(payload) } : payload;
     for (const listener of this.listeners.get(type) ?? []) {
       listener(event as never);
     }
@@ -108,24 +106,32 @@ test("realtime transcription streams PCM and promotes deltas to a final turn", a
     socket.messages.some((message) => message.type === "input_audio_buffer.commit"),
     true,
   );
-  assert.deepEqual(deltas.map((turn) => turn.text), ["Hello ", "Hello team"]);
-  assert.deepEqual(completed, [{
-    endSequence: 14,
-    itemId: "item-1",
-    startSequence: 10,
-    text: "Hello team",
-  }]);
+  assert.deepEqual(
+    deltas.map((turn) => turn.text),
+    ["Hello ", "Hello team"],
+  );
+  assert.deepEqual(completed, [
+    {
+      endSequence: 14,
+      itemId: "item-1",
+      startSequence: 10,
+      text: "Hello team",
+    },
+  ]);
   assert.equal(socket.closed, true);
 });
 
 test("realtime transcription uses a dedicated live model and trims secrets", () => {
-  assert.deepEqual(getMeetingRealtimeTranscriptionConfig({
-    OPENAI_API_KEY: "  key\n",
-    OPENAI_REALTIME_TRANSCRIPTION_MODEL: " custom-live ",
-  }), {
-    apiKey: "key",
-    model: "custom-live",
-  });
+  assert.deepEqual(
+    getMeetingRealtimeTranscriptionConfig({
+      OPENAI_API_KEY: "  key\n",
+      OPENAI_REALTIME_TRANSCRIPTION_MODEL: " custom-live ",
+    }),
+    {
+      apiKey: "key",
+      model: "custom-live",
+    },
+  );
   assert.equal(
     getMeetingRealtimeTranscriptionConfig({ OPENAI_API_KEY: "key" }).model,
     "gpt-live-transcribe",
@@ -227,10 +233,8 @@ test("realtime transcription clears prolonged leading silence", () => {
 
 test("the Node transcript sink publishes every provider delta immediately", () => {
   const published: RealtimeTranscriptionTurn[] = [];
-  const sink = createMeetingRealtimeTranscriptSink(
-    {} as never,
-    {} as never,
-    (turn) => published.push(turn),
+  const sink = createMeetingRealtimeTranscriptSink({} as never, {} as never, (turn) =>
+    published.push(turn),
   );
   const turn = {
     endSequence: 4,
@@ -241,7 +245,10 @@ test("the Node transcript sink publishes every provider delta immediately", () =
   sink.onDelta({ ...turn, text: "Hello" });
   sink.onDelta({ ...turn, text: "Hello live" });
 
-  assert.deepEqual(published.map((draft) => draft.text), ["Hello", "Hello live"]);
+  assert.deepEqual(
+    published.map((draft) => draft.text),
+    ["Hello", "Hello live"],
+  );
 });
 
 test("finishing manually commits and waits for an unfinished speech turn", async () => {
@@ -271,12 +278,14 @@ test("finishing manually commits and waits for an unfinished speech turn", async
   });
   await finishing;
 
-  assert.deepEqual(completed, [{
-    endSequence: 44,
-    itemId: "item-tail",
-    startSequence: 40,
-    text: "Last words",
-  }]);
+  assert.deepEqual(completed, [
+    {
+      endSequence: 44,
+      itemId: "item-tail",
+      startSequence: 40,
+      text: "Last words",
+    },
+  ]);
   assert.equal(socket.closed, true);
 });
 
@@ -362,7 +371,10 @@ test("completed application-detected turns are delivered in speech order", async
   });
   await transcriber.finish();
 
-  assert.deepEqual(completed.map((turn) => turn.text), ["First", "Second"]);
+  assert.deepEqual(
+    completed.map((turn) => turn.text),
+    ["First", "Second"],
+  );
 });
 
 test("realtime transcription selects transcription intent at connection time", () => {

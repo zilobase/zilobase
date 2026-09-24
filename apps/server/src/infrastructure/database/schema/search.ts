@@ -52,13 +52,7 @@ export const searchChunk = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("search_chunk_document_index_unique").on(
-      table.documentId,
-      table.chunkIndex,
-    ),
-    index("search_chunk_workspace_document_idx").on(
-      table.workspaceId,
-      table.documentId,
-    ),
+    uniqueIndex("search_chunk_document_index_unique").on(table.documentId, table.chunkIndex),
+    index("search_chunk_workspace_document_idx").on(table.workspaceId, table.documentId),
   ],
 );

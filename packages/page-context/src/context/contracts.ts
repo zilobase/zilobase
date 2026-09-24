@@ -1,109 +1,109 @@
-export type ContextSourceRole = "primary" | "attached"
+export type ContextSourceRole = "primary" | "attached";
 
 export type ContextAttachment = {
-  id: string
-  type: "page" | "database" | "person"
-  title: string
-  path: string
-  emoji?: string | null
-  email?: string
-  mode?: "skill"
-}
+  id: string;
+  type: "page" | "database" | "person";
+  title: string;
+  path: string;
+  emoji?: string | null;
+  email?: string;
+  mode?: "skill";
+};
 
 export type ContextSourceRef = {
-  type: "page" | "database"
-  id: string
-  role: ContextSourceRole
-}
+  type: "page" | "database";
+  id: string;
+  role: ContextSourceRole;
+};
 
 export type DatabasePropertySchema = {
-  id: string
-  propertyId: string
-  position: number
+  id: string;
+  propertyId: string;
+  position: number;
   property: {
-    id: string
-    name: string
-    type: string
-    config?: unknown
-  }
-}
+    id: string;
+    name: string;
+    type: string;
+    config?: unknown;
+  };
+};
 
 export type DatabaseViewSchema = {
-  id: string
-  dataSourceId: string
-  type: string
-  name: string
-  config?: unknown
-  position: number
-}
+  id: string;
+  dataSourceId: string;
+  type: string;
+  name: string;
+  config?: unknown;
+  position: number;
+};
 
 export type DataSourceContext = {
-  id: string
-  name: string
-  parentDatabaseId: string
-  config?: unknown
-}
+  id: string;
+  name: string;
+  parentDatabaseId: string;
+  config?: unknown;
+};
 
 export type DatabaseRowContext = {
-  id: string
-  pageId: string
-  position: number
-  name: string
-}
+  id: string;
+  pageId: string;
+  position: number;
+  name: string;
+};
 
 export type DatabaseValueContext = {
-  propertyId: string
-  value: unknown
-  pageId: string
-}
+  propertyId: string;
+  value: unknown;
+  pageId: string;
+};
 
 export type DatabaseContextPayload = {
-  activeDataSource: DataSourceContext | null
-  dataSources: DataSourceContext[]
+  activeDataSource: DataSourceContext | null;
+  dataSources: DataSourceContext[];
   database: {
-    id: string
-    name: string
-    pageId: string | null
-    config?: unknown
-  }
-  properties: DatabasePropertySchema[]
-  views: DatabaseViewSchema[]
-  rowCount: number
-  rows: DatabaseRowContext[]
-  values: DatabaseValueContext[]
-}
+    id: string;
+    name: string;
+    pageId: string | null;
+    config?: unknown;
+  };
+  properties: DatabasePropertySchema[];
+  views: DatabaseViewSchema[];
+  rowCount: number;
+  rows: DatabaseRowContext[];
+  values: DatabaseValueContext[];
+};
 
 export type PageDatabaseContext = {
-  schema: DatabaseContextPayload
-  dataSourceSchemas: Record<string, DatabaseContextPayload>
-}
+  schema: DatabaseContextPayload;
+  dataSourceSchemas: Record<string, DatabaseContextPayload>;
+};
 
 export type PageContextSection = {
-  kind: "page"
-  role: ContextSourceRole
-  id: string
-  title: string
-  path: string
-  content: unknown
-  databases: PageDatabaseContext[]
-}
+  kind: "page";
+  role: ContextSourceRole;
+  id: string;
+  title: string;
+  path: string;
+  content: unknown;
+  databases: PageDatabaseContext[];
+};
 
 export type DatabaseContextSection = {
-  kind: "database"
-  role: ContextSourceRole
-  schema: DatabaseContextPayload
-  dataSourceSchemas: Record<string, DatabaseContextPayload>
-}
+  kind: "database";
+  role: ContextSourceRole;
+  schema: DatabaseContextPayload;
+  dataSourceSchemas: Record<string, DatabaseContextPayload>;
+};
 
-export type ContextSection = PageContextSection | DatabaseContextSection
+export type ContextSection = PageContextSection | DatabaseContextSection;
 
 export type BuildContextInput = {
-  sections: ContextSection[]
-  maxChars?: number
-}
+  sections: ContextSection[];
+  maxChars?: number;
+};
 
 export type BuildContextResult = {
-  markdown: string
-  charCount: number
-  trimmedAttachmentIds: string[]
-}
+  markdown: string;
+  charCount: number;
+  trimmedAttachmentIds: string[];
+};

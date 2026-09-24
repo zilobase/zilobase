@@ -1,24 +1,14 @@
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
-import type {
-  NavItemKind,
-} from "./item-relationships";
-import {
-  pageQueryKey,
-  getPageFromDetail,
-  pagesQueryKey,
-} from "./queries";
+import type { NavItemKind } from "./item-relationships";
+import { pageQueryKey, getPageFromDetail, pagesQueryKey } from "./queries";
 import type { Page } from "./contracts";
 
 export function useMovePageToTeamspace() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: (input: {
-      pageId: string;
-      teamspaceId: string | null;
-      workspaceId: string;
-    }) =>
+    mutationFn: (input: { pageId: string; teamspaceId: string | null; workspaceId: string }) =>
       apiFetch<{ movedPageIds: string[]; teamspaceId: string | null }>(
         `/pages/${encodeURIComponent(input.pageId)}/move-teamspace`,
         {
@@ -70,20 +60,19 @@ export function useEmbedPageItem() {
 
   return useMutation({
     mutationFn: async ({ hostPageId, itemId, kind }: EmbedPageItemInput) =>
-      apiFetch<{ action: string; host: Page }>(
-        `/pages/${hostPageId}/embed-item`,
-        {
-          method: "POST",
-          body: JSON.stringify({ itemId, kind }),
-        },
-      ),
+      apiFetch<{ action: string; host: Page }>(`/pages/${hostPageId}/embed-item`, {
+        method: "POST",
+        body: JSON.stringify({ itemId, kind }),
+      }),
     onSuccess: (result) => {
       // The embed is saved. Refresh navigation without delaying editor updates.
-      void queryClient.invalidateQueries({
-        queryKey: pagesQueryKey(result.host.workspaceId),
-      }).catch(() => {
-        // A failed refresh must not turn a committed embed into a failed mutation.
-      });
+      void queryClient
+        .invalidateQueries({
+          queryKey: pagesQueryKey(result.host.workspaceId),
+        })
+        .catch(() => {
+          // A failed refresh must not turn a committed embed into a failed mutation.
+        });
     },
   });
 }
@@ -98,9 +87,7 @@ export function useRemovePageEmbed() {
         body: JSON.stringify({ itemId, kind }),
       }),
     onSuccess: async (_result, variables) => {
-      const host = getPageFromDetail(
-        queryClient.getQueryData(pageQueryKey(variables.hostPageId)),
-      );
+      const host = getPageFromDetail(queryClient.getQueryData(pageQueryKey(variables.hostPageId)));
 
       if (host) {
         await queryClient.invalidateQueries({

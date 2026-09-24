@@ -14,14 +14,11 @@ type SetupInput = {
 };
 
 export function describeConnectorSetup(input: SetupInput) {
-  const approvedId = input.provider.startsWith("approved:")
-    ? input.provider.slice(9)
-    : null;
+  const approvedId = input.provider.startsWith("approved:") ? input.provider.slice(9) : null;
   const entry = connectorEntry(input, approvedId);
   const existing = input.connections?.find((connection) =>
     approvedId
-      ? connection.endpointUrl ===
-        (entry && "endpointUrl" in entry ? entry.endpointUrl : undefined)
+      ? connection.endpointUrl === (entry && "endpointUrl" in entry ? entry.endpointUrl : undefined)
       : connection.catalogId === input.provider,
   );
   const status =
@@ -33,9 +30,7 @@ export function describeConnectorSetup(input: SetupInput) {
 
 function connectorEntry(input: SetupInput, approvedId: string | null) {
   if (approvedId)
-    return availableApprovedEntry(
-      input.approved?.find((entry) => entry.id === approvedId),
-    );
+    return availableApprovedEntry(input.approved?.find((entry) => entry.id === approvedId));
   return input.catalog?.find((entry) => entry.id === input.provider);
 }
 
@@ -45,8 +40,7 @@ function availableApprovedEntry(entry: McpApprovedServer | undefined) {
 
 function gmailStatus(scope: string, gmail: SetupInput["gmail"]) {
   const connected = gmail?.status === "connected";
-  const unavailable =
-    scope !== "personal" || gmail?.providerConfigured === false;
+  const unavailable = scope !== "personal" || gmail?.providerConfigured === false;
   const reason =
     scope !== "personal"
       ? "Gmail is currently available to personal Ask AI. Delegated Gmail access is not supported."
@@ -61,9 +55,7 @@ function gmailStatus(scope: string, gmail: SetupInput["gmail"]) {
 
 function mcpStatus(
   provider: string,
-  entry:
-    | { available: boolean; label: string; availabilityReason: string | null }
-    | undefined,
+  entry: { available: boolean; label: string; availabilityReason: string | null } | undefined,
   existing: McpConnectionSummary | undefined,
 ) {
   const connected = existing?.state === "connected";
@@ -80,11 +72,7 @@ function mcpStatus(
   };
 }
 
-function statusDescription(
-  connected: boolean,
-  unavailable: boolean,
-  reason: string,
-) {
+function statusDescription(connected: boolean, unavailable: boolean, reason: string) {
   if (connected) return "Connected";
   return unavailable ? reason : "Connect your account to continue.";
 }
@@ -96,16 +84,8 @@ export function connectorActionState(
   connecting: boolean,
 ) {
   return {
-    disabled:
-      setup.connected ||
-      connecting ||
-      setup.unavailable ||
-      !mayConnect(scope, role),
-    label: setup.connected
-      ? "Connected"
-      : connecting
-        ? "Connecting…"
-        : `Connect ${setup.label}`,
+    disabled: setup.connected || connecting || setup.unavailable || !mayConnect(scope, role),
+    label: setup.connected ? "Connected" : connecting ? "Connecting…" : `Connect ${setup.label}`,
   };
 }
 

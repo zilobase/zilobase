@@ -64,20 +64,14 @@ const UpdateTeamspaceInput = Schema.Struct({
 );
 
 const AddPrincipalInput = Schema.Struct({
-  accessLevelOverride: Schema.optionalKey(
-    Schema.NullOr(MemberAccessLevel),
-  ),
+  accessLevelOverride: Schema.optionalKey(Schema.NullOr(MemberAccessLevel)),
   principalType: Schema.optionalKey(PrincipalType),
   role: TeamspaceRole,
-  userId: Schema.String.pipe(
-    Schema.check(Schema.isMinLength(1)),
-  ),
+  userId: Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
 });
 
 const UpdatePrincipalInput = Schema.Struct({
-  accessLevelOverride: Schema.optionalKey(
-    Schema.NullOr(MemberAccessLevel),
-  ),
+  accessLevelOverride: Schema.optionalKey(Schema.NullOr(MemberAccessLevel)),
   role: TeamspaceRole,
 });
 
@@ -86,9 +80,7 @@ const UpdateTeamspaceSettingsInput = Schema.Struct({
 });
 
 const UpdateTeamspaceDefaultsInput = Schema.Struct({
-  defaultTeamspaceIds: Schema.Array(
-    Schema.String.pipe(Schema.check(Schema.isMinLength(1))),
-  ).pipe(
+  defaultTeamspaceIds: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMinLength(1)))).pipe(
     Schema.check(Schema.isMinLength(1)),
   ),
 });
@@ -98,9 +90,7 @@ const UpdateInviteLinkInput = Schema.Struct({
 });
 
 teamspaceRoutes.get("/:workspaceId/teamspace-settings", async (c) =>
-  handle(c, (service, userId, workspaceId) =>
-    service.getWorkspaceSettings(workspaceId, userId),
-  ),
+  handle(c, (service, userId, workspaceId) => service.getWorkspaceSettings(workspaceId, userId)),
 );
 
 teamspaceRoutes.patch("/:workspaceId/teamspace-settings", async (c) => {
@@ -138,8 +128,7 @@ teamspaceRoutes.post("/:workspaceId/teamspaces", async (c) => {
   if (!parsed.ok) return c.json({ error: parsed.message }, 400);
   return handle(
     c,
-    (service, userId, workspaceId) =>
-      service.create({ ...parsed.data, userId, workspaceId }),
+    (service, userId, workspaceId) => service.create({ ...parsed.data, userId, workspaceId }),
     201,
   );
 });
@@ -168,93 +157,77 @@ teamspaceRoutes.patch("/:workspaceId/teamspaces/:teamspaceId", async (c) => {
 });
 
 for (const action of ["join", "leave"] as const) {
-  teamspaceRoutes.post(
-    `/:workspaceId/teamspaces/:teamspaceId/${action}`,
-    async (c) =>
-      handle(c, (service, userId, workspaceId) =>
-        service[action]({
-          teamspaceId: c.req.param("teamspaceId"),
-          userId,
-          workspaceId,
-        }),
-      ),
-  );
-}
-
-for (const action of ["archive", "restore", "recover-owner"] as const) {
-  teamspaceRoutes.post(
-    `/:workspaceId/teamspaces/:teamspaceId/${action}`,
-    async (c) =>
-      handle(c, (service, userId, workspaceId) =>
-        service[
-          action === "recover-owner" ? "recoverOwner" : action
-        ]({
-          teamspaceId: c.req.param("teamspaceId"),
-          userId,
-          workspaceId,
-        }),
-      ),
-  );
-}
-
-teamspaceRoutes.patch(
-  "/:workspaceId/teamspaces/:teamspaceId/invite-link",
-  async (c) => {
-    const parsed = await parseJsonBody(c.req, UpdateInviteLinkInput, strictJson);
-    if (!parsed.ok) return c.json({ error: parsed.message }, 400);
-    return handle(c, (service, userId, workspaceId) =>
-      service.updateInviteLink({
-        enabled: parsed.data.enabled,
-        teamspaceId: c.req.param("teamspaceId"),
-        userId,
-        workspaceId,
-      }),
-    );
-  },
-);
-
-teamspaceRoutes.post(
-  "/:workspaceId/teamspace-invites/:token/accept",
-  async (c) =>
+  teamspaceRoutes.post(`/:workspaceId/teamspaces/:teamspaceId/${action}`, async (c) =>
     handle(c, (service, userId, workspaceId) =>
-      service.acceptInvite({
-        token: c.req.param("token"),
+      service[action]({
+        teamspaceId: c.req.param("teamspaceId"),
         userId,
         workspaceId,
       }),
     ),
-);
+  );
+}
 
-teamspaceRoutes.get(
-  "/:workspaceId/teamspaces/:teamspaceId/principals",
-  async (c) =>
-    handle(c, async (service, userId, workspaceId) => ({
-      principals: await service.listPrincipals({
+for (const action of ["archive", "restore", "recover-owner"] as const) {
+  teamspaceRoutes.post(`/:workspaceId/teamspaces/:teamspaceId/${action}`, async (c) =>
+    handle(c, (service, userId, workspaceId) =>
+      service[action === "recover-owner" ? "recoverOwner" : action]({
         teamspaceId: c.req.param("teamspaceId"),
         userId,
         workspaceId,
       }),
-    })),
+    ),
+  );
+}
+
+teamspaceRoutes.patch("/:workspaceId/teamspaces/:teamspaceId/invite-link", async (c) => {
+  const parsed = await parseJsonBody(c.req, UpdateInviteLinkInput, strictJson);
+  if (!parsed.ok) return c.json({ error: parsed.message }, 400);
+  return handle(c, (service, userId, workspaceId) =>
+    service.updateInviteLink({
+      enabled: parsed.data.enabled,
+      teamspaceId: c.req.param("teamspaceId"),
+      userId,
+      workspaceId,
+    }),
+  );
+});
+
+teamspaceRoutes.post("/:workspaceId/teamspace-invites/:token/accept", async (c) =>
+  handle(c, (service, userId, workspaceId) =>
+    service.acceptInvite({
+      token: c.req.param("token"),
+      userId,
+      workspaceId,
+    }),
+  ),
 );
 
-teamspaceRoutes.post(
-  "/:workspaceId/teamspaces/:teamspaceId/principals",
-  async (c) => {
-    const parsed = await parseJsonBody(c.req, AddPrincipalInput, strictJson);
-    if (!parsed.ok) return c.json({ error: parsed.message }, 400);
-    return handle(c, (service, userId, workspaceId) =>
-      service.addPrincipal({
-        role: parsed.data.role,
-        accessLevelOverride: parsed.data.accessLevelOverride,
-        principalType: parsed.data.principalType ?? "user",
-        targetUserId: parsed.data.userId,
-        teamspaceId: c.req.param("teamspaceId"),
-        userId,
-        workspaceId,
-      }),
-    );
-  },
+teamspaceRoutes.get("/:workspaceId/teamspaces/:teamspaceId/principals", async (c) =>
+  handle(c, async (service, userId, workspaceId) => ({
+    principals: await service.listPrincipals({
+      teamspaceId: c.req.param("teamspaceId"),
+      userId,
+      workspaceId,
+    }),
+  })),
 );
+
+teamspaceRoutes.post("/:workspaceId/teamspaces/:teamspaceId/principals", async (c) => {
+  const parsed = await parseJsonBody(c.req, AddPrincipalInput, strictJson);
+  if (!parsed.ok) return c.json({ error: parsed.message }, 400);
+  return handle(c, (service, userId, workspaceId) =>
+    service.addPrincipal({
+      role: parsed.data.role,
+      accessLevelOverride: parsed.data.accessLevelOverride,
+      principalType: parsed.data.principalType ?? "user",
+      targetUserId: parsed.data.userId,
+      teamspaceId: c.req.param("teamspaceId"),
+      userId,
+      workspaceId,
+    }),
+  );
+});
 
 teamspaceRoutes.patch(
   "/:workspaceId/teamspaces/:teamspaceId/principals/:principalId",
@@ -274,17 +247,15 @@ teamspaceRoutes.patch(
   },
 );
 
-teamspaceRoutes.delete(
-  "/:workspaceId/teamspaces/:teamspaceId/principals/:principalId",
-  async (c) =>
-    handle(c, (service, userId, workspaceId) =>
-      service.removePrincipal({
-        principalId: c.req.param("principalId"),
-        teamspaceId: c.req.param("teamspaceId"),
-        userId,
-        workspaceId,
-      }),
-    ),
+teamspaceRoutes.delete("/:workspaceId/teamspaces/:teamspaceId/principals/:principalId", async (c) =>
+  handle(c, (service, userId, workspaceId) =>
+    service.removePrincipal({
+      principalId: c.req.param("principalId"),
+      teamspaceId: c.req.param("teamspaceId"),
+      userId,
+      workspaceId,
+    }),
+  ),
 );
 
 async function handle(
@@ -299,11 +270,7 @@ async function handle(
   const requestUser = c.get("user");
   if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
   const result = await run(
-    new TeamspaceManagementService(
-      undefined,
-      c.get("editionExtension") ?? undefined,
-      c.env,
-    ),
+    new TeamspaceManagementService(undefined, c.get("editionExtension") ?? undefined, c.env),
     requestUser.id,
     c.req.param("workspaceId")!,
   );

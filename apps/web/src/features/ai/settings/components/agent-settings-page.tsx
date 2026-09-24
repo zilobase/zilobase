@@ -1,17 +1,15 @@
-import { canSaveSettingsTrigger, applySettingsTriggerDraft, settingsTriggerTargetInput } from "../model/trigger-draft";
+import {
+  canSaveSettingsTrigger,
+  applySettingsTriggerDraft,
+  settingsTriggerTargetInput,
+} from "../model/trigger-draft";
 import { settingsActionsBusy, settingsProgressLabel } from "../model/draft-actions";
 import { useNavigate } from "@tanstack/react-router";
 import { createPortal } from "react-dom";
 import { SettingsDraftActions } from "./settings-draft-actions";
 import { SettingsReviewSummary } from "./settings-review-summary";
 import { SavedInstructionPicker } from "./saved-instruction-picker";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import "../../agent-interface.css";
 import { useSession } from "@zilobase/features/auth/react";
 import { usePageNavigation } from "@zilobase/features/pages/react";
@@ -58,19 +56,13 @@ function ScopedAgentSettingsPage({
   onTabChange?: (tab: AgentSettingsTab) => void;
   onClose?: () => void;
 }) {
-  const [headerTarget, setHeaderTarget] = React.useState<HTMLElement | null>(
-    null,
-  );
+  const [headerTarget, setHeaderTarget] = React.useState<HTMLElement | null>(null);
   React.useEffect(() => {
     setHeaderTarget(document.getElementById("agent-settings-header-actions"));
   }, []);
-  const [tab, setTab] = React.useState<AgentSettingsTab>(
-    normalizeSettingsTab(initialTab),
-  );
+  const [tab, setTab] = React.useState<AgentSettingsTab>(normalizeSettingsTab(initialTab));
   const [editorEpoch, setEditorEpoch] = React.useState(0);
-  const [aiEditing, setAiEditing] = React.useState(() =>
-    isSettingsEditing(scope),
-  );
+  const [aiEditing, setAiEditing] = React.useState(() => isSettingsEditing(scope));
   React.useEffect(() => {
     const listener = (event: Event) => {
       const detail = (event as CustomEvent<AgentSettingsEvent>).detail;
@@ -82,11 +74,7 @@ function ScopedAgentSettingsPage({
   const navigate = useNavigate();
   const { apiFetch } = useZilobaseFeatures();
   const versions = useQuery(
-    agentSettingsVersionsQueryOptions(
-      apiFetch,
-      draft,
-      tab === "versions" && Boolean(draft.state),
-    ),
+    agentSettingsVersionsQueryOptions(apiFetch, draft, tab === "versions" && Boolean(draft.state)),
   );
   React.useEffect(() => setTab(normalizeSettingsTab(initialTab)), [initialTab]);
   const selectTab = (next: AgentSettingsTab) => {
@@ -98,13 +86,13 @@ function ScopedAgentSettingsPage({
   const review = draft.reviewOpen ? (state?.review ?? null) : null;
   const disabled = !state?.canEdit || settingsActionsBusy(draft);
   function renderSettingsHeader() {
-  const tabs: AgentSettingsTab[] = [
-    "instructions",
-    "connectors",
-    ...(scope === "personal" ? [] : (["access"] as AgentSettingsTab[])),
-    "activity",
-    "versions",
-  ];
+    const tabs: AgentSettingsTab[] = [
+      "instructions",
+      "connectors",
+      ...(scope === "personal" ? [] : (["access"] as AgentSettingsTab[])),
+      "activity",
+      "versions",
+    ];
 
     return (
       <header className="sticky top-0 z-20 grid min-w-0 shrink-0 gap-3 bg-surface-canvas dark:bg-surface-navigation px-5 py-3">
@@ -113,19 +101,11 @@ function ScopedAgentSettingsPage({
         ) : (
           <SettingsDraftActions draft={draft} />
         )}
-        <Tabs
-          value={tab}
-          onValueChange={(v) => selectTab(v as AgentSettingsTab)}
-        >
+        <Tabs value={tab} onValueChange={(v) => selectTab(v as AgentSettingsTab)}>
           <div className="min-w-0 max-w-full overflow-x-auto">
             <TabsList aria-label="Agent settings">
               {tabs.map((t) => (
-                <TabsTrigger
-                  className="capitalize"
-                  key={t}
-                  value={t}
-                  width="content"
-                >
+                <TabsTrigger className="capitalize" key={t} value={t} width="content">
                   {t === "access" ? "Triggers & Access" : t}
                   {draft.changedTabs.includes(t) && (
                     <span
@@ -139,9 +119,7 @@ function ScopedAgentSettingsPage({
           </div>
         </Tabs>
         <div className="flex items-center gap-3 overflow-x-auto text-xs text-content-secondary">
-          {state && (
-            <span className="shrink-0">Saved version {state.version}</span>
-          )}
+          {state && <span className="shrink-0">Saved version {state.version}</span>}
           <span className="sr-only" aria-live="polite">
             {settingsProgressLabel(aiEditing, draft.syncing, Boolean(state))}
           </span>
@@ -211,9 +189,7 @@ function ScopedAgentSettingsPage({
       <PageEditorPane
         key={`${d.instructionPageId}:${editorEpoch}`}
         pageId={d.instructionPageId}
-        onOpenPage={(pageId) =>
-          void navigate({ to: "/p/$pageId", params: { pageId } })
-        }
+        onOpenPage={(pageId) => void navigate({ to: "/p/$pageId", params: { pageId } })}
         readOnly={disabled}
         showCollaborationPresence
         className={
@@ -224,8 +200,7 @@ function ScopedAgentSettingsPage({
         reviewDiff={
           review &&
           draft.changedFields.some(
-            (field) =>
-              field === "instructions" || field === "instructionDocument",
+            (field) => field === "instructions" || field === "instructionDocument",
           )
             ? {
                 beforeMarkdown: review.before.instructions,
@@ -240,11 +215,53 @@ function ScopedAgentSettingsPage({
   function renderSettingsContent() {
     if (!d) return null;
     switch (tab) {
-      case "instructions": return renderInstructionPane();
-      case "connectors": return <div className="px-5 py-6"><SettingsConnectors review={review} scope={scope} definition={d} onChange={draft.patch} disabled={disabled} /></div>;
-      case "activity": return <div className="px-5 py-6">{agent ? <><SettingsRunActivity agentId={agent.id} /><AgentMcpActivity agent={agent} /></> : <PersonalMcpActivity />}</div>;
-      case "versions": return renderVersionHistory();
-      case "access": return scope !== "personal" ? <><SettingsTriggers review={review} scope={scope} definition={d} onChange={draft.patch} disabled={disabled} /><SettingsAccess review={review} definition={d} onChange={draft.patch} disabled={disabled} /></> : null;
+      case "instructions":
+        return renderInstructionPane();
+      case "connectors":
+        return (
+          <div className="px-5 py-6">
+            <SettingsConnectors
+              review={review}
+              scope={scope}
+              definition={d}
+              onChange={draft.patch}
+              disabled={disabled}
+            />
+          </div>
+        );
+      case "activity":
+        return (
+          <div className="px-5 py-6">
+            {agent ? (
+              <>
+                <SettingsRunActivity agentId={agent.id} />
+                <AgentMcpActivity agent={agent} />
+              </>
+            ) : (
+              <PersonalMcpActivity />
+            )}
+          </div>
+        );
+      case "versions":
+        return renderVersionHistory();
+      case "access":
+        return scope !== "personal" ? (
+          <>
+            <SettingsTriggers
+              review={review}
+              scope={scope}
+              definition={d}
+              onChange={draft.patch}
+              disabled={disabled}
+            />
+            <SettingsAccess
+              review={review}
+              definition={d}
+              onChange={draft.patch}
+              disabled={disabled}
+            />
+          </>
+        ) : null;
     }
   }
 
@@ -265,10 +282,7 @@ function ScopedAgentSettingsPage({
 function normalizeSettingsTab(tab?: string | null): AgentSettingsTab {
   if (tab === "tools") return "connectors";
   if (tab === "share" || tab === "triggers") return "access";
-  return tab === "connectors" ||
-    tab === "activity" ||
-    tab === "versions" ||
-    tab === "access"
+  return tab === "connectors" || tab === "activity" || tab === "versions" || tab === "access"
     ? tab
     : "instructions";
 }
@@ -304,7 +318,16 @@ function SettingsTriggers({
         Runs use the saved version. Trigger edits take effect after Save.
       </p>
       {d.triggers.map((t) => (
-        <div key={t.id} data-ai-changed={review?.fields.includes("triggers") && JSON.stringify(review.before.triggers.find((old) => old.id === t.id)) !== JSON.stringify(t) || undefined} className="flex items-center gap-2 border-b py-2">
+        <div
+          key={t.id}
+          data-ai-changed={
+            (review?.fields.includes("triggers") &&
+              JSON.stringify(review.before.triggers.find((old) => old.id === t.id)) !==
+                JSON.stringify(t)) ||
+            undefined
+          }
+          className="flex items-center gap-2 border-b py-2"
+        >
           <span className="flex-1">
             {t.label}
             <small className="ml-2 text-content-secondary">{t.kind}</small>
@@ -332,25 +355,24 @@ function SettingsTriggers({
           >
             Edit
           </Button>
-          {t.kind === "webhook" &&
-            persisted.data?.triggers.some((x) => x.id === t.id) && (
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={rotate.isPending}
-                onClick={() =>
-                  rotate.mutate(
-                    { triggerId: t.id },
-                    {
-                      onSuccess: (result) => setSecret(result.secret),
-                      onError: (e) => toast.error(e.message),
-                    },
-                  )
-                }
-              >
-                Rotate secret
-              </Button>
-            )}
+          {t.kind === "webhook" && persisted.data?.triggers.some((x) => x.id === t.id) && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={rotate.isPending}
+              onClick={() =>
+                rotate.mutate(
+                  { triggerId: t.id },
+                  {
+                    onSuccess: (result) => setSecret(result.secret),
+                    onError: (e) => toast.error(e.message),
+                  },
+                )
+              }
+            >
+              Rotate secret
+            </Button>
+          )}
           <Button
             size="sm"
             variant="ghost"
@@ -372,9 +394,7 @@ function SettingsTriggers({
           <Button
             size="sm"
             variant="ghost"
-            onClick={() =>
-              onChange({ triggers: d.triggers.filter((x) => x.id !== t.id) })
-            }
+            onClick={() => onChange({ triggers: d.triggers.filter((x) => x.id !== t.id) })}
           >
             Remove
           </Button>
@@ -382,11 +402,7 @@ function SettingsTriggers({
       ))}
       <label className="grid gap-1 text-sm">
         Trigger type
-        <Select
-          disabled={disabled}
-          value={kind}
-          onValueChange={(value) => setKind(value)}
-        >
+        <Select disabled={disabled} value={kind} onValueChange={(value) => setKind(value)}>
           <SelectTrigger aria-label="Trigger type" className="w-full">
             <SelectValue placeholder="Select…" />
           </SelectTrigger>
@@ -402,9 +418,7 @@ function SettingsTriggers({
       </label>
       {secret && (
         <div className="grid gap-2 text-sm">
-          <p>
-            Copy this webhook secret now. It is not stored in version history.
-          </p>
+          <p>Copy this webhook secret now. It is not stored in version history.</p>
           <Input aria-label="Webhook secret" value={secret} readOnly />
           <Button variant="ghost" size="sm" onClick={() => setSecret(null)}>
             Hide secret
@@ -412,11 +426,7 @@ function SettingsTriggers({
         </div>
       )}
       {kind === "schedule" && (
-        <Select
-          disabled={disabled}
-          value={cadence}
-          onValueChange={(value) => setCadence(value)}
-        >
+        <Select disabled={disabled} value={cadence} onValueChange={(value) => setCadence(value)}>
           <SelectTrigger aria-label="Schedule cadence" className="w-full">
             <SelectValue placeholder="Select…" />
           </SelectTrigger>
@@ -473,7 +483,13 @@ function SettingsTriggers({
         className="w-fit"
         disabled={!canSaveSettingsTrigger(triggerDraft)}
         onClick={() => {
-          onChange({ triggers: applySettingsTriggerDraft(d.triggers, triggerDraft, editingId ?? crypto.randomUUID()) });
+          onChange({
+            triggers: applySettingsTriggerDraft(
+              d.triggers,
+              triggerDraft,
+              editingId ?? crypto.randomUUID(),
+            ),
+          });
           setLabel("");
           setTarget("");
           setEditingId(null);
@@ -488,40 +504,49 @@ function SettingsAccess({ definition: d, onChange, disabled, review }: Fields) {
   const workspaceId = useActiveWorkspaceId();
   const navigation = usePageNavigation(workspaceId);
   const resourceName = (type: string, id: string) =>
-    (type === "page"
-      ? navigation.data?.pages
-      : navigation.data?.databases
-    )?.find((p) => p.id === id)?.name ?? "Unavailable resource";
+    (type === "page" ? navigation.data?.pages : navigation.data?.databases)?.find(
+      (p) => p.id === id,
+    )?.name ?? "Unavailable resource";
   const [resourceType, setType] = React.useState<"page" | "database">("page");
   const [resourceId, setId] = React.useState("");
-  const [accessLevel, setLevel] = React.useState<"view" | "comment" | "edit">(
-    "view",
-  );
+  const [accessLevel, setLevel] = React.useState<"view" | "comment" | "edit">("view");
   return (
     <fieldset disabled={disabled} className="grid gap-4 px-5 py-6">
       <h2 className="font-heading text-base font-medium">Resource access</h2>
       <p className="text-sm text-content-secondary">
-        The instruction page and its accessible links are included automatically
-        when you Save. Add other permissions below.
+        The instruction page and its accessible links are included automatically when you Save. Add
+        other permissions below.
       </p>
       {d.instructionResources?.map((r) => (
         <div
-          data-ai-changed={review?.fields.includes("instructionResources") && !review.before.instructionResources?.some((old) => old.resourceType === r.resourceType && old.resourceId === r.resourceId) || undefined}
+          data-ai-changed={
+            (review?.fields.includes("instructionResources") &&
+              !review.before.instructionResources?.some(
+                (old) => old.resourceType === r.resourceType && old.resourceId === r.resourceId,
+              )) ||
+            undefined
+          }
           key={`instruction:${r.resourceType}:${r.resourceId}`}
           className="flex items-center gap-2 border-b py-2 text-sm"
         >
           <span className="min-w-0 flex-1 truncate">
             {resourceName(r.resourceType, r.resourceId) || "Untitled"}
           </span>
-          <span className="text-xs text-content-secondary">
-            From instructions · View
-          </span>
+          <span className="text-xs text-content-secondary">From instructions · View</span>
         </div>
       ))}
       {d.resources.map((r) => (
         <div
           className="flex items-center gap-2 border-b py-2"
-          data-ai-changed={review?.fields.includes("resources") && JSON.stringify(review.before.resources.find((old) => old.resourceType === r.resourceType && old.resourceId === r.resourceId)) !== JSON.stringify(r) || undefined}
+          data-ai-changed={
+            (review?.fields.includes("resources") &&
+              JSON.stringify(
+                review.before.resources.find(
+                  (old) => old.resourceType === r.resourceType && old.resourceId === r.resourceId,
+                ),
+              ) !== JSON.stringify(r)) ||
+            undefined
+          }
           key={`${r.resourceType}:${r.resourceId}`}
         >
           <span className="min-w-0 flex-1 truncate">
@@ -530,9 +555,7 @@ function SettingsAccess({ definition: d, onChange, disabled, review }: Fields) {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() =>
-              onChange({ resources: d.resources.filter((x) => x !== r) })
-            }
+            onClick={() => onChange({ resources: d.resources.filter((x) => x !== r) })}
           >
             Remove
           </Button>
@@ -551,23 +574,18 @@ function SettingsAccess({ definition: d, onChange, disabled, review }: Fields) {
           <SelectItem value="database">Database</SelectItem>
         </SelectContent>
       </Select>
-      <Select
-        disabled={disabled}
-        value={resourceId}
-        onValueChange={(value) => setId(value)}
-      >
+      <Select disabled={disabled} value={resourceId} onValueChange={(value) => setId(value)}>
         <SelectTrigger aria-label="Resource" className="w-full">
           <SelectValue placeholder="Select…" />
         </SelectTrigger>
         <SelectContent>
-          {(resourceType === "page"
-            ? navigation.data?.pages
-            : navigation.data?.databases
-          )?.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
-              {p.name || "Untitled"}
-            </SelectItem>
-          ))}
+          {(resourceType === "page" ? navigation.data?.pages : navigation.data?.databases)?.map(
+            (p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name || "Untitled"}
+              </SelectItem>
+            ),
+          )}
         </SelectContent>
       </Select>
       <Select
@@ -591,9 +609,7 @@ function SettingsAccess({ definition: d, onChange, disabled, review }: Fields) {
           onChange({
             resources: [
               ...d.resources.filter(
-                (x) =>
-                  x.resourceId !== resourceId ||
-                  x.resourceType !== resourceType,
+                (x) => x.resourceId !== resourceId || x.resourceType !== resourceType,
               ),
               { resourceId, resourceType, accessLevel },
             ],
@@ -617,25 +633,16 @@ function SettingsRunActivity({ agentId }: { agentId: string }) {
       )}
       {runs.data?.runs.map((r) => (
         <div className="border-b py-3 text-sm" key={r.id}>
-          <strong className="capitalize">
-            {r.status.replaceAll("_", " ")}
-          </strong>
-          {r.outputSummary && (
-            <p className="mt-2 whitespace-pre-wrap">{r.outputSummary}</p>
-          )}
-          {r.errorSummary && (
-            <p className="text-feedback-danger-text">{r.errorSummary}</p>
-          )}
+          <strong className="capitalize">{r.status.replaceAll("_", " ")}</strong>
+          {r.outputSummary && <p className="mt-2 whitespace-pre-wrap">{r.outputSummary}</p>}
+          {r.errorSummary && <p className="text-feedback-danger-text">{r.errorSummary}</p>}
         </div>
       ))}
     </section>
   );
 }
 
-type SettingsPageProps = Omit<
-  React.ComponentProps<typeof ScopedAgentSettingsPage>,
-  "draft"
-> & {
+type SettingsPageProps = Omit<React.ComponentProps<typeof ScopedAgentSettingsPage>, "draft"> & {
   draft?: ReturnType<typeof useSettingsDraft>;
 };
 function IndependentSettingsPage(props: Omit<SettingsPageProps, "draft">) {

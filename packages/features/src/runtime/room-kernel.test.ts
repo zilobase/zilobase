@@ -7,7 +7,9 @@ test("room controller wires one neutral handler suite to the host", async () => 
   const ports = createFakePorts();
   const received: unknown[] = [];
   const controller = createRoomController("room-1", ports, {
-    message: (_peer, message) => { received.push(message); },
+    message: (_peer, message) => {
+      received.push(message);
+    },
     invoke: ({ payload }) => payload,
   });
 

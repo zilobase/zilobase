@@ -23,9 +23,8 @@ export function prepareAgentTurnRequest(input: {
     throw new Error("Only a new user message can create an AI turn.");
   }
 
-  const requestThreadId = typeof input.body?.threadId === "string"
-    ? input.body.threadId
-    : input.threadId;
+  const requestThreadId =
+    typeof input.body?.threadId === "string" ? input.body.threadId : input.threadId;
   if (!requestThreadId) throw new Error("A chat thread is required.");
 
   const text = latest.parts
@@ -38,22 +37,17 @@ export function prepareAgentTurnRequest(input: {
   return {
     requestThreadId,
     body: {
-      attachmentIds: Array.isArray(input.body?.attachmentIds)
-        ? input.body.attachmentIds
-        : [],
+      attachmentIds: Array.isArray(input.body?.attachmentIds) ? input.body.attachmentIds : [],
       clientMessageId: latest.id,
-      clientTurnId: typeof input.body?.clientTurnId === "string"
-        ? input.body.clientTurnId
-        : crypto.randomUUID(),
-      contextRefs: Array.isArray(input.body?.contextRefs)
-        ? input.body.contextRefs
-        : [],
+      clientTurnId:
+        typeof input.body?.clientTurnId === "string"
+          ? input.body.clientTurnId
+          : crypto.randomUUID(),
+      contextRefs: Array.isArray(input.body?.contextRefs) ? input.body.contextRefs : [],
       mentionedUserIds: Array.isArray(input.body?.mentionedUserIds)
         ? input.body.mentionedUserIds
         : [],
-      modelId: typeof input.body?.modelId === "string"
-        ? input.body.modelId
-        : "auto",
+      modelId: typeof input.body?.modelId === "string" ? input.body.modelId : "auto",
       text,
       threadId: requestThreadId,
     },

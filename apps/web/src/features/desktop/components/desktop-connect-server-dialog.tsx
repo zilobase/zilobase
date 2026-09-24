@@ -1,7 +1,7 @@
-import * as React from "react"
-import { isDesktopApp } from "@/platform/desktop/native"
+import * as React from "react";
+import { isDesktopApp } from "@/platform/desktop/native";
 
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/ui/dialog"
+} from "@/shared/ui/dialog";
 import {
   Field,
   FieldDescription,
@@ -17,9 +17,9 @@ import {
   FieldGroup,
   FieldLabel,
   FieldSeparator,
-} from "@/shared/ui/field"
-import { Input } from "@/shared/ui/input"
-import { getApiErrorMessage } from "@/platform/network/api"
+} from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { getApiErrorMessage } from "@/platform/network/api";
 import {
   desktopCloudConnectUrl,
   desktopServersReferToSameInstance,
@@ -27,79 +27,72 @@ import {
   listDesktopServerProfiles,
   prepareDesktopServerCandidate,
   type DesktopServerProfile,
-} from "../../../platform/server/desktop-server"
-import { executeDesktopServerSwitch } from "../server/desktop-server-switch"
-import { DesktopDevCustomServerSelect } from "./desktop-dev-custom-server-select"
+} from "../../../platform/server/desktop-server";
+import { executeDesktopServerSwitch } from "../server/desktop-server-switch";
+import { DesktopDevCustomServerSelect } from "./desktop-dev-custom-server-select";
 
 export function DesktopConnectServerDialog({
   onOpenChange,
   open,
 }: {
-  onOpenChange: (open: boolean) => void
-  open: boolean
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
 }) {
-  const [serverUrl, setServerUrl] = React.useState("")
-  const [pending, setPending] = React.useState<"cloud" | "url" | "custom" | null>(null)
-  const [error, setError] = React.useState<string | null>(null)
-  const [profiles, setProfiles] = React.useState<DesktopServerProfile[]>([])
+  const [serverUrl, setServerUrl] = React.useState("");
+  const [pending, setPending] = React.useState<"cloud" | "url" | "custom" | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [profiles, setProfiles] = React.useState<DesktopServerProfile[]>([]);
 
   React.useEffect(() => {
-    if (!open || !isDesktopApp()) return
-    let disposed = false
+    if (!open || !isDesktopApp()) return;
+    let disposed = false;
     void listDesktopServerProfiles()
       .then((result) => {
-        if (!disposed) setProfiles(result.profiles)
+        if (!disposed) setProfiles(result.profiles);
       })
       .catch(() => {
-        if (!disposed) setProfiles([])
-      })
+        if (!disposed) setProfiles([]);
+      });
     return () => {
-      disposed = true
-    }
-  }, [open])
+      disposed = true;
+    };
+  }, [open]);
 
-  const cloudAlreadySaved = profiles.some((profile) =>
-    isCloudDesktopServer(profile.server),
-  )
+  const cloudAlreadySaved = profiles.some((profile) => isCloudDesktopServer(profile.server));
 
-  const connect = async (
-    nextServerUrl: string,
-    source: "url" | "custom" = "url",
-  ) => {
-    setPending(nextServerUrl === desktopCloudConnectUrl() ? "cloud" : source)
-    setError(null)
+  const connect = async (nextServerUrl: string, source: "url" | "custom" = "url") => {
+    setPending(nextServerUrl === desktopCloudConnectUrl() ? "cloud" : source);
+    setError(null);
     try {
-      const prepared = await prepareDesktopServerCandidate(nextServerUrl)
+      const prepared = await prepareDesktopServerCandidate(nextServerUrl);
       const existing = profiles.find((profile) =>
         desktopServersReferToSameInstance(profile.server, prepared.server),
-      )
+      );
       if (existing?.active) {
-        onOpenChange(false)
-        return
+        onOpenChange(false);
+        return;
       }
       await executeDesktopServerSwitch({
         candidateId: prepared.candidateId,
         hasCredentials: existing?.hasCredentials,
-        path: existing?.hasCredentials
-          ? (existing.lastPath ?? "/recents")
-          : "/login",
+        path: existing?.hasCredentials ? (existing.lastPath ?? "/recents") : "/login",
         server: prepared.server,
         workspaceId: existing?.lastActiveWorkspaceId,
-      })
+      });
     } catch (caught) {
-      setPending(null)
-      setError(getApiErrorMessage(caught))
+      setPending(null);
+      setError(getApiErrorMessage(caught));
     }
-  }
+  };
 
   return (
     <Dialog
       onOpenChange={(next) => {
-        if (pending) return
-        onOpenChange(next)
+        if (pending) return;
+        onOpenChange(next);
         if (!next) {
-          setServerUrl("")
-          setError(null)
+          setServerUrl("");
+          setError(null);
         }
       }}
       open={open}
@@ -108,8 +101,7 @@ export function DesktopConnectServerDialog({
         <DialogHeader>
           <DialogTitle>Connect another server</DialogTitle>
           <DialogDescription>
-            Add Zilobase Cloud or a hosted instance. Servers already on this
-            device stay signed in.
+            Add Zilobase Cloud or a hosted instance. Servers already on this device stay signed in.
           </DialogDescription>
         </DialogHeader>
         <FieldGroup className="py-2">
@@ -120,32 +112,26 @@ export function DesktopConnectServerDialog({
                 onClick={() => void connect(desktopCloudConnectUrl())}
                 type="button"
               >
-                {pending === "cloud"
-                  ? "Connecting..."
-                  : "Use Zilobase Cloud"}
+                {pending === "cloud" ? "Connecting..." : "Use Zilobase Cloud"}
               </Button>
             </Field>
           )}
           <DesktopDevCustomServerSelect
             disabled={pending !== null}
             onSelect={(nextServerUrl) => {
-              void connect(nextServerUrl, "custom")
+              void connect(nextServerUrl, "custom");
             }}
           />
-          {cloudAlreadySaved ? null : (
-            <FieldSeparator>Or use a hosted server</FieldSeparator>
-          )}
+          {cloudAlreadySaved ? null : <FieldSeparator>Or use a hosted server</FieldSeparator>}
           <form
             className="grid gap-4"
             onSubmit={(event) => {
-              event.preventDefault()
-              void connect(serverUrl)
+              event.preventDefault();
+              void connect(serverUrl);
             }}
           >
             <Field>
-              <FieldLabel htmlFor="connect-another-server-url">
-                Server URL
-              </FieldLabel>
+              <FieldLabel htmlFor="connect-another-server-url">Server URL</FieldLabel>
               <Input
                 autoCapitalize="none"
                 autoComplete="url"
@@ -180,5 +166,5 @@ export function DesktopConnectServerDialog({
         </FieldGroup>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -13,10 +13,7 @@ test("property import naming normalizes keys and copy suffixes", () => {
   assert.equal(getPropertyNameKey(" Status "), "status");
   assert.equal(getDuplicatePropertyName(" ", new Set()), "Property copy");
   assert.equal(
-    getDuplicatePropertyName(
-      "Status",
-      new Set(["Status copy", "Status copy 2"]),
-    ),
+    getDuplicatePropertyName("Status", new Set(["Status copy", "Status copy 2"])),
     "Status copy 3",
   );
 });
@@ -27,9 +24,7 @@ test("match mode never inserts unmatched source properties", () => {
 });
 
 test("normalizeValueForPropertyType maps select-compatible shapes", () => {
-  assert.deepEqual(normalizeValueForPropertyType("multi_select", "One"), [
-    "One",
-  ]);
+  assert.deepEqual(normalizeValueForPropertyType("multi_select", "One"), ["One"]);
   assert.equal(normalizeValueForPropertyType("select", ["One", "Two"]), "One");
   assert.equal(normalizeValueForPropertyType("status", []), null);
   assert.equal(normalizeValueForPropertyType("text", "One"), "One");
@@ -82,8 +77,7 @@ test("mergeSelectOptionsForValue adds unique IDs and deduplicates names", () => 
 
 test("mergeSelectOptionsForValue seeds status defaults", () => {
   const result = mergeSelectOptionsForValue("status", null, "Waiting");
-  const options = (result.config as { options: Array<{ name: string }> })
-    .options;
+  const options = (result.config as { options: Array<{ name: string }> }).options;
 
   assert.equal(result.changed, true);
   assert.equal(

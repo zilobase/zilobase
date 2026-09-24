@@ -14,10 +14,7 @@ export function register({ assert, loadModule, test }) {
     );
     const delegated = describeConnectorSetup({ ...input, scope: "agent" });
     assert.equal(delegated.unavailable, true);
-    assert.match(
-      delegated.description,
-      /Delegated Gmail access is not supported/,
-    );
+    assert.match(delegated.description, /Delegated Gmail access is not supported/);
     const connected = describeConnectorSetup({
       ...input,
       scope: "agent",
@@ -30,9 +27,7 @@ export function register({ assert, loadModule, test }) {
     const { describeConnectorSetup } = await loadModule(
       "/src/features/ai/settings/model/connector-setup.ts",
     );
-    const catalog = [
-      { id: "tool", label: "Tools", available: true, availabilityReason: null },
-    ];
+    const catalog = [{ id: "tool", label: "Tools", available: true, availabilityReason: null }];
     const connections = [
       {
         id: "saved",
@@ -53,9 +48,7 @@ export function register({ assert, loadModule, test }) {
     const approved = describeConnectorSetup({
       provider: "approved:server",
       scope: "agent",
-      approved: [
-        { id: "server", label: "Approved", endpointUrl: "https://tools.test" },
-      ],
+      approved: [{ id: "server", label: "Approved", endpointUrl: "https://tools.test" }],
       connections,
     });
     assert.equal(approved.approvedId, "server");
@@ -85,40 +78,24 @@ export function register({ assert, loadModule, test }) {
       "/src/features/ai/settings/model/connector-setup.ts",
     );
     const setup = { connected: false, unavailable: false, label: "Tools" };
-    assert.deepEqual(
-      connectorActionState(setup, "personal", undefined, false),
-      { disabled: false, label: "Connect Tools" },
-    );
+    assert.deepEqual(connectorActionState(setup, "personal", undefined, false), {
+      disabled: false,
+      label: "Connect Tools",
+    });
     for (const role of ["owner", "editor"])
-      assert.equal(
-        connectorActionState(setup, "agent", role, false).disabled,
-        false,
-      );
+      assert.equal(connectorActionState(setup, "agent", role, false).disabled, false);
     for (const role of ["viewer", undefined])
-      assert.equal(
-        connectorActionState(setup, "agent", role, false).disabled,
-        true,
-      );
+      assert.equal(connectorActionState(setup, "agent", role, false).disabled, true);
     assert.deepEqual(connectorActionState(setup, "personal", undefined, true), {
       disabled: true,
       label: "Connecting…",
     });
     assert.deepEqual(
-      connectorActionState(
-        { ...setup, connected: true },
-        "personal",
-        undefined,
-        true,
-      ),
+      connectorActionState({ ...setup, connected: true }, "personal", undefined, true),
       { disabled: true, label: "Connected" },
     );
     assert.equal(
-      connectorActionState(
-        { ...setup, unavailable: true },
-        "personal",
-        undefined,
-        false,
-      ).disabled,
+      connectorActionState({ ...setup, unavailable: true }, "personal", undefined, false).disabled,
       true,
     );
   });

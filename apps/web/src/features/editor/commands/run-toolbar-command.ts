@@ -1,8 +1,5 @@
-import type { Editor as TiptapEditor } from "@tiptap/react"
-import type {
-  ToolbarAction,
-  ToolbarAttrs,
-} from "../toolbar/toolbar-contracts"
+import type { Editor as TiptapEditor } from "@tiptap/react";
+import type { ToolbarAction, ToolbarAttrs } from "../toolbar/toolbar-contracts";
 
 const toolbarCommands: Record<
   ToolbarAction,
@@ -13,8 +10,7 @@ const toolbarCommands: Record<
   toggleStrike: (chain) => chain.toggleStrike().run(),
   toggleCode: (chain) => chain.toggleCode().run(),
   toggleUnderline: (chain) => chain.toggleUnderline().run(),
-  toggleHeading: (chain, attrs) =>
-    chain.toggleHeading({ level: attrs?.level ?? 1 }).run(),
+  toggleHeading: (chain, attrs) => chain.toggleHeading({ level: attrs?.level ?? 1 }).run(),
   toggleBulletList: (chain) => chain.toggleBulletList().run(),
   toggleOrderedList: (chain) => chain.toggleOrderedList().run(),
   toggleTaskList: (chain) => chain.toggleTaskList().run(),
@@ -22,17 +18,15 @@ const toolbarCommands: Record<
   toggleCodeBlock: (chain) => chain.toggleCodeBlock().run(),
   setDetails: (chain) => chain.setDetails().run(),
   setHorizontalRule: (chain) => chain.setHorizontalRule().run(),
-  insertTable: (chain) =>
-    chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
-  setTextAlign: (chain, attrs) =>
-    chain.setTextAlign(attrs?.align ?? "left").run(),
-}
+  insertTable: (chain) => chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+  setTextAlign: (chain, attrs) => chain.setTextAlign(attrs?.align ?? "left").run(),
+};
 
 export const runToolbarCommand = (
   editor: TiptapEditor | null,
   action: ToolbarAction,
-  attrs?: ToolbarAttrs
+  attrs?: ToolbarAttrs,
 ) => {
-  if (!editor) return
-  toolbarCommands[action](editor.chain().focus(), attrs)
-}
+  if (!editor) return;
+  toolbarCommands[action](editor.chain().focus(), attrs);
+};

@@ -15,10 +15,7 @@ import {
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 
-type Run = Pick<
-  typeof aiAgentRun.$inferSelect,
-  "id" | "profileId" | "workspaceId" | "output"
->;
+type Run = Pick<typeof aiAgentRun.$inferSelect, "id" | "profileId" | "workspaceId" | "output">;
 export type AgentRunCheckpoint = {
   version: 1;
   messages: ModelMessage[];
@@ -45,8 +42,7 @@ export async function readAgentRunCheckpoint(
   run: Run,
 ): Promise<AgentRunCheckpoint> {
   const envelope = run.output as { checkpoint?: EncryptedMcpSecret } | null;
-  if (!envelope?.checkpoint)
-    return { version: 1, messages: [], steps: 0, toolCallIds: [] };
+  if (!envelope?.checkpoint) return { version: 1, messages: [], steps: 0, toolCallIds: [] };
   const value = JSON.parse(
     await decryptMcpSecret(env, envelope.checkpoint, binding(run)),
   ) as AgentRunCheckpoint;
@@ -66,9 +62,7 @@ export async function readAgentRunCheckpoint(
 export function checkpointToolCallIds(messages: ModelMessage[]) {
   return messages.flatMap((message) =>
     Array.isArray(message.content)
-      ? message.content.flatMap((part) =>
-          part.type === "tool-result" ? [part.toolCallId] : [],
-        )
+      ? message.content.flatMap((part) => (part.type === "tool-result" ? [part.toolCallId] : []))
       : [],
   );
 }
@@ -95,8 +89,7 @@ export async function saveAgentRunCheckpoint(
         ),
       )
       .for("update");
-    if (!owned)
-      throw new Error("Agent run checkpoint lost execution ownership.");
+    if (!owned) throw new Error("Agent run checkpoint lost execution ownership.");
     const pending = await tx
       .select({ id: aiAgentPendingAction.id })
       .from(aiAgentPendingAction)
@@ -125,9 +118,7 @@ export function applyCheckpointApprovals(
   checkpoint: AgentRunCheckpoint,
   approvals: Approval[],
 ): AgentRunCheckpoint {
-  const results = new Map(
-    approvals.map((action) => [action.toolCallId, action]),
-  );
+  const results = new Map(approvals.map((action) => [action.toolCallId, action]));
   const messages = checkpoint.messages.map((message): ModelMessage => {
     if (message.role !== "tool") return message;
     return {
@@ -149,27 +140,17 @@ export function applyCheckpointApprovals(
 }
 
 /** Called after approval persistence; the parent lock serializes multiple approvals. */
-export async function resumeAgentRunAfterApproval(
-  env: RuntimeEnv,
-  runId: string,
-) {
+export async function resumeAgentRunAfterApproval(env: RuntimeEnv, runId: string) {
   const queued = await db.transaction(async (tx) => {
-    const [run] = await tx
-      .select()
-      .from(aiAgentRun)
-      .where(eq(aiAgentRun.id, runId))
-      .for("update");
+    const [run] = await tx.select().from(aiAgentRun).where(eq(aiAgentRun.id, runId)).for("update");
     if (!run || run.status !== "waiting_approval") return false;
     const actions = await tx
       .select()
       .from(aiAgentPendingAction)
       .where(eq(aiAgentPendingAction.agentRunId, runId));
-    const unfinished = actions.some((action) =>
-      ["pending", "executing"].includes(action.status),
-    );
+    const unfinished = actions.some((action) => ["pending", "executing"].includes(action.status));
     const failed = actions.some(
-      (action) =>
-        !["pending", "executing", "succeeded"].includes(action.status),
+      (action) => !["pending", "executing", "succeeded"].includes(action.status),
     );
     if (unfinished && !failed) return false;
     const checkpoint = await readAgentRunCheckpoint(env, run);
@@ -177,8 +158,7 @@ export async function resumeAgentRunAfterApproval(
       !checkpoint.messages.length ||
       actions.some(
         (action) =>
-          action.status !== "succeeded" ||
-          !checkpoint.toolCallIds.includes(action.toolCallId),
+          action.status !== "succeeded" || !checkpoint.toolCallIds.includes(action.toolCallId),
       )
     ) {
       await tx
@@ -187,8 +167,7 @@ export async function resumeAgentRunAfterApproval(
           status: "failed",
           completedAt: new Date(),
           errorCode: "AGENT_APPROVAL_CONTINUATION_UNAVAILABLE",
-          errorSummary:
-            "A required approval or saved checkpoint is unavailable.",
+          errorSummary: "A required approval or saved checkpoint is unavailable.",
           leaseOwner: null,
           leaseExpiresAt: null,
         })
@@ -210,11 +189,7 @@ export async function resumeAgentRunAfterApproval(
       return false;
     }
     const updated = applyCheckpointApprovals(checkpoint, actions);
-    const encrypted = await encryptMcpSecret(
-      env,
-      JSON.stringify(updated),
-      binding(run),
-    );
+    const encrypted = await encryptMcpSecret(env, JSON.stringify(updated), binding(run));
     await tx
       .update(aiAgentRun)
       .set({

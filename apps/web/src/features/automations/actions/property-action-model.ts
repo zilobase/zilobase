@@ -2,10 +2,7 @@ import type {
   AutomationJsonValue,
   DatabaseAutomationCatalog,
 } from "@zilobase/features/automations";
-import {
-  notionActionLabel,
-  type NotionActionDraft,
-} from "./notion-action-model";
+import { notionActionLabel, type NotionActionDraft } from "./notion-action-model";
 
 export function actionProperties(
   catalog?: DatabaseAutomationCatalog,
@@ -34,10 +31,7 @@ export function actionProperties(
 }
 
 export function canUseCompactPropertyAction(draft: NotionActionDraft) {
-  if (
-    draft.action.type !== "edit_trigger_page" ||
-    draft.action.operations.length !== 1
-  )
+  if (draft.action.type !== "edit_trigger_page" || draft.action.operations.length !== 1)
     return false;
   const operation = draft.action.operations[0];
   return operation?.mode === "set" && operation.value?.type === "literal";
@@ -47,11 +41,7 @@ export function actionValuesFromLiteral(
   value: AutomationJsonValue,
   propertyType: string,
 ): string[] {
-  if (
-    ["multi_select", "person", "relation", "select", "status"].includes(
-      propertyType,
-    )
-  ) {
+  if (["multi_select", "person", "relation", "select", "status"].includes(propertyType)) {
     const values = Array.isArray(value) ? value : [value];
     return values.flatMap((item) =>
       item &&
@@ -83,22 +73,19 @@ export function actionLiteralFromValues(
   const entityType = Object.hasOwn(entityTypes, propertyType)
     ? entityTypes[propertyType]
     : undefined;
-  if (entityType)
-    return values.map((id) => ({ entityType, id, type: "entity" }));
+  if (entityType) return values.map((id) => ({ entityType, id, type: "entity" }));
   return values[0] ?? "";
 }
 
-export function propertyActionLabel(
-  draft: NotionActionDraft,
-  catalog?: DatabaseAutomationCatalog,
-) {
-  if (draft.action.type !== "edit_trigger_page")
-    return notionActionLabel(draft.action.type);
+export function propertyActionLabel(draft: NotionActionDraft, catalog?: DatabaseAutomationCatalog) {
+  if (draft.action.type !== "edit_trigger_page") return notionActionLabel(draft.action.type);
   const operation = draft.action.operations[0];
   if (!operation) return "Edit property";
-  const property = actionProperties(catalog).find(
-    (item) => item.id === operation.propertyId,
-  ) ?? { name: "property", type: "text", options: [] };
+  const property = actionProperties(catalog).find((item) => item.id === operation.propertyId) ?? {
+    name: "property",
+    type: "text",
+    options: [],
+  };
   if (operation.mode === "clear") return `Clear ${property.name}`;
   if (operation.value?.type !== "literal") return `Set ${property.name}`;
   const values = actionValuesFromLiteral(operation.value.value, property.type);

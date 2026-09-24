@@ -1,27 +1,26 @@
-import type { Content } from "@tiptap/core"
-import type { Editor } from "@tiptap/react"
+import type { Content } from "@tiptap/core";
+import type { Editor } from "@tiptap/react";
 
-import type { SlashCommandItem } from "../extensions/slash-command"
-import { createDatabaseSetupBlockContent } from "@/features/databases"
+import type { SlashCommandItem } from "../extensions/slash-command";
+import { createDatabaseSetupBlockContent } from "@/features/databases";
 
-import type { DragHandleTarget } from "../toolbar/toolbar-contracts"
+import type { DragHandleTarget } from "../toolbar/toolbar-contracts";
 import {
   runStructuralInsertion,
   type StructuralInsertionPendingChange,
-} from "./structural-insertion"
+} from "./structural-insertion";
 
 function getColumnCount(title: string) {
-  const match = title.match(/^([2-4]) Columns$/)
+  const match = title.match(/^([2-4]) Columns$/);
 
-  return match ? Number(match[1]) : null
+  return match ? Number(match[1]) : null;
 }
 
 function convertedTextBlock(
   title: string,
   node: { isTextblock: boolean; textContent: string },
 ): Content {
-  const text =
-    node.isTextblock && node.textContent.trim() ? node.textContent : "";
+  const text = node.isTextblock && node.textContent.trim() ? node.textContent : "";
   const content = text ? [{ type: "text", text }] : undefined;
   if (title === "Text") return { type: "paragraph", content };
   const levels: Record<string, number> = {
@@ -45,9 +44,9 @@ export function blockContentForConversion(
 
 function blockContentForItem(
   item: SlashCommandItem,
-  attrs?: { databaseId?: string; meetingId?: string }
+  attrs?: { databaseId?: string; meetingId?: string },
 ): Content | null {
-  const columnCount = getColumnCount(item.title)
+  const columnCount = getColumnCount(item.title);
 
   if (columnCount) {
     return {
@@ -56,62 +55,62 @@ function blockContentForItem(
         type: "column",
         content: [{ type: "paragraph" }],
       })),
-    }
+    };
   }
 
   switch (item.title) {
     case "Text":
-      return { type: "paragraph" }
+      return { type: "paragraph" };
     case "Heading 1":
-      return { type: "heading", attrs: { level: 1 } }
+      return { type: "heading", attrs: { level: 1 } };
     case "Heading 2":
-      return { type: "heading", attrs: { level: 2 } }
+      return { type: "heading", attrs: { level: 2 } };
     case "Heading 3":
-      return { type: "heading", attrs: { level: 3 } }
+      return { type: "heading", attrs: { level: 3 } };
     case "Bullet List":
       return {
         type: "bulletList",
         content: [{ type: "listItem", content: [{ type: "paragraph" }] }],
-      }
+      };
     case "Numbered List":
       return {
         type: "orderedList",
         content: [{ type: "listItem", content: [{ type: "paragraph" }] }],
-      }
+      };
     case "Task List":
       return {
         type: "taskList",
         content: [{ type: "taskItem", content: [{ type: "paragraph" }] }],
-      }
+      };
     case "Quote":
       return {
         type: "blockquote",
         content: [{ type: "paragraph" }],
-      }
+      };
     case "Code Block":
-      return { type: "codeBlock" }
+      return { type: "codeBlock" };
     case "Image":
-      return { type: "imageBlock" }
+      return { type: "imageBlock" };
     case "Video":
-      return { type: "videoBlock" }
+      return { type: "videoBlock" };
     case "Embed":
-      return { type: "embedBlock" }
+      return { type: "embedBlock" };
     case "YouTube":
-      return { type: "embedBlock", attrs: { provider: "youtube" } }
+      return { type: "embedBlock", attrs: { provider: "youtube" } };
     case "Figma":
-      return { type: "embedBlock", attrs: { provider: "figma" } }
+      return { type: "embedBlock", attrs: { provider: "figma" } };
     case "Excalidraw":
-      return { type: "embedBlock", attrs: { provider: "excalidraw" } }
+      return { type: "embedBlock", attrs: { provider: "excalidraw" } };
     case "Miro":
-      return { type: "embedBlock", attrs: { provider: "miro" } }
+      return { type: "embedBlock", attrs: { provider: "miro" } };
     case "File":
-      return { type: "fileBlock" }
+      return { type: "fileBlock" };
     case "Bookmark":
-      return { type: "bookmarkBlock" }
+      return { type: "bookmarkBlock" };
     case "Page":
-      return { type: "pageBlock" }
+      return { type: "pageBlock" };
     case "Link to page":
-      return { type: "pageBlock", attrs: { openPicker: true } }
+      return { type: "pageBlock", attrs: { openPicker: true } };
     case "Toggle":
       return {
         type: "details",
@@ -125,9 +124,9 @@ function blockContentForItem(
             content: [{ type: "paragraph" }],
           },
         ],
-      }
+      };
     case "Divider":
-      return [{ type: "horizontalRule" }, { type: "paragraph" }]
+      return [{ type: "horizontalRule" }, { type: "paragraph" }];
     case "Table":
       return {
         type: "table",
@@ -147,32 +146,42 @@ function blockContentForItem(
             })),
           })),
         ],
-      }
+      };
     case "Database":
-      return attrs?.databaseId
-        ? createDatabaseSetupBlockContent(attrs.databaseId)
-        : null
+      return attrs?.databaseId ? createDatabaseSetupBlockContent(attrs.databaseId) : null;
     case "Meeting notes":
       return attrs?.meetingId
         ? { type: "meetingBlock", attrs: { meetingId: attrs.meetingId } }
-        : null
+        : null;
     default:
-      return { type: "paragraph" }
+      return { type: "paragraph" };
   }
 }
 
 function selectInsertedBlock(editor: Editor, pos: number, item: SlashCommandItem) {
   if (item.title === "Database") {
-    editor.chain().focus().setTextSelection(pos + 2).run()
-    return
+    editor
+      .chain()
+      .focus()
+      .setTextSelection(pos + 2)
+      .run();
+    return;
   }
 
   if (item.title === "Divider") {
-    editor.chain().focus().setTextSelection(pos + 2).run()
-    return
+    editor
+      .chain()
+      .focus()
+      .setTextSelection(pos + 2)
+      .run();
+    return;
   }
 
-  editor.chain().focus().setTextSelection(pos + 1).run()
+  editor
+    .chain()
+    .focus()
+    .setTextSelection(pos + 1)
+    .run();
 }
 
 export async function insertBlockFromPlus(
@@ -180,16 +189,16 @@ export async function insertBlockFromPlus(
   target: DragHandleTarget,
   item: SlashCommandItem,
   options: {
-    onCreateDatabase?: () => Promise<string | null>
-    onCreateMeeting?: () => Promise<string | null>
-    onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
+    onCreateDatabase?: () => Promise<string | null>;
+    onCreateMeeting?: () => Promise<string | null>;
+    onStructuralInsertionPendingChange?: StructuralInsertionPendingChange;
   } = {},
 ) {
-  const isEmptyTextBlock = target.node.isTextblock && target.node.content.size === 0
+  const isEmptyTextBlock = target.node.isTextblock && target.node.content.size === 0;
 
   const insert = (content: Content | null) => {
     if (!content) {
-      return
+      return;
     }
 
     if (isEmptyTextBlock) {
@@ -198,25 +207,24 @@ export async function insertBlockFromPlus(
         .focus()
         .deleteRange({ from: target.pos, to: target.pos + target.node.nodeSize })
         .insertContentAt(target.pos, content)
-        .run()
-      selectInsertedBlock(editor, target.pos, item)
-      return
+        .run();
+      selectInsertedBlock(editor, target.pos, item);
+      return;
     }
 
-    const insertPos = target.pos + target.node.nodeSize
+    const insertPos = target.pos + target.node.nodeSize;
 
-    editor.chain().focus().insertContentAt(insertPos, content).run()
-    selectInsertedBlock(editor, insertPos, item)
-  }
+    editor.chain().focus().insertContentAt(insertPos, content).run();
+    selectInsertedBlock(editor, insertPos, item);
+  };
 
   if (item.title === "Database") {
     await runStructuralInsertion({
       create: options.onCreateDatabase,
-      insert: (databaseId) =>
-        insert(blockContentForItem(item, { databaseId })),
+      insert: (databaseId) => insert(blockContentForItem(item, { databaseId })),
       onPendingChange: options.onStructuralInsertionPendingChange,
-    })
-    return
+    });
+    return;
   }
 
   if (item.title === "Meeting notes") {
@@ -224,9 +232,9 @@ export async function insertBlockFromPlus(
       create: options.onCreateMeeting,
       insert: (meetingId) => insert(blockContentForItem(item, { meetingId })),
       onPendingChange: options.onStructuralInsertionPendingChange,
-    })
-    return
+    });
+    return;
   }
 
-  insert(blockContentForItem(item))
+  insert(blockContentForItem(item));
 }

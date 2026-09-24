@@ -32,26 +32,25 @@ export async function resolveWorkspaceAiModel(
   envOrApiKey?: RuntimeEnv | string,
   workload: AiWorkload = "chat",
 ) {
-  const env = typeof envOrApiKey === "string"
-    ? { OPENAI_API_KEY: envOrApiKey }
-    : envOrApiKey ?? {};
+  const env =
+    typeof envOrApiKey === "string" ? { OPENAI_API_KEY: envOrApiKey } : (envOrApiKey ?? {});
   const selection = parseSelectedModelId(selectedModelId, workload);
   const provider = getAiProviderCatalogItem(selection.providerId);
 
   const [workspaceConfig] = await db
     .select()
     .from(workspaceAiProviderConfig)
-    .where(and(
-      eq(workspaceAiProviderConfig.workspaceId, workspaceId),
-      eq(workspaceAiProviderConfig.providerId, provider.id),
-    ))
+    .where(
+      and(
+        eq(workspaceAiProviderConfig.workspaceId, workspaceId),
+        eq(workspaceAiProviderConfig.providerId, provider.id),
+      ),
+    )
     .limit(1);
   const catalogModel = selection.modelId
     ? getAiModelCatalogItem(provider.id, selection.modelId)
     : resolveAutomaticModel({
-        enabledModelIds: workspaceConfig?.enabled
-          ? workspaceConfig.modelIds
-          : [],
+        enabledModelIds: workspaceConfig?.enabled ? workspaceConfig.modelIds : [],
         provider,
         workload,
       });
@@ -71,16 +70,16 @@ export async function resolveWorkspaceAiModel(
       400,
     );
   }
-  const encrypted = workspaceConfig
-    ? readEncryptedAiProviderCredential(workspaceConfig)
-    : null;
-  const workspaceCredential = workspaceConfig?.enabled && encrypted
-    ? await decryptAiProviderCredential(env, encrypted)
-    : "";
+  const encrypted = workspaceConfig ? readEncryptedAiProviderCredential(workspaceConfig) : null;
+  const workspaceCredential =
+    workspaceConfig?.enabled && encrypted ? await decryptAiProviderCredential(env, encrypted) : "";
   const managedCredential = normalizeApiKey(getStringEnv(env, "OPENAI_API_KEY"));
   const apiKey = workspaceCredential || managedCredential;
   if (!apiKey) {
-    throw new AiProviderConfigError("OPENAI_API_KEY or an encrypted workspace credential is required.", 503);
+    throw new AiProviderConfigError(
+      "OPENAI_API_KEY or an encrypted workspace credential is required.",
+      503,
+    );
   }
 
   const baseUrl = validateAiProviderBaseUrl(
@@ -91,10 +90,11 @@ export async function resolveWorkspaceAiModel(
   const openai = createOpenAI({ apiKey, baseURL: baseUrl });
   return {
     catalog: catalogModel,
-    credentialSource: workspaceCredential ? "workspace" as const : "managed" as const,
-    model: catalogModel.api === "responses"
-      ? openai.responses(catalogModel.id)
-      : openai.chat(catalogModel.id),
+    credentialSource: workspaceCredential ? ("workspace" as const) : ("managed" as const),
+    model:
+      catalogModel.api === "responses"
+        ? openai.responses(catalogModel.id)
+        : openai.chat(catalogModel.id),
     providerOptions: catalogModel.reasoningEffort
       ? { openai: { reasoningEffort: catalogModel.reasoningEffort } }
       : undefined,
@@ -102,10 +102,7 @@ export async function resolveWorkspaceAiModel(
   };
 }
 
-function parseSelectedModelId(
-  selectedModelId: string | undefined,
-  workload: AiWorkload,
-) {
+function parseSelectedModelId(selectedModelId: string | undefined, workload: AiWorkload) {
   if (!selectedModelId || selectedModelId === "auto") {
     if (!defaultAiModelForWorkload(workload)) {
       throw new AiProviderConfigError(`No AI model is configured for ${workload}.`, 503);
@@ -135,18 +132,14 @@ function resolveAutomaticModel(input: {
   );
   const preferred = defaultAiModelForWorkload(input.workload);
 
-  return candidates.find((model) => model.id === preferred?.id) ??
-    candidates[0] ?? null;
+  return candidates.find((model) => model.id === preferred?.id) ?? candidates[0] ?? null;
 }
 
 export const DEFAULT_OPENAI_CHAT_MODEL = "gpt-5.6-terra";
 
-export function resolveOpenAiChatModel(
-  openAiApiKey?: string,
-  selectedModelId?: string,
-) {
-  const modelId = parseSelectedModelId(selectedModelId, "chat").modelId ??
-    DEFAULT_OPENAI_CHAT_MODEL;
+export function resolveOpenAiChatModel(openAiApiKey?: string, selectedModelId?: string) {
+  const modelId =
+    parseSelectedModelId(selectedModelId, "chat").modelId ?? DEFAULT_OPENAI_CHAT_MODEL;
   const apiKey = normalizeApiKey(openAiApiKey);
 
   if (!apiKey) {
@@ -157,9 +150,7 @@ export function resolveOpenAiChatModel(
     apiKey,
   });
 
-  return modelId.startsWith("gpt-5.6")
-    ? provider.responses(modelId)
-    : provider.chat(modelId);
+  return modelId.startsWith("gpt-5.6") ? provider.responses(modelId) : provider.chat(modelId);
 }
 
 export function validateAiProviderBaseUrl(
@@ -192,7 +183,11 @@ export function validateAiProviderBaseUrl(
       .map((entry) => entry.trim())
       .filter(Boolean)
       .flatMap((entry) => {
-        try { return [normalizeAllowedUrl(entry)]; } catch { return []; }
+        try {
+          return [normalizeAllowedUrl(entry)];
+        } catch {
+          return [];
+        }
       }),
   ]);
   const normalizedValue = url.toString().replace(/\/$/, "");

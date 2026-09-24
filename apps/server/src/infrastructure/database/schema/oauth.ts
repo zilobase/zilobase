@@ -43,9 +43,7 @@ export const oauthClient = pgTable(
     redirectUris: text("redirect_uris").array().notNull(),
     postLogoutRedirectUris: text("post_logout_redirect_uris").array(),
     backchannelLogoutUri: text("backchannel_logout_uri"),
-    backchannelLogoutSessionRequired: boolean(
-      "backchannel_logout_session_required",
-    ),
+    backchannelLogoutSessionRequired: boolean("backchannel_logout_session_required"),
     tokenEndpointAuthMethod: text("token_endpoint_auth_method"),
     applicationType: text("application_type"),
     jwks: text("jwks"),
@@ -70,9 +68,7 @@ export const oauthResource = pgTable("oauth_resource", {
   signingKeyId: text("signing_key_id"),
   allowedScopes: text("allowed_scopes").array(),
   customClaims: jsonb("custom_claims"),
-  dpopBoundAccessTokensRequired: boolean(
-    "dpop_bound_access_tokens_required",
-  ).default(false),
+  dpopBoundAccessTokensRequired: boolean("dpop_bound_access_tokens_required").default(false),
   disabled: boolean("disabled").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -135,9 +131,7 @@ export const oauthRefreshToken = pgTable(
     index("oauth_refresh_token_client_id_idx").on(table.clientId),
     index("oauth_refresh_token_session_id_idx").on(table.sessionId),
     index("oauth_refresh_token_user_id_idx").on(table.userId),
-    index("oauth_refresh_token_authorization_code_id_idx").on(
-      table.authorizationCodeId,
-    ),
+    index("oauth_refresh_token_authorization_code_id_idx").on(table.authorizationCodeId),
   ],
 );
 
@@ -168,9 +162,7 @@ export const oauthAccessToken = pgTable(
     index("oauth_access_token_client_id_idx").on(table.clientId),
     index("oauth_access_token_session_id_idx").on(table.sessionId),
     index("oauth_access_token_user_id_idx").on(table.userId),
-    index("oauth_access_token_authorization_code_id_idx").on(
-      table.authorizationCodeId,
-    ),
+    index("oauth_access_token_authorization_code_id_idx").on(table.authorizationCodeId),
     index("oauth_access_token_refresh_id_idx").on(table.refreshId),
   ],
 );

@@ -23,10 +23,7 @@ export function getNavigationItemState(item: NavigationItem) {
 }
 
 function getDisplayName(item: NavigationItem) {
-  return (
-    (item.databaseId ? item.database?.name : item.page?.name)?.trim() ||
-    "Untitled"
-  );
+  return (item.databaseId ? item.database?.name : item.page?.name)?.trim() || "Untitled";
 }
 
 function getFavorite(item: NavigationItem) {
@@ -52,8 +49,7 @@ function canEdit(level: string | null | undefined) {
 
 function canToggleLock(item: NavigationItem) {
   return (
-    Boolean(item.databaseId && canEdit(item.database?.accessLevel)) ||
-    canEdit(item.pageAccessLevel)
+    Boolean(item.databaseId && canEdit(item.database?.accessLevel)) || canEdit(item.pageAccessLevel)
   );
 }
 
@@ -77,9 +73,7 @@ export function getNavigationPendingState(
   return {
     fullWidthUpdatePending: pending.userSettings || pending.pageUpdate,
     isDeleting: pending.pageDelete || pending.databaseDelete,
-    lockUpdatePending: item.isDatabase
-      ? pending.databaseUpdate
-      : pending.pageUpdate,
+    lockUpdatePending: item.isDatabase ? pending.databaseUpdate : pending.pageUpdate,
     favoriteDisabled: item.isDatabase
       ? !item.hasDatabase || pending.databaseFavorite
       : !item.hasPageId || pending.pageFavorite,

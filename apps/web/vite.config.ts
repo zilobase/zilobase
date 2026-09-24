@@ -10,14 +10,10 @@ const devPort = readPort(process.env.VITE_DEV_PORT, 1420);
 const hmrPort = readPort(process.env.VITE_HMR_PORT, devPort + 1);
 const viteCacheDir = process.env.ZILOBASE_VITE_CACHE_DIR?.trim();
 const srcDir = fileURLToPath(new URL("./src", import.meta.url));
-const pageContextDir = fileURLToPath(
-  new URL("../../packages/page-context/src", import.meta.url),
-);
+const pageContextDir = fileURLToPath(new URL("../../packages/page-context/src", import.meta.url));
 const repoRoot = fileURLToPath(new URL("../..", import.meta.url));
-const externalAiConversationModule =
-  process.env.ZILOBASE_WEB_AI_CONVERSATION_MODULE?.trim();
-const externalEditionWebModule =
-  process.env.ZILOBASE_WEB_EDITION_MODULE?.trim();
+const externalAiConversationModule = process.env.ZILOBASE_WEB_AI_CONVERSATION_MODULE?.trim();
+const externalEditionWebModule = process.env.ZILOBASE_WEB_EDITION_MODULE?.trim();
 const aiConversationModule = externalAiConversationModule
   ? resolve(externalAiConversationModule)
   : `${srcDir}/features/ai/conversations/use-agent-conversation.ts`;
@@ -32,7 +28,9 @@ const adapterWebSocketPaths = readAdapterWebSocketPaths(
   process.env.ZILOBASE_WEB_ADAPTER_WEBSOCKET_PATHS,
 );
 const backendTarget =
-  process.env.VITE_BACKEND_PROXY_TARGET ?? process.env.VITE_API_URL?.replace(/\/$/, "") ?? "http://127.0.0.1:3000";
+  process.env.VITE_BACKEND_PROXY_TARGET ??
+  process.env.VITE_API_URL?.replace(/\/$/, "") ??
+  "http://127.0.0.1:3000";
 const expectedWsProxyErrorCodes = new Set(["ECONNRESET", "EPIPE"]);
 
 function createBackendProxy(options: { ws?: boolean } = {}): ProxyOptions {
@@ -43,20 +41,12 @@ function createBackendProxy(options: { ws?: boolean } = {}): ProxyOptions {
     configure(proxy) {
       if (options.ws) suppressExpectedWsProxyErrors(proxy);
       proxy.on("proxyReq", (proxyRequest, request) => {
-        if (
-          request.headers.host?.split(":", 1)[0]?.toLowerCase() !==
-          "demo.localhost"
-        ) {
+        if (request.headers.host?.split(":", 1)[0]?.toLowerCase() !== "demo.localhost") {
           proxyRequest.removeHeader("x-zilobase-demo");
           return;
         }
 
-        for (const header of [
-          "authorization",
-          "cookie",
-          "x-api-key",
-          "x-mobile-auth-cookie",
-        ]) {
+        for (const header of ["authorization", "cookie", "x-api-key", "x-mobile-auth-cookie"]) {
           proxyRequest.removeHeader(header);
         }
         proxyRequest.setHeader("x-zilobase-demo", "1");
@@ -158,7 +148,9 @@ export default defineConfig(async () => ({
   server: {
     port: devPort,
     strictPort: true,
-    ...(process.env.VITE_DEV_PUBLIC_ORIGIN ? { allowedHosts: [new URL(process.env.VITE_DEV_PUBLIC_ORIGIN).hostname] } : {}),
+    ...(process.env.VITE_DEV_PUBLIC_ORIGIN
+      ? { allowedHosts: [new URL(process.env.VITE_DEV_PUBLIC_ORIGIN).hostname] }
+      : {}),
     host: host || process.env.VITE_DEV_HOST || "0.0.0.0",
     // Local runtime profiles reuse stable cache directories. Prevent a
     // browser from retaining an optimized-dependency response across a Vite
@@ -178,10 +170,7 @@ export default defineConfig(async () => ({
       "/navigation-realtime": createBackendProxy({ ws: true }),
       "/api": createBackendProxy(),
       ...Object.fromEntries(
-        adapterWebSocketPaths.map((path) => [
-          path,
-          createBackendProxy({ ws: true }),
-        ]),
+        adapterWebSocketPaths.map((path) => [path, createBackendProxy({ ws: true })]),
       ),
       "/session": createBackendProxy(),
       "/sign-in": createBackendProxy(),
@@ -213,20 +202,16 @@ export default defineConfig(async () => ({
       // Native sidecar builds should not restart the web development server.
       ignored: ["../desktop/electron/sidecar/target/**"],
     },
-    fs: externalModuleDirectories.length > 0
-      ? {
-          allow: [
-            searchForWorkspaceRoot(process.cwd()),
-            ...externalModuleDirectories,
-          ],
-        }
-      : undefined,
+    fs:
+      externalModuleDirectories.length > 0
+        ? {
+            allow: [searchForWorkspaceRoot(process.cwd()), ...externalModuleDirectories],
+          }
+        : undefined,
   },
 }));
 
 function readPort(value: string | undefined, fallback: number) {
   const port = Number(value);
-  return Number.isSafeInteger(port) && port > 0 && port <= 65_535
-    ? port
-    : fallback;
+  return Number.isSafeInteger(port) && port > 0 && port <= 65_535 ? port : fallback;
 }

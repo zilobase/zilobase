@@ -12,16 +12,11 @@ import {
   normalizeValueForPropertyType,
   shouldInsertUnmatchedSourceProperty,
 } from "../schema/import";
-import {
-  isReadOnlyPropertyType,
-  normalizeDatabasePropertyType,
-} from "../schema/types";
+import { isReadOnlyPropertyType, normalizeDatabasePropertyType } from "../schema/types";
 import { validateCellValue } from "../schema/config";
 import { upsertPagePropertyValues } from "../../pages/properties/upsert";
 
-type DatabaseTransaction = Parameters<
-  Parameters<Database["transaction"]>[0]
->[0];
+type DatabaseTransaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
 export async function inheritDatabaseRowProperties(
   input: {
@@ -67,9 +62,7 @@ export async function inheritDatabaseRowProperties(
       ),
     )
     .orderBy(asc(databaseProperty.position));
-  const targetPropertyIds = new Set(
-    targetColumns.map(({ column }) => column.propertyId),
-  );
+  const targetPropertyIds = new Set(targetColumns.map(({ column }) => column.propertyId));
   const targetValues =
     targetPropertyIds.size > 0
       ? await tx
@@ -92,10 +85,7 @@ export async function inheritDatabaseRowProperties(
   );
 
   const targetColumnsByName = new Map(
-    targetColumns.map((column) => [
-      getPropertyNameKey(column.property.name),
-      column,
-    ]),
+    targetColumns.map((column) => [getPropertyNameKey(column.property.name), column]),
   );
   const missingColumns = sourceColumns.filter(
     ({ column }) => !targetPropertyIds.has(column.propertyId),
@@ -115,23 +105,16 @@ export async function inheritDatabaseRowProperties(
             ),
           )
       : [];
-  const sourceValueByPropertyId = new Map(
-    sourceValues.map((value) => [value.propertyId, value]),
-  );
+  const sourceValueByPropertyId = new Map(sourceValues.map((value) => [value.propertyId, value]));
   const columnsToInsert: typeof missingColumns = [];
-  const matchedValuesToUpsert: Array<typeof pagePropertyValue.$inferInsert> =
-    [];
+  const matchedValuesToUpsert: Array<typeof pagePropertyValue.$inferInsert> = [];
 
   for (const sourceColumn of missingColumns) {
     const targetColumn =
       input.sourcePropertyMode === "match"
-        ? targetColumnsByName.get(
-            getPropertyNameKey(sourceColumn.property.name),
-          )
+        ? targetColumnsByName.get(getPropertyNameKey(sourceColumn.property.name))
         : null;
-    const sourceValue = sourceValueByPropertyId.get(
-      sourceColumn.column.propertyId,
-    );
+    const sourceValue = sourceValueByPropertyId.get(sourceColumn.column.propertyId);
     const targetPropertyType = targetColumn
       ? normalizeDatabasePropertyType(targetColumn.property.type)
       : null;
@@ -151,10 +134,7 @@ export async function inheritDatabaseRowProperties(
       continue;
     }
 
-    const nextValue = normalizeValueForPropertyType(
-      targetPropertyType,
-      sourceValue.value,
-    );
+    const nextValue = normalizeValueForPropertyType(targetPropertyType, sourceValue.value);
 
     if (nextValue === null) {
       continue;
@@ -232,11 +212,7 @@ export async function inheritDatabaseRowProperties(
     );
     values.push(
       ...sourceValues
-        .filter((value) =>
-          insertedColumns.some(
-            (column) => column.propertyId === value.propertyId,
-          ),
-        )
+        .filter((value) => insertedColumns.some((column) => column.propertyId === value.propertyId))
         .map((value) => ({
           ...value,
           createdAt: value.createdAt.toISOString(),

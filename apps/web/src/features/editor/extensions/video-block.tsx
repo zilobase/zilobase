@@ -1,60 +1,52 @@
-import { Node, mergeAttributes } from "@tiptap/core"
-import {
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-  type ReactNodeViewProps,
-} from "@tiptap/react"
-import { Link, PlaySquare } from "@/shared/components/icons"
-import { useRef, useState } from "react"
+import { Node, mergeAttributes } from "@tiptap/core";
+import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
+import { Link, PlaySquare } from "@/shared/components/icons";
+import { useRef, useState } from "react";
 
-import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 
 function VideoBlockView({ node, updateAttributes }: ReactNodeViewProps) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [open, setOpen] = useState(false)
-  const [linkUrl, setLinkUrl] = useState(node.attrs.src ?? "")
-  const src = node.attrs.src as string | null
-  const title = (node.attrs.title as string | null) ?? "Video"
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState(node.attrs.src ?? "");
+  const src = node.attrs.src as string | null;
+  const title = (node.attrs.title as string | null) ?? "Video";
 
   const setVideoSrc = (nextSrc: string, nextTitle = "Linked video") => {
     updateAttributes({
       src: nextSrc,
       title: nextTitle,
-    })
-    setLinkUrl(nextSrc)
-    setOpen(false)
-  }
+    });
+    setLinkUrl(nextSrc);
+    setOpen(false);
+  };
 
   const readFile = (file: File | undefined) => {
     if (!file || !file.type.startsWith("video/")) {
-      return
+      return;
     }
 
-    const reader = new FileReader()
+    const reader = new FileReader();
 
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setVideoSrc(reader.result, file.name)
+        setVideoSrc(reader.result, file.name);
       }
-    }
+    };
 
-    reader.readAsDataURL(file)
-  }
+    reader.readAsDataURL(file);
+  };
 
   const submitLink = () => {
-    const nextUrl = linkUrl.trim()
+    const nextUrl = linkUrl.trim();
 
     if (nextUrl) {
-      setVideoSrc(nextUrl)
+      setVideoSrc(nextUrl);
     }
-  }
+  };
 
   return (
     <NodeViewWrapper className="video-block" data-src={src ? "true" : "false"}>
@@ -74,10 +66,10 @@ function VideoBlockView({ node, updateAttributes }: ReactNodeViewProps) {
           align="start"
           className="w-[min(24rem,calc(100vw-2rem))] gap-0 p-0"
           onMouseDown={(event) => {
-            event.stopPropagation()
+            event.stopPropagation();
           }}
           onPointerDown={(event) => {
-            event.stopPropagation()
+            event.stopPropagation();
           }}
           side="bottom"
           sideOffset={8}
@@ -111,8 +103,8 @@ function VideoBlockView({ node, updateAttributes }: ReactNodeViewProps) {
                   onChange={(event) => setLinkUrl(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
-                      event.preventDefault()
-                      submitLink()
+                      event.preventDefault();
+                      submitLink();
                     }
                   }}
                   placeholder="Paste video URL..."
@@ -135,7 +127,7 @@ function VideoBlockView({ node, updateAttributes }: ReactNodeViewProps) {
         </div>
       ) : null}
     </NodeViewWrapper>
-  )
+  );
 }
 
 export const VideoBlock = Node.create({
@@ -153,18 +145,15 @@ export const VideoBlock = Node.create({
     return {
       src: {
         default: null,
-        parseHTML: (element) =>
-          element.getAttribute("data-src") ?? element.getAttribute("src"),
-        renderHTML: (attributes) =>
-          attributes.src ? { "data-src": attributes.src } : {},
+        parseHTML: (element) => element.getAttribute("data-src") ?? element.getAttribute("src"),
+        renderHTML: (attributes) => (attributes.src ? { "data-src": attributes.src } : {}),
       },
       title: {
         default: null,
         parseHTML: (element) => element.getAttribute("data-title"),
-        renderHTML: (attributes) =>
-          attributes.title ? { "data-title": attributes.title } : {},
+        renderHTML: (attributes) => (attributes.title ? { "data-title": attributes.title } : {}),
       },
-    }
+    };
   },
 
   parseHTML() {
@@ -175,17 +164,14 @@ export const VideoBlock = Node.create({
       {
         tag: "video[src]",
       },
-    ]
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(HTMLAttributes, { "data-type": "videoBlock" }),
-    ]
+    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "videoBlock" })];
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(VideoBlockView)
+    return ReactNodeViewRenderer(VideoBlockView);
   },
-})
+});

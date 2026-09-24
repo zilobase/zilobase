@@ -5,10 +5,15 @@ import { useCalendarWorkspace } from "@/features/calendar/workspace/calendar-wor
 export function useCalendarChatVisibility() {
   const { panelOpen, suspendPanel } = useCalendarWorkspace();
   const [requested, setRequested] = useState(false);
-  useEffect(() => { if (panelOpen) setRequested(false); }, [panelOpen]);
-  const setOpen = useCallback((open: boolean) => {
-    if (open) suspendPanel();
-    setRequested(open);
-  }, [suspendPanel]);
+  useEffect(() => {
+    if (panelOpen) setRequested(false);
+  }, [panelOpen]);
+  const setOpen = useCallback(
+    (open: boolean) => {
+      if (open) suspendPanel();
+      setRequested(open);
+    },
+    [suspendPanel],
+  );
   return [requested && !panelOpen, setOpen] as const;
 }

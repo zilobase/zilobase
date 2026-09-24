@@ -1,9 +1,21 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { type DatabaseAutomationDependency } from "@zilobase/features/automations";
 import { db, type Database } from "../../../infrastructure/database";
-import { databaseAutomation, databaseAutomationDependency } from "../../../infrastructure/database/schema";
+import {
+  databaseAutomation,
+  databaseAutomationDependency,
+} from "../../../infrastructure/database/schema";
 import { operatorsForPropertyType } from "../compilation/compiler";
-import { DatabaseAutomationError, requireManagementContext, loadProperties, loadAutomationTargetCatalog, loadOwnedGmailConnections, loadOwnedSlackConnections, loadViews, loadWorkspaceUsers } from "./definition-context";
+import {
+  DatabaseAutomationError,
+  requireManagementContext,
+  loadProperties,
+  loadAutomationTargetCatalog,
+  loadOwnedGmailConnections,
+  loadOwnedSlackConnections,
+  loadViews,
+  loadWorkspaceUsers,
+} from "./definition-context";
 
 export async function getDatabaseAutomationCatalog(input: {
   databaseId: string;
@@ -15,18 +27,19 @@ export async function getDatabaseAutomationCatalog(input: {
 }) {
   try {
     const management = await requireManagementContext(input);
-    const [properties, views, users, gmailConnections, slackConnections, dataSources] = await Promise.all([
-      loadProperties([input.dataSourceId]),
-      loadViews(input.databaseId, input.dataSourceId),
-      loadWorkspaceUsers(management.source.workspaceId),
-      input.gmailEnabled === false
-        ? Promise.resolve([])
-        : loadOwnedGmailConnections(management.source.workspaceId, input.userId),
-      input.slackEnabled === false
-        ? Promise.resolve([])
-        : loadOwnedSlackConnections(management.source.workspaceId, input.userId),
-      loadAutomationTargetCatalog(management.source.workspaceId, input.userId),
-    ]);
+    const [properties, views, users, gmailConnections, slackConnections, dataSources] =
+      await Promise.all([
+        loadProperties([input.dataSourceId]),
+        loadViews(input.databaseId, input.dataSourceId),
+        loadWorkspaceUsers(management.source.workspaceId),
+        input.gmailEnabled === false
+          ? Promise.resolve([])
+          : loadOwnedGmailConnections(management.source.workspaceId, input.userId),
+        input.slackEnabled === false
+          ? Promise.resolve([])
+          : loadOwnedSlackConnections(management.source.workspaceId, input.userId),
+        loadAutomationTargetCatalog(management.source.workspaceId, input.userId),
+      ]);
     return {
       actions: [
         { available: true, reason: null, type: "define_variables" as const },
@@ -43,14 +56,26 @@ export async function getDatabaseAutomationCatalog(input: {
               : "Connect Gmail to use this action",
           type: "send_gmail" as const,
         },
-        { available: input.webhooksEnabled !== false, reason: input.webhooksEnabled === false ? "Webhooks are disabled by the server administrator" : null, type: "send_webhook" as const },
         {
-          available: input.slackEnabled !== false && slackConnections.some((connection) => connection.status === "connected"),
-          reason: input.slackEnabled === false
-            ? "Slack is disabled by the server administrator"
-            : slackConnections.some((connection) => connection.status === "connected")
-            ? null
-            : slackConnections.length ? "Reconnect Slack to use this action" : "Connect Slack to use this action",
+          available: input.webhooksEnabled !== false,
+          reason:
+            input.webhooksEnabled === false
+              ? "Webhooks are disabled by the server administrator"
+              : null,
+          type: "send_webhook" as const,
+        },
+        {
+          available:
+            input.slackEnabled !== false &&
+            slackConnections.some((connection) => connection.status === "connected"),
+          reason:
+            input.slackEnabled === false
+              ? "Slack is disabled by the server administrator"
+              : slackConnections.some((connection) => connection.status === "connected")
+                ? null
+                : slackConnections.length
+                  ? "Reconnect Slack to use this action"
+                  : "Connect Slack to use this action",
           type: "send_slack" as const,
         },
       ],
@@ -66,7 +91,9 @@ export async function getDatabaseAutomationCatalog(input: {
         name: property.name,
         options: property.options ?? [],
         operators: [...operatorsForPropertyType(property.type)],
-        ...(property.relatedDataSourceId ? { relatedDataSourceId: property.relatedDataSourceId } : {}),
+        ...(property.relatedDataSourceId
+          ? { relatedDataSourceId: property.relatedDataSourceId }
+          : {}),
         type: property.type,
         writable: property.writable,
       })),
@@ -128,6 +155,8 @@ export async function invalidateDatabaseAutomationDependencies(input: {
       status: "error",
       updatedAt: new Date(),
     })
-    .where(and(inArray(databaseAutomation.id, automationIds), eq(databaseAutomation.status, "active")));
+    .where(
+      and(inArray(databaseAutomation.id, automationIds), eq(databaseAutomation.status, "active")),
+    );
   return automationIds.length;
 }

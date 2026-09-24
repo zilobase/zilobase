@@ -1,39 +1,23 @@
-import { addMonths, format } from "date-fns"
-import {
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-} from "@/shared/components/icons"
-import { useContext, useMemo } from "react"
+import { addMonths, format } from "date-fns";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "@/shared/components/icons";
+import { useContext, useMemo } from "react";
 
-import {
-  GanttContext,
-  getDateByTimelinePosition,
-  useGanttScrollX,
-  type Range,
-} from "../gantt"
-import { Button } from "@/shared/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select"
+import { GanttContext, getDateByTimelinePosition, useGanttScrollX, type Range } from "../gantt";
+import { Button } from "@/shared/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 const rangeOptions: { label: string; value: Range }[] = [
   { label: "Day", value: "daily" },
   { label: "Month", value: "monthly" },
   { label: "Quarter", value: "quarterly" },
-]
+];
 
 type DatabaseTimelineToolbarProps = {
-  onRangeChange: (range: Range) => void
-  onSidebarCollapsedChange: (collapsed: boolean) => void
-  range: Range
-  sidebarCollapsed: boolean
-}
+  onRangeChange: (range: Range) => void;
+  onSidebarCollapsedChange: (collapsed: boolean) => void;
+  range: Range;
+  sidebarCollapsed: boolean;
+};
 
 export function DatabaseTimelineToolbarChrome({
   onRangeChange,
@@ -44,10 +28,7 @@ export function DatabaseTimelineToolbarChrome({
   return (
     <div className="database-timeline-toolbar-chrome">
       {!sidebarCollapsed ? (
-        <div
-          className="database-timeline-toolbar-sidebar-spacer"
-          data-roadmap-ui="gantt-sidebar"
-        >
+        <div className="database-timeline-toolbar-sidebar-spacer" data-roadmap-ui="gantt-sidebar">
           <Button
             aria-label="Collapse sidebar"
             className="database-timeline-toolbar-collapse h-7 w-7 shrink-0 px-0"
@@ -66,7 +47,7 @@ export function DatabaseTimelineToolbarChrome({
         sidebarCollapsed={sidebarCollapsed}
       />
     </div>
-  )
+  );
 }
 
 function DatabaseTimelineToolbar({
@@ -75,37 +56,26 @@ function DatabaseTimelineToolbar({
   range,
   sidebarCollapsed,
 }: DatabaseTimelineToolbarProps) {
-  const gantt = useContext(GanttContext)
-  const [scrollX] = useGanttScrollX()
+  const gantt = useContext(GanttContext);
+  const [scrollX] = useGanttScrollX();
 
   const visibleDate = useMemo(
-    () =>
-      getDateByTimelinePosition(
-        gantt,
-        Math.max(0, scrollX - gantt.sidebarWidth),
-      ),
-    [
-      gantt.columnWidth,
-      gantt.range,
-      gantt.sidebarWidth,
-      gantt.timelineData,
-      gantt.zoom,
-      scrollX,
-    ]
-  )
+    () => getDateByTimelinePosition(gantt, Math.max(0, scrollX - gantt.sidebarWidth)),
+    [gantt.columnWidth, gantt.range, gantt.sidebarWidth, gantt.timelineData, gantt.zoom, scrollX],
+  );
 
   const scrollTo = (date: Date) => {
-    gantt.scrollToDate?.(date)
-  }
+    gantt.scrollToDate?.(date);
+  };
 
   const shiftFocus = (direction: -1 | 1) => {
     const nextDate =
       range === "quarterly"
         ? addMonths(visibleDate, direction * 3)
-        : addMonths(visibleDate, direction)
+        : addMonths(visibleDate, direction);
 
-    scrollTo(nextDate)
-  }
+    scrollTo(nextDate);
+  };
 
   return (
     <div className="database-timeline-toolbar">
@@ -121,15 +91,10 @@ function DatabaseTimelineToolbar({
             <ChevronsRight className="size-4" />
           </Button>
         ) : null}
-        <p className="database-timeline-toolbar-title">
-          {format(visibleDate, "MMMM yyyy")}
-        </p>
+        <p className="database-timeline-toolbar-title">{format(visibleDate, "MMMM yyyy")}</p>
       </div>
       <div className="database-timeline-toolbar-controls">
-        <Select
-          onValueChange={(value) => onRangeChange(value as Range)}
-          value={range}
-        >
+        <Select onValueChange={(value) => onRangeChange(value as Range)} value={range}>
           <SelectTrigger className="database-timeline-toolbar-range w-[6.5rem]">
             <SelectValue />
           </SelectTrigger>
@@ -167,5 +132,5 @@ function DatabaseTimelineToolbar({
         </Button>
       </div>
     </div>
-  )
+  );
 }

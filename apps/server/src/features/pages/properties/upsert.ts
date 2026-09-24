@@ -20,9 +20,9 @@ export async function upsertPagePropertyValues(
     valuesByPage.set(value.pageId, pageValues);
   }
 
-  const deduplicatedValues = [...valuesByPage.values()].flatMap((pageValues) =>
-    [...pageValues.values()],
-  );
+  const deduplicatedValues = [...valuesByPage.values()].flatMap((pageValues) => [
+    ...pageValues.values(),
+  ]);
 
   if (deduplicatedValues.length === 0) {
     return 0;

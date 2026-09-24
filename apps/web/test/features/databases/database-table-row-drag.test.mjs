@@ -1,5 +1,5 @@
 function rows(ids) {
-  return ids.map((id) => ({ id }))
+  return ids.map((id) => ({ id }));
 }
 
 export function register({ assert, loadModule, test }) {
@@ -8,93 +8,91 @@ export function register({ assert, loadModule, test }) {
       claimDatabaseRowDropOwner,
       releaseDatabaseRowDropOwner,
       subscribeDatabaseRowDropOwner,
-    } = await loadModule(
-      "/src/features/databases/interactions/database-row-drag.ts"
-    )
-    const firstTable = {}
-    const secondTable = {}
-    const owners = []
+    } = await loadModule("/src/features/databases/interactions/database-row-drag.ts");
+    const firstTable = {};
+    const secondTable = {};
+    const owners = [];
     const unsubscribe = subscribeDatabaseRowDropOwner((owner) => {
-      owners.push(owner)
-    })
+      owners.push(owner);
+    });
 
-    claimDatabaseRowDropOwner(firstTable)
-    claimDatabaseRowDropOwner(secondTable)
-    releaseDatabaseRowDropOwner(firstTable)
-    releaseDatabaseRowDropOwner(secondTable)
-    unsubscribe()
+    claimDatabaseRowDropOwner(firstTable);
+    claimDatabaseRowDropOwner(secondTable);
+    releaseDatabaseRowDropOwner(firstTable);
+    releaseDatabaseRowDropOwner(secondTable);
+    unsubscribe();
 
-    assert.deepEqual(owners, [firstTable, secondTable, null])
-  })
+    assert.deepEqual(owners, [firstTable, secondTable, null]);
+  });
 
   test("database table row drag reorders a visible subset before the next visible anchor", async () => {
     const { getFilteredReorderedRowIds } = await loadModule(
-      "/src/features/databases/interactions/database-row-drag.ts"
-    )
+      "/src/features/databases/interactions/database-row-drag.ts",
+    );
 
     assert.deepEqual(
       getFilteredReorderedRowIds(
         rows(["A", "B", "C", "D", "E", "F"]),
         rows(["A", "D", "F"]),
         "F",
-        1
+        1,
       ),
-      ["A", "B", "C", "F", "D", "E"]
-    )
-  })
+      ["A", "B", "C", "F", "D", "E"],
+    );
+  });
 
   test("database table row drag reorders a visible subset after the previous visible anchor", async () => {
     const { getFilteredReorderedRowIds } = await loadModule(
-      "/src/features/databases/interactions/database-row-drag.ts"
-    )
+      "/src/features/databases/interactions/database-row-drag.ts",
+    );
 
     assert.deepEqual(
       getFilteredReorderedRowIds(
         rows(["A", "B", "C", "D", "E", "F"]),
         rows(["A", "D", "F"]),
         "D",
-        3
+        3,
       ),
-      ["A", "B", "C", "E", "F", "D"]
-    )
-  })
+      ["A", "B", "C", "E", "F", "D"],
+    );
+  });
 
   test("database table row drag keeps hidden rows in place when moving within a filtered gap", async () => {
     const { getFilteredReorderedRowIds } = await loadModule(
-      "/src/features/databases/interactions/database-row-drag.ts"
-    )
+      "/src/features/databases/interactions/database-row-drag.ts",
+    );
 
     assert.deepEqual(
       getFilteredReorderedRowIds(
         rows(["A", "B", "C", "D", "E", "F"]),
         rows(["A", "D", "F"]),
         "A",
-        2
+        2,
       ),
-      ["B", "C", "D", "E", "A", "F"]
-    )
-  })
+      ["B", "C", "D", "E", "A", "F"],
+    );
+  });
 
   test("database table row drag does not reorder hidden rows when the visible order is unchanged", async () => {
     const { getFilteredReorderedRowIds } = await loadModule(
-      "/src/features/databases/interactions/database-row-drag.ts"
-    )
+      "/src/features/databases/interactions/database-row-drag.ts",
+    );
 
     assert.equal(
       getFilteredReorderedRowIds(
         rows(["A", "B", "C", "D", "E", "F"]),
         rows(["A", "D", "F"]),
         "D",
-        2
+        2,
       ),
-      null
-    )
-  })
+      null,
+    );
+  });
 
   test("database table row drag reorders inside the dragged group", async () => {
     const { getGroupedReorderedRowIds } = await loadModule(
-      "/src/features/databases/interactions/database-row-drag.ts"
-    )
+      "/src/features/databases/interactions/database-row-drag.ts",
+    );
 
     assert.deepEqual(
       getGroupedReorderedRowIds({
@@ -104,14 +102,14 @@ export function register({ assert, loadModule, test }) {
         targetIndex: 3,
         visibleRows: rows(["A", "B", "C", "D", "E", "F"]),
       }),
-      ["A", "B", "C", "F", "D", "E"]
-    )
-  })
+      ["A", "B", "C", "F", "D", "E"],
+    );
+  });
 
   test("database table row drag rejects cross-group drops", async () => {
     const { getGroupedReorderedRowIds } = await loadModule(
-      "/src/features/databases/interactions/database-row-drag.ts"
-    )
+      "/src/features/databases/interactions/database-row-drag.ts",
+    );
 
     assert.equal(
       getGroupedReorderedRowIds({
@@ -121,34 +119,34 @@ export function register({ assert, loadModule, test }) {
         targetIndex: 1,
         visibleRows: rows(["A", "B", "C", "D", "E", "F"]),
       }),
-      null
-    )
-  })
+      null,
+    );
+  });
 
   test("database table row drag anchors cross-group moves into the target group", async () => {
     const { getAnchoredReorderedRowIds } = await loadModule(
-      "/src/features/databases/interactions/database-row-drag.ts"
-    )
+      "/src/features/databases/interactions/database-row-drag.ts",
+    );
 
     assert.deepEqual(
       getAnchoredReorderedRowIds(
         rows(["A", "B", "C", "D", "E", "F"]),
         "B",
         rows(["D", "E", "F"]),
-        1
+        1,
       ),
-      ["A", "C", "D", "B", "E", "F"]
-    )
-  })
+      ["A", "C", "D", "B", "E", "F"],
+    );
+  });
 
   test("database row imports resolve a visible drop point to its absolute position", async () => {
     const { getAnchoredRowInsertPosition } = await loadModule(
-      "/src/features/databases/interactions/database-row-drag.ts"
-    )
-    const allRows = rows(["A", "B", "C", "D", "E", "F"])
-    const visibleRows = rows(["A", "D", "F"])
+      "/src/features/databases/interactions/database-row-drag.ts",
+    );
+    const allRows = rows(["A", "B", "C", "D", "E", "F"]);
+    const visibleRows = rows(["A", "D", "F"]);
 
-    assert.equal(getAnchoredRowInsertPosition(allRows, visibleRows, 1), 3)
-    assert.equal(getAnchoredRowInsertPosition(allRows, visibleRows, 3), 6)
-  })
+    assert.equal(getAnchoredRowInsertPosition(allRows, visibleRows, 1), 3);
+    assert.equal(getAnchoredRowInsertPosition(allRows, visibleRows, 3), 6);
+  });
 }

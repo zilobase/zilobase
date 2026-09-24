@@ -1,30 +1,30 @@
-import { useEffect } from "react"
-import { DatabaseSetupCard } from "../../setup/components/database-setup-card"
-import { DatabaseViewProvider } from "../state/database-view-context"
-import { DatabaseViewSkeleton } from "./database-view-skeleton"
-import { DatabaseViewToolbar } from "./database-view-toolbar"
-import { DatabaseKanbanView } from "../kanban/components/database-kanban-view"
-import { DatabaseTableView } from "../table/components/database-table-view"
-import { DatabaseTimelineView } from "../timeline/components/database-timeline-view"
-import { DatabaseChartView } from "../chart/components/database-chart-view"
-import { DatabaseGalleryView } from "../gallery/components/database-gallery-view"
-import { DatabaseListView } from "../list/components/database-list-view"
-import { DatabaseFormView } from "../form/components/database-form-view"
+import { useEffect } from "react";
+import { DatabaseSetupCard } from "../../setup/components/database-setup-card";
+import { DatabaseViewProvider } from "../state/database-view-context";
+import { DatabaseViewSkeleton } from "./database-view-skeleton";
+import { DatabaseViewToolbar } from "./database-view-toolbar";
+import { DatabaseKanbanView } from "../kanban/components/database-kanban-view";
+import { DatabaseTableView } from "../table/components/database-table-view";
+import { DatabaseTimelineView } from "../timeline/components/database-timeline-view";
+import { DatabaseChartView } from "../chart/components/database-chart-view";
+import { DatabaseGalleryView } from "../gallery/components/database-gallery-view";
+import { DatabaseListView } from "../list/components/database-list-view";
+import { DatabaseFormView } from "../form/components/database-form-view";
 import {
   useDatabaseViewController,
   type DatabaseViewProps,
-} from "../controller/use-database-view-controller"
+} from "../controller/use-database-view-controller";
 
-export type { DatabaseViewProps }
+export type { DatabaseViewProps };
 
 function DatabaseViewContent({ viewType }: { viewType?: string }) {
-  if (viewType === "kanban") return <DatabaseKanbanView />
-  if (viewType === "timeline") return <DatabaseTimelineView />
-  if (viewType === "chart") return <DatabaseChartView />
-  if (viewType === "gallery") return <DatabaseGalleryView />
-  if (viewType === "list") return <DatabaseListView />
-  if (viewType === "form") return <DatabaseFormView />
-  return <DatabaseTableView />
+  if (viewType === "kanban") return <DatabaseKanbanView />;
+  if (viewType === "timeline") return <DatabaseTimelineView />;
+  if (viewType === "chart") return <DatabaseChartView />;
+  if (viewType === "gallery") return <DatabaseGalleryView />;
+  if (viewType === "list") return <DatabaseListView />;
+  if (viewType === "form") return <DatabaseFormView />;
+  return <DatabaseTableView />;
 }
 
 export function DatabaseView(props: DatabaseViewProps) {
@@ -49,24 +49,19 @@ export function DatabaseView(props: DatabaseViewProps) {
     setupMode,
     viewType,
     pageId,
-  } = useDatabaseViewController(props)
-  const hiddenDeletedDatabase =
-    databaseDeleted && props.hideWhenDeleted === true
+  } = useDatabaseViewController(props);
+  const hiddenDeletedDatabase = databaseDeleted && props.hideWhenDeleted === true;
 
   useEffect(() => {
-    if (hiddenDeletedDatabase) props.onDeleted?.()
-  }, [hiddenDeletedDatabase, props.onDeleted])
+    if (hiddenDeletedDatabase) props.onDeleted?.();
+  }, [hiddenDeletedDatabase, props.onDeleted]);
 
   if (hiddenDeletedDatabase) {
     return (
       <DatabaseViewProvider value={context}>
-        <div
-          className="hidden"
-          contentEditable={false}
-          data-database-deleted="true"
-        />
+        <div className="hidden" contentEditable={false} data-database-deleted="true" />
       </DatabaseViewProvider>
-    )
+    );
   }
 
   return (
@@ -94,9 +89,7 @@ export function DatabaseView(props: DatabaseViewProps) {
             ) : isError ? (
               <div className="database-empty-state">
                 <span>
-                  {error instanceof Error
-                    ? error.message
-                    : "This database is unavailable."}
+                  {error instanceof Error ? error.message : "This database is unavailable."}
                 </span>
               </div>
             ) : !viewData ? (
@@ -130,5 +123,5 @@ export function DatabaseView(props: DatabaseViewProps) {
         {sourcePropertyDialog}
       </div>
     </DatabaseViewProvider>
-  )
+  );
 }

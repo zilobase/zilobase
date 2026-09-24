@@ -24,11 +24,7 @@ export function ChatbotConversationController(props: ChatbotConversationInput) {
   } = useChatbotConversation(props);
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      <div
-        ref={rootRef}
-        data-ai-scroll-shell
-        className="min-h-0 flex-1 overflow-y-auto"
-      >
+      <div ref={rootRef} data-ai-scroll-shell className="min-h-0 flex-1 overflow-y-auto">
         <AgentChatLayout sidebar={isSidebar}>
           {!hasMessages && (
             <div className="mx-auto mb-6 grid w-full max-w-3xl justify-items-center gap-3 px-4 text-center">
@@ -44,19 +40,17 @@ export function ChatbotConversationController(props: ChatbotConversationInput) {
                 </p>
               </div>
               <div className="flex max-w-2xl flex-wrap justify-center gap-2">
-                {starterPrompts.map(
-                  (prompt) => (
-                    <Button
-                      key={prompt}
-                      onClick={() => setText(prompt)}
-                      size="sm"
-                      type="button"
-                      variant="outline"
-                    >
-                      {prompt}
-                    </Button>
-                  ),
-                )}
+                {starterPrompts.map((prompt) => (
+                  <Button
+                    key={prompt}
+                    onClick={() => setText(prompt)}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    {prompt}
+                  </Button>
+                ))}
               </div>
             </div>
           )}
@@ -84,8 +78,7 @@ export function ChatbotConversationController(props: ChatbotConversationInput) {
 
 function getGreeting(name?: string | null) {
   const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const firstName = name?.trim().split(/\s+/)[0];
   return firstName ? `${greeting}, ${firstName}` : greeting;
 }

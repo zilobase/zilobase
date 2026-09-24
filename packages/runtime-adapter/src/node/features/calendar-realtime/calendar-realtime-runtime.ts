@@ -18,11 +18,15 @@ export function attachNodeCalendarRealtimeRuntime(
   env: RuntimeEnv,
   options: { realtimeBus: NodeRealtimeBus },
 ) {
-  const runtime = attachNodeNotificationRuntime<CalendarRealtimeTicketClaims, CalendarNotificationEvent>(server, options.realtimeBus, {
+  const runtime = attachNodeNotificationRuntime<
+    CalendarRealtimeTicketClaims,
+    CalendarNotificationEvent
+  >(server, options.realtimeBus, {
     async authenticate(request) {
       const bindingId = new URL(request.url).searchParams.get("binding");
       const token = readTicket(request.headers);
-      if (!bindingId || !token) throw new Response("Missing calendar realtime ticket", { status: 401 });
+      if (!bindingId || !token)
+        throw new Response("Missing calendar realtime ticket", { status: 401 });
       const claims = await verifyCalendarRealtimeTicket(token, env);
       if (claims.bindingId !== bindingId) {
         throw new Response("Invalid calendar realtime ticket", { status: 403 });
@@ -31,18 +35,21 @@ export function attachNodeCalendarRealtimeRuntime(
     },
     channel: calendarRealtimeChannel,
     config: {
-      encode: (event) => JSON.stringify({
-        bindingId: event.bindingId,
-        calendarId: event.calendarId,
-        generation: event.generation,
-        revision: event.revision,
-        type: "calendar.invalidate",
-        workspaceId: event.workspaceId,
-      }),
+      encode: (event) =>
+        JSON.stringify({
+          bindingId: event.bindingId,
+          calendarId: event.calendarId,
+          generation: event.generation,
+          revision: event.revision,
+          type: "calendar.invalidate",
+          workspaceId: event.workspaceId,
+        }),
       errorReason: "Calendar realtime error",
       expiredReason: "Calendar realtime ticket expired",
-      matches: (claims, event) => claims.workspaceId === event.workspaceId &&
-        claims.userId === event.userId && claims.accountId === event.accountId,
+      matches: (claims, event) =>
+        claims.workspaceId === event.workspaceId &&
+        claims.userId === event.userId &&
+        claims.accountId === event.accountId,
       ping: PING,
       pong: PONG,
       validate: (value): value is CalendarNotificationEvent => isNotification(value),
@@ -64,17 +71,28 @@ export function attachNodeCalendarRealtimeRuntime(
 }
 
 function readTicket(headers: Headers) {
-  const protocols = (headers.get("sec-websocket-protocol") ?? "").split(",").map((value) => value.trim());
+  const protocols = (headers.get("sec-websocket-protocol") ?? "")
+    .split(",")
+    .map((value) => value.trim());
   if (!protocols.includes(CALENDAR_REALTIME_PROTOCOL)) return null;
-  return protocols.find((value) => value.startsWith(CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX))
-    ?.slice(CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX.length) ?? null;
+  return (
+    protocols
+      .find((value) => value.startsWith(CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX))
+      ?.slice(CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX.length) ?? null
+  );
 }
 
 function isNotification(value: unknown): value is CalendarNotificationEvent {
   if (!value || typeof value !== "object") return false;
   const event = value as Record<string, unknown>;
-  return typeof event.bindingId === "string" && typeof event.accountId === "string" &&
-    typeof event.calendarId === "string" && typeof event.userId === "string" &&
-    typeof event.workspaceId === "string" && Number.isSafeInteger(event.generation) &&
-    Number.isSafeInteger(event.revision) && (event.revision as number) >= 0;
+  return (
+    typeof event.bindingId === "string" &&
+    typeof event.accountId === "string" &&
+    typeof event.calendarId === "string" &&
+    typeof event.userId === "string" &&
+    typeof event.workspaceId === "string" &&
+    Number.isSafeInteger(event.generation) &&
+    Number.isSafeInteger(event.revision) &&
+    (event.revision as number) >= 0
+  );
 }

@@ -1,9 +1,9 @@
-import * as React from "react"
-import { Popover as PopoverPrimitive } from "radix-ui"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { Popover as PopoverPrimitive } from "radix-ui";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@/shared/lib/utils"
-import { menuSurfaceVariants, menuViewportClassName } from "@/shared/ui/menu-styles"
+import { cn } from "@/shared/lib/utils";
+import { menuSurfaceVariants, menuViewportClassName } from "@/shared/ui/menu-styles";
 
 const popoverContentVariants = cva(
   "z-50 flex origin-(--radix-popover-content-transform-origin) flex-col rounded-lg bg-surface-overlay text-xs text-content-primary shadow-md ring-1 ring-stroke-default outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
@@ -40,21 +40,17 @@ const popoverContentVariants = cva(
       variant: "default",
     },
   },
-)
+);
 
 const wideMenuViewportClassName =
-  "max-h-[min(36rem,calc(100vh-1rem),var(--radix-popover-content-available-height,100vh))] max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto overscroll-contain"
+  "max-h-[min(36rem,calc(100vh-1rem),var(--radix-popover-content-available-height,100vh))] max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto overscroll-contain";
 
-function Popover({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Root>) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />
+function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
+  return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
 
-function PopoverTrigger({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
+function PopoverTrigger({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Trigger>) {
+  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
 function PopoverContent({
@@ -69,10 +65,10 @@ function PopoverContent({
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content> &
   VariantProps<typeof popoverContentVariants> & {
-    viewport?: "menu" | "wide"
+    viewport?: "menu" | "wide";
   }) {
-  const resolvedPadding = padding ?? (variant === "menu" ? "menu" : "default")
-  const resolvedGap = gap ?? (variant === "menu" ? "none" : "default")
+  const resolvedPadding = padding ?? (variant === "menu" ? "menu" : "default");
+  const resolvedGap = gap ?? (variant === "menu" ? "none" : "default");
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -91,18 +87,16 @@ function PopoverContent({
             menuSurfaceVariants(),
             viewport === "wide" ? wideMenuViewportClassName : menuViewportClassName,
           ],
-          className
+          className,
         )}
         {...props}
       />
     </PopoverPrimitive.Portal>
-  )
+  );
 }
 
-function PopoverAnchor({
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
-  return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />
+function PopoverAnchor({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
+  return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
 }
 
 function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
@@ -112,30 +106,23 @@ function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
       className={cn("flex flex-col gap-1 text-xs", className)}
       {...props}
     />
-  )
+  );
 }
 
 function PopoverTitle({ className, ...props }: React.ComponentProps<"h2">) {
   return (
-    <div
-      data-slot="popover-title"
-      className={cn("text-sm font-medium", className)}
-      {...props}
-    />
-  )
+    <div data-slot="popover-title" className={cn("text-sm font-medium", className)} {...props} />
+  );
 }
 
-function PopoverDescription({
-  className,
-  ...props
-}: React.ComponentProps<"p">) {
+function PopoverDescription({ className, ...props }: React.ComponentProps<"p">) {
   return (
     <p
       data-slot="popover-description"
       className={cn("text-content-secondary", className)}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -146,4 +133,4 @@ export {
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
-}
+};

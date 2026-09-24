@@ -1,26 +1,18 @@
-import { Node, mergeAttributes } from "@tiptap/core"
-import {
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-  type ReactNodeViewProps,
-} from "@tiptap/react"
-import { Globe2 } from "@/shared/components/icons"
-import { useState } from "react"
+import { Node, mergeAttributes } from "@tiptap/core";
+import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
+import { Globe2 } from "@/shared/components/icons";
+import { useState } from "react";
 
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/shared/ui/hover-card"
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/shared/ui/hover-card";
 
 function LinkMentionView({ node }: ReactNodeViewProps) {
-  const [faviconFailed, setFaviconFailed] = useState(false)
-  const href = node.attrs.href as string
-  const title = (node.attrs.title as string | null) ?? href
-  const description = node.attrs.description as string | null
-  const favicon = node.attrs.favicon as string | null
-  const image = node.attrs.image as string | null
-  const host = getUrlHost(href) ?? href
+  const [faviconFailed, setFaviconFailed] = useState(false);
+  const href = node.attrs.href as string;
+  const title = (node.attrs.title as string | null) ?? href;
+  const description = node.attrs.description as string | null;
+  const favicon = node.attrs.favicon as string | null;
+  const image = node.attrs.image as string | null;
+  const host = getUrlHost(href) ?? href;
 
   const renderFavicon = () =>
     favicon && !faviconFailed ? (
@@ -34,7 +26,7 @@ function LinkMentionView({ node }: ReactNodeViewProps) {
       <span className="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-surface-canvas text-content-secondary [&_svg]:size-3">
         <Globe2 />
       </span>
-    )
+    );
 
   return (
     <NodeViewWrapper
@@ -82,14 +74,14 @@ function LinkMentionView({ node }: ReactNodeViewProps) {
         </HoverCardContent>
       </HoverCard>
     </NodeViewWrapper>
-  )
+  );
 }
 
 function getUrlHost(value: string) {
   try {
-    return new URL(value).hostname.replace(/^www\./, "")
+    return new URL(value).hostname.replace(/^www\./, "");
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -121,7 +113,7 @@ export const LinkMention = Node.create({
       title: {
         default: null,
       },
-    }
+    };
   },
 
   parseHTML() {
@@ -129,17 +121,14 @@ export const LinkMention = Node.create({
       {
         tag: 'span[data-type="linkMention"]',
       },
-    ]
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      "span",
-      mergeAttributes(HTMLAttributes, { "data-type": "linkMention" }),
-    ]
+    return ["span", mergeAttributes(HTMLAttributes, { "data-type": "linkMention" })];
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(LinkMentionView)
+    return ReactNodeViewRenderer(LinkMentionView);
   },
-})
+});

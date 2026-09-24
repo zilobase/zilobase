@@ -35,9 +35,7 @@ it.each([
   [
     "connectors",
     {
-      connectors: [
-        { connectionId: "github", alwaysAllowEnabled: false, tools: [] },
-      ],
+      connectors: [{ connectionId: "github", alwaysAllowEnabled: false, tools: [] }],
     },
   ],
   [
@@ -57,26 +55,25 @@ it.each([
   [
     "access",
     {
-      resources: [
-        { resourceType: "page", resourceId: "page", accessLevel: "view" },
-      ],
+      resources: [{ resourceType: "page", resourceId: "page", accessLevel: "view" }],
     },
   ],
-])(
-  "validates and stages a %s proposal using the current draft revision",
-  async (tab, patch) => {
-    mocks.generate.mockResolvedValue({
-      output: { tab, summary: "Prepared", patchJson: JSON.stringify(patch) },
-    });
-    await proposeSettings(actor, "Make this change");
-    expect(mocks.update).toHaveBeenCalledWith(actor, {
+])("validates and stages a %s proposal using the current draft revision", async (tab, patch) => {
+  mocks.generate.mockResolvedValue({
+    output: { tab, summary: "Prepared", patchJson: JSON.stringify(patch) },
+  });
+  await proposeSettings(actor, "Make this change");
+  expect(mocks.update).toHaveBeenCalledWith(
+    actor,
+    {
       patch,
       origin: "ai",
       baseVersion: 3,
       draftVersion: 7,
-    }, undefined);
-  },
-);
+    },
+    undefined,
+  );
+});
 it("rejects malformed model output without updating a draft", async () => {
   mocks.generate.mockResolvedValue({
     output: {
@@ -91,15 +88,9 @@ it("rejects malformed model output without updating a draft", async () => {
 it("binds personal draft operations to the streaming database scope", async () => {
   const events: unknown[] = [];
   const withDb = vi.fn(async (fn: () => Promise<unknown>) => fn());
-  const tools = buildSettingsTools(
-    actor,
-    (e) => events.push(e),
-    withDb as never,
-  ) as any;
+  const tools = buildSettingsTools(actor, (e) => events.push(e), withDb as never) as any;
   tools.proposeAgentSettings.onInputStart();
-  expect(events).toEqual([
-    { scope: "agent", tab: "instructions", status: "editing" },
-  ]);
+  expect(events).toEqual([{ scope: "agent", tab: "instructions", status: "editing" }]);
   await tools.readAgentSettings.execute();
   await tools.proposeAgentSettings.execute({
     patchJson: '{"instructions":"Be concise"}',
@@ -112,19 +103,14 @@ it("binds personal draft operations to the streaming database scope", async () =
   expect(events.at(-1)).toMatchObject({ status: "ready" });
 });
 
-it.each(["defaultModel", "responseStyle"])(
-  "rejects the removed %s setting",
-  async (field) => {
-    mocks.generate.mockResolvedValue({
-      output: {
-        tab: "instructions",
-        summary: "Prepared",
-        patchJson: JSON.stringify({ [field]: "auto" }),
-      },
-    });
-    await expect(
-      proposeSettings(actor, "Change a removed setting"),
-    ).rejects.toThrow();
-    expect(mocks.update).not.toHaveBeenCalled();
-  },
-);
+it.each(["defaultModel", "responseStyle"])("rejects the removed %s setting", async (field) => {
+  mocks.generate.mockResolvedValue({
+    output: {
+      tab: "instructions",
+      summary: "Prepared",
+      patchJson: JSON.stringify({ [field]: "auto" }),
+    },
+  });
+  await expect(proposeSettings(actor, "Change a removed setting")).rejects.toThrow();
+  expect(mocks.update).not.toHaveBeenCalled();
+});

@@ -1,7 +1,4 @@
-import type {
-  AgentSettingsDefinition,
-  McpToolPolicy,
-} from "@zilobase/features/ai-chat";
+import type { AgentSettingsDefinition, McpToolPolicy } from "@zilobase/features/ai-chat";
 type DraftTool = AgentSettingsDefinition["connectors"][number]["tools"][number];
 
 export function changeDraftToolPolicy(
@@ -22,10 +19,7 @@ export function changeDraftToolPolicy(
   ];
 }
 
-export function savedToolPolicy(
-  tool: McpToolPolicy,
-  changes: Partial<McpToolPolicy>,
-) {
+export function savedToolPolicy(tool: McpToolPolicy, changes: Partial<McpToolPolicy>) {
   return {
     classification: changes.classification ?? tool.classification,
     enabled: changes.enabled ?? tool.enabled,
@@ -43,19 +37,13 @@ export function canEditMcpToolPolicy(
 }
 
 export function isConnectorDraftChanged(
-  review:
-    | import("@zilobase/features/ai-chat").AgentSettingsReview
-    | null
-    | undefined,
+  review: import("@zilobase/features/ai-chat").AgentSettingsReview | null | undefined,
   connectionId: string,
   selected: AgentSettingsDefinition["connectors"][number] | undefined,
 ) {
   if (!review?.fields.includes("connectors")) return undefined;
   return (
-    JSON.stringify(
-      review.before.connectors.find(
-        (item) => item.connectionId === connectionId,
-      ),
-    ) !== JSON.stringify(selected) || undefined
+    JSON.stringify(review.before.connectors.find((item) => item.connectionId === connectionId)) !==
+      JSON.stringify(selected) || undefined
   );
 }

@@ -8,9 +8,7 @@ import type { AppBindings } from "../shared/types";
 import type { ZilobaseEditionExtension } from "../shared/types";
 
 test("createApp registers every public feature route group", () => {
-  const routes = createApp({ ports: {} }).routes.map(
-    ({ method, path }) => `${method} ${path}`,
-  );
+  const routes = createApp({ ports: {} }).routes.map(({ method, path }) => `${method} ${path}`);
 
   for (const expected of [
     "GET /.well-known/zilobase",
@@ -76,9 +74,7 @@ test("createApp keeps global middleware ahead of feature routes", () => {
 });
 
 test("createApp maps domain HTTP errors instead of a generic 500", async () => {
-  const { ServiceMutationError } = await import(
-    "../shared/errors/service-mutation-error"
-  );
+  const { ServiceMutationError } = await import("../shared/errors/service-mutation-error");
   const app = new Hono<AppBindings>();
   app.use("*", async (c, next) => {
     c.set("requestId", "request-http");
@@ -133,8 +129,7 @@ test("createApp registers a compile-time edition after public routes", () => {
 
   assert.ok(routes.includes("GET /api/edition/example"));
   assert.ok(
-    routes.indexOf("GET /api/edition/example") >
-      routes.indexOf("GET /.well-known/zilobase"),
+    routes.indexOf("GET /api/edition/example") > routes.indexOf("GET /.well-known/zilobase"),
   );
 });
 
@@ -142,7 +137,9 @@ function createTestEditionExtension(): ZilobaseEditionExtension {
   return {
     id: "test-edition",
     capabilities: ["custom-auth"],
-    async createAuthPlugins() { return []; },
+    async createAuthPlugins() {
+      return [];
+    },
     async beforeMembershipGrant() {},
     async recordSecurityEvent() {},
     registerRoutes(app) {

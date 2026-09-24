@@ -1,7 +1,4 @@
-export {
-  getDatabaseAutomation,
-  listDatabaseAutomations,
-} from "./definition/definition-read";
+export { getDatabaseAutomation, listDatabaseAutomations } from "./definition/definition-read";
 export { exportDatabaseAutomationAudit } from "./history/audit-export";
 export { validateDatabaseAutomation } from "./definition/definition-validation";
 export {

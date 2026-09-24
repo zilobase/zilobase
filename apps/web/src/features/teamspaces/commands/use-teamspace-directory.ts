@@ -1,7 +1,4 @@
-import {
-  isTeamspaceSettingsTab,
-  type TeamspaceSettingsTab,
-} from "../model/teamspace-settings";
+import { isTeamspaceSettingsTab, type TeamspaceSettingsTab } from "../model/teamspace-settings";
 import { useEffect, useMemo, useState } from "react";
 
 import { useLocation, useNavigate } from "@tanstack/react-router";
@@ -11,10 +8,7 @@ import { getApiErrorMessage } from "@/platform/network/api";
 
 import { filterTeamspaces } from "../model/teamspace-filters";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
-import {
-  type Teamspace,
-  type TeamspaceAccessMode,
-} from "@zilobase/features/teamspaces";
+import { type Teamspace, type TeamspaceAccessMode } from "@zilobase/features/teamspaces";
 import {
   useAcceptTeamspaceInvite,
   useArchivedTeamspaces,
@@ -40,13 +34,10 @@ export function useTeamspaceDirectory() {
   const acceptInvite = useAcceptTeamspaceInvite();
   const [createOpen, setCreateOpen] = useState(false);
   const [selected, setSelected] = useState<Teamspace | null>(null);
-  const [selectedTab, setSelectedTab] =
-    useState<TeamspaceSettingsTab>("general");
+  const [selectedTab, setSelectedTab] = useState<TeamspaceSettingsTab>("general");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
-  const [accessFilter, setAccessFilter] = useState<"all" | TeamspaceAccessMode>(
-    "all",
-  );
+  const [accessFilter, setAccessFilter] = useState<"all" | TeamspaceAccessMode>("all");
   const [membershipFilter, setMembershipFilter] = useState<
     "all" | "joined" | "available" | "ownerless"
   >("all");
@@ -61,13 +52,10 @@ export function useTeamspaceDirectory() {
   );
   const routeSearch = location.search as Record<string, unknown>;
   const requestedTeamspaceId =
-    location.pathname === "/settings/teamspaces" &&
-    typeof routeSearch.teamspace === "string"
+    location.pathname === "/settings/teamspaces" && typeof routeSearch.teamspace === "string"
       ? routeSearch.teamspace
       : null;
-  const requestedTab = isTeamspaceSettingsTab(routeSearch.tab)
-    ? routeSearch.tab
-    : "general";
+  const requestedTab = isTeamspaceSettingsTab(routeSearch.tab) ? routeSearch.tab : "general";
 
   useEffect(() => {
     if (!requestedTeamspaceId) return;
@@ -111,12 +99,9 @@ export function useTeamspaceDirectory() {
   };
 
   useEffect(() => {
-    if (!workspaceId || acceptInvite.isPending || acceptInvite.isSuccess)
-      return;
+    if (!workspaceId || acceptInvite.isPending || acceptInvite.isSuccess) return;
     const token = new URLSearchParams(window.location.search).get("invite");
-    const inviteWorkspaceId = new URLSearchParams(window.location.search).get(
-      "workspace",
-    );
+    const inviteWorkspaceId = new URLSearchParams(window.location.search).get("workspace");
     if (!token || inviteWorkspaceId !== workspaceId) return;
     acceptInvite.mutate(
       { token, workspaceId },

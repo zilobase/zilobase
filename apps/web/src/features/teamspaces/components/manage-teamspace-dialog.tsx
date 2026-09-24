@@ -17,13 +17,7 @@ import { Input } from "@/shared/ui/input";
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
 import { Label } from "@/shared/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 import { Textarea } from "@/shared/ui/textarea";
@@ -31,10 +25,7 @@ import { Switch } from "@/shared/ui/switch";
 import { getApiErrorMessage } from "@/platform/network/api";
 import { PageIconDisplay } from "@/features/pages/index";
 
-import {
-  type Teamspace,
-  type TeamspaceAccessMode,
-} from "@zilobase/features/teamspaces";
+import { type Teamspace, type TeamspaceAccessMode } from "@zilobase/features/teamspaces";
 
 import { type TeamspaceSettingsTab } from "../model/teamspace-settings";
 export function ManageTeamspaceDialog({
@@ -174,9 +165,7 @@ function PermissionSelect({
       <Label>{label}</Label>
       <Select
         onValueChange={(value) =>
-          onChange(
-            value as typeof value & ("view" | "comment" | "edit" | "full"),
-          )
+          onChange(value as typeof value & ("view" | "comment" | "edit" | "full"))
         }
         value={value}
       >
@@ -207,9 +196,7 @@ function PolicySelect({
     <div className="flex items-center justify-between gap-4">
       <Label>{label}</Label>
       <Select
-        onValueChange={(value) =>
-          onChange(value as "owners" | "owners_and_members")
-        }
+        onValueChange={(value) => onChange(value as "owners" | "owners_and_members")}
         value={value}
       >
         <SelectTrigger aria-label={label} className="w-48">
@@ -246,12 +233,7 @@ function SecurityToggle({
   );
 }
 
-function TeamspaceGeneralSettings({
-  teamspace,
-  workspaceId,
-  onOpenChange,
-  state,
-}: SettingsProps) {
+function TeamspaceGeneralSettings({ teamspace, workspaceId, onOpenChange, state }: SettingsProps) {
   const {
     name,
     setName,
@@ -274,19 +256,12 @@ function TeamspaceGeneralSettings({
           <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
             <PopoverTrigger asChild>
               <Button className="justify-start" type="button" variant="outline">
-                {icon ? (
-                  <PageIconDisplay size="sm" value={icon} />
-                ) : (
-                  <Layers3Icon />
-                )}
+                {icon ? <PageIconDisplay size="sm" value={icon} /> : <Layers3Icon />}
                 <span>{icon ? "Change icon" : "Add icon"}</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-auto p-0">
-              <IconEmojiPicker
-                onEmojiSelect={selectIcon}
-                onIconSelect={selectIcon}
-              />
+              <IconEmojiPicker onEmojiSelect={selectIcon} onIconSelect={selectIcon} />
             </PopoverContent>
           </Popover>
           {icon ? (
@@ -368,12 +343,7 @@ function TeamspaceGeneralSettings({
   );
 }
 
-function TeamspaceMemberSettings({
-  teamspace,
-  canInvite,
-  canManage,
-  state,
-}: SettingsProps) {
+function TeamspaceMemberSettings({ teamspace, canInvite, canManage, state }: SettingsProps) {
   const {
     candidateId,
     setCandidateId,
@@ -389,15 +359,8 @@ function TeamspaceMemberSettings({
   return (
     <TabsContent className="grid gap-4 pt-4" value="members">
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Select
-          disabled={!canInvite}
-          onValueChange={setCandidateId}
-          value={candidateId}
-        >
-          <SelectTrigger
-            aria-label="Workspace member or sharing group"
-            className="flex-1"
-          >
+        <Select disabled={!canInvite} onValueChange={setCandidateId} value={candidateId}>
+          <SelectTrigger aria-label="Workspace member or sharing group" className="flex-1">
             <SelectValue placeholder="Select a workspace member or group" />
           </SelectTrigger>
           <SelectContent>
@@ -411,28 +374,20 @@ function TeamspaceMemberSettings({
             ))}
           </SelectContent>
         </Select>
-        <Button
-          disabled={!canInvite || !candidateId || addPending}
-          onClick={addCandidate}
-        >
+        <Button disabled={!canInvite || !candidateId || addPending} onClick={addCandidate}>
           <UsersIcon />
           Add
         </Button>
       </div>
       <div className="divide-y rounded-md border">
         {principals.map((principal) => (
-          <div
-            className="flex flex-wrap items-center gap-3 p-3"
-            key={principal.id}
-          >
+          <div className="flex flex-wrap items-center gap-3 p-3" key={principal.id}>
             <div className="min-w-48 flex-1">
               <div className="truncate text-sm font-medium">
                 {principal.name || principal.email || principal.principalId}
               </div>
               <div className="truncate text-xs text-content-secondary">
-                {principal.principalType === "team"
-                  ? "Sharing group"
-                  : principal.email}
+                {principal.principalType === "team" ? "Sharing group" : principal.email}
               </div>
             </div>
             <Select
@@ -442,11 +397,7 @@ function TeamspaceMemberSettings({
                   accessLevelOverride:
                     accessLevelOverride === "default"
                       ? null
-                      : (accessLevelOverride as
-                          | "view"
-                          | "comment"
-                          | "edit"
-                          | "full"),
+                      : (accessLevelOverride as "view" | "comment" | "edit" | "full"),
                   principalId: principal.id,
                   role: principal.role,
                 })

@@ -239,21 +239,12 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
     url: "#",
     workspaceId: "workspace-1",
   });
-  assert.equal(
-    Buffer.isBuffer((inserts[1] as Record<string, unknown>).state),
-    true,
-  );
+  assert.equal(Buffer.isBuffer((inserts[1] as Record<string, unknown>).state), true);
   assert.equal("position" in (inserts[2] as Record<string, unknown>), false);
   assert.equal((inserts[2] as Record<string, unknown>).orderKey, "1536");
-  assert.equal(
-    (inserts[2] as Record<string, unknown>).parentRowId,
-    "parent-row",
-  );
+  assert.equal((inserts[2] as Record<string, unknown>).parentRowId, "parent-row");
   assert.equal(Array.isArray(inserts[3]), true);
-  assert.deepEqual(
-    (inserts[3] as Array<Record<string, unknown>>)[0]?.value,
-    "Todo",
-  );
+  assert.deepEqual((inserts[3] as Array<Record<string, unknown>>)[0]?.value, "Todo");
   assert.deepEqual(mocks.placement.mock.calls[0], [
     tx,
     {
@@ -274,12 +265,14 @@ test("createDatabaseRowService creates a page, row, placement, and status value"
     env: { ENV: "test" },
   });
   const changes = (await mocks.commit.mock.results[0]?.value)?.changes;
-  assert.deepEqual(changes.records, [{
-    id: "new-row",
-    valuesByPropertyId: {
-      "status-property": { value: "Todo" },
+  assert.deepEqual(changes.records, [
+    {
+      id: "new-row",
+      valuesByPropertyId: {
+        "status-property": { value: "Todo" },
+      },
     },
-  }]);
+  ]);
 });
 
 test("createDatabaseRowService attaches an editable existing page", async () => {
@@ -297,9 +290,7 @@ test("createDatabaseRowService attaches an editable existing page", async () => 
     [],
     [],
   );
-  vi.spyOn(crypto, "randomUUID").mockReturnValue(
-    "00000000-0000-4000-8000-000000000001",
-  );
+  vi.spyOn(crypto, "randomUUID").mockReturnValue("00000000-0000-4000-8000-000000000001");
 
   const result = await createDatabaseRowService({
     databaseId: "database-1",
@@ -309,11 +300,7 @@ test("createDatabaseRowService attaches an editable existing page", async () => 
 
   assert.equal(result.rowPageId, "existing-page");
   assert.equal(result.title, "Existing task");
-  assert.deepEqual(mocks.canAccessPage.mock.calls[0], [
-    "existing-page",
-    "user-1",
-    "edit",
-  ]);
+  assert.deepEqual(mocks.canAccessPage.mock.calls[0], ["existing-page", "user-1", "edit"]);
   assert.deepEqual(updates[0], {
     metadata: { icon: "check" },
     updatedAt: (updates[0] as Record<string, unknown>).updatedAt,
@@ -322,12 +309,14 @@ test("createDatabaseRowService attaches an editable existing page", async () => 
   assert.equal((inserts[0] as Record<string, unknown>).pageId, "existing-page");
   assert.deepEqual(mocks.commit.mock.calls[0]?.[0].areas, ["records"]);
   assert.deepEqual((await mocks.commit.mock.results[0]?.value)?.changes, {
-    records: [{
-      id: "new-row",
-      valuesByPropertyId: {
-        "status-property": { value: "Todo" },
+    records: [
+      {
+        id: "new-row",
+        valuesByPropertyId: {
+          "status-property": { value: "Todo" },
+        },
       },
-    }],
+    ],
   });
 });
 
@@ -362,8 +351,7 @@ test("createDatabaseRowService rejects host, missing, and forbidden pages", asyn
       pageId: "host-page",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 400,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 400,
   );
 
   mocks.selectResults.push([], []);
@@ -373,8 +361,7 @@ test("createDatabaseRowService rejects host, missing, and forbidden pages", asyn
       pageId: "missing-page",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
 
   mocks.canAccessPage.mockResolvedValue(false);
@@ -395,8 +382,7 @@ test("createDatabaseRowService rejects host, missing, and forbidden pages", asyn
       pageId: "page-1",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 403,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 403,
   );
   assert.equal(mocks.commit.mock.calls.length, 0);
 });
@@ -420,8 +406,7 @@ test("createDatabaseRowService rejects duplicate pages", async () => {
       pageId: "page-1",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 409,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 409,
   );
   assert.equal(mocks.commit.mock.calls.length, 0);
 });
@@ -456,19 +441,17 @@ test("createDatabaseRowService imports source properties and values", async () =
     userId: "user-1",
   });
 
-  assert.deepEqual(mocks.sourceAccess.mock.calls[0], [
-    "database-source",
-    "user-1",
-    "edit",
-  ]);
+  assert.deepEqual(mocks.sourceAccess.mock.calls[0], ["database-source", "user-1", "edit"]);
   assert.equal(mocks.inherit.mock.calls[0]?.[0].sourcePropertyMode, "match");
   assert.equal(mocks.batch.mock.calls.length, 1);
   assert.deepEqual(result.commit.changes.properties, [{ id: "column-imported" }]);
-  assert.deepEqual(result.commit.changes.records, [{
-    id: "new-row",
-    valuesByPropertyId: {
-      "status-property": { value: "Todo" },
+  assert.deepEqual(result.commit.changes.records, [
+    {
+      id: "new-row",
+      valuesByPropertyId: {
+        "status-property": { value: "Todo" },
+      },
     },
-  }]);
+  ]);
   assert.deepEqual(result.sourceCommit?.changes.removedRecordIds, ["source-row"]);
 });

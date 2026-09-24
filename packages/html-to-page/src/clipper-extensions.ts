@@ -1,14 +1,14 @@
-import { Node, mergeAttributes } from "@tiptap/core"
-import Link from "@tiptap/extension-link"
-import { Table } from "@tiptap/extension-table"
-import { TableCell } from "@tiptap/extension-table-cell"
-import { TableHeader } from "@tiptap/extension-table-header"
-import { TableRow } from "@tiptap/extension-table-row"
-import TaskItem from "@tiptap/extension-task-item"
-import TaskList from "@tiptap/extension-task-list"
-import StarterKit from "@tiptap/starter-kit"
+import { Node, mergeAttributes } from "@tiptap/core";
+import Link from "@tiptap/extension-link";
+import { Table } from "@tiptap/extension-table";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableRow } from "@tiptap/extension-table-row";
+import TaskItem from "@tiptap/extension-task-item";
+import TaskList from "@tiptap/extension-task-list";
+import StarterKit from "@tiptap/starter-kit";
 
-import { isAllowedEmbedSrc, isAllowedHttpUrl, isAllowedImageUrl } from "./safe-url"
+import { isAllowedEmbedSrc, isAllowedHttpUrl, isAllowedImageUrl } from "./safe-url";
 
 const ClipperImageBlock = Node.create({
   name: "imageBlock",
@@ -20,7 +20,7 @@ const ClipperImageBlock = Node.create({
       alt: { default: null },
       title: { default: null },
       width: { default: null },
-    }
+    };
   },
   parseHTML() {
     return [
@@ -28,22 +28,22 @@ const ClipperImageBlock = Node.create({
       {
         tag: "img[src]",
         getAttrs: (element) => {
-          if (!isElement(element)) return false
-          const src = element.getAttribute("src")
-          if (!isAllowedImageUrl(src)) return false
+          if (!isElement(element)) return false;
+          const src = element.getAttribute("src");
+          if (!isAllowedImageUrl(src)) return false;
           return {
             src,
             alt: element.getAttribute("alt"),
             title: element.getAttribute("title"),
-          }
+          };
         },
       },
-    ]
+    ];
   },
   renderHTML({ HTMLAttributes }) {
-    return ["img", mergeAttributes(HTMLAttributes, { "data-type": "imageBlock" })]
+    return ["img", mergeAttributes(HTMLAttributes, { "data-type": "imageBlock" })];
   },
-})
+});
 
 const ClipperVideoBlock = Node.create({
   name: "videoBlock",
@@ -53,7 +53,7 @@ const ClipperVideoBlock = Node.create({
     return {
       src: { default: null },
       title: { default: null },
-    }
+    };
   },
   parseHTML() {
     return [
@@ -61,18 +61,18 @@ const ClipperVideoBlock = Node.create({
       {
         tag: "video[src]",
         getAttrs: (element) => {
-          if (!isElement(element)) return false
-          const src = element.getAttribute("src")
-          if (!isAllowedHttpUrl(src)) return false
-          return { src, title: element.getAttribute("title") }
+          if (!isElement(element)) return false;
+          const src = element.getAttribute("src");
+          if (!isAllowedHttpUrl(src)) return false;
+          return { src, title: element.getAttribute("title") };
         },
       },
-    ]
+    ];
   },
   renderHTML({ HTMLAttributes }) {
-    return ["video", mergeAttributes(HTMLAttributes, { "data-type": "videoBlock" })]
+    return ["video", mergeAttributes(HTMLAttributes, { "data-type": "videoBlock" })];
   },
-})
+});
 
 const ClipperEmbedBlock = Node.create({
   name: "embedBlock",
@@ -84,7 +84,7 @@ const ClipperEmbedBlock = Node.create({
       title: { default: null },
       provider: { default: null },
       width: { default: null },
-    }
+    };
   },
   parseHTML() {
     return [
@@ -93,22 +93,22 @@ const ClipperEmbedBlock = Node.create({
         tag: "iframe",
         priority: 60,
         getAttrs: (element) => {
-          if (!isElement(element)) return false
-          const src = element.getAttribute("src")
-          if (!isAllowedEmbedSrc(src)) return false
+          if (!isElement(element)) return false;
+          const src = element.getAttribute("src");
+          if (!isAllowedEmbedSrc(src)) return false;
           return {
             src,
             title: element.getAttribute("title"),
             provider: embedProvider(src),
-          }
+          };
         },
       },
-    ]
+    ];
   },
   renderHTML({ HTMLAttributes }) {
-    return ["iframe", mergeAttributes(HTMLAttributes, { "data-type": "embedBlock" })]
+    return ["iframe", mergeAttributes(HTMLAttributes, { "data-type": "embedBlock" })];
   },
-})
+});
 
 const ClipperBookmarkBlock = Node.create({
   name: "bookmarkBlock",
@@ -121,34 +121,34 @@ const ClipperBookmarkBlock = Node.create({
       description: { default: null },
       favicon: { default: null },
       image: { default: null },
-    }
+    };
   },
   parseHTML() {
-    return [{ tag: 'div[data-type="bookmarkBlock"]' }]
+    return [{ tag: 'div[data-type="bookmarkBlock"]' }];
   },
   renderHTML({ HTMLAttributes }) {
-    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "bookmarkBlock" })]
+    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "bookmarkBlock" })];
   },
-})
+});
 
 function isElement(value: unknown): value is Element {
   return Boolean(
     value &&
-      typeof value === "object" &&
-      "getAttribute" in value &&
-      typeof value.getAttribute === "function",
-  )
+    typeof value === "object" &&
+    "getAttribute" in value &&
+    typeof value.getAttribute === "function",
+  );
 }
 
 function embedProvider(src: string | null) {
-  if (!src) return null
+  if (!src) return null;
   try {
-    const host = new URL(src).hostname.replace(/^www\./, "")
-    if (host === "youtube.com" || host === "youtube-nocookie.com") return "youtube"
-    if (host === "vimeo.com" || host === "player.vimeo.com") return null
-    return null
+    const host = new URL(src).hostname.replace(/^www\./, "");
+    if (host === "youtube.com" || host === "youtube-nocookie.com") return "youtube";
+    if (host === "vimeo.com" || host === "player.vimeo.com") return null;
+    return null;
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -165,4 +165,4 @@ export const clipperExtensions = [
   ClipperVideoBlock,
   ClipperEmbedBlock,
   ClipperBookmarkBlock,
-]
+];

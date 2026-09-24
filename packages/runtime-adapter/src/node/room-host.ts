@@ -24,12 +24,20 @@ export type NodeRoomHost<Attachment = unknown> = RoomHost<Attachment> & {
 
 export function createNodeRoomHost<Attachment = unknown>(): NodeRoomHost<Attachment> {
   const peers = new Set<NodeRoomPeer<Attachment>>();
-  const messageHandlers = new Set<(peer: RoomPeer<Attachment>, message: RoomMessage) => void | Promise<void>>();
-  const closeHandlers = new Set<(peer: RoomPeer<Attachment>, event: RoomClose) => void | Promise<void>>();
-  const errorHandlers = new Set<(peer: RoomPeer<Attachment>, error: unknown) => void | Promise<void>>();
+  const messageHandlers = new Set<
+    (peer: RoomPeer<Attachment>, message: RoomMessage) => void | Promise<void>
+  >();
+  const closeHandlers = new Set<
+    (peer: RoomPeer<Attachment>, event: RoomClose) => void | Promise<void>
+  >();
+  const errorHandlers = new Set<
+    (peer: RoomPeer<Attachment>, error: unknown) => void | Promise<void>
+  >();
   const subscribe = <T>(set: Set<T>, handler: T): Unsubscribe => {
     set.add(handler);
-    return () => { set.delete(handler); };
+    return () => {
+      set.delete(handler);
+    };
   };
   return {
     connect(id, request, socket) {
@@ -39,7 +47,9 @@ export function createNodeRoomHost<Attachment = unknown>(): NodeRoomHost<Attachm
         request,
         socket,
         getAttachment: () => attachment,
-        setAttachment: (value) => { attachment = value; },
+        setAttachment: (value) => {
+          attachment = value;
+        },
       };
       peers.add(peer);
       return peer;

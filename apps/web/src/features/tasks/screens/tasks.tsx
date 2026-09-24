@@ -1,17 +1,17 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react"
-import { Link, useNavigate } from "@tanstack/react-router"
-import { useQueries } from "@tanstack/react-query"
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useQueries } from "@tanstack/react-query";
 import {
   CheckCircle2Icon,
   DatabaseIcon,
   Loader2Icon,
   PlusIcon,
   Settings2Icon,
-} from "@/shared/components/icons"
-import { toast } from "sonner"
+} from "@/shared/components/icons";
+import { toast } from "sonner";
 
-import { Button } from "@/shared/ui/button"
-import { Checkbox } from "@/shared/ui/checkbox"
+import { Button } from "@/shared/ui/button";
+import { Checkbox } from "@/shared/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -19,15 +19,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/ui/dialog"
+} from "@/shared/ui/dialog";
 import {
   createSampleRowContent,
   type DatabaseSetupSelection,
-} from "@/features/databases/setup/components/database-setup-card"
-import { getDatabaseSetupTemplate } from "@/features/databases/setup/model/database-setup-templates"
-import { DatabaseViewSkeleton } from "@/features/databases/views/components/database-view-skeleton"
-import { getDatabaseViewModel } from "@/features/databases/views/components/database-view-model"
-import type { DatabaseViewData } from "@/features/databases/views/model/database-controller-state"
+} from "@/features/databases/setup/components/database-setup-card";
+import { getDatabaseSetupTemplate } from "@/features/databases/setup/model/database-setup-templates";
+import { DatabaseViewSkeleton } from "@/features/databases/views/components/database-view-skeleton";
+import { getDatabaseViewModel } from "@/features/databases/views/components/database-view-model";
+import type { DatabaseViewData } from "@/features/databases/views/model/database-controller-state";
 import {
   getDatabaseFilterOperatorsForType,
   getMergedDatabaseConfig,
@@ -39,16 +39,16 @@ import {
   type DatabasePropertyConfig,
   type DatabaseSortConfig,
   type DatabaseSubItemsSettings,
-} from "@/features/databases/views/model/database-view-config"
+} from "@/features/databases/views/model/database-view-config";
 import type { DatabaseFilterUpdatePatch } from "../../databases/views/model/filter-sort-contracts";
 import type { DatabaseSortUpdatePatch } from "../../databases/views/model/filter-sort-contracts";
 import {
   serializePropertyValue,
   type DatabasePropertyValue,
-} from "@/features/databases/schema/property-values"
-import { defaultStatusOptions } from "@/features/databases/schema/property-catalog"
-import { TaskDatabaseListAdapter } from "../components/task-database-list-adapter"
-import { getDatabaseEmoji } from "@zilobase/features/databases"
+} from "@/features/databases/schema/property-values";
+import { defaultStatusOptions } from "@/features/databases/schema/property-catalog";
+import { TaskDatabaseListAdapter } from "../components/task-database-list-adapter";
+import { getDatabaseEmoji } from "@zilobase/features/databases";
 import {
   databaseContextExportQueryOptions,
   type DatabaseExportPayload,
@@ -65,7 +65,7 @@ import {
   useCreateDatabase,
   useUpdateDatabasePropertyValue,
 } from "@zilobase/features/databases/react";
-import { useZilobaseFeatures } from "@zilobase/features"
+import { useZilobaseFeatures } from "@zilobase/features";
 import { useSession } from "@zilobase/features/auth/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { usePageNavigation } from "@zilobase/features/pages/react";
@@ -84,87 +84,82 @@ import {
   getTaskDatabaseSchema,
   getTaskStatusForCompletion,
   type TaskRow,
-} from "../model/tasks-model"
+} from "../model/tasks-model";
 
 const DatabaseListView = lazy(() =>
-  import("@/features/databases/views/list/components/database-list-view").then(
-    (module) => ({ default: module.DatabaseListView }),
-  ),
-)
+  import("@/features/databases/views/list/components/database-list-view").then((module) => ({
+    default: module.DatabaseListView,
+  })),
+);
 const DatabaseSetupCard = lazy(() =>
-  import("@/features/databases/setup/components/database-setup-card").then(
-    (module) => ({ default: module.DatabaseSetupCard }),
-  ),
-)
+  import("@/features/databases/setup/components/database-setup-card").then((module) => ({
+    default: module.DatabaseSetupCard,
+  })),
+);
 const DatabaseViewToolbar = lazy(() =>
-  import("@/features/databases/views/components/database-view-toolbar").then(
-    (module) => ({ default: module.DatabaseViewToolbar }),
-  ),
-)
+  import("@/features/databases/views/components/database-view-toolbar").then((module) => ({
+    default: module.DatabaseViewToolbar,
+  })),
+);
 
-const TASKS_DATABASE_ID = "my-tasks"
-const TASKS_DATA_SOURCE_ID = "my-tasks:source"
-const TASKS_VIEW_ID = "my-tasks-list"
-const STATUS_COLUMN_ID = "my-tasks-status-column"
-const STATUS_PROPERTY_ID = "my-tasks-status"
-const ASSIGNEE_COLUMN_ID = "my-tasks-assignee-column"
-const ASSIGNEE_PROPERTY_ID = "my-tasks-assignee"
-const DUE_DATE_COLUMN_ID = "my-tasks-due-date-column"
-const DUE_DATE_PROPERTY_ID = "my-tasks-due-date"
-const SOURCE_COLUMN_ID = "my-tasks-source-column"
-const SOURCE_PROPERTY_ID = "my-tasks-source"
-const emptyAsync = async () => undefined
+const TASKS_DATABASE_ID = "my-tasks";
+const TASKS_DATA_SOURCE_ID = "my-tasks:source";
+const TASKS_VIEW_ID = "my-tasks-list";
+const STATUS_COLUMN_ID = "my-tasks-status-column";
+const STATUS_PROPERTY_ID = "my-tasks-status";
+const ASSIGNEE_COLUMN_ID = "my-tasks-assignee-column";
+const ASSIGNEE_PROPERTY_ID = "my-tasks-assignee";
+const DUE_DATE_COLUMN_ID = "my-tasks-due-date-column";
+const DUE_DATE_PROPERTY_ID = "my-tasks-due-date";
+const SOURCE_COLUMN_ID = "my-tasks-source-column";
+const SOURCE_PROPERTY_ID = "my-tasks-source";
+const emptyAsync = async () => undefined;
 
 export default function TasksPage() {
-  const workspaceId = useActiveWorkspaceId()
-  const { apiFetch } = useZilobaseFeatures()
-  const { data: session } = useSession()
-  const { data: navigation, isLoading: navigationLoading } =
-    usePageNavigation(workspaceId)
-  const { data: userSettings = defaultUserSettings } = useUserSettings()
-  const { data: accessTargets } = useWorkspaceAccessTargets(workspaceId)
-  const updateUserSettings = useUpdateUserSettings()
-  const createDatabase = useCreateDatabase()
-  const applyTemplate = useApplyDatabaseTemplate()
+  const workspaceId = useActiveWorkspaceId();
+  const { apiFetch } = useZilobaseFeatures();
+  const { data: session } = useSession();
+  const { data: navigation, isLoading: navigationLoading } = usePageNavigation(workspaceId);
+  const { data: userSettings = defaultUserSettings } = useUserSettings();
+  const { data: accessTargets } = useWorkspaceAccessTargets(workspaceId);
+  const updateUserSettings = useUpdateUserSettings();
+  const createDatabase = useCreateDatabase();
+  const applyTemplate = useApplyDatabaseTemplate();
   const sidebarConfig = useMemo(
     () => normalizeSidebarConfig(userSettings.sidebarConfig),
-    [userSettings.sidebarConfig]
-  )
+    [userSettings.sidebarConfig],
+  );
   const sidebarLayout = useMemo(
     () => resolveSidebarWorkspaceLayout(sidebarConfig, workspaceId),
-    [sidebarConfig, workspaceId]
-  )
-  const selectedDatabaseIds = sidebarLayout.taskDatabaseIds
+    [sidebarConfig, workspaceId],
+  );
+  const selectedDatabaseIds = sidebarLayout.taskDatabaseIds;
   const databaseQueries = useQueries({
     queries: selectedDatabaseIds.map((databaseId) =>
-      databaseContextExportQueryOptions(apiFetch, databaseId)
+      databaseContextExportQueryOptions(apiFetch, databaseId),
     ),
-  })
+  });
   const payloads = databaseQueries
     .map((query) => query.data)
-    .filter((payload): payload is DatabaseExportPayload => Boolean(payload))
-  const isLoading =
-    navigationLoading || databaseQueries.some((query) => query.isLoading)
+    .filter((payload): payload is DatabaseExportPayload => Boolean(payload));
+  const isLoading = navigationLoading || databaseQueries.some((query) => query.isLoading);
   const eligiblePayloads = payloads.filter(
-    (payload) => getTaskDatabaseSchema(payload).missing.length === 0
-  )
-  const allRows = useMemo(
-    () => buildTaskRows(eligiblePayloads),
-    [eligiblePayloads]
-  )
-  const currentUserId = session?.user?.id ?? null
-  const myRows = filterMyTaskRows(allRows, currentUserId)
-  const [configurationOpen, setConfigurationOpen] = useState(false)
+    (payload) => getTaskDatabaseSchema(payload).missing.length === 0,
+  );
+  const allRows = useMemo(() => buildTaskRows(eligiblePayloads), [eligiblePayloads]);
+  const currentUserId = session?.user?.id ?? null;
+  const myRows = filterMyTaskRows(allRows, currentUserId);
+  const [configurationOpen, setConfigurationOpen] = useState(false);
 
   const saveTaskDatabaseIds = async (taskDatabaseIds: string[]) => {
-    if (!workspaceId) return
+    if (!workspaceId) return;
     await updateUserSettings.mutateAsync({
       sidebarConfig: withSidebarWorkspaceLayout(sidebarConfig, workspaceId, {
         ...sidebarLayout,
         taskDatabaseIds,
       }),
-    })
-  }
+    });
+  };
 
   const selectTaskDataSource = async (selection: DatabaseSetupSelection) => {
     try {
@@ -175,20 +170,16 @@ export default function TasksPage() {
         selection,
         selectedDatabaseIds,
         workspaceId,
-      })
+      });
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not create the task database."
-      )
+      toast.error(error instanceof Error ? error.message : "Could not create the task database.");
     }
-  }
+  };
   const addTaskDataSource = () =>
     selectTaskDataSource({
       databaseName: "Tasks Tracker",
       templateId: "tasks-tracker",
-    })
+    });
 
   return (
     <main className="min-h-0 flex-1 overflow-y-auto bg-surface-canvas">
@@ -208,9 +199,7 @@ export default function TasksPage() {
                 accessTargets={accessTargets}
                 currentUserId={currentUserId}
                 isLoading={isLoading}
-                isAddingDataSource={
-                  createDatabase.isPending || applyTemplate.isPending
-                }
+                isAddingDataSource={createDatabase.isPending || applyTemplate.isPending}
                 onConfigureDataSources={() => setConfigurationOpen(true)}
                 onSelectDataSource={selectTaskDataSource}
                 payloads={eligiblePayloads}
@@ -230,7 +219,7 @@ export default function TasksPage() {
         selectedDatabaseIds={selectedDatabaseIds}
       />
     </main>
-  )
+  );
 }
 
 function TasksPageHeader() {
@@ -243,7 +232,7 @@ function TasksPageHeader() {
         </h1>
       </div>
     </div>
-  )
+  );
 }
 
 function TasksDatabaseView({
@@ -257,36 +246,33 @@ function TasksDatabaseView({
   rows,
   workspaceId,
 }: {
-  accessTargets:
-    { members: Array<{ email: string; id: string; name: string }> } | undefined
-  currentUserId: string | null
-  isLoading: boolean
-  isAddingDataSource: boolean
-  onConfigureDataSources: () => void
-  onSelectDataSource: (selection: DatabaseSetupSelection) => Promise<void>
-  payloads: DatabaseExportPayload[]
-  rows: TaskRow[]
-  workspaceId: string | null | undefined
+  accessTargets: { members: Array<{ email: string; id: string; name: string }> } | undefined;
+  currentUserId: string | null;
+  isLoading: boolean;
+  isAddingDataSource: boolean;
+  onConfigureDataSources: () => void;
+  onSelectDataSource: (selection: DatabaseSetupSelection) => Promise<void>;
+  payloads: DatabaseExportPayload[];
+  rows: TaskRow[];
+  workspaceId: string | null | undefined;
 }) {
-  const navigate = useNavigate()
-  const updateValue = useUpdateDatabasePropertyValue()
-  const addRow = useAddDatabaseRow()
-  const [dataSourceSetupOpen, setDataSourceSetupOpen] = useState(false)
-  const [activeViewId, setActiveViewId] = useState<string | null>(TASKS_VIEW_ID)
+  const navigate = useNavigate();
+  const updateValue = useUpdateDatabasePropertyValue();
+  const addRow = useAddDatabaseRow();
+  const [dataSourceSetupOpen, setDataSourceSetupOpen] = useState(false);
+  const [activeViewId, setActiveViewId] = useState<string | null>(TASKS_VIEW_ID);
   const [databaseConfig, setDatabaseConfig] = useState<unknown>({
     nameColumn: { label: "Task", showPageIcon: true },
-  })
-  const [propertyConfigs, setPropertyConfigs] = useState<
-    Record<string, unknown>
-  >({})
+  });
+  const [propertyConfigs, setPropertyConfigs] = useState<Record<string, unknown>>({});
   const [viewConfig, setViewConfig] = useState<unknown>({
     sorts: [{ column: DUE_DATE_COLUMN_ID, direction: "ascending" }],
-  })
-  const [filterPickerOpen, setFilterPickerOpen] = useState(false)
-  const [sortPickerOpen, setSortPickerOpen] = useState(false)
-  const [showFilterPill, setShowFilterPill] = useState(false)
-  const [showSortPill, setShowSortPill] = useState(false)
-  const [showPropertyTitles, setShowPropertyTitles] = useState(false)
+  });
+  const [filterPickerOpen, setFilterPickerOpen] = useState(false);
+  const [sortPickerOpen, setSortPickerOpen] = useState(false);
+  const [showFilterPill, setShowFilterPill] = useState(false);
+  const [showSortPill, setShowSortPill] = useState(false);
+  const [showPropertyTitles, setShowPropertyTitles] = useState(false);
   const viewData = useMemo(
     () =>
       buildTasksViewData({
@@ -297,9 +283,9 @@ function TasksDatabaseView({
         viewConfig,
         workspaceId,
       }),
-    [databaseConfig, payloads, propertyConfigs, rows, viewConfig, workspaceId]
-  )
-  const taskProperties = viewData.bootstrap.properties
+    [databaseConfig, payloads, propertyConfigs, rows, viewConfig, workspaceId],
+  );
+  const taskProperties = viewData.bootstrap.properties;
   const viewModel = useMemo(
     () =>
       getDatabaseViewModel({
@@ -308,50 +294,47 @@ function TasksDatabaseView({
         currentUserId: currentUserId ?? undefined,
         viewData,
       }),
-    [accessTargets, activeViewId, currentUserId, viewData]
-  )
+    [accessTargets, activeViewId, currentUserId, viewData],
+  );
   const rowsBySyntheticId = useMemo(
     () => new Map(rows.map((row) => [getSyntheticRowId(row), row])),
-    [rows]
-  )
+    [rows],
+  );
   const sourcePayloadById = useMemo(
     () => new Map(payloads.map((source) => [source.database.id, source])),
-    [payloads]
-  )
+    [payloads],
+  );
   const updateViewConfig = (patch: Record<string, unknown>) => {
-    setViewConfig((current: unknown) => getMergedDatabaseConfig(current, patch))
-  }
+    setViewConfig((current: unknown) => getMergedDatabaseConfig(current, patch));
+  };
   const saveDatabaseSorts = async (sorts: DatabaseSortConfig[]) => {
-    updateViewConfig({ sorts: sorts.length > 0 ? sorts : undefined })
-  }
+    updateViewConfig({ sorts: sorts.length > 0 ? sorts : undefined });
+  };
   const saveDatabaseFilters = (filters: DatabaseFilterItemConfig[]) => {
-    updateViewConfig({ filters: filters.length > 0 ? filters : undefined })
-  }
+    updateViewConfig({ filters: filters.length > 0 ? filters : undefined });
+  };
   const plainFilters = () =>
-    viewModel.activeDatabaseFilters.map(
-      ({ id, operator, propertyId, values }) => ({
-        id,
-        operator,
-        propertyId,
-        values,
-      })
-    )
+    viewModel.activeDatabaseFilters.map(({ id, operator, propertyId, values }) => ({
+      id,
+      operator,
+      propertyId,
+      values,
+    }));
   const getPropertyType = (propertyId: string) =>
     propertyId === "name"
       ? "text"
-      : (taskProperties.find((property) => property.id === propertyId)
-          ?.property.type ?? "text")
+      : (taskProperties.find((property) => property.id === propertyId)?.property.type ?? "text");
   const savePropertyValue = (
     rowId: string,
     propertyId: string,
     _propertyType: string,
     _currentValue: DatabasePropertyValue,
-    nextValue: DatabasePropertyValue
+    nextValue: DatabasePropertyValue,
   ) => {
-    const task = rowsBySyntheticId.get(rowId)
-    const sourcePayload = task ? sourcePayloadById.get(task.databaseId) : null
-    if (!task || !sourcePayload) return
-    const schema = getTaskDatabaseSchema(sourcePayload)
+    const task = rowsBySyntheticId.get(rowId);
+    const sourcePayload = task ? sourcePayloadById.get(task.databaseId) : null;
+    if (!task || !sourcePayload) return;
+    const schema = getTaskDatabaseSchema(sourcePayload);
     const sourceProperty =
       propertyId === STATUS_PROPERTY_ID
         ? schema.status
@@ -359,8 +342,8 @@ function TasksDatabaseView({
           ? schema.assignee
           : propertyId === DUE_DATE_PROPERTY_ID
             ? schema.dueDate
-            : null
-    if (!sourceProperty) return
+            : null;
+    if (!sourceProperty) return;
 
     updateValue.mutate(
       {
@@ -372,66 +355,51 @@ function TasksDatabaseView({
       },
       {
         onError: (error) =>
-          toast.error(
-            error instanceof Error ? error.message : "Could not update task."
-          ),
-      }
-    )
-  }
-  const updateDatabasePropertyConfig = async (
-    databasePropertyId: string,
-    config: unknown
-  ) => {
+          toast.error(error instanceof Error ? error.message : "Could not update task."),
+      },
+    );
+  };
+  const updateDatabasePropertyConfig = async (databasePropertyId: string, config: unknown) => {
     setPropertyConfigs((current) => ({
       ...current,
       [databasePropertyId]: getMergedPropertyConfig(
         current[databasePropertyId],
-        config as DatabasePropertyConfig
+        config as DatabasePropertyConfig,
       ),
-    }))
-  }
-  const updateDatabaseFilter = (
-    index: number,
-    patch: DatabaseFilterUpdatePatch
-  ) => {
+    }));
+  };
+  const updateDatabaseFilter = (index: number, patch: DatabaseFilterUpdatePatch) => {
     saveDatabaseFilters(
       plainFilters().map((filter, filterIndex) => {
-        if (filterIndex !== index) return filter
-        const propertyId = patch.propertyId ?? filter.propertyId
-        const propertyType = getPropertyType(propertyId)
+        if (filterIndex !== index) return filter;
+        const propertyId = patch.propertyId ?? filter.propertyId;
+        const propertyType = getPropertyType(propertyId);
         return {
           ...filter,
           operator: patch.operator
             ? getValidDatabaseFilterOperator(patch.operator, propertyType)
             : filter.operator,
           propertyId,
-          values:
-            patch.values ??
-            (propertyId === filter.propertyId ? filter.values : []),
-        }
-      })
-    )
-  }
-  const updateDatabaseSort = (
-    index: number,
-    patch: DatabaseSortUpdatePatch
-  ) => {
+          values: patch.values ?? (propertyId === filter.propertyId ? filter.values : []),
+        };
+      }),
+    );
+  };
+  const updateDatabaseSort = (index: number, patch: DatabaseSortUpdatePatch) => {
     void saveDatabaseSorts(
       viewModel.activeDatabaseSorts.map(({ column, direction }, sortIndex) =>
-        sortIndex === index
-          ? { column, direction, ...patch }
-          : { column, direction }
-      )
-    )
-  }
+        sortIndex === index ? { column, direction, ...patch } : { column, direction },
+      ),
+    );
+  };
   const createTask = () => {
-    const sourcePayload = payloads[0]
-    if (!sourcePayload || addRow.isPending) return
+    const sourcePayload = payloads[0];
+    if (!sourcePayload || addRow.isPending) return;
 
-    const schema = getTaskDatabaseSchema(sourcePayload)
-    if (!schema.status || !schema.assignee) return
+    const schema = getTaskDatabaseSchema(sourcePayload);
+    if (!schema.status || !schema.assignee) return;
 
-    const initialStatus = getTaskStatusForCompletion(sourcePayload, false)
+    const initialStatus = getTaskStatusForCompletion(sourcePayload, false);
     const initialValues = [
       ...(currentUserId
         ? [
@@ -441,25 +409,20 @@ function TasksDatabaseView({
             },
           ]
         : []),
-      ...(initialStatus
-        ? [{ propertyId: schema.status.property.id, value: initialStatus }]
-        : []),
-    ]
+      ...(initialStatus ? [{ propertyId: schema.status.property.id, value: initialStatus }] : []),
+    ];
     addRow.mutate(
       {
-        databaseId:
-          sourcePayload.activeDataSource?.id ?? sourcePayload.database.id,
+        databaseId: sourcePayload.activeDataSource?.id ?? sourcePayload.database.id,
         hostDatabaseId: sourcePayload.database.id,
         initialValues: initialValues,
       },
       {
         onError: (error) =>
-          toast.error(
-            error instanceof Error ? error.message : "Could not create task."
-          ),
-      }
-    )
-  }
+          toast.error(error instanceof Error ? error.message : "Could not create task."),
+      },
+    );
+  };
 
   return (
     <TaskDatabaseListAdapter
@@ -475,24 +438,22 @@ function TasksDatabaseView({
         clearDatabaseSort: () => void saveDatabaseSorts([]),
         configureDataSources: onConfigureDataSources,
         copyDatabaseViewLink: () => {
-          void navigator.clipboard?.writeText(window.location.href)
-          toast.success("Task view link copied.")
+          void navigator.clipboard?.writeText(window.location.href);
+          toast.success("Task view link copied.");
         },
         createDatabaseFilter: (propertyId) => {
-          const propertyType = getPropertyType(propertyId)
+          const propertyType = getPropertyType(propertyId);
           saveDatabaseFilters([
             ...plainFilters(),
             {
               id: createFilterId(),
-              operator:
-                getDatabaseFilterOperatorsForType(propertyType)[0]?.value ??
-                "is",
+              operator: getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is",
               propertyId,
               values: [],
             },
-          ])
-          setFilterPickerOpen(false)
-          setShowFilterPill(true)
+          ]);
+          setFilterPickerOpen(false);
+          setShowFilterPill(true);
         },
         createDatabaseSort: (column) => {
           void saveDatabaseSorts([
@@ -501,9 +462,9 @@ function TasksDatabaseView({
               direction,
             })),
             { column, direction: "ascending" },
-          ])
-          setSortPickerOpen(false)
-          setShowSortPill(true)
+          ]);
+          setSortPickerOpen(false);
+          setShowSortPill(true);
         },
         dataSources: payloads.flatMap((source) =>
           source.activeDataSource
@@ -541,8 +502,7 @@ function TasksDatabaseView({
         isAddingDataSource,
         isAddingDatabaseView: false,
         isFetchingNextPage: false,
-        isRowComplete: (row) =>
-          rowsBySyntheticId.get(row.id)?.isCompleted ?? false,
+        isRowComplete: (row) => rowsBySyntheticId.get(row.id)?.isCompleted ?? false,
         newRowLabel: "New task",
         onOpenPage: (pageId) => {
           if (pageId.startsWith("task-source:")) {
@@ -550,76 +510,64 @@ function TasksDatabaseView({
               params: { databaseId: pageId.slice("task-source:".length) },
               search: { view: undefined },
               to: "/d/$databaseId",
-            })
-            return
+            });
+            return;
           }
-          void navigate({ params: { pageId }, to: "/p/$pageId" })
+          void navigate({ params: { pageId }, to: "/p/$pageId" });
         },
         onShowTitleChange: undefined,
         options: viewModel.kanbanOptions,
         realtimeEnabled: false,
         prefetchDatabaseView: () => {},
         removeDatabaseFilter: (index) =>
-          saveDatabaseFilters(
-            plainFilters().filter((_, filterIndex) => filterIndex !== index)
-          ),
+          saveDatabaseFilters(plainFilters().filter((_, filterIndex) => filterIndex !== index)),
         removeDatabaseSort: (index) =>
           void saveDatabaseSorts(
-            viewModel.activeDatabaseSorts.flatMap(
-              ({ column, direction }, sortIndex) =>
-                sortIndex === index ? [] : [{ column, direction }]
-            )
+            viewModel.activeDatabaseSorts.flatMap(({ column, direction }, sortIndex) =>
+              sortIndex === index ? [] : [{ column, direction }],
+            ),
           ),
         reorderDatabaseFilters: (filterIds) => {
-          const filters = plainFilters()
-          const byId = new Map(filters.map((filter) => [filter.id, filter]))
+          const filters = plainFilters();
+          const byId = new Map(filters.map((filter) => [filter.id, filter]));
           saveDatabaseFilters([
             ...filterIds.flatMap((id) => {
-              const filter = byId.get(id)
-              return filter ? [filter] : []
+              const filter = byId.get(id);
+              return filter ? [filter] : [];
             }),
             ...filters.filter((filter) => !filterIds.includes(filter.id)),
-          ])
+          ]);
         },
-        saveDatabaseConditionalColors: (
-          conditionalColors: DatabaseConditionalColorConfig[]
-        ) =>
+        saveDatabaseConditionalColors: (conditionalColors: DatabaseConditionalColorConfig[]) =>
           updateViewConfig({
-            conditionalColors:
-              conditionalColors.length > 0 ? conditionalColors : undefined,
+            conditionalColors: conditionalColors.length > 0 ? conditionalColors : undefined,
           }),
         saveDatabaseFilters,
-        saveDatabasePropertyOrder: (propertyOrder) =>
-          updateViewConfig({ propertyOrder }),
+        saveDatabasePropertyOrder: (propertyOrder) => updateViewConfig({ propertyOrder }),
         saveDatabaseSorts,
         savePropertyValue,
         setActiveViewId,
         setFilterPickerOpen,
         setRowComplete: (row, complete) => {
-          const task = rowsBySyntheticId.get(row.id)
-          const sourcePayload = task
-            ? sourcePayloadById.get(task.databaseId)
-            : null
-          const statusProperty = sourcePayload
-            ? getTaskDatabaseSchema(sourcePayload).status
-            : null
+          const task = rowsBySyntheticId.get(row.id);
+          const sourcePayload = task ? sourcePayloadById.get(task.databaseId) : null;
+          const statusProperty = sourcePayload ? getTaskDatabaseSchema(sourcePayload).status : null;
           const nextStatus = sourcePayload
             ? getTaskStatusForCompletion(sourcePayload, complete)
-            : null
+            : null;
 
           if (!task || !statusProperty || !nextStatus) {
             toast.error(
               complete
                 ? "This database needs a status in the Complete group."
-                : "This database needs a non-complete default status."
-            )
-            return
+                : "This database needs a non-complete default status.",
+            );
+            return;
           }
 
           updateValue.mutate(
             {
-              databaseId:
-                sourcePayload?.activeDataSource?.id ?? task.databaseId,
+              databaseId: sourcePayload?.activeDataSource?.id ?? task.databaseId,
               hostDatabaseId: sourcePayload?.database.id,
               propertyId: statusProperty.property.id,
               rowId: task.rowId,
@@ -627,13 +575,9 @@ function TasksDatabaseView({
             },
             {
               onError: (error) =>
-                toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : "Could not update the task."
-                ),
-            }
-          )
+                toast.error(error instanceof Error ? error.message : "Could not update the task."),
+            },
+          );
         },
         setSortPickerOpen,
         setViewGroupProperty: (groupPropertyId) =>
@@ -644,21 +588,17 @@ function TasksDatabaseView({
         showSortPill,
         showTitle: false,
         sortPickerOpen,
-        toggleFilterPillVisibility: () =>
-          setShowFilterPill((current) => !current),
-        togglePropertyTitles: () =>
-          setShowPropertyTitles((current) => !current),
+        toggleFilterPillVisibility: () => setShowFilterPill((current) => !current),
+        togglePropertyTitles: () => setShowPropertyTitles((current) => !current),
         togglePropertyVisibility: (propertyId) => {
           const hidden = new Set(
             taskProperties
-              .filter(
-                (property) => !viewModel.visibleProperties.includes(property)
-              )
-              .map((property) => property.id)
-          )
-          if (hidden.has(propertyId)) hidden.delete(propertyId)
-          else hidden.add(propertyId)
-          updateViewConfig({ hiddenPropertyIds: [...hidden] })
+              .filter((property) => !viewModel.visibleProperties.includes(property))
+              .map((property) => property.id),
+          );
+          if (hidden.has(propertyId)) hidden.delete(propertyId);
+          else hidden.add(propertyId);
+          updateViewConfig({ hiddenPropertyIds: [...hidden] });
         },
         toggleSortPillVisibility: () => setShowSortPill((current) => !current),
         updateDatabaseChartSettings: (chart) => updateViewConfig({ chart }),
@@ -666,16 +606,12 @@ function TasksDatabaseView({
         updateDatabaseLayoutSettings: (layout) => updateViewConfig({ layout }),
         updateDatabasePropertyConfig,
         updateDatabaseSort,
-        updateDatabaseSubItemsSettings: (
-          subItems: Partial<DatabaseSubItemsSettings>
-        ) =>
+        updateDatabaseSubItemsSettings: (subItems: Partial<DatabaseSubItemsSettings>) =>
           updateViewConfig({
             subItems: { ...viewModel.subItemsSettings, ...subItems },
           }),
         updateNameColumnConfig: (config) =>
-          setDatabaseConfig((current: unknown) =>
-            getMergedNameColumnConfig(current, config)
-          ),
+          setDatabaseConfig((current: unknown) => getMergedNameColumnConfig(current, config)),
         viewTabs: [
           {
             dataSourceId: TASKS_DATA_SOURCE_ID,
@@ -695,11 +631,7 @@ function TasksDatabaseView({
             <DatabaseViewToolbar />
           </div>
           <div className="database-scroll-section">
-            {isLoading ? (
-              <DatabaseViewSkeleton viewType="list" />
-            ) : (
-              <DatabaseListView />
-            )}
+            {isLoading ? <DatabaseViewSkeleton viewType="list" /> : <DatabaseListView />}
             {dataSourceSetupOpen && payloads[0] ? (
               <DatabaseSetupCard
                 databaseId={payloads[0].database.id}
@@ -714,7 +646,7 @@ function TasksDatabaseView({
         </Suspense>
       </div>
     </TaskDatabaseListAdapter>
-  )
+  );
 }
 
 function buildTasksViewData({
@@ -725,26 +657,26 @@ function buildTasksViewData({
   viewConfig,
   workspaceId,
 }: {
-  databaseConfig: unknown
-  propertyConfigs: Record<string, unknown>
-  rows: TaskRow[]
-  sourcePayloads: DatabaseExportPayload[]
-  viewConfig: unknown
-  workspaceId: string | null | undefined
+  databaseConfig: unknown;
+  propertyConfigs: Record<string, unknown>;
+  rows: TaskRow[];
+  sourcePayloads: DatabaseExportPayload[];
+  viewConfig: unknown;
+  workspaceId: string | null | undefined;
 }): DatabaseViewData {
   const statusOptions = Array.from(
     new Map(
       sourcePayloads
         .flatMap((source) => {
-          const status = getTaskDatabaseSchema(source).status
-          return status ? getSelectOptions(status.property.config) : []
+          const status = getTaskDatabaseSchema(source).status;
+          return status ? getSelectOptions(status.property.config) : [];
         })
-        .map((option) => [option.name, option])
-    ).values()
-  )
+        .map((option) => [option.name, option]),
+    ).values(),
+  );
   const sourceSummaries = Object.fromEntries(
     sourcePayloads.map((source) => {
-      const emoji = getDatabaseEmoji({ config: source.database.dataSourceConfig })
+      const emoji = getDatabaseEmoji({ config: source.database.dataSourceConfig });
       return [
         `task-source:${source.database.id}`,
         {
@@ -753,9 +685,9 @@ function buildTasksViewData({
           metadata: emoji ? { emoji } : null,
           name: source.database.name || "Untitled database",
         },
-      ]
-    })
-  )
+      ];
+    }),
+  );
   const propertyDefinitions = [
     {
       config: { options: statusOptions },
@@ -792,39 +724,35 @@ function buildTasksViewData({
       type: "relation",
       width: 210,
     },
-  ] as const
-  const properties: DatabasePropertyEntity[] = propertyDefinitions.map(
-    (definition, position) => ({
+  ] as const;
+  const properties: DatabasePropertyEntity[] = propertyDefinitions.map((definition, position) => ({
+    createdAt: "",
+    dataSourceId: TASKS_DATA_SOURCE_ID,
+    id: definition.databasePropertyId,
+    position,
+    property: {
+      config: getMergedPropertyConfig(
+        definition.config,
+        propertyConfigs[definition.databasePropertyId] as DatabasePropertyConfig,
+      ),
       createdAt: "",
-      dataSourceId: TASKS_DATA_SOURCE_ID,
-      id: definition.databasePropertyId,
-      position,
-      property: {
-        config: getMergedPropertyConfig(
-          definition.config,
-          propertyConfigs[
-            definition.databasePropertyId
-          ] as DatabasePropertyConfig
-        ),
-        createdAt: "",
-        id: definition.id,
-        name: definition.name,
-        type: definition.type,
-        updatedAt: "",
-        workspaceId: workspaceId ?? TASKS_DATABASE_ID,
-      },
-      propertyId: definition.id,
+      id: definition.id,
+      name: definition.name,
+      type: definition.type,
       updatedAt: "",
-      visible: true,
-      width: definition.width,
-    })
-  )
+      workspaceId: workspaceId ?? TASKS_DATABASE_ID,
+    },
+    propertyId: definition.id,
+    updatedAt: "",
+    visible: true,
+    width: definition.width,
+  }));
   const values: PagePropertyValueEntity[] = rows.flatMap((row) => [
     makeValue(row, STATUS_PROPERTY_ID, row.status),
     makeValue(row, ASSIGNEE_PROPERTY_ID, row.assigneeIds),
     makeValue(row, DUE_DATE_PROPERTY_ID, row.dueDate),
     makeValue(row, SOURCE_PROPERTY_ID, [`task-source:${row.databaseId}`]),
-  ])
+  ]);
   const views: DatabaseViewEntity[] = [
     {
       config: viewConfig,
@@ -837,13 +765,13 @@ function buildTasksViewData({
       type: "list",
       updatedAt: "",
     },
-  ]
+  ];
 
-  const valuesByPageId = new Map<string, PagePropertyValueEntity[]>()
+  const valuesByPageId = new Map<string, PagePropertyValueEntity[]>();
   for (const value of values) {
-    const group = valuesByPageId.get(value.pageId) ?? []
-    group.push(value)
-    valuesByPageId.set(value.pageId, group)
+    const group = valuesByPageId.get(value.pageId) ?? [];
+    group.push(value);
+    valuesByPageId.set(value.pageId, group);
   }
   const records: DatabaseRecordEntity[] = rows.map((row, position) => ({
     createdAt: row.createdAt,
@@ -863,12 +791,9 @@ function buildTasksViewData({
     parentRowId: null,
     updatedAt: row.updatedAt,
     valuesByPropertyId: Object.fromEntries(
-      (valuesByPageId.get(row.pageId) ?? []).map((value) => [
-        value.propertyId,
-        value,
-      ]),
+      (valuesByPageId.get(row.pageId) ?? []).map((value) => [value.propertyId, value]),
     ),
-  }))
+  }));
 
   const activeDataSource: DataSourceEntity = {
     config: databaseConfig,
@@ -882,7 +807,7 @@ function buildTasksViewData({
     updatedAt: "",
     version: 0,
     workspaceId: workspaceId ?? TASKS_DATABASE_ID,
-  }
+  };
 
   return {
     activeDataSource,
@@ -907,14 +832,10 @@ function buildTasksViewData({
     hasMore: false,
     records,
     totalCount: records.length,
-  }
+  };
 }
 
-function makeValue(
-  row: TaskRow,
-  propertyId: string,
-  value: unknown
-): PagePropertyValueEntity {
+function makeValue(row: TaskRow, propertyId: string, value: unknown): PagePropertyValueEntity {
   return {
     createdAt: row.createdAt,
     id: `${getSyntheticRowId(row)}:${propertyId}`,
@@ -922,11 +843,11 @@ function makeValue(
     propertyId,
     updatedAt: row.updatedAt,
     value,
-  }
+  };
 }
 
 function getSyntheticRowId(row: TaskRow) {
-  return `${row.databaseId}:${row.rowId}`
+  return `${row.databaseId}:${row.rowId}`;
 }
 
 function TasksEmptyState({
@@ -934,41 +855,37 @@ function TasksEmptyState({
   onConfigure,
   onCreateDatabase,
 }: {
-  creating: boolean
-  onConfigure: () => void
-  onCreateDatabase: () => Promise<void>
+  creating: boolean;
+  onConfigure: () => void;
+  onCreateDatabase: () => Promise<void>;
 }) {
   return (
     <div className="mt-6 rounded-2xl border border-dashed px-6 py-16 text-center">
       <CheckCircle2Icon className="mx-auto size-10 text-content-secondary" />
       <p className="mx-auto mt-4 max-w-lg text-sm text-content-secondary">
-        Connect an existing database with Status, Assignee, and Due date
-        properties, or create one that is ready to use.
+        Connect an existing database with Status, Assignee, and Due date properties, or create one
+        that is ready to use.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         <Button onClick={onConfigure} type="button" variant="outline">
           <Settings2Icon />
           Connect databases
         </Button>
-        <Button
-          disabled={creating}
-          onClick={() => void onCreateDatabase()}
-          type="button"
-        >
+        <Button disabled={creating} onClick={() => void onCreateDatabase()} type="button">
           {creating ? <Loader2Icon className="animate-spin" /> : <PlusIcon />}
           Create Tasks database
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 function DatabaseWarnings({ payloads }: { payloads: DatabaseExportPayload[] }) {
   const warnings = payloads.flatMap((payload) => {
-    const missing = getTaskDatabaseSchema(payload).missing
-    return missing.length ? [{ missing, payload }] : []
-  })
-  if (warnings.length === 0) return null
+    const missing = getTaskDatabaseSchema(payload).missing;
+    return missing.length ? [{ missing, payload }] : [];
+  });
+  if (warnings.length === 0) return null;
 
   return (
     <div className="mb-4 space-y-2">
@@ -991,7 +908,7 @@ function DatabaseWarnings({ payloads }: { payloads: DatabaseExportPayload[] }) {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 function ConfigureTaskDatabasesDialog({
@@ -1001,18 +918,18 @@ function ConfigureTaskDatabasesDialog({
   open,
   selectedDatabaseIds,
 }: {
-  databases: Array<{ id: string; name: string }>
-  onOpenChange: (open: boolean) => void
-  onSave: (databaseIds: string[]) => Promise<void>
-  open: boolean
-  selectedDatabaseIds: string[]
+  databases: Array<{ id: string; name: string }>;
+  onOpenChange: (open: boolean) => void;
+  onSave: (databaseIds: string[]) => Promise<void>;
+  open: boolean;
+  selectedDatabaseIds: string[];
 }) {
-  const [draft, setDraft] = useState(selectedDatabaseIds)
-  const [saving, setSaving] = useState(false)
+  const [draft, setDraft] = useState(selectedDatabaseIds);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) setDraft(selectedDatabaseIds)
-  }, [open, selectedDatabaseIds])
+    if (open) setDraft(selectedDatabaseIds);
+  }, [open, selectedDatabaseIds]);
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -1020,8 +937,8 @@ function ConfigureTaskDatabasesDialog({
         <DialogHeader>
           <DialogTitle>Configure My Tasks</DialogTitle>
           <DialogDescription>
-            Connect up to 10 databases. Each needs Status, Assignee (person),
-            and Due date properties.
+            Connect up to 10 databases. Each needs Status, Assignee (person), and Due date
+            properties.
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-80 space-y-1 overflow-y-auto py-1">
@@ -1031,7 +948,7 @@ function ConfigureTaskDatabasesDialog({
             </p>
           ) : (
             databases.map((database) => {
-              const checked = draft.includes(database.id)
+              const checked = draft.includes(database.id);
               return (
                 <label
                   className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-action-neutral-hover has-disabled:cursor-not-allowed has-disabled:opacity-60"
@@ -1044,7 +961,7 @@ function ConfigureTaskDatabasesDialog({
                       setDraft((current) =>
                         nextChecked === true
                           ? [...current, database.id].slice(0, 10)
-                          : current.filter((id) => id !== database.id)
+                          : current.filter((id) => id !== database.id),
                       )
                     }
                   />
@@ -1053,37 +970,29 @@ function ConfigureTaskDatabasesDialog({
                     {database.name || "Untitled database"}
                   </span>
                 </label>
-              )
+              );
             })
           )}
         </div>
         <DialogFooter className="items-center sm:justify-between">
-          <span className="text-xs text-content-secondary">
-            {draft.length} of 10 connected
-          </span>
+          <span className="text-xs text-content-secondary">{draft.length} of 10 connected</span>
           <div className="flex gap-2">
-            <Button
-              onClick={() => onOpenChange(false)}
-              type="button"
-              variant="outline"
-            >
+            <Button onClick={() => onOpenChange(false)} type="button" variant="outline">
               Cancel
             </Button>
             <Button
               disabled={saving}
               onClick={async () => {
-                setSaving(true)
+                setSaving(true);
                 try {
-                  await onSave(draft)
-                  onOpenChange(false)
+                  await onSave(draft);
+                  onOpenChange(false);
                 } catch (error) {
                   toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Could not save task databases."
-                  )
+                    error instanceof Error ? error.message : "Could not save task databases.",
+                  );
                 } finally {
-                  setSaving(false)
+                  setSaving(false);
                 }
               }}
               type="button"
@@ -1095,7 +1004,7 @@ function ConfigureTaskDatabasesDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 async function createTaskDatabase({
@@ -1106,37 +1015,35 @@ async function createTaskDatabase({
   selectedDatabaseIds,
   workspaceId,
 }: {
-  applyTemplate: ReturnType<typeof useApplyDatabaseTemplate>
-  createDatabase: ReturnType<typeof useCreateDatabase>
-  saveTaskDatabaseIds: (databaseIds: string[]) => Promise<void>
-  selection: DatabaseSetupSelection
-  selectedDatabaseIds: string[]
-  workspaceId: string | null | undefined
+  applyTemplate: ReturnType<typeof useApplyDatabaseTemplate>;
+  createDatabase: ReturnType<typeof useCreateDatabase>;
+  saveTaskDatabaseIds: (databaseIds: string[]) => Promise<void>;
+  selection: DatabaseSetupSelection;
+  selectedDatabaseIds: string[];
+  workspaceId: string | null | undefined;
 }) {
-  if (!workspaceId) throw new Error("Choose a workspace first.")
+  if (!workspaceId) throw new Error("Choose a workspace first.");
 
   if (selection.sourceView) {
     if (selectedDatabaseIds.includes(selection.sourceView.parentDatabaseId)) {
-      toast.message("That data source is already connected.")
-      return
+      toast.message("That data source is already connected.");
+      return;
     }
 
     await saveTaskDatabaseIds(
-      [...selectedDatabaseIds, selection.sourceView.parentDatabaseId].slice(0, 10)
-    )
-    toast.success("Data source linked.")
-    return
+      [...selectedDatabaseIds, selection.sourceView.parentDatabaseId].slice(0, 10),
+    );
+    toast.success("Data source linked.");
+    return;
   }
 
-  const template = selection.templateId
-    ? getDatabaseSetupTemplate(selection.templateId)
-    : null
-  const name = selection.databaseName || template?.name || "New data source"
+  const template = selection.templateId ? getDatabaseSetupTemplate(selection.templateId) : null;
+  const name = selection.databaseName || template?.name || "New data source";
   const payload = await createDatabase.mutateAsync({
     name,
     standalone: true,
     workspaceId,
-  })
+  });
   const requiredProperties = [
     {
       config: {
@@ -1152,20 +1059,16 @@ async function createTaskDatabase({
       type: "person",
     },
     { name: "Due date", type: "date" },
-  ]
-  const templateProperties = template?.properties ?? []
-  const templatePropertyTypes = new Set(
-    templateProperties.map((property) => property.type)
-  )
+  ];
+  const templateProperties = template?.properties ?? [];
+  const templatePropertyTypes = new Set(templateProperties.map((property) => property.type));
   const properties = [
     ...templateProperties,
-    ...requiredProperties.filter(
-      (property) => !templatePropertyTypes.has(property.type)
-    ),
-  ]
+    ...requiredProperties.filter((property) => !templatePropertyTypes.has(property.type)),
+  ];
   const propertyTypesByName = new Map(
-    properties.map((property) => [property.name.toLowerCase(), property.type])
-  )
+    properties.map((property) => [property.name.toLowerCase(), property.type]),
+  );
 
   await applyTemplate.mutateAsync({
     config: getMergedDatabaseConfig(payload.database.config, {
@@ -1179,30 +1082,24 @@ async function createTaskDatabase({
       content: createSampleRowContent(sampleRow.content),
       metadata: { emoji: sampleRow.emoji },
       title: sampleRow.title,
-      values: Object.entries(sampleRow.values ?? {}).flatMap(
-        ([propertyName, value]) => {
-          const propertyType = propertyTypesByName.get(
-            propertyName.toLowerCase()
-          )
+      values: Object.entries(sampleRow.values ?? {}).flatMap(([propertyName, value]) => {
+        const propertyType = propertyTypesByName.get(propertyName.toLowerCase());
 
-          return propertyType
-            ? [
-                {
-                  propertyName,
-                  value: serializePropertyValue(propertyType, value),
-                },
-              ]
-            : []
-        }
-      ),
+        return propertyType
+          ? [
+              {
+                propertyName,
+                value: serializePropertyValue(propertyType, value),
+              },
+            ]
+          : [];
+      }),
     })),
-  })
-  await saveTaskDatabaseIds(
-    [...selectedDatabaseIds, payload.database.id].slice(0, 10)
-  )
-  toast.success("Data source created and connected.")
+  });
+  await saveTaskDatabaseIds([...selectedDatabaseIds, payload.database.id].slice(0, 10));
+  toast.success("Data source created and connected.");
 }
 
 function createFilterId() {
-  return `filter-${crypto.randomUUID()}`
+  return `filter-${crypto.randomUUID()}`;
 }

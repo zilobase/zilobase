@@ -28,8 +28,7 @@ async function main() {
   const runtime = await startNodeServer({
     loadApp: async (_env, ports) => createApp({ ports }),
     migrationSets: [CORE_MIGRATION_SET],
-    webDistDir:
-      process.env.ZILOBASE_WEB_DIST_DIR ?? path.resolve("apps/web/dist"),
+    webDistDir: process.env.ZILOBASE_WEB_DIST_DIR ?? path.resolve("apps/web/dist"),
     hooks: {
       getEditionExtension: (app) => getAppEditionExtension(app),
       assertProductionConfig: (env) => assertSelfHostedProductionConfiguration(env),
@@ -45,13 +44,15 @@ async function main() {
     });
   }
 
-  console.info(JSON.stringify({
-    autoMigrate: process.env.ZILOBASE_AUTO_MIGRATE === "true",
-    event: "runtime.startup",
-    migrationSets: runtime.migrationSets.map((migrationSet) => migrationSet.id),
-    protocol: DATABASE_REALTIME_PROTOCOL,
-    schemaTarget: CORE_SCHEMA_TARGET,
-  }));
+  console.info(
+    JSON.stringify({
+      autoMigrate: process.env.ZILOBASE_AUTO_MIGRATE === "true",
+      event: "runtime.startup",
+      migrationSets: runtime.migrationSets.map((migrationSet) => migrationSet.id),
+      protocol: DATABASE_REALTIME_PROTOCOL,
+      schemaTarget: CORE_SCHEMA_TARGET,
+    }),
+  );
 }
 
 void main().catch(async (error) => {

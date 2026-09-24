@@ -31,10 +31,7 @@ export async function buildMcpAgentRunTools(input: {
   const rows = await db
     .select({ connection: aiMcpConnection, snapshot: aiMcpToolSnapshot })
     .from(aiMcpToolSnapshot)
-    .innerJoin(
-      aiMcpConnection,
-      eq(aiMcpConnection.id, aiMcpToolSnapshot.connectionId),
-    )
+    .innerJoin(aiMcpConnection, eq(aiMcpConnection.id, aiMcpToolSnapshot.connectionId))
     .where(
       and(
         eq(aiMcpConnection.scopeType, "agent"),
@@ -70,9 +67,7 @@ export async function buildMcpAgentRunTools(input: {
     .sort(
       (left, right) =>
         right.score - left.score ||
-        left.row.snapshot.externalName.localeCompare(
-          right.row.snapshot.externalName,
-        ),
+        left.row.snapshot.externalName.localeCompare(right.row.snapshot.externalName),
     )
     .slice(0, MCP_LIMITS.maxModelToolsPerTurn)
     .map(({ row }) => row);
@@ -95,9 +90,7 @@ export async function buildMcpAgentRunTools(input: {
           0,
           2_000,
         ),
-      inputSchema: jsonSchema(
-        snapshot.inputSchema as Parameters<typeof jsonSchema>[0],
-      ),
+      inputSchema: jsonSchema(snapshot.inputSchema as Parameters<typeof jsonSchema>[0]),
       execute: async (toolInput, options) => {
         callCount += 1;
         if (callCount > MCP_LIMITS.maxCallsPerTurn) {
@@ -128,19 +121,12 @@ export async function buildMcpAgentRunTools(input: {
           })
           .onConflictDoNothing()
           .returning({ id: aiAgentToolExecution.id });
-        if (!reserved)
-          throw new Error(
-            "Agent tool call already has a durable execution receipt.",
-          );
+        if (!reserved) throw new Error("Agent tool call already has a durable execution receipt.");
         await appendRunEvent(input.runId, "tool_started", "shared", {
           provider: connection.serverLabel,
           tool: snapshot.externalName,
         });
-        const mustAsk = requiresRunApproval(
-          input.permissionSnapshot,
-          connection,
-          snapshot,
-        );
+        const mustAsk = requiresRunApproval(input.permissionSnapshot, connection, snapshot);
         const result = mustAsk
           ? await requestMcpActionApproval({
               agentRunId: input.runId,

@@ -19,15 +19,12 @@ import { listAgentResourcesForExecution } from "../agents/agent-resource-service
 import { PermanentAgentRunError } from "./agent-run-errors";
 import { buildAgentConnectionTool } from "../tools/agent-connection-tool";
 
-function readPermissionSnapshot(
-  value: unknown,
-): AgentPermissionSnapshotGrant[] {
+function readPermissionSnapshot(value: unknown): AgentPermissionSnapshotGrant[] {
   if (!value || typeof value !== "object" || Array.isArray(value)) return [];
   const resources = (value as { resources?: unknown }).resources;
   if (!Array.isArray(resources)) return [];
   return resources.flatMap((resource) => {
-    if (!resource || typeof resource !== "object" || Array.isArray(resource))
-      return [];
+    if (!resource || typeof resource !== "object" || Array.isArray(resource)) return [];
     const item = resource as Record<string, unknown>;
     if (
       (item.resourceType !== "page" && item.resourceType !== "database") ||
@@ -37,8 +34,7 @@ function readPermissionSnapshot(
       return [];
     return [
       {
-        accessLevel:
-          item.accessLevel as AgentPermissionSnapshotGrant["accessLevel"],
+        accessLevel: item.accessLevel as AgentPermissionSnapshotGrant["accessLevel"],
         resourceId: item.resourceId,
         resourceType: item.resourceType,
       },
@@ -47,10 +43,7 @@ function readPermissionSnapshot(
 }
 
 function readRunPrompt(value: unknown) {
-  const input =
-    value && typeof value === "object"
-      ? (value as Record<string, unknown>)
-      : {};
+  const input = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
   const prompt =
     typeof input.prompt === "string"
       ? input.prompt.trim()
@@ -62,31 +55,20 @@ function readRunPrompt(value: unknown) {
   return `${prompt || "Run the saved agent instructions now."}${trigger}`;
 }
 
-export async function prepareAgentRun(
-  env: RuntimeEnv,
-  run: typeof aiAgentRun.$inferSelect,
-) {
+export async function prepareAgentRun(env: RuntimeEnv, run: typeof aiAgentRun.$inferSelect) {
   const [revision, profile] = await Promise.all([
     db
       .select()
       .from(aiAgentRevision)
       .where(
-        and(
-          eq(aiAgentRevision.id, run.revisionId),
-          eq(aiAgentRevision.profileId, run.profileId),
-        ),
+        and(eq(aiAgentRevision.id, run.revisionId), eq(aiAgentRevision.profileId, run.profileId)),
       )
       .limit(1)
       .then((rows) => rows[0]),
     db
       .select()
       .from(aiAgentProfile)
-      .where(
-        and(
-          eq(aiAgentProfile.id, run.profileId),
-          eq(aiAgentProfile.status, "active"),
-        ),
-      )
+      .where(and(eq(aiAgentProfile.id, run.profileId), eq(aiAgentProfile.status, "active")))
       .limit(1)
       .then((rows) => rows[0]),
   ]);
@@ -96,10 +78,7 @@ export async function prepareAgentRun(
       "AGENT_REVISION_UNAVAILABLE",
     );
   if (profile.executionDisabledReason)
-    throw new PermanentAgentRunError(
-      profile.executionDisabledReason,
-      "AGENT_ACCESS_PAUSED",
-    );
+    throw new PermanentAgentRunError(profile.executionDisabledReason, "AGENT_ACCESS_PAUSED");
   const liveResources = await listAgentResourcesForExecution({
     profileId: run.profileId,
     workspaceId: run.workspaceId,
@@ -112,22 +91,14 @@ export async function prepareAgentRun(
         updatedAt: new Date(),
       })
       .where(eq(aiAgentProfile.id, run.profileId));
-    throw new PermanentAgentRunError(
-      RESOURCE_EDITOR_PAUSE_REASON,
-      "AGENT_ACCESS_PAUSED",
-    );
+    throw new PermanentAgentRunError(RESOURCE_EDITOR_PAUSE_REASON, "AGENT_ACCESS_PAUSED");
   }
   const definition = revision.compiledDefinition as {
     defaultModel?: string;
     instructions?: string;
     name?: string;
   };
-  const model = await resolveWorkspaceAiModel(
-    run.workspaceId,
-    "auto",
-    env,
-    "chat",
-  );
+  const model = await resolveWorkspaceAiModel(run.workspaceId, "auto", env, "chat");
   const prompt = readRunPrompt(run.input);
   const mcpTools = await buildMcpAgentRunTools({
     env,

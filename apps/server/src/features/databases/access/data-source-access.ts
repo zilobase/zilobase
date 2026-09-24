@@ -55,8 +55,7 @@ export async function requireDataSourceAccess(
     throw new ServiceMutationError("Data source parent not found", 404);
   }
 
-  const canAccessRecord =
-    dependencies?.canAccessRecord ?? canAccessDatabaseRecord;
+  const canAccessRecord = dependencies?.canAccessRecord ?? canAccessDatabaseRecord;
 
   if (!(await canAccessRecord(parent, userId, required))) {
     throw new ServiceMutationError("Forbidden", 403);
@@ -73,10 +72,5 @@ export function requireDataSourceEditAccess(
   userId: string,
   dependencies?: Parameters<typeof requireDataSourceAccess>[3],
 ) {
-  return requireDataSourceAccess(
-    dataSourceId,
-    userId,
-    "edit",
-    dependencies,
-  );
+  return requireDataSourceAccess(dataSourceId, userId, "edit", dependencies);
 }

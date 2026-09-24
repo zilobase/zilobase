@@ -1,4 +1,4 @@
-import type { BlockDragPayload } from "../drag-drop/block-drag"
+import type { BlockDragPayload } from "../drag-drop/block-drag";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,26 +8,40 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
+} from "@/shared/ui/alert-dialog";
 
 export type PendingDatabaseBlockDrop = {
-  canMove: boolean
-  databaseId: string
-  payload: BlockDragPayload
-  pos: number
-}
+  canMove: boolean;
+  databaseId: string;
+  payload: BlockDragPayload;
+  pos: number;
+};
 
-export function DatabaseBlockDropDialog({ onClose, onCopy, onMove, pending }: {
-  onClose: () => void
-  onCopy: () => void
-  onMove: () => void
-  pending: PendingDatabaseBlockDrop | null
+export function DatabaseBlockDropDialog({
+  onClose,
+  onCopy,
+  onMove,
+  pending,
+}: {
+  onClose: () => void;
+  onCopy: () => void;
+  onMove: () => void;
+  pending: PendingDatabaseBlockDrop | null;
 }) {
   return (
-    <AlertDialog onOpenChange={(open) => { if (!open) onClose() }} open={pending !== null}>
+    <AlertDialog
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      open={pending !== null}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{pending?.canMove ? "Move database or create a linked view?" : "This database can’t be moved here"}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {pending?.canMove
+              ? "Move database or create a linked view?"
+              : "This database can’t be moved here"}
+          </AlertDialogTitle>
           <AlertDialogDescription>
             {pending?.canMove
               ? "Move the database into this page, or leave the original where it is and create a linked view here."
@@ -36,10 +50,12 @@ export function DatabaseBlockDropDialog({ onClose, onCopy, onMove, pending }: {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onCopy} variant={pending?.canMove ? "outline" : "default"}>Create linked view</AlertDialogAction>
+          <AlertDialogAction onClick={onCopy} variant={pending?.canMove ? "outline" : "default"}>
+            Create linked view
+          </AlertDialogAction>
           {pending?.canMove ? <AlertDialogAction onClick={onMove}>Move</AlertDialogAction> : null}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }

@@ -1,9 +1,9 @@
-import { Link } from "@tanstack/react-router"
-import { ArrowUpRightIcon } from "@/shared/components/icons"
+import { Link } from "@tanstack/react-router";
+import { ArrowUpRightIcon } from "@/shared/components/icons";
 
-import { SidebarGroupAction } from "@/shared/ui/sidebar"
-import { cn } from "@/shared/lib/utils"
-import type { LibraryView, SidebarSectionId } from "@zilobase/features/user-settings"
+import { SidebarGroupAction } from "@/shared/ui/sidebar";
+import { cn } from "@/shared/lib/utils";
+import type { LibraryView, SidebarSectionId } from "@zilobase/features/user-settings";
 
 export function SidebarLibraryLink({
   className,
@@ -11,12 +11,12 @@ export function SidebarLibraryLink({
   sectionId,
   view: viewOverride,
 }: {
-  className?: string
-  label: string
-  sectionId: SidebarSectionId
-  view?: LibraryView
+  className?: string;
+  label: string;
+  sectionId: SidebarSectionId;
+  view?: LibraryView;
 }) {
-  const view = viewOverride ?? getLibraryViewForSection(sectionId)
+  const view = viewOverride ?? getLibraryViewForSection(sectionId);
 
   return (
     <SidebarGroupAction
@@ -35,11 +35,9 @@ export function SidebarLibraryLink({
         <ArrowUpRightIcon />
       </Link>
     </SidebarGroupAction>
-  )
+  );
 }
 
-function getLibraryViewForSection(
-  sectionId: SidebarSectionId,
-): LibraryView {
-  return sectionId === "favorites" ? "favourites" : sectionId
+function getLibraryViewForSection(sectionId: SidebarSectionId): LibraryView {
+  return sectionId === "favorites" ? "favourites" : sectionId;
 }

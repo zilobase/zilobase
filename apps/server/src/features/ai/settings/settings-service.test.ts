@@ -1,8 +1,14 @@
 vi.mock("./instruction-pages", () => ({
   hydrateInstructionPage: async (_actor: unknown, definition: unknown) => definition,
-  allInstructionResources: (definition: { resources: unknown[]; instructionResources?: unknown[] }) => [...definition.resources, ...(definition.instructionResources ?? [])],
+  allInstructionResources: (definition: {
+    resources: unknown[];
+    instructionResources?: unknown[];
+  }) => [...definition.resources, ...(definition.instructionResources ?? [])],
 }));
-vi.mock("../../collaboration/service", () => ({ replacePageContent: vi.fn(), encodePageContentAsYjs: () => new Uint8Array() }));
+vi.mock("../../collaboration/service", () => ({
+  replacePageContent: vi.fn(),
+  encodePageContentAsYjs: () => new Uint8Array(),
+}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { replacePageContent } from "../../collaboration/service";
 import { emptySettingsDefinition } from "@zilobase/features/ai-chat/settings-contract";
@@ -76,11 +82,7 @@ vi.mock("../../../infrastructure/database", async () => {
           for: () => q,
           orderBy: () => q,
           then: (resolve: any) =>
-            resolve(
-              structuredClone(
-                rows(table).filter((r) => matches(table, where, r)),
-              ),
-            ),
+            resolve(structuredClone(rows(table).filter((r) => matches(table, where, r)))),
         };
         return q;
       },
@@ -107,9 +109,7 @@ vi.mock("../../../infrastructure/database", async () => {
                   r.id === value.id ||
                   (value.settingsId &&
                     r.settingsId === value.settingsId &&
-                    (value.userId
-                      ? r.userId === value.userId
-                      : r.version === value.version)),
+                    (value.userId ? r.userId === value.userId : r.version === value.version)),
               );
               if (existing && update) {
                 Object.assign(existing, structuredClone(update));
@@ -133,16 +133,13 @@ vi.mock("../../../infrastructure/database", async () => {
       set: (value: Row) => ({
         where: async (where: any) => {
           for (const row of rows(table))
-            if (matches(table, where, row))
-              Object.assign(row, structuredClone(value));
+            if (matches(table, where, row)) Object.assign(row, structuredClone(value));
         },
       }),
     }),
     delete: (table: any) => ({
       where: async (where: any) => {
-        memory.tables[getTableName(table)] = rows(table).filter(
-          (r) => !matches(table, where, r),
-        );
+        memory.tables[getTableName(table)] = rows(table).filter((r) => !matches(table, where, r));
       },
     }),
     transaction: async (fn: any) => {
@@ -198,36 +195,78 @@ describe("canonical settings records", () => {
   });
   it("rejects a custom agent without its canonical settings record", async () => {
     memory.tables.ai_settings = [];
-    await expect(readSettings({ ...actor, scope: "missing" })).rejects.toMatchObject({ code: "agent_settings_missing" });
+    await expect(readSettings({ ...actor, scope: "missing" })).rejects.toMatchObject({
+      code: "agent_settings_missing",
+    });
     expect(memory.tables.ai_settings).toHaveLength(0);
     expect(memory.tables.ai_settings_version).toBeUndefined();
   });
 });
 describe("private settings drafts", () => {
   it("persists AI provenance across reloads and manual configuration edits, then clears it on Save", async () => {
-    await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 0, patch: { description: "Manual description" } });
-    await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 1, patch: { name: "AI name" }, origin: "ai" });
+    await updateSettingsDraft(actor, {
+      baseVersion: 1,
+      draftVersion: 0,
+      patch: { description: "Manual description" },
+    });
+    await updateSettingsDraft(actor, {
+      baseVersion: 1,
+      draftVersion: 1,
+      patch: { name: "AI name" },
+      origin: "ai",
+    });
     const reviewed = await readSettings(actor);
     expect(reviewed.review?.fields).toEqual(["name"]);
     expect(reviewed.review?.before.description).toBe("Manual description");
-    await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 2, patch: { description: "More manual edits" } });
+    await updateSettingsDraft(actor, {
+      baseVersion: 1,
+      draftVersion: 2,
+      patch: { description: "More manual edits" },
+    });
     expect((await readSettings(actor)).review?.fields).toEqual(["name"]);
     expect((await publishSettings(actor, { baseVersion: 1, draftVersion: 3 })).review).toBeNull();
   });
   it("restores the pre-AI instruction document on Discard", async () => {
     const pageId = "11111111-1111-4111-8111-111111111111";
-    const baseline = { ...emptySettingsDefinition(), instructionPageId: pageId, instructions: "Original", instructionDocument: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Original" }] }] } };
+    const baseline = {
+      ...emptySettingsDefinition(),
+      instructionPageId: pageId,
+      instructions: "Original",
+      instructionDocument: {
+        type: "doc",
+        content: [{ type: "paragraph", content: [{ type: "text", text: "Original" }] }],
+      },
+    };
     memory.tables.ai_settings[0]!.definition = baseline;
-    await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 0, patch: { instructions: "AI revised" }, origin: "ai" });
+    await updateSettingsDraft(actor, {
+      baseVersion: 1,
+      draftVersion: 0,
+      patch: { instructions: "AI revised" },
+      origin: "ai",
+    });
     await discardSettingsDraft(actor, 1);
-    expect(vi.mocked(replacePageContent)).toHaveBeenLastCalledWith(expect.objectContaining({ pageId, content: baseline.instructionDocument }));
+    expect(vi.mocked(replacePageContent)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pageId, content: baseline.instructionDocument }),
+    );
     expect((await readSettings(actor)).review).toBeNull();
   });
   it("does not overwrite newer instruction edits when discarding AI changes", async () => {
-    const baseline = { ...emptySettingsDefinition(), instructionPageId: "11111111-1111-4111-8111-111111111111" };
+    const baseline = {
+      ...emptySettingsDefinition(),
+      instructionPageId: "11111111-1111-4111-8111-111111111111",
+    };
     memory.tables.ai_settings[0]!.definition = baseline;
-    await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 0, patch: { instructions: "AI revised" }, origin: "ai" });
-    await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 1, patch: { instructions: "New manual content" } });
+    await updateSettingsDraft(actor, {
+      baseVersion: 1,
+      draftVersion: 0,
+      patch: { instructions: "AI revised" },
+      origin: "ai",
+    });
+    await updateSettingsDraft(actor, {
+      baseVersion: 1,
+      draftVersion: 1,
+      patch: { instructions: "New manual content" },
+    });
     await expect(discardSettingsDraft(actor, 2)).rejects.toThrow("newer edits");
     expect((await readSettings(actor)).review).toBeTruthy();
   });
@@ -251,7 +290,9 @@ describe("private settings drafts", () => {
   it("rejects instruction creation for viewers before creating a page", async () => {
     seed("agent:agent");
     memory.role = "user";
-    await expect(createSettingsInstruction({ ...actor, scope: "agent" }, { baseVersion: 1, draftVersion: 0 })).rejects.toThrow();
+    await expect(
+      createSettingsInstruction({ ...actor, scope: "agent" }, { baseVersion: 1, draftVersion: 0 }),
+    ).rejects.toThrow();
     expect(memory.tables.page).toBeUndefined();
   });
   it("stages changes without mutating the saved snapshot or creating a version", async () => {
@@ -276,7 +317,11 @@ describe("private settings drafts", () => {
     expect(bob.draftVersion).toBe(0);
   });
   it("stages and versions instruction titles with their document", async () => {
-    const draft = await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 0, patch: { instructionTitle: "Writing guide" } });
+    const draft = await updateSettingsDraft(actor, {
+      baseVersion: 1,
+      draftVersion: 0,
+      patch: { instructionTitle: "Writing guide" },
+    });
     expect(draft.definition.instructionTitle).toBe("Writing guide");
     expect(draft.saved.instructionTitle).toBe("Instructions");
     const saved = await publishSettings(actor, draft);
@@ -318,9 +363,7 @@ describe("private settings drafts", () => {
         patch: { description: "Stale AI edit" },
       }),
     ).rejects.toMatchObject({ code: "settings_conflict" });
-    expect((await readSettings(actor)).definition.description).toBe(
-      "Manual edit",
-    );
+    expect((await readSettings(actor)).definition.description).toBe("Manual edit");
   });
   it("blocks stale publication after another editor saved", async () => {
     const draft = await updateSettingsDraft(actor, {
@@ -341,9 +384,7 @@ describe("private settings drafts", () => {
       patch: { instructions: "Private" },
       pendingRun: "run after save",
     });
-    expect(
-      (await discardSettingsDraft(actor, draft.draftVersion)).pendingRun,
-    ).toBeNull();
+    expect((await discardSettingsDraft(actor, draft.draftVersion)).pendingRun).toBeNull();
     expect(memory.tables.ai_settings_version).toBeUndefined();
   });
   it("read-only users cannot change drafts", async () => {
@@ -366,9 +407,7 @@ describe("private settings drafts", () => {
       patch: { name: "New name" },
     });
     memory.failMaterialization = true;
-    await expect(publishSettings(custom, draft)).rejects.toThrow(
-      "trigger storage failed",
-    );
+    await expect(publishSettings(custom, draft)).rejects.toThrow("trigger storage failed");
     expect(memory.tables.ai_agent_profile![0]!.version).toBe(1);
     expect(memory.tables.ai_settings![0]!.version).toBe(1);
     expect(memory.tables.ai_settings_draft).toHaveLength(1);
@@ -379,9 +418,7 @@ describe("private settings drafts", () => {
       baseVersion: 1,
       draftVersion: 0,
       patch: {
-        connectors: [
-          { connectionId: "foreign", alwaysAllowEnabled: false, tools: [] },
-        ],
+        connectors: [{ connectionId: "foreign", alwaysAllowEnabled: false, tools: [] }],
       },
     });
     await expect(publishSettings(actor, draft)).rejects.toMatchObject({
@@ -392,17 +429,40 @@ describe("private settings drafts", () => {
     seed("agent:agent");
     memory.tables.ai_agent_profile = [{ id: "agent", version: 1 }];
     const custom = { ...actor, scope: "agent" };
-    const draft = await updateSettingsDraft(custom, { baseVersion: 1, draftVersion: 0, patch: { resources: [{ resourceType: "page", resourceId: "page", accessLevel: "edit" }] } });
+    const draft = await updateSettingsDraft(custom, {
+      baseVersion: 1,
+      draftVersion: 0,
+      patch: { resources: [{ resourceType: "page", resourceId: "page", accessLevel: "edit" }] },
+    });
     memory.resourceAllowed = false;
-    await expect(publishSettings(custom, draft)).rejects.toMatchObject({ code: "agent_resource_grant_forbidden", status: 403 });
+    await expect(publishSettings(custom, draft)).rejects.toMatchObject({
+      code: "agent_resource_grant_forbidden",
+      status: 403,
+    });
     expect(memory.tables.ai_settings![0]!.version).toBe(1);
     expect(memory.tables.ai_settings_draft).toHaveLength(1);
     expect(memory.tables.ai_agent_revision).toBeUndefined();
   });
   it("requires the connector authenticator to change always-allow policy", async () => {
-    memory.tables.ai_mcp_connection = [{ id: "connection", workspaceId: "workspace", scopeType: "personal", scopeUserId: "alice", authenticatedByUserId: "bob", alwaysAllowEnabled: false }];
-    const draft = await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 0, patch: { connectors: [{ connectionId: "connection", alwaysAllowEnabled: true, tools: [] }] } });
-    await expect(publishSettings(actor, draft)).rejects.toMatchObject({ code: "connector_authenticator_required", status: 403 });
+    memory.tables.ai_mcp_connection = [
+      {
+        id: "connection",
+        workspaceId: "workspace",
+        scopeType: "personal",
+        scopeUserId: "alice",
+        authenticatedByUserId: "bob",
+        alwaysAllowEnabled: false,
+      },
+    ];
+    const draft = await updateSettingsDraft(actor, {
+      baseVersion: 1,
+      draftVersion: 0,
+      patch: { connectors: [{ connectionId: "connection", alwaysAllowEnabled: true, tools: [] }] },
+    });
+    await expect(publishSettings(actor, draft)).rejects.toMatchObject({
+      code: "connector_authenticator_required",
+      status: 403,
+    });
     expect(memory.tables.ai_mcp_connection[0]!.alwaysAllowEnabled).toBe(false);
     expect(memory.tables.ai_settings_draft).toHaveLength(1);
   });
@@ -410,8 +470,24 @@ describe("private settings drafts", () => {
     seed("agent:agent");
     memory.tables.ai_agent_profile = [{ id: "agent", version: 1 }];
     const custom = { ...actor, scope: "agent" };
-    const draft = await updateSettingsDraft(custom, { baseVersion: 1, draftVersion: 0, patch: { triggers: [{ id: "trigger", kind: "schedule", label: "Too frequent", status: "active", config: { cadence: "custom", intervalMinutes: 1 } }] } });
-    await expect(publishSettings(custom, draft)).rejects.toMatchObject({ code: "invalid_schedule" });
+    const draft = await updateSettingsDraft(custom, {
+      baseVersion: 1,
+      draftVersion: 0,
+      patch: {
+        triggers: [
+          {
+            id: "trigger",
+            kind: "schedule",
+            label: "Too frequent",
+            status: "active",
+            config: { cadence: "custom", intervalMinutes: 1 },
+          },
+        ],
+      },
+    });
+    await expect(publishSettings(custom, draft)).rejects.toMatchObject({
+      code: "invalid_schedule",
+    });
     expect(memory.tables.ai_settings![0]!.version).toBe(1);
     expect(memory.tables.ai_settings_draft).toHaveLength(1);
   });
@@ -422,20 +498,59 @@ describe("private settings drafts", () => {
     ["database", { event: "unsupported" }, "invalid_database_event"],
     ["meeting", { meetingId: "missing" }, "meeting_access_required"],
     ["database", { event: "row_added", databaseId: "ungranted" }, "trigger_access_required"],
-  ] as const)("validates %s trigger authority and configuration before publication", async (kind, config, code) => {
-    seed("agent:agent");
-    memory.tables.ai_agent_profile = [{ id: "agent", version: 1 }];
-    const custom = { ...actor, scope: "agent" };
-    const draft = await updateSettingsDraft(custom, { baseVersion: 1, draftVersion: 0, patch: { triggers: [{ id: "trigger", kind, config, label: "Trigger", status: "active" }] } });
-    await expect(publishSettings(custom, draft)).rejects.toMatchObject({ code });
-    expect(memory.tables.ai_settings![0]!.version).toBe(1);
-    expect(memory.tables.ai_settings_draft).toHaveLength(1);
-  });
+  ] as const)(
+    "validates %s trigger authority and configuration before publication",
+    async (kind, config, code) => {
+      seed("agent:agent");
+      memory.tables.ai_agent_profile = [{ id: "agent", version: 1 }];
+      const custom = { ...actor, scope: "agent" };
+      const draft = await updateSettingsDraft(custom, {
+        baseVersion: 1,
+        draftVersion: 0,
+        patch: { triggers: [{ id: "trigger", kind, config, label: "Trigger", status: "active" }] },
+      });
+      await expect(publishSettings(custom, draft)).rejects.toMatchObject({ code });
+      expect(memory.tables.ai_settings![0]!.version).toBe(1);
+      expect(memory.tables.ai_settings_draft).toHaveLength(1);
+    },
+  );
   it("rejects an unavailable connector tool without replacing saved policy", async () => {
-    memory.tables.ai_mcp_connection = [{ id: "connection", workspaceId: "workspace", scopeType: "personal", scopeUserId: "alice", authenticatedByUserId: "alice", alwaysAllowEnabled: false }];
-    memory.tables.ai_mcp_tool_snapshot = [{ id: "tool", connectionId: "connection", available: false, enabled: false }];
-    const draft = await updateSettingsDraft(actor, { baseVersion: 1, draftVersion: 0, patch: { connectors: [{ connectionId: "connection", alwaysAllowEnabled: false, tools: [{ toolId: "tool", enabled: true, classification: "read", executionMode: "always_ask" }] }] } });
-    await expect(publishSettings(actor, draft)).rejects.toMatchObject({ code: "connector_tool_unavailable" });
+    memory.tables.ai_mcp_connection = [
+      {
+        id: "connection",
+        workspaceId: "workspace",
+        scopeType: "personal",
+        scopeUserId: "alice",
+        authenticatedByUserId: "alice",
+        alwaysAllowEnabled: false,
+      },
+    ];
+    memory.tables.ai_mcp_tool_snapshot = [
+      { id: "tool", connectionId: "connection", available: false, enabled: false },
+    ];
+    const draft = await updateSettingsDraft(actor, {
+      baseVersion: 1,
+      draftVersion: 0,
+      patch: {
+        connectors: [
+          {
+            connectionId: "connection",
+            alwaysAllowEnabled: false,
+            tools: [
+              {
+                toolId: "tool",
+                enabled: true,
+                classification: "read",
+                executionMode: "always_ask",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    await expect(publishSettings(actor, draft)).rejects.toMatchObject({
+      code: "connector_tool_unavailable",
+    });
     expect(memory.tables.ai_mcp_tool_snapshot[0]!.enabled).toBe(false);
     expect(memory.tables.ai_settings_draft).toHaveLength(1);
   });
@@ -466,9 +581,7 @@ describe("private settings drafts", () => {
       draftVersion: 0,
       patch: {
         name: "Saved agent",
-        resources: [
-          { resourceType: "page", resourceId: "page", accessLevel: "view" },
-        ],
+        resources: [{ resourceType: "page", resourceId: "page", accessLevel: "view" }],
         grants: [{ principalType: "user", principalId: "bob", role: "user" }],
         connectors: [
           {
@@ -498,13 +611,29 @@ describe("private settings drafts", () => {
     seed("agent:agent");
     memory.tables.ai_agent_profile = [{ id: "agent", version: 1 }];
     const custom = { ...actor, scope: "agent" };
-    const draft = await updateSettingsDraft(custom, { baseVersion: 1, draftVersion: 0, patch: {
-      instructionResources: [{ resourceType: "database", resourceId: "linked-database", accessLevel: "view" }],
-    } });
+    const draft = await updateSettingsDraft(custom, {
+      baseVersion: 1,
+      draftVersion: 0,
+      patch: {
+        instructionResources: [
+          { resourceType: "database", resourceId: "linked-database", accessLevel: "view" },
+        ],
+      },
+    });
     expect(memory.tables.database_access).toBeUndefined();
     const saved = await publishSettings(custom, draft);
-    expect(memory.tables.database_access).toEqual([expect.objectContaining({ databaseId: "linked-database", targetId: "agent", accessLevel: "view" })]);
-    const changed = await updateSettingsDraft(custom, { baseVersion: saved.version, draftVersion: 0, patch: { instructionResources: [] } });
+    expect(memory.tables.database_access).toEqual([
+      expect.objectContaining({
+        databaseId: "linked-database",
+        targetId: "agent",
+        accessLevel: "view",
+      }),
+    ]);
+    const changed = await updateSettingsDraft(custom, {
+      baseVersion: saved.version,
+      draftVersion: 0,
+      patch: { instructionResources: [] },
+    });
     await publishSettings(custom, changed);
     expect(memory.tables.database_access).toHaveLength(0);
   });
@@ -540,9 +669,7 @@ describe("private settings drafts", () => {
     expect(next.instructionDocument.type).toBe("doc");
   });
   it("compares persisted JSON independent of object key ordering", () => {
-    expect(
-      sameSettings({ b: 2, a: { c: 3, d: 4 } }, { a: { d: 4, c: 3 }, b: 2 }),
-    ).toBe(true);
+    expect(sameSettings({ b: 2, a: { c: 3, d: 4 } }, { a: { d: 4, c: 3 }, b: 2 })).toBe(true);
     expect(sameSettings([1, 2], [2, 1])).toBe(false);
   });
 });

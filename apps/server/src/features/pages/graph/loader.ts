@@ -8,10 +8,7 @@ import {
   page,
   pageItemPlacement,
 } from "../../../infrastructure/database/schema";
-import {
-  PageGraph,
-  type PageGraphDatabase,
-} from "./page-graph";
+import { PageGraph, type PageGraphDatabase } from "./page-graph";
 
 export async function loadWorkspacePageGraph(workspaceId: string) {
   const [pages, databaseRecords, databaseRows, placements] = await Promise.all([
@@ -61,16 +58,13 @@ export async function loadWorkspacePageGraph(workspaceId: string) {
       })
       .from(pageItemPlacement)
       .where(
-        and(
-          eq(pageItemPlacement.workspaceId, workspaceId),
-          isNull(pageItemPlacement.deletedAt),
-        ),
+        and(eq(pageItemPlacement.workspaceId, workspaceId), isNull(pageItemPlacement.deletedAt)),
       ),
   ]);
 
   return new PageGraph({
-    databaseRecords: databaseRecords.filter(
-      (record): record is PageGraphDatabase => Boolean(record.pageId),
+    databaseRecords: databaseRecords.filter((record): record is PageGraphDatabase =>
+      Boolean(record.pageId),
     ),
     databaseRows,
     pages,

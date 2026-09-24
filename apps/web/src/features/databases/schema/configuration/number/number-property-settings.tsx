@@ -53,9 +53,7 @@ export function NumberPropertySettings({
       <PropertySettingSubmenu
         icon={<Hash />}
         label="Decimal places"
-        onSelect={(numberDecimalPlaces) =>
-          onUpdateConfig({ numberDecimalPlaces })
-        }
+        onSelect={(numberDecimalPlaces) => onUpdateConfig({ numberDecimalPlaces })}
         options={numberDecimalPlacesOptions}
         selectedValue={config.numberDecimalPlaces}
       />
@@ -74,9 +72,7 @@ export function NumberPropertySettings({
                   : "border-stroke-default bg-surface-canvas text-content-secondary hover:bg-action-neutral-hover hover:text-content-primary"
               }`}
               key={option.value}
-              onClick={() =>
-                onUpdateConfig({ numberDisplayStyle: option.value })
-              }
+              onClick={() => onUpdateConfig({ numberDisplayStyle: option.value })}
               type="button"
             >
               <option.preview />
@@ -95,16 +91,12 @@ export function NumberPropertySettings({
               />
             }
             label="Color"
-            onSelect={(numberDisplayColor) =>
-              onUpdateConfig({ numberDisplayColor })
-            }
+            onSelect={(numberDisplayColor) => onUpdateConfig({ numberDisplayColor })}
             options={numberColorOptions}
             selectedValue={getColorTokenValue(config.numberDisplayColor)}
           />
           <div className="space-y-1">
-            <label className="text-sm font-medium text-content-primary">
-              Divide by
-            </label>
+            <label className="text-sm font-medium text-content-primary">Divide by</label>
             <Input
               defaultValue={String(config.numberDisplayDivideBy)}
               inputMode="decimal"
@@ -171,8 +163,7 @@ function NumberFormatSettingSubmenu({
     option.label.toLowerCase().includes(query.trim().toLowerCase()),
   );
   const selectedOption =
-    numberFormatOptions.find((option) => option.value === selectedValue) ??
-    numberFormatOptions[0];
+    numberFormatOptions.find((option) => option.value === selectedValue) ?? numberFormatOptions[0];
 
   return (
     <DropDrawerSub title="Number format">
@@ -199,9 +190,7 @@ function NumberFormatSettingSubmenu({
             }}
           >
             <span>{option.label}</span>
-            {option.value === selectedValue ? (
-              <Check className="ml-auto" />
-            ) : null}
+            {option.value === selectedValue ? <Check className="ml-auto" /> : null}
           </DropDrawerItem>
         ))}
         {filteredOptions.length === 0 ? (
@@ -280,9 +269,7 @@ const numberDisplayStyleOptions = [
 }[];
 
 function NumberDisplayPreview() {
-  return (
-    <span className="text-2xl font-semibold leading-none text-action-selected-text">42</span>
-  );
+  return <span className="text-2xl font-semibold leading-none text-action-selected-text">42</span>;
 }
 
 function BarDisplayPreview() {
@@ -325,8 +312,7 @@ function getColorSwatchClassName(color?: string | null) {
   const resolvedColor = getColorTokenValue(color);
 
   return (
-    colorTokens.find((token) => (token.value ?? "default") === resolvedColor)
-      ?.swatchClass ??
+    colorTokens.find((token) => (token.value ?? "default") === resolvedColor)?.swatchClass ??
     colorTokens[0]?.swatchClass ??
     "bg-surface-canvas"
   );

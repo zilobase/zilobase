@@ -69,10 +69,7 @@ export class ChatAgent extends AIChatAgent<ChatAgentEnv> {
     );
 
     if (!requestBody) {
-      return Response.json(
-        { error: "Chat agent identity is invalid." },
-        { status: 404 },
-      );
+      return Response.json({ error: "Chat agent identity is invalid." }, { status: 404 });
     }
 
     const hydratedMessages = await this.mergeWithCanonicalMessages(this.messages);
@@ -95,18 +92,13 @@ export class ChatAgent extends AIChatAgent<ChatAgentEnv> {
   }
 
   private withDb<T>(fn: () => Promise<T>) {
-    return runWithDbEnv(
-      this.env as ChatAgentEnv & Record<string, unknown>,
-      fn,
-    );
+    return runWithDbEnv(this.env as ChatAgentEnv & Record<string, unknown>, fn);
   }
 
   private mergeWithCanonicalMessages(messages: readonly UIMessage[]) {
     if (!this.threadId) return Promise.resolve([...messages]);
 
-    this.canonicalMessagesPromise ??= this.withDb(() =>
-      loadAiChatThreadMessages(this.threadId!),
-    );
+    this.canonicalMessagesPromise ??= this.withDb(() => loadAiChatThreadMessages(this.threadId!));
 
     return this.canonicalMessagesPromise.then((canonicalMessages) =>
       mergeCanonicalChatMessages(canonicalMessages, messages),

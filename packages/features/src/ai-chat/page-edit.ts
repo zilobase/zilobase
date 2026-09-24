@@ -1,54 +1,49 @@
-export const WORKSPACE_EDIT_SNAPSHOT_PART_TYPE = "page-edit-snapshot" as const
+export const WORKSPACE_EDIT_SNAPSHOT_PART_TYPE = "page-edit-snapshot" as const;
 
-export const PROPOSE_PAGE_CONTENT_UPDATE_TOOL = "proposePageContentUpdate" as const
+export const PROPOSE_PAGE_CONTENT_UPDATE_TOOL = "proposePageContentUpdate" as const;
 
-export type PageEditSnapshotStatus =
-  | "applied"
-  | "declined"
-  | "failed"
-  | "preview"
-  | "undone"
+export type PageEditSnapshotStatus = "applied" | "declined" | "failed" | "preview" | "undone";
 
 export type PageEditSnapshotPart = {
-  type: typeof WORKSPACE_EDIT_SNAPSHOT_PART_TYPE
-  toolCallId: string
-  parentMessageId: string
-  pageId: string
-  summary: string
-  afterContentJson?: unknown
-  beforeMarkdown: string
-  afterMarkdown: string
-  beforeContentJson: unknown
-  status: PageEditSnapshotStatus
-  appliedAt: string
-  undoneAt?: string
-  errorMessage?: string
-}
+  type: typeof WORKSPACE_EDIT_SNAPSHOT_PART_TYPE;
+  toolCallId: string;
+  parentMessageId: string;
+  pageId: string;
+  summary: string;
+  afterContentJson?: unknown;
+  beforeMarkdown: string;
+  afterMarkdown: string;
+  beforeContentJson: unknown;
+  status: PageEditSnapshotStatus;
+  appliedAt: string;
+  undoneAt?: string;
+  errorMessage?: string;
+};
 
-import type { PageEditMode } from "./apply-page-content-patch"
+import type { PageEditMode } from "./apply-page-content-patch";
 
-export type { PageEditMode }
+export type { PageEditMode };
 
 export type ProposePageContentUpdateOutput = {
-  editId: string
-  pageId: string
-  summary: string
-  editMode: PageEditMode
-  afterMarkdown?: string
-  searchText?: string
-  replaceText?: string
-}
+  editId: string;
+  pageId: string;
+  summary: string;
+  editMode: PageEditMode;
+  afterMarkdown?: string;
+  searchText?: string;
+  replaceText?: string;
+};
 
 type MessageWithParts = {
-  id: string
-  role: string
-  parts: Array<{ type: string } & Record<string, unknown>>
-}
+  id: string;
+  role: string;
+  parts: Array<{ type: string } & Record<string, unknown>>;
+};
 
 export function isPageEditSnapshotPart(
   part: { type: string } & Record<string, unknown>,
 ): part is PageEditSnapshotPart {
-  return part.type === WORKSPACE_EDIT_SNAPSHOT_PART_TYPE
+  return part.type === WORKSPACE_EDIT_SNAPSHOT_PART_TYPE;
 }
 
 export function isPageEditSnapshotMessage(
@@ -57,59 +52,55 @@ export function isPageEditSnapshotMessage(
   return (
     message.role === "data" &&
     message.parts.some((part) => part.type === WORKSPACE_EDIT_SNAPSHOT_PART_TYPE)
-  )
+  );
 }
 
 export function isProposePageContentUpdateToolName(toolName: string) {
-  return toolName === PROPOSE_PAGE_CONTENT_UPDATE_TOOL
+  return toolName === PROPOSE_PAGE_CONTENT_UPDATE_TOOL;
 }
 
-export function buildPageEditSnapshotMap(
-  messages: readonly MessageWithParts[],
-) {
-  const map = new Map<string, PageEditSnapshotPart>()
+export function buildPageEditSnapshotMap(messages: readonly MessageWithParts[]) {
+  const map = new Map<string, PageEditSnapshotPart>();
 
   for (const message of messages) {
     if ((message.role as string) !== "data") {
-      continue
+      continue;
     }
 
     for (const part of message.parts) {
       if (!isPageEditSnapshotPart(part)) {
-        continue
+        continue;
       }
 
-      map.set(part.toolCallId, part)
+      map.set(part.toolCallId, part);
     }
   }
 
-  return map
+  return map;
 }
 
 export function isPageEditBaselineCurrent(
   baselineContentJson: unknown,
   currentContentJson: unknown,
   options?: {
-    baselineMarkdown?: string
-    currentMarkdown?: string
+    baselineMarkdown?: string;
+    currentMarkdown?: string;
   },
 ) {
   if (baselineContentJson != null && currentContentJson != null) {
-    if (
-      JSON.stringify(baselineContentJson) === JSON.stringify(currentContentJson)
-    ) {
-      return true
+    if (JSON.stringify(baselineContentJson) === JSON.stringify(currentContentJson)) {
+      return true;
     }
   }
 
-  const baselineMarkdown = options?.baselineMarkdown?.trim()
-  const currentMarkdown = options?.currentMarkdown?.trim()
+  const baselineMarkdown = options?.baselineMarkdown?.trim();
+  const currentMarkdown = options?.currentMarkdown?.trim();
 
   if (!baselineMarkdown || !currentMarkdown) {
-    return false
+    return false;
   }
 
-  return baselineMarkdown === currentMarkdown
+  return baselineMarkdown === currentMarkdown;
 }
 
 export function isPageEditReviewAvailable(
@@ -118,63 +109,49 @@ export function isPageEditReviewAvailable(
   currentMarkdown?: string,
 ) {
   if (!snapshot.afterMarkdown || currentContentJson == null) {
-    return false
+    return false;
   }
 
   if (snapshot.status === "preview" || snapshot.status === "declined") {
-    return isPageEditBaselineCurrent(
-      snapshot.beforeContentJson,
-      currentContentJson,
-      {
-        baselineMarkdown: snapshot.beforeMarkdown,
-        currentMarkdown,
-      },
-    )
+    return isPageEditBaselineCurrent(snapshot.beforeContentJson, currentContentJson, {
+      baselineMarkdown: snapshot.beforeMarkdown,
+      currentMarkdown,
+    });
   }
 
   if (snapshot.status === "applied") {
-    return isPageEditBaselineCurrent(
-      snapshot.afterContentJson ?? null,
-      currentContentJson,
-      {
-        baselineMarkdown: snapshot.afterMarkdown,
-        currentMarkdown,
-      },
-    )
+    return isPageEditBaselineCurrent(snapshot.afterContentJson ?? null, currentContentJson, {
+      baselineMarkdown: snapshot.afterMarkdown,
+      currentMarkdown,
+    });
   }
 
   if (snapshot.status === "undone") {
-    return isPageEditBaselineCurrent(
-      snapshot.beforeContentJson,
-      currentContentJson,
-      {
-        baselineMarkdown: snapshot.beforeMarkdown,
-        currentMarkdown,
-      },
-    )
+    return isPageEditBaselineCurrent(snapshot.beforeContentJson, currentContentJson, {
+      baselineMarkdown: snapshot.beforeMarkdown,
+      currentMarkdown,
+    });
   }
 
-  return false
+  return false;
 }
 
-export function dedupeChatMessagesById<T extends { id: string }>(
-  messages: readonly T[],
-) {
-  const seen = new Set<string>()
-  const result: T[] = []
+export function dedupeChatMessagesById<T extends { id: string }>(messages: readonly T[]) {
+  const seen = new Set<string>();
+  const result: T[] = [];
 
   for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index]!
+    const message = messages[index]!;
 
     if (seen.has(message.id)) {
-      continue
+      continue;
     }
 
-    seen.add(message.id)
-    result.unshift(message)
+    seen.add(message.id);
+    result.unshift(message);
   }
 
-  return result
+  return result;
 }
 
 export function findPageEditSnapshotMessage(
@@ -184,9 +161,6 @@ export function findPageEditSnapshotMessage(
   return messages.find(
     (message) =>
       (message.role as string) === "data" &&
-      message.parts.some(
-        (part) =>
-          isPageEditSnapshotPart(part) && part.toolCallId === toolCallId,
-      ),
-  )
+      message.parts.some((part) => isPageEditSnapshotPart(part) && part.toolCallId === toolCallId),
+  );
 }

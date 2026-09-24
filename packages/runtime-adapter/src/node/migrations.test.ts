@@ -3,10 +3,7 @@ import { test } from "vitest";
 
 import type { Database } from "@zilobase/server/node-adapter-api";
 import { CORE_MIGRATION_SET } from "@zilobase/server/node-adapter-api";
-import {
-  assertMigrationSets,
-  runMigrationSets,
-} from "./migrations";
+import { assertMigrationSets, runMigrationSets } from "./migrations";
 
 test("migration sets run core first and keep separate journals", async () => {
   const calls: Array<{ folder: string; table: string }> = [];
@@ -33,10 +30,10 @@ test("migration sets run core first and keep separate journals", async () => {
     },
   );
 
-  assert.deepEqual(calls.map((call) => call.table), [
-    "__zilobase_core_migrations",
-    "__zilobase_test_edition_migrations",
-  ]);
+  assert.deepEqual(
+    calls.map((call) => call.table),
+    ["__zilobase_core_migrations", "__zilobase_test_edition_migrations"],
+  );
   assert.equal(calls[1]?.folder, "/private/migrations");
   assert.equal(statements.length, 2);
 });

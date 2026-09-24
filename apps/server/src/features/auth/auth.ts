@@ -10,17 +10,10 @@ import {
   magicLink,
   organization as organizationPlugin,
 } from "better-auth/plugins";
-import {
-  defaultRoles,
-  memberAc,
-} from "better-auth/plugins/organization/access";
+import { defaultRoles, memberAc } from "better-auth/plugins/organization/access";
 import { and, eq, ne } from "drizzle-orm";
 import { API_KEY_PREFIX } from "../api-keys";
-import {
-  createAuthTransactionDatabase,
-  db,
-  type Database,
-} from "../../infrastructure/database";
+import { createAuthTransactionDatabase, db, type Database } from "../../infrastructure/database";
 import * as schema from "../../infrastructure/database/schema";
 import { sendEmail } from "../../infrastructure/email/email";
 import {
@@ -37,10 +30,7 @@ import {
 } from "../instance/registration";
 import type { EditionExtensionOptions } from "../../shared/types";
 import { communityAppPolicy, isCommunityRegistration } from "../../shared/app-policy";
-import {
-  parseMembershipAccessExpiry,
-  TemporaryMembershipValidationError,
-} from "../memberships";
+import { parseMembershipAccessExpiry, TemporaryMembershipValidationError } from "../memberships";
 import { TeamspaceService } from "../teamspaces";
 import { createOAuthProviderPlugin } from "./oauth";
 
@@ -63,13 +53,7 @@ export async function createAuth(
       env,
       request,
     })) ?? [];
-  const auth = createAuthInstance(
-    env,
-    request,
-    database,
-    options,
-    editionAuthPlugins,
-  );
+  const auth = createAuthInstance(env, request, database, options, editionAuthPlugins);
   // Plugin initialization queries the database. Keep it inside the caller's
   // database scope and propagate failures through the request error boundary.
   await auth.$context;
@@ -95,13 +79,7 @@ function createAuthInstance(
       schema,
       transaction: true,
     }),
-    ...sharedAuthOptions(
-      env,
-      request,
-      database,
-      options,
-      editionAuthPlugins,
-    ),
+    ...sharedAuthOptions(env, request, database, options, editionAuthPlugins),
   });
 }
 
@@ -141,12 +119,7 @@ function sharedAuthOptions(
           const ownedWorkspaces = await database
             .select({ workspaceId: schema.member.organizationId })
             .from(schema.member)
-            .where(
-              and(
-                eq(schema.member.userId, deletingUser.id),
-                eq(schema.member.role, "owner"),
-              ),
-            );
+            .where(and(eq(schema.member.userId, deletingUser.id), eq(schema.member.role, "owner")));
 
           for (const ownedWorkspace of ownedWorkspaces) {
             const [anotherOwner] = await database
@@ -192,13 +165,16 @@ function sharedAuthOptions(
               typeof body?.invitationId === "string"
                 ? body.invitationId
                 : readInvitationIdFromCookieHeader(
-                    context?.request?.headers.get("cookie") ??
-                      request.headers.get("cookie"),
+                    context?.request?.headers.get("cookie") ?? request.headers.get("cookie"),
                   );
-            const decision = await evaluateSelfHostedRegistration(env, {
-              email: candidate.email,
-              invitationId,
-            }, policy);
+            const decision = await evaluateSelfHostedRegistration(
+              env,
+              {
+                email: candidate.email,
+                invitationId,
+              },
+              policy,
+            );
 
             if (!decision.allowed) {
               throw new APIError("FORBIDDEN", {
@@ -294,8 +270,7 @@ function sharedAuthOptions(
             if (invitation.role === "temporary") {
               throw new APIError("BAD_REQUEST", {
                 code: "TEMPORARY_INVITATION_ENDPOINT_REQUIRED",
-                message:
-                  "Temporary invitations must include an expiration date.",
+                message: "Temporary invitations must include an expiration date.",
               });
             }
             await options.editionExtension?.beforeInvitationCreate?.({
@@ -334,8 +309,7 @@ function sharedAuthOptions(
             if (candidate.role === "temporary") {
               throw new APIError("BAD_REQUEST", {
                 code: "TEMPORARY_MEMBERSHIP_EXPIRATION_REQUIRED",
-                message:
-                  "Temporary memberships must include an expiration date.",
+                message: "Temporary memberships must include an expiration date.",
               });
             }
 
@@ -351,8 +325,7 @@ function sharedAuthOptions(
             if (existing.role === "temporary" || newRole === "temporary") {
               throw new APIError("BAD_REQUEST", {
                 code: "TEMPORARY_MEMBERSHIP_ENDPOINT_REQUIRED",
-                message:
-                  "Use the workspace member endpoint to change temporary access.",
+                message: "Use the workspace member endpoint to change temporary access.",
               });
             }
           },
@@ -367,10 +340,7 @@ function sharedAuthOptions(
               .set({ accessExpiresAt })
               .where(eq(schema.member.id, created.id));
 
-            await new TeamspaceService(
-              database,
-              options.editionExtension,
-            ).ensureDefaultMembership({
+            await new TeamspaceService(database, options.editionExtension).ensureDefaultMembership({
               userId: created.userId,
               workspaceId: invitation.organizationId,
             });
@@ -389,10 +359,7 @@ function sharedAuthOptions(
             });
           },
           async afterAddMember({ member: created }) {
-            await new TeamspaceService(
-              database,
-              options.editionExtension,
-            ).ensureDefaultMembership({
+            await new TeamspaceService(database, options.editionExtension).ensureDefaultMembership({
               userId: created.userId,
               workspaceId: created.organizationId,
             });

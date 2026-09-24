@@ -1,159 +1,145 @@
-"use client"
+"use client";
 
-import { useEffect, useRef, useState } from "react"
-import { Link } from "@tanstack/react-router"
+import { useEffect, useRef, useState } from "react";
+import { Link } from "@tanstack/react-router";
 
-import { Button } from "@/shared/ui/button"
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-} from "@/shared/ui/field"
-import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
-import { getApiErrorMessage } from "@/platform/network/api"
-import { reloadDesktopAuthCredentials } from "../../../platform/auth/desktop-auth-token"
+import { Button } from "@/shared/ui/button";
+import { Field, FieldDescription, FieldError, FieldGroup } from "@/shared/ui/field";
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo";
+import { getApiErrorMessage } from "@/platform/network/api";
+import { reloadDesktopAuthCredentials } from "../../../platform/auth/desktop-auth-token";
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
-} from "../../../platform/diagnostics/desktop-diagnostics"
+} from "../../../platform/diagnostics/desktop-diagnostics";
 import {
   getSelectedDesktopServer,
   isCloudDesktopServer,
   listDesktopServerProfiles,
   type DesktopServerProfile,
-} from "../../../platform/server/desktop-server"
-import { executeDesktopServerSwitch } from "../server/desktop-server-switch"
+} from "../../../platform/server/desktop-server";
+import { executeDesktopServerSwitch } from "../server/desktop-server-switch";
 import {
   cancelDesktopBrowserSignIn,
   DesktopOAuthError,
   signInWithDesktopBrowser,
-} from "./browser-authorization"
-import { getAuthReturnPath } from "@/features/auth/lib/google-auth"
-import { useZilobaseFeatures } from "@zilobase/features"
-import { sessionQueryOptions } from "@zilobase/features/auth"
-import { workspacesQueryOptions } from "@zilobase/features/workspaces"
+} from "./browser-authorization";
+import { getAuthReturnPath } from "@/features/auth/lib/google-auth";
+import { useZilobaseFeatures } from "@zilobase/features";
+import { sessionQueryOptions } from "@zilobase/features/auth";
+import { workspacesQueryOptions } from "@zilobase/features/workspaces";
 
 type BrowserSignInState =
   | { phase: "idle"; error: null; retry: "oauth" }
   | { phase: "waiting_for_browser"; error: null; retry: "oauth" }
   | { phase: "finalizing"; error: null; retry: "finalize" }
-  | { phase: "error"; error: unknown; retry: "oauth" | "finalize" }
+  | { phase: "error"; error: unknown; retry: "oauth" | "finalize" };
 
 export function DesktopBrowserAuthScreen() {
-  const { auth, queryClient } = useZilobaseFeatures()
-  const server = getSelectedDesktopServer()
+  const { auth, queryClient } = useZilobaseFeatures();
+  const server = getSelectedDesktopServer();
   const [browserState, setBrowserState] = useState<BrowserSignInState>({
     phase: "idle",
     error: null,
     retry: "oauth",
-  })
-  const [otherProfiles, setOtherProfiles] = useState<DesktopServerProfile[]>([])
-  const browserOperation = useRef(0)
+  });
+  const [otherProfiles, setOtherProfiles] = useState<DesktopServerProfile[]>([]);
+  const browserOperation = useRef(0);
   const isPending =
-    browserState.phase === "waiting_for_browser" ||
-    browserState.phase === "finalizing"
+    browserState.phase === "waiting_for_browser" || browserState.phase === "finalizing";
 
   useEffect(
     () => () => {
-      ++browserOperation.current
-      void cancelDesktopBrowserSignIn().catch(() => undefined)
+      ++browserOperation.current;
+      void cancelDesktopBrowserSignIn().catch(() => undefined);
     },
     [],
-  )
+  );
 
   useEffect(() => {
-    let disposed = false
+    let disposed = false;
     void listDesktopServerProfiles()
       .then((result) => {
         if (!disposed) {
-          setOtherProfiles(result.profiles.filter((profile) => !profile.active))
+          setOtherProfiles(result.profiles.filter((profile) => !profile.active));
         }
       })
       .catch(() => {
-        if (!disposed) setOtherProfiles([])
-      })
+        if (!disposed) setOtherProfiles([]);
+      });
     return () => {
-      disposed = true
-    }
-  }, [])
+      disposed = true;
+    };
+  }, []);
 
   async function handleBrowserSignIn() {
-    const returnTo = getAuthReturnPath("/recents")
-    const operation = ++browserOperation.current
+    const returnTo = getAuthReturnPath("/recents");
+    const operation = ++browserOperation.current;
 
     if (browserState.retry === "finalize") {
-      await finalizeDesktopSignIn(operation, returnTo)
-      return
+      await finalizeDesktopSignIn(operation, returnTo);
+      return;
     }
 
     setBrowserState({
       phase: "waiting_for_browser",
       error: null,
       retry: "oauth",
-    })
-    recordDesktopDiagnostic("desktop_auth.oauth", { status: "started" })
+    });
+    recordDesktopDiagnostic("desktop_auth.oauth", { status: "started" });
 
     try {
-      await signInWithDesktopBrowser()
+      await signInWithDesktopBrowser();
       if (operation === browserOperation.current) {
-        await finalizeDesktopSignIn(operation, returnTo)
+        await finalizeDesktopSignIn(operation, returnTo);
       }
     } catch (error) {
-      if (operation !== browserOperation.current) return
+      if (operation !== browserOperation.current) return;
       if (error instanceof DesktopOAuthError && error.code === "cancelled") {
-        setBrowserState({ phase: "idle", error: null, retry: "oauth" })
-        return
+        setBrowserState({ phase: "idle", error: null, retry: "oauth" });
+        return;
       }
-      setBrowserState({ phase: "error", error, retry: "oauth" })
-      recordDesktopDiagnostic(
-        "desktop_auth.oauth",
-        describeDesktopError(error),
-        "error",
-      )
+      setBrowserState({ phase: "error", error, retry: "oauth" });
+      recordDesktopDiagnostic("desktop_auth.oauth", describeDesktopError(error), "error");
     }
   }
 
   async function finalizeDesktopSignIn(operation: number, returnTo: string) {
-    setBrowserState({ phase: "finalizing", error: null, retry: "finalize" })
-    recordDesktopDiagnostic("desktop_auth.finalize", { status: "started" })
+    setBrowserState({ phase: "finalizing", error: null, retry: "finalize" });
+    recordDesktopDiagnostic("desktop_auth.finalize", { status: "started" });
 
     try {
-      await reloadDesktopAuthCredentials()
+      await reloadDesktopAuthCredentials();
       const session = await queryClient.fetchQuery({
         ...sessionQueryOptions(auth),
         staleTime: 0,
-      })
+      });
       if (!session.user || !session.session) {
-        throw new Error("The desktop session could not be validated.")
+        throw new Error("The desktop session could not be validated.");
       }
       const workspaces = await queryClient.fetchQuery({
         ...workspacesQueryOptions(auth),
         staleTime: 0,
-      })
-      if (operation !== browserOperation.current) return
+      });
+      if (operation !== browserOperation.current) return;
 
-      recordDesktopDiagnostic("desktop_auth.finalize", { status: "success" })
-      setBrowserState({ phase: "idle", error: null, retry: "oauth" })
-      window.location.assign(workspaces.length === 0 ? "/onboarding" : returnTo)
+      recordDesktopDiagnostic("desktop_auth.finalize", { status: "success" });
+      setBrowserState({ phase: "idle", error: null, retry: "oauth" });
+      window.location.assign(workspaces.length === 0 ? "/onboarding" : returnTo);
     } catch (error) {
-      if (operation !== browserOperation.current) return
-      setBrowserState({ phase: "error", error, retry: "finalize" })
-      recordDesktopDiagnostic(
-        "desktop_auth.finalize",
-        describeDesktopError(error),
-        "error",
-      )
+      if (operation !== browserOperation.current) return;
+      setBrowserState({ phase: "error", error, retry: "finalize" });
+      recordDesktopDiagnostic("desktop_auth.finalize", describeDesktopError(error), "error");
     }
   }
 
   async function handleCancelBrowserSignIn() {
-    ++browserOperation.current
-    setBrowserState({ phase: "idle", error: null, retry: "oauth" })
+    ++browserOperation.current;
+    setBrowserState({ phase: "idle", error: null, retry: "oauth" });
     try {
-      await cancelDesktopBrowserSignIn()
+      await cancelDesktopBrowserSignIn();
     } catch (error) {
-      setBrowserState({ phase: "error", error, retry: "oauth" })
+      setBrowserState({ phase: "error", error, retry: "oauth" });
     }
   }
 
@@ -168,8 +154,7 @@ export function DesktopBrowserAuthScreen() {
         <div>
           <h1 className="text-lg font-semibold">Continue in your browser</h1>
           <FieldDescription>
-            Sign in or create an account in the browser. The desktop app keeps
-            its own session.
+            Sign in or create an account in the browser. The desktop app keeps its own session.
           </FieldDescription>
         </div>
 
@@ -177,26 +162,16 @@ export function DesktopBrowserAuthScreen() {
           <div className="flex items-center justify-between gap-3 text-sm">
             <div className="min-w-0">
               <p className="truncate font-medium">
-                {isCloudDesktopServer(server)
-                  ? "Zilobase Cloud"
-                  : server.displayName}
+                {isCloudDesktopServer(server) ? "Zilobase Cloud" : server.displayName}
               </p>
-              <p className="truncate text-xs text-content-secondary">
-                {server.apiOrigin}
-              </p>
+              <p className="truncate text-xs text-content-secondary">{server.apiOrigin}</p>
             </div>
-            <Link
-              className="shrink-0 font-medium underline-offset-4 hover:underline"
-              to="/connect"
-            >
+            <Link className="shrink-0 font-medium underline-offset-4 hover:underline" to="/connect">
               Change server
             </Link>
           </div>
         ) : (
-          <Link
-            className="text-sm font-medium underline-offset-4 hover:underline"
-            to="/connect"
-          >
+          <Link className="text-sm font-medium underline-offset-4 hover:underline" to="/connect">
             Change server
           </Link>
         )}
@@ -210,12 +185,10 @@ export function DesktopBrowserAuthScreen() {
                   onClick={() => {
                     void executeDesktopServerSwitch({
                       hasCredentials: profile.hasCredentials,
-                      path: profile.hasCredentials
-                        ? (profile.lastPath ?? "/recents")
-                        : "/login",
+                      path: profile.hasCredentials ? (profile.lastPath ?? "/recents") : "/login",
                       server: profile.server,
                       workspaceId: profile.lastActiveWorkspaceId,
-                    })
+                    });
                   }}
                   type="button"
                   variant="outline"
@@ -232,11 +205,7 @@ export function DesktopBrowserAuthScreen() {
             <FieldError>{getApiErrorMessage(browserState.error)}</FieldError>
           ) : null}
           <Field>
-            <Button
-              disabled={isPending}
-              onClick={() => void handleBrowserSignIn()}
-              type="button"
-            >
+            <Button disabled={isPending} onClick={() => void handleBrowserSignIn()} type="button">
               {browserState.phase === "waiting_for_browser"
                 ? "Waiting for browser sign-in..."
                 : browserState.phase === "finalizing"
@@ -258,5 +227,5 @@ export function DesktopBrowserAuthScreen() {
         </FieldGroup>
       </div>
     </main>
-  )
+  );
 }

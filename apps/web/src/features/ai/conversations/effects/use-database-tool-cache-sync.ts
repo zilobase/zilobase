@@ -17,10 +17,6 @@ export function useDatabaseToolCacheSync({
 
   useEffect(() => {
     if (!enabled) return;
-    synchronizeDatabaseToolCache(
-      messages,
-      handledToolCallIds.current,
-      queryClient,
-    );
+    synchronizeDatabaseToolCache(messages, handledToolCallIds.current, queryClient);
   }, [enabled, messages, queryClient]);
 }

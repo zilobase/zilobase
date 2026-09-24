@@ -8,10 +8,7 @@ import {
   validateCellValue,
 } from "./config";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
-import {
-  databasePropertyTypes,
-  normalizeDatabasePropertyType,
-} from "./types";
+import { databasePropertyTypes, normalizeDatabasePropertyType } from "./types";
 
 test("formatDatePropertyValueAsText preserves date ranges", () => {
   assert.equal(
@@ -127,9 +124,7 @@ test("normalizePropertyConfig preserves explicit select colors", () => {
     options?: Array<{ color?: string; id: string; name: string }>;
   };
 
-  assert.deepEqual(config.options, [
-    { color: "red", id: "blocked", name: "Blocked" },
-  ]);
+  assert.deepEqual(config.options, [{ color: "red", id: "blocked", name: "Blocked" }]);
 });
 
 test("normalizePropertyConfig filters malformed options and preserves metadata", () => {
@@ -209,9 +204,7 @@ test("validateCellValue validates select-like option values", () => {
   };
 
   assert.doesNotThrow(() => validateCellValue("select", config, "Todo"));
-  assert.doesNotThrow(() =>
-    validateCellValue("multi_select", config, ["Todo", "Done"]),
-  );
+  assert.doesNotThrow(() => validateCellValue("multi_select", config, ["Todo", "Done"]));
   assert.throws(
     () => validateCellValue("status", config, "Missing"),
     (error) =>
@@ -234,12 +227,9 @@ test("validateCellValue rejects multiple parents for parent-item relations", () 
     subItems: { role: "parent-item" },
   };
 
-  assert.doesNotThrow(() =>
-    validateCellValue("relation", parentItemConfig, ["page-a"]),
-  );
+  assert.doesNotThrow(() => validateCellValue("relation", parentItemConfig, ["page-a"]));
   assert.throws(
-    () =>
-      validateCellValue("relation", parentItemConfig, ["page-a", "page-b"]),
+    () => validateCellValue("relation", parentItemConfig, ["page-a", "page-b"]),
     (error) =>
       error instanceof ServiceMutationError &&
       error.status === 400 &&
@@ -251,34 +241,24 @@ test("validateCellValue accepts writable scalar types and reports empty options"
   assert.doesNotThrow(() => validateCellValue("text", null, { anything: true }));
   assert.doesNotThrow(() => validateCellValue("multi_select", { options: [] }, []));
 
-  assert.throws(
-    () => validateCellValue("select", {}, "Missing"),
-    /Known options: \(none\)/,
-  );
+  assert.throws(() => validateCellValue("select", {}, "Missing"), /Known options: \(none\)/);
   assert.throws(
     () => validateCellValue("status", { options: "invalid" }, "Missing"),
     /Known options: \(none\)/,
   );
   assert.throws(
     () =>
-      validateCellValue(
-        "multi_select",
-        { options: [null, { name: "Known" }, { name: "" }] },
-        ["Known", 1],
-      ),
+      validateCellValue("multi_select", { options: [null, { name: "Known" }, { name: "" }] }, [
+        "Known",
+        1,
+      ]),
     /Invalid multi_select option/,
   );
 });
 
 test("formatDatePropertyValueAsText normalizes object and blank inputs", () => {
-  assert.equal(
-    formatDatePropertyValueAsText({ date: " 2026-08-02 " }),
-    "2026-08-02",
-  );
-  assert.equal(
-    formatDatePropertyValueAsText({ start: " ", end: "2026-08-03" }),
-    null,
-  );
+  assert.equal(formatDatePropertyValueAsText({ date: " 2026-08-02 " }), "2026-08-02");
+  assert.equal(formatDatePropertyValueAsText({ start: " ", end: "2026-08-03" }), null);
   assert.equal(formatDatePropertyValueAsText([123, "2026-08-03"]), null);
 });
 

@@ -1,7 +1,4 @@
-import type {
-  IncomingMessage,
-  Server as HttpServer,
-} from "node:http";
+import type { IncomingMessage, Server as HttpServer } from "node:http";
 import type { Duplex } from "node:stream";
 import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
@@ -63,10 +60,7 @@ type DatabaseCollaborator = {
 
 type NodeDatabaseRealtimeRuntimeOptions = {
   connectionLimit?: number;
-  verifyTicket?: (
-    token: string,
-    env: RuntimeEnv,
-  ) => Promise<DatabaseRealtimeTicketClaims>;
+  verifyTicket?: (token: string, env: RuntimeEnv) => Promise<DatabaseRealtimeTicketClaims>;
   realtimeBus: NodeRealtimeBus;
   limits: Limits;
 };
@@ -77,10 +71,7 @@ export function attachNodeDatabaseRealtimeRuntime(
   options: NodeDatabaseRealtimeRuntimeOptions,
 ) {
   const attachments = new WeakMap<Peer, SocketAttachment>();
-  const messageRates = new WeakMap<
-    Peer,
-    { count: number; startedAt: number }
-  >();
+  const messageRates = new WeakMap<Peer, { count: number; startedAt: number }>();
   const rooms = new Map<string, DatabaseRoom>();
   const publishedVersions = new Map<string, number>();
   const verifyTicket = options.verifyTicket ?? verifyDatabaseRealtimeTicket;
@@ -150,11 +141,13 @@ export function attachNodeDatabaseRealtimeRuntime(
         } catch (error) {
           if (error instanceof Response) throw error;
 
-          console.warn(JSON.stringify({
-            databaseId,
-            error: error instanceof Error ? error.message : String(error),
-            event: "database_realtime_upgrade_authentication_failed",
-          }));
+          console.warn(
+            JSON.stringify({
+              databaseId,
+              error: error instanceof Error ? error.message : String(error),
+              event: "database_realtime_upgrade_authentication_failed",
+            }),
+          );
           throw new Response("Invalid database realtime ticket", {
             status: 401,
           });
@@ -175,11 +168,7 @@ export function attachNodeDatabaseRealtimeRuntime(
         };
         attachments.set(peer, attachment);
 
-        const room = getOrCreateRoom(
-          rooms,
-          context.databaseId,
-          publishedVersions,
-        );
+        const room = getOrCreateRoom(rooms, context.databaseId, publishedVersions);
         await ensureRoomSubscription(
           room,
           context.databaseId,
@@ -189,20 +178,21 @@ export function attachNodeDatabaseRealtimeRuntime(
         );
         pruneExpiredPeers(room, attachments, realtimeBus);
         room.peers.add(peer);
-        peer.send(JSON.stringify({
-          databaseVersion: Math.max(
-            room.lastPublishedVersion,
-            context.claims.version ?? 0,
-          ),
-          databaseId: context.databaseId,
-          peers: readPeers(room, peer, attachments),
-          protocolVersion: 2,
-          sessionId: context.claims.sessionId,
-          type: "realtime.ready",
-        }));
+        peer.send(
+          JSON.stringify({
+            databaseVersion: Math.max(room.lastPublishedVersion, context.claims.version ?? 0),
+            databaseId: context.databaseId,
+            peers: readPeers(room, peer, attachments),
+            protocolVersion: 2,
+            sessionId: context.claims.sessionId,
+            type: "realtime.ready",
+          }),
+        );
       },
       async message(peer, rawMessage) {
-        const validation = validateDatabaseRealtimeMessage(rawMessage.rawData as string | ArrayBuffer);
+        const validation = validateDatabaseRealtimeMessage(
+          rawMessage.rawData as string | ArrayBuffer,
+        );
 
         if (!validation.ok) {
           peer.close(validation.code, validation.reason);
@@ -225,13 +215,7 @@ export function attachNodeDatabaseRealtimeRuntime(
         const message = validation.message;
 
         if (message.type === "auth.refresh") {
-          await refreshAuthentication(
-            peer,
-            attachment,
-            message,
-            env,
-            verifyTicket,
-          );
+          await refreshAuthentication(peer, attachment, message, env, verifyTicket);
           return;
         }
 
@@ -247,14 +231,7 @@ export function attachNodeDatabaseRealtimeRuntime(
         }
 
         if (message.type === "presence.update") {
-          updatePresence(
-            peer,
-            attachment,
-            message,
-            rooms,
-            attachments,
-            realtimeBus,
-          );
+          updatePresence(peer, attachment, message, rooms, attachments, realtimeBus);
           return;
         }
 
@@ -264,21 +241,19 @@ export function attachNodeDatabaseRealtimeRuntime(
         removePeer(peer, rooms, attachments, realtimeBus);
       },
       error(peer, error) {
-        console.error(JSON.stringify({
-          error: error instanceof Error ? error.message : String(error),
-          event: "database_realtime_websocket_error",
-        }));
+        console.error(
+          JSON.stringify({
+            error: error instanceof Error ? error.message : String(error),
+            event: "database_realtime_websocket_error",
+          }),
+        );
         removePeer(peer, rooms, attachments, realtimeBus);
         peer.close(1011, "Database realtime WebSocket error");
       },
     },
   });
 
-  const upgradeListener = (
-    request: IncomingMessage,
-    socket: Duplex,
-    head: Buffer,
-  ) => {
+  const upgradeListener = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
     const url = new URL(request.url ?? "/", "http://zilobase.local");
 
     if (url.pathname !== "/database-collaboration") return;
@@ -294,9 +269,7 @@ export function attachNodeDatabaseRealtimeRuntime(
   return {
     async destroy() {
       server.off("upgrade", upgradeListener);
-      await Promise.allSettled(
-        [...rooms.values()].map((room) => room.unsubscribe?.()),
-      );
+      await Promise.allSettled([...rooms.values()].map((room) => room.unsubscribe?.()));
       await websocket.close(1001, "Server shutting down");
     },
     async publishMutation(event: DatabaseMutationEventV2) {
@@ -320,14 +293,11 @@ function readAuthenticationProtocol(headers: Headers) {
     .split(",")
     .map((protocol) => protocol.trim());
   const authentication = protocols.find((protocol) =>
-    protocol.startsWith(DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX)
+    protocol.startsWith(DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX),
   );
-  const token = authentication?.slice(
-    DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX.length,
-  );
+  const token = authentication?.slice(DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX.length);
 
-  return protocols.includes(DATABASE_REALTIME_PROTOCOL) &&
-      token && token.length <= MAX_TICKET_BYTES
+  return protocols.includes(DATABASE_REALTIME_PROTOCOL) && token && token.length <= MAX_TICKET_BYTES
     ? { token }
     : null;
 }
@@ -340,11 +310,12 @@ function readUpgradeContext(peer: Peer) {
   const context = value as Record<string, unknown>;
 
   return typeof context.databaseId === "string" &&
-      context.claims && typeof context.claims === "object"
-    ? context as {
-      claims: DatabaseRealtimeTicketClaims;
-      databaseId: string;
-    }
+    context.claims &&
+    typeof context.claims === "object"
+    ? (context as {
+        claims: DatabaseRealtimeTicketClaims;
+        databaseId: string;
+      })
     : null;
 }
 
@@ -353,10 +324,7 @@ async function refreshAuthentication(
   attachment: SocketAttachment,
   message: Record<string, unknown>,
   env: RuntimeEnv,
-  verifyTicket: (
-    token: string,
-    env: RuntimeEnv,
-  ) => Promise<DatabaseRealtimeTicketClaims>,
+  verifyTicket: (token: string, env: RuntimeEnv) => Promise<DatabaseRealtimeTicketClaims>,
 ) {
   if (typeof message.token !== "string") {
     peer.close(1008, "Missing database realtime ticket");
@@ -375,11 +343,13 @@ async function refreshAuthentication(
 
     attachment.claims = claims;
   } catch (error) {
-    console.warn(JSON.stringify({
-      databaseId: attachment.databaseId,
-      error: error instanceof Error ? error.message : String(error),
-      event: "database_realtime_authentication_failed",
-    }));
+    console.warn(
+      JSON.stringify({
+        databaseId: attachment.databaseId,
+        error: error instanceof Error ? error.message : String(error),
+        event: "database_realtime_authentication_failed",
+      }),
+    );
     peer.close(1008, "Database realtime authentication failed");
   }
 }
@@ -467,11 +437,7 @@ function removePeer(
   attachments.delete(peer);
 }
 
-function readPeers(
-  room: DatabaseRoom,
-  skip: Peer,
-  attachments: WeakMap<Peer, SocketAttachment>,
-) {
+function readPeers(room: DatabaseRoom, skip: Peer, attachments: WeakMap<Peer, SocketAttachment>) {
   const now = Date.now();
   pruneRemotePresence(room, now);
 
@@ -569,13 +535,7 @@ async function ensureRoomSubscription(
   if (room.unsubscribe) return;
   room.subscription ??= realtimeBus
     .subscribe(databaseRealtimeChannel(databaseId), (payload) => {
-      receiveRealtimeBusMessage(
-        room,
-        databaseId,
-        payload,
-        attachments,
-        publishedVersions,
-      );
+      receiveRealtimeBusMessage(room, databaseId, payload, attachments, publishedVersions);
     })
     .then((unsubscribe) => {
       room.unsubscribe = unsubscribe;
@@ -627,10 +587,7 @@ function receiveRealtimeBusMessage(
   }
 }
 
-function publishPresenceHeartbeat(
-  attachment: SocketAttachment,
-  realtimeBus: NodeRealtimeBus,
-) {
+function publishPresenceHeartbeat(attachment: SocketAttachment, realtimeBus: NodeRealtimeBus) {
   if (!attachment.presence) return;
   attachment.updatedAt = Date.now();
   publishRealtimeBus(realtimeBus, attachment.databaseId, {
@@ -641,14 +598,8 @@ function publishPresenceHeartbeat(
   });
 }
 
-function publishRealtimeBus(
-  realtimeBus: NodeRealtimeBus,
-  databaseId: string,
-  payload: unknown,
-) {
-  void realtimeBus
-    .publish(databaseRealtimeChannel(databaseId), payload)
-    .catch(logRealtimeBusError);
+function publishRealtimeBus(realtimeBus: NodeRealtimeBus, databaseId: string, payload: unknown) {
+  void realtimeBus.publish(databaseRealtimeChannel(databaseId), payload).catch(logRealtimeBusError);
 }
 
 function pruneRemotePresence(room: DatabaseRoom, now: number) {
@@ -662,46 +613,40 @@ function pruneRemotePresence(room: DatabaseRoom, now: number) {
 function isCollaborator(value: unknown): value is DatabaseCollaborator {
   if (!value || typeof value !== "object") return false;
   const collaborator = value as Partial<DatabaseCollaborator>;
-  return typeof collaborator.connectedAt === "string" &&
+  return (
+    typeof collaborator.connectedAt === "string" &&
     typeof collaborator.sessionId === "string" &&
     typeof collaborator.updatedAt === "string" &&
     isDatabasePresence(collaborator.presence) &&
-    Boolean(collaborator.user && typeof collaborator.user === "object");
+    Boolean(collaborator.user && typeof collaborator.user === "object")
+  );
 }
 
 function logRealtimeBusError(error: unknown) {
-  console.error(JSON.stringify({
-    error: error instanceof Error ? error.message : String(error),
-    event: "database_realtime_bus_error",
-  }));
+  console.error(
+    JSON.stringify({
+      error: error instanceof Error ? error.message : String(error),
+      event: "database_realtime_bus_error",
+    }),
+  );
 }
 
-function validateMutationEvent(
-  event: unknown,
-): asserts event is DatabaseMutationEventV2 {
+function validateMutationEvent(event: unknown): asserts event is DatabaseMutationEventV2 {
   if (!databaseMutationEventV2Schema.safeParse(event).success) {
     throw new Error("Invalid database mutation event");
   }
 }
 
-
 function getClientAddress(request: Request) {
-  const forwarded = request.headers.get("x-forwarded-for")
-    ?.split(",")[0]
-    ?.trim();
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
 
   return forwarded || request.headers.get("x-real-ip") || "local";
 }
 
-function rejectUpgrade(
-  socket: Duplex,
-  status: number,
-  statusText: string,
-) {
+function rejectUpgrade(socket: Duplex, status: number, statusText: string) {
   if (socket.destroyed) return;
 
   socket.end(
-    `HTTP/1.1 ${status} ${statusText}\r\n` +
-    "Connection: close\r\nContent-Length: 0\r\n\r\n",
+    `HTTP/1.1 ${status} ${statusText}\r\n` + "Connection: close\r\nContent-Length: 0\r\n\r\n",
   );
 }

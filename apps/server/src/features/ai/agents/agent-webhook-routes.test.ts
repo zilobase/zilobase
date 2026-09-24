@@ -12,11 +12,7 @@ const path = "/agents/agent/hooks/trigger";
 
 describe("inbound agent webhook boundary", () => {
   it("hides disabled endpoints", async () => {
-    const response = await aiAgentWebhookRoutes.request(
-      path,
-      { method: "POST" },
-      {},
-    );
+    const response = await aiAgentWebhookRoutes.request(path, { method: "POST" }, {});
     expect(response.status).toBe(404);
   });
   it("rejects oversized declared bodies", async () => {

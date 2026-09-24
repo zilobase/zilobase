@@ -74,23 +74,15 @@ test("upsertPagePropertyValues deduplicates keys with last-value-wins semantics"
     set: { updatedAt: unknown; value: unknown };
   };
   const dialect = new PgDialect();
-  assert.equal(
-    dialect.sqlToQuery(conflict.set.updatedAt as never).sql,
-    'excluded."updated_at"',
-  );
-  assert.equal(
-    dialect.sqlToQuery(conflict.set.value as never).sql,
-    'excluded."value"',
-  );
+  assert.equal(dialect.sqlToQuery(conflict.set.updatedAt as never).sql, 'excluded."updated_at"');
+  assert.equal(dialect.sqlToQuery(conflict.set.value as never).sql, 'excluded."value"');
   assert.deepEqual(
-    (inserts[0] as Array<Record<string, unknown>>).map(
-      ({ id, pageId, propertyId, value }) => ({
-        id,
-        pageId,
-        propertyId,
-        value,
-      }),
-    ),
+    (inserts[0] as Array<Record<string, unknown>>).map(({ id, pageId, propertyId, value }) => ({
+      id,
+      pageId,
+      propertyId,
+      value,
+    })),
     [
       {
         id: "value-3",

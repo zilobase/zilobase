@@ -36,23 +36,13 @@ test("agent progress streams committed steps before the tool completes", () => {
   });
 
   assert.equal(chunks[0]?.type, "data-agent-debug");
-  assert.equal(
-    (chunks[0]?.data as { kind: string }).kind,
-    "stream-open",
-  );
+  assert.equal((chunks[0]?.data as { kind: string }).kind, "stream-open");
   const debugKinds = chunks
     .filter((chunk) => chunk.type === "data-agent-debug")
     .map((chunk) => (chunk.data as { kind: string }).kind);
-  assert.deepEqual(debugKinds, [
-    "stream-open",
-    "tool-start",
-    "step-start",
-    "step-finish",
-  ]);
+  assert.deepEqual(debugKinds, ["stream-open", "tool-start", "step-start", "step-finish"]);
   assert.equal(
-    chunks.find((chunk) =>
-      (chunk.data as { kind?: string }).kind === "tool-start"
-    )?.transient,
+    chunks.find((chunk) => (chunk.data as { kind?: string }).kind === "tool-start")?.transient,
     true,
   );
 
@@ -124,10 +114,7 @@ test("late attachment replays the latest snapshot idempotently and effects stay 
   } as never);
 
   assert.equal(chunks[0]?.type, "data-agent-debug");
-  assert.equal(
-    (chunks[0]?.data as { kind: string }).kind,
-    "stream-open",
-  );
+  assert.equal((chunks[0]?.data as { kind: string }).kind, "stream-open");
   assert.equal(chunks[1]?.id, "agent-progress:tool-3");
   progress.effect({
     detail: { id: "page-1" },

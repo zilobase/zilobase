@@ -26,15 +26,9 @@ test("production CORS allows configured origins and rejects others", async () =>
     env,
   );
 
-  assert.equal(
-    allowed.headers.get("access-control-allow-origin"),
-    "https://app.example.com",
-  );
+  assert.equal(allowed.headers.get("access-control-allow-origin"), "https://app.example.com");
   assert.equal(allowed.headers.get("access-control-allow-credentials"), "true");
-  assert.match(
-    allowed.headers.get("access-control-expose-headers") ?? "",
-    /set-auth-token/i,
-  );
+  assert.match(allowed.headers.get("access-control-expose-headers") ?? "", /set-auth-token/i);
   assert.equal(rejected.headers.has("access-control-allow-origin"), false);
 
   const electronLookalike = await app.request(
@@ -50,11 +44,7 @@ test("production CORS allows only the exact desktop webview origins", async () =
   const env = { CLIENT_URL: "https://app.example.com" };
 
   for (const origin of ["zilo-desktop://app"]) {
-    const response = await app.request(
-      "https://api.example.com/",
-      { headers: { origin } },
-      env,
-    );
+    const response = await app.request("https://api.example.com/", { headers: { origin } }, env);
     assert.equal(response.headers.get("access-control-allow-origin"), origin);
   }
 
@@ -73,10 +63,7 @@ test("local servers reflect development origins", async () => {
     { CLIENT_URL: "https://app.example.com" },
   );
 
-  assert.equal(
-    response.headers.get("access-control-allow-origin"),
-    "http://192.168.1.4:5173",
-  );
+  assert.equal(response.headers.get("access-control-allow-origin"), "http://192.168.1.4:5173");
 });
 
 test("automation create and update headers pass CORS preflight", async () => {

@@ -29,11 +29,7 @@ describe("Cloudflare worker handler", () => {
       firstEnv,
       {},
     );
-    const second = await handler.fetch(
-      new Request("https://api.example.com/pages"),
-      {},
-      {},
-    );
+    const second = await handler.fetch(new Request("https://api.example.com/pages"), {}, {});
 
     expect(await first.text()).toBe("app");
     expect(first.status).toBe(201);
@@ -77,21 +73,11 @@ describe("Cloudflare worker handler", () => {
     const response = await handler.fetch(request, { binding: true }, {});
 
     expect(await response.text()).toBe("agent");
-    expect(authorizeAgentRequest).toHaveBeenCalledWith(
-      request,
-      "lobby",
-      { binding: true },
-    );
-    expect(authenticateAgentRequest).toHaveBeenCalledWith(
-      request,
-      "lobby",
-      { binding: true },
-    );
+    expect(authorizeAgentRequest).toHaveBeenCalledWith(request, "lobby", { binding: true });
+    expect(authenticateAgentRequest).toHaveBeenCalledWith(request, "lobby", { binding: true });
     expect(getAgentCorsHeaders).toHaveBeenCalledWith({ binding: true }, request);
     expect(loadApp).not.toHaveBeenCalled();
-    expect(response.headers.get("server-timing")).toMatch(
-      /zilobase_route_agent;dur=\d+/,
-    );
+    expect(response.headers.get("server-timing")).toMatch(/zilobase_route_agent;dur=\d+/);
   });
 
   it("preserves Agent WebSocket upgrade responses", async () => {
@@ -113,9 +99,7 @@ describe("Cloudflare worker handler", () => {
     );
 
     expect(response).toBe(upgrade);
-    expect((response as Response & { webSocket: unknown }).webSocket).toBe(
-      webSocket,
-    );
+    expect((response as Response & { webSocket: unknown }).webSocket).toBe(webSocket);
   });
 
   it("falls through when the agent router declines a matching request", async () => {
@@ -125,17 +109,11 @@ describe("Cloudflare worker handler", () => {
       loadApp: async () => ({ fetch: appFetch }),
     });
 
-    const response = await handler.fetch(
-      new Request("https://api.example.com/agents"),
-      {},
-      {},
-    );
+    const response = await handler.fetch(new Request("https://api.example.com/agents"), {}, {});
 
     expect(await response.text()).toBe("fallback");
     expect(appFetch).toHaveBeenCalledOnce();
-    expect(response.headers.get("server-timing")).toMatch(
-      /zilobase_route_agent;dur=\d+/,
-    );
+    expect(response.headers.get("server-timing")).toMatch(/zilobase_route_agent;dur=\d+/);
   });
 
   it("rethrows request failures", async () => {

@@ -1,5 +1,5 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import assert from "node:assert/strict";
+import test from "node:test";
 
 import {
   DATABASE_AUTOMATION_LIMITS,
@@ -14,17 +14,15 @@ import {
   databaseAutomationRevisionSchema,
   databaseAutomationRunSchema,
   databaseAutomationSummarySchema,
-} from "./contracts"
+} from "./contracts";
 
-const literal = (value: string) => ({ type: "literal" as const, value })
+const literal = (value: string) => ({ type: "literal" as const, value });
 
 const eventDefinition = {
   actions: [
     {
       id: "action-1",
-      operations: [
-        { mode: "set", propertyId: "status-property", value: literal("done") },
-      ],
+      operations: [{ mode: "set", propertyId: "status-property", value: literal("done") }],
       type: "edit_trigger_page",
     },
   ],
@@ -45,35 +43,37 @@ const eventDefinition = {
     kind: "event",
     match: "any",
   },
-} as const
+} as const;
 
 test("parses a versioned event automation without changing stable IDs", () => {
-  const parsed = databaseAutomationDefinitionSchema.parse(eventDefinition)
+  const parsed = databaseAutomationDefinitionSchema.parse(eventDefinition);
 
-  assert.equal(parsed.definitionVersion, 1)
-  assert.equal(parsed.trigger.kind, "event")
-  assert.equal(parsed.actions[0]?.id, "action-1")
-  assert.deepEqual(parsed.scope, { type: "data_source" })
-})
+  assert.equal(parsed.definitionVersion, 1);
+  assert.equal(parsed.trigger.kind, "event");
+  assert.equal(parsed.actions[0]?.id, "action-1");
+  assert.deepEqual(parsed.scope, { type: "data_source" });
+});
 
 test("parses multiple selected trigger entities", () => {
   const parsed = databaseAutomationDefinitionSchema.parse({
     ...eventDefinition,
     trigger: {
       ...eventDefinition.trigger,
-      clauses: [{
-        id: "clause-options",
-        operand: {
-          entityType: "option",
-          ids: ["status-open", "status-in-progress"],
-          type: "entity_list",
+      clauses: [
+        {
+          id: "clause-options",
+          operand: {
+            entityType: "option",
+            ids: ["status-open", "status-in-progress"],
+            type: "entity_list",
+          },
+          operator: "is",
+          propertyId: "status-property",
+          type: "property_edited",
         },
-        operator: "is",
-        propertyId: "status-property",
-        type: "property_edited",
-      }],
+      ],
     },
-  })
+  });
 
   assert.deepEqual(
     parsed.trigger.kind === "event" && parsed.trigger.clauses[0]?.type === "property_edited"
@@ -84,8 +84,8 @@ test("parses multiple selected trigger entities", () => {
       ids: ["status-open", "status-in-progress"],
       type: "entity_list",
     },
-  )
-})
+  );
+});
 
 test("parses a structurally valid recurring automation", () => {
   const parsed = databaseAutomationDefinitionV1Schema.parse({
@@ -111,19 +111,21 @@ test("parses a structurally valid recurring automation", () => {
         weekdays: [1, 3, 5],
       },
     },
-  })
+  });
 
-  assert.equal(parsed.trigger.kind, "schedule")
-})
+  assert.equal(parsed.trigger.kind, "schedule");
+});
 
 test("add-page actions can create an untitled page without property edits", () => {
   const parsed = databaseAutomationDefinitionV1Schema.parse({
-    actions: [{
-      dataSourceId: "target-source",
-      id: "add-page",
-      operations: [],
-      type: "add_page",
-    }],
+    actions: [
+      {
+        dataSourceId: "target-source",
+        id: "add-page",
+        operations: [],
+        type: "add_page",
+      },
+    ],
     definitionVersion: 1,
     scope: { type: "data_source" },
     timezone: "UTC",
@@ -132,39 +134,41 @@ test("add-page actions can create an untitled page without property edits", () =
       kind: "event",
       match: "any",
     },
-  })
+  });
 
-  const action = parsed.actions[0]
-  assert.equal(action?.type, "add_page")
-  assert.deepEqual(action?.type === "add_page" ? action.operations : null, [])
-})
+  const action = parsed.actions[0];
+  assert.equal(action?.type, "add_page");
+  assert.deepEqual(action?.type === "add_page" ? action.operations : null, []);
+});
 
 test("parses Notion-compatible Slack formatting and broadcast mentions", () => {
   const parsed = databaseAutomationDefinitionV1Schema.parse({
     ...eventDefinition,
-    actions: [{
-      channelId: "channel-1",
-      connectionId: "connection-1",
-      id: "slack-1",
-      message: {
-        parts: [
-          { bold: true, italic: true, text: "Important", type: "text" },
-          { kind: "channel", type: "slack_broadcast" },
-          { kind: "here", type: "slack_broadcast" },
-        ],
+    actions: [
+      {
+        channelId: "channel-1",
+        connectionId: "connection-1",
+        id: "slack-1",
+        message: {
+          parts: [
+            { bold: true, italic: true, text: "Important", type: "text" },
+            { kind: "channel", type: "slack_broadcast" },
+            { kind: "here", type: "slack_broadcast" },
+          ],
+        },
+        type: "send_slack",
       },
-      type: "send_slack",
-    }],
-  })
+    ],
+  });
 
-  const action = parsed.actions[0]
-  assert.equal(action?.type, "send_slack")
+  const action = parsed.actions[0];
+  assert.equal(action?.type, "send_slack");
   assert.deepEqual(action?.type === "send_slack" ? action.message.parts : null, [
     { bold: true, italic: true, text: "Important", type: "text" },
     { kind: "channel", type: "slack_broadcast" },
     { kind: "here", type: "slack_broadcast" },
-  ])
-})
+  ]);
+});
 
 test("publishes the materialized next schedule occurrence", () => {
   const parsed = databaseAutomationSummarySchema.parse({
@@ -182,9 +186,9 @@ test("publishes the materialized next schedule occurrence", () => {
     updatedAt: "2026-09-02T00:00:00.000Z",
     version: 1,
     workspaceId: "workspace-1",
-  })
-  assert.equal(parsed.nextRunAt, "2026-09-03T03:30:00.000Z")
-})
+  });
+  assert.equal(parsed.nextRunAt, "2026-09-03T03:30:00.000Z");
+});
 
 test("rejects invalid schedules and trigger-page behavior", () => {
   const result = databaseAutomationDefinitionV1Schema.safeParse({
@@ -200,16 +204,16 @@ test("rejects invalid schedules and trigger-page behavior", () => {
         timezone: "UTC",
       },
     },
-  })
+  });
 
-  assert.equal(result.success, false)
+  assert.equal(result.success, false);
   if (!result.success) {
     assert.match(
       result.error.issues.map((issue) => issue.message).join(" "),
       /End date|weekday|trigger page/i,
-    )
+    );
   }
-})
+});
 
 test("rejects scheduled trigger references inside action values", () => {
   const result = databaseAutomationDefinitionV1Schema.safeParse({
@@ -240,39 +244,47 @@ test("rejects scheduled trigger references inside action values", () => {
         timezone: "UTC",
       },
     },
-  })
+  });
 
-  assert.equal(result.success, false)
+  assert.equal(result.success, false);
   if (!result.success) {
-    assert.match(result.error.issues[0]?.message ?? "", /cannot use trigger/i)
+    assert.match(result.error.issues[0]?.message ?? "", /cannot use trigger/i);
   }
-})
+});
 
 test("rejects scheduled notification recipients that require a trigger page", () => {
   const result = databaseAutomationDefinitionV1Schema.safeParse({
-    actions: [{
-      id: "notify",
-      message: { parts: [{ text: "Review", type: "text" }] },
-      recipients: [{ type: "trigger_person" }],
-      type: "send_notification",
-    }],
+    actions: [
+      {
+        id: "notify",
+        message: { parts: [{ text: "Review", type: "text" }] },
+        recipients: [{ type: "trigger_person" }],
+        type: "send_notification",
+      },
+    ],
     definitionVersion: 1,
     scope: { type: "data_source" },
     timezone: "UTC",
     trigger: {
       kind: "schedule",
-      schedule: { frequency: "daily", interval: 1, localTime: "09:00", startDate: "2026-09-02", timezone: "UTC" },
+      schedule: {
+        frequency: "daily",
+        interval: 1,
+        localTime: "09:00",
+        startDate: "2026-09-02",
+        timezone: "UTC",
+      },
     },
-  })
-  assert.equal(result.success, false)
-})
+  });
+  assert.equal(result.success, false);
+});
 
 test("enforces unique action, clause, and variable identifiers", () => {
   const duplicateActions = databaseAutomationDefinitionV1Schema.safeParse({
     ...eventDefinition,
     actions: [eventDefinition.actions[0], eventDefinition.actions[0]],
-  })
-  assert.equal(duplicateActions.success, false)
+  });
+  assert.equal(duplicateActions.success, false);
 
   const duplicateClauses = databaseAutomationDefinitionV1Schema.safeParse({
     ...eventDefinition,
@@ -281,8 +293,8 @@ test("enforces unique action, clause, and variable identifiers", () => {
       kind: "event",
       match: "all",
     },
-  })
-  assert.equal(duplicateClauses.success, false)
+  });
+  assert.equal(duplicateClauses.success, false);
 
   const duplicateVariables = databaseAutomationDefinitionV1Schema.safeParse({
     ...eventDefinition,
@@ -298,9 +310,9 @@ test("enforces unique action, clause, and variable identifiers", () => {
         variables: [{ expression: literal("second"), name: "result" }],
       },
     ],
-  })
-  assert.equal(duplicateVariables.success, false)
-})
+  });
+  assert.equal(duplicateVariables.success, false);
+});
 
 test("enforces action and webhook limits", () => {
   const webhook = (index: number) => ({
@@ -310,25 +322,24 @@ test("enforces action and webhook limits", () => {
     selectedPropertyIds: [],
     type: "send_webhook" as const,
     url: `https://example.com/hooks/${index}`,
-  })
+  });
   const tooManyWebhooks = databaseAutomationDefinitionV1Schema.safeParse({
     ...eventDefinition,
-    actions: Array.from(
-      { length: DATABASE_AUTOMATION_LIMITS.webhookActions + 1 },
-      (_, index) => webhook(index),
+    actions: Array.from({ length: DATABASE_AUTOMATION_LIMITS.webhookActions + 1 }, (_, index) =>
+      webhook(index),
     ),
-  })
-  assert.equal(tooManyWebhooks.success, false)
+  });
+  assert.equal(tooManyWebhooks.success, false);
 
   const tooManyActions = databaseAutomationDefinitionV1Schema.safeParse({
     ...eventDefinition,
-    actions: Array.from(
-      { length: DATABASE_AUTOMATION_LIMITS.actions + 1 },
-      (_, index) => ({ ...webhook(index), type: "send_webhook" as const }),
-    ),
-  })
-  assert.equal(tooManyActions.success, false)
-})
+    actions: Array.from({ length: DATABASE_AUTOMATION_LIMITS.actions + 1 }, (_, index) => ({
+      ...webhook(index),
+      type: "send_webhook" as const,
+    })),
+  });
+  assert.equal(tooManyActions.success, false);
+});
 
 test("rejects plaintext webhook header values", () => {
   const result = databaseAutomationDefinitionV1Schema.safeParse({
@@ -343,10 +354,10 @@ test("rejects plaintext webhook header values", () => {
         url: "https://example.com/hook",
       },
     ],
-  })
+  });
 
-  assert.equal(result.success, false)
-})
+  assert.equal(result.success, false);
+});
 
 test("validates management, catalog, run, and delivery wire contracts", () => {
   assert.equal(
@@ -357,7 +368,7 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       name: "Finish new tasks",
     }).name,
     "Finish new tasks",
-  )
+  );
 
   assert.equal(
     databaseAutomationCatalogSchema.parse({
@@ -366,7 +377,9 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       dataSourceId: "source-1",
       dataSources: [{ id: "source-1", name: "Tasks", properties: [] }],
       gmailConnections: [{ email: "ada@example.com", id: "gmail-1", status: "connected" }],
-      slackConnections: [{ id: "slack-1", status: "connected", teamId: "team-1", teamName: "Example" }],
+      slackConnections: [
+        { id: "slack-1", status: "connected", teamId: "team-1", teamName: "Example" },
+      ],
       manageUnavailableReason: null,
       properties: [
         {
@@ -382,26 +395,31 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       views: [{ id: "view-1", name: "Open tasks", type: "table" }],
     }).canManage,
     true,
-  )
+  );
 
-  assert.equal(databaseAutomationAuditExportSchema.parse({
-    automations: [{
-      actionTypes: ["send_webhook"],
-      createdAt: "2026-09-02T00:00:00.000Z",
-      definitionHash: "a".repeat(64),
-      deletedAt: null,
-      dependencyCounts: { property: 2, secret: 1 },
-      id: "automation-1",
-      name: "Notify",
-      ownerPresent: true,
-      runCounts: { succeeded: 3 },
-      status: "active",
-      updatedAt: "2026-09-02T00:00:00.000Z",
-      version: 2,
-    }],
-    dataSourceId: "source-1",
-    generatedAt: "2026-09-02T00:00:00.000Z",
-  }).automations[0]?.ownerPresent, true)
+  assert.equal(
+    databaseAutomationAuditExportSchema.parse({
+      automations: [
+        {
+          actionTypes: ["send_webhook"],
+          createdAt: "2026-09-02T00:00:00.000Z",
+          definitionHash: "a".repeat(64),
+          deletedAt: null,
+          dependencyCounts: { property: 2, secret: 1 },
+          id: "automation-1",
+          name: "Notify",
+          ownerPresent: true,
+          runCounts: { succeeded: 3 },
+          status: "active",
+          updatedAt: "2026-09-02T00:00:00.000Z",
+          version: 2,
+        },
+      ],
+      dataSourceId: "source-1",
+      generatedAt: "2026-09-02T00:00:00.000Z",
+    }).automations[0]?.ownerPresent,
+    true,
+  );
 
   assert.equal(
     databaseAutomationMutationFactSchema.parse({
@@ -413,7 +431,7 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       rowId: "row-1",
     }).origin,
     "user",
-  )
+  );
 
   assert.equal(
     databaseAutomationRevisionSchema.parse({
@@ -427,7 +445,7 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       version: 1,
     }).version,
     1,
-  )
+  );
 
   assert.equal(
     databaseAutomationRunSchema.parse({
@@ -448,7 +466,7 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       triggerTime: "2026-09-02T00:00:00.000Z",
     }).status,
     "queued",
-  )
+  );
 
   assert.equal(
     databaseAutomationDeliverySchema.parse({
@@ -466,8 +484,8 @@ test("validates management, catalog, run, and delivery wire contracts", () => {
       status: "pending",
     }).kind,
     "webhook",
-  )
-})
+  );
+});
 
 test("automation catalogs expose only opaque Gmail connection metadata", () => {
   const result = databaseAutomationCatalogSchema.safeParse({
@@ -475,29 +493,34 @@ test("automation catalogs expose only opaque Gmail connection metadata", () => {
     canManage: true,
     dataSourceId: "source-1",
     dataSources: [],
-    gmailConnections: [{
-      email: "ada@example.com",
-      id: "gmail-1",
-      refreshTokenCiphertext: "must-not-leak",
-      status: "connected",
-    }],
+    gmailConnections: [
+      {
+        email: "ada@example.com",
+        id: "gmail-1",
+        refreshTokenCiphertext: "must-not-leak",
+        status: "connected",
+      },
+    ],
     slackConnections: [],
     manageUnavailableReason: null,
     properties: [],
     users: [],
     views: [],
-  })
-  assert.equal(result.success, false)
-})
+  });
+  assert.equal(result.success, false);
+});
 
 test("webhook header values use a write-only secret contract", () => {
-  assert.deepEqual(createDatabaseAutomationSecretRequestSchema.parse({
-    dataSourceId: "source-1",
-    purpose: "webhook_header",
-    value: "Bearer secret",
-  }), {
-    dataSourceId: "source-1",
-    purpose: "webhook_header",
-    value: "Bearer secret",
-  })
-})
+  assert.deepEqual(
+    createDatabaseAutomationSecretRequestSchema.parse({
+      dataSourceId: "source-1",
+      purpose: "webhook_header",
+      value: "Bearer secret",
+    }),
+    {
+      dataSourceId: "source-1",
+      purpose: "webhook_header",
+      value: "Bearer secret",
+    },
+  );
+});

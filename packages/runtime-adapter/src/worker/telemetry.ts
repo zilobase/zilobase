@@ -2,13 +2,19 @@ import type { Telemetry } from "@zilobase/runtime-ports";
 
 export type WorkerTelemetryOptions<Env> = {
   env: Env;
-  reportError?: (env: Env, error: unknown, properties: Record<string, unknown>) => void | Promise<void>;
-  reportEvent?: (env: Env, event: string, properties?: Record<string, unknown>) => void | Promise<void>;
+  reportError?: (
+    env: Env,
+    error: unknown,
+    properties: Record<string, unknown>,
+  ) => void | Promise<void>;
+  reportEvent?: (
+    env: Env,
+    event: string,
+    properties?: Record<string, unknown>,
+  ) => void | Promise<void>;
 };
 
-export function createWorkerTelemetry<Env>(
-  options: WorkerTelemetryOptions<Env>,
-): Telemetry {
+export function createWorkerTelemetry<Env>(options: WorkerTelemetryOptions<Env>): Telemetry {
   return {
     error(error, properties = {}) {
       if (options.reportError) return options.reportError(options.env, error, properties);

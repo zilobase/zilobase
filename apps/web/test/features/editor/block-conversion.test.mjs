@@ -17,13 +17,10 @@ export function register({ assert, appPath, test }) {
               path: "database",
               namespace: "conversion-test",
             }));
-            build.onLoad(
-              { filter: /.*/, namespace: "conversion-test" },
-              () => ({
-                contents:
-                  "export const createDatabaseSetupBlockContent=()=>({type:'databaseSetupBlock'});",
-              }),
-            );
+            build.onLoad({ filter: /.*/, namespace: "conversion-test" }, () => ({
+              contents:
+                "export const createDatabaseSetupBlockContent=()=>({type:'databaseSetupBlock'});",
+            }));
           },
         },
       ],
@@ -46,14 +43,14 @@ export function register({ assert, appPath, test }) {
         attrs: { level },
         content: [{ type: "text", text: " Keep spaces " }],
       });
-    assert.deepEqual(
-      convert({ title: "Text" }, { ...text, textContent: "  " }),
-      { type: "paragraph", content: undefined },
-    );
-    assert.deepEqual(
-      convert({ title: "Text" }, { ...text, isTextblock: false }),
-      { type: "paragraph", content: undefined },
-    );
+    assert.deepEqual(convert({ title: "Text" }, { ...text, textContent: "  " }), {
+      type: "paragraph",
+      content: undefined,
+    });
+    assert.deepEqual(convert({ title: "Text" }, { ...text, isTextblock: false }), {
+      type: "paragraph",
+      content: undefined,
+    });
     assert.deepEqual(convert({ title: "Quote" }, text), {
       type: "blockquote",
       content: [{ type: "paragraph" }],

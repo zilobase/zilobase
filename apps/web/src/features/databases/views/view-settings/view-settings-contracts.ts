@@ -7,7 +7,10 @@ import type {
   DatabaseLayoutSettings,
   DatabaseSubItemsSettings,
 } from "../model/database-view-config";
-import type { DatabaseActiveFilter, DatabaseFilterUpdatePatch } from "../model/filter-sort-contracts";
+import type {
+  DatabaseActiveFilter,
+  DatabaseFilterUpdatePatch,
+} from "../model/filter-sort-contracts";
 import type { DatabaseSearchableMenuOption } from "../menu-option-contracts";
 import type { DatabaseActiveSort, DatabaseSortUpdatePatch } from "../model/filter-sort-contracts";
 import type { DatabaseChartSettings } from "../chart/model/database-chart-config";
@@ -81,36 +84,24 @@ export type DatabaseViewSettingsMenuProps = {
   onRemoveDatabaseFilter: (index: number) => void;
   onRemoveDatabaseSort: (index: number) => void;
   onReorderDatabaseFilters: (filterIds: string[]) => void;
-  onSaveDatabaseConditionalColors: (
-    settings: DatabaseConditionalColorConfig[],
-  ) => void;
+  onSaveDatabaseConditionalColors: (settings: DatabaseConditionalColorConfig[]) => void;
   onSaveDatabaseViewTitle: (title: string) => void;
   onSaveDatabaseViewIcon: (icon: string) => void;
   onSetAllContentWrapped: (wrapContent: boolean) => void;
   onSetViewDateProperty: (datePropertyId: string | null) => void;
   onSetViewGroupProperty: (groupPropertyId: string | null) => void;
   onSetViewType: (
-    type:
-      "table" | "kanban" | "timeline" | "chart" | "gallery" | "list" | "form",
+    type: "table" | "kanban" | "timeline" | "chart" | "gallery" | "list" | "form",
   ) => void;
   onShowPageIconChange: (showPageIcon: boolean) => void;
   onShowTitleChange?: (showTitle: boolean) => void;
   onTogglePropertyTitles: () => void;
   onTogglePropertyVisibility: (propertyId: string) => void;
-  onUpdateDatabaseFilter: (
-    index: number,
-    patch: DatabaseFilterUpdatePatch,
-  ) => void;
-  onUpdateDatabaseChartSettings: (
-    settings: Partial<DatabaseChartSettings>,
-  ) => void;
-  onUpdateDatabaseLayoutSettings: (
-    settings: Partial<DatabaseLayoutSettings>,
-  ) => void;
+  onUpdateDatabaseFilter: (index: number, patch: DatabaseFilterUpdatePatch) => void;
+  onUpdateDatabaseChartSettings: (settings: Partial<DatabaseChartSettings>) => void;
+  onUpdateDatabaseLayoutSettings: (settings: Partial<DatabaseLayoutSettings>) => void;
   onUpdateDatabaseSort: (index: number, patch: DatabaseSortUpdatePatch) => void;
-  onUpdateDatabaseSubItemsSettings: (
-    settings: Partial<DatabaseSubItemsSettings>,
-  ) => void;
+  onUpdateDatabaseSubItemsSettings: (settings: Partial<DatabaseSubItemsSettings>) => void;
   properties: DatabaseViewProperty[];
   isAddingDataSource?: boolean;
   sortFieldOptions: DatabaseSearchableMenuOption[];

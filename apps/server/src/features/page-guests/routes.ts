@@ -51,15 +51,10 @@ pageGuestRoutes.post("/pages/:pageId/guest-invitations", async (c) => {
   const parsed = await parseJsonBody(c.req, GuestInvitation, strictJson);
 
   if (!parsed.ok) {
-    return c.json(
-      { error: parsed.message || "Invalid page invitation." },
-      400,
-    );
+    return c.json({ error: parsed.message || "Invalid page invitation." }, 400);
   }
 
-  const teamspacePolicy = await getPageTeamspaceSecurityPolicy(
-    c.req.param("pageId"),
-  );
+  const teamspacePolicy = await getPageTeamspaceSecurityPolicy(c.req.param("pageId"));
   if (teamspacePolicy && !teamspacePolicy.guestsEnabled) {
     return c.json({ error: "Guest access is disabled for this teamspace." }, 403);
   }
@@ -98,10 +93,7 @@ pageGuestRoutes.get("/pages/:pageId/guest-requests", async (c) => {
   if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
   try {
     return c.json({
-      requests: await listPageGuestRequests(
-        c.req.param("pageId"),
-        requestUser.id,
-      ),
+      requests: await listPageGuestRequests(c.req.param("pageId"), requestUser.id),
     });
   } catch (error) {
     return pageGuestErrorResponse(c, error);
@@ -115,36 +107,30 @@ pageGuestRoutes.get("/pages/:pageId/guest-invitations", async (c) => {
 
   try {
     return c.json({
-      invitations: await listPageGuestInvitations(
-        c.req.param("pageId"),
-        requestUser.id,
-      ),
+      invitations: await listPageGuestInvitations(c.req.param("pageId"), requestUser.id),
     });
   } catch (error) {
     return pageGuestErrorResponse(c, error);
   }
 });
 
-pageGuestRoutes.delete(
-  "/pages/:pageId/guest-invitations/:invitationId",
-  async (c) => {
-    const requestUser = c.get("user");
+pageGuestRoutes.delete("/pages/:pageId/guest-invitations/:invitationId", async (c) => {
+  const requestUser = c.get("user");
 
-    if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
+  if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
 
-    try {
-      return c.json({
-        invitation: await cancelPageGuestInvitation({
-          invitationId: c.req.param("invitationId"),
-          pageId: c.req.param("pageId"),
-          userId: requestUser.id,
-        }),
-      });
-    } catch (error) {
-      return pageGuestErrorResponse(c, error);
-    }
-  },
-);
+  try {
+    return c.json({
+      invitation: await cancelPageGuestInvitation({
+        invitationId: c.req.param("invitationId"),
+        pageId: c.req.param("pageId"),
+        userId: requestUser.id,
+      }),
+    });
+  } catch (error) {
+    return pageGuestErrorResponse(c, error);
+  }
+});
 
 pageGuestRoutes.delete("/pages/:pageId/guests/:userId", async (c) => {
   const requestUser = c.get("user");
@@ -262,54 +248,48 @@ pageGuestRoutes.get("/workspaces/:workspaceId/guest-requests", async (c) => {
   }
 });
 
-pageGuestRoutes.post(
-  "/workspaces/:workspaceId/guest-requests/:requestId/reject",
-  async (c) => {
-    const requestUser = c.get("user");
-    if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
-    try {
-      return c.json({
-        request: await rejectPageGuestRequest({
-          requestId: c.req.param("requestId"),
-          reviewerId: requestUser.id,
-          workspaceId: c.req.param("workspaceId"),
-        }),
-      });
-    } catch (error) {
-      return pageGuestErrorResponse(c, error);
-    }
-  },
-);
-
-pageGuestRoutes.post(
-  "/workspaces/:workspaceId/guest-requests/:requestId/approve",
-  async (c) => {
-    const requestUser = c.get("user");
-    if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
-    try {
-      const result = await approvePageGuestRequest({
+pageGuestRoutes.post("/workspaces/:workspaceId/guest-requests/:requestId/reject", async (c) => {
+  const requestUser = c.get("user");
+  if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
+  try {
+    return c.json({
+      request: await rejectPageGuestRequest({
         requestId: c.req.param("requestId"),
         reviewerId: requestUser.id,
         workspaceId: c.req.param("workspaceId"),
-      });
-      const invitationUrl = `${getPrimaryClientOrigin(c.env)}/accept-page-invitation?id=${result.invitation.id}`;
-      await sendEmail(c.env, {
-        subject: `${requestUser.name} invited you to ${result.page.name} on Zilobase`,
-        text: [
-          `${requestUser.name} (${requestUser.email}) invited you as a guest to “${result.page.name}” in ${result.workspace.name}.`,
-          `Permission: ${result.invitation.accessLevel}.`,
-          `This invitation expires ${result.invitation.expiresAt.toISOString()}.`,
-          "",
-          `Accept invitation: ${invitationUrl}`,
-        ].join("\n"),
-        to: result.invitation.email,
-      });
-      return c.json({ invitation: result.invitation, request: result.request });
-    } catch (error) {
-      return pageGuestErrorResponse(c, error);
-    }
-  },
-);
+      }),
+    });
+  } catch (error) {
+    return pageGuestErrorResponse(c, error);
+  }
+});
+
+pageGuestRoutes.post("/workspaces/:workspaceId/guest-requests/:requestId/approve", async (c) => {
+  const requestUser = c.get("user");
+  if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
+  try {
+    const result = await approvePageGuestRequest({
+      requestId: c.req.param("requestId"),
+      reviewerId: requestUser.id,
+      workspaceId: c.req.param("workspaceId"),
+    });
+    const invitationUrl = `${getPrimaryClientOrigin(c.env)}/accept-page-invitation?id=${result.invitation.id}`;
+    await sendEmail(c.env, {
+      subject: `${requestUser.name} invited you to ${result.page.name} on Zilobase`,
+      text: [
+        `${requestUser.name} (${requestUser.email}) invited you as a guest to “${result.page.name}” in ${result.workspace.name}.`,
+        `Permission: ${result.invitation.accessLevel}.`,
+        `This invitation expires ${result.invitation.expiresAt.toISOString()}.`,
+        "",
+        `Accept invitation: ${invitationUrl}`,
+      ].join("\n"),
+      to: result.invitation.email,
+    });
+    return c.json({ invitation: result.invitation, request: result.request });
+  } catch (error) {
+    return pageGuestErrorResponse(c, error);
+  }
+});
 
 pageGuestRoutes.delete("/workspaces/:workspaceId/guests/:userId", async (c) => {
   const requestUser = c.get("user");
@@ -334,29 +314,26 @@ pageGuestRoutes.delete("/workspaces/:workspaceId/guests/:userId", async (c) => {
   }
 });
 
-pageGuestRoutes.post(
-  "/workspaces/:workspaceId/guests/:userId/promote",
-  async (c) => {
-    const requestUser = c.get("user");
-    if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
-    const workspaceId = c.req.param("workspaceId");
-    const membership = await getMembership(workspaceId, requestUser.id);
-    if (!membership || membership.role !== "owner") {
-      return c.json({ error: "Only workspace owners can convert guests." }, 403);
-    }
-    try {
-      return c.json({
-        member: await promoteWorkspaceGuest({
-          editionExtension: c.get("editionExtension") ?? undefined,
-          targetUserId: c.req.param("userId"),
-          workspaceId,
-        }),
-      });
-    } catch (error) {
-      return pageGuestErrorResponse(c, error);
-    }
-  },
-);
+pageGuestRoutes.post("/workspaces/:workspaceId/guests/:userId/promote", async (c) => {
+  const requestUser = c.get("user");
+  if (!requestUser) return c.json({ error: "Unauthorized" }, 401);
+  const workspaceId = c.req.param("workspaceId");
+  const membership = await getMembership(workspaceId, requestUser.id);
+  if (!membership || membership.role !== "owner") {
+    return c.json({ error: "Only workspace owners can convert guests." }, 403);
+  }
+  try {
+    return c.json({
+      member: await promoteWorkspaceGuest({
+        editionExtension: c.get("editionExtension") ?? undefined,
+        targetUserId: c.req.param("userId"),
+        workspaceId,
+      }),
+    });
+  } catch (error) {
+    return pageGuestErrorResponse(c, error);
+  }
+});
 
 function pageGuestErrorResponse(c: Context<AppBindings>, error: unknown) {
   if (error instanceof PageGuestServiceError) {

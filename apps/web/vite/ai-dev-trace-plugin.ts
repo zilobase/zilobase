@@ -39,19 +39,26 @@ export function aiDevTracePlugin(repoRoot: string): Plugin {
         try {
           const input = parseTraceRequest(await readRequestBody(request));
           const filePath = path.join(traceDirectory, `${input.threadId}.jsonl`);
-          const lines = input.events.map((event) => JSON.stringify({
-            ...event,
-            receivedAt: new Date().toISOString(),
-            sessionId: input.sessionId,
-            threadId: input.threadId,
-            workspaceId: input.workspaceId,
-          })).join("\n") + "\n";
+          const lines =
+            input.events
+              .map((event) =>
+                JSON.stringify({
+                  ...event,
+                  receivedAt: new Date().toISOString(),
+                  sessionId: input.sessionId,
+                  threadId: input.threadId,
+                  workspaceId: input.workspaceId,
+                }),
+              )
+              .join("\n") + "\n";
 
           const previous = pendingWrites.get(input.threadId) ?? Promise.resolve();
-          const next = previous.catch(() => undefined).then(async () => {
-            await mkdir(traceDirectory, { recursive: true });
-            await appendFile(filePath, lines, "utf8");
-          });
+          const next = previous
+            .catch(() => undefined)
+            .then(async () => {
+              await mkdir(traceDirectory, { recursive: true });
+              await appendFile(filePath, lines, "utf8");
+            });
           pendingWrites.set(input.threadId, next);
           await next;
           if (pendingWrites.get(input.threadId) === next) {

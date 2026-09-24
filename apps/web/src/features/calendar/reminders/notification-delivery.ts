@@ -6,7 +6,8 @@ export async function requestCalendarNotificationPermission() {
 }
 export async function deliverCalendarSystemNotification(title: string, body: string, tag: string) {
   if (isDesktopApp()) {
-    if (Notification.permission === "granted") await desktopBridge().notifications.show({ title, body });
+    if (Notification.permission === "granted")
+      await desktopBridge().notifications.show({ title, body });
   } else if (typeof Notification !== "undefined" && Notification.permission === "granted") {
     new Notification(title, { body, tag });
   }

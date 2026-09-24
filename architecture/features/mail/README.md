@@ -47,7 +47,6 @@ Shared mail contracts/queries/React entrypoints remain in the existing package. 
 
 Indexed and grouped query routes validate through [query input rules](../../../apps/server/src/features/mail/query/query-input.ts), after resolving the workspace mail binding. Grouped queries intentionally ignore pagination fields. Filter normalization remains inside the route error handler. [Route tests](../../../apps/server/src/features/mail/query/routes.test.ts) preserve authorization order, field limits, empty strings and omitted fields.
 
-
 The [view settings menu](../../../apps/web/src/features/mail/organization/mail-view-settings-menu.tsx) selects the Group, Filter, Properties and Database editors from an explicit map. [Render coverage](../../../apps/web/test/features/mail/view-settings-menu.test.mjs) checks editor selection, unavailable panels and filter/property indicators.
 
 [Property labels](../../../apps/web/src/features/mail/organization/property-label.ts) share custom-name/system-label fallback between search and rendered controls, preserving empty names. [Connection route tests](../../../apps/server/src/features/mail/connections/routes.test.ts) use controlled provider/database results to cover authorization, disconnected/connected status, cancellation and browser/native destinations.

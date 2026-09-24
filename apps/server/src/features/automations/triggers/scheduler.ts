@@ -6,7 +6,10 @@ import {
   type DatabaseAutomationSchedule,
 } from "@zilobase/features/automations";
 
-import { isDatabaseAutomationExecutionEnabled, type RuntimeEnv } from "../../../shared/config/config";
+import {
+  isDatabaseAutomationExecutionEnabled,
+  type RuntimeEnv,
+} from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import {
   databaseAutomation,
@@ -31,9 +34,7 @@ export function planDatabaseAutomationScheduleClaim(input: {
   const nextRunAt = getNextDatabaseAutomationOccurrence(input.schedule, input.now);
   return {
     nextRunAt,
-    occurrenceKey: scheduledFor
-      ? `${input.automationId}:${scheduledFor.toISOString()}`
-      : null,
+    occurrenceKey: scheduledFor ? `${input.automationId}:${scheduledFor.toISOString()}` : null,
     scheduledFor,
   };
 }
@@ -67,7 +68,12 @@ export async function scanDueDatabaseAutomationSchedules(
         databaseAutomationRevision,
         eq(databaseAutomation.currentRevisionId, databaseAutomationRevision.id),
       )
-      .where(inArray(databaseAutomation.id, due.map(({ id }) => id)));
+      .where(
+        inArray(
+          databaseAutomation.id,
+          due.map(({ id }) => id),
+        ),
+      );
 
     const createdRunIds: string[] = [];
     for (const record of records) {
@@ -114,8 +120,11 @@ export async function scanDueDatabaseAutomationSchedules(
     return { claimed: due.length, runIds: createdRunIds };
   });
 
-  await dispatchBackgroundTasks(env, result.runIds.map((runId) =>
-    createBackgroundTask({ env, kind: "automation.run", resourceId: runId })
-  ));
+  await dispatchBackgroundTasks(
+    env,
+    result.runIds.map((runId) =>
+      createBackgroundTask({ env, kind: "automation.run", resourceId: runId }),
+    ),
+  );
   return result;
 }

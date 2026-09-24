@@ -2,11 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { ApiFetcher } from "../../shared/api-fetcher";
-import {
-  DatabaseCommandUnconfirmedError,
-  OfflineError,
-  executeDatabaseCommand,
-} from "./execute";
+import { DatabaseCommandUnconfirmedError, OfflineError, executeDatabaseCommand } from "./execute";
 import { clearPendingStateForTests } from "./pending";
 
 function ackFor(commandId: string, overrides: Record<string, unknown> = {}) {
@@ -103,12 +99,10 @@ test("second retry failure becomes Unconfirmed", async () => {
 
 test("409 COMMAND_ID_REUSED and ROW_MOVE_CONFLICT do NOT retry", async () => {
   clearPendingStateForTests();
-  for (
-    const body of [
-      { code: "COMMAND_ID_REUSED", commandId: "x" },
-      { code: "ROW_MOVE_CONFLICT", rowId: "r" },
-    ]
-  ) {
+  for (const body of [
+    { code: "COMMAND_ID_REUSED", commandId: "x" },
+    { code: "ROW_MOVE_CONFLICT", rowId: "r" },
+  ]) {
     let calls = 0;
     const apiFetch = (async () => {
       calls += 1;
@@ -119,7 +113,7 @@ test("409 COMMAND_ID_REUSED and ROW_MOVE_CONFLICT do NOT retry", async () => {
         command: { propertyId: "p", rowId: "r", type: "cell.set", value: 1 },
         databaseId: "database-1",
         dataSourceId: "data-source-1",
-      })
+      }),
     );
     assert.equal(calls, 1);
   }
@@ -128,7 +122,10 @@ test("409 COMMAND_ID_REUSED and ROW_MOVE_CONFLICT do NOT retry", async () => {
 
 test("ack id and scope mismatch become Unconfirmed", async () => {
   clearPendingStateForTests();
-  const mismatched = (async () => ({ commandId: "other", event: { commandId: "other" } })) as ApiFetcher;
+  const mismatched = (async () => ({
+    commandId: "other",
+    event: { commandId: "other" },
+  })) as ApiFetcher;
   await assert.rejects(
     () =>
       executeDatabaseCommand(mismatched, {

@@ -2,14 +2,8 @@ import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query"
 
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
 import { useDatabaseSessionId } from "./session";
-import {
-  databaseBootstrapResponseSchema,
-  type DatabaseBootstrapResponse,
-} from "../core/entities";
-import {
-  databaseBootstrapQueryKey,
-  type DatabaseBootstrapScope,
-} from "./keys";
+import { databaseBootstrapResponseSchema, type DatabaseBootstrapResponse } from "../core/entities";
+import { databaseBootstrapQueryKey, type DatabaseBootstrapScope } from "./keys";
 
 export type DatabaseScope = DatabaseBootstrapScope;
 
@@ -41,19 +35,12 @@ export function databaseBootstrapQueryOptions(
     staleTime: 30_000,
     queryFn: async ({ signal }): Promise<DatabaseBootstrapResponse> => {
       const incoming = databaseBootstrapResponseSchema.parse(
-        await apiFetch<DatabaseBootstrapResponse>(
-          databaseBootstrapPath(scope),
-          { signal },
-        ),
+        await apiFetch<DatabaseBootstrapResponse>(databaseBootstrapPath(scope), { signal }),
       );
       // Prefer-newest guard: out-of-order GETs must not regress cache.
       if (queryClient) {
-        const cached = queryClient.getQueryData<DatabaseBootstrapResponse>(
-          queryKey,
-        );
-        if (
-          cached && incoming.database.version < cached.database.version
-        ) {
+        const cached = queryClient.getQueryData<DatabaseBootstrapResponse>(queryKey);
+        if (cached && incoming.database.version < cached.database.version) {
           return cached;
         }
       }
@@ -62,14 +49,10 @@ export function databaseBootstrapQueryOptions(
   });
 }
 
-export function useDatabaseBootstrap(
-  scope: DatabaseScope | null,
-): DatabaseBootstrapHookState {
+export function useDatabaseBootstrap(scope: DatabaseScope | null): DatabaseBootstrapHookState {
   const { apiFetch, queryClient } = useZilobaseFeatures();
   const sessionId = useDatabaseSessionId();
-  const queryKey = scope
-    ? databaseBootstrapQueryKey(sessionId, scope)
-    : null;
+  const queryKey = scope ? databaseBootstrapQueryKey(sessionId, scope) : null;
 
   const query = useQuery({
     ...databaseBootstrapQueryOptions(
@@ -91,23 +74,18 @@ export function useDatabaseBootstrap(
     };
   }
 
-  const error = query.error instanceof Error
-    ? query.error
-    : query.error
-      ? new Error(String(query.error))
-      : null;
+  const error =
+    query.error instanceof Error
+      ? query.error
+      : query.error
+        ? new Error(String(query.error))
+        : null;
 
   return {
     data: query.data,
     error,
     refetch: () => queryClient.refetchQueries({ exact: true, queryKey }),
     scope,
-    status: query.isError
-      ? "error"
-      : query.isLoading
-        ? "loading"
-        : query.data
-          ? "success"
-          : "idle",
+    status: query.isError ? "error" : query.isLoading ? "loading" : query.data ? "success" : "idle",
   };
 }

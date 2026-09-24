@@ -14,36 +14,36 @@
     @apply border-stroke-default outline-action-focus-ring;
     scrollbar-color: var(--zb-color-effect-scrollbar-firefox) transparent;
     scrollbar-width: thin;
-    }
+  }
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
-    }
+  }
   *::-webkit-scrollbar-track {
     background: transparent;
-    }
+  }
   *::-webkit-scrollbar-thumb {
     background-color: var(--zb-color-effect-scrollbar-default);
     background-clip: padding-box;
     border: 3px solid transparent;
     border-radius: var(--radius-round);
-    }
+  }
   *::-webkit-scrollbar-thumb:hover {
     background-color: var(--zb-color-effect-scrollbar-hover);
-    }
+  }
   *::-webkit-scrollbar-corner {
     background: transparent;
-    }
+  }
   body {
     @apply bg-surface-canvas text-content-primary;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    }
+  }
   html {
     @apply font-sans;
-    }
+  }
 }
 
 [data-panel][data-sidebar-transitioning] {
@@ -64,18 +64,15 @@
   --desktop-tab-trailing-width: 2.625rem;
   flex: 0 1 auto;
   width: calc(
-    var(--desktop-tab-count) * var(--desktop-tab-slot-width) +
-      var(--desktop-tab-trailing-width)
+    var(--desktop-tab-count) * var(--desktop-tab-slot-width) + var(--desktop-tab-trailing-width)
   );
 }
 
-[data-desktop-linux-shell]:has([data-desktop-tabs])
-  > [data-desktop-fallback-titlebar] {
+[data-desktop-linux-shell]:has([data-desktop-tabs]) > [data-desktop-fallback-titlebar] {
   display: none;
 }
 
-[data-desktop-linux-shell]:has([data-desktop-tabs])
-  > [data-desktop-app-content] {
+[data-desktop-linux-shell]:has([data-desktop-tabs]) > [data-desktop-app-content] {
   padding-top: 0;
 }
 
@@ -121,23 +118,15 @@
 [data-page-side-pane-promoted="true"]
   [data-page-side-pane-side-header]
   [data-page-side-pane-promoted-hide],
-[data-page-side-pane-promoted="true"]
-  [data-page-side-pane-resize-handle] {
+[data-page-side-pane-promoted="true"] [data-page-side-pane-resize-handle] {
   display: none;
 }
 
-[data-page-side-pane-open="true"]
-  [data-page-side-pane-main-header]
-  [data-page-side-pane-avoid] {
-  transform: translate3d(
-    calc(var(--page-side-pane-width, 50%) * -1),
-    0,
-    0
-  );
+[data-page-side-pane-open="true"] [data-page-side-pane-main-header] [data-page-side-pane-avoid] {
+  transform: translate3d(calc(var(--page-side-pane-width, 50%) * -1), 0, 0);
 }
 
-[data-page-side-pane-open="true"]
-  [data-page-side-pane-main-content] {
+[data-page-side-pane-open="true"] [data-page-side-pane-main-content] {
   width: calc(100% - var(--page-side-pane-width, 50%));
 }
 
@@ -160,7 +149,9 @@
 }
 
 .desktop-tab-inactive {
-  transition: background-color 100ms ease, color 100ms ease;
+  transition:
+    background-color 100ms ease,
+    color 100ms ease;
 }
 
 .desktop-tab-active::before,
@@ -229,12 +220,13 @@
   [data-slot="select-content"]
 ),
 :where(
-  [data-slot="popover-content"][data-variant="menu"],
-  [data-slot="dropdown-menu-content"],
-  [data-slot="dropdown-menu-sub-content"],
-  [data-slot="drop-drawer-content"],
-  [data-slot="select-content"]
-) * {
+    [data-slot="popover-content"][data-variant="menu"],
+    [data-slot="dropdown-menu-content"],
+    [data-slot="dropdown-menu-sub-content"],
+    [data-slot="drop-drawer-content"],
+    [data-slot="select-content"]
+  )
+  * {
   font-weight: var(--font-weight-dropdown) !important;
 }
 
@@ -251,8 +243,7 @@
 }
 
 /* Inline structural titles follow editor Heading 2, not database chrome. */
-:where(.database-block-shell, .meeting-block-shell)
-  [data-structural-block-title] {
+:where(.database-block-shell, .meeting-block-shell) [data-structural-block-title] {
   font-weight: var(--font-weight-semibold) !important;
 }
 
@@ -274,34 +265,34 @@
  * primitive's generated `cursor-default` utility cannot hide its interaction.
  */
 :where(
-  a[href],
-  area[href],
-  button,
-  summary,
-  select,
-  label[for],
-  input:is(
-    [type="button"],
-    [type="checkbox"],
-    [type="color"],
-    [type="file"],
-    [type="radio"],
-    [type="range"],
-    [type="reset"],
-    [type="submit"]
-  ),
-  [role="button"],
-  [role="checkbox"],
-  [role="link"],
-  [role="menuitem"],
-  [role="menuitemcheckbox"],
-  [role="menuitemradio"],
-  [role="option"],
-  [role="radio"],
-  [role="switch"],
-  [role="tab"],
-  [data-slot$="-trigger"]
-):not(:disabled):not([aria-disabled="true"]):not([data-disabled="true"]):not([data-disabled=""]) {
+    a[href],
+    area[href],
+    button,
+    summary,
+    select,
+    label[for],
+    input:is(
+      [type="button"],
+      [type="checkbox"],
+      [type="color"],
+      [type="file"],
+      [type="radio"],
+      [type="range"],
+      [type="reset"],
+      [type="submit"]
+    ),
+    [role="button"],
+    [role="checkbox"],
+    [role="link"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="option"],
+    [role="radio"],
+    [role="switch"],
+    [role="tab"],
+    [data-slot$="-trigger"]
+  ):not(:disabled):not([aria-disabled="true"]):not([data-disabled="true"]):not([data-disabled=""]) {
   cursor: pointer;
 }
 
@@ -318,12 +309,7 @@
   [role="radio"],
   [role="switch"],
   [role="tab"]
-):is(
-  :disabled,
-  [aria-disabled="true"],
-  [data-disabled="true"],
-  [data-disabled=""]
-) {
+):is(:disabled, [aria-disabled="true"], [data-disabled="true"], [data-disabled=""]) {
   cursor: not-allowed;
 }
 
@@ -356,7 +342,8 @@
   -webkit-app-region: drag;
 }
 
-[data-desktop-drag-region] :is(button, a, input, select, textarea, [role="tab"], [role="button"], [contenteditable="true"]) {
+[data-desktop-drag-region]
+  :is(button, a, input, select, textarea, [role="tab"], [role="button"], [contenteditable="true"]) {
   -webkit-app-region: no-drag;
 }
 

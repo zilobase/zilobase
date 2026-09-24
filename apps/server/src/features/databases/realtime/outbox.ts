@@ -25,14 +25,13 @@ export async function drainDatabaseRealtimeOutbox(
     const ready = await tx
       .select()
       .from(databaseRealtimeOutbox)
-      .where(and(
-        options?.outboxId ? eq(databaseRealtimeOutbox.id, options.outboxId) : undefined,
-        lte(databaseRealtimeOutbox.nextAttemptAt, sql`CURRENT_TIMESTAMP`),
-      ))
-      .orderBy(
-        asc(databaseRealtimeOutbox.nextAttemptAt),
-        asc(databaseRealtimeOutbox.id),
+      .where(
+        and(
+          options?.outboxId ? eq(databaseRealtimeOutbox.id, options.outboxId) : undefined,
+          lte(databaseRealtimeOutbox.nextAttemptAt, sql`CURRENT_TIMESTAMP`),
+        ),
       )
+      .orderBy(asc(databaseRealtimeOutbox.nextAttemptAt), asc(databaseRealtimeOutbox.id))
       .limit(Math.min(Math.max(options?.limit ?? 100, 1), 500))
       .for("update", { skipLocked: true });
 
@@ -45,7 +44,12 @@ export async function drainDatabaseRealtimeOutbox(
         lastAttemptAt: attemptedAt,
         nextAttemptAt: new Date(attemptedAt.getTime() + DELIVERY_LEASE_MS),
       })
-      .where(inArray(databaseRealtimeOutbox.id, ready.map(({ id }) => id)));
+      .where(
+        inArray(
+          databaseRealtimeOutbox.id,
+          ready.map(({ id }) => id),
+        ),
+      );
 
     return ready.map((entry) => ({
       ...entry,
@@ -53,11 +57,14 @@ export async function drainDatabaseRealtimeOutbox(
       lastAttemptAt: attemptedAt,
     }));
   });
-  const journalIds = entries.flatMap((entry) => entry.eventId ? [entry.eventId] : []);
-  const journalEvents = journalIds.length > 0
-    ? await executor.select().from(databaseMutationEvent)
-        .where(inArray(databaseMutationEvent.id, journalIds))
-    : [];
+  const journalIds = entries.flatMap((entry) => (entry.eventId ? [entry.eventId] : []));
+  const journalEvents =
+    journalIds.length > 0
+      ? await executor
+          .select()
+          .from(databaseMutationEvent)
+          .where(inArray(databaseMutationEvent.id, journalIds))
+      : [];
   const journalById = new Map(journalEvents.map((event) => [event.id, event]));
   let delivered = 0;
   let discarded = 0;
@@ -88,16 +95,18 @@ export async function drainDatabaseRealtimeOutbox(
           entry.id,
         ]);
       }
-      console.error(JSON.stringify({
-        attempts: entry.attempts,
-        databaseId: journalEvent?.databaseId ?? null,
-        error: error instanceof Error ? error.message : String(error),
-        event: discard
-          ? "database_realtime_publish_discarded"
-          : "database_realtime_publish_failed",
-        eventId: entry.eventId,
-        version: journalEvent?.version ?? null,
-      }));
+      console.error(
+        JSON.stringify({
+          attempts: entry.attempts,
+          databaseId: journalEvent?.databaseId ?? null,
+          error: error instanceof Error ? error.message : String(error),
+          event: discard
+            ? "database_realtime_publish_discarded"
+            : "database_realtime_publish_failed",
+          eventId: entry.eventId,
+          version: journalEvent?.version ?? null,
+        }),
+      );
     }
   }
 
@@ -139,10 +148,7 @@ export async function drainDatabaseRealtimeOutbox(
 }
 
 function retryAt(attempts: number, from: Date) {
-  const delay = Math.min(
-    60 * 60 * 1000,
-    60 * 1000 * 2 ** Math.min(Math.max(attempts - 1, 0), 6),
-  );
+  const delay = Math.min(60 * 60 * 1000, 60 * 1000 * 2 ** Math.min(Math.max(attempts - 1, 0), 6));
 
   return new Date(from.getTime() + delay);
 }

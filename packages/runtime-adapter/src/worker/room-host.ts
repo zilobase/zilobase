@@ -34,24 +34,27 @@ export function createWorkerRoomHost<Attachment = unknown>(
 ): WorkerRoomHost<Attachment> {
   const bySocket = new WeakMap<HibernatableSocket, WorkerRoomPeer<Attachment>>();
   const peers = new Set<WorkerRoomPeer<Attachment>>();
-  const messageHandlers = new Set<(peer: RoomPeer<Attachment>, message: RoomMessage) => void | Promise<void>>();
-  const closeHandlers = new Set<(peer: RoomPeer<Attachment>, event: RoomClose) => void | Promise<void>>();
-  const errorHandlers = new Set<(peer: RoomPeer<Attachment>, error: unknown) => void | Promise<void>>();
+  const messageHandlers = new Set<
+    (peer: RoomPeer<Attachment>, message: RoomMessage) => void | Promise<void>
+  >();
+  const closeHandlers = new Set<
+    (peer: RoomPeer<Attachment>, event: RoomClose) => void | Promise<void>
+  >();
+  const errorHandlers = new Set<
+    (peer: RoomPeer<Attachment>, error: unknown) => void | Promise<void>
+  >();
   const subscribe = <T>(set: Set<T>, handler: T): Unsubscribe => {
     set.add(handler);
-    return () => { set.delete(handler); };
+    return () => {
+      set.delete(handler);
+    };
   };
   const peerFor = (socket: HibernatableSocket) => {
     const peer = bySocket.get(socket);
     if (!peer) throw new Error("WebSocket was not accepted by this room host");
     return peer;
   };
-  const register = (
-    id: string,
-    request: Request,
-    socket: HibernatableSocket,
-    accept: boolean,
-  ) => {
+  const register = (id: string, request: Request, socket: HibernatableSocket, accept: boolean) => {
     let attachment = (socket.deserializeAttachment?.() ?? null) as Attachment | null;
     const peer: WorkerRoomPeer<Attachment> = {
       id,

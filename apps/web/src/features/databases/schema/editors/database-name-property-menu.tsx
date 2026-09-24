@@ -27,11 +27,7 @@ import {
 import { Input } from "@/shared/ui/input";
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
 import { PageIconDisplay } from "@/features/pages/index";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Switch } from "@/shared/ui/switch";
 import { useUpdateDatabase } from "@zilobase/features/databases/react";
 
@@ -87,11 +83,9 @@ export function DatabaseNamePropertyMenu({
   const customIcon = getNameColumnIcon(config);
   const currentSorts = getDatabaseSorts(config);
   const currentSortDirection =
-    sortDirection ??
-    currentSorts.find((sort) => sort.column === "name")?.direction;
+    sortDirection ?? currentSorts.find((sort) => sort.column === "name")?.direction;
   const showPageIcon = getNameColumnShowPageIcon(config);
-  const wrapContent =
-    controlledWrapContent ?? getNameColumnWrapContent(config);
+  const wrapContent = controlledWrapContent ?? getNameColumnWrapContent(config);
   const updateNameColumnConfig = (nextConfig: DatabaseNameColumnConfig) => {
     if (onUpdateConfig) {
       onUpdateConfig(nextConfig);
@@ -120,11 +114,7 @@ export function DatabaseNamePropertyMenu({
     });
   };
   const renderNameColumnIcon = () =>
-    customIcon ? (
-      <PageIconDisplay size="sm" value={customIcon} />
-    ) : (
-      <NameColumnGlyph />
-    );
+    customIcon ? <PageIconDisplay size="sm" value={customIcon} /> : <NameColumnGlyph />;
 
   return (
     <DropDrawer open={open} onOpenChange={onOpenChange}>
@@ -135,9 +125,7 @@ export function DatabaseNamePropertyMenu({
           type="button"
           {...triggerDragProps}
         >
-          <span className="self-center text-content-secondary">
-            {renderNameColumnIcon()}
-          </span>
+          <span className="self-center text-content-secondary">{renderNameColumnIcon()}</span>
           <span className="flex min-w-0 items-center truncate">{label}</span>
           <ChevronDown className="ml-auto self-center opacity-0 transition-opacity group-hover:opacity-100" />
         </button>
@@ -258,9 +246,7 @@ export function DatabaseNamePropertyMenu({
               }}
             >
               <span>Ascending</span>
-              {currentSortDirection === "ascending" ? (
-                <Check className="ml-auto" />
-              ) : null}
+              {currentSortDirection === "ascending" ? <Check className="ml-auto" /> : null}
             </DropDrawerItem>
             <DropDrawerItem
               onSelect={(event) => {
@@ -269,9 +255,7 @@ export function DatabaseNamePropertyMenu({
               }}
             >
               <span>Descending</span>
-              {currentSortDirection === "descending" ? (
-                <Check className="ml-auto" />
-              ) : null}
+              {currentSortDirection === "descending" ? <Check className="ml-auto" /> : null}
             </DropDrawerItem>
           </DropDrawerSubContent>
         </DropDrawerSub>

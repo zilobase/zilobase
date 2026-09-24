@@ -37,69 +37,68 @@ type DatabaseToolStepConfig = {
   icon: Icon;
 };
 
-const databaseToolStepConfig: Record<DatabaseConfigToolName, DatabaseToolStepConfig> =
-  {
-    buildDatabaseFromBlueprint: {
-      activeLabel: "Building database",
-      completeLabel: "Built database",
-      icon: DatabaseIcon,
-    },
-    createPage: {
-      activeLabel: "Creating page",
-      completeLabel: "Created page",
-      icon: FilePlusIcon,
-    },
-    createDatabase: {
-      activeLabel: "Creating database",
-      completeLabel: "Created database",
-      icon: DatabaseIcon,
-    },
-    embedDatabaseInPage: {
-      activeLabel: "Embedding database in page",
-      completeLabel: "Embedded database in page",
-      icon: LayoutTemplateIcon,
-    },
-    linkDatabaseInPage: {
-      activeLabel: "Linking database in sidebar",
-      completeLabel: "Linked database in sidebar",
-      icon: LinkIcon,
-    },
-    createDatabaseProperty: {
-      activeLabel: "Adding database property",
-      completeLabel: "Added database property",
-      icon: Columns3Icon,
-    },
-    updateDatabaseProperty: {
-      activeLabel: "Updating database property",
-      completeLabel: "Updated database property",
-      icon: Columns3Icon,
-    },
-    createDatabaseView: {
-      activeLabel: "Creating database view",
-      completeLabel: "Created database view",
-      icon: TablePropertiesIcon,
-    },
-    updateDatabaseView: {
-      activeLabel: "Updating database view",
-      completeLabel: "Updated database view",
-      icon: TablePropertiesIcon,
-    },
-    updateDataSource: {
-      activeLabel: "Updating data source",
-      completeLabel: "Updated data source",
-      icon: Settings2Icon,
-    },
-    createDatabaseRow: {
-      activeLabel: "Adding database row",
-      completeLabel: "Added database row",
-      icon: Rows3Icon,
-    },
-    setDatabaseCellValue: {
-      activeLabel: "Setting cell value",
-      completeLabel: "Set cell value",
-      icon: PencilIcon,
-    },
-  };
+const databaseToolStepConfig: Record<DatabaseConfigToolName, DatabaseToolStepConfig> = {
+  buildDatabaseFromBlueprint: {
+    activeLabel: "Building database",
+    completeLabel: "Built database",
+    icon: DatabaseIcon,
+  },
+  createPage: {
+    activeLabel: "Creating page",
+    completeLabel: "Created page",
+    icon: FilePlusIcon,
+  },
+  createDatabase: {
+    activeLabel: "Creating database",
+    completeLabel: "Created database",
+    icon: DatabaseIcon,
+  },
+  embedDatabaseInPage: {
+    activeLabel: "Embedding database in page",
+    completeLabel: "Embedded database in page",
+    icon: LayoutTemplateIcon,
+  },
+  linkDatabaseInPage: {
+    activeLabel: "Linking database in sidebar",
+    completeLabel: "Linked database in sidebar",
+    icon: LinkIcon,
+  },
+  createDatabaseProperty: {
+    activeLabel: "Adding database property",
+    completeLabel: "Added database property",
+    icon: Columns3Icon,
+  },
+  updateDatabaseProperty: {
+    activeLabel: "Updating database property",
+    completeLabel: "Updated database property",
+    icon: Columns3Icon,
+  },
+  createDatabaseView: {
+    activeLabel: "Creating database view",
+    completeLabel: "Created database view",
+    icon: TablePropertiesIcon,
+  },
+  updateDatabaseView: {
+    activeLabel: "Updating database view",
+    completeLabel: "Updated database view",
+    icon: TablePropertiesIcon,
+  },
+  updateDataSource: {
+    activeLabel: "Updating data source",
+    completeLabel: "Updated data source",
+    icon: Settings2Icon,
+  },
+  createDatabaseRow: {
+    activeLabel: "Adding database row",
+    completeLabel: "Added database row",
+    icon: Rows3Icon,
+  },
+  setDatabaseCellValue: {
+    activeLabel: "Setting cell value",
+    completeLabel: "Set cell value",
+    icon: PencilIcon,
+  },
+};
 
 function readToolInputRecord(input: ToolPart["input"]) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -144,9 +143,7 @@ function buildDatabaseToolInputDescription(
     case "buildDatabaseFromBlueprint": {
       const name = readStringField(input, "databaseName");
       const placement = readStringField(input, "placement");
-      return name
-        ? `Database: ${name}${placement ? ` (${placement})` : ""}`
-        : placement;
+      return name ? `Database: ${name}${placement ? ` (${placement})` : ""}` : placement;
     }
     case "createPage": {
       const name = readStringField(input, "name");
@@ -227,26 +224,30 @@ function readBlueprintOutputDetails(output: DatabaseConfigToolOutput) {
 
   const data = output.data as Record<string, unknown>;
   const properties = Array.isArray(data.properties)
-    ? data.properties.flatMap((property) => {
-        if (!property || typeof property !== "object" || Array.isArray(property)) {
-          return [];
-        }
-        const value = property as Record<string, unknown>;
-        return typeof value.name === "string" && typeof value.type === "string"
-          ? [`${value.name} (${value.type})`]
-          : [];
-      }).slice(0, 30)
+    ? data.properties
+        .flatMap((property) => {
+          if (!property || typeof property !== "object" || Array.isArray(property)) {
+            return [];
+          }
+          const value = property as Record<string, unknown>;
+          return typeof value.name === "string" && typeof value.type === "string"
+            ? [`${value.name} (${value.type})`]
+            : [];
+        })
+        .slice(0, 30)
     : [];
   const views = Array.isArray(data.views)
-    ? data.views.flatMap((view) => {
-        if (!view || typeof view !== "object" || Array.isArray(view)) {
-          return [];
-        }
-        const value = view as Record<string, unknown>;
-        return typeof value.name === "string" && typeof value.type === "string"
-          ? [`${value.name} (${value.type})`]
-          : [];
-      }).slice(0, 10)
+    ? data.views
+        .flatMap((view) => {
+          if (!view || typeof view !== "object" || Array.isArray(view)) {
+            return [];
+          }
+          const value = view as Record<string, unknown>;
+          return typeof value.name === "string" && typeof value.type === "string"
+            ? [`${value.name} (${value.type})`]
+            : [];
+        })
+        .slice(0, 10)
     : [];
   const details = [
     data.placement === "standalone"
@@ -254,8 +255,7 @@ function readBlueprintOutputDetails(output: DatabaseConfigToolOutput) {
       : data.placement === "inline"
         ? "Placement: inline database"
         : null,
-    data.placement === "inline" &&
-        typeof data.showInlineDatabaseTitle === "boolean"
+    data.placement === "inline" && typeof data.showInlineDatabaseTitle === "boolean"
       ? `Inline title: ${data.showInlineDatabaseTitle ? "shown" : "hidden (page title used)"}`
       : null,
     properties.length > 0 ? `Properties: ${properties.join(", ")}` : null,
@@ -268,11 +268,7 @@ function readBlueprintOutputDetails(output: DatabaseConfigToolOutput) {
 
 function readBlueprintOutputSteps(output: ToolPart["output"]) {
   const toolOutput = readDatabaseToolOutput(output);
-  if (
-    !toolOutput?.data ||
-    typeof toolOutput.data !== "object" ||
-    Array.isArray(toolOutput.data)
-  ) {
+  if (!toolOutput?.data || typeof toolOutput.data !== "object" || Array.isArray(toolOutput.data)) {
     return [];
   }
 
@@ -281,30 +277,31 @@ function readBlueprintOutputSteps(output: ToolPart["output"]) {
     return [];
   }
 
-  return steps.flatMap((step) => {
-    if (!step || typeof step !== "object" || Array.isArray(step)) {
-      return [];
-    }
-    const value = step as Record<string, unknown>;
-    if (
-      typeof value.label !== "string" ||
-      typeof value.detail !== "string" ||
-      (value.status !== "completed" && value.status !== "failed")
-    ) {
-      return [];
-    }
-    return [{
-      detail: value.detail,
-      label: value.label,
-      status: value.status,
-    }];
-  }).slice(0, 100);
+  return steps
+    .flatMap((step) => {
+      if (!step || typeof step !== "object" || Array.isArray(step)) {
+        return [];
+      }
+      const value = step as Record<string, unknown>;
+      if (
+        typeof value.label !== "string" ||
+        typeof value.detail !== "string" ||
+        (value.status !== "completed" && value.status !== "failed")
+      ) {
+        return [];
+      }
+      return [
+        {
+          detail: value.detail,
+          label: value.label,
+          status: value.status,
+        },
+      ];
+    })
+    .slice(0, 100);
 }
 
-function buildIncompleteDatabaseRetryPrompt(
-  part: ToolPart,
-  progress?: AgentProgressSnapshot,
-) {
+function buildIncompleteDatabaseRetryPrompt(part: ToolPart, progress?: AgentProgressSnapshot) {
   const ids = readDatabaseConfigToolIds(part.output);
   const outputSteps = readBlueprintOutputSteps(part.output);
   const steps = progress?.steps ?? outputSteps;
@@ -324,12 +321,12 @@ function buildIncompleteDatabaseRetryPrompt(
     existingIds.length > 0
       ? `Use these existing resources: ${existingIds.join(", ")}.`
       : "Inspect the completed tool result to find the existing resources.",
-    completedSteps.length > 0
-      ? `Already completed: ${completedSteps.join(", ")}.`
-      : null,
+    completedSteps.length > 0 ? `Already completed: ${completedSteps.join(", ")}.` : null,
     failedSteps.length > 0 ? `Failed or incomplete: ${failedSteps.join("; ")}.` : null,
     "Resume from the failed step with low-level database tools. Preserve all completed work and never recreate an existing page or database container.",
-  ].filter((value): value is string => Boolean(value)).join(" ");
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
 }
 
 function getDatabaseToolStepStatus(
@@ -377,10 +374,7 @@ function getDatabaseToolStepLabel(
   return isFinished ? config.completeLabel : config.activeLabel;
 }
 
-function getDatabaseToolStepDescription(
-  toolName: DatabaseConfigToolName,
-  part: ToolPart,
-) {
+function getDatabaseToolStepDescription(toolName: DatabaseConfigToolName, part: ToolPart) {
   if (part.errorText) {
     return describeDatabaseToolError(part);
   }
@@ -388,9 +382,8 @@ function getDatabaseToolStepDescription(
   const output = readDatabaseToolOutput(part.output);
 
   if (output?.summary) {
-    const details = toolName === "buildDatabaseFromBlueprint"
-      ? readBlueprintOutputDetails(output)
-      : null;
+    const details =
+      toolName === "buildDatabaseFromBlueprint" ? readBlueprintOutputDetails(output) : null;
     return details ? `${output.summary} ${details}` : output.summary;
   }
 
@@ -404,14 +397,10 @@ function describeDatabaseToolError(part: ToolPart) {
   const propertyIconPath = errorText.match(
     /"path"\s*:\s*\[\s*"properties"\s*,\s*(\d+)\s*,\s*"icon"\s*\]/,
   );
-  const propertyIndex = propertyIconPath
-    ? Number(propertyIconPath[1])
-    : Number.NaN;
+  const propertyIndex = propertyIconPath ? Number(propertyIconPath[1]) : Number.NaN;
   const input = readToolInputRecord(part.input);
   const properties = Array.isArray(input?.properties) ? input.properties : [];
-  const property = Number.isInteger(propertyIndex)
-    ? properties[propertyIndex]
-    : null;
+  const property = Number.isInteger(propertyIndex) ? properties[propertyIndex] : null;
 
   if (property && typeof property === "object" && !Array.isArray(property)) {
     const record = property as Record<string, unknown>;
@@ -440,9 +429,10 @@ function isSuccessfulDatabaseToolPart(
   progressByToolCallId?: Map<string, AgentProgressSnapshot>,
 ) {
   const progress = progressByToolCallId?.get(part.toolCallId);
-  return progress?.status === "succeeded" ||
-    (part.state === "output-available" &&
-      readDatabaseToolOutput(part.output)?.ok !== false);
+  return (
+    progress?.status === "succeeded" ||
+    (part.state === "output-available" && readDatabaseToolOutput(part.output)?.ok !== false)
+  );
 }
 
 const DatabaseToolStep = ({
@@ -489,8 +479,7 @@ function canRetryBlueprint(
   return (
     getToolName(part) === "buildDatabaseFromBlueprint" &&
     retryAvailable &&
-    (progress?.status === "failed" ||
-      readDatabaseToolOutput(part.output)?.ok === false)
+    (progress?.status === "failed" || readDatabaseToolOutput(part.output)?.ok === false)
   );
 }
 
@@ -503,24 +492,25 @@ export const DatabaseToolStepsGroup = ({
   parts: ToolPart[];
   progressByToolCallId?: Map<string, AgentProgressSnapshot>;
 }) => {
-  const hasActiveStep = parts.some(
-    (part) => {
-      const progress = progressByToolCallId?.get(part.toolCallId);
-      return progress
-        ? progress.status === "running"
-        : part.state !== "output-available" && part.state !== "output-error";
-    },
-  );
+  const hasActiveStep = parts.some((part) => {
+    const progress = progressByToolCallId?.get(part.toolCallId);
+    return progress
+      ? progress.status === "running"
+      : part.state !== "output-available" && part.state !== "output-error";
+  });
   const failedPartIndexes = parts.flatMap((part, index) =>
-    isFailedDatabaseToolPart(part, progressByToolCallId) ? [index] : []
+    isFailedDatabaseToolPart(part, progressByToolCallId) ? [index] : [],
   );
   const hasError = failedPartIndexes.length > 0;
   const hasUnrecoveredError = failedPartIndexes.some((failedIndex) => {
     const failedToolName = getToolName(parts[failedIndex]!);
-    return !parts.slice(failedIndex + 1).some((candidate) =>
-      getToolName(candidate) === failedToolName &&
-      isSuccessfulDatabaseToolPart(candidate, progressByToolCallId)
-    );
+    return !parts
+      .slice(failedIndex + 1)
+      .some(
+        (candidate) =>
+          getToolName(candidate) === failedToolName &&
+          isSuccessfulDatabaseToolPart(candidate, progressByToolCallId),
+      );
   });
   const recoveredAfterRetry = hasError && !hasUnrecoveredError;
   const headerLabel = hasActiveStep
@@ -529,9 +519,9 @@ export const DatabaseToolStepsGroup = ({
       ? "Database setup finished with errors"
       : recoveredAfterRetry
         ? "Database setup completed after retry"
-      : parts.length === 1
-        ? "Database change"
-        : "Database setup";
+        : parts.length === 1
+          ? "Database change"
+          : "Database setup";
 
   return (
     <div className="not-prose mb-3 space-y-2">
@@ -546,47 +536,38 @@ export const DatabaseToolStepsGroup = ({
             }
 
             const progress = progressByToolCallId?.get(part.toolCallId);
-            const blueprintSteps = progress?.steps ??
+            const blueprintSteps =
+              progress?.steps ??
               (toolName === "buildDatabaseFromBlueprint"
                 ? readBlueprintOutputSteps(part.output)
                 : []);
-            const canRetry = canRetryBlueprint(
-              part,
-              progress,
-              Boolean(onRetryIncomplete),
-            );
+            const canRetry = canRetryBlueprint(part, progress, Boolean(onRetryIncomplete));
 
             return (
               <Fragment key={part.toolCallId}>
-                <DatabaseToolStep
-                  part={part}
-                  progress={progress}
-                  toolName={toolName}
-                />
+                <DatabaseToolStep part={part} progress={progress} toolName={toolName} />
                 {blueprintSteps.map((step, index) => (
                   <ChainOfThoughtStep
                     description={step.detail}
                     icon={DatabaseIcon}
                     key={`${part.toolCallId}-${"key" in step ? step.key : index}`}
-                    label={step.status === "failed"
-                      ? `${step.label} (failed)`
-                      : step.label}
-                    status={step.status === "running"
-                      ? "active"
-                      : step.status === "pending"
-                        ? "pending"
-                        : step.status === "failed"
-                          ? "failed"
-                          : "complete"}
+                    label={step.status === "failed" ? `${step.label} (failed)` : step.label}
+                    status={
+                      step.status === "running"
+                        ? "active"
+                        : step.status === "pending"
+                          ? "pending"
+                          : step.status === "failed"
+                            ? "failed"
+                            : "complete"
+                    }
                   />
                 ))}
                 {canRetry ? (
                   <div className="pl-7 pt-1">
                     <Button
                       onClick={() =>
-                        void onRetryIncomplete?.(
-                          buildIncompleteDatabaseRetryPrompt(part, progress),
-                        )
+                        void onRetryIncomplete?.(buildIncompleteDatabaseRetryPrompt(part, progress))
                       }
                       size="sm"
                       type="button"

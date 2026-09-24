@@ -45,9 +45,9 @@ export async function routeNavigationRealtimeRequest(
     }
     const headers = new Headers(request.headers);
     headers.set(CLAIMS_HEADER, encodeURIComponent(JSON.stringify(claims)));
-    return env.NAVIGATION_NOTIFICATION_ROOM
-      .getByName(workspaceId)
-      .fetch(new Request(request, { headers }));
+    return env.NAVIGATION_NOTIFICATION_ROOM.getByName(workspaceId).fetch(
+      new Request(request, { headers }),
+    );
   } catch {
     return new Response("Invalid navigation realtime ticket", { status: 401 });
   }
@@ -61,10 +61,10 @@ export function readNavigationRealtimeClaims(
   try {
     const claims = JSON.parse(decodeURIComponent(encoded)) as Record<string, unknown>;
     return typeof claims.exp === "number" &&
-        typeof claims.sessionId === "string" &&
-        typeof claims.userId === "string" &&
-        typeof claims.workspaceId === "string"
-      ? claims as NavigationRealtimeTicketClaims
+      typeof claims.sessionId === "string" &&
+      typeof claims.userId === "string" &&
+      typeof claims.workspaceId === "string"
+      ? (claims as NavigationRealtimeTicketClaims)
       : null;
   } catch {
     return null;
@@ -76,11 +76,12 @@ function readAuthenticationProtocol(headers: Headers) {
     .split(",")
     .map((protocol) => protocol.trim());
   const authentication = protocols.find((protocol) =>
-    protocol.startsWith(NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX)
+    protocol.startsWith(NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX),
   );
   const ticket = authentication?.slice(NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX.length);
   return protocols.includes(NAVIGATION_REALTIME_PROTOCOL) &&
-      ticket && ticket.length <= MAX_TICKET_BYTES
+    ticket &&
+    ticket.length <= MAX_TICKET_BYTES
     ? ticket
     : null;
 }

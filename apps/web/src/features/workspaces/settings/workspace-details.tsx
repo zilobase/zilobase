@@ -2,13 +2,7 @@ import { useWorkspaceDetails } from "./workspace-details-state";
 
 import { Button } from "@/shared/ui/button";
 
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/shared/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/ui/field";
 import { Input } from "@/shared/ui/input";
 
 import { Spinner } from "@/shared/ui/spinner";
@@ -45,9 +39,7 @@ export function WorkspaceDetailsSection({
     <section className="grid gap-3">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
-          <h3 className="font-heading text-base leading-snug font-medium">
-            Page details
-          </h3>
+          <h3 className="font-heading text-base leading-snug font-medium">Page details</h3>
           <p className="text-sm text-content-secondary">
             Update the fields used to identify this workspace across Zilobase.
           </p>
@@ -62,11 +54,7 @@ export function WorkspaceDetailsSection({
           Save workspace
         </Button>
       </div>
-      <form
-        className="grid gap-4"
-        id="workspace-details-form"
-        onSubmit={saveWorkspace}
-      >
+      <form className="grid gap-4" id="workspace-details-form" onSubmit={saveWorkspace}>
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor="workspace-name">Workspace name</FieldLabel>
@@ -98,9 +86,7 @@ export function WorkspaceDetailsSection({
               placeholder="acme-labs"
               value={slug}
             />
-            <FieldDescription>
-              Lowercase, numbers, and hyphens only.
-            </FieldDescription>
+            <FieldDescription>Lowercase, numbers, and hyphens only.</FieldDescription>
           </Field>
 
           <Field>

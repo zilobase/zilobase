@@ -1,25 +1,21 @@
-import { addDays, format } from "date-fns"
-import type { FC, ReactNode } from "react"
-import { memo, useId } from "react"
+import { addDays, format } from "date-fns";
+import type { FC, ReactNode } from "react";
+import { memo, useId } from "react";
 
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
-import { useGanttContext } from "./gantt-context"
-import type { Range } from "./gantt-types"
+import { useGanttContext } from "./gantt-context";
+import type { Range } from "./gantt-types";
 
 export type GanttContentHeaderProps = {
-  columns: number
-  renderHeaderItem: (index: number) => ReactNode
-  title: string
-}
+  columns: number;
+  renderHeaderItem: (index: number) => ReactNode;
+  title: string;
+};
 
-export function GanttContentHeader({
-  columns,
-  renderHeaderItem,
-  title,
-}: GanttContentHeaderProps) {
-  const id = useId()
-  const gantt = useGanttContext()
+export function GanttContentHeader({ columns, renderHeaderItem, title }: GanttContentHeaderProps) {
+  const id = useId();
+  const gantt = useGanttContext();
 
   return (
     <div
@@ -52,13 +48,13 @@ export function GanttContentHeader({
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 export type GanttColumnProps = {
-  index: number
-  isColumnSecondary?: (index: number) => boolean
-}
+  index: number;
+  isColumnSecondary?: (index: number) => boolean;
+};
 
 export const GanttColumn = memo(function GanttColumn({
   index,
@@ -71,19 +67,16 @@ export const GanttColumn = memo(function GanttColumn({
         isColumnSecondary?.(index) && "bg-action-secondary",
       )}
     />
-  )
-})
+  );
+});
 
 export type GanttColumnsProps = {
-  columns: number
-  isColumnSecondary?: (index: number) => boolean
-}
+  columns: number;
+  isColumnSecondary?: (index: number) => boolean;
+};
 
-export function GanttColumns({
-  columns,
-  isColumnSecondary,
-}: GanttColumnsProps) {
-  const id = useId()
+export function GanttColumns({ columns, isColumnSecondary }: GanttColumnsProps) {
+  const id = useId();
 
   return (
     <div
@@ -93,88 +86,77 @@ export function GanttColumns({
       }}
     >
       {Array.from({ length: columns }, (_, index) => (
-        <GanttColumn
-          index={index}
-          isColumnSecondary={isColumnSecondary}
-          key={`${id}-${index}`}
-        />
+        <GanttColumn index={index} isColumnSecondary={isColumnSecondary} key={`${id}-${index}`} />
       ))}
     </div>
-  )
+  );
 }
 
-type GanttHeaderVariant = "dates" | "full" | "grid"
-type RangeHeaderProps = { variant: GanttHeaderVariant }
+type GanttHeaderVariant = "dates" | "full" | "grid";
+type RangeHeaderProps = { variant: GanttHeaderVariant };
 
 function HeaderSection({
   children,
   variant,
 }: {
-  children: ReactNode
-  variant: GanttHeaderVariant
+  children: ReactNode;
+  variant: GanttHeaderVariant;
 }) {
   return (
     <div
-      className={cn(
-        "relative flex min-h-0 flex-col",
-        variant === "dates" ? "shrink-0" : "flex-1",
-      )}
-      style={
-        variant === "dates"
-          ? { height: "var(--gantt-header-height)" }
-          : undefined
-      }
+      className={cn("relative flex min-h-0 flex-col", variant === "dates" ? "shrink-0" : "flex-1")}
+      style={variant === "dates" ? { height: "var(--gantt-header-height)" } : undefined}
     >
       {children}
     </div>
-  )
+  );
 }
 
 const DailyHeader: FC<RangeHeaderProps> = ({ variant }) => {
-  const gantt = useGanttContext()
-  const showDates = variant !== "grid"
-  const showGrid = variant !== "dates"
+  const gantt = useGanttContext();
+  const showDates = variant !== "grid";
+  const showGrid = variant !== "dates";
 
   return gantt.timelineData.flatMap((year) =>
-    year.quarters.flatMap((quarter) => quarter.months).map((month, monthIndex) => {
-      const firstOfMonth = new Date(year.year, monthIndex, 1)
-      return (
-        <HeaderSection key={`${year.year}-${monthIndex}`} variant={variant}>
-          {showDates ? (
-            <GanttContentHeader
-              columns={month.days}
-              renderHeaderItem={(dayIndex) => {
-                const date = addDays(firstOfMonth, dayIndex)
-                return (
-                  <div className="flex items-center justify-center gap-1">
-                    <p>{format(date, "d")}</p>
-                    <p className="text-content-secondary">
-                      {format(date, "EEEEE")}
-                    </p>
-                  </div>
-                )
-              }}
-              title={format(firstOfMonth, "MMMM yyyy")}
-            />
-          ) : null}
-          {showGrid ? (
-            <GanttColumns
-              columns={month.days}
-              isColumnSecondary={(dayIndex) =>
-                [0, 6].includes(addDays(firstOfMonth, dayIndex).getDay())
-              }
-            />
-          ) : null}
-        </HeaderSection>
-      )
-    }),
-  )
-}
+    year.quarters
+      .flatMap((quarter) => quarter.months)
+      .map((month, monthIndex) => {
+        const firstOfMonth = new Date(year.year, monthIndex, 1);
+        return (
+          <HeaderSection key={`${year.year}-${monthIndex}`} variant={variant}>
+            {showDates ? (
+              <GanttContentHeader
+                columns={month.days}
+                renderHeaderItem={(dayIndex) => {
+                  const date = addDays(firstOfMonth, dayIndex);
+                  return (
+                    <div className="flex items-center justify-center gap-1">
+                      <p>{format(date, "d")}</p>
+                      <p className="text-content-secondary">{format(date, "EEEEE")}</p>
+                    </div>
+                  );
+                }}
+                title={format(firstOfMonth, "MMMM yyyy")}
+              />
+            ) : null}
+            {showGrid ? (
+              <GanttColumns
+                columns={month.days}
+                isColumnSecondary={(dayIndex) =>
+                  [0, 6].includes(addDays(firstOfMonth, dayIndex).getDay())
+                }
+              />
+            ) : null}
+          </HeaderSection>
+        );
+      }),
+  );
+};
 
 const MonthlyHeader: FC<RangeHeaderProps> = ({ variant }) => {
-  const gantt = useGanttContext()
-  const showDates = variant !== "grid"
-  const showGrid = variant !== "dates"
+  const gantt = useGanttContext();
+  const showDates = variant !== "grid";
+  const showGrid = variant !== "dates";
 
   return gantt.timelineData.map((year) => (
     <HeaderSection key={year.year} variant={variant}>
@@ -189,13 +171,13 @@ const MonthlyHeader: FC<RangeHeaderProps> = ({ variant }) => {
       ) : null}
       {showGrid ? <GanttColumns columns={12} /> : null}
     </HeaderSection>
-  ))
-}
+  ));
+};
 
 const QuarterlyHeader: FC<RangeHeaderProps> = ({ variant }) => {
-  const gantt = useGanttContext()
-  const showDates = variant !== "grid"
-  const showGrid = variant !== "dates"
+  const gantt = useGanttContext();
+  const showDates = variant !== "grid";
+  const showGrid = variant !== "dates";
 
   return gantt.timelineData.flatMap((year) =>
     year.quarters.map((quarter, quarterIndex) => (
@@ -204,12 +186,7 @@ const QuarterlyHeader: FC<RangeHeaderProps> = ({ variant }) => {
           <GanttContentHeader
             columns={quarter.months.length}
             renderHeaderItem={(monthIndex) => (
-              <p>
-                {format(
-                  new Date(year.year, quarterIndex * 3 + monthIndex, 1),
-                  "MMM",
-                )}
-              </p>
+              <p>{format(new Date(year.year, quarterIndex * 3 + monthIndex, 1), "MMM")}</p>
             )}
             title={`Q${quarterIndex + 1} ${year.year}`}
           />
@@ -217,38 +194,33 @@ const QuarterlyHeader: FC<RangeHeaderProps> = ({ variant }) => {
         {showGrid ? <GanttColumns columns={quarter.months.length} /> : null}
       </HeaderSection>
     )),
-  )
-}
+  );
+};
 
 const rangeHeaders: Record<Range, FC<RangeHeaderProps>> = {
   daily: DailyHeader,
   monthly: MonthlyHeader,
   quarterly: QuarterlyHeader,
-}
+};
 
 export type GanttHeaderProps = {
-  className?: string
-  variant?: GanttHeaderVariant
-}
+  className?: string;
+  variant?: GanttHeaderVariant;
+};
 
-export function GanttHeader({
-  className,
-  variant = "full",
-}: GanttHeaderProps) {
-  const gantt = useGanttContext()
-  const RangeHeader = rangeHeaders[gantt.range]
+export function GanttHeader({ className, variant = "full" }: GanttHeaderProps) {
+  const gantt = useGanttContext();
+  const RangeHeader = rangeHeaders[gantt.range];
 
   return (
     <div
       className={cn(
         "-space-x-px flex w-max divide-x divide-data-grid",
-        variant === "dates"
-          ? "h-[var(--gantt-header-height)] shrink-0"
-          : "h-full",
+        variant === "dates" ? "h-[var(--gantt-header-height)] shrink-0" : "h-full",
         className,
       )}
     >
       <RangeHeader variant={variant} />
     </div>
-  )
+  );
 }

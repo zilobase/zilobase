@@ -15,10 +15,7 @@ type PendingTraceEvent = {
   type: string;
 };
 
-export function useAiDevTrace(input: {
-  threadId: string | null;
-  workspaceId: string | null;
-}) {
+export function useAiDevTrace(input: { threadId: string | null; workspaceId: string | null }) {
   const activeThreadIdRef = useRef(input.threadId);
   const eventsRef = useRef<PendingTraceEvent[]>([]);
   const flushTimerRef = useRef<number | null>(null);
@@ -52,44 +49,40 @@ export function useAiDevTrace(input: {
   }, []);
 
   useEffect(() => {
-    if (
-      activeThreadIdRef.current &&
-      activeThreadIdRef.current !== input.threadId
-    ) {
+    if (activeThreadIdRef.current && activeThreadIdRef.current !== input.threadId) {
       flush();
     }
     activeThreadIdRef.current = input.threadId;
     workspaceIdRef.current = input.workspaceId;
   }, [flush, input.threadId, input.workspaceId]);
 
-  const record = useCallback((
-    type: string,
-    payload: unknown,
-    threadId?: string | null,
-  ) => {
-    if (!import.meta.env.DEV) return;
-    if (threadId && threadId !== activeThreadIdRef.current) {
-      flush();
-      activeThreadIdRef.current = threadId;
-    }
-    if (!activeThreadIdRef.current) return;
+  const record = useCallback(
+    (type: string, payload: unknown, threadId?: string | null) => {
+      if (!import.meta.env.DEV) return;
+      if (threadId && threadId !== activeThreadIdRef.current) {
+        flush();
+        activeThreadIdRef.current = threadId;
+      }
+      if (!activeThreadIdRef.current) return;
 
-    eventsRef.current.push({
-      occurredAt: new Date().toISOString(),
-      payload: serializePayload(payload),
-      sequence: ++sequenceRef.current,
-      type,
-    });
-    if (eventsRef.current.length >= 25) {
-      flush();
-      return;
-    }
-    if (flushTimerRef.current !== null) return;
-    flushTimerRef.current = window.setTimeout(() => {
-      flushTimerRef.current = null;
-      flush();
-    }, FLUSH_DELAY_MS);
-  }, [flush]);
+      eventsRef.current.push({
+        occurredAt: new Date().toISOString(),
+        payload: serializePayload(payload),
+        sequence: ++sequenceRef.current,
+        type,
+      });
+      if (eventsRef.current.length >= 25) {
+        flush();
+        return;
+      }
+      if (flushTimerRef.current !== null) return;
+      flushTimerRef.current = window.setTimeout(() => {
+        flushTimerRef.current = null;
+        flush();
+      }, FLUSH_DELAY_MS);
+    },
+    [flush],
+  );
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -169,7 +162,7 @@ function serializePayload(payload: unknown) {
     const serialized = JSON.stringify(payload, (_key, value) =>
       value instanceof Error
         ? { message: value.message, name: value.name, stack: value.stack }
-        : value
+        : value,
     );
     if (serialized.length <= MAX_PAYLOAD_CHARS) return JSON.parse(serialized);
     return {

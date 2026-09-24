@@ -1,9 +1,9 @@
 import { versionedPackageFiles } from "./versioned-packages.mjs";
-import { execFileSync } from "node:child_process"
-import { readFileSync } from "node:fs"
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
-const version = process.argv[2]
-const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
+const version = process.argv[2];
+const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 const releaseFiles = [
   "CHANGELOG.md",
@@ -12,54 +12,54 @@ const releaseFiles = [
   "apps/server/src/shared/version.ts",
   "apps/desktop/electron/sidecar/Cargo.toml",
   "apps/desktop/electron/sidecar/Cargo.lock",
-]
+];
 
 function run(command, args, options = {}) {
-  return execFileSync(command, args, { encoding: "utf8", stdio: "pipe", ...options })
+  return execFileSync(command, args, { encoding: "utf8", stdio: "pipe", ...options });
 }
 
 function fail(message) {
-  console.error(message)
-  process.exit(1)
+  console.error(message);
+  process.exit(1);
 }
 
 if (!version || !semver.test(version)) {
-  fail("Usage: npm run release -- 0.0.2")
+  fail("Usage: npm run release -- 0.0.2");
 }
 
-const tag = `v${version}`
+const tag = `v${version}`;
 
 try {
-  run("git", ["rev-parse", "--verify", "--quiet", `refs/tags/${tag}`])
-  fail(`Tag already exists: ${tag}`)
+  run("git", ["rev-parse", "--verify", "--quiet", `refs/tags/${tag}`]);
+  fail(`Tag already exists: ${tag}`);
 } catch (error) {
-  if (error.status !== 1) throw error
+  if (error.status !== 1) throw error;
 }
 
-const dirty = run("git", ["status", "--porcelain"]).trimEnd().split("\n").filter(Boolean)
-const unexpectedDirty = dirty.filter((line) => line.slice(3) !== "CHANGELOG.md")
+const dirty = run("git", ["status", "--porcelain"]).trimEnd().split("\n").filter(Boolean);
+const unexpectedDirty = dirty.filter((line) => line.slice(3) !== "CHANGELOG.md");
 
 if (unexpectedDirty.length) {
-  fail(`Release requires a clean working tree except CHANGELOG.md:\n${unexpectedDirty.join("\n")}`)
+  fail(`Release requires a clean working tree except CHANGELOG.md:\n${unexpectedDirty.join("\n")}`);
 }
 
-const changelog = readFileSync("CHANGELOG.md", "utf8")
+const changelog = readFileSync("CHANGELOG.md", "utf8");
 if (!changelog.includes(`## ${version}`)) {
-  fail(`CHANGELOG.md must contain a "## ${version}" section before releasing.`)
+  fail(`CHANGELOG.md must contain a "## ${version}" section before releasing.`);
 }
 
-run("node", ["scripts/release/set-version.mjs", version], { stdio: "inherit" })
-run("git", ["add", ...releaseFiles], { stdio: "inherit" })
+run("node", ["scripts/release/set-version.mjs", version], { stdio: "inherit" });
+run("git", ["add", ...releaseFiles], { stdio: "inherit" });
 
-const staged = run("git", ["diff", "--cached", "--name-only"]).trim()
+const staged = run("git", ["diff", "--cached", "--name-only"]).trim();
 if (!staged) {
-  fail("No release changes staged.")
+  fail("No release changes staged.");
 }
 
-run("git", ["commit", "-m", `chore: release ${tag}`], { stdio: "inherit" })
-run("git", ["tag", "-a", tag, "-m", `Zilobase ${tag}`], { stdio: "inherit" })
+run("git", ["commit", "-m", `chore: release ${tag}`], { stdio: "inherit" });
+run("git", ["tag", "-a", tag, "-m", `Zilobase ${tag}`], { stdio: "inherit" });
 
-console.log(`\nCreated release commit and tag ${tag}.`)
-console.log("Publish with:")
-console.log("  git push origin main")
-console.log(`  git push origin ${tag}`)
+console.log(`\nCreated release commit and tag ${tag}.`);
+console.log("Publish with:");
+console.log("  git push origin main");
+console.log(`  git push origin ${tag}`);

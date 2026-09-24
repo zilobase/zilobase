@@ -37,9 +37,7 @@ export function useAutomationManager({
   onOpenChange: (open: boolean) => void;
 }) {
   const [screen, setScreen] = useState<Screen>("list");
-  const [selectedAutomationId, setSelectedAutomationId] = useState<
-    string | null
-  >(null);
+  const [selectedAutomationId, setSelectedAutomationId] = useState<string | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [draft, setDraft] = useState<BuilderDraft>(() => emptyDraft());
   const [baseline, setBaseline] = useState("");
@@ -49,20 +47,10 @@ export function useAutomationManager({
   const catalog = useDatabaseAutomationCatalog(databaseId, dataSourceId);
   const detail = useDatabaseAutomation(databaseId, automationId);
   const runs = useDatabaseAutomationRuns(databaseId, automationId);
-  const run = useDatabaseAutomationRun(
-    databaseId,
-    automationId,
-    selectedRunId ?? "",
-  );
+  const run = useDatabaseAutomationRun(databaseId, automationId, selectedRunId ?? "");
   const create = useCreateDatabaseAutomation(databaseId, dataSourceId);
-  const createSecret = useCreateDatabaseAutomationSecret(
-    databaseId,
-    dataSourceId,
-  );
-  const startSlackOauth = useStartSlackAutomationOauth(
-    databaseId,
-    dataSourceId,
-  );
+  const createSecret = useCreateDatabaseAutomationSecret(databaseId, dataSourceId);
+  const startSlackOauth = useStartSlackAutomationOauth(databaseId, dataSourceId);
   const update = useUpdateDatabaseAutomation(databaseId, automationId);
   const lifecycle = useDatabaseAutomationLifecycle(databaseId, dataSourceId);
   const validate = useValidateDatabaseAutomation(databaseId);
@@ -116,10 +104,7 @@ export function useAutomationManager({
   };
   const save = async () => {
     if (!definition || !effectiveName) return;
-    const saveDraft = await materializeWebhookSecrets(
-      draft,
-      createSecret.mutateAsync,
-    );
+    const saveDraft = await materializeWebhookSecrets(draft, createSecret.mutateAsync);
     const savedDefinition = buildDefinition(saveDraft, timezone, catalog.data);
     if (!savedDefinition) return;
     if (selectedAutomationId && detail.data) {

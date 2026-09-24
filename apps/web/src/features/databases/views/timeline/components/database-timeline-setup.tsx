@@ -1,14 +1,8 @@
-import { CalendarPlus } from "@/shared/components/icons"
-import { Button } from "@/shared/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select"
-import { getDatabasePropertyType } from "../../../schema/property-catalog"
-import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config"
+import { CalendarPlus } from "@/shared/components/icons";
+import { Button } from "@/shared/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { getDatabasePropertyType } from "../../../schema/property-catalog";
+import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
 
 export function DatabaseTimelineSetup({
   configuredDatePropertyId,
@@ -17,19 +11,17 @@ export function DatabaseTimelineSetup({
   onSelectDateProperty,
   onSetupDateProperty,
 }: {
-  configuredDatePropertyId: string | null
-  dateProperties: DatabasePropertyListItem[]
-  editable: boolean
-  onSelectDateProperty: (propertyId: string) => void
-  onSetupDateProperty: () => void
+  configuredDatePropertyId: string | null;
+  dateProperties: DatabasePropertyListItem[];
+  editable: boolean;
+  onSelectDateProperty: (propertyId: string) => void;
+  onSetupDateProperty: () => void;
 }) {
   if (dateProperties.length === 0) {
     return (
       <div className="database-empty-state flex flex-col items-center gap-3 px-6 py-10 text-center text-sm text-content-secondary">
         <div className="flex flex-col gap-1">
-          <span className="font-medium text-content-primary">
-            Timeline needs a date property
-          </span>
+          <span className="font-medium text-content-primary">Timeline needs a date property</span>
           <span>Create one to schedule items on this timeline.</span>
         </div>
         <Select disabled>
@@ -37,43 +29,33 @@ export function DatabaseTimelineSetup({
             <SelectValue placeholder="No date properties available" />
           </SelectTrigger>
         </Select>
-        <Button
-          disabled={!editable}
-          onClick={onSetupDateProperty}
-          size="sm"
-          type="button"
-        >
+        <Button disabled={!editable} onClick={onSetupDateProperty} size="sm" type="button">
           <CalendarPlus />
           Set up date property
         </Button>
       </div>
-    )
+    );
   }
   return (
     <div className="database-empty-state flex flex-col items-center gap-3 px-6 py-10 text-sm text-content-secondary">
       <span>Schedule this timeline view by</span>
-      <Select
-        onValueChange={onSelectDateProperty}
-        value={configuredDatePropertyId ?? undefined}
-      >
+      <Select onValueChange={onSelectDateProperty} value={configuredDatePropertyId ?? undefined}>
         <SelectTrigger className="min-w-56">
           <SelectValue placeholder="Choose a date property" />
         </SelectTrigger>
         <SelectContent align="center">
           {dateProperties.map((property) => {
-            const PropertyIcon = getDatabasePropertyType(
-              property.property.type,
-            ).icon
+            const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
 
             return (
               <SelectItem key={property.id} value={property.property.id}>
                 <PropertyIcon className="size-4 shrink-0 text-content-secondary" />
                 <span>{property.property.name}</span>
               </SelectItem>
-            )
+            );
           })}
         </SelectContent>
       </Select>
     </div>
-  )
+  );
 }

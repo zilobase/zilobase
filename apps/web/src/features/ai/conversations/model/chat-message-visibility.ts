@@ -1,9 +1,6 @@
 import { isToolUIPart, type ChatStatus, type UIMessage } from "ai";
 
-export function shouldShowPendingAssistant(
-  messages: UIMessage[],
-  status: ChatStatus,
-) {
+export function shouldShowPendingAssistant(messages: UIMessage[], status: ChatStatus) {
   if (!(status === "submitted" || status === "streaming")) {
     return false;
   }
@@ -15,9 +12,6 @@ export function shouldShowPendingAssistant(
   }
 
   return !lastMessage.parts.some(
-    (part) =>
-      part.type === "text" ||
-      part.type === "data-agent-progress" ||
-      isToolUIPart(part),
+    (part) => part.type === "text" || part.type === "data-agent-progress" || isToolUIPart(part),
   );
 }

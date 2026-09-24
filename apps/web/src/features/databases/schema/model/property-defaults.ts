@@ -1,11 +1,14 @@
-import { isReadOnlyPropertyType as isCanonicalReadOnlyPropertyType, isSelectLikePropertyType as isCanonicalSelectLikePropertyType } from "@zilobase/features/databases/property-types"
+import {
+  isReadOnlyPropertyType as isCanonicalReadOnlyPropertyType,
+  isSelectLikePropertyType as isCanonicalSelectLikePropertyType,
+} from "@zilobase/features/databases/property-types";
 
 export const defaultStatusOption = {
   color: "gray",
   group: "To-do",
   id: "not-started",
   name: "Not started",
-}
+};
 
 export const defaultStatusOptions = [
   defaultStatusOption,
@@ -21,27 +24,27 @@ export const defaultStatusOptions = [
     id: "done",
     name: "Done",
   },
-]
+];
 
 export function getDefaultDatabasePropertyConfig(type: string) {
   if (type === "status") {
     return {
       defaultOptionId: defaultStatusOption.id,
       options: defaultStatusOptions,
-    }
+    };
   }
 
   if (type === "formula") {
-    return { formula: "" }
+    return { formula: "" };
   }
 
-  return undefined
+  return undefined;
 }
 
 export function isReadOnlyPropertyType(type: string) {
-  return isCanonicalReadOnlyPropertyType(type)
+  return isCanonicalReadOnlyPropertyType(type);
 }
 
 export function isSelectLikePropertyType(type: string) {
-  return isCanonicalSelectLikePropertyType(type)
+  return isCanonicalSelectLikePropertyType(type);
 }

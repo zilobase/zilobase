@@ -15,10 +15,7 @@ import {
   useApprovedMcpServers,
   mcpScopeApiPath,
 } from "@zilobase/features/ai-chat/react";
-import {
-  mailApiBasePath,
-  mailConnectionQueryOptions,
-} from "@zilobase/features/mail";
+import { mailApiBasePath, mailConnectionQueryOptions } from "@zilobase/features/mail";
 import { Button } from "@/shared/ui/button";
 import { flushSettingsDrafts } from "../use-settings-draft";
 import { toast } from "sonner";
@@ -35,9 +32,7 @@ export function ConnectorSetupCard({
   const catalog = useMcpCatalog();
   const approved = useApprovedMcpServers();
   const ref: McpConnectionScopeRef =
-    scope === "personal"
-      ? { type: "personal" }
-      : { type: "agent", agentProfileId: scope };
+    scope === "personal" ? { type: "personal" } : { type: "agent", agentProfileId: scope };
   const agent = useAiAgentProfile(scope === "personal" ? null : scope);
   const connections = useMcpConnections(ref);
   const gmail = useQuery({
@@ -46,7 +41,12 @@ export function ConnectorSetupCard({
   });
   const [connecting, setConnecting] = React.useState(false);
   const setup = describeConnectorSetup({
-    provider, scope, approved: approved.data, catalog: catalog.data, connections: connections.data, gmail: gmail.data,
+    provider,
+    scope,
+    approved: approved.data,
+    catalog: catalog.data,
+    connections: connections.data,
+    gmail: gmail.data,
   });
   const { approvedId, existing, label, description } = setup;
   const action = connectorActionState(setup, scope, agent.data?.role, connecting);
@@ -56,10 +56,7 @@ export function ConnectorSetupCard({
     try {
       await flushSettingsDrafts();
       const headers = { "x-zilobase-workspace-id": workspaceId };
-      const returnTo =
-        window.location.pathname +
-        window.location.search +
-        window.location.hash;
+      const returnTo = window.location.pathname + window.location.search + window.location.hash;
       let authorizationUrl: string;
       if (provider === "gmail") {
         const result = await apiFetch<{ authorizationUrl: string }>(
@@ -76,19 +73,14 @@ export function ConnectorSetupCard({
         const connection =
           existing ??
           (
-            await apiFetch<{ connection: { id: string } }>(
-              `${base}/connections`,
-              {
-                method: "POST",
-                headers,
-                body: JSON.stringify({
-                  authMethod: "oauth",
-                  ...(approvedId
-                    ? { approvedServerId: approvedId }
-                    : { catalogId: provider }),
-                }),
-              },
-            )
+            await apiFetch<{ connection: { id: string } }>(`${base}/connections`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                authMethod: "oauth",
+                ...(approvedId ? { approvedServerId: approvedId } : { catalogId: provider }),
+              }),
+            })
           ).connection;
         const result = await apiFetch<{ authorizationUrl: string }>(
           `${base}/connections/${encodeURIComponent(connection.id)}/oauth/start`,
@@ -98,9 +90,7 @@ export function ConnectorSetupCard({
       }
       window.location.assign(authorizationUrl);
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not connect account.",
-      );
+      toast.error(error instanceof Error ? error.message : "Could not connect account.");
       setConnecting(false);
     }
   };
@@ -119,15 +109,9 @@ export function ConnectorSetupCard({
     >
       <div className="min-w-0 flex-1">
         <p className="font-medium">{label}</p>
-        <p className="text-xs text-content-secondary">
-          {description}
-        </p>
+        <p className="text-xs text-content-secondary">{description}</p>
       </div>
-      <Button
-        disabled={action.disabled}
-        size="sm"
-        onClick={() => void connect()}
-      >
+      <Button disabled={action.disabled} size="sm" onClick={() => void connect()}>
         {action.label}
       </Button>
     </div>
@@ -150,11 +134,7 @@ export function SettingsConnectors({
     <McpConnectionsPanel
       canEdit={!disabled}
       delegated={scope !== "personal"}
-      scope={
-        scope === "personal"
-          ? { type: "personal" }
-          : { type: "agent", agentProfileId: scope }
-      }
+      scope={scope === "personal" ? { type: "personal" } : { type: "agent", agentProfileId: scope }}
       draft={{ definition, onChange, review }}
     />
   );

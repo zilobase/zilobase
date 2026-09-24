@@ -3,7 +3,6 @@ import type { NodeRealtimeBus } from "./realtime-bus";
 
 export function createNodeLimits(realtimeBus: NodeRealtimeBus): Limits {
   return {
-    consume: (key, limit, windowMs) =>
-      realtimeBus.consumeLimit(key, limit, windowMs),
+    consume: (key, limit, windowMs) => realtimeBus.consumeLimit(key, limit, windowMs),
   };
 }

@@ -2,10 +2,7 @@ import { useMutation, type QueryClient } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../../shared/context";
 import { pagesNavRootQueryKey } from "../../pages/queries";
 import { useDatabaseSessionId } from "../queries/session";
-import {
-  findDataSourceBootstrap,
-  resolveDataSourceCommandScope,
-} from "./scope";
+import { findDataSourceBootstrap, resolveDataSourceCommandScope } from "./scope";
 import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
 import {
@@ -17,10 +14,7 @@ import {
   resolveOptimisticScope,
   type OptimisticContext,
 } from "./optimistic";
-import {
-  runSerialized,
-  structuralSerializationKey,
-} from "./serialize";
+import { runSerialized, structuralSerializationKey } from "./serialize";
 import type { DatabasePropertyEntity } from "../core/entities";
 
 type AddPropertyInput = {
@@ -77,60 +71,45 @@ export function useAddDatabaseProperty() {
   const sessionId = useDatabaseSessionId();
 
   return useMutation({
-    mutationFn: async ({
+    mutationFn: async ({ config, databaseId, name, position, type }: AddPropertyInput) => {
+      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
+      const anchors = resolvePropertyCreateAnchors(queryClient, scope.dataSourceId, position);
+      const ack = await runSerialized(structuralSerializationKey(scope.dataSourceId), () =>
+        executeDatabaseCommand(apiFetch, {
+          command: {
+            ...anchors,
+            config: config ?? null,
+            name: name?.trim() || "Property",
+            propertyType: type?.trim() || "text",
+            type: "property.create",
+          },
+          databaseId: scope.hostDatabaseId,
+          dataSourceId: scope.dataSourceId,
+        }),
+      );
+      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
+      return ack.result as DatabasePropertyEntity;
+    },
+    onMutate: async ({
       config,
       databaseId,
       name,
       position,
       type,
-    }: AddPropertyInput) => {
-      const scope = await resolveDataSourceCommandScope(
-        queryClient,
-        apiFetch,
-        databaseId,
-      );
-      const anchors = resolvePropertyCreateAnchors(
-        queryClient,
-        scope.dataSourceId,
-        position,
-      );
-      const ack = await runSerialized(
-        structuralSerializationKey(scope.dataSourceId),
-        () =>
-          executeDatabaseCommand(apiFetch, {
-            command: {
-              ...anchors,
-              config: config ?? null,
-              name: name?.trim() || "Property",
-              propertyType: type?.trim() || "text",
-              type: "property.create",
-            },
-            databaseId: scope.hostDatabaseId,
-            dataSourceId: scope.dataSourceId,
-          }),
-      );
-      invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
-      return ack.result as DatabasePropertyEntity;
-    },
-    onMutate: async ({ config, databaseId, name, position, type }): Promise<OptimisticContext | undefined> => {
+    }): Promise<OptimisticContext | undefined> => {
       const scope = resolveOptimisticScope(queryClient, databaseId);
       if (!scope) return undefined;
-      const dataSourceId = scope.dataSourceId ??
-        firstCachedDataSourceId(queryClient, sessionId, scope.hostDatabaseId);
+      const dataSourceId =
+        scope.dataSourceId ?? firstCachedDataSourceId(queryClient, sessionId, scope.hostDatabaseId);
       if (!dataSourceId) return undefined;
       await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
-      const { rollback } = insertOptimisticProperty(
-        queryClient,
-        sessionId,
-        scope.hostDatabaseId,
-        {
-          config,
-          dataSourceId,
-          name: name?.trim() || "Property",
-          position,
-          type: type?.trim() || "text",
-        },
-      );
+      const { rollback } = insertOptimisticProperty(queryClient, sessionId, scope.hostDatabaseId, {
+        config,
+        dataSourceId,
+        name: name?.trim() || "Property",
+        position,
+        type: type?.trim() || "text",
+      });
       return { rollback, scope };
     },
     onError: (_error, _input, context) => {
@@ -158,27 +137,20 @@ export function useApplyDatabaseTemplate() {
 
   return useMutation({
     mutationFn: async ({ databaseId, ...input }: ApplyDatabaseTemplateInput) => {
-      const scope = await resolveDataSourceCommandScope(
-        queryClient,
-        apiFetch,
-        databaseId,
-      );
-      const ack = await runSerialized(
-        structuralSerializationKey(scope.dataSourceId),
-        () =>
-          executeDatabaseCommand(apiFetch, {
-            command: { ...input, type: "template.apply" },
-            databaseId: scope.hostDatabaseId,
-            dataSourceId: scope.dataSourceId,
-          }),
+      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
+      const ack = await runSerialized(structuralSerializationKey(scope.dataSourceId), () =>
+        executeDatabaseCommand(apiFetch, {
+          command: { ...input, type: "template.apply" },
+          databaseId: scope.hostDatabaseId,
+          dataSourceId: scope.dataSourceId,
+        }),
       );
       const result = ack.result as {
         dataSource: import("../core/entities").DataSourceEntity;
       };
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
 
-      const workspaceId = findDataSourceBootstrap(queryClient, databaseId)
-        ?.database.workspaceId;
+      const workspaceId = findDataSourceBootstrap(queryClient, databaseId)?.database.workspaceId;
       if (workspaceId) {
         await queryClient.invalidateQueries({
           queryKey: pagesNavRootQueryKey(workspaceId),
@@ -195,33 +167,27 @@ export function useUpdateDatabaseProperty() {
   const sessionId = useDatabaseSessionId();
 
   return useMutation({
-    mutationFn: async ({
-      databaseId,
-      databasePropertyId,
-      ...patch
-    }: UpdatePropertyInput) => {
-      const scope = await resolveDataSourceCommandScope(
-        queryClient,
-        apiFetch,
-        databaseId,
-      );
-      const ack = await runSerialized(
-        structuralSerializationKey(scope.dataSourceId),
-        () =>
-          executeDatabaseCommand(apiFetch, {
-            command: {
-              patch,
-              propertyId: databasePropertyId,
-              type: "property.update",
-            },
-            databaseId: scope.hostDatabaseId,
-            dataSourceId: scope.dataSourceId,
-          }),
+    mutationFn: async ({ databaseId, databasePropertyId, ...patch }: UpdatePropertyInput) => {
+      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
+      const ack = await runSerialized(structuralSerializationKey(scope.dataSourceId), () =>
+        executeDatabaseCommand(apiFetch, {
+          command: {
+            patch,
+            propertyId: databasePropertyId,
+            type: "property.update",
+          },
+          databaseId: scope.hostDatabaseId,
+          dataSourceId: scope.dataSourceId,
+        }),
       );
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
     },
-    onMutate: async ({ databaseId, databasePropertyId, ...patch }): Promise<OptimisticContext | undefined> => {
+    onMutate: async ({
+      databaseId,
+      databasePropertyId,
+      ...patch
+    }): Promise<OptimisticContext | undefined> => {
       const scope = resolveOptimisticScope(queryClient, databaseId);
       if (!scope) return undefined;
       await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
@@ -258,26 +224,17 @@ export function useDeleteDatabaseProperty() {
   const sessionId = useDatabaseSessionId();
 
   return useMutation({
-    mutationFn: async ({
-      databaseId,
-      databasePropertyId,
-    }: DeletePropertyInput) => {
-      const scope = await resolveDataSourceCommandScope(
-        queryClient,
-        apiFetch,
-        databaseId,
-      );
-      const ack = await runSerialized(
-        structuralSerializationKey(scope.dataSourceId),
-        () =>
-          executeDatabaseCommand(apiFetch, {
-            command: {
-              propertyId: databasePropertyId,
-              type: "property.archive",
-            },
-            databaseId: scope.hostDatabaseId,
-            dataSourceId: scope.dataSourceId,
-          }),
+    mutationFn: async ({ databaseId, databasePropertyId }: DeletePropertyInput) => {
+      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
+      const ack = await runSerialized(structuralSerializationKey(scope.dataSourceId), () =>
+        executeDatabaseCommand(apiFetch, {
+          command: {
+            propertyId: databasePropertyId,
+            type: "property.archive",
+          },
+          databaseId: scope.hostDatabaseId,
+          dataSourceId: scope.dataSourceId,
+        }),
       );
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
@@ -307,23 +264,17 @@ export function useDuplicateDatabaseProperty() {
       databasePropertyId,
       includeValues = false,
     }: DuplicatePropertyInput) => {
-      const scope = await resolveDataSourceCommandScope(
-        queryClient,
-        apiFetch,
-        databaseId,
-      );
-      const ack = await runSerialized(
-        structuralSerializationKey(scope.dataSourceId),
-        () =>
-          executeDatabaseCommand(apiFetch, {
-            command: {
-              includeValues,
-              propertyId: databasePropertyId,
-              type: "property.duplicate",
-            },
-            databaseId: scope.hostDatabaseId,
-            dataSourceId: scope.dataSourceId,
-          }),
+      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, databaseId);
+      const ack = await runSerialized(structuralSerializationKey(scope.dataSourceId), () =>
+        executeDatabaseCommand(apiFetch, {
+          command: {
+            includeValues,
+            propertyId: databasePropertyId,
+            type: "property.duplicate",
+          },
+          databaseId: scope.hostDatabaseId,
+          dataSourceId: scope.dataSourceId,
+        }),
       );
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
       return ack.result as DatabasePropertyEntity;
@@ -349,17 +300,14 @@ function resolvePropertyCreateAnchors(
   requestedPosition?: number,
 ) {
   const ids = (findDataSourceBootstrap(queryClient, dataSourceId)?.properties ?? [])
-    .filter((property) =>
-      property.dataSourceId === dataSourceId &&
-      !property.id.startsWith("optimistic-property-")
+    .filter(
+      (property) =>
+        property.dataSourceId === dataSourceId && !property.id.startsWith("optimistic-property-"),
     )
     .slice()
     .sort((left, right) => left.position - right.position)
     .map(({ id }) => id);
-  const position = Math.max(
-    0,
-    Math.min(requestedPosition ?? ids.length, ids.length),
-  );
+  const position = Math.max(0, Math.min(requestedPosition ?? ids.length, ids.length));
   return {
     afterPropertyId: ids[position - 1] ?? null,
     beforePropertyId: ids[position] ?? null,

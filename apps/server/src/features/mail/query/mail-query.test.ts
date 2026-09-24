@@ -26,7 +26,9 @@ vi.mock("../../../infrastructure/database", () => {
   return { db: { select: vi.fn(() => query(mocks.selectResults.shift() ?? [])) } };
 });
 
-vi.mock("../provider/gmail-gateway", () => ({ createGmailGateway: vi.fn(async () => mocks.gateway) }));
+vi.mock("../provider/gmail-gateway", () => ({
+  createGmailGateway: vi.fn(async () => mocks.gateway),
+}));
 vi.mock("./mail-index", () => ({ getMailIndexProgress: vi.fn(async () => mocks.index) }));
 
 import {
@@ -52,7 +54,11 @@ test("mail query cursors are opaque, deterministic, and validated", () => {
     id: "account:thread",
     internalDate: 1788231600000,
   });
-  for (const invalid of ["not.valid", btoa(JSON.stringify({ id: "x" })), btoa(JSON.stringify({ id: "", internalDate: 1 }))]) {
+  for (const invalid of [
+    "not.valid",
+    btoa(JSON.stringify({ id: "x" })),
+    btoa(JSON.stringify({ id: "", internalDate: 1 })),
+  ]) {
     assert.throws(
       () => decodeMailQueryCursor(invalid),
       (error: unknown) => error instanceof MailQueryError && error.status === 400,
@@ -62,12 +68,13 @@ test("mail query cursors are opaque, deterministic, and validated", () => {
 });
 
 test("indexed mail queries page, serialize, filter, and load custom values", async () => {
-  mocks.selectResults.push([
-    threadRow({ gmailThreadId: "thread-2", id: "index-2", internalDate: 200 }),
-    threadRow({ gmailThreadId: "thread-1", id: "index-1", internalDate: 100 }),
-  ], [
-    { gmailThreadId: "thread-2", propertyId: "priority-custom", value: "high" },
-  ]);
+  mocks.selectResults.push(
+    [
+      threadRow({ gmailThreadId: "thread-2", id: "index-2", internalDate: 200 }),
+      threadRow({ gmailThreadId: "thread-1", id: "index-1", internalDate: 100 }),
+    ],
+    [{ gmailThreadId: "thread-2", propertyId: "priority-custom", value: "high" }],
+  );
 
   const result = await queryIndexedMail({
     bindingId: "binding-1",
@@ -89,26 +96,35 @@ test("indexed mail queries page, serialize, filter, and load custom values", asy
 });
 
 test("indexed mail search intersects Gmail results and validates accounts and views", async () => {
-  mocks.gateway.getThreads.mockResolvedValueOnce([{
-    id: "thread-3",
-    messages: [{
-      id: "message-3",
-      internalDate: "100",
-      labelIds: ["INBOX"],
-      payload: { headers: [
-        { name: "From", value: "Ada <ada@example.com>" },
-        { name: "Subject", value: "Later" },
-      ] },
-      snippet: "Later",
-      threadId: "thread-3",
-    }],
-  }]);
+  mocks.gateway.getThreads.mockResolvedValueOnce([
+    {
+      id: "thread-3",
+      messages: [
+        {
+          id: "message-3",
+          internalDate: "100",
+          labelIds: ["INBOX"],
+          payload: {
+            headers: [
+              { name: "From", value: "Ada <ada@example.com>" },
+              { name: "Subject", value: "Later" },
+            ],
+          },
+          snippet: "Later",
+          threadId: "thread-3",
+        },
+      ],
+    },
+  ]);
   mocks.gateway.listMessages
     .mockResolvedValueOnce({ messages: [{ threadId: "thread-2" }], nextPageToken: "next" })
     .mockResolvedValueOnce({ messages: [{ threadId: "thread-3" }] });
   mocks.selectResults.push(
     [{ id: "account-1" }],
-    [threadRow({ gmailThreadId: "thread-1" }), threadRow({ gmailThreadId: "thread-2", id: "index-2" })],
+    [
+      threadRow({ gmailThreadId: "thread-1" }),
+      threadRow({ gmailThreadId: "thread-2", id: "index-2" }),
+    ],
     [],
   );
   const result = await queryIndexedMail({
@@ -118,33 +134,46 @@ test("indexed mail search intersects Gmail results and validates accounts and vi
     routeId: "all_mail",
     search: " quarterly report ",
   });
-  assert.deepEqual(result.threads.map(({ thread }) => thread.id), ["thread-2", "thread-3"]);
+  assert.deepEqual(
+    result.threads.map(({ thread }) => thread.id),
+    ["thread-2", "thread-3"],
+  );
   assert.equal(result.searchTruncated, false);
   assert.equal(mocks.gateway.listMessages.mock.calls[0]?.[0].query, "quarterly report");
 
   mocks.selectResults.push([]);
-  await assert.rejects(queryIndexedMail({
-    bindingId: "binding-1",
-    env: {},
-    gmailAccountId: "missing",
-    routeId: "all_mail",
-    search: "x",
-  }), (error: unknown) => error instanceof MailQueryError && error.status === 404);
+  await assert.rejects(
+    queryIndexedMail({
+      bindingId: "binding-1",
+      env: {},
+      gmailAccountId: "missing",
+      routeId: "all_mail",
+      search: "x",
+    }),
+    (error: unknown) => error instanceof MailQueryError && error.status === 404,
+  );
 
   mocks.selectResults.push([]);
-  await assert.rejects(queryIndexedMailGroups({
-    bindingId: "binding-1",
-    env: {},
-    gmailAccountId: "account-1",
-    routeId: "missing-view",
-  }), (error: unknown) => error instanceof MailQueryError && error.status === 404);
+  await assert.rejects(
+    queryIndexedMailGroups({
+      bindingId: "binding-1",
+      env: {},
+      gmailAccountId: "account-1",
+      routeId: "missing-view",
+    }),
+    (error: unknown) => error instanceof MailQueryError && error.status === 404,
+  );
 });
 
 test("mail groups cover immutable fields, labels, and custom scalar or multi-values", async () => {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const rows = [
-    threadRow({ custom: "unused", internalDate: Date.now(), labelIds: ["INBOX", "CATEGORY_UPDATES"] }),
+    threadRow({
+      custom: "unused",
+      internalDate: Date.now(),
+      labelIds: ["INBOX", "CATEGORY_UPDATES"],
+    }),
     threadRow({
       fromAddresses: [],
       gmailThreadId: "thread-2",
@@ -160,7 +189,18 @@ test("mail groups cover immutable fields, labels, and custom scalar or multi-val
     { gmailThreadId: "thread-1", propertyId: "custom", value: ["alpha", "beta"] },
     { gmailThreadId: "thread-2", propertyId: "custom", value: null },
   ];
-  for (const propertyId of ["date", "received_date", "starred", "important", "priority", "unread", "from", "email_domain", "labels", "custom"]) {
+  for (const propertyId of [
+    "date",
+    "received_date",
+    "starred",
+    "important",
+    "priority",
+    "unread",
+    "from",
+    "email_domain",
+    "labels",
+    "custom",
+  ]) {
     mocks.selectResults.push([{ config: viewConfig(propertyId) }], rows, customRows);
     const result = await queryIndexedMailGroups({
       bindingId: "binding-1",
@@ -170,18 +210,27 @@ test("mail groups cover immutable fields, labels, and custom scalar or multi-val
     });
     assert.equal(result.group?.propertyId, propertyId);
     assert.ok(result.groups.length > 0, `missing groups for ${propertyId}`);
-    assert.equal(result.groups.every(({ mutable }) => mutable === !["date", "received_date", "from", "email_domain"].includes(propertyId)), true);
+    assert.equal(
+      result.groups.every(
+        ({ mutable }) =>
+          mutable === !["date", "received_date", "from", "email_domain"].includes(propertyId),
+      ),
+      true,
+    );
   }
 });
 
 test("a custom view without grouping returns no groups", async () => {
   mocks.selectResults.push([{ config: viewConfig(null) }]);
-  assert.deepEqual(await queryIndexedMailGroups({
-    bindingId: "binding-1",
-    env: {},
-    gmailAccountId: "account-1",
-    routeId: "view-1",
-  }), { group: null, groups: [], index: mocks.index });
+  assert.deepEqual(
+    await queryIndexedMailGroups({
+      bindingId: "binding-1",
+      env: {},
+      gmailAccountId: "account-1",
+      routeId: "view-1",
+    }),
+    { group: null, groups: [], index: mocks.index },
+  );
 });
 
 function viewConfig(propertyId: string | null) {

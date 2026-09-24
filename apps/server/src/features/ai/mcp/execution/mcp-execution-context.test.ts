@@ -5,10 +5,14 @@ const { select, limit } = vi.hoisted(() => ({ select: vi.fn(), limit: vi.fn() })
 vi.mock("../../../../infrastructure/database", () => ({ db: { select } }));
 
 const input = {
-  connectionId: "connection", externalName: "get_me", schemaHash: "schema",
+  connectionId: "connection",
+  externalName: "get_me",
+  schemaHash: "schema",
   env: { AI_MCP_ENABLED: "true", AI_CUSTOM_AGENTS_ENABLED: "true" },
   scope: { type: "personal" as const, userId: "user" },
-  threadId: "thread", userId: "user", workspaceId: "workspace",
+  threadId: "thread",
+  userId: "user",
+  workspaceId: "workspace",
 };
 
 beforeEach(() => {
@@ -23,7 +27,9 @@ beforeEach(() => {
 
 describe("MCP execution context", () => {
   it("rejects disabled execution before querying", async () => {
-    expect(await isMcpExecutionContextAllowed({ ...input, env: { AI_MCP_ENABLED: "false" } }, "read")).toBe(false);
+    expect(
+      await isMcpExecutionContextAllowed({ ...input, env: { AI_MCP_ENABLED: "false" } }, "read"),
+    ).toBe(false);
     expect(select).not.toHaveBeenCalled();
   });
   it("requires the personal owner and an existing thread", async () => {
@@ -42,14 +48,37 @@ describe("MCP execution context", () => {
     expect(await isMcpExecutionContextAllowed(writeInput, "write")).toBe(true);
   });
   it("requires the queued run's exact tool grant", async () => {
-    const runInput = { ...input, threadId: null, agentRunId: "run", scope: { type: "agent" as const, agentProfileId: "agent" } };
+    const runInput = {
+      ...input,
+      threadId: null,
+      agentRunId: "run",
+      scope: { type: "agent" as const, agentProfileId: "agent" },
+    };
     expect(await isMcpExecutionContextAllowed(runInput, "read")).toBe(false);
-    limit.mockResolvedValue([{ permissionSnapshot: { mcpTools: [{
-      connectionId: input.connectionId, externalName: input.externalName,
-      schemaHash: input.schemaHash, classification: "read", requiresApproval: false,
-    }] } }]);
+    limit.mockResolvedValue([
+      {
+        permissionSnapshot: {
+          mcpTools: [
+            {
+              connectionId: input.connectionId,
+              externalName: input.externalName,
+              schemaHash: input.schemaHash,
+              classification: "read",
+              requiresApproval: false,
+            },
+          ],
+        },
+      },
+    ]);
     expect(await isMcpExecutionContextAllowed(runInput, "read")).toBe(true);
-    expect(await isMcpExecutionContextAllowed({ ...runInput, externalName: "new_tool" }, "read")).toBe(false);
-    expect(await isMcpExecutionContextAllowed({ ...runInput, env: { ...input.env, AI_CUSTOM_AGENT_EXECUTION_DISABLED: "true" } }, "read")).toBe(false);
+    expect(
+      await isMcpExecutionContextAllowed({ ...runInput, externalName: "new_tool" }, "read"),
+    ).toBe(false);
+    expect(
+      await isMcpExecutionContextAllowed(
+        { ...runInput, env: { ...input.env, AI_CUSTOM_AGENT_EXECUTION_DISABLED: "true" } },
+        "read",
+      ),
+    ).toBe(false);
   });
 });

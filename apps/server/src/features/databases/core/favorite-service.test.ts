@@ -15,7 +15,9 @@ vi.mock("../../../infrastructure/database", () => ({
   db: {
     delete() {
       return {
-        async where(value: unknown) { mocks.delete(value); },
+        async where(value: unknown) {
+          mocks.delete(value);
+        },
       };
     },
     insert() {
@@ -48,9 +50,7 @@ beforeEach(() => {
 });
 
 test("updateDatabaseFavoriteService adds a favorite idempotently", async () => {
-  vi.spyOn(crypto, "randomUUID").mockReturnValue(
-    "00000000-0000-4000-8000-000000000001",
-  );
+  vi.spyOn(crypto, "randomUUID").mockReturnValue("00000000-0000-4000-8000-000000000001");
 
   const result = await updateDatabaseFavoriteService({
     databaseId: "database-1",
@@ -58,11 +58,7 @@ test("updateDatabaseFavoriteService adds a favorite idempotently", async () => {
     userId: "user-1",
   });
 
-  assert.deepEqual(mocks.requireAccess.mock.calls[0], [
-    "database-1",
-    "user-1",
-    "view",
-  ]);
+  assert.deepEqual(mocks.requireAccess.mock.calls[0], ["database-1", "user-1", "view"]);
   assert.deepEqual(mocks.values.mock.calls[0]?.[0], {
     databaseId: "database-1",
     id: "00000000-0000-4000-8000-000000000001",

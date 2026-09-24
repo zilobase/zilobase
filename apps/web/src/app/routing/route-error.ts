@@ -1,12 +1,12 @@
 export function describeRouteError(
   error: unknown,
   options: {
-    isDesktop: boolean
-    selectedServer: unknown
+    isDesktop: boolean;
+    selectedServer: unknown;
   },
 ) {
-  const selectedServer = Boolean(options.selectedServer)
-  const networkError = isNetworkUnavailableError(error)
+  const selectedServer = Boolean(options.selectedServer);
+  const networkError = isNetworkUnavailableError(error);
 
   if (options.isDesktop) {
     return {
@@ -15,7 +15,7 @@ export function describeRouteError(
         : "Your desktop session is still saved. Check your connection and try again.",
       showChangeServer: selectedServer,
       title: "Couldn't connect to Zilobase",
-    }
+    };
   }
 
   if (networkError) {
@@ -23,16 +23,16 @@ export function describeRouteError(
       description: "Check your connection and try again.",
       showChangeServer: false,
       title: "Couldn't connect to Zilobase",
-    }
+    };
   }
 
   return {
     description: "Please try again.",
     showChangeServer: false,
     title: "Something went wrong",
-  }
+  };
 }
 
 function isNetworkUnavailableError(error: unknown) {
-  return error instanceof Error && error.name === "NetworkUnavailableError"
+  return error instanceof Error && error.name === "NetworkUnavailableError";
 }

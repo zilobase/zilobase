@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query";
 
-import { useZilobaseFeatures } from "../shared/context"
-import { appSearchQueryOptions } from "./queries"
-import type { AppSearchResultType } from "./contracts"
+import { useZilobaseFeatures } from "../shared/context";
+import { appSearchQueryOptions } from "./queries";
+import type { AppSearchResultType } from "./contracts";
 
 export function useAppSearchResults(
   workspaceId: string | null | undefined,
@@ -10,7 +10,7 @@ export function useAppSearchResults(
   enabled?: boolean,
   types?: AppSearchResultType[],
 ) {
-  const { apiFetch } = useZilobaseFeatures()
+  const { apiFetch } = useZilobaseFeatures();
 
-  return useQuery(appSearchQueryOptions(apiFetch, workspaceId, query, enabled, types))
+  return useQuery(appSearchQueryOptions(apiFetch, workspaceId, query, enabled, types));
 }

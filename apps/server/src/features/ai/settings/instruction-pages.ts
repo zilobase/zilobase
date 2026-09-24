@@ -2,13 +2,8 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { AgentSettingsDefinition } from "@zilobase/features/ai-chat/settings-contract";
 import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-markdown";
 import { db } from "../../../infrastructure/database";
-import {
-  page,
-} from "../../../infrastructure/database/schema";
-import {
-  canAccessPageInWorkspace,
-  canAccessDatabaseInWorkspace,
-} from "../../access";
+import { page } from "../../../infrastructure/database/schema";
+import { canAccessPageInWorkspace, canAccessDatabaseInWorkspace } from "../../access";
 import { AgentProfileError } from "../agents/agent-profile-service";
 
 type Actor = { scope: string; workspaceId: string; userId: string };
@@ -45,17 +40,11 @@ export function instructionReferences(content: unknown): Resource[] {
   visit(content);
   return [...found.values()];
 }
-export function allInstructionResources(
-  d: AgentSettingsDefinition,
-): Resource[] {
+export function allInstructionResources(d: AgentSettingsDefinition): Resource[] {
   const resources = new Map<string, Resource>(
-    (d.instructionResources ?? []).map((r) => [
-      `${r.resourceType}:${r.resourceId}`,
-      r,
-    ]),
+    (d.instructionResources ?? []).map((r) => [`${r.resourceType}:${r.resourceId}`, r]),
   );
-  for (const r of d.resources)
-    resources.set(`${r.resourceType}:${r.resourceId}`, r);
+  for (const r of d.resources) resources.set(`${r.resourceType}:${r.resourceId}`, r);
   return [...resources.values()];
 }
 export async function hydrateInstructionPage(
@@ -63,14 +52,7 @@ export async function hydrateInstructionPage(
   d: AgentSettingsDefinition,
 ): Promise<AgentSettingsDefinition> {
   if (!d.instructionPageId) return d;
-  if (
-    !(await canAccessPageInWorkspace(
-      d.instructionPageId,
-      a.workspaceId,
-      a.userId,
-      "view",
-    ))
-  )
+  if (!(await canAccessPageInWorkspace(d.instructionPageId, a.workspaceId, a.userId, "view")))
     throw new AgentProfileError(
       "instruction_page_forbidden",
       "You cannot access the linked instruction page.",
@@ -110,18 +92,8 @@ export async function hydrateInstructionPage(
       );
     const allowed =
       r.resourceType === "page"
-        ? await canAccessPageInWorkspace(
-            r.resourceId,
-            a.workspaceId,
-            a.userId,
-            "view",
-          )
-        : await canAccessDatabaseInWorkspace(
-            r.resourceId,
-            a.workspaceId,
-            a.userId,
-            "view",
-          );
+        ? await canAccessPageInWorkspace(r.resourceId, a.workspaceId, a.userId, "view")
+        : await canAccessDatabaseInWorkspace(r.resourceId, a.workspaceId, a.userId, "view");
     if (!allowed) continue;
     resources.push(r);
     if (r.resourceType === "page") {
@@ -138,18 +110,13 @@ export async function hydrateInstructionPage(
       if (linked) pending.push(...instructionReferences(linked.content));
     }
   }
-  const content = (source.content ?? { type: "doc", content: [] }) as Record<
-    string,
-    unknown
-  >;
+  const content = (source.content ?? { type: "doc", content: [] }) as Record<string, unknown>;
   return {
     ...d,
     instructionTitle: source.name,
     instructionDocument: content,
     instructions: prosemirrorToMarkdown(content),
     instructionResources:
-      a.scope === "personal"
-        ? []
-        : resources.map((r) => ({ ...r, accessLevel: "view" as const })),
+      a.scope === "personal" ? [] : resources.map((r) => ({ ...r, accessLevel: "view" as const })),
   };
 }

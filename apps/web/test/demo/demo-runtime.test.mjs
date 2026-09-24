@@ -1,42 +1,38 @@
 export function register({ assert, loadModule, test }) {
   test("hosted demo keeps supported page and database edits local", async () => {
-    const originalWindow = globalThis.window
-    const demoWindow = new EventTarget()
+    const originalWindow = globalThis.window;
+    const demoWindow = new EventTarget();
     demoWindow.location = {
       hostname: "demo.zilobase.com",
-    }
-    globalThis.window = demoWindow
+    };
+    globalThis.window = demoWindow;
 
-    const runtime = await loadModule("/apps/web/test/support/demo-transport.ts")
-    assert.equal(runtime.isHostedDemoRuntime({ hostname: "demo.localhost" }), true)
+    const runtime = await loadModule("/apps/web/test/support/demo-transport.ts");
+    assert.equal(runtime.isHostedDemoRuntime({ hostname: "demo.localhost" }), true);
     assert.equal(
-      runtime.isAllowedDemoParent(
-        new URL("http://localhost:4321"),
-        { hostname: "demo.localhost" },
-      ),
+      runtime.isAllowedDemoParent(new URL("http://localhost:4321"), { hostname: "demo.localhost" }),
       true,
-    )
+    );
     assert.equal(
-      runtime.isAllowedDemoParent(
-        new URL("https://unrelated.example"),
-        { hostname: "demo.localhost" },
-      ),
+      runtime.isAllowedDemoParent(new URL("https://unrelated.example"), {
+        hostname: "demo.localhost",
+      }),
       false,
-    )
+    );
     const database = {
       activeDataSource: null,
       dataSources: [],
       database: { id: "demo-db", version: 4 },
       rows: [],
-    }
+    };
     const page = {
       page: { id: "demo-page", name: "Start here", updatedAt: "old" },
-    }
+    };
 
     runtime.installDemoCache({
-      getQueriesData: () => [[ ["database", "demo-db"], database ]],
-      getQueryData: (key) => key[0] === "page" ? page : undefined,
-    })
+      getQueriesData: () => [[["database", "demo-db"], database]],
+      getQueryData: (key) => (key[0] === "page" ? page : undefined),
+    });
 
     try {
       const cellResult = runtime.interceptDemoMutation(
@@ -52,13 +48,13 @@ export function register({ assert, loadModule, test }) {
           },
           protocolVersion: 2,
         }),
-      )
-      assert.equal(cellResult.handled, true)
-      assert.equal(cellResult.value.commandId, "demo-command")
-      assert.equal(cellResult.value.event.databaseId, "demo-db")
-      assert.equal(cellResult.value.event.dataSourceId, "demo-source")
-      assert.deepEqual(cellResult.value.event.areas, ["records"])
-      assert.match(cellResult.value.event.eventId, /^demo-local-/)
+      );
+      assert.equal(cellResult.handled, true);
+      assert.equal(cellResult.value.commandId, "demo-command");
+      assert.equal(cellResult.value.event.databaseId, "demo-db");
+      assert.equal(cellResult.value.event.dataSourceId, "demo-source");
+      assert.deepEqual(cellResult.value.event.areas, ["records"]);
+      assert.match(cellResult.value.event.eventId, /^demo-local-/);
 
       const visitResult = runtime.interceptDemoMutation(
         "/pages/item-visits",
@@ -68,58 +64,56 @@ export function register({ assert, loadModule, test }) {
           itemKind: "page",
           workspaceId: "demo-workspace",
         }),
-      )
-      assert.equal(visitResult.handled, true)
-      assert.equal(visitResult.value.itemId, "demo-page")
-      assert.equal(visitResult.value.itemKind, "page")
-      assert.match(visitResult.value.lastVisitedAt, /^\d{4}-\d{2}-\d{2}T/)
+      );
+      assert.equal(visitResult.handled, true);
+      assert.equal(visitResult.value.itemId, "demo-page");
+      assert.equal(visitResult.value.itemKind, "page");
+      assert.match(visitResult.value.lastVisitedAt, /^\d{4}-\d{2}-\d{2}T/);
 
       const titleResult = runtime.interceptDemoMutation(
         "/pages/demo-page",
         "PATCH",
         JSON.stringify({ name: "Edited locally" }),
-      )
-      assert.equal(titleResult.handled, true)
-      const pageOverlay = runtime.applyDemoReadOverlay("/pages/demo-page", page)
-      assert.equal(pageOverlay.page.name, "Edited locally")
+      );
+      assert.equal(titleResult.handled, true);
+      const pageOverlay = runtime.applyDemoReadOverlay("/pages/demo-page", page);
+      assert.equal(pageOverlay.page.name, "Edited locally");
     } finally {
-      if (originalWindow === undefined) delete globalThis.window
-      else globalThis.window = originalWindow
+      if (originalWindow === undefined) delete globalThis.window;
+      else globalThis.window = originalWindow;
     }
-  })
+  });
 
   test("hosted demo guards unsupported writes and leaves normal origins unchanged", async () => {
-    const originalWindow = globalThis.window
-    const demoWindow = new EventTarget()
-    demoWindow.location = { hostname: "demo.zilobase.com" }
-    globalThis.window = demoWindow
-    const runtime = await loadModule("/apps/web/test/support/demo-transport.ts")
+    const originalWindow = globalThis.window;
+    const demoWindow = new EventTarget();
+    demoWindow.location = { hostname: "demo.zilobase.com" };
+    globalThis.window = demoWindow;
+    const runtime = await loadModule("/apps/web/test/support/demo-transport.ts");
 
     try {
       assert.throws(
-        () => runtime.interceptDemoMutation(
-          "/ai/conversations/demo/messages",
-          "POST",
-          JSON.stringify({ prompt: "Run the model" }),
-        ),
-        (error) => error instanceof Error &&
+        () =>
+          runtime.interceptDemoMutation(
+            "/ai/conversations/demo/messages",
+            "POST",
+            JSON.stringify({ prompt: "Run the model" }),
+          ),
+        (error) =>
+          error instanceof Error &&
           error.name === "DemoGuardError" &&
           error.status === 403 &&
           error.body.code === "DEMO_READ_ONLY",
-      )
+      );
 
-      demoWindow.location = { hostname: "app.zilobase.com" }
+      demoWindow.location = { hostname: "app.zilobase.com" };
       assert.deepEqual(
-        runtime.interceptDemoMutation(
-          "/pages",
-          "POST",
-          JSON.stringify({ name: "Real page" }),
-        ),
+        runtime.interceptDemoMutation("/pages", "POST", JSON.stringify({ name: "Real page" })),
         { handled: false },
-      )
+      );
     } finally {
-      if (originalWindow === undefined) delete globalThis.window
-      else globalThis.window = originalWindow
+      if (originalWindow === undefined) delete globalThis.window;
+      else globalThis.window = originalWindow;
     }
-  })
+  });
 }

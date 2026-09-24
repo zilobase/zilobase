@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -8,38 +8,34 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/ui/dialog"
+} from "@/shared/ui/dialog";
 import {
   DEMO_GUARD_EVENT,
   DEMO_SIGNUP_URL,
   isAllowedDemoParent,
   isHostedDemoRuntime,
-} from "./runtime"
+} from "./runtime";
 
 export function DemoExperience({ children }: React.PropsWithChildren) {
-  const demoMode = isHostedDemoRuntime()
-  const [guardOpen, setGuardOpen] = useState(false)
+  const demoMode = isHostedDemoRuntime();
+  const [guardOpen, setGuardOpen] = useState(false);
 
   useEffect(() => {
-    if (!demoMode) return
-    const openGuard = () => setGuardOpen(true)
-    window.addEventListener(DEMO_GUARD_EVENT, openGuard)
+    if (!demoMode) return;
+    const openGuard = () => setGuardOpen(true);
+    window.addEventListener(DEMO_GUARD_EVENT, openGuard);
 
-    const referrer = document.referrer ? new URL(document.referrer) : null
-    if (
-      window.parent !== window &&
-      referrer &&
-      isAllowedDemoParent(referrer)
-    ) {
-      window.parent.postMessage({ type: "zilobase-demo-ready" }, referrer.origin)
+    const referrer = document.referrer ? new URL(document.referrer) : null;
+    if (window.parent !== window && referrer && isAllowedDemoParent(referrer)) {
+      window.parent.postMessage({ type: "zilobase-demo-ready" }, referrer.origin);
     }
 
     return () => {
-      window.removeEventListener(DEMO_GUARD_EVENT, openGuard)
-    }
-  }, [demoMode])
+      window.removeEventListener(DEMO_GUARD_EVENT, openGuard);
+    };
+  }, [demoMode]);
 
-  if (!demoMode) return children
+  if (!demoMode) return children;
 
   return (
     <>
@@ -49,7 +45,8 @@ export function DemoExperience({ children }: React.PropsWithChildren) {
           <DialogHeader>
             <DialogTitle>Create a workspace to do that</DialogTitle>
             <DialogDescription>
-              This is a temporary, read-safe demo. Page and database edits stay in this browser and are not transferred when you sign up.
+              This is a temporary, read-safe demo. Page and database edits stay in this browser and
+              are not transferred when you sign up.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -65,5 +62,5 @@ export function DemoExperience({ children }: React.PropsWithChildren) {
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

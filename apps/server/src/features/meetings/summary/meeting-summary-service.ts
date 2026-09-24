@@ -14,11 +14,13 @@ import { getMeetingForUser } from "../lifecycle/meeting-service";
 const MAX_TRANSCRIPT_CHUNK_CHARS = 60_000;
 
 const summarySchema = z.object({
-  actionItems: z.array(z.object({
-    dueDate: z.string().nullable(),
-    owner: z.string().nullable(),
-    task: z.string().min(1),
-  })),
+  actionItems: z.array(
+    z.object({
+      dueDate: z.string().nullable(),
+      owner: z.string().nullable(),
+      task: z.string().min(1),
+    }),
+  ),
   decisions: z.array(z.string()),
   highlights: z.array(z.string()),
   overview: z.string().min(1),
@@ -38,10 +40,7 @@ export async function generateMeetingSummary(input: {
     record.status === "paused" ||
     (record.recorderLeaseExpiresAt?.getTime() ?? 0) > Date.now()
   ) {
-    throw new ServiceMutationError(
-      "Stop the recording before generating a summary",
-      409,
-    );
+    throw new ServiceMutationError("Stop the recording before generating a summary", 409);
   }
   const runtimeState = await getRuntimePorts().meetings?.get(record.id);
   if (
@@ -76,19 +75,24 @@ export async function generateMeetingSummary(input: {
     input.env,
     "meeting-summary",
   );
-  const instructions = record.customInstructions?.trim() ||
-    presetInstructions(record.instructionsPreset);
+  const instructions =
+    record.customInstructions?.trim() || presetInstructions(record.instructionsPreset);
   const chunks = splitTranscript(transcript);
-  const source = chunks.length === 1
-    ? chunks[0]
-    : (await Promise.all(chunks.map(async (chunk, index) => {
-        const partial = await requestSummary(
-          model,
-          chunk,
-          `Create an intermediate factual summary for transcript part ${index + 1} of ${chunks.length}.`,
-        );
-        return JSON.stringify(partial);
-      }))).join("\n");
+  const source =
+    chunks.length === 1
+      ? chunks[0]
+      : (
+          await Promise.all(
+            chunks.map(async (chunk, index) => {
+              const partial = await requestSummary(
+                model,
+                chunk,
+                `Create an intermediate factual summary for transcript part ${index + 1} of ${chunks.length}.`,
+              );
+              return JSON.stringify(partial);
+            }),
+          )
+        ).join("\n");
   const summary = await requestSummary(
     model,
     source,
@@ -113,16 +117,19 @@ export async function generateMeetingSummary(input: {
     .returning();
   if (updated?.status === "completed") {
     try {
-      const { dispatchMeetingCompletedAgentTriggers } = await import("../../ai/agents/agent-trigger-service");
+      const { dispatchMeetingCompletedAgentTriggers } =
+        await import("../../ai/agents/agent-trigger-service");
       await dispatchMeetingCompletedAgentTriggers(input.env, {
         meetingId: record.id,
         occurrenceKey: updated.summaryGeneratedAt?.toISOString() ?? updated.updatedAt.toISOString(),
       });
     } catch (error) {
-      console.error(JSON.stringify({
-        error: error instanceof Error ? error.name : "UnknownError",
-        event: "custom_agent_meeting_trigger_dispatch_failed",
-      }));
+      console.error(
+        JSON.stringify({
+          error: error instanceof Error ? error.name : "UnknownError",
+          event: "custom_agent_meeting_trigger_dispatch_failed",
+        }),
+      );
     }
   }
   return { meeting: updated, summary };
@@ -138,7 +145,8 @@ async function requestSummary(
     output: Output.object({ schema: summarySchema }),
     providerOptions: resolvedModel.providerOptions,
     prompt: `${instructions}\n\nTranscript:\n${transcript}`,
-    system: "You summarize meetings faithfully. Do not invent decisions, owners, dates, or action items. Use concise plain language.",
+    system:
+      "You summarize meetings faithfully. Do not invent decisions, owners, dates, or action items. Use concise plain language.",
   });
   if (!result.output) throw new Error("The summary model returned no structured output");
   return result.output;
@@ -155,7 +163,10 @@ export function buildSummaryDocument(summary: MeetingSummary) {
     content,
     "Action items",
     summary.actionItems.map((item) => {
-      const metadata = [item.owner && `Owner: ${item.owner}`, item.dueDate && `Due: ${item.dueDate}`]
+      const metadata = [
+        item.owner && `Owner: ${item.owner}`,
+        item.dueDate && `Due: ${item.dueDate}`,
+      ]
         .filter(Boolean)
         .join(" · ");
       return metadata ? `${item.task} — ${metadata}` : item.task;
@@ -190,11 +201,7 @@ function paragraph(text: string) {
   return { content: [{ text, type: "text" }], type: "paragraph" };
 }
 
-function appendList(
-  content: Array<Record<string, unknown>>,
-  title: string,
-  items: string[],
-) {
+function appendList(content: Array<Record<string, unknown>>, title: string, items: string[]) {
   if (!items.length) return;
   content.push(heading(title, 3));
   content.push({
@@ -209,8 +216,11 @@ function formatOffset(milliseconds: number) {
 }
 
 function presetInstructions(preset: string) {
-  if (preset === "sales") return "Emphasize objections, commitments, next steps, and account risks.";
-  if (preset === "standup") return "Emphasize progress, blockers, owners, and immediate next steps.";
-  if (preset === "interview") return "Emphasize questions, evidence, candidate responses, and follow-ups.";
+  if (preset === "sales")
+    return "Emphasize objections, commitments, next steps, and account risks.";
+  if (preset === "standup")
+    return "Emphasize progress, blockers, owners, and immediate next steps.";
+  if (preset === "interview")
+    return "Emphasize questions, evidence, candidate responses, and follow-ups.";
   return "Summarize the discussion, decisions, and concrete action items.";
 }

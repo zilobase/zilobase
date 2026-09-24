@@ -11,9 +11,9 @@
     "logs": {
       "enabled": true,
       "head_sampling_rate": 1,
-      "invocation_logs": true
+      "invocation_logs": true,
     },
-    "traces": { "enabled": true, "head_sampling_rate": 0.1 }
+    "traces": { "enabled": true, "head_sampling_rate": 0.1 },
   },
   "upload_source_maps": true,
   "secrets": {
@@ -27,8 +27,8 @@
       "GMAIL_PUBSUB_TOPIC",
       "AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY",
       "OPENAI_API_KEY",
-      "AUTOMATION_SECRET_ENCRYPTION_KEY"
-    ]
+      "AUTOMATION_SECRET_ENCRYPTION_KEY",
+    ],
   },
   "alias": {
     "@cloudflare/ai-chat": "./node_modules/@cloudflare/ai-chat/dist/index.js",
@@ -40,7 +40,7 @@
     "drizzle-orm/pg-core": "../zilobase/node_modules/drizzle-orm/pg-core/index.js",
     "drizzle-orm": "../zilobase/node_modules/drizzle-orm/index.js",
     "pg": "../zilobase/node_modules/pg/esm/index.mjs",
-    "yjs": "./node_modules/yjs/dist/yjs.mjs"
+    "yjs": "./node_modules/yjs/dist/yjs.mjs",
   },
   "triggers": { "crons": ["* * * * *"] },
   "queues": {
@@ -49,7 +49,7 @@
       { "binding": "AUTOMATION_RUNS", "queue": "zilobase-automation-runs" },
       { "binding": "AI_JOBS", "queue": "zilobase-ai-jobs" },
       { "binding": "MAIL_JOBS", "queue": "zilobase-mail-jobs" },
-      { "binding": "CALENDAR_JOBS", "queue": "zilobase-calendar-jobs" }
+      { "binding": "CALENDAR_JOBS", "queue": "zilobase-calendar-jobs" },
     ],
     "consumers": [
       {
@@ -58,7 +58,7 @@
         "max_batch_timeout": 1,
         "max_concurrency": 20,
         "max_retries": 5,
-        "dead_letter_queue": "zilobase-background-fast-dlq"
+        "dead_letter_queue": "zilobase-background-fast-dlq",
       },
       {
         "queue": "zilobase-automation-runs",
@@ -66,7 +66,7 @@
         "max_batch_timeout": 1,
         "max_concurrency": 20,
         "max_retries": 8,
-        "dead_letter_queue": "zilobase-automation-runs-dlq"
+        "dead_letter_queue": "zilobase-automation-runs-dlq",
       },
       {
         "queue": "zilobase-ai-jobs",
@@ -74,7 +74,7 @@
         "max_batch_timeout": 1,
         "max_concurrency": 10,
         "max_retries": 5,
-        "dead_letter_queue": "zilobase-ai-jobs-dlq"
+        "dead_letter_queue": "zilobase-ai-jobs-dlq",
       },
       {
         "queue": "zilobase-mail-jobs",
@@ -82,7 +82,7 @@
         "max_batch_timeout": 1,
         "max_concurrency": 10,
         "max_retries": 8,
-        "dead_letter_queue": "zilobase-mail-jobs-dlq"
+        "dead_letter_queue": "zilobase-mail-jobs-dlq",
       },
       {
         "queue": "zilobase-calendar-jobs",
@@ -90,30 +90,54 @@
         "max_batch_timeout": 1,
         "max_concurrency": 10,
         "max_retries": 8,
-        "dead_letter_queue": "zilobase-calendar-jobs-dlq"
-      }
-    ]
+        "dead_letter_queue": "zilobase-calendar-jobs-dlq",
+      },
+    ],
   },
   "durable_objects": {
     "bindings": [
-      { "name": "PAGE_COLLABORATION", "class_name": "PageCollaborationRoom", "script_name": "zilobase-server" },
-      { "name": "DATABASE_COLLABORATION", "class_name": "DatabaseCollaborationRoom", "script_name": "zilobase-server" },
-      { "name": "MEETING_COLLABORATION", "class_name": "MeetingCollaborationRoom", "script_name": "zilobase-server" },
-      { "name": "CALENDAR_NOTIFICATION_ROOM", "class_name": "CalendarNotificationRoom", "script_name": "zilobase-server" },
-      { "name": "MAIL_NOTIFICATION_ROOM", "class_name": "MailNotificationRoom", "script_name": "zilobase-server" },
-      { "name": "NAVIGATION_NOTIFICATION_ROOM", "class_name": "NavigationNotificationRoom", "script_name": "zilobase-server" }
-    ]
+      {
+        "name": "PAGE_COLLABORATION",
+        "class_name": "PageCollaborationRoom",
+        "script_name": "zilobase-server",
+      },
+      {
+        "name": "DATABASE_COLLABORATION",
+        "class_name": "DatabaseCollaborationRoom",
+        "script_name": "zilobase-server",
+      },
+      {
+        "name": "MEETING_COLLABORATION",
+        "class_name": "MeetingCollaborationRoom",
+        "script_name": "zilobase-server",
+      },
+      {
+        "name": "CALENDAR_NOTIFICATION_ROOM",
+        "class_name": "CalendarNotificationRoom",
+        "script_name": "zilobase-server",
+      },
+      {
+        "name": "MAIL_NOTIFICATION_ROOM",
+        "class_name": "MailNotificationRoom",
+        "script_name": "zilobase-server",
+      },
+      {
+        "name": "NAVIGATION_NOTIFICATION_ROOM",
+        "class_name": "NavigationNotificationRoom",
+        "script_name": "zilobase-server",
+      },
+    ],
   },
   "placement": { "mode": "targeted", "region": "<CLOUDFLARE_PLACEMENT_REGION>" },
-  "hyperdrive": [
-    { "binding": "HYPERDRIVE", "id": "<HYPERDRIVE_ID>" }
-  ],
+  "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<HYPERDRIVE_ID>" }],
   "r2_buckets": [
-    { "binding": "IMAGE_BUCKET", "bucket_name": "<R2_BUCKET_NAME>", "preview_bucket_name": "<R2_PREVIEW_BUCKET_NAME>" }
+    {
+      "binding": "IMAGE_BUCKET",
+      "bucket_name": "<R2_BUCKET_NAME>",
+      "preview_bucket_name": "<R2_PREVIEW_BUCKET_NAME>",
+    },
   ],
-  "send_email": [
-    { "name": "EMAIL", "allowed_sender_addresses": ["<NO_REPLY_EMAIL>"] }
-  ],
+  "send_email": [{ "name": "EMAIL", "allowed_sender_addresses": ["<NO_REPLY_EMAIL>"] }],
   "vars": {
     "BETTER_AUTH_URL": "<API_ORIGIN>",
     "CLIENT_URL": "<WEB_ORIGIN>",
@@ -125,6 +149,6 @@
     "IMAGE_STORAGE_MODE": "binding",
     "ZILOBASE_CELL_ID": "default",
     "ZILOBASE_RUNTIME_KIND": "worker",
-    "ZILOBASE_ENVIRONMENT": "production"
-  }
+    "ZILOBASE_ENVIRONMENT": "production",
+  },
 }

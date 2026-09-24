@@ -1,14 +1,11 @@
-"use client"
+"use client";
 
-import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
-import { cva, type VariantProps } from "class-variance-authority"
-import type * as React from "react"
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
+import { cva, type VariantProps } from "class-variance-authority";
+import type * as React from "react";
 
-import { cn } from "@/shared/lib/utils"
-import {
-  buttonControlHeightClassName,
-  buttonControlTextClassName,
-} from "@/shared/ui/button"
+import { cn } from "@/shared/lib/utils";
+import { buttonControlHeightClassName, buttonControlTextClassName } from "@/shared/ui/button";
 
 const tabsVariants = cva(
   "flex data-[orientation=horizontal]:flex-col data-[orientation=vertical]:flex-row",
@@ -25,7 +22,7 @@ const tabsVariants = cva(
       gap: "default",
     },
   },
-)
+);
 
 const tabsListVariants = cva(
   "flex items-center gap-0.5 rounded-lg p-0 text-content-secondary data-[orientation=vertical]:flex-col",
@@ -53,7 +50,7 @@ const tabsListVariants = cva(
       width: "fit",
     },
   },
-)
+);
 
 const tabsTriggerVariants = cva(
   cn(
@@ -77,25 +74,24 @@ const tabsTriggerVariants = cva(
       width: "equal",
     },
   },
-)
+);
 
 const tabsBadgeVariants = cva(
   "rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] tabular-nums text-content-secondary",
-)
+);
 
 export function getAppTabTriggerClassName(
   className?: string,
   options?: VariantProps<typeof tabsTriggerVariants>,
 ) {
-  return cn(tabsTriggerVariants(options), className)
+  return cn(tabsTriggerVariants(options), className);
 }
 
 export function Tabs({
   className,
   gap = "default",
   ...props
-}: TabsPrimitive.Root.Props &
-  VariantProps<typeof tabsVariants>): React.ReactElement {
+}: TabsPrimitive.Root.Props & VariantProps<typeof tabsVariants>): React.ReactElement {
   return (
     <TabsPrimitive.Root
       className={cn(tabsVariants({ gap }), className)}
@@ -103,7 +99,7 @@ export function Tabs({
       data-slot="tabs"
       {...props}
     />
-  )
+  );
 }
 
 export function TabsList({
@@ -112,8 +108,7 @@ export function TabsList({
   overflow = "visible",
   width = "fit",
   ...props
-}: TabsPrimitive.List.Props &
-  VariantProps<typeof tabsListVariants>): React.ReactElement {
+}: TabsPrimitive.List.Props & VariantProps<typeof tabsListVariants>): React.ReactElement {
   return (
     <TabsPrimitive.List
       className={cn(tabsListVariants({ align, overflow, width }), className)}
@@ -123,7 +118,7 @@ export function TabsList({
       data-width={width}
       {...props}
     />
-  )
+  );
 }
 
 function TabsTab({
@@ -131,8 +126,7 @@ function TabsTab({
   size = "default",
   width = "equal",
   ...props
-}: TabsPrimitive.Tab.Props &
-  VariantProps<typeof tabsTriggerVariants>): React.ReactElement {
+}: TabsPrimitive.Tab.Props & VariantProps<typeof tabsTriggerVariants>): React.ReactElement {
   return (
     <TabsPrimitive.Tab
       className={
@@ -145,33 +139,21 @@ function TabsTab({
       data-width={width}
       {...props}
     />
-  )
+  );
 }
 
-function TabsBadge({
-  className,
-  ...props
-}: React.ComponentProps<"span">): React.ReactElement {
-  return (
-    <span
-      className={cn(tabsBadgeVariants(), className)}
-      data-slot="tabs-badge"
-      {...props}
-    />
-  )
+function TabsBadge({ className, ...props }: React.ComponentProps<"span">): React.ReactElement {
+  return <span className={cn(tabsBadgeVariants(), className)} data-slot="tabs-badge" {...props} />;
 }
 
-function TabsPanel({
-  className,
-  ...props
-}: TabsPrimitive.Panel.Props): React.ReactElement {
+function TabsPanel({ className, ...props }: TabsPrimitive.Panel.Props): React.ReactElement {
   return (
     <TabsPrimitive.Panel
       className={cn("flex-1 text-xs/relaxed outline-none", className)}
       data-slot="tabs-content"
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -182,4 +164,4 @@ export {
   tabsListVariants,
   tabsTriggerVariants,
   tabsVariants,
-}
+};

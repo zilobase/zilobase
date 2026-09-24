@@ -1,22 +1,19 @@
-import type { QueryClient } from "@tanstack/react-query"
-import { useSyncExternalStore } from "react"
+import type { QueryClient } from "@tanstack/react-query";
+import { useSyncExternalStore } from "react";
 
-import { useZilobaseFeatures } from "../../shared/context"
-import { pageQueryKey } from "../../pages/queries"
-import type { PageDetail, PagePropertiesPayload } from "../../pages/contracts"
-import { pagePropertiesQueryKey } from "../../pages/queries"
+import { useZilobaseFeatures } from "../../shared/context";
+import { pageQueryKey } from "../../pages/queries";
+import type { PageDetail, PagePropertiesPayload } from "../../pages/contracts";
+import { pagePropertiesQueryKey } from "../../pages/queries";
 
-function subscribeToPageQueries(
-  queryClient: QueryClient,
-  onStoreChange: () => void,
-) {
+function subscribeToPageQueries(queryClient: QueryClient, onStoreChange: () => void) {
   return queryClient.getQueryCache().subscribe((event) => {
     if (event?.query.queryKey[0] !== "page") {
-      return
+      return;
     }
 
-    onStoreChange()
-  })
+    onStoreChange();
+  });
 }
 
 /**
@@ -37,61 +34,53 @@ export function useDatabaseIdForRowPage(
   pageId: string | null | undefined,
   explicitDatabaseId?: string | null,
 ) {
-  const { queryClient } = useZilobaseFeatures()
+  const { queryClient } = useZilobaseFeatures();
 
   const resolvedFromCache = useSyncExternalStore(
     (onStoreChange) => {
       if (!pageId) {
-        return () => {}
+        return () => {};
       }
 
-      return subscribeToPageQueries(queryClient, onStoreChange)
+      return subscribeToPageQueries(queryClient, onStoreChange);
     },
     () => {
       if (!pageId) {
-        return null
+        return null;
       }
 
-      return findDatabaseIdForRowPage(queryClient, pageId)
+      return findDatabaseIdForRowPage(queryClient, pageId);
     },
     () => {
       if (!pageId) {
-        return null
+        return null;
       }
 
-      return findDatabaseIdForRowPage(queryClient, pageId)
+      return findDatabaseIdForRowPage(queryClient, pageId);
     },
-  )
+  );
 
   if (explicitDatabaseId) {
-    return explicitDatabaseId
+    return explicitDatabaseId;
   }
 
-  return resolvedFromCache
+  return resolvedFromCache;
 }
 
-export function findDatabaseIdForRowPage(
-  queryClient: QueryClient,
-  pageId: string,
-): string | null {
-  return findDatabaseIdsForRowPage(queryClient, pageId)[0] ?? null
+export function findDatabaseIdForRowPage(queryClient: QueryClient, pageId: string): string | null {
+  return findDatabaseIdsForRowPage(queryClient, pageId)[0] ?? null;
 }
 
-export function findDatabaseIdsForRowPage(
-  queryClient: QueryClient,
-  pageId: string,
-): string[] {
-  const databaseIds: string[] = []
-  const detail = queryClient.getQueryData<PageDetail | null>(
-    pageQueryKey(pageId),
-  )
-  if (detail?.databaseIds) databaseIds.push(...detail.databaseIds)
+export function findDatabaseIdsForRowPage(queryClient: QueryClient, pageId: string): string[] {
+  const databaseIds: string[] = [];
+  const detail = queryClient.getQueryData<PageDetail | null>(pageQueryKey(pageId));
+  if (detail?.databaseIds) databaseIds.push(...detail.databaseIds);
   const properties = queryClient.getQueryData<PagePropertiesPayload | undefined>(
     pagePropertiesQueryKey(pageId),
-  )
-  if (properties?.databaseIds) databaseIds.push(...properties.databaseIds)
+  );
+  if (properties?.databaseIds) databaseIds.push(...properties.databaseIds);
   for (const target of properties?.presenceTargets ?? []) {
-    if (target.databaseId) databaseIds.push(target.databaseId)
+    if (target.databaseId) databaseIds.push(target.databaseId);
   }
-  return [...new Set(databaseIds)]
+  return [...new Set(databaseIds)];
 }

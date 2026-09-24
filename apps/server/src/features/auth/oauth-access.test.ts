@@ -31,10 +31,7 @@ describe("oauth access helpers", () => {
   });
 
   test("parses space-delimited scopes", () => {
-    expect(parseOAuthScopes("clips.write pages.read")).toEqual([
-      "clips.write",
-      "pages.read",
-    ]);
+    expect(parseOAuthScopes("clips.write pages.read")).toEqual(["clips.write", "pages.read"]);
     expect(parseOAuthScopes(undefined)).toEqual([]);
   });
 
@@ -169,19 +166,21 @@ describe("resolveOAuthBearer", () => {
   });
 });
 
-
 describe("OAuth route boundary", () => {
-  test.each(["/api/keys", "/user-settings", "/workspaces/ws/mail", "/workspaces/ws/teamspaces"])("blocks delegated access to %s", async (path) => {
-    const app = new Hono<AppBindings>();
-    app.use("*", async (c, next) => {
-      c.set("authMethod", "oauth");
-      const denied = rejectUnsupportedOAuthRoute(c);
-      if (denied) return denied;
-      await next();
-    });
-    app.get("*", (c) => c.text("ok"));
-    expect((await app.request(path)).status).toBe(403);
-  });
+  test.each(["/api/keys", "/user-settings", "/workspaces/ws/mail", "/workspaces/ws/teamspaces"])(
+    "blocks delegated access to %s",
+    async (path) => {
+      const app = new Hono<AppBindings>();
+      app.use("*", async (c, next) => {
+        c.set("authMethod", "oauth");
+        const denied = rejectUnsupportedOAuthRoute(c);
+        if (denied) return denied;
+        await next();
+      });
+      app.get("*", (c) => c.text("ok"));
+      expect((await app.request(path)).status).toBe(403);
+    },
+  );
 });
 
 test("verifies a signed OAuth JWT against the persisted key ID", async () => {
@@ -189,14 +188,26 @@ test("verifies a signed OAuth JWT against the persisted key ID", async () => {
   const publicJwk = await exportJWK(publicKey);
   const token = await new SignJWT({ workspace_id: "ws_1", scope: "clips.write" })
     .setProtectedHeader({ alg: "ES256", kid: "persisted-key-id" })
-    .setSubject("user_1").setIssuer("https://api.example.com")
-    .setAudience("https://api.example.com").setExpirationTime("5m").sign(privateKey);
+    .setSubject("user_1")
+    .setIssuer("https://api.example.com")
+    .setAudience("https://api.example.com")
+    .setExpirationTime("5m")
+    .sign(privateKey);
   db.select.mockImplementation(() => ({
-    from: () => Object.assign(Promise.resolve([{ id: "persisted-key-id", publicKey: JSON.stringify(publicJwk) }]), {
-      where: () => ({ limit: async () => [{ id: "user_1" }] }),
-    }),
+    from: () =>
+      Object.assign(
+        Promise.resolve([{ id: "persisted-key-id", publicKey: JSON.stringify(publicJwk) }]),
+        {
+          where: () => ({ limit: async () => [{ id: "user_1" }] }),
+        },
+      ),
   }));
   getMembership.mockResolvedValue({ role: "member" });
-  expect(await resolveOAuthBearer({ apiOrigin: "https://api.example.com", requestedWorkspaceId: null, token }))
-    .toMatchObject({ workspaceId: "ws_1", scopes: ["clips.write"] });
+  expect(
+    await resolveOAuthBearer({
+      apiOrigin: "https://api.example.com",
+      requestedWorkspaceId: null,
+      token,
+    }),
+  ).toMatchObject({ workspaceId: "ws_1", scopes: ["clips.write"] });
 });

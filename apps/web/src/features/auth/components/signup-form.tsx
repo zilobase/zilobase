@@ -1,11 +1,11 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { EyeIcon, EyeOffIcon } from "@/shared/components/icons"
-import { useNavigate } from "@tanstack/react-router"
+import { useState } from "react";
+import { EyeIcon, EyeOffIcon } from "@/shared/components/icons";
+import { useNavigate } from "@tanstack/react-router";
 
-import { Button } from "@/shared/ui/button"
-import { GoogleIcon } from "@/shared/components/google-icon"
+import { Button } from "@/shared/ui/button";
+import { GoogleIcon } from "@/shared/components/google-icon";
 import {
   Field,
   FieldDescription,
@@ -13,66 +13,65 @@ import {
   FieldGroup,
   FieldLabel,
   FieldSeparator,
-} from "@/shared/ui/field"
+} from "@/shared/ui/field";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@/shared/ui/input-group"
-import { Input } from "@/shared/ui/input"
-import { getApiErrorMessage } from "@/platform/network/api"
-import { getInvitationAuthSearch, signInWithGoogle } from "../lib/google-auth"
-import { cn } from "@/shared/lib/utils"
-import { useAuthFlowStore } from "../state/auth-flow-store"
+} from "@/shared/ui/input-group";
+import { Input } from "@/shared/ui/input";
+import { getApiErrorMessage } from "@/platform/network/api";
+import { getInvitationAuthSearch, signInWithGoogle } from "../lib/google-auth";
+import { cn } from "@/shared/lib/utils";
+import { useAuthFlowStore } from "../state/auth-flow-store";
 import { useRequestEmailVerificationOtp, useSignUp } from "@zilobase/features/auth/react";
 
-export function SignupForm({
-  className,
-  ...props
-}: React.ComponentProps<"form">) {
-  const navigate = useNavigate()
-  const signUp = useSignUp()
-  const requestVerificationOtp = useRequestEmailVerificationOtp()
-  const setAuthFlow = useAuthFlowStore((state) => state.setAuthFlow)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [googleError, setGoogleError] = useState<unknown>(null)
-  const [isGooglePending, setIsGooglePending] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const isCreatingAccount = signUp.isPending || requestVerificationOtp.isPending
-  const isPending = isCreatingAccount || isGooglePending
-  const error = signUp.error ?? requestVerificationOtp.error ?? googleError
-  const invitationSearch = getInvitationAuthSearch()
-  const invitationId = invitationSearch.invitation ?? null
-  const returnTo = invitationSearch.returnTo ?? "/onboarding"
+export function SignupForm({ className, ...props }: React.ComponentProps<"form">) {
+  const navigate = useNavigate();
+  const signUp = useSignUp();
+  const requestVerificationOtp = useRequestEmailVerificationOtp();
+  const setAuthFlow = useAuthFlowStore((state) => state.setAuthFlow);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [googleError, setGoogleError] = useState<unknown>(null);
+  const [isGooglePending, setIsGooglePending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const isCreatingAccount = signUp.isPending || requestVerificationOtp.isPending;
+  const isPending = isCreatingAccount || isGooglePending;
+  const error = signUp.error ?? requestVerificationOtp.error ?? googleError;
+  const invitationSearch = getInvitationAuthSearch();
+  const invitationId = invitationSearch.invitation ?? null;
+  const returnTo = invitationSearch.returnTo ?? "/onboarding";
 
   async function handleGoogleSignUp() {
-    setGoogleError(null)
-    setIsGooglePending(true)
+    setGoogleError(null);
+    setIsGooglePending(true);
 
     try {
-      await signInWithGoogle(returnTo, invitationId)
+      await signInWithGoogle(returnTo, invitationId);
     } catch (error) {
-      setGoogleError(error)
-      setIsGooglePending(false)
+      setGoogleError(error);
+      setIsGooglePending(false);
     }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
 
-    const formData = new FormData(event.currentTarget)
-    const name = String(formData.get("name") ?? "").trim()
-    const email = String(formData.get("email") ?? "").trim().toLowerCase()
-    const password = String(formData.get("password") ?? "")
-    const confirmPassword = String(formData.get("confirm-password") ?? "")
+    const formData = new FormData(event.currentTarget);
+    const name = String(formData.get("name") ?? "").trim();
+    const email = String(formData.get("email") ?? "")
+      .trim()
+      .toLowerCase();
+    const password = String(formData.get("password") ?? "");
+    const confirmPassword = String(formData.get("confirm-password") ?? "");
 
     if (password !== confirmPassword) {
-      setFormError("Passwords do not match.")
-      return
+      setFormError("Passwords do not match.");
+      return;
     }
 
-    setFormError(null)
+    setFormError(null);
     try {
       await signUp.mutateAsync({
         callbackURL: returnTo,
@@ -80,21 +79,17 @@ export function SignupForm({
         email,
         password,
         ...(invitationId ? { invitationId } : {}),
-      })
-      await requestVerificationOtp.mutateAsync(email)
-      setAuthFlow({ email, purpose: "email-verification", returnTo })
-      void navigate({ to: "/otp" })
+      });
+      await requestVerificationOtp.mutateAsync(email);
+      setAuthFlow({ email, purpose: "email-verification", returnTo });
+      void navigate({ to: "/otp" });
     } catch {
       // React Query owns the visible error state.
     }
   }
 
   return (
-    <form
-      className={cn("flex flex-col gap-6", className)}
-      onSubmit={handleSubmit}
-      {...props}
-    >
+    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit} {...props}>
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="name">Full name</FieldLabel>
@@ -145,9 +140,7 @@ export function SignupForm({
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
-          <FieldDescription>
-            Use at least 8 characters.
-          </FieldDescription>
+          <FieldDescription>Use at least 8 characters.</FieldDescription>
         </Field>
 
         <Field>
@@ -176,17 +169,12 @@ export function SignupForm({
         <FieldSeparator>Or</FieldSeparator>
 
         <Field>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isPending}
-            onClick={handleGoogleSignUp}
-          >
+          <Button type="button" variant="outline" disabled={isPending} onClick={handleGoogleSignUp}>
             <GoogleIcon />
             {isGooglePending ? "Opening Google..." : "Continue with Google"}
           </Button>
         </Field>
       </FieldGroup>
     </form>
-  )
+  );
 }

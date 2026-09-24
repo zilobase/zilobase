@@ -153,10 +153,12 @@ function queue(
 }
 test("event windows pin matching revisions and dispatch only newly queued runs", async () => {
   queue();
-  assert.deepEqual(
-    await drainDatabaseAutomationEventWindows({}, { workerId: "worker" }),
-    { claimed: 1, completed: 1, retried: 0, runsCreated: 1 },
-  );
+  assert.deepEqual(await drainDatabaseAutomationEventWindows({}, { workerId: "worker" }), {
+    claimed: 1,
+    completed: 1,
+    retried: 0,
+    runsCreated: 1,
+  });
   assert.equal(state.runs[0].revisionId, "revision");
   assert.equal(state.runs[0].definitionHash, "hash");
   assert.equal(state.runs[0].status, "queued");
@@ -166,8 +168,7 @@ test("event windows pin matching revisions and dispatch only newly queued runs",
   state.duplicate = true;
   queue();
   assert.equal(
-    (await drainDatabaseAutomationEventWindows({}, { workerId: "worker" }))
-      .runsCreated,
+    (await drainDatabaseAutomationEventWindows({}, { workerId: "worker" })).runsCreated,
     0,
   );
   assert.equal(state.dispatched[1].length, 0);
@@ -183,8 +184,7 @@ test("event windows record locked, revoked and missing-view skips without dispat
     queue(options);
     if ("scope" in options) state.rows.push([]);
     assert.equal(
-      (await drainDatabaseAutomationEventWindows({}, { workerId: "worker" }))
-        .runsCreated,
+      (await drainDatabaseAutomationEventWindows({}, { workerId: "worker" })).runsCreated,
       0,
     );
     assert.equal(state.runs.at(-1)?.skipReason, reason);
@@ -201,8 +201,7 @@ test("event windows discard missing rows and respect execution disablement", asy
   assert.equal(state.writes.length, 0);
   queue({ unavailable: true });
   assert.equal(
-    (await drainDatabaseAutomationEventWindows({}, { workerId: "worker" }))
-      .completed,
+    (await drainDatabaseAutomationEventWindows({}, { workerId: "worker" })).completed,
     1,
   );
   assert.equal(state.writes.at(-1)?.terminalReason, "row_unavailable");

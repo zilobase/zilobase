@@ -35,9 +35,7 @@ export function useHttpAgentConversation(input: AgentConversationInput) {
         });
 
         return {
-          api: toApiUrl(
-            `/api/ai/threads/${encodeURIComponent(prepared.requestThreadId)}/turns`,
-          ),
+          api: toApiUrl(`/api/ai/threads/${encodeURIComponent(prepared.requestThreadId)}/turns`),
           body: prepared.body,
         };
       },

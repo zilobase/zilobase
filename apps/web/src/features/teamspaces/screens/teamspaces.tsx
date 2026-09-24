@@ -3,11 +3,7 @@ import { useTeamspaceDirectory } from "../commands/use-teamspace-directory";
 import { CreateTeamspaceDialog } from "../components/create-teamspace-dialog";
 import { ManageTeamspaceDialog } from "../components/manage-teamspace-dialog";
 
-import {
-  Layers3Icon,
-  MoreHorizontalIcon,
-  PlusIcon,
-} from "@/shared/components/icons";
+import { Layers3Icon, MoreHorizontalIcon, PlusIcon } from "@/shared/components/icons";
 
 import { toast } from "sonner";
 
@@ -18,23 +14,14 @@ import { Checkbox } from "@/shared/ui/checkbox";
 
 import { Input } from "@/shared/ui/input";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Separator } from "@/shared/ui/separator";
 import { Spinner } from "@/shared/ui/spinner";
 
 import { getApiErrorMessage } from "@/platform/network/api";
 import { PageIconDisplay } from "@/features/pages/index";
 
-import {
-  type Teamspace,
-  type TeamspaceAccessMode,
-} from "@zilobase/features/teamspaces";
+import { type Teamspace, type TeamspaceAccessMode } from "@zilobase/features/teamspaces";
 
 export default function TeamspacesSettingsPage() {
   const directory = useTeamspaceDirectory();
@@ -83,9 +70,7 @@ export default function TeamspacesSettingsPage() {
                 if (!workspaceId) return;
                 updateSettings.mutate(
                   {
-                    creationPolicy: value as
-                      | "workspace_owners"
-                      | "workspace_members",
+                    creationPolicy: value as "workspace_owners" | "workspace_members",
                     workspaceId,
                   },
                   {
@@ -96,19 +81,12 @@ export default function TeamspacesSettingsPage() {
               }}
               value={settings?.creationPolicy ?? "workspace_members"}
             >
-              <SelectTrigger
-                aria-label="Who can create teamspaces"
-                className="w-52"
-              >
+              <SelectTrigger aria-label="Who can create teamspaces" className="w-52">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="workspace_members">
-                  All workspace members
-                </SelectItem>
-                <SelectItem value="workspace_owners">
-                  Workspace owners only
-                </SelectItem>
+                <SelectItem value="workspace_members">All workspace members</SelectItem>
+                <SelectItem value="workspace_owners">Workspace owners only</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -119,8 +97,7 @@ export default function TeamspacesSettingsPage() {
             <div className="space-y-1">
               <h3 className="font-heading text-base font-medium">Teamspaces</h3>
               <p className="text-sm text-content-secondary">
-                Open spaces are discoverable and joinable; closed spaces require
-                an invite.
+                Open spaces are discoverable and joinable; closed spaces require an invite.
               </p>
             </div>
             <Button disabled={!workspaceId} onClick={() => setCreateOpen(true)}>
@@ -137,9 +114,7 @@ export default function TeamspacesSettingsPage() {
               value={query}
             />
             <Select
-              onValueChange={(value) =>
-                setAccessFilter(value as "all" | TeamspaceAccessMode)
-              }
+              onValueChange={(value) => setAccessFilter(value as "all" | TeamspaceAccessMode)}
               value={accessFilter}
             >
               <SelectTrigger aria-label="Filter by access" className="sm:w-40">
@@ -153,24 +128,17 @@ export default function TeamspacesSettingsPage() {
               </SelectContent>
             </Select>
             <Select
-              onValueChange={(value) =>
-                setMembershipFilter(value as typeof membershipFilter)
-              }
+              onValueChange={(value) => setMembershipFilter(value as typeof membershipFilter)}
               value={membershipFilter}
             >
-              <SelectTrigger
-                aria-label="Filter by membership"
-                className="sm:w-40"
-              >
+              <SelectTrigger aria-label="Filter by membership" className="sm:w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All membership</SelectItem>
                 <SelectItem value="joined">Joined</SelectItem>
                 <SelectItem value="available">Available</SelectItem>
-                {settings?.canManage ? (
-                  <SelectItem value="ownerless">Ownerless</SelectItem>
-                ) : null}
+                {settings?.canManage ? <SelectItem value="ownerless">Ownerless</SelectItem> : null}
               </SelectContent>
             </Select>
             {settings?.canManage && selectedIds.size > 0 ? (
@@ -213,19 +181,12 @@ export default function TeamspacesSettingsPage() {
             <section className="grid gap-3">
               <div>
                 <h3 className="font-heading text-base font-medium">Archived</h3>
-                <p className="text-sm text-content-secondary">
-                  Restore a teamspace and its pages.
-                </p>
+                <p className="text-sm text-content-secondary">Restore a teamspace and its pages.</p>
               </div>
               <div className="divide-y rounded-lg border">
                 {archivedTeamspaces.map((teamspace) => (
-                  <div
-                    className="flex items-center gap-3 p-4"
-                    key={teamspace.id}
-                  >
-                    <span className="min-w-0 flex-1 truncate font-medium">
-                      {teamspace.name}
-                    </span>
+                  <div className="flex items-center gap-3 p-4" key={teamspace.id}>
+                    <span className="min-w-0 flex-1 truncate font-medium">{teamspace.name}</span>
                     <Button
                       disabled={lifecycle.isPending}
                       onClick={() =>
@@ -236,8 +197,7 @@ export default function TeamspacesSettingsPage() {
                             workspaceId: workspaceId!,
                           },
                           {
-                            onError: (error) =>
-                              toast.error(getApiErrorMessage(error)),
+                            onError: (error) => toast.error(getApiErrorMessage(error)),
                           },
                         )
                       }
@@ -261,12 +221,10 @@ export default function TeamspacesSettingsPage() {
       <ManageTeamspaceDialog
         canInvite={Boolean(
           selected?.currentUserRole === "owner" ||
-            (selected?.currentUserRole === "member" &&
-              selected.invitePolicy === "owners_and_members"),
+          (selected?.currentUserRole === "member" &&
+            selected.invitePolicy === "owners_and_members"),
         )}
-        canManage={Boolean(
-          settings?.canManage || selected?.currentUserRole === "owner",
-        )}
+        canManage={Boolean(settings?.canManage || selected?.currentUserRole === "owner")}
         initialTab={selectedTab}
         key={selected ? `${selected.id}:${selectedTab}` : "closed"}
         onOpenChange={(open) => !open && closeManageDialog()}
@@ -311,9 +269,7 @@ function TeamspaceDirectoryRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate font-medium">{teamspace.name}</span>
-          {teamspace.isDefault ? (
-            <Badge variant="secondary">Default</Badge>
-          ) : null}
+          {teamspace.isDefault ? <Badge variant="secondary">Default</Badge> : null}
           <Badge variant="outline">{teamspace.accessMode}</Badge>
         </div>
         <p className="truncate text-sm text-content-secondary">
@@ -381,15 +337,11 @@ function TeamspaceManagementActions({
   teamspace: Teamspace;
   directory: ReturnType<typeof useTeamspaceDirectory>;
 }) {
-  const {
-    settings,
-    workspaceId,
-    setSelectedTab,
-    setSelected,
-    defaults,
-    lifecycle,
-  } = directory;
-  const { canManage, canSetDefault, canRecoverOwner } = getTeamspaceManagementPermissions(teamspace, Boolean(settings?.canManage));
+  const { settings, workspaceId, setSelectedTab, setSelected, defaults, lifecycle } = directory;
+  const { canManage, canSetDefault, canRecoverOwner } = getTeamspaceManagementPermissions(
+    teamspace,
+    Boolean(settings?.canManage),
+  );
   return (
     <>
       {canManage ? (
@@ -438,8 +390,7 @@ function TeamspaceManagementActions({
               },
               {
                 onError: (error) => toast.error(getApiErrorMessage(error)),
-                onSuccess: () =>
-                  toast.success("Teamspace ownership recovered."),
+                onSuccess: () => toast.success("Teamspace ownership recovered."),
               },
             )
           }

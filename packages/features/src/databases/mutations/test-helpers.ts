@@ -1,16 +1,10 @@
-import type { QueryClient } from "@tanstack/react-query"
+import type { QueryClient } from "@tanstack/react-query";
 
-import {
-  databaseBootstrapQueryKey,
-  databaseWindowQueryKey,
-} from "../queries/keys"
-import { databaseViewQueryHash } from "../views/query-hash"
-import type {
-  DatabaseBootstrapResponse,
-  DatabaseRecordWindowResponse,
-} from  "../core/entities"
-import { databaseOrderKeyAtPosition } from  "../core/order-key"
-import type { DatabaseExportPayload } from  "../queries/queries"
+import { databaseBootstrapQueryKey, databaseWindowQueryKey } from "../queries/keys";
+import { databaseViewQueryHash } from "../views/query-hash";
+import type { DatabaseBootstrapResponse, DatabaseRecordWindowResponse } from "../core/entities";
+import { databaseOrderKeyAtPosition } from "../core/order-key";
+import type { DatabaseExportPayload } from "../queries/queries";
 
 export function createTestDatabasePayload(
   overrides: Partial<DatabaseExportPayload> = {},
@@ -24,13 +18,11 @@ export function createTestDatabasePayload(
     updatedAt: "2026-06-01T00:00:00.000Z",
     version: 0,
     workspaceId: "org-1",
-  }
+  };
 
   return {
     activeDataSource:
-      overrides.activeDataSource === undefined
-        ? defaultDataSource
-        : overrides.activeDataSource,
+      overrides.activeDataSource === undefined ? defaultDataSource : overrides.activeDataSource,
     dataSources: overrides.dataSources ?? [defaultDataSource],
     database: {
       createdAt: "2026-06-01T00:00:00.000Z",
@@ -129,7 +121,7 @@ export function createTestDatabasePayload(
     ],
     rowCount: overrides.rowCount,
     rowsPagination: overrides.rowsPagination,
-  }
+  };
 }
 
 export function setTestDatabaseClientState(
@@ -174,17 +166,17 @@ export function setTestDatabaseClientState(
       ...view,
       config: view.config ?? {},
     })),
-  }
+  };
   queryClient.setQueryData(
     databaseBootstrapQueryKey("test-session", {
       databaseId: payload.database.id,
     }),
     bootstrap,
-  )
+  );
 
   for (const source of bootstrap.dataSources) {
-    const view = bootstrap.views.find(({ dataSourceId }) => dataSourceId === source.id)
-    if (!view) continue
+    const view = bootstrap.views.find(({ dataSourceId }) => dataSourceId === source.id);
+    if (!view) continue;
     const records = payload.rows
       .filter(({ dataSourceId }) => dataSourceId === source.id)
       .map((row) => ({
@@ -209,7 +201,7 @@ export function setTestDatabaseClientState(
             .filter(({ pageId }) => pageId === row.pageId)
             .map((value) => [value.propertyId, value]),
         ),
-      }))
+      }));
     const window: DatabaseRecordWindowResponse = {
       databaseVersion: payload.database.version,
       dataSourceVersion: source.version,
@@ -218,7 +210,7 @@ export function setTestDatabaseClientState(
       records,
       snapshot: "test-snapshot",
       totalCount: records.length,
-    }
+    };
     queryClient.setQueryData(
       databaseWindowQueryKey("test-session", {
         databaseId: payload.database.id,
@@ -226,6 +218,6 @@ export function setTestDatabaseClientState(
         queryHash: databaseViewQueryHash(view.config),
       }),
       { pageParams: [{ limit: 50, snapshot: undefined }], pages: [window] },
-    )
+    );
   }
 }

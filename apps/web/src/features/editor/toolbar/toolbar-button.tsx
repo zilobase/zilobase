@@ -1,6 +1,6 @@
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/shared/ui/button";
 
-import type { RunToolbarCommand, ToolbarItem } from "./toolbar-contracts"
+import type { RunToolbarCommand, ToolbarItem } from "./toolbar-contracts";
 
 export function ToolbarButton({
   editor,
@@ -8,18 +8,16 @@ export function ToolbarButton({
   runCommand,
   useMouseDown = false,
 }: {
-  editor: import("@tiptap/react").Editor | null
-  item: ToolbarItem
-  runCommand: RunToolbarCommand
-  useMouseDown?: boolean
+  editor: import("@tiptap/react").Editor | null;
+  item: ToolbarItem;
+  runCommand: RunToolbarCommand;
+  useMouseDown?: boolean;
 }) {
-  const { action, attrs, icon: Icon, isActive, label } = item
-  const activeValue = isActive()
+  const { action, attrs, icon: Icon, isActive, label } = item;
+  const activeValue = isActive();
   const isActiveButton =
-    typeof activeValue === "string"
-      ? editor?.isActive(activeValue)
-      : editor?.isActive(activeValue)
-  const handlePress = () => runCommand(action, attrs)
+    typeof activeValue === "string" ? editor?.isActive(activeValue) : editor?.isActive(activeValue);
+  const handlePress = () => runCommand(action, attrs);
 
   return (
     <Button
@@ -29,8 +27,8 @@ export function ToolbarButton({
       onMouseDown={
         useMouseDown
           ? (event) => {
-              event.preventDefault()
-              handlePress()
+              event.preventDefault();
+              handlePress();
             }
           : undefined
       }
@@ -41,5 +39,5 @@ export function ToolbarButton({
     >
       <Icon />
     </Button>
-  )
+  );
 }

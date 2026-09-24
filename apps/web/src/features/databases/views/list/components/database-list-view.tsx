@@ -1,13 +1,17 @@
 import { listRowDragAttributes, listRowCompletionLabel } from "./list-row-presentation";
-import { useMemo } from "react"
-import { GripVertical, Plus } from "@/shared/components/icons"
+import { useMemo } from "react";
+import { GripVertical, Plus } from "@/shared/components/icons";
 
-import { Checkbox } from "@/shared/ui/checkbox"
-import { DatabasePageLink } from "../../../interactions/database-page-link"
-import { DatabasePropertyValue } from "../../../schema/editors/database-property-value"
-import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
-import { DatabaseRecordWindowControl } from "../../components/database-record-window-control"
-import { useDatabaseListRowDrag } from "../controller/use-database-list-row-drag"
+import { Checkbox } from "@/shared/ui/checkbox";
+import { DatabasePageLink } from "../../../interactions/database-page-link";
+import { DatabasePropertyValue } from "../../../schema/editors/database-property-value";
+import {
+  useDatabaseActionsContext,
+  useDatabaseDataContext,
+  useDatabaseUiContext,
+} from "../../state/database-view-context";
+import { DatabaseRecordWindowControl } from "../../components/database-record-window-control";
+import { useDatabaseListRowDrag } from "../controller/use-database-list-row-drag";
 
 export function DatabaseListView() {
   const {
@@ -18,7 +22,7 @@ export function DatabaseListView() {
     savePropertyValue,
     setRowComplete,
     updateDatabasePropertyConfig,
-  } = useDatabaseActionsContext()
+  } = useDatabaseActionsContext();
   const {
     activeDatabaseFilters,
     activeDatabaseSorts,
@@ -31,22 +35,18 @@ export function DatabaseListView() {
     propertyValuesByKey,
     sortedItems,
     visibleProperties,
-  } = useDatabaseDataContext()
-  const {
-    layoutSettings,
-    newRowLabel,
-    showPageIconInTitle,
-    titlePropertyLabel,
-  } = useDatabaseUiContext()
+  } = useDatabaseDataContext();
+  const { layoutSettings, newRowLabel, showPageIconInTitle, titlePropertyLabel } =
+    useDatabaseUiContext();
   const rows = useMemo(() => {
-    const rowsById = new Map(items.map((row) => [row.id, row]))
+    const rowsById = new Map(items.map((row) => [row.id, row]));
 
     return sortedItems.flatMap((item) => {
-      const row = rowsById.get(item.id)
-      return row ? [row] : []
-    })
-  }, [items, sortedItems])
-  const canReorderRows = editable && activeDatabaseSorts.length === 0
+      const row = rowsById.get(item.id);
+      return row ? [row] : [];
+    });
+  }, [items, sortedItems]);
+  const canReorderRows = editable && activeDatabaseSorts.length === 0;
   const rowDrag = useDatabaseListRowDrag({
     addDraggedPageRow,
     databaseId,
@@ -56,7 +56,7 @@ export function DatabaseListView() {
     items,
     reorderEnabled: canReorderRows,
     visibleRows: rows,
-  })
+  });
   return (
     <div
       className="database-list-view"
@@ -80,9 +80,7 @@ export function DatabaseListView() {
                 onDragEnd={rowDrag.clearDrag}
                 onDragStart={(event) => rowDrag.startDrag(event, row.id)}
                 title={
-                  canReorderRows
-                    ? "Drag page"
-                    : "Drag page. Clear sorting to reorder in this view"
+                  canReorderRows ? "Drag page" : "Drag page. Clear sorting to reorder in this view"
                 }
                 type="button"
               >
@@ -95,9 +93,7 @@ export function DatabaseListView() {
                 checked={isRowComplete(row)}
                 className="database-list-row-checkbox"
                 disabled={!editable}
-                onCheckedChange={(checked) =>
-                  setRowComplete(row, checked === true)
-                }
+                onCheckedChange={(checked) => setRowComplete(row, checked === true)}
               />
             ) : null}
             <div className="database-list-title">
@@ -111,8 +107,8 @@ export function DatabaseListView() {
             </div>
             <div className="database-list-properties">
               {visibleProperties.map((property) => {
-                const key = `${row.pageId}:${property.property.id}`
-                const persistedValue = propertyValuesByKey[key] ?? ""
+                const key = `${row.pageId}:${property.property.id}`;
+                const persistedValue = propertyValuesByKey[key] ?? "";
 
                 return (
                   <div
@@ -135,7 +131,7 @@ export function DatabaseListView() {
                       titlePropertyLabel={titlePropertyLabel}
                     />
                   </div>
-                )
+                );
               })}
             </div>
           </div>
@@ -154,5 +150,5 @@ export function DatabaseListView() {
         ) : null}
       </div>
     </div>
-  )
+  );
 }

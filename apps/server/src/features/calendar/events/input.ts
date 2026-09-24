@@ -48,9 +48,7 @@ export const CalendarEventWrite = Schema.Struct({
   start: Schema.optionalKey(EventTime),
   end: Schema.optionalKey(EventTime),
   colorId: Schema.optionalKey(
-    Schema.NullOr(
-      Schema.String.pipe(Schema.check(Schema.isPattern(/^(?:[1-9]|10|11)$/))),
-    ),
+    Schema.NullOr(Schema.String.pipe(Schema.check(Schema.isPattern(/^(?:[1-9]|10|11)$/)))),
   ),
   recurrence: Schema.optionalKey(
     Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(2000)))).pipe(
@@ -61,11 +59,11 @@ export const CalendarEventWrite = Schema.Struct({
     Schema.Array(
       Schema.Struct({
         email: Schema.String.pipe(
-          Schema.check(Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: "Invalid email" })),
+          Schema.check(
+            Schema.isPattern(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: "Invalid email" }),
+          ),
         ),
-        displayName: Schema.optionalKey(
-          Schema.String.pipe(Schema.check(Schema.isMaxLength(1024))),
-        ),
+        displayName: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))),
         optional: Schema.optionalKey(Schema.Boolean),
         responseStatus: Schema.Literals(["needsAction", "declined", "tentative", "accepted"]).pipe(
           Schema.withDecodingDefault(Effect.succeed("needsAction" as const)),
@@ -118,11 +116,8 @@ export const calendarWriteSchema = {
 
 export type CalendarMutationAction = "create" | "update" | "delete" | "rsvp" | "move" | "duplicate";
 
-export function validateEventInterval(event: {
-  start?: EventTime;
-  end?: EventTime;
-}) {
-  if (!event.start || !event.end || ("date" in event.start) !== ("date" in event.end)) {
+export function validateEventInterval(event: { start?: EventTime; end?: EventTime }) {
+  if (!event.start || !event.end || "date" in event.start !== "date" in event.end) {
     throw new Error("Start and end must have matching date types.");
   }
   const start = "date" in event.start ? event.start.date : event.start.dateTime;

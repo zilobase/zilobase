@@ -18,9 +18,7 @@ export function runCommand(command, args, options) {
 
       reject(
         new Error(
-          signal
-            ? `${label} terminated by ${signal}.`
-            : `${label} exited with code ${code}.`,
+          signal ? `${label} terminated by ${signal}.` : `${label} exited with code ${code}.`,
         ),
       );
     });

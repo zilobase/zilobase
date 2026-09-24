@@ -20,8 +20,8 @@ import {
 } from "../model/database-table-model";
 import { getTableColumnKeys } from "../model/database-table-model";
 
-import type { RefObject } from "react"
-import type { DatabaseProperty } from "@zilobase/features/databases"
+import type { RefObject } from "react";
+import type { DatabaseProperty } from "@zilobase/features/databases";
 
 export function useTableColumns({
   editable,
@@ -33,125 +33,102 @@ export function useTableColumns({
   saveDatabasePropertyOrder,
   addDatabaseProperty,
 }: {
-  editable: boolean
-  canEditStructure: boolean
-  databaseConfig: unknown
-  renderedProperties: DatabaseProperty[]
-  properties: DatabaseProperty[]
-  tableWrapRef: RefObject<HTMLDivElement | null>
-  saveDatabasePropertyOrder: (ids: string[]) => void
-  addDatabaseProperty: (type?: string, label?: string, position?: number) => void
+  editable: boolean;
+  canEditStructure: boolean;
+  databaseConfig: unknown;
+  renderedProperties: DatabaseProperty[];
+  properties: DatabaseProperty[];
+  tableWrapRef: RefObject<HTMLDivElement | null>;
+  saveDatabasePropertyOrder: (ids: string[]) => void;
+  addDatabaseProperty: (type?: string, label?: string, position?: number) => void;
 }) {
-  const [pendingInsertProperty, setPendingInsertProperty] =
-    useState<PendingInsertProperty | null>(null)
+  const [pendingInsertProperty, setPendingInsertProperty] = useState<PendingInsertProperty | null>(
+    null,
+  );
   const [pendingPropertyInsertOrder, setPendingPropertyInsertOrder] =
-    useState<PendingPropertyInsertOrder | null>(null)
-  const [pendingFormulaSetup, setPendingFormulaSetup] =
-    useState<PendingFormulaSetup | null>(null)
-  const [formulaSetupPropertyId, setFormulaSetupPropertyId] = useState<
-    string | null
-  >(null)
-  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null)
-  const [dragColumnOrder, setDragColumnOrder] = useState<string[] | null>(null)
-  const dragColumnOrderRef = useRef<string[] | null>(null)
-  const [pendingColumnOrder, setPendingColumnOrder] = useState<string[] | null>(
-    null
-  )
-  const suppressPropertyHeaderClickRef = useRef(false)
-  const [editingPropertyKey, setEditingPropertyKey] = useState<string | null>(
-    null
-  )
-  const activeEditingPropertyKey =
-    getPropertyKeyFromHeaderEditingKey(editingPropertyKey)
+    useState<PendingPropertyInsertOrder | null>(null);
+  const [pendingFormulaSetup, setPendingFormulaSetup] = useState<PendingFormulaSetup | null>(null);
+  const [formulaSetupPropertyId, setFormulaSetupPropertyId] = useState<string | null>(null);
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+  const [dragColumnOrder, setDragColumnOrder] = useState<string[] | null>(null);
+  const dragColumnOrderRef = useRef<string[] | null>(null);
+  const [pendingColumnOrder, setPendingColumnOrder] = useState<string[] | null>(null);
+  const suppressPropertyHeaderClickRef = useRef(false);
+  const [editingPropertyKey, setEditingPropertyKey] = useState<string | null>(null);
+  const activeEditingPropertyKey = getPropertyKeyFromHeaderEditingKey(editingPropertyKey);
   const propertiesById = useMemo(
-    () =>
-      new Map(renderedProperties.map((property) => [property.id, property])),
-    [renderedProperties]
-  )
+    () => new Map(renderedProperties.map((property) => [property.id, property])),
+    [renderedProperties],
+  );
   const baseColumnIds = useMemo(
-    () => [
-      DATABASE_NAME_COLUMN_ID,
-      ...renderedProperties.map((property) => property.id),
-    ],
-    [renderedProperties]
-  )
+    () => [DATABASE_NAME_COLUMN_ID, ...renderedProperties.map((property) => property.id)],
+    [renderedProperties],
+  );
   const savedColumnIds = useMemo(() => {
-    const configuredColumnOrder = getDatabasePropertyOrder(databaseConfig)
+    const configuredColumnOrder = getDatabasePropertyOrder(databaseConfig);
 
     return configuredColumnOrder.includes(DATABASE_NAME_COLUMN_ID)
       ? getMergedColumnIds(baseColumnIds, configuredColumnOrder)
-      : baseColumnIds
-  }, [baseColumnIds, databaseConfig])
+      : baseColumnIds;
+  }, [baseColumnIds, databaseConfig]);
   const renderedColumnIds = useMemo(
     () =>
-      pendingColumnOrder
-        ? getMergedColumnIds(baseColumnIds, pendingColumnOrder)
-        : savedColumnIds,
-    [baseColumnIds, pendingColumnOrder, savedColumnIds]
-  )
+      pendingColumnOrder ? getMergedColumnIds(baseColumnIds, pendingColumnOrder) : savedColumnIds,
+    [baseColumnIds, pendingColumnOrder, savedColumnIds],
+  );
   const selectionProperties = useMemo(
     () =>
       renderedColumnIds.flatMap((columnId) => {
-        const property = propertiesById.get(columnId)
+        const property = propertiesById.get(columnId);
 
-        return property ? [property] : []
+        return property ? [property] : [];
       }),
-    [propertiesById, renderedColumnIds]
-  )
+    [propertiesById, renderedColumnIds],
+  );
   const headerColumnIds = useMemo(
     () =>
-      dragColumnOrder
-        ? getMergedColumnIds(renderedColumnIds, dragColumnOrder)
-        : renderedColumnIds,
-    [dragColumnOrder, renderedColumnIds]
-  )
+      dragColumnOrder ? getMergedColumnIds(renderedColumnIds, dragColumnOrder) : renderedColumnIds,
+    [dragColumnOrder, renderedColumnIds],
+  );
   useEffect(() => {
-    if (
-      pendingColumnOrder &&
-      areColumnOrdersEqual(pendingColumnOrder, savedColumnIds)
-    ) {
-      setPendingColumnOrder(null)
+    if (pendingColumnOrder && areColumnOrdersEqual(pendingColumnOrder, savedColumnIds)) {
+      setPendingColumnOrder(null);
     }
-  }, [pendingColumnOrder, savedColumnIds])
+  }, [pendingColumnOrder, savedColumnIds]);
   useEffect(() => {
     if (!pendingPropertyInsertOrder) {
-      return
+      return;
     }
 
-    const existingPropertyIds = new Set(
-      pendingPropertyInsertOrder.existingPropertyIds
-    )
+    const existingPropertyIds = new Set(pendingPropertyInsertOrder.existingPropertyIds);
     const insertedProperty = renderedProperties.find(
-      (property) => !existingPropertyIds.has(property.id)
-    )
+      (property) => !existingPropertyIds.has(property.id),
+    );
 
     if (!insertedProperty) {
-      return
+      return;
     }
 
     const nextColumnIds = getColumnIdsWithInsertedProperty(
       pendingPropertyInsertOrder,
       insertedProperty.id,
-      renderedColumnIds
-    )
+      renderedColumnIds,
+    );
 
-    setPendingPropertyInsertOrder(null)
-    setPendingColumnOrder(nextColumnIds)
-    saveDatabasePropertyOrder(nextColumnIds)
+    setPendingPropertyInsertOrder(null);
+    setPendingColumnOrder(nextColumnIds);
+    saveDatabasePropertyOrder(nextColumnIds);
   }, [
     pendingPropertyInsertOrder,
     renderedColumnIds,
     renderedProperties,
     saveDatabasePropertyOrder,
-  ])
-  const activeInsertProperty = pendingInsertProperty
-  const canReorderColumns = editable && renderedColumnIds.length > 1
+  ]);
+  const activeInsertProperty = pendingInsertProperty;
+  const canReorderColumns = editable && renderedColumnIds.length > 1;
   const pendingInsertPropertyKey = activeInsertProperty
-    ? getInsertPropertyColumnKey(
-        activeInsertProperty.sourceColumnKey,
-        activeInsertProperty.side
-      )
-    : null
+    ? getInsertPropertyColumnKey(activeInsertProperty.sourceColumnKey, activeInsertProperty.side)
+    : null;
   const columnKeys = useMemo(
     () =>
       getTableColumnKeys({
@@ -159,116 +136,99 @@ export function useTableColumns({
         columnIds: renderedColumnIds,
         pendingInsert: activeInsertProperty,
       }),
-    [activeInsertProperty, canEditStructure, renderedColumnIds]
-  )
-  const {
-    columnWidths,
-    startColumnResize,
-    tableMinWidth,
-  } = useResizableTableColumns({
+    [activeInsertProperty, canEditStructure, renderedColumnIds],
+  );
+  const { columnWidths, startColumnResize, tableMinWidth } = useResizableTableColumns({
     columnKeys,
     getDefaultWidth: (columnKey) => getColumnWidth({}, columnKey),
     minWidth: databaseColumnMinWidth,
     tableWrapRef,
-  })
-  const getInlineTableContentWidth = useCallback(
-    () => tableMinWidth,
-    [tableMinWidth]
-  )
+  });
+  const getInlineTableContentWidth = useCallback(() => tableMinWidth, [tableMinWidth]);
   useEffect(() => {
     if (
       activeEditingPropertyKey &&
       activeEditingPropertyKey !== "name" &&
-      !renderedProperties.some(
-        (property) => property.id === activeEditingPropertyKey
-      )
+      !renderedProperties.some((property) => property.id === activeEditingPropertyKey)
     ) {
-      setEditingPropertyKey(null)
+      setEditingPropertyKey(null);
     }
-  }, [activeEditingPropertyKey, renderedProperties])
+  }, [activeEditingPropertyKey, renderedProperties]);
   useEffect(() => {
     if (!pendingFormulaSetup) {
-      return
+      return;
     }
 
-    const existingPropertyIds = new Set(pendingFormulaSetup.existingPropertyIds)
+    const existingPropertyIds = new Set(pendingFormulaSetup.existingPropertyIds);
     const formulaProperty = properties.find(
-      (property) =>
-        !existingPropertyIds.has(property.id) &&
-        property.property.type === "formula"
-    )
+      (property) => !existingPropertyIds.has(property.id) && property.property.type === "formula",
+    );
 
     if (!formulaProperty) {
-      return
+      return;
     }
 
-    setFormulaSetupPropertyId(formulaProperty.id)
-    setPendingFormulaSetup(null)
-  }, [pendingFormulaSetup, properties])
+    setFormulaSetupPropertyId(formulaProperty.id);
+    setPendingFormulaSetup(null);
+  }, [pendingFormulaSetup, properties]);
   useEffect(() => {
     if (
       pendingInsertProperty &&
       pendingInsertProperty.sourceColumnKey !== "name" &&
-      !renderedProperties.some(
-        (property) => property.id === pendingInsertProperty.sourceColumnKey
-      )
+      !renderedProperties.some((property) => property.id === pendingInsertProperty.sourceColumnKey)
     ) {
-      setPendingInsertProperty(null)
+      setPendingInsertProperty(null);
     }
-  }, [pendingInsertProperty, renderedProperties])
+  }, [pendingInsertProperty, renderedProperties]);
   const handleEditingPropertyOpenChange = (
     headerScope: string,
     propertyKey: string,
-    nextOpen: boolean
+    nextOpen: boolean,
   ) => {
-    const scopedPropertyKey = getHeaderEditingKey(headerScope, propertyKey)
+    const scopedPropertyKey = getHeaderEditingKey(headerScope, propertyKey);
 
     setEditingPropertyKey((currentKey: string | null) =>
-      nextOpen
-        ? scopedPropertyKey
-        : currentKey === scopedPropertyKey
-          ? null
-          : currentKey
-    )
-  }
+      nextOpen ? scopedPropertyKey : currentKey === scopedPropertyKey ? null : currentKey,
+    );
+  };
   const openInsertPropertyMenu = (
     sourceColumnKey: string,
     sourcePosition: number,
-    side: "left" | "right"
+    side: "left" | "right",
   ) => {
     setPendingInsertProperty({
       position: sourcePosition + (side === "right" ? 1 : 0),
       side,
       sourceColumnKey,
-    })
-  }
+    });
+  };
   const clearPendingInsertProperty = (insertKey: string) => {
     setPendingInsertProperty((current) => {
       const currentKey = current
         ? getInsertPropertyColumnKey(current.sourceColumnKey, current.side)
-        : null
+        : null;
 
-      return currentKey === insertKey ? null : current
-    })
-  }
+      return currentKey === insertKey ? null : current;
+    });
+  };
   const addDatabasePropertyAndMaybeOpenFormula = (
     type = "text",
     label = "Property",
-    position?: number
+    position?: number,
   ) => {
     if (type === "formula") {
       setPendingFormulaSetup({
         existingPropertyIds: properties.map((property) => property.id),
-      })
+      });
     }
 
-    addDatabaseProperty(type, label, position)
-  }
+    addDatabaseProperty(type, label, position);
+  };
   const addInsertedDatabaseProperty = (
     type: string,
     label: string,
     position: number,
-    insertKey: string
+    insertKey: string,
   ) => {
     if (pendingInsertProperty) {
       setPendingPropertyInsertOrder({
@@ -276,49 +236,49 @@ export function useTableColumns({
         existingPropertyIds: renderedProperties.map((property) => property.id),
         side: pendingInsertProperty.side,
         sourceColumnKey: pendingInsertProperty.sourceColumnKey,
-      })
+      });
     }
 
-    addDatabasePropertyAndMaybeOpenFormula(type, label, position)
-    clearPendingInsertProperty(insertKey)
-  }
+    addDatabasePropertyAndMaybeOpenFormula(type, label, position);
+    clearPendingInsertProperty(insertKey);
+  };
   const startColumnHeaderReorder = (columnId: string) => {
     if (!canReorderColumns) {
-      return
+      return;
     }
 
-    setEditingPropertyKey(null)
-    suppressPropertyHeaderClickRef.current = true
-    setDraggedColumnId(columnId)
-    dragColumnOrderRef.current = headerColumnIds
-  }
+    setEditingPropertyKey(null);
+    suppressPropertyHeaderClickRef.current = true;
+    setDraggedColumnId(columnId);
+    dragColumnOrderRef.current = headerColumnIds;
+  };
   const queueColumnHeaderOrder = (columnIds: string[]) => {
     if (!canReorderColumns) {
-      return
+      return;
     }
 
     if (areColumnOrdersEqual(dragColumnOrder, columnIds)) {
-      return
+      return;
     }
 
-    dragColumnOrderRef.current = columnIds
-    setDragColumnOrder(columnIds)
-  }
+    dragColumnOrderRef.current = columnIds;
+    setDragColumnOrder(columnIds);
+  };
   const finishColumnHeaderReorder = () => {
-    const columnIds = dragColumnOrderRef.current
+    const columnIds = dragColumnOrderRef.current;
 
     if (columnIds && !areColumnOrdersEqual(columnIds, renderedColumnIds)) {
-      setPendingColumnOrder(columnIds)
-      saveDatabasePropertyOrder(columnIds)
+      setPendingColumnOrder(columnIds);
+      saveDatabasePropertyOrder(columnIds);
     }
 
-    dragColumnOrderRef.current = null
-    setDraggedColumnId(null)
-    setDragColumnOrder(null)
+    dragColumnOrderRef.current = null;
+    setDraggedColumnId(null);
+    setDragColumnOrder(null);
     window.setTimeout(() => {
-      suppressPropertyHeaderClickRef.current = false
-    }, 0)
-  }
+      suppressPropertyHeaderClickRef.current = false;
+    }, 0);
+  };
   return {
     columnWidths,
     pendingInsertProperty,
@@ -345,5 +305,5 @@ export function useTableColumns({
     startColumnHeaderReorder,
     queueColumnHeaderOrder,
     finishColumnHeaderReorder,
-  }
+  };
 }

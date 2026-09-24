@@ -1,3 +1,3 @@
-import { createZilobaseQueryClient } from "@zilobase/features"
+import { createZilobaseQueryClient } from "@zilobase/features";
 
-export const queryClient = createZilobaseQueryClient()
+export const queryClient = createZilobaseQueryClient();

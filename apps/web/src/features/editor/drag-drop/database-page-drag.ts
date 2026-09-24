@@ -10,10 +10,7 @@ import {
   getDatabasePageDragPayload as getNativeDatabasePageDragPayload,
   hasDatabasePageDragPayload,
 } from "@/features/databases";
-import {
-  getDatabasePageDropPosition,
-  getDropDatabaseElement,
-} from "./database-page-drop-target";
+import { getDatabasePageDropPosition, getDropDatabaseElement } from "./database-page-drop-target";
 import type { DatabasePageDropPayload } from "../core/types";
 
 import { insertPendingPageEmbed } from "./pending-page-embed";
@@ -47,15 +44,17 @@ export const insertDraggedDatabasePage = (
   if (!view.state.schema.nodes.pageBlock || !view.editable) return false;
   event.preventDefault();
   insertPendingPageEmbed(
-    view, target.pos, pageId, payload.title ?? "Untitled",
-    () => onEmbedPage?.(pageId), onError,
+    view,
+    target.pos,
+    pageId,
+    payload.title ?? "Untitled",
+    () => onEmbedPage?.(pageId),
+    onError,
   );
   return true;
 };
 
-const getDraggedPageBlockPayload = (
-  event: DragEvent,
-): DatabasePageDropPayload | null => {
+const getDraggedPageBlockPayload = (event: DragEvent): DatabasePageDropPayload | null => {
   const blockPayload = getDraggedEditorBlockPayload(event.dataTransfer);
   if (
     !blockPayload ||
@@ -65,8 +64,7 @@ const getDraggedPageBlockPayload = (
     return null;
   }
 
-  const pageId = (blockPayload.node as { attrs?: { pageId?: unknown } }).attrs
-    ?.pageId;
+  const pageId = (blockPayload.node as { attrs?: { pageId?: unknown } }).attrs?.pageId;
   if (typeof pageId !== "string" || !pageId) return null;
 
   return {
@@ -76,19 +74,14 @@ const getDraggedPageBlockPayload = (
   };
 };
 
-const getDatabasePageDropPayload = (
-  event: DragEvent,
-): DatabasePageDropPayload | null =>
-  getDraggedPageBlockPayload(event) ??
-  getNativeDatabasePageDragPayload(event.dataTransfer);
+const getDatabasePageDropPayload = (event: DragEvent): DatabasePageDropPayload | null =>
+  getDraggedPageBlockPayload(event) ?? getNativeDatabasePageDragPayload(event.dataTransfer);
 
 export const isDraggingPageToEditor = (event: DragEvent) =>
-  hasDatabasePageDragPayload(event.dataTransfer) ||
-  getDraggedPageBlockPayload(event) !== null;
+  hasDatabasePageDragPayload(event.dataTransfer) || getDraggedPageBlockPayload(event) !== null;
 
 export const shouldSkipEditorDropLine = (event: DragEvent) =>
-  event.target instanceof HTMLElement &&
-  Boolean(event.target.closest(".database-table-wrap"));
+  event.target instanceof HTMLElement && Boolean(event.target.closest(".database-table-wrap"));
 
 export const dropPageOnDatabase = (
   event: DragEvent,
@@ -131,14 +124,10 @@ export const dropPageOnDatabase = (
     },
     {
       onError: (error) =>
-        options.onError(
-          error instanceof Error ? error.message : "Could not move page.",
-        ),
+        options.onError(error instanceof Error ? error.message : "Could not move page."),
       onSuccess: () => {
         if (dropPayload.blockPayload) {
-          deleteDraggedEditorBlockSource(
-            dropPayload.blockPayload as BlockDragPayload,
-          );
+          deleteDraggedEditorBlockSource(dropPayload.blockPayload as BlockDragPayload);
         }
       },
     },

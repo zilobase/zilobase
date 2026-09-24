@@ -1,9 +1,4 @@
-const removedThemeIds = [
-  "rose",
-  "lilac",
-  "dusk",
-  "ember",
-]
+const removedThemeIds = ["rose", "lilac", "dusk", "ember"];
 
 export function register({ readSource, assert, loadModule, test }) {
   test("appearance modes are independent from theme families", async () => {
@@ -13,78 +8,87 @@ export function register({ readSource, assert, loadModule, test }) {
       isThemeFamilyId,
       selectableThemeIds,
       themeFamilies,
-    } = await loadModule("/src/shared/lib/themes.ts")
+    } = await loadModule("/src/shared/lib/themes.ts");
 
-    assert.deepEqual(appearanceModes.map((mode) => mode.value), ["light", "dark", "system"])
-    assert.deepEqual(selectableThemeIds, ["light", "dark"])
+    assert.deepEqual(
+      appearanceModes.map((mode) => mode.value),
+      ["light", "dark", "system"],
+    );
+    assert.deepEqual(selectableThemeIds, ["light", "dark"]);
     assert.deepEqual(
       themeFamilies.map((theme) => theme.value),
       ["default", "warm", "midnight", "forest", "ocean", "notion"],
-    )
-    assert.equal(getThemeColorScheme("light"), "light")
-    assert.equal(getThemeColorScheme("dark"), "dark")
-    assert.equal(getThemeColorScheme("system"), null)
-    assert.equal(isThemeFamilyId("notion"), true)
+    );
+    assert.equal(getThemeColorScheme("light"), "light");
+    assert.equal(getThemeColorScheme("dark"), "dark");
+    assert.equal(getThemeColorScheme("system"), null);
+    assert.equal(isThemeFamilyId("notion"), true);
 
-    for (const id of removedThemeIds) assert.equal(isThemeFamilyId(id), false)
-  })
+    for (const id of removedThemeIds) assert.equal(isThemeFamilyId(id), false);
+  });
 
   test("removed stored families normalize to Default and are synchronized", async () => {
-    const provider = await readSource("/src/shared/providers/theme-family-provider.tsx")
-    const document = await readSource("/index.html")
+    const provider = await readSource("/src/shared/providers/theme-family-provider.tsx");
+    const document = await readSource("/index.html");
 
-    assert.match(provider, /if \(isThemeFamilyId\(storedFamily\)\) return storedFamily\s+return "default"/)
-    assert.match(provider, /dataset\.themeFamily = themeFamily/)
-    assert.match(provider, /localStorage\.setItem\(THEME_FAMILY_STORAGE_KEY, themeFamily\)/)
-    assert.match(document, /const families = \["default", "warm", "midnight", "forest", "ocean", "notion"\]/)
-    assert.match(document, /dataset\.themeFamily = resolvedFamily/)
-    for (const id of removedThemeIds) assert.doesNotMatch(document, new RegExp(`"${id}"`))
-  })
+    assert.match(
+      provider,
+      /if \(isThemeFamilyId\(storedFamily\)\) return storedFamily;?\s+return "default"/,
+    );
+    assert.match(provider, /dataset\.themeFamily = themeFamily/);
+    assert.match(provider, /localStorage\.setItem\(THEME_FAMILY_STORAGE_KEY, themeFamily\)/);
+    assert.match(
+      document,
+      /const families = \["default", "warm", "midnight", "forest", "ocean", "notion"\]/,
+    );
+    assert.match(document, /dataset\.themeFamily = resolvedFamily/);
+    for (const id of removedThemeIds) assert.doesNotMatch(document, new RegExp(`"${id}"`));
+  });
 
   test("theme families expose their specified light and dark core palettes", async () => {
-    const css = await readSource("/src/shared/styles/color-tokens.css")
-    const defaultLight = declarations(readRule(css, ".light"))
-    const defaultDark = merge(defaultLight, declarations(readRule(css, ".dark")))
+    const css = await readSource("/src/shared/styles/color-tokens.css");
+    const defaultLight = declarations(readRule(css, ".light"));
+    const defaultDark = merge(defaultLight, declarations(readRule(css, ".dark")));
     const notionLight = merge(
       defaultLight,
       declarations(readRule(css, '.light[data-theme-family="notion"]')),
-    )
+    );
     const notionDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="notion"]')),
-    )
+    );
     const warmLight = merge(
       defaultLight,
       declarations(readRule(css, '.light[data-theme-family="warm"]')),
-    )
+    );
     const warmDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="warm"]')),
-    )
+    );
     const midnightLight = merge(
       defaultLight,
       declarations(readRule(css, '.light[data-theme-family="midnight"]')),
-    )
+    );
     const midnightDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="midnight"]')),
-    )
+    );
     const forestLight = merge(
       defaultLight,
       declarations(readRule(css, '.light[data-theme-family="forest"]')),
-    )
+    );
     const forestDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="forest"]')),
-    )
+    );
     const oceanLight = merge(
       defaultLight,
       declarations(readRule(css, '.light[data-theme-family="ocean"]')),
-    )
+    );
     const oceanDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="ocean"]')),
-    )
+    );
 
     assertTokens(defaultLight, {
       "--zb-color-surface-background-canvas": "#ffffff",
@@ -100,7 +104,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-control-border-default": "var(--zb-color-border-stroke-default)",
       "--zb-color-action-background-neutral-hover": "#f0f0f2",
       "--zb-color-action-background-neutral-pressed": "#e4e4e7",
-    })
+    });
     assertTokens(defaultDark, {
       "--zb-color-surface-background-canvas": "#111113",
       "--zb-color-surface-background-card": "#18181b",
@@ -115,7 +119,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-control-border-default": "var(--zb-color-border-stroke-default)",
       "--zb-color-action-background-neutral-hover": "#25252a",
       "--zb-color-action-background-neutral-pressed": "#303036",
-    })
+    });
     assertTokens(notionLight, {
       "--zb-color-surface-background-canvas": "#ffffff",
       "--zb-color-surface-background-card": "#ffffff",
@@ -130,7 +134,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-control-border-default": "var(--zb-color-border-stroke-default)",
       "--zb-color-action-background-neutral-hover": "#efefee",
       "--zb-color-action-background-neutral-pressed": "#dfdfde",
-    })
+    });
     assertTokens(notionDark, {
       "--zb-color-surface-background-canvas": "#191919",
       "--zb-color-surface-background-card": "#202020",
@@ -145,7 +149,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-control-border-default": "var(--zb-color-border-stroke-default)",
       "--zb-color-action-background-neutral-hover": "#2c2c2c",
       "--zb-color-action-background-neutral-pressed": "#252525",
-    })
+    });
     assertTokens(warmLight, {
       "--zb-color-surface-background-canvas": "#fbf8f1",
       "--zb-color-surface-background-card": "#fffdf8",
@@ -154,7 +158,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-content-text-primary": "#2f2923",
       "--zb-color-content-text-secondary": "#77695b",
       "--zb-color-action-background-primary": "#5f4938",
-    })
+    });
     assertTokens(warmDark, {
       "--zb-color-surface-background-canvas": "#1c1713",
       "--zb-color-surface-background-card": "#241e19",
@@ -163,7 +167,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-content-text-primary": "#f4ede5",
       "--zb-color-content-text-secondary": "#a89686",
       "--zb-color-action-background-primary": "#dcc1a6",
-    })
+    });
     assertTokens(midnightLight, {
       "--zb-color-surface-background-canvas": "#f6f8ff",
       "--zb-color-surface-background-card": "#ffffff",
@@ -172,7 +176,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-content-text-primary": "#1a2340",
       "--zb-color-content-text-secondary": "#5c6a8a",
       "--zb-color-action-background-primary": "#334e8a",
-    })
+    });
     assertTokens(midnightDark, {
       "--zb-color-surface-background-canvas": "#0b1020",
       "--zb-color-surface-background-card": "#0f1526",
@@ -181,7 +185,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-content-text-primary": "#eef2ff",
       "--zb-color-content-text-secondary": "#8390ad",
       "--zb-color-action-background-primary": "#dbe7ff",
-    })
+    });
     assertTokens(forestLight, {
       "--zb-color-surface-background-canvas": "#f5faf6",
       "--zb-color-surface-background-card": "#fbfefc",
@@ -190,7 +194,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-content-text-primary": "#1d3326",
       "--zb-color-content-text-secondary": "#566f5f",
       "--zb-color-action-background-primary": "#356849",
-    })
+    });
     assertTokens(forestDark, {
       "--zb-color-surface-background-canvas": "#0b1511",
       "--zb-color-surface-background-card": "#101c17",
@@ -199,7 +203,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-content-text-primary": "#e6f1ea",
       "--zb-color-content-text-secondary": "#7f9b8b",
       "--zb-color-action-background-primary": "#b8dfc5",
-    })
+    });
     assertTokens(oceanLight, {
       "--zb-color-surface-background-canvas": "#f3fafb",
       "--zb-color-surface-background-card": "#fbfefe",
@@ -208,7 +212,7 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-content-text-primary": "#16343b",
       "--zb-color-content-text-secondary": "#526f75",
       "--zb-color-action-background-primary": "#287382",
-    })
+    });
     assertTokens(oceanDark, {
       "--zb-color-surface-background-canvas": "#07171d",
       "--zb-color-surface-background-card": "#0b1e25",
@@ -217,33 +221,33 @@ export function register({ readSource, assert, loadModule, test }) {
       "--zb-color-content-text-primary": "#e3f4f7",
       "--zb-color-content-text-secondary": "#789ba2",
       "--zb-color-action-background-primary": "#a7e3ec",
-    })
-  })
+    });
+  });
 
   test("dark themes keep raised chrome and overlays on one surface tier", async () => {
-    const css = await readSource("/src/shared/styles/color-tokens.css")
-    const defaultLight = declarations(readRule(css, ".light"))
-    const defaultDark = merge(defaultLight, declarations(readRule(css, ".dark")))
+    const css = await readSource("/src/shared/styles/color-tokens.css");
+    const defaultLight = declarations(readRule(css, ".light"));
+    const defaultDark = merge(defaultLight, declarations(readRule(css, ".dark")));
     const notionDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="notion"]')),
-    )
+    );
     const warmDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="warm"]')),
-    )
+    );
     const midnightDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="midnight"]')),
-    )
+    );
     const forestDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="forest"]')),
-    )
+    );
     const oceanDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="ocean"]')),
-    )
+    );
 
     for (const [name, palette] of Object.entries({
       defaultDark,
@@ -253,73 +257,76 @@ export function register({ readSource, assert, loadModule, test }) {
       oceanDark,
       notionDark,
     })) {
-      const card = resolve(palette, "--zb-color-surface-background-card")
+      const card = resolve(palette, "--zb-color-surface-background-card");
       assert.equal(
         resolve(palette, "--zb-color-surface-background-overlay"),
         card,
         `${name} overlays should match cards`,
-      )
+      );
       assert.equal(
         resolve(palette, "--zb-color-surface-background-navigation"),
         card,
         `${name} navigation should match cards`,
-      )
+      );
     }
-  })
+  });
 
   test("theme-color synchronization reacts to appearance and family", async () => {
-    const source = await readSource("/src/app/providers/app-providers.tsx")
+    const source = await readSource("/src/app/providers/app-providers.tsx");
 
-    assert.match(source, /const \{ themeFamily \} = useThemeFamily\(\)/)
-    assert.match(source, /dataset\.themeFamily = themeFamily/)
-    assert.match(source, /meta\?\.setAttribute\("content", getComputedStyle\(document\.body\)\.backgroundColor\)/)
-    assert.match(source, /\[resolvedTheme, themeFamily\]/)
-  })
+    assert.match(source, /const \{ themeFamily \} = useThemeFamily\(\)/);
+    assert.match(source, /dataset\.themeFamily = themeFamily/);
+    assert.match(
+      source,
+      /meta\?\.setAttribute\("content", getComputedStyle\(document\.body\)\.backgroundColor\)/,
+    );
+    assert.match(source, /\[resolvedTheme, themeFamily\]/);
+  });
 
   test("all theme palettes provide accessible content and action pairs", async () => {
-    const css = await readSource("/src/shared/styles/color-tokens.css")
-    const defaultLight = declarations(readRule(css, ".light"))
-    const defaultDark = merge(defaultLight, declarations(readRule(css, ".dark")))
+    const css = await readSource("/src/shared/styles/color-tokens.css");
+    const defaultLight = declarations(readRule(css, ".light"));
+    const defaultDark = merge(defaultLight, declarations(readRule(css, ".dark")));
     const notionLight = merge(
       defaultLight,
       declarations(readRule(css, '.light[data-theme-family="notion"]')),
-    )
+    );
     const notionDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="notion"]')),
-    )
+    );
     const warmLight = merge(
       defaultLight,
       declarations(readRule(css, '.light[data-theme-family="warm"]')),
-    )
+    );
     const warmDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="warm"]')),
-    )
+    );
     const midnightLight = merge(
       defaultLight,
       declarations(readRule(css, '.light[data-theme-family="midnight"]')),
-    )
+    );
     const midnightDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="midnight"]')),
-    )
+    );
     const forestLight = merge(
       defaultLight,
       declarations(readRule(css, '.light[data-theme-family="forest"]')),
-    )
+    );
     const forestDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="forest"]')),
-    )
+    );
     const oceanLight = merge(
       defaultLight,
       declarations(readRule(css, '.light[data-theme-family="ocean"]')),
-    )
+    );
     const oceanDark = merge(
       defaultDark,
       declarations(readRule(css, '.dark[data-theme-family="ocean"]')),
-    )
+    );
 
     for (const [name, palette] of Object.entries({
       defaultLight,
@@ -342,14 +349,14 @@ export function register({ readSource, assert, loadModule, test }) {
           `--zb-color-surface-background-${surface}`,
           4.5,
           `${name} primary/${surface}`,
-        )
+        );
         assertContrast(
           palette,
           "--zb-color-content-text-secondary",
           `--zb-color-surface-background-${surface}`,
           4.5,
           `${name} secondary/${surface}`,
-        )
+        );
       }
 
       assertContrast(
@@ -358,21 +365,21 @@ export function register({ readSource, assert, loadModule, test }) {
         "--zb-color-action-background-primary",
         4.5,
         `${name} primary action`,
-      )
+      );
       assertContrast(
         palette,
         "--zb-color-action-text-link",
         "--zb-color-surface-background-canvas",
         4.5,
         `${name} link`,
-      )
+      );
       assertContrast(
         palette,
         "--zb-color-action-ring-focus",
         "--zb-color-surface-background-canvas",
         3,
         `${name} focus ring`,
-      )
+      );
 
       for (const feedback of ["success", "warning", "error"]) {
         assertContrast(
@@ -381,17 +388,17 @@ export function register({ readSource, assert, loadModule, test }) {
           `--zb-color-feedback-background-${feedback}-subtle`,
           4.5,
           `${name} ${feedback} feedback`,
-        )
+        );
       }
     }
-  })
+  });
 }
 
 function readRule(css, selector) {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const rule = css.match(new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\n\\}`))?.[1]
-  if (!rule) throw new Error(`Missing ${selector}`)
-  return rule
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const rule = css.match(new RegExp(`${escaped}\\s*\\{([\\s\\S]*?)\\n\\}`))?.[1];
+  if (!rule) throw new Error(`Missing ${selector}`);
+  return rule;
 }
 
 function declarations(rule) {
@@ -399,44 +406,47 @@ function declarations(rule) {
     [...rule.matchAll(/(--zb-color-[a-z0-9-]+):\s*(#[0-9a-f]{6}|var\([^)]+\));/gi)].map(
       ([, name, value]) => [name, value],
     ),
-  )
+  );
 }
 
 function merge(base, overrides) {
-  return new Map([...base, ...overrides])
+  return new Map([...base, ...overrides]);
 }
 
 function resolve(palette, name, seen = new Set()) {
-  if (seen.has(name)) throw new Error(`Token cycle at ${name}`)
-  seen.add(name)
-  const value = palette.get(name)
-  if (!value) throw new Error(`Missing ${name}`)
-  const reference = value.match(/^var\((--[^)]+)\)$/)?.[1]
-  return reference ? resolve(palette, reference, seen) : value
+  if (seen.has(name)) throw new Error(`Token cycle at ${name}`);
+  seen.add(name);
+  const value = palette.get(name);
+  if (!value) throw new Error(`Missing ${name}`);
+  const reference = value.match(/^var\((--[^)]+)\)$/)?.[1];
+  return reference ? resolve(palette, reference, seen) : value;
 }
 
 function assertContrast(palette, foreground, background, minimum, message) {
-  const ratio = contrast(resolve(palette, foreground), resolve(palette, background))
-  if (ratio < minimum) throw new Error(`${message} is ${ratio.toFixed(2)}:1; expected ${minimum}:1`)
+  const ratio = contrast(resolve(palette, foreground), resolve(palette, background));
+  if (ratio < minimum)
+    throw new Error(`${message} is ${ratio.toFixed(2)}:1; expected ${minimum}:1`);
 }
 
 function assertTokens(palette, expected) {
   for (const [name, value] of Object.entries(expected)) {
     if (palette.get(name) !== value) {
-      throw new Error(`${name} is ${palette.get(name)}; expected ${value}`)
+      throw new Error(`${name} is ${palette.get(name)}; expected ${value}`);
     }
   }
 }
 
 function contrast(first, second) {
-  const [lighter, darker] = [luminance(first), luminance(second)].sort((a, b) => b - a)
-  return (lighter + 0.05) / (darker + 0.05)
+  const [lighter, darker] = [luminance(first), luminance(second)].sort((a, b) => b - a);
+  return (lighter + 0.05) / (darker + 0.05);
 }
 
 function luminance(hex) {
-  const channels = [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255)
+  const channels = [1, 3, 5].map(
+    (offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255,
+  );
   const [red, green, blue] = channels.map((channel) =>
     channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
-  )
-  return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+  );
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }

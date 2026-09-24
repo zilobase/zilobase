@@ -68,23 +68,24 @@ beforeEach(() => {
 });
 
 test("mail properties list and serialize definitions with active workspace members", async () => {
-  state.selectResults.push([
-    propertyRow({ options: [{ color: "blue", id: "open", name: "Open" }], type: "status" }),
-  ], [
-    { email: "ada@example.com", id: "user-1", image: null, name: "Ada" },
-  ]);
+  state.selectResults.push(
+    [propertyRow({ options: [{ color: "blue", id: "open", name: "Open" }], type: "status" })],
+    [{ email: "ada@example.com", id: "user-1", image: null, name: "Ada" }],
+  );
 
   assert.deepEqual(await listMailProperties("binding-1", "workspace-1"), {
     members: [{ email: "ada@example.com", id: "user-1", image: null, name: "Ada" }],
-    properties: [{
-      bindingId: "binding-1",
-      createdAt: now.toISOString(),
-      id: "property-1",
-      name: "Priority",
-      options: [{ color: "blue", id: "open", name: "Open" }],
-      type: "status",
-      updatedAt: now.toISOString(),
-    }],
+    properties: [
+      {
+        bindingId: "binding-1",
+        createdAt: now.toISOString(),
+        id: "property-1",
+        name: "Priority",
+        options: [{ color: "blue", id: "open", name: "Open" }],
+        type: "status",
+        updatedAt: now.toISOString(),
+      },
+    ],
   });
 });
 
@@ -97,10 +98,21 @@ test("mail property definitions reject malformed names, types, and options", asy
     { name: "x".repeat(101), type: "text" },
     { name: "Priority", type: "unknown" },
     { name: "Priority", options: "open", type: "select" },
-    { name: "Priority", options: new Array(101).fill({ color: "blue", id: "x", name: "X" }), type: "select" },
+    {
+      name: "Priority",
+      options: new Array(101).fill({ color: "blue", id: "x", name: "X" }),
+      type: "select",
+    },
     { name: "Priority", options: [null], type: "select" },
     { name: "Priority", options: [{ color: "", id: "open", name: "Open" }], type: "select" },
-    { name: "Priority", options: [{ color: "blue", id: "open", name: "Open" }, { color: "red", id: "open", name: "Again" }], type: "select" },
+    {
+      name: "Priority",
+      options: [
+        { color: "blue", id: "open", name: "Open" },
+        { color: "red", id: "open", name: "Again" },
+      ],
+      type: "select",
+    },
   ];
   for (const value of invalid) {
     await assert.rejects(createMailProperty({ bindingId: "binding-1", value }), invalidProperty);
@@ -128,7 +140,9 @@ test("mail properties create, update, and delete with stable public errors", asy
   assert.ok(state.mutations.some(({ kind }) => kind === "delete.where"));
 
   state.deleteResults.push([{ id: "property-1" }]);
-  assert.deepEqual(await deleteMailProperty({ bindingId: "binding-1", propertyId: "property-1" }), { success: true });
+  assert.deepEqual(await deleteMailProperty({ bindingId: "binding-1", propertyId: "property-1" }), {
+    success: true,
+  });
   state.deleteResults.push([]);
   await assert.rejects(
     deleteMailProperty({ bindingId: "binding-1", propertyId: "missing" }),
@@ -195,40 +209,52 @@ test("mail person values require active members and list values require an index
   assert.deepEqual(saved.value, ["user-1"]);
 
   prepareSet("person", [[]]);
-  await assert.rejects(setMailThreadPropertyValue({
-    bindingId: "binding-1",
-    gmailAccountId: "account-1",
-    propertyId: "property-1",
-    threadId: "thread-1",
-    value: ["user-1"],
-    workspaceId: "workspace-1",
-  }), invalidValue);
+  await assert.rejects(
+    setMailThreadPropertyValue({
+      bindingId: "binding-1",
+      gmailAccountId: "account-1",
+      propertyId: "property-1",
+      threadId: "thread-1",
+      value: ["user-1"],
+      workspaceId: "workspace-1",
+    }),
+    invalidValue,
+  );
 
-  state.selectResults.push([{ id: "thread-index-1" }], [
-    { propertyId: "property-1", value: "hello" },
-  ]);
-  assert.deepEqual(await listMailThreadPropertyValues({
-    bindingId: "binding-1",
-    gmailAccountId: "account-1",
-    threadId: "thread-1",
-  }), [{ propertyId: "property-1", value: "hello" }]);
+  state.selectResults.push(
+    [{ id: "thread-index-1" }],
+    [{ propertyId: "property-1", value: "hello" }],
+  );
+  assert.deepEqual(
+    await listMailThreadPropertyValues({
+      bindingId: "binding-1",
+      gmailAccountId: "account-1",
+      threadId: "thread-1",
+    }),
+    [{ propertyId: "property-1", value: "hello" }],
+  );
 
   state.selectResults.push([]);
-  await assert.rejects(listMailThreadPropertyValues({
-    bindingId: "binding-1",
-    gmailAccountId: "account-1",
-    threadId: "missing",
-  }), (error: unknown) => error instanceof MailPropertyError && error.status === 404);
+  await assert.rejects(
+    listMailThreadPropertyValues({
+      bindingId: "binding-1",
+      gmailAccountId: "account-1",
+      threadId: "missing",
+    }),
+    (error: unknown) => error instanceof MailPropertyError && error.status === 404,
+  );
 });
 
 function prepareSet(type: string, extraSelects: unknown[][] = []) {
   state.selectResults.push(
-    [propertyRow({
-      options: ["select", "multi_select", "status"].includes(type)
-        ? [{ color: "blue", id: "open", name: "Open" }]
-        : [],
-      type,
-    })],
+    [
+      propertyRow({
+        options: ["select", "multi_select", "status"].includes(type)
+          ? [{ color: "blue", id: "open", name: "Open" }]
+          : [],
+        type,
+      }),
+    ],
     [{ id: "thread-index-1" }],
     ...extraSelects,
   );
@@ -249,10 +275,17 @@ function propertyRow(overrides: Record<string, unknown> = {}) {
 }
 
 function invalidProperty(error: unknown) {
-  return error instanceof MailPropertyError && error.status === 400 &&
-    ["A valid mail property is required.", "Property options are invalid."].includes(error.message);
+  return (
+    error instanceof MailPropertyError &&
+    error.status === 400 &&
+    ["A valid mail property is required.", "Property options are invalid."].includes(error.message)
+  );
 }
 
 function invalidValue(error: unknown) {
-  return error instanceof MailPropertyError && error.status === 400 && error.message === "Property value is invalid.";
+  return (
+    error instanceof MailPropertyError &&
+    error.status === 400 &&
+    error.message === "Property value is invalid."
+  );
 }

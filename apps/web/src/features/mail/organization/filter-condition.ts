@@ -19,26 +19,17 @@ type ConditionPatch = {
   values?: string[];
 };
 
-export function defaultMailFilterValue(
-  property: FilterProperty | undefined,
-): MailFilterValue {
+export function defaultMailFilterValue(property: FilterProperty | undefined): MailFilterValue {
   if (property?.propertyType === "checkbox") return true;
   return property?.valueOptions[0]?.value ?? "";
 }
 
-function replacementOperator(
-  propertyId: string,
-  property: FilterProperty | undefined,
-) {
+function replacementOperator(propertyId: string, property: FilterProperty | undefined) {
   if (propertyId === "categories") return "contains";
-  return getDatabaseFilterOperatorsForType(property?.propertyType ?? "text")[0]
-    ?.value;
+  return getDatabaseFilterOperatorsForType(property?.propertyType ?? "text")[0]?.value;
 }
 
-function coerceFilterValue(
-  value: string,
-  property: FilterProperty | undefined,
-): MailFilterValue {
+function coerceFilterValue(value: string, property: FilterProperty | undefined): MailFilterValue {
   if (property?.propertyType === "checkbox") return value === "true";
   if (property?.propertyType === "number") return Number(value);
   return value;
@@ -52,9 +43,8 @@ export function changeMailFilterCondition(
   const propertyId = patch.propertyId ?? condition.propertyId;
   const property = properties.find((item) => item.id === propertyId);
   const operator =
-    (patch.propertyId
-      ? replacementOperator(propertyId, property)
-      : patch.operator) ?? condition.operator;
+    (patch.propertyId ? replacementOperator(propertyId, property) : patch.operator) ??
+    condition.operator;
   const rawValues = patch.propertyId
     ? [String(defaultMailFilterValue(property))]
     : (patch.values ?? condition.values.map(String));

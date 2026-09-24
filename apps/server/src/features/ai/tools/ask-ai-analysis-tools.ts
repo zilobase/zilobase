@@ -35,13 +35,19 @@ export function buildAnalysisTools(): ToolSet {
   };
 }
 
-export function analyzeDataTable(input: z.infer<z.ZodObject<{
-  operation: typeof operationSchema;
-  table: typeof tableSchema;
-}>>): AgentToolResult<{ table: {
-  columns: Array<{ id: string; label: string; type: string }>;
-  rows: Array<{ cells: Record<string, string>; id: string }>;
-} }> {
+export function analyzeDataTable(
+  input: z.infer<
+    z.ZodObject<{
+      operation: typeof operationSchema;
+      table: typeof tableSchema;
+    }>
+  >,
+): AgentToolResult<{
+  table: {
+    columns: Array<{ id: string; label: string; type: string }>;
+    rows: Array<{ cells: Record<string, string>; id: string }>;
+  };
+}> {
   const width = input.table.columns.length;
   const rows = input.table.rows.map((row) =>
     Array.from({ length: width }, (_, index) => row[index] ?? null),
@@ -59,29 +65,36 @@ export function analyzeDataTable(input: z.infer<z.ZodObject<{
           column,
           count: String(values.filter((value) => value !== null && value !== "").length),
           maximum: numeric.length ? String(Math.max(...numeric)) : "",
-          mean: numeric.length ? String(numeric.reduce((sum, value) => sum + value, 0) / numeric.length) : "",
+          mean: numeric.length
+            ? String(numeric.reduce((sum, value) => sum + value, 0) / numeric.length)
+            : "",
           minimum: numeric.length ? String(Math.min(...numeric)) : "",
           numericCount: String(numeric.length),
         },
         id: `describe-${index}`,
       };
     });
-    return success("Calculated column summaries.", [
-      column("column", "Column", "text"),
-      column("count", "Count", "number"),
-      column("numericCount", "Numeric count", "number"),
-      column("minimum", "Minimum", "number"),
-      column("maximum", "Maximum", "number"),
-      column("mean", "Mean", "number"),
-    ], resultRows);
+    return success(
+      "Calculated column summaries.",
+      [
+        column("column", "Column", "text"),
+        column("count", "Count", "number"),
+        column("numericCount", "Numeric count", "number"),
+        column("minimum", "Minimum", "number"),
+        column("maximum", "Maximum", "number"),
+        column("mean", "Mean", "number"),
+      ],
+      resultRows,
+    );
   }
 
   if (input.operation.kind === "group") {
     const operation = input.operation;
     const groupIndex = requireColumn(input.table.columns, operation.groupBy);
-    const valueIndex = operation.aggregate === "count"
-      ? null
-      : requireColumn(input.table.columns, operation.valueColumn ?? "");
+    const valueIndex =
+      operation.aggregate === "count"
+        ? null
+        : requireColumn(input.table.columns, operation.valueColumn ?? "");
     const groups = new Map<string, number[]>();
     rows.forEach((row) => {
       const key = String(row[groupIndex] ?? "");
@@ -100,10 +113,11 @@ export function analyzeDataTable(input: z.infer<z.ZodObject<{
       },
       id: `group-${index}`,
     }));
-    return success("Calculated grouped results.", [
-      column("group", operation.groupBy, "text"),
-      column("value", operation.aggregate, "number"),
-    ], resultRows);
+    return success(
+      "Calculated grouped results.",
+      [column("group", operation.groupBy, "text"), column("value", operation.aggregate, "number")],
+      resultRows,
+    );
   }
 
   const index = requireColumn(input.table.columns, input.operation.column);
@@ -111,21 +125,28 @@ export function analyzeDataTable(input: z.infer<z.ZodObject<{
     const value = Number(row[index]);
     return Number.isFinite(value) ? [value] : [];
   });
-  const value = input.operation.kind === "count"
-    ? rows.filter((row) => row[index] !== null && row[index] !== "").length
-    : aggregate(numeric, input.operation.kind);
-  return success(`Calculated ${input.operation.kind}.`, [
-    column("operation", "Operation", "text"),
-    column("column", "Column", "text"),
-    column("value", "Value", "number"),
-  ], [{
-    cells: {
-      column: input.operation.column,
-      operation: input.operation.kind,
-      value: String(value),
-    },
-    id: "result",
-  }]);
+  const value =
+    input.operation.kind === "count"
+      ? rows.filter((row) => row[index] !== null && row[index] !== "").length
+      : aggregate(numeric, input.operation.kind);
+  return success(
+    `Calculated ${input.operation.kind}.`,
+    [
+      column("operation", "Operation", "text"),
+      column("column", "Column", "text"),
+      column("value", "Value", "number"),
+    ],
+    [
+      {
+        cells: {
+          column: input.operation.column,
+          operation: input.operation.kind,
+          value: String(value),
+        },
+        id: "result",
+      },
+    ],
+  );
 }
 
 function aggregate(values: number[], kind: "average" | "count" | "maximum" | "minimum" | "sum") {

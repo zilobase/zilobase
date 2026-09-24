@@ -5,7 +5,8 @@ export const MCP_SERVER_CATALOG: readonly McpServerCatalogEntry[] = [
     authMethods: ["oauth", "headers"],
     available: true,
     availabilityReason: null,
-    documentationUrl: "https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp-in-your-ide/set-up-the-github-mcp-server",
+    documentationUrl:
+      "https://docs.github.com/en/copilot/how-tos/provide-context/use-mcp-in-your-ide/set-up-the-github-mcp-server",
     endpoint: "https://api.githubcopilot.com/mcp/",
     icon: "/icons/integrations/github.svg",
     id: "github",
@@ -24,8 +25,10 @@ export const MCP_SERVER_CATALOG: readonly McpServerCatalogEntry[] = [
   {
     authMethods: ["oauth", "headers"],
     available: false,
-    availabilityReason: "Figma must approve Zilobase as a supported remote MCP client before this connection can be used.",
-    documentationUrl: "https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/",
+    availabilityReason:
+      "Figma must approve Zilobase as a supported remote MCP client before this connection can be used.",
+    documentationUrl:
+      "https://developers.figma.com/docs/figma-mcp-server/remote-server-installation/",
     endpoint: "https://mcp.figma.com/mcp",
     icon: "/icons/integrations/figma.svg",
     id: "figma",

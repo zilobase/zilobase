@@ -10,23 +10,23 @@ import { ServiceMutationError } from "../../../shared/errors/service-mutation-er
 
 function executor(records: unknown[]) {
   const builder = {
-    from() { return builder; },
-    where() { return builder; },
-    async limit() { return records; },
+    from() {
+      return builder;
+    },
+    where() {
+      return builder;
+    },
+    async limit() {
+      return records;
+    },
   };
   return { select: () => builder };
 }
 
 test("getDatabaseRecord returns active records and absence", async () => {
   const record = { id: "database-1", workspaceId: "workspace-1" };
-  assert.equal(
-    await getDatabaseRecord("database-1", executor([record]) as never),
-    record,
-  );
-  assert.equal(
-    await getDatabaseRecord("missing", executor([]) as never),
-    undefined,
-  );
+  assert.equal(await getDatabaseRecord("database-1", executor([record]) as never), record);
+  assert.equal(await getDatabaseRecord("missing", executor([]) as never), undefined);
 });
 
 test("getDatabaseRecord supports include-deleted options", async () => {
@@ -74,17 +74,13 @@ test("requireDatabaseEditAccess distinguishes missing and forbidden databases", 
     requireDatabaseEditAccess("missing", "user-1", {
       executor: executor([]) as never,
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
   await assert.rejects(
     requireDatabaseEditAccess("database-1", "user-1", {
       canAccessRecord: async () => false,
-      executor: executor([
-        { id: "database-1", workspaceId: "workspace-1" },
-      ]) as never,
+      executor: executor([{ id: "database-1", workspaceId: "workspace-1" }]) as never,
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 403,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 403,
   );
 });

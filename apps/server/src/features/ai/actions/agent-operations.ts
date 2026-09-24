@@ -1,18 +1,6 @@
 import { getAgentToolDescriptor } from "@zilobase/features/ai-chat/tool-registry";
 import type { UIMessage } from "ai";
-import {
-  and,
-  count,
-  desc,
-  eq,
-  gte,
-  inArray,
-  lt,
-  lte,
-  ne,
-  notInArray,
-  sql,
-} from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, lt, lte, ne, notInArray, sql } from "drizzle-orm";
 
 import { getStringEnv, type RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
@@ -74,8 +62,7 @@ export function readAiAgentLimits(env: RuntimeEnv): AiAgentLimits {
     auditRetentionDays: readBoundedIntegerEnv(env, "AI_AGENT_AUDIT_RETENTION_DAYS", 90, 7, 365),
     cleanupBatchSize: readBoundedIntegerEnv(env, "AI_AGENT_CLEANUP_BATCH_SIZE", 100, 10, 1_000),
     dailyUsageLimitsEnabled:
-      getStringEnv(env, "AI_AGENT_DAILY_USAGE_LIMITS_ENABLED")?.trim().toLowerCase() !==
-      "false",
+      getStringEnv(env, "AI_AGENT_DAILY_USAGE_LIMITS_ENABLED")?.trim().toLowerCase() !== "false",
     maxArtifactBytesPerUserPerDay: readBoundedIntegerEnv(
       env,
       "AI_AGENT_MAX_ARTIFACT_BYTES_PER_USER_PER_DAY",
@@ -151,13 +138,7 @@ export function readAiAgentLimits(env: RuntimeEnv): AiAgentLimits {
       10_000,
       180_000,
     ),
-    turnTimeoutMs: readBoundedIntegerEnv(
-      env,
-      "AI_AGENT_TURN_TIMEOUT_MS",
-      180_000,
-      30_000,
-      600_000,
-    ),
+    turnTimeoutMs: readBoundedIntegerEnv(env, "AI_AGENT_TURN_TIMEOUT_MS", 180_000, 30_000, 600_000),
   };
 }
 
@@ -215,14 +196,15 @@ export async function reserveAiAgentTurn(input: {
         ),
       );
 
-    const rejection = validateTurnInputMetrics(input.metrics, limits) ??
-      await resolveTurnQuotaRejection({
+    const rejection =
+      validateTurnInputMetrics(input.metrics, limits) ??
+      (await resolveTurnQuotaRejection({
         limits,
         now,
         tx,
         userId: input.userId,
         workspaceId: input.workspaceId,
-      });
+      }));
 
     await tx.insert(aiAgentTurn).values({
       agentProfileId: input.agentProfileId ?? null,
@@ -251,17 +233,16 @@ export async function reserveAiAgentTurn(input: {
   });
 }
 
-export async function getAiAgentTurnByClientId(input: {
-  clientTurnId: string;
-  threadId: string;
-}) {
+export async function getAiAgentTurnByClientId(input: { clientTurnId: string; threadId: string }) {
   const [turn] = await db
     .select({ id: aiAgentTurn.id, status: aiAgentTurn.status })
     .from(aiAgentTurn)
-    .where(and(
-      eq(aiAgentTurn.threadId, input.threadId),
-      eq(aiAgentTurn.clientTurnId, input.clientTurnId),
-    ))
+    .where(
+      and(
+        eq(aiAgentTurn.threadId, input.threadId),
+        eq(aiAgentTurn.clientTurnId, input.clientTurnId),
+      ),
+    )
     .limit(1);
   return turn ?? null;
 }
@@ -335,7 +316,9 @@ export async function startAiAgentToolExecution(input: {
       connectionId: input.connectionId,
       createdAt: now,
       effect: input.actualEffect
-        ? input.actualEffect === "read" ? "read" : "write"
+        ? input.actualEffect === "read"
+          ? "read"
+          : "write"
         : getAiAgentToolEffect(input.toolName),
       externalToolName: input.externalToolName,
       id: crypto.randomUUID(),
@@ -446,10 +429,7 @@ export async function assertAiAgentArtifactQuota(input: {
   }
 }
 
-export async function listAiAgentTurnsForWorkspace(input: {
-  limit?: number;
-  workspaceId: string;
-}) {
+export async function listAiAgentTurnsForWorkspace(input: { limit?: number; workspaceId: string }) {
   return db
     .select({
       attachmentCount: aiAgentTurn.attachmentCount,
@@ -476,10 +456,7 @@ export async function listAiAgentTurnsForWorkspace(input: {
     .limit(Math.max(1, Math.min(input.limit ?? 50, 100)));
 }
 
-export async function listAiAgentToolExecutions(input: {
-  turnId: string;
-  workspaceId: string;
-}) {
+export async function listAiAgentToolExecutions(input: { turnId: string; workspaceId: string }) {
   return db
     .select({
       completedAt: aiAgentToolExecution.completedAt,
@@ -502,10 +479,7 @@ export async function listAiAgentToolExecutions(input: {
     .orderBy(aiAgentToolExecution.createdAt);
 }
 
-export async function cleanupExpiredAiAgentData(
-  env: RuntimeEnv,
-  now = new Date(),
-) {
+export async function cleanupExpiredAiAgentData(env: RuntimeEnv, now = new Date()) {
   const limits = readAiAgentLimits(env);
   const storage = createImageStorage(env);
   const [uploads, artifacts] = await Promise.all([
@@ -522,15 +496,18 @@ export async function cleanupExpiredAiAgentData(
   ]);
   const deletedUploadIds = await deleteStoredObjects(storage, uploads);
   const deletedArtifactIds = await deleteStoredObjects(storage, artifacts);
-  const expiredDatasets = await db.select({ id: aiMcpDataset.id })
+  const expiredDatasets = await db
+    .select({ id: aiMcpDataset.id })
     .from(aiMcpDataset)
     .where(lte(aiMcpDataset.expiresAt, now))
     .limit(limits.cleanupBatchSize);
   if (expiredDatasets.length > 0) {
-    await db.delete(aiMcpDataset).where(inArray(
-      aiMcpDataset.id,
-      expiredDatasets.map((dataset) => dataset.id),
-    ));
+    await db.delete(aiMcpDataset).where(
+      inArray(
+        aiMcpDataset.id,
+        expiredDatasets.map((dataset) => dataset.id),
+      ),
+    );
   }
 
   if (deletedUploadIds.length > 0) {
@@ -577,9 +554,7 @@ export async function cleanupExpiredAiAgentData(
       ),
     );
 
-  const retentionBefore = new Date(
-    now.getTime() - limits.auditRetentionDays * DAY_MS,
-  );
+  const retentionBefore = new Date(now.getTime() - limits.auditRetentionDays * DAY_MS);
   await db
     .delete(aiAgentActionReceipt)
     .where(
@@ -591,10 +566,7 @@ export async function cleanupExpiredAiAgentData(
   await db
     .delete(aiAgentTurn)
     .where(
-      and(
-        lt(aiAgentTurn.createdAt, retentionBefore),
-        notInArray(aiAgentTurn.status, ["running"]),
-      ),
+      and(lt(aiAgentTurn.createdAt, retentionBefore), notInArray(aiAgentTurn.status, ["running"])),
     );
 
   return {
@@ -607,24 +579,25 @@ export async function cleanupExpiredAiAgentData(
 export function normalizeAiAgentErrorCode(error: unknown) {
   if (error instanceof AiAgentOperationalLimitError) return error.code;
   const name = error instanceof Error ? error.name.toLowerCase() : "";
-  const message = error instanceof Error
-    ? error.message.toLowerCase()
-    : typeof error === "string"
-      ? error.toLowerCase()
-      : "";
+  const message =
+    error instanceof Error
+      ? error.message.toLowerCase()
+      : typeof error === "string"
+        ? error.toLowerCase()
+        : "";
 
   if (name === "aborterror" || message.includes("abort")) return "cancelled";
   if (message.includes("timeout") || message.includes("timed out")) return "provider_timeout";
-  if (message.includes("rate limit") || message.includes("too many requests")) return "provider_rate_limited";
+  if (message.includes("rate limit") || message.includes("too many requests"))
+    return "provider_rate_limited";
   if (message.includes("forbidden") || message.includes("permission")) return "permission_denied";
   if (message.includes("validation") || message.includes("invalid")) return "invalid_request";
-  if (message.includes("not configured") || message.includes("unavailable")) return "capability_unavailable";
+  if (message.includes("not configured") || message.includes("unavailable"))
+    return "capability_unavailable";
   return "provider_or_tool_failed";
 }
 
-export function getAiAgentToolEffect(
-  toolName: string,
-): "read" | "write" | "analysis" | "artifact" {
+export function getAiAgentToolEffect(toolName: string): "read" | "write" | "analysis" | "artifact" {
   const descriptor = getAgentToolDescriptor(toolName);
   if (!descriptor) {
     throw new Error(`Agent tool ${toolName} has no trusted audit descriptor.`);
@@ -632,10 +605,7 @@ export function getAiAgentToolEffect(
   return descriptor.effect;
 }
 
-function validateTurnInputMetrics(
-  metrics: AiAgentTurnMetrics,
-  limits: AiAgentLimits,
-) {
+function validateTurnInputMetrics(metrics: AiAgentTurnMetrics, limits: AiAgentLimits) {
   if (metrics.inputMessageCount > limits.maxInputMessages) {
     return operationalRejection(
       "input_message_limit_exceeded",
@@ -684,10 +654,7 @@ async function resolveTurnQuotaRejection(input: {
       .select({ value: count() })
       .from(aiAgentTurn)
       .where(
-        and(
-          eq(aiAgentTurn.workspaceId, input.workspaceId),
-          eq(aiAgentTurn.status, "running"),
-        ),
+        and(eq(aiAgentTurn.workspaceId, input.workspaceId), eq(aiAgentTurn.status, "running")),
       ),
     input.tx
       .select({
@@ -712,10 +679,7 @@ async function resolveTurnQuotaRejection(input: {
       15,
     );
   }
-  if (
-    Number(workspaceConcurrent[0]?.value ?? 0) >=
-      input.limits.maxConcurrentTurnsPerWorkspace
-  ) {
+  if (Number(workspaceConcurrent[0]?.value ?? 0) >= input.limits.maxConcurrentTurnsPerWorkspace) {
     return operationalRejection(
       "workspace_concurrency_exceeded",
       "This workspace is currently at its Ask AI concurrency limit.",
@@ -741,11 +705,7 @@ async function resolveTurnQuotaRejection(input: {
   return null;
 }
 
-function operationalRejection(
-  code: string,
-  message: string,
-  retryAfterSeconds: number,
-) {
+function operationalRejection(code: string, message: string, retryAfterSeconds: number) {
   return { code, message, retryAfterSeconds };
 }
 

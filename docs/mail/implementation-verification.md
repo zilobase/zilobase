@@ -34,8 +34,8 @@ Pub/Sub push through an operator-controlled tunnel, and desktop interactive OAut
 remain pending the two controlled test accounts and configuration.
 
 - At inspection time, Node had its runtime mail flag disabled and no Gmail OAuth
-credentials. The hosted adapter profile had the three OAuth values and runtime
-mail enabled, but its frontend flag disabled. No credentials are copied into this
-report. Follow
-[gmail-deployment.md](gmail-deployment.md) to enable the desired local profile and
-complete the real-Google acceptance matrix.
+  credentials. The hosted adapter profile had the three OAuth values and runtime
+  mail enabled, but its frontend flag disabled. No credentials are copied into this
+  report. Follow
+  [gmail-deployment.md](gmail-deployment.md) to enable the desired local profile and
+  complete the real-Google acceptance matrix.

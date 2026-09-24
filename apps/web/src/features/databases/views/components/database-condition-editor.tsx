@@ -1,229 +1,196 @@
-import type { DatabaseCondition, DatabaseConditionUpdatePatch } from "../model/filter-sort-contracts";
-import {
-  CalendarIcon,
-  ChevronDownIcon,
-  GripVertical,
-  X
-} from "@/shared/components/icons"
-import { Reorder, useDragControls } from "framer-motion"
-import {
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode
-} from "react"
-import { flushSync } from "react-dom"
+import type {
+  DatabaseCondition,
+  DatabaseConditionUpdatePatch,
+} from "../model/filter-sort-contracts";
+import { CalendarIcon, ChevronDownIcon, GripVertical, X } from "@/shared/components/icons";
+import { Reorder, useDragControls } from "framer-motion";
+import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 
-import { Button } from "@/shared/ui/button"
-import { DateCalendar } from "@/shared/ui/calendar"
-import { Checkbox } from "@/shared/ui/checkbox"
-import { Input } from "@/shared/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/shared/ui/select"
-import { cn } from "@/shared/lib/utils"
-import { getColorTokenBadgeClassName } from "@/shared/lib/color-tokens"
+import { Button } from "@/shared/ui/button";
+import { DateCalendar } from "@/shared/ui/calendar";
+import { Checkbox } from "@/shared/ui/checkbox";
+import { Input } from "@/shared/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { cn } from "@/shared/lib/utils";
+import { getColorTokenBadgeClassName } from "@/shared/lib/color-tokens";
 
 import {
   getDatabaseFilterOperatorsForType,
-  type DatabasePropertyFilterOperator
-} from "../model/database-view-config"
-import { isDateLikePropertyType } from "../../schema/property-catalog"
+  type DatabasePropertyFilterOperator,
+} from "../model/database-view-config";
+import { isDateLikePropertyType } from "../../schema/property-catalog";
 import type { DatabaseSearchableMenuOption } from "../menu-option-contracts";
 
-type DatabaseConditionEditorLayout = "inline" | "stacked"
+type DatabaseConditionEditorLayout = "inline" | "stacked";
 
 type DatabaseConditionEditorDrag = {
-  ariaLabel: string
-  isDragging: boolean
-  onDragEnd: () => void
-  onDragStart: () => void
-  value: string
-}
+  ariaLabel: string;
+  isDragging: boolean;
+  onDragEnd: () => void;
+  onDragStart: () => void;
+  value: string;
+};
 
-const DEFAULT_RELATIVE_DATE_FILTER_VALUE = "relative:this:week"
+const DEFAULT_RELATIVE_DATE_FILTER_VALUE = "relative:this:week";
 
 const databaseRelativeDateDirections = [
   { label: "Past", value: "past" },
   { label: "Next", value: "next" },
-  { label: "This", value: "this" }
-] as const
+  { label: "This", value: "this" },
+] as const;
 
 const databaseRelativeDateUnits = [
   { label: "day", value: "day" },
   { label: "week", value: "week" },
   { label: "month", value: "month" },
-  { label: "year", value: "year" }
-] as const
+  { label: "year", value: "year" },
+] as const;
 
 const dateFilterCalendarClassNames = {
   root: "relative w-full",
   month: "w-full",
   month_grid: "w-full",
-  months: "w-full"
-}
+  months: "w-full",
+};
 
 function conditionOperatorNeedsValue(operator: DatabasePropertyFilterOperator) {
-  return operator !== "is_empty" && operator !== "is_not_empty"
+  return operator !== "is_empty" && operator !== "is_not_empty";
 }
 
 function isDateConditionType(propertyType: string) {
-  return isDateLikePropertyType(propertyType)
+  return isDateLikePropertyType(propertyType);
 }
 
 function getConditionInputType(propertyType: string) {
   if (isDateConditionType(propertyType)) {
-    return "date"
+    return "date";
   }
 
-  return propertyType === "number" ? "number" : "text"
+  return propertyType === "number" ? "number" : "text";
 }
 
 function parseRelativeDateFilterValue(value: string | undefined) {
-  const [, direction, unit] = (
-    value ?? DEFAULT_RELATIVE_DATE_FILTER_VALUE
-  ).split(":")
+  const [, direction, unit] = (value ?? DEFAULT_RELATIVE_DATE_FILTER_VALUE).split(":");
 
   return {
-    direction: databaseRelativeDateDirections.some(
-      (item) => item.value === direction
-    )
+    direction: databaseRelativeDateDirections.some((item) => item.value === direction)
       ? direction
       : "this",
-    unit: databaseRelativeDateUnits.some((item) => item.value === unit)
-      ? unit
-      : "week"
-  }
+    unit: databaseRelativeDateUnits.some((item) => item.value === unit) ? unit : "week",
+  };
 }
 
 function createRelativeDateFilterValue(direction: string, unit: string) {
-  return `relative:${direction}:${unit}`
+  return `relative:${direction}:${unit}`;
 }
 
 function parseDateInput(value: string) {
-  const trimmedValue = value.trim()
+  const trimmedValue = value.trim();
 
   if (!trimmedValue) {
-    return null
+    return null;
   }
 
-  const parsedDate = dateValueToDate(trimmedValue)
+  const parsedDate = dateValueToDate(trimmedValue);
 
-  return parsedDate ? toDateOnlyValue(parsedDate) : undefined
+  return parsedDate ? toDateOnlyValue(parsedDate) : undefined;
 }
 
 function dateValueToDate(value: string | undefined) {
   if (!value) {
-    return null
+    return null;
   }
 
-  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
 
   if (dateOnlyMatch) {
-    const year = Number(dateOnlyMatch[1])
-    const month = Number(dateOnlyMatch[2])
-    const day = Number(dateOnlyMatch[3])
-    const date = new Date(year, month - 1, day)
+    const year = Number(dateOnlyMatch[1]);
+    const month = Number(dateOnlyMatch[2]);
+    const day = Number(dateOnlyMatch[3]);
+    const date = new Date(year, month - 1, day);
 
-    return date.getFullYear() === year &&
-      date.getMonth() === month - 1 &&
-      date.getDate() === day
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
       ? date
-      : null
+      : null;
   }
 
-  const date = new Date(value)
+  const date = new Date(value);
 
-  return Number.isNaN(date.getTime()) ? null : date
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function toDateOnlyValue(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
 
-  return `${year}-${month}-${day}`
+  return `${year}-${month}-${day}`;
 }
 
-function getCalendarDateFromPointerEvent(
-  event: ReactPointerEvent<HTMLDivElement>
-) {
-  if (
-    event.button !== 0 ||
-    !event.isPrimary ||
-    !(event.target instanceof Element)
-  ) {
-    return null
+function getCalendarDateFromPointerEvent(event: ReactPointerEvent<HTMLDivElement>) {
+  if (event.button !== 0 || !event.isPrimary || !(event.target instanceof Element)) {
+    return null;
   }
 
-  const dayButton = event.target.closest<HTMLButtonElement>(
-    "[data-calendar-date]"
-  )
+  const dayButton = event.target.closest<HTMLButtonElement>("[data-calendar-date]");
 
-  if (
-    !dayButton ||
-    dayButton.disabled ||
-    dayButton.getAttribute("aria-disabled") === "true"
-  ) {
-    return null
+  if (!dayButton || dayButton.disabled || dayButton.getAttribute("aria-disabled") === "true") {
+    return null;
   }
 
-  return dateValueToDate(dayButton.dataset.calendarDate)
+  return dateValueToDate(dayButton.dataset.calendarDate);
 }
 
 function getDateFilterValueLabel(values: string[]) {
-  return values[0]?.slice(0, 10) || "Date"
+  return values[0]?.slice(0, 10) || "Date";
 }
 
 function getDateBetweenFilterValueLabel(values: string[]) {
-  const startValue = values[0]?.slice(0, 10)
-  const endValue = values[1]?.slice(0, 10)
+  const startValue = values[0]?.slice(0, 10);
+  const endValue = values[1]?.slice(0, 10);
 
   if (startValue && endValue) {
-    return `${startValue} - ${endValue}`
+    return `${startValue} - ${endValue}`;
   }
 
-  return startValue || "Date range"
+  return startValue || "Date range";
 }
 
 function getNextConditionValuesForOperator(
   condition: DatabaseCondition,
-  operator: DatabasePropertyFilterOperator
+  operator: DatabasePropertyFilterOperator,
 ) {
   if (!conditionOperatorNeedsValue(operator)) {
-    return []
+    return [];
   }
 
   if (operator === "is_relative_to_today") {
     return [
       condition.values[0]?.startsWith("relative:")
         ? condition.values[0]
-        : DEFAULT_RELATIVE_DATE_FILTER_VALUE
-    ]
+        : DEFAULT_RELATIVE_DATE_FILTER_VALUE,
+    ];
   }
 
   if (operator === "is_between") {
-    return condition.values.slice(0, 2)
+    return condition.values.slice(0, 2);
   }
 
-  return condition.values.slice(0, 1)
+  return condition.values.slice(0, 1);
 }
 
 function DateConditionInput({
   label,
   value,
   onChange,
-  onCommit
+  onCommit,
 }: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  onCommit: (value: string) => void
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  onCommit: (value: string) => void;
 }) {
   return (
     <div className="relative min-w-0 overflow-hidden rounded-md border bg-transparent">
@@ -235,80 +202,78 @@ function DateConditionInput({
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
-            event.preventDefault()
-            onCommit(event.currentTarget.value)
+            event.preventDefault();
+            onCommit(event.currentTarget.value);
           }
         }}
         placeholder={label}
         value={value}
       />
     </div>
-  )
+  );
 }
 
 function DatabaseDateConditionEditor({
   values,
   onComplete,
-  onValuesChange
+  onValuesChange,
 }: {
-  values: string[]
-  onComplete: () => void
-  onValuesChange: (values: string[]) => void
+  values: string[];
+  onComplete: () => void;
+  onValuesChange: (values: string[]) => void;
 }) {
-  const [dateDraft, setDateDraft] = useState<string | null>(null)
-  const pointerSelectedDateRef = useRef<string | null>(null)
-  const dateValue = values[0] ?? ""
-  const selectedDate = dateValue
-    ? (dateValueToDate(dateValue) ?? undefined)
-    : undefined
+  const [dateDraft, setDateDraft] = useState<string | null>(null);
+  const pointerSelectedDateRef = useRef<string | null>(null);
+  const dateValue = values[0] ?? "";
+  const selectedDate = dateValue ? (dateValueToDate(dateValue) ?? undefined) : undefined;
 
   const commitDateInput = (inputValue: string) => {
-    const parsedValue = parseDateInput(inputValue)
+    const parsedValue = parseDateInput(inputValue);
 
-    setDateDraft(null)
+    setDateDraft(null);
 
     if (parsedValue === undefined) {
-      return
+      return;
     }
 
-    onValuesChange(parsedValue === null ? [] : [parsedValue])
-  }
+    onValuesChange(parsedValue === null ? [] : [parsedValue]);
+  };
 
   const setSelectedDate = (date: Date | undefined, complete = true) => {
     if (!date) {
-      return
+      return;
     }
 
-    flushSync(() => onValuesChange([toDateOnlyValue(date)]))
+    flushSync(() => onValuesChange([toDateOnlyValue(date)]));
 
     if (complete) {
-      onComplete()
+      onComplete();
     }
-  }
+  };
 
   const selectDateFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const date = getCalendarDateFromPointerEvent(event)
+    const date = getCalendarDateFromPointerEvent(event);
 
     if (!date) {
-      return
+      return;
     }
 
-    pointerSelectedDateRef.current = toDateOnlyValue(date)
-    setSelectedDate(date, false)
-    window.setTimeout(onComplete, 0)
-  }
+    pointerSelectedDateRef.current = toDateOnlyValue(date);
+    setSelectedDate(date, false);
+    window.setTimeout(onComplete, 0);
+  };
 
   const selectDateFromClick = (date: Date) => {
-    const dateValue = toDateOnlyValue(date)
+    const dateValue = toDateOnlyValue(date);
 
     if (pointerSelectedDateRef.current === dateValue) {
-      pointerSelectedDateRef.current = null
-      onComplete()
-      return
+      pointerSelectedDateRef.current = null;
+      onComplete();
+      return;
     }
 
-    setSelectedDate(date)
-  }
+    setSelectedDate(date);
+  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -328,110 +293,102 @@ function DatabaseDateConditionEditor({
         />
       </div>
     </div>
-  )
+  );
 }
 
 function DatabaseDateBetweenConditionEditor({
   values,
   onComplete,
-  onValuesChange
+  onValuesChange,
 }: {
-  values: string[]
-  onComplete: () => void
-  onValuesChange: (values: string[]) => void
+  values: string[];
+  onComplete: () => void;
+  onValuesChange: (values: string[]) => void;
 }) {
-  const [startDraft, setStartDraft] = useState<string | null>(null)
-  const [endDraft, setEndDraft] = useState<string | null>(null)
-  const startValue = values[0] ?? ""
-  const endValue = values[1] ?? ""
-  const selectedStartDate = startValue
-    ? (dateValueToDate(startValue) ?? undefined)
-    : undefined
-  const selectedEndDate = endValue
-    ? (dateValueToDate(endValue) ?? undefined)
-    : undefined
-  const rangeStartPending = Boolean(selectedStartDate && !selectedEndDate)
-  const pointerSelectedDateRef = useRef<string | null>(null)
-  const pointerCompletedRangeRef = useRef(false)
+  const [startDraft, setStartDraft] = useState<string | null>(null);
+  const [endDraft, setEndDraft] = useState<string | null>(null);
+  const startValue = values[0] ?? "";
+  const endValue = values[1] ?? "";
+  const selectedStartDate = startValue ? (dateValueToDate(startValue) ?? undefined) : undefined;
+  const selectedEndDate = endValue ? (dateValueToDate(endValue) ?? undefined) : undefined;
+  const rangeStartPending = Boolean(selectedStartDate && !selectedEndDate);
+  const pointerSelectedDateRef = useRef<string | null>(null);
+  const pointerCompletedRangeRef = useRef(false);
 
   const commitDateInput = (inputValue: string, field: "end" | "start") => {
-    const parsedValue = parseDateInput(inputValue)
+    const parsedValue = parseDateInput(inputValue);
 
     if (field === "start") {
-      setStartDraft(null)
+      setStartDraft(null);
     } else {
-      setEndDraft(null)
+      setEndDraft(null);
     }
 
     if (parsedValue === undefined) {
-      return
+      return;
     }
 
-    const nextValues = [...values]
+    const nextValues = [...values];
 
     if (field === "start") {
-      nextValues[0] = parsedValue ?? ""
+      nextValues[0] = parsedValue ?? "";
     } else {
-      nextValues[1] = parsedValue ?? ""
+      nextValues[1] = parsedValue ?? "";
     }
 
-    onValuesChange(nextValues.filter(Boolean))
-  }
+    onValuesChange(nextValues.filter(Boolean));
+  };
 
   const setSelectedDateRange = (date: Date, complete = true) => {
     if (!rangeStartPending || !selectedStartDate) {
-      flushSync(() => onValuesChange([toDateOnlyValue(date)]))
-      return
+      flushSync(() => onValuesChange([toDateOnlyValue(date)]));
+      return;
     }
 
     const range =
       date < selectedStartDate
         ? { from: date, to: selectedStartDate }
-        : { from: selectedStartDate, to: date }
+        : { from: selectedStartDate, to: date };
 
-    flushSync(() =>
-      onValuesChange([toDateOnlyValue(range.from), toDateOnlyValue(range.to)])
-    )
+    flushSync(() => onValuesChange([toDateOnlyValue(range.from), toDateOnlyValue(range.to)]));
 
     if (complete) {
-      onComplete()
+      onComplete();
     }
-  }
+  };
 
-  const selectDateRangeFromPointer = (
-    event: ReactPointerEvent<HTMLDivElement>
-  ) => {
-    const date = getCalendarDateFromPointerEvent(event)
+  const selectDateRangeFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const date = getCalendarDateFromPointerEvent(event);
 
     if (!date) {
-      return
+      return;
     }
 
-    pointerSelectedDateRef.current = toDateOnlyValue(date)
-    pointerCompletedRangeRef.current = rangeStartPending
-    setSelectedDateRange(date, false)
+    pointerSelectedDateRef.current = toDateOnlyValue(date);
+    pointerCompletedRangeRef.current = rangeStartPending;
+    setSelectedDateRange(date, false);
 
     if (pointerCompletedRangeRef.current) {
-      window.setTimeout(onComplete, 0)
+      window.setTimeout(onComplete, 0);
     }
-  }
+  };
 
   const selectDateRangeFromClick = (date: Date) => {
-    const dateValue = toDateOnlyValue(date)
+    const dateValue = toDateOnlyValue(date);
 
     if (pointerSelectedDateRef.current === dateValue) {
-      pointerSelectedDateRef.current = null
+      pointerSelectedDateRef.current = null;
 
       if (pointerCompletedRangeRef.current) {
-        pointerCompletedRangeRef.current = false
-        onComplete()
+        pointerCompletedRangeRef.current = false;
+        onComplete();
       }
 
-      return
+      return;
     }
 
-    setSelectedDateRange(date)
-  }
+    setSelectedDateRange(date);
+  };
 
   return (
     <div className="flex flex-col gap-2">
@@ -459,26 +416,24 @@ function DatabaseDateBetweenConditionEditor({
         />
       </div>
     </div>
-  )
+  );
 }
 
 function DatabaseRelativeDateConditionEditor({
   value,
-  onValueChange
+  onValueChange,
 }: {
-  value: string | undefined
-  onValueChange: (value: string) => void
+  value: string | undefined;
+  onValueChange: (value: string) => void;
 }) {
-  const relativeDateValue = parseRelativeDateFilterValue(value)
+  const relativeDateValue = parseRelativeDateFilterValue(value);
 
   return (
     <div className="w-full">
       <div className="grid grid-cols-2 gap-2">
         <Select
           onValueChange={(direction) =>
-            onValueChange(
-              createRelativeDateFilterValue(direction, relativeDateValue.unit)
-            )
+            onValueChange(createRelativeDateFilterValue(direction, relativeDateValue.unit))
           }
           value={relativeDateValue.direction}
         >
@@ -495,9 +450,7 @@ function DatabaseRelativeDateConditionEditor({
         </Select>
         <Select
           onValueChange={(unit) =>
-            onValueChange(
-              createRelativeDateFilterValue(relativeDateValue.direction, unit)
-            )
+            onValueChange(createRelativeDateFilterValue(relativeDateValue.direction, unit))
           }
           value={relativeDateValue.unit}
         >
@@ -517,18 +470,18 @@ function DatabaseRelativeDateConditionEditor({
         Filter will update with the current date
       </div>
     </div>
-  )
+  );
 }
 
 function DatabaseDateConditionValueControl({
   condition,
-  onUpdate
+  onUpdate,
 }: {
-  condition: DatabaseCondition
-  onUpdate: (patch: DatabaseConditionUpdatePatch) => void
+  condition: DatabaseCondition;
+  onUpdate: (patch: DatabaseConditionUpdatePatch) => void;
 }) {
-  const [datePopoverOpen, setDatePopoverOpen] = useState(false)
-  const updateValues = (values: string[]) => onUpdate({ values })
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
+  const updateValues = (values: string[]) => onUpdate({ values });
 
   if (condition.operator === "is_relative_to_today") {
     return (
@@ -536,10 +489,10 @@ function DatabaseDateConditionValueControl({
         onValueChange={(value) => updateValues([value])}
         value={condition.values[0]}
       />
-    )
+    );
   }
 
-  const isBetweenCondition = condition.operator === "is_between"
+  const isBetweenCondition = condition.operator === "is_between";
 
   return (
     <Popover modal open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
@@ -582,60 +535,51 @@ function DatabaseDateConditionValueControl({
         ) : null}
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
-function DatabaseChoiceOptionLabel({
-  option
-}: {
-  option: DatabaseSearchableMenuOption
-}) {
+function DatabaseChoiceOptionLabel({ option }: { option: DatabaseSearchableMenuOption }) {
   return option.color ? (
-    <span className={getColorTokenBadgeClassName(option.color)}>
-      {option.label}
-    </span>
+    <span className={getColorTokenBadgeClassName(option.color)}>{option.label}</span>
   ) : (
     <span className="truncate">{option.label}</span>
-  )
+  );
 }
 
 function DatabaseChoiceConditionValueControl({
   condition,
   onUpdate,
-  valueOptions
+  valueOptions,
 }: {
-  condition: DatabaseCondition
-  onUpdate: (patch: DatabaseConditionUpdatePatch) => void
-  valueOptions: DatabaseSearchableMenuOption[]
+  condition: DatabaseCondition;
+  onUpdate: (patch: DatabaseConditionUpdatePatch) => void;
+  valueOptions: DatabaseSearchableMenuOption[];
 }) {
-  const selectedValues = new Set(condition.values)
-  const unavailableLabel = ["select", "status", "multi_select"].includes(
-    condition.propertyType
-  )
+  const selectedValues = new Set(condition.values);
+  const unavailableLabel = ["select", "status", "multi_select"].includes(condition.propertyType)
     ? "Deleted option"
-    : "Unavailable item"
+    : "Unavailable item";
   const selectedOptions = condition.values.map(
     (value) =>
       valueOptions.find((option) => option.value === value) ?? {
         label: unavailableLabel,
-        value
-      }
-  )
+        value,
+      },
+  );
   const menuOptions = [
     ...valueOptions,
     ...selectedOptions.filter(
-      (selected) =>
-        !valueOptions.some((option) => option.value === selected.value)
-    )
-  ]
+      (selected) => !valueOptions.some((option) => option.value === selected.value),
+    ),
+  ];
 
   const toggleOption = (value: string, checked: boolean) => {
     onUpdate({
       values: checked
         ? [...condition.values.filter((item) => item !== value), value]
-        : condition.values.filter((item) => item !== value)
-    })
-  }
+        : condition.values.filter((item) => item !== value),
+    });
+  };
 
   return (
     <Popover>
@@ -660,7 +604,7 @@ function DatabaseChoiceConditionValueControl({
       <PopoverContent align="start" className="w-64 p-1">
         <div className="max-h-72 overflow-y-auto overscroll-contain">
           {menuOptions.map((option) => {
-            const checkboxId = `${condition.id}-${option.value}`
+            const checkboxId = `${condition.id}-${option.value}`;
 
             return (
               <div
@@ -671,9 +615,7 @@ function DatabaseChoiceConditionValueControl({
                   aria-label={`${option.label} option`}
                   checked={selectedValues.has(option.value)}
                   id={checkboxId}
-                  onCheckedChange={(checked) =>
-                    toggleOption(option.value, checked === true)
-                  }
+                  onCheckedChange={(checked) => toggleOption(option.value, checked === true)}
                 />
                 <label
                   className="flex min-w-0 flex-1 cursor-pointer items-center"
@@ -682,64 +624,55 @@ function DatabaseChoiceConditionValueControl({
                   <DatabaseChoiceOptionLabel option={option} />
                 </label>
               </div>
-            )
+            );
           })}
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 export function DatabaseConditionValueControl({
   condition,
   onUpdate,
-  valueOptions
+  valueOptions,
 }: {
-  condition: DatabaseCondition
-  onUpdate: (patch: DatabaseConditionUpdatePatch) => void
-  valueOptions: DatabaseSearchableMenuOption[]
+  condition: DatabaseCondition;
+  onUpdate: (patch: DatabaseConditionUpdatePatch) => void;
+  valueOptions: DatabaseSearchableMenuOption[];
 }) {
   const setValue = (valueIndex: number, value: string) => {
-    const nextValues = [...condition.values]
-    nextValues[valueIndex] = value
+    const nextValues = [...condition.values];
+    nextValues[valueIndex] = value;
 
     onUpdate({
-      values: nextValues.slice(0, condition.operator === "is_between" ? 2 : 1)
-    })
-  }
+      values: nextValues.slice(0, condition.operator === "is_between" ? 2 : 1),
+    });
+  };
 
   if (!conditionOperatorNeedsValue(condition.operator)) {
     return (
       <span className="inline-flex h-7 w-full items-center rounded-lg border border-transparent px-2 text-sm text-content-secondary">
         No value
       </span>
-    )
+    );
   }
 
   if (
     condition.operator === "is_relative_to_today" ||
     isDateConditionType(condition.propertyType)
   ) {
-    return (
-      <DatabaseDateConditionValueControl
-        condition={condition}
-        onUpdate={onUpdate}
-      />
-    )
+    return <DatabaseDateConditionValueControl condition={condition} onUpdate={onUpdate} />;
   }
 
-  if (
-    ["multi_select", "person", "select", "status"].includes(
-      condition.propertyType
-    )
-  ) {
+  if (["multi_select", "person", "select", "status"].includes(condition.propertyType)) {
     return (
       <DatabaseChoiceConditionValueControl
         condition={condition}
         onUpdate={onUpdate}
         valueOptions={valueOptions}
       />
-    )
+    );
   }
 
   if (
@@ -763,7 +696,7 @@ export function DatabaseConditionValueControl({
           ))}
         </SelectContent>
       </Select>
-    )
+    );
   }
 
   return (
@@ -787,7 +720,7 @@ export function DatabaseConditionValueControl({
         />
       ) : null}
     </div>
-  )
+  );
 }
 
 export function DatabaseConditionEditor({
@@ -802,46 +735,44 @@ export function DatabaseConditionEditor({
   valueOptions,
   onFieldChange,
   onRemove,
-  onUpdate
+  onUpdate,
 }: {
-  condition: DatabaseCondition
-  drag?: DatabaseConditionEditorDrag
-  fieldOptions: DatabaseSearchableMenuOption[]
-  footer?: ReactNode
-  layout?: DatabaseConditionEditorLayout
-  leadingIcon?: ReactNode
-  removeIcon?: ReactNode
-  removeLabel?: string
-  valueOptions: DatabaseSearchableMenuOption[]
-  onFieldChange?: (field: string) => void
-  onRemove?: () => void
-  onUpdate: (patch: DatabaseConditionUpdatePatch) => void
+  condition: DatabaseCondition;
+  drag?: DatabaseConditionEditorDrag;
+  fieldOptions: DatabaseSearchableMenuOption[];
+  footer?: ReactNode;
+  layout?: DatabaseConditionEditorLayout;
+  leadingIcon?: ReactNode;
+  removeIcon?: ReactNode;
+  removeLabel?: string;
+  valueOptions: DatabaseSearchableMenuOption[];
+  onFieldChange?: (field: string) => void;
+  onRemove?: () => void;
+  onUpdate: (patch: DatabaseConditionUpdatePatch) => void;
 }) {
-  const dragControls = useDragControls()
-  const operatorOptions = getDatabaseFilterOperatorsForType(
-    condition.propertyType
-  )
-  const isStacked = layout === "stacked"
+  const dragControls = useDragControls();
+  const operatorOptions = getDatabaseFilterOperatorsForType(condition.propertyType);
+  const isStacked = layout === "stacked";
 
   const updateField = (field: string) => {
     if (field === condition.propertyId) {
-      return
+      return;
     }
 
     if (onFieldChange) {
-      onFieldChange(field)
-      return
+      onFieldChange(field);
+      return;
     }
 
-    onUpdate({ propertyId: field })
-  }
+    onUpdate({ propertyId: field });
+  };
 
   const updateOperator = (operator: DatabasePropertyFilterOperator) => {
     onUpdate({
       operator,
-      values: getNextConditionValuesForOperator(condition, operator)
-    })
-  }
+      values: getNextConditionValuesForOperator(condition, operator),
+    });
+  };
 
   const conditionControls = (
     <>
@@ -858,9 +789,7 @@ export function DatabaseConditionEditor({
         </SelectContent>
       </Select>
       <Select
-        onValueChange={(operator) =>
-          updateOperator(operator as DatabasePropertyFilterOperator)
-        }
+        onValueChange={(operator) => updateOperator(operator as DatabasePropertyFilterOperator)}
         value={condition.operator}
       >
         <SelectTrigger className={cn("w-full", isStacked && "text-xs")}>
@@ -882,7 +811,7 @@ export function DatabaseConditionEditor({
         />
       </div>
     </>
-  )
+  );
 
   const removeButton = onRemove ? (
     <button
@@ -891,14 +820,14 @@ export function DatabaseConditionEditor({
         "inline-flex shrink-0 items-center justify-center text-content-secondary transition-colors hover:text-content-primary focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none",
         isStacked
           ? "mt-1 size-7 rounded-full hover:bg-surface-canvas"
-          : "size-7 rounded-md hover:bg-action-neutral-hover"
+          : "size-7 rounded-md hover:bg-action-neutral-hover",
       )}
       onClick={onRemove}
       type="button"
     >
       {removeIcon ?? <X className={isStacked ? "size-3.5" : "size-4"} />}
     </button>
-  ) : null
+  ) : null;
 
   const content = isStacked ? (
     <>
@@ -908,9 +837,9 @@ export function DatabaseConditionEditor({
             aria-label={drag.ariaLabel}
             className="mt-2 inline-flex size-5 shrink-0 cursor-grab touch-none items-center justify-center text-content-secondary active:cursor-grabbing"
             onPointerDown={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              dragControls.start(event)
+              event.preventDefault();
+              event.stopPropagation();
+              dragControls.start(event);
             }}
             type="button"
           >
@@ -936,10 +865,10 @@ export function DatabaseConditionEditor({
       {removeButton}
       {footer}
     </div>
-  )
+  );
 
   if (!drag) {
-    return content
+    return content;
   }
 
   return (
@@ -948,7 +877,7 @@ export function DatabaseConditionEditor({
       className={cn(
         "rounded-md bg-surface-subtle p-2 transition-colors",
         drag.isDragging &&
-          "relative z-10 bg-surface-overlay shadow-lg ring-1 ring-action-focus-ring"
+          "relative z-10 bg-surface-overlay shadow-lg ring-1 ring-action-focus-ring",
       )}
       dragControls={dragControls}
       dragListener={false}
@@ -959,5 +888,5 @@ export function DatabaseConditionEditor({
     >
       {content}
     </Reorder.Item>
-  )
+  );
 }

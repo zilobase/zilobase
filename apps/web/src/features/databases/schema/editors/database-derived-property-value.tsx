@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useState } from "react";
 import {
   type DatabasePropertyEntity,
   type DatabaseRecordEntity,
@@ -7,11 +7,11 @@ import {
   useUpdateDatabaseProperty,
   useUpdateDatabasePropertyValue,
 } from "@zilobase/features/databases/react";
-import { getPageEmoji, type PageMetadata } from "@zilobase/features/pages"
-import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover"
-import { DatabasePageLink } from "../../interactions/database-page-link"
-import { DatabaseRollupPropertySettings } from "../configuration"
+import { getPageEmoji, type PageMetadata } from "@zilobase/features/pages";
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { DatabasePageLink } from "../../interactions/database-page-link";
+import { DatabaseRollupPropertySettings } from "../configuration";
 import {
   getRelationConfigWithPageSummary,
   getRelationConfigWithSyncStatus,
@@ -19,43 +19,37 @@ import {
   getRelationReciprocalUpdates,
   getRelationTargetDatabaseId,
   relationPayloadFromViewData,
-} from "../relations/model/database-relation-sync"
-import {
-  evaluateDatabaseRollup,
-  getRollupRelationProperty,
-} from "../rollup/model/rollup-engine"
-import { getRollupConfig } from "../rollup/model/rollup-config"
-import { getNumberDisplayValue } from "./database-property-input"
-import {
-  toStringArray,
-  type DatabasePropertyValue,
-} from "../property-values"
-import { useDatabaseSecondaryPayload } from "../../records/use-database-secondary-payload"
+} from "../relations/model/database-relation-sync";
+import { evaluateDatabaseRollup, getRollupRelationProperty } from "../rollup/model/rollup-engine";
+import { getRollupConfig } from "../rollup/model/rollup-config";
+import { getNumberDisplayValue } from "./database-property-input";
+import { toStringArray, type DatabasePropertyValue } from "../property-values";
+import { useDatabaseSecondaryPayload } from "../../records/use-database-secondary-payload";
 import {
   PageDatabasePicker,
   type PageDatabasePickerOption,
-} from "../../components/page-database-picker"
+} from "../../components/page-database-picker";
 
 type DatabaseRow = {
-  createdAt: string
-  id: string
+  createdAt: string;
+  id: string;
   page: {
-    createdAt?: string
-    id?: string
-    metadata?: unknown
-    name?: string
-    updatedAt?: string
-  }
-  pageId: string
-  updatedAt: string
-}
+    createdAt?: string;
+    id?: string;
+    metadata?: unknown;
+    name?: string;
+    updatedAt?: string;
+  };
+  pageId: string;
+  updatedAt: string;
+};
 
 type RelationPageSummary = {
-  iconKind?: "database" | "page"
-  id?: string
-  metadata?: unknown
-  name?: string
-}
+  iconKind?: "database" | "page";
+  id?: string;
+  metadata?: unknown;
+  name?: string;
+};
 
 export function DatabaseRollupPropertyValue({
   databaseId,
@@ -69,71 +63,65 @@ export function DatabaseRollupPropertyValue({
   row,
   wrapContent,
 }: {
-  databaseId: string | null | undefined
-  editable: boolean
-  onOpen?: (pageId: string) => void
-  onOpenChange?: (open: boolean) => void
-  onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown
-  properties: DatabasePropertyEntity[]
-  propertyConfig: unknown
-  propertyValuesByKey: Record<string, DatabasePropertyValue>
-  row: DatabaseRow
-  wrapContent: boolean
+  databaseId: string | null | undefined;
+  editable: boolean;
+  onOpen?: (pageId: string) => void;
+  onOpenChange?: (open: boolean) => void;
+  onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown;
+  properties: DatabasePropertyEntity[];
+  propertyConfig: unknown;
+  propertyValuesByKey: Record<string, DatabasePropertyValue>;
+  row: DatabaseRow;
+  wrapContent: boolean;
 }) {
-  const config = getRollupConfig(propertyConfig)
-  const relationProperty = getRollupRelationProperty(
-    properties,
-    config.relationPropertyId
-  )
+  const config = getRollupConfig(propertyConfig);
+  const relationProperty = getRollupRelationProperty(properties, config.relationPropertyId);
   const relatedDatabaseId = relationProperty
     ? getRelationTargetDatabaseId(relationProperty.property.config)
-    : null
-  const { data: relatedViewData } = useDatabaseSecondaryPayload(
-    relatedDatabaseId,
-    { loadAll: true },
-  )
+    : null;
+  const { data: relatedViewData } = useDatabaseSecondaryPayload(relatedDatabaseId, {
+    loadAll: true,
+  });
   const relatedRollupData = relatedViewData
     ? {
-      properties: relatedViewData.bootstrap.properties.filter(
-        (property) => property.dataSourceId === relatedViewData.dataSourceId,
-      ),
-      rows: relatedViewData.records,
-      values: relatedViewData.records.flatMap((record) =>
-        Object.values(record.valuesByPropertyId)
-      ),
-    }
-    : null
+        properties: relatedViewData.bootstrap.properties.filter(
+          (property) => property.dataSourceId === relatedViewData.dataSourceId,
+        ),
+        rows: relatedViewData.records,
+        values: relatedViewData.records.flatMap((record) =>
+          Object.values(record.valuesByPropertyId),
+        ),
+      }
+    : null;
   const result = evaluateDatabaseRollup({
     currentRow: row,
     propertyConfig,
     propertyValuesByKey,
     relatedDatabasePayload: relatedRollupData,
     relationProperty,
-  })
-  const numberDisplayConfig =
-    config.calculation?.startsWith("percent_")
-      ? { ...config, numberFormat: "percent" }
-      : config
+  });
+  const numberDisplayConfig = config.calculation?.startsWith("percent_")
+    ? { ...config, numberFormat: "percent" }
+    : config;
   const value =
     result.kind === "number" && typeof result.value === "number"
       ? getNumberDisplayValue(String(result.value), numberDisplayConfig)
-      : result.displayValue || <span className="text-content-secondary">Empty</span>
+      : result.displayValue || <span className="text-content-secondary">Empty</span>;
   const shouldShowRelationLinks =
     config.targetPropertyId === "name" &&
-    (!config.calculation || config.calculation === "show_original")
-  const pageLinks =
-    shouldShowRelationLinks
-      ? getRollupPageLinks({
-          onOpen,
-          openMode: wrapContent ? "button" : "title",
-          pageIds: toStringArray(
-            relationProperty
-              ? propertyValuesByKey[`${row.pageId}:${relationProperty.property.id}`]
-              : ""
-          ),
-          relatedRows: relatedViewData?.records,
-        })
-      : null
+    (!config.calculation || config.calculation === "show_original");
+  const pageLinks = shouldShowRelationLinks
+    ? getRollupPageLinks({
+        onOpen,
+        openMode: wrapContent ? "button" : "title",
+        pageIds: toStringArray(
+          relationProperty
+            ? propertyValuesByKey[`${row.pageId}:${relationProperty.property.id}`]
+            : "",
+        ),
+        relatedRows: relatedViewData?.records,
+      })
+    : null;
   const displayContent =
     pageLinks && pageLinks.length > 0 ? (
       pageLinks
@@ -141,14 +129,14 @@ export function DatabaseRollupPropertyValue({
       <span className="text-content-secondary">{result.displayValue}</span>
     ) : (
       value
-    )
+    );
 
   if (!editable || !databaseId) {
     return pageLinks && pageLinks.length > 0 ? (
       <span className="database-relation-cell-trigger">{pageLinks}</span>
     ) : (
       <span className="database-input-cell-trigger">{value}</span>
-    )
+    );
   }
 
   return (
@@ -176,13 +164,13 @@ export function DatabaseRollupPropertyValue({
           config={propertyConfig}
           databaseId={databaseId}
           onUpdateConfig={(config) => {
-            void onPropertyConfigChange?.(config)
+            void onPropertyConfigChange?.(config);
           }}
           surface="popover"
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 function getRollupPageLinks({
@@ -191,24 +179,22 @@ function getRollupPageLinks({
   pageIds,
   relatedRows,
 }: {
-  onOpen?: (pageId: string) => void
-  openMode: "button" | "title"
-  pageIds: string[]
-  relatedRows: DatabaseRecordEntity[] | null | undefined
+  onOpen?: (pageId: string) => void;
+  openMode: "button" | "title";
+  pageIds: string[];
+  relatedRows: DatabaseRecordEntity[] | null | undefined;
 }) {
   if (!relatedRows) {
-    return []
+    return [];
   }
 
-  const rowsByPageId = new Map(
-    relatedRows.map((relatedRow) => [relatedRow.pageId, relatedRow])
-  )
+  const rowsByPageId = new Map(relatedRows.map((relatedRow) => [relatedRow.pageId, relatedRow]));
 
   return pageIds.flatMap((pageId) => {
-    const relatedRow = rowsByPageId.get(pageId)
+    const relatedRow = rowsByPageId.get(pageId);
 
     if (!relatedRow) {
-      return []
+      return [];
     }
 
     return (
@@ -225,8 +211,8 @@ function getRollupPageLinks({
         }}
         showPageIcon
       />
-    )
-  })
+    );
+  });
 }
 
 export function DatabaseRelationPropertyValue({
@@ -242,74 +228,74 @@ export function DatabaseRelationPropertyValue({
   value,
   wrapContent,
 }: {
-  editable: boolean
-  emptyLabel?: string
-  label: string
-  onOpenChange?: (open: boolean) => void
-  onOpen?: (pageId: string) => void
-  onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown
-  onSelect: (value: string | string[]) => void
-  propertyConfig: unknown
-  row: DatabaseRow
-  value: DatabasePropertyValue
-  wrapContent: boolean
+  editable: boolean;
+  emptyLabel?: string;
+  label: string;
+  onOpenChange?: (open: boolean) => void;
+  onOpen?: (pageId: string) => void;
+  onPropertyConfigChange?: (config: unknown) => Promise<unknown> | unknown;
+  onSelect: (value: string | string[]) => void;
+  propertyConfig: unknown;
+  row: DatabaseRow;
+  value: DatabasePropertyValue;
+  wrapContent: boolean;
 }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [query, setQuery] = useState("")
-  const updateProperty = useUpdateDatabaseProperty()
-  const updateValue = useUpdateDatabasePropertyValue()
-  const relatedDatabaseId = getRelationTargetDatabaseId(propertyConfig)
-  const multiple = getRelationLimit(propertyConfig) !== "one_page"
-  const selectedPageIds = toStringArray(value)
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const updateProperty = useUpdateDatabaseProperty();
+  const updateValue = useUpdateDatabasePropertyValue();
+  const relatedDatabaseId = getRelationTargetDatabaseId(propertyConfig);
+  const multiple = getRelationLimit(propertyConfig) !== "one_page";
+  const selectedPageIds = toStringArray(value);
   const {
     data: relatedViewData,
     fetchNextPage,
     hasMore,
     isFetchingNextPage,
     isLoading,
-  } = useDatabaseSecondaryPayload(
-    relatedDatabaseId,
-    { loadAll: isOpen && Boolean(query.trim()) },
-  )
+  } = useDatabaseSecondaryPayload(relatedDatabaseId, { loadAll: isOpen && Boolean(query.trim()) });
   const pageOptions = useMemo(
     () =>
       (relatedViewData?.records ?? [])
         .filter((candidate) => candidate.pageId !== row.pageId)
-        .map((candidate) => ({
-          icon: <RelationPageOptionIcon page={candidate.page} />,
-          label: candidate.page.name || "Untitled",
-          page: candidate.page,
-          searchText: candidate.page.name || "Untitled",
-          value: candidate.page.id,
-        } satisfies PageDatabasePickerOption & {
-          page: DatabaseRecordEntity["page"]
-        })),
+        .map(
+          (candidate) =>
+            ({
+              icon: <RelationPageOptionIcon page={candidate.page} />,
+              label: candidate.page.name || "Untitled",
+              page: candidate.page,
+              searchText: candidate.page.name || "Untitled",
+              value: candidate.page.id,
+            }) satisfies PageDatabasePickerOption & {
+              page: DatabaseRecordEntity["page"];
+            },
+        ),
     [relatedViewData?.records, row.pageId],
-  )
+  );
 
   const setOpen = (open: boolean) => {
-    onOpenChange?.(open)
+    onOpenChange?.(open);
 
     if (open) {
-      setIsOpen(true)
-      return
+      setIsOpen(true);
+      return;
     }
 
-    setIsOpen(false)
-    setQuery("")
-  }
+    setIsOpen(false);
+    setQuery("");
+  };
 
   const selectPage = (page: DatabaseRecordEntity["page"]) => {
-    const wasSelected = selectedPageIds.includes(page.id)
+    const wasSelected = selectedPageIds.includes(page.id);
     const nextValue = multiple
       ? wasSelected
         ? selectedPageIds.filter((pageId) => pageId !== page.id)
         : [...selectedPageIds, page.id]
-      : page.id
-    const nextPageIds = toStringArray(nextValue)
+      : page.id;
+    const nextPageIds = toStringArray(nextValue);
     const relationChanged =
       nextPageIds.length !== selectedPageIds.length ||
-      nextPageIds.some((pageId, index) => pageId !== selectedPageIds[index])
+      nextPageIds.some((pageId, index) => pageId !== selectedPageIds[index]);
 
     const reciprocalUpdates = getRelationReciprocalUpdates({
       nextPageIds,
@@ -321,17 +307,17 @@ export function DatabaseRelationPropertyValue({
         metadata: row.page.metadata,
         name: row.page.name,
       },
-    })
-    const nextConfig = getRelationConfigWithPageSummary(propertyConfig, page)
+    });
+    const nextConfig = getRelationConfigWithPageSummary(propertyConfig, page);
 
     void onPropertyConfigChange?.(
       reciprocalUpdates.length > 0
         ? nextConfig
         : relationChanged
           ? getRelationConfigWithSyncStatus(nextConfig, "not_synced")
-          : nextConfig
-    )
-    onSelect(nextValue)
+          : nextConfig,
+    );
+    onSelect(nextValue);
 
     reciprocalUpdates.forEach((update) => {
       if (update.config && update.databasePropertyId) {
@@ -339,7 +325,7 @@ export function DatabaseRelationPropertyValue({
           config: update.config,
           databaseId: update.databaseId,
           databasePropertyId: update.databasePropertyId,
-        })
+        });
       }
 
       updateValue.mutate({
@@ -347,18 +333,18 @@ export function DatabaseRelationPropertyValue({
         propertyId: update.propertyId,
         rowId: update.rowId,
         value: update.value,
-      })
-    })
+      });
+    });
 
     if (!multiple) {
-      setOpen(false)
+      setOpen(false);
     }
-  }
+  };
 
   const selectedLinks = selectedPageIds.map((pageId) => {
     const relatedPage = relatedViewData?.records.find(
-      (candidate) => candidate.pageId === pageId
-    )?.page
+      (candidate) => candidate.pageId === pageId,
+    )?.page;
 
     return (
       <DatabasePageLink
@@ -370,19 +356,15 @@ export function DatabaseRelationPropertyValue({
         pageSummary={relatedPage ?? getRelationPageSummary(propertyConfig, pageId)}
         showPageIcon
       />
-    )
-  })
+    );
+  });
 
   if (!editable) {
     return selectedLinks.length > 0 ? (
-      <span className="database-relation-cell-trigger gap-1">
-        {selectedLinks}
-      </span>
+      <span className="database-relation-cell-trigger gap-1">{selectedLinks}</span>
     ) : emptyLabel ? (
-      <span className="database-select-cell-trigger text-content-secondary">
-        {emptyLabel}
-      </span>
-    ) : null
+      <span className="database-select-cell-trigger text-content-secondary">{emptyLabel}</span>
+    ) : null;
   }
 
   return (
@@ -397,8 +379,8 @@ export function DatabaseRelationPropertyValue({
           }
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault()
-              setOpen(true)
+              event.preventDefault();
+              setOpen(true);
             }
           }}
           role="button"
@@ -415,9 +397,7 @@ export function DatabaseRelationPropertyValue({
         <PageDatabasePicker
           ariaLabel="Search relation pages"
           emptyMessage={
-            relatedDatabaseId
-              ? "No pages found."
-              : "Configure a relation database first."
+            relatedDatabaseId ? "No pages found." : "Configure a relation database first."
           }
           heading={multiple ? "Select pages" : "Select a page"}
           isLoading={Boolean(relatedDatabaseId && isLoading && !relatedViewData)}
@@ -444,40 +424,36 @@ export function DatabaseRelationPropertyValue({
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
-function RelationPageOptionIcon({
-  page,
-}: {
-  page: DatabaseRecordEntity["page"]
-}) {
+function RelationPageOptionIcon({ page }: { page: DatabaseRecordEntity["page"] }) {
   const emoji = getPageEmoji({
     metadata: page.metadata as PageMetadata | null | undefined,
-  })
+  });
 
-  return emoji ? <PageIconDisplay size="sm" value={emoji} /> : <DefaultPageIcon />
+  return emoji ? <PageIconDisplay size="sm" value={emoji} /> : <DefaultPageIcon />;
 }
 
 function getRelationPageSummary(
   propertyConfig: unknown,
-  pageId: string
+  pageId: string,
 ): RelationPageSummary | null {
   if (!propertyConfig || typeof propertyConfig !== "object" || Array.isArray(propertyConfig)) {
-    return null
+    return null;
   }
 
-  const pageSummaries = (propertyConfig as { pageSummaries?: unknown }).pageSummaries
+  const pageSummaries = (propertyConfig as { pageSummaries?: unknown }).pageSummaries;
 
   if (!pageSummaries || typeof pageSummaries !== "object" || Array.isArray(pageSummaries)) {
-    return null
+    return null;
   }
 
-  const pageSummary = (pageSummaries as Record<string, unknown>)[pageId]
+  const pageSummary = (pageSummaries as Record<string, unknown>)[pageId];
 
   if (!pageSummary || typeof pageSummary !== "object" || Array.isArray(pageSummary)) {
-    return null
+    return null;
   }
 
-  return pageSummary as RelationPageSummary
+  return pageSummary as RelationPageSummary;
 }

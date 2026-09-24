@@ -1,20 +1,16 @@
-import {
-  NodeViewContent,
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-} from "@tiptap/react"
-import type { ReactNodeViewProps } from "@tiptap/react"
-import { Check, ChevronsUpDown, Copy } from "@/shared/components/icons"
-import { useState } from "react"
-import CodeBlockShikiBase from "tiptap-extension-code-block-shiki"
+import { NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import type { ReactNodeViewProps } from "@tiptap/react";
+import { Check, ChevronsUpDown, Copy } from "@/shared/components/icons";
+import { useState } from "react";
+import CodeBlockShikiBase from "tiptap-extension-code-block-shiki";
 
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/shared/ui/button";
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
+} from "@/shared/ui/dropdrawer";
 
 const codeBlockLanguages = [
   { label: "Auto detect", value: "auto" },
@@ -135,23 +131,22 @@ const codeBlockLanguages = [
   { label: "XML", value: "xml" },
   { label: "YAML", value: "yaml" },
   { label: "Zig", value: "zig" },
-]
+];
 
 function CodeBlockShikiView({ node, updateAttributes }: ReactNodeViewProps) {
-  const [copied, setCopied] = useState(false)
-  const language = node.attrs.language ?? "auto"
-  const codeLanguage = language === "auto" ? "" : language
+  const [copied, setCopied] = useState(false);
+  const language = node.attrs.language ?? "auto";
+  const codeLanguage = language === "auto" ? "" : language;
   const activeLanguage =
-    codeBlockLanguages.find((option) => option.value === language) ??
-    codeBlockLanguages[0]
+    codeBlockLanguages.find((option) => option.value === language) ?? codeBlockLanguages[0];
 
   const copyCode = async () => {
-    await navigator.clipboard.writeText(node.textContent)
-    setCopied(true)
+    await navigator.clipboard.writeText(node.textContent);
+    setCopied(true);
     window.setTimeout(() => {
-      setCopied(false)
-    }, 1200)
-  }
+      setCopied(false);
+    }, 1200);
+  };
 
   return (
     <NodeViewWrapper as="pre" className="code-block-shiki">
@@ -159,17 +154,17 @@ function CodeBlockShikiView({ node, updateAttributes }: ReactNodeViewProps) {
         className="code-block-controls absolute right-2 top-2 z-10 flex items-center gap-1 opacity-0 transition-opacity"
         contentEditable={false}
         onMouseDown={(event) => {
-          event.stopPropagation()
+          event.stopPropagation();
         }}
         onPointerDown={(event) => {
-          event.stopPropagation()
+          event.stopPropagation();
         }}
       >
         <Button
           aria-label={copied ? "Copied code" : "Copy code"}
           className="bg-effect-backdrop shadow-sm"
           onClick={() => {
-            void copyCode()
+            void copyCode();
           }}
           size="icon-sm"
           title={copied ? "Copied" : "Copy code"}
@@ -195,10 +190,10 @@ function CodeBlockShikiView({ node, updateAttributes }: ReactNodeViewProps) {
             align="end"
             side="bottom"
             onMouseDown={(event) => {
-              event.stopPropagation()
+              event.stopPropagation();
             }}
             onPointerDown={(event) => {
-              event.stopPropagation()
+              event.stopPropagation();
             }}
           >
             {codeBlockLanguages.map((option) => (
@@ -208,7 +203,7 @@ function CodeBlockShikiView({ node, updateAttributes }: ReactNodeViewProps) {
                 onSelect={() => {
                   updateAttributes({
                     language: option.value === "auto" ? null : option.value,
-                  })
+                  });
                 }}
               >
                 {option.label}
@@ -223,11 +218,11 @@ function CodeBlockShikiView({ node, updateAttributes }: ReactNodeViewProps) {
         spellCheck={false}
       />
     </NodeViewWrapper>
-  )
+  );
 }
 
 export const CodeBlockShiki = CodeBlockShikiBase.extend({
   addNodeView() {
-    return ReactNodeViewRenderer(CodeBlockShikiView)
+    return ReactNodeViewRenderer(CodeBlockShikiView);
   },
-})
+});

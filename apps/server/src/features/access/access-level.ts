@@ -8,18 +8,12 @@ export const accessRank: Record<AccessLevel, number> = {
   full: 4,
 };
 
-export function hasAccess(
-  actual: AccessLevel,
-  required: Exclude<AccessLevel, "none">,
-) {
+export function hasAccess(actual: AccessLevel, required: Exclude<AccessLevel, "none">) {
   return accessRank[actual] >= accessRank[required];
 }
 
 export function normalizeAccessLevel(value: unknown): AccessLevel | null {
-  return value === "view" ||
-    value === "comment" ||
-    value === "edit" ||
-    value === "full"
+  return value === "view" || value === "comment" || value === "edit" || value === "full"
     ? value
     : null;
 }

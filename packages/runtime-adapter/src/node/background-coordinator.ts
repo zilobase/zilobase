@@ -27,7 +27,11 @@ import {
 } from "@zilobase/server/node-adapter-api";
 import { runWithRuntimePorts } from "../capabilities";
 import { runDueBackgroundMaintenance } from "@zilobase/server/node-adapter-api";
-import { backgroundTaskLane, type BackgroundLane, type BackgroundTaskV1 } from "@zilobase/server/node-adapter-api";
+import {
+  backgroundTaskLane,
+  type BackgroundLane,
+  type BackgroundTaskV1,
+} from "@zilobase/server/node-adapter-api";
 import { boundedErrorCode } from "@zilobase/server/node-adapter-api";
 
 const CHANNEL = "zilobase_background_v1";
@@ -35,10 +39,7 @@ const LANES: BackgroundLane[] = ["fast", "automation", "ai", "mail", "calendar"]
 
 export type NodeBackgroundCoordinator = ReturnType<typeof createNodeBackgroundCoordinator>;
 
-export function createNodeBackgroundCoordinator(
-  env: RuntimeEnv,
-  ports: Partial<Ports>,
-) {
+export function createNodeBackgroundCoordinator(env: RuntimeEnv, ports: Partial<Ports>) {
   const workerId = `node-background:${process.pid}:${crypto.randomUUID()}`;
   const timers = new Map<BackgroundLane, ReturnType<typeof setTimeout>>();
   const timerDueAt = new Map<BackgroundLane, number>();
@@ -84,22 +85,61 @@ export function createNodeBackgroundCoordinator(
           const concurrency = laneConcurrency(env, lane);
           if (lane === "fast") {
             await settleLaneOperations(lane, [
-              { name: "database_automation_events", run: () => drainDatabaseAutomationEventWindows(env, { limit: concurrency * 4, workerId: `${workerId}:events` }) },
-              { name: "database_realtime", run: () => drainDatabaseRealtimeOutbox(env, { limit: concurrency * 8 }) },
-              { name: "navigation_realtime", run: () => drainNavigationRealtimeOutbox(env, { limit: concurrency * 8 }) },
-              { name: "in_product_notifications", run: () => drainInProductNotificationOutbox(env, { limit: concurrency * 8 }) },
+              {
+                name: "database_automation_events",
+                run: () =>
+                  drainDatabaseAutomationEventWindows(env, {
+                    limit: concurrency * 4,
+                    workerId: `${workerId}:events`,
+                  }),
+              },
+              {
+                name: "database_realtime",
+                run: () => drainDatabaseRealtimeOutbox(env, { limit: concurrency * 8 }),
+              },
+              {
+                name: "navigation_realtime",
+                run: () => drainNavigationRealtimeOutbox(env, { limit: concurrency * 8 }),
+              },
+              {
+                name: "in_product_notifications",
+                run: () => drainInProductNotificationOutbox(env, { limit: concurrency * 8 }),
+              },
             ]);
           } else if (lane === "automation") {
             await settleLaneOperations(lane, [
-              { name: "database_automations", run: () => drainDatabaseAutomationRuns(env, { limit: concurrency, workerId: `${workerId}:automation` }) },
-              { name: "agent_runs", run: () => drainAgentRuns(env, { limit: concurrency, workerId: `${workerId}:agent` }) },
+              {
+                name: "database_automations",
+                run: () =>
+                  drainDatabaseAutomationRuns(env, {
+                    limit: concurrency,
+                    workerId: `${workerId}:automation`,
+                  }),
+              },
+              {
+                name: "agent_runs",
+                run: () =>
+                  drainAgentRuns(env, { limit: concurrency, workerId: `${workerId}:agent` }),
+              },
             ]);
           } else if (lane === "ai") {
-            await runAiJobBatch({ env, handlers: AI_JOB_HANDLERS, limit: concurrency, workerId: `${workerId}:ai` });
+            await runAiJobBatch({
+              env,
+              handlers: AI_JOB_HANDLERS,
+              limit: concurrency,
+              workerId: `${workerId}:ai`,
+            });
           } else if (lane === "mail") {
             await settleLaneOperations(lane, [
               { name: "mail_index", run: () => advancePendingMailIndexes(env, concurrency) },
-              { name: "mail_database_sync", run: () => drainMailDatabaseSyncOutbox(env, { limit: concurrency, workerId: `${workerId}:mail` }) },
+              {
+                name: "mail_database_sync",
+                run: () =>
+                  drainMailDatabaseSyncOutbox(env, {
+                    limit: concurrency,
+                    workerId: `${workerId}:mail`,
+                  }),
+              },
             ]);
           } else if (lane === "calendar") {
             await settleLaneOperations(lane, [
@@ -110,12 +150,14 @@ export function createNodeBackgroundCoordinator(
           if (next) scheduleLane(lane, new Date(Math.max(next.getTime(), Date.now() + 250)));
         });
       } catch (error) {
-        console.warn(JSON.stringify({
-          code: boundedErrorCode(error),
-          event: "background.node_lane",
-          lane,
-          outcome: "failed",
-        }));
+        console.warn(
+          JSON.stringify({
+            code: boundedErrorCode(error),
+            event: "background.node_lane",
+            lane,
+            outcome: "failed",
+          }),
+        );
         scheduleLane(lane, new Date(Date.now() + 5_000));
       }
     });
@@ -131,21 +173,26 @@ export function createNodeBackgroundCoordinator(
       } catch (error) {
         // A database outage must not terminate startup or a timer callback.
         // The recovery sweep retries maintenance and recalculates lane timers.
-        console.warn(JSON.stringify({
-          code: boundedErrorCode(error),
-          event: "background.node_reconcile",
-          outcome: "failed",
-        }));
+        console.warn(
+          JSON.stringify({
+            code: boundedErrorCode(error),
+            event: "background.node_reconcile",
+            outcome: "failed",
+          }),
+        );
       }
     });
   };
 
-  const recalculateLaneTimers = () => runWithDbEnv(env, async () => {
-    await Promise.all(LANES.map(async (lane) => {
-      const next = await nextLaneDueAt(lane);
-      if (next) scheduleLane(lane, next);
-    }));
-  });
+  const recalculateLaneTimers = () =>
+    runWithDbEnv(env, async () => {
+      await Promise.all(
+        LANES.map(async (lane) => {
+          const next = await nextLaneDueAt(lane);
+          if (next) scheduleLane(lane, next);
+        }),
+      );
+    });
 
   const scheduleRecovery = () => {
     if (stopping) return;
@@ -192,11 +239,13 @@ export function createNodeBackgroundCoordinator(
     setTimeout(() => {
       if (stopping) return;
       void connectListener().catch((error) => {
-        console.warn(JSON.stringify({
-          code: boundedErrorCode(error),
-          event: "background.node_listener",
-          outcome: "reconnecting",
-        }));
+        console.warn(
+          JSON.stringify({
+            code: boundedErrorCode(error),
+            event: "background.node_listener",
+            outcome: "reconnecting",
+          }),
+        );
         void reconnectListener();
       });
     }, delay).unref();
@@ -204,7 +253,8 @@ export function createNodeBackgroundCoordinator(
 
   return {
     async dispatch(tasks: BackgroundTaskV1[]) {
-      for (const task of tasks) scheduleLane(backgroundTaskLane(task.kind), new Date(task.availableAt));
+      for (const task of tasks)
+        scheduleLane(backgroundTaskLane(task.kind), new Date(task.availableAt));
       await publishNodeBackgroundNotification(env, tasks);
     },
     drain: drainLane,
@@ -245,13 +295,15 @@ async function settleLaneOperations(
   );
   results.forEach((result, index) => {
     if (result.status === "fulfilled") return;
-    console.warn(JSON.stringify({
-      code: boundedErrorCode(result.reason),
-      event: "background.node_lane_operation",
-      lane,
-      operation: operations[index]?.name ?? "unknown",
-      outcome: "failed",
-    }));
+    console.warn(
+      JSON.stringify({
+        code: boundedErrorCode(result.reason),
+        event: "background.node_lane_operation",
+        lane,
+        operation: operations[index]?.name ?? "unknown",
+        outcome: "failed",
+      }),
+    );
   });
 }
 
@@ -268,10 +320,12 @@ export async function publishNodeBackgroundNotification(
   await runWithDbEnv(env, async () => {
     for (const [lane, availableAt] of earliest) {
       // Identifiers stay in PostgreSQL; NOTIFY only wakes a lane.
-      await db.execute(sql`select pg_notify(${CHANNEL}, ${JSON.stringify({
-        availableAt: availableAt.toISOString(),
-        lane,
-      })})`);
+      await db.execute(
+        sql`select pg_notify(${CHANNEL}, ${JSON.stringify({
+          availableAt: availableAt.toISOString(),
+          lane,
+        })})`,
+      );
     }
   });
 }
@@ -279,9 +333,12 @@ export async function publishNodeBackgroundNotification(
 function parseSignal(payload: string | undefined) {
   try {
     const value = JSON.parse(payload ?? "") as { availableAt?: unknown; lane?: unknown };
-    if (!LANES.includes(value.lane as BackgroundLane) || typeof value.availableAt !== "string") return null;
+    if (!LANES.includes(value.lane as BackgroundLane) || typeof value.availableAt !== "string")
+      return null;
     const availableAt = new Date(value.availableAt);
-    return Number.isNaN(availableAt.getTime()) ? null : { availableAt, lane: value.lane as BackgroundLane };
+    return Number.isNaN(availableAt.getTime())
+      ? null
+      : { availableAt, lane: value.lane as BackgroundLane };
   } catch {
     return null;
   }
@@ -297,37 +354,70 @@ function laneConcurrency(env: RuntimeEnv, lane: BackgroundLane) {
 async function nextLaneDueAt(lane: BackgroundLane) {
   if (lane === "automation") {
     const [automation, agent] = await Promise.all([
-      db.select({ value: min(databaseAutomationRun.availableAt) }).from(databaseAutomationRun)
+      db
+        .select({ value: min(databaseAutomationRun.availableAt) })
+        .from(databaseAutomationRun)
         .where(eq(databaseAutomationRun.status, "queued")),
-      db.select({ value: min(aiAgentRun.availableAt) }).from(aiAgentRun)
+      db
+        .select({ value: min(aiAgentRun.availableAt) })
+        .from(aiAgentRun)
         .where(eq(aiAgentRun.status, "queued")),
     ]);
     return earliestDate(automation[0]?.value, agent[0]?.value);
   }
   if (lane === "ai") {
-    return (await db.select({ value: min(aiJob.availableAt) }).from(aiJob)
-      .where(eq(aiJob.status, "queued")))[0]?.value ?? null;
+    return (
+      (
+        await db
+          .select({ value: min(aiJob.availableAt) })
+          .from(aiJob)
+          .where(eq(aiJob.status, "queued"))
+      )[0]?.value ?? null
+    );
   }
   if (lane === "mail") {
-    return (await db.select({ value: min(mailDatabaseSyncOutbox.nextAttemptAt) }).from(mailDatabaseSyncOutbox)
-      .where(inArray(mailDatabaseSyncOutbox.status, ["pending", "retry"])))[0]?.value ?? null;
+    return (
+      (
+        await db
+          .select({ value: min(mailDatabaseSyncOutbox.nextAttemptAt) })
+          .from(mailDatabaseSyncOutbox)
+          .where(inArray(mailDatabaseSyncOutbox.status, ["pending", "retry"]))
+      )[0]?.value ?? null
+    );
   }
   if (lane === "calendar") {
-    const [row] = await db.select({ dirtyAt: calendarProviderCalendar.dirtyAt }).from(calendarProviderCalendar)
-      .where(or(isNotNull(calendarProviderCalendar.dirtyAt), isNotNull(calendarProviderCalendar.pageToken)))
+    const [row] = await db
+      .select({ dirtyAt: calendarProviderCalendar.dirtyAt })
+      .from(calendarProviderCalendar)
+      .where(
+        or(
+          isNotNull(calendarProviderCalendar.dirtyAt),
+          isNotNull(calendarProviderCalendar.pageToken),
+        ),
+      )
       .limit(1);
-    return row ? row.dirtyAt ?? new Date() : null;
+    return row ? (row.dirtyAt ?? new Date()) : null;
   }
   const values = await Promise.all([
-    db.select({ value: min(databaseAutomationEventWindow.nextAttemptAt) }).from(databaseAutomationEventWindow)
+    db
+      .select({ value: min(databaseAutomationEventWindow.nextAttemptAt) })
+      .from(databaseAutomationEventWindow)
       .where(inArray(databaseAutomationEventWindow.status, ["accumulating", "ready"])),
     db.select({ value: min(databaseRealtimeOutbox.nextAttemptAt) }).from(databaseRealtimeOutbox),
-    db.select({ value: min(navigationRealtimeOutbox.nextAttemptAt) }).from(navigationRealtimeOutbox),
-    db.select({ value: min(inProductNotificationOutbox.nextAttemptAt) }).from(inProductNotificationOutbox)
+    db
+      .select({ value: min(navigationRealtimeOutbox.nextAttemptAt) })
+      .from(navigationRealtimeOutbox),
+    db
+      .select({ value: min(inProductNotificationOutbox.nextAttemptAt) })
+      .from(inProductNotificationOutbox)
       .where(eq(inProductNotificationOutbox.status, "pending")),
   ]);
-  return values.flatMap((rows) => rows.map((row) => row.value)).filter((value): value is Date => Boolean(value))
-    .sort((left, right) => left.getTime() - right.getTime())[0] ?? null;
+  return (
+    values
+      .flatMap((rows) => rows.map((row) => row.value))
+      .filter((value): value is Date => Boolean(value))
+      .sort((left, right) => left.getTime() - right.getTime())[0] ?? null
+  );
 }
 
 function earliestDate(...values: Array<Date | null | undefined>) {

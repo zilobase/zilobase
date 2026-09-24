@@ -19,11 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
 
-import {
-  DropDrawer,
-  DropDrawerContent,
-  DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer";
+import { DropDrawer, DropDrawerContent, DropDrawerTrigger } from "@/shared/ui/dropdrawer";
 
 import {
   Dialog,
@@ -35,12 +31,7 @@ import {
 
 import { DatabaseViewToolbarButton } from "../databases/views/components/database-view-toolbar-button";
 
-import {
-  AutomationList,
-  ManagerHeader,
-  RunDetail,
-  RunList,
-} from "./database-automation-screens";
+import { AutomationList, ManagerHeader, RunDetail, RunList } from "./database-automation-screens";
 
 export function DatabaseAutomationManager({
   dataSourceId,
@@ -94,10 +85,7 @@ export function DatabaseAutomationManager({
   });
 
   const trigger = (
-    <DatabaseViewToolbarButton
-      aria-label="Open database automations"
-      aria-expanded={open}
-    >
+    <DatabaseViewToolbarButton aria-label="Open database automations" aria-expanded={open}>
       <Zap />
     </DatabaseViewToolbarButton>
   );
@@ -115,9 +103,7 @@ export function DatabaseAutomationManager({
             loading={list.isLoading}
             onCreate={startCreate}
             onEdit={startEdit}
-            onLifecycle={(automationId, action) =>
-              lifecycle.mutate({ automationId, action })
-            }
+            onLifecycle={(automationId, action) => lifecycle.mutate({ automationId, action })}
             onRuns={(automationId) => {
               setSelectedAutomationId(automationId);
               setScreen("runs");
@@ -141,11 +127,7 @@ export function DatabaseAutomationManager({
 
   return (
     <>
-      <DropDrawer
-        defaultSubDisplayMode="inline"
-        open={open}
-        onOpenChange={onOpenChange}
-      >
+      <DropDrawer defaultSubDisplayMode="inline" open={open} onOpenChange={onOpenChange}>
         <DropDrawerTrigger asChild>{trigger}</DropDrawerTrigger>
         <DropDrawerContent
           align="end"
@@ -172,8 +154,7 @@ export function DatabaseAutomationManager({
               {selectedAutomationId ? "Edit automation" : "New automation"}
             </DialogTitle>
             <DialogDescription className="sr-only">
-              Configure when this database automation runs and which actions it
-              performs.
+              Configure when this database automation runs and which actions it performs.
             </DialogDescription>
             <Input
               aria-label="Automation name"
@@ -212,11 +193,7 @@ export function DatabaseAutomationManager({
                 void startSlackOauth
                   .mutateAsync()
                   .then(({ authorizationUrl }) =>
-                    window.open(
-                      authorizationUrl,
-                      "_blank",
-                      "noopener,noreferrer",
-                    ),
+                    window.open(authorizationUrl, "_blank", "noopener,noreferrer"),
                   )
               }
             />
@@ -224,9 +201,7 @@ export function DatabaseAutomationManager({
           <div className="shrink-0 border-t bg-surface-overlay px-4 py-2.5">
             {saveError ? (
               <p className="mb-2 text-xs text-action-danger-text" role="alert">
-                {saveError instanceof Error
-                  ? saveError.message
-                  : "Could not save this automation."}
+                {saveError instanceof Error ? saveError.message : "Could not save this automation."}
               </p>
             ) : null}
             {validate.data?.errors[0] ? (
@@ -235,20 +210,11 @@ export function DatabaseAutomationManager({
               </p>
             ) : null}
             <div className="flex items-center justify-end gap-2">
-              <Button
-                onClick={requestEditorClose}
-                type="button"
-                variant="ghost"
-              >
+              <Button onClick={requestEditorClose} type="button" variant="ghost">
                 Cancel
               </Button>
               <Button
-                disabled={
-                  !definition ||
-                  !effectiveName ||
-                  validate.data?.valid === false ||
-                  saving
-                }
+                disabled={!definition || !effectiveName || validate.data?.valid === false || saving}
                 onClick={() => void save()}
               >
                 {saving ? <Loader2 className="animate-spin" /> : <Check />}

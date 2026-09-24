@@ -1,12 +1,10 @@
 {
-  "folders": [
-    { "name": "zilobase", "path": ".." }
-  ],
+  "folders": [{ "name": "zilobase", "path": ".." }],
   "settings": {
     "git.autoRepositoryDetection": "subFolders",
     "debug.javascript.autoAttachFilter": "disabled",
     "debug.javascript.terminalOptions": {
-      "skipFiles": ["<node_internals>/**"]
-    }
-  }
+      "skipFiles": ["<node_internals>/**"],
+    },
+  },
 }

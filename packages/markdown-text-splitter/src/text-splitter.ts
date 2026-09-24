@@ -42,10 +42,7 @@ export abstract class TextSplitter {
 
   public abstract splitText(text: string): string[];
 
-  public createDocuments(
-    texts: string[],
-    metadatas?: Array<Record<string, unknown>>,
-  ): Document[] {
+  public createDocuments(texts: string[], metadatas?: Array<Record<string, unknown>>): Document[] {
     const metadataList = metadatas ?? Array.from({ length: texts.length }, () => ({}));
     const documents: Document[] = [];
 
@@ -97,12 +94,7 @@ export abstract class TextSplitter {
 
       if (this.exceedsChunkSize(total, splitLength, currentDoc, separatorLength)) {
         this.appendJoinedDocument(documents, currentDoc, separator);
-        ({ currentDoc, total } = this.trimOverlap(
-          currentDoc,
-          total,
-          splitLength,
-          separatorLength,
-        ));
+        ({ currentDoc, total } = this.trimOverlap(currentDoc, total, splitLength, separatorLength));
       }
 
       currentDoc.push(split);
@@ -117,11 +109,7 @@ export abstract class TextSplitter {
     return documents;
   }
 
-  private appendJoinedDocument(
-    documents: string[],
-    parts: string[],
-    separator: string,
-  ): void {
+  private appendJoinedDocument(documents: string[], parts: string[], separator: string): void {
     if (parts.length === 0) return;
 
     const document = this.joinDocs(parts, separator);
@@ -134,10 +122,7 @@ export abstract class TextSplitter {
     parts: string[],
     separatorLength: number,
   ): boolean {
-    return (
-      total + splitLength + (parts.length > 0 ? separatorLength : 0) >
-      this.chunkSize
-    );
+    return total + splitLength + (parts.length > 0 ? separatorLength : 0) > this.chunkSize;
   }
 
   private trimOverlap(
@@ -152,16 +137,10 @@ export abstract class TextSplitter {
     while (
       currentTotal > this.chunkOverlap ||
       (currentTotal > 0 &&
-        this.exceedsChunkSize(
-          currentTotal,
-          splitLength,
-          currentDoc,
-          separatorLength,
-        ))
+        this.exceedsChunkSize(currentTotal, splitLength, currentDoc, separatorLength))
     ) {
       currentTotal -=
-        this.lengthFunction(currentDoc[0]) +
-        (currentDoc.length > 1 ? separatorLength : 0);
+        this.lengthFunction(currentDoc[0]) + (currentDoc.length > 1 ? separatorLength : 0);
       currentDoc = currentDoc.slice(1);
     }
 
@@ -169,8 +148,6 @@ export abstract class TextSplitter {
   }
 }
 
-function cloneMetadata(
-  metadata: Record<string, unknown>,
-): Record<string, unknown> {
+function cloneMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
   return JSON.parse(JSON.stringify(metadata));
 }

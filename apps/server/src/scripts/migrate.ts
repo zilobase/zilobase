@@ -1,18 +1,12 @@
 import { fileURLToPath } from "node:url";
 import { createDbClientForUrl } from "../infrastructure/database";
-import {
-  runMigrationSets,
-  type MigrationSet,
-} from "@zilobase/runtime-adapter/node";
+import { runMigrationSets, type MigrationSet } from "@zilobase/runtime-adapter/node";
 import { CORE_MIGRATION_SET } from "../public/node-adapter-api";
 
 const databaseUrl = readRequiredEnv("DATABASE_URL");
 const migrationsFolder =
-  process.env.DRIZZLE_MIGRATIONS_DIR ??
-  fileURLToPath(new URL("../../drizzle", import.meta.url));
-const migrationSets: MigrationSet[] = [
-  { ...CORE_MIGRATION_SET, migrationsFolder },
-];
+  process.env.DRIZZLE_MIGRATIONS_DIR ?? fileURLToPath(new URL("../../drizzle", import.meta.url));
+const migrationSets: MigrationSet[] = [{ ...CORE_MIGRATION_SET, migrationsFolder }];
 main().catch((error) => {
   console.error("Zilobase database migrations failed", error);
   process.exit(1);

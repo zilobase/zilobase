@@ -1,2 +1,2 @@
-export * from "./meeting-extension"
-export { MeetingView } from "./meeting-view"
+export * from "./meeting-extension";
+export { MeetingView } from "./meeting-view";

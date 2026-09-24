@@ -2,81 +2,137 @@ export function register({ assert, loadModule, test }) {
   test("sidebar layout entries reorder and move without changing unrelated tabs", async () => {
     const { moveArrayItem, moveLayoutEntry } = await loadModule(
       "/src/features/sidebar/model/sidebar-layout-model.ts",
-    )
+    );
     const layout = {
       tabs: [
-        { icon: "home", id: "home", name: "Home", sections: [], shortcuts: [
-          { id: "one", target: { route: "ai", type: "route" } },
-          { id: "two", target: { route: "tasks", type: "route" } },
-        ] },
+        {
+          icon: "home",
+          id: "home",
+          name: "Home",
+          sections: [],
+          shortcuts: [
+            { id: "one", target: { route: "ai", type: "route" } },
+            { id: "two", target: { route: "tasks", type: "route" } },
+          ],
+        },
         { icon: "sparkles", id: "ai", name: "AI", sections: [], shortcuts: [] },
         { icon: "star", id: "work", name: "Work", sections: [], shortcuts: [] },
       ],
       taskDatabaseIds: [],
-    }
+    };
 
-    assert.deepEqual(moveArrayItem(["one", "two"], 1, -1), ["two", "one"])
-    const moved = moveLayoutEntry(layout, "home", "work", "shortcuts", "two")
-    assert.deepEqual(moved.tabs[0].shortcuts.map((item) => item.id), ["one"])
-    assert.deepEqual(moved.tabs[2].shortcuts.map((item) => item.id), ["two"])
-    assert.equal(moveLayoutEntry(layout, "home", "ai", "shortcuts", "two"), layout)
-    assert.equal(moveLayoutEntry(layout, "home", "calendar", "shortcuts", "two"), layout)
-  })
+    assert.deepEqual(moveArrayItem(["one", "two"], 1, -1), ["two", "one"]);
+    const moved = moveLayoutEntry(layout, "home", "work", "shortcuts", "two");
+    assert.deepEqual(
+      moved.tabs[0].shortcuts.map((item) => item.id),
+      ["one"],
+    );
+    assert.deepEqual(
+      moved.tabs[2].shortcuts.map((item) => item.id),
+      ["two"],
+    );
+    assert.equal(moveLayoutEntry(layout, "home", "ai", "shortcuts", "two"), layout);
+    assert.equal(moveLayoutEntry(layout, "home", "calendar", "shortcuts", "two"), layout);
+  });
 
   test("exact shortcuts are deduplicated only within the current tab", async () => {
-    const { hasShortcutTarget } = await loadModule("/src/features/sidebar/model/sidebar-layout-model.ts")
+    const { hasShortcutTarget } = await loadModule(
+      "/src/features/sidebar/model/sidebar-layout-model.ts",
+    );
     const tab = {
       icon: "home",
       id: "home",
       name: "Home",
       sections: [],
       shortcuts: [{ id: "one", target: { type: "library", view: "recents" } }],
-    }
-    assert.equal(hasShortcutTarget(tab, { type: "library", view: "recents" }), true)
-    assert.equal(hasShortcutTarget(tab, { type: "library", view: "private" }), false)
-  })
+    };
+    assert.equal(hasShortcutTarget(tab, { type: "library", view: "recents" }), true);
+    assert.equal(hasShortcutTarget(tab, { type: "library", view: "private" }), false);
+  });
 
   test("shortcuts are active only for their current route and library view", async () => {
-    const { isShortcutActive } = await loadModule("/src/features/sidebar/model/sidebar-layout-model.ts")
-    const shortcut = (target) => ({ id: "shortcut", target })
+    const { isShortcutActive } = await loadModule(
+      "/src/features/sidebar/model/sidebar-layout-model.ts",
+    );
+    const shortcut = (target) => ({ id: "shortcut", target });
 
-    assert.equal(isShortcutActive(shortcut({ type: "library", view: "meetings" }), "/recents", { view: "meetings" }), true)
-    assert.equal(isShortcutActive(shortcut({ type: "library", view: "recents" }), "/recents", { view: "meetings" }), false)
-    assert.equal(isShortcutActive(shortcut({ type: "library", view: "trash" }), "/recents", { view: "trash" }), true)
-    assert.equal(isShortcutActive(shortcut({ type: "route", route: "meetings" }), "/recents", { view: "meetings" }), true)
-    assert.equal(isShortcutActive(shortcut({ type: "route", route: "tasks" }), "/tasks", {}), true)
-    assert.equal(isShortcutActive(shortcut({ type: "route", route: "settings" }), "/recents", {}, true), true)
-    assert.equal(isShortcutActive(shortcut({ type: "action", action: "createPage" }), "/recents", {}), false)
-  })
+    assert.equal(
+      isShortcutActive(shortcut({ type: "library", view: "meetings" }), "/recents", {
+        view: "meetings",
+      }),
+      true,
+    );
+    assert.equal(
+      isShortcutActive(shortcut({ type: "library", view: "recents" }), "/recents", {
+        view: "meetings",
+      }),
+      false,
+    );
+    assert.equal(
+      isShortcutActive(shortcut({ type: "library", view: "trash" }), "/recents", { view: "trash" }),
+      true,
+    );
+    assert.equal(
+      isShortcutActive(shortcut({ type: "route", route: "meetings" }), "/recents", {
+        view: "meetings",
+      }),
+      true,
+    );
+    assert.equal(isShortcutActive(shortcut({ type: "route", route: "tasks" }), "/tasks", {}), true);
+    assert.equal(
+      isShortcutActive(shortcut({ type: "route", route: "settings" }), "/recents", {}, true),
+      true,
+    );
+    assert.equal(
+      isShortcutActive(shortcut({ type: "action", action: "createPage" }), "/recents", {}),
+      false,
+    );
+  });
 
   test("mail and calendar tabs stay hidden until their server environment is configured", async () => {
-    const { hideUnconfiguredIntegrationTabs, restoreUnconfiguredIntegrationTabs } = await loadModule(
-      "/src/features/sidebar/model/sidebar-layout-model.ts",
-    )
+    const { hideUnconfiguredIntegrationTabs, restoreUnconfiguredIntegrationTabs } =
+      await loadModule("/src/features/sidebar/model/sidebar-layout-model.ts");
     const layout = {
       tabs: [
-        { icon: "home", id: "home", name: "Home", sections: [], shortcuts: [
-          { id: "compose", target: { action: "composeMail", type: "action" } },
-          { id: "inbox", target: { type: "mail", view: "inbox" } },
-          { id: "tasks", target: { route: "tasks", type: "route" } },
-        ] },
+        {
+          icon: "home",
+          id: "home",
+          name: "Home",
+          sections: [],
+          shortcuts: [
+            { id: "compose", target: { action: "composeMail", type: "action" } },
+            { id: "inbox", target: { type: "mail", view: "inbox" } },
+            { id: "tasks", target: { route: "tasks", type: "route" } },
+          ],
+        },
         { icon: "mail", id: "mail", name: "Mail", sections: [], shortcuts: [] },
         { icon: "calendar", id: "calendar", name: "Calendar", sections: [], shortcuts: [] },
       ],
       taskDatabaseIds: ["tasks"],
-    }
+    };
 
-    const hidden = hideUnconfiguredIntegrationTabs(layout, { mail: false, calendar: false })
-    assert.deepEqual(hidden.tabs.map((tab) => tab.id), ["home"])
+    const hidden = hideUnconfiguredIntegrationTabs(layout, { mail: false, calendar: false });
+    assert.deepEqual(
+      hidden.tabs.map((tab) => tab.id),
+      ["home"],
+    );
     assert.deepEqual(hidden.tabs[0].shortcuts, [
       { id: "tasks", target: { route: "tasks", type: "route" } },
-    ])
+    ]);
 
-    const mailOnly = hideUnconfiguredIntegrationTabs(layout, { mail: true, calendar: false })
-    assert.deepEqual(mailOnly.tabs.map((tab) => tab.id), ["home", "mail"])
+    const mailOnly = hideUnconfiguredIntegrationTabs(layout, { mail: true, calendar: false });
+    assert.deepEqual(
+      mailOnly.tabs.map((tab) => tab.id),
+      ["home", "mail"],
+    );
 
-    const restored = restoreUnconfiguredIntegrationTabs(layout, hidden, { mail: false, calendar: false })
-    assert.deepEqual(restored.tabs.map((tab) => tab.id), ["home", "mail", "calendar"])
-  })
-
+    const restored = restoreUnconfiguredIntegrationTabs(layout, hidden, {
+      mail: false,
+      calendar: false,
+    });
+    assert.deepEqual(
+      restored.tabs.map((tab) => tab.id),
+      ["home", "mail", "calendar"],
+    );
+  });
 }

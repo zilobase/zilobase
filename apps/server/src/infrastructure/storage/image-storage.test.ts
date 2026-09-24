@@ -30,11 +30,7 @@ vi.mock("@aws-sdk/s3-request-presigner", () => ({
   getSignedUrl: aws.getSignedUrl,
 }));
 
-import {
-  createImageStorage,
-  resolveImageStorageMode,
-  type ImageStorage,
-} from "./image-storage";
+import { createImageStorage, resolveImageStorageMode, type ImageStorage } from "./image-storage";
 import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import { createNodeImageStorage } from "@zilobase/runtime-adapter/node";
 
@@ -89,13 +85,10 @@ afterEach(() => {
 test("runtime storage is required and reports its provider mode", () => {
   const adapterStorage = { mode: "binding" } as ImageStorage;
 
-  runWithRuntimePorts(
-    { blobs: adapterStorage },
-    () => {
-      assert.equal(createImageStorage({}), adapterStorage);
-      assert.equal(resolveImageStorageMode({}), "binding");
-    },
-  );
+  runWithRuntimePorts({ blobs: adapterStorage }, () => {
+    assert.equal(createImageStorage({}), adapterStorage);
+    assert.equal(resolveImageStorageMode({}), "binding");
+  });
 
   assert.throws(
     () => runWithRuntimePorts({}, () => createImageStorage({})),
@@ -139,7 +132,7 @@ test("S3 storage creates upload and safe inline read URLs", async () => {
 
   await storage.createReadUrl({
     expiresInSeconds: 30,
-    filename: "unsafe\"\\\r\nname.png",
+    filename: 'unsafe"\\\r\nname.png',
     objectKey: "workspace/image.png",
   });
   assert.deepEqual(aws.getSignedUrl.mock.calls[1]?.[1].input, {
@@ -152,10 +145,7 @@ test("S3 storage creates upload and safe inline read URLs", async () => {
     expiresInSeconds: 30,
     objectKey: "workspace/image.png",
   });
-  assert.equal(
-    aws.getSignedUrl.mock.calls[2]?.[1].input.ResponseContentDisposition,
-    undefined,
-  );
+  assert.equal(aws.getSignedUrl.mock.calls[2]?.[1].input.ResponseContentDisposition, undefined);
 });
 
 test("S3 delete and head operations map SDK responses", async () => {
@@ -215,7 +205,8 @@ test("S3 reads map response metadata, absence, and invalid responses", async () 
   const storage = createNodeImageStorage(s3Env);
   vi.stubGlobal(
     "fetch",
-    vi.fn()
+    vi
+      .fn()
       .mockResolvedValueOnce(new Response(null, { status: 404 }))
       .mockResolvedValueOnce(new Response("failure", { status: 503 }))
       .mockResolvedValueOnce(
@@ -232,9 +223,7 @@ test("S3 reads map response metadata, absence, and invalid responses", async () 
           headers: { "content-length": "invalid" },
         }),
       )
-      .mockResolvedValueOnce(
-        new Response(new Uint8Array([1])),
-      ),
+      .mockResolvedValueOnce(new Response(new Uint8Array([1]))),
   );
 
   assert.equal(await storage.get("missing"), null);

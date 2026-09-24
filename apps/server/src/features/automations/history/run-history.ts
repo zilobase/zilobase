@@ -47,11 +47,7 @@ export async function getDatabaseAutomationRun(input: {
     )
     .limit(1);
   if (!run) {
-    throw new DatabaseAutomationError(
-      "Automation run not found",
-      404,
-      "AUTOMATION_RUN_NOT_FOUND",
-    );
+    throw new DatabaseAutomationError("Automation run not found", 404, "AUTOMATION_RUN_NOT_FOUND");
   }
   const steps = await db
     .select()
@@ -85,9 +81,7 @@ function toRun(
   };
 }
 
-function toStep(
-  step: typeof databaseAutomationStepRun.$inferSelect,
-): DatabaseAutomationStepRun {
+function toStep(step: typeof databaseAutomationStepRun.$inferSelect): DatabaseAutomationStepRun {
   return {
     actionId: step.actionId,
     actionIndex: step.actionIndex,

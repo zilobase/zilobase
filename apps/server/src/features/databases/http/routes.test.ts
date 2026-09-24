@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
-import type { AppBindings } from   "../../../shared/types";
+import type { AppBindings } from "../../../shared/types";
 
 const mocks = vi.hoisted(() => ({
   databaseRecord: vi.fn(),
@@ -18,39 +18,39 @@ const mocks = vi.hoisted(() => ({
   deleteDatabase: vi.fn(),
   restoreDatabase: vi.fn(),
 }));
-vi.mock(  "../../access", async (original) => ({
-  ...(await original<typeof import(  "../../access")>()),
+vi.mock("../../access", async (original) => ({
+  ...(await original<typeof import("../../access")>()),
   canAccessDatabaseRecord: mocks.canAccessDatabase,
   getEffectiveDatabaseAccessForRecord: mocks.effectiveDatabaseAccess,
   getMembership: mocks.membership,
   isDatabasePublishedInWorkspace: mocks.publishedDatabase,
 }));
 
-vi.mock( "../access/database-access", async (original) => ({
-  ...(await original<typeof import( "../access/database-access")>()),
+vi.mock("../access/database-access", async (original) => ({
+  ...(await original<typeof import("../access/database-access")>()),
   getDatabaseRecord: mocks.databaseRecord,
 }));
-vi.mock( "../core/payload", () => ({
+vi.mock("../core/payload", () => ({
   getDatabaseExportPayload: mocks.databasePayload,
 }));
-vi.mock( "../core/service", () => ({
+vi.mock("../core/service", () => ({
   createDatabaseService: mocks.createDatabase,
   deleteDatabaseService: mocks.deleteDatabase,
   restoreDatabaseService: mocks.restoreDatabase,
 }));
-vi.mock( "../read/service", async (original) => ({
-  ...(await original<typeof import( "../read/service")>()),
+vi.mock("../read/service", async (original) => ({
+  ...(await original<typeof import("../read/service")>()),
   getDatabaseBootstrapService: mocks.bootstrap,
   getDatabaseRecordWindowService: mocks.recordWindow,
 }));
-vi.mock( "../history/service", async (original) => ({
-  ...(await original<typeof import( "../history/service")>()),
+vi.mock("../history/service", async (original) => ({
+  ...(await original<typeof import("../history/service")>()),
   getDatabaseMutationFeed: mocks.mutationFeed,
 }));
 
-import { databaseRoutes } from  "./routes";
-import { ServiceMutationError } from   "../../../shared/errors/service-mutation-error";
-import { attachHttpRouteErrorHandler } from   "../../../shared/http/route-error";
+import { databaseRoutes } from "./routes";
+import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
+import { attachHttpRouteErrorHandler } from "../../../shared/http/route-error";
 
 const user = {
   email: "user@example.com",
@@ -80,7 +80,7 @@ beforeEach(() => {
   mocks.publishedDatabase.mockResolvedValue(false);
 });
 
-  test("v2 bootstrap route returns metadata without invoking the export payload", async () => {
+test("v2 bootstrap route returns metadata without invoking the export payload", async () => {
   const record = {
     deletedAt: null,
     id: "database-1",
@@ -95,9 +95,7 @@ beforeEach(() => {
   mocks.databaseRecord.mockResolvedValue(record);
   mocks.bootstrap.mockResolvedValue(bootstrap);
 
-  const response = await appWithUser().request(
-    "/databases/database-1/bootstrap?viewId=view-1",
-  );
+  const response = await appWithUser().request("/databases/database-1/bootstrap?viewId=view-1");
 
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), bootstrap);
@@ -151,15 +149,13 @@ test("v2 record route forwards exact windows and deleted scope", async () => {
 });
 
 test("v2 record route exposes stale-window and source/view conflicts", async () => {
-  const { DatabaseWindowStaleError } = await import( "../read/service");
+  const { DatabaseWindowStaleError } = await import("../read/service");
   mocks.databaseRecord.mockResolvedValue({
     deletedAt: null,
     id: "database-1",
     workspaceId: "workspace-1",
   });
-  mocks.recordWindow.mockRejectedValueOnce(
-    new DatabaseWindowStaleError("fresh-snapshot"),
-  );
+  mocks.recordWindow.mockRejectedValueOnce(new DatabaseWindowStaleError("fresh-snapshot"));
   const stale = await appWithUser().request(
     "/databases/database-1/data-sources/source-1/records?limit=50&snapshot=old",
   );
@@ -198,10 +194,7 @@ test("v2 reads support published databases and bounded collection windows", asyn
   const publicApp = new Hono<AppBindings>();
   publicApp.route("/databases", databaseRoutes);
   attachHttpRouteErrorHandler(publicApp);
-  assert.equal(
-    (await publicApp.request("/databases/database-1/bootstrap")).status,
-    200,
-  );
+  assert.equal((await publicApp.request("/databases/database-1/bootstrap")).status, 200);
 
   mocks.recordWindow.mockResolvedValue({
     databaseVersion: 1,
@@ -247,9 +240,7 @@ test("mutation catch-up validates and forwards the version window", async () => 
     limit: 2,
   });
 
-  const invalid = await appWithUser().request(
-    "/databases/database-1/mutations?afterVersion=-1",
-  );
+  const invalid = await appWithUser().request("/databases/database-1/mutations?afterVersion=-1");
   assert.equal(invalid.status, 400);
   assert.equal(mocks.mutationFeed.mock.calls.length, 1);
 });
@@ -312,8 +303,14 @@ test("OAuth database routes bind database and data-source IDs to the granted wor
     assert.equal((await app.request(path!, { method })).status, 403, path);
   }
   assert.equal(mocks.deleteDatabase.mock.calls.length, 0);
-  assert.equal((await app.request("/databases", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ workspaceId: "other" }),
-  })).status, 403);
+  assert.equal(
+    (
+      await app.request("/databases", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: "other" }),
+      })
+    ).status,
+    403,
+  );
 });

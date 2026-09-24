@@ -50,10 +50,7 @@ export function createAuthTransactionDatabase(database: Database): Database {
         return Reflect.get(target, property, receiver);
       }
 
-      return async <T>(
-        callback: (transaction: Database) => Promise<T>,
-        ...args: unknown[]
-      ) => {
+      return async <T>(callback: (transaction: Database) => Promise<T>, ...args: unknown[]) => {
         const transaction = Reflect.get(target, property, receiver) as (
           callback: (transaction: Database) => Promise<T>,
           ...args: unknown[]
@@ -88,21 +85,19 @@ export function createDbClientForUrl(
   const client = new Client({
     connectionString,
     connectionTimeoutMillis: 3000,
-    ...(options.queryTimeoutMillis
-      ? { query_timeout: options.queryTimeoutMillis }
-      : {}),
-    ...(usesLocalSslProxy(connectionString)
-      ? { ssl: { rejectUnauthorized: false } }
-      : {}),
+    ...(options.queryTimeoutMillis ? { query_timeout: options.queryTimeoutMillis } : {}),
+    ...(usesLocalSslProxy(connectionString) ? { ssl: { rejectUnauthorized: false } } : {}),
   });
 
   // pg rejects pending operations, but also emits errors when the connection
   // dies between queries. Handle those events before connect/LISTEN can run.
   client.on("error", () => {
-    console.warn(JSON.stringify({
-      event: "database.connection",
-      outcome: "failed",
-    }));
+    console.warn(
+      JSON.stringify({
+        event: "database.connection",
+        outcome: "failed",
+      }),
+    );
   });
 
   return {
@@ -122,9 +117,7 @@ function createPooledDbClientForUrl(connectionString: string) {
       idleTimeoutMillis: 30_000,
       max: 10,
       allowExitOnIdle: true,
-      ...(usesLocalSslProxy(connectionString)
-        ? { ssl: { rejectUnauthorized: false } }
-        : {}),
+      ...(usesLocalSslProxy(connectionString) ? { ssl: { rejectUnauthorized: false } } : {}),
     });
     pool.on("error", (error) => {
       console.error("Unexpected idle PostgreSQL connection error", error);
@@ -167,20 +160,14 @@ export async function runWithDbClient<T>(
 
   const connectStartedAt = performance.now();
   await databaseClient.client.connect();
-  options?.onTiming?.(
-    "db_connect",
-    Math.round(performance.now() - connectStartedAt),
-  );
+  options?.onTiming?.("db_connect", Math.round(performance.now() - connectStartedAt));
 
   try {
     return await runWithDb(databaseClient.db, callback);
   } finally {
     const endStartedAt = performance.now();
     await databaseClient.client.end();
-    options?.onTiming?.(
-      "db_end",
-      Math.round(performance.now() - endStartedAt),
-    );
+    options?.onTiming?.("db_end", Math.round(performance.now() - endStartedAt));
   }
 }
 

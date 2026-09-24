@@ -1,7 +1,4 @@
-import {
-  MarkdownTextSplitter,
-  RecursiveMarkdownTextSplitter,
-} from "./index.js";
+import { MarkdownTextSplitter, RecursiveMarkdownTextSplitter } from "./index.js";
 
 const sampleMarkdown = `# Zilobase Markdown Splitter
 
@@ -214,10 +211,7 @@ for (const chunk of stageOneChunks) {
     continue;
   }
 
-  const subChunks = splitChunkPreservingTablesAndCode(
-    chunk.pageContent,
-    stageTwoSplitter,
-  );
+  const subChunks = splitChunkPreservingTablesAndCode(chunk.pageContent, stageTwoSplitter);
 
   for (const subChunk of subChunks) {
     finalChunks.push({

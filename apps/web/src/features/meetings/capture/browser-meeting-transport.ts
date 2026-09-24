@@ -4,11 +4,7 @@ const TRANSPORT_BATCH_FRAMES = 5;
 
 const MAX_TRANSPORT_FRAMES = 1_500;
 
-type BrowserMeetingTransportState =
-  | "failed"
-  | "paused"
-  | "recording"
-  | "stopped";
+type BrowserMeetingTransportState = "failed" | "paused" | "recording" | "stopped";
 
 type BrowserMeetingTransportDependencies = {
   clearTimeout: (timer: number) => void;
@@ -17,13 +13,12 @@ type BrowserMeetingTransportDependencies = {
   setTimeout: (callback: () => void, delay: number) => number;
 };
 
-const defaultBrowserMeetingTransportDependencies: BrowserMeetingTransportDependencies =
-  {
-    clearTimeout: (timer) => window.clearTimeout(timer),
-    createSocket: (url, protocols) => new WebSocket(url, protocols),
-    resolveUrl: (url) => new URL(url, window.location.href),
-    setTimeout: (callback, delay) => window.setTimeout(callback, delay),
-  };
+const defaultBrowserMeetingTransportDependencies: BrowserMeetingTransportDependencies = {
+  clearTimeout: (timer) => window.clearTimeout(timer),
+  createSocket: (url, protocols) => new WebSocket(url, protocols),
+  resolveUrl: (url) => new URL(url, window.location.href),
+  setTimeout: (callback, delay) => window.setTimeout(callback, delay),
+};
 
 const MAX_TRANSCRIPTION_RECONNECT_ATTEMPTS = 6;
 
@@ -36,9 +31,7 @@ export class BrowserMeetingTransport {
   private audioWebsocketUrl: string;
   private readonly dependencies: BrowserMeetingTransportDependencies;
   private readonly onWarning: (message: string) => void;
-  private readonly onTranscript: (
-    draft: Omit<MeetingTranscriptDraft, "meetingId"> | null,
-  ) => void;
+  private readonly onTranscript: (draft: Omit<MeetingTranscriptDraft, "meetingId"> | null) => void;
   private readonly activeSources: MeetingCaptureSource[];
   private inFlight: Uint8Array[] = [];
   private pendingSamples: Record<MeetingCaptureSource, Float32Array[]> = {
@@ -78,9 +71,8 @@ export class BrowserMeetingTransport {
     ticket: string,
     onWarning: (message: string) => void,
     dependencies: BrowserMeetingTransportDependencies = defaultBrowserMeetingTransportDependencies,
-    onTranscript: (
-      draft: Omit<MeetingTranscriptDraft, "meetingId"> | null,
-    ) => void = () => undefined,
+    onTranscript: (draft: Omit<MeetingTranscriptDraft, "meetingId"> | null) => void = () =>
+      undefined,
     activeSources: MeetingCaptureSource[] = ["microphone"],
   ) {
     this.audioWebsocketUrl = url;
@@ -128,27 +120,19 @@ export class BrowserMeetingTransport {
   refresh(url: string, ticket: string) {
     this.audioWebsocketUrl = url;
     this.audioTicket = ticket;
-    if (
-      this.state === "recording" &&
-      (!this.socket || this.socket.readyState >= 2)
-    ) {
+    if (this.state === "recording" && (!this.socket || this.socket.readyState >= 2)) {
       this.cancelReconnect();
       this.connect();
     }
   }
 
   send(samples: Float32Array, source: MeetingCaptureSource = "microphone") {
-    if (this.state !== "recording" || !this.activeSources.includes(source))
-      return;
+    if (this.state !== "recording" || !this.activeSources.includes(source)) return;
     const sequence = this.sequences[source]++;
     this.pendingSequences[source] ??= sequence;
     this.pendingSamples[source].push(samples.slice());
     this.pendingSampleCounts[source] += samples.length;
-    if (
-      this.pendingSampleCounts[source] <
-      FRAME_SAMPLES * TRANSPORT_BATCH_FRAMES
-    )
-      return;
+    if (this.pendingSampleCounts[source] < FRAME_SAMPLES * TRANSPORT_BATCH_FRAMES) return;
     this.flushSourceSamples(source);
   }
 
@@ -188,9 +172,7 @@ export class BrowserMeetingTransport {
     if (this.state === "stopped") return;
     if (this.state === "failed") {
       this.state = "stopped";
-      this.rejectEventWaiters(
-        new Error("Meeting transcription is unavailable."),
-      );
+      this.rejectEventWaiters(new Error("Meeting transcription is unavailable."));
       return;
     }
     this.flushSamples();
@@ -248,9 +230,7 @@ export class BrowserMeetingTransport {
       this.providerReady = false;
       this.cancelReconnectReset();
       if (this.state !== "recording") {
-        this.rejectEventWaiters(
-          new Error("Meeting transcription connection closed."),
-        );
+        this.rejectEventWaiters(new Error("Meeting transcription connection closed."));
         return;
       }
       if (event.code === MEETING_TRANSCRIPTION_FATAL_CLOSE_CODE) {
@@ -265,9 +245,7 @@ export class BrowserMeetingTransport {
         );
         return;
       }
-      this.onWarning(
-        "Meeting transcription disconnected; local recording continues.",
-      );
+      this.onWarning("Meeting transcription disconnected; local recording continues.");
       const delay = Math.min(30_000, 500 * 2 ** this.reconnectAttempt++);
       this.reconnectTimer = this.dependencies.setTimeout(() => {
         this.reconnectTimer = null;
@@ -320,9 +298,7 @@ export class BrowserMeetingTransport {
       case "recording.error":
         this.rejectEventWaiters(
           new Error(
-            typeof control.message === "string"
-              ? control.message
-              : "Meeting recording failed.",
+            typeof control.message === "string" ? control.message : "Meeting recording failed.",
           ),
         );
         return true;
@@ -368,18 +344,13 @@ export class BrowserMeetingTransport {
     this.queue.push(frame);
     if (this.queue.length <= MAX_TRANSPORT_FRAMES) return;
     this.queue.shift();
-    this.onWarning(
-      "Transcription is falling behind; local recording is still complete.",
-    );
+    this.onWarning("Transcription is falling behind; local recording is still complete.");
   }
 
   private drainQueue(force = false) {
     const socket = this.socket;
     if (!this.providerReady || socket?.readyState !== 1) return;
-    while (
-      this.queue.length > 0 &&
-      (force || socket.bufferedAmount < 1_048_576)
-    ) {
+    while (this.queue.length > 0 && (force || socket.bufferedAmount < 1_048_576)) {
       const frame = this.queue.shift()!;
       socket.send(Uint8Array.from(frame));
       this.inFlight.push(frame);
@@ -387,24 +358,18 @@ export class BrowserMeetingTransport {
     }
   }
 
-  private reconcileFrames(
-    nextSequences: Partial<Record<MeetingCaptureSource, number>>,
-  ) {
+  private reconcileFrames(nextSequences: Partial<Record<MeetingCaptureSource, number>>) {
     const replay = [...this.inFlight, ...this.queue]
       .map((frame) => {
         const source = meetingAudioFrameSource(frame);
-        return source
-          ? trimQueuedMeetingAudioFrame(frame, nextSequences[source] ?? 0)
-          : null;
+        return source ? trimQueuedMeetingAudioFrame(frame, nextSequences[source] ?? 0) : null;
       })
       .filter((frame): frame is Uint8Array => frame !== null);
     this.inFlight = [];
     this.queue = replay;
     if (this.queue.length <= MAX_TRANSPORT_FRAMES) return;
     this.queue.splice(0, this.queue.length - MAX_TRANSPORT_FRAMES);
-    this.onWarning(
-      "Transcription replay exceeded its buffer; local recording is still complete.",
-    );
+    this.onWarning("Transcription replay exceeded its buffer; local recording is still complete.");
   }
 
   private waitForEvent(type: string, timeoutMs = 15_000) {
@@ -444,20 +409,14 @@ function readNextMeetingAudioSequences(value: unknown) {
   const entries = Object.entries(value as Record<string, unknown>);
   const result: Partial<Record<MeetingCaptureSource, number>> = {};
   for (const [source, sequence] of entries) {
-    if (
-      (source !== "microphone" && source !== "system") ||
-      !isMeetingAudioSequence(sequence)
-    )
+    if ((source !== "microphone" && source !== "system") || !isMeetingAudioSequence(sequence))
       return null;
     result[source] = sequence;
   }
   return entries.length > 0 ? result : null;
 }
 
-export function trimQueuedMeetingAudioFrame(
-  frame: Uint8Array,
-  nextSequence: number,
-) {
+export function trimQueuedMeetingAudioFrame(frame: Uint8Array, nextSequence: number) {
   if (
     frame.byteLength < 9 + FRAME_SAMPLES * 2 ||
     (frame.byteLength - 9) % (FRAME_SAMPLES * 2) !== 0
@@ -473,9 +432,7 @@ export function trimQueuedMeetingAudioFrame(
   if (sequence >= nextSequence) return frame;
 
   const skippedFrames = nextSequence - sequence;
-  const trimmed = new Uint8Array(
-    9 + (frameCount - skippedFrames) * FRAME_SAMPLES * 2,
-  );
+  const trimmed = new Uint8Array(9 + (frameCount - skippedFrames) * FRAME_SAMPLES * 2);
   new DataView(trimmed.buffer).setBigUint64(0, BigInt(nextSequence), true);
   trimmed[8] = frame[8];
   trimmed.set(frame.subarray(9 + skippedFrames * FRAME_SAMPLES * 2), 9);
@@ -486,9 +443,7 @@ function meetingAudioSourceCode(source: MeetingCaptureSource) {
   return source === "microphone" ? 0 : 1;
 }
 
-function meetingAudioFrameSource(
-  frame: Uint8Array,
-): MeetingCaptureSource | null {
+function meetingAudioFrameSource(frame: Uint8Array): MeetingCaptureSource | null {
   if (frame.byteLength < 9) return null;
   if (frame[8] === 0) return "microphone";
   if (frame[8] === 1) return "system";

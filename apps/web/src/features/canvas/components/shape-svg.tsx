@@ -1,14 +1,14 @@
-import { useMemo } from "react"
+import { useMemo } from "react";
 
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
 import {
   getRoughShapePaths,
   getStrokeLineDash,
   getStrokeLineCap,
   getSvgViewBox,
-} from "../model/rough-shape"
-import type { CanvasShape, CanvasStrokeStyle } from "../model/types"
+} from "../model/rough-shape";
+import type { CanvasShape, CanvasStrokeStyle } from "../model/types";
 
 export function ShapeSvg({
   className,
@@ -21,15 +21,15 @@ export function ShapeSvg({
   strokeWidth,
   width,
 }: {
-  className?: string
-  fill: string
-  height: number
-  seed: number
-  shape: CanvasShape
-  stroke: string
-  strokeStyle: CanvasStrokeStyle
-  strokeWidth: number
-  width: number
+  className?: string;
+  fill: string;
+  height: number;
+  seed: number;
+  shape: CanvasShape;
+  stroke: string;
+  strokeStyle: CanvasStrokeStyle;
+  strokeWidth: number;
+  width: number;
 }) {
   const paths = useMemo(
     () =>
@@ -42,21 +42,12 @@ export function ShapeSvg({
         strokeWidth,
         width,
       }),
-    [
-      fill,
-      height,
-      seed,
-      shape,
-      stroke,
-      strokeStyle,
-      strokeWidth,
-      width,
-    ],
-  )
+    [fill, height, seed, shape, stroke, strokeStyle, strokeWidth, width],
+  );
   const strokeDasharray = useMemo(
     () => getStrokeLineDash(strokeStyle, strokeWidth)?.join(" "),
     [strokeStyle, strokeWidth],
-  )
+  );
 
   return (
     <svg
@@ -79,5 +70,5 @@ export function ShapeSvg({
         />
       ))}
     </svg>
-  )
+  );
 }

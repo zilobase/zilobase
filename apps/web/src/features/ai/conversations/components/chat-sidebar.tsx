@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import { AgentChatWorkspace } from "./agent-chat-workspace"
-export type ChatPresentationMode = "floating" | "sidebar"
+import { AgentChatWorkspace } from "./agent-chat-workspace";
+export type ChatPresentationMode = "floating" | "sidebar";
 
 export function ChatSidebarPanel({
   databaseId,
@@ -11,12 +11,12 @@ export function ChatSidebarPanel({
   pageId,
   presentationMode = "sidebar",
 }: {
-  databaseId?: string | null
-  onClose: () => void
-  onPresentationModeChange?: (mode: ChatPresentationMode) => void
-  open?: boolean
-  pageId?: string | null
-  presentationMode?: ChatPresentationMode
+  databaseId?: string | null;
+  onClose: () => void;
+  onPresentationModeChange?: (mode: ChatPresentationMode) => void;
+  open?: boolean;
+  pageId?: string | null;
+  presentationMode?: ChatPresentationMode;
 }) {
   return (
     <AgentChatWorkspace
@@ -28,5 +28,5 @@ export function ChatSidebarPanel({
       pageId={pageId}
       presentationMode={presentationMode}
     />
-  )
+  );
 }

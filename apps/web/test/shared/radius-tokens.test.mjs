@@ -1,84 +1,72 @@
 export function register({ readSource, assert, test }) {
   test("radius tokens share one source of truth and one concentric step", async () => {
-    const css = await readSource("/src/shared/styles/design-tokens.css")
+    const css = await readSource("/src/shared/styles/design-tokens.css");
 
-    const radiusSources = [...css.matchAll(/^\s*--radius:\s*([^;]+);/gm)]
+    const radiusSources = [...css.matchAll(/^\s*--radius:\s*([^;]+);/gm)];
 
-    assert.equal(radiusSources.length, 1)
-    assert.ok(radiusSources[0][1].trim())
-    assert.match(css, /--radius-round:\s*999px;/)
-    assert.match(
-      css,
-      /--radius-md:\s*max\(0px, calc\(var\(--radius\) - var\(--spacing\)\)\);/,
-    )
-    assert.match(css, /--radius-lg:\s*var\(--radius\);/)
-    assert.match(
-      css,
-      /--radius-xl:\s*calc\(var\(--radius\) \+ var\(--spacing\)\);/,
-    )
-    assert.doesNotMatch(css, /--radius-(?:2xl|3xl|4xl):[^;]*var\(--radius\) \*/)
-    assert.match(css, /--radius-full:\s*var\(--radius-round\);/)
-  })
+    assert.equal(radiusSources.length, 1);
+    assert.ok(radiusSources[0][1].trim());
+    assert.match(css, /--radius-round:\s*999px;/);
+    assert.match(css, /--radius-md:\s*max\(0px, calc\(var\(--radius\) - var\(--spacing\)\)\);/);
+    assert.match(css, /--radius-lg:\s*var\(--radius\);/);
+    assert.match(css, /--radius-xl:\s*calc\(var\(--radius\) \+ var\(--spacing\)\);/);
+    assert.doesNotMatch(css, /--radius-(?:2xl|3xl|4xl):[^;]*var\(--radius\) \*/);
+    assert.match(css, /--radius-full:\s*var\(--radius-round\);/);
+  });
 
   test("shared nested controls use adjacent concentric radius tokens", async () => {
     const [tabs, dropdown, contextMenu] = await Promise.all(
       ["app-tabs", "dropdown-menu", "context-menu"].map((component) =>
         readSource(`/src/shared/ui/${component}.tsx`),
       ),
-    )
+    );
 
-    assert.match(tabs, /rounded-lg p-0/)
-    assert.match(tabs, /rounded-md[^"\n]*data-active:bg-action-neutral-hover/)
-    assert.doesNotMatch(tabs, /TabsPrimitive\.Indicator/)
-    const styles = await readSource("/src/shared/ui/menu-styles.ts")
-    assert.match(styles, /menuSurfaceVariants[^]*?rounded-lg/)
-    assert.match(styles, /menuItemVariants[^]*?rounded-md/)
+    assert.match(tabs, /rounded-lg p-0/);
+    assert.match(tabs, /rounded-md[^"\n]*data-active:bg-action-neutral-hover/);
+    assert.doesNotMatch(tabs, /TabsPrimitive\.Indicator/);
+    const styles = await readSource("/src/shared/ui/menu-styles.ts");
+    assert.match(styles, /menuSurfaceVariants[^]*?rounded-lg/);
+    assert.match(styles, /menuItemVariants[^]*?rounded-md/);
     for (const menu of [dropdown, contextMenu]) {
-      assert.match(menu, /menuSurfaceVariants/)
-      assert.match(menu, /data-slot="[^"]+-item"[\s\S]*?menuItemVariants/)
+      assert.match(menu, /menuSurfaceVariants/);
+      assert.match(menu, /data-slot="[^"]+-item"[\s\S]*?menuItemVariants/);
     }
-  })
+  });
 
   test("sidebar rows, tabs, and buttons share the control radius", async () => {
-    const [button, sidebar, sidebarAction, tabs] =
-      await Promise.all(
-        [
-          "shared/ui/button.tsx",
-          "shared/ui/sidebar.tsx",
-          "shared/ui/sidebar-nav-item-action.tsx",
-          "shared/ui/app-tabs.tsx",
-        ].map((path) =>
-          readSource(`/src/${path}`),
-        ),
-      )
+    const [button, sidebar, sidebarAction, tabs] = await Promise.all(
+      [
+        "shared/ui/button.tsx",
+        "shared/ui/sidebar.tsx",
+        "shared/ui/sidebar-nav-item-action.tsx",
+        "shared/ui/app-tabs.tsx",
+      ].map((path) => readSource(`/src/${path}`)),
+    );
 
-    assert.match(button, /group\/button[^"\n]*rounded-md/)
-    assert.doesNotMatch(button, /rounded-sm/)
-    assert.match(sidebar, /peer\/menu-button[^"\n]*rounded-md/)
-    assert.doesNotMatch(sidebar, /rounded-\[calc\(var\(--radius-sm\)/)
-    assert.match(sidebarAction, /rounded-md/)
-    assert.match(tabs, /relative inline-flex[^"\n]*rounded-md/)
-  })
+    assert.match(button, /group\/button[^"\n]*rounded-md/);
+    assert.doesNotMatch(button, /rounded-sm/);
+    assert.match(sidebar, /peer\/menu-button[^"\n]*rounded-md/);
+    assert.doesNotMatch(sidebar, /rounded-\[calc\(var\(--radius-sm\)/);
+    assert.match(sidebarAction, /rounded-md/);
+    assert.match(tabs, /relative inline-flex[^"\n]*rounded-md/);
+  });
 
   test("rectangular badges and pills share the control radius", async () => {
-    const [badge, editorStyles, discussions, contextChips, toolbar] =
-      await Promise.all(
-        [
-          "shared/ui/badge.tsx",
-          "features/databases/styles/database-table.css",
-          "features/comments/components/discussions-sidebar.tsx",
-          "features/ai/conversations/components/elements/context-attach-chips.tsx",
-          "features/databases/views/components/database-view-toolbar.tsx",
-        ].map((path) =>
-          readSource(`/src/${path}`),
-        ),
-      )
+    const [badge, editorStyles, discussions, contextChips, toolbar] = await Promise.all(
+      [
+        "shared/ui/badge.tsx",
+        "features/databases/styles/database-table.css",
+        "features/comments/components/discussions-sidebar.tsx",
+        "features/ai/conversations/components/elements/context-attach-chips.tsx",
+        "features/databases/views/components/database-view-toolbar.tsx",
+      ].map((path) => readSource(`/src/${path}`)),
+    );
 
-    assert.match(badge, /group\/badge[^"\n]*rounded-md/)
-    assert.match(editorStyles, /\.database-select-badge \{\s*@apply[^;]*rounded-md/)
-    assert.match(editorStyles, /\.database-page-open \{\s*@apply[^;]*rounded-md/)
-    assert.doesNotMatch(discussions, /rounded-full[^"\n]*px-/)
-    assert.match(contextChips, /h-7[^"\n]*rounded-md/)
-    assert.doesNotMatch(toolbar, /h-8 shrink-0 rounded-full px-3/)
-  })
+    assert.match(badge, /group\/badge[^"\n]*rounded-md/);
+    assert.match(editorStyles, /\.database-select-badge \{\s*@apply[^;]*rounded-md/);
+    assert.match(editorStyles, /\.database-page-open \{\s*@apply[^;]*rounded-md/);
+    assert.doesNotMatch(discussions, /rounded-full[^"\n]*px-/);
+    assert.match(contextChips, /h-7[^"\n]*rounded-md/);
+    assert.doesNotMatch(toolbar, /h-8 shrink-0 rounded-full px-3/);
+  });
 }

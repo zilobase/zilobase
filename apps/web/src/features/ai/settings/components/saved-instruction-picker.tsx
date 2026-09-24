@@ -10,7 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 
-export function SavedInstructionPicker({ disabled, onSelect }: {
+export function SavedInstructionPicker({
+  disabled,
+  onSelect,
+}: {
   disabled: boolean;
   onSelect: (page: { id: string }) => void;
 }) {
@@ -21,10 +24,13 @@ export function SavedInstructionPicker({ disabled, onSelect }: {
     (page) => page.metadata?.zilobaseai === "instruction",
   );
   return (
-    <DropdownMenu open={open} onOpenChange={(next) => {
-      setOpen(next);
-      if (next) void navigation.refetch();
-    }}>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next) void navigation.refetch();
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button disabled={disabled} className="w-fit gap-2" variant="ghost" size="sm">
           Use saved instruction
@@ -32,13 +38,19 @@ export function SavedInstructionPicker({ disabled, onSelect }: {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        {pages.length ? pages.map((page) => (
-          <DropdownMenuItem key={page.id} onSelect={() => onSelect({ id: page.id })}>
-            {page.name || "Untitled"}
-          </DropdownMenuItem>
-        )) : (
+        {pages.length ? (
+          pages.map((page) => (
+            <DropdownMenuItem key={page.id} onSelect={() => onSelect({ id: page.id })}>
+              {page.name || "Untitled"}
+            </DropdownMenuItem>
+          ))
+        ) : (
           <DropdownMenuItem disabled>
-            {navigation.isLoading ? "Loading instructions…" : navigation.isError ? "Could not load instructions." : "No saved instructions found."}
+            {navigation.isLoading
+              ? "Loading instructions…"
+              : navigation.isError
+                ? "Could not load instructions."
+                : "No saved instructions found."}
           </DropdownMenuItem>
         )}
       </DropdownMenuContent>

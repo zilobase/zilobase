@@ -12,10 +12,7 @@ type StoredAiChatThreadState = {
 };
 
 type AiChatThreadStore = {
-  threadStateByWorkspaceId: Record<
-    string,
-    StoredAiChatThreadState | undefined
-  >;
+  threadStateByWorkspaceId: Record<string, StoredAiChatThreadState | undefined>;
 };
 
 const emptyThreadState: StoredAiChatThreadState = {
@@ -32,8 +29,7 @@ function updateStoredThreadState(
   getNext: (current: StoredAiChatThreadState) => StoredAiChatThreadState,
 ) {
   useAiChatThreadStore.setState((state) => {
-    const current =
-      state.threadStateByWorkspaceId[workspaceId] ?? emptyThreadState;
+    const current = state.threadStateByWorkspaceId[workspaceId] ?? emptyThreadState;
     const next = getNext(current);
 
     if (next === current) {
@@ -49,10 +45,7 @@ function updateStoredThreadState(
   });
 }
 
-function initializeActiveThreadId(
-  workspaceId: string,
-  threadId: string | null,
-) {
+function initializeActiveThreadId(workspaceId: string, threadId: string | null) {
   useAiChatThreadStore.setState((state) => {
     if (state.threadStateByWorkspaceId[workspaceId]) {
       return state;
@@ -70,22 +63,15 @@ function initializeActiveThreadId(
   });
 }
 
-function setStoredActiveThreadId(
-  workspaceId: string,
-  threadId: string | null,
-) {
+function setStoredActiveThreadId(workspaceId: string, threadId: string | null) {
   updateStoredThreadState(workspaceId, (current) =>
-    current.activeThreadId === threadId
-      ? current
-      : { ...current, activeThreadId: threadId },
+    current.activeThreadId === threadId ? current : { ...current, activeThreadId: threadId },
   );
 }
 
 function markBootstrapped(workspaceId: string) {
   const current =
-    useAiChatThreadStore.getState().threadStateByWorkspaceId[
-      workspaceId
-    ] ?? emptyThreadState;
+    useAiChatThreadStore.getState().threadStateByWorkspaceId[workspaceId] ?? emptyThreadState;
 
   if (current.bootstrapped) {
     return false;
@@ -104,14 +90,10 @@ function getCurrentUrlThreadId() {
     return null;
   }
 
-  return (
-    new URLSearchParams(window.location.search).get("thread")?.trim() || null
-  );
+  return new URLSearchParams(window.location.search).get("thread")?.trim() || null;
 }
 
-function replaceAiThreadSearchParam(
-  threadId: string | null,
-) {
+function replaceAiThreadSearchParam(threadId: string | null) {
   if (typeof window === "undefined" || window.location.pathname !== "/ai") {
     return;
   }
@@ -125,11 +107,7 @@ function replaceAiThreadSearchParam(
   }
   url.searchParams.delete("agent");
 
-  window.history.replaceState(
-    window.history.state,
-    "",
-    `${url.pathname}${url.search}${url.hash}`,
-  );
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }
 
 export function useAiChatThreadState(options?: { enabled?: boolean }) {
@@ -140,9 +118,7 @@ export function useAiChatThreadState(options?: { enabled?: boolean }) {
   const workspaceId = useActiveWorkspaceId();
   const threadsQuery = useAiChatThreads({ enabled });
   const threadState = useAiChatThreadStore((state) =>
-    workspaceId
-      ? state.threadStateByWorkspaceId[workspaceId]
-      : undefined,
+    workspaceId ? state.threadStateByWorkspaceId[workspaceId] : undefined,
   );
 
   const activeThreadId = threadState?.activeThreadId ?? null;
@@ -169,13 +145,9 @@ export function useAiChatThreadState(options?: { enabled?: boolean }) {
       return;
     }
 
-    const initialThreadId =
-      pathname === "/ai" ? getCurrentUrlThreadId() : null;
+    const initialThreadId = pathname === "/ai" ? getCurrentUrlThreadId() : null;
 
-    initializeActiveThreadId(
-      workspaceId,
-      initialThreadId,
-    );
+    initializeActiveThreadId(workspaceId, initialThreadId);
   }, [enabled, hasInitializedActiveThread, workspaceId, pathname]);
 
   useEffect(() => {

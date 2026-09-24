@@ -58,14 +58,18 @@ describe("MeetingCollaborationRoom in the Workers runtime", () => {
       },
     );
     expect(invalidTransition).toBe("Cannot pause a claimed recorder session");
-    await expect(stub.transitionRecorder({
-      ...input,
-      action: "start",
-    })).resolves.toMatchObject({ status: "recording" });
-    await expect(stub.transitionRecorder({
-      ...input,
-      action: "pause",
-    })).resolves.toMatchObject({ status: "paused" });
+    await expect(
+      stub.transitionRecorder({
+        ...input,
+        action: "start",
+      }),
+    ).resolves.toMatchObject({ status: "recording" });
+    await expect(
+      stub.transitionRecorder({
+        ...input,
+        action: "pause",
+      }),
+    ).resolves.toMatchObject({ status: "paused" });
   });
 
   it("rejects client transcript writes while allowing notes during recording", async () => {
@@ -78,15 +82,21 @@ describe("MeetingCollaborationRoom in the Workers runtime", () => {
     });
 
     await runInDurableObject(stub, async (instance: MeetingCollaborationRoom) => {
-      const hocuspocus = (instance as unknown as {
-        hocuspocus: { configuration: { extensions: Array<{
-          beforeSync?: (input: {
-            document: Y.Doc;
-            payload: Uint8Array;
-            type: number;
-          }) => Promise<void>;
-        }> } };
-      }).hocuspocus;
+      const hocuspocus = (
+        instance as unknown as {
+          hocuspocus: {
+            configuration: {
+              extensions: Array<{
+                beforeSync?: (input: {
+                  document: Y.Doc;
+                  payload: Uint8Array;
+                  type: number;
+                }) => Promise<void>;
+              }>;
+            };
+          };
+        }
+      ).hocuspocus;
       const guard = hocuspocus.configuration.extensions.find(
         (extension) => extension.beforeSync,
       )?.beforeSync;
@@ -95,26 +105,24 @@ describe("MeetingCollaborationRoom in the Workers runtime", () => {
 
       const server = new Y.Doc();
       const transcriptClient = new Y.Doc();
-      transcriptClient.getXmlFragment("transcript").insert(
-        0,
-        [new Y.XmlElement("paragraph")],
-      );
-      await expect(guard({
-        document: server,
-        payload: Y.encodeStateAsUpdate(transcriptClient),
-        type: 2,
-      })).rejects.toThrow("Transcript is read-only");
+      transcriptClient.getXmlFragment("transcript").insert(0, [new Y.XmlElement("paragraph")]);
+      await expect(
+        guard({
+          document: server,
+          payload: Y.encodeStateAsUpdate(transcriptClient),
+          type: 2,
+        }),
+      ).rejects.toThrow("Transcript is read-only");
 
       const notesClient = new Y.Doc();
-      notesClient.getXmlFragment("notes").insert(
-        0,
-        [new Y.XmlElement("paragraph")],
-      );
-      await expect(guard({
-        document: server,
-        payload: Y.encodeStateAsUpdate(notesClient),
-        type: 2,
-      })).resolves.toBeUndefined();
+      notesClient.getXmlFragment("notes").insert(0, [new Y.XmlElement("paragraph")]);
+      await expect(
+        guard({
+          document: server,
+          payload: Y.encodeStateAsUpdate(notesClient),
+          type: 2,
+        }),
+      ).resolves.toBeUndefined();
       server.destroy();
       transcriptClient.destroy();
       notesClient.destroy();
@@ -143,33 +151,31 @@ describe("MeetingCollaborationRoom in the Workers runtime", () => {
   it("retries the finalized meeting document from a durable SQLite outbox", async () => {
     const stub = env.MEETING_COLLABORATION.getByName("meeting:document-sync");
     await runInDurableObject(stub, async (instance: MeetingCollaborationRoom) => {
-      const roomStorage = (instance as unknown as {
-        roomStorage: {
-          completeSession(
-            documentName: string,
-            meetingId: string,
-            state: Uint8Array,
-          ): void;
-          getDocumentSync(): unknown;
-        };
-        scheduleMaintenance(): Promise<void>;
-      }).roomStorage;
-      roomStorage.completeSession(
-        "meeting:document-sync",
-        "document-sync",
-        new Uint8Array(),
-      );
+      const roomStorage = (
+        instance as unknown as {
+          roomStorage: {
+            completeSession(documentName: string, meetingId: string, state: Uint8Array): void;
+            getDocumentSync(): unknown;
+          };
+          scheduleMaintenance(): Promise<void>;
+        }
+      ).roomStorage;
+      roomStorage.completeSession("meeting:document-sync", "document-sync", new Uint8Array());
       expect(roomStorage.getDocumentSync()).not.toBeNull();
-      await (instance as unknown as {
-        scheduleMaintenance(): Promise<void>;
-      }).scheduleMaintenance();
+      await (
+        instance as unknown as {
+          scheduleMaintenance(): Promise<void>;
+        }
+      ).scheduleMaintenance();
     });
 
     await expect(runDurableObjectAlarm(stub)).resolves.toBe(true);
     await runInDurableObject(stub, (instance: MeetingCollaborationRoom) => {
-      const roomStorage = (instance as unknown as {
-        roomStorage: { getDocumentSync(): unknown };
-      }).roomStorage;
+      const roomStorage = (
+        instance as unknown as {
+          roomStorage: { getDocumentSync(): unknown };
+        }
+      ).roomStorage;
       expect(roomStorage.getDocumentSync()).toBeNull();
     });
   });
@@ -184,45 +190,57 @@ describe("MeetingCollaborationRoom in the Workers runtime", () => {
     });
 
     await runInDurableObject(stub, (instance: MeetingCollaborationRoom) => {
-      const roomStorage = (instance as unknown as {
-        roomStorage: {
-          checkpoint(
-            recorder: Record<string, unknown>,
-            segment: Record<string, unknown>,
-            patch: Record<string, unknown>,
-          ): { inserted: boolean; recorder: Record<string, unknown> };
-          getRecorder(): Record<string, unknown> | null;
-          listSegments(leaseId: string): Array<Record<string, unknown>>;
-        };
-      }).roomStorage;
+      const roomStorage = (
+        instance as unknown as {
+          roomStorage: {
+            checkpoint(
+              recorder: Record<string, unknown>,
+              segment: Record<string, unknown>,
+              patch: Record<string, unknown>,
+            ): { inserted: boolean; recorder: Record<string, unknown> };
+            getRecorder(): Record<string, unknown> | null;
+            listSegments(leaseId: string): Array<Record<string, unknown>>;
+          };
+        }
+      ).roomStorage;
       const recorder = roomStorage.getRecorder();
       if (!recorder) throw new Error("Expected recorder state");
-      const first = roomStorage.checkpoint(recorder, {
-        endMs: 120,
-        id: "segment-first",
-        providerItemId: "provider-first",
-        sequence: 11,
-        source: "system",
-        startMs: 100,
-        text: "First copy",
-      }, {});
-      const duplicate = roomStorage.checkpoint(first.recorder, {
-        endMs: 120,
-        id: "segment-duplicate",
-        providerItemId: "provider-duplicate",
-        sequence: 11,
-        source: "system",
-        startMs: 100,
-        text: "Duplicate copy",
-      }, {});
+      const first = roomStorage.checkpoint(
+        recorder,
+        {
+          endMs: 120,
+          id: "segment-first",
+          providerItemId: "provider-first",
+          sequence: 11,
+          source: "system",
+          startMs: 100,
+          text: "First copy",
+        },
+        {},
+      );
+      const duplicate = roomStorage.checkpoint(
+        first.recorder,
+        {
+          endMs: 120,
+          id: "segment-duplicate",
+          providerItemId: "provider-duplicate",
+          sequence: 11,
+          source: "system",
+          startMs: 100,
+          text: "Duplicate copy",
+        },
+        {},
+      );
 
       expect(first.inserted).toBe(true);
       expect(duplicate.inserted).toBe(false);
-      expect(roomStorage.listSegments(claimed.leaseId)).toMatchObject([{
-        id: "segment-first",
-        source: "system",
-        text: "First copy",
-      }]);
+      expect(roomStorage.listSegments(claimed.leaseId)).toMatchObject([
+        {
+          id: "segment-first",
+          source: "system",
+          text: "First copy",
+        },
+      ]);
     });
   });
 
@@ -266,15 +284,17 @@ describe("MeetingCollaborationRoom in the Workers runtime", () => {
             userId: "user-1",
             workspaceId: "workspace-1",
           },
-          segments: [{
-            endMs: 200,
-            id: "segment-1",
-            providerItemId: "lease-provider-retry:item-1",
-            sequence: 0,
-            source: "microphone",
-            startMs: 0,
-            text: "Persisted words",
-          }],
+          segments: [
+            {
+              endMs: 200,
+              id: "segment-1",
+              providerItemId: "lease-provider-retry:item-1",
+              sequence: 0,
+              source: "microphone",
+              startMs: 0,
+              text: "Persisted words",
+            },
+          ],
           sessionId: "session-provider-retry",
           socket: {
             close(code: number) {
@@ -282,11 +302,16 @@ describe("MeetingCollaborationRoom in the Workers runtime", () => {
             },
             readyState: WebSocket.OPEN,
           },
-          transcribers: new Map([["microphone", {
-            abort() {
-              providerAborted = true;
-            },
-          }]]),
+          transcribers: new Map([
+            [
+              "microphone",
+              {
+                abort() {
+                  providerAborted = true;
+                },
+              },
+            ],
+          ]),
         };
         const internals = instance as unknown as {
           audioSession: typeof session | null;
@@ -328,18 +353,24 @@ describe("MeetingCollaborationRoom in the Workers runtime", () => {
         providerGenerations: { microphone: 4, system: 7 },
         readySources: new Set(["microphone", "system"]),
         transcribers: new Map([
-          ["microphone", {
-            async finish() {
-              finished.push("microphone");
-              throw new Error("microphone finalization failed");
+          [
+            "microphone",
+            {
+              async finish() {
+                finished.push("microphone");
+                throw new Error("microphone finalization failed");
+              },
             },
-          }],
-          ["system", {
-            async finish() {
-              await Promise.resolve();
-              finished.push("system");
+          ],
+          [
+            "system",
+            {
+              async finish() {
+                await Promise.resolve();
+                finished.push("system");
+              },
             },
-          }],
+          ],
         ]),
       };
       const internals = instance as unknown as {
@@ -404,12 +435,14 @@ describe("MeetingCollaborationRoom in the Workers runtime", () => {
     );
 
     await runInDurableObject(stub, (instance: MeetingCollaborationRoom) => {
-      const hocuspocus = (instance as unknown as {
-        hocuspocus: {
-          handledConnections: number;
-          transcriptAppendCalls: number;
-        };
-      }).hocuspocus;
+      const hocuspocus = (
+        instance as unknown as {
+          hocuspocus: {
+            handledConnections: number;
+            transcriptAppendCalls: number;
+          };
+        }
+      ).hocuspocus;
       expect(hocuspocus.handledConnections).toBe(1);
       expect(hocuspocus.transcriptAppendCalls).toBe(1);
     });

@@ -44,7 +44,8 @@ export async function synchronizeMailCache(
       advanceHistory: !isSearch && (Boolean(syncRequest.historyId) || !state?.historyId),
       markViewLoaded: !isSearch,
       reconcileView: !isSearch && response.mode !== "incremental",
-      resetViewListing: page === 0 && !requestOptions.loadMore && !(state?.listedThreadIds?.[view]?.length),
+      resetViewListing:
+        page === 0 && !requestOptions.loadMore && !state?.listedThreadIds?.[view]?.length,
     });
     last = { response, isSearch };
     if (isSearch || response.mode === "incremental" || !response.nextPageToken) break;
@@ -62,7 +63,10 @@ function buildMailSyncRequest(
 ) {
   const isSearch = Boolean(options.search?.trim());
   const loaded = state?.loadedViews?.[view] === true;
-  const continueListing = !isSearch && !options.loadMore && Boolean(state?.listedThreadIds?.[view]?.length && state?.pageTokens[view]);
+  const continueListing =
+    !isSearch &&
+    !options.loadMore &&
+    Boolean(state?.listedThreadIds?.[view]?.length && state?.pageTokens[view]);
   const syncRequest: MailSyncRequest = {
     connectionId: connectionId,
     historyId:

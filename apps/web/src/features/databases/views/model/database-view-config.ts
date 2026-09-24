@@ -33,10 +33,7 @@ export type {
   DatabasePropertyFilterOperator,
 };
 
-import type {
-  DateFormatValue,
-  TimeFormatValue,
-} from "../../schema/model/database-date-config";
+import type { DateFormatValue, TimeFormatValue } from "../../schema/model/database-date-config";
 import type { DatabaseChartSettings } from "../chart/model/database-chart-config";
 import type { DatabaseFormHeaderSettings } from "../form/model/database-form-header-config";
 import type { DatabaseFormQuestionSettingsPatch } from "../form/model/database-form-question-config";
@@ -56,8 +53,7 @@ type PersonDefaultValue = "no_default" | "created_by";
 type PersonNotificationsValue = "users_and_groups" | "users_only" | "none";
 type RelationLimitValue = "one_page" | "no_limit";
 type SelectOptionSortValue = "manual" | "alphabetical" | "reverse_alphabetical";
-export type DatabaseConditionalColorApplyTarget =
-  "entire-row" | "this-property";
+export type DatabaseConditionalColorApplyTarget = "entire-row" | "this-property";
 export type DatabaseConditionalColorStyle = "page-background";
 export type DatabaseRollupCalculation =
   | "show_original"
@@ -88,8 +84,7 @@ export type DatabaseConditionalColorConfig = {
 };
 
 export type DatabaseSubItemsDisplay = "nested" | "flattened" | "disabled";
-export type DatabaseSubItemsFilter =
-  "parents-only" | "parents-and-sub-items" | "sub-items-only";
+export type DatabaseSubItemsFilter = "parents-only" | "parents-and-sub-items" | "sub-items-only";
 export type DatabaseSubItemsProperty = "sub-item" | "parent-item";
 
 export type DatabaseSubItemsSettings = {
@@ -205,7 +200,6 @@ export type DatabaseSortConfig = {
   direction: DatabaseSortDirection;
 };
 
-
 export function getDatabaseSorts(config: unknown): DatabaseSortConfig[] {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     return [];
@@ -220,9 +214,7 @@ export function getDatabaseSorts(config: unknown): DatabaseSortConfig[] {
   return [];
 }
 
-export function getDatabaseFilters(
-  config: unknown,
-): DatabaseFilterItemConfig[] {
+export function getDatabaseFilters(config: unknown): DatabaseFilterItemConfig[] {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     return [];
   }
@@ -236,9 +228,7 @@ export function getDatabaseFilters(
   return [];
 }
 
-export function getDatabaseConditionalColors(
-  config: unknown,
-): DatabaseConditionalColorConfig[] {
+export function getDatabaseConditionalColors(config: unknown): DatabaseConditionalColorConfig[] {
   const conditionalColors =
     config && typeof config === "object" && !Array.isArray(config)
       ? (config as DatabaseConfig).conditionalColors
@@ -249,18 +239,13 @@ export function getDatabaseConditionalColors(
   }
 
   return conditionalColors.flatMap((value, index) => {
-    const setting = normalizeDatabaseConditionalColor(
-      value,
-      `conditional-color-${index}`,
-    );
+    const setting = normalizeDatabaseConditionalColor(value, `conditional-color-${index}`);
 
     return setting ? [setting] : [];
   });
 }
 
-export function getDatabaseSubItemsSettings(
-  config: unknown,
-): DatabaseSubItemsSettings {
+export function getDatabaseSubItemsSettings(config: unknown): DatabaseSubItemsSettings {
   const subItems =
     config && typeof config === "object" && !Array.isArray(config)
       ? (config as DatabaseConfig).subItems
@@ -275,22 +260,16 @@ export function getDatabaseSubItemsSettings(
       ? subItems.display
       : defaultDatabaseSubItemsSettings.display,
     enabled: subItems.enabled === true,
-    filter: [
-      "parents-only",
-      "parents-and-sub-items",
-      "sub-items-only",
-    ].includes(subItems.filter)
+    filter: ["parents-only", "parents-and-sub-items", "sub-items-only"].includes(subItems.filter)
       ? subItems.filter
       : defaultDatabaseSubItemsSettings.filter,
-    ...(typeof subItems.parentPropertyId === "string" &&
-    subItems.parentPropertyId
+    ...(typeof subItems.parentPropertyId === "string" && subItems.parentPropertyId
       ? { parentPropertyId: subItems.parentPropertyId }
       : {}),
     property: ["sub-item", "parent-item"].includes(subItems.property)
       ? subItems.property
       : defaultDatabaseSubItemsSettings.property,
-    ...(typeof subItems.subItemPropertyId === "string" &&
-    subItems.subItemPropertyId
+    ...(typeof subItems.subItemPropertyId === "string" && subItems.subItemPropertyId
       ? { subItemPropertyId: subItems.subItemPropertyId }
       : {}),
   };
@@ -305,22 +284,14 @@ export function getDatabaseSetupDismissed(config: unknown) {
   );
 }
 
-export function getMergedDatabaseConfig(
-  config: unknown,
-  nextConfig: Partial<DatabaseConfig>,
-) {
+export function getMergedDatabaseConfig(config: unknown, nextConfig: Partial<DatabaseConfig>) {
   return {
-    ...(config && typeof config === "object" && !Array.isArray(config)
-      ? config
-      : {}),
+    ...(config && typeof config === "object" && !Array.isArray(config) ? config : {}),
     ...nextConfig,
   };
 }
 
-export function getMergedNameColumnConfig(
-  config: unknown,
-  nextConfig: DatabaseNameColumnConfig,
-) {
+export function getMergedNameColumnConfig(config: unknown, nextConfig: DatabaseNameColumnConfig) {
   return getMergedDatabaseConfig(config, {
     nameColumn: {
       ...getNameColumnConfig(config),
@@ -329,15 +300,8 @@ export function getMergedNameColumnConfig(
   });
 }
 
-export function getDatabaseLayoutSettings(
-  config: unknown,
-): DatabaseLayoutSettings {
-  if (
-    !config ||
-    typeof config !== "object" ||
-    Array.isArray(config) ||
-    !("layout" in config)
-  ) {
+export function getDatabaseLayoutSettings(config: unknown): DatabaseLayoutSettings {
+  if (!config || typeof config !== "object" || Array.isArray(config) || !("layout" in config)) {
     return defaultDatabaseLayoutSettings;
   }
 
@@ -350,9 +314,7 @@ export function getDatabaseLayoutSettings(
   return {
     cardLayout: layout.cardLayout === "list" ? "list" : "compact",
     cardPreview: layout.cardPreview === "none" ? "none" : "page-cover",
-    cardSize: ["small", "medium", "large"].includes(layout.cardSize)
-      ? layout.cardSize
-      : "medium",
+    cardSize: ["small", "medium", "large"].includes(layout.cardSize) ? layout.cardSize : "medium",
     fullLinePropertyIds: Array.isArray(layout.fullLinePropertyIds)
       ? layout.fullLinePropertyIds.filter(
           (propertyId): propertyId is string => typeof propertyId === "string",
@@ -363,31 +325,21 @@ export function getDatabaseLayoutSettings(
   };
 }
 
-export function getMergedPropertyConfig(
-  config: unknown,
-  nextConfig: DatabasePropertyConfig,
-) {
+export function getMergedPropertyConfig(config: unknown, nextConfig: DatabasePropertyConfig) {
   return {
     ...(config && typeof config === "object" ? config : {}),
     ...nextConfig,
   };
 }
 
-export function upsertDatabaseSort(
-  sorts: DatabaseSortConfig[],
-  nextSort: DatabaseSortConfig,
-) {
-  const existingSortIndex = sorts.findIndex(
-    (sort) => sort.column === nextSort.column,
-  );
+export function upsertDatabaseSort(sorts: DatabaseSortConfig[], nextSort: DatabaseSortConfig) {
+  const existingSortIndex = sorts.findIndex((sort) => sort.column === nextSort.column);
 
   if (existingSortIndex === -1) {
     return [...sorts, nextSort];
   }
 
-  return sorts.map((sort, index) =>
-    index === existingSortIndex ? nextSort : sort,
-  );
+  return sorts.map((sort, index) => (index === existingSortIndex ? nextSort : sort));
 }
 
 export function getStatusDefaultOptionId(config: unknown) {
@@ -397,9 +349,7 @@ export function getStatusDefaultOptionId(config: unknown) {
 
   const defaultOptionId = (config as DatabasePropertyConfig).defaultOptionId;
 
-  return typeof defaultOptionId === "string"
-    ? defaultOptionId
-    : defaultStatusOption.id;
+  return typeof defaultOptionId === "string" ? defaultOptionId : defaultStatusOption.id;
 }
 
 export function getShowFullUrl(config: unknown) {
@@ -439,9 +389,7 @@ export function getViewHiddenPropertyIds(config: unknown) {
   const hiddenPropertyIds = (config as DatabaseConfig).hiddenPropertyIds;
 
   return Array.isArray(hiddenPropertyIds)
-    ? hiddenPropertyIds.filter(
-        (propertyId): propertyId is string => typeof propertyId === "string",
-      )
+    ? hiddenPropertyIds.filter((propertyId): propertyId is string => typeof propertyId === "string")
     : [];
 }
 
@@ -466,9 +414,7 @@ export function getDatabasePropertyOrder(config: unknown) {
   const propertyOrder = (config as DatabaseConfig).propertyOrder;
 
   return Array.isArray(propertyOrder)
-    ? propertyOrder.filter(
-        (propertyId): propertyId is string => typeof propertyId === "string",
-      )
+    ? propertyOrder.filter((propertyId): propertyId is string => typeof propertyId === "string")
     : [];
 }
 
@@ -529,34 +475,24 @@ export function getNumberFormat(config: unknown) {
     : "number";
 }
 
-export function getNumberDecimalPlaces(
-  config: unknown,
-): NumberDecimalPlacesValue {
+export function getNumberDecimalPlaces(config: unknown): NumberDecimalPlacesValue {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     return "default";
   }
 
-  const numberDecimalPlaces = (config as DatabasePropertyConfig)
-    .numberDecimalPlaces;
+  const numberDecimalPlaces = (config as DatabasePropertyConfig).numberDecimalPlaces;
 
-  return isNumberDecimalPlacesValue(numberDecimalPlaces)
-    ? numberDecimalPlaces
-    : "default";
+  return isNumberDecimalPlacesValue(numberDecimalPlaces) ? numberDecimalPlaces : "default";
 }
 
-export function getNumberDisplayStyle(
-  config: unknown,
-): DatabaseNumberDisplayStyle {
+export function getNumberDisplayStyle(config: unknown): DatabaseNumberDisplayStyle {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     return "number";
   }
 
-  const numberDisplayStyle = (config as DatabasePropertyConfig)
-    .numberDisplayStyle;
+  const numberDisplayStyle = (config as DatabasePropertyConfig).numberDisplayStyle;
 
-  return isDatabaseNumberDisplayStyle(numberDisplayStyle)
-    ? numberDisplayStyle
-    : "number";
+  return isDatabaseNumberDisplayStyle(numberDisplayStyle) ? numberDisplayStyle : "number";
 }
 
 export function getNumberDisplayColor(config: unknown) {
@@ -564,8 +500,7 @@ export function getNumberDisplayColor(config: unknown) {
     return "green";
   }
 
-  const numberDisplayColor = (config as DatabasePropertyConfig)
-    .numberDisplayColor;
+  const numberDisplayColor = (config as DatabasePropertyConfig).numberDisplayColor;
 
   return typeof numberDisplayColor === "string" && numberDisplayColor.length > 0
     ? numberDisplayColor
@@ -577,8 +512,7 @@ export function getNumberDisplayDivideBy(config: unknown) {
     return 100;
   }
 
-  const numberDisplayDivideBy = (config as DatabasePropertyConfig)
-    .numberDisplayDivideBy;
+  const numberDisplayDivideBy = (config as DatabasePropertyConfig).numberDisplayDivideBy;
 
   return typeof numberDisplayDivideBy === "number" &&
     Number.isFinite(numberDisplayDivideBy) &&
@@ -592,8 +526,7 @@ export function getNumberDisplayShowNumber(config: unknown) {
     return true;
   }
 
-  const numberDisplayShowNumber = (config as DatabasePropertyConfig)
-    .numberDisplayShowNumber;
+  const numberDisplayShowNumber = (config as DatabasePropertyConfig).numberDisplayShowNumber;
 
   return numberDisplayShowNumber !== false;
 }
@@ -601,9 +534,7 @@ export function getNumberDisplayShowNumber(config: unknown) {
 export function getNameColumnLabel(config: unknown) {
   const label = getNameColumnConfig(config).label;
 
-  return typeof label === "string" && label.trim().length > 0
-    ? label.trim()
-    : "Name";
+  return typeof label === "string" && label.trim().length > 0 ? label.trim() : "Name";
 }
 
 export function getNameColumnIcon(config: unknown) {
@@ -644,21 +575,15 @@ export function getNameColumnWrapContent(config: unknown) {
   return wrapContent !== false;
 }
 
-function isDatabaseSortDirection(
-  value: unknown,
-): value is DatabaseSortDirection {
+function isDatabaseSortDirection(value: unknown): value is DatabaseSortDirection {
   return value === "ascending" || value === "descending";
 }
 
-function isNumberDecimalPlacesValue(
-  value: unknown,
-): value is NumberDecimalPlacesValue {
+function isNumberDecimalPlacesValue(value: unknown): value is NumberDecimalPlacesValue {
   return value === "default" || [0, 1, 2, 3, 4, 5].includes(value as number);
 }
 
-function isDatabaseNumberDisplayStyle(
-  value: unknown,
-): value is DatabaseNumberDisplayStyle {
+function isDatabaseNumberDisplayStyle(value: unknown): value is DatabaseNumberDisplayStyle {
   return value === "number" || value === "bar" || value === "ring";
 }
 
@@ -682,43 +607,30 @@ function normalizeDatabaseConditionalColor(
   }
 
   const valueRecord = value as Record<string, unknown>;
-  const normalizedFilter = normalizeDatabaseFilter(
-    valueRecord.filter,
-    `${fallbackId}-filter`,
-  );
+  const normalizedFilter = normalizeDatabaseFilter(valueRecord.filter, `${fallbackId}-filter`);
 
   if (!normalizedFilter || isDatabaseFilterGroup(normalizedFilter)) {
     return null;
   }
 
   return {
-    applyTo:
-      valueRecord.applyTo === "this-property" ? "this-property" : "entire-row",
+    applyTo: valueRecord.applyTo === "this-property" ? "this-property" : "entire-row",
     color: typeof valueRecord.color === "string" ? valueRecord.color : "green",
     filter: normalizedFilter,
     id:
-      typeof valueRecord.id === "string" && valueRecord.id.length > 0
-        ? valueRecord.id
-        : fallbackId,
+      typeof valueRecord.id === "string" && valueRecord.id.length > 0 ? valueRecord.id : fallbackId,
     style: "page-background",
   };
 }
 
 function getNameColumnConfig(config: unknown) {
-  if (
-    !config ||
-    typeof config !== "object" ||
-    Array.isArray(config) ||
-    !("nameColumn" in config)
-  ) {
+  if (!config || typeof config !== "object" || Array.isArray(config) || !("nameColumn" in config)) {
     return {};
   }
 
   const nameColumn = (config as DatabaseConfig).nameColumn;
 
-  return nameColumn &&
-    typeof nameColumn === "object" &&
-    !Array.isArray(nameColumn)
+  return nameColumn && typeof nameColumn === "object" && !Array.isArray(nameColumn)
     ? nameColumn
     : {};
 }

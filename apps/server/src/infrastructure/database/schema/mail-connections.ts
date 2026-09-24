@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { check, foreignKey, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import {
+  check,
+  foreignKey,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { user } from "./authentication";
 import { timestampColumns } from "./columns";
 import { workspace, member } from "./workspaces";
@@ -26,16 +37,10 @@ export const gmailAccount = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("gmail_account_owner_subject_unique").on(
-      table.userId,
-      table.googleSubject,
-    ),
+    uniqueIndex("gmail_account_owner_subject_unique").on(table.userId, table.googleSubject),
     uniqueIndex("gmail_account_id_user_unique").on(table.id, table.userId),
     index("gmail_account_email_idx").on(table.email),
-    index("gmail_account_watch_expiry_idx").on(
-      table.status,
-      table.watchExpiresAt,
-    ),
+    index("gmail_account_watch_expiry_idx").on(table.status, table.watchExpiresAt),
     check(
       "gmail_account_status_check",
       sql`${table.status} in ('connected', 'reconnect_required')`,
@@ -65,18 +70,9 @@ export const gmailOauthAttempt = pgTable(
   },
   (table) => [
     uniqueIndex("gmail_oauth_attempt_state_unique").on(table.stateHash),
-    index("gmail_oauth_attempt_user_expiry_idx").on(
-      table.userId,
-      table.expiresAt,
-    ),
-    index("gmail_oauth_attempt_workspace_idx").on(
-      table.workspaceId,
-      table.expiresAt,
-    ),
-    check(
-      "gmail_oauth_attempt_client_kind_check",
-      sql`${table.clientKind} in ('web', 'desktop')`,
-    ),
+    index("gmail_oauth_attempt_user_expiry_idx").on(table.userId, table.expiresAt),
+    index("gmail_oauth_attempt_workspace_idx").on(table.workspaceId, table.expiresAt),
+    check("gmail_oauth_attempt_client_kind_check", sql`${table.clientKind} in ('web', 'desktop')`),
   ],
 );
 

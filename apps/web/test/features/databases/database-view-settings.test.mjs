@@ -2,21 +2,22 @@ import { readFile } from "node:fs/promises";
 
 export function register({ readSource, assert, loadModule, test }) {
   const readToolbarSource = async () =>
-    (await Promise.all([
-      readSource("/src/features/databases/views/components/database-view-toolbar.tsx"),
-      readSource("/src/features/databases/views/components/database-view-toolbar-dialogs.tsx"),
-      readSource("/src/features/databases/views/components/database-toolbar-actions.tsx"),
-      readSource("/src/features/databases/views/components/database-settings-control.tsx"),
-      readSource("/src/features/databases/views/model/toolbar-source.ts"),
-    ])).join("\n")
+    (
+      await Promise.all([
+        readSource("/src/features/databases/views/components/database-view-toolbar.tsx"),
+        readSource("/src/features/databases/views/components/database-view-toolbar-dialogs.tsx"),
+        readSource("/src/features/databases/views/components/database-toolbar-actions.tsx"),
+        readSource("/src/features/databases/views/components/database-settings-control.tsx"),
+        readSource("/src/features/databases/views/model/toolbar-source.ts"),
+      ])
+    ).join("\n");
   test("link existing data source owns its nested picker state", async () => {
-    const settings = await readSource("/src/features/databases/views/view-settings/components/data-source-settings.tsx");
+    const settings = await readSource(
+      "/src/features/databases/views/view-settings/components/data-source-settings.tsx",
+    );
 
     assert.match(settings, /function LinkExistingDataSourcePicker/);
-    assert.match(
-      settings,
-      /LinkExistingDataSourcePicker[\s\S]*?useState<string \| null>/,
-    );
+    assert.match(settings, /LinkExistingDataSourcePicker[\s\S]*?useState<string \| null>/);
     assert.match(settings, /<LinkExistingDataSourcePicker/);
     assert.doesNotMatch(settings, /const renderLinkExistingPicker/);
   });
@@ -77,10 +78,7 @@ export function register({ readSource, assert, loadModule, test }) {
       readSource("/src/features/databases/setup/components/database-setup-card.tsx"),
     ]);
 
-    assert.match(
-      controller,
-      /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/,
-    );
+    assert.match(controller, /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/);
     assert.match(controller, /useCreateDatabaseDataSource/);
     assert.match(controllerModel, /parentDatabaseId: source\.parentDatabaseId/);
     assert.match(
@@ -105,10 +103,7 @@ export function register({ readSource, assert, loadModule, test }) {
       setupCard,
       /inputGroupClassName="[^"]*border-stroke-default[^"]*focus-within:border-stroke-default[^"]*focus-visible\]:border-stroke-default/,
     );
-    assert.doesNotMatch(
-      setupCard,
-      /inputGroupClassName="[^"]*border-control-border/,
-    );
+    assert.doesNotMatch(setupCard, /inputGroupClassName="[^"]*border-control-border/);
   });
 
   test("deleting a final source view keeps it recoverable", async () => {
@@ -164,15 +159,14 @@ export function register({ readSource, assert, loadModule, test }) {
   });
 
   test("view settings use full-panel navigation with only More settings nested", async () => {
-    const [dropdrawer, dropdrawerContent, menu, settings, subItems, toolbar] =
-      await Promise.all([
-        readSource("/src/shared/ui/dropdown-menu.tsx"),
-        readSource("/src/shared/ui/dropdrawer.tsx"),
-        readSource("/src/features/databases/views/view-settings/components/index.tsx"),
-        readSource("/src/features/databases/views/view-settings/components/data-source-settings.tsx"),
-        readSource("/src/features/databases/views/view-settings/components/sub-items-settings.tsx"),
-        readToolbarSource(),
-      ]);
+    const [dropdrawer, dropdrawerContent, menu, settings, subItems, toolbar] = await Promise.all([
+      readSource("/src/shared/ui/dropdown-menu.tsx"),
+      readSource("/src/shared/ui/dropdrawer.tsx"),
+      readSource("/src/features/databases/views/view-settings/components/index.tsx"),
+      readSource("/src/features/databases/views/view-settings/components/data-source-settings.tsx"),
+      readSource("/src/features/databases/views/view-settings/components/sub-items-settings.tsx"),
+      readToolbarSource(),
+    ]);
 
     assert.match(toolbar, /activeDataSourceId:/);
     assert.match(toolbar, /view\?\.dataSourceId/);
@@ -184,19 +178,10 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(settings, /PageDatabasePicker/);
     assert.match(settings, /h-\[min\(32rem,calc\(100dvh-5rem\)\)\]/);
     assert.match(menu, /defaultSubDisplayMode="inline"/);
-    assert.match(
-      menu,
-      /className="w-72"/,
-    );
+    assert.match(menu, /className="w-72"/);
     assert.match(settings, /displayMode="nested"[\s\S]*?More settings/);
-    assert.match(
-      settings,
-      /Link existing data source[\s\S]*?<LinkExistingDataSourcePicker/,
-    );
-    assert.match(
-      settings,
-      /renderDataSourcePicker\(dataSourceOptions\)/,
-    );
+    assert.match(settings, /Link existing data source[\s\S]*?<LinkExistingDataSourcePicker/);
+    assert.match(settings, /renderDataSourcePicker\(dataSourceOptions\)/);
     assert.doesNotMatch(settings, /<span>Add new view<\/span>/);
     assert.match(settings, /const sourceView = databaseOption\.database\.views\[0\]/);
     assert.match(settings, /onReplaceActiveViewSource\(sourceSelection\)/);
@@ -208,19 +193,10 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(settings, /viewConfig: config/);
     assert.match(settings, /onUnlinkDataSource/);
     assert.match(subItems, /displayMode="inline"[\s\S]*?title="Sub-items"/);
-    assert.match(
-      dropdrawer,
-      /aria-label=\{`Back from \$\{activePanel\.title\}`\}/,
-    );
+    assert.match(dropdrawer, /aria-label=\{`Back from \$\{activePanel\.title\}`\}/);
     assert.match(dropdrawer, /aria-label=\{`Close \$\{activePanel\.title\}`\}/);
-    assert.match(
-      dropdrawer,
-      /min-h-0 flex-1 overflow-y-auto overscroll-contain/,
-    );
-    assert.match(
-      dropdrawerContent,
-      /menuViewportClassName/,
-    );
+    assert.match(dropdrawer, /min-h-0 flex-1 overflow-y-auto overscroll-contain/);
+    assert.match(dropdrawerContent, /menuViewportClassName/);
   });
 
   test("database property icons persist in property and name-column config", async () => {
@@ -230,37 +206,27 @@ export function register({ readSource, assert, loadModule, test }) {
       getMergedPropertyConfig,
       getNameColumnIcon,
       getDatabaseViewIcon,
-    } = await loadModule(
-      "/src/features/databases/views/model/database-view-config.ts",
-    );
+    } = await loadModule("/src/features/databases/views/model/database-view-config.ts");
 
     assert.equal(getDatabasePropertyIcon({ icon: "🌐" }), "🌐");
     assert.equal(getDatabasePropertyIcon({ icon: 42 }), "");
     assert.equal(getNameColumnIcon({ nameColumn: { icon: "📝" } }), "📝");
     assert.equal(getNameColumnIcon({}), "");
-    assert.equal(
-      getDatabaseViewIcon({ icon: "<svg>view</svg>" }),
-      "<svg>view</svg>",
-    );
+    assert.equal(getDatabaseViewIcon({ icon: "<svg>view</svg>" }), "<svg>view</svg>");
     assert.equal(getDatabaseViewIcon({ icon: 42 }), "");
-    assert.deepEqual(
-      getMergedPropertyConfig({ wrapContent: true }, { icon: "🌐" }),
-      { icon: "🌐", wrapContent: true },
-    );
-    assert.deepEqual(
-      getMergedNameColumnConfig(
-        { nameColumn: { label: "Task" } },
-        { icon: "📝" },
-      ),
-      { nameColumn: { icon: "📝", label: "Task" } },
-    );
+    assert.deepEqual(getMergedPropertyConfig({ wrapContent: true }, { icon: "🌐" }), {
+      icon: "🌐",
+      wrapContent: true,
+    });
+    assert.deepEqual(getMergedNameColumnConfig({ nameColumn: { label: "Task" } }, { icon: "📝" }), {
+      nameColumn: { icon: "📝", label: "Task" },
+    });
   });
 
   test("database view settings expose one canonical layout catalog", async () => {
-    const { databaseViewTypeOptions, getDatabaseViewTypePresentation } =
-      await loadModule(
-        "/src/features/databases/views/view-settings/model/view-type-options.ts",
-      );
+    const { databaseViewTypeOptions, getDatabaseViewTypePresentation } = await loadModule(
+      "/src/features/databases/views/view-settings/model/view-type-options.ts",
+    );
 
     assert.deepEqual(
       databaseViewTypeOptions.map(({ label, type }) => ({ label, type })),
@@ -294,20 +260,13 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.equal(parseOptionalChartNumber(""), undefined);
     assert.equal(parseOptionalChartNumber("invalid"), undefined);
     assert.equal(parseOptionalChartNumber("12.5"), 12.5);
-    assert.equal(
-      getChartSortOptions("Status", "Points")[4].label,
-      "Points high → low",
-    );
+    assert.equal(getChartSortOptions("Status", "Points")[4].label, "Points high → low");
     assert.deepEqual(
       getChartAxisGroups({
         id: "status",
         property: {
           config: {
-            options: [
-              { color: "green", name: "Done" },
-              { name: "Queued" },
-              { color: "red" },
-            ],
+            options: [{ color: "green", name: "Done" }, { name: "Queued" }, { color: "red" }],
           },
           id: "status",
           name: "Status",
@@ -354,22 +313,18 @@ export function register({ readSource, assert, loadModule, test }) {
   });
 
   test("database form questions normalize options and move in view order", async () => {
-    const { getDatabaseFormQuestionSettings, moveDatabaseFormQuestion } =
-      await loadModule(
-        "/src/features/databases/views/form/model/database-form-question-config.ts",
-      );
-
-    assert.deepEqual(
-      getDatabaseFormQuestionSettings(undefined, "name", "Task name"),
-      {
-        description: "",
-        descriptionEnabled: false,
-        label: "Task name",
-        longAnswer: false,
-        required: false,
-        syncWithPropertyName: true,
-      },
+    const { getDatabaseFormQuestionSettings, moveDatabaseFormQuestion } = await loadModule(
+      "/src/features/databases/views/form/model/database-form-question-config.ts",
     );
+
+    assert.deepEqual(getDatabaseFormQuestionSettings(undefined, "name", "Task name"), {
+      description: "",
+      descriptionEnabled: false,
+      label: "Task name",
+      longAnswer: false,
+      required: false,
+      syncWithPropertyName: true,
+    });
     assert.deepEqual(
       getDatabaseFormQuestionSettings(
         {
@@ -395,14 +350,16 @@ export function register({ readSource, assert, loadModule, test }) {
         syncWithPropertyName: false,
       },
     );
-    assert.deepEqual(
-      moveDatabaseFormQuestion(["name", "status", "owner"], "name", "bottom"),
-      ["status", "owner", "name"],
-    );
-    assert.deepEqual(
-      moveDatabaseFormQuestion(["name", "status", "owner"], "owner", "up"),
-      ["name", "owner", "status"],
-    );
+    assert.deepEqual(moveDatabaseFormQuestion(["name", "status", "owner"], "name", "bottom"), [
+      "status",
+      "owner",
+      "name",
+    ]);
+    assert.deepEqual(moveDatabaseFormQuestion(["name", "status", "owner"], "owner", "up"), [
+      "name",
+      "owner",
+      "status",
+    ]);
   });
 
   test("database sub-item settings normalize and build nested rows", async () => {
@@ -623,12 +580,7 @@ export function register({ readSource, assert, loadModule, test }) {
     const { getDatabaseSubItemLineParentRowId } = await loadModule(
       "/src/features/databases/views/model/database-sub-items.ts",
     );
-    const rows = [
-      { id: "parent-a" },
-      { id: "child-a" },
-      { id: "parent-b" },
-      { id: "parent-c" },
-    ];
+    const rows = [{ id: "parent-a" }, { id: "child-a" }, { id: "parent-b" }, { id: "parent-c" }];
     const input = {
       childRowIdsByParentId: {
         "parent-a": ["child-a"],
@@ -639,14 +591,8 @@ export function register({ readSource, assert, loadModule, test }) {
       rows,
     };
 
-    assert.equal(
-      getDatabaseSubItemLineParentRowId({ ...input, targetIndex: 1 }),
-      "parent-a",
-    );
-    assert.equal(
-      getDatabaseSubItemLineParentRowId({ ...input, targetIndex: 2 }),
-      null,
-    );
+    assert.equal(getDatabaseSubItemLineParentRowId({ ...input, targetIndex: 1 }), "parent-a");
+    assert.equal(getDatabaseSubItemLineParentRowId({ ...input, targetIndex: 2 }), null);
     assert.equal(
       getDatabaseSubItemLineParentRowId({
         ...input,
@@ -655,10 +601,7 @@ export function register({ readSource, assert, loadModule, test }) {
       }),
       "child-a",
     );
-    assert.equal(
-      getDatabaseSubItemLineParentRowId({ ...input, targetIndex: 3 }),
-      "parent-b",
-    );
+    assert.equal(getDatabaseSubItemLineParentRowId({ ...input, targetIndex: 3 }), "parent-b");
   });
 
   test("database sub-item line moves sync parent and inverse relation arrays", async () => {

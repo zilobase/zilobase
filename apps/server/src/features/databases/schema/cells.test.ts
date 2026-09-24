@@ -30,10 +30,18 @@ vi.mock("../../../infrastructure/database", () => ({
     select() {
       const rows = mocks.selectResults.shift() ?? [];
       const builder = {
-        from() { return builder; },
-        innerJoin() { return builder; },
-        where() { return builder; },
-        async limit() { return rows; },
+        from() {
+          return builder;
+        },
+        innerJoin() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        async limit() {
+          return rows;
+        },
       };
       return builder;
     },
@@ -69,9 +77,15 @@ function transactionRecorder() {
     async execute() {},
     select() {
       const builder = {
-        from() { return builder; },
-        where() { return builder; },
-        async limit() { return [{ value: "Before" }]; },
+        from() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        async limit() {
+          return [{ value: "Before" }];
+        },
       };
       return builder;
     },
@@ -106,9 +120,7 @@ test("setDatabaseCellValueService validates and upserts a cell mutation", async 
     [{ id: "row-1", pageId: "page-1" }],
     [{ config: { options: [] }, id: "property-1", type: "text" }],
   );
-  vi.spyOn(crypto, "randomUUID").mockReturnValue(
-    "00000000-0000-4000-8000-000000000001",
-  );
+  vi.spyOn(crypto, "randomUUID").mockReturnValue("00000000-0000-4000-8000-000000000001");
 
   const result = await setDatabaseCellValueService({
     databaseId: "database-1",
@@ -127,11 +139,7 @@ test("setDatabaseCellValueService validates and upserts a cell mutation", async 
     rowId: "row-1",
     rowPageId: "page-1",
   });
-  assert.deepEqual(mocks.validate.mock.calls[0], [
-    "text",
-    { options: [] },
-    "Done",
-  ]);
+  assert.deepEqual(mocks.validate.mock.calls[0], ["text", { options: [] }, "Done"]);
   assert.deepEqual(inserts[0], {
     id: "00000000-0000-4000-8000-000000000001",
     pageId: "page-1",
@@ -152,16 +160,11 @@ test("setDatabaseCellValueService validates and upserts a cell mutation", async 
   });
   const changes = (await mocks.commit.mock.results[0]?.value)?.changes;
   assert.equal(changes.records[0].id, "row-1");
-  assert.equal(
-    changes.records[0].valuesByPropertyId["property-1"].value,
-    "Done",
-  );
+  assert.equal(changes.records[0].valuesByPropertyId["property-1"].value, "Done");
   assert.deepEqual((await mocks.commit.mock.results[0]?.value)?.automationFacts, [
     {
       actorId: "user-1",
-      changedValues: [
-        { after: "Done", before: "Before", propertyId: "property-1" },
-      ],
+      changedValues: [{ after: "Done", before: "Before", propertyId: "property-1" }],
       dataSourceId: "database-1",
       origin: "user",
       pageId: "page-1",
@@ -171,9 +174,7 @@ test("setDatabaseCellValueService validates and upserts a cell mutation", async 
 });
 
 test("setDatabaseCellValueService rejects missing rows or properties", async () => {
-  mocks.selectResults.push([], [
-    { config: null, id: "property-1", type: "text" },
-  ]);
+  mocks.selectResults.push([], [{ config: null, id: "property-1", type: "text" }]);
   await assert.rejects(
     setDatabaseCellValueService({
       databaseId: "database-1",
@@ -182,8 +183,7 @@ test("setDatabaseCellValueService rejects missing rows or properties", async () 
       userId: "user-1",
       value: "value",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
 
   mocks.selectResults.push([{ id: "row-1", pageId: "page-1" }], []);
@@ -195,8 +195,7 @@ test("setDatabaseCellValueService rejects missing rows or properties", async () 
       userId: "user-1",
       value: "value",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
   assert.equal(mocks.commit.mock.calls.length, 0);
 });

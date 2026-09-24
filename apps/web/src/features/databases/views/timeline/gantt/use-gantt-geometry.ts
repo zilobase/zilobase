@@ -1,11 +1,11 @@
-import { useMemo } from "react"
+import { useMemo } from "react";
 
-import { useGanttContext } from "./gantt-context"
-import { getTimelineStart, type GanttGeometry } from "./gantt-geometry"
+import { useGanttContext } from "./gantt-context";
+import { getTimelineStart, type GanttGeometry } from "./gantt-geometry";
 
 export function useGanttGeometry(): GanttGeometry | null {
-  const gantt = useGanttContext()
-  const firstYear = gantt.timelineData[0]?.year
+  const gantt = useGanttContext();
+  const firstYear = gantt.timelineData[0]?.year;
 
   return useMemo(
     () =>
@@ -17,12 +17,6 @@ export function useGanttGeometry(): GanttGeometry | null {
             timelineStart: getTimelineStart(firstYear),
             timelineWidth: gantt.timelineWidth,
           },
-    [
-      firstYear,
-      gantt.columnWidth,
-      gantt.range,
-      gantt.timelineWidth,
-      gantt.zoom,
-    ],
-  )
+    [firstYear, gantt.columnWidth, gantt.range, gantt.timelineWidth, gantt.zoom],
+  );
 }

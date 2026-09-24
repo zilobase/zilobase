@@ -1,4 +1,11 @@
-import { buildHomepageViewData, buildHomepageRows, isHomepageView, libraryParentPropertyId, homepageViews as libraryViews, type RecentsMode } from "../model/library-model";
+import {
+  buildHomepageViewData,
+  buildHomepageRows,
+  isHomepageView,
+  libraryParentPropertyId,
+  homepageViews as libraryViews,
+  type RecentsMode,
+} from "../model/library-model";
 import { CreateTeamspaceDialog as CreateLibraryTeamspaceDialog } from "@/features/teamspaces/creation/index";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
@@ -9,15 +16,22 @@ import { Button } from "@/shared/ui/button";
 
 import { libraryViewIcons } from "@/features/sidebar";
 
-import {
-  PageSidePaneLayout,
-  usePageSidePane,
-} from "@/features/pages/pane/page-side-pane";
-import {
-  useOpenEmbeddedPage,
-} from "@/features/pages/pane/use-open-embedded-page";
+import { PageSidePaneLayout, usePageSidePane } from "@/features/pages/pane/page-side-pane";
+import { useOpenEmbeddedPage } from "@/features/pages/pane/use-open-embedded-page";
 import { PageEditorPane } from "@/features/pages/pane/page-editor-pane";
-import { DatabaseTableView, DatabaseViewProvider, DatabaseViewSkeleton, DatabaseViewToolbar, getDatabaseViewModel, getMergedDatabaseConfig, getMergedNameColumnConfig, getMergedPropertyConfig, type DatabaseNameColumnConfig, type DatabasePropertyConfig, type DatabaseSortConfig } from "@/features/databases";
+import {
+  DatabaseTableView,
+  DatabaseViewProvider,
+  DatabaseViewSkeleton,
+  DatabaseViewToolbar,
+  getDatabaseViewModel,
+  getMergedDatabaseConfig,
+  getMergedNameColumnConfig,
+  getMergedPropertyConfig,
+  type DatabaseNameColumnConfig,
+  type DatabasePropertyConfig,
+  type DatabaseSortConfig,
+} from "@/features/databases";
 import { DatabaseMainPane } from "@/features/databases/core/index";
 
 import {
@@ -40,7 +54,7 @@ import { useUpdateUserSettings, useUserSettings } from "@zilobase/features/user-
 import { useTeamspaces } from "@zilobase/features/teamspaces/react";
 import { useAiAgentProfiles, useCreateAiAgentProfile } from "@zilobase/features/ai-chat/react";
 
-const homepageViews = libraryViews.map(view => ({ ...view, icon: libraryViewIcons[view.id] }));
+const homepageViews = libraryViews.map((view) => ({ ...view, icon: libraryViewIcons[view.id] }));
 
 const emptyAsync = async () => undefined;
 
@@ -55,20 +69,20 @@ export default function RecentsPage() {
     () => normalizeSidebarConfig(userSettings.sidebarConfig),
     [userSettings.sidebarConfig],
   );
-  const requestedView = isHomepageView(location.search.view)
-    ? location.search.view
-    : null;
-  const [activeViewId, setActiveViewId] = useState<string | null>(() =>
-    requestedView ?? sidebarConfig.libraryView
+  const requestedView = isHomepageView(location.search.view) ? location.search.view : null;
+  const [activeViewId, setActiveViewId] = useState<string | null>(
+    () => requestedView ?? sidebarConfig.libraryView,
   );
   const mode: RecentsMode = activeViewId === "trash" ? "trash" : "home";
   const { data: navigation, isLoading } = usePageNavigation(workspaceId, {
     deleted: mode === "trash" ? "only" : "active",
   });
-  const { data: meetingsPayload, isLoading: meetingsLoading } =
-    useWorkspaceMeetings(mode === "home" ? workspaceId : null);
-  const { data: teamspaces = [], isLoading: teamspacesLoading } =
-    useTeamspaces(mode === "home" ? workspaceId : null);
+  const { data: meetingsPayload, isLoading: meetingsLoading } = useWorkspaceMeetings(
+    mode === "home" ? workspaceId : null,
+  );
+  const { data: teamspaces = [], isLoading: teamspacesLoading } = useTeamspaces(
+    mode === "home" ? workspaceId : null,
+  );
   const { data: customAgents = [] } = useAiAgentProfiles({ enabled: mode === "home" });
   const {
     openDatabaseSidePane,
@@ -92,9 +106,7 @@ export default function RecentsPage() {
       showPageIcon: true,
     },
   });
-  const [propertyConfigs, setPropertyConfigs] = useState<
-    Record<string, unknown>
-  >({});
+  const [propertyConfigs, setPropertyConfigs] = useState<Record<string, unknown>>({});
   const [viewConfigs, setViewConfigs] = useState<Record<string, unknown>>(() =>
     Object.fromEntries(
       homepageViews.map((view) => [
@@ -102,9 +114,7 @@ export default function RecentsPage() {
         {
           ...(view.id === "recents"
             ? {
-                sorts: [
-                  { column: "lastVisitedAt", direction: "descending" },
-                ],
+                sorts: [{ column: "lastVisitedAt", direction: "descending" }],
               }
             : {}),
           subItems: {
@@ -118,18 +128,15 @@ export default function RecentsPage() {
       ]),
     ),
   );
-  const rows = useMemo(
-    () => {
-      return buildHomepageRows(
-        navigation ?? { databases: [], pages: [], placements: [] },
-        meetingsPayload?.meetings ?? [],
-        customAgents,
-        mode,
-        teamspaces,
-      );
-    },
-    [customAgents, meetingsPayload?.meetings, navigation, mode, teamspaces],
-  );
+  const rows = useMemo(() => {
+    return buildHomepageRows(
+      navigation ?? { databases: [], pages: [], placements: [] },
+      meetingsPayload?.meetings ?? [],
+      customAgents,
+      mode,
+      teamspaces,
+    );
+  }, [customAgents, meetingsPayload?.meetings, navigation, mode, teamspaces]);
   const pageTitle = "Library";
 
   useEffect(() => {
@@ -145,13 +152,7 @@ export default function RecentsPage() {
         to: "/recents",
       });
     }
-  }, [
-    location.pathname,
-    navigate,
-    requestedView,
-    settingsLoading,
-    sidebarConfig.libraryView,
-  ]);
+  }, [location.pathname, navigate, requestedView, settingsLoading, sidebarConfig.libraryView]);
 
   const selectRecentsView = (viewId: string | null) => {
     if (!viewId || !isHomepageView(viewId)) return;
@@ -180,15 +181,7 @@ export default function RecentsPage() {
         rows,
         viewConfigs,
       }),
-    [
-      activeViewId,
-      databaseConfig,
-      mode,
-      workspaceId,
-      propertyConfigs,
-      rows,
-      viewConfigs,
-    ],
+    [activeViewId, databaseConfig, mode, workspaceId, propertyConfigs, rows, viewConfigs],
   );
   const viewModel = useMemo(
     () =>
@@ -223,10 +216,7 @@ export default function RecentsPage() {
       }),
     );
   };
-  const updateDatabasePropertyConfig = async (
-    databasePropertyId: string,
-    config: unknown,
-  ) => {
+  const updateDatabasePropertyConfig = async (databasePropertyId: string, config: unknown) => {
     setPropertyConfigs((current) => ({
       ...current,
       [databasePropertyId]: getMergedPropertyConfig(
@@ -241,7 +231,8 @@ export default function RecentsPage() {
     );
   };
   const createAgent = useCreateAiAgentProfile();
-  const isCreating = createPageMutation.isPending || createDatabase.isPending || createAgent.isPending;
+  const isCreating =
+    createPageMutation.isPending || createDatabase.isPending || createAgent.isPending;
 
   const createPage = async () => {
     if (!workspaceId || createPageMutation.isPending) {
@@ -256,9 +247,7 @@ export default function RecentsPage() {
         to: "/p/$pageId",
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not create page.",
-      );
+      toast.error(error instanceof Error ? error.message : "Could not create page.");
     }
   };
 
@@ -279,9 +268,7 @@ export default function RecentsPage() {
         to: "/d/$databaseId",
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not create database.",
-      );
+      toast.error(error instanceof Error ? error.message : "Could not create database.");
     }
   };
 
@@ -338,237 +325,224 @@ export default function RecentsPage() {
 
   return (
     <>
-    <PageSidePaneLayout
-      main={
-        <main className="min-h-0 flex-1 bg-surface-canvas">
-          <section className="animate-in fade-in-0 duration-300">
-            <div className="tiptap-editor px-5 pb-10 pt-8 sm:px-8 md:px-20 lg:px-24">
-              <DatabaseViewProvider
-                value={{
-                  ...viewModel,
-                  activeViewTabId: activeViewId,
-                  addDatabaseProperty: () => {},
-                  addDatabaseRow: () => {},
-                  addChartView: () => {},
-                  addFormView: () => {},
-                  addGalleryView: () => {},
-                  addDraggedPageRow: () => {},
-                  addKanbanView: () => {},
-                  addListView: () => {},
-                  linkDataSourceView: () => {},
-                  addTableView: () => {},
-                  addTimelineRow: () => {},
-                  addTimelineView: () => {},
-                  canAddDatabaseProperties: false,
-                  canAddDatabaseRows: false,
-                  canAddDatabaseViews: false,
-                  clearDatabaseFilter: () => updateActiveViewConfig(undefined),
-                  clearDatabaseSort: () => void saveDatabaseSorts([]),
-                  copyDatabaseViewLink: () => {},
-                  createDatabaseFilter: () => {},
-                  createDatabaseSort: () => {},
-                  databaseConfig: viewData.bootstrap.database.config,
-                  databaseId: viewData.bootstrap.database.id,
-                  databaseName: viewData.bootstrap.database.name,
-                  databaseWorkspaceId: workspaceId ?? undefined,
-                  realtimeEnabled: false,
-                  deleteDatabaseView: () => {},
-                  draftDatabaseTitle: pageTitle,
-                  draftViewTitle:
-                    homepageViews.find((view) => view.id === activeViewId)
-                      ?.label ?? "Recents",
-                  duplicateDatabaseView: () => {},
-                  editable: false,
-                  fetchNextPage: emptyAsync,
-                  filterPickerOpen: false,
-                  getDatabasePageDragPayload: () => null,
-                  hasDatabasePageDragPayload: () => false,
-                  hasNextPage: false,
-                  headerMenusEnabled: true,
-                  hostDatabaseId: viewData.bootstrap.database.id,
-                  hostDatabaseName: viewData.bootstrap.database.name,
-                  hostDatabaseWorkspaceId: workspaceId ?? undefined,
-                  hostViews: viewData.bootstrap.views,
-                  isAddingDatabaseProperty: false,
-                  isAddingDatabaseRow: false,
-                  isAddingDatabaseView: false,
-                  isFetchingNextPage: false,
-                  onOpenPage: openHomepagePage,
-                  onShowTitleChange: undefined,
-                  options: viewModel.kanbanOptions,
-                  prefetchDatabaseView: () => {},
-                  workspaceId,
-                  removeDatabaseFilter: () => {},
-                  removeDatabaseSort: () => {},
-                  renameDatabaseProperty: () => {},
-                  reorderDatabaseFilters: () => {},
-                  saveDatabaseConditionalColors: () => {},
-                  saveDatabaseEmoji: () => {},
-                  saveDatabaseFilters: () => {},
-                  saveDatabasePropertyOrder: () => {},
-                  saveDatabaseSorts,
-                  saveDatabaseTitle: () => {},
-                  saveDatabaseViewIcon: () => {},
-                  saveDatabaseViewTitle: () => {},
-                  savePropertyValue: () => {},
-                  setActiveViewId: (nextView) =>
-                    selectRecentsView(
-                      typeof nextView === "function"
-                        ? nextView(activeViewId)
-                        : nextView,
-                    ),
-                  setDraftDatabaseTitle: () => {},
-                  setDraftViewTitle: () => {},
-                  setFilterPickerOpen: () => {},
-                  setSortPickerOpen: () => {},
-                  setViewDateProperty: () => {},
-                  setupTimelineDateProperty: () => {},
-                  setViewGroupProperty,
-                  setViewType: () => {},
-                  showExpandButton: false,
-                  showFilterPill: false,
-                  showSortPill: false,
-                  showTitle: false,
-                  sortPickerOpen: false,
-                  toggleFilterPillVisibility: () => {},
-                  togglePropertyVisibility: (propertyId) => {
-                    void updateDatabasePropertyConfig(propertyId, {
-                      hidden: true,
-                    });
-                  },
-                  togglePropertyTitles: () => {},
-                  toggleSortPillVisibility: () => {},
-                  updateDatabaseFilter: () => {},
-                  updateDatabaseChartSettings: () => {},
-                  updateDatabaseLayoutSettings: () => {},
-                  updateDatabasePropertyConfig,
-                  updateDatabaseSort: () => {},
-                  updateDatabaseSubItemsSettings: (settings) =>
-                    updateActiveViewConfig(
-                      getMergedDatabaseConfig(activeView?.config, {
-                        subItems: {
-                          ...viewModel.subItemsSettings,
-                          ...settings,
-                        },
-                      }),
-                    ),
-                  updateNameColumnConfig,
-                  viewTabs: homepageViews.map((view) => ({
-                    dataSourceId: viewData.activeDataSource!.id,
-                    fallbackIcon: view.icon,
-                    id: view.id,
-                    name: view.label,
-                    sourceParentDatabaseId: viewData.bootstrap.database.id,
-                    type: "table",
-                  })),
-                  views: viewData.bootstrap.views,
-                }}
-              >
-                <div className="database-block-shell database-block-shell-full">
-                  <div className="database-toolbar-section">
-                    <h1 className="min-h-10 py-0 text-4xl font-semibold leading-tight tracking-normal text-content-primary">
-                      {pageTitle}
-                    </h1>
-                    <div className="flex min-w-0 items-start gap-3">
-                      <div className="min-w-0 flex-1">
-                        <DatabaseViewToolbar />
+      <PageSidePaneLayout
+        main={
+          <main className="min-h-0 flex-1 bg-surface-canvas">
+            <section className="animate-in fade-in-0 duration-300">
+              <div className="tiptap-editor px-5 pb-10 pt-8 sm:px-8 md:px-20 lg:px-24">
+                <DatabaseViewProvider
+                  value={{
+                    ...viewModel,
+                    activeViewTabId: activeViewId,
+                    addDatabaseProperty: () => {},
+                    addDatabaseRow: () => {},
+                    addChartView: () => {},
+                    addFormView: () => {},
+                    addGalleryView: () => {},
+                    addDraggedPageRow: () => {},
+                    addKanbanView: () => {},
+                    addListView: () => {},
+                    linkDataSourceView: () => {},
+                    addTableView: () => {},
+                    addTimelineRow: () => {},
+                    addTimelineView: () => {},
+                    canAddDatabaseProperties: false,
+                    canAddDatabaseRows: false,
+                    canAddDatabaseViews: false,
+                    clearDatabaseFilter: () => updateActiveViewConfig(undefined),
+                    clearDatabaseSort: () => void saveDatabaseSorts([]),
+                    copyDatabaseViewLink: () => {},
+                    createDatabaseFilter: () => {},
+                    createDatabaseSort: () => {},
+                    databaseConfig: viewData.bootstrap.database.config,
+                    databaseId: viewData.bootstrap.database.id,
+                    databaseName: viewData.bootstrap.database.name,
+                    databaseWorkspaceId: workspaceId ?? undefined,
+                    realtimeEnabled: false,
+                    deleteDatabaseView: () => {},
+                    draftDatabaseTitle: pageTitle,
+                    draftViewTitle:
+                      homepageViews.find((view) => view.id === activeViewId)?.label ?? "Recents",
+                    duplicateDatabaseView: () => {},
+                    editable: false,
+                    fetchNextPage: emptyAsync,
+                    filterPickerOpen: false,
+                    getDatabasePageDragPayload: () => null,
+                    hasDatabasePageDragPayload: () => false,
+                    hasNextPage: false,
+                    headerMenusEnabled: true,
+                    hostDatabaseId: viewData.bootstrap.database.id,
+                    hostDatabaseName: viewData.bootstrap.database.name,
+                    hostDatabaseWorkspaceId: workspaceId ?? undefined,
+                    hostViews: viewData.bootstrap.views,
+                    isAddingDatabaseProperty: false,
+                    isAddingDatabaseRow: false,
+                    isAddingDatabaseView: false,
+                    isFetchingNextPage: false,
+                    onOpenPage: openHomepagePage,
+                    onShowTitleChange: undefined,
+                    options: viewModel.kanbanOptions,
+                    prefetchDatabaseView: () => {},
+                    workspaceId,
+                    removeDatabaseFilter: () => {},
+                    removeDatabaseSort: () => {},
+                    renameDatabaseProperty: () => {},
+                    reorderDatabaseFilters: () => {},
+                    saveDatabaseConditionalColors: () => {},
+                    saveDatabaseEmoji: () => {},
+                    saveDatabaseFilters: () => {},
+                    saveDatabasePropertyOrder: () => {},
+                    saveDatabaseSorts,
+                    saveDatabaseTitle: () => {},
+                    saveDatabaseViewIcon: () => {},
+                    saveDatabaseViewTitle: () => {},
+                    savePropertyValue: () => {},
+                    setActiveViewId: (nextView) =>
+                      selectRecentsView(
+                        typeof nextView === "function" ? nextView(activeViewId) : nextView,
+                      ),
+                    setDraftDatabaseTitle: () => {},
+                    setDraftViewTitle: () => {},
+                    setFilterPickerOpen: () => {},
+                    setSortPickerOpen: () => {},
+                    setViewDateProperty: () => {},
+                    setupTimelineDateProperty: () => {},
+                    setViewGroupProperty,
+                    setViewType: () => {},
+                    showExpandButton: false,
+                    showFilterPill: false,
+                    showSortPill: false,
+                    showTitle: false,
+                    sortPickerOpen: false,
+                    toggleFilterPillVisibility: () => {},
+                    togglePropertyVisibility: (propertyId) => {
+                      void updateDatabasePropertyConfig(propertyId, {
+                        hidden: true,
+                      });
+                    },
+                    togglePropertyTitles: () => {},
+                    toggleSortPillVisibility: () => {},
+                    updateDatabaseFilter: () => {},
+                    updateDatabaseChartSettings: () => {},
+                    updateDatabaseLayoutSettings: () => {},
+                    updateDatabasePropertyConfig,
+                    updateDatabaseSort: () => {},
+                    updateDatabaseSubItemsSettings: (settings) =>
+                      updateActiveViewConfig(
+                        getMergedDatabaseConfig(activeView?.config, {
+                          subItems: {
+                            ...viewModel.subItemsSettings,
+                            ...settings,
+                          },
+                        }),
+                      ),
+                    updateNameColumnConfig,
+                    viewTabs: homepageViews.map((view) => ({
+                      dataSourceId: viewData.activeDataSource!.id,
+                      fallbackIcon: view.icon,
+                      id: view.id,
+                      name: view.label,
+                      sourceParentDatabaseId: viewData.bootstrap.database.id,
+                      type: "table",
+                    })),
+                    views: viewData.bootstrap.views,
+                  }}
+                >
+                  <div className="database-block-shell database-block-shell-full">
+                    <div className="database-toolbar-section">
+                      <h1 className="min-h-10 py-0 text-4xl font-semibold leading-tight tracking-normal text-content-primary">
+                        {pageTitle}
+                      </h1>
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div className="min-w-0 flex-1">
+                          <DatabaseViewToolbar />
+                        </div>
+                        {mode === "home" && activeViewId === "teamspaces" ? (
+                          <Button
+                            className="mt-2 shrink-0"
+                            disabled={!workspaceId}
+                            onClick={() => setCreateTeamspaceOpen(true)}
+                            type="button"
+                          >
+                            <Plus /> New teamspace
+                          </Button>
+                        ) : mode === "home" ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                className="database-new-button mt-2 shrink-0"
+                                disabled={!workspaceId || isCreating}
+                                trailingDivider
+                                type="button"
+                              >
+                                {isCreating ? <Loader2 className="animate-spin" /> : <Plus />}
+                                <span>New</span>
+                                <ChevronDown className="size-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem onSelect={() => void createCustomAgent()}>
+                                <BotIcon />
+                                <span>Agent</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => void createStandaloneDatabase()}>
+                                <Database />
+                                <span>Database</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => void createPage()}>
+                                <FileText />
+                                <span>Page</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : null}
                       </div>
-                      {mode === "home" && activeViewId === "teamspaces" ? (
-                        <Button
-                          className="mt-2 shrink-0"
-                          disabled={!workspaceId}
-                          onClick={() => setCreateTeamspaceOpen(true)}
-                          type="button"
-                        >
-                          <Plus /> New teamspace
-                        </Button>
-                      ) : mode === "home" ? (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              className="database-new-button mt-2 shrink-0"
-                              disabled={!workspaceId || isCreating}
-                              trailingDivider
-                              type="button"
-                            >
-                              {isCreating ? (
-                                <Loader2 className="animate-spin" />
-                              ) : (
-                                <Plus />
-                              )}
-                              <span>New</span>
-                              <ChevronDown className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem onSelect={() => void createCustomAgent()}>
-                              <BotIcon />
-                              <span>Agent</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() => void createStandaloneDatabase()}
-                            >
-                              <Database />
-                              <span>Database</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() => void createPage()}
-                            >
-                              <FileText />
-                              <span>Page</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      ) : null}
+                    </div>
+                    <div className="database-scroll-section">
+                      {isLoading ||
+                      (activeViewId === "meetings" && meetingsLoading) ||
+                      (activeViewId === "teamspaces" && teamspacesLoading) ? (
+                        <DatabaseViewSkeleton viewType="table" />
+                      ) : (
+                        <DatabaseTableView />
+                      )}
                     </div>
                   </div>
-                  <div className="database-scroll-section">
-                    {isLoading ||
-                    (activeViewId === "meetings" && meetingsLoading) ||
-                    (activeViewId === "teamspaces" && teamspacesLoading) ? (
-                      <DatabaseViewSkeleton viewType="table" />
-                    ) : (
-                      <DatabaseTableView />
-                    )}
-                  </div>
-                </div>
-              </DatabaseViewProvider>
-            </div>
-          </section>
-        </main>
-      }
-      sidePane={
-        sidePaneContentReady &&
-        (renderedSidePanePageId || renderedSidePaneDatabaseId) ? (
-          renderedSidePaneDatabaseId ? (
-            <DatabaseMainPane
-              className="min-h-0 flex-1 overflow-y-auto"
-              databaseId={renderedSidePaneDatabaseId}
-              embedded
-              key={renderedSidePaneDatabaseId}
-              onOpenPage={openSidePaneChildPage}
-            />
-          ) : renderedSidePanePageId ? (
-            <PageEditorPane
-              databaseId={sidePaneDatabaseId}
-              enableComments={false}
-              key={renderedSidePanePageId}
-              onOpenPage={openSidePaneChildPage}
-              pageId={renderedSidePanePageId}
-            />
+                </DatabaseViewProvider>
+              </div>
+            </section>
+          </main>
+        }
+        sidePane={
+          sidePaneContentReady && (renderedSidePanePageId || renderedSidePaneDatabaseId) ? (
+            renderedSidePaneDatabaseId ? (
+              <DatabaseMainPane
+                className="min-h-0 flex-1 overflow-y-auto"
+                databaseId={renderedSidePaneDatabaseId}
+                embedded
+                key={renderedSidePaneDatabaseId}
+                onOpenPage={openSidePaneChildPage}
+              />
+            ) : renderedSidePanePageId ? (
+              <PageEditorPane
+                databaseId={sidePaneDatabaseId}
+                enableComments={false}
+                key={renderedSidePanePageId}
+                onOpenPage={openSidePaneChildPage}
+                pageId={renderedSidePanePageId}
+              />
+            ) : null
           ) : null
-        ) : null
-      }
-      sidePaneOpen={sidePaneAnimatedOpen}
-      sidePaneVisible={Boolean(
-        renderedSidePanePageId || renderedSidePaneDatabaseId,
-      )}
-    />
-    <CreateLibraryTeamspaceDialog idPrefix="library-teamspace"
-      onOpenChange={setCreateTeamspaceOpen}
-      open={createTeamspaceOpen}
-      workspaceId={workspaceId}
-    />
+        }
+        sidePaneOpen={sidePaneAnimatedOpen}
+        sidePaneVisible={Boolean(renderedSidePanePageId || renderedSidePaneDatabaseId)}
+      />
+      <CreateLibraryTeamspaceDialog
+        idPrefix="library-teamspace"
+        onOpenChange={setCreateTeamspaceOpen}
+        open={createTeamspaceOpen}
+        workspaceId={workspaceId}
+      />
     </>
   );
 }

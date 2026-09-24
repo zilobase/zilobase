@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  index,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { workspace, teamspace } from "./workspaces";
 import { user } from "./authentication";
 import { softDeleteColumns } from "./soft-delete-columns";
@@ -27,10 +36,7 @@ export const page = pgTable(
     ...softDeleteColumns(),
   },
   (table) => [
-    index("page_workspace_deleted_idx").on(
-      table.workspaceId,
-      table.deletedAt,
-    ),
+    index("page_workspace_deleted_idx").on(table.workspaceId, table.deletedAt),
     index("page_workspace_teamspace_deleted_idx").on(
       table.workspaceId,
       table.teamspaceId,
@@ -87,16 +93,8 @@ export const pageAccess = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    index("page_access_target_idx").on(
-      table.workspaceId,
-      table.targetType,
-      table.targetId,
-    ),
-    uniqueIndex("page_access_target_unique").on(
-      table.pageId,
-      table.targetType,
-      table.targetId,
-    ),
+    index("page_access_target_idx").on(table.workspaceId, table.targetType, table.targetId),
+    uniqueIndex("page_access_target_unique").on(table.pageId, table.targetType, table.targetId),
   ],
 );
 
@@ -124,14 +122,8 @@ export const pageGuestInvitation = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    index("page_guest_invitation_workspace_status_idx").on(
-      table.workspaceId,
-      table.status,
-    ),
-    index("page_guest_invitation_page_status_idx").on(
-      table.pageId,
-      table.status,
-    ),
+    index("page_guest_invitation_workspace_status_idx").on(table.workspaceId, table.status),
+    index("page_guest_invitation_page_status_idx").on(table.pageId, table.status),
     index("page_guest_invitation_email_idx").on(table.email),
     uniqueIndex("page_guest_invitation_pending_unique")
       .on(table.pageId, sql`lower(${table.email})`)
@@ -170,10 +162,7 @@ export const pageGuestRequest = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    index("page_guest_request_workspace_status_idx").on(
-      table.workspaceId,
-      table.status,
-    ),
+    index("page_guest_request_workspace_status_idx").on(table.workspaceId, table.status),
     index("page_guest_request_page_status_idx").on(table.pageId, table.status),
     uniqueIndex("page_guest_request_pending_unique")
       .on(table.pageId, sql`lower(${table.email})`)

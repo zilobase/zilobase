@@ -1,6 +1,4 @@
-
-
 export type MailScope = {
-  bindingId: string | null | undefined
-  workspaceId: string | null | undefined
-}
+  bindingId: string | null | undefined;
+  workspaceId: string | null | undefined;
+};

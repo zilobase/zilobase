@@ -1,9 +1,4 @@
-import {
-  createHash,
-  createHmac,
-  randomBytes,
-  timingSafeEqual,
-} from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 import { isLoopbackHost } from "../../shared/config/config";
 
@@ -44,10 +39,7 @@ export type DesktopAuthorizationCodeRepository = {
 
 export class DesktopAuthorizationError extends Error {
   constructor(
-    readonly code:
-      | "invalid_request"
-      | "unsupported_response_type"
-      | "server_error",
+    readonly code: "invalid_request" | "unsupported_response_type" | "server_error",
     message: string,
   ) {
     super(message);
@@ -71,10 +63,7 @@ export function parseDesktopAuthorizationRequest(
   const redirectUri = readSingleParameter(parameters, "redirect_uri");
   const state = readSingleParameter(parameters, "state");
   const codeChallenge = readSingleParameter(parameters, "code_challenge");
-  const challengeMethod = readSingleParameter(
-    parameters,
-    "code_challenge_method",
-  );
+  const challengeMethod = readSingleParameter(parameters, "code_challenge_method");
 
   if (clientId !== DESKTOP_AUTH_CLIENT_ID) {
     throw invalidRequest("The desktop client identifier is invalid.");
@@ -85,10 +74,7 @@ export function parseDesktopAuthorizationRequest(
   if (!isBoundedBase64Url(state, 32, 512)) {
     throw invalidRequest("The desktop authorization state is invalid.");
   }
-  if (
-    challengeMethod !== "S256" ||
-    !isBoundedBase64Url(codeChallenge, 43, 128)
-  ) {
+  if (challengeMethod !== "S256" || !isBoundedBase64Url(codeChallenge, 43, 128)) {
     throw invalidRequest("A valid S256 PKCE challenge is required.");
   }
 
@@ -100,9 +86,7 @@ export function parseDesktopAuthorizationRequest(
   };
 }
 
-export function parseDesktopTokenRequest(
-  parameters: URLSearchParams,
-): DesktopTokenRequest {
+export function parseDesktopTokenRequest(parameters: URLSearchParams): DesktopTokenRequest {
   if (readSingleParameter(parameters, "grant_type") !== "authorization_code") {
     throw invalidRequest("The desktop token grant type is invalid.");
   }
@@ -188,15 +172,10 @@ export function verifyDesktopConsentToken(
     return false;
   }
 
-  const expected = Buffer.from(
-    signDesktopConsent(request, userId, secret, encodedExpiry),
-    "ascii",
-  );
+  const expected = Buffer.from(signDesktopConsent(request, userId, secret, encodedExpiry), "ascii");
   const received = Buffer.from(signature, "ascii");
 
-  return (
-    expected.length === received.length && timingSafeEqual(expected, received)
-  );
+  return expected.length === received.length && timingSafeEqual(expected, received);
 }
 
 export function hashDesktopAuthorizationCode(code: string) {
@@ -244,11 +223,7 @@ function readSingleParameter(parameters: URLSearchParams, key: string) {
   return values.length === 1 ? values[0] : undefined;
 }
 
-function isBoundedBase64Url(
-  value: string | undefined,
-  minimum: number,
-  maximum: number,
-) {
+function isBoundedBase64Url(value: string | undefined, minimum: number, maximum: number) {
   return (
     typeof value === "string" &&
     value.length >= minimum &&

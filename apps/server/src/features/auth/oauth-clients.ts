@@ -12,10 +12,7 @@ export function officialClipperRedirectUris(webOrigin: string) {
   return callback === localCallback ? [callback] : [callback, localCallback];
 }
 
-export async function ensureOfficialClipperClient(
-  database: Database,
-  webOrigin: string,
-) {
+export async function ensureOfficialClipperClient(database: Database, webOrigin: string) {
   const [existing] = await database
     .select({ id: oauthClient.id })
     .from(oauthClient)
@@ -26,19 +23,22 @@ export async function ensureOfficialClipperClient(
     return;
   }
 
-  await database.insert(oauthClient).values({
-    applicationType: "native",
-    clientCredentialsScopes: [],
-    clientId: OFFICIAL_CLIPPER_CLIENT_ID,
-    disabled: false,
-    grantTypes: ["authorization_code", "refresh_token"],
-    id: "oauth_client_zilobase_web_clipper",
-    name: "Zilobase Web Clipper",
-    redirectUris: officialClipperRedirectUris(webOrigin),
-    requirePKCE: true,
-    responseTypes: ["code"],
-    scopes: [...OAUTH_SCOPES],
-    skipConsent: false,
-    tokenEndpointAuthMethod: "none",
-  }).onConflictDoNothing({ target: oauthClient.clientId });
+  await database
+    .insert(oauthClient)
+    .values({
+      applicationType: "native",
+      clientCredentialsScopes: [],
+      clientId: OFFICIAL_CLIPPER_CLIENT_ID,
+      disabled: false,
+      grantTypes: ["authorization_code", "refresh_token"],
+      id: "oauth_client_zilobase_web_clipper",
+      name: "Zilobase Web Clipper",
+      redirectUris: officialClipperRedirectUris(webOrigin),
+      requirePKCE: true,
+      responseTypes: ["code"],
+      scopes: [...OAUTH_SCOPES],
+      skipConsent: false,
+      tokenEndpointAuthMethod: "none",
+    })
+    .onConflictDoNothing({ target: oauthClient.clientId });
 }

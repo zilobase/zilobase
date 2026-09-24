@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { user } from "./authentication";
 import { timestampColumns } from "./columns";
 
@@ -45,10 +55,7 @@ export const member = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("member_workspace_user_unique").on(
-      table.organizationId,
-      table.userId,
-    ),
+    uniqueIndex("member_workspace_user_unique").on(table.organizationId, table.userId),
     index("member_user_id_idx").on(table.userId),
     index("member_access_expires_at_idx").on(table.accessExpiresAt),
     check(
@@ -79,14 +86,9 @@ export const invitation = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
-    index("invitation_workspace_status_idx").on(
-      table.organizationId,
-      table.status,
-    ),
+    index("invitation_workspace_status_idx").on(table.organizationId, table.status),
     index("invitation_email_idx").on(table.email),
-    index("invitation_membership_expires_at_idx").on(
-      table.membershipExpiresAt,
-    ),
+    index("invitation_membership_expires_at_idx").on(table.membershipExpiresAt),
     check(
       "invitation_temporary_expiry_check",
       sql`(${table.role} = 'temporary' and ${table.membershipExpiresAt} is not null) or (${table.role} <> 'temporary' and ${table.membershipExpiresAt} is null)`,
@@ -140,19 +142,13 @@ export const teamspace = pgTable(
     icon: jsonb("icon"),
     accessMode: text("access_mode").notNull().default("closed"),
     memberAccessLevel: text("member_access_level").notNull().default("edit"),
-    invitePolicy: text("invite_policy")
-      .notNull()
-      .default("owners_and_members"),
-    sidebarEditPolicy: text("sidebar_edit_policy")
-      .notNull()
-      .default("owners_and_members"),
+    invitePolicy: text("invite_policy").notNull().default("owners_and_members"),
+    sidebarEditPolicy: text("sidebar_edit_policy").notNull().default("owners_and_members"),
     isDefault: boolean("is_default").notNull().default(false),
     inviteLinkEnabled: boolean("invite_link_enabled").notNull().default(false),
     inviteLinkTokenHash: text("invite_link_token_hash"),
     guestsEnabled: boolean("guests_enabled").notNull().default(true),
-    publicSharingEnabled: boolean("public_sharing_enabled")
-      .notNull()
-      .default(true),
+    publicSharingEnabled: boolean("public_sharing_enabled").notNull().default(true),
     exportEnabled: boolean("export_enabled").notNull().default(true),
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",
@@ -169,20 +165,14 @@ export const teamspace = pgTable(
       table.archivedAt,
       table.updatedAt,
     ),
-    index("teamspace_workspace_default_idx").on(
-      table.workspaceId,
-      table.isDefault,
-    ),
+    index("teamspace_workspace_default_idx").on(table.workspaceId, table.isDefault),
     uniqueIndex("teamspace_workspace_active_name_unique")
       .on(table.workspaceId, sql`lower(${table.name})`)
       .where(sql`${table.archivedAt} is null`),
     uniqueIndex("teamspace_invite_link_token_hash_unique")
       .on(table.inviteLinkTokenHash)
       .where(sql`${table.inviteLinkTokenHash} is not null`),
-    check(
-      "teamspace_access_mode_check",
-      sql`${table.accessMode} in ('open', 'closed', 'private')`,
-    ),
+    check("teamspace_access_mode_check", sql`${table.accessMode} in ('open', 'closed', 'private')`),
     check(
       "teamspace_member_access_level_check",
       sql`${table.memberAccessLevel} in ('view', 'comment', 'edit', 'full')`,
@@ -225,22 +215,10 @@ export const teamspacePrincipal = pgTable(
       table.principalType,
       table.principalId,
     ),
-    index("teamspace_principal_lookup_idx").on(
-      table.principalType,
-      table.principalId,
-    ),
-    index("teamspace_principal_teamspace_role_idx").on(
-      table.teamspaceId,
-      table.role,
-    ),
-    check(
-      "teamspace_principal_type_check",
-      sql`${table.principalType} in ('user', 'team')`,
-    ),
-    check(
-      "teamspace_principal_role_check",
-      sql`${table.role} in ('owner', 'member')`,
-    ),
+    index("teamspace_principal_lookup_idx").on(table.principalType, table.principalId),
+    index("teamspace_principal_teamspace_role_idx").on(table.teamspaceId, table.role),
+    check("teamspace_principal_type_check", sql`${table.principalType} in ('user', 'team')`),
+    check("teamspace_principal_role_check", sql`${table.role} in ('owner', 'member')`),
     check(
       "teamspace_principal_membership_source_check",
       sql`${table.membershipSource} in ('creator', 'explicit', 'default', 'self_join', 'invite_link', 'group')`,
@@ -268,10 +246,7 @@ export const workspaceGuest = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("workspace_guest_workspace_user_unique").on(
-      table.workspaceId,
-      table.userId,
-    ),
+    uniqueIndex("workspace_guest_workspace_user_unique").on(table.workspaceId, table.userId),
     index("workspace_guest_user_idx").on(table.userId),
   ],
 );

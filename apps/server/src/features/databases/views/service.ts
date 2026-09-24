@@ -11,15 +11,9 @@ import {
   pagePropertyValue,
 } from "../../../infrastructure/database/schema";
 import { requireDatabaseEditAccess } from "../access/database-access";
-import {
-  requireDataSourceAccess,
-  requireDataSourceEditAccess,
-} from "../access/data-source-access";
+import { requireDataSourceAccess, requireDataSourceEditAccess } from "../access/data-source-access";
 import { commitDatabaseMutation } from "../core/commit";
-import {
-  getDatabasePropertyEntity,
-  getDatabaseViewEntity,
-} from "../commands/metadata-entities";
+import { getDatabasePropertyEntity, getDatabaseViewEntity } from "../commands/metadata-entities";
 import { getDatabaseRecordEntity } from "../commands/record-entity";
 import { getNextDatabaseViewName } from "./naming";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
@@ -71,10 +65,7 @@ export async function createDatabaseViewService(input: {
   type?: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
-    input.databaseId,
-    input.userId,
-  );
+  const existing = await requireDatabaseEditAccess(input.databaseId, input.userId);
   const type = input.type?.trim() || "table";
   const baseName = input.name?.trim() || "Table";
   const config = input.config ?? null;
@@ -156,10 +147,7 @@ export async function updateDatabaseViewService(input: {
   userId: string;
   viewId: string;
 }) {
-  const existing = await requireDatabaseEditAccess(
-    input.databaseId,
-    input.userId,
-  );
+  const existing = await requireDatabaseEditAccess(input.databaseId, input.userId);
 
   const [existingView] = await db
     .select({
@@ -168,12 +156,7 @@ export async function updateDatabaseViewService(input: {
       id: databaseView.id,
     })
     .from(databaseView)
-    .where(
-      and(
-        eq(databaseView.id, input.viewId),
-        eq(databaseView.databaseId, existing.id),
-      ),
-    )
+    .where(and(eq(databaseView.id, input.viewId), eq(databaseView.databaseId, existing.id)))
     .limit(1);
 
   if (!existingView) {
@@ -205,24 +188,22 @@ export async function updateDatabaseViewService(input: {
       value: string | string[];
     }>;
   } | null = null;
-  let effectiveConfig = input.mergeConfig &&
-      existingView.config &&
-      typeof existingView.config === "object" &&
-      !Array.isArray(existingView.config) &&
-      input.config &&
-      typeof input.config === "object" &&
-      !Array.isArray(input.config)
-    ? {
-        ...(existingView.config as Record<string, unknown>),
-        ...(input.config as Record<string, unknown>),
-      }
-    : input.config;
+  let effectiveConfig =
+    input.mergeConfig &&
+    existingView.config &&
+    typeof existingView.config === "object" &&
+    !Array.isArray(existingView.config) &&
+    input.config &&
+    typeof input.config === "object" &&
+    !Array.isArray(input.config)
+      ? {
+          ...(existingView.config as Record<string, unknown>),
+          ...(input.config as Record<string, unknown>),
+        }
+      : input.config;
 
   if (needsSubItemProperties && requestedSubItems) {
-    const source = await requireDataSourceEditAccess(
-      existingView.dataSourceId,
-      input.userId,
-    );
+    const source = await requireDataSourceEditAccess(existingView.dataSourceId, input.userId);
     const columns = await db
       .select({ column: databaseProperty, property: pageProperty })
       .from(databaseProperty)
@@ -235,8 +216,7 @@ export async function updateDatabaseViewService(input: {
       )
       .orderBy(asc(databaseProperty.position));
     const parentColumn = columns.find(
-      ({ property }) =>
-        getSubItemRelationRole(property.config) === "parent-item",
+      ({ property }) => getSubItemRelationRole(property.config) === "parent-item",
     );
     const subItemColumn = columns.find(
       ({ property }) => getSubItemRelationRole(property.config) === "sub-item",
@@ -279,37 +259,23 @@ export async function updateDatabaseViewService(input: {
       })
       .from(databaseRow)
       .where(
-        and(
-          eq(databaseRow.dataSourceId, existingView.dataSourceId),
-          isNull(databaseRow.deletedAt),
-        ),
+        and(eq(databaseRow.dataSourceId, existingView.dataSourceId), isNull(databaseRow.deletedAt)),
       );
     const existingValues = await db
       .select()
       .from(pagePropertyValue)
-      .where(
-        inArray(pagePropertyValue.propertyId, [
-          parentPropertyId,
-          subItemPropertyId,
-        ]),
-      );
+      .where(inArray(pagePropertyValue.propertyId, [parentPropertyId, subItemPropertyId]));
     const validPageIds = new Set(rows.map((row) => row.pageId));
     const parentPageIdsByPageId = new Map<string, Set<string>>();
     const subItemPageIdsByPageId = new Map<string, Set<string>>();
 
     for (const value of existingValues) {
       const target =
-        value.propertyId === parentPropertyId
-          ? parentPageIdsByPageId
-          : subItemPageIdsByPageId;
-      const pageIds = toStringArray(value.value).filter((pageId) =>
-        validPageIds.has(pageId),
-      );
+        value.propertyId === parentPropertyId ? parentPageIdsByPageId : subItemPageIdsByPageId;
+      const pageIds = toStringArray(value.value).filter((pageId) => validPageIds.has(pageId));
       target.set(
         value.pageId,
-        new Set(
-          value.propertyId === parentPropertyId ? pageIds.slice(0, 1) : pageIds,
-        ),
+        new Set(value.propertyId === parentPropertyId ? pageIds.slice(0, 1) : pageIds),
       );
     }
 
@@ -326,8 +292,7 @@ export async function updateDatabaseViewService(input: {
       const parentPageId = [...parentPageIds][0];
       if (!parentPageId) continue;
 
-      const childPageIds =
-        subItemPageIdsByPageId.get(parentPageId) ?? new Set<string>();
+      const childPageIds = subItemPageIdsByPageId.get(parentPageId) ?? new Set<string>();
       childPageIds.add(childPageId);
       subItemPageIdsByPageId.set(parentPageId, childPageIds);
     }
@@ -335,9 +300,7 @@ export async function updateDatabaseViewService(input: {
     const values = [
       ...[...parentPageIdsByPageId].flatMap(([pageId, pageIds]) => {
         const parentPageId = [...pageIds][0];
-        return parentPageId
-          ? [{ pageId, propertyId: parentPropertyId, value: parentPageId }]
-          : [];
+        return parentPageId ? [{ pageId, propertyId: parentPropertyId, value: parentPageId }] : [];
       }),
       ...[...subItemPageIdsByPageId].map(([pageId, pageIds]) => ({
         pageId,
@@ -407,12 +370,8 @@ export async function updateDatabaseViewService(input: {
           subItemName,
           subItemPropertyId,
         } = subItemSetup;
-        const existingParent = columns.some(
-          ({ property }) => property.id === parentPropertyId,
-        );
-        const existingSubItem = columns.some(
-          ({ property }) => property.id === subItemPropertyId,
-        );
+        const existingParent = columns.some(({ property }) => property.id === parentPropertyId);
+        const existingSubItem = columns.some(({ property }) => property.id === subItemPropertyId);
 
         if (!existingParent) {
           await tx.insert(pageProperty).values({
@@ -477,10 +436,7 @@ export async function updateDatabaseViewService(input: {
         }
       }
 
-      await tx
-        .update(databaseView)
-        .set(values)
-        .where(eq(databaseView.id, existingView.id));
+      await tx.update(databaseView).set(values).where(eq(databaseView.id, existingView.id));
 
       const view = await getDatabaseViewEntity({ transaction: tx }, existingView.id);
 
@@ -491,10 +447,15 @@ export async function updateDatabaseViewService(input: {
         ]);
         const pageIds = [...new Set(subItemSetup.values.map(({ pageId }) => pageId))];
         const rowIds = pageIds.length
-          ? await tx.select({ id: databaseRow.id }).from(databaseRow).where(and(
-              eq(databaseRow.dataSourceId, existingView.dataSourceId),
-              inArray(databaseRow.pageId, pageIds),
-            ))
+          ? await tx
+              .select({ id: databaseRow.id })
+              .from(databaseRow)
+              .where(
+                and(
+                  eq(databaseRow.dataSourceId, existingView.dataSourceId),
+                  inArray(databaseRow.pageId, pageIds),
+                ),
+              )
           : [];
         const records = [];
         for (const row of rowIds) {

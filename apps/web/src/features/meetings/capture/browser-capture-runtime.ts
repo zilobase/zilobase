@@ -5,29 +5,18 @@ export function createBrowserMeetingCaptureRuntime(
   browserCapture: BrowserMeetingCapture,
 ): MeetingCaptureRuntime {
   return {
-    observe(
-      meetingId,
-      { setLevel, setDevices, setStatus, setLiveTranscripts, setRecovery },
-    ) {
+    observe(meetingId, { setLevel, setDevices, setStatus, setLiveTranscripts, setRecovery }) {
       let cancelled = false;
       const unlisteners: Array<() => void> = [];
       const sync = () => {
         if (cancelled) return;
         setLevel(browserCapture.level);
         setLiveTranscripts(
-          browserCapture.liveTranscripts?.filter(
-            (draft) => draft.meetingId === meetingId,
-          ),
+          browserCapture.liveTranscripts?.filter((draft) => draft.meetingId === meetingId),
         );
-        setStatus(
-          browserCapture.status?.meetingId === meetingId
-            ? browserCapture.status
-            : null,
-        );
+        setStatus(browserCapture.status?.meetingId === meetingId ? browserCapture.status : null);
         setRecovery(
-          browserCapture.recovery?.meetingId === meetingId
-            ? browserCapture.recovery
-            : null,
+          browserCapture.recovery?.meetingId === meetingId ? browserCapture.recovery : null,
         );
       };
       unlisteners.push(browserCapture.subscribe(sync));
@@ -47,8 +36,7 @@ export function createBrowserMeetingCaptureRuntime(
     pause: () => browserCapture.pause(),
     resume: () => browserCapture.resume(),
     stop: () => browserCapture.stop(),
-    refreshTransport: (url, ticket) =>
-      browserCapture.refreshTransport(url, ticket),
+    refreshTransport: (url, ticket) => browserCapture.refreshTransport(url, ticket),
     deleteLocalFile: (id) => browserCapture.deleteLocalFile(id),
     openLocalFile: (id) => browserCapture.openLocalFile(id),
   };

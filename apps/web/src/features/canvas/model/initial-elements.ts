@@ -1,3 +1,3 @@
-import type { CanvasNode } from "./types"
+import type { CanvasNode } from "./types";
 
-export const initialNodes: CanvasNode[] = []
+export const initialNodes: CanvasNode[] = [];

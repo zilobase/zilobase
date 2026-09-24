@@ -13,39 +13,35 @@ const oauthSearchKeys = [
   "oauth_query",
   "sig",
   "exp",
-] as const
+] as const;
 
 export function readOAuthQuery(search = window.location.search) {
-  const params = new URLSearchParams(search)
-  const explicit = params.get("oauth_query")
+  const params = new URLSearchParams(search);
+  const explicit = params.get("oauth_query");
   if (explicit) {
-    return explicit
+    return explicit;
   }
 
   if (!params.get("client_id")) {
-    return null
+    return null;
   }
 
-  return params.toString()
+  return params.toString();
 }
 
 export function isOAuthLoginSearch(search: Record<string, unknown>) {
-  return (
-    typeof search.client_id === "string" ||
-    typeof search.oauth_query === "string"
-  )
+  return typeof search.client_id === "string" || typeof search.oauth_query === "string";
 }
 
 export function pickOAuthSearch(search: Record<string, unknown>) {
-  const next: Record<string, string> = {}
+  const next: Record<string, string> = {};
 
   for (const key of oauthSearchKeys) {
-    const value = search[key]
+    const value = search[key];
     if (typeof value === "string" && value.length > 0 && value.length < 4000) {
-      next[key] = value
+      next[key] = value;
     }
   }
 
-  return next
+  return next;
 }
-

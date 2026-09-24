@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { isDesktopApp } from "@/platform/desktop/native"
-import { desktopBridge } from "@/platform/desktop/native"
-import { CopyIcon, MinusIcon, SquareIcon, XIcon } from "@/shared/components/icons"
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { isDesktopApp } from "@/platform/desktop/native";
+import { desktopBridge } from "@/platform/desktop/native";
+import { CopyIcon, MinusIcon, SquareIcon, XIcon } from "@/shared/components/icons";
 
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
 export function isLinuxDesktopApp() {
-  return isDesktopApp() && navigator.userAgent.includes("Linux")
+  return isDesktopApp() && navigator.userAgent.includes("Linux");
 }
 
 export function DesktopWindowTitlebar({
@@ -17,44 +17,44 @@ export function DesktopWindowTitlebar({
   className,
   variant,
 }: {
-  children: ReactNode
-  className?: string
-  variant: "fallback" | "tabs"
+  children: ReactNode;
+  className?: string;
+  variant: "fallback" | "tabs";
 }) {
-  const linuxDesktopApp = isLinuxDesktopApp()
-  const [maximized, setMaximized] = useState(false)
-  const appWindow = useMemo(() => isDesktopApp() ? desktopBridge().window : null, [])
+  const linuxDesktopApp = isLinuxDesktopApp();
+  const [maximized, setMaximized] = useState(false);
+  const appWindow = useMemo(() => (isDesktopApp() ? desktopBridge().window : null), []);
 
   const syncMaximizedState = useCallback(async () => {
-    if (appWindow) setMaximized((await appWindow.getState()).maximized)
-  }, [appWindow])
+    if (appWindow) setMaximized((await appWindow.getState()).maximized);
+  }, [appWindow]);
 
   const toggleMaximize = useCallback(async () => {
-    await appWindow?.toggleMaximize()
-    await syncMaximizedState()
-  }, [appWindow, syncMaximizedState])
+    await appWindow?.toggleMaximize();
+    await syncMaximizedState();
+  }, [appWindow, syncMaximizedState]);
 
   useEffect(() => {
-    if (!linuxDesktopApp || !appWindow) return
+    if (!linuxDesktopApp || !appWindow) return;
 
-    let disposed = false
-    let unlisten: (() => void) | undefined
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
 
     const updateMaximizedState = async () => {
-      const nextMaximized = (await appWindow.getState()).maximized
-      if (!disposed) setMaximized(nextMaximized)
-    }
+      const nextMaximized = (await appWindow.getState()).maximized;
+      if (!disposed) setMaximized(nextMaximized);
+    };
 
-    void updateMaximizedState()
-    unlisten = appWindow.onState(() => void updateMaximizedState())
+    void updateMaximizedState();
+    unlisten = appWindow.onState(() => void updateMaximizedState());
 
     return () => {
-      disposed = true
-      unlisten?.()
-    }
-  }, [appWindow, linuxDesktopApp])
+      disposed = true;
+      unlisten?.();
+    };
+  }, [appWindow, linuxDesktopApp]);
 
-  const maximizeLabel = maximized ? "Restore window" : "Maximize window"
+  const maximizeLabel = maximized ? "Restore window" : "Maximize window";
 
   return (
     <header
@@ -63,9 +63,7 @@ export function DesktopWindowTitlebar({
         variant === "fallback" && "border-b border-stroke-default",
         className,
       )}
-      data-desktop-fallback-titlebar={
-        variant === "fallback" ? "" : undefined
-      }
+      data-desktop-fallback-titlebar={variant === "fallback" ? "" : undefined}
       data-desktop-tabs={variant === "tabs" ? "" : undefined}
       data-desktop-drag-region=""
       onMouseDown={(event) => {
@@ -74,12 +72,12 @@ export function DesktopWindowTitlebar({
           event.button !== 0 ||
           (event.target as HTMLElement).closest("button, [role=tablist]")
         ) {
-          return
+          return;
         }
 
         if (event.detail === 2) {
-          event.preventDefault()
-          void toggleMaximize()
+          event.preventDefault();
+          void toggleMaximize();
         }
       }}
     >
@@ -106,11 +104,7 @@ export function DesktopWindowTitlebar({
             title={maximized ? "Restore" : "Maximize"}
             type="button"
           >
-            {maximized ? (
-              <CopyIcon className="size-3" />
-            ) : (
-              <SquareIcon className="size-3" />
-            )}
+            {maximized ? <CopyIcon className="size-3" /> : <SquareIcon className="size-3" />}
           </button>
           <button
             aria-label="Close window"
@@ -124,5 +118,5 @@ export function DesktopWindowTitlebar({
         </div>
       ) : null}
     </header>
-  )
+  );
 }

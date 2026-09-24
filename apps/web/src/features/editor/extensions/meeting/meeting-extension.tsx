@@ -1,63 +1,52 @@
-import { Node, mergeAttributes } from "@tiptap/core"
-import { AllSelection, NodeSelection, TextSelection } from "@tiptap/pm/state"
-import {
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-  type ReactNodeViewProps,
-} from "@tiptap/react"
+import { Node, mergeAttributes } from "@tiptap/core";
+import { AllSelection, NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
 import {
   useSyncExternalStore,
   type FocusEvent as ReactFocusEvent,
   type PointerEvent as ReactPointerEvent,
-} from "react"
+} from "react";
 
-import { MeetingView } from "./meeting-view"
+import { MeetingView } from "./meeting-view";
 
 type MeetingBlockOptions = {
-  editable?: boolean
+  editable?: boolean;
   editorRuntime?: {
-    getEditable: () => boolean
-    subscribe: (listener: () => void) => () => void
-  }
-}
+    getEditable: () => boolean;
+    subscribe: (listener: () => void) => () => void;
+  };
+};
 
 function MeetingBlockView({ editor, extension, getPos, node }: ReactNodeViewProps) {
-  const meetingId = node.attrs.meetingId as string | null
-  const options = extension.options as MeetingBlockOptions
+  const meetingId = node.attrs.meetingId as string | null;
+  const options = extension.options as MeetingBlockOptions;
   const isEditable = useSyncExternalStore(
     options.editorRuntime?.subscribe ?? (() => () => {}),
-    options.editorRuntime?.getEditable ??
-      (() => options.editable !== false && editor.isEditable),
-    options.editorRuntime?.getEditable ??
-      (() => options.editable !== false && editor.isEditable),
-  )
+    options.editorRuntime?.getEditable ?? (() => options.editable !== false && editor.isEditable),
+    options.editorRuntime?.getEditable ?? (() => options.editable !== false && editor.isEditable),
+  );
 
   const clearOuterBlockSelection = (target: EventTarget | null) => {
-    if (
-      !(target instanceof HTMLElement) ||
-      !target.closest(".meeting-block-shell")
-    ) {
-      return
+    if (!(target instanceof HTMLElement) || !target.closest(".meeting-block-shell")) {
+      return;
     }
 
-    const pos = getPos()
+    const pos = getPos();
     if (typeof pos !== "number") {
-      return
+      return;
     }
 
-    const { doc, selection } = editor.state
+    const { doc, selection } = editor.state;
     const meetingIsSelected =
       selection instanceof AllSelection ||
-      (selection instanceof NodeSelection && selection.from === pos)
+      (selection instanceof NodeSelection && selection.from === pos);
 
     if (!meetingIsSelected) {
-      return
+      return;
     }
 
-    editor.view.dispatch(
-      editor.state.tr.setSelection(TextSelection.near(doc.resolve(pos), -1)),
-    )
-  }
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.near(doc.resolve(pos), -1)));
+  };
 
   return (
     <NodeViewWrapper
@@ -79,7 +68,7 @@ function MeetingBlockView({ editor, extension, getPos, node }: ReactNodeViewProp
         </div>
       )}
     </NodeViewWrapper>
-  )
+  );
 }
 
 export const MeetingBlock = Node.create<MeetingBlockOptions>({
@@ -90,7 +79,7 @@ export const MeetingBlock = Node.create<MeetingBlockOptions>({
   selectable: true,
 
   addOptions() {
-    return { editable: true }
+    return { editable: true };
   },
 
   addAttributes() {
@@ -99,34 +88,26 @@ export const MeetingBlock = Node.create<MeetingBlockOptions>({
         default: null,
         parseHTML: (element) => element.getAttribute("data-meeting-id"),
         renderHTML: (attributes) =>
-          attributes.meetingId
-            ? { "data-meeting-id": attributes.meetingId }
-            : {},
+          attributes.meetingId ? { "data-meeting-id": attributes.meetingId } : {},
       },
-    }
+    };
   },
 
   parseHTML() {
-    return [{ tag: 'div[data-type="meetingBlock"]' }]
+    return [{ tag: 'div[data-type="meetingBlock"]' }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(HTMLAttributes, { "data-type": "meetingBlock" }),
-    ]
+    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "meetingBlock" })];
   },
 
   addNodeView() {
     return ReactNodeViewRenderer(MeetingBlockView, {
       className: "meeting-block",
       stopEvent: ({ event }) => {
-        const target = event.target
-        return (
-          target instanceof HTMLElement &&
-          Boolean(target.closest(".meeting-block-shell"))
-        )
+        const target = event.target;
+        return target instanceof HTMLElement && Boolean(target.closest(".meeting-block-shell"));
       },
-    })
+    });
   },
-})
+});

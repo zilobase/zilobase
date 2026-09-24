@@ -52,11 +52,8 @@ export function mergeCanonicalChatMessages(
   return [...merged.values()];
 }
 
-export function haveSameChatMessageOrder(
-  left: readonly UIMessage[],
-  right: readonly UIMessage[],
-) {
-  return left.length === right.length && left.every(
-    (message, index) => message.id === right[index]?.id,
+export function haveSameChatMessageOrder(left: readonly UIMessage[], right: readonly UIMessage[]) {
+  return (
+    left.length === right.length && left.every((message, index) => message.id === right[index]?.id)
   );
 }

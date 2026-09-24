@@ -1,8 +1,6 @@
 export function register({ assert, loadModule, test }) {
   test("agent metadata prefers draft values and preserves explicit removal of icon and cover", async () => {
-    const { agentMetadata } = await loadModule(
-      "/src/features/ai/settings/model/agent-metadata.ts",
-    );
+    const { agentMetadata } = await loadModule("/src/features/ai/settings/model/agent-metadata.ts");
     const profile = {
       cover: "cover",
       icon: "icon",
@@ -31,16 +29,13 @@ export function register({ assert, loadModule, test }) {
       title: "Draft",
       description: "",
     });
-    assert.deepEqual(
-      agentMetadata(profile, { cover: undefined, icon: undefined }),
-      {
-        cover: "",
-        icon: "",
-        iconPosition: "top",
-        title: "Saved",
-        description: "Saved description",
-      },
-    );
+    assert.deepEqual(agentMetadata(profile, { cover: undefined, icon: undefined }), {
+      cover: "",
+      icon: "",
+      iconPosition: "top",
+      title: "Saved",
+      description: "Saved description",
+    });
     assert.equal(profile.name, "Saved");
   });
 }

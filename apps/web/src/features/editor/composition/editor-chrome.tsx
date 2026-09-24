@@ -1,15 +1,15 @@
-import type { Editor as TiptapEditor } from "@tiptap/react"
-import type { TableOfContentDataItem } from "@tiptap/extension-table-of-contents"
-import type { PageCommentController } from "@/features/comments/index"
-import { getBlockCommentHandleRect } from "../drag-drop/block-drag"
-import { BlockCommentPopover } from "../selection/block-comment-popover"
-import { ColumnControls } from "../toolbar/column-controls"
-import { DragBlockMenu } from "../drag-drop/drag-block-menu"
-import { SelectionBubbleMenu } from "../selection/selection-bubble-menu"
-import { TableControls } from "../toolbar/table-controls"
-import { EditorTableOfContents } from "./editor-table-of-contents"
-import { PasteChoiceMenu } from "../paste/paste-choice-menu"
-import { runToolbarCommand } from "../commands/run-toolbar-command"
+import type { Editor as TiptapEditor } from "@tiptap/react";
+import type { TableOfContentDataItem } from "@tiptap/extension-table-of-contents";
+import type { PageCommentController } from "@/features/comments/index";
+import { getBlockCommentHandleRect } from "../drag-drop/block-drag";
+import { BlockCommentPopover } from "../selection/block-comment-popover";
+import { ColumnControls } from "../toolbar/column-controls";
+import { DragBlockMenu } from "../drag-drop/drag-block-menu";
+import { SelectionBubbleMenu } from "../selection/selection-bubble-menu";
+import { TableControls } from "../toolbar/table-controls";
+import { EditorTableOfContents } from "./editor-table-of-contents";
+import { PasteChoiceMenu } from "../paste/paste-choice-menu";
+import { runToolbarCommand } from "../commands/run-toolbar-command";
 import type {
   BlockDropLine,
   DragHandleState,
@@ -18,37 +18,37 @@ import type {
   StructuralBlockDeleteAction,
   StructuralBlockDeleteHistory,
   StructuralBlockDeleteRequest,
-} from "../core/types"
-import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
+} from "../core/types";
+import type { StructuralInsertionPendingChange } from "../commands/structural-insertion";
 
 type EditorChromeProps = {
-  blockDropLine: BlockDropLine | null
-  blockCommentOpen: boolean
-  commentController?: PageCommentController
-  createEditorDatabase: () => Promise<string | null>
-  createEditorMeeting: () => Promise<string | null>
-  dragHandle: DragHandleState | null
-  editable: boolean
-  editor: TiptapEditor | null
-  editorId: string
+  blockDropLine: BlockDropLine | null;
+  blockCommentOpen: boolean;
+  commentController?: PageCommentController;
+  createEditorDatabase: () => Promise<string | null>;
+  createEditorMeeting: () => Promise<string | null>;
+  dragHandle: DragHandleState | null;
+  editable: boolean;
+  editor: TiptapEditor | null;
+  editorId: string;
   getStructuralBlockDeleteAction?: (
     request: StructuralBlockDeleteRequest,
-  ) => StructuralBlockDeleteAction
-  onClosePasteChoice: () => void
+  ) => StructuralBlockDeleteAction;
+  onClosePasteChoice: () => void;
   onDeleteStructuralBlock?: (
     request: StructuralBlockDeleteRequest,
-  ) => Promise<StructuralBlockDeleteHistory | void>
-  onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
-  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
-  pageId?: string | null
-  workspaceId?: string | null
-  pasteChoice: PasteChoiceState | null
-  plusMenuOpen: boolean
-  setDragHandleMenuOpen: (open: boolean) => void
-  setBlockCommentOpen: (open: boolean) => void
-  setPlusMenuOpen: (open: boolean) => void
-  tocItems: TableOfContentDataItem[]
-}
+  ) => Promise<StructuralBlockDeleteHistory | void>;
+  onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void;
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange;
+  pageId?: string | null;
+  workspaceId?: string | null;
+  pasteChoice: PasteChoiceState | null;
+  plusMenuOpen: boolean;
+  setDragHandleMenuOpen: (open: boolean) => void;
+  setBlockCommentOpen: (open: boolean) => void;
+  setPlusMenuOpen: (open: boolean) => void;
+  tocItems: TableOfContentDataItem[];
+};
 
 export function EditorChrome({
   blockDropLine,
@@ -74,9 +74,8 @@ export function EditorChrome({
   setPlusMenuOpen,
   tocItems,
 }: EditorChromeProps) {
-  const blockCommentPosition = editor && dragHandle
-    ? getBlockCommentHandleRect(editor.view, dragHandle.target)
-    : null
+  const blockCommentPosition =
+    editor && dragHandle ? getBlockCommentHandleRect(editor.view, dragHandle.target) : null;
 
   return (
     <>
@@ -98,19 +97,12 @@ export function EditorChrome({
             onCreateMeeting={createEditorMeeting}
             onDeleteStructuralBlock={onDeleteStructuralBlock}
             onOpenChange={setPlusMenuOpen}
-            onStructuralInsertionPendingChange={
-              onStructuralInsertionPendingChange
-            }
+            onStructuralInsertionPendingChange={onStructuralInsertionPendingChange}
             target={dragHandle.target}
           />
         </div>
       ) : null}
-      {editable &&
-      editor &&
-      dragHandle &&
-      blockCommentPosition &&
-      commentController &&
-      pageId ? (
+      {editable && editor && dragHandle && blockCommentPosition && commentController && pageId ? (
         <div
           className="block-comment-handle"
           style={{
@@ -146,9 +138,7 @@ export function EditorChrome({
             editor={editor}
             onSelectionAiPreviewChange={onSelectionAiPreviewChange}
             workspaceId={workspaceId}
-            runCommand={(action, attrs) =>
-              runToolbarCommand(editor, action, attrs)
-            }
+            runCommand={(action, attrs) => runToolbarCommand(editor, action, attrs)}
           />
           <ColumnControls editor={editor} />
           <TableControls editor={editor} />
@@ -156,12 +146,8 @@ export function EditorChrome({
       ) : null}
       <EditorTableOfContents editor={editor} items={tocItems} />
       {pasteChoice && editor ? (
-        <PasteChoiceMenu
-          editor={editor}
-          pasteChoice={pasteChoice}
-          onClose={onClosePasteChoice}
-        />
+        <PasteChoiceMenu editor={editor} pasteChoice={pasteChoice} onClose={onClosePasteChoice} />
       ) : null}
     </>
-  )
+  );
 }

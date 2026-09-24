@@ -1,20 +1,12 @@
 import type { UIMessage } from "ai";
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  ilike,
-  inArray,
-  isNull,
-  ne,
-  notInArray,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, ne, notInArray, or, sql } from "drizzle-orm";
 
 import { db } from "../../../infrastructure/database";
-import { aiChatMessage, aiChatThread, aiChatThreadSummary } from "../../../infrastructure/database/schema";
+import {
+  aiChatMessage,
+  aiChatThread,
+  aiChatThreadSummary,
+} from "../../../infrastructure/database/schema";
 import { lastMatchingIndex } from "./last-matching-index";
 
 const DEFAULT_AI_CHAT_THREAD_TITLE = "New chat";
@@ -72,10 +64,7 @@ export async function listAiChatThreads(
     })
     .from(aiChatThread)
     .where(and(...filters))
-    .orderBy(
-      sql`${aiChatThread.pinnedAt} desc nulls last`,
-      desc(aiChatThread.lastActivityAt),
-    );
+    .orderBy(sql`${aiChatThread.pinnedAt} desc nulls last`, desc(aiChatThread.lastActivityAt));
 
   return rows;
 }
@@ -343,8 +332,7 @@ export async function syncAiChatThreadMessages(
       .onConflictDoUpdate({
         target: [aiChatMessage.threadId, aiChatMessage.sequence],
         set: {
-          clientId:
-            sql`coalesce(${aiChatMessage.clientId}, excluded.${sql.identifier(aiChatMessage.clientId.name)})`,
+          clientId: sql`coalesce(${aiChatMessage.clientId}, excluded.${sql.identifier(aiChatMessage.clientId.name)})`,
           role: sql`excluded.${sql.identifier(aiChatMessage.role.name)}`,
           parts: sql`excluded.${sql.identifier(aiChatMessage.parts.name)}`,
           sequence: sql`excluded.${sql.identifier(aiChatMessage.sequence.name)}`,
@@ -355,8 +343,7 @@ export async function syncAiChatThreadMessages(
     await db
       .update(aiChatThread)
       .set({
-        nextMessageSequence:
-          sql`greatest(${aiChatThread.nextMessageSequence}, ${persistableMessages.size})`,
+        nextMessageSequence: sql`greatest(${aiChatThread.nextMessageSequence}, ${persistableMessages.size})`,
         updatedAt: now,
       })
       .where(eq(aiChatThread.id, threadId));
@@ -390,10 +377,12 @@ export async function appendCanonicalUserMessage(input: {
     const [existing] = await tx
       .select({ id: aiChatMessage.id, parts: aiChatMessage.parts })
       .from(aiChatMessage)
-      .where(and(
-        eq(aiChatMessage.threadId, input.threadId),
-        eq(aiChatMessage.clientId, input.clientMessageId),
-      ))
+      .where(
+        and(
+          eq(aiChatMessage.threadId, input.threadId),
+          eq(aiChatMessage.clientId, input.clientMessageId),
+        ),
+      )
       .limit(1);
     if (existing) {
       if (JSON.stringify(existing.parts) !== JSON.stringify(input.parts)) {
@@ -440,28 +429,29 @@ export async function appendCanonicalAssistantMessages(input: {
     const existing = await tx
       .select({ clientId: aiChatMessage.clientId })
       .from(aiChatMessage)
-      .where(and(
-        eq(aiChatMessage.threadId, input.threadId),
-        inArray(aiChatMessage.clientId, clientIds),
-      ));
+      .where(
+        and(eq(aiChatMessage.threadId, input.threadId), inArray(aiChatMessage.clientId, clientIds)),
+      );
     const existingIds = new Set(existing.map((row) => row.clientId));
     const pending = assistantMessages.filter((message) => !existingIds.has(message.id));
     if (pending.length === 0) return null;
 
     const firstSequence = await reserveMessageSequences(tx, input.threadId, pending.length);
     const now = new Date();
-    await tx.insert(aiChatMessage).values(pending.map((message, index) => ({
-      clientId: message.id,
-      createdAt: now,
-      id: crypto.randomUUID(),
-      parts: message.parts,
-      role: "assistant",
-      sequence: firstSequence + index,
-      status: "completed",
-      threadId: input.threadId,
-      turnId: input.turnId,
-      updatedAt: now,
-    })));
+    await tx.insert(aiChatMessage).values(
+      pending.map((message, index) => ({
+        clientId: message.id,
+        createdAt: now,
+        id: crypto.randomUUID(),
+        parts: message.parts,
+        role: "assistant",
+        sequence: firstSequence + index,
+        status: "completed",
+        threadId: input.threadId,
+        turnId: input.turnId,
+        updatedAt: now,
+      })),
+    );
     return firstSequence + pending.length - 1;
   });
 }
@@ -470,15 +460,14 @@ export function selectCanonicalAssistantMessages(
   messages: readonly UIMessage[],
   userClientMessageId: string,
 ) {
-  const userIndex = lastMatchingIndex(messages,
+  const userIndex = lastMatchingIndex(
+    messages,
     (message) => message.role === "user" && message.id === userClientMessageId,
   );
 
   return messages
     .slice(userIndex < 0 ? 0 : userIndex + 1)
-    .filter((message) =>
-      message.role === "assistant" && isPersistableUiMessage(message)
-    );
+    .filter((message) => message.role === "assistant" && isPersistableUiMessage(message));
 }
 
 export async function getAiChatThreadSummary(threadId: string) {
@@ -490,10 +479,7 @@ export async function getAiChatThreadSummary(threadId: string) {
   return summary ?? null;
 }
 
-export async function maybeAutoTitleAiChatThread(
-  threadId: string,
-  messages: readonly UIMessage[],
-) {
+export async function maybeAutoTitleAiChatThread(threadId: string, messages: readonly UIMessage[]) {
   const [thread] = await db
     .select({ title: aiChatThread.title })
     .from(aiChatThread)
@@ -605,14 +591,12 @@ async function enforceAiChatMessageLimit(threadId: string) {
     return;
   }
 
-  await db
-    .delete(aiChatMessage)
-    .where(
-      inArray(
-        aiChatMessage.id,
-        rows.map((row) => row.id),
-      ),
-    );
+  await db.delete(aiChatMessage).where(
+    inArray(
+      aiChatMessage.id,
+      rows.map((row) => row.id),
+    ),
+  );
 }
 
 async function reserveMessageSequences(

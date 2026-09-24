@@ -8,8 +8,7 @@ import {
 } from "../../../infrastructure/database/schema";
 import type { SqlExecutor } from "./commit";
 
-export const hasDuplicateValues = (values: string[]) =>
-  new Set(values).size !== values.length;
+export const hasDuplicateValues = (values: string[]) => new Set(values).size !== values.length;
 
 const getPositionValuesSql = (ids: string[]) =>
   sql.join(
@@ -19,16 +18,11 @@ const getPositionValuesSql = (ids: string[]) =>
 
 const getRowOrderKeyValuesSql = (ids: string[]) =>
   sql.join(
-    ids.map((id, position) =>
-      sql`(${id}::text, ${databaseOrderKeyAtPosition(position)}::numeric)`,
-    ),
+    ids.map((id, position) => sql`(${id}::text, ${databaseOrderKeyAtPosition(position)}::numeric)`),
     sql`, `,
   );
 
-export async function lockDatabaseRowOrdering(
-  executor: SqlExecutor,
-  dataSourceId: string,
-) {
+export async function lockDatabaseRowOrdering(executor: SqlExecutor, dataSourceId: string) {
   await executor.execute(sql`
     select pg_advisory_xact_lock(hashtextextended(${dataSourceId}, 0))
   `);

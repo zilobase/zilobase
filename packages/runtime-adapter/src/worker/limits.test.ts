@@ -10,7 +10,8 @@ describe("worker Limits port", () => {
   });
 
   it("fails closed when the binding is absent", async () => {
-    await expect(createWorkerLimits({}).consume("key", 1, 1_000))
-      .rejects.toThrow("COLLABORATION_RATE_LIMITER binding is required");
+    await expect(createWorkerLimits({}).consume("key", 1, 1_000)).rejects.toThrow(
+      "COLLABORATION_RATE_LIMITER binding is required",
+    );
   });
 });

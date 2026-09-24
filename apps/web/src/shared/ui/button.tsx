@@ -1,11 +1,11 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { Slot } from "radix-ui"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
+import { Slot } from "radix-ui";
 
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
-const buttonControlHeightClassName = "h-7"
-const buttonControlTextClassName = "text-xs/relaxed font-medium"
+const buttonControlHeightClassName = "h-7";
+const buttonControlTextClassName = "text-xs/relaxed font-medium";
 
 const buttonVariants = cva(
   `${buttonControlTextClassName} group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding whitespace-nowrap transition-all outline-none select-none focus-visible:border-action-focus-ring focus-visible:ring-2 focus-visible:ring-action-focus-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-action-danger-border aria-invalid:ring-2 aria-invalid:ring-action-danger-border dark:aria-invalid:border-action-danger-border dark:aria-invalid:ring-action-danger-border [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4`,
@@ -24,8 +24,7 @@ const buttonVariants = cva(
         link: "text-action-link underline-offset-4 hover:underline",
       },
       size: {
-        default:
-          `${buttonControlHeightClassName} gap-1 px-2 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5`,
+        default: `${buttonControlHeightClassName} gap-1 px-2 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5`,
         xs: "h-5 gap-1 px-2 text-[0.625rem] has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-2.5",
         sm: "h-6 gap-1 px-2 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
         lg: "h-8 gap-1 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 [&_svg:not([class*='size-'])]:size-4",
@@ -39,8 +38,8 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
-)
+  },
+);
 
 function Button({
   className,
@@ -52,12 +51,11 @@ function Button({
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-    trailingDivider?: boolean
+    asChild?: boolean;
+    trailingDivider?: boolean;
   }) {
-  const Comp = asChild ? Slot.Root : "button"
-  const content =
-    trailingDivider && !asChild ? addTrailingDivider(children) : children
+  const Comp = asChild ? Slot.Root : "button";
+  const content = trailingDivider && !asChild ? addTrailingDivider(children) : children;
 
   return (
     <Comp
@@ -69,15 +67,15 @@ function Button({
     >
       {content}
     </Comp>
-  )
+  );
 }
 
 function addTrailingDivider(children: React.ReactNode) {
-  const items = React.Children.toArray(children)
+  const items = React.Children.toArray(children);
 
-  if (items.length < 2) return children
+  if (items.length < 2) return children;
 
-  const trailingItem = items.pop()
+  const trailingItem = items.pop();
 
   return (
     <>
@@ -89,12 +87,7 @@ function addTrailingDivider(children: React.ReactNode) {
       />
       {trailingItem}
     </>
-  )
+  );
 }
 
-export {
-  Button,
-  buttonControlHeightClassName,
-  buttonControlTextClassName,
-  buttonVariants,
-}
+export { Button, buttonControlHeightClassName, buttonControlTextClassName, buttonVariants };

@@ -16,21 +16,13 @@ export function materializePageContentFromYjs(state: Uint8Array) {
 
 function toYDoc(content: unknown) {
   const normalized = normalizeDocument(content);
-  return ProsemirrorTransformer.toYdoc(
-    normalized,
-    FIELD_NAME,
-    createSchemaForDocument(normalized),
-  );
+  return ProsemirrorTransformer.toYdoc(normalized, FIELD_NAME, createSchemaForDocument(normalized));
 }
 
 export function encodeContentAsYjs(content: unknown, field: string) {
   const normalized = normalizeDocument(content);
   return Y.encodeStateAsUpdate(
-    ProsemirrorTransformer.toYdoc(
-      normalized,
-      field,
-      createSchemaForDocument(normalized),
-    ),
+    ProsemirrorTransformer.toYdoc(normalized, field, createSchemaForDocument(normalized)),
   );
 }
 
@@ -123,15 +115,10 @@ function nodeSpec(name: string, attrs: Set<string>): NodeSpec {
 }
 
 function attrsSpec(attrs: Set<string>) {
-  return Object.fromEntries(
-    [...attrs].map((name) => [name, { default: null }]),
-  );
+  return Object.fromEntries([...attrs].map((name) => [name, { default: null }]));
 }
 
-function visit(
-  node: ProseMirrorJson,
-  callback: (node: ProseMirrorJson) => void,
-) {
+function visit(node: ProseMirrorJson, callback: (node: ProseMirrorJson) => void) {
   callback(node);
   node.content?.forEach((child) => visit(child, callback));
 }
@@ -164,7 +151,5 @@ function compactMaterializedJson(value: unknown): unknown {
   return compacted;
 }
 export function materializePageDocument(document: Y.Doc) {
-  return compactMaterializedJson(
-    ProsemirrorTransformer.fromYdoc(document, FIELD_NAME),
-  );
+  return compactMaterializedJson(ProsemirrorTransformer.fromYdoc(document, FIELD_NAME));
 }

@@ -17,18 +17,14 @@ export const statusOptionGroupNames = [
 export function getStatusOptionGroups(options: StatusOption[]) {
   return statusOptionGroupNames.map((name) => ({
     name,
-    options: options.filter(
-      (option) => getStatusOptionGroup(option) === name,
-    ),
+    options: options.filter((option) => getStatusOptionGroup(option) === name),
   }));
 }
 
 export function getStatusOptionGroup(option: StatusOption) {
   return (
     option.group ??
-    defaultStatusOptions.find(
-      (defaultOption) => defaultOption.name === option.name,
-    )?.group ??
+    defaultStatusOptions.find((defaultOption) => defaultOption.name === option.name)?.group ??
     "To-do"
   );
 }

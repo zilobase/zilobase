@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import type { PointerEvent } from "react"
-import type { Editor } from "@tiptap/react"
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { PointerEvent } from "react";
+import type { Editor } from "@tiptap/react";
 import {
   addColumn,
   addRow,
@@ -8,9 +8,9 @@ import {
   moveTableRow,
   selectedRect,
   TableMap,
-} from "@tiptap/pm/tables"
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
-import { MoreHorizontal, MoreVertical, Plus } from "@/shared/components/icons"
+} from "@tiptap/pm/tables";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { MoreHorizontal, MoreVertical, Plus } from "@/shared/components/icons";
 import {
   getAddControlVisibility,
   getHoveredTableCell,
@@ -24,84 +24,77 @@ import {
   type PinnedReorderHandle,
   type TableControlRect,
   type TableDragState,
-} from "../drag-drop/table-drag"
+} from "../drag-drop/table-drag";
 
-const tableColumnMinWidth = 180
+const tableColumnMinWidth = 180;
 
 const hiddenAddControls: AddControlVisibility = {
   column: false,
   row: false,
-}
+};
 
 function updateTableMinWidths(editor: Editor) {
   editor.view.dom.querySelectorAll("table").forEach((table) => {
     if (!(table instanceof HTMLTableElement)) {
-      return
+      return;
     }
 
-    const columnCount = table.rows[0]?.cells.length ?? 0
+    const columnCount = table.rows[0]?.cells.length ?? 0;
 
     if (columnCount === 0) {
-      table.style.removeProperty("--table-min-width")
-      return
+      table.style.removeProperty("--table-min-width");
+      return;
     }
 
-    table.style.setProperty(
-      "--table-min-width",
-      `${columnCount * tableColumnMinWidth}px`
-    )
-  })
+    table.style.setProperty("--table-min-width", `${columnCount * tableColumnMinWidth}px`);
+  });
 }
 
 function findActiveTable(editor: Editor) {
   if (!editor.isActive("table")) {
-    return null
+    return null;
   }
 
-  const domAtSelection = editor.view.domAtPos(editor.state.selection.from).node
+  const domAtSelection = editor.view.domAtPos(editor.state.selection.from).node;
   const element =
-    domAtSelection instanceof HTMLElement
-      ? domAtSelection
-      : domAtSelection.parentElement
+    domAtSelection instanceof HTMLElement ? domAtSelection : domAtSelection.parentElement;
 
-  const table = element?.closest("table")
+  const table = element?.closest("table");
 
   if (!(table instanceof HTMLTableElement)) {
-    return null
+    return null;
   }
 
-  return editor.view.dom.contains(table) ? table : null
+  return editor.view.dom.contains(table) ? table : null;
 }
 
 function findTableByDOM(editor: Editor, table: HTMLTableElement) {
-  let match: { node: ProseMirrorNode; pos: number } | null = null
+  let match: { node: ProseMirrorNode; pos: number } | null = null;
 
   editor.state.doc.descendants((node, pos) => {
     if (node.type.name !== "table") {
-      return
+      return;
     }
 
-    const dom = editor.view.nodeDOM(pos)
+    const dom = editor.view.nodeDOM(pos);
 
     if (dom === table || (dom instanceof HTMLElement && dom.contains(table))) {
-      match = { node, pos }
-      return false
+      match = { node, pos };
+      return false;
     }
-  })
+  });
 
-  return match as { node: ProseMirrorNode; pos: number } | null
+  return match as { node: ProseMirrorNode; pos: number } | null;
 }
 
 function findHoveredTable(editor: Editor, target: EventTarget | null) {
   if (!(target instanceof Element)) {
-    return null
+    return null;
   }
 
-  const table = target.closest("table")
+  const table = target.closest("table");
 
-  return table instanceof HTMLTableElement && editor.view.dom.contains(table)
-    ? table
-    : null
+  return table instanceof HTMLTableElement && editor.view.dom.contains(table) ? table : null;
 }
 
 function createTableControlRect(
@@ -109,21 +102,21 @@ function createTableControlRect(
   table: HTMLTableElement,
   useSelection: boolean,
 ): TableControlRect | null {
-  const tableMatch = findTableByDOM(editor, table)
+  const tableMatch = findTableByDOM(editor, table);
 
   if (!tableMatch) {
-    return null
+    return null;
   }
 
-  const tableRect = table.getBoundingClientRect()
-  const firstCell = table.querySelector("th, td")
-  const firstCellRect = firstCell?.getBoundingClientRect()
-  const cellSize = Math.max(10, (firstCellRect?.height ?? 40) / 4)
-  const currentRect = useSelection ? selectedRect(editor.state) : null
-  const map = TableMap.get(tableMatch.node)
-  const firstRow = table.rows[0]
+  const tableRect = table.getBoundingClientRect();
+  const firstCell = table.querySelector("th, td");
+  const firstCellRect = firstCell?.getBoundingClientRect();
+  const cellSize = Math.max(10, (firstCellRect?.height ?? 40) / 4);
+  const currentRect = useSelection ? selectedRect(editor.state) : null;
+  const map = TableMap.get(tableMatch.node);
+  const firstRow = table.rows[0];
   const columns = Array.from(firstRow?.cells ?? [], (cell, index) => {
-    const rect = cell.getBoundingClientRect()
+    const rect = cell.getBoundingClientRect();
 
     return {
       index,
@@ -131,10 +124,10 @@ function createTableControlRect(
       top: tableRect.top,
       width: rect.width,
       height: tableRect.height,
-    }
-  })
+    };
+  });
   const rows = Array.from(table.rows, (row, index) => {
-    const rect = row.getBoundingClientRect()
+    const rect = row.getBoundingClientRect();
 
     return {
       index,
@@ -142,8 +135,8 @@ function createTableControlRect(
       top: rect.top,
       width: tableRect.width,
       height: rect.height,
-    }
-  })
+    };
+  });
 
   return {
     bottom: tableRect.bottom,
@@ -166,24 +159,24 @@ function createTableControlRect(
     width: tableRect.width,
     height: tableRect.height,
     cellSize,
-  }
+  };
 }
 
 function getTableControlRect(editor: Editor): TableControlRect | null {
-  const table = findActiveTable(editor)
+  const table = findActiveTable(editor);
 
   if (!table) {
-    return null
+    return null;
   }
 
-  return createTableControlRect(editor, table, true)
+  return createTableControlRect(editor, table, true);
 }
 
 function getTableControlRectByDOM(
   editor: Editor,
   table: HTMLTableElement,
 ): TableControlRect | null {
-  return createTableControlRect(editor, table, findActiveTable(editor) === table)
+  return createTableControlRect(editor, table, findActiveTable(editor) === table);
 }
 
 function isTableControlElement(target: EventTarget | null) {
@@ -194,226 +187,206 @@ function isTableControlElement(target: EventTarget | null) {
         ".table-reorder-control, .table-add-control, .table-drag-drop-line, .table-drag-source-outline",
       ),
     )
-  )
+  );
 }
 
 export function TableControls({ editor }: { editor: Editor | null }) {
-  const [rect, setRect] = useState<TableControlRect | null>(null)
-  const [dragPreview, setDragPreview] = useState<TableDragState | null>(null)
-  const [addControls, setAddControls] =
-    useState<AddControlVisibility>(hiddenAddControls)
-  const [hoveredCell, setHoveredCell] = useState<HoveredTableCell | null>(null)
-  const [pinnedHandle, setPinnedHandle] = useState<PinnedReorderHandle | null>(
-    null
-  )
-  const dragState = useRef<TableDragState | null>(null)
-  const hoveredTableRef = useRef<HTMLTableElement | null>(null)
-  const rectRef = useRef<TableControlRect | null>(null)
+  const [rect, setRect] = useState<TableControlRect | null>(null);
+  const [dragPreview, setDragPreview] = useState<TableDragState | null>(null);
+  const [addControls, setAddControls] = useState<AddControlVisibility>(hiddenAddControls);
+  const [hoveredCell, setHoveredCell] = useState<HoveredTableCell | null>(null);
+  const [pinnedHandle, setPinnedHandle] = useState<PinnedReorderHandle | null>(null);
+  const dragState = useRef<TableDragState | null>(null);
+  const hoveredTableRef = useRef<HTMLTableElement | null>(null);
+  const rectRef = useRef<TableControlRect | null>(null);
 
   const updateRect = useCallback(() => {
     if (!editor) {
-      setRect(null)
-      return
+      setRect(null);
+      return;
     }
 
     const hoveredRect = hoveredTableRef.current
       ? getTableControlRectByDOM(editor, hoveredTableRef.current)
-      : null
+      : null;
 
-    setRect(hoveredRect ?? getTableControlRect(editor))
-  }, [editor])
+    setRect(hoveredRect ?? getTableControlRect(editor));
+  }, [editor]);
 
   const setDrag = (nextDrag: TableDragState | null) => {
-    dragState.current = nextDrag
-    setDragPreview(nextDrag)
-  }
+    dragState.current = nextDrag;
+    setDragPreview(nextDrag);
+  };
 
   useEffect(() => {
     if (!editor) {
-      setRect(null)
-      setAddControls(hiddenAddControls)
-      setHoveredCell(null)
-      setPinnedHandle(null)
-      return
+      setRect(null);
+      setAddControls(hiddenAddControls);
+      setHoveredCell(null);
+      setPinnedHandle(null);
+      return;
     }
 
-    let updateFrame: number | null = null
-    let pointerFrame: number | null = null
-    let latestPointerEvent: globalThis.PointerEvent | null = null
-    let tableWidthsDirty = false
+    let updateFrame: number | null = null;
+    let pointerFrame: number | null = null;
+    let latestPointerEvent: globalThis.PointerEvent | null = null;
+    let tableWidthsDirty = false;
     const updateOnNextFrame = () => {
-      if (updateFrame !== null) return
+      if (updateFrame !== null) return;
       updateFrame = window.requestAnimationFrame(() => {
-        updateFrame = null
+        updateFrame = null;
         if (tableWidthsDirty) {
-          tableWidthsDirty = false
-          updateTableMinWidths(editor)
+          tableWidthsDirty = false;
+          updateTableMinWidths(editor);
         }
-        updateRect()
-      })
-    }
-    const handleTransaction = ({
-      transaction,
-    }: {
-      transaction: { docChanged: boolean }
-    }) => {
+        updateRect();
+      });
+    };
+    const handleTransaction = ({ transaction }: { transaction: { docChanged: boolean } }) => {
       // Selection and metadata transactions cannot change table widths.
       if (transaction.docChanged) {
-        tableWidthsDirty = true
+        tableWidthsDirty = true;
       }
-      updateOnNextFrame()
-    }
+      updateOnNextFrame();
+    };
     const handlePointerMove = (event: globalThis.PointerEvent) => {
-      latestPointerEvent = event
-      if (pointerFrame !== null) return
+      latestPointerEvent = event;
+      if (pointerFrame !== null) return;
 
       pointerFrame = window.requestAnimationFrame(() => {
-        pointerFrame = null
-        const event = latestPointerEvent
-        if (!event) return
+        pointerFrame = null;
+        const event = latestPointerEvent;
+        if (!event) return;
 
-        const currentRect = rectRef.current
+        const currentRect = rectRef.current;
 
         if (
           dragState.current ||
           isTableControlElement(event.target) ||
-          (currentRect &&
-            isInsideTableControls(currentRect, event.clientX, event.clientY))
+          (currentRect && isInsideTableControls(currentRect, event.clientX, event.clientY))
         ) {
-          return
+          return;
         }
 
-        const hoveredTable = findHoveredTable(editor, event.target)
+        const hoveredTable = findHoveredTable(editor, event.target);
 
-        hoveredTableRef.current = hoveredTable
+        hoveredTableRef.current = hoveredTable;
 
         if (!hoveredTable) {
-          setRect(getTableControlRect(editor))
-          return
+          setRect(getTableControlRect(editor));
+          return;
         }
 
-        setRect(getTableControlRectByDOM(editor, hoveredTable))
-      })
-    }
+        setRect(getTableControlRectByDOM(editor, hoveredTable));
+      });
+    };
 
-    updateTableMinWidths(editor)
-    updateRect()
-    editor.on("selectionUpdate", updateOnNextFrame)
-    editor.on("transaction", handleTransaction)
-    window.addEventListener("pointermove", handlePointerMove, true)
-    window.addEventListener("resize", updateRect)
-    window.addEventListener("scroll", updateRect, true)
+    updateTableMinWidths(editor);
+    updateRect();
+    editor.on("selectionUpdate", updateOnNextFrame);
+    editor.on("transaction", handleTransaction);
+    window.addEventListener("pointermove", handlePointerMove, true);
+    window.addEventListener("resize", updateRect);
+    window.addEventListener("scroll", updateRect, true);
 
     return () => {
       if (updateFrame !== null) {
-        window.cancelAnimationFrame(updateFrame)
+        window.cancelAnimationFrame(updateFrame);
       }
       if (pointerFrame !== null) {
-        window.cancelAnimationFrame(pointerFrame)
+        window.cancelAnimationFrame(pointerFrame);
       }
-      editor.off("selectionUpdate", updateOnNextFrame)
-      editor.off("transaction", handleTransaction)
-      window.removeEventListener("pointermove", handlePointerMove, true)
-      window.removeEventListener("resize", updateRect)
-      window.removeEventListener("scroll", updateRect, true)
-    }
-  }, [editor, updateRect])
+      editor.off("selectionUpdate", updateOnNextFrame);
+      editor.off("transaction", handleTransaction);
+      window.removeEventListener("pointermove", handlePointerMove, true);
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("scroll", updateRect, true);
+    };
+  }, [editor, updateRect]);
 
   useEffect(() => {
-    rectRef.current = rect
-  }, [rect])
+    rectRef.current = rect;
+  }, [rect]);
 
   useEffect(() => {
     if (!rect) {
-      setAddControls(hiddenAddControls)
-      setHoveredCell(null)
-      setPinnedHandle(null)
-      return
+      setAddControls(hiddenAddControls);
+      setHoveredCell(null);
+      setPinnedHandle(null);
+      return;
     }
 
     const handlePointerMove = (event: globalThis.PointerEvent) => {
-      const nextVisibility = getAddControlVisibility(
-        rect,
-        event.clientX,
-        event.clientY
-      )
+      const nextVisibility = getAddControlVisibility(rect, event.clientX, event.clientY);
 
       setAddControls((currentVisibility) => {
         if (
           currentVisibility.column === nextVisibility.column &&
           currentVisibility.row === nextVisibility.row
         ) {
-          return currentVisibility
+          return currentVisibility;
         }
 
-        return nextVisibility
-      })
+        return nextVisibility;
+      });
 
       setHoveredCell((currentHover) => {
-        const nextHover = getHoveredTableCell(
-          rect,
-          event.clientX,
-          event.clientY,
-          currentHover
-        )
+        const nextHover = getHoveredTableCell(rect, event.clientX, event.clientY, currentHover);
 
-        if (
-          currentHover?.column === nextHover?.column &&
-          currentHover?.row === nextHover?.row
-        ) {
-          return currentHover
+        if (currentHover?.column === nextHover?.column && currentHover?.row === nextHover?.row) {
+          return currentHover;
         }
 
         if (nextHover) {
-          setPinnedHandle(null)
+          setPinnedHandle(null);
         }
 
-        return nextHover
-      })
-    }
+        return nextHover;
+      });
+    };
 
-    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointermove", handlePointerMove);
 
     return () => {
-      window.removeEventListener("pointermove", handlePointerMove)
-    }
-  }, [rect])
+      window.removeEventListener("pointermove", handlePointerMove);
+    };
+  }, [rect]);
 
   if (!editor || !rect) {
-    return null
+    return null;
   }
 
   const appendRow = () => {
-    const tr = addRow(editor.state.tr, rect, rect.map.height)
+    const tr = addRow(editor.state.tr, rect, rect.map.height);
 
-    editor.view.dispatch(tr.scrollIntoView())
-    updateTableMinWidths(editor)
-    editor.view.focus()
-    updateRect()
-  }
+    editor.view.dispatch(tr.scrollIntoView());
+    updateTableMinWidths(editor);
+    editor.view.focus();
+    updateRect();
+  };
 
   const appendColumn = () => {
-    const tr = addColumn(editor.state.tr, rect, rect.map.width)
+    const tr = addColumn(editor.state.tr, rect, rect.map.width);
 
-    editor.view.dispatch(tr.scrollIntoView())
-    updateTableMinWidths(editor)
-    editor.view.focus()
-    updateRect()
-  }
+    editor.view.dispatch(tr.scrollIntoView());
+    updateTableMinWidths(editor);
+    editor.view.focus();
+    updateRect();
+  };
 
   const finishDrag = () => {
-    const currentDrag = dragState.current
+    const currentDrag = dragState.current;
 
-    setDrag(null)
+    setDrag(null);
 
     if (!currentDrag || currentDrag.from === currentDrag.target) {
-      return
+      return;
     }
 
     setPinnedHandle({
       axis: currentDrag.axis,
       index: currentDrag.target,
-    })
+    });
 
     const command =
       currentDrag.axis === "column"
@@ -426,62 +399,55 @@ export function TableControls({ editor }: { editor: Editor | null }) {
             from: currentDrag.from,
             pos: rect.tableStart,
             to: currentDrag.target,
-          })
+          });
 
-    command(editor.state, editor.view.dispatch)
-    updateTableMinWidths(editor)
-    editor.view.focus()
-    updateRect()
-  }
+    command(editor.state, editor.view.dispatch);
+    updateTableMinWidths(editor);
+    editor.view.focus();
+    updateRect();
+  };
 
   const startDrag = (
     axis: TableDragState["axis"],
     from: number,
-    event: PointerEvent<HTMLButtonElement>
+    event: PointerEvent<HTMLButtonElement>,
   ) => {
-    event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
     const nextDrag = {
       axis,
       from,
       target: from,
-    }
+    };
 
-    setDrag(nextDrag)
-    setPinnedHandle(null)
-  }
+    setDrag(nextDrag);
+    setPinnedHandle(null);
+  };
 
-  const updateDragTarget = (
-    event: PointerEvent<HTMLButtonElement>
-  ) => {
-    const currentDrag = dragState.current
+  const updateDragTarget = (event: PointerEvent<HTMLButtonElement>) => {
+    const currentDrag = dragState.current;
 
     if (!currentDrag) {
-      return
+      return;
     }
 
-    event.preventDefault()
+    event.preventDefault();
 
-    const target = getTableDragTargetIndex(
-      rect,
-      currentDrag.axis,
-      event.clientX,
-      event.clientY
-    )
+    const target = getTableDragTargetIndex(rect, currentDrag.axis, event.clientX, event.clientY);
 
     if (target === null) {
-      return
+      return;
     }
 
     if (target === currentDrag.target) {
-      return
+      return;
     }
 
     setDrag({
       ...currentDrag,
       target,
-    })
-  }
+    });
+  };
 
   const activeColumn =
     dragPreview?.axis === "column"
@@ -490,7 +456,7 @@ export function TableControls({ editor }: { editor: Editor | null }) {
         ? rect.columns[hoveredCell.column]
         : pinnedHandle?.axis === "column"
           ? rect.columns[pinnedHandle.index]
-          : null
+          : null;
   const activeRow =
     dragPreview?.axis === "row"
       ? rect.rows[dragPreview.from]
@@ -498,17 +464,16 @@ export function TableControls({ editor }: { editor: Editor | null }) {
         ? rect.rows[hoveredCell.row]
         : pinnedHandle?.axis === "row"
           ? rect.rows[pinnedHandle.index]
-          : null
-  const selectedColumns = rect.columns.slice(rect.selectedLeft, rect.selectedRight)
-  const selectedRows = rect.rows.slice(rect.selectedTop, rect.selectedBottom)
-  const selectionLeft = selectedColumns[0]?.left
-  const selectionRight = selectedColumns[selectedColumns.length - 1]
-  const selectionTop = selectedRows[0]?.top
-  const selectionBottom = selectedRows[selectedRows.length - 1]
-  const dragSegments =
-    dragPreview?.axis === "column" ? rect.columns : rect.rows
-  const dragSource = dragPreview ? dragSegments[dragPreview.from] : null
-  const dropLinePosition = getTableDropLinePosition(rect, dragPreview)
+          : null;
+  const selectedColumns = rect.columns.slice(rect.selectedLeft, rect.selectedRight);
+  const selectedRows = rect.rows.slice(rect.selectedTop, rect.selectedBottom);
+  const selectionLeft = selectedColumns[0]?.left;
+  const selectionRight = selectedColumns[selectedColumns.length - 1];
+  const selectionTop = selectedRows[0]?.top;
+  const selectionBottom = selectedRows[selectedRows.length - 1];
+  const dragSegments = dragPreview?.axis === "column" ? rect.columns : rect.rows;
+  const dragSource = dragPreview ? dragSegments[dragPreview.from] : null;
+  const dropLinePosition = getTableDropLinePosition(rect, dragPreview);
 
   return (
     <>
@@ -572,9 +537,7 @@ export function TableControls({ editor }: { editor: Editor | null }) {
         <div
           aria-hidden="true"
           className="drag-drop-line table-drag-drop-line"
-          data-orientation={
-            dragPreview.axis === "column" ? "vertical" : "horizontal"
-          }
+          data-orientation={dragPreview.axis === "column" ? "vertical" : "horizontal"}
           style={
             dragPreview.axis === "column"
               ? {
@@ -596,11 +559,11 @@ export function TableControls({ editor }: { editor: Editor | null }) {
           className="table-reorder-control table-reorder-column"
           data-dragging={dragPreview?.axis === "column" ? "true" : undefined}
           onPointerDown={(event) => {
-            startDrag("column", activeColumn.index, event)
+            startDrag("column", activeColumn.index, event);
           }}
           onPointerMove={updateDragTarget}
           onPointerCancel={() => {
-            setDrag(null)
+            setDrag(null);
           }}
           onPointerUp={finishDrag}
           style={{
@@ -621,11 +584,11 @@ export function TableControls({ editor }: { editor: Editor | null }) {
           className="table-reorder-control table-reorder-row"
           data-dragging={dragPreview?.axis === "row" ? "true" : undefined}
           onPointerDown={(event) => {
-            startDrag("row", activeRow.index, event)
+            startDrag("row", activeRow.index, event);
           }}
           onPointerMove={updateDragTarget}
           onPointerCancel={() => {
-            setDrag(null)
+            setDrag(null);
           }}
           onPointerUp={finishDrag}
           style={{
@@ -645,8 +608,8 @@ export function TableControls({ editor }: { editor: Editor | null }) {
           aria-label="Add row"
           className="table-add-control table-add-row"
           onMouseDown={(event) => {
-            event.preventDefault()
-            appendRow()
+            event.preventDefault();
+            appendRow();
           }}
           style={{
             height: rect.cellSize,
@@ -665,8 +628,8 @@ export function TableControls({ editor }: { editor: Editor | null }) {
           aria-label="Add column"
           className="table-add-control table-add-column"
           onMouseDown={(event) => {
-            event.preventDefault()
-            appendColumn()
+            event.preventDefault();
+            appendColumn();
           }}
           style={{
             height: rect.height,
@@ -681,5 +644,5 @@ export function TableControls({ editor }: { editor: Editor | null }) {
         </button>
       ) : null}
     </>
-  )
+  );
 }

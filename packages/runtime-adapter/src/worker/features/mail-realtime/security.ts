@@ -16,10 +16,7 @@ export type MailRealtimeRouteEnv = Record<string, unknown> & {
   };
 };
 
-export async function routeMailRealtimeRequest(
-  request: Request,
-  env: MailRealtimeRouteEnv,
-) {
+export async function routeMailRealtimeRequest(request: Request, env: MailRealtimeRouteEnv) {
   if (request.method !== "GET") {
     return new Response("Method Not Allowed", { status: 405 });
   }
@@ -44,9 +41,9 @@ export async function routeMailRealtimeRequest(
     }
     const headers = new Headers(request.headers);
     headers.set(CLAIMS_HEADER, encodeURIComponent(JSON.stringify(claims)));
-    return env.MAIL_NOTIFICATION_ROOM
-      .getByName(claims.userId)
-      .fetch(new Request(request, { headers }));
+    return env.MAIL_NOTIFICATION_ROOM.getByName(claims.userId).fetch(
+      new Request(request, { headers }),
+    );
   } catch {
     return new Response("Invalid mail realtime ticket", { status: 401 });
   }
@@ -58,9 +55,9 @@ export function readMailRealtimeClaims(headers: Headers): MailRealtimeTicketClai
   try {
     const claims = JSON.parse(decodeURIComponent(encoded)) as Record<string, unknown>;
     return typeof claims.connectionId === "string" &&
-        typeof claims.userId === "string" &&
-        typeof claims.exp === "number"
-      ? claims as MailRealtimeTicketClaims
+      typeof claims.userId === "string" &&
+      typeof claims.exp === "number"
+      ? (claims as MailRealtimeTicketClaims)
       : null;
   } catch {
     return null;
@@ -72,7 +69,7 @@ function readAuthenticationProtocol(headers: Headers) {
     .split(",")
     .map((protocol) => protocol.trim());
   const authentication = protocols.find((protocol) =>
-    protocol.startsWith(MAIL_REALTIME_AUTH_PROTOCOL_PREFIX)
+    protocol.startsWith(MAIL_REALTIME_AUTH_PROTOCOL_PREFIX),
   );
   const ticket = authentication?.slice(MAIL_REALTIME_AUTH_PROTOCOL_PREFIX.length);
   return protocols.includes(MAIL_REALTIME_PROTOCOL) && ticket && ticket.length <= MAX_TICKET_BYTES

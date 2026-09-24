@@ -17,24 +17,18 @@ export function RuntimeSectionDragItem({
   return (
     <div
       className={cn(
-        (sortable.isDragging || sortable.isOver) &&
-          "relative z-20 bg-surface-navigation",
+        (sortable.isDragging || sortable.isOver) && "relative z-20 bg-surface-navigation",
       )}
       onPointerDown={(event) => {
         const target = event.target;
-        if (
-          !(target instanceof Element) ||
-          !target.closest('[data-sidebar="group-label"]')
-        ) {
+        if (!(target instanceof Element) || !target.closest('[data-sidebar="group-label"]')) {
           return;
         }
         sortable.listeners?.onPointerDown?.(event);
       }}
       ref={sortable.setNodeRef}
       style={{
-        transform: sortable.transform
-          ? `translate3d(0, ${sortable.transform.y}px, 0)`
-          : undefined,
+        transform: sortable.transform ? `translate3d(0, ${sortable.transform.y}px, 0)` : undefined,
         transition: sortable.transition,
       }}
     >

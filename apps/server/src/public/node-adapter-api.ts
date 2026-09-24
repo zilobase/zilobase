@@ -21,10 +21,7 @@ export { renderPrometheusBackgroundMetrics } from "../infrastructure/background/
 export { renderPrometheusDatabaseMetrics } from "../features/databases/observability";
 export { boundedErrorCode } from "../infrastructure/background/dispatch";
 export { drainAgentRuns } from "../features/ai/execution/agent-run-service";
-export {
-  db,
-  createDbClientForUrl,
-} from "../infrastructure/database";
+export { db, createDbClientForUrl } from "../infrastructure/database";
 export {
   aiJob,
   aiAgentRun,

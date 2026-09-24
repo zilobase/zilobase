@@ -1,9 +1,18 @@
 import { db, runWithDbEnv } from "../../infrastructure/database";
-import { getCanonicalApiOrigin, getCanonicalWebOrigin, getStringEnv, type RuntimeEnv } from "../../shared/config/config";
+import {
+  getCanonicalApiOrigin,
+  getCanonicalWebOrigin,
+  getStringEnv,
+  type RuntimeEnv,
+} from "../../shared/config/config";
 import { ensureOfficialClipperClient } from "../auth/oauth-clients";
 import { SERVER_VERSION } from "../../shared/version";
 import type { EditionExtensionOptions } from "../../shared/types";
-import { DESKTOP_PROTOCOL_VERSION, type InstanceSettingsRecord, type ZilobaseDiscoveryDocument } from "./contracts";
+import {
+  DESKTOP_PROTOCOL_VERSION,
+  type InstanceSettingsRecord,
+  type ZilobaseDiscoveryDocument,
+} from "./contracts";
 import { ensureInstanceSettings } from "./instance-settings";
 import { assertSemanticVersion } from "./desktop-version";
 type DiscoveryDependencies = {
@@ -50,20 +59,11 @@ export async function getZilobaseDiscoveryDocument(
       tokenEndpoint: new URL("/api/auth/desktop/token", apiOrigin).toString(),
     },
     oauthAuthorization: {
-      authorizationEndpoint: new URL(
-        "/api/auth/oauth2/authorize",
-        apiOrigin,
-      ).toString(),
-      introspectionEndpoint: new URL(
-        "/api/auth/oauth2/introspect",
-        apiOrigin,
-      ).toString(),
+      authorizationEndpoint: new URL("/api/auth/oauth2/authorize", apiOrigin).toString(),
+      introspectionEndpoint: new URL("/api/auth/oauth2/introspect", apiOrigin).toString(),
       issuer: apiOrigin,
       jwksUri: new URL("/api/auth/jwks", apiOrigin).toString(),
-      revocationEndpoint: new URL(
-        "/api/auth/oauth2/revoke",
-        apiOrigin,
-      ).toString(),
+      revocationEndpoint: new URL("/api/auth/oauth2/revoke", apiOrigin).toString(),
       tokenEndpoint: new URL("/api/auth/oauth2/token", apiOrigin).toString(),
     },
     ...(options.editionExtension

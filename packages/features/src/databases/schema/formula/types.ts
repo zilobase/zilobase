@@ -1,4 +1,4 @@
-export type FormulaValue = string | number | boolean | Date | null | FormulaValue[]
+export type FormulaValue = string | number | boolean | Date | null | FormulaValue[];
 
 export type FormulaValueType =
   | "boolean"
@@ -7,7 +7,7 @@ export type FormulaValueType =
   | "list"
   | "number"
   | "text"
-  | "unknown"
+  | "unknown";
 
 export type FormulaToken =
   | { raw: string; type: "number"; value: number }
@@ -15,31 +15,30 @@ export type FormulaToken =
   | { type: "identifier"; value: string }
   | { type: "operator"; value: string }
   | { type: "punctuation"; value: string }
-  | { type: "eof" }
+  | { type: "eof" };
 
 export type FormulaAst =
   | { type: "array"; elements: FormulaAst[] }
   | {
-      alternate: FormulaAst
-      consequent: FormulaAst
-      test: FormulaAst
-      type: "conditional"
+      alternate: FormulaAst;
+      consequent: FormulaAst;
+      test: FormulaAst;
+      type: "conditional";
     }
   | {
-      arguments: FormulaAst[]
-      callee: FormulaAst
-      type: "call"
+      arguments: FormulaAst[];
+      callee: FormulaAst;
+      type: "call";
     }
   | { left: FormulaAst; operator: string; right: FormulaAst; type: "binary" }
   | { name: string; type: "identifier" }
   | { object: FormulaAst; property: string; type: "member" }
   | { type: "literal"; value: FormulaValue }
-  | { argument: FormulaAst; operator: string; type: "unary" }
-export type DatabaseFormulaPropertyValue = string | string[]
+  | { argument: FormulaAst; operator: string; type: "unary" };
+export type DatabaseFormulaPropertyValue = string | string[];
 
 export type FormulaRuntimeOptions = {
-  locale?: string
-  now?: Date
-  timezone?: string
-}
-
+  locale?: string;
+  now?: Date;
+  timezone?: string;
+};

@@ -1,9 +1,19 @@
 import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { appRoute } from "../route-roots";
-import { validateCalendarSearch, validateAiSearch, validateLibrarySearch, validateMailSearch } from "../search-validators";
+import {
+  validateCalendarSearch,
+  validateAiSearch,
+  validateLibrarySearch,
+  validateMailSearch,
+} from "../search-validators";
 
 export const appRoutes = [
-  createRoute({ getParentRoute: () => appRoute, path: "/calendar", validateSearch: validateCalendarSearch, component: lazyRouteComponent(() => import("@/features/calendar/screens/calendar")) }),
+  createRoute({
+    getParentRoute: () => appRoute,
+    path: "/calendar",
+    validateSearch: validateCalendarSearch,
+    component: lazyRouteComponent(() => import("@/features/calendar/screens/calendar")),
+  }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/ai",

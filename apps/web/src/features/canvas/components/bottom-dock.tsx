@@ -1,10 +1,10 @@
-import { ChevronUpIcon, RotateCcwIcon } from "@/shared/components/icons"
+import { ChevronUpIcon, RotateCcwIcon } from "@/shared/components/icons";
 
-import { Button } from "@/shared/ui/button"
-import { cn } from "@/shared/lib/utils"
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 
-import { canvasToolOptions } from "../model/constants"
-import type { CanvasTool } from "../model/types"
+import { canvasToolOptions } from "../model/constants";
+import type { CanvasTool } from "../model/types";
 
 export function BottomDock({
   activeTool,
@@ -13,11 +13,11 @@ export function BottomDock({
   open,
   toggleOpen,
 }: {
-  activeTool: CanvasTool | null
-  onSelectTool: (tool: CanvasTool) => void
-  onReset: () => void
-  open: boolean
-  toggleOpen: () => void
+  activeTool: CanvasTool | null;
+  onSelectTool: (tool: CanvasTool) => void;
+  onReset: () => void;
+  open: boolean;
+  toggleOpen: () => void;
 }) {
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
@@ -25,14 +25,13 @@ export function BottomDock({
         {open ? (
           <div className="absolute bottom-full left-1/2 mb-2 flex -translate-x-1/2 items-center gap-1.5 rounded-2xl border border-stroke-default bg-effect-backdrop p-1.5 shadow-lg backdrop-blur">
             {canvasToolOptions.map((option) => {
-              const Icon = option.icon
+              const Icon = option.icon;
 
               return (
                 <button
                   className={cn(
                     "flex min-w-24 items-center gap-2 rounded-xl px-3 py-1.5 text-sm font-medium transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral",
-                    activeTool === option.tool &&
-                      "bg-action-neutral-hover text-action-on-neutral",
+                    activeTool === option.tool && "bg-action-neutral-hover text-action-on-neutral",
                   )}
                   key={option.tool}
                   onClick={() => onSelectTool(option.tool)}
@@ -41,7 +40,7 @@ export function BottomDock({
                   <Icon className="size-3.5" />
                   {option.label}
                 </button>
-              )
+              );
             })}
           </div>
         ) : null}
@@ -59,10 +58,7 @@ export function BottomDock({
               ? `${canvasToolOptions.find((option) => option.tool === activeTool)?.label ?? "Item"}`
               : "Items"}
             <ChevronUpIcon
-              className={cn(
-                "size-4 transition-transform",
-                open ? "rotate-180" : "rotate-0",
-              )}
+              className={cn("size-4 transition-transform", open ? "rotate-180" : "rotate-0")}
             />
           </Button>
           <div className="h-6 w-px bg-stroke-default" />
@@ -78,5 +74,5 @@ export function BottomDock({
         </div>
       </div>
     </div>
-  )
+  );
 }

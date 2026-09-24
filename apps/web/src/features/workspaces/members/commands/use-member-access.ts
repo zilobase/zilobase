@@ -6,14 +6,8 @@ import {
   useRemoveWorkspaceMember,
   useUpdateWorkspaceMember,
 } from "@zilobase/features/workspaces/react";
-import type {
-  WorkspaceMember,
-  WorkspaceRole,
-} from "@zilobase/features/workspaces";
-import {
-  isoToLocalDateTime,
-  normalizeWorkspaceRole,
-} from "../model/member-access";
+import type { WorkspaceMember, WorkspaceRole } from "@zilobase/features/workspaces";
+import { isoToLocalDateTime, normalizeWorkspaceRole } from "../model/member-access";
 
 import {
   canEditWorkspaceMember,
@@ -48,9 +42,7 @@ export function useMemberAccess({
 
   React.useEffect(() => {
     setDraftRole(memberRole);
-    setDraftExpiration(
-      member.accessExpiresAt ? isoToLocalDateTime(member.accessExpiresAt) : "",
-    );
+    setDraftExpiration(member.accessExpiresAt ? isoToLocalDateTime(member.accessExpiresAt) : "");
   }, [member.accessExpiresAt, memberRole]);
 
   const save = () => {
@@ -65,9 +57,7 @@ export function useMemberAccess({
       },
       {
         onError: (error) =>
-          toast.error(
-            error instanceof Error ? error.message : "Could not update member.",
-          ),
+          toast.error(error instanceof Error ? error.message : "Could not update member."),
         onSuccess: () => {
           setEditing(false);
           toast.success("Member access updated.");
@@ -79,9 +69,7 @@ export function useMemberAccess({
   const remove = () => {
     if (
       !workspaceId ||
-      !window.confirm(
-        `Remove ${member.name || member.email} from this workspace?`,
-      )
+      !window.confirm(`Remove ${member.name || member.email} from this workspace?`)
     ) {
       return;
     }
@@ -90,9 +78,7 @@ export function useMemberAccess({
       { memberId: member.memberId, workspaceId },
       {
         onError: (error) =>
-          toast.error(
-            error instanceof Error ? error.message : "Could not remove member.",
-          ),
+          toast.error(error instanceof Error ? error.message : "Could not remove member."),
         onSuccess: () => toast.success("Member removed."),
       },
     );

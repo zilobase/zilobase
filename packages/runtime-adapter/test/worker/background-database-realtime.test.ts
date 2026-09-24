@@ -14,9 +14,7 @@ vi.mock("@zilobase/server/adapter-api", async (importOriginal) => {
     runWithBackgroundTraceContext: vi.fn(
       async (_task: unknown, operation: () => Promise<unknown>) => operation(),
     ),
-    runWithDbEnv: vi.fn(
-      async (_env: unknown, operation: () => Promise<unknown>) => operation(),
-    ),
+    runWithDbEnv: vi.fn(async (_env: unknown, operation: () => Promise<unknown>) => operation()),
   };
 });
 

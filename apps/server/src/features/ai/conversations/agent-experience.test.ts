@@ -3,10 +3,7 @@ import { readFile } from "node:fs/promises";
 import { test } from "vitest";
 
 import { normalizeThreadSearch } from "./chat-persistence";
-import {
-  AI_CHAT_FEEDBACK_REASON_MAX_CHARS,
-  normalizeFeedbackReason,
-} from "./agent-experience";
+import { AI_CHAT_FEEDBACK_REASON_MAX_CHARS, normalizeFeedbackReason } from "./agent-experience";
 
 test("feedback reasons are compact and bounded", () => {
   assert.equal(normalizeFeedbackReason("  Missing   citations  "), "Missing citations");

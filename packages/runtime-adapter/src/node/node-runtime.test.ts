@@ -135,8 +135,11 @@ beforeEach(() => {
 
 afterEach(async () => {
   process.env = { ...originalEnvironment };
-  await Promise.all(temporaryDirectories.splice(0).map((directory) =>
-    rm(directory, { recursive: true, force: true })));
+  await Promise.all(
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
+  );
 });
 
 describe("Node runtime HTTP transport", () => {
@@ -147,10 +150,14 @@ describe("Node runtime HTTP transport", () => {
       fetch: vi.fn(async (request: Request) => {
         seen.push(request);
         if (new URL(request.url).pathname === "/api/error") throw new Error("boom");
-        if (new URL(request.url).pathname === "/api/empty") return new Response(null, { status: 204 });
-        return Response.json({ body: await request.text(), url: request.url }, {
-          headers: { "x-runtime-test": "yes" },
-        });
+        if (new URL(request.url).pathname === "/api/empty")
+          return new Response(null, { status: 204 });
+        return Response.json(
+          { body: await request.text(), url: request.url },
+          {
+            headers: { "x-runtime-test": "yes" },
+          },
+        );
       }),
     };
     process.env.PORT = String(await freePort());
@@ -291,13 +298,15 @@ describe("Node runtime lifecycle", () => {
     expect(runtime.server.listening).toBe(false);
     expect(mocks.coordinator.start).toHaveBeenCalledOnce();
     expect(mocks.realtimeBus.connect).toHaveBeenCalledOnce();
-    await ports!.jobs.dispatch([{
-      availableAt: new Date().toISOString(),
-      cellId: "default",
-      kind: "ai.job",
-      resourceId: "job",
-      version: 1,
-    }]);
+    await ports!.jobs.dispatch([
+      {
+        availableAt: new Date().toISOString(),
+        cellId: "default",
+        kind: "ai.job",
+        resourceId: "job",
+        version: 1,
+      },
+    ]);
     expect(mocks.coordinator.dispatch).toHaveBeenCalledOnce();
 
     const origin = `http://127.0.0.1:${process.env.BACKGROUND_HEALTH_PORT}`;
@@ -318,22 +327,26 @@ describe("Node runtime lifecycle", () => {
 
   it("validates process roles", async () => {
     process.env.ZILOBASE_PROCESS_ROLE = "invalid";
-    expect(() => createNodeRuntime({
-      loadApp: async () => ({ fetch: vi.fn() }) as never,
-      migrationSets: [],
-      webDistDir: "/tmp/not-used",
-    })).toThrow("ZILOBASE_PROCESS_ROLE must be all, api, or worker");
+    expect(() =>
+      createNodeRuntime({
+        loadApp: async () => ({ fetch: vi.fn() }) as never,
+        migrationSets: [],
+        webDistDir: "/tmp/not-used",
+      }),
+    ).toThrow("ZILOBASE_PROCESS_ROLE must be all, api, or worker");
   });
 
   it("requires Redis for the all-in-one process", async () => {
     process.env.ZILOBASE_PROCESS_ROLE = "all";
     delete process.env.REALTIME_REDIS_URL;
 
-    expect(() => createNodeRuntime({
-      loadApp: async () => ({ fetch: vi.fn() }) as never,
-      migrationSets: [],
-      webDistDir: "/tmp/not-used",
-    })).toThrow("REALTIME_REDIS_URL is required for every Node runtime");
+    expect(() =>
+      createNodeRuntime({
+        loadApp: async () => ({ fetch: vi.fn() }) as never,
+        migrationSets: [],
+        webDistDir: "/tmp/not-used",
+      }),
+    ).toThrow("REALTIME_REDIS_URL is required for every Node runtime");
   });
 
   it("starts the all-in-one process with Redis", async () => {
@@ -360,7 +373,7 @@ async function makeWebDist() {
   await mkdir(path.join(directory, "assets"));
   await writeFile(path.join(directory, "index.html"), "<main>index</main>");
   await writeFile(path.join(directory, "assets", "app.js"), "console.log('asset')");
-  await writeFile(path.join(directory, "data.json"), "{\"ok\":true}");
+  await writeFile(path.join(directory, "data.json"), '{"ok":true}');
   return directory;
 }
 
@@ -380,10 +393,13 @@ async function freePort() {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", () => {
       const address = server.address();
-      if (!address || typeof address === "string") return reject(new Error("Expected a TCP address"));
+      if (!address || typeof address === "string")
+        return reject(new Error("Expected a TCP address"));
       resolve(address.port);
     });
   });
-  await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  await new Promise<void>((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
   return port;
 }

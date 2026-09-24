@@ -31,10 +31,7 @@ export function TriggerOptionRow({
         id={id}
         onCheckedChange={(value) => onCheckedChange(value === true)}
       />
-      <label
-        className="flex min-w-0 flex-1 cursor-pointer items-center"
-        htmlFor={id}
-      >
+      <label className="flex min-w-0 flex-1 cursor-pointer items-center" htmlFor={id}>
         {color ? (
           <span className={getColorTokenBadgeClassName(color)}>{label}</span>
         ) : (

@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { workspace } from "./workspaces";
 import { user } from "./authentication";
 import { timestampColumns } from "./columns";
@@ -58,14 +67,8 @@ export const aiChatMessage = pgTable(
   },
   (table) => [
     index("ai_chat_message_thread_created_idx").on(table.threadId, table.createdAt),
-    uniqueIndex("ai_chat_message_thread_client_unique").on(
-      table.threadId,
-      table.clientId,
-    ),
-    uniqueIndex("ai_chat_message_thread_sequence_unique").on(
-      table.threadId,
-      table.sequence,
-    ),
+    uniqueIndex("ai_chat_message_thread_client_unique").on(table.threadId, table.clientId),
+    uniqueIndex("ai_chat_message_thread_sequence_unique").on(table.threadId, table.sequence),
     check(
       "ai_chat_message_status_check",
       sql`${table.status} in ('completed', 'failed', 'cancelled')`,
@@ -84,9 +87,7 @@ export const aiChatThreadSummary = pgTable(
     summary: text("summary").notNull(),
     ...timestampColumns(),
   },
-  (table) => [
-    uniqueIndex("ai_chat_thread_summary_thread_unique").on(table.threadId),
-  ],
+  (table) => [uniqueIndex("ai_chat_thread_summary_thread_unique").on(table.threadId)],
 );
 
 export const aiChatFeedback = pgTable(
@@ -110,14 +111,8 @@ export const aiChatFeedback = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("ai_chat_feedback_user_message_unique").on(
-      table.userId,
-      table.messageId,
-    ),
-    index("ai_chat_feedback_workspace_created_idx").on(
-      table.workspaceId,
-      table.createdAt,
-    ),
+    uniqueIndex("ai_chat_feedback_user_message_unique").on(table.userId, table.messageId),
+    index("ai_chat_feedback_workspace_created_idx").on(table.workspaceId, table.createdAt),
     check("ai_chat_feedback_rating_check", sql`${table.rating} in (-1, 1)`),
   ],
 );

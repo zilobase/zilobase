@@ -6,28 +6,28 @@ import {
   Palette,
   Search,
   Upload,
-} from "@/shared/components/icons"
-import { useRef, useState } from "react"
+} from "@/shared/components/icons";
+import { useRef, useState } from "react";
 
-import { Button } from "@/shared/ui/button"
-import { Card, CardContent } from "@/shared/ui/card"
-import { Input } from "@/shared/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
-import { getApiErrorMessage } from "@/platform/network/api"
-import { uploadPageImage } from "@/platform/network/image-upload"
-import { CoverGalleryPicker } from "./cover-gallery-picker"
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
+import { getApiErrorMessage } from "@/platform/network/api";
+import { uploadPageImage } from "@/platform/network/image-upload";
+import { CoverGalleryPicker } from "./cover-gallery-picker";
 
 type ImageSourcePickerProps = {
-  className?: string
-  databaseId?: string | null
-  enableCoverGallery?: boolean
-  initialCover?: string
-  initialLinkUrl?: string
-  onGalleryChange?: (url: string) => void
-  onSelect: (url: string) => void
-  workspaceId?: string | null
-  pageId?: string | null
-}
+  className?: string;
+  databaseId?: string | null;
+  enableCoverGallery?: boolean;
+  initialCover?: string;
+  initialLinkUrl?: string;
+  onGalleryChange?: (url: string) => void;
+  onSelect: (url: string) => void;
+  workspaceId?: string | null;
+  pageId?: string | null;
+};
 
 export function ImageSourcePicker({
   className,
@@ -40,21 +40,21 @@ export function ImageSourcePicker({
   workspaceId,
   pageId,
 }: ImageSourcePickerProps) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [linkUrl, setLinkUrl] = useState(initialLinkUrl)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [linkUrl, setLinkUrl] = useState(initialLinkUrl);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const readFile = async (file: File | undefined) => {
     if (!file || !file.type.startsWith("image/")) {
-      return
+      return;
     }
 
-    setUploadError(null)
+    setUploadError(null);
 
     if (workspaceId && pageId) {
-      setIsUploading(true)
+      setIsUploading(true);
 
       try {
         const uploaded = await uploadPageImage({
@@ -62,42 +62,39 @@ export function ImageSourcePicker({
           file,
           workspaceId,
           pageId,
-        })
+        });
 
-        onSelect(uploaded.url)
+        onSelect(uploaded.url);
       } catch (error) {
-        setUploadError(getApiErrorMessage(error))
+        setUploadError(getApiErrorMessage(error));
       } finally {
-        setIsUploading(false)
+        setIsUploading(false);
       }
 
-      return
+      return;
     }
 
-    const reader = new FileReader()
+    const reader = new FileReader();
 
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        onSelect(reader.result)
+        onSelect(reader.result);
       }
-    }
+    };
 
-    reader.readAsDataURL(file)
-  }
+    reader.readAsDataURL(file);
+  };
 
   const submitLink = () => {
-    const nextUrl = linkUrl.trim()
+    const nextUrl = linkUrl.trim();
 
     if (nextUrl) {
-      onSelect(nextUrl)
+      onSelect(nextUrl);
     }
-  }
+  };
 
   return (
-    <Tabs
-      className={className ?? "gap-4"}
-      defaultValue={enableCoverGallery ? "gallery" : "upload"}
-    >
+    <Tabs className={className ?? "gap-4"} defaultValue={enableCoverGallery ? "gallery" : "upload"}>
       <TabsList>
         {enableCoverGallery ? (
           <TabsTrigger value="gallery">
@@ -119,10 +116,7 @@ export function ImageSourcePicker({
 
       {enableCoverGallery ? (
         <TabsContent value="gallery">
-          <CoverGalleryPicker
-            initialCover={initialCover}
-            onChange={onGalleryChange ?? onSelect}
-          />
+          <CoverGalleryPicker initialCover={initialCover} onChange={onGalleryChange ?? onSelect} />
         </TabsContent>
       ) : null}
 
@@ -132,11 +126,11 @@ export function ImageSourcePicker({
           disabled={isUploading}
           onClick={() => fileInputRef.current?.click()}
           onDragOver={(event) => {
-            event.preventDefault()
+            event.preventDefault();
           }}
           onDrop={(event) => {
-            event.preventDefault()
-            readFile(event.dataTransfer.files[0])
+            event.preventDefault();
+            readFile(event.dataTransfer.files[0]);
           }}
           size="lg"
           type="button"
@@ -146,9 +140,7 @@ export function ImageSourcePicker({
           <span>{isUploading ? "Uploading image" : "Upload image"}</span>
           <span className="text-content-secondary">Or drag and drop here</span>
         </Button>
-        {uploadError ? (
-          <div className="text-sm text-action-danger-text">{uploadError}</div>
-        ) : null}
+        {uploadError ? <div className="text-sm text-action-danger-text">{uploadError}</div> : null}
         <input
           accept="image/*"
           className="sr-only"
@@ -156,7 +148,6 @@ export function ImageSourcePicker({
           ref={fileInputRef}
           type="file"
         />
-
       </TabsContent>
 
       <TabsContent className="space-y-3" value="link">
@@ -167,8 +158,8 @@ export function ImageSourcePicker({
             onChange={(event) => setLinkUrl(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
-                event.preventDefault()
-                submitLink()
+                event.preventDefault();
+                submitLink();
               }
             }}
             placeholder="Paste image URL..."
@@ -212,5 +203,5 @@ export function ImageSourcePicker({
         </Card>
       </TabsContent>
     </Tabs>
-  )
+  );
 }

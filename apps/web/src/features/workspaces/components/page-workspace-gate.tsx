@@ -1,7 +1,7 @@
-import * as React from "react"
-import { useQuery } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
-import { Building2Icon } from "@/shared/components/icons"
+import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
+import { Building2Icon } from "@/shared/components/icons";
 
 import {
   AlertDialog,
@@ -12,65 +12,57 @@ import {
   AlertDialogHeader,
   AlertDialogMedia,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
-import { Button } from "@/shared/ui/button"
-import { getApiErrorMessage } from "@/platform/network/api"
-import { useZilobaseFeatures } from "@zilobase/features"
+} from "@/shared/ui/alert-dialog";
+import { Button } from "@/shared/ui/button";
+import { getApiErrorMessage } from "@/platform/network/api";
+import { useZilobaseFeatures } from "@zilobase/features";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import {
   parseActiveWorkspaceMismatchError,
   pageQueryKey,
   pageQueryOptions,
-} from "@zilobase/features/pages"
+} from "@zilobase/features/pages";
 import { useWorkspaces, useSetActiveWorkspace } from "@zilobase/features/workspaces/react";
 
 type PageWorkspaceGateProps = {
-  children: React.ReactNode
-  pageId: string
-}
+  children: React.ReactNode;
+  pageId: string;
+};
 
-export function PageWorkspaceGate({
-  children,
-  pageId,
-}: PageWorkspaceGateProps) {
-  const { apiFetch, queryClient } = useZilobaseFeatures()
-  const activeWorkspaceId = useActiveWorkspaceId()
-  const { data: workspaces = [] } = useWorkspaces()
-  const setActiveWorkspace = useSetActiveWorkspace()
+export function PageWorkspaceGate({ children, pageId }: PageWorkspaceGateProps) {
+  const { apiFetch, queryClient } = useZilobaseFeatures();
+  const activeWorkspaceId = useActiveWorkspaceId();
+  const { data: workspaces = [] } = useWorkspaces();
+  const setActiveWorkspace = useSetActiveWorkspace();
   const query = useQuery({
     ...pageQueryOptions(apiFetch, pageId),
     retry: (failureCount, error) => {
       if (parseActiveWorkspaceMismatchError(error)) {
-        return false
+        return false;
       }
 
-      return failureCount < 2
+      return failureCount < 2;
     },
-  })
-  const mismatch = parseActiveWorkspaceMismatchError(query.error)
-  const pageWorkspaceId = query.data?.page?.workspaceId
+  });
+  const mismatch = parseActiveWorkspaceMismatchError(query.error);
+  const pageWorkspaceId = query.data?.page?.workspaceId;
   const hasClientMismatch = Boolean(
-    pageWorkspaceId &&
-      activeWorkspaceId &&
-      pageWorkspaceId !== activeWorkspaceId,
-  )
-  const requiredWorkspaceId =
-    mismatch?.workspaceId ?? (hasClientMismatch ? pageWorkspaceId : null)
-  const workspace = workspaces.find(
-    (item) => item.id === requiredWorkspaceId,
-  )
-  const workspaceLabel = workspace?.name?.trim() || "this workspace"
+    pageWorkspaceId && activeWorkspaceId && pageWorkspaceId !== activeWorkspaceId,
+  );
+  const requiredWorkspaceId = mismatch?.workspaceId ?? (hasClientMismatch ? pageWorkspaceId : null);
+  const workspace = workspaces.find((item) => item.id === requiredWorkspaceId);
+  const workspaceLabel = workspace?.name?.trim() || "this workspace";
 
   const handleSwitchWorkspace = React.useCallback(async () => {
     if (!requiredWorkspaceId) {
-      return
+      return;
     }
 
-    await setActiveWorkspace.mutateAsync(requiredWorkspaceId)
+    await setActiveWorkspace.mutateAsync(requiredWorkspaceId);
     await queryClient.invalidateQueries({
       queryKey: pageQueryKey(pageId),
-    })
-  }, [queryClient, requiredWorkspaceId, setActiveWorkspace, pageId])
+    });
+  }, [queryClient, requiredWorkspaceId, setActiveWorkspace, pageId]);
 
   if (requiredWorkspaceId) {
     return (
@@ -84,8 +76,7 @@ export function PageWorkspaceGate({
               </AlertDialogMedia>
               <AlertDialogTitle>Switch workspace</AlertDialogTitle>
               <AlertDialogDescription>
-                This page belongs to {workspaceLabel}. Switch to that
-                workspace to open it.
+                This page belongs to {workspaceLabel}. Switch to that workspace to open it.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -95,12 +86,10 @@ export function PageWorkspaceGate({
               <Button
                 disabled={setActiveWorkspace.isPending}
                 onClick={() => {
-                  void handleSwitchWorkspace()
+                  void handleSwitchWorkspace();
                 }}
               >
-                {setActiveWorkspace.isPending
-                  ? "Switching..."
-                  : "Switch workspace"}
+                {setActiveWorkspace.isPending ? "Switching..." : "Switch workspace"}
               </Button>
             </AlertDialogFooter>
             {setActiveWorkspace.error ? (
@@ -111,12 +100,12 @@ export function PageWorkspaceGate({
           </AlertDialogContent>
         </AlertDialog>
       </>
-    )
+    );
   }
 
   if (query.isPending) {
-    return null
+    return null;
   }
 
-  return children
+  return children;
 }

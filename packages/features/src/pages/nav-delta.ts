@@ -1,9 +1,4 @@
-import type {
-  Page,
-  PageDatabase,
-  PageItemPlacement,
-  PageNavigationPayload,
-} from "./contracts";
+import type { Page, PageDatabase, PageItemPlacement, PageNavigationPayload } from "./contracts";
 
 export type NavDelta = {
   removeDatabaseIds?: string[];
@@ -27,10 +22,7 @@ function upsertById<T extends { id: string }>(items: T[] | undefined, next: T) {
   return result;
 }
 
-function removeByIds<T extends { id: string }>(
-  items: T[] | undefined,
-  ids: Set<string>,
-) {
+function removeByIds<T extends { id: string }>(items: T[] | undefined, ids: Set<string>) {
   return (items ?? []).filter((item) => !ids.has(item.id));
 }
 
@@ -80,9 +72,7 @@ export function applyItemVisitToNav(
     return {
       ...navigation,
       pages: navigation.pages.map((page) =>
-        page.id === visit.itemId
-          ? { ...page, lastVisitedAt: visit.lastVisitedAt }
-          : page,
+        page.id === visit.itemId ? { ...page, lastVisitedAt: visit.lastVisitedAt } : page,
       ),
     };
   }
@@ -90,17 +80,12 @@ export function applyItemVisitToNav(
   return {
     ...navigation,
     databases: navigation.databases.map((database) =>
-      database.id === visit.itemId
-        ? { ...database, lastVisitedAt: visit.lastVisitedAt }
-        : database,
+      database.id === visit.itemId ? { ...database, lastVisitedAt: visit.lastVisitedAt } : database,
     ),
   };
 }
 
-export function applyPageFavoriteToNav(
-  navigation: PageNavigationPayload | undefined,
-  page: Page,
-) {
+export function applyPageFavoriteToNav(navigation: PageNavigationPayload | undefined, page: Page) {
   if (!navigation) {
     return navigation;
   }
@@ -108,9 +93,7 @@ export function applyPageFavoriteToNav(
   return {
     ...navigation,
     pages: navigation.pages.map((current) =>
-      current.id === page.id
-        ? { ...current, ...page, isFavorite: page.isFavorite }
-        : current,
+      current.id === page.id ? { ...current, ...page, isFavorite: page.isFavorite } : current,
     ),
   };
 }
@@ -126,9 +109,7 @@ export function applyDatabaseFavoriteToNav(
   return {
     ...navigation,
     databases: navigation.databases.map((current) =>
-      current.id === database.id
-        ? { ...current, isFavorite: database.isFavorite }
-        : current,
+      current.id === database.id ? { ...current, isFavorite: database.isFavorite } : current,
     ),
   };
 }

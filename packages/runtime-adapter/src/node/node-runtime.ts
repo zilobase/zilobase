@@ -20,9 +20,7 @@ import {
   renderPrometheusDatabaseMetrics,
   type ZilobaseEditionExtension,
 } from "@zilobase/server/node-adapter-api";
-import {
-  runWithRuntimePorts,
-} from "../capabilities";
+import { runWithRuntimePorts } from "../capabilities";
 import { attachNodeNavigationRealtimeRuntime } from "./features/navigation-realtime/navigation-realtime-runtime";
 import { isNodeApiPath } from "./api-routing";
 import { runMigrationSets, type MigrationSet } from "./migrations";
@@ -46,10 +44,7 @@ import { createRuntimeEnv } from "../env";
 import { createUrlResolver } from "../url-resolver";
 
 export type NodeRuntimeOptions = {
-  loadApp: (
-    env: Record<string, unknown>,
-    ports: Partial<Ports>,
-  ) => Promise<Hono<any>>;
+  loadApp: (env: Record<string, unknown>, ports: Partial<Ports>) => Promise<Hono<any>>;
   migrationSets: readonly MigrationSet[];
   webDistDir?: string;
   hooks?: {
@@ -73,15 +68,17 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
   const processRole = readProcessRole(process.env.ZILOBASE_PROCESS_ROLE);
   const port = readPort(process.env.PORT) ?? 3000;
   const hostname = process.env.HOST ?? "0.0.0.0";
-  const setCollaborationExtensionsFactory = hooks.setCollaborationExtensionsFactory ?? defaultSetCollaborationExtensionsFactory;
+  const setCollaborationExtensionsFactory =
+    hooks.setCollaborationExtensionsFactory ?? defaultSetCollaborationExtensionsFactory;
   const createRealtimeBus = hooks.createRealtimeBus ?? createNodeRealtimeBus;
-  const createCollaborationExtensions = hooks.createCollaborationExtensions ?? createNodeCollaborationExtensions;
+  const createCollaborationExtensions =
+    hooks.createCollaborationExtensions ?? createNodeCollaborationExtensions;
   const fetchPinnedWebhook = hooks.fetchPinnedWebhook ?? fetchPinnedNodeWebhook;
   const fetchPinnedMcp = hooks.fetchPinnedMcp ?? fetchPinnedNodeMcp;
-  const createBackgroundCoordinator = hooks.createBackgroundCoordinator
-    ?? ((hookEnv, runtimePorts) => processRole === "api"
-      ? null
-      : createNodeBackgroundCoordinator(hookEnv, runtimePorts));
+  const createBackgroundCoordinator =
+    hooks.createBackgroundCoordinator ??
+    ((hookEnv, runtimePorts) =>
+      processRole === "api" ? null : createNodeBackgroundCoordinator(hookEnv, runtimePorts));
   let backgroundCoordinatorRef: NodeBackgroundCoordinator | null = null;
   const realtimeBus = createRealtimeBus(env);
   const limits = createNodeLimits(realtimeBus);
@@ -96,10 +93,11 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
       fetchWebhook: fetchPinnedWebhook,
     }),
     readiness: {
-      background: () => backgroundCoordinatorRef?.readiness() ?? {
-        coordinatorReady: null,
-        listenerReady: null,
-      },
+      background: () =>
+        backgroundCoordinatorRef?.readiness() ?? {
+          coordinatorReady: null,
+          listenerReady: null,
+        },
       realtime: () => realtimeBus.isReady(),
     },
     scheduler: createNodeScheduler(),
@@ -139,8 +137,10 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
   });
   ports.telemetry = createNodeTelemetry({
     metrics: () => renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics(),
-    health: () => runWithRuntimePorts(ports, () =>
-      runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env))),
+    health: () =>
+      runWithRuntimePorts(ports, () =>
+        runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env)),
+      ),
   });
 
   type StartedRuntime = {
@@ -165,12 +165,17 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     if (kind === "notification") return;
     if (kind === "page") {
       const command = payload as { content: unknown; pageId: string; userId: string };
-      return state.collaboration.replacePageContent(command.content, command.pageId, command.userId);
+      return state.collaboration.replacePageContent(
+        command.content,
+        command.pageId,
+        command.userId,
+      );
     }
     throw new Error(`Unsupported fanout channel: ${channel}`);
   });
   ports.documents = {
-    appendPageComment: async (input) => (await ensureStarted()).collaboration.appendPageComment(input),
+    appendPageComment: async (input) =>
+      (await ensureStarted()).collaboration.appendPageComment(input),
   };
 
   async function ensureStarted(): Promise<StartedRuntime> {
@@ -180,10 +185,19 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     setCollaborationExtensionsFactory(createCollaborationExtensions);
     const collaboration = attachNodeCollaborationRuntime(server, env, {
       editionExtension,
-      passthroughPaths: ["/database-collaboration", "/mail-realtime", "/calendar-realtime", "/meeting-audio", "/navigation-realtime"],
+      passthroughPaths: [
+        "/database-collaboration",
+        "/mail-realtime",
+        "/calendar-realtime",
+        "/meeting-audio",
+        "/navigation-realtime",
+      ],
       limits,
     });
-    const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, { limits, realtimeBus });
+    const databaseRealtime = attachNodeDatabaseRealtimeRuntime(server, env, {
+      limits,
+      realtimeBus,
+    });
     const meetingAudio = attachNodeMeetingAudioRuntime(server, env);
     const calendarRealtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus });
     const mailRealtime = attachNodeMailRealtimeRuntime(server, env, { realtimeBus });
@@ -191,12 +205,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
     const backgroundCoordinator = createBackgroundCoordinator(env, ports);
     backgroundCoordinatorRef = backgroundCoordinator;
     const backgroundAdminServer = backgroundCoordinator
-      ? createBackgroundAdminServer(
-          env,
-          backgroundCoordinator,
-          ports,
-          () => realtimeBus.isReady(),
-        )
+      ? createBackgroundAdminServer(env, backgroundCoordinator, ports, () => realtimeBus.isReady())
       : null;
 
     hooks.assertProductionConfig?.(env);
@@ -242,9 +251,7 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
         server.once("error", reject);
         server.listen(port, hostname, () => {
           server.off("error", reject);
-          console.log(
-            `Zilobase server listening on http://${hostname}:${port}`,
-          );
+          console.log(`Zilobase server listening on http://${hostname}:${port}`);
           console.log(`Serving Zilobase web assets from ${webDistDir}`);
           resolve();
         });
@@ -278,9 +285,11 @@ export function createNodeRuntime(options: NodeRuntimeOptions) {
 
 function createLazyImageStorage(factory: () => Ports["blobs"]): Ports["blobs"] {
   let storage: Ports["blobs"] | undefined;
-  const get = () => storage ??= factory();
+  const get = () => (storage ??= factory());
   return {
-    get mode() { return get().mode; },
+    get mode() {
+      return get().mode;
+    },
     checkReady: () => get().checkReady(),
     createReadUrl: (options) => get().createReadUrl(options),
     createUploadUrl: (options) => get().createUploadUrl(options),
@@ -310,9 +319,7 @@ function createBackgroundAdminServer(
     if (request.url === "/metrics") {
       response.statusCode = 200;
       response.setHeader("content-type", "text/plain; version=0.0.4");
-      response.end(
-        renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics(),
-      );
+      response.end(renderPrometheusBackgroundMetrics() + renderPrometheusDatabaseMetrics());
       return;
     }
     if (request.url !== "/health" && request.url !== "/ready") {
@@ -322,12 +329,14 @@ function createBackgroundAdminServer(
     }
     try {
       const snapshot = await runWithRuntimePorts(ports, () =>
-        runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env)));
+        runWithDbEnv(env, () => getBackgroundOperationalSnapshot(env)),
+      );
       const ready = coordinator.readiness();
-      response.statusCode = request.url === "/ready" &&
-          (!snapshot.healthy || !ready.listenerReady || !isRealtimeReady())
-        ? 503
-        : 200;
+      response.statusCode =
+        request.url === "/ready" &&
+        (!snapshot.healthy || !ready.listenerReady || !isRealtimeReady())
+          ? 503
+          : 200;
       response.setHeader("content-type", "application/json");
       response.end(JSON.stringify(snapshot));
     } catch {
@@ -337,18 +346,20 @@ function createBackgroundAdminServer(
     }
   });
   return {
-    start: () => new Promise<void>((resolve, reject) => {
-      admin.once("error", reject);
-      admin.listen(port, "127.0.0.1", () => {
-        admin.off("error", reject);
-        console.log(`Zilobase background health listening on http://127.0.0.1:${port}`);
-        resolve();
-      });
-    }),
-    stop: () => new Promise<void>((resolve, reject) => {
-      if (!admin.listening) return resolve();
-      admin.close((error) => error ? reject(error) : resolve());
-    }),
+    start: () =>
+      new Promise<void>((resolve, reject) => {
+        admin.once("error", reject);
+        admin.listen(port, "127.0.0.1", () => {
+          admin.off("error", reject);
+          console.log(`Zilobase background health listening on http://127.0.0.1:${port}`);
+          resolve();
+        });
+      }),
+    stop: () =>
+      new Promise<void>((resolve, reject) => {
+        if (!admin.listening) return resolve();
+        admin.close((error) => (error ? reject(error) : resolve()));
+      }),
   };
 }
 
@@ -357,7 +368,7 @@ function toRequest(incoming: IncomingMessage, port: number) {
   const forwardedProtocol = incoming.headers["x-forwarded-proto"];
   const protocol = Array.isArray(forwardedProtocol)
     ? forwardedProtocol[0]
-    : forwardedProtocol ?? "http";
+    : (forwardedProtocol ?? "http");
   const url = new URL(incoming.url ?? "/", `${protocol}://${host}`);
   const headers = new Headers();
 
@@ -370,9 +381,7 @@ function toRequest(incoming: IncomingMessage, port: number) {
   }
 
   return new Request(url, {
-    body: hasRequestBody(incoming.method)
-      ? (Readable.toWeb(incoming) as never)
-      : undefined,
+    body: hasRequestBody(incoming.method) ? (Readable.toWeb(incoming) as never) : undefined,
     duplex: "half",
     headers,
     method: incoming.method,
@@ -386,9 +395,7 @@ function hasRequestBody(method: string | undefined) {
 function readPort(value: string | undefined) {
   if (!value) return null;
   const numberValue = Number(value);
-  return Number.isSafeInteger(numberValue) && numberValue > 0
-    ? numberValue
-    : null;
+  return Number.isSafeInteger(numberValue) && numberValue > 0 ? numberValue : null;
 }
 
 async function serveWebAsset(request: Request, webDistDir: string) {
@@ -406,11 +413,8 @@ async function serveWebAsset(request: Request, webDistDir: string) {
 
   if (isSpaNavigationRequest(request, pathname)) {
     return (
-      (await tryServeFile(
-        path.join(webDistDir, "index.html"),
-        request,
-        webDistDir,
-      )) ?? new Response("Zilobase web build was not found", { status: 500 })
+      (await tryServeFile(path.join(webDistDir, "index.html"), request, webDistDir)) ??
+      new Response("Zilobase web build was not found", { status: 500 })
     );
   }
 
@@ -422,16 +426,10 @@ function getSafeWebFilePath(pathname: string, webDistDir: string) {
   const relativePath = normalized.replace(/^[/\\]+/, "");
   const filePath = path.join(webDistDir, relativePath);
   const relativeToDist = path.relative(webDistDir, filePath);
-  return relativeToDist.startsWith("..") || path.isAbsolute(relativeToDist)
-    ? null
-    : filePath;
+  return relativeToDist.startsWith("..") || path.isAbsolute(relativeToDist) ? null : filePath;
 }
 
-async function tryServeFile(
-  filePath: string,
-  request: Request,
-  webDistDir: string,
-) {
+async function tryServeFile(filePath: string, request: Request, webDistDir: string) {
   const metadata = await stat(filePath).catch(() => null);
   if (!metadata?.isFile()) return null;
 
@@ -444,9 +442,7 @@ async function tryServeFile(
   });
 
   return new Response(
-    request.method === "HEAD"
-      ? null
-      : (Readable.toWeb(createReadStream(filePath)) as never),
+    request.method === "HEAD" ? null : (Readable.toWeb(createReadStream(filePath)) as never),
     { headers },
   );
 }

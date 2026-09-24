@@ -3,11 +3,7 @@ import type {
   MeetingTranscriptSessionSegment,
 } from "@zilobase/server/adapter-api";
 
-export type MeetingRoomRecorderStatus =
-  | "claimed"
-  | "finishing"
-  | "paused"
-  | "recording";
+export type MeetingRoomRecorderStatus = "claimed" | "finishing" | "paused" | "recording";
 
 export type MeetingRoomRecorder = {
   durationMs: number;
@@ -25,10 +21,7 @@ export type MeetingRoomRecorder = {
 };
 
 type RecorderCheckpointPatch = Partial<
-  Pick<
-    MeetingRoomRecorder,
-    "durationMs" | "expiresAt" | "status" | "stoppedAt"
-  >
+  Pick<MeetingRoomRecorder, "durationMs" | "expiresAt" | "status" | "stoppedAt">
 >;
 
 type RecorderRow = {
@@ -99,8 +92,9 @@ export class MeetingRoomStorage {
         "SELECT COALESCE(MAX(id), 0) AS version FROM _sql_schema_migrations",
       )
       .one().version;
-    if (version < 1) this.storage.transactionSync(() => {
-      this.storage.sql.exec(`
+    if (version < 1)
+      this.storage.transactionSync(() => {
+        this.storage.sql.exec(`
         CREATE TABLE IF NOT EXISTS meeting_document (
           document_name TEXT PRIMARY KEY,
           state BLOB NOT NULL,
@@ -133,30 +127,30 @@ export class MeetingRoomStorage {
         CREATE INDEX IF NOT EXISTS transcript_checkpoint_lease_sequence
           ON transcript_checkpoint (lease_id, sequence);
       `);
-      this.storage.sql.exec(
-        "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
-        1,
-        Date.now(),
-      );
-    });
-    if (version < 2) this.storage.transactionSync(() => {
-      const hasStoppedAt = this.storage.sql
-        .exec<{ name: string }>("PRAGMA table_info(recorder_session)")
-        .toArray()
-        .some((column) => column.name === "stopped_at");
-      if (!hasStoppedAt) {
         this.storage.sql.exec(
-          "ALTER TABLE recorder_session ADD COLUMN stopped_at INTEGER",
+          "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
+          1,
+          Date.now(),
         );
-      }
-      this.storage.sql.exec(
-        "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
-        2,
-        Date.now(),
-      );
-    });
-    if (version < 3) this.storage.transactionSync(() => {
-      this.storage.sql.exec(`
+      });
+    if (version < 2)
+      this.storage.transactionSync(() => {
+        const hasStoppedAt = this.storage.sql
+          .exec<{ name: string }>("PRAGMA table_info(recorder_session)")
+          .toArray()
+          .some((column) => column.name === "stopped_at");
+        if (!hasStoppedAt) {
+          this.storage.sql.exec("ALTER TABLE recorder_session ADD COLUMN stopped_at INTEGER");
+        }
+        this.storage.sql.exec(
+          "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
+          2,
+          Date.now(),
+        );
+      });
+    if (version < 3)
+      this.storage.transactionSync(() => {
+        this.storage.sql.exec(`
         CREATE TABLE IF NOT EXISTS meeting_document_sync (
           singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
           meeting_id TEXT NOT NULL,
@@ -166,30 +160,32 @@ export class MeetingRoomStorage {
           updated_at INTEGER NOT NULL
         );
       `);
-      this.storage.sql.exec(
-        "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
-        3,
-        Date.now(),
-      );
-    });
-    if (version < 4) this.storage.transactionSync(() => {
-      const hasSource = this.storage.sql
-        .exec<{ name: string }>("PRAGMA table_info(transcript_checkpoint)")
-        .toArray()
-        .some((column) => column.name === "source");
-      if (!hasSource) {
         this.storage.sql.exec(
-          "ALTER TABLE transcript_checkpoint ADD COLUMN source TEXT NOT NULL DEFAULT 'microphone'",
+          "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
+          3,
+          Date.now(),
         );
-      }
-      this.storage.sql.exec(
-        "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
-        4,
-        Date.now(),
-      );
-    });
-    if (version < 5) this.storage.transactionSync(() => {
-      this.storage.sql.exec(`
+      });
+    if (version < 4)
+      this.storage.transactionSync(() => {
+        const hasSource = this.storage.sql
+          .exec<{ name: string }>("PRAGMA table_info(transcript_checkpoint)")
+          .toArray()
+          .some((column) => column.name === "source");
+        if (!hasSource) {
+          this.storage.sql.exec(
+            "ALTER TABLE transcript_checkpoint ADD COLUMN source TEXT NOT NULL DEFAULT 'microphone'",
+          );
+        }
+        this.storage.sql.exec(
+          "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
+          4,
+          Date.now(),
+        );
+      });
+    if (version < 5)
+      this.storage.transactionSync(() => {
+        this.storage.sql.exec(`
         DELETE FROM transcript_checkpoint
         WHERE rowid NOT IN (
           SELECT MIN(rowid)
@@ -199,24 +195,25 @@ export class MeetingRoomStorage {
         CREATE UNIQUE INDEX IF NOT EXISTS transcript_checkpoint_lease_sequence_unique
           ON transcript_checkpoint (lease_id, sequence);
       `);
-      this.storage.sql.exec(
-        "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
-        5,
-        Date.now(),
-      );
-    });
-    if (version < 6) this.storage.transactionSync(() => {
-      this.storage.sql.exec(
-        `UPDATE transcript_checkpoint
+        this.storage.sql.exec(
+          "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
+          5,
+          Date.now(),
+        );
+      });
+    if (version < 6)
+      this.storage.transactionSync(() => {
+        this.storage.sql.exec(
+          `UPDATE transcript_checkpoint
          SET source = 'microphone'
          WHERE source NOT IN ('microphone', 'system')`,
-      );
-      this.storage.sql.exec(
-        "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
-        SCHEMA_VERSION,
-        Date.now(),
-      );
-    });
+        );
+        this.storage.sql.exec(
+          "INSERT INTO _sql_schema_migrations (id, applied_at) VALUES (?, ?)",
+          SCHEMA_VERSION,
+          Date.now(),
+        );
+      });
   }
 
   loadDocument(documentName: string) {
@@ -234,12 +231,14 @@ export class MeetingRoomStorage {
   }
 
   hasDocument(documentName: string) {
-    return this.storage.sql
-      .exec<{ count: number }>(
-        "SELECT COUNT(*) AS count FROM meeting_document WHERE document_name = ?",
-        documentName,
-      )
-      .one().count > 0;
+    return (
+      this.storage.sql
+        .exec<{ count: number }>(
+          "SELECT COUNT(*) AS count FROM meeting_document WHERE document_name = ?",
+          documentName,
+        )
+        .one().count > 0
+    );
   }
 
   storeDocument(documentName: string, state: Uint8Array) {
@@ -255,28 +254,20 @@ export class MeetingRoomStorage {
     );
   }
 
-  claimRecorder(input: Omit<
-    MeetingRoomRecorder,
-    | "durationMs"
-    | "leaseId"
-    | "startedAt"
-    | "status"
-    | "stoppedAt"
-    | "updatedAt"
-  >) {
+  claimRecorder(
+    input: Omit<
+      MeetingRoomRecorder,
+      "durationMs" | "leaseId" | "startedAt" | "status" | "stoppedAt" | "updatedAt"
+    >,
+  ) {
     const now = Date.now();
     const existing = this.getRecorder();
     if (existing && existing.expiresAt > now) {
       if (existing.userId === input.userId) return existing;
       throw new Error("Another collaborator is already recording this meeting");
     }
-    if (
-      existing &&
-      (existing.status !== "claimed" || this.hasSegments(existing.leaseId))
-    ) {
-      throw new Error(
-        "The previous recording is being finalized; retry in a moment",
-      );
+    if (existing && (existing.status !== "claimed" || this.hasSegments(existing.leaseId))) {
+      throw new Error("The previous recording is being finalized; retry in a moment");
     }
     const recorder: MeetingRoomRecorder = {
       ...input,
@@ -318,12 +309,7 @@ export class MeetingRoomStorage {
 
   updateRecorder(
     recorder: MeetingRoomRecorder,
-    patch: Partial<
-      Pick<
-        MeetingRoomRecorder,
-        "durationMs" | "expiresAt" | "status" | "stoppedAt"
-      >
-    >,
+    patch: Partial<Pick<MeetingRoomRecorder, "durationMs" | "expiresAt" | "status" | "stoppedAt">>,
   ) {
     const updated = { ...recorder, ...patch, updatedAt: Date.now() };
     this.writeRecorder(updated);
@@ -379,11 +365,7 @@ export class MeetingRoomStorage {
       }));
   }
 
-  completeSession(
-    documentName: string,
-    meetingId: string,
-    state: Uint8Array,
-  ) {
+  completeSession(documentName: string, meetingId: string, state: Uint8Array) {
     const now = Date.now();
     this.storage.transactionSync(() => {
       this.storeDocument(documentName, state);
@@ -409,9 +391,7 @@ export class MeetingRoomStorage {
 
   getDocumentSync(): MeetingRoomDocumentSync | null {
     const row = this.storage.sql
-      .exec<DocumentSyncRow>(
-        "SELECT * FROM meeting_document_sync WHERE singleton = 1",
-      )
+      .exec<DocumentSyncRow>("SELECT * FROM meeting_document_sync WHERE singleton = 1")
       .toArray()[0];
     return row
       ? {
@@ -449,12 +429,14 @@ export class MeetingRoomStorage {
   }
 
   private hasSegments(leaseId: string) {
-    return this.storage.sql
-      .exec<{ count: number }>(
-        "SELECT COUNT(*) AS count FROM transcript_checkpoint WHERE lease_id = ?",
-        leaseId,
-      )
-      .one().count > 0;
+    return (
+      this.storage.sql
+        .exec<{ count: number }>(
+          "SELECT COUNT(*) AS count FROM transcript_checkpoint WHERE lease_id = ?",
+          leaseId,
+        )
+        .one().count > 0
+    );
   }
 
   private writeRecorder(recorder: MeetingRoomRecorder) {
@@ -511,8 +493,5 @@ function fromRecorderRow(row: RecorderRow): MeetingRoomRecorder {
 }
 
 function exactArrayBuffer(bytes: Uint8Array) {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }

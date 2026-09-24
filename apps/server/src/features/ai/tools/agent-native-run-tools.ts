@@ -1,7 +1,4 @@
-import type {
-  AgentCitation,
-  AgentToolResult,
-} from "@zilobase/features/ai-chat/agent-contract";
+import type { AgentCitation, AgentToolResult } from "@zilobase/features/ai-chat/agent-contract";
 import { resolvePageEditMarkdown } from "@zilobase/features/ai-chat/apply-page-content-patch";
 import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
 import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-markdown";
@@ -28,10 +25,7 @@ import {
   canAgentSnapshotAccessPage,
   type AgentPermissionSnapshotGrant,
 } from "../../access";
-import {
-  encodePageContentAsYjs,
-  replacePageContent,
-} from "../../collaboration/service";
+import { encodePageContentAsYjs, replacePageContent } from "../../collaboration/service";
 import { getDatabaseRecord } from "../../databases/access";
 import { lockDatabaseAutomationFactRows } from "../../automations/triggers/event-capture";
 import { getDatabaseExportPayload } from "../../databases/core";
@@ -63,9 +57,7 @@ type AgentNativeToolContext = {
   workspaceId: string;
 };
 
-export function buildAgentNativeRunTools(
-  context: AgentNativeToolContext,
-): ToolSet {
+export function buildAgentNativeRunTools(context: AgentNativeToolContext): ToolSet {
   return {
     searchGrantedResources: auditedReadTool(
       context,
@@ -95,11 +87,7 @@ export function buildAgentNativeRunTools(
           .where(
             and(
               eq(searchDocument.workspaceId, context.workspaceId),
-              or(
-                ...requestedTypes.map((type) =>
-                  eq(searchDocument.sourceType, type),
-                ),
-              ),
+              or(...requestedTypes.map((type) => eq(searchDocument.sourceType, type))),
               input.query.trim()
                 ? or(
                     ilike(searchDocument.title, pattern),
@@ -124,15 +112,11 @@ export function buildAgentNativeRunTools(
             }),
           )
         )
-          .filter(
-            (candidate): candidate is NonNullable<typeof candidate> =>
-              candidate !== null,
-          )
+          .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null)
           .slice(0, input.limit);
 
         const results = permitted.map((candidate) => ({
-          excerpt:
-            candidate.type === "page" ? candidate.excerpt.slice(0, 280) : null,
+          excerpt: candidate.type === "page" ? candidate.excerpt.slice(0, 280) : null,
           id: candidate.id,
           path: candidate.path,
           title: candidate.title,
@@ -143,12 +127,7 @@ export function buildAgentNativeRunTools(
           `Found ${results.length} resource${results.length === 1 ? "" : "s"} granted to this agent.`,
           { results },
           results.map((result) =>
-            citation(
-              result.type as "page" | "database",
-              result.id,
-              result.title,
-              result.excerpt,
-            ),
+            citation(result.type as "page" | "database", result.id, result.title, result.excerpt),
           ),
         );
       },
@@ -178,8 +157,7 @@ export function buildAgentNativeRunTools(
             ),
           )
           .limit(1);
-        if (!record)
-          throw new Error("Page not found or not granted to this agent.");
+        if (!record) throw new Error("Page not found or not granted to this agent.");
         const fullMarkdown = prosemirrorToMarkdown(record.content);
         const markdown =
           fullMarkdown.length > MAX_PAGE_MARKDOWN_CHARS
@@ -220,13 +198,8 @@ export function buildAgentNativeRunTools(
         const payload = await getDatabaseExportPayload(record.id, undefined, record, {
           dataSourceId: input.dataSourceId,
         });
-        if (
-          !payload?.activeDataSource ||
-          payload.activeDataSource.id !== input.dataSourceId
-        ) {
-          throw new Error(
-            "The data source is not linked to the granted database.",
-          );
+        if (!payload?.activeDataSource || payload.activeDataSource.id !== input.dataSourceId) {
+          throw new Error("The data source is not linked to the granted database.");
         }
         const table = buildDatabaseTable(payload, {
           limit: input.limit,
@@ -244,12 +217,7 @@ export function buildAgentNativeRunTools(
           [
             citation("database", record.id, title, null),
             ...table.rows.map((row) =>
-              citation(
-                "page",
-                row.pageId,
-                row.cells.name || "Untitled row",
-                null,
-              ),
+              citation("page", row.pageId, row.cells.name || "Untitled row", null),
             ),
           ],
         );
@@ -267,12 +235,7 @@ export function buildAgentNativeRunTools(
         pageId: z.string().trim().min(1),
         replaceText: z.string().max(24_000).optional(),
         searchText: z.string().max(24_000).optional(),
-        summary: z
-          .string()
-          .trim()
-          .min(1)
-          .max(240)
-          .default("Updated page content."),
+        summary: z.string().trim().min(1).max(240).default("Updated page content."),
       }),
       async (input) => {
         if (!(await canUsePage(context, input.pageId, "edit"))) {
@@ -294,8 +257,7 @@ export function buildAgentNativeRunTools(
             ),
           )
           .limit(1);
-        if (!record)
-          throw new Error("Page not found or not editable by this agent.");
+        if (!record) throw new Error("Page not found or not editable by this agent.");
         const beforeMarkdown = prosemirrorToMarkdown(record.content);
         if (
           !(await isPageContentVersionCurrent({
@@ -305,9 +267,7 @@ export function buildAgentNativeRunTools(
             expectedUpdatedAt: input.expectedUpdatedAt,
           }))
         ) {
-          throw new Error(
-            "The page changed after it was read. Read it again before editing.",
-          );
+          throw new Error("The page changed after it was read. Read it again before editing.");
         }
         const resolved = resolvePageEditMarkdown({
           afterMarkdown: input.afterMarkdown,
@@ -326,9 +286,7 @@ export function buildAgentNativeRunTools(
           });
         } catch (error) {
           throw new AgentNativeWriteOutcomeUnknownError(
-            error instanceof Error
-              ? error.message
-              : "The page update did not return a receipt.",
+            error instanceof Error ? error.message : "The page update did not return a receipt.",
           );
         }
         const title = record.name.trim() || "Untitled";
@@ -375,10 +333,7 @@ export function buildAgentNativeRunTools(
         const [property] = await db
           .select({ config: pageProperty.config, type: pageProperty.type })
           .from(databaseProperty)
-          .innerJoin(
-            pageProperty,
-            eq(pageProperty.id, databaseProperty.propertyId),
-          )
+          .innerJoin(pageProperty, eq(pageProperty.id, databaseProperty.propertyId))
           .where(
             and(
               eq(databaseProperty.dataSourceId, input.dataSourceId),
@@ -428,20 +383,14 @@ export function buildAgentNativeRunTools(
                   value: input.value,
                 })
                 .onConflictDoUpdate({
-                  target: [
-                    pagePropertyValue.pageId,
-                    pagePropertyValue.propertyId,
-                  ],
+                  target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
                   set: { updatedAt: now, value: input.value },
                 });
               await tx
                 .update(databaseRow)
                 .set({ updatedAt: now })
                 .where(eq(databaseRow.id, row.id));
-              await tx
-                .update(page)
-                .set({ updatedAt: now })
-                .where(eq(page.id, row.pageId));
+              await tx.update(page).set({ updatedAt: now }).where(eq(page.id, row.pageId));
               return {
                 automationFacts: [
                   {
@@ -507,13 +456,10 @@ export function buildAgentNativeRunTools(
             ),
           )
           .limit(1);
-        if (!record)
-          throw new Error("Page not found or not commentable by this agent.");
+        if (!record) throw new Error("Page not found or not commentable by this agent.");
         let receipt: { messageId: string; threadId: string };
         try {
-          const { appendPageComment } = await import(
-            "../../collaboration/service"
-          );
+          const { appendPageComment } = await import("../../collaboration/service");
           receipt = await appendPageComment({
             author: {
               email: null,
@@ -527,9 +473,7 @@ export function buildAgentNativeRunTools(
           });
         } catch (error) {
           throw new AgentNativeWriteOutcomeUnknownError(
-            error instanceof Error
-              ? error.message
-              : "The comment did not return a receipt.",
+            error instanceof Error ? error.message : "The comment did not return a receipt.",
           );
         }
         return succeeded(
@@ -554,9 +498,7 @@ export function buildAgentNativeRunTools(
       }),
       async (input) => {
         if (!(await canUsePage(context, input.parentPageId, "edit"))) {
-          throw new Error(
-            "Parent page not found or not editable by this agent.",
-          );
+          throw new Error("Parent page not found or not editable by this agent.");
         }
         const [parent] = await db
           .select({ id: page.id })
@@ -569,10 +511,7 @@ export function buildAgentNativeRunTools(
             ),
           )
           .limit(1);
-        if (!parent)
-          throw new Error(
-            "Parent page not found or not editable by this agent.",
-          );
+        if (!parent) throw new Error("Parent page not found or not editable by this agent.");
         const pageId = crypto.randomUUID();
         const content = markdownToPageContent(input.markdown);
         try {
@@ -603,10 +542,7 @@ export function buildAgentNativeRunTools(
             });
             return enqueueNavigationInvalidation(tx, context.workspaceId);
           });
-          await publishCommittedNavigationInvalidation(
-            navigationEvent,
-            context.env,
-          );
+          await publishCommittedNavigationInvalidation(navigationEvent, context.env);
         } catch (error) {
           throw new AgentNativeWriteOutcomeUnknownError(
             error instanceof Error
@@ -638,13 +574,7 @@ async function canUsePage(
       context.workspaceId,
       context.permissionSnapshot,
       required,
-    )) &&
-    (await canAgentAccessPage(
-      pageId,
-      context.workspaceId,
-      context.profileId,
-      required,
-    ))
+    )) && (await canAgentAccessPage(pageId, context.workspaceId, context.profileId, required))
   );
 }
 
@@ -660,12 +590,7 @@ async function canUseDatabase(
       context.permissionSnapshot,
       required,
     )) &&
-    (await canAgentAccessDatabase(
-      databaseId,
-      context.workspaceId,
-      context.profileId,
-      required,
-    ))
+    (await canAgentAccessDatabase(databaseId, context.workspaceId, context.profileId, required))
   );
 }
 
@@ -718,10 +643,7 @@ function auditedTool<TInput extends z.ZodTypeAny>(
         })
         .onConflictDoNothing()
         .returning({ id: aiAgentToolExecution.id });
-      if (!reserved)
-        throw new Error(
-          "Agent tool call already has a durable execution receipt.",
-        );
+      if (!reserved) throw new Error("Agent tool call already has a durable execution receipt.");
       await appendRunEvent(context.runId, "tool_started", "shared", {
         tool: name,
       });
@@ -755,11 +677,8 @@ function auditedTool<TInput extends z.ZodTypeAny>(
             completedAt,
             durationMs: completedAt.getTime() - startedAt.getTime(),
             errorCode:
-              effect === "write"
-                ? "AGENT_NATIVE_WRITE_FAILED"
-                : "AGENT_RESOURCE_ACCESS_FAILED",
-            outcomeUnknown:
-              error instanceof AgentNativeWriteOutcomeUnknownError,
+              effect === "write" ? "AGENT_NATIVE_WRITE_FAILED" : "AGENT_RESOURCE_ACCESS_FAILED",
+            outcomeUnknown: error instanceof AgentNativeWriteOutcomeUnknownError,
             status: "failed",
             updatedAt: completedAt,
           })
@@ -786,11 +705,7 @@ class AgentNativeWriteOutcomeUnknownError extends Error {
   }
 }
 
-function succeeded<T>(
-  summary: string,
-  data: T,
-  citations: AgentCitation[],
-): AgentToolResult<T> {
+function succeeded<T>(summary: string, data: T, citations: AgentCitation[]): AgentToolResult<T> {
   return { citations, data, ok: true, status: "succeeded", summary };
 }
 
@@ -805,10 +720,7 @@ function citation(
     id,
     source: type,
     title: title.trim() || (type === "page" ? "Untitled" : "Database"),
-    url:
-      type === "page"
-        ? `/p/${encodeURIComponent(id)}`
-        : `/d/${encodeURIComponent(id)}`,
+    url: type === "page" ? `/p/${encodeURIComponent(id)}` : `/d/${encodeURIComponent(id)}`,
   };
 }
 

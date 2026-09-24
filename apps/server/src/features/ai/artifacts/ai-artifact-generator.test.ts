@@ -35,11 +35,13 @@ test("generated office and archive files contain expected safe entries", () => {
 });
 
 test("generated PDF has a valid header and trailer", () => {
-  const pdf = strFromU8(generateAiArtifact({
-    content: "Summary",
-    format: "pdf",
-    title: "Report",
-  }).bytes);
+  const pdf = strFromU8(
+    generateAiArtifact({
+      content: "Summary",
+      format: "pdf",
+      title: "Report",
+    }).bytes,
+  );
   assert.match(pdf, /^%PDF-1\.4/);
   assert.match(pdf, /%%EOF$/);
 });

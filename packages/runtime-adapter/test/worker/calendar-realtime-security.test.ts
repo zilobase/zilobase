@@ -12,13 +12,19 @@ import {
 
 const secret = "calendar-realtime-route-test-secret";
 
-async function websocketRequest(ticketConnection = "connection-1", urlConnection = ticketConnection) {
-  const { ticket } = await createCalendarRealtimeTicket({
-    bindingId: ticketConnection,
-    accountId: ticketConnection,
-    userId: "user-1",
-    workspaceId: "workspace-1",
-  }, { COLLABORATION_SECRET: secret });
+async function websocketRequest(
+  ticketConnection = "connection-1",
+  urlConnection = ticketConnection,
+) {
+  const { ticket } = await createCalendarRealtimeTicket(
+    {
+      bindingId: ticketConnection,
+      accountId: ticketConnection,
+      userId: "user-1",
+      workspaceId: "workspace-1",
+    },
+    { COLLABORATION_SECRET: secret },
+  );
   return new Request(`https://api.zilobase.com/calendar-realtime?binding=${urlConnection}`, {
     headers: {
       "Sec-WebSocket-Protocol": [
@@ -48,29 +54,37 @@ describe("calendar realtime upgrade security", () => {
 
     expect(response.status).toBe(200);
     expect(getByName).toHaveBeenCalledWith("connection-1");
-    expect(fetch.mock.calls[0]?.[0].headers.get("x-zilobase-calendar-realtime-claims"))
-      .toBeTruthy();
+    expect(
+      fetch.mock.calls[0]?.[0].headers.get("x-zilobase-calendar-realtime-claims"),
+    ).toBeTruthy();
   });
 
   it("rejects missing and connection-mismatched tickets", async () => {
     const { env, getByName } = routeEnv();
-    const missing = new Request(
-      "https://api.zilobase.com/calendar-realtime?binding=connection-1",
-      { headers: { Upgrade: "websocket" } },
-    );
+    const missing = new Request("https://api.zilobase.com/calendar-realtime?binding=connection-1", {
+      headers: { Upgrade: "websocket" },
+    });
 
     expect((await routeCalendarRealtimeRequest(missing, env)).status).toBe(401);
-    expect((await routeCalendarRealtimeRequest(
-      await websocketRequest("connection-2", "connection-1"),
-      env,
-    )).status).toBe(401);
+    expect(
+      (
+        await routeCalendarRealtimeRequest(
+          await websocketRequest("connection-2", "connection-1"),
+          env,
+        )
+      ).status,
+    ).toBe(401);
     expect(getByName).not.toHaveBeenCalled();
   });
 
   it("fails closed when the Durable Object binding is absent", async () => {
-    expect((await routeCalendarRealtimeRequest(await websocketRequest(), {
-      BETTER_AUTH_SECRET: secret,
-      COLLABORATION_SECRET: secret,
-    })).status).toBe(503);
+    expect(
+      (
+        await routeCalendarRealtimeRequest(await websocketRequest(), {
+          BETTER_AUTH_SECRET: secret,
+          COLLABORATION_SECRET: secret,
+        })
+      ).status,
+    ).toBe(503);
   });
 });

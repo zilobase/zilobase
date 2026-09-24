@@ -31,7 +31,5 @@ const apiPathPrefixes = [
 ];
 
 export function isNodeApiPath(pathname: string) {
-  return apiPathPrefixes.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  return apiPathPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }

@@ -15,10 +15,7 @@ import {
   renderDevelopmentDashboard,
   startDevelopmentDashboard,
 } from "./dashboard.mjs";
-import {
-  createFromTemplateIfMissing,
-  profileEnvironment,
-} from "./env.mjs";
+import { createFromTemplateIfMissing, profileEnvironment } from "./env.mjs";
 import {
   databaseResetStatements,
   effectiveProfile,
@@ -40,13 +37,7 @@ import {
 
 test("the Node profile uses stable local ports and identity", () => {
   const node = localProfiles.node;
-  const ports = [
-    node.appPort,
-    node.apiPort,
-    node.healthPort,
-    node.inspectorPort,
-    node.studioPort,
-  ];
+  const ports = [node.appPort, node.apiPort, node.healthPort, node.inspectorPort, node.studioPort];
   assert.equal(new Set(ports).size, ports.length);
   assert.equal(node.appHost, "localhost");
   assert.equal(node.apiHost, "localhost");
@@ -66,14 +57,8 @@ test("the Node profile disables demo seeding", () => {
     VALKEY_HOST_PORT: "16379",
   };
 
-  assert.equal(
-    profileEnvironment(localProfiles.node, dependencies).ZILOBASE_DEMO_ENABLED,
-    "false",
-  );
-  assert.equal(
-    profileEnvironment(localProfiles.node, dependencies).MEETING_BLOCK_ENABLED,
-    "true",
-  );
+  assert.equal(profileEnvironment(localProfiles.node, dependencies).ZILOBASE_DEMO_ENABLED, "false");
+  assert.equal(profileEnvironment(localProfiles.node, dependencies).MEETING_BLOCK_ENABLED, "true");
   assert.equal(
     profileEnvironment(localProfiles.node, dependencies).REALTIME_REDIS_URL,
     "redis://127.0.0.1:16379",
@@ -102,12 +87,18 @@ test("development database commands use the journal-aware migration runner", asy
 
 test("studio inspects the Node development database", () => {
   const services = resolveStudioServices();
-  assert.deepEqual(services.map((service) => service.name), ["node"]);
+  assert.deepEqual(
+    services.map((service) => service.name),
+    ["node"],
+  );
   assert.deepEqual(
     services.map((service) => service.database),
     ["zilobase_node"],
   );
-  assert.deepEqual(services.map((service) => service.port), [4983]);
+  assert.deepEqual(
+    services.map((service) => service.port),
+    [4983],
+  );
   assert.equal(studioBrowserUrl(4983), "https://local.drizzle.studio");
 });
 
@@ -117,28 +108,44 @@ test("local starts only the public Node profile", () => {
 
 test("workspace discovery loads ordered opt-in sibling providers", async () => {
   const workspace = await mkdtemp(path.join(os.tmpdir(), "zilobase-providers-test-"));
-  for (const [directory, id, order] of [["later", "later", 20], ["earlier", "earlier", 10]]) {
+  for (const [directory, id, order] of [
+    ["later", "later", 20],
+    ["earlier", "earlier", 10],
+  ]) {
     const providerDir = path.join(workspace, directory);
     await mkdir(providerDir);
-    await writeFile(path.join(providerDir, DEVELOPMENT_PROVIDER_FILE), JSON.stringify({
-      id,
-      order,
-      readiness: ["http://127.0.0.1:9999/ready"],
-      schemaVersion: 1,
-      start: ["node", "scripts/start.mjs"],
-    }));
+    await writeFile(
+      path.join(providerDir, DEVELOPMENT_PROVIDER_FILE),
+      JSON.stringify({
+        id,
+        order,
+        readiness: ["http://127.0.0.1:9999/ready"],
+        schemaVersion: 1,
+        start: ["node", "scripts/start.mjs"],
+      }),
+    );
   }
   const providers = await discoverDevelopmentProviders(workspace);
-  assert.deepEqual(providers.map(({ id }) => id), ["earlier", "later"]);
+  assert.deepEqual(
+    providers.map(({ id }) => id),
+    ["earlier", "later"],
+  );
 });
 
 test("workspace providers may expose only loopback readiness URLs", () => {
-  assert.throws(() => validateDevelopmentProvider({
-    id: "remote",
-    readiness: ["https://example.com/ready"],
-    schemaVersion: 1,
-    start: ["node", "scripts/start.mjs"],
-  }, "/tmp/provider"), /loopback readiness URLs/);
+  assert.throws(
+    () =>
+      validateDevelopmentProvider(
+        {
+          id: "remote",
+          readiness: ["https://example.com/ready"],
+          schemaVersion: 1,
+          start: ["node", "scripts/start.mjs"],
+        },
+        "/tmp/provider",
+      ),
+    /loopback readiness URLs/,
+  );
 });
 
 test("workspace providers inherit the generated shared Redis URL", () => {
@@ -154,20 +161,27 @@ test("development hub combines public and provider-owned runtime details", async
   const model = developmentDashboardModel({
     credentials: [{ name: "Core", description: "Core setup", fields: [["Token", "<secret>"]] }],
     profiles: { node: localProfiles.node },
-    providerModels: [{
-      runtimes: [{
-        api: "http://localhost:9998",
-        app: "http://localhost:9999",
-        config: [["Mode", "Optional"]],
-        description: "Optional runtime",
-        health: "http://127.0.0.1:9998/ready",
-        id: "optional",
-        name: "Optional",
-      }],
-      services: [{ name: "Docs", detail: "Local docs", url: "http://localhost:9997" }],
-    }],
+    providerModels: [
+      {
+        runtimes: [
+          {
+            api: "http://localhost:9998",
+            app: "http://localhost:9999",
+            config: [["Mode", "Optional"]],
+            description: "Optional runtime",
+            health: "http://127.0.0.1:9998/ready",
+            id: "optional",
+            name: "Optional",
+          },
+        ],
+        services: [{ name: "Docs", detail: "Local docs", url: "http://localhost:9997" }],
+      },
+    ],
   });
-  assert.deepEqual(model.runtimes.map(({ id }) => id), ["node", "optional"]);
+  assert.deepEqual(
+    model.runtimes.map(({ id }) => id),
+    ["node", "optional"],
+  );
   const page = renderDevelopmentDashboard(model);
   assert.match(page, /Development hub/);
   assert.match(page, /Optional runtime/);
@@ -184,15 +198,18 @@ test("development hub combines public and provider-owned runtime details", async
 });
 
 test("development hub refuses non-loopback health probes", async () => {
-  await assert.rejects(startDevelopmentDashboard({
-    model: {
-      credentials: [],
-      runtimes: [{ health: "https://example.com/ready" }],
-      services: [],
-    },
-    open: false,
-    port: 0,
-  }), /loopback HTTP URLs/);
+  await assert.rejects(
+    startDevelopmentDashboard({
+      model: {
+        credentials: [],
+        runtimes: [{ health: "https://example.com/ready" }],
+        services: [],
+      },
+      open: false,
+      port: 0,
+    }),
+    /loopback HTTP URLs/,
+  );
 });
 
 test("the web client uses a stable Vite dependency cache", () => {
@@ -210,12 +227,7 @@ test("shell profile overrides select validated ports", () => {
     ZILOBASE_NODE_INSPECTOR_PORT: "4031",
   });
   assert.deepEqual(
-    [
-      profile.apiPort,
-      profile.healthPort,
-      profile.appPort,
-      profile.inspectorPort,
-    ],
+    [profile.apiPort, profile.healthPort, profile.appPort, profile.inspectorPort],
     [4010, 4012, 4020, 4031],
   );
   assert.equal(effectiveProfile("node", { PORT: "invalid" }).apiPort, 3000);
@@ -312,19 +324,35 @@ test("database reset runs drop and create outside a shared transaction", () => {
 
 test("public mail development uses one origin without proxying back into its tunnel", () => {
   for (const profile of Object.values(localProfiles)) {
-    const env = applyPublicDevelopmentOrigin({ ZILOBASE_DEV_PUBLIC_ORIGIN: "https://mail-dev.example.com" }, profile);
+    const env = applyPublicDevelopmentOrigin(
+      { ZILOBASE_DEV_PUBLIC_ORIGIN: "https://mail-dev.example.com" },
+      profile,
+    );
     assert.equal(env.BETTER_AUTH_URL, env.CLIENT_URL);
     assert.equal(env.VITE_API_URL, env.BETTER_AUTH_URL);
     assert.equal(env.VITE_BACKEND_PROXY_TARGET, `http://${profile.apiHost}:${profile.apiPort}`);
-    assert.equal(env.NAVIGATION_REALTIME_WEBSOCKET_URL, "wss://mail-dev.example.com/navigation-realtime");
+    assert.equal(
+      env.NAVIGATION_REALTIME_WEBSOCKET_URL,
+      "wss://mail-dev.example.com/navigation-realtime",
+    );
   }
-  assert.throws(() => applyPublicDevelopmentOrigin({ ZILOBASE_DEV_PUBLIC_ORIGIN: "https://example.com/path" }, localProfiles.node), /HTTPS origin/);
+  assert.throws(
+    () =>
+      applyPublicDevelopmentOrigin(
+        { ZILOBASE_DEV_PUBLIC_ORIGIN: "https://example.com/path" },
+        localProfiles.node,
+      ),
+    /HTTPS origin/,
+  );
 });
 
 test("mail readiness uses launcher origins rather than obsolete generated hostnames", () => {
   for (const name of ["node"]) {
     const env = { BETTER_AUTH_URL: "http://obsolete.zilobase.localhost:3000" };
     const profile = effectiveProfile(name, env);
-    assert.equal(runtimeEnvironment(profile, env).BETTER_AUTH_URL, `http://${profile.apiHost}:${profile.apiPort}`);
+    assert.equal(
+      runtimeEnvironment(profile, env).BETTER_AUTH_URL,
+      `http://${profile.apiHost}:${profile.apiPort}`,
+    );
   }
 });

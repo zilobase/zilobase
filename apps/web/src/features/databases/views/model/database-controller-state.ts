@@ -2,9 +2,9 @@ import type {
   DatabaseBootstrapResponse,
   DatabaseRecordEntity,
   DataSourceEntity,
-} from "@zilobase/features/databases"
+} from "@zilobase/features/databases";
 
-import { getDatabaseViewIcon } from "./database-view-config"
+import { getDatabaseViewIcon } from "./database-view-config";
 
 /**
  * Interactive view data: bootstrap slices plus loaded records. Unlike the
@@ -12,30 +12,31 @@ import { getDatabaseViewIcon } from "./database-view-config"
  * valuesByPropertyId) and views/properties use the v2 entity shapes.
  */
 export type DatabaseViewData = {
-  activeDataSource: DataSourceEntity | null
-  bootstrap: DatabaseBootstrapResponse
-  dataSourceId: string | null
-  hasMore: boolean
-  records: DatabaseRecordEntity[]
-  totalCount: number
-}
+  activeDataSource: DataSourceEntity | null;
+  bootstrap: DatabaseBootstrapResponse;
+  dataSourceId: string | null;
+  hasMore: boolean;
+  records: DatabaseRecordEntity[];
+  totalCount: number;
+};
 
 export function composeDatabaseViewData(input: {
-  bootstrap: DatabaseBootstrapResponse | undefined
-  dataSourceId: string | null
-  hasMore: boolean
-  records: DatabaseRecordEntity[]
-  totalCount: number
+  bootstrap: DatabaseBootstrapResponse | undefined;
+  dataSourceId: string | null;
+  hasMore: boolean;
+  records: DatabaseRecordEntity[];
+  totalCount: number;
 }): DatabaseViewData | undefined {
-  const { bootstrap } = input
-  if (!bootstrap) return undefined
-  const activeDataSource = bootstrap.dataSources.find(
-    ({ id }) => id === input.dataSourceId,
-  ) ?? bootstrap.dataSources[0] ?? null
-  const dataSourceId = activeDataSource?.id ?? null
+  const { bootstrap } = input;
+  if (!bootstrap) return undefined;
+  const activeDataSource =
+    bootstrap.dataSources.find(({ id }) => id === input.dataSourceId) ??
+    bootstrap.dataSources[0] ??
+    null;
+  const dataSourceId = activeDataSource?.id ?? null;
   const records = dataSourceId
     ? input.records.filter((record) => record.dataSourceId === dataSourceId)
-    : []
+    : [];
 
   return {
     activeDataSource,
@@ -44,18 +45,18 @@ export function composeDatabaseViewData(input: {
     hasMore: input.hasMore,
     records,
     totalCount: input.totalCount,
-  }
+  };
 }
 
 export function getDatabaseDataSourceSummaries(
   dataSources:
     | Array<{
-      config?: unknown
-      id: string
-      name: string
-      parentDatabaseId: string
-      position?: number
-    }>
+        config?: unknown;
+        id: string;
+        name: string;
+        parentDatabaseId: string;
+        position?: number;
+      }>
     | null
     | undefined,
   views: Array<{ dataSourceId: string }> | null | undefined,
@@ -67,28 +68,27 @@ export function getDatabaseDataSourceSummaries(
     name: source.name || "Untitled data source",
     parentDatabaseId: source.parentDatabaseId,
     position: source.position,
-    viewCount:
-      views?.filter((view) => view.dataSourceId === source.id).length ?? 0,
-  }))
+    viewCount: views?.filter((view) => view.dataSourceId === source.id).length ?? 0,
+  }));
 }
 
 export function getDatabaseViewTabs(
   dataSources:
     | Array<{
-      id: string
-      name: string
-      parentDatabaseId: string
-    }>
+        id: string;
+        name: string;
+        parentDatabaseId: string;
+      }>
     | null
     | undefined,
   views:
     | Array<{
-      config?: unknown
-      dataSourceId: string
-      id: string
-      name: string
-      type: string
-    }>
+        config?: unknown;
+        dataSourceId: string;
+        id: string;
+        name: string;
+        type: string;
+      }>
     | null
     | undefined,
 ) {
@@ -97,26 +97,23 @@ export function getDatabaseViewTabs(
     id: view.id,
     name: view.name,
     dataSourceId: view.dataSourceId,
-    dataSourceName: dataSources?.find(
-      (source) => source.id === view.dataSourceId,
-    )?.name,
-    sourceParentDatabaseId: dataSources?.find(
-      (source) => source.id === view.dataSourceId,
-    )?.parentDatabaseId,
+    dataSourceName: dataSources?.find((source) => source.id === view.dataSourceId)?.name,
+    sourceParentDatabaseId: dataSources?.find((source) => source.id === view.dataSourceId)
+      ?.parentDatabaseId,
     type: view.type,
-  }))
+  }));
 }
 
 export function resolveRequestedDatabaseViewId({
   requestedViewId,
   viewTabs,
 }: {
-  requestedViewId: string | null | undefined
-  viewTabs: Array<{ id: string }>
+  requestedViewId: string | null | undefined;
+  viewTabs: Array<{ id: string }>;
 }) {
   return requestedViewId && viewTabs.some((view) => view.id === requestedViewId)
     ? requestedViewId
-    : null
+    : null;
 }
 
 export function shouldUseDatabaseSetupMode({
@@ -126,13 +123,11 @@ export function shouldUseDatabaseSetupMode({
   setupDismissed,
   setupMode,
 }: {
-  dataSettled: boolean
-  editable: boolean
-  hasContent: boolean
-  setupDismissed: boolean
-  setupMode: boolean
+  dataSettled: boolean;
+  editable: boolean;
+  hasContent: boolean;
+  setupDismissed: boolean;
+  setupMode: boolean;
 }) {
-  return Boolean(
-    editable && !setupDismissed && dataSettled && (setupMode || !hasContent),
-  )
+  return Boolean(editable && !setupDismissed && dataSettled && (setupMode || !hasContent));
 }

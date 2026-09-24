@@ -16,12 +16,15 @@ test("database realtime protocol is runtime-neutral", () => {
   });
   assert.equal(isDatabasePresence({ columnKey: "title", rowId: "row", viewId: null }), true);
   assert.equal(isDatabasePresence({ columnKey: "", rowId: "row", viewId: null }), false);
-  assert.equal(toDatabaseCollaborator({
-    claims: { sessionId: "session", user: { id: "user" } },
-    connectedAt: 0,
-    presence: { columnKey: "title", rowId: "row", viewId: null },
-    updatedAt: 1,
-  }).sessionId, "session");
+  assert.equal(
+    toDatabaseCollaborator({
+      claims: { sessionId: "session", user: { id: "user" } },
+      connectedAt: 0,
+      presence: { columnKey: "title", rowId: "row", viewId: null },
+      updatedAt: 1,
+    }).sessionId,
+    "session",
+  );
 });
 
 test("database realtime message allowance has one shared fixed-window rule", () => {

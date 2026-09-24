@@ -1,21 +1,21 @@
-import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
-import { desktopPersistOptions } from "@/features/desktop/persistence/index"
+import { desktopPersistOptions } from "@/features/desktop/persistence/index";
 
-type AuthFlowPurpose = "email-verification" | "sign-in"
+type AuthFlowPurpose = "email-verification" | "sign-in";
 
 type AuthFlowState = {
-  email: string | null
-  purpose: AuthFlowPurpose | null
-  returnTo: string | null
+  email: string | null;
+  purpose: AuthFlowPurpose | null;
+  returnTo: string | null;
   setAuthFlow: (flow: {
-    email: string
-    purpose: AuthFlowPurpose
-    returnTo?: string | null
-  }) => void
-  clearAuthFlow: () => void
-}
+    email: string;
+    purpose: AuthFlowPurpose;
+    returnTo?: string | null;
+  }) => void;
+  clearAuthFlow: () => void;
+};
 
 export const useAuthFlowStore = create<AuthFlowState>()(
   persist(
@@ -35,4 +35,4 @@ export const useAuthFlowStore = create<AuthFlowState>()(
       }),
     },
   ),
-)
+);

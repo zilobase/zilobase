@@ -31,17 +31,9 @@ export function CustomAgentHeaderActions({ agentId }: { agentId: string }) {
   return (
     <div className="flex items-center gap-1">
       <Button
-        aria-label={
-          settingsOpen
-            ? "Close Custom Agent settings"
-            : "Open Custom Agent settings"
-        }
+        aria-label={settingsOpen ? "Close Custom Agent settings" : "Open Custom Agent settings"}
         aria-pressed={settingsOpen}
-        className={
-          settingsOpen
-            ? "bg-action-neutral-pressed text-action-on-neutral"
-            : undefined
-        }
+        className={settingsOpen ? "bg-action-neutral-pressed text-action-on-neutral" : undefined}
         onClick={toggleSettings}
         size="icon"
         title={settingsOpen ? "Close settings" : "Settings"}

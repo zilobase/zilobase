@@ -50,18 +50,18 @@ Run `npm run build` and `npm test` in the cloud adapter against the matching cor
 
 Use disposable calendars, two explicitly authorized Google accounts, and consenting test invitees. Record runtime/version, date, expected behavior and observed result for every row. Run the web checks on both Node and hosted adapter deployments and the callback/notification checks on desktop.
 
-| Check | Required observation |
-| --- | --- |
-| OAuth | Connect two accounts, cancel consent, reconnect revoked credentials; web and desktop return to the correct server. Missing consent and replay fail safely. |
-| Isolation | Switch users/workspaces/accounts; neither private event contents nor cached details cross scope. Disconnect one account while the other remains usable. |
-| Views | Day/week/month/agenda, multi-day/all-day overlap, search within the displayed period, zones and DST produce consistent dates. Review all six theme families in light/dark and narrow layouts. |
-| Writes | Create, edit, duplicate, same-account move, delete, drag and resize. Exactly one write is sent on drop; offline controls are disabled. |
-| Guests and Meet | Send invitations only to consenting test users; change guests, RSVP and inspect Meet success/pending/failure. Retry a lost response without duplicate events or invitations. |
-| Recurrence | Edit one occurrence, following occurrences and the whole series; verify moved/cancelled exceptions, COUNT limits, DST and split recovery after restart. |
-| External changes | Edit/delete in Google; verify watch invalidation and local convergence. Disable push and verify provider recovery polling catches the change. |
-| Recovery | Expire tickets, interrupt sockets, suspend/resume the device, use multiple tabs, and lose connectivity. Cached periods remain readable and offline feedback remains explicit without a routine sync-status strip. |
-| Reminders | Navigate away from Calendar; one reminder appears across open tabs. Test permission denial, edited/cancelled events, wake-up and disconnect. No closed-app delivery is promised. |
-| Disable | Disable Calendar independently and confirm Mail continues working. Re-enable the pilot and verify reconnection/cache recovery. |
+| Check            | Required observation                                                                                                                                                                                              |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OAuth            | Connect two accounts, cancel consent, reconnect revoked credentials; web and desktop return to the correct server. Missing consent and replay fail safely.                                                        |
+| Isolation        | Switch users/workspaces/accounts; neither private event contents nor cached details cross scope. Disconnect one account while the other remains usable.                                                           |
+| Views            | Day/week/month/agenda, multi-day/all-day overlap, search within the displayed period, zones and DST produce consistent dates. Review all six theme families in light/dark and narrow layouts.                     |
+| Writes           | Create, edit, duplicate, same-account move, delete, drag and resize. Exactly one write is sent on drop; offline controls are disabled.                                                                            |
+| Guests and Meet  | Send invitations only to consenting test users; change guests, RSVP and inspect Meet success/pending/failure. Retry a lost response without duplicate events or invitations.                                      |
+| Recurrence       | Edit one occurrence, following occurrences and the whole series; verify moved/cancelled exceptions, COUNT limits, DST and split recovery after restart.                                                           |
+| External changes | Edit/delete in Google; verify watch invalidation and local convergence. Disable push and verify provider recovery polling catches the change.                                                                     |
+| Recovery         | Expire tickets, interrupt sockets, suspend/resume the device, use multiple tabs, and lose connectivity. Cached periods remain readable and offline feedback remains explicit without a routine sync-status strip. |
+| Reminders        | Navigate away from Calendar; one reminder appears across open tabs. Test permission denial, edited/cancelled events, wake-up and disconnect. No closed-app delivery is promised.                                  |
+| Disable          | Disable Calendar independently and confirm Mail continues working. Re-enable the pilot and verify reconnection/cache recovery.                                                                                    |
 
 Current automated acceptance is not a substitute for these live rows. No production deployment or live invitation delivery is part of the local implementation verification.
 

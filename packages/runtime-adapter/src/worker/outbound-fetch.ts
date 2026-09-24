@@ -14,9 +14,7 @@ export function createWorkerOutboundFetch(): OutboundFetch {
     },
     async fetchMcp(input) {
       const timeout = AbortSignal.timeout(input.timeoutMs);
-      const signal = input.signal
-        ? AbortSignal.any([input.signal, timeout])
-        : timeout;
+      const signal = input.signal ? AbortSignal.any([input.signal, timeout]) : timeout;
       return fetch(input.url, {
         body: input.body,
         headers: input.headers,

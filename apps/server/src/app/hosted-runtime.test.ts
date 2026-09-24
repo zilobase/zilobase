@@ -40,17 +40,9 @@ test("the hosted fetch adapter exposes discovery and readiness without a session
   });
   const app = createApp({ ports: {} });
 
-  const discovery = await app.request(
-    "https://api.example.com/.well-known/zilobase",
-    {},
-    env,
-  );
+  const discovery = await app.request("https://api.example.com/.well-known/zilobase", {}, env);
   const ready = await app.request("https://api.example.com/ready", {}, env);
-  const desktop = await app.request(
-    "https://api.example.com/desktop",
-    {},
-    env,
-  );
+  const desktop = await app.request("https://api.example.com/desktop", {}, env);
 
   assert.equal(discovery.status, 200);
   assert.equal(discovery.headers.get("cache-control"), "no-store");

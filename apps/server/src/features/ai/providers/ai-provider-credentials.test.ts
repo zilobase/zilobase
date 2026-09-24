@@ -16,10 +16,7 @@ test("workspace AI credentials round-trip as versioned ciphertext", async () => 
   assert.equal(encrypted.keyVersion, "v1");
   assert.ok(!encrypted.ciphertext.includes("sk-workspace-secret"));
   assert.equal(
-    await decryptAiProviderCredential(
-      { AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY: key },
-      encrypted,
-    ),
+    await decryptAiProviderCredential({ AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY: key }, encrypted),
     "sk-workspace-secret",
   );
 });
@@ -29,8 +26,10 @@ test("workspace AI credentials reject an incorrect operator key", async () => {
     { AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY: key },
     "sk-workspace-secret",
   );
-  await assert.rejects(() => decryptAiProviderCredential(
-    { AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY: Buffer.alloc(32, 8).toString("base64") },
-    encrypted,
-  ));
+  await assert.rejects(() =>
+    decryptAiProviderCredential(
+      { AI_PROVIDER_CREDENTIAL_ENCRYPTION_KEY: Buffer.alloc(32, 8).toString("base64") },
+      encrypted,
+    ),
+  );
 });

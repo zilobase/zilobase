@@ -1,29 +1,29 @@
-export type StructuralInsertionPendingChange = (pending: boolean) => void
+export type StructuralInsertionPendingChange = (pending: boolean) => void;
 
 export async function runStructuralInsertion<T>({
   create,
   insert,
   onPendingChange,
 }: {
-  create: (() => Promise<T | null>) | undefined
-  insert: (created: T) => void
-  onPendingChange?: StructuralInsertionPendingChange
+  create: (() => Promise<T | null>) | undefined;
+  insert: (created: T) => void;
+  onPendingChange?: StructuralInsertionPendingChange;
 }) {
   if (!create) {
-    return null
+    return null;
   }
 
-  onPendingChange?.(true)
+  onPendingChange?.(true);
 
   try {
-    const created = await create()
+    const created = await create();
 
     if (created !== null) {
-      insert(created)
+      insert(created);
     }
 
-    return created
+    return created;
   } finally {
-    onPendingChange?.(false)
+    onPendingChange?.(false);
   }
 }

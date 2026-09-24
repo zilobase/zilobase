@@ -1,13 +1,13 @@
-import { SparklesIcon } from "@/shared/components/icons"
-import { Button } from "@/shared/ui/button"
-import { cn } from "@/shared/lib/utils"
+import { SparklesIcon } from "@/shared/components/icons";
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 
 export function ChatSidebarTrigger({
   adjacentSidebarOpen = false,
   onOpen,
 }: {
-  adjacentSidebarOpen?: boolean
-  onOpen: () => void
+  adjacentSidebarOpen?: boolean;
+  onOpen: () => void;
 }) {
   return (
     <Button
@@ -25,5 +25,5 @@ export function ChatSidebarTrigger({
       <SparklesIcon className="size-4" />
       <span>AI</span>
     </Button>
-  )
+  );
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFile } from "node:fs/promises"
+import { readFile } from "node:fs/promises";
 
 const checks = {
   ".env.selfhost.example": ["GMAIL_TOKEN_ENCRYPTION_KEY", "GMAIL_PUBSUB_SUBSCRIPTION"],
@@ -21,13 +21,14 @@ const checks = {
     "drainMailDatabaseSyncOutbox",
     "mail.index",
   ],
-}
+};
 
 for (const [filename, required] of Object.entries(checks)) {
-  const contents = await readFile(new URL(`../../${filename}`, import.meta.url), "utf8")
+  const contents = await readFile(new URL(`../../${filename}`, import.meta.url), "utf8");
   for (const value of required) {
-    if (!contents.includes(value)) throw new Error(`${filename} is missing required Gmail deployment guidance: ${value}`)
+    if (!contents.includes(value))
+      throw new Error(`${filename} is missing required Gmail deployment guidance: ${value}`);
   }
 }
 
-console.info("Gmail deployment documentation checks passed.")
+console.info("Gmail deployment documentation checks passed.");

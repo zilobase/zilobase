@@ -13,12 +13,14 @@ async function connect(workspaceId: string, sessionId: string) {
     `https://example.com/navigation-realtime?workspace=${workspaceId}`,
     {
       headers: {
-        [CLAIMS_HEADER]: encodeURIComponent(JSON.stringify({
-          exp: Date.now() + 60_000,
-          sessionId,
-          userId: "user-1",
-          workspaceId,
-        })),
+        [CLAIMS_HEADER]: encodeURIComponent(
+          JSON.stringify({
+            exp: Date.now() + 60_000,
+            sessionId,
+            userId: "user-1",
+            workspaceId,
+          }),
+        ),
         Upgrade: "websocket",
       },
     },
@@ -73,20 +75,24 @@ describe("NavigationNotificationRoom in the Workers runtime", () => {
   it("rejects malformed invalidation events", async () => {
     const stub = env.NAVIGATION_NOTIFICATION_ROOM.getByName("workspace-1");
     await runInDurableObject(stub, async (instance: NavigationNotificationRoom) => {
-      expect(() => instance.publishInvalidation({
-        committedAt: "2026-09-01T00:00:00.000Z",
-        eventId: "event-1",
-        protocolVersion: 1,
-        type: "navigation.invalidate",
-        workspaceId: "",
-      })).toThrow("Invalid navigation invalidation event");
-      expect(() => instance.publishInvalidation({
-        committedAt: "2026-09-01T00:00:00.000Z",
-        eventId: "event-1",
-        protocolVersion: 2,
-        type: "navigation.invalidate",
-        workspaceId: "workspace-1",
-      } as never)).toThrow("Invalid navigation invalidation event");
+      expect(() =>
+        instance.publishInvalidation({
+          committedAt: "2026-09-01T00:00:00.000Z",
+          eventId: "event-1",
+          protocolVersion: 1,
+          type: "navigation.invalidate",
+          workspaceId: "",
+        }),
+      ).toThrow("Invalid navigation invalidation event");
+      expect(() =>
+        instance.publishInvalidation({
+          committedAt: "2026-09-01T00:00:00.000Z",
+          eventId: "event-1",
+          protocolVersion: 2,
+          type: "navigation.invalidate",
+          workspaceId: "workspace-1",
+        } as never),
+      ).toThrow("Invalid navigation invalidation event");
     });
   });
 });
@@ -97,9 +103,13 @@ function nextMessage(socket: WebSocket) {
       () => reject(new Error("Timed out waiting for navigation realtime message")),
       2_000,
     );
-    socket.addEventListener("message", (event) => {
-      clearTimeout(timeout);
-      resolve(String(event.data));
-    }, { once: true });
+    socket.addEventListener(
+      "message",
+      (event) => {
+        clearTimeout(timeout);
+        resolve(String(event.data));
+      },
+      { once: true },
+    );
   });
 }

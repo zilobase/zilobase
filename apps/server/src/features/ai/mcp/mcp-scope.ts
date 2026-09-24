@@ -63,10 +63,11 @@ export function getMcpCredentialScopeId(
 }
 
 export function isMcpScopeMatch(left: McpScope, right: McpScope) {
-  return left.type === right.type && (
-    left.type === "agent"
+  return (
+    left.type === right.type &&
+    (left.type === "agent"
       ? left.agentProfileId === (right as Extract<McpScope, { type: "agent" }>).agentProfileId
-      : left.userId === (right as Extract<McpScope, { type: "personal" }>).userId
+      : left.userId === (right as Extract<McpScope, { type: "personal" }>).userId)
   );
 }
 

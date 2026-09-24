@@ -28,21 +28,13 @@ import {
   type PageItemPlacement,
 } from "@zilobase/features/pages";
 import { usePageNavigation } from "@zilobase/features/pages/react";
-import type {
-  ContextAttachment,
-  ContextSourceRef,
-} from "@zilobase/page-context";
+import type { ContextAttachment, ContextSourceRef } from "@zilobase/page-context";
 import { type WorkspaceMember } from "@zilobase/features/workspaces";
 import { useWorkspaceAccessTargets } from "@zilobase/features/workspaces/react";
 
 const MAX_VISIBLE_PER_GROUP = 3;
 
-type AttachMenuCategory =
-  | "current-page"
-  | "skills"
-  | "link-to-page"
-  | "databases"
-  | "people";
+type AttachMenuCategory = "current-page" | "skills" | "link-to-page" | "databases" | "people";
 
 const categoryHeadings: Record<AttachMenuCategory, string> = {
   "current-page": "Current page",
@@ -60,13 +52,15 @@ const categoryOrder: AttachMenuCategory[] = [
   "people",
 ];
 
-type AttachMenuResult = AppSearchResult | {
-  email: string;
-  id: string;
-  path: string;
-  title: string;
-  type: "person";
-};
+type AttachMenuResult =
+  | AppSearchResult
+  | {
+      email: string;
+      id: string;
+      path: string;
+      title: string;
+      type: "person";
+    };
 
 function buildPagePath(
   pagesById: Map<string, Page>,
@@ -178,9 +172,7 @@ function buildMenuEntries({
   for (const category of categoryOrder) {
     const groupItems = groupedResults[category];
     const isExpanded = expandedCategories.has(category);
-    const visibleItems = isExpanded
-      ? groupItems
-      : groupItems.slice(0, MAX_VISIBLE_PER_GROUP);
+    const visibleItems = isExpanded ? groupItems : groupItems.slice(0, MAX_VISIBLE_PER_GROUP);
 
     for (const item of visibleItems) {
       entries.push({
@@ -266,16 +258,12 @@ function buildAttachMenuItems({
       }
     }
   } else if (currentDatabaseId) {
-    const database = databaseRecords.find(
-      (item) => item.id === currentDatabaseId,
-    );
+    const database = databaseRecords.find((item) => item.id === currentDatabaseId);
 
     if (database) {
       const page = database.pageId ? pagesById.get(database.pageId) : null;
       const title = database.name.trim() || "Database";
-      const path = page
-        ? `${buildPagePath(pagesById, page.id, placements)} / ${title}`
-        : title;
+      const path = page ? `${buildPagePath(pagesById, page.id, placements)} / ${title}` : title;
       const searchText = `${title} ${path}`;
 
       if (matchesQuery(searchText, query)) {
@@ -353,9 +341,7 @@ function buildAttachMenuItems({
     .forEach((result) => pushItem(result, "databases"));
 
   members
-    .filter((member) =>
-      matchesQuery(`${member.name} ${member.email}`, query),
-    )
+    .filter((member) => matchesQuery(`${member.name} ${member.email}`, query))
     .sort((left, right) => left.name.localeCompare(right.name))
     .forEach((member) =>
       pushItem(
@@ -484,9 +470,7 @@ function AttachMenuGroup({
     return null;
   }
 
-  const visibleItems = isExpanded
-    ? items
-    : items.slice(0, MAX_VISIBLE_PER_GROUP);
+  const visibleItems = isExpanded ? items : items.slice(0, MAX_VISIBLE_PER_GROUP);
   const hiddenCount = isExpanded ? 0 : items.length - visibleItems.length;
   const expandKey = getExpandKey(category);
   const expandEntry: ContextAttachMenuEntry | null =
@@ -502,16 +486,12 @@ function AttachMenuGroup({
   return (
     <PromptInputCommandGroup heading={categoryHeadings[category]}>
       {visibleItems.map((item) => {
-        const entryIndex = allEntries.findIndex(
-          (candidate) => candidate.key === item.key,
-        );
+        const entryIndex = allEntries.findIndex((candidate) => candidate.key === item.key);
 
         return (
           <PromptInputCommandItem
             aria-selected={entryIndex === selectedIndex}
-            className={
-              entryIndex === selectedIndex ? "bg-surface-muted text-content-primary" : ""
-            }
+            className={entryIndex === selectedIndex ? "bg-surface-muted text-content-primary" : ""}
             key={item.key}
             onMouseDown={(event) => {
               event.preventDefault();
@@ -537,9 +517,7 @@ function AttachMenuGroup({
             <div className="min-w-0">
               <div className="truncate">{item.result.title}</div>
               {item.result.path ? (
-                <div className="truncate text-xs text-content-secondary">
-                  {item.result.path}
-                </div>
+                <div className="truncate text-xs text-content-secondary">{item.result.path}</div>
               ) : null}
             </div>
           </PromptInputCommandItem>
@@ -547,9 +525,7 @@ function AttachMenuGroup({
       })}
       {expandEntry
         ? (() => {
-            const entryIndex = allEntries.findIndex(
-              (candidate) => candidate.key === expandKey,
-            );
+            const entryIndex = allEntries.findIndex((candidate) => candidate.key === expandKey);
 
             return (
               <PromptInputCommandItem
@@ -619,9 +595,7 @@ export const ContextAttachMenu = forwardRef<
   const placements = navigation?.placements ?? [];
   const members = membersQuery.data?.members ?? [];
   const selectedItemRef = useRef<HTMLDivElement | null>(null);
-  const [expandedCategories, setExpandedCategories] = useState<
-    Set<AttachMenuCategory>
-  >(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<AttachMenuCategory>>(new Set());
 
   const items = useMemo(
     () =>
@@ -734,9 +708,7 @@ export const ContextAttachMenu = forwardRef<
     <div className="absolute bottom-full left-0 z-50 mb-2 w-full max-w-md overflow-hidden rounded-lg bg-surface-overlay text-content-primary shadow-md ring-1 ring-stroke-default">
       <PromptInputCommand
         onValueChange={(value) => {
-          const nextIndex = menuEntries.findIndex(
-            (entry) => entry.key === value,
-          );
+          const nextIndex = menuEntries.findIndex((entry) => entry.key === value);
 
           if (nextIndex >= 0) {
             setSelectedIndex(nextIndex);
@@ -774,9 +746,7 @@ export const ContextAttachMenu = forwardRef<
   );
 });
 
-export function getAttachmentKey(
-  attachment: Pick<ContextAttachment, "type" | "id">,
-) {
+export function getAttachmentKey(attachment: Pick<ContextAttachment, "type" | "id">) {
   return `${attachment.type}:${attachment.id}`;
 }
 
@@ -784,11 +754,7 @@ export function parseMentionState(
   text: string,
   caretPosition: number | null | undefined,
 ): { mentionQuery: string; mentionStart: number } | null {
-  if (
-    caretPosition === null ||
-    caretPosition === undefined ||
-    caretPosition < 0
-  ) {
+  if (caretPosition === null || caretPosition === undefined || caretPosition < 0) {
     return null;
   }
 

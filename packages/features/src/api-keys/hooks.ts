@@ -1,29 +1,22 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { useZilobaseFeatures } from "../shared/context"
-import { useActiveWorkspaceId } from "../workspaces/hooks"
-import {
-  apiKeysQueryKey,
-  apiKeysQueryOptions,
-} from "./queries"
-import type { ApiKeyRecord, CreatedApiKeyRecord } from "./contracts"
+import { useZilobaseFeatures } from "../shared/context";
+import { useActiveWorkspaceId } from "../workspaces/hooks";
+import { apiKeysQueryKey, apiKeysQueryOptions } from "./queries";
+import type { ApiKeyRecord, CreatedApiKeyRecord } from "./contracts";
 
 export function useApiKeys(workspaceId?: string | null) {
-  const { apiFetch } = useZilobaseFeatures()
-  const activeWorkspaceId = useActiveWorkspaceId()
+  const { apiFetch } = useZilobaseFeatures();
+  const activeWorkspaceId = useActiveWorkspaceId();
 
-  return useQuery(apiKeysQueryOptions(apiFetch, workspaceId ?? activeWorkspaceId))
+  return useQuery(apiKeysQueryOptions(apiFetch, workspaceId ?? activeWorkspaceId));
 }
 
 export function useCreateApiKey() {
-  const { apiFetch, queryClient } = useZilobaseFeatures()
+  const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: (input: {
-      expiresIn?: number | null
-      name: string
-      workspaceId: string
-    }) =>
+    mutationFn: (input: { expiresIn?: number | null; name: string; workspaceId: string }) =>
       apiFetch<{ key: CreatedApiKeyRecord }>("/api/keys", {
         method: "POST",
         body: JSON.stringify(input),
@@ -31,23 +24,23 @@ export function useCreateApiKey() {
     onSuccess: async (_result, variables) => {
       await queryClient.invalidateQueries({
         queryKey: apiKeysQueryKey(variables.workspaceId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function useUpdateApiKey() {
-  const { apiFetch, queryClient } = useZilobaseFeatures()
+  const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
     mutationFn: ({
       id,
       ...input
     }: {
-      enabled?: boolean
-      id: string
-      name?: string
-      workspaceId: string
+      enabled?: boolean;
+      id: string;
+      name?: string;
+      workspaceId: string;
     }) =>
       apiFetch<{ key: ApiKeyRecord }>(`/api/keys/${encodeURIComponent(id)}`, {
         method: "PATCH",
@@ -56,28 +49,23 @@ export function useUpdateApiKey() {
     onSuccess: async (_result, variables) => {
       await queryClient.invalidateQueries({
         queryKey: apiKeysQueryKey(variables.workspaceId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function useDeleteApiKey() {
-  const { apiFetch, queryClient } = useZilobaseFeatures()
+  const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: ({
-      id,
-    }: {
-      id: string
-      workspaceId: string
-    }) =>
+    mutationFn: ({ id }: { id: string; workspaceId: string }) =>
       apiFetch<{ deleted: boolean }>(`/api/keys/${encodeURIComponent(id)}`, {
         method: "DELETE",
       }),
     onSuccess: async (_result, variables) => {
       await queryClient.invalidateQueries({
         queryKey: apiKeysQueryKey(variables.workspaceId),
-      })
+      });
     },
-  })
+  });
 }

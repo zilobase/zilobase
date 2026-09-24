@@ -1,7 +1,4 @@
-import type {
-  IncomingMessage,
-  Server as HttpServer,
-} from "node:http";
+import type { IncomingMessage, Server as HttpServer } from "node:http";
 import type { Duplex } from "node:stream";
 import crossws from "crossws/adapters/node";
 import type { WebSocketLike } from "@hocuspocus/server";
@@ -12,7 +9,10 @@ import {
 import { createAuth } from "@zilobase/server/node-adapter-api";
 import { runWithDbEnv } from "@zilobase/server/node-adapter-api";
 import { getDefaultCollaborationHocuspocus } from "@zilobase/server/node-adapter-api";
-import { appendPageCommentInHocuspocus, replacePageContentInHocuspocus } from "@zilobase/server/node-adapter-api";
+import {
+  appendPageCommentInHocuspocus,
+  replacePageContentInHocuspocus,
+} from "@zilobase/server/node-adapter-api";
 import type { RuntimeEnv } from "@zilobase/server/node-adapter-api";
 import type { ZilobaseEditionExtension } from "@zilobase/server/node-adapter-api";
 import type { Limits } from "@zilobase/runtime-ports";
@@ -60,9 +60,7 @@ export function attachNodeCollaborationRuntime(
         (peer as CollaborationPeer)._zilobaseCollaboration = connection;
       },
       message(peer, message) {
-        (peer as CollaborationPeer)._zilobaseCollaboration?.handleMessage(
-          message.uint8Array(),
-        );
+        (peer as CollaborationPeer)._zilobaseCollaboration?.handleMessage(message.uint8Array());
       },
       close(peer, event) {
         (peer as CollaborationPeer)._zilobaseCollaboration?.handleClose({
@@ -83,17 +81,10 @@ export function attachNodeCollaborationRuntime(
     });
   });
 
-  async function handleUpgrade(
-    request: IncomingMessage,
-    socket: Duplex,
-    head: Buffer,
-  ) {
+  async function handleUpgrade(request: IncomingMessage, socket: Duplex, head: Buffer) {
     const url = new URL(request.url ?? "/", "http://zilobase.local");
 
-    if (
-      url.pathname !== "/collaboration" &&
-      url.pathname !== "/meeting-collaboration"
-    ) {
+    if (url.pathname !== "/collaboration" && url.pathname !== "/meeting-collaboration") {
       if (!options.passthroughPaths?.includes(url.pathname)) {
         socket.destroy();
       }
@@ -101,8 +92,9 @@ export function attachNodeCollaborationRuntime(
     }
 
     const webRequest = toUpgradeRequest(request);
-    const authenticate = options.authenticate ?? ((request, runtimeEnv) =>
-      authenticateUpgrade(request, runtimeEnv, options.editionExtension));
+    const authenticate =
+      options.authenticate ??
+      ((request, runtimeEnv) => authenticateUpgrade(request, runtimeEnv, options.editionExtension));
     const userId = await authenticate(webRequest, env);
 
     if (!userId) {
@@ -172,7 +164,7 @@ function toUpgradeRequest(request: IncomingMessage) {
   const forwardedProtocol = request.headers["x-forwarded-proto"];
   const protocol = Array.isArray(forwardedProtocol)
     ? forwardedProtocol[0]
-    : forwardedProtocol ?? "http";
+    : (forwardedProtocol ?? "http");
   const host = request.headers.host ?? "zilobase.local";
   const headers = new Headers();
 
@@ -184,10 +176,7 @@ function toUpgradeRequest(request: IncomingMessage) {
     }
   }
 
-  return new Request(
-    new URL(request.url ?? "/", `${protocol}://${host}`),
-    { headers },
-  );
+  return new Request(new URL(request.url ?? "/", `${protocol}://${host}`), { headers });
 }
 
 function rejectUpgrade(
@@ -207,7 +196,6 @@ function rejectUpgrade(
     .join("\r\n");
   socket.end(`HTTP/1.1 ${status} ${statusText}\r\n${responseHeaders}\r\n\r\n`);
 }
-
 
 type CollaborationPeer = {
   _zilobaseCollaboration?: {

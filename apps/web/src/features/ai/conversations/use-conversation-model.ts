@@ -11,19 +11,11 @@ export function useConversationModel() {
 
     return queryModels.length ? queryModels : fallbackModels;
   }, [aiModelsQuery.data?.models]);
-  const selectedModelData = useMemo(
-    () => models.find((m) => m.id === model),
-    [models, model],
-  );
-  const chefs = useMemo(
-    () => Array.from(new Set(models.map((item) => item.chef))),
-    [models],
-  );
+  const selectedModelData = useMemo(() => models.find((m) => m.id === model), [models, model]);
+  const chefs = useMemo(() => Array.from(new Set(models.map((item) => item.chef))), [models]);
 
   useEffect(() => {
-    setModel((current) =>
-      models.some((item) => item.id === current) ? current : models[0].id,
-    );
+    setModel((current) => (models.some((item) => item.id === current) ? current : models[0].id));
   }, [models]);
 
   const handleModelSelect = useCallback(

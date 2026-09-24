@@ -9,38 +9,55 @@ export function isAutomationSlackEnabled(env: RuntimeEnv) {
 }
 
 export function getAutomationWebhookHttpDomains(env: RuntimeEnv) {
-  return new Set((getStringEnv(env, "AUTOMATION_WEBHOOK_HTTP_DOMAINS") ?? "")
-    .split(",")
-    .map((domain) => domain.trim().toLowerCase())
-    .filter(Boolean));
-}
-
-export function isDatabaseAutomationsFeatureEnabled(env: RuntimeEnv) {
-  return (
-    getStringEnv(env, "DATABASE_AUTOMATIONS_ENABLED")?.trim().toLowerCase() ===
-    "true"
+  return new Set(
+    (getStringEnv(env, "AUTOMATION_WEBHOOK_HTTP_DOMAINS") ?? "")
+      .split(",")
+      .map((domain) => domain.trim().toLowerCase())
+      .filter(Boolean),
   );
 }
 
+export function isDatabaseAutomationsFeatureEnabled(env: RuntimeEnv) {
+  return getStringEnv(env, "DATABASE_AUTOMATIONS_ENABLED")?.trim().toLowerCase() === "true";
+}
+
 export function isDatabaseAutomationExecutionEnabled(env: RuntimeEnv) {
-  return getStringEnv(env, "DATABASE_AUTOMATIONS_EXECUTION_DISABLED")?.trim().toLowerCase() !== "true";
+  return (
+    getStringEnv(env, "DATABASE_AUTOMATIONS_EXECUTION_DISABLED")?.trim().toLowerCase() !== "true"
+  );
 }
 
 export function getDatabaseAutomationRetention(env: RuntimeEnv) {
   return {
-    runSummaryDays: boundedPositiveInteger(env, "DATABASE_AUTOMATION_RUN_RETENTION_DAYS", 30, 1, 365),
-    stepDetailDays: boundedPositiveInteger(env, "DATABASE_AUTOMATION_STEP_RETENTION_DAYS", 7, 1, 90),
+    runSummaryDays: boundedPositiveInteger(
+      env,
+      "DATABASE_AUTOMATION_RUN_RETENTION_DAYS",
+      30,
+      1,
+      365,
+    ),
+    stepDetailDays: boundedPositiveInteger(
+      env,
+      "DATABASE_AUTOMATION_STEP_RETENTION_DAYS",
+      7,
+      1,
+      90,
+    ),
   };
 }
 
-function boundedPositiveInteger(env: RuntimeEnv, key: string, fallback: number, minimum: number, maximum: number) {
+function boundedPositiveInteger(
+  env: RuntimeEnv,
+  key: string,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+) {
   const parsed = Number(getStringEnv(env, key));
   return Number.isInteger(parsed) ? Math.max(minimum, Math.min(parsed, maximum)) : fallback;
 }
 
-const DESKTOP_CLIENT_ORIGINS = [
-  "zilo-desktop://app",
-] as const;
+const DESKTOP_CLIENT_ORIGINS = ["zilo-desktop://app"] as const;
 
 export function getClientOrigins(env: RuntimeEnv) {
   return getRequiredStringEnv(env, "CLIENT_URL")
@@ -53,26 +70,24 @@ const clipperOriginSchemes = [
   "chrome-extension:",
   "moz-extension:",
   "safari-web-extension:",
-] as const
+] as const;
 
 export function getClipperExtensionOrigins(env: RuntimeEnv) {
   return (getStringEnv(env, "CLIPPER_EXTENSION_ORIGINS") ?? "")
     .split(",")
     .map((origin) => origin.trim())
     .filter((origin) => {
-      const url = parseUrl(origin)
+      const url = parseUrl(origin);
       return Boolean(
         url &&
-          clipperOriginSchemes.includes(
-            url.protocol as (typeof clipperOriginSchemes)[number],
-          ) &&
-          (url.pathname === "/" || url.pathname === "") &&
-          !url.username &&
-          !url.password &&
-          !url.search &&
-          !url.hash,
-      )
-    })
+        clipperOriginSchemes.includes(url.protocol as (typeof clipperOriginSchemes)[number]) &&
+        (url.pathname === "/" || url.pathname === "") &&
+        !url.username &&
+        !url.password &&
+        !url.search &&
+        !url.hash,
+      );
+    });
 }
 
 export function getPrimaryClientOrigin(env: RuntimeEnv) {
@@ -93,10 +108,7 @@ function readCanonicalApiOrigin(env: RuntimeEnv) {
   }
 }
 
-export function resolvePublicRequestUrl(
-  request: Request,
-  env: RuntimeEnv = {},
-) {
+export function resolvePublicRequestUrl(request: Request, env: RuntimeEnv = {}) {
   const incoming = new URL(request.url);
   const localAdapterPort = getStringEnv(env, "ZILOBASE_ADAPTER_PORT");
 
@@ -104,14 +116,10 @@ export function resolvePublicRequestUrl(
   // In local adapter mode, keep OAuth and desktop callbacks on the explicitly
   // configured API origin so proxy headers cannot change the registered URL.
   if (localAdapterPort && isLocalAuthConfiguration(env)) {
-    return new URL(
-      `${incoming.pathname}${incoming.search}`,
-      getCanonicalApiOrigin(env),
-    );
+    return new URL(`${incoming.pathname}${incoming.search}`, getCanonicalApiOrigin(env));
   }
 
-  const hostHeader =
-    request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const hostHeader = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
   const host = hostHeader?.split(",")[0]?.trim();
 
   if (host) {
@@ -119,10 +127,7 @@ export function resolvePublicRequestUrl(
       const hostname = new URL(`http://${host}`).hostname;
       if (isLocalDevelopmentHost(hostname)) {
         const protocol = request.headers.get("x-forwarded-proto") ?? "http";
-        return new URL(
-          `${incoming.pathname}${incoming.search}`,
-          `${protocol}://${host}`,
-        );
+        return new URL(`${incoming.pathname}${incoming.search}`, `${protocol}://${host}`);
       }
     } catch {
       // Fall through to referer or the local adapter origin.
@@ -134,10 +139,7 @@ export function resolvePublicRequestUrl(
     try {
       const refererUrl = new URL(referer);
       if (isLocalDevelopmentHost(refererUrl.hostname)) {
-        return new URL(
-          `${incoming.pathname}${incoming.search}`,
-          refererUrl.origin,
-        );
+        return new URL(`${incoming.pathname}${incoming.search}`, refererUrl.origin);
       }
     } catch {
       // Fall through to the local adapter origin.
@@ -159,17 +161,11 @@ function isLocalAuthConfiguration(env: RuntimeEnv) {
 }
 
 export function getCanonicalApiOrigin(env: RuntimeEnv) {
-  return getCanonicalHttpOrigin(
-    getRequiredStringEnv(env, "BETTER_AUTH_URL"),
-    "BETTER_AUTH_URL",
-  );
+  return getCanonicalHttpOrigin(getRequiredStringEnv(env, "BETTER_AUTH_URL"), "BETTER_AUTH_URL");
 }
 
 export function getCanonicalWebOrigin(env: RuntimeEnv) {
-  return getCanonicalHttpOrigin(
-    getPrimaryClientOrigin(env),
-    "the first CLIENT_URL origin",
-  );
+  return getCanonicalHttpOrigin(getPrimaryClientOrigin(env), "the first CLIENT_URL origin");
 }
 
 export function getCanonicalHttpOrigin(value: string, label = "origin") {
@@ -187,13 +183,7 @@ export function getCanonicalHttpOrigin(value: string, label = "origin") {
     throw new Error(`${label} must use HTTPS unless it is a loopback origin`);
   }
 
-  if (
-    url.username ||
-    url.password ||
-    url.pathname !== "/" ||
-    url.search ||
-    url.hash
-  ) {
+  if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
     throw new Error(
       `${label} must be an origin without credentials, a path, a query, or a fragment`,
     );
@@ -210,9 +200,7 @@ export function isAllowedClientOrigin(env: RuntimeEnv, origin: string | null) {
   if (
     getClientOrigins(env).includes(origin) ||
     getClipperExtensionOrigins(env).includes(origin) ||
-    DESKTOP_CLIENT_ORIGINS.includes(
-      origin as (typeof DESKTOP_CLIENT_ORIGINS)[number],
-    )
+    DESKTOP_CLIENT_ORIGINS.includes(origin as (typeof DESKTOP_CLIENT_ORIGINS)[number])
   ) {
     return true;
   }
@@ -258,8 +246,7 @@ export function getTrustedOrigins(env: RuntimeEnv, requestOrigin: string) {
 
 function isExpoDevelopmentOrigin(url: URL) {
   return (
-    (url.protocol === "exp:" || url.protocol === "exps:") &&
-    isLocalDevelopmentHost(url.hostname)
+    (url.protocol === "exp:" || url.protocol === "exps:") && isLocalDevelopmentHost(url.hostname)
   );
 }
 
@@ -330,4 +317,3 @@ function parseUrl(value: string) {
     return null;
   }
 }
-

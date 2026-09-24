@@ -17,9 +17,7 @@ export class RecursiveMarkdownTextSplitter extends RecursiveCharacterTextSplitte
   ) {
     super({
       ...options,
-      separators: RecursiveCharacterTextSplitter.getSeparatorsForLanguage(
-        Language.MARKDOWN,
-      ),
+      separators: RecursiveCharacterTextSplitter.getSeparatorsForLanguage(Language.MARKDOWN),
       isSeparatorRegex: true,
     });
   }
@@ -34,11 +32,7 @@ export class MarkdownTextSplitter {
   private readonly returnEachLine: boolean;
 
   public constructor(options: MarkdownTextSplitterOptions = {}) {
-    const {
-      headersToSplitOn,
-      returnEachLine = false,
-      stripHeaders = true,
-    } = options;
+    const { headersToSplitOn, returnEachLine = false, stripHeaders = true } = options;
 
     this.stripHeaders = stripHeaders;
     this.splittableHeaders = Object.fromEntries(

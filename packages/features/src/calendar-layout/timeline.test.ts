@@ -1,9 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { civilDayOrdinal, dateFromOrdinal, dateFromRank, visibleDateRank, timelineGeometry, contiguousTimeline, timelineRetargets, snapTimelineOffset } from "./timeline";
+import {
+  civilDayOrdinal,
+  dateFromOrdinal,
+  dateFromRank,
+  visibleDateRank,
+  timelineGeometry,
+  contiguousTimeline,
+  timelineRetargets,
+  snapTimelineOffset,
+} from "./timeline";
 
 test("civil dates round trip across DST, leap days and negative ordinals", () => {
-  for (const date of ["1969-12-31", "2024-02-29", "2026-03-08", "2026-11-01"]) assert.equal(dateFromOrdinal(civilDayOrdinal(date)), date);
+  for (const date of ["1969-12-31", "2024-02-29", "2026-03-08", "2026-11-01"])
+    assert.equal(dateFromOrdinal(civilDayOrdinal(date)), date);
   assert.equal(civilDayOrdinal("2026-03-09") - civilDayOrdinal("2026-03-08"), 1);
 });
 test("business date positions skip weekends in both directions", () => {
@@ -19,8 +29,14 @@ test("fractional anchor survives prepend and resize", () => {
   assert.ok(Math.abs(restored.fraction - anchor.fraction) < 1e-10);
 });
 test("coverage stops at holes even when distant items are cached", () => {
-  assert.deepEqual(contiguousTimeline(3, 8, i => i !== 1 && i !== 6), { first: 2, last: 5 });
-  assert.deepEqual(contiguousTimeline(1, 8, i => i !== 1), { first: 1, last: 0 });
+  assert.deepEqual(
+    contiguousTimeline(3, 8, (i) => i !== 1 && i !== 6),
+    { first: 2, last: 5 },
+  );
+  assert.deepEqual(
+    contiguousTimeline(1, 8, (i) => i !== 1),
+    { first: 1, last: 0 },
+  );
 });
 test("passive visible dates do not retarget; explicit navigation does", () => {
   assert.equal(timelineRetargets(null, "2026-09-09", null), true);
@@ -29,13 +45,13 @@ test("passive visible dates do not retarget; explicit navigation does", () => {
   assert.equal(timelineRetargets("2026-09-16", "2026-09-16", "2026-09-16"), false);
 });
 test("timeline offsets snap to the nearest civil-date column", () => {
-  assert.equal(snapTimelineOffset(0, 140), null);      // on boundary
-  assert.equal(snapTimelineOffset(1, 140), null);       // within dead-zone
+  assert.equal(snapTimelineOffset(0, 140), null); // on boundary
+  assert.equal(snapTimelineOffset(1, 140), null); // within dead-zone
   assert.equal(snapTimelineOffset(69, 140), 0);
   assert.equal(snapTimelineOffset(70, 140), 140);
   assert.equal(snapTimelineOffset(209, 140), 140);
   assert.equal(snapTimelineOffset(211, 140), 280);
-  assert.equal(snapTimelineOffset(140, 140), null);     // exactly on boundary
-  assert.equal(snapTimelineOffset(141, 140), null);     // within dead-zone
-  assert.equal(snapTimelineOffset(-1, 140), null);      // negative within dead-zone
+  assert.equal(snapTimelineOffset(140, 140), null); // exactly on boundary
+  assert.equal(snapTimelineOffset(141, 140), null); // within dead-zone
+  assert.equal(snapTimelineOffset(-1, 140), null); // negative within dead-zone
 });

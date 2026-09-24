@@ -25,8 +25,7 @@ const DATABASE_UNAVAILABLE_MESSAGES = [
 ];
 
 export const DATABASE_UNAVAILABLE_CODE = "DATABASE_UNAVAILABLE";
-export const DATABASE_UNAVAILABLE_MESSAGE =
-  "The database is temporarily unavailable.";
+export const DATABASE_UNAVAILABLE_MESSAGE = "The database is temporarily unavailable.";
 
 export function isDatabaseUnavailableError(error: unknown) {
   const pending = [error];
@@ -43,20 +42,14 @@ export function isDatabaseUnavailableError(error: unknown) {
       message?: unknown;
     };
 
-    if (
-      typeof record.code === "string" &&
-      DATABASE_UNAVAILABLE_CODES.has(record.code)
-    ) {
+    if (typeof record.code === "string" && DATABASE_UNAVAILABLE_CODES.has(record.code)) {
       return true;
     }
 
-    const errorMessage =
-      typeof record.message === "string" ? record.message.toLowerCase() : null;
+    const errorMessage = typeof record.message === "string" ? record.message.toLowerCase() : null;
     if (
       errorMessage &&
-      DATABASE_UNAVAILABLE_MESSAGES.some((message) =>
-        errorMessage.includes(message),
-      )
+      DATABASE_UNAVAILABLE_MESSAGES.some((message) => errorMessage.includes(message))
     ) {
       return true;
     }

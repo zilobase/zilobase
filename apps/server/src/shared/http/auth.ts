@@ -12,6 +12,7 @@ export async function readAuthenticatedJson(c: Context<AppBindings>) {
   const user = getAuthenticatedUser(c);
   if (!user) return { ok: false as const, response: c.json({ error: "Unauthorized" }, 401) };
   const body = await readJsonBody(c.req);
-  if (!body || typeof body !== "object") return { ok: false as const, response: c.json({ error: "A JSON body is required" }, 400) };
+  if (!body || typeof body !== "object")
+    return { ok: false as const, response: c.json({ error: "A JSON body is required" }, 400) };
   return { ok: true as const, user, body };
 }

@@ -1,11 +1,7 @@
 export function register({ readSource, assert, loadModule, test }) {
   test("runtime server metadata resolves API, image, and realtime origins", async () => {
-    const {
-      resolveDesktopServerUrls,
-      resolveRuntimeWebSocketUrl,
-      validateDesktopServer,
-    } =
-      await loadModule("/src/platform/server/desktop-server.ts")
+    const { resolveDesktopServerUrls, resolveRuntimeWebSocketUrl, validateDesktopServer } =
+      await loadModule("/src/platform/server/desktop-server.ts");
     const server = validateDesktopServer({
       apiOrigin: "https://notes.example.com",
       displayName: "Team Notes",
@@ -15,7 +11,7 @@ export function register({ readSource, assert, loadModule, test }) {
       protocolVersion: 1,
       serverVersion: "0.0.30",
       webOrigin: "https://notes.example.com",
-    })
+    });
 
     assert.deepEqual(resolveDesktopServerUrls(server), {
       apiOrigin: "https://notes.example.com",
@@ -23,7 +19,7 @@ export function register({ readSource, assert, loadModule, test }) {
       imageOrigin: "https://notes.example.com",
       realtimeUrl: "wss://notes.example.com/database-collaboration",
       webOrigin: "https://notes.example.com",
-    })
+    });
     assert.equal(
       resolveRuntimeWebSocketUrl(
         "wss://old.example.com/collaboration?document=page.1",
@@ -31,21 +27,21 @@ export function register({ readSource, assert, loadModule, test }) {
         server,
       ),
       "wss://notes.example.com/collaboration?document=page.1",
-    )
+    );
     assert.throws(() =>
       validateDesktopServer({
         ...server,
         instanceId: "instance id with spaces",
       }),
-    )
+    );
     assert.throws(() =>
       validateDesktopServer({
         ...server,
         apiOrigin: "https://notes.example.com/path",
         issuer: "https://notes.example.com/path",
       }),
-    )
-  })
+    );
+  });
 
   test("the built-in Cloud alias matches Cloud discovery without weakening custom instance binding", async () => {
     const {
@@ -54,9 +50,9 @@ export function register({ readSource, assert, loadModule, test }) {
       desktopDevelopmentApiOrigin,
       desktopServersReferToSameInstance,
       isCloudDesktopServer,
-    } = await loadModule("/src/platform/server/desktop-server.ts")
-    assert.equal(isCloudDesktopServer(CLOUD_DESKTOP_SERVER, false), true)
-    assert.equal(isCloudDesktopServer(CLOUD_DESKTOP_SERVER, true), false)
+    } = await loadModule("/src/platform/server/desktop-server.ts");
+    assert.equal(isCloudDesktopServer(CLOUD_DESKTOP_SERVER, false), true);
+    assert.equal(isCloudDesktopServer(CLOUD_DESKTOP_SERVER, true), false);
     assert.equal(
       isCloudDesktopServer({
         ...CLOUD_DESKTOP_SERVER,
@@ -65,9 +61,9 @@ export function register({ readSource, assert, loadModule, test }) {
         webOrigin: "https://notes.example.com",
       }),
       false,
-    )
-    assert.equal(desktopCloudConnectUrl(false), CLOUD_DESKTOP_SERVER.apiOrigin)
-    assert.equal(desktopCloudConnectUrl(true), desktopDevelopmentApiOrigin())
+    );
+    assert.equal(desktopCloudConnectUrl(false), CLOUD_DESKTOP_SERVER.apiOrigin);
+    assert.equal(desktopCloudConnectUrl(true), desktopDevelopmentApiOrigin());
     assert.equal(
       isCloudDesktopServer(
         {
@@ -80,15 +76,12 @@ export function register({ readSource, assert, loadModule, test }) {
         true,
       ),
       true,
-    )
+    );
     const discoveredCloud = {
       ...CLOUD_DESKTOP_SERVER,
       instanceId: "cloud-database-instance",
-    }
-    assert.equal(
-      desktopServersReferToSameInstance(CLOUD_DESKTOP_SERVER, discoveredCloud),
-      true,
-    )
+    };
+    assert.equal(desktopServersReferToSameInstance(CLOUD_DESKTOP_SERVER, discoveredCloud), true);
     assert.equal(
       desktopServersReferToSameInstance(
         {
@@ -107,39 +100,41 @@ export function register({ readSource, assert, loadModule, test }) {
         },
       ),
       false,
-    )
-  })
+    );
+  });
 
   test("settings lists saved desktop servers and can remove one instance", async () => {
-    const source = await readSource("/src/features/settings/screens/preferences.tsx")
-    assert.match(source, /listDesktopServerProfiles/)
-    assert.match(source, /Remove from this device/)
-    assert.match(source, /Connect another server/)
-    assert.match(source, /executeDesktopServerSwitch/)
-    assert.doesNotMatch(source, /DesktopServerSelector/)
-    assert.doesNotMatch(source, /Sign out to change server\?/)
-  })
+    const source = await readSource("/src/features/settings/screens/preferences.tsx");
+    assert.match(source, /listDesktopServerProfiles/);
+    assert.match(source, /Remove from this device/);
+    assert.match(source, /Connect another server/);
+    assert.match(source, /executeDesktopServerSwitch/);
+    assert.doesNotMatch(source, /DesktopServerSelector/);
+    assert.doesNotMatch(source, /Sign out to change server\?/);
+  });
 
   test("connect another server omits Cloud when it is already saved", async () => {
-    const source = await readSource("/src/features/desktop/components/desktop-connect-server-dialog.tsx")
+    const source = await readSource(
+      "/src/features/desktop/components/desktop-connect-server-dialog.tsx",
+    );
 
-    assert.match(source, /cloudAlreadySaved \? null/)
-    assert.match(source, /DesktopDevCustomServerSelect/)
-    assert.doesNotMatch(source, /Switch to Zilobase Cloud/)
-  })
+    assert.match(source, /cloudAlreadySaved \? null/);
+    assert.match(source, /DesktopDevCustomServerSelect/);
+    assert.doesNotMatch(source, /Switch to Zilobase Cloud/);
+  });
 
   test("development custom servers are a dropdown supplied by the desktop host", async () => {
     const [selector, server] = await Promise.all([
       readSource("/src/features/desktop/components/desktop-dev-custom-server-select.tsx"),
       readSource("/src/platform/server/desktop-server.ts"),
-    ])
+    ]);
 
-    assert.match(selector, /Choose custom server/)
-    assert.match(selector, /import\.meta\.env\.DEV/)
-    assert.match(selector, /desktopDevelopmentTargets\(\)/)
-    assert.match(server, /developmentTargets\.cloudApiOrigin/)
-    assert.match(server, /server\.developmentTargets\(\)/)
-  })
+    assert.match(selector, /Choose custom server/);
+    assert.match(selector, /import\.meta\.env\.DEV/);
+    assert.match(selector, /desktopDevelopmentTargets\(\)/);
+    assert.match(server, /developmentTargets\.cloudApiOrigin/);
+    assert.match(server, /server\.developmentTargets\(\)/);
+  });
 
   test("desktop auth picks a server before continuing in the browser", async () => {
     const [connect, screen, login, signup, router] = await Promise.all([
@@ -148,20 +143,20 @@ export function register({ readSource, assert, loadModule, test }) {
       readSource("/src/features/auth/screens/login.tsx"),
       readSource("/src/features/auth/screens/signup.tsx"),
       readSource("/src/app/routing/route-groups/public-routes.tsx"),
-    ])
+    ]);
 
-    assert.match(connect, /Choose a server/)
-    assert.match(connect, /Use Zilobase Cloud/)
-    assert.match(connect, /DesktopDevCustomServerSelect/)
-    assert.match(connect, /desktopCloudConnectUrl/)
-    assert.match(connect, /Verify and continue/)
-    assert.match(connect, /continue in your browser/)
-    assert.match(screen, /Change server/)
-    assert.match(screen, /to="\/connect"/)
-    assert.match(screen, /Back to/)
-    assert.match(screen, /server\.apiOrigin/)
-    assert.match(login, /DesktopBrowserAuthScreen/)
-    assert.match(signup, /DesktopBrowserAuthScreen/)
-    assert.match(router, /throw redirect\(\{ to: "\/login" \}\)/)
-  })
+    assert.match(connect, /Choose a server/);
+    assert.match(connect, /Use Zilobase Cloud/);
+    assert.match(connect, /DesktopDevCustomServerSelect/);
+    assert.match(connect, /desktopCloudConnectUrl/);
+    assert.match(connect, /Verify and continue/);
+    assert.match(connect, /continue in your browser/);
+    assert.match(screen, /Change server/);
+    assert.match(screen, /to="\/connect"/);
+    assert.match(screen, /Back to/);
+    assert.match(screen, /server\.apiOrigin/);
+    assert.match(login, /DesktopBrowserAuthScreen/);
+    assert.match(signup, /DesktopBrowserAuthScreen/);
+    assert.match(router, /throw redirect\(\{ to: "\/login" \}\)/);
+  });
 }

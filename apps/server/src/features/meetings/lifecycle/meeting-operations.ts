@@ -1,10 +1,6 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
-import {
-  canAccessPageInWorkspace,
-  getAccessiblePageIds,
-  getMembership,
-} from "../../access";
+import { canAccessPageInWorkspace, getAccessiblePageIds, getMembership } from "../../access";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
@@ -43,14 +39,7 @@ export async function createMeeting(input: {
     throw new ServiceMutationError("Page not found", 404);
   }
 
-  if (
-    !(await canAccessPageInWorkspace(
-      pageRecord.id,
-      input.workspaceId,
-      input.userId,
-      "edit",
-    ))
-  ) {
+  if (!(await canAccessPageInWorkspace(pageRecord.id, input.workspaceId, input.userId, "edit"))) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 
@@ -98,11 +87,7 @@ export async function updateMeeting(input: {
   patch: MeetingPatch;
   userId: string;
 }) {
-  const existing = await getMeetingForUser(
-    input.meetingId,
-    input.userId,
-    "edit",
-  );
+  const existing = await getMeetingForUser(input.meetingId, input.userId, "edit");
   const values: Partial<typeof meeting.$inferInsert> = {
     updatedAt: new Date(),
   };
@@ -156,32 +141,20 @@ export async function deleteMeeting(input: {
   meetingId: string;
   userId: string;
 }) {
-  const existing = await getMeetingForUser(
-    input.meetingId,
-    input.userId,
-    "edit",
-  );
+  const existing = await getMeetingForUser(input.meetingId, input.userId, "edit");
 
   if (input.env) {
     const runtimeState = await getRuntimePorts().meetings?.get(existing.id);
     if (
       runtimeState &&
-      ["claimed", "recording", "paused", "finishing"].includes(
-        runtimeState.status,
-      )
+      ["claimed", "recording", "paused", "finishing"].includes(runtimeState.status)
     ) {
-      throw new ServiceMutationError(
-        "Stop the recording before deleting this meeting",
-        409,
-      );
+      throw new ServiceMutationError("Stop the recording before deleting this meeting", 409);
     }
   }
 
   if (isMeetingRecordingActive(existing.status as MeetingStatus)) {
-    throw new ServiceMutationError(
-      "Stop the recording before deleting this meeting",
-      409,
-    );
+    throw new ServiceMutationError("Stop the recording before deleting this meeting", 409);
   }
 
   const now = new Date();
@@ -205,19 +178,14 @@ export async function deleteMeeting(input: {
   return deleted;
 }
 
-export async function listMeetingsForUser(input: {
-  userId: string;
-  workspaceId: string;
-}) {
+export async function listMeetingsForUser(input: { userId: string; workspaceId: string }) {
   if (!(await getMembership(input.workspaceId, input.userId))) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 
-  const accessibleIds = await getAccessiblePageIds(
-    input.workspaceId,
-    input.userId,
-    { membershipVerified: true },
-  );
+  const accessibleIds = await getAccessiblePageIds(input.workspaceId, input.userId, {
+    membershipVerified: true,
+  });
   const rows = await db
     .select({
       meeting,
@@ -225,12 +193,7 @@ export async function listMeetingsForUser(input: {
     })
     .from(meeting)
     .leftJoin(page, eq(page.id, meeting.notesPageId))
-    .where(
-      and(
-        eq(meeting.workspaceId, input.workspaceId),
-        isNull(meeting.deletedAt),
-      ),
-    )
+    .where(and(eq(meeting.workspaceId, input.workspaceId), isNull(meeting.deletedAt)))
     .orderBy(desc(meeting.updatedAt));
 
   return rows

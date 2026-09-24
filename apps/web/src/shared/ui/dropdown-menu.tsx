@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
+import * as React from "react";
+import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
 
-import { Button } from "@/shared/ui/button"
-import { cn } from "@/shared/lib/utils"
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 import {
   menuSurfaceVariants,
   menuContentVariants,
@@ -12,112 +12,105 @@ import {
   menuItemVariants,
   menuLabelClassName,
   menuSeparatorClassName,
-} from "@/shared/ui/menu-styles"
-import {
-  CheckIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  XIcon,
-} from "@/shared/components/icons"
+} from "@/shared/ui/menu-styles";
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, XIcon } from "@/shared/components/icons";
 
-type DropdownMenuSubDisplayMode = "inline" | "nested"
+type DropdownMenuSubDisplayMode = "inline" | "nested";
 
 type InlineSubmenuPanel = {
-  children: React.ReactNode
-  className?: string
-  id: string
-  title: string
-}
+  children: React.ReactNode;
+  className?: string;
+  id: string;
+  title: string;
+};
 
 type InlineSubmenuNavigationContextValue = {
-  getActivePanel: () => InlineSubmenuPanel | null
-  goBack: () => void
-  navigateTo: (id: string) => void
-  registerPanel: (panel: InlineSubmenuPanel) => void
-  reset: () => void
-  subscribe: (listener: () => void) => () => void
-}
+  getActivePanel: () => InlineSubmenuPanel | null;
+  goBack: () => void;
+  navigateTo: (id: string) => void;
+  registerPanel: (panel: InlineSubmenuPanel) => void;
+  reset: () => void;
+  subscribe: (listener: () => void) => () => void;
+};
 
 const InlineSubmenuNavigationContext =
-  React.createContext<InlineSubmenuNavigationContextValue | null>(null)
-const InlineSubmenuRegistrationContext = React.createContext(false)
-const InlineSubmenuPanelContext = React.createContext(false)
+  React.createContext<InlineSubmenuNavigationContextValue | null>(null);
+const InlineSubmenuRegistrationContext = React.createContext(false);
+const InlineSubmenuPanelContext = React.createContext(false);
 
-const getNoActivePanel = () => null
-const subscribeNoop = () => () => {}
+const getNoActivePanel = () => null;
+const subscribeNoop = () => () => {};
 
 function createInlineSubmenuNavigationStore(): InlineSubmenuNavigationContextValue {
-  const panels = new Map<string, InlineSubmenuPanel>()
-  const listeners = new Set<() => void>()
-  let navigationStack: string[] = []
+  const panels = new Map<string, InlineSubmenuPanel>();
+  const listeners = new Set<() => void>();
+  let navigationStack: string[] = [];
 
-  const notify = () => listeners.forEach((listener) => listener())
+  const notify = () => listeners.forEach((listener) => listener());
 
   return {
     getActivePanel: () => {
-      const activePanelId = navigationStack.at(-1)
-      return activePanelId ? (panels.get(activePanelId) ?? null) : null
+      const activePanelId = navigationStack.at(-1);
+      return activePanelId ? (panels.get(activePanelId) ?? null) : null;
     },
     goBack: () => {
-      if (navigationStack.length === 0) return
-      navigationStack = navigationStack.slice(0, -1)
-      notify()
+      if (navigationStack.length === 0) return;
+      navigationStack = navigationStack.slice(0, -1);
+      notify();
     },
     navigateTo: (id) => {
-      if (!panels.has(id) || navigationStack.at(-1) === id) return
-      navigationStack = [...navigationStack, id]
-      notify()
+      if (!panels.has(id) || navigationStack.at(-1) === id) return;
+      navigationStack = [...navigationStack, id];
+      notify();
     },
     registerPanel: (panel) => {
-      const currentPanel = panels.get(panel.id)
+      const currentPanel = panels.get(panel.id);
       if (
         currentPanel &&
         currentPanel.children === panel.children &&
         currentPanel.className === panel.className &&
         currentPanel.title === panel.title
       ) {
-        return
+        return;
       }
 
-      panels.set(panel.id, panel)
-      if (navigationStack.at(-1) === panel.id) notify()
+      panels.set(panel.id, panel);
+      if (navigationStack.at(-1) === panel.id) notify();
     },
     reset: () => {
-      if (navigationStack.length === 0) return
-      navigationStack = []
-      notify()
+      if (navigationStack.length === 0) return;
+      navigationStack = [];
+      notify();
     },
     subscribe: (listener) => {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
-  }
+  };
 }
 
 type DropdownMenuSubContextValue = {
-  displayMode: DropdownMenuSubDisplayMode
-  id: string
-  title: string
-}
+  displayMode: DropdownMenuSubDisplayMode;
+  id: string;
+  title: string;
+};
 
-const DropdownMenuDefaultSubModeContext =
-  React.createContext<DropdownMenuSubDisplayMode>("nested")
+const DropdownMenuDefaultSubModeContext = React.createContext<DropdownMenuSubDisplayMode>("nested");
 
-const DropdownMenuSubContext =
-  React.createContext<DropdownMenuSubContextValue | null>(null)
+const DropdownMenuSubContext = React.createContext<DropdownMenuSubContextValue | null>(null);
 
 function DropdownMenu({
   defaultSubDisplayMode = "nested",
   onOpenChange,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root> & {
-  defaultSubDisplayMode?: DropdownMenuSubDisplayMode
+  defaultSubDisplayMode?: DropdownMenuSubDisplayMode;
 }) {
-  const [inlineNavigation] = React.useState(createInlineSubmenuNavigationStore)
+  const [inlineNavigation] = React.useState(createInlineSubmenuNavigationStore);
 
   React.useEffect(() => {
-    if (props.open === false) inlineNavigation.reset()
-  }, [inlineNavigation, props.open])
+    if (props.open === false) inlineNavigation.reset();
+  }, [inlineNavigation, props.open]);
 
   return (
     <DropdownMenuDefaultSubModeContext.Provider value={defaultSubDisplayMode}>
@@ -125,33 +118,26 @@ function DropdownMenu({
         <DropdownMenuPrimitive.Root
           data-slot="dropdown-menu"
           onOpenChange={(open) => {
-            if (!open) inlineNavigation.reset()
-            onOpenChange?.(open)
+            if (!open) inlineNavigation.reset();
+            onOpenChange?.(open);
           }}
           {...props}
         />
       </InlineSubmenuNavigationContext.Provider>
     </DropdownMenuDefaultSubModeContext.Provider>
-  )
+  );
 }
 
 function DropdownMenuPortal({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Portal>) {
-  return (
-    <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />
-  )
+  return <DropdownMenuPrimitive.Portal data-slot="dropdown-menu-portal" {...props} />;
 }
 
 function DropdownMenuTrigger({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
-  return (
-    <DropdownMenuPrimitive.Trigger
-      data-slot="dropdown-menu-trigger"
-      {...props}
-    />
-  )
+  return <DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props} />;
 }
 
 function DropdownMenuContent({
@@ -163,27 +149,27 @@ function DropdownMenuContent({
   padding = "menu",
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content> & {
-  width?: "auto" | "sm" | "md" | "lg" | "default" | "xl" | "fit"
-  padding?: "none" | "menu" | "roomy" | "spacious"
+  width?: "auto" | "sm" | "md" | "lg" | "default" | "xl" | "fit";
+  padding?: "none" | "menu" | "roomy" | "spacious";
 }) {
-  const inlineNavigation = React.useContext(InlineSubmenuNavigationContext)
+  const inlineNavigation = React.useContext(InlineSubmenuNavigationContext);
   const activePanel = React.useSyncExternalStore(
     inlineNavigation?.subscribe ?? subscribeNoop,
     inlineNavigation?.getActivePanel ?? getNoActivePanel,
     inlineNavigation?.getActivePanel ?? getNoActivePanel,
-  )
+  );
 
-  const backButtonRef = React.useRef<HTMLButtonElement>(null)
-  const previousPanelId = React.useRef<string | null>(null)
+  const backButtonRef = React.useRef<HTMLButtonElement>(null);
+  const previousPanelId = React.useRef<string | null>(null);
   React.useEffect(() => {
-    const previousId = previousPanelId.current
-    previousPanelId.current = activePanel?.id ?? null
+    const previousId = previousPanelId.current;
+    previousPanelId.current = activePanel?.id ?? null;
     if (activePanel) {
-      backButtonRef.current?.focus()
+      backButtonRef.current?.focus();
     } else if (previousId) {
-      document.getElementById(`${previousId}-trigger`)?.focus()
+      document.getElementById(`${previousId}-trigger`)?.focus();
     }
-  }, [activePanel?.id])
+  }, [activePanel?.id]);
 
   return (
     <DropdownMenuPrimitive.Portal>
@@ -198,8 +184,7 @@ function DropdownMenuContent({
           menuSurfaceVariants(),
           menuViewportClassName,
           className,
-          activePanel &&
-            "flex w-max max-w-[min(20rem,calc(100vw-1rem))] flex-col overflow-hidden",
+          activePanel && "flex w-max max-w-[min(20rem,calc(100vw-1rem))] flex-col overflow-hidden",
         )}
         {...props}
       >
@@ -257,15 +242,11 @@ function DropdownMenuContent({
         ) : null}
       </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
-  )
+  );
 }
 
-function DropdownMenuGroup({
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
-  return (
-    <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
-  )
+function DropdownMenuGroup({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
+  return <DropdownMenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />;
 }
 
 function DropdownMenuItem({
@@ -277,13 +258,13 @@ function DropdownMenuItem({
   size = "default",
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
-  closeOnSelect?: boolean
-  inset?: boolean
-  variant?: "default" | "destructive"
-  size?: "default" | "comfortable"
+  closeOnSelect?: boolean;
+  inset?: boolean;
+  variant?: "default" | "destructive";
+  size?: "default" | "comfortable";
 }) {
-  const isInlineSubmenuPanel = React.useContext(InlineSubmenuPanelContext)
-  const shouldCloseOnSelect = closeOnSelect ?? !isInlineSubmenuPanel
+  const isInlineSubmenuPanel = React.useContext(InlineSubmenuPanelContext);
+  const shouldCloseOnSelect = closeOnSelect ?? !isInlineSubmenuPanel;
 
   return (
     <DropdownMenuPrimitive.Item
@@ -297,11 +278,11 @@ function DropdownMenuItem({
       )}
       {...props}
       onSelect={(event) => {
-        onSelect?.(event)
-        if (!shouldCloseOnSelect) event.preventDefault()
+        onSelect?.(event);
+        if (!shouldCloseOnSelect) event.preventDefault();
       }}
     />
-  )
+  );
 }
 
 function DropdownMenuCheckboxItem({
@@ -313,11 +294,11 @@ function DropdownMenuCheckboxItem({
   onSelect,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.CheckboxItem> & {
-  closeOnSelect?: boolean
-  inset?: boolean
+  closeOnSelect?: boolean;
+  inset?: boolean;
 }) {
-  const isInlineSubmenuPanel = React.useContext(InlineSubmenuPanelContext)
-  const shouldCloseOnSelect = closeOnSelect ?? !isInlineSubmenuPanel
+  const isInlineSubmenuPanel = React.useContext(InlineSubmenuPanelContext);
+  const shouldCloseOnSelect = closeOnSelect ?? !isInlineSubmenuPanel;
 
   return (
     <DropdownMenuPrimitive.CheckboxItem
@@ -331,8 +312,8 @@ function DropdownMenuCheckboxItem({
       checked={checked}
       {...props}
       onSelect={(event) => {
-        onSelect?.(event)
-        if (!shouldCloseOnSelect) event.preventDefault()
+        onSelect?.(event);
+        if (!shouldCloseOnSelect) event.preventDefault();
       }}
     >
       <span
@@ -345,18 +326,13 @@ function DropdownMenuCheckboxItem({
       </span>
       {children}
     </DropdownMenuPrimitive.CheckboxItem>
-  )
+  );
 }
 
 function DropdownMenuRadioGroup({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.RadioGroup>) {
-  return (
-    <DropdownMenuPrimitive.RadioGroup
-      data-slot="dropdown-menu-radio-group"
-      {...props}
-    />
-  )
+  return <DropdownMenuPrimitive.RadioGroup data-slot="dropdown-menu-radio-group" {...props} />;
 }
 
 function DropdownMenuRadioItem({
@@ -367,11 +343,11 @@ function DropdownMenuRadioItem({
   onSelect,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem> & {
-  closeOnSelect?: boolean
-  inset?: boolean
+  closeOnSelect?: boolean;
+  inset?: boolean;
 }) {
-  const isInlineSubmenuPanel = React.useContext(InlineSubmenuPanelContext)
-  const shouldCloseOnSelect = closeOnSelect ?? !isInlineSubmenuPanel
+  const isInlineSubmenuPanel = React.useContext(InlineSubmenuPanelContext);
+  const shouldCloseOnSelect = closeOnSelect ?? !isInlineSubmenuPanel;
 
   return (
     <DropdownMenuPrimitive.RadioItem
@@ -384,8 +360,8 @@ function DropdownMenuRadioItem({
       )}
       {...props}
       onSelect={(event) => {
-        onSelect?.(event)
-        if (!shouldCloseOnSelect) event.preventDefault()
+        onSelect?.(event);
+        if (!shouldCloseOnSelect) event.preventDefault();
       }}
     >
       <span
@@ -398,7 +374,7 @@ function DropdownMenuRadioItem({
       </span>
       {children}
     </DropdownMenuPrimitive.RadioItem>
-  )
+  );
 }
 
 function DropdownMenuLabel({
@@ -406,20 +382,16 @@ function DropdownMenuLabel({
   inset,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Label> & {
-  inset?: boolean
+  inset?: boolean;
 }) {
   return (
     <DropdownMenuPrimitive.Label
       data-slot="dropdown-menu-label"
       data-inset={inset}
-      className={cn(
-        menuLabelClassName,
-        "data-inset:pl-7.5",
-        className,
-      )}
+      className={cn(menuLabelClassName, "data-inset:pl-7.5", className)}
       {...props}
     />
-  )
+  );
 }
 
 function DropdownMenuSeparator({
@@ -432,13 +404,10 @@ function DropdownMenuSeparator({
       className={cn(menuSeparatorClassName, className)}
       {...props}
     />
-  )
+  );
 }
 
-function DropdownMenuShortcut({
-  className,
-  ...props
-}: React.ComponentProps<"span">) {
+function DropdownMenuShortcut({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
       data-slot="dropdown-menu-shortcut"
@@ -448,7 +417,7 @@ function DropdownMenuShortcut({
       )}
       {...props}
     />
-  )
+  );
 }
 
 function DropdownMenuSub({
@@ -457,23 +426,20 @@ function DropdownMenuSub({
   title = "Submenu",
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Sub> & {
-  displayMode?: DropdownMenuSubDisplayMode
-  title?: string
+  displayMode?: DropdownMenuSubDisplayMode;
+  title?: string;
 }) {
-  const defaultSubDisplayMode = React.useContext(DropdownMenuDefaultSubModeContext)
-  const displayMode = requestedDisplayMode ?? defaultSubDisplayMode
-  const id = React.useId()
-  const contextValue = React.useMemo(
-    () => ({ displayMode, id, title }),
-    [displayMode, id, title],
-  )
+  const defaultSubDisplayMode = React.useContext(DropdownMenuDefaultSubModeContext);
+  const displayMode = requestedDisplayMode ?? defaultSubDisplayMode;
+  const id = React.useId();
+  const contextValue = React.useMemo(() => ({ displayMode, id, title }), [displayMode, id, title]);
 
   if (displayMode === "inline") {
     return (
       <DropdownMenuSubContext.Provider value={contextValue}>
         {children}
       </DropdownMenuSubContext.Provider>
-    )
+    );
   }
 
   return (
@@ -482,7 +448,7 @@ function DropdownMenuSub({
         {children}
       </DropdownMenuPrimitive.Sub>
     </DropdownMenuSubContext.Provider>
-  )
+  );
 }
 
 function DropdownMenuSubTrigger({
@@ -492,20 +458,20 @@ function DropdownMenuSubTrigger({
   size = "default",
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & {
-  inset?: boolean
-  size?: "default" | "comfortable"
+  inset?: boolean;
+  size?: "default" | "comfortable";
 }) {
-  const submenu = React.useContext(DropdownMenuSubContext)
-  const inlineNavigation = React.useContext(InlineSubmenuNavigationContext)
-  const registrationOnly = React.useContext(InlineSubmenuRegistrationContext)
+  const submenu = React.useContext(DropdownMenuSubContext);
+  const inlineNavigation = React.useContext(InlineSubmenuNavigationContext);
+  const registrationOnly = React.useContext(InlineSubmenuRegistrationContext);
   const triggerClassName = cn(
     menuItemVariants({ size }),
-        "not-data-[variant=destructive]:focus:**:text-action-on-neutral data-inset:pl-7.5 data-open:bg-action-neutral-hover data-open:text-action-on-neutral",
+    "not-data-[variant=destructive]:focus:**:text-action-on-neutral data-inset:pl-7.5 data-open:bg-action-neutral-hover data-open:text-action-on-neutral",
     className,
-  )
+  );
 
   if (submenu?.displayMode === "inline") {
-    if (registrationOnly) return null
+    if (registrationOnly) return null;
 
     return (
       <DropdownMenuPrimitive.Item
@@ -515,21 +481,21 @@ function DropdownMenuSubTrigger({
         {...props}
         id={`${submenu.id}-trigger`}
         onKeyDown={(event) => {
-          props.onKeyDown?.(event)
+          props.onKeyDown?.(event);
           if (!event.defaultPrevented && event.key === "ArrowRight" && !props.disabled) {
-            event.preventDefault()
-            inlineNavigation?.navigateTo(submenu.id)
+            event.preventDefault();
+            inlineNavigation?.navigateTo(submenu.id);
           }
         }}
         onSelect={(event) => {
-          event.preventDefault()
-          inlineNavigation?.navigateTo(submenu.id)
+          event.preventDefault();
+          inlineNavigation?.navigateTo(submenu.id);
         }}
       >
         {children}
         <ChevronRightIcon className="ml-auto" />
       </DropdownMenuPrimitive.Item>
-    )
+    );
   }
 
   return (
@@ -542,7 +508,7 @@ function DropdownMenuSubTrigger({
       {children}
       <ChevronRightIcon className="ml-auto" />
     </DropdownMenuPrimitive.SubTrigger>
-  )
+  );
 }
 
 function DropdownMenuSubContent({
@@ -554,26 +520,23 @@ function DropdownMenuSubContent({
   padding = "menu",
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent> & {
-  width?: "auto" | "sm" | "md" | "lg" | "default" | "xl" | "fit"
-  padding?: "none" | "menu" | "roomy" | "spacious"
+  width?: "auto" | "sm" | "md" | "lg" | "default" | "xl" | "fit";
+  padding?: "none" | "menu" | "roomy" | "spacious";
 }) {
-  const submenu = React.useContext(DropdownMenuSubContext)
-  const inlineNavigation = React.useContext(InlineSubmenuNavigationContext)
-  const registerPanel = inlineNavigation?.registerPanel
+  const submenu = React.useContext(DropdownMenuSubContext);
+  const inlineNavigation = React.useContext(InlineSubmenuNavigationContext);
+  const registerPanel = inlineNavigation?.registerPanel;
   const panel = React.useMemo(
-    () =>
-      submenu
-        ? { children, className, id: submenu.id, title: submenu.title }
-        : null,
+    () => (submenu ? { children, className, id: submenu.id, title: submenu.title } : null),
     [children, className, submenu],
-  )
+  );
 
   React.useEffect(() => {
-    if (submenu?.displayMode !== "inline" || !panel || !registerPanel) return
-    registerPanel(panel)
-  }, [panel, registerPanel, submenu?.displayMode])
+    if (submenu?.displayMode !== "inline" || !panel || !registerPanel) return;
+    registerPanel(panel);
+  }, [panel, registerPanel, submenu?.displayMode]);
 
-  if (submenu?.displayMode === "inline") return null
+  if (submenu?.displayMode === "inline") return null;
 
   return (
     <DropdownMenuPrimitive.Portal>
@@ -595,7 +558,7 @@ function DropdownMenuSubContent({
         </InlineSubmenuPanelContext.Provider>
       </DropdownMenuPrimitive.SubContent>
     </DropdownMenuPrimitive.Portal>
-  )
+  );
 }
 
 export {
@@ -615,4 +578,4 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
   type DropdownMenuSubDisplayMode,
-}
+};

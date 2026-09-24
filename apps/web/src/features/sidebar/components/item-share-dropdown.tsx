@@ -29,21 +29,12 @@ import {
 import { Input } from "@/shared/ui/input";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 import { Switch } from "@/shared/ui/switch";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
-import {
-  type AccessLevel,
-  type PageAccessRule,
-} from "@zilobase/features/pages";
+import { type AccessLevel, type PageAccessRule } from "@zilobase/features/pages";
 
 const accessLabels: Record<AccessLevel, string> = {
   comment: "Comment access",
@@ -73,9 +64,7 @@ export function ItemShareDropdown({
           Share
         </Button>
       </PopoverTrigger>
-      {open ? (
-        <ItemShareDropdownContent databaseId={databaseId} pageId={pageId} />
-      ) : null}
+      {open ? <ItemShareDropdownContent databaseId={databaseId} pageId={pageId} /> : null}
     </Popover>
   );
 }
@@ -100,8 +89,7 @@ function ItemShareDropdownContent({
           Share {isDatabase ? "database" : "page"}
         </div>
         <div className="text-sm text-content-secondary">
-          Access applies to this{" "}
-          {isDatabase ? "database" : "page and nested pages"}.
+          Access applies to this {isDatabase ? "database" : "page and nested pages"}.
         </div>
       </div>
 
@@ -133,16 +121,12 @@ function RuleRow({
   return (
     <div className="flex min-h-11 items-center gap-3 rounded-md border px-3 py-2">
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">
-          {target?.label ?? "Unknown target"}
-        </div>
+        <div className="truncate text-sm font-medium">{target?.label ?? "Unknown target"}</div>
         <div className="truncate text-xs text-content-secondary">
           {target?.detail ?? rule.targetType}
         </div>
       </div>
-      <span className="text-xs text-content-secondary">
-        {accessLabels[rule.accessLevel]}
-      </span>
+      <span className="text-xs text-content-secondary">{accessLabels[rule.accessLevel]}</span>
       {canManage ? (
         <Button
           aria-label="Remove access"
@@ -173,16 +157,11 @@ function AccessRow({
     <div className="flex min-h-11 items-center gap-3 rounded-md border px-3 py-2">
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">
-          {label}{" "}
-          {suffix ? (
-            <span className="text-content-secondary">({suffix})</span>
-          ) : null}
+          {label} {suffix ? <span className="text-content-secondary">({suffix})</span> : null}
         </div>
         <div className="truncate text-xs text-content-secondary">{detail}</div>
       </div>
-      <span className="text-xs text-content-secondary">
-        {accessLabels[level]}
-      </span>
+      <span className="text-xs text-content-secondary">{accessLabels[level]}</span>
     </div>
   );
 }
@@ -207,37 +186,26 @@ function ItemPublishingTab({ sharing }: { sharing: ItemSharingState }) {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium">Publish to web</div>
           <div className="text-xs text-content-secondary">
-            Anyone with the link can view this{" "}
-            {isDatabase ? "database" : "page and nested pages"}. Published
-            content is read-only.
+            Anyone with the link can view this {isDatabase ? "database" : "page and nested pages"}.
+            Published content is read-only.
           </div>
         </div>
         <Switch
           checked={isPublished}
-          disabled={
-            !canManage ||
-            setPublished.isPending ||
-            setDatabasePublished.isPending
-          }
+          disabled={!canManage || setPublished.isPending || setDatabasePublished.isPending}
           onCheckedChange={togglePublished}
         />
       </div>
 
       {!canManage ? (
         <div className="rounded-md bg-surface-muted px-3 py-2 text-xs text-content-secondary">
-          You need full access to manage publishing for this{" "}
-          {isDatabase ? "database" : "page"}.
+          You need full access to manage publishing for this {isDatabase ? "database" : "page"}.
         </div>
       ) : null}
 
       <div className="flex items-center gap-2">
         <Input readOnly value={publicUrl} />
-        <Button
-          disabled={!isPublished}
-          onClick={copyLink}
-          type="button"
-          variant="outline"
-        >
+        <Button disabled={!isPublished} onClick={copyLink} type="button" variant="outline">
           <LinkIcon />
           Copy link
         </Button>
@@ -251,22 +219,10 @@ function ItemAccessRules({
 }: {
   state: Pick<
     ItemSharingState,
-    | "canManage"
-    | "deleteRule"
-    | "effectiveAccessLevel"
-    | "session"
-    | "sharingRules"
-    | "targetByKey"
+    "canManage" | "deleteRule" | "effectiveAccessLevel" | "session" | "sharingRules" | "targetByKey"
   >;
 }) {
-  const {
-    canManage,
-    deleteRule,
-    effectiveAccessLevel,
-    session,
-    sharingRules,
-    targetByKey,
-  } = state;
+  const { canManage, deleteRule, effectiveAccessLevel, session, sharingRules, targetByKey } = state;
   return (
     <>
       <div className="grid gap-2">
@@ -334,8 +290,7 @@ function ItemGuestInvitations({
           <div>
             <div className="text-sm font-medium">Invite a page guest</div>
             <div className="text-xs text-content-secondary">
-              Guests can access this page and its nested pages, but not the
-              workspace.
+              Guests can access this page and its nested pages, but not the workspace.
             </div>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -354,9 +309,7 @@ function ItemGuestInvitations({
               value={guestEmail}
             />
             <Select
-              onValueChange={(value) =>
-                setGuestAccessLevel(value as AccessLevel)
-              }
+              onValueChange={(value) => setGuestAccessLevel(value as AccessLevel)}
               value={guestAccessLevel}
             >
               <SelectTrigger className="sm:w-32">
@@ -384,16 +337,9 @@ function ItemGuestInvitations({
                 Pending guest invitations
               </div>
               {pendingGuestInvitations.map((invitation) => (
-                <div
-                  className="flex items-center gap-2 text-sm"
-                  key={invitation.id}
-                >
-                  <span className="min-w-0 flex-1 truncate">
-                    {invitation.email}
-                  </span>
-                  <span className="text-xs text-content-secondary">
-                    {invitation.accessLevel}
-                  </span>
+                <div className="flex items-center gap-2 text-sm" key={invitation.id}>
+                  <span className="min-w-0 flex-1 truncate">{invitation.email}</span>
+                  <span className="text-xs text-content-secondary">{invitation.accessLevel}</span>
                   <Button
                     aria-label={`Cancel invitation for ${invitation.email}`}
                     disabled={cancelGuestInvitation.isPending}
@@ -414,16 +360,9 @@ function ItemGuestInvitations({
                 Pending owner approval
               </div>
               {pendingGuestRequests.map((request) => (
-                <div
-                  className="flex items-center gap-2 text-sm"
-                  key={request.id}
-                >
-                  <span className="min-w-0 flex-1 truncate">
-                    {request.email}
-                  </span>
-                  <span className="text-xs text-content-secondary">
-                    {request.accessLevel}
-                  </span>
+                <div className="flex items-center gap-2 text-sm" key={request.id}>
+                  <span className="min-w-0 flex-1 truncate">{request.email}</span>
+                  <span className="text-xs text-content-secondary">{request.accessLevel}</span>
                 </div>
               ))}
             </div>
@@ -535,8 +474,7 @@ function ItemSharingTargets({
                           key={agent.id}
                           onSelect={() => {
                             setTargetValue(value);
-                            if (nextAccessLevel === "full")
-                              setNextAccessLevel("edit");
+                            if (nextAccessLevel === "full") setNextAccessLevel("edit");
                             setTargetPickerOpen(false);
                           }}
                           value={`${agent.name} custom agent`}
@@ -569,13 +507,9 @@ function ItemSharingTargets({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="view">View</SelectItem>
-            {!isDatabase ? (
-              <SelectItem value="comment">Comment</SelectItem>
-            ) : null}
+            {!isDatabase ? <SelectItem value="comment">Comment</SelectItem> : null}
             <SelectItem value="edit">Edit</SelectItem>
-            {!selectedTargetIsAgent ? (
-              <SelectItem value="full">Full</SelectItem>
-            ) : null}
+            {!selectedTargetIsAgent ? <SelectItem value="full">Full</SelectItem> : null}
           </SelectContent>
         </Select>
         <Button disabled={shareDisabled} onClick={shareItem} type="button">
@@ -586,9 +520,8 @@ function ItemSharingTargets({
 
       {selectedTargetIsAgent ? (
         <div className="rounded-md bg-feedback-warning-background px-3 py-2 text-xs text-feedback-warning-text">
-          Agent access is independent from human access. People who can use this
-          agent may receive information from this resource even when they cannot
-          open it directly.
+          Agent access is independent from human access. People who can use this agent may receive
+          information from this resource even when they cannot open it directly.
         </div>
       ) : null}
     </>
@@ -607,8 +540,7 @@ function ItemSharingTab({ sharing }: { sharing: ItemSharingState }) {
 
       {!canManage ? (
         <div className="rounded-md bg-surface-muted px-3 py-2 text-xs text-content-secondary">
-          You need full access to manage sharing for this{" "}
-          {isDatabase ? "database" : "page"}.
+          You need full access to manage sharing for this {isDatabase ? "database" : "page"}.
         </div>
       ) : null}
 

@@ -15,21 +15,12 @@ export function register({ assert, loadModule, test }) {
     assert.equal(canSaveSettingsTrigger(draft), true);
     assert.equal(canSaveSettingsTrigger({ ...draft, label: "  " }), false);
     for (const target of ["", "4", "NaN", "Infinity"])
-      assert.equal(
-        canSaveSettingsTrigger({ ...draft, cadence: "custom", target }),
-        false,
-      );
+      assert.equal(canSaveSettingsTrigger({ ...draft, cadence: "custom", target }), false);
     for (const target of ["5", "5.5", "60"])
-      assert.equal(
-        canSaveSettingsTrigger({ ...draft, cadence: "custom", target }),
-        true,
-      );
+      assert.equal(canSaveSettingsTrigger({ ...draft, cadence: "custom", target }), true);
     for (const kind of ["database", "meeting", "comment", "mention"]) {
       assert.equal(canSaveSettingsTrigger({ ...draft, kind }), false);
-      assert.equal(
-        canSaveSettingsTrigger({ ...draft, kind, target: "resource" }),
-        true,
-      );
+      assert.equal(canSaveSettingsTrigger({ ...draft, kind, target: "resource" }), true);
     }
     assert.equal(canSaveSettingsTrigger({ ...draft, kind: "webhook" }), true);
   });
@@ -59,32 +50,21 @@ export function register({ assert, loadModule, test }) {
       webhook: {},
     };
     for (const [kind, config] of Object.entries(configs)) {
-      const [trigger] = applySettingsTriggerDraft(
-        [],
-        { ...draft, kind },
-        "new",
-      );
+      const [trigger] = applySettingsTriggerDraft([], { ...draft, kind }, "new");
       assert.deepEqual(trigger.config, config);
       assert.equal(trigger.label, " Name ");
       assert.equal(trigger.status, kind === "webhook" ? "paused" : "active");
     }
     assert.deepEqual(
-      applySettingsTriggerDraft(
-        [],
-        { ...draft, cadence: "custom", target: "5.5" },
-        "new",
-      )[0].config,
+      applySettingsTriggerDraft([], { ...draft, cadence: "custom", target: "5.5" }, "new")[0]
+        .config,
       { cadence: "custom", intervalMinutes: 5.5 },
     );
     const existing = [
       { id: "edited", status: "paused" },
       { id: "other", status: "active" },
     ];
-    const result = applySettingsTriggerDraft(
-      existing,
-      { ...draft, editingId: "edited" },
-      "edited",
-    );
+    const result = applySettingsTriggerDraft(existing, { ...draft, editingId: "edited" }, "edited");
     assert.deepEqual(
       result.map((trigger) => trigger.id),
       ["other", "edited"],

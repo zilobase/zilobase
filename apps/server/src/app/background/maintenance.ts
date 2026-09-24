@@ -7,7 +7,10 @@ import { cleanupExpiredAiAgentData } from "../../features/ai/actions/agent-opera
 import { AI_JOB_HANDLERS } from "../../features/ai/jobs/ai-job-handlers";
 import { runAiJobBatch } from "../../features/ai/jobs/ai-jobs";
 import { enqueueDueAgentSchedules } from "../../features/ai/agents/agent-trigger-service";
-import { drainAgentRuns, expireAgentRunApprovals } from "../../features/ai/execution/agent-run-service";
+import {
+  drainAgentRuns,
+  expireAgentRunApprovals,
+} from "../../features/ai/execution/agent-run-service";
 import { drainDatabaseAutomationEventWindows } from "../../features/automations/triggers/event-evaluator";
 import { cleanupDatabaseAutomationHistory } from "../../features/automations/history/history-maintenance";
 import { drainDatabaseAutomationRuns } from "../../features/automations/execution/run-engine";
@@ -44,14 +47,17 @@ export const BACKGROUND_MAINTENANCE_TASKS = {
 type MaintenanceTaskKey = keyof typeof BACKGROUND_MAINTENANCE_TASKS;
 
 export async function ensureBackgroundMaintenanceTasks(now = new Date()) {
-  await db.insert(backgroundMaintenanceTask).values(
-    Object.keys(BACKGROUND_MAINTENANCE_TASKS).map((taskKey) => ({
-      createdAt: now,
-      nextRunAt: now,
-      taskKey,
-      updatedAt: now,
-    })),
-  ).onConflictDoNothing();
+  await db
+    .insert(backgroundMaintenanceTask)
+    .values(
+      Object.keys(BACKGROUND_MAINTENANCE_TASKS).map((taskKey) => ({
+        createdAt: now,
+        nextRunAt: now,
+        taskKey,
+        updatedAt: now,
+      })),
+    )
+    .onConflictDoNothing();
 }
 
 export async function runDueBackgroundMaintenance(input: {
@@ -65,100 +71,118 @@ export async function runDueBackgroundMaintenance(input: {
     const rawNow = clock.rows[0]?.now as Date | string | undefined;
     const now = rawNow ? new Date(rawNow) : new Date();
     const leaseExpiresAt = new Date(now.getTime() + 2 * 60_000);
-    const due = await tx.select().from(backgroundMaintenanceTask).where(and(
-      lte(backgroundMaintenanceTask.nextRunAt, now),
-      or(
-        isNull(backgroundMaintenanceTask.leaseExpiresAt),
-        lt(backgroundMaintenanceTask.leaseExpiresAt, now),
-      ),
-    )).orderBy(asc(backgroundMaintenanceTask.nextRunAt))
+    const due = await tx
+      .select()
+      .from(backgroundMaintenanceTask)
+      .where(
+        and(
+          lte(backgroundMaintenanceTask.nextRunAt, now),
+          or(
+            isNull(backgroundMaintenanceTask.leaseExpiresAt),
+            lt(backgroundMaintenanceTask.leaseExpiresAt, now),
+          ),
+        ),
+      )
+      .orderBy(asc(backgroundMaintenanceTask.nextRunAt))
       .limit(Math.max(1, Math.min(input.limit ?? 9, 20)))
       .for("update", { skipLocked: true });
     const rows = [];
     for (const task of due) {
-      const [row] = await tx.update(backgroundMaintenanceTask).set({
-        lastStartedAt: now,
-        leaseExpiresAt,
-        leaseOwner: input.workerId,
-        updatedAt: now,
-      }).where(eq(backgroundMaintenanceTask.taskKey, task.taskKey)).returning();
+      const [row] = await tx
+        .update(backgroundMaintenanceTask)
+        .set({
+          lastStartedAt: now,
+          leaseExpiresAt,
+          leaseOwner: input.workerId,
+          updatedAt: now,
+        })
+        .where(eq(backgroundMaintenanceTask.taskKey, task.taskKey))
+        .returning();
       if (row) rows.push(row);
     }
     return rows;
   });
 
-  await Promise.allSettled(claimed.map(async (task) => {
-    const taskKey = task.taskKey as MaintenanceTaskKey;
-    try {
-      const nextDelay = await executeMaintenanceTask(input.env, taskKey, input.workerId);
-      const finishedAt = new Date();
-      await db.update(backgroundMaintenanceTask).set({
-        consecutiveFailures: 0,
-        lastErrorCode: null,
-        lastSucceededAt: finishedAt,
-        leaseExpiresAt: null,
-        leaseOwner: null,
-        nextRunAt: new Date(finishedAt.getTime() + (nextDelay ?? BACKGROUND_MAINTENANCE_TASKS[taskKey])),
-        updatedAt: finishedAt,
-      }).where(and(
-        eq(backgroundMaintenanceTask.taskKey, taskKey),
-        eq(backgroundMaintenanceTask.leaseOwner, input.workerId),
-      ));
-    } catch (error) {
-      const finishedAt = new Date();
-      await db.update(backgroundMaintenanceTask).set({
-        consecutiveFailures: task.consecutiveFailures + 1,
-        lastErrorCode: boundedErrorCode(error),
-        lastFailedAt: finishedAt,
-        leaseExpiresAt: null,
-        leaseOwner: null,
-        nextRunAt: new Date(finishedAt.getTime() + Math.min(60_000, 1_000 * 2 ** task.consecutiveFailures)),
-        updatedAt: finishedAt,
-      }).where(and(
-        eq(backgroundMaintenanceTask.taskKey, taskKey),
-        eq(backgroundMaintenanceTask.leaseOwner, input.workerId),
-      ));
-      console.warn(JSON.stringify({
-        code: boundedErrorCode(error),
-        event: "background.maintenance",
-        outcome: "failed",
-        task: taskKey,
-      }));
-    }
-  }));
+  await Promise.allSettled(
+    claimed.map(async (task) => {
+      const taskKey = task.taskKey as MaintenanceTaskKey;
+      try {
+        const nextDelay = await executeMaintenanceTask(input.env, taskKey, input.workerId);
+        const finishedAt = new Date();
+        await db
+          .update(backgroundMaintenanceTask)
+          .set({
+            consecutiveFailures: 0,
+            lastErrorCode: null,
+            lastSucceededAt: finishedAt,
+            leaseExpiresAt: null,
+            leaseOwner: null,
+            nextRunAt: new Date(
+              finishedAt.getTime() + (nextDelay ?? BACKGROUND_MAINTENANCE_TASKS[taskKey]),
+            ),
+            updatedAt: finishedAt,
+          })
+          .where(
+            and(
+              eq(backgroundMaintenanceTask.taskKey, taskKey),
+              eq(backgroundMaintenanceTask.leaseOwner, input.workerId),
+            ),
+          );
+      } catch (error) {
+        const finishedAt = new Date();
+        await db
+          .update(backgroundMaintenanceTask)
+          .set({
+            consecutiveFailures: task.consecutiveFailures + 1,
+            lastErrorCode: boundedErrorCode(error),
+            lastFailedAt: finishedAt,
+            leaseExpiresAt: null,
+            leaseOwner: null,
+            nextRunAt: new Date(
+              finishedAt.getTime() + Math.min(60_000, 1_000 * 2 ** task.consecutiveFailures),
+            ),
+            updatedAt: finishedAt,
+          })
+          .where(
+            and(
+              eq(backgroundMaintenanceTask.taskKey, taskKey),
+              eq(backgroundMaintenanceTask.leaseOwner, input.workerId),
+            ),
+          );
+        console.warn(
+          JSON.stringify({
+            code: boundedErrorCode(error),
+            event: "background.maintenance",
+            outcome: "failed",
+            task: taskKey,
+          }),
+        );
+      }
+    }),
+  );
   return { claimed: claimed.length };
 }
 
-async function executeMaintenanceTask(
-  env: RuntimeEnv,
-  task: MaintenanceTaskKey,
-  workerId: string,
-) {
+async function executeMaintenanceTask(env: RuntimeEnv, task: MaintenanceTaskKey, workerId: string) {
   return MAINTENANCE_TASK_HANDLERS[task](env, workerId);
 }
 
-type MaintenanceTaskHandler = (
-  env: RuntimeEnv,
-  workerId: string,
-) => Promise<number | void>;
+type MaintenanceTaskHandler = (env: RuntimeEnv, workerId: string) => Promise<number | void>;
 
 const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandler> = {
   "agent.schedules": async (env) => {
-    await Promise.all([
-      enqueueDueAgentSchedules(env),
-      expireAgentRunApprovals(),
-    ]);
+    await Promise.all([enqueueDueAgentSchedules(env), expireAgentRunApprovals()]);
   },
   "background.reconcile": async (env, workerId) => {
     await runIndependentMaintenanceOperations("background.reconcile", [
-        drainDatabaseAutomationEventWindows(env, { limit: 50, workerId: `${workerId}:events` }),
-        drainDatabaseAutomationRuns(env, { limit: 10, workerId: `${workerId}:runs` }),
-        drainAgentRuns(env, { limit: 10, workerId: `${workerId}:agents` }),
-        runAiJobBatch({ env, handlers: AI_JOB_HANDLERS, limit: 5, workerId: `${workerId}:ai` }),
-        drainDatabaseRealtimeOutbox(env, { limit: 100 }),
-        drainNavigationRealtimeOutbox(env, { limit: 100 }),
-        drainInProductNotificationOutbox(env, { limit: 100 }),
-        drainMailDatabaseSyncOutbox(env, { limit: 20, workerId: `${workerId}:mail` }),
+      drainDatabaseAutomationEventWindows(env, { limit: 50, workerId: `${workerId}:events` }),
+      drainDatabaseAutomationRuns(env, { limit: 10, workerId: `${workerId}:runs` }),
+      drainAgentRuns(env, { limit: 10, workerId: `${workerId}:agents` }),
+      runAiJobBatch({ env, handlers: AI_JOB_HANDLERS, limit: 5, workerId: `${workerId}:ai` }),
+      drainDatabaseRealtimeOutbox(env, { limit: 100 }),
+      drainNavigationRealtimeOutbox(env, { limit: 100 }),
+      drainInProductNotificationOutbox(env, { limit: 100 }),
+      drainMailDatabaseSyncOutbox(env, { limit: 20, workerId: `${workerId}:mail` }),
     ]);
   },
   "automation.schedules": async (env) => {
@@ -167,7 +191,13 @@ const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandl
   "membership.expiry": async () => {
     await expireTemporaryMemberships();
   },
-  "calendar.sync_recovery": async (env) => { await Promise.allSettled([advancePendingCalendars(env), maintainCalendarWatches(env), drainCalendarOutbox()]); },
+  "calendar.sync_recovery": async (env) => {
+    await Promise.allSettled([
+      advancePendingCalendars(env),
+      maintainCalendarWatches(env),
+      drainCalendarOutbox(),
+    ]);
+  },
   "mail.index_recovery": async (env) => {
     await advancePendingMailIndexes(env);
     await advanceDueMailReminders(env);
@@ -180,9 +210,11 @@ const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandl
   },
   "automation.retention": async (env) => {
     const result = await cleanupDatabaseAutomationHistory(env);
-    return Object.entries(result).some(([key, value]) =>
-      key !== "retention" && typeof value === "number" && value > 0
-    ) ? 60_000 : undefined;
+    return Object.entries(result).some(
+      ([key, value]) => key !== "retention" && typeof value === "number" && value > 0,
+    )
+      ? 60_000
+      : undefined;
   },
   "gmail.send_receipt_cleanup": async () => {
     await cleanupExpiredGmailSendOperations();
@@ -198,16 +230,18 @@ async function runIndependentMaintenanceOperations(
   operations: Promise<unknown>[],
 ) {
   const results = await Promise.allSettled(operations);
-  const failures = results.filter((result): result is PromiseRejectedResult =>
-    result.status === "rejected"
+  const failures = results.filter(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
   );
   for (const failure of failures) {
-    console.warn(JSON.stringify({
-      code: boundedErrorCode(failure.reason),
-      event: "background.maintenance_operation",
-      outcome: "failed",
-      task,
-    }));
+    console.warn(
+      JSON.stringify({
+        code: boundedErrorCode(failure.reason),
+        event: "background.maintenance_operation",
+        outcome: "failed",
+        task,
+      }),
+    );
   }
   if (failures.length) {
     throw new AggregateError(

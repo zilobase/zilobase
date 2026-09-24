@@ -25,14 +25,8 @@ export const favorite = pgTable(
   (table) => [
     index("favorites_page_id_idx").on(table.pageId),
     index("favorites_database_id_idx").on(table.databaseId),
-    uniqueIndex("favorites_user_page_unique").on(
-      table.userId,
-      table.pageId,
-    ),
-    uniqueIndex("favorites_user_database_unique").on(
-      table.userId,
-      table.databaseId,
-    ),
+    uniqueIndex("favorites_user_page_unique").on(table.userId, table.pageId),
+    uniqueIndex("favorites_user_database_unique").on(table.userId, table.databaseId),
   ],
 );
 
@@ -55,16 +49,9 @@ export const itemVisit = pgTable(
   },
   (table) => [
     index("item_visit_workspace_id_idx").on(table.workspaceId),
-    index("item_visit_user_workspace_idx").on(
-      table.userId,
-      table.workspaceId,
-    ),
+    index("item_visit_user_workspace_idx").on(table.userId, table.workspaceId),
     index("item_visit_item_idx").on(table.itemKind, table.itemId),
-    uniqueIndex("item_visit_user_item_unique").on(
-      table.userId,
-      table.itemKind,
-      table.itemId,
-    ),
+    uniqueIndex("item_visit_user_item_unique").on(table.userId, table.itemKind, table.itemId),
   ],
 );
 
@@ -78,18 +65,10 @@ export const navigationRealtimeOutbox = pgTable(
     committedAt: timestamp("committed_at", { withTimezone: true }).notNull(),
     attempts: integer("attempts").notNull().default(0),
     lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
-    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index("navigation_realtime_outbox_ready_idx").on(
-      table.nextAttemptAt,
-      table.committedAt,
-    ),
-    index("navigation_realtime_outbox_workspace_idx").on(
-      table.workspaceId,
-      table.committedAt,
-    ),
+    index("navigation_realtime_outbox_ready_idx").on(table.nextAttemptAt, table.committedAt),
+    index("navigation_realtime_outbox_workspace_idx").on(table.workspaceId, table.committedAt),
   ],
 );

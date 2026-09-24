@@ -1,10 +1,7 @@
 import { createRoute, lazyRouteComponent, redirect } from "@tanstack/react-router";
 import { editionWebModule } from "@zilobase/edition-web";
 import { appRoute } from "../route-roots";
-import {
-  validateTeamSettingsSearch,
-  validateTeamspaceSettingsSearch,
-} from "../search-validators";
+import { validateTeamSettingsSearch, validateTeamspaceSettingsSearch } from "../search-validators";
 
 export const settingsRoutes = [
   createRoute({
@@ -42,16 +39,12 @@ export const settingsRoutes = [
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings/connected-apps",
-    component: lazyRouteComponent(
-      () => import("@/features/settings/screens/connected-apps"),
-    ),
+    component: lazyRouteComponent(() => import("@/features/settings/screens/connected-apps")),
   }),
   createRoute({
     getParentRoute: () => appRoute,
     path: "/settings/oauth-apps",
-    component: lazyRouteComponent(
-      () => import("@/features/settings/screens/oauth-apps"),
-    ),
+    component: lazyRouteComponent(() => import("@/features/settings/screens/oauth-apps")),
   }),
   createRoute({
     getParentRoute: () => appRoute,

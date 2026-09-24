@@ -1,107 +1,88 @@
 import { CalendarWorkspaceProvider } from "@/features/calendar/workspace/calendar-workspace";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { Dispatch, ReactNode, SetStateAction } from "react"
-import { Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router"
-import { ChevronsRightIcon, SidebarSimpleIcon } from "@/shared/components/icons"
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { ChevronsRightIcon, SidebarSimpleIcon } from "@/shared/components/icons";
 
-import { AppSidebar } from "@/features/sidebar"
-import { AppSearchProvider } from "@/features/search"
-import {
-  DesktopTabs,
-  getDesktopTabTitle,
-} from "@/features/desktop/components/index"
-import { ChatSidebarTrigger } from "@/features/ai/conversations/components/chat-sidebar-trigger"
-import type { ChatPresentationMode } from "@/features/ai/conversations/components/chat-sidebar"
+import { AppSidebar } from "@/features/sidebar";
+import { AppSearchProvider } from "@/features/search";
+import { DesktopTabs, getDesktopTabTitle } from "@/features/desktop/components/index";
+import { ChatSidebarTrigger } from "@/features/ai/conversations/components/chat-sidebar-trigger";
+import type { ChatPresentationMode } from "@/features/ai/conversations/components/chat-sidebar";
 import {
   usePageSidePaneState,
   PageSidePaneContext,
   PageSidePaneShell,
 } from "@/features/pages/pane/page-side-pane";
-import { DiscussionsSidebarPanel } from "@/features/comments/index"
-import {
-  RightSidebarMobilePanels,
-  RightSidebars,
-} from "@/app/shell/side-panel/right-sidebars"
+import { DiscussionsSidebarPanel } from "@/features/comments/index";
+import { RightSidebarMobilePanels, RightSidebars } from "@/app/shell/side-panel/right-sidebars";
 import {
   APP_SIDEBAR_PANEL_WIDTH,
   getRightSidebarEditorDefaultSize,
   type SidebarResizeIntent,
-} from "@/features/sidebar"
+} from "@/features/sidebar";
 
-import {
-  getDatabaseId,
-  useRoutePageId,
-} from "@/features/pages/pane/page-pane-header";
+import { getDatabaseId, useRoutePageId } from "@/features/pages/pane/page-pane-header";
 import {
   getSettingsSection,
   type SettingsSection,
-} from "@/features/settings/components/settings-sidebar"
-import { ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/shared/ui/sheet"
-import {
-  SidebarInset,
-  SidebarProvider,
-  useSidebar,
-} from "@/shared/ui/sidebar"
-import { isEmbeddedMobileViewer } from "@/features/pages/pane/embedded-view"
-import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata"
+} from "@/features/settings/components/settings-sidebar";
+import { ResizablePanel, ResizablePanelGroup } from "@/shared/ui/resizable";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
+import { SidebarInset, SidebarProvider, useSidebar } from "@/shared/ui/sidebar";
+import { isEmbeddedMobileViewer } from "@/features/pages/pane/embedded-view";
+import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata";
 import { getDatabaseEmoji } from "@zilobase/features/databases";
 import { getPageEmoji } from "@zilobase/features/pages";
 import { usePage, useRecordItemVisit } from "@zilobase/features/pages/react";
 import { defaultUserSettings } from "@zilobase/features/user-settings";
 import { useUserSettings } from "@zilobase/features/user-settings/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
-import {
-  LayoutEditorProvider,
-} from "@/features/pages/layout";
-import { usePageEditorComments } from "@/features/comments/index"
-import { usePageCommentController } from "@/features/comments/index"
+import { LayoutEditorProvider } from "@/features/pages/layout";
+import { usePageEditorComments } from "@/features/comments/index";
+import { usePageCommentController } from "@/features/comments/index";
 import {
   PageLayoutSidebarProvider,
   useOptionalPageLayoutSidebar,
 } from "@/features/pages/layout/page-layout-sidebar";
-import { Button } from "@/shared/ui/button"
-import { FloatingWidget } from "@/shared/components/floating-widget"
-import { AppHeader } from "./app-header"
+import { Button } from "@/shared/ui/button";
+import { FloatingWidget } from "@/shared/components/floating-widget";
+import { AppHeader } from "./app-header";
 
 const EmbeddedPageDialogHost = lazy(() =>
   import("./embedded-page-dialog-host").then((module) => ({
     default: module.EmbeddedPageDialogHost,
   })),
-)
+);
 const SettingsDialogSurface = lazy(() =>
   import("./settings-dialog-surface").then((module) => ({
     default: module.SettingsDialogSurface,
   })),
-)
+);
 const ChatSidebarPanel = lazy(() =>
   import("@/features/ai/conversations/components/chat-sidebar").then((module) => ({
     default: module.ChatSidebarPanel,
   })),
-)
+);
 
-const CHAT_PRESENTATION_MODE_STORAGE_KEY = "zilobase:ai-chat-presentation-mode"
+const CHAT_PRESENTATION_MODE_STORAGE_KEY = "zilobase:ai-chat-presentation-mode";
 
-const CalendarReminderHost = lazy(() => import("@/features/calendar/reminders/calendar-reminder-host"));
+const CalendarReminderHost = lazy(
+  () => import("@/features/calendar/reminders/calendar-reminder-host"),
+);
 
 export function AppLayout({
   children,
   utilitySidebar,
   utilitySidebarOpen = false,
 }: {
-  children?: ReactNode
-  utilitySidebar?: ReactNode
-  utilitySidebarOpen?: boolean
+  children?: ReactNode;
+  utilitySidebar?: ReactNode;
+  utilitySidebarOpen?: boolean;
 }) {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
-  })
+  });
 
   return (
     <SidebarProvider
@@ -125,7 +106,7 @@ export function AppLayout({
         </CalendarWorkspaceProvider>
       </AppSearchProvider>
     </SidebarProvider>
-  )
+  );
 }
 
 function AppLayoutWithRoutePage({
@@ -134,41 +115,42 @@ function AppLayoutWithRoutePage({
   utilitySidebar,
   utilitySidebarOpen,
 }: {
-  children?: ReactNode
-  pathname: string
-  utilitySidebar?: ReactNode
-  utilitySidebarOpen: boolean
+  children?: ReactNode;
+  pathname: string;
+  utilitySidebar?: ReactNode;
+  utilitySidebarOpen: boolean;
 }) {
-  const navigate = useNavigate()
-  const routePageId = useRoutePageId(pathname)
-  const isSettingsPage = pathname.startsWith("/settings")
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(isSettingsPage)
-  const [activeSettingsSection, setActiveSettingsSection] =
-    useState<SettingsSection>(() => getSettingsSection(pathname))
+  const navigate = useNavigate();
+  const routePageId = useRoutePageId(pathname);
+  const isSettingsPage = pathname.startsWith("/settings");
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(isSettingsPage);
+  const [activeSettingsSection, setActiveSettingsSection] = useState<SettingsSection>(() =>
+    getSettingsSection(pathname),
+  );
 
   useEffect(() => {
-    if (!isSettingsPage) return
-    setActiveSettingsSection(getSettingsSection(pathname))
-    setSettingsDialogOpen(true)
-  }, [isSettingsPage, pathname])
+    if (!isSettingsPage) return;
+    setActiveSettingsSection(getSettingsSection(pathname));
+    setSettingsDialogOpen(true);
+  }, [isSettingsPage, pathname]);
 
   const handleSettingsOpenChange = useCallback(
     (open: boolean) => {
-      setSettingsDialogOpen(open)
+      setSettingsDialogOpen(open);
 
       if (!open && isSettingsPage) {
-        void navigate({ to: "/recents", replace: true })
+        void navigate({ to: "/recents", replace: true });
       }
     },
     [isSettingsPage, navigate],
-  )
+  );
 
   return (
     <>
       <AppSidebar
         onOpenSettings={() => {
-          setActiveSettingsSection("preferences")
-          setSettingsDialogOpen(true)
+          setActiveSettingsSection("preferences");
+          setSettingsDialogOpen(true);
         }}
         settingsOpen={settingsDialogOpen}
       />
@@ -188,7 +170,7 @@ function AppLayoutWithRoutePage({
         </LayoutEditorProvider>
       </PageLayoutSidebarProvider>
     </>
-  )
+  );
 }
 
 function AppLayoutContent({
@@ -201,88 +183,73 @@ function AppLayoutContent({
   utilitySidebar,
   utilitySidebarOpen,
 }: {
-  activeSettingsSection: SettingsSection
-  children?: ReactNode
-  isSettingsPage: boolean
-  onSettingsOpenChange: (open: boolean) => void
-  setActiveSettingsSection: Dispatch<SetStateAction<SettingsSection>>
-  settingsDialogOpen: boolean
-  utilitySidebar?: ReactNode
-  utilitySidebarOpen: boolean
+  activeSettingsSection: SettingsSection;
+  children?: ReactNode;
+  isSettingsPage: boolean;
+  onSettingsOpenChange: (open: boolean) => void;
+  setActiveSettingsSection: Dispatch<SetStateAction<SettingsSection>>;
+  settingsDialogOpen: boolean;
+  utilitySidebar?: ReactNode;
+  utilitySidebarOpen: boolean;
 }) {
-  const router = useRouter()
+  const router = useRouter();
   const { hash, pathname, searchStr } = useRouterState({
     select: (state) => ({
       hash: state.location.hash,
       pathname: state.location.pathname,
       searchStr: state.location.searchStr,
     }),
-  })
-  const embeddedMobileViewer = isEmbeddedMobileViewer()
-  const {
-    isMobile,
-    open: appSidebarOpen,
-    setOpen: setAppSidebarOpen,
-  } = useSidebar()
-  const isAiPage = pathname === "/ai"
-  const aiWorkspacePanel = isAiPage
-    ? new URLSearchParams(searchStr).get("panel")
-    : null
+  });
+  const embeddedMobileViewer = isEmbeddedMobileViewer();
+  const { isMobile, open: appSidebarOpen, setOpen: setAppSidebarOpen } = useSidebar();
+  const isAiPage = pathname === "/ai";
+  const aiWorkspacePanel = isAiPage ? new URLSearchParams(searchStr).get("panel") : null;
   const aiSettingsPageId =
     isAiPage && aiWorkspacePanel === "settings"
       ? new URLSearchParams(searchStr).get("settingsPage")
-      : null
-  const aiWorkspaceSidePaneOpen =
-    aiWorkspacePanel === "settings" || aiWorkspacePanel === "history"
+      : null;
+  const aiWorkspaceSidePaneOpen = aiWorkspacePanel === "settings" || aiWorkspacePanel === "history";
   const closeAuxiliaryWorkspaceSidePane = useCallback(() => {
-    const search = new URLSearchParams(searchStr)
+    const search = new URLSearchParams(searchStr);
     if (search.has("settingsPage")) {
-      search.delete("settingsPage")
-      const query = search.toString()
-      router.history.replace(`${pathname}${query ? `?${query}` : ""}${hash}`)
-      return
+      search.delete("settingsPage");
+      const query = search.toString();
+      router.history.replace(`${pathname}${query ? `?${query}` : ""}${hash}`);
+      return;
     }
-    search.delete("panel")
-    search.delete("settingsScope")
-    search.delete("settingsTab")
-    const query = search.toString()
-    router.history.replace(`${pathname}${query ? `?${query}` : ""}${hash}`)
-  }, [hash, pathname, router.history, searchStr])
-  const isMailPage = pathname === "/mail" || pathname === "/calendar"
-  const pageId = useRoutePageId(pathname)
-  const databaseId = getDatabaseId(pathname)
-  const agentId = pathname.match(/^\/agents\/([^/]+)$/)?.[1] ?? null
-  const agentWorkspacePanel = agentId
-    ? new URLSearchParams(searchStr).get("panel")
-    : null
-  const agentWorkspaceSidePaneOpen = agentWorkspacePanel === "settings"
-  const activeWorkspaceId = useActiveWorkspaceId()
+    search.delete("panel");
+    search.delete("settingsScope");
+    search.delete("settingsTab");
+    const query = search.toString();
+    router.history.replace(`${pathname}${query ? `?${query}` : ""}${hash}`);
+  }, [hash, pathname, router.history, searchStr]);
+  const isMailPage = pathname === "/mail" || pathname === "/calendar";
+  const pageId = useRoutePageId(pathname);
+  const databaseId = getDatabaseId(pathname);
+  const agentId = pathname.match(/^\/agents\/([^/]+)$/)?.[1] ?? null;
+  const agentWorkspacePanel = agentId ? new URLSearchParams(searchStr).get("panel") : null;
+  const agentWorkspaceSidePaneOpen = agentWorkspacePanel === "settings";
+  const activeWorkspaceId = useActiveWorkspaceId();
   const { data: databasePayload } = useDatabaseMetadata(databaseId, {
     includeDeleted: true,
-  })
-  const hostPageId = pageId ?? databasePayload?.database.pageId ?? null
+  });
+  const hostPageId = pageId ?? databasePayload?.database.pageId ?? null;
   const { data: hostPage } = usePage(hostPageId, {
     refetchOnMount: false,
-  })
+  });
   const desktopTabTitle =
-    (databaseId
-      ? databasePayload?.database.name.trim()
-      : pageId
-        ? hostPage?.name.trim()
-        : null) || getDesktopTabTitle(pathname)
+    (databaseId ? databasePayload?.database.name.trim() : pageId ? hostPage?.name.trim() : null) ||
+    getDesktopTabTitle(pathname);
   const desktopTabIcon = databasePayload?.activeDataSource
     ? getDatabaseEmoji(databasePayload.activeDataSource)
     : hostPage
       ? getPageEmoji(hostPage)
-      : null
-  const recordItemVisit = useRecordItemVisit()
-  const recordedVisitKeyRef = useRef<string | null>(null)
-  const discussionsEnabled = Boolean(pageId && !databaseId)
-  const { data: userSettings = defaultUserSettings } = useUserSettings()
-  const sidePaneState = usePageSidePaneState(
-    pageId,
-    userSettings.embeddedItemsOpenAs,
-  )
+      : null;
+  const recordItemVisit = useRecordItemVisit();
+  const recordedVisitKeyRef = useRef<string | null>(null);
+  const discussionsEnabled = Boolean(pageId && !databaseId);
+  const { data: userSettings = defaultUserSettings } = useUserSettings();
+  const sidePaneState = usePageSidePaneState(pageId, userSettings.embeddedItemsOpenAs);
   const {
     closeSidePane,
     dialogPageId,
@@ -294,136 +261,121 @@ function AppLayoutContent({
     sidePaneAnimatedOpen,
     sidePaneDatabaseId,
     sidePanePageId,
-  } = sidePaneState
-  const [chatSidebarOpen, setChatSidebarOpen] = useState(false)
+  } = sidePaneState;
+  const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
   const [chatPresentationMode, setChatPresentationMode] =
-    useState<ChatPresentationMode>(readChatPresentationMode)
-  const [discussionsSidebarOpen, setDiscussionsSidebarOpen] = useState(false)
-  const pageLayoutSidebar = useOptionalPageLayoutSidebar()
-  const pageLayoutSidebarOpen = Boolean(
-    pageLayoutSidebar?.hasSidebar && pageLayoutSidebar.open,
-  )
-  const { editorCommentsOpenRequest } = usePageEditorComments()
-  const commentController = usePageCommentController(pageId)
+    useState<ChatPresentationMode>(readChatPresentationMode);
+  const [discussionsSidebarOpen, setDiscussionsSidebarOpen] = useState(false);
+  const pageLayoutSidebar = useOptionalPageLayoutSidebar();
+  const pageLayoutSidebarOpen = Boolean(pageLayoutSidebar?.hasSidebar && pageLayoutSidebar.open);
+  const { editorCommentsOpenRequest } = usePageEditorComments();
+  const commentController = usePageCommentController(pageId);
 
   const openDiscussionsSidebar = useCallback(() => {
-    if (!discussionsEnabled) return
-    if (appSidebarOpen) closeSidePane()
-    pageLayoutSidebar?.setOpen(false)
-    setDiscussionsSidebarOpen(true)
-  }, [
-    appSidebarOpen,
-    closeSidePane,
-    discussionsEnabled,
-    pageLayoutSidebar,
-  ])
+    if (!discussionsEnabled) return;
+    if (appSidebarOpen) closeSidePane();
+    pageLayoutSidebar?.setOpen(false);
+    setDiscussionsSidebarOpen(true);
+  }, [appSidebarOpen, closeSidePane, discussionsEnabled, pageLayoutSidebar]);
   const toggleDiscussionsSidebar = useCallback(() => {
-    if (!discussionsEnabled) return
+    if (!discussionsEnabled) return;
 
     if (discussionsSidebarOpen) {
-      setDiscussionsSidebarOpen(false)
-      return
+      setDiscussionsSidebarOpen(false);
+      return;
     }
 
-    openDiscussionsSidebar()
-  }, [
-    discussionsEnabled,
-    discussionsSidebarOpen,
-    openDiscussionsSidebar,
-  ])
+    openDiscussionsSidebar();
+  }, [discussionsEnabled, discussionsSidebarOpen, openDiscussionsSidebar]);
 
   useEffect(() => {
-    if (!discussionsEnabled) setDiscussionsSidebarOpen(false)
-  }, [discussionsEnabled])
+    if (!discussionsEnabled) setDiscussionsSidebarOpen(false);
+  }, [discussionsEnabled]);
 
   useEffect(() => {
-    if (!commentController) return
-    commentController.setOpenThreadHandler(() => openDiscussionsSidebar())
-    return () => commentController.setOpenThreadHandler(null)
-  }, [commentController, openDiscussionsSidebar])
+    if (!commentController) return;
+    commentController.setOpenThreadHandler(() => openDiscussionsSidebar());
+    return () => commentController.setOpenThreadHandler(null);
+  }, [commentController, openDiscussionsSidebar]);
 
   useEffect(() => {
     if (editorCommentsOpenRequest > 0) {
-      openDiscussionsSidebar()
+      openDiscussionsSidebar();
     }
-  }, [editorCommentsOpenRequest, openDiscussionsSidebar])
+  }, [editorCommentsOpenRequest, openDiscussionsSidebar]);
   const primaryRightPanelOpen = Boolean(
     (utilitySidebarOpen && utilitySidebar) ||
-      pageLayoutSidebarOpen ||
-      (discussionsEnabled && discussionsSidebarOpen),
-  )
+    pageLayoutSidebarOpen ||
+    (discussionsEnabled && discussionsSidebarOpen),
+  );
   const desktopRightPanelCount = isMobile
     ? 0
-    : Number(chatSidebarOpen && chatPresentationMode === "sidebar") +
-      Number(primaryRightPanelOpen)
+    : Number(chatSidebarOpen && chatPresentationMode === "sidebar") + Number(primaryRightPanelOpen);
   const handleRightSidebarResizeIntent = useCallback(
     (intent: SidebarResizeIntent) => {
-      if (isMobile) return
-      const nextOpen = intent === "decrease"
-      if (appSidebarOpen !== nextOpen) setAppSidebarOpen(nextOpen)
+      if (isMobile) return;
+      const nextOpen = intent === "decrease";
+      if (appSidebarOpen !== nextOpen) setAppSidebarOpen(nextOpen);
     },
     [appSidebarOpen, isMobile, setAppSidebarOpen],
-  )
+  );
   const openSidePane = useCallback(
     (nextPageId: string, options?: { databaseId?: string | null }) => {
       if (appSidebarOpen) {
-        setChatSidebarOpen(false)
-        setDiscussionsSidebarOpen(false)
+        setChatSidebarOpen(false);
+        setDiscussionsSidebarOpen(false);
       }
 
-      pageLayoutSidebar?.setOpen(false)
+      pageLayoutSidebar?.setOpen(false);
 
-      openSidePaneBase(nextPageId, options)
+      openSidePaneBase(nextPageId, options);
     },
     [appSidebarOpen, openSidePaneBase, pageLayoutSidebar],
-  )
+  );
   const openDatabaseSidePane = useCallback(
     (nextDatabaseId: string) => {
       if (appSidebarOpen) {
-        setChatSidebarOpen(false)
-        setDiscussionsSidebarOpen(false)
+        setChatSidebarOpen(false);
+        setDiscussionsSidebarOpen(false);
       }
 
-      pageLayoutSidebar?.setOpen(false)
+      pageLayoutSidebar?.setOpen(false);
 
-      openDatabaseSidePaneBase(nextDatabaseId)
+      openDatabaseSidePaneBase(nextDatabaseId);
     },
     [appSidebarOpen, openDatabaseSidePaneBase, pageLayoutSidebar],
-  )
+  );
   const openChatSidebar = useCallback(() => {
     if (appSidebarOpen) {
-      closeSidePane()
+      closeSidePane();
     }
-    setChatSidebarOpen(true)
-  }, [appSidebarOpen, closeSidePane])
+    setChatSidebarOpen(true);
+  }, [appSidebarOpen, closeSidePane]);
 
   useEffect(() => {
     if (pathname === "/ai" && chatSidebarOpen) {
-      setChatSidebarOpen(false)
+      setChatSidebarOpen(false);
     }
-  }, [chatSidebarOpen, pathname])
+  }, [chatSidebarOpen, pathname]);
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(
-        CHAT_PRESENTATION_MODE_STORAGE_KEY,
-        chatPresentationMode,
-      )
+      window.localStorage.setItem(CHAT_PRESENTATION_MODE_STORAGE_KEY, chatPresentationMode);
     } catch {
       // Storage is optional; the in-memory preference remains active.
     }
-  }, [chatPresentationMode])
+  }, [chatPresentationMode]);
 
   const togglePageLayoutSidebar = useCallback(() => {
-    if (!pageLayoutSidebar?.hasSidebar) return
+    if (!pageLayoutSidebar?.hasSidebar) return;
 
-    const nextOpen = !pageLayoutSidebar.open
+    const nextOpen = !pageLayoutSidebar.open;
     if (nextOpen) {
-      closeSidePane()
-      setDiscussionsSidebarOpen(false)
+      closeSidePane();
+      setDiscussionsSidebarOpen(false);
     }
-    pageLayoutSidebar.setOpen(nextOpen)
-  }, [closeSidePane, pageLayoutSidebar])
+    pageLayoutSidebar.setOpen(nextOpen);
+  }, [closeSidePane, pageLayoutSidebar]);
   const sidePaneContext = useMemo(
     () => ({
       ...sidePaneState,
@@ -431,39 +383,39 @@ function AppLayoutContent({
       openSidePane,
     }),
     [openDatabaseSidePane, openSidePane, sidePaneState],
-  )
+  );
 
   useEffect(() => {
     if (databaseId) {
-      setDiscussionsSidebarOpen(false)
+      setDiscussionsSidebarOpen(false);
     }
-  }, [databaseId])
+  }, [databaseId]);
 
   useEffect(() => {
-    const itemKind = databaseId ? "database" : pageId ? "page" : agentId ? "agent" : null
-    const itemId = databaseId ?? pageId ?? agentId
+    const itemKind = databaseId ? "database" : pageId ? "page" : agentId ? "agent" : null;
+    const itemId = databaseId ?? pageId ?? agentId;
     const workspaceId = databaseId
       ? databasePayload?.database.workspaceId
       : pageId
         ? hostPage?.workspaceId
-        : activeWorkspaceId
+        : activeWorkspaceId;
 
     if (!itemKind || !itemId || !workspaceId) {
-      return
+      return;
     }
 
-    const visitKey = `${itemKind}:${itemId}:${workspaceId}`
+    const visitKey = `${itemKind}:${itemId}:${workspaceId}`;
 
     if (recordedVisitKeyRef.current === visitKey) {
-      return
+      return;
     }
 
-    recordedVisitKeyRef.current = visitKey
+    recordedVisitKeyRef.current = visitKey;
     recordItemVisit.mutate({
       itemId,
       itemKind,
       workspaceId,
-    })
+    });
   }, [
     databaseId,
     databasePayload?.database.workspaceId,
@@ -472,7 +424,7 @@ function AppLayoutContent({
     hostPage?.workspaceId,
     recordItemVisit.mutate,
     pageId,
-  ])
+  ]);
 
   useEffect(() => {
     if (
@@ -481,7 +433,7 @@ function AppLayoutContent({
       !mainPaneNavigationActive &&
       chatSidebarOpen
     ) {
-      setChatSidebarOpen(false)
+      setChatSidebarOpen(false);
     }
   }, [
     appSidebarOpen,
@@ -489,45 +441,30 @@ function AppLayoutContent({
     mainPaneNavigationActive,
     sidePaneDatabaseId,
     sidePanePageId,
-  ])
+  ]);
 
   useEffect(() => {
-    if (
-      appSidebarOpen &&
-      (sidePanePageId || sidePaneDatabaseId) &&
-      discussionsSidebarOpen
-    ) {
-      setDiscussionsSidebarOpen(false)
+    if (appSidebarOpen && (sidePanePageId || sidePaneDatabaseId) && discussionsSidebarOpen) {
+      setDiscussionsSidebarOpen(false);
     }
-  }, [
-    appSidebarOpen,
-    discussionsSidebarOpen,
-    sidePaneDatabaseId,
-    sidePanePageId,
-  ])
+  }, [appSidebarOpen, discussionsSidebarOpen, sidePaneDatabaseId, sidePanePageId]);
 
   const showEmbeddedSidePaneLayout =
     !utilitySidebarOpen &&
     !pageLayoutSidebarOpen &&
-    Boolean(renderedSidePanePageId || renderedSidePaneDatabaseId)
+    Boolean(renderedSidePanePageId || renderedSidePaneDatabaseId);
   const showAiWorkspaceSidePaneLayout =
-    !utilitySidebarOpen && !pageLayoutSidebarOpen && aiWorkspaceSidePaneOpen
+    !utilitySidebarOpen && !pageLayoutSidebarOpen && aiWorkspaceSidePaneOpen;
   const showAgentWorkspaceSidePaneLayout =
-    !utilitySidebarOpen && !pageLayoutSidebarOpen && agentWorkspaceSidePaneOpen
+    !utilitySidebarOpen && !pageLayoutSidebarOpen && agentWorkspaceSidePaneOpen;
   const showAuxiliaryWorkspaceSidePaneLayout =
-    showAiWorkspaceSidePaneLayout || showAgentWorkspaceSidePaneLayout
-  const showSidePaneLayout =
-    showAuxiliaryWorkspaceSidePaneLayout || showEmbeddedSidePaneLayout
+    showAiWorkspaceSidePaneLayout || showAgentWorkspaceSidePaneLayout;
+  const showSidePaneLayout = showAuxiliaryWorkspaceSidePaneLayout || showEmbeddedSidePaneLayout;
   const pageSidebarPanel = pageLayoutSidebar?.hasSidebar ? (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3">
-        <SidebarSimpleIcon
-          className="size-4 text-content-secondary"
-          mirrored
-        />
-        <h2 className="min-w-0 flex-1 truncate text-sm font-medium">
-          Page sidebar
-        </h2>
+        <SidebarSimpleIcon className="size-4 text-content-secondary" mirrored />
+        <h2 className="min-w-0 flex-1 truncate text-sm font-medium">Page sidebar</h2>
         <Button
           aria-label="Close page sidebar"
           onClick={() => pageLayoutSidebar?.setOpen(false)}
@@ -539,12 +476,9 @@ function AppLayoutContent({
           <ChevronsRightIcon />
         </Button>
       </header>
-      <div
-        className="min-h-0 flex-1 overflow-y-auto"
-        ref={pageLayoutSidebar?.setPanelTarget}
-      />
+      <div className="min-h-0 flex-1 overflow-y-auto" ref={pageLayoutSidebar?.setPanelTarget} />
     </div>
-  ) : undefined
+  ) : undefined;
   const chatPanel = chatSidebarOpen ? (
     <Suspense
       fallback={
@@ -562,16 +496,15 @@ function AppLayoutContent({
         presentationMode={isMobile ? "sidebar" : chatPresentationMode}
       />
     </Suspense>
-  ) : null
-  const dockedChatOpen =
-    chatSidebarOpen && (isMobile || chatPresentationMode === "sidebar")
+  ) : null;
+  const dockedChatOpen = chatSidebarOpen && (isMobile || chatPresentationMode === "sidebar");
   const discussionsPanel = discussionsEnabled ? (
     <DiscussionsSidebarPanel
       onClose={() => setDiscussionsSidebarOpen(false)}
       open={discussionsSidebarOpen}
       pageId={pageId}
     />
-  ) : undefined
+  ) : undefined;
 
   return (
     <PageSidePaneContext.Provider value={sidePaneContext}>
@@ -594,7 +527,9 @@ function AppLayoutContent({
           />
         </Suspense>
       ) : null}
-      <Suspense fallback={null}><CalendarReminderHost /></Suspense>
+      <Suspense fallback={null}>
+        <CalendarReminderHost />
+      </Suspense>
       <ResizablePanelGroup
         className="relative min-h-0 min-w-0 flex-1 overflow-hidden has-data-[desktop-tabs]:pt-9"
         orientation="horizontal"
@@ -621,7 +556,7 @@ function AppLayoutContent({
                 isSettingsPage ? (
                   <div className="h-full bg-surface-canvas" />
                 ) : (
-                  children ?? <Outlet />
+                  (children ?? <Outlet />)
                 )
               }
               header={
@@ -629,17 +564,15 @@ function AppLayoutContent({
                   <AppHeader
                     agentId={agentId}
                     auxiliarySidePanePageId={aiSettingsPageId}
-                    auxiliarySidePaneCloseLabel={agentId ? "Close Custom Agent settings" : "Close AI settings"}
+                    auxiliarySidePaneCloseLabel={
+                      agentId ? "Close Custom Agent settings" : "Close AI settings"
+                    }
                     auxiliarySidePaneOpen={showAuxiliaryWorkspaceSidePaneLayout}
                     discussionsOpen={discussionsSidebarOpen}
                     isSettingsPage={isSettingsPage || isAiPage}
-                    onToggleDiscussions={
-                      discussionsEnabled ? toggleDiscussionsSidebar : undefined
-                    }
+                    onToggleDiscussions={discussionsEnabled ? toggleDiscussionsSidebar : undefined}
                     onTogglePageSidebar={
-                      pageLayoutSidebar?.hasSidebar
-                        ? togglePageLayoutSidebar
-                        : undefined
+                      pageLayoutSidebar?.hasSidebar ? togglePageLayoutSidebar : undefined
                     }
                     pageSidebarOpen={pageLayoutSidebarOpen}
                     onCloseAuxiliarySidePane={
@@ -701,9 +634,7 @@ function AppLayoutContent({
         pageSidebarPanel={pageSidebarPanel}
       />
       {chatSidebarOpen && !isMobile && chatPresentationMode === "floating" ? (
-        <FloatingWidget aria-label="Floating Ask AI chat">
-          {chatPanel}
-        </FloatingWidget>
+        <FloatingWidget aria-label="Floating Ask AI chat">{chatPanel}</FloatingWidget>
       ) : null}
       {chatSidebarOpen || isAiPage || Boolean(agentId) || isMailPage ? null : (
         <ChatSidebarTrigger
@@ -716,28 +647,27 @@ function AppLayoutContent({
         />
       )}
     </PageSidePaneContext.Provider>
-  )
+  );
 }
 
 function readChatPresentationMode(): ChatPresentationMode {
   try {
-    return window.localStorage.getItem(CHAT_PRESENTATION_MODE_STORAGE_KEY) ===
-      "floating"
+    return window.localStorage.getItem(CHAT_PRESENTATION_MODE_STORAGE_KEY) === "floating"
       ? "floating"
-      : "sidebar"
+      : "sidebar";
   } catch {
-    return "sidebar"
+    return "sidebar";
   }
 }
 
 function PageLayoutOverlayDrawer() {
-  const pageLayoutSidebar = useOptionalPageLayoutSidebar()
-  const open = Boolean(pageLayoutSidebar?.overlayPageId)
+  const pageLayoutSidebar = useOptionalPageLayoutSidebar();
+  const open = Boolean(pageLayoutSidebar?.overlayPageId);
 
   return (
     <Sheet
       onOpenChange={(nextOpen) => {
-        if (!nextOpen) pageLayoutSidebar?.closeOverlay()
+        if (!nextOpen) pageLayoutSidebar?.closeOverlay();
       }}
       open={open}
     >
@@ -757,5 +687,5 @@ function PageLayoutOverlayDrawer() {
         />
       </SheetContent>
     </Sheet>
-  )
+  );
 }

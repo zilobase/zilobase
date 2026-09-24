@@ -3,10 +3,7 @@ import { resolveWebhookHeader } from "../actions/notion-action-model";
 
 export async function materializeWebhookSecrets(
   draft: BuilderDraft,
-  createSecret: (input: {
-    purpose: "webhook_header";
-    value: string;
-  }) => Promise<{ id: string }>,
+  createSecret: (input: { purpose: "webhook_header"; value: string }) => Promise<{ id: string }>,
 ) {
   let saveDraft = draft;
   for (const actionDraft of saveDraft.actions) {

@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query"
+import { QueryClient } from "@tanstack/react-query";
 
 function getErrorStatus(error: unknown) {
   if (
@@ -7,24 +7,24 @@ function getErrorStatus(error: unknown) {
     "status" in error &&
     typeof error.status === "number"
   ) {
-    return error.status
+    return error.status;
   }
 
-  return null
+  return null;
 }
 
 export function shouldRetryQuery(failureCount: number, error: unknown) {
   if (failureCount >= 1) {
-    return false
+    return false;
   }
 
-  const status = getErrorStatus(error)
+  const status = getErrorStatus(error);
 
   if (status && status >= 400 && status < 500) {
-    return false
+    return false;
   }
 
-  return true
+  return true;
 }
 
 export function createZilobaseQueryClient() {
@@ -42,5 +42,5 @@ export function createZilobaseQueryClient() {
         retry: false,
       },
     },
-  })
+  });
 }

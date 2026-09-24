@@ -1,27 +1,20 @@
-import { useMemo, useState } from "react"
-import {
-  ChevronDown,
-  ChevronRight,
-  Plus,
-} from "@/shared/components/icons"
-import {
-  getPageCover,
-  getPageEmoji,
-  type PageMetadata,
-} from "@zilobase/features/pages"
+import { useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, Plus } from "@/shared/components/icons";
+import { getPageCover, getPageEmoji, type PageMetadata } from "@zilobase/features/pages";
 
-import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
+import { getColorTokenBadgeClassName, getColorTokenDotClassName } from "@/shared/lib/color-tokens";
+import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections";
+import { canCreateRowInKanbanGroup } from "../../kanban/model/database-kanban-config";
 import {
-  getColorTokenBadgeClassName,
-  getColorTokenDotClassName,
-} from "@/shared/lib/color-tokens"
-import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections"
-import { canCreateRowInKanbanGroup } from "../../kanban/model/database-kanban-config"
-import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
-import { DatabaseRecordWindowControl } from "../../components/database-record-window-control"
-import { DatabasePropertyValue } from "../../../schema/editors/database-property-value"
-import { DatabaseCellContent } from "../../components/database-cell-content"
-import { useDatabaseGalleryCardDrag } from "../controller/use-database-gallery-card-drag"
+  useDatabaseActionsContext,
+  useDatabaseDataContext,
+  useDatabaseUiContext,
+} from "../../state/database-view-context";
+import { DatabaseRecordWindowControl } from "../../components/database-record-window-control";
+import { DatabasePropertyValue } from "../../../schema/editors/database-property-value";
+import { DatabaseCellContent } from "../../components/database-cell-content";
+import { useDatabaseGalleryCardDrag } from "../controller/use-database-gallery-card-drag";
 
 export function DatabaseGalleryView() {
   const {
@@ -30,7 +23,7 @@ export function DatabaseGalleryView() {
     onOpenPage,
     savePropertyValue,
     updateDatabasePropertyConfig,
-  } = useDatabaseActionsContext()
+  } = useDatabaseActionsContext();
   const {
     databaseId,
     editable,
@@ -42,27 +35,21 @@ export function DatabaseGalleryView() {
     propertyValuesByKey,
     sortedItems,
     visibleProperties,
-  } = useDatabaseDataContext()
-  const {
-    layoutSettings,
-    showPageIconInTitle,
-    titlePropertyLabel,
-  } = useDatabaseUiContext()
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
-    () => new Set(),
-  )
+  } = useDatabaseDataContext();
+  const { layoutSettings, showPageIconInTitle, titlePropertyLabel } = useDatabaseUiContext();
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
   const rows = useMemo(() => {
-    const rowsById = new Map(items.map((row) => [row.id, row]))
+    const rowsById = new Map(items.map((row) => [row.id, row]));
 
     return sortedItems.flatMap((item) => {
-      const row = rowsById.get(item.id)
-      return row ? [row] : []
-    })
-  }, [items, sortedItems])
+      const row = rowsById.get(item.id);
+      return row ? [row] : [];
+    });
+  }, [items, sortedItems]);
   const personOptionsById = useMemo(
     () => new Map(personOptions.map((person) => [person.id, person.name])),
     [personOptions],
-  )
+  );
   const groupedSections = useMemo(
     () =>
       getDatabaseTableGroupSections({
@@ -72,7 +59,7 @@ export function DatabaseGalleryView() {
         rows,
       }),
     [groupProperty, personOptionsById, propertyValuesByKey, rows],
-  )
+  );
   const cardDrag = useDatabaseGalleryCardDrag({
     addDraggedPageRow,
     databaseId,
@@ -82,20 +69,20 @@ export function DatabaseGalleryView() {
     groupedSections,
     items,
     visibleRows: rows,
-  })
+  });
   const toggleGroup = (groupId: string) => {
     setCollapsedGroups((current) => {
-      const next = new Set(current)
+      const next = new Set(current);
 
       if (next.has(groupId)) {
-        next.delete(groupId)
+        next.delete(groupId);
       } else {
-        next.add(groupId)
+        next.add(groupId);
       }
 
-      return next
-    })
-  }
+      return next;
+    });
+  };
   const renderCard = (
     row: (typeof items)[number],
     rowIndex: number,
@@ -104,10 +91,10 @@ export function DatabaseGalleryView() {
   ) => {
     const emoji = getPageEmoji({
       metadata: row.page.metadata as PageMetadata | null | undefined,
-    })
+    });
     const cover = getPageCover({
       metadata: row.page.metadata as PageMetadata | null | undefined,
-    })
+    });
 
     return (
       <article
@@ -132,14 +119,12 @@ export function DatabaseGalleryView() {
         key={row.id}
         onDragEnd={cardDrag.clearDrag}
         onDragOver={(event) => {
-          const rect = event.currentTarget.getBoundingClientRect()
+          const rect = event.currentTarget.getBoundingClientRect();
           cardDrag.dragOver(
             event,
             sectionId,
-            event.clientY < rect.top + rect.height / 2
-              ? rowIndex
-              : rowIndex + 1,
-          )
+            event.clientY < rect.top + rect.height / 2 ? rowIndex : rowIndex + 1,
+          );
         }}
         onDrop={(event) => cardDrag.drop(event, sectionId, rowIndex)}
         onDragStartCapture={(event) => cardDrag.startDrag(row, event)}
@@ -174,11 +159,7 @@ export function DatabaseGalleryView() {
           >
             {showPageIconInTitle ? (
               <span className="database-gallery-card-icon">
-                {emoji ? (
-                  <PageIconDisplay size="sm" value={emoji} />
-                ) : (
-                  <DefaultPageIcon />
-                )}
+                {emoji ? <PageIconDisplay size="sm" value={emoji} /> : <DefaultPageIcon />}
               </span>
             ) : null}
             <span>{row.page.name?.trim() || "Untitled"}</span>
@@ -186,16 +167,14 @@ export function DatabaseGalleryView() {
           {visibleProperties.length > 0 ? (
             <div className="database-gallery-card-properties">
               {visibleProperties.map((property) => {
-                const key = `${row.pageId}:${property.property.id}`
-                const persistedValue = propertyValuesByKey[key] ?? ""
+                const key = `${row.pageId}:${property.property.id}`;
+                const persistedValue = propertyValuesByKey[key] ?? "";
 
                 return (
                   <div
                     className="database-gallery-card-property"
                     data-full-line={
-                      layoutSettings.fullLinePropertyIds.includes(property.id)
-                        ? "true"
-                        : undefined
+                      layoutSettings.fullLinePropertyIds.includes(property.id) ? "true" : undefined
                     }
                     key={`${row.id}:${property.id}`}
                   >
@@ -203,21 +182,13 @@ export function DatabaseGalleryView() {
                       {property.property.name}
                     </span>
                     <div className="database-gallery-card-property-value">
-                      <DatabaseCellContent
-                        wrapContent={layoutSettings.wrapAllContent}
-                      >
+                      <DatabaseCellContent wrapContent={layoutSettings.wrapAllContent}>
                         <DatabasePropertyValue
                           editable={editable}
                           properties={properties}
                           propertyValuesByKey={propertyValuesByKey}
-                          onPropertyConfigChange={(
-                            databasePropertyId,
-                            config,
-                          ) =>
-                            updateDatabasePropertyConfig(
-                              databasePropertyId,
-                              config,
-                            )
+                          onPropertyConfigChange={(databasePropertyId, config) =>
+                            updateDatabasePropertyConfig(databasePropertyId, config)
                           }
                           onSaveValue={savePropertyValue}
                           persistedValue={persistedValue}
@@ -229,31 +200,26 @@ export function DatabaseGalleryView() {
                       </DatabaseCellContent>
                     </div>
                   </div>
-                )
+                );
               })}
             </div>
           ) : null}
         </div>
       </article>
-    )
-  }
-  const renderNewCard = (
-    groupValue?: string,
-    grouped = false,
-  ) =>
+    );
+  };
+  const renderNewCard = (groupValue?: string, grouped = false) =>
     editable && (!grouped || (groupProperty && canCreateRowInKanbanGroup(groupProperty))) ? (
       <button
         className="database-gallery-new-card"
         disabled={!databaseId}
-        onClick={() =>
-          addDatabaseRow(groupValue, grouped ? groupProperty : undefined)
-        }
+        onClick={() => addDatabaseRow(groupValue, grouped ? groupProperty : undefined)}
         type="button"
       >
         <Plus />
         <span>New page</span>
       </button>
-    ) : null
+    ) : null;
 
   return (
     <div
@@ -267,7 +233,7 @@ export function DatabaseGalleryView() {
       {groupProperty ? (
         <div className="database-gallery-groups">
           {groupedSections.map((section) => {
-            const isCollapsed = collapsedGroups.has(section.id)
+            const isCollapsed = collapsedGroups.has(section.id);
 
             return (
               <section className="database-gallery-group" key={section.id}>
@@ -283,15 +249,10 @@ export function DatabaseGalleryView() {
                     <ChevronDown className="size-4 shrink-0" />
                   )}
                   <span className={getColorTokenBadgeClassName(section.color)}>
-                    <span
-                      aria-hidden="true"
-                      className={getColorTokenDotClassName(section.color)}
-                    />
+                    <span aria-hidden="true" className={getColorTokenDotClassName(section.color)} />
                     {section.name}
                   </span>
-                  <span className="database-table-group-count">
-                    {section.rows.length}
-                  </span>
+                  <span className="database-table-group-count">{section.rows.length}</span>
                 </button>
                 {!isCollapsed ? (
                   <div
@@ -299,23 +260,16 @@ export function DatabaseGalleryView() {
                     onDragOver={(event) =>
                       cardDrag.dragOver(event, section.id, section.rows.length)
                     }
-                    onDrop={(event) =>
-                      cardDrag.drop(event, section.id, section.rows.length)
-                    }
+                    onDrop={(event) => cardDrag.drop(event, section.id, section.rows.length)}
                   >
                     {section.rows.map((row, rowIndex) =>
-                      renderCard(
-                        row,
-                        rowIndex,
-                        section.id,
-                        section.rows.length,
-                      ),
+                      renderCard(row, rowIndex, section.id, section.rows.length),
                     )}
                     {renderNewCard(section.groupValue, true)}
                   </div>
                 ) : null}
               </section>
-            )
+            );
           })}
         </div>
       ) : (
@@ -324,13 +278,11 @@ export function DatabaseGalleryView() {
           onDragOver={(event) => cardDrag.dragOver(event, null, rows.length)}
           onDrop={(event) => cardDrag.drop(event, null, rows.length)}
         >
-          {rows.map((row, rowIndex) =>
-            renderCard(row, rowIndex, null, rows.length),
-          )}
+          {rows.map((row, rowIndex) => renderCard(row, rowIndex, null, rows.length))}
           {renderNewCard()}
         </div>
       )}
       <DatabaseRecordWindowControl automatic />
     </div>
-  )
+  );
 }

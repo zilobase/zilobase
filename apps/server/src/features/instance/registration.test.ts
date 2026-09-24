@@ -29,14 +29,8 @@ test("bootstrap token is required and compared exactly", () => {
   const env = { ZILOBASE_BOOTSTRAP_TOKEN: "expected-secret" };
 
   assert.doesNotThrow(() => assertBootstrapToken(env, "expected-secret"));
-  assert.throws(
-    () => assertBootstrapToken(env, "wrong-secret"),
-    InvalidBootstrapTokenError,
-  );
-  assert.throws(
-    () => assertBootstrapToken(env, null),
-    InvalidBootstrapTokenError,
-  );
+  assert.throws(() => assertBootstrapToken(env, "wrong-secret"), InvalidBootstrapTokenError);
+  assert.throws(() => assertBootstrapToken(env, null), InvalidBootstrapTokenError);
 });
 
 test("production self-hosting requires a bootstrap token without changing managed policy", () => {
@@ -60,10 +54,7 @@ test("production self-hosting requires a bootstrap token without changing manage
   );
 
   assert.doesNotThrow(() =>
-    assertSelfHostedProductionConfiguration(
-      { NODE_ENV: "production" },
-      managedAppPolicy,
-    ),
+    assertSelfHostedProductionConfiguration({ NODE_ENV: "production" }, managedAppPolicy),
   );
 });
 
@@ -107,39 +98,20 @@ test("concurrent and repeated bootstrap attempts create one administrator", asyn
   };
   const env = { ZILOBASE_BOOTSTRAP_TOKEN: "bootstrap-secret" };
   const concurrent = await Promise.allSettled([
-    bootstrapSelfHostedInstance(
-      env,
-      "bootstrap-secret",
-      bootstrapInput,
-      dependencies,
-    ),
-    bootstrapSelfHostedInstance(
-      env,
-      "bootstrap-secret",
-      bootstrapInput,
-      dependencies,
-    ),
+    bootstrapSelfHostedInstance(env, "bootstrap-secret", bootstrapInput, dependencies),
+    bootstrapSelfHostedInstance(env, "bootstrap-secret", bootstrapInput, dependencies),
   ]);
 
-  assert.equal(
-    concurrent.filter((result) => result.status === "fulfilled").length,
-    1,
-  );
+  assert.equal(concurrent.filter((result) => result.status === "fulfilled").length, 1);
   assert.equal(
     concurrent.filter(
       (result) =>
-        result.status === "rejected" &&
-        result.reason instanceof BootstrapAlreadyCompletedError,
+        result.status === "rejected" && result.reason instanceof BootstrapAlreadyCompletedError,
     ).length,
     1,
   );
   await assert.rejects(
-    bootstrapSelfHostedInstance(
-      env,
-      "bootstrap-secret",
-      bootstrapInput,
-      dependencies,
-    ),
+    bootstrapSelfHostedInstance(env, "bootstrap-secret", bootstrapInput, dependencies),
     BootstrapAlreadyCompletedError,
   );
   assert.equal(created, 1);
@@ -153,11 +125,7 @@ test("invite-only registration requires the pinned workspace invitation and emai
   };
 
   assert.equal(
-    decideSelfHostedRegistration(
-      settings,
-      { email: "invitee@example.com" },
-      null,
-    ).allowed,
+    decideSelfHostedRegistration(settings, { email: "invitee@example.com" }, null).allowed,
     false,
   );
   assert.equal(
@@ -182,14 +150,8 @@ test("invite-only registration rejects expired invitations", () => {
   const now = new Date("2026-08-14T12:00:00Z");
 
   assert.equal(isInvitationUnexpired(null, now), true);
-  assert.equal(
-    isInvitationUnexpired(new Date("2026-08-14T12:00:01Z"), now),
-    true,
-  );
-  assert.equal(
-    isInvitationUnexpired(new Date("2026-08-14T12:00:00Z"), now),
-    false,
-  );
+  assert.equal(isInvitationUnexpired(new Date("2026-08-14T12:00:01Z"), now), true);
+  assert.equal(isInvitationUnexpired(new Date("2026-08-14T12:00:00Z"), now), false);
 });
 
 test("open registration admits account creation but membership waits for verification", () => {
@@ -236,25 +198,15 @@ test("only the pinned workspace owner can manage instance settings", () => {
 
 test("social registration invitation cookie parsing is strict and tolerant", () => {
   assert.equal(
-    readInvitationIdFromCookieHeader(
-      "other=value; zilobase_registration_invitation=invite%2F1",
-    ),
+    readInvitationIdFromCookieHeader("other=value; zilobase_registration_invitation=invite%2F1"),
     "invite/1",
   );
-  assert.equal(
-    readInvitationIdFromCookieHeader(
-      "zilobase_registration_invitation=%E0%A4%A",
-    ),
-    null,
-  );
+  assert.equal(readInvitationIdFromCookieHeader("zilobase_registration_invitation=%E0%A4%A"), null);
 });
 
 test("registration migration preserves an existing self-hosted workspace", async () => {
   const migration = await readFile(
-    new URL(
-      "../../../drizzle/0038_self_hosted_registration.sql",
-      import.meta.url,
-    ),
+    new URL("../../../drizzle/0038_self_hosted_registration.sql", import.meta.url),
     "utf8",
   );
 

@@ -19,8 +19,7 @@ const agentSettingsQueryKey = (
   scope: string,
 ) => ["agent-settings", workspaceId, userId, scope] as const;
 
-const agentSettingsVersionsQueryKey = (key: readonly unknown[]) =>
-  [...key, "versions"] as const;
+const agentSettingsVersionsQueryKey = (key: readonly unknown[]) => [...key, "versions"] as const;
 
 function settingsDraftQueryOptions(
   apiFetch: ReturnType<typeof useZilobaseFeatures>["apiFetch"],
@@ -31,13 +30,10 @@ function settingsDraftQueryOptions(
   return queryOptions({
     enabled: Boolean(workspaceId && userId),
     queryFn: ({ signal }) =>
-      apiFetch<AgentSettingsState>(
-        `/api/ai/settings/${encodeURIComponent(scope)}/draft`,
-        {
-          headers: { "x-zilobase-workspace-id": workspaceId ?? "" },
-          signal,
-        },
-      ),
+      apiFetch<AgentSettingsState>(`/api/ai/settings/${encodeURIComponent(scope)}/draft`, {
+        headers: { "x-zilobase-workspace-id": workspaceId ?? "" },
+        signal,
+      }),
     queryKey: agentSettingsQueryKey(workspaceId, userId, scope),
     refetchInterval: 2_000,
     staleTime: 0,
@@ -59,10 +55,7 @@ export function agentSettingsVersionsQueryOptions(
   return queryOptions({
     enabled,
     queryFn: ({ signal }) =>
-      apiFetch<{ versions: AgentSettingsVersion[] }>(
-        `${base}/versions`,
-        { headers, signal },
-      ),
+      apiFetch<{ versions: AgentSettingsVersion[] }>(`${base}/versions`, { headers, signal }),
     queryKey: agentSettingsVersionsQueryKey(key),
   });
 }
@@ -86,9 +79,7 @@ export function useSettingsDraft(scope: string) {
   const storageKey = JSON.stringify(key);
   const base = `/api/ai/settings/${encodeURIComponent(scope)}`;
   const headers = { "x-zilobase-workspace-id": workspaceId ?? "" };
-  const query = useQuery(
-    settingsDraftQueryOptions(apiFetch, workspaceId, userId, scope),
-  );
+  const query = useQuery(settingsDraftQueryOptions(apiFetch, workspaceId, userId, scope));
   const [state, setState] = React.useState<AgentSettingsState>();
   const [reviewOpen, setReviewOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -112,9 +103,7 @@ export function useSettingsDraft(scope: string) {
   }, [storageKey]);
   const pending = React.useRef<Partial<AgentSettingsDefinition>>({});
   const queue = React.useRef<Promise<void>>(Promise.resolve());
-  const timer = React.useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
+  const timer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const remember = () => {
     if (!current.current) return;
     try {
@@ -131,10 +120,8 @@ export function useSettingsDraft(scope: string) {
     }
   };
   React.useEffect(() => {
-    if (!query.data || inFlight.current || Object.keys(pending.current).length)
-      return;
-    if (settingsDraftVersionChanged(current.current, query.data))
-      setDocumentVersion((n) => n + 1);
+    if (!query.data || inFlight.current || Object.keys(pending.current).length) return;
+    if (settingsDraftVersionChanged(current.current, query.data)) setDocumentVersion((n) => n + 1);
     let next = query.data;
     try {
       const recovery = recoverSettingsDraft(query.data, localStorage.getItem(storageKey));
@@ -143,7 +130,9 @@ export function useSettingsDraft(scope: string) {
         next = recovery.state;
         if (recovery.conflict) {
           blocked.current = true;
-          setError("A newer draft exists. Your local edits are preserved; discard to load the saved version.");
+          setError(
+            "A newer draft exists. Your local edits are preserved; discard to load the saved version.",
+          );
         }
       }
     } catch {
@@ -157,8 +146,7 @@ export function useSettingsDraft(scope: string) {
     queue.current = queue.current
       .catch(() => {})
       .then(async () => {
-        if (blocked.current)
-          throw new Error("Resolve the conflicting draft before saving.");
+        if (blocked.current) throw new Error("Resolve the conflicting draft before saving.");
         const before = current.current;
         const patch = pending.current;
         if (!before || !Object.keys(patch).length) return;
@@ -187,9 +175,7 @@ export function useSettingsDraft(scope: string) {
           channel.current?.postMessage("updated");
         } catch (e) {
           pending.current = { ...patch, ...pending.current };
-          setError(
-            e instanceof Error ? e.message : "Could not preserve draft.",
-          );
+          setError(e instanceof Error ? e.message : "Could not preserve draft.");
           remember();
           throw e;
         } finally {
@@ -239,8 +225,12 @@ export function useSettingsDraft(scope: string) {
         await queryClient.cancelQueries({ queryKey: key });
         const value = current.current!;
         return await apiFetch<AgentSettingsState>(`${base}/instructions`, {
-          method: "POST", headers,
-          body: JSON.stringify({ baseVersion: value.baseVersion, draftVersion: value.draftVersion }),
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            baseVersion: value.baseVersion,
+            draftVersion: value.draftVersion,
+          }),
         });
       } finally {
         creatingInstruction.current = false;
@@ -261,17 +251,14 @@ export function useSettingsDraft(scope: string) {
     mutationFn: async () => {
       await flush();
       const value = current.current!;
-      const result = await apiFetch<AgentSettingsState & { runError?: string }>(
-        `${base}/publish`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            baseVersion: value.baseVersion,
-            draftVersion: value.draftVersion,
-          }),
-        },
-      );
+      const result = await apiFetch<AgentSettingsState & { runError?: string }>(`${base}/publish`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          baseVersion: value.baseVersion,
+          draftVersion: value.draftVersion,
+        }),
+      });
       return result;
     },
     onSuccess: async (result) => {

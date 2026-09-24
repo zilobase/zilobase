@@ -1,100 +1,89 @@
-import { useEffect, useState } from "react"
-import { browser } from "wxt/browser"
-import type { ClipCaptureMode } from "@zilobase/features/clips"
+import { useEffect, useState } from "react";
+import { browser } from "wxt/browser";
+import type { ClipCaptureMode } from "@zilobase/features/clips";
 
-import { Bookmark, SettingsIcon } from "@/shared/components/icons"
-import { Button } from "@/shared/ui/button"
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/shared/ui/empty"
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/shared/ui/field"
-import { Input } from "@/shared/ui/input"
-import { Spinner } from "@/shared/ui/spinner"
-import { createClip, openClippedPage } from "../../lib/api"
-import type { ExtractResult } from "../../lib/messages"
+import { Bookmark, SettingsIcon } from "@/shared/components/icons";
+import { Button } from "@/shared/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { Spinner } from "@/shared/ui/spinner";
+import { createClip, openClippedPage } from "../../lib/api";
+import type { ExtractResult } from "../../lib/messages";
 import {
   readLastDestination,
   readSession,
   writeLastDestination,
   type ClipperDestination,
   type ClipperSession,
-} from "../../lib/session"
+} from "../../lib/session";
 
 const captureModes: Array<{ label: string; value: ClipCaptureMode }> = [
   { label: "Article", value: "article" },
   { label: "Selection", value: "selection" },
   { label: "Page", value: "page" },
   { label: "Bookmark", value: "bookmark" },
-]
+];
 
 export function PopupApp() {
-  const [session, setSession] = useState<ClipperSession | null>(null)
-  const [instanceUrl, setInstanceUrl] = useState("")
-  const [title, setTitle] = useState("")
-  const [captureMode, setCaptureMode] = useState<ClipCaptureMode>("article")
-  const [extracted, setExtracted] = useState<ExtractResult | null>(null)
-  const [destination, setDestination] = useState<ClipperDestination | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [savedUrl, setSavedUrl] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [ready, setReady] = useState(false)
+  const [session, setSession] = useState<ClipperSession | null>(null);
+  const [instanceUrl, setInstanceUrl] = useState("");
+  const [title, setTitle] = useState("");
+  const [captureMode, setCaptureMode] = useState<ClipCaptureMode>("article");
+  const [extracted, setExtracted] = useState<ExtractResult | null>(null);
+  const [destination, setDestination] = useState<ClipperDestination | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [savedUrl, setSavedUrl] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     void (async () => {
-      const current = await readSession()
-      setSession(current)
-      if (current) setInstanceUrl(current.instanceUrl)
-      setDestination(await readLastDestination())
-      setReady(true)
-    })()
-  }, [])
+      const current = await readSession();
+      setSession(current);
+      if (current) setInstanceUrl(current.instanceUrl);
+      setDestination(await readLastDestination());
+      setReady(true);
+    })();
+  }, []);
 
   useEffect(() => {
-    if (!session) return
-    void extract(captureMode)
-  }, [session, captureMode])
+    if (!session) return;
+    void extract(captureMode);
+  }, [session, captureMode]);
 
   const extract = async (mode: ClipCaptureMode) => {
-    const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
-    if (!tab?.id) return
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) return;
     try {
       const result = (await browser.tabs.sendMessage(tab.id, {
         type: "EXTRACT",
         captureMode: mode,
-      })) as ExtractResult
-      setExtracted(result)
-      setTitle(result.metadata.title)
+      })) as ExtractResult;
+      setExtracted(result);
+      setTitle(result.metadata.title);
     } catch {
-      setError("Reload this tab, then open the clipper again.")
+      setError("Reload this tab, then open the clipper again.");
     }
-  }
+  };
 
   const connect = async () => {
-    const origin = instanceUrl.trim().replace(/\/$/, "")
+    const origin = instanceUrl.trim().replace(/\/$/, "");
     if (!origin) {
-      setError("Enter your Zilobase server URL.")
-      return
+      setError("Enter your Zilobase server URL.");
+      return;
     }
-    setError(null)
+    setError(null);
     await browser.storage.local.set({
       "clipper.pendingInstanceUrl": origin,
-    })
-    await browser.runtime.openOptionsPage()
-  }
+    });
+    await browser.runtime.openOptionsPage();
+  };
 
   const save = async () => {
-    if (!session || !extracted) return
-    setSaving(true)
-    setError(null)
+    if (!session || !extracted) return;
+    setSaving(true);
+    setError(null);
     try {
       const result = await createClip(session, {
         workspaceId: session.workspaceId,
@@ -113,22 +102,22 @@ export function PopupApp() {
           published: extracted.metadata.published,
           site: extracted.metadata.site,
         },
-      })
-      if (destination) await writeLastDestination(destination)
-      setSavedUrl(result.url)
+      });
+      if (destination) await writeLastDestination(destination);
+      setSavedUrl(result.url);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Save failed")
+      setError(cause instanceof Error ? cause.message : "Save failed");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   if (!ready) {
     return (
       <div className="flex h-40 items-center justify-center bg-surface-overlay">
         <Spinner />
       </div>
-    )
+    );
   }
 
   if (!session?.token) {
@@ -160,7 +149,7 @@ export function PopupApp() {
           </FieldGroup>
         </Empty>
       </div>
-    )
+    );
   }
 
   return (
@@ -210,10 +199,7 @@ export function PopupApp() {
       {error ? <FieldError>{error}</FieldError> : null}
 
       {savedUrl ? (
-        <Button
-          onClick={() => openClippedPage(session, savedUrl)}
-          variant="link"
-        >
+        <Button onClick={() => openClippedPage(session, savedUrl)} variant="link">
           Open in Zilobase
         </Button>
       ) : (
@@ -228,13 +214,13 @@ export function PopupApp() {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function destinationId(destination: ClipperDestination | null, kind: ClipperDestination["kind"]) {
-  return destination?.kind === kind ? destination.id : null
+  return destination?.kind === kind ? destination.id : null;
 }
 
 function selectionUnavailable(mode: ClipCaptureMode, extracted: ExtractResult | null) {
-  return mode === "selection" && !extracted?.selectionPresent
+  return mode === "selection" && !extracted?.selectionPresent;
 }

@@ -3,4 +3,4 @@ export {
   type DatabaseFormulaEvaluationContext,
   type DatabaseFormulaEvaluationResult,
   type DatabaseFormulaRow,
-} from "@zilobase/features/databases/formula"
+} from "@zilobase/features/databases/formula";

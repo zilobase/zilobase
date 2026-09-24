@@ -1,13 +1,4 @@
-import {
-  and,
-  asc,
-  eq,
-  inArray,
-  isNull,
-  lte,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import {
   evaluateDatabaseFilters,
   normalizeDatabaseFilters,
@@ -17,7 +8,10 @@ import {
   type DatabaseAutomationDefinition,
 } from "@zilobase/features/automations";
 
-import { isDatabaseAutomationExecutionEnabled, type RuntimeEnv } from "../../../shared/config/config";
+import {
+  isDatabaseAutomationExecutionEnabled,
+  type RuntimeEnv,
+} from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import {
   database,
@@ -46,8 +40,12 @@ export async function drainDatabaseAutomationEventWindows(
   env: RuntimeEnv,
   options: { limit?: number; windowId?: string; workerId?: string } = {},
 ) {
-  if (!isDatabaseAutomationExecutionEnabled(env)) return { claimed: 0, completed: 0, retried: 0, runsCreated: 0 };
-  await promoteClosedDatabaseAutomationEventWindows({ limit: options.limit, windowId: options.windowId });
+  if (!isDatabaseAutomationExecutionEnabled(env))
+    return { claimed: 0, completed: 0, retried: 0, runsCreated: 0 };
+  await promoteClosedDatabaseAutomationEventWindows({
+    limit: options.limit,
+    windowId: options.windowId,
+  });
   const workerId = options.workerId ?? `automation-evaluator:${crypto.randomUUID()}`;
   const limit = Math.max(1, Math.min(options.limit ?? 50, 100));
   const claimed = await db.transaction(async (tx) => {
@@ -63,14 +61,14 @@ export async function drainDatabaseAutomationEventWindows(
         and(
           options.windowId ? eq(databaseAutomationEventWindow.id, options.windowId) : undefined,
           or(
-          and(
-            eq(databaseAutomationEventWindow.status, "ready"),
-            lte(databaseAutomationEventWindow.nextAttemptAt, now),
-          ),
-          and(
-            eq(databaseAutomationEventWindow.status, "processing"),
-            lte(databaseAutomationEventWindow.leaseExpiresAt, now),
-          ),
+            and(
+              eq(databaseAutomationEventWindow.status, "ready"),
+              lte(databaseAutomationEventWindow.nextAttemptAt, now),
+            ),
+            and(
+              eq(databaseAutomationEventWindow.status, "processing"),
+              lte(databaseAutomationEventWindow.leaseExpiresAt, now),
+            ),
           ),
         ),
       )
@@ -87,7 +85,12 @@ export async function drainDatabaseAutomationEventWindows(
         status: "processing",
         updatedAt: now,
       })
-      .where(inArray(databaseAutomationEventWindow.id, rows.map((row) => row.id)))
+      .where(
+        inArray(
+          databaseAutomationEventWindow.id,
+          rows.map((row) => row.id),
+        ),
+      )
       .returning();
     return claimedRows.map((window) => ({
       ...window,
@@ -106,9 +109,12 @@ export async function drainDatabaseAutomationEventWindows(
       const runIds = await evaluateWindow(window.id, workerId);
       runsCreated += runIds.length;
       completed += 1;
-      await dispatchBackgroundTasks(env, runIds.map((runId) =>
-        createBackgroundTask({ env, kind: "automation.run", resourceId: runId })
-      ));
+      await dispatchBackgroundTasks(
+        env,
+        runIds.map((runId) =>
+          createBackgroundTask({ env, kind: "automation.run", resourceId: runId }),
+        ),
+      );
     } catch (error) {
       const attempts = window.attempts + 1;
       const availableAt = new Date(Date.now() + Math.min(60_000, 1_000 * 2 ** attempts));
@@ -120,7 +126,8 @@ export async function drainDatabaseAutomationEventWindows(
           leaseOwner: null,
           nextAttemptAt: availableAt,
           status: "ready",
-          terminalReason: error instanceof Error ? error.message.slice(0, 500) : "Evaluation failed",
+          terminalReason:
+            error instanceof Error ? error.message.slice(0, 500) : "Evaluation failed",
           updatedAt: new Date(),
         })
         .where(
@@ -130,12 +137,14 @@ export async function drainDatabaseAutomationEventWindows(
           ),
         );
       retried += 1;
-      await dispatchBackgroundTasks(env, [createBackgroundTask({
-        availableAt,
-        env,
-        kind: "automation.event_window",
-        resourceId: window.id,
-      })]);
+      await dispatchBackgroundTasks(env, [
+        createBackgroundTask({
+          availableAt,
+          env,
+          kind: "automation.event_window",
+          resourceId: window.id,
+        }),
+      ]);
     }
   }
   return { claimed: claimed.length, completed, retried, runsCreated };
@@ -152,11 +161,13 @@ export async function processDatabaseAutomationEventWindow(
     workerId: input.workerId,
   });
   if (result.completed) return { outcome: "completed" as const };
-  const [window] = await db.select({
-    closesAt: databaseAutomationEventWindow.closesAt,
-    nextAttemptAt: databaseAutomationEventWindow.nextAttemptAt,
-    status: databaseAutomationEventWindow.status,
-  }).from(databaseAutomationEventWindow)
+  const [window] = await db
+    .select({
+      closesAt: databaseAutomationEventWindow.closesAt,
+      nextAttemptAt: databaseAutomationEventWindow.nextAttemptAt,
+      status: databaseAutomationEventWindow.status,
+    })
+    .from(databaseAutomationEventWindow)
     .where(eq(databaseAutomationEventWindow.id, input.windowId))
     .limit(1);
   if (!window || ["completed", "discarded"].includes(window.status)) {
@@ -245,7 +256,7 @@ async function evaluateWindow(windowId: string, workerId: string) {
     const propertyMap = new Map(properties.map((property) => [property.id, property]));
     const finalValues: Record<string, unknown> = {
       ...Object.fromEntries(values.map((value) => [value.propertyId, value.value])),
-      ...window.afterValues as Record<string, unknown>,
+      ...(window.afterValues as Record<string, unknown>),
       name: row.title,
     };
     const createdRunIds: string[] = [];
@@ -261,23 +272,22 @@ async function evaluateWindow(windowId: string, workerId: string) {
       const parsed = databaseAutomationDefinitionSchema.safeParse(record.revision.definition);
       if (!parsed.success || parsed.data.trigger.kind !== "event") continue;
       const definition = parsed.data;
-      if (!matchesDatabaseAutomationEvent(definition, {
-        afterValues: window.afterValues as Record<string, unknown>,
-        changedPropertyIds: window.changedPropertyIds,
-        now: triggerTime,
-        properties: propertyMap,
-        rowAdded: window.rowAdded,
-        timezone: definition.timezone,
-      })) continue;
+      if (
+        !matchesDatabaseAutomationEvent(definition, {
+          afterValues: window.afterValues as Record<string, unknown>,
+          changedPropertyIds: window.changedPropertyIds,
+          now: triggerTime,
+          properties: propertyMap,
+          rowAdded: window.rowAdded,
+          timezone: definition.timezone,
+        })
+      )
+        continue;
 
       let skipReason: string | null = sourceLocked ? "locked_database" : null;
       if (!skipReason && record.automation.ownerUserId) {
         try {
-          await requireDataSourceAccess(
-            window.dataSourceId,
-            record.automation.ownerUserId,
-            "full",
-          );
+          await requireDataSourceAccess(window.dataSourceId, record.automation.ownerUserId, "full");
         } catch {
           skipReason = "revoked_authority";
         }

@@ -91,11 +91,7 @@ async function sign(value: string, secret: string) {
     false,
     ["sign"],
   );
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(value),
-  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
   return Buffer.from(signature).toString("base64url");
 }
 
@@ -130,9 +126,7 @@ function isTicketClaims(value: unknown): value is CollaborationTicketClaims {
     typeof claims.exp === "number" &&
     ((typeof claims.pageId === "string" && claims.meetingId === undefined) ||
       (typeof claims.meetingId === "string" && claims.pageId === undefined)) &&
-    (claims.scope === "comment" ||
-      claims.scope === "read-write" ||
-      claims.scope === "readonly") &&
+    (claims.scope === "comment" || claims.scope === "read-write" || claims.scope === "readonly") &&
     typeof claims.userId === "string" &&
     typeof claims.workspaceId === "string"
   );

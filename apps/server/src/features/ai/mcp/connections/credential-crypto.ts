@@ -37,12 +37,18 @@ export async function encryptMcpSecret(
   const keyVersion = keyring.activeVersion;
   const key = await importKey(keyring.keys[keyVersion]!, ["encrypt"]);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = new Uint8Array(await crypto.subtle.encrypt({
-    additionalData: new TextEncoder().encode(mcpSecretAad({ ...context, keyVersion })),
-    iv,
-    name: "AES-GCM",
-    tagLength: 128,
-  }, key, new TextEncoder().encode(plaintext)));
+  const encrypted = new Uint8Array(
+    await crypto.subtle.encrypt(
+      {
+        additionalData: new TextEncoder().encode(mcpSecretAad({ ...context, keyVersion })),
+        iv,
+        name: "AES-GCM",
+        tagLength: 128,
+      },
+      key,
+      new TextEncoder().encode(plaintext),
+    ),
+  );
   const tag = encrypted.slice(-16);
   const ciphertext = encrypted.slice(0, -16);
   return {
@@ -67,15 +73,21 @@ export async function decryptMcpSecret(
   const combined = new Uint8Array(ciphertext.length + tag.length);
   combined.set(ciphertext);
   combined.set(tag, ciphertext.length);
-  const plaintext = await crypto.subtle.decrypt({
-    additionalData: new TextEncoder().encode(mcpSecretAad({
-      ...context,
-      keyVersion: encrypted.keyVersion,
-    })),
-    iv: fromBase64(encrypted.iv),
-    name: "AES-GCM",
-    tagLength: 128,
-  }, key, combined);
+  const plaintext = await crypto.subtle.decrypt(
+    {
+      additionalData: new TextEncoder().encode(
+        mcpSecretAad({
+          ...context,
+          keyVersion: encrypted.keyVersion,
+        }),
+      ),
+      iv: fromBase64(encrypted.iv),
+      name: "AES-GCM",
+      tagLength: 128,
+    },
+    key,
+    combined,
+  );
   return new TextDecoder().decode(plaintext);
 }
 

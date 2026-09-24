@@ -19,28 +19,27 @@ export function composeBoundedAgentMessages(input: {
   );
   const systemTokens = estimateTextTokens(input.system);
   const summaryMessage: ModelMessage[] = input.summary
-    ? [{
-        content: `Compact thread summary (older durable messages only):\n${input.summary}`,
-        role: "user",
-      }]
+    ? [
+        {
+          content: `Compact thread summary (older durable messages only):\n${input.summary}`,
+          role: "user",
+        },
+      ]
     : [];
   const summaryTokens = estimateMessagesTokens(summaryMessage);
-  const latestUserIndex = lastMatchingIndex(input.history,
-    (message) => message.role === "user",
-  );
-  const latest = latestUserIndex >= 0
-    ? input.history.slice(latestUserIndex)
-    : input.history.slice(-1);
-  const older = latestUserIndex >= 0
-    ? input.history.slice(0, latestUserIndex)
-    : input.history.slice(0, -1);
+  const latestUserIndex = lastMatchingIndex(input.history, (message) => message.role === "user");
+  const latest =
+    latestUserIndex >= 0 ? input.history.slice(latestUserIndex) : input.history.slice(-1);
+  const older =
+    latestUserIndex >= 0 ? input.history.slice(0, latestUserIndex) : input.history.slice(0, -1);
   const latestTokens = estimateMessagesTokens(latest);
   const availableForContext = Math.max(
     1_000,
     inputBudget - systemTokens - latestTokens - summaryTokens,
   );
   const context = fitContextMessages(input.context, availableForContext);
-  let remaining = inputBudget - systemTokens - latestTokens - summaryTokens - estimateMessagesTokens(context);
+  let remaining =
+    inputBudget - systemTokens - latestTokens - summaryTokens - estimateMessagesTokens(context);
   const recent: ModelMessage[] = [];
 
   for (
@@ -87,11 +86,14 @@ function estimateMessageTokens(message: ModelMessage) {
   if (typeof message.content === "string") {
     return 8 + estimateTextTokens(message.content);
   }
-  return 8 + message.content.reduce((total, part) => {
-    if (part.type === "text") return total + estimateTextTokens(part.text);
-    if (part.type === "file" || part.type === "image") return total + 2_000;
-    return total + 64;
-  }, 0);
+  return (
+    8 +
+    message.content.reduce((total, part) => {
+      if (part.type === "text") return total + estimateTextTokens(part.text);
+      if (part.type === "file" || part.type === "image") return total + 2_000;
+      return total + 64;
+    }, 0)
+  );
 }
 
 function estimateTextTokens(value: string) {

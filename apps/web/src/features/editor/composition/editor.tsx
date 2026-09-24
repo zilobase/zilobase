@@ -1,47 +1,44 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react"
-import { EditorContent } from "@tiptap/react"
-import { TextSelection } from "@tiptap/pm/state"
-import { SelectionAiDiffDock } from "../selection/selection-ai-diff-dock"
-import { MobileActionBar } from "../toolbar/mobile-action-bar"
-import {
-  PageMetadata,
-  type PageMetadataHandle,
-} from "@/features/databases"
-import { PageLayoutModuleCanvas } from "../layout/page-layout-module-canvas"
-import { PageLayoutTabs } from "../layout/page-layout-tabs"
-import { starterContent } from "../core/constants"
-import {
-  getFullDocumentPreviewRange,
-  parseMarkdownContent,
-} from "../commands/editor-ai-utils"
-import { EditorChrome } from "./editor-chrome"
-import { setSelectionAiPreviewMeta } from "../extensions/selection-ai-preview"
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { EditorContent } from "@tiptap/react";
+import { TextSelection } from "@tiptap/pm/state";
+import { SelectionAiDiffDock } from "../selection/selection-ai-diff-dock";
+import { MobileActionBar } from "../toolbar/mobile-action-bar";
+import { PageMetadata, type PageMetadataHandle } from "@/features/databases";
+import { PageLayoutModuleCanvas } from "../layout/page-layout-module-canvas";
+import { PageLayoutTabs } from "../layout/page-layout-tabs";
+import { starterContent } from "../core/constants";
+import { getFullDocumentPreviewRange, parseMarkdownContent } from "../commands/editor-ai-utils";
+import { EditorChrome } from "./editor-chrome";
+import { setSelectionAiPreviewMeta } from "../extensions/selection-ai-preview";
 import type {
   EditorProps,
   PasteChoiceState,
   SelectionAiDiffPreview,
   PageEditPreviewControls,
   PageEditPreviewRequest,
-} from "../core/types"
-import { useEditorDatabaseActions } from "../commands/use-editor-database-actions"
-import { useEditorMeetingActions } from "../commands/use-editor-meeting-actions"
-import { useEditorDragHandle } from "../drag-drop/use-editor-drag-handle"
-import { useEditorExtensions } from "./use-editor-extensions"
-import { useEditorInstance } from "../runtime/use-editor-instance"
-import { useEditorMenuEffects } from "../runtime/use-editor-menu-effects"
-import { useEditorRuntime } from "../runtime/use-editor-runtime"
-import { useMobileNodeActions } from "../commands/use-mobile-node-actions"
-import { DatabaseView } from "@/features/databases"
+} from "../core/types";
+import { useEditorDatabaseActions } from "../commands/use-editor-database-actions";
+import { useEditorMeetingActions } from "../commands/use-editor-meeting-actions";
+import { useEditorDragHandle } from "../drag-drop/use-editor-drag-handle";
+import { useEditorExtensions } from "./use-editor-extensions";
+import { useEditorInstance } from "../runtime/use-editor-instance";
+import { useEditorMenuEffects } from "../runtime/use-editor-menu-effects";
+import { useEditorRuntime } from "../runtime/use-editor-runtime";
+import { useMobileNodeActions } from "../commands/use-mobile-node-actions";
+import { DatabaseView } from "@/features/databases";
 import {
   canMoveDatabaseBlockToPage,
   dropCrossEditorBlock,
   getBlockDragDatabaseId,
-} from "../drag-drop/block-drag"
-import { cn } from "@/shared/lib/utils"
-import { UndoHistoryScope } from "@/shared/shortcuts"
-import { toast } from "sonner"
-import { DatabaseBlockDropDialog, type PendingDatabaseBlockDrop } from "./database-block-drop-dialog"
-import { hasPendingCollaborationChanges } from "../collaboration/collaboration-readiness"
+} from "../drag-drop/block-drag";
+import { cn } from "@/shared/lib/utils";
+import { UndoHistoryScope } from "@/shared/shortcuts";
+import { toast } from "sonner";
+import {
+  DatabaseBlockDropDialog,
+  type PendingDatabaseBlockDrop,
+} from "./database-block-drop-dialog";
+import { hasPendingCollaborationChanges } from "../collaboration/collaboration-readiness";
 
 export function Editor({
   afterMetadata,
@@ -89,68 +86,68 @@ export function Editor({
   reviewDiff,
   pageId,
 }: EditorProps = {}) {
-  const editorId = useId()
-  const editorSurfaceRef = useRef<HTMLElement | null>(null)
-  const pageMetadataRef = useRef<PageMetadataHandle | null>(null)
-  const [plusMenuOpen, setPlusMenuOpen] = useState(false)
-  const [dragHandleMenuOpen, setDragHandleMenuOpen] = useState(false)
-  const [blockCommentOpen, setBlockCommentOpen] = useState(false)
-  const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null)
-  const [selectionAiPreview, setSelectionAiPreview] =
-    useState<SelectionAiDiffPreview | null>(null)
+  const editorId = useId();
+  const editorSurfaceRef = useRef<HTMLElement | null>(null);
+  const pageMetadataRef = useRef<PageMetadataHandle | null>(null);
+  const [plusMenuOpen, setPlusMenuOpen] = useState(false);
+  const [dragHandleMenuOpen, setDragHandleMenuOpen] = useState(false);
+  const [blockCommentOpen, setBlockCommentOpen] = useState(false);
+  const [pasteChoice, setPasteChoice] = useState<PasteChoiceState | null>(null);
+  const [selectionAiPreview, setSelectionAiPreview] = useState<SelectionAiDiffPreview | null>(null);
   const [pendingDatabaseBlockDrop, setPendingDatabaseBlockDrop] =
-    useState<PendingDatabaseBlockDrop | null>(null)
-  const [activeLayoutTab, setActiveLayoutTab] = useState("content")
-  const pendingPageEditRef = useRef<PageEditPreviewRequest | null>(null)
+    useState<PendingDatabaseBlockDrop | null>(null);
+  const [activeLayoutTab, setActiveLayoutTab] = useState("content");
+  const pendingPageEditRef = useRef<PageEditPreviewRequest | null>(null);
   const pageContentLayout = fullWidth
     ? { className: "", mode: "full" as const }
-    : { className: "mx-auto max-w-[900px]", mode: "narrow" as const }
-  const activeLinkedTab = layoutConfig?.linkedTabs.find(
-    (tab) => tab.id === activeLayoutTab,
-  )
-  const collaborationHasPendingChanges =
-    hasPendingCollaborationChanges(collaboration)
+    : { className: "mx-auto max-w-[900px]", mode: "narrow" as const };
+  const activeLinkedTab = layoutConfig?.linkedTabs.find((tab) => tab.id === activeLayoutTab);
+  const collaborationHasPendingChanges = hasPendingCollaborationChanges(collaboration);
 
   useEffect(() => {
-    if (layoutConfig?.structure !== "tabbed" || (activeLayoutTab !== "content" && !activeLinkedTab)) {
-      setActiveLayoutTab("content")
+    if (
+      layoutConfig?.structure !== "tabbed" ||
+      (activeLayoutTab !== "content" && !activeLinkedTab)
+    ) {
+      setActiveLayoutTab("content");
     }
-  }, [activeLayoutTab, activeLinkedTab, layoutConfig?.structure])
+  }, [activeLayoutTab, activeLinkedTab, layoutConfig?.structure]);
 
   useEffect(() => {
-    if (!collaborationHasPendingChanges) return
+    if (!collaborationHasPendingChanges) return;
 
     const preventUnsyncedReload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ""
-    }
+      event.preventDefault();
+      event.returnValue = "";
+    };
 
-    window.addEventListener("beforeunload", preventUnsyncedReload)
-    return () => window.removeEventListener("beforeunload", preventUnsyncedReload)
-  }, [collaborationHasPendingChanges])
+    window.addEventListener("beforeunload", preventUnsyncedReload);
+    return () => window.removeEventListener("beforeunload", preventUnsyncedReload);
+  }, [collaborationHasPendingChanges]);
 
-  const { databaseEditorRuntime, editorRuntimeRef } = useEditorRuntime(databaseEditable)
-  const { createEditorDatabase, handleDatabasePageDrop } =
-    useEditorDatabaseActions(workspaceId, pageId)
-  const { createEditorMeeting } = useEditorMeetingActions(workspaceId, pageId)
+  const { databaseEditorRuntime, editorRuntimeRef } = useEditorRuntime(databaseEditable);
+  const { createEditorDatabase, handleDatabasePageDrop } = useEditorDatabaseActions(
+    workspaceId,
+    pageId,
+  );
+  const { createEditorMeeting } = useEditorMeetingActions(workspaceId, pageId);
 
-  const { editorExtensions, editorLifecycleKey, initialContent, tocItems } =
-    useEditorExtensions({
-      collaboration,
-      collaborationField,
-      content,
-      createEditorDatabase,
-      createEditorMeeting,
-      databaseEditorRuntime,
-      editable: contentEditable,
-      structuralEditingEnabled,
-      onCreatePage,
-      onEmbedPage,
-      onOpenPage,
-      onStructuralInsertionPendingChange,
-      workspaceId,
-      pageId,
-    })
+  const { editorExtensions, editorLifecycleKey, initialContent, tocItems } = useEditorExtensions({
+    collaboration,
+    collaborationField,
+    content,
+    createEditorDatabase,
+    createEditorMeeting,
+    databaseEditorRuntime,
+    editable: contentEditable,
+    structuralEditingEnabled,
+    onCreatePage,
+    onEmbedPage,
+    onOpenPage,
+    onStructuralInsertionPendingChange,
+    workspaceId,
+    pageId,
+  });
 
   const { blockDropLine, editor, surfaceDragHandlers } = useEditorInstance({
     databaseEditorRuntime,
@@ -166,20 +163,16 @@ export function Editor({
     initialContent,
     onContentChange,
     onCrossEditorDatabaseDrop: ({ payload, pos }) => {
-      const sourceDatabaseId = getBlockDragDatabaseId(payload)
-      if (!sourceDatabaseId) return false
+      const sourceDatabaseId = getBlockDragDatabaseId(payload);
+      if (!sourceDatabaseId) return false;
 
       setPendingDatabaseBlockDrop({
-        canMove: canMoveDatabaseBlockToPage(
-          sourceDatabaseId,
-          databaseId,
-          databaseIds,
-        ),
+        canMove: canMoveDatabaseBlockToPage(sourceDatabaseId, databaseId, databaseIds),
         databaseId: sourceDatabaseId,
         payload,
         pos,
-      })
-      return true
+      });
+      return true;
     },
     onEditorReady,
     onEmbedPage,
@@ -187,123 +180,104 @@ export function Editor({
     onMoveToTitle: () => pageMetadataRef.current?.focusTitleEnd() ?? false,
     setPasteChoice,
     pageId,
-  })
+  });
 
   const completeDatabaseBlockDrop = async (mode: "copy" | "move") => {
-    if (!editor || !pendingDatabaseBlockDrop) return
+    if (!editor || !pendingDatabaseBlockDrop) return;
 
-    const pendingDrop = pendingDatabaseBlockDrop
+    const pendingDrop = pendingDatabaseBlockDrop;
 
     if (mode === "copy" && onEmbedDatabase) {
       try {
-        await onEmbedDatabase(pendingDrop.databaseId)
+        await onEmbedDatabase(pendingDrop.databaseId);
       } catch (error) {
         toast.error(
-          error instanceof Error
-            ? error.message
-            : "Could not create the linked database view.",
-        )
-        return
+          error instanceof Error ? error.message : "Could not create the linked database view.",
+        );
+        return;
       }
     }
 
-    const completed = dropCrossEditorBlock(
-      editor.view,
-      pendingDrop.payload,
-      pendingDrop.pos,
-      mode,
-    )
+    const completed = dropCrossEditorBlock(editor.view, pendingDrop.payload, pendingDrop.pos, mode);
 
     if (!completed) {
       toast.error(
         mode === "move"
           ? "Could not move the database."
           : "Could not create the linked database view.",
-      )
-      return
+      );
+      return;
     }
 
-    setPendingDatabaseBlockDrop(null)
-  }
+    setPendingDatabaseBlockDrop(null);
+  };
 
   useEffect(() => {
-    commentController?.setEditor(editor ?? null)
-    return () => commentController?.setEditor(null)
-  }, [commentController, editor])
+    commentController?.setEditor(editor ?? null);
+    return () => commentController?.setEditor(null);
+  }, [commentController, editor]);
 
   useEditorMenuEffects({
     dragHandleMenuOpen,
     editorSurfaceRef,
     plusMenuOpen,
     setPlusMenuOpen,
-  })
+  });
 
   const {
     dragHandle,
     clearDesktopDragHandle,
     resolveDragTargetFromPoint,
     updateDragTargetFromPointer,
-  } = useEditorDragHandle(editor, dragHandleMenuOpen || blockCommentOpen)
+  } = useEditorDragHandle(editor, dragHandleMenuOpen || blockCommentOpen);
 
-  const {
-    mobileNodeTarget,
-    canMoveMobileTarget,
-    moveMobileTarget,
-    handleMobileNodeClick,
-  } = useMobileNodeActions(editor, resolveDragTargetFromPoint)
+  const { mobileNodeTarget, canMoveMobileTarget, moveMobileTarget, handleMobileNodeClick } =
+    useMobileNodeActions(editor, resolveDragTargetFromPoint);
 
-  const handleClosePasteChoice = useCallback(() => setPasteChoice(null), [])
+  const handleClosePasteChoice = useCallback(() => setPasteChoice(null), []);
 
-  const clearPageEditPreview = useCallback(
-    (options?: { silent?: boolean }) => {
-      if (!options?.silent && pendingPageEditRef.current) {
-        pendingPageEditRef.current.onDeclined?.()
-      }
+  const clearPageEditPreview = useCallback((options?: { silent?: boolean }) => {
+    if (!options?.silent && pendingPageEditRef.current) {
+      pendingPageEditRef.current.onDeclined?.();
+    }
 
-      pendingPageEditRef.current = null
-      setSelectionAiPreview((current) =>
-        current?.source === "page-edit" ? null : current,
-      )
-    },
-    [],
-  )
+    pendingPageEditRef.current = null;
+    setSelectionAiPreview((current) => (current?.source === "page-edit" ? null : current));
+  }, []);
 
   const clearSelectionAiPreview = useCallback(() => {
     if (pendingPageEditRef.current) {
-      clearPageEditPreview()
-      return
+      clearPageEditPreview();
+      return;
     }
 
-    setSelectionAiPreview(null)
-  }, [clearPageEditPreview])
+    setSelectionAiPreview(null);
+  }, [clearPageEditPreview]);
 
-  const handleSelectionAiPreviewChange = useCallback(
-    (preview: SelectionAiDiffPreview | null) => {
-      if (preview && preview.source !== "page-edit") {
-        pendingPageEditRef.current = null
-      }
+  const handleSelectionAiPreviewChange = useCallback((preview: SelectionAiDiffPreview | null) => {
+    if (preview && preview.source !== "page-edit") {
+      pendingPageEditRef.current = null;
+    }
 
-      setSelectionAiPreview(preview)
-    },
-    [],
-  )
+    setSelectionAiPreview(preview);
+  }, []);
 
   const showPageEditPreview = useCallback(
     (request: PageEditPreviewRequest) => {
       if (!editor || editor.isDestroyed || !editable) {
-        return false
+        return false;
       }
 
       const parsedPreview = parseMarkdownContent(editor, request.afterMarkdown, {
         unwrapPlainFencedBlock: true,
-      })
+      });
 
       if (!parsedPreview) {
-        return false
+        return false;
       }
 
-      const range = getFullDocumentPreviewRange(editor)
-      pendingPageEditRef.current = request
+      const range = getFullDocumentPreviewRange(editor);
+      pendingPageEditRef.current = request;
       setSelectionAiPreview({
         baselineMarkdown: request.beforeMarkdown,
         from: range.from,
@@ -313,43 +287,43 @@ export function Editor({
         to: range.to,
         toolCallId: request.toolCallId,
         useBeforeBaseline: request.useBeforeBaseline,
-      })
+      });
 
-      return true
+      return true;
     },
     [editable, editor],
-  )
+  );
 
   const acceptPageEditPreview = useCallback(() => {
-    const pendingEdit = pendingPageEditRef.current
+    const pendingEdit = pendingPageEditRef.current;
 
     if (!editor || !pendingEdit || editor.isDestroyed) {
-      return false
+      return false;
     }
 
     const parsed = parseMarkdownContent(editor, pendingEdit.afterMarkdown, {
       unwrapPlainFencedBlock: true,
-    })
+    });
 
     if (!parsed) {
-      return false
+      return false;
     }
 
-    editor.view.dispatch(setSelectionAiPreviewMeta(editor.state.tr, null))
+    editor.view.dispatch(setSelectionAiPreviewMeta(editor.state.tr, null));
     editor.commands.setContent({
       type: "doc",
       content: parsed.content,
-    })
-    onContentChange?.(editor.getJSON())
-    pendingEdit.onAccepted?.()
-    pendingPageEditRef.current = null
-    setSelectionAiPreview(null)
-    return true
-  }, [editor, onContentChange])
+    });
+    onContentChange?.(editor.getJSON());
+    pendingEdit.onAccepted?.();
+    pendingPageEditRef.current = null;
+    setSelectionAiPreview(null);
+    return true;
+  }, [editor, onContentChange]);
 
   useEffect(() => {
     if (!pageEditPreviewRef) {
-      return
+      return;
     }
 
     const controls: PageEditPreviewControls = {
@@ -358,35 +332,30 @@ export function Editor({
       isActive: () => pendingPageEditRef.current != null,
       show: (request) => showPageEditPreview(request),
       toolCallId: () => pendingPageEditRef.current?.toolCallId ?? null,
-    }
+    };
 
-    pageEditPreviewRef.current = controls
+    pageEditPreviewRef.current = controls;
 
     return () => {
-      pageEditPreviewRef.current = null
-    }
-  }, [
-    acceptPageEditPreview,
-    clearPageEditPreview,
-    showPageEditPreview,
-    pageEditPreviewRef,
-  ])
+      pageEditPreviewRef.current = null;
+    };
+  }, [acceptPageEditPreview, clearPageEditPreview, showPageEditPreview, pageEditPreviewRef]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
-      return
+      return;
     }
 
     const parsedPreview = selectionAiPreview
       ? parseMarkdownContent(editor, selectionAiPreview.generatedMarkdown, {
           unwrapPlainFencedBlock: true,
         })
-      : null
+      : null;
     const parsedBaseline = selectionAiPreview?.baselineMarkdown
       ? parseMarkdownContent(editor, selectionAiPreview.baselineMarkdown, {
           unwrapPlainFencedBlock: true,
         })
-      : null
+      : null;
 
     editor.view.dispatch(
       setSelectionAiPreviewMeta(
@@ -404,101 +373,89 @@ export function Editor({
             }
           : null,
       ),
-    )
-  }, [editor, selectionAiPreview])
+    );
+  }, [editor, selectionAiPreview]);
 
   useEffect(() => {
-    if (!editor || editor.isDestroyed) return
+    if (!editor || editor.isDestroyed) return;
     if (!reviewDiff) {
-      setSelectionAiPreview((current) => current?.toolCallId === "agent-settings-review" ? null : current)
-      return
+      setSelectionAiPreview((current) =>
+        current?.toolCallId === "agent-settings-review" ? null : current,
+      );
+      return;
     }
-    const range = getFullDocumentPreviewRange(editor)
+    const range = getFullDocumentPreviewRange(editor);
     setSelectionAiPreview({
       baselineMarkdown: reviewDiff.beforeMarkdown,
       generatedMarkdown: reviewDiff.afterMarkdown,
-      from: range.from, to: range.to, isStreaming: false,
-      source: "page-edit", toolCallId: "agent-settings-review", useBeforeBaseline: true,
-    })
-  }, [editor, reviewDiff?.beforeMarkdown, reviewDiff?.afterMarkdown])
+      from: range.from,
+      to: range.to,
+      isStreaming: false,
+      source: "page-edit",
+      toolCallId: "agent-settings-review",
+      useBeforeBaseline: true,
+    });
+  }, [editor, reviewDiff?.beforeMarkdown, reviewDiff?.afterMarkdown]);
 
   const acceptSelectionAiPreview = useCallback(() => {
     if (pendingPageEditRef.current) {
-      acceptPageEditPreview()
-      return
+      acceptPageEditPreview();
+      return;
     }
 
     if (!editor || !selectionAiPreview || selectionAiPreview.isStreaming) {
-      return
+      return;
     }
 
-    const parsed = parseMarkdownContent(
-      editor,
-      selectionAiPreview.generatedMarkdown,
-      { unwrapPlainFencedBlock: true },
-    )
+    const parsed = parseMarkdownContent(editor, selectionAiPreview.generatedMarkdown, {
+      unwrapPlainFencedBlock: true,
+    });
 
     if (!parsed) {
-      clearSelectionAiPreview()
-      return
+      clearSelectionAiPreview();
+      return;
     }
 
-    editor.view.dispatch(setSelectionAiPreviewMeta(editor.state.tr, null))
+    editor.view.dispatch(setSelectionAiPreviewMeta(editor.state.tr, null));
     editor
       .chain()
       .focus()
-      .insertContentAt(
-        { from: selectionAiPreview.from, to: selectionAiPreview.to },
-        parsed.content,
-      )
-      .run()
-    clearSelectionAiPreview()
-  }, [
-    acceptPageEditPreview,
-    clearSelectionAiPreview,
-    editor,
-    selectionAiPreview,
-  ])
+      .insertContentAt({ from: selectionAiPreview.from, to: selectionAiPreview.to }, parsed.content)
+      .run();
+    clearSelectionAiPreview();
+  }, [acceptPageEditPreview, clearSelectionAiPreview, editor, selectionAiPreview]);
 
   const focusPageBodyFromTitle = useCallback(() => {
-    if (!editor || !editable) return
+    if (!editor || !editable) return;
 
-    const firstNode = editor.state.doc.firstChild
+    const firstNode = editor.state.doc.firstChild;
 
-    if (
-      !firstNode ||
-      (firstNode.isTextblock && firstNode.content.size === 0)
-    ) {
-      editor.chain().focus("start").run()
-      return
+    if (!firstNode || (firstNode.isTextblock && firstNode.content.size === 0)) {
+      editor.chain().focus("start").run();
+      return;
     }
 
-    const paragraph = editor.schema.nodes.paragraph?.create()
+    const paragraph = editor.schema.nodes.paragraph?.create();
 
     if (!paragraph) {
-      editor.chain().focus("start").run()
-      return
+      editor.chain().focus("start").run();
+      return;
     }
 
-    const transaction = editor.state.tr.insert(0, paragraph)
-    transaction.setSelection(TextSelection.create(transaction.doc, 1))
-    editor.view.dispatch(transaction.scrollIntoView())
-    editor.view.focus()
-  }, [editable, editor])
+    const transaction = editor.state.tr.insert(0, paragraph);
+    transaction.setSelection(TextSelection.create(transaction.doc, 1));
+    editor.view.dispatch(transaction.scrollIntoView());
+    editor.view.focus();
+  }, [editable, editor]);
 
-  const renderLayoutModule = (
-    module: NonNullable<typeof layoutConfig>["modules"][number],
-  ) => {
+  const renderLayoutModule = (module: NonNullable<typeof layoutConfig>["modules"][number]) => {
     if (module.type === "content") {
       return (
         <div
           className={cn(
             "relative min-w-0 max-w-full",
-            module.region === "panel"
-              ? "px-4 py-4"
-              : pageContentLayout.className,
-            layoutPreview &&
-              "h-[32rem] overflow-hidden",
+            module.region === "panel" ? "px-4 py-4" : pageContentLayout.className,
+            layoutPreview && "h-[32rem] overflow-hidden",
             onLayoutChange &&
               module.region === "main" &&
               "[&_.tiptap-editor]:px-8 [&_.tiptap-editor]:py-5",
@@ -515,11 +472,11 @@ export function Editor({
             />
           ) : null}
         </div>
-      )
+      );
     }
 
     if (module.type === "discussions" && layoutConfig?.discussionsVisible === false) {
-      return null
+      return null;
     }
 
     const layoutSection =
@@ -527,22 +484,18 @@ export function Editor({
         ? "heading"
         : module.type === "discussions"
           ? "discussions"
-          : "properties"
+          : "properties";
 
     return (
       <PageMetadata
         afterHeading={
           module.type === "heading" && afterMetadata ? (
-            <div className={cn("pt-4", hideEditorContent && "pb-10")}>
-              {afterMetadata}
-            </div>
+            <div className={cn("pt-4", hideEditorContent && "pb-10")}>{afterMetadata}</div>
           ) : null
         }
         compact={module.region === "panel" || Boolean(onLayoutChange)}
         compactSpacing={onLayoutChange ? "comfortable" : "default"}
-        collaborationUsers={
-          module.type === "heading" ? collaboration?.users : undefined
-        }
+        collaborationUsers={module.type === "heading" ? collaboration?.users : undefined}
         contentClassName={module.region === "panel" ? undefined : pageContentLayout.className}
         cover={cover}
         databaseId={databaseId}
@@ -566,23 +519,22 @@ export function Editor({
         pageId={pageId}
         ref={module.type === "heading" ? pageMetadataRef : undefined}
       />
-    )
-  }
+    );
+  };
 
   const editorBody = (
-    <div className={cn(
-      "flex w-full flex-col text-content-primary",
-      layoutPreview
-        ? "h-full min-h-0"
-        : hideMetadata
-          ? "min-h-[16rem]"
-          : "min-h-[calc(100svh-3rem)]",
-    )}>
+    <div
+      className={cn(
+        "flex w-full flex-col text-content-primary",
+        layoutPreview
+          ? "h-full min-h-0"
+          : hideMetadata
+            ? "min-h-[16rem]"
+            : "min-h-[calc(100svh-3rem)]",
+      )}
+    >
       <section
-        className={cn(
-          "relative min-h-0 flex-1",
-          layoutPreview && "flex flex-col overflow-hidden",
-        )}
+        className={cn("relative min-h-0 flex-1", layoutPreview && "flex flex-col overflow-hidden")}
         data-editor-surface
         ref={editorSurfaceRef}
         onDragEnd={surfaceDragHandlers.onDragEnd}
@@ -590,9 +542,7 @@ export function Editor({
         onDragOver={surfaceDragHandlers.onDragOver}
         onDragOverCapture={surfaceDragHandlers.onDragOverCapture}
         onDrop={surfaceDragHandlers.onDrop}
-        onPointerLeave={() =>
-          !dragHandleMenuOpen && !blockCommentOpen && clearDesktopDragHandle()
-        }
+        onPointerLeave={() => !dragHandleMenuOpen && !blockCommentOpen && clearDesktopDragHandle()}
         onClickCapture={handleMobileNodeClick}
         onPointerMoveCapture={updateDragTargetFromPointer}
       >
@@ -600,9 +550,7 @@ export function Editor({
           blockDropLine={blockDropLine}
           blockCommentOpen={blockCommentOpen}
           commentController={
-            commentsEditable && commentController?.canEdit
-              ? commentController
-              : undefined
+            commentsEditable && commentController?.canEdit ? commentController : undefined
           }
           createEditorDatabase={createEditorDatabase}
           createEditorMeeting={createEditorMeeting}
@@ -614,9 +562,7 @@ export function Editor({
           onClosePasteChoice={handleClosePasteChoice}
           onDeleteStructuralBlock={onDeleteStructuralBlock}
           onSelectionAiPreviewChange={handleSelectionAiPreviewChange}
-          onStructuralInsertionPendingChange={
-            onStructuralInsertionPendingChange
-          }
+          onStructuralInsertionPendingChange={onStructuralInsertionPendingChange}
           pageId={pageId}
           workspaceId={workspaceId}
           pasteChoice={pasteChoice}
@@ -627,10 +573,7 @@ export function Editor({
           tocItems={layoutPreview ? [] : tocItems}
         />
         {hideMetadata ? (
-          <div
-            className="min-w-0"
-            data-editor-page-content={pageContentLayout.mode}
-          >
+          <div className="min-w-0" data-editor-page-content={pageContentLayout.mode}>
             <EditorContent editor={editor} />
           </div>
         ) : layoutConfig ? (
@@ -653,9 +596,7 @@ export function Editor({
                 <div
                   className={cn(
                     "relative min-w-0 p-5 md:px-12",
-                    layoutPreview
-                      ? "h-[32rem] overflow-hidden"
-                      : "min-h-[calc(100svh-6rem)]",
+                    layoutPreview ? "h-[32rem] overflow-hidden" : "min-h-[calc(100svh-6rem)]",
                   )}
                 >
                   <DatabaseView
@@ -686,9 +627,7 @@ export function Editor({
             <PageMetadata
               afterHeading={
                 afterMetadata ? (
-                  <div className={cn("pt-4", hideEditorContent && "pb-10")}>
-                    {afterMetadata}
-                  </div>
+                  <div className={cn("pt-4", hideEditorContent && "pb-10")}>{afterMetadata}</div>
                 ) : null
               }
               collaborationUsers={collaboration?.users}
@@ -726,9 +665,7 @@ export function Editor({
             onMoveUp={() => moveMobileTarget("up")}
           />
         ) : null}
-        {contentEditable &&
-        selectionAiPreview &&
-        selectionAiPreview.source !== "page-edit" ? (
+        {contentEditable && selectionAiPreview && selectionAiPreview.source !== "page-edit" ? (
           <SelectionAiDiffDock
             isStreaming={selectionAiPreview.isStreaming}
             onAccept={acceptSelectionAiPreview}
@@ -737,7 +674,7 @@ export function Editor({
         ) : null}
       </section>
     </div>
-  )
+  );
 
   return (
     <UndoHistoryScope resetKey={pageId ?? editorId}>
@@ -749,5 +686,5 @@ export function Editor({
         pending={pendingDatabaseBlockDrop}
       />
     </UndoHistoryScope>
-  )
+  );
 }

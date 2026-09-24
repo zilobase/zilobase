@@ -43,17 +43,17 @@ const scopeLabels: Record<string, { description: string; title: string }> = {
     title: "Search",
     description: "Search pages and databases in the workspace.",
   },
-}
+};
 
 export function parseRequestedScopes(scope: string | null | undefined) {
   if (!scope) {
-    return []
+    return [];
   }
 
   return scope
     .split(/[+\s]+/)
     .map((item) => item.trim())
-    .filter(Boolean)
+    .filter(Boolean);
 }
 
 export function labelForScope(scope: string) {
@@ -62,5 +62,5 @@ export function labelForScope(scope: string) {
       title: scope,
       description: "Access this capability on your account.",
     }
-  )
+  );
 }

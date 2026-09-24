@@ -49,5 +49,7 @@ function listen(server: Server) {
 }
 
 function close(server: Server) {
-  return new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  return new Promise<void>((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
 }

@@ -13,10 +13,7 @@ export type ScheduleDraft = {
 };
 
 export function scheduleTriggerLabel(schedule: ScheduleDraft) {
-  const unit =
-    schedule.frequency === "custom"
-      ? schedule.customPattern
-      : schedule.frequency;
+  const unit = schedule.frequency === "custom" ? schedule.customPattern : schedule.frequency;
   const labels = {
     daily: "day",
     monthly: "month",
@@ -32,8 +29,7 @@ export function scheduleDefinition(
   draft: ScheduleDraft,
   timezone: string,
 ): DatabaseAutomationSchedule {
-  const pattern =
-    draft.frequency === "custom" ? draft.customPattern : draft.frequency;
+  const pattern = draft.frequency === "custom" ? draft.customPattern : draft.frequency;
   return {
     frequency: draft.frequency,
     interval: draft.interval,
@@ -44,17 +40,14 @@ export function scheduleDefinition(
     ...(pattern === "weekly" ? { weekdays: draft.weekdays } : {}),
     ...(pattern === "monthly" || pattern === "yearly"
       ? {
-          dayOfMonth:
-            draft.dayOfMonth === "last" ? "last" : Number(draft.dayOfMonth),
+          dayOfMonth: draft.dayOfMonth === "last" ? "last" : Number(draft.dayOfMonth),
         }
       : {}),
     ...(pattern === "yearly" ? { months: draft.months } : {}),
   };
 }
 
-export function scheduleDraft(
-  schedule: DatabaseAutomationSchedule,
-): ScheduleDraft {
+export function scheduleDraft(schedule: DatabaseAutomationSchedule): ScheduleDraft {
   const customPattern = schedule.months?.length
     ? "yearly"
     : schedule.dayOfMonth !== undefined

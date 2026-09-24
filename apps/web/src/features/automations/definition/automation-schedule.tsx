@@ -1,17 +1,19 @@
 import { type ScheduleDraft } from "./schedule-model";
 
+import { Button } from "@/shared/ui/button";
 
-import { Button } from "@/shared/ui/button"
+import { DatePicker } from "@/shared/ui/date-picker";
 
-import { DatePicker } from "@/shared/ui/date-picker"
+import { Input } from "@/shared/ui/input";
 
-import { Input } from "@/shared/ui/input"
+import { TimePicker } from "@/shared/ui/time-picker";
 
-import { TimePicker } from "@/shared/ui/time-picker"
+import { AutomationSelect } from "./automation-select";
 
-import { AutomationSelect } from "./automation-select"
-
-export function ScheduleEditor({ onChange, schedule }: {
+export function ScheduleEditor({
+  onChange,
+  schedule,
+}: {
   onChange: (schedule: ScheduleDraft) => void;
   schedule: ScheduleDraft;
 }) {
@@ -24,7 +26,9 @@ export function ScheduleEditor({ onChange, schedule }: {
         <AutomationSelect
           ariaLabel="Schedule frequency"
           className="h-7 text-sm text-content-primary"
-          onValueChange={(frequency) => patch({ frequency: frequency as ScheduleDraft["frequency"] })}
+          onValueChange={(frequency) =>
+            patch({ frequency: frequency as ScheduleDraft["frequency"] })
+          }
           options={[
             { label: "Daily", value: "daily" },
             { label: "Weekly", value: "weekly" },
@@ -41,7 +45,9 @@ export function ScheduleEditor({ onChange, schedule }: {
           <AutomationSelect
             ariaLabel="Custom schedule unit"
             className="h-7 text-sm text-content-primary"
-            onValueChange={(customPattern) => patch({ customPattern: customPattern as ScheduleDraft["customPattern"] })}
+            onValueChange={(customPattern) =>
+              patch({ customPattern: customPattern as ScheduleDraft["customPattern"] })
+            }
             options={[
               { label: "Days", value: "daily" },
               { label: "Weeks", value: "weekly" },
@@ -55,11 +61,28 @@ export function ScheduleEditor({ onChange, schedule }: {
       <div className="grid grid-cols-2 gap-2">
         <label className="grid gap-1 text-xs font-medium text-content-secondary">
           Every
-          <Input aria-label="Schedule interval" inputMode="numeric" onChange={(event) => patch({ interval: Math.max(1, Math.min(365, Number(event.target.value.replace(/\D/g, "")) || 1)) })} pattern="[0-9]*" value={schedule.interval} />
+          <Input
+            aria-label="Schedule interval"
+            inputMode="numeric"
+            onChange={(event) =>
+              patch({
+                interval: Math.max(
+                  1,
+                  Math.min(365, Number(event.target.value.replace(/\D/g, "")) || 1),
+                ),
+              })
+            }
+            pattern="[0-9]*"
+            value={schedule.interval}
+          />
         </label>
         <label className="grid gap-1 text-xs font-medium text-content-secondary">
           Local time
-          <TimePicker aria-label="Schedule local time" onValueChange={(localTime) => patch({ localTime })} value={schedule.localTime} />
+          <TimePicker
+            aria-label="Schedule local time"
+            onValueChange={(localTime) => patch({ localTime })}
+            value={schedule.localTime}
+          />
         </label>
       </div>
       {pattern === "weekly" ? (
@@ -74,7 +97,9 @@ export function ScheduleEditor({ onChange, schedule }: {
                 size="sm"
                 type="button"
                 variant={schedule.weekdays.includes(day) ? "secondary" : "outline"}
-              >{label}</Button>
+              >
+                {label}
+              </Button>
             ))}
           </div>
         </fieldset>
@@ -87,7 +112,10 @@ export function ScheduleEditor({ onChange, schedule }: {
             className="h-7 text-sm text-content-primary"
             onValueChange={(dayOfMonth) => patch({ dayOfMonth })}
             options={[
-              ...Array.from({ length: 31 }, (_, index) => ({ label: String(index + 1), value: String(index + 1) })),
+              ...Array.from({ length: 31 }, (_, index) => ({
+                label: String(index + 1),
+                value: String(index + 1),
+              })),
               { label: "Last day", value: "last" },
             ]}
             value={schedule.dayOfMonth}
@@ -99,7 +127,17 @@ export function ScheduleEditor({ onChange, schedule }: {
           <legend className="mb-1 text-xs font-medium text-content-secondary">Months</legend>
           <div className="grid grid-cols-6 gap-1">
             {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-              <Button aria-label={`Month ${month}`} aria-pressed={schedule.months.includes(month)} key={month} onClick={() => patch({ months: toggleNumber(schedule.months, month) })} size="sm" type="button" variant={schedule.months.includes(month) ? "secondary" : "outline"}>{month}</Button>
+              <Button
+                aria-label={`Month ${month}`}
+                aria-pressed={schedule.months.includes(month)}
+                key={month}
+                onClick={() => patch({ months: toggleNumber(schedule.months, month) })}
+                size="sm"
+                type="button"
+                variant={schedule.months.includes(month) ? "secondary" : "outline"}
+              >
+                {month}
+              </Button>
             ))}
           </div>
         </fieldset>
@@ -107,11 +145,27 @@ export function ScheduleEditor({ onChange, schedule }: {
       <div className="grid grid-cols-2 gap-2">
         <label className="grid gap-1 text-xs font-medium text-content-secondary">
           Start date
-          <DatePicker aria-label="Schedule start date" onValueChange={(startDate) => patch({ startDate, ...(schedule.endDate && schedule.endDate < startDate ? { endDate: "" } : {}) })} value={schedule.startDate} />
+          <DatePicker
+            aria-label="Schedule start date"
+            onValueChange={(startDate) =>
+              patch({
+                startDate,
+                ...(schedule.endDate && schedule.endDate < startDate ? { endDate: "" } : {}),
+              })
+            }
+            value={schedule.startDate}
+          />
         </label>
         <label className="grid gap-1 text-xs font-medium text-content-secondary">
           End date (optional)
-          <DatePicker aria-label="Schedule end date" clearable minValue={schedule.startDate} onValueChange={(endDate) => patch({ endDate })} placeholder="No end date" value={schedule.endDate} />
+          <DatePicker
+            aria-label="Schedule end date"
+            clearable
+            minValue={schedule.startDate}
+            onValueChange={(endDate) => patch({ endDate })}
+            placeholder="No end date"
+            value={schedule.endDate}
+          />
         </label>
       </div>
     </div>
@@ -119,6 +173,7 @@ export function ScheduleEditor({ onChange, schedule }: {
 }
 
 function toggleNumber(values: number[], value: number) {
-  if (values.includes(value)) return values.length === 1 ? values : values.filter((item) => item !== value);
+  if (values.includes(value))
+    return values.length === 1 ? values : values.filter((item) => item !== value);
   return [...values, value].sort((left, right) => left - right);
 }

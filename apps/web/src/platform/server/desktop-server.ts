@@ -1,70 +1,70 @@
-import { desktopBridge, isDesktopApp } from "@/platform/desktop/native"
-import packageJson from "../../../package.json"
-import { desktopNetworkFetch } from "../network/desktop-network"
+import { desktopBridge, isDesktopApp } from "@/platform/desktop/native";
+import packageJson from "../../../package.json";
+import { desktopNetworkFetch } from "../network/desktop-network";
 
 export type DesktopServer = {
-  instanceId: string
-  displayName: string
-  issuer: string
-  webOrigin: string
-  apiOrigin: string
-  protocolVersion: 1
-  serverVersion: string
-  minimumDesktopVersion: string
-}
+  instanceId: string;
+  displayName: string;
+  issuer: string;
+  webOrigin: string;
+  apiOrigin: string;
+  protocolVersion: 1;
+  serverVersion: string;
+  minimumDesktopVersion: string;
+};
 
 export type PreparedDesktopServer = {
-  candidateId: string
-  server: DesktopServer
-}
+  candidateId: string;
+  server: DesktopServer;
+};
 
 export type DesktopServerCommit = {
-  changed: boolean
-  server: DesktopServer
-}
+  changed: boolean;
+  server: DesktopServer;
+};
 
 export type DesktopServerWorkspaceSnapshot = {
-  id: string
-  name: string
-}
+  id: string;
+  name: string;
+};
 
 export type DesktopServerProfile = {
-  active: boolean
-  hasCredentials: boolean
-  lastActiveWorkspaceId: string | null
-  lastPath: string | null
-  lastUsedAt: string | null
-  server: DesktopServer
-  workspaces: DesktopServerWorkspaceSnapshot[]
-}
+  active: boolean;
+  hasCredentials: boolean;
+  lastActiveWorkspaceId: string | null;
+  lastPath: string | null;
+  lastUsedAt: string | null;
+  server: DesktopServer;
+  workspaces: DesktopServerWorkspaceSnapshot[];
+};
 
 export type DesktopServerProfileList = {
-  activeInstanceId: string
-  profiles: DesktopServerProfile[]
-}
+  activeInstanceId: string;
+  profiles: DesktopServerProfile[];
+};
 
 export type DesktopDevelopmentServer = {
-  label: string
-  url: string
-}
+  label: string;
+  url: string;
+};
 
 export type DesktopDevelopmentTargets = {
-  cloudApiOrigin: string | null
-  customServers: DesktopDevelopmentServer[]
-}
+  cloudApiOrigin: string | null;
+  customServers: DesktopDevelopmentServer[];
+};
 
 type DesktopServerFailure = {
-  code?: unknown
-  message?: unknown
-}
+  code?: unknown;
+  message?: unknown;
+};
 
 export class DesktopServerError extends Error {
-  code: string
+  code: string;
 
   constructor(code: string, message: string) {
-    super(message)
-    this.name = "DesktopServerError"
-    this.code = code
+    super(message);
+    this.name = "DesktopServerError";
+    this.code = code;
   }
 }
 
@@ -77,44 +77,42 @@ export const CLOUD_DESKTOP_SERVER: DesktopServer = {
   protocolVersion: 1,
   serverVersion: packageJson.version,
   minimumDesktopVersion: packageJson.version,
-}
+};
 
-const DEFAULT_DEV_API_ORIGIN = "http://localhost:3000"
+const DEFAULT_DEV_API_ORIGIN = "http://localhost:3000";
 const emptyDevelopmentTargets: DesktopDevelopmentTargets = {
   cloudApiOrigin: null,
   customServers: [],
-}
+};
 
-let selectedDesktopServer: DesktopServer | null = null
-let developmentTargets = emptyDevelopmentTargets
-let discoveredRuntimeDesktopServer: DesktopServer | null = null
-let runtimeDiscoveryPromise: Promise<DesktopServer> | null = null
+let selectedDesktopServer: DesktopServer | null = null;
+let developmentTargets = emptyDevelopmentTargets;
+let discoveredRuntimeDesktopServer: DesktopServer | null = null;
+let runtimeDiscoveryPromise: Promise<DesktopServer> | null = null;
 
 export function desktopDevelopmentTargets() {
-  return developmentTargets
+  return developmentTargets;
 }
 
 export async function initializeDesktopServer() {
-  if (!isDesktopApp()) return null
+  if (!isDesktopApp()) return null;
 
   if (import.meta.env.DEV) {
     try {
       developmentTargets = normalizeDevelopmentTargets(
         await desktopBridge().server.developmentTargets(),
-      )
+      );
     } catch {
-      developmentTargets = emptyDevelopmentTargets
+      developmentTargets = emptyDevelopmentTargets;
     }
   }
 
   try {
-    selectedDesktopServer = validateDesktopServer(
-      await desktopBridge().server.initialize(),
-    )
-    return selectedDesktopServer
+    selectedDesktopServer = validateDesktopServer(await desktopBridge().server.initialize());
+    return selectedDesktopServer;
   } catch (error) {
-    selectedDesktopServer = null
-    throw normalizeDesktopServerError(error)
+    selectedDesktopServer = null;
+    throw normalizeDesktopServerError(error);
   }
 }
 
@@ -123,29 +121,29 @@ export async function prepareDesktopServerCandidate(serverUrl: string) {
     throw new DesktopServerError(
       "desktop_required",
       "Custom desktop servers can only be selected in Zilobase Desktop.",
-    )
+    );
   }
 
   try {
-    const prepared = await desktopBridge().server.prepare(serverUrl)
+    const prepared = await desktopBridge().server.prepare(serverUrl);
     if (!prepared || typeof prepared.candidateId !== "string") {
       throw new DesktopServerError(
         "invalid_server_metadata",
         "The verified server candidate is invalid.",
-      )
+      );
     }
     return {
       candidateId: prepared.candidateId,
       server: validateDesktopServer(prepared.server),
-    }
+    };
   } catch (error) {
-    throw normalizeDesktopServerError(error)
+    throw normalizeDesktopServerError(error);
   }
 }
 
 export async function discardDesktopServerCandidate(candidateId: string) {
-  if (!isDesktopApp()) return
-  await desktopBridge().server.discard(candidateId)
+  if (!isDesktopApp()) return;
+  await desktopBridge().server.discard(candidateId);
 }
 
 export async function commitDesktopServerCandidate(candidateId: string) {
@@ -153,46 +151,46 @@ export async function commitDesktopServerCandidate(candidateId: string) {
     throw new DesktopServerError(
       "desktop_required",
       "Custom desktop servers can only be selected in Zilobase Desktop.",
-    )
+    );
   }
 
   try {
-    const result = await desktopBridge().server.commit(candidateId)
-    selectedDesktopServer = validateDesktopServer(result.server)
-    return { changed: result.changed === true, server: selectedDesktopServer }
+    const result = await desktopBridge().server.commit(candidateId);
+    selectedDesktopServer = validateDesktopServer(result.server);
+    return { changed: result.changed === true, server: selectedDesktopServer };
   } catch (error) {
-    throw normalizeDesktopServerError(error)
+    throw normalizeDesktopServerError(error);
   }
 }
 
 export function getSelectedDesktopServer() {
-  return selectedDesktopServer
+  return selectedDesktopServer;
 }
 
 export async function listDesktopServerProfiles(): Promise<DesktopServerProfileList> {
   if (!isDesktopApp()) {
-    return { activeInstanceId: "", profiles: [] }
+    return { activeInstanceId: "", profiles: [] };
   }
 
   try {
-    const result = await desktopBridge().server.list()
-    return normalizeDesktopServerProfileList(result)
+    const result = await desktopBridge().server.list();
+    return normalizeDesktopServerProfileList(result);
   } catch (error) {
-    throw normalizeDesktopServerError(error)
+    throw normalizeDesktopServerError(error);
   }
 }
 
 export async function switchDesktopServerProfile(input: {
-  apiOrigin: string
-  instanceId: string
-  path?: string | null
-  workspaceId?: string | null
+  apiOrigin: string;
+  instanceId: string;
+  path?: string | null;
+  workspaceId?: string | null;
 }) {
   if (!isDesktopApp()) {
     throw new DesktopServerError(
       "desktop_required",
       "Saved desktop servers can only be switched in Zilobase Desktop.",
-    )
+    );
   }
 
   try {
@@ -203,40 +201,37 @@ export async function switchDesktopServerProfile(input: {
         path: input.path ?? null,
         workspaceId: input.workspaceId ?? null,
       }),
-    )
-    return selectedDesktopServer
+    );
+    return selectedDesktopServer;
   } catch (error) {
-    throw normalizeDesktopServerError(error)
+    throw normalizeDesktopServerError(error);
   }
 }
 
 export async function updateDesktopServerProfileSnapshot(input: {
-  lastActiveWorkspaceId?: string | null
-  lastPath?: string | null
-  workspaces: DesktopServerWorkspaceSnapshot[]
+  lastActiveWorkspaceId?: string | null;
+  lastPath?: string | null;
+  workspaces: DesktopServerWorkspaceSnapshot[];
 }) {
-  if (!isDesktopApp()) return
+  if (!isDesktopApp()) return;
 
   try {
     await desktopBridge().server.updateSnapshot({
       lastActiveWorkspaceId: input.lastActiveWorkspaceId ?? null,
       lastPath: input.lastPath ?? null,
       workspaces: input.workspaces,
-    })
+    });
   } catch (error) {
-    throw normalizeDesktopServerError(error)
+    throw normalizeDesktopServerError(error);
   }
 }
 
-export async function removeDesktopServerProfile(input: {
-  apiOrigin: string
-  instanceId: string
-}) {
+export async function removeDesktopServerProfile(input: { apiOrigin: string; instanceId: string }) {
   if (!isDesktopApp()) {
     throw new DesktopServerError(
       "desktop_required",
       "Saved desktop servers can only be removed in Zilobase Desktop.",
-    )
+    );
   }
 
   try {
@@ -245,33 +240,30 @@ export async function removeDesktopServerProfile(input: {
         apiOrigin: input.apiOrigin,
         instanceId: input.instanceId,
       }),
-    )
-    return selectedDesktopServer
+    );
+    return selectedDesktopServer;
   } catch (error) {
-    throw normalizeDesktopServerError(error)
+    throw normalizeDesktopServerError(error);
   }
 }
 
 export function desktopPersistKey(baseName: string, server = selectedDesktopServer) {
-  return server ? `${baseName}:${server.instanceId}` : baseName
+  return server ? `${baseName}:${server.instanceId}` : baseName;
 }
 
-export function resolveDesktopServerSwitchPath(input: {
-  hasCredentials?: boolean
-  path?: string
-}) {
-  if (input.hasCredentials === false) return "/login"
-  if (input.path) return input.path
-  return "/recents"
+export function resolveDesktopServerSwitchPath(input: { hasCredentials?: boolean; path?: string }) {
+  if (input.hasCredentials === false) return "/login";
+  if (input.path) return input.path;
+  return "/recents";
 }
 
 export function applyActiveDesktopProfileWorkspace(
   profiles: DesktopServerProfileList | null | undefined,
   setActiveWorkspaceId: (workspaceId: string | null) => void,
 ) {
-  const active = profiles?.profiles.find((profile) => profile.active)
+  const active = profiles?.profiles.find((profile) => profile.active);
   if (active?.lastActiveWorkspaceId) {
-    setActiveWorkspaceId(active.lastActiveWorkspaceId)
+    setActiveWorkspaceId(active.lastActiveWorkspaceId);
   }
 }
 
@@ -282,12 +274,11 @@ function normalizeDesktopServerProfileList(
     throw new DesktopServerError(
       "invalid_server_metadata",
       "The saved desktop servers could not be loaded.",
-    )
+    );
   }
 
   return {
-    activeInstanceId:
-      typeof value.activeInstanceId === "string" ? value.activeInstanceId : "",
+    activeInstanceId: typeof value.activeInstanceId === "string" ? value.activeInstanceId : "",
     profiles: value.profiles.map((profile) => ({
       active: profile.active === true,
       hasCredentials: profile.hasCredentials === true,
@@ -304,100 +295,94 @@ function normalizeDesktopServerProfileList(
               !workspace.id.trim() ||
               !workspace.name.trim()
             ) {
-              return []
+              return [];
             }
-            return [{ id: workspace.id, name: workspace.name }]
+            return [{ id: workspace.id, name: workspace.name }];
           })
         : [],
     })),
-  }
+  };
 }
 
 export function desktopDevelopmentApiOrigin() {
-  const configured = import.meta.env.VITE_API_URL?.replace(/\/$/, "")
-  return configured && configured !== "/api" ? configured : DEFAULT_DEV_API_ORIGIN
+  const configured = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+  return configured && configured !== "/api" ? configured : DEFAULT_DEV_API_ORIGIN;
 }
 
 export function desktopCloudConnectUrl(development = import.meta.env.DEV) {
-  return development
-    ? developmentCloudOrigin()
-    : CLOUD_DESKTOP_SERVER.apiOrigin
+  return development ? developmentCloudOrigin() : CLOUD_DESKTOP_SERVER.apiOrigin;
 }
 
 function developmentCloudOrigin() {
-  return developmentTargets.cloudApiOrigin ?? desktopDevelopmentApiOrigin()
+  return developmentTargets.cloudApiOrigin ?? desktopDevelopmentApiOrigin();
 }
 
 function normalizeDevelopmentTargets(value: unknown): DesktopDevelopmentTargets {
-  if (!value || typeof value !== "object") return emptyDevelopmentTargets
+  if (!value || typeof value !== "object") return emptyDevelopmentTargets;
   const record = value as {
-    cloudApiOrigin?: unknown
-    customServers?: unknown
-  }
+    cloudApiOrigin?: unknown;
+    customServers?: unknown;
+  };
   const customServers = Array.isArray(record.customServers)
-    ? record.customServers.flatMap((item) => {
-        if (!item || typeof item !== "object") return []
-        const candidate = item as { label?: unknown; url?: unknown }
-        const label =
-          typeof candidate.label === "string"
-            ? candidate.label.trim().replace(/\s+/g, " ")
-            : ""
-        const url = loopbackHttpOrigin(candidate.url)
-        if (!label || label.length > 80 || !url) return []
-        return [{ label, url }]
-      }).slice(0, 8)
-    : []
+    ? record.customServers
+        .flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const candidate = item as { label?: unknown; url?: unknown };
+          const label =
+            typeof candidate.label === "string" ? candidate.label.trim().replace(/\s+/g, " ") : "";
+          const url = loopbackHttpOrigin(candidate.url);
+          if (!label || label.length > 80 || !url) return [];
+          return [{ label, url }];
+        })
+        .slice(0, 8)
+    : [];
   return {
     cloudApiOrigin: loopbackHttpOrigin(record.cloudApiOrigin),
     customServers,
-  }
+  };
 }
 
 function loopbackHttpOrigin(value: unknown) {
-  if (typeof value !== "string") return null
+  if (typeof value !== "string") return null;
   try {
-    const trimmed = value.trim()
-    const url = new URL(trimmed)
-    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "")
+    const trimmed = value.trim();
+    const url = new URL(trimmed);
+    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
     if (
       url.origin !== trimmed.replace(/\/$/, "") ||
       url.username ||
       url.password ||
       url.protocol !== "http:" ||
-      (hostname !== "localhost" &&
-        hostname !== "127.0.0.1" &&
-        hostname !== "::1")
+      (hostname !== "localhost" && hostname !== "127.0.0.1" && hostname !== "::1")
     ) {
-      return null
+      return null;
     }
-    return url.origin
+    return url.origin;
   } catch {
-    return null
+    return null;
   }
 }
 
-export function isDesktopDevelopmentServer(
-  server: DesktopServer | null | undefined,
-) {
-  if (!server) return false
-  const origin = developmentCloudOrigin()
-  const loopback = origin.replace("localhost", "127.0.0.1")
+export function isDesktopDevelopmentServer(server: DesktopServer | null | undefined) {
+  if (!server) return false;
+  const origin = developmentCloudOrigin();
+  const loopback = origin.replace("localhost", "127.0.0.1");
   return (
     server.instanceId === "zilobase-dev" ||
     server.apiOrigin === origin ||
     server.apiOrigin === loopback
-  )
+  );
 }
 
 export function isCloudDesktopServer(
   server: DesktopServer | null | undefined,
   development = import.meta.env.DEV,
 ) {
-  if (development) return isDesktopDevelopmentServer(server)
+  if (development) return isDesktopDevelopmentServer(server);
   return (
     server?.apiOrigin === CLOUD_DESKTOP_SERVER.apiOrigin &&
     server.issuer === CLOUD_DESKTOP_SERVER.issuer
-  )
+  );
 }
 
 export function desktopServersReferToSameInstance(
@@ -409,7 +394,7 @@ export function desktopServersReferToSameInstance(
     current.apiOrigin === candidate.apiOrigin &&
     current.issuer === candidate.issuer
   ) {
-    return true
+    return true;
   }
 
   return (
@@ -418,33 +403,33 @@ export function desktopServersReferToSameInstance(
     current.issuer === CLOUD_DESKTOP_SERVER.issuer &&
     candidate.apiOrigin === CLOUD_DESKTOP_SERVER.apiOrigin &&
     candidate.issuer === CLOUD_DESKTOP_SERVER.issuer
-  )
+  );
 }
 
 export async function discoverRuntimeDesktopServer() {
-  if (selectedDesktopServer) return selectedDesktopServer
-  if (discoveredRuntimeDesktopServer) return discoveredRuntimeDesktopServer
+  if (selectedDesktopServer) return selectedDesktopServer;
+  if (discoveredRuntimeDesktopServer) return discoveredRuntimeDesktopServer;
   if (!runtimeDiscoveryPromise) {
     runtimeDiscoveryPromise = (async () => {
-      const apiOrigin = resolveRuntimeApiOrigin()
-      const response = await desktopNetworkFetch(
-        `${apiOrigin}/.well-known/zilobase`,
-        { cache: "no-store", credentials: "omit" },
-      )
-      if (!response.ok) throw new Error("Zilobase discovery is unavailable.")
-      const server = validateDesktopServer(await response.json())
-      discoveredRuntimeDesktopServer = server
-      return server
+      const apiOrigin = resolveRuntimeApiOrigin();
+      const response = await desktopNetworkFetch(`${apiOrigin}/.well-known/zilobase`, {
+        cache: "no-store",
+        credentials: "omit",
+      });
+      if (!response.ok) throw new Error("Zilobase discovery is unavailable.");
+      const server = validateDesktopServer(await response.json());
+      discoveredRuntimeDesktopServer = server;
+      return server;
     })().catch((error) => {
-      runtimeDiscoveryPromise = null
-      throw error
-    })
+      runtimeDiscoveryPromise = null;
+      throw error;
+    });
   }
-  return runtimeDiscoveryPromise
+  return runtimeDiscoveryPromise;
 }
 
 export function resolveDesktopServerUrls(server: DesktopServer) {
-  const websocketOrigin = server.apiOrigin.replace(/^http/, "ws")
+  const websocketOrigin = server.apiOrigin.replace(/^http/, "ws");
 
   return {
     apiOrigin: server.apiOrigin,
@@ -452,7 +437,7 @@ export function resolveDesktopServerUrls(server: DesktopServer) {
     imageOrigin: server.apiOrigin,
     realtimeUrl: `${websocketOrigin}/database-collaboration`,
     webOrigin: server.webOrigin,
-  }
+  };
 }
 
 export function resolveRuntimeWebSocketUrl(
@@ -460,24 +445,22 @@ export function resolveRuntimeWebSocketUrl(
   channel: "audio" | "collaboration" | "meeting" | "realtime",
   desktopServer = selectedDesktopServer,
 ) {
-  if (!desktopServer) return configuredUrl
+  if (!desktopServer) return configuredUrl;
 
-  const configured = new URL(configuredUrl)
+  const configured = new URL(configuredUrl);
   if (configured.protocol !== "ws:" && configured.protocol !== "wss:") {
     throw new DesktopServerError(
       "invalid_server_metadata",
       "The server returned an invalid realtime URL.",
-    )
+    );
   }
 
-  const urls = resolveDesktopServerUrls(desktopServer)
-  const resolved = new URL(
-    channel === "realtime" ? urls.realtimeUrl : urls.collaborationUrl,
-  )
-  if (channel === "meeting") resolved.pathname = "/meeting-collaboration"
-  if (channel === "audio") resolved.pathname = "/meeting-audio"
-  resolved.search = configured.search
-  return resolved.toString()
+  const urls = resolveDesktopServerUrls(desktopServer);
+  const resolved = new URL(channel === "realtime" ? urls.realtimeUrl : urls.collaborationUrl);
+  if (channel === "meeting") resolved.pathname = "/meeting-collaboration";
+  if (channel === "audio") resolved.pathname = "/meeting-audio";
+  resolved.search = configured.search;
+  return resolved.toString();
 }
 
 export function resolveRuntimeApiOrigin(
@@ -488,11 +471,11 @@ export function resolveRuntimeApiOrigin(
   // alone cannot distinguish it from a normal browser. A selected native
   // server is authoritative in both development and packaged desktop builds.
   if (desktopServer) {
-    return desktopServer.apiOrigin
+    return desktopServer.apiOrigin;
   }
 
   if (isDesktopLocation(location)) {
-    return CLOUD_DESKTOP_SERVER.apiOrigin
+    return CLOUD_DESKTOP_SERVER.apiOrigin;
   }
 
   if (
@@ -500,19 +483,17 @@ export function resolveRuntimeApiOrigin(
     location?.hostname === "demo.zilobase.com" ||
     location?.hostname === "demo.localhost"
   ) {
-    return ""
+    return "";
   }
 
-  const configured = import.meta.env.VITE_API_URL?.replace(/\/$/, "")
-  return configured && configured !== "/api" ? configured : ""
+  const configured = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+  return configured && configured !== "/api" ? configured : "";
 }
 
 export function isDesktopLocation(
   location: Pick<Location, "hostname" | "protocol"> | URL | undefined,
 ) {
-  return (
-    location?.protocol === "zilo-desktop:" && location.hostname === "app"
-  )
+  return location?.protocol === "zilo-desktop:" && location.hostname === "app";
 }
 
 export function validateDesktopServer(value: unknown): DesktopServer {
@@ -520,10 +501,10 @@ export function validateDesktopServer(value: unknown): DesktopServer {
     throw new DesktopServerError(
       "invalid_server_metadata",
       "The desktop server metadata is unavailable.",
-    )
+    );
   }
 
-  const server = value as Partial<DesktopServer>
+  const server = value as Partial<DesktopServer>;
   for (const field of [
     "instanceId",
     "displayName",
@@ -537,7 +518,7 @@ export function validateDesktopServer(value: unknown): DesktopServer {
       throw new DesktopServerError(
         "invalid_server_metadata",
         "The desktop server metadata is incomplete.",
-      )
+      );
     }
   }
 
@@ -551,42 +532,35 @@ export function validateDesktopServer(value: unknown): DesktopServer {
     throw new DesktopServerError(
       "invalid_server_metadata",
       "The desktop server metadata is incompatible.",
-    )
+    );
   }
 
-  return server as DesktopServer
+  return server as DesktopServer;
 }
 
 function isCanonicalDesktopOrigin(value: string) {
   try {
-    const url = new URL(value)
-    if (url.origin !== value || url.username || url.password) return false
-    if (url.protocol === "https:") return true
-    if (url.protocol !== "http:") return false
-    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "")
-    return (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "::1"
-    )
+    const url = new URL(value);
+    if (url.origin !== value || url.username || url.password) return false;
+    if (url.protocol === "https:") return true;
+    if (url.protocol !== "http:") return false;
+    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
   } catch {
-    return false
+    return false;
   }
 }
 
 export function normalizeDesktopServerError(error: unknown) {
-  if (error instanceof DesktopServerError) return error
+  if (error instanceof DesktopServerError) return error;
 
   const failure =
-    typeof error === "object" && error !== null
-      ? (error as DesktopServerFailure)
-      : null
-  const code =
-    typeof failure?.code === "string" ? failure.code : "server_verification_failed"
+    typeof error === "object" && error !== null ? (error as DesktopServerFailure) : null;
+  const code = typeof failure?.code === "string" ? failure.code : "server_verification_failed";
   const message =
     typeof failure?.message === "string"
       ? failure.message
-      : "The Zilobase server could not be verified."
+      : "The Zilobase server could not be verified.";
 
-  return new DesktopServerError(code, message)
+  return new DesktopServerError(code, message);
 }

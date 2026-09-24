@@ -27,11 +27,7 @@ export class TeamspaceService {
     input: EnsureDefaultTeamspaceMembershipInput,
   ): Promise<EnsureDefaultTeamspaceMembershipResult> {
     return this.database.transaction((transaction) =>
-      ensureDefaultTeamspaceMembership(
-        transaction as Database,
-        this.editionExtension,
-        input,
-      ),
+      ensureDefaultTeamspaceMembership(transaction as Database, this.editionExtension, input),
     );
   }
 

@@ -121,10 +121,7 @@ async function readExistingAgentAction<T extends ReceiptedResult>(input: {
     throw new Error("Agent action reservation could not be loaded.");
   }
 
-  if (
-    existing.toolName !== input.toolName ||
-    existing.inputHash !== input.inputHash
-  ) {
+  if (existing.toolName !== input.toolName || existing.inputHash !== input.inputHash) {
     throw new Error("Agent action idempotency key was reused with another action.");
   }
 
@@ -146,9 +143,7 @@ export async function hashAgentToolInput(input: unknown) {
   const encoded = new TextEncoder().encode(stableStringify(input));
   const digest = await crypto.subtle.digest("SHA-256", encoded);
 
-  return [...new Uint8Array(digest)]
-    .map((value) => value.toString(16).padStart(2, "0"))
-    .join("");
+  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
 function stableStringify(value: unknown): string {
@@ -172,8 +167,8 @@ function isReceiptedResult(value: unknown): value is ReceiptedResult {
 
 export function resolveAgentActionResultStatus(value: ReceiptedResult) {
   return value.ok === false || value.status === "failed"
-    ? "failed" as const
-    : "succeeded" as const;
+    ? ("failed" as const)
+    : ("succeeded" as const);
 }
 
 function readFailedActionSummary(value: ReceiptedResult) {

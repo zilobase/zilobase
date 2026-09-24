@@ -4,10 +4,21 @@ import { requestSignal } from "../../../shared/http/request";
 const MAX_RESPONSE_BYTES = 1024 * 1024;
 const TOTAL_TIMEOUT_MS = 10_000;
 const reservedHeaders = new Set([
-  "connection", "content-length", "content-type", "host", "keep-alive",
-  "proxy-authenticate", "proxy-authorization", "te", "trailer",
-  "transfer-encoding", "upgrade", "x-zilobase-action-id",
-  "x-zilobase-delivery-id", "x-zilobase-run-id", "x-zilobase-schema-version",
+  "connection",
+  "content-length",
+  "content-type",
+  "host",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+  "x-zilobase-action-id",
+  "x-zilobase-delivery-id",
+  "x-zilobase-run-id",
+  "x-zilobase-schema-version",
 ]);
 
 export class WebhookEgressError extends Error {
@@ -26,7 +37,10 @@ export class WebhookEgressError extends Error {
 export function validateWebhookHeaderName(name: string) {
   const normalized = name.trim().toLowerCase();
   if (!/^[!#$%&'*+.^_`|~0-9a-z-]{1,200}$/.test(normalized) || reservedHeaders.has(normalized)) {
-    throw new WebhookEgressError("Webhook header is reserved or invalid", "AUTOMATION_WEBHOOK_HEADER_INVALID");
+    throw new WebhookEgressError(
+      "Webhook header is reserved or invalid",
+      "AUTOMATION_WEBHOOK_HEADER_INVALID",
+    );
   }
   return normalized;
 }
@@ -39,30 +53,48 @@ export async function resolvePublicWebhookTarget(
   } = {},
 ) {
   let url: URL;
-  try { url = new URL(rawUrl); } catch {
+  try {
+    url = new URL(rawUrl);
+  } catch {
     throw new WebhookEgressError("Webhook URL is invalid", "AUTOMATION_WEBHOOK_URL_INVALID");
   }
   const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (url.username || url.password || url.hash) {
-    throw new WebhookEgressError("Credential-bearing or fragment webhook URLs are not allowed", "AUTOMATION_WEBHOOK_URL_INVALID");
+    throw new WebhookEgressError(
+      "Credential-bearing or fragment webhook URLs are not allowed",
+      "AUTOMATION_WEBHOOK_URL_INVALID",
+    );
   }
   if (url.protocol !== "https:") {
     if (url.protocol !== "http:" || !options.allowHttpDomains?.has(hostname)) {
-      throw new WebhookEgressError("Webhook URLs must use HTTPS", "AUTOMATION_WEBHOOK_HTTPS_REQUIRED");
+      throw new WebhookEgressError(
+        "Webhook URLs must use HTTPS",
+        "AUTOMATION_WEBHOOK_HTTPS_REQUIRED",
+      );
     }
   }
   if (isBlockedAddress(hostname) || isBlockedHostname(hostname)) {
-    throw new WebhookEgressError("Webhook destination is private or reserved", "AUTOMATION_WEBHOOK_PRIVATE_DESTINATION");
+    throw new WebhookEgressError(
+      "Webhook destination is private or reserved",
+      "AUTOMATION_WEBHOOK_PRIVATE_DESTINATION",
+    );
   }
   const addresses = isIpAddress(hostname)
     ? [hostname]
     : await (options.resolver ?? resolveWithDoh)(hostname);
   const publicAddresses = [...new Set(addresses.map((address) => address.toLowerCase()))].sort();
   if (!publicAddresses.length) {
-    throw new WebhookEgressError("Webhook host could not be resolved", "AUTOMATION_WEBHOOK_DNS_FAILED", true);
+    throw new WebhookEgressError(
+      "Webhook host could not be resolved",
+      "AUTOMATION_WEBHOOK_DNS_FAILED",
+      true,
+    );
   }
   if (publicAddresses.some(isBlockedAddress)) {
-    throw new WebhookEgressError("Webhook DNS resolved to a private or reserved address", "AUTOMATION_WEBHOOK_PRIVATE_DESTINATION");
+    throw new WebhookEgressError(
+      "Webhook DNS resolved to a private or reserved address",
+      "AUTOMATION_WEBHOOK_PRIVATE_DESTINATION",
+    );
   }
   return { pinnedAddress: publicAddresses[0]!, url };
 }
@@ -96,11 +128,21 @@ export async function sendPinnedWebhook(input: {
     );
   }
   if (response.status >= 300 && response.status < 400) {
-    throw new WebhookEgressError("Webhook redirects are not allowed", "AUTOMATION_WEBHOOK_REDIRECT_REJECTED", false, response.status);
+    throw new WebhookEgressError(
+      "Webhook redirects are not allowed",
+      "AUTOMATION_WEBHOOK_REDIRECT_REJECTED",
+      false,
+      response.status,
+    );
   }
   const contentLength = Number(response.headers.get("content-length") ?? 0);
   if (contentLength > MAX_RESPONSE_BYTES) {
-    throw new WebhookEgressError("Webhook response exceeded 1 MiB", "AUTOMATION_WEBHOOK_RESPONSE_TOO_LARGE", false, response.status);
+    throw new WebhookEgressError(
+      "Webhook response exceeded 1 MiB",
+      "AUTOMATION_WEBHOOK_RESPONSE_TOO_LARGE",
+      false,
+      response.status,
+    );
   }
   await consumeBoundedBody(response);
   if (response.status >= 200 && response.status < 300) return { status: response.status };
@@ -117,14 +159,23 @@ export async function sendPinnedWebhook(input: {
 async function resolveWithDoh(hostname: string) {
   const addresses: string[] = [];
   for (const type of ["A", "AAAA"] as const) {
-    const response = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(hostname)}&type=${type}`, {
-      headers: { accept: "application/dns-json" },
-      signal: requestSignal(5_000),
-    });
-    if (!response.ok) throw new WebhookEgressError("Webhook DNS lookup failed", "AUTOMATION_WEBHOOK_DNS_FAILED", true);
-    const payload = await response.json() as { Answer?: Array<{ data?: string; type?: number }> };
+    const response = await fetch(
+      `https://dns.google/resolve?name=${encodeURIComponent(hostname)}&type=${type}`,
+      {
+        headers: { accept: "application/dns-json" },
+        signal: requestSignal(5_000),
+      },
+    );
+    if (!response.ok)
+      throw new WebhookEgressError(
+        "Webhook DNS lookup failed",
+        "AUTOMATION_WEBHOOK_DNS_FAILED",
+        true,
+      );
+    const payload = (await response.json()) as { Answer?: Array<{ data?: string; type?: number }> };
     for (const answer of payload.Answer ?? []) {
-      if (answer.data && isIpAddress(answer.data)) addresses.push(answer.data.replace(/^\[|\]$/g, ""));
+      if (answer.data && isIpAddress(answer.data))
+        addresses.push(answer.data.replace(/^\[|\]$/g, ""));
     }
   }
   return addresses;
@@ -140,7 +191,12 @@ async function consumeBoundedBody(response: Response) {
     total += chunk.value.byteLength;
     if (total > MAX_RESPONSE_BYTES) {
       await reader.cancel();
-      throw new WebhookEgressError("Webhook response exceeded 1 MiB", "AUTOMATION_WEBHOOK_RESPONSE_TOO_LARGE", false, response.status);
+      throw new WebhookEgressError(
+        "Webhook response exceeded 1 MiB",
+        "AUTOMATION_WEBHOOK_RESPONSE_TOO_LARGE",
+        false,
+        response.status,
+      );
     }
   }
 }
@@ -158,40 +214,57 @@ function isIpAddress(value: string) {
 }
 
 function isBlockedHostname(hostname: string) {
-  return hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local") || hostname.endsWith(".internal");
+  return (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".internal")
+  );
 }
 
 export function isBlockedAddress(value: string) {
   const normalized = value.toLowerCase().replace(/^\[|\]$/g, "");
   const parts = normalized.split(".").map(Number);
-  if (parts.length === 4 && parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)) {
+  if (
+    parts.length === 4 &&
+    parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)
+  ) {
     const [a, b] = parts;
-    return a === 0 || a === 10 || a === 127 || a! >= 224 ||
-      a === 169 && b === 254 || a === 172 && b! >= 16 && b! <= 31 ||
-      a === 192 && b === 168 || a === 100 && b! >= 64 && b! <= 127 ||
-      a === 198 && (b === 18 || b === 19) || a === 192 && b === 0 ||
-      a === 192 && b === 88 && parts[2] === 99 ||
-      a === 198 && b === 51 && parts[2] === 100 ||
-      a === 203 && b === 0 && parts[2] === 113;
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      a! >= 224 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b! >= 16 && b! <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b! >= 64 && b! <= 127) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      (a === 192 && b === 0) ||
+      (a === 192 && b === 88 && parts[2] === 99) ||
+      (a === 198 && b === 51 && parts[2] === 100) ||
+      (a === 203 && b === 0 && parts[2] === 113)
+    );
   }
   if (!normalized.includes(":")) return false;
   const words = parseIpv6Words(normalized);
   if (!words) return true;
   const [first, second, third] = words;
   const mappedIpv4 = words.slice(0, 5).every((word) => word === 0) && words[5] === 0xffff;
-  return words.every((word) => word === 0) ||
-    words.slice(0, 7).every((word) => word === 0) && words[7] === 1 ||
+  return (
+    words.every((word) => word === 0) ||
+    (words.slice(0, 7).every((word) => word === 0) && words[7] === 1) ||
     mappedIpv4 ||
     (first! & 0xfe00) === 0xfc00 ||
     (first! & 0xffc0) === 0xfe80 ||
     (first! & 0xff00) === 0xff00 ||
-    first === 0x0064 && second === 0xff9b ||
-    first === 0x0100 && second === 0 ||
-    first === 0x2001 && (
-      second === 0 || second === 2 || second === 0x10 || second === 0x20 || second === 0x0db8
-    ) ||
+    (first === 0x0064 && second === 0xff9b) ||
+    (first === 0x0100 && second === 0) ||
+    (first === 0x2001 &&
+      (second === 0 || second === 2 || second === 0x10 || second === 0x20 || second === 0x0db8)) ||
     first === 0x2002 ||
-    first === 0x3fff && (second! & 0xf000) === 0;
+    (first === 0x3fff && (second! & 0xf000) === 0)
+  );
 }
 
 function parseIpv6Words(value: string) {
@@ -201,14 +274,19 @@ function parseIpv6Words(value: string) {
   const dotted = dottedIndex >= 0 ? source.slice(dottedIndex + 1) : "";
   if (dotted.includes(".")) {
     const octets = dotted.split(".").map(Number);
-    if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return null;
+    if (
+      octets.length !== 4 ||
+      octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)
+    )
+      return null;
     source = `${source.slice(0, dottedIndex)}:${((octets[0]! << 8) | octets[1]!).toString(16)}:${((octets[2]! << 8) | octets[3]!).toString(16)}`;
   }
   const [leftRaw, rightRaw] = source.split("::");
   const left = leftRaw ? leftRaw.split(":") : [];
   const right = rightRaw ? rightRaw.split(":") : [];
   const hasCompression = source.includes("::");
-  if ((!hasCompression && left.length !== 8) || (hasCompression && left.length + right.length >= 8)) return null;
+  if ((!hasCompression && left.length !== 8) || (hasCompression && left.length + right.length >= 8))
+    return null;
   const fill = hasCompression ? Array(8 - left.length - right.length).fill("0") : [];
   const encoded = [...left, ...fill, ...right];
   if (encoded.length !== 8 || encoded.some((word) => !/^[0-9a-f]{1,4}$/.test(word))) return null;

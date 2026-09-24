@@ -1,80 +1,62 @@
-import { getDatabasePropertyCellKind } from "../schema/property-catalog"
-import type { DatabasePropertyValue } from "../schema/property-values"
-import { areSerializedPropertyValuesEqual } from "./database-item-utils"
+import { getDatabasePropertyCellKind } from "../schema/property-catalog";
+import type { DatabasePropertyValue } from "../schema/property-values";
+import { areSerializedPropertyValuesEqual } from "./database-item-utils";
 
 export type DatabaseCellFillHistoryChange = {
-  nextValue: DatabasePropertyValue
-  pageId: string
-  previousValue: DatabasePropertyValue
-  propertyId: string
-  propertyType: string
-  rowId: string
-}
+  nextValue: DatabasePropertyValue;
+  pageId: string;
+  previousValue: DatabasePropertyValue;
+  propertyId: string;
+  propertyType: string;
+  rowId: string;
+};
 
-const fillableCellKinds = new Set([
-  "checkbox",
-  "date",
-  "input",
-  "person",
-  "select",
-])
+const fillableCellKinds = new Set(["checkbox", "date", "input", "person", "select"]);
 
 export function isDatabasePropertyFillable(propertyType: string) {
-  return fillableCellKinds.has(getDatabasePropertyCellKind(propertyType))
+  return fillableCellKinds.has(getDatabasePropertyCellKind(propertyType));
 }
 
 export function getDatabaseCellFillRowIds(
   rowIds: string[],
   sourceRowId: string,
-  targetRowId: string
+  targetRowId: string,
 ) {
-  const sourceIndex = rowIds.indexOf(sourceRowId)
-  const targetIndex = rowIds.indexOf(targetRowId)
+  const sourceIndex = rowIds.indexOf(sourceRowId);
+  const targetIndex = rowIds.indexOf(targetRowId);
 
-  if (
-    sourceIndex === -1 ||
-    targetIndex === -1 ||
-    sourceIndex === targetIndex
-  ) {
-    return []
+  if (sourceIndex === -1 || targetIndex === -1 || sourceIndex === targetIndex) {
+    return [];
   }
 
-  const startIndex = Math.min(sourceIndex, targetIndex)
-  const endIndex = Math.max(sourceIndex, targetIndex)
+  const startIndex = Math.min(sourceIndex, targetIndex);
+  const endIndex = Math.max(sourceIndex, targetIndex);
 
-  return rowIds
-    .slice(startIndex, endIndex + 1)
-    .filter((rowId) => rowId !== sourceRowId)
+  return rowIds.slice(startIndex, endIndex + 1).filter((rowId) => rowId !== sourceRowId);
 }
 
 export function getUndoableDatabaseCellFillChanges(
   changes: DatabaseCellFillHistoryChange[],
-  propertyValuesByKey: Record<string, DatabasePropertyValue>
+  propertyValuesByKey: Record<string, DatabasePropertyValue>,
 ) {
   return changes.filter((change) => {
-    const currentValue =
-      propertyValuesByKey[`${change.pageId}:${change.propertyId}`] ?? ""
+    const currentValue = propertyValuesByKey[`${change.pageId}:${change.propertyId}`] ?? "";
 
-    return areSerializedPropertyValuesEqual(
-      change.propertyType,
-      currentValue,
-      change.nextValue
-    )
-  })
+    return areSerializedPropertyValuesEqual(change.propertyType, currentValue, change.nextValue);
+  });
 }
 
 export function getRedoableDatabaseCellFillChanges(
   changes: DatabaseCellFillHistoryChange[],
-  propertyValuesByKey: Record<string, DatabasePropertyValue>
+  propertyValuesByKey: Record<string, DatabasePropertyValue>,
 ) {
   return changes.filter((change) => {
-    const currentValue =
-      propertyValuesByKey[`${change.pageId}:${change.propertyId}`] ?? ""
+    const currentValue = propertyValuesByKey[`${change.pageId}:${change.propertyId}`] ?? "";
 
     return areSerializedPropertyValuesEqual(
       change.propertyType,
       currentValue,
-      change.previousValue
-    )
-  })
+      change.previousValue,
+    );
+  });
 }

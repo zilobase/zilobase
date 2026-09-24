@@ -13,10 +13,7 @@ import {
   aiMcpCredential,
   aiMcpOauthAttempt,
 } from "../../../../infrastructure/database/schema";
-import {
-  getCanonicalApiOrigin,
-  type RuntimeEnv,
-} from "../../../../shared/config/config";
+import { getCanonicalApiOrigin, type RuntimeEnv } from "../../../../shared/config/config";
 import { getMembership } from "../../../access";
 import { decryptMcpSecret, encryptMcpSecret } from "./credential-crypto";
 import { discoverConnectionTools } from "../transport/mcp-client";
@@ -29,10 +26,7 @@ import {
 } from "../mcp-scope";
 import { createSecureMcpFetch } from "../transport/secure-egress";
 
-import {
-  loadClientRegistration,
-  resolveClientInformation,
-} from "./oauth-credentials";
+import { loadClientRegistration, resolveClientInformation } from "./oauth-credentials";
 
 const OAUTH_ATTEMPT_TTL_MS = 10 * 60 * 1_000;
 
@@ -61,11 +55,7 @@ export async function beginMcpOAuth(input: {
   }
   const issuer = discovered.authorizationServerMetadata.issuer;
   if (!issuer)
-    throw new McpServiceError(
-      "mcp_oauth_issuer_missing",
-      "OAuth issuer is missing.",
-      409,
-    );
+    throw new McpServiceError("mcp_oauth_issuer_missing", "OAuth issuer is missing.", 409);
   const redirectUri = `${getCanonicalApiOrigin(input.env)}/api/ai/mcp/oauth/callback`;
   const clientMetadata: OAuthClientMetadata = {
     client_name: "Zilobase",
@@ -90,17 +80,13 @@ export async function beginMcpOAuth(input: {
     resource: new URL(connection.endpointUrl),
     state,
   });
-  const encryptedVerifier = await encryptMcpSecret(
-    input.env,
-    started.codeVerifier,
-    {
-      authenticatedByUserId: input.userId,
-      connectionId: connection.id,
-      profileId: getMcpCredentialScopeId(connection),
-      purpose: "oauth_code_verifier",
-      workspaceId: connection.workspaceId,
-    },
-  );
+  const encryptedVerifier = await encryptMcpSecret(input.env, started.codeVerifier, {
+    authenticatedByUserId: input.userId,
+    connectionId: connection.id,
+    profileId: getMcpCredentialScopeId(connection),
+    purpose: "oauth_code_verifier",
+    workspaceId: connection.workspaceId,
+  });
   const now = new Date();
   await db.insert(aiMcpOauthAttempt).values({
     codeVerifierAuthTag: encryptedVerifier.authTag,
@@ -135,10 +121,7 @@ export async function completeMcpOAuth(input: {
       connection: aiMcpConnection,
     })
     .from(aiMcpOauthAttempt)
-    .innerJoin(
-      aiMcpConnection,
-      eq(aiMcpConnection.id, aiMcpOauthAttempt.connectionId),
-    )
+    .innerJoin(aiMcpConnection, eq(aiMcpConnection.id, aiMcpOauthAttempt.connectionId))
     .where(
       and(
         eq(aiMcpOauthAttempt.stateHash, stateHash),
@@ -157,19 +140,10 @@ export async function completeMcpOAuth(input: {
   const [consumed] = await db
     .update(aiMcpOauthAttempt)
     .set({ consumedAt: new Date() })
-    .where(
-      and(
-        eq(aiMcpOauthAttempt.id, record.attempt.id),
-        isNull(aiMcpOauthAttempt.consumedAt),
-      ),
-    )
+    .where(and(eq(aiMcpOauthAttempt.id, record.attempt.id), isNull(aiMcpOauthAttempt.consumedAt)))
     .returning({ id: aiMcpOauthAttempt.id });
   if (!consumed)
-    throw new McpServiceError(
-      "mcp_oauth_state_replayed",
-      "OAuth request was already used.",
-      409,
-    );
+    throw new McpServiceError("mcp_oauth_state_replayed", "OAuth request was already used.", 409);
   if (!(await isOAuthAuthenticatorEligible(record.connection))) {
     await db
       .update(aiMcpConnection)
@@ -190,10 +164,7 @@ export async function completeMcpOAuth(input: {
     approvedUrls: new Set(),
     allowAnyPublicHttps: true,
   });
-  const discovered = await discoverOAuthServerInfo(
-    record.connection.endpointUrl,
-    { fetchFn },
-  );
+  const discovered = await discoverOAuthServerInfo(record.connection.endpointUrl, { fetchFn });
   const metadata = discovered.authorizationServerMetadata;
   if (!metadata?.issuer || metadata.issuer !== record.attempt.issuer) {
     throw new McpServiceError(
@@ -202,11 +173,7 @@ export async function completeMcpOAuth(input: {
       409,
     );
   }
-  const registration = await loadClientRegistration(
-    record.connection,
-    metadata.issuer,
-    input.env,
-  );
+  const registration = await loadClientRegistration(record.connection, metadata.issuer, input.env);
   const verifier = await decryptMcpSecret(
     input.env,
     {
@@ -223,19 +190,16 @@ export async function completeMcpOAuth(input: {
       workspaceId: record.connection.workspaceId,
     },
   );
-  const tokens = await exchangeAuthorization(
-    discovered.authorizationServerUrl,
-    {
-      authorizationCode: input.code,
-      clientInformation: registration,
-      codeVerifier: verifier,
-      fetchFn,
-      iss: input.iss,
-      metadata,
-      redirectUri: record.attempt.redirectUri,
-      resource: new URL(record.connection.endpointUrl),
-    },
-  );
+  const tokens = await exchangeAuthorization(discovered.authorizationServerUrl, {
+    authorizationCode: input.code,
+    clientInformation: registration,
+    codeVerifier: verifier,
+    fetchFn,
+    iss: input.iss,
+    metadata,
+    redirectUri: record.attempt.redirectUri,
+    resource: new URL(record.connection.endpointUrl),
+  });
   const tokenExpiresAt = tokens.expires_in
     ? new Date(Date.now() + tokens.expires_in * 1_000)
     : null;
@@ -248,17 +212,13 @@ export async function completeMcpOAuth(input: {
     scope: tokens.scope,
     tokenType: tokens.token_type,
   };
-  const encrypted = await encryptMcpSecret(
-    input.env,
-    JSON.stringify(credentialPayload),
-    {
-      authenticatedByUserId: record.connection.authenticatedByUserId,
-      connectionId: record.connection.id,
-      profileId: getMcpCredentialScopeId(record.connection),
-      purpose: "connection_auth",
-      workspaceId: record.connection.workspaceId,
-    },
-  );
+  const encrypted = await encryptMcpSecret(input.env, JSON.stringify(credentialPayload), {
+    authenticatedByUserId: record.connection.authenticatedByUserId,
+    connectionId: record.connection.id,
+    profileId: getMcpCredentialScopeId(record.connection),
+    purpose: "connection_auth",
+    workspaceId: record.connection.workspaceId,
+  });
   const now = new Date();
   await db
     .insert(aiMcpCredential)
@@ -285,14 +245,9 @@ export async function completeMcpOAuth(input: {
   return record.connection;
 }
 
-async function isOAuthAuthenticatorEligible(
-  connection: typeof aiMcpConnection.$inferSelect,
-) {
+async function isOAuthAuthenticatorEligible(connection: typeof aiMcpConnection.$inferSelect) {
   return !(
-    !(await getMembership(
-      connection.workspaceId,
-      connection.authenticatedByUserId,
-    )) ||
+    !(await getMembership(connection.workspaceId, connection.authenticatedByUserId)) ||
     !(await requireMcpScopeAccess({
       minimum: "editor",
       scope: getMcpScopeFromConnection(connection),
@@ -308,10 +263,7 @@ export async function getMcpOAuthCallbackScope(state: string) {
   const [record] = await db
     .select({ connection: aiMcpConnection })
     .from(aiMcpOauthAttempt)
-    .innerJoin(
-      aiMcpConnection,
-      eq(aiMcpConnection.id, aiMcpOauthAttempt.connectionId),
-    )
+    .innerJoin(aiMcpConnection, eq(aiMcpConnection.id, aiMcpOauthAttempt.connectionId))
     .where(eq(aiMcpOauthAttempt.stateHash, await sha256(state)))
     .limit(1);
   return record ? getMcpScopeFromConnection(record.connection) : null;
@@ -347,38 +299,44 @@ async function requireOAuthConnection(input: {
     )
     .limit(1);
   if (!connection)
-    throw new McpServiceError(
-      "mcp_connection_not_found",
-      "OAuth connection not found.",
-      404,
-    );
+    throw new McpServiceError("mcp_connection_not_found", "OAuth connection not found.", 404);
   return connection;
 }
 
 async function sha256(value: string) {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(value),
-  );
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function randomUrlSafe(size: number) {
   const bytes = crypto.getRandomValues(new Uint8Array(size));
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 export async function getMcpOAuthReturnPath(state: string) {
-  const [row] = await db.select({ returnTo: aiMcpOauthAttempt.returnTo }).from(aiMcpOauthAttempt).where(and(eq(aiMcpOauthAttempt.stateHash, await sha256(state)), gt(aiMcpOauthAttempt.expiresAt, new Date()), isNull(aiMcpOauthAttempt.consumedAt))).limit(1);
+  const [row] = await db
+    .select({ returnTo: aiMcpOauthAttempt.returnTo })
+    .from(aiMcpOauthAttempt)
+    .where(
+      and(
+        eq(aiMcpOauthAttempt.stateHash, await sha256(state)),
+        gt(aiMcpOauthAttempt.expiresAt, new Date()),
+        isNull(aiMcpOauthAttempt.consumedAt),
+      ),
+    )
+    .limit(1);
   return safeAgentReturnPath(row?.returnTo);
 }
 export async function cancelMcpOAuth(state: string) {
-  await db.update(aiMcpOauthAttempt).set({ consumedAt: new Date() }).where(and(eq(aiMcpOauthAttempt.stateHash, await sha256(state)), isNull(aiMcpOauthAttempt.consumedAt)));
+  await db
+    .update(aiMcpOauthAttempt)
+    .set({ consumedAt: new Date() })
+    .where(
+      and(
+        eq(aiMcpOauthAttempt.stateHash, await sha256(state)),
+        isNull(aiMcpOauthAttempt.consumedAt),
+      ),
+    );
 }

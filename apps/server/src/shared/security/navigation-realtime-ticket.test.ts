@@ -62,10 +62,7 @@ test("navigation realtime tickets reject tampering and expiry", async () => {
 
 test("navigation realtime tickets require a configured signing secret", async () => {
   await assert.rejects(
-    createNavigationRealtimeTicket(
-      { userId: "user-1", workspaceId: "workspace-1" },
-      {},
-    ),
+    createNavigationRealtimeTicket({ userId: "user-1", workspaceId: "workspace-1" }, {}),
     /COLLABORATION_SECRET or BETTER_AUTH_SECRET is required/,
   );
 });

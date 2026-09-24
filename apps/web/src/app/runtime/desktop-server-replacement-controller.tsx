@@ -35,7 +35,6 @@ import {
 import { executeDesktopServerSwitch } from "../../features/desktop/server/desktop-server-switch";
 import { cancelDesktopBrowserSignIn } from "../../features/desktop/auth/browser-authorization";
 
-
 type ReplacementContext = {
   prepared: PreparedDesktopServer;
   request: DesktopServerReplacementRequest;
@@ -45,11 +44,7 @@ type ReplacementState =
   | { phase: "idle" }
   | { phase: "verifying" }
   | ({
-      phase:
-        | "confirm"
-        | "discard"
-        | "rechecking"
-        | "replacing";
+      phase: "confirm" | "discard" | "rechecking" | "replacing";
     } & ReplacementContext)
   | { phase: "error"; message: string }
   | { phase: "fatal"; message: string };
@@ -68,9 +63,7 @@ export function DesktopServerReplacementController({
     verificationOperation.current += 1;
     const current = stateRef.current;
     if ("prepared" in current) {
-      await discardDesktopServerCandidate(current.prepared.candidateId).catch(
-        () => undefined,
-      );
+      await discardDesktopServerCandidate(current.prepared.candidateId).catch(() => undefined);
     }
     setState({ phase: "idle" });
   }, []);
@@ -92,24 +85,17 @@ export function DesktopServerReplacementController({
           .then(
             async (prepared) => {
               if (operation !== verificationOperation.current) {
-                await discardDesktopServerCandidate(prepared.candidateId).catch(
-                  () => undefined,
-                );
+                await discardDesktopServerCandidate(prepared.candidateId).catch(() => undefined);
                 return;
               }
               try {
                 assertPreparedServerMatchesRequest(prepared, request);
               } catch (error) {
-                await discardDesktopServerCandidate(prepared.candidateId).catch(
-                  () => undefined,
-                );
+                await discardDesktopServerCandidate(prepared.candidateId).catch(() => undefined);
                 throw error;
               }
               const current = getSelectedDesktopServer();
-              if (
-                current &&
-                desktopServersReferToSameInstance(current, prepared.server)
-              ) {
+              if (current && desktopServersReferToSameInstance(current, prepared.server)) {
                 await discardDesktopServerCandidate(prepared.candidateId);
                 setState({ phase: "idle" });
                 if (request.path) openPath(request.path);
@@ -167,31 +153,20 @@ export function DesktopServerReplacementController({
       setState({ ...context, phase: "rechecking" });
       let refreshed: PreparedDesktopServer;
       try {
-        const candidate = await prepareDesktopServerCandidate(
-          context.request.serverUrl,
-        );
+        const candidate = await prepareDesktopServerCandidate(context.request.serverUrl);
         try {
           assertPreparedServerMatchesRequest(candidate, context.request);
-          if (
-            !desktopServersReferToSameInstance(
-              context.prepared.server,
-              candidate.server,
-            )
-          ) {
+          if (!desktopServersReferToSameInstance(context.prepared.server, candidate.server)) {
             throw new Error(
               "The server identity changed during confirmation. Review the server and try again.",
             );
           }
         } catch (error) {
-          await discardDesktopServerCandidate(candidate.candidateId).catch(
-            () => undefined,
-          );
+          await discardDesktopServerCandidate(candidate.candidateId).catch(() => undefined);
           throw error;
         }
         refreshed = candidate;
-        await discardDesktopServerCandidate(context.prepared.candidateId).catch(
-          () => undefined,
-        );
+        await discardDesktopServerCandidate(context.prepared.candidateId).catch(() => undefined);
       } catch (error) {
         recordDesktopDiagnostic(
           "server_replacement.reverification",
@@ -225,11 +200,7 @@ export function DesktopServerReplacementController({
           status: "success",
         });
       } catch (error) {
-        recordDesktopDiagnostic(
-          "server_replacement.commit",
-          describeDesktopError(error),
-          "error",
-        );
+        recordDesktopDiagnostic("server_replacement.commit", describeDesktopError(error), "error");
         setState({
           phase: "fatal",
           message: `${getApiErrorMessage(error)} Restart Zilobase before trying again.`,
@@ -241,9 +212,7 @@ export function DesktopServerReplacementController({
 
   const context = "prepared" in state ? state : null;
   const busy =
-    state.phase === "verifying" ||
-    state.phase === "rechecking" ||
-    state.phase === "replacing";
+    state.phase === "verifying" || state.phase === "rechecking" || state.phase === "replacing";
 
   return (
     <AlertDialog
@@ -255,9 +224,7 @@ export function DesktopServerReplacementController({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{replacementTitle(state)}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {replacementDescription(state)}
-          </AlertDialogDescription>
+          <AlertDialogDescription>{replacementDescription(state)}</AlertDialogDescription>
         </AlertDialogHeader>
 
         {busy ? (
@@ -273,31 +240,21 @@ export function DesktopServerReplacementController({
 
         <AlertDialogFooter>
           {state.phase === "error" ? (
-            <AlertDialogAction onClick={() => setState({ phase: "idle" })}>
-              Close
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => setState({ phase: "idle" })}>Close</AlertDialogAction>
           ) : state.phase === "fatal" ? (
             <AlertDialogAction onClick={() => window.location.reload()}>
               Restart Zilobase
             </AlertDialogAction>
           ) : !busy ? (
-            <AlertDialogCancel onClick={() => void cancelCandidate()}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel onClick={() => void cancelCandidate()}>Cancel</AlertDialogCancel>
           ) : null}
           {state.phase === "confirm" && context ? (
-            <AlertDialogAction
-              onClick={() => void replaceServer(context)}
-              variant="destructive"
-            >
+            <AlertDialogAction onClick={() => void replaceServer(context)} variant="destructive">
               Change server
             </AlertDialogAction>
           ) : null}
           {state.phase === "discard" && context ? (
-            <AlertDialogAction
-              onClick={() => void replaceServer(context)}
-              variant="destructive"
-            >
+            <AlertDialogAction onClick={() => void replaceServer(context)} variant="destructive">
               Permanently discard and change
             </AlertDialogAction>
           ) : null}
@@ -350,15 +307,10 @@ function replacementDescription(state: ReplacementState) {
 
 function afterReactTeardown() {
   return new Promise<void>((resolve) => {
-    window.requestAnimationFrame(() =>
-      window.requestAnimationFrame(() => resolve()),
-    );
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
   });
 }
 
 function isReplacementBusy(state: ReplacementState) {
-  return (
-    state.phase === "rechecking" ||
-    state.phase === "replacing"
-  );
+  return state.phase === "rechecking" || state.phase === "replacing";
 }

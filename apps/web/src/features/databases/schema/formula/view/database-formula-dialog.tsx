@@ -5,14 +5,14 @@ import {
   useRef,
   useState,
   type ReactNode,
-} from "react"
-import { Copy, HelpCircle, Sigma } from "@/shared/components/icons"
-import type { ThemedToken } from "shiki"
-import { toast } from "sonner"
+} from "react";
+import { Copy, HelpCircle, Sigma } from "@/shared/components/icons";
+import type { ThemedToken } from "shiki";
+import { toast } from "sonner";
 
-import { highlightCode } from "@/features/ai/conversations/components/elements/index"
-import { Badge } from "@/shared/ui/badge"
-import { Button } from "@/shared/ui/button"
+import { highlightCode } from "@/features/ai/conversations/components/elements/index";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,85 +20,69 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/ui/dialog"
-import { ScrollArea } from "@/shared/ui/scroll-area"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select"
-import { Separator } from "@/shared/ui/separator"
-import { Switch } from "@/shared/ui/switch"
-import { Textarea } from "@/shared/ui/textarea"
-import { cn } from "@/shared/lib/utils"
+} from "@/shared/ui/dialog";
+import { ScrollArea } from "@/shared/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Separator } from "@/shared/ui/separator";
+import { Switch } from "@/shared/ui/switch";
+import { Textarea } from "@/shared/ui/textarea";
+import { cn } from "@/shared/lib/utils";
 
-import { getDatabasePropertyType } from "../../property-catalog"
-import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../../views/state/database-view-context"
+import { getDatabasePropertyType } from "../../property-catalog";
+import {
+  useDatabaseActionsContext,
+  useDatabaseDataContext,
+  useDatabaseUiContext,
+} from "../../../views/state/database-view-context";
 import {
   escapeFormulaString,
   getFormulaExpression,
   getMergedFormulaConfig,
-} from "../model/formula-config"
-import {
-  evaluateDatabaseFormula,
-} from "../runtime/formula-evaluator"
-import { formatFormulaValue } from "../formatting/formula-formatters"
+} from "../model/formula-config";
+import { evaluateDatabaseFormula } from "../runtime/formula-evaluator";
+import { formatFormulaValue } from "../formatting/formula-formatters";
 import {
   builtInReferences,
   getPropertyReferenceDescription,
   getPropertyReferenceSnippets,
   type FormulaReferenceItem,
-} from "../model/formula-reference-catalog"
+} from "../model/formula-reference-catalog";
 
 type HighlightedFormulaCode = {
-  bg: string
-  fg: string
-  tokens: ThemedToken[][]
-}
+  bg: string;
+  fg: string;
+  tokens: ThemedToken[][];
+};
 
 export function DatabaseFormulaDialog({
   databasePropertyId,
   onOpenChange,
   open,
 }: {
-  databasePropertyId: string | null
-  onOpenChange: (open: boolean) => void
-  open: boolean
+  databasePropertyId: string | null;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
 }) {
-  const {
-    updateDatabasePropertyConfig,
-  } = useDatabaseActionsContext()
-  const {
-    items,
-    properties,
-    propertyValuesByKey,
-  } = useDatabaseDataContext()
-  const {
-    titlePropertyLabel,
-  } = useDatabaseUiContext()
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-  const [debugMode, setDebugMode] = useState(false)
-  const [draftFormula, setDraftFormula] = useState("")
-  const [isSaving, setIsSaving] = useState(false)
-  const [previewRowId, setPreviewRowId] = useState<string | null>(null)
-  const [selectedReferenceId, setSelectedReferenceId] = useState<string | null>(
-    null
-  )
+  const { updateDatabasePropertyConfig } = useDatabaseActionsContext();
+  const { items, properties, propertyValuesByKey } = useDatabaseDataContext();
+  const { titlePropertyLabel } = useDatabaseUiContext();
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [debugMode, setDebugMode] = useState(false);
+  const [draftFormula, setDraftFormula] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [previewRowId, setPreviewRowId] = useState<string | null>(null);
+  const [selectedReferenceId, setSelectedReferenceId] = useState<string | null>(null);
   const property = useMemo(
     () =>
       databasePropertyId
-        ? properties.find((candidate) => candidate.id === databasePropertyId) ??
-          null
+        ? (properties.find((candidate) => candidate.id === databasePropertyId) ?? null)
         : null,
-    [databasePropertyId, properties]
-  )
-  const previewRow =
-    items.find((item) => item.id === previewRowId) ?? items[0] ?? null
+    [databasePropertyId, properties],
+  );
+  const previewRow = items.find((item) => item.id === previewRowId) ?? items[0] ?? null;
   const previewResult = useMemo(() => {
     if (!property || !previewRow) {
-      return null
+      return null;
     }
 
     return evaluateDatabaseFormula({
@@ -108,17 +92,10 @@ export function DatabaseFormulaDialog({
       propertyValuesByKey,
       row: previewRow,
       titlePropertyLabel,
-    })
-  }, [
-    draftFormula,
-    previewRow,
-    properties,
-    property,
-    propertyValuesByKey,
-    titlePropertyLabel,
-  ])
+    });
+  }, [draftFormula, previewRow, properties, property, propertyValuesByKey, titlePropertyLabel]);
   const hasFormulaChanged =
-    property && draftFormula !== getFormulaExpression(property.property.config)
+    property && draftFormula !== getFormulaExpression(property.property.config);
   const insertableProperties = useMemo(
     () => [
       {
@@ -134,12 +111,12 @@ export function DatabaseFormulaDialog({
           type: candidate.property.type,
         })),
     ],
-    [properties, property?.property.id, titlePropertyLabel]
-  )
+    [properties, property?.property.id, titlePropertyLabel],
+  );
   const propertyReferences = useMemo(
     () =>
       insertableProperties.map((item): FormulaReferenceItem => {
-        const snippet = `prop("${escapeFormulaString(item.name)}")`
+        const snippet = `prop("${escapeFormulaString(item.name)}")`;
 
         return {
           category: "property",
@@ -149,79 +126,74 @@ export function DatabaseFormulaDialog({
           propertyType: item.type,
           snippets: getPropertyReferenceSnippets(item.type, snippet),
           type: getDatabasePropertyType(item.type).label,
-        }
+        };
       }),
-    [insertableProperties]
-  )
+    [insertableProperties],
+  );
   const referenceItems = useMemo(
     () => [...propertyReferences, ...builtInReferences],
-    [propertyReferences]
-  )
+    [propertyReferences],
+  );
   const selectedReference =
-    referenceItems.find((item) => item.id === selectedReferenceId) ??
-    referenceItems[0] ??
-    null
+    referenceItems.find((item) => item.id === selectedReferenceId) ?? referenceItems[0] ?? null;
 
   useEffect(() => {
     if (!open) {
-      return
+      return;
     }
 
-    setDraftFormula(getFormulaExpression(property?.property.config))
+    setDraftFormula(getFormulaExpression(property?.property.config));
     setPreviewRowId((currentRowId) =>
-      items.some((item) => item.id === currentRowId)
-        ? currentRowId
-        : items[0]?.id ?? null
-    )
+      items.some((item) => item.id === currentRowId) ? currentRowId : (items[0]?.id ?? null),
+    );
     setSelectedReferenceId((currentReferenceId) =>
       referenceItems.some((item) => item.id === currentReferenceId)
         ? currentReferenceId
-        : referenceItems[0]?.id ?? null
-    )
-  }, [items, open, property?.property.config, referenceItems])
+        : (referenceItems[0]?.id ?? null),
+    );
+  }, [items, open, property?.property.config, referenceItems]);
 
   const insertSnippet = (snippet: string) => {
-    const textarea = textareaRef.current
+    const textarea = textareaRef.current;
 
     if (!textarea) {
-      setDraftFormula((currentFormula) => `${currentFormula}${snippet}`)
-      return
+      setDraftFormula((currentFormula) => `${currentFormula}${snippet}`);
+      return;
     }
 
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const nextFormula =
-      draftFormula.slice(0, start) + snippet + draftFormula.slice(end)
-    const nextCursorPosition = start + snippet.length
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const nextFormula = draftFormula.slice(0, start) + snippet + draftFormula.slice(end);
+    const nextCursorPosition = start + snippet.length;
 
-    setDraftFormula(nextFormula)
+    setDraftFormula(nextFormula);
     requestAnimationFrame(() => {
-      textarea.focus()
-      textarea.setSelectionRange(nextCursorPosition, nextCursorPosition)
-    })
-  }
+      textarea.focus();
+      textarea.setSelectionRange(nextCursorPosition, nextCursorPosition);
+    });
+  };
 
   const saveFormula = () => {
     if (!property || isSaving) {
-      return
+      return;
     }
 
-    setIsSaving(true)
+    setIsSaving(true);
     void updateDatabasePropertyConfig(
       property.id,
-      getMergedFormulaConfig(property.property.config, draftFormula)
+      getMergedFormulaConfig(property.property.config, draftFormula),
     )
       .then(() => {
-        toast.success("Formula saved")
-        onOpenChange(false)
+        toast.success("Formula saved");
+        onOpenChange(false);
       })
       .catch(() => {
-        toast.error("Couldn't save formula")
+        toast.error("Couldn't save formula");
       })
       .finally(() => {
-        setIsSaving(false)
-      })
-  }
+        setIsSaving(false);
+      });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -242,8 +214,7 @@ export function DatabaseFormulaDialog({
               </a>
             </DialogTitle>
             <DialogDescription className="sr-only">
-              Write a Notion-style formula for{" "}
-              {property?.property.name ?? "this property"}.
+              Write a Notion-style formula for {property?.property.name ?? "this property"}.
             </DialogDescription>
           </DialogHeader>
 
@@ -259,8 +230,8 @@ export function DatabaseFormulaDialog({
               onChange={setDraftFormula}
               onKeyDown={(event) => {
                 if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                  event.preventDefault()
-                  saveFormula()
+                  event.preventDefault();
+                  saveFormula();
                 }
               }}
               placeholder="Your formula"
@@ -296,31 +267,23 @@ export function DatabaseFormulaDialog({
                   "min-h-6 text-sm",
                   previewResult && !previewResult.ok
                     ? "text-action-danger-text"
-                    : "text-content-secondary"
+                    : "text-content-secondary",
                 )}
               >
-                {!previewRow ? (
-                  "Add a row to preview the formula output."
-                ) : previewResult?.ok ? (
-                  formatFormulaValue(previewResult.value) || "No output"
-                ) : (
-                  previewResult?.error ?? "Unable to preview this formula."
-                )}
+                {!previewRow
+                  ? "Add a row to preview the formula output."
+                  : previewResult?.ok
+                    ? formatFormulaValue(previewResult.value) || "No output"
+                    : (previewResult?.error ?? "Unable to preview this formula.")}
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 md:justify-end">
               <label className="flex items-center gap-2 text-sm text-content-secondary">
-                <Switch
-                  checked={debugMode}
-                  onCheckedChange={setDebugMode}
-                  size="sm"
-                />
+                <Switch checked={debugMode} onCheckedChange={setDebugMode} size="sm" />
                 Debug mode
               </label>
-              <Badge variant="secondary">
-                Type: {previewResult?.type ?? "unknown"}
-              </Badge>
+              <Badge variant="secondary">Type: {previewResult?.type ?? "unknown"}</Badge>
             </div>
           </section>
 
@@ -335,7 +298,7 @@ export function DatabaseFormulaDialog({
                     result: previewResult,
                   },
                   null,
-                  2
+                  2,
                 )}
               </pre>
             </>
@@ -369,10 +332,7 @@ export function DatabaseFormulaDialog({
 
             <ScrollArea className="min-h-0">
               {selectedReference ? (
-                <FormulaReferenceDetails
-                  item={selectedReference}
-                  onInsertSnippet={insertSnippet}
-                />
+                <FormulaReferenceDetails item={selectedReference} onInsertSnippet={insertSnippet} />
               ) : (
                 <div className="p-6 text-sm text-content-secondary">
                   Select a property or built-in to see formula examples.
@@ -403,7 +363,7 @@ export function DatabaseFormulaDialog({
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 function FormulaEditor({
   draftFormula,
@@ -413,42 +373,43 @@ function FormulaEditor({
   placeholder,
   textareaRef,
 }: {
-  draftFormula: string
-  id: string
-  onChange: (value: string) => void
-  onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void
-  placeholder: string
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  draftFormula: string;
+  id: string;
+  onChange: (value: string) => void;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void;
+  placeholder: string;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
 }) {
-  const [asyncHighlightedCode, setAsyncHighlightedCode] =
-    useState<HighlightedFormulaCode | null>(null)
+  const [asyncHighlightedCode, setAsyncHighlightedCode] = useState<HighlightedFormulaCode | null>(
+    null,
+  );
   const highlightedCode = useMemo(
     () =>
       (highlightCode(draftFormula, "js") as HighlightedFormulaCode | null) ??
       createRawHighlightedFormulaCode(draftFormula),
-    [draftFormula]
-  )
-  const activeHighlightedCode = asyncHighlightedCode ?? highlightedCode
-  const highlightOverlayRef = useRef<HTMLPreElement | null>(null)
+    [draftFormula],
+  );
+  const activeHighlightedCode = asyncHighlightedCode ?? highlightedCode;
+  const highlightOverlayRef = useRef<HTMLPreElement | null>(null);
 
   useEffect(() => {
-    setAsyncHighlightedCode(null)
+    setAsyncHighlightedCode(null);
 
     highlightCode(draftFormula, "js", (result) => {
-      setAsyncHighlightedCode(result as HighlightedFormulaCode)
-    })
-  }, [draftFormula])
+      setAsyncHighlightedCode(result as HighlightedFormulaCode);
+    });
+  }, [draftFormula]);
 
   const syncScroll = (target: HTMLTextAreaElement) => {
-    const highlightOverlay = highlightOverlayRef.current
+    const highlightOverlay = highlightOverlayRef.current;
 
     if (!highlightOverlay) {
-      return
+      return;
     }
 
-    highlightOverlay.scrollTop = target.scrollTop
-    highlightOverlay.scrollLeft = target.scrollLeft
-  }
+    highlightOverlay.scrollTop = target.scrollTop;
+    highlightOverlay.scrollLeft = target.scrollLeft;
+  };
 
   return (
     <div className="relative">
@@ -474,18 +435,10 @@ function FormulaEditor({
                         style={{
                           backgroundColor: token.bgColor,
                           color: token.color,
-                          fontStyle:
-                            token.fontStyle && token.fontStyle & 1
-                              ? "italic"
-                              : undefined,
-                          fontWeight:
-                            token.fontStyle && token.fontStyle & 2
-                              ? "bold"
-                              : undefined,
+                          fontStyle: token.fontStyle && token.fontStyle & 1 ? "italic" : undefined,
+                          fontWeight: token.fontStyle && token.fontStyle & 2 ? "bold" : undefined,
                           textDecoration:
-                            token.fontStyle && token.fontStyle & 4
-                              ? "underline"
-                              : undefined,
+                            token.fontStyle && token.fontStyle & 4 ? "underline" : undefined,
                           ...token.htmlStyle,
                         }}
                       >
@@ -505,15 +458,15 @@ function FormulaEditor({
         className="relative z-10 min-h-24 resize-none border-transparent bg-transparent font-mono text-sm leading-6 text-transparent caret-content-primary selection:bg-action-selected-subtle focus-visible:border-action-focus-ring"
         id={id}
         onChange={(event) => {
-          onChange(event.target.value)
-          syncScroll(event.target)
+          onChange(event.target.value);
+          syncScroll(event.target);
         }}
         onInput={(event) => {
-          syncScroll(event.currentTarget)
+          syncScroll(event.currentTarget);
         }}
         onKeyDown={onKeyDown}
         onScroll={(event) => {
-          syncScroll(event.currentTarget)
+          syncScroll(event.currentTarget);
         }}
         placeholder={placeholder}
         ref={textareaRef}
@@ -521,12 +474,10 @@ function FormulaEditor({
         value={draftFormula}
       />
     </div>
-  )
+  );
 }
 
-function createRawHighlightedFormulaCode(
-  code: string
-): HighlightedFormulaCode {
+function createRawHighlightedFormulaCode(code: string): HighlightedFormulaCode {
   return {
     bg: "transparent",
     fg: "inherit",
@@ -538,18 +489,12 @@ function createRawHighlightedFormulaCode(
               color: "inherit",
               content: line,
             } as ThemedToken,
-          ]
+          ],
     ),
-  }
+  };
 }
 
-function FormulaSidebarSection({
-  children,
-  title,
-}: {
-  children: ReactNode
-  title: string
-}) {
+function FormulaSidebarSection({ children, title }: { children: ReactNode; title: string }) {
   return (
     <section>
       <div className="border-b px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-content-secondary">
@@ -557,7 +502,7 @@ function FormulaSidebarSection({
       </div>
       <div className="divide-y">{children}</div>
     </section>
-  )
+  );
 }
 
 function FormulaReferenceButton({
@@ -565,13 +510,11 @@ function FormulaReferenceButton({
   onSelect,
   selected,
 }: {
-  item: FormulaReferenceItem
-  onSelect: (id: string) => void
-  selected: boolean
+  item: FormulaReferenceItem;
+  onSelect: (id: string) => void;
+  selected: boolean;
 }) {
-  const ReferenceIcon = item.propertyType
-    ? getDatabasePropertyType(item.propertyType).icon
-    : Sigma
+  const ReferenceIcon = item.propertyType ? getDatabasePropertyType(item.propertyType).icon : Sigma;
 
   return (
     <Button
@@ -583,19 +526,17 @@ function FormulaReferenceButton({
       <ReferenceIcon className="size-4 shrink-0 text-content-secondary" />
       <span className="truncate">{item.label}</span>
     </Button>
-  )
+  );
 }
 
 function FormulaReferenceDetails({
   item,
   onInsertSnippet,
 }: {
-  item: FormulaReferenceItem
-  onInsertSnippet: (snippet: string) => void
+  item: FormulaReferenceItem;
+  onInsertSnippet: (snippet: string) => void;
 }) {
-  const ReferenceIcon = item.propertyType
-    ? getDatabasePropertyType(item.propertyType).icon
-    : Sigma
+  const ReferenceIcon = item.propertyType ? getDatabasePropertyType(item.propertyType).icon : Sigma;
 
   return (
     <div className="grid gap-4 p-5">
@@ -613,9 +554,7 @@ function FormulaReferenceDetails({
       <div className="divide-y border-y">
         {item.snippets.map((snippet) => (
           <div className="flex min-w-0 items-center gap-3 py-1.5" key={snippet}>
-            <code className="min-w-0 flex-1 truncate font-mono text-sm">
-              {snippet}
-            </code>
+            <code className="min-w-0 flex-1 truncate font-mono text-sm">{snippet}</code>
             <Button
               aria-label="Insert formula snippet"
               onClick={() => onInsertSnippet(snippet)}
@@ -629,5 +568,5 @@ function FormulaReferenceDetails({
         ))}
       </div>
     </div>
-  )
+  );
 }

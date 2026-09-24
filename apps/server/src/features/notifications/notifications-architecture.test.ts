@@ -3,7 +3,10 @@ import { expect, test } from "vitest";
 
 test("notifications use a durable inbox, delivery receipt, and polling-safe outbox", async () => {
   const [migration, service, outbox, routes] = await Promise.all([
-    readFile(new URL("../../../drizzle/0074_in_product_notifications.sql", import.meta.url), "utf8"),
+    readFile(
+      new URL("../../../drizzle/0074_in_product_notifications.sql", import.meta.url),
+      "utf8",
+    ),
     readFile(new URL("./notification-operations.ts", import.meta.url), "utf8"),
     readFile(new URL("./outbox.ts", import.meta.url), "utf8"),
     readFile(new URL("./routes.ts", import.meta.url), "utf8"),
@@ -14,11 +17,14 @@ test("notifications use a durable inbox, delivery receipt, and polling-safe outb
   expect(service).toContain("onConflictDoNothing()");
   expect(outbox).toContain("notification:${row.userId}");
   expect(outbox).toContain("nextAttemptAt");
-  expect(routes).toContain('notifications/:notificationId/read');
+  expect(routes).toContain("notifications/:notificationId/read");
 });
 
 test("notification actions deduplicate, bound, and access-filter recipients", async () => {
-  const engine = await readFile(new URL("../automations/execution/action-executor.ts", import.meta.url), "utf8");
+  const engine = await readFile(
+    new URL("../automations/execution/action-executor.ts", import.meta.url),
+    "utf8",
+  );
   expect(engine).toContain("new Set(candidates)");
   expect(engine).toContain("uniqueCandidates.length > 20");
   expect(engine).toContain("activeNotificationRecipientIds");

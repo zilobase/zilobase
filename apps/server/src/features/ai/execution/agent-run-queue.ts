@@ -2,10 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
 import { db } from "../../../infrastructure/database";
-import {
-  aiAgentProfile,
-  aiAgentRun,
-} from "../../../infrastructure/database/schema";
+import { aiAgentProfile, aiAgentRun } from "../../../infrastructure/database/schema";
 import { getStringEnv, type RuntimeEnv } from "../../../shared/config/config";
 import { AgentProfileError } from "../agents/agent-profile-service";
 import { listAgentResourcesForExecution } from "../agents/agent-resource-service";
@@ -27,19 +24,12 @@ export async function enqueueAgentRun(input: {
   triggerKind: typeof aiAgentRun.$inferInsert.triggerKind;
   workspaceId: string;
 }) {
-  const {
-    initiatedByUserId = null,
-    occurrenceKey = null,
-    triggerId = null,
-  } = input;
+  const { initiatedByUserId = null, occurrenceKey = null, triggerId = null } = input;
   const profile = await requireRunnableProfile(input);
   const resources = await captureRunnableResources(input, profile);
   const now = new Date();
   const id = crypto.randomUUID();
-  const mcpTools = await captureAgentMcpToolGrants(
-    input.profileId,
-    input.workspaceId,
-  );
+  const mcpTools = await captureAgentMcpToolGrants(input.profileId, input.workspaceId);
   const [inserted] = await db
     .insert(aiAgentRun)
     .values({
@@ -53,13 +43,11 @@ export async function enqueueAgentRun(input: {
       permissionSnapshot: {
         capturedAt: now.toISOString(),
         mcpTools,
-        resources: resources.map(
-          ({ accessLevel, resourceId, resourceType }) => ({
-            accessLevel,
-            resourceId,
-            resourceType,
-          }),
-        ),
+        resources: resources.map(({ accessLevel, resourceId, resourceType }) => ({
+          accessLevel,
+          resourceId,
+          resourceType,
+        })),
       },
       profileId: input.profileId,
       revisionId: input.revisionId ?? profile.currentRevisionId,
@@ -101,9 +89,7 @@ export async function enqueueAgentRun(input: {
   return serializeRun(run);
 }
 
-async function requireRunnableProfile(
-  input: Parameters<typeof enqueueAgentRun>[0],
-) {
+async function requireRunnableProfile(input: Parameters<typeof enqueueAgentRun>[0]) {
   if ((input.chainDepth ?? 0) > 8) {
     throw new AgentProfileError(
       "agent_chain_depth_exceeded",
@@ -123,25 +109,14 @@ async function requireRunnableProfile(
     )
     .limit(1);
   if (!profile?.currentRevisionId)
-    throw new AgentProfileError(
-      "agent_not_ready",
-      "Agent has no active revision.",
-      409,
-    );
+    throw new AgentProfileError("agent_not_ready", "Agent has no active revision.", 409);
   if (
     profile.executionDisabledReason &&
     profile.executionDisabledReason !== RESOURCE_EDITOR_PAUSE_REASON
   ) {
-    throw new AgentProfileError(
-      "agent_execution_paused",
-      profile.executionDisabledReason,
-      409,
-    );
+    throw new AgentProfileError("agent_execution_paused", profile.executionDisabledReason, 409);
   }
-  if (
-    getStringEnv(input.env ?? {}, "AI_CUSTOM_AGENT_EXECUTION_DISABLED") ===
-    "true"
-  ) {
+  if (getStringEnv(input.env ?? {}, "AI_CUSTOM_AGENT_EXECUTION_DISABLED") === "true") {
     throw new AgentProfileError(
       "agent_execution_disabled",
       "Custom Agent execution is temporarily disabled.",
@@ -167,11 +142,7 @@ async function captureRunnableResources(
         updatedAt: new Date(),
       })
       .where(eq(aiAgentProfile.id, input.profileId));
-    throw new AgentProfileError(
-      "agent_resource_access_paused",
-      RESOURCE_EDITOR_PAUSE_REASON,
-      409,
-    );
+    throw new AgentProfileError("agent_resource_access_paused", RESOURCE_EDITOR_PAUSE_REASON, 409);
   }
   if (profile.executionDisabledReason === RESOURCE_EDITOR_PAUSE_REASON) {
     await db

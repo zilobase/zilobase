@@ -1,14 +1,10 @@
-import { Node, mergeAttributes } from "@tiptap/core"
-import {
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-  type ReactNodeViewProps,
-} from "@tiptap/react"
-import { useCallback, useSyncExternalStore } from "react"
+import { Node, mergeAttributes } from "@tiptap/core";
+import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
+import { useCallback, useSyncExternalStore } from "react";
 
-import { hasDatabasePageDragPayload } from "../interactions/database-page-drop"
-import { DatabaseView } from "../views/components/database-view"
-import type { DatabaseBlockOptions } from "./database-block-contracts"
+import { hasDatabasePageDragPayload } from "../interactions/database-page-drop";
+import { DatabaseView } from "../views/components/database-view";
+import type { DatabaseBlockOptions } from "./database-block-contracts";
 
 const databasePageDragEvents = new Set([
   "dragstart",
@@ -17,14 +13,14 @@ const databasePageDragEvents = new Set([
   "dragleave",
   "drop",
   "dragend",
-])
+]);
 
 function isDatabasePageDragEvent(event: Event) {
   if (!databasePageDragEvents.has(event.type) || !(event instanceof DragEvent)) {
-    return false
+    return false;
   }
 
-  return hasDatabasePageDragPayload(event.dataTransfer)
+  return hasDatabasePageDragPayload(event.dataTransfer);
 }
 
 function DatabaseBlockView({
@@ -34,38 +30,31 @@ function DatabaseBlockView({
   node,
   updateAttributes,
 }: ReactNodeViewProps) {
-  const options = extension.options as DatabaseBlockOptions
-  const databaseId = node.attrs.databaseId as string | null
-  const setupMode = node.attrs.setupMode === true
-  const showTitle = node.attrs.showTitle !== false
+  const options = extension.options as DatabaseBlockOptions;
+  const databaseId = node.attrs.databaseId as string | null;
+  const setupMode = node.attrs.setupMode === true;
+  const showTitle = node.attrs.showTitle !== false;
   // Subscribe through the editor-owned runtime so this node view updates when read-only mode changes.
   const isEditable = useSyncExternalStore(
     options.editorRuntime?.subscribe ?? (() => () => {}),
-    options.editorRuntime?.getEditable ??
-      (() => options.editable !== false && editor.isEditable),
-    options.editorRuntime?.getEditable ??
-      (() => options.editable !== false && editor.isEditable)
-  )
+    options.editorRuntime?.getEditable ?? (() => options.editable !== false && editor.isEditable),
+    options.editorRuntime?.getEditable ?? (() => options.editable !== false && editor.isEditable),
+  );
   const removeDeletedBlock = useCallback(() => {
-    if (!isEditable) return
+    if (!isEditable) return;
 
-    const pos = getPos()
-    if (typeof pos !== "number") return
+    const pos = getPos();
+    if (typeof pos !== "number") return;
 
-    const currentNode = editor.state.doc.nodeAt(pos)
-    if (
-      currentNode?.type.name !== "databaseBlock" ||
-      currentNode.attrs.databaseId !== databaseId
-    ) {
-      return
+    const currentNode = editor.state.doc.nodeAt(pos);
+    if (currentNode?.type.name !== "databaseBlock" || currentNode.attrs.databaseId !== databaseId) {
+      return;
     }
 
     editor.view.dispatch(
-      editor.state.tr
-        .delete(pos, pos + currentNode.nodeSize)
-        .setMeta("addToHistory", false),
-    )
-  }, [databaseId, editor, getPos, isEditable])
+      editor.state.tr.delete(pos, pos + currentNode.nodeSize).setMeta("addToHistory", false),
+    );
+  }, [databaseId, editor, getPos, isEditable]);
 
   return (
     <NodeViewWrapper
@@ -80,14 +69,10 @@ function DatabaseBlockView({
         hideWhenDeleted
         includeDeleted
         onDeleted={removeDeletedBlock}
-        onOpenPage={(pageId) =>
-          options.onOpenPage?.(pageId, { databaseId })
-        }
+        onOpenPage={(pageId) => options.onOpenPage?.(pageId, { databaseId })}
         onDismissSetup={() => updateAttributes({ setupMode: false })}
         onSetupComplete={() => updateAttributes({ setupMode: false })}
-        onShowTitleChange={(nextShowTitle) =>
-          updateAttributes({ showTitle: nextShowTitle })
-        }
+        onShowTitleChange={(nextShowTitle) => updateAttributes({ showTitle: nextShowTitle })}
         workspaceId={options.workspaceId}
         setupMode={setupMode}
         showExpandButton
@@ -95,7 +80,7 @@ function DatabaseBlockView({
         pageId={options.currentPageId}
       />
     </NodeViewWrapper>
-  )
+  );
 }
 
 export const DatabaseBlock = Node.create<DatabaseBlockOptions>({
@@ -111,16 +96,13 @@ export const DatabaseBlock = Node.create<DatabaseBlockOptions>({
 
   extendNodeSchema(extension) {
     if (extension.name !== this.name) {
-      return {}
+      return {};
     }
 
     return {
-      disableDropCursor: (
-        _view: unknown,
-        _pos: unknown,
-        event: DragEvent
-      ) => isDatabasePageDragEvent(event),
-    }
+      disableDropCursor: (_view: unknown, _pos: unknown, event: DragEvent) =>
+        isDatabasePageDragEvent(event),
+    };
   },
 
   addOptions() {
@@ -128,7 +110,7 @@ export const DatabaseBlock = Node.create<DatabaseBlockOptions>({
       currentPageId: null,
       onOpenPage: undefined,
       workspaceId: null,
-    }
+    };
   },
 
   addAttributes() {
@@ -141,19 +123,16 @@ export const DatabaseBlock = Node.create<DatabaseBlockOptions>({
       },
       showTitle: {
         default: true,
-        parseHTML: (element) =>
-          element.getAttribute("data-show-title") !== "false",
+        parseHTML: (element) => element.getAttribute("data-show-title") !== "false",
         renderHTML: (attributes) =>
           attributes.showTitle === false ? { "data-show-title": "false" } : {},
       },
       setupMode: {
         default: false,
-        parseHTML: (element) =>
-          element.getAttribute("data-setup-mode") === "true",
-        renderHTML: (attributes) =>
-          attributes.setupMode ? { "data-setup-mode": "true" } : {},
+        parseHTML: (element) => element.getAttribute("data-setup-mode") === "true",
+        renderHTML: (attributes) => (attributes.setupMode ? { "data-setup-mode": "true" } : {}),
       },
-    }
+    };
   },
 
   parseHTML() {
@@ -161,31 +140,25 @@ export const DatabaseBlock = Node.create<DatabaseBlockOptions>({
       {
         tag: 'div[data-type="databaseBlock"]',
       },
-    ]
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(HTMLAttributes, { "data-type": "databaseBlock" }),
-    ]
+    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "databaseBlock" })];
   },
 
   addNodeView() {
     return ReactNodeViewRenderer(DatabaseBlockView, {
       className: "database-block",
       stopEvent: ({ event }) => {
-        const target = event.target
+        const target = event.target;
 
-        if (
-          target instanceof HTMLElement &&
-          target.closest(".database-block-shell")
-        ) {
-          return true
+        if (target instanceof HTMLElement && target.closest(".database-block-shell")) {
+          return true;
         }
 
-        return isDatabasePageDragEvent(event)
+        return isDatabasePageDragEvent(event);
       },
-    })
+    });
   },
-})
+});

@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react"
-import type { Content, Extensions } from "@tiptap/core"
-import type { TableOfContentDataItem } from "@tiptap/extension-table-of-contents"
-import { normalizeEditorContent } from "./create-base-extensions"
-import { createBaseExtensions } from "./create-base-extensions"
-import type { UseEditorExtensionsOptions } from "../core/types"
+import { useMemo, useState } from "react";
+import type { Content, Extensions } from "@tiptap/core";
+import type { TableOfContentDataItem } from "@tiptap/extension-table-of-contents";
+import { normalizeEditorContent } from "./create-base-extensions";
+import { createBaseExtensions } from "./create-base-extensions";
+import type { UseEditorExtensionsOptions } from "../core/types";
 
-export type { UseEditorExtensionsOptions }
+export type { UseEditorExtensionsOptions };
 
 export const useEditorExtensions = ({
   collaboration,
@@ -23,7 +23,7 @@ export const useEditorExtensions = ({
   workspaceId,
   pageId,
 }: UseEditorExtensionsOptions) => {
-  const [tocItems, setTocItems] = useState<TableOfContentDataItem[]>([])
+  const [tocItems, setTocItems] = useState<TableOfContentDataItem[]>([]);
 
   const editorExtensions = useMemo<Extensions>(
     () =>
@@ -58,7 +58,7 @@ export const useEditorExtensions = ({
       workspaceId,
       pageId,
     ],
-  )
+  );
 
   // Tiptap's Collaboration extension binds to one Y.XmlFragment when the
   // editor is created. Recreate the editor when a meeting switches between
@@ -66,18 +66,16 @@ export const useEditorExtensions = ({
   // Extensions are fixed at creation, so an editor created before its provider
   // exists otherwise never installs CollaborationCaret.
   const collaborationPresenceKey =
-    collaboration?.provider && collaboration.user ? "presence" : "content-only"
+    collaboration?.provider && collaboration.user ? "presence" : "content-only";
   const editorLifecycleKey = collaboration
     ? `${pageId ?? "collaboration"}:${collaborationField ?? "default"}:${collaborationPresenceKey}`
-    : pageId ?? "draft"
-  const initialContent = collaboration
-    ? undefined
-    : (normalizeEditorContent(content) as Content)
+    : (pageId ?? "draft");
+  const initialContent = collaboration ? undefined : (normalizeEditorContent(content) as Content);
 
   return {
     editorExtensions,
     editorLifecycleKey,
     initialContent,
     tocItems,
-  }
-}
+  };
+};

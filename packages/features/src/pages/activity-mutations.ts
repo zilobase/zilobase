@@ -1,17 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
 import { setPageDetailCache } from "../shared/item-action-cache";
-import {
-  pageQueryKey,
-  pagesNavRootQueryKey,
-  pagesQueryKey,
-  pagesRootQueryKey,
-} from "./queries";
+import { pageQueryKey, pagesNavRootQueryKey, pagesQueryKey, pagesRootQueryKey } from "./queries";
 import type { PageDetail, Page, PageNavigationPayload } from "./contracts";
-import {
-  applyPageFavoriteToNav,
-  applyItemVisitToNav,
-} from "./nav-delta";
+import { applyPageFavoriteToNav, applyItemVisitToNav } from "./nav-delta";
 
 type SetPageFavoriteInput = {
   isFavorite: boolean;
@@ -48,10 +40,9 @@ export function useSetPageFavorite() {
 
   return useMutation({
     mutationFn: async ({ isFavorite, pageId }: SetPageFavoriteInput) => {
-      const result = await apiFetch<{ page: Page }>(
-        `/pages/${pageId}/favorite`,
-        { method: isFavorite ? "PUT" : "DELETE" },
-      );
+      const result = await apiFetch<{ page: Page }>(`/pages/${pageId}/favorite`, {
+        method: isFavorite ? "PUT" : "DELETE",
+      });
 
       return result.page;
     },
@@ -72,38 +63,27 @@ export function useSetPageFavorite() {
         })
         .filter(([queryKey]) => isPageNavQueryKey(queryKey));
 
-      queryClient.setQueryData<PageDetail | null>(
-        pageQueryKey(variables.pageId),
-        (current) =>
-          current
-            ? {
-                ...current,
-                page: {
-                  ...current.page,
-                  isFavorite: variables.isFavorite,
-                },
-              }
-            : current,
+      queryClient.setQueryData<PageDetail | null>(pageQueryKey(variables.pageId), (current) =>
+        current
+          ? {
+              ...current,
+              page: {
+                ...current.page,
+                isFavorite: variables.isFavorite,
+              },
+            }
+          : current,
       );
       for (const [queryKey] of previousNavQueries) {
-        queryClient.setQueryData<PageNavigationPayload | undefined>(
-          queryKey,
-          (current) =>
-            applyPageFavoriteToList(
-              current,
-              variables.pageId,
-              variables.isFavorite,
-            ),
+        queryClient.setQueryData<PageNavigationPayload | undefined>(queryKey, (current) =>
+          applyPageFavoriteToList(current, variables.pageId, variables.isFavorite),
         );
       }
 
       return { previousDetail, previousNavQueries };
     },
     onError: (_error, variables, context) => {
-      queryClient.setQueryData(
-        pageQueryKey(variables.pageId),
-        context?.previousDetail,
-      );
+      queryClient.setQueryData(pageQueryKey(variables.pageId), context?.previousDetail);
 
       for (const [queryKey, data] of context?.previousNavQueries ?? []) {
         queryClient.setQueryData(queryKey, data);
@@ -140,26 +120,25 @@ export function useRecordItemVisit() {
       }
       queryClient.setQueriesData<PageNavigationPayload | undefined>(
         { queryKey: pagesQueryKey(variables.workspaceId) },
-        (current) => applyItemVisitToNav(current, {
-          itemId: result.itemId,
-          itemKind: result.itemKind as "database" | "page",
-          lastVisitedAt: result.lastVisitedAt,
-        }),
+        (current) =>
+          applyItemVisitToNav(current, {
+            itemId: result.itemId,
+            itemKind: result.itemKind as "database" | "page",
+            lastVisitedAt: result.lastVisitedAt,
+          }),
       );
 
       if (result.itemKind === "page") {
-        queryClient.setQueryData<PageDetail | null>(
-          pageQueryKey(result.itemId),
-          (current) =>
-            current
-              ? {
-                  ...current,
-                  page: {
-                    ...current.page,
-                    lastVisitedAt: result.lastVisitedAt,
-                  },
-                }
-              : current,
+        queryClient.setQueryData<PageDetail | null>(pageQueryKey(result.itemId), (current) =>
+          current
+            ? {
+                ...current,
+                page: {
+                  ...current.page,
+                  lastVisitedAt: result.lastVisitedAt,
+                },
+              }
+            : current,
         );
       }
     },

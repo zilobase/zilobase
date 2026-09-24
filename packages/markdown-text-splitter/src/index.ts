@@ -1,11 +1,5 @@
-export {
-  type Document,
-  Language,
-  type TextSplitterOptions,
-} from "./types.js";
-export {
-  TextSplitter,
-} from "./text-splitter.js";
+export { type Document, Language, type TextSplitterOptions } from "./types.js";
+export { TextSplitter } from "./text-splitter.js";
 export {
   type CharacterTextSplitterOptions,
   CharacterTextSplitter,

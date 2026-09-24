@@ -34,23 +34,25 @@ export async function applyDatabaseAutomationRowOperations(input: {
     throw new ServiceMutationError("Automation actions can edit at most 1,000 rows", 400);
   }
   const source = await requireDataSourceAccess(input.dataSourceId, input.actorId, "edit");
-  const propertyIds = [...new Set(
-    input.operations
-      .map((operation) => operation.propertyId)
-      .filter((propertyId) => propertyId !== "name"),
-  )];
+  const propertyIds = [
+    ...new Set(
+      input.operations
+        .map((operation) => operation.propertyId)
+        .filter((propertyId) => propertyId !== "name"),
+    ),
+  ];
   const properties = propertyIds.length
     ? await db
-          .select({ config: pageProperty.config, id: pageProperty.id, type: pageProperty.type })
-          .from(databaseProperty)
-          .innerJoin(pageProperty, eq(pageProperty.id, databaseProperty.propertyId))
-          .where(
-            and(
-              eq(databaseProperty.dataSourceId, source.id),
-              inArray(pageProperty.id, propertyIds),
-              isNull(pageProperty.deletedAt),
-            ),
-          )
+        .select({ config: pageProperty.config, id: pageProperty.id, type: pageProperty.type })
+        .from(databaseProperty)
+        .innerJoin(pageProperty, eq(pageProperty.id, databaseProperty.propertyId))
+        .where(
+          and(
+            eq(databaseProperty.dataSourceId, source.id),
+            inArray(pageProperty.id, propertyIds),
+            isNull(pageProperty.deletedAt),
+          ),
+        )
     : [];
   const propertiesById = new Map(properties.map((property) => [property.id, property]));
   if (propertiesById.size !== propertyIds.length) {
@@ -77,7 +79,10 @@ export async function applyDatabaseAutomationRowOperations(input: {
           .where(
             and(
               eq(databaseRow.dataSourceId, source.id),
-              inArray(databaseRow.id, input.rows.map((row) => row.rowId)),
+              inArray(
+                databaseRow.id,
+                input.rows.map((row) => row.rowId),
+              ),
               isNull(databaseRow.deletedAt),
             ),
           ),
@@ -87,7 +92,11 @@ export async function applyDatabaseAutomationRowOperations(input: {
           .where(and(inArray(page.id, pageIds), isNull(page.deletedAt))),
         propertyIds.length
           ? tx
-              .select({ pageId: pagePropertyValue.pageId, propertyId: pagePropertyValue.propertyId, value: pagePropertyValue.value })
+              .select({
+                pageId: pagePropertyValue.pageId,
+                propertyId: pagePropertyValue.propertyId,
+                value: pagePropertyValue.value,
+              })
               .from(pagePropertyValue)
               .where(
                 and(
@@ -105,16 +114,23 @@ export async function applyDatabaseAutomationRowOperations(input: {
         currentValues.map((value) => [`${value.pageId}:${value.propertyId}`, value.value]),
       );
       const titles = new Map(pages.map((record) => [record.id, record.name]));
-      const writtenValuesByKey = new Map<string, { pageId: string; propertyId: string; value: unknown }>();
-      const titleValuesByPageId = new Map<string, { after: string; before: string; pageId: string }>();
+      const writtenValuesByKey = new Map<
+        string,
+        { pageId: string; propertyId: string; value: unknown }
+      >();
+      const titleValuesByPageId = new Map<
+        string,
+        { after: string; before: string; pageId: string }
+      >();
 
       for (const row of input.rows) {
         for (const operation of input.operations) {
           if (operation.propertyId === "name") {
             const before = titles.get(row.pageId) ?? "";
-            const after = operation.mode === "clear"
-              ? "Untitled"
-              : String(operation.value ?? "").trim() || "Untitled";
+            const after =
+              operation.mode === "clear"
+                ? "Untitled"
+                : String(operation.value ?? "").trim() || "Untitled";
             titles.set(row.pageId, after);
             const first = titleValuesByPageId.get(row.pageId);
             titleValuesByPageId.set(row.pageId, {
@@ -137,7 +153,11 @@ export async function applyDatabaseAutomationRowOperations(input: {
           );
           validateCellValue(property.type, property.config, value);
           current.set(key, value);
-          writtenValuesByKey.set(key, { pageId: row.pageId, propertyId: operation.propertyId, value });
+          writtenValuesByKey.set(key, {
+            pageId: row.pageId,
+            propertyId: operation.propertyId,
+            value,
+          });
         }
       }
 
@@ -145,12 +165,17 @@ export async function applyDatabaseAutomationRowOperations(input: {
       const writtenValues = [...writtenValuesByKey.values()];
 
       for (const title of titleValues) {
-        await tx.update(page).set({ name: title.after, updatedAt: now }).where(eq(page.id, title.pageId));
+        await tx
+          .update(page)
+          .set({ name: title.after, updatedAt: now })
+          .where(eq(page.id, title.pageId));
       }
       if (writtenValues.length) {
         await tx
           .insert(pagePropertyValue)
-          .values(writtenValues.map((value) => ({ id: crypto.randomUUID(), ...value, updatedAt: now })))
+          .values(
+            writtenValues.map((value) => ({ id: crypto.randomUUID(), ...value, updatedAt: now })),
+          )
           .onConflictDoUpdate({
             target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
             set: { updatedAt: now, value: sql`excluded.value` },
@@ -159,7 +184,12 @@ export async function applyDatabaseAutomationRowOperations(input: {
       await tx
         .update(databaseRow)
         .set({ lastEditedById: input.actorId, updatedAt: now })
-        .where(inArray(databaseRow.id, input.rows.map((row) => row.rowId)));
+        .where(
+          inArray(
+            databaseRow.id,
+            input.rows.map((row) => row.rowId),
+          ),
+        );
 
       const facts = input.rows.map((row) => ({
         actorId: input.actorId,
@@ -172,9 +202,12 @@ export async function applyDatabaseAutomationRowOperations(input: {
             .filter((value) => value.pageId === row.pageId)
             .map((value) => ({
               after: value.value,
-              before: currentValues.find(
-                (currentValue) => currentValue.pageId === row.pageId && currentValue.propertyId === value.propertyId,
-              )?.value ?? null,
+              before:
+                currentValues.find(
+                  (currentValue) =>
+                    currentValue.pageId === row.pageId &&
+                    currentValue.propertyId === value.propertyId,
+                )?.value ?? null,
               propertyId: value.propertyId,
             })),
         ],
@@ -186,9 +219,9 @@ export async function applyDatabaseAutomationRowOperations(input: {
       return {
         automationFacts: facts,
         changes: {
-          records: await Promise.all(input.rows.map((row) =>
-            getDatabaseRecordEntity(tx, source.id, row.rowId)
-          )),
+          records: await Promise.all(
+            input.rows.map((row) => getDatabaseRecordEntity(tx, source.id, row.rowId)),
+          ),
         },
       };
     },
@@ -203,11 +236,13 @@ function normalizeEntityValue(config: unknown, value: unknown): unknown {
   }
   const id = (value as { id?: unknown }).id;
   if (typeof id !== "string") return value;
-  const options = config && typeof config === "object" && Array.isArray((config as { options?: unknown }).options)
-    ? (config as { options: unknown[] }).options
-    : [];
+  const options =
+    config && typeof config === "object" && Array.isArray((config as { options?: unknown }).options)
+      ? (config as { options: unknown[] }).options
+      : [];
   const option = options.find(
-    (candidate) => candidate && typeof candidate === "object" && (candidate as { id?: unknown }).id === id,
+    (candidate) =>
+      candidate && typeof candidate === "object" && (candidate as { id?: unknown }).id === id,
   ) as { name?: unknown } | undefined;
   return typeof option?.name === "string" ? option.name : id;
 }

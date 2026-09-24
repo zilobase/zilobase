@@ -32,10 +32,7 @@ export function register({ assert, loadModule, test }) {
         },
       });
     await assert.rejects(
-      readCustomAgentEvents(
-        stream('event: error\ndata: {"error":"Denied"}\n\n'),
-        () => {},
-      ),
+      readCustomAgentEvents(stream('event: error\ndata: {"error":"Denied"}\n\n'), () => {}),
       /Denied/,
     );
     await assert.rejects(
@@ -54,9 +51,7 @@ export function register({ assert, loadModule, test }) {
       /Canceled transport/,
     );
     const received = [];
-    await readCustomAgentEvents(stream("event: settings\n\n"), (value) =>
-      received.push(value),
-    );
+    await readCustomAgentEvents(stream("event: settings\n\n"), (value) => received.push(value));
     assert.deepEqual(received, []);
   });
   test("replayed settings events respect mount time and message/status deduplication", async () => {
@@ -69,9 +64,7 @@ export function register({ assert, loadModule, test }) {
     const message = (id, createdAt, status) => ({
       id,
       createdAt,
-      parts: [
-        { type: "data-agent-settings", data: { scope: "agent", status } },
-      ],
+      parts: [{ type: "data-agent-settings", data: { scope: "agent", status } }],
     });
     const messages = [
       message("old", "2026-01-01", "editing"),

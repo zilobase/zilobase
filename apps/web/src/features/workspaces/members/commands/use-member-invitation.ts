@@ -6,10 +6,7 @@ import { useInviteWorkspaceMember } from "@zilobase/features/workspaces/react";
 import type { InvitableWorkspaceRole } from "@zilobase/features/workspaces";
 import { isValidInvitationEmail } from "../model/member-access";
 
-import {
-  getRoleAccessExpiration,
-  getRoleDraftExpiration,
-} from "../model/member-access";
+import { getRoleAccessExpiration, getRoleDraftExpiration } from "../model/member-access";
 export function useMemberInvitation(workspaceId: string | null | undefined) {
   const inviteMember = useInviteWorkspaceMember();
   const [email, setEmail] = React.useState("");
@@ -50,11 +47,7 @@ export function useMemberInvitation(workspaceId: string | null | undefined) {
           toast.success("Invitation sent.");
         },
         onError: (error) => {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not send invitation.",
-          );
+          toast.error(error instanceof Error ? error.message : "Could not send invitation.");
         },
       },
     );

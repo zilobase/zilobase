@@ -2,10 +2,7 @@ import * as z from "zod";
 import { tool } from "ai";
 import { appendConversationMessage } from "../conversations/agent-conversation-service";
 
-export function buildAgentConnectionTool(input: {
-  profileId: string;
-  authorUserId: string;
-}) {
+export function buildAgentConnectionTool(input: { profileId: string; authorUserId: string }) {
   return tool({
     description:
       "Show a Connect account card in the agent conversation when authentication is missing. The human must connect and Save connector permissions before using them.",

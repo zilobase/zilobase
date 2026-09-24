@@ -1,164 +1,140 @@
-import type { QueryClient } from "@tanstack/react-query"
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useSyncExternalStore,
-} from "react"
+import type { QueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
-import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context"
-import {
-  databaseMutationEventV2Schema,
-  type DatabaseMutationEventV2,
-} from "../core/entities"
-import { useDatabaseSessionId } from "../queries/session"
-import { cachedVersion } from "../queries/keys"
-import { invalidateDatabaseQueries } from "../mutations/invalidate"
+import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
+import { databaseMutationEventV2Schema, type DatabaseMutationEventV2 } from "../core/entities";
+import { useDatabaseSessionId } from "../queries/session";
+import { cachedVersion } from "../queries/keys";
+import { invalidateDatabaseQueries } from "../mutations/invalidate";
 
 export type DatabasePresence = {
-  columnKey: string
-  rowId: string
-  viewId: string | null
-}
+  columnKey: string;
+  rowId: string;
+  viewId: string | null;
+};
 
 export type DatabasePresenceCollaborator = {
-  color: string
-  connectedAt: string
-  presence: DatabasePresence
-  sessionId: string
-  updatedAt: string
+  color: string;
+  connectedAt: string;
+  presence: DatabasePresence;
+  sessionId: string;
+  updatedAt: string;
   user: {
-    email?: string | null
-    id: string
-    image?: string | null
-    name: string
-  }
-}
+    email?: string | null;
+    id: string;
+    image?: string | null;
+    name: string;
+  };
+};
 
 type DatabaseRealtimeTicket = {
-  databaseId: string
-  expiresAt: string
-  sessionId: string
-  token: string
-  version: number
-  websocketProtocols: string[]
-  websocketUrl: string
-}
+  databaseId: string;
+  expiresAt: string;
+  sessionId: string;
+  token: string;
+  version: number;
+  websocketProtocols: string[];
+  websocketUrl: string;
+};
 
 type DatabaseRealtimeState = {
-  cellPresenceByKey: Record<string, DatabasePresenceCollaborator[]>
-  collaborators: DatabasePresenceCollaborator[]
-  status: "connected" | "connecting" | "disconnected" | "offline" | "unavailable"
-}
+  cellPresenceByKey: Record<string, DatabasePresenceCollaborator[]>;
+  collaborators: DatabasePresenceCollaborator[];
+  status: "connected" | "connecting" | "disconnected" | "offline" | "unavailable";
+};
 
-type Listener = () => void
+type Listener = () => void;
 
-const managers = new WeakMap<
-  QueryClient,
-  Map<string, DatabaseRealtimeManager>
->()
+const managers = new WeakMap<QueryClient, Map<string, DatabaseRealtimeManager>>();
 
 export function useDatabaseRealtime(
   databaseId: string | null | undefined,
   options: {
-    enabled?: boolean
-    presence?: DatabasePresence | null
-    publishPresence?: boolean
+    enabled?: boolean;
+    presence?: DatabasePresence | null;
+    publishPresence?: boolean;
   } = {},
 ) {
-  const { apiFetch, databaseRealtimeEnabled = false, queryClient } =
-    useZilobaseFeatures()
-  const sessionId = useDatabaseSessionId()
-  const ownerIdRef = useRef<string>(crypto.randomUUID())
-  const enabled = Boolean(
-    databaseRealtimeEnabled && options.enabled !== false && databaseId,
-  )
+  const { apiFetch, databaseRealtimeEnabled = false, queryClient } = useZilobaseFeatures();
+  const sessionId = useDatabaseSessionId();
+  const ownerIdRef = useRef<string>(crypto.randomUUID());
+  const enabled = Boolean(databaseRealtimeEnabled && options.enabled !== false && databaseId);
   const manager = useMemo(
-    () => enabled && databaseId
-      ? getManager(queryClient, apiFetch, databaseId, sessionId)
-      : null,
+    () => (enabled && databaseId ? getManager(queryClient, apiFetch, databaseId, sessionId) : null),
     [apiFetch, databaseId, enabled, queryClient, sessionId],
-  )
+  );
   const state = useSyncExternalStore(
     manager ? manager.subscribe : emptySubscribe,
     manager ? manager.getSnapshot : getOfflineSnapshot,
     getOfflineSnapshot,
-  )
-  const publishPresence = options.publishPresence === true
-  const presenceRowId = options.presence?.rowId ?? null
-  const presenceColumnKey = options.presence?.columnKey ?? null
-  const presenceViewId = options.presence?.viewId ?? null
+  );
+  const publishPresence = options.publishPresence === true;
+  const presenceRowId = options.presence?.rowId ?? null;
+  const presenceColumnKey = options.presence?.columnKey ?? null;
+  const presenceViewId = options.presence?.viewId ?? null;
 
   useEffect(() => {
-    if (!manager) return
+    if (!manager) return;
 
-    return () => manager.setPresence(ownerIdRef.current, null)
-  }, [manager])
+    return () => manager.setPresence(ownerIdRef.current, null);
+  }, [manager]);
 
   useEffect(() => {
-    if (!manager) return
+    if (!manager) return;
 
     manager.setPresence(
       ownerIdRef.current,
       publishPresence && presenceRowId && presenceColumnKey
         ? {
-          columnKey: presenceColumnKey,
-          rowId: presenceRowId,
-          viewId: presenceViewId,
-        }
+            columnKey: presenceColumnKey,
+            rowId: presenceRowId,
+            viewId: presenceViewId,
+          }
         : null,
-    )
-  }, [
-    manager,
-    presenceColumnKey,
-    presenceRowId,
-    presenceViewId,
-    publishPresence,
-  ])
+    );
+  }, [manager, presenceColumnKey, presenceRowId, presenceViewId, publishPresence]);
 
-  return state
+  return state;
 }
 
-export function createCellPresenceByKey(
-  collaborators: DatabasePresenceCollaborator[],
-) {
-  const result: Record<string, DatabasePresenceCollaborator[]> = {}
+export function createCellPresenceByKey(collaborators: DatabasePresenceCollaborator[]) {
+  const result: Record<string, DatabasePresenceCollaborator[]> = {};
 
   for (const collaborator of collaborators) {
-    const key = `${collaborator.presence.rowId}:${collaborator.presence.columnKey}`
-    const existing = result[key] ?? []
+    const key = `${collaborator.presence.rowId}:${collaborator.presence.columnKey}`;
+    const existing = result[key] ?? [];
 
     if (existing.some((item) => item.user.id === collaborator.user.id)) {
-      continue
+      continue;
     }
 
-    result[key] = [...existing, collaborator]
+    result[key] = [...existing, collaborator];
   }
 
-  return result
+  return result;
 }
 
-export const DATABASE_REALTIME_HEARTBEAT_MS = 20_000
-export const DATABASE_REALTIME_PING = { type: "realtime.ping" } as const
+export const DATABASE_REALTIME_HEARTBEAT_MS = 20_000;
+export const DATABASE_REALTIME_PING = { type: "realtime.ping" } as const;
 
 export class DatabaseRealtimeManager {
-  private readonly listeners = new Set<Listener>()
-  private readonly presenceByOwner = new Map<string, DatabasePresence>()
-  private socket: WebSocket | null = null
-  private idleTimer: ReturnType<typeof setTimeout> | null = null
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
-  private refreshTimer: ReturnType<typeof setTimeout> | null = null
-  private heartbeatTimer: ReturnType<typeof setInterval> | null = null
-  private visibilityTimer: ReturnType<typeof setTimeout> | null = null
-  private connectionGeneration = 0
-  private connecting = false
-  private terminal = false
-  private lifecycleListening = false
-  private paused = false
-  private reconnectAttempt = 0
-  private stopped = true
-  private realtimeSessionId: string | null = null
-  private state: DatabaseRealtimeState = getOfflineSnapshot()
+  private readonly listeners = new Set<Listener>();
+  private readonly presenceByOwner = new Map<string, DatabasePresence>();
+  private socket: WebSocket | null = null;
+  private idleTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private visibilityTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectionGeneration = 0;
+  private connecting = false;
+  private terminal = false;
+  private lifecycleListening = false;
+  private paused = false;
+  private reconnectAttempt = 0;
+  private stopped = true;
+  private realtimeSessionId: string | null = null;
+  private state: DatabaseRealtimeState = getOfflineSnapshot();
 
   constructor(
     private readonly queryClient: QueryClient,
@@ -169,44 +145,40 @@ export class DatabaseRealtimeManager {
   ) {}
 
   subscribe = (listener: Listener) => {
-    if (this.idleTimer) clearTimeout(this.idleTimer)
-    this.idleTimer = null
-    this.listeners.add(listener)
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = null;
+    this.listeners.add(listener);
 
     if (this.listeners.size === 1) {
       if (this.stopped && !this.terminal) {
-        this.stopped = false
-        this.startLifecycleListeners()
-        this.handleLifecycleChange()
+        this.stopped = false;
+        this.startLifecycleListeners();
+        this.handleLifecycleChange();
       }
     }
 
     return () => {
-      this.listeners.delete(listener)
-      if (this.listeners.size === 0) this.scheduleStop()
-    }
-  }
+      this.listeners.delete(listener);
+      if (this.listeners.size === 0) this.scheduleStop();
+    };
+  };
 
-  getSnapshot = () => this.state
+  getSnapshot = () => this.state;
 
   setPresence(ownerId: string, presence: DatabasePresence | null) {
-    const previous = this.presenceByOwner.get(ownerId) ?? null
+    const previous = this.presenceByOwner.get(ownerId) ?? null;
 
-    if (samePresence(previous, presence)) return
+    if (samePresence(previous, presence)) return;
 
-    this.presenceByOwner.delete(ownerId)
-    if (presence) this.presenceByOwner.set(ownerId, presence)
-    this.sendPresence()
+    this.presenceByOwner.delete(ownerId);
+    if (presence) this.presenceByOwner.set(ownerId, presence);
+    this.sendPresence();
   }
 
   /** Poke-only: version bump invalidates host, never applies frame payload. */
   pokeDatabaseVersion(version: number) {
     if (version > cachedVersion(this.queryClient, this.sessionId, this.databaseId)) {
-      invalidateDatabaseQueries(
-        this.queryClient,
-        this.sessionId,
-        this.databaseId,
-      )
+      invalidateDatabaseQueries(this.queryClient, this.sessionId, this.databaseId);
     }
   }
 
@@ -219,49 +191,47 @@ export class DatabaseRealtimeManager {
       typeof WebSocket === "undefined" ||
       this.socket?.readyState === WebSocket.CONNECTING ||
       this.socket?.readyState === WebSocket.OPEN
-    ) return
+    )
+      return;
 
-    const generation = this.connectionGeneration
-    this.connecting = true
+    const generation = this.connectionGeneration;
+    this.connecting = true;
 
-    this.setState({ ...this.state, status: "connecting" })
+    this.setState({ ...this.state, status: "connecting" });
 
     try {
-      const ticket = await this.fetchTicket()
-      if (this.stopped || generation !== this.connectionGeneration) return
+      const ticket = await this.fetchTicket();
+      if (this.stopped || generation !== this.connectionGeneration) return;
 
-      const socket = new WebSocket(
-        ticket.websocketUrl,
-        ticket.websocketProtocols,
-      )
-      socketToken.set(socket, ticket.token)
-      this.socket = socket
+      const socket = new WebSocket(ticket.websocketUrl, ticket.websocketProtocols);
+      socketToken.set(socket, ticket.token);
+      this.socket = socket;
 
       socket.addEventListener("message", (message) => {
-        if (this.socket !== socket) return
-        this.handleMessage(message.data, socket)
-      })
+        if (this.socket !== socket) return;
+        this.handleMessage(message.data, socket);
+      });
       socket.addEventListener("close", () => {
-        if (this.socket !== socket) return
-        this.socket = null
-        this.stopHeartbeat()
-        if (this.refreshTimer) clearTimeout(this.refreshTimer)
-        this.refreshTimer = null
+        if (this.socket !== socket) return;
+        this.socket = null;
+        this.stopHeartbeat();
+        if (this.refreshTimer) clearTimeout(this.refreshTimer);
+        this.refreshTimer = null;
         if (!this.stopped && generation === this.connectionGeneration) {
-          this.scheduleReconnect()
+          this.scheduleReconnect();
         }
-      })
-      this.scheduleTicketRefresh(ticket, socket, generation)
+      });
+      this.scheduleTicketRefresh(ticket, socket, generation);
       // Ticket version is ignored for resync. Never suppress poke because of ticket.
     } catch (error) {
       if (ticketFailureAction(error) === "stop") {
-        this.markUnavailable()
+        this.markUnavailable();
       } else if (!this.stopped && generation === this.connectionGeneration) {
-        this.scheduleReconnect()
+        this.scheduleReconnect();
       }
     } finally {
       if (generation === this.connectionGeneration) {
-        this.connecting = false
+        this.connecting = false;
       }
     }
   }
@@ -273,61 +243,59 @@ export class DatabaseRealtimeManager {
         body: JSON.stringify(refreshToken ? { token: refreshToken } : {}),
         method: "POST",
       },
-    )
+    );
   }
 
   private handleMessage(data: unknown, socket: WebSocket) {
-    const parsed = parseDatabaseRealtimeServerMessage(data)
+    const parsed = parseDatabaseRealtimeServerMessage(data);
 
     if (!parsed.ok) {
       if (parsed.reason === "protocol_mismatch") {
-        console.warn(JSON.stringify({
-          databaseId: this.databaseId,
-          event: "database_realtime_protocol_mismatch",
-          expectedProtocolVersion: 2,
-        }))
-        closeRealtimeSocket(socket, 1012, "Database realtime protocol changed")
+        console.warn(
+          JSON.stringify({
+            databaseId: this.databaseId,
+            event: "database_realtime_protocol_mismatch",
+            expectedProtocolVersion: 2,
+          }),
+        );
+        closeRealtimeSocket(socket, 1012, "Database realtime protocol changed");
       }
-      return
+      return;
     }
-    const message = parsed.message
+    const message = parsed.message;
 
-    if (message.databaseId !== this.databaseId) return
+    if (message.databaseId !== this.databaseId) return;
 
     if (message.type === "database.mutation") {
       // Poke only. Ignore changes, areas, requiresReset payload.
-      this.pokeDatabaseVersion(message.version)
-      return
+      this.pokeDatabaseVersion(message.version);
+      return;
     }
 
     if (message.type === "realtime.ready") {
-      this.realtimeSessionId = message.sessionId
-      this.reconnectAttempt = 0
-      this.pokeDatabaseVersion(message.databaseVersion)
-      this.setCollaborators(message.peers)
-      this.setState({ ...this.state, status: "connected" })
-      this.startHeartbeat()
-      this.sendPresence()
-      return
+      this.realtimeSessionId = message.sessionId;
+      this.reconnectAttempt = 0;
+      this.pokeDatabaseVersion(message.databaseVersion);
+      this.setCollaborators(message.peers);
+      this.setState({ ...this.state, status: "connected" });
+      this.startHeartbeat();
+      this.sendPresence();
+      return;
     }
 
     if (message.type === "presence.update") {
-      const collaborator = withColor(message.collaborator)
+      const collaborator = withColor(message.collaborator);
       this.setCollaborators([
-        ...this.state.collaborators.filter(
-          (item) => item.sessionId !== collaborator.sessionId,
-        ),
+        ...this.state.collaborators.filter((item) => item.sessionId !== collaborator.sessionId),
         collaborator,
-      ])
-      return
+      ]);
+      return;
     }
 
     if (message.type === "presence.clear") {
       this.setCollaborators(
-        this.state.collaborators.filter(
-          (item) => item.sessionId !== message.sessionId,
-        ),
-      )
+        this.state.collaborators.filter((item) => item.sessionId !== message.sessionId),
+      );
     }
   }
 
@@ -336,43 +304,43 @@ export class DatabaseRealtimeManager {
     socket: WebSocket,
     generation: number,
   ) {
-    if (this.refreshTimer) clearTimeout(this.refreshTimer)
-    const delay = Math.max(
-      10_000,
-      new Date(ticket.expiresAt).getTime() - Date.now() - 5 * 60_000,
-    )
+    if (this.refreshTimer) clearTimeout(this.refreshTimer);
+    const delay = Math.max(10_000, new Date(ticket.expiresAt).getTime() - Date.now() - 5 * 60_000);
 
     this.refreshTimer = setTimeout(() => {
-      void this.refreshTicket(socket, generation)
-    }, delay)
+      void this.refreshTicket(socket, generation);
+    }, delay);
   }
 
   private async refreshTicket(socket: WebSocket, generation: number) {
     try {
-      const ticket = await this.fetchTicket(ticketTokenFor(socket))
+      const ticket = await this.fetchTicket(ticketTokenFor(socket));
       if (
         this.stopped ||
         generation !== this.connectionGeneration ||
         this.socket !== socket ||
         socket.readyState !== WebSocket.OPEN
-      ) return
-      socket.send(JSON.stringify({
-        type: "auth.refresh",
-        token: ticket.token,
-      }))
-      socketToken.set(socket, ticket.token)
-      this.scheduleTicketRefresh(ticket, socket, generation)
+      )
+        return;
+      socket.send(
+        JSON.stringify({
+          type: "auth.refresh",
+          token: ticket.token,
+        }),
+      );
+      socketToken.set(socket, ticket.token);
+      this.scheduleTicketRefresh(ticket, socket, generation);
     } catch {
-      if (this.socket === socket) socket.close()
+      if (this.socket === socket) socket.close();
     }
   }
 
   private scheduleReconnect() {
-    if (this.stopped || this.paused || this.reconnectTimer) return
+    if (this.stopped || this.paused || this.reconnectTimer) return;
 
     if (!isBrowserOnline()) {
-      this.pause()
-      return
+      this.pause();
+      return;
     }
 
     this.setState({
@@ -380,246 +348,240 @@ export class DatabaseRealtimeManager {
       collaborators: [],
       cellPresenceByKey: {},
       status: "disconnected",
-    })
-    const delay = reconnectDelay(this.reconnectAttempt)
-    this.reconnectAttempt += 1
+    });
+    const delay = reconnectDelay(this.reconnectAttempt);
+    this.reconnectAttempt += 1;
     this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null
-      void this.connect()
-    }, delay)
+      this.reconnectTimer = null;
+      void this.connect();
+    }, delay);
   }
 
   private sendPresence() {
-    if (this.socket?.readyState !== WebSocket.OPEN ||
-      this.state.status !== "connected") return
-    const values = [...this.presenceByOwner.values()]
-    this.socket.send(JSON.stringify({
-      presence: values.at(-1) ?? null,
-      type: "presence.update",
-    }))
+    if (this.socket?.readyState !== WebSocket.OPEN || this.state.status !== "connected") return;
+    const values = [...this.presenceByOwner.values()];
+    this.socket.send(
+      JSON.stringify({
+        presence: values.at(-1) ?? null,
+        type: "presence.update",
+      }),
+    );
   }
 
   private startHeartbeat() {
-    this.stopHeartbeat()
+    this.stopHeartbeat();
     this.heartbeatTimer = setInterval(() => {
-      if (
-        this.socket?.readyState !== WebSocket.OPEN ||
-        this.state.status !== "connected"
-      ) return
-      this.socket.send(JSON.stringify(DATABASE_REALTIME_PING))
-    }, DATABASE_REALTIME_HEARTBEAT_MS)
+      if (this.socket?.readyState !== WebSocket.OPEN || this.state.status !== "connected") return;
+      this.socket.send(JSON.stringify(DATABASE_REALTIME_PING));
+    }, DATABASE_REALTIME_HEARTBEAT_MS);
   }
 
   private stopHeartbeat() {
-    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer)
-    this.heartbeatTimer = null
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = null;
   }
 
   private setCollaborators(
     collaborators: Array<
-      Omit<DatabasePresenceCollaborator, "color"> |
-      DatabasePresenceCollaborator
+      Omit<DatabasePresenceCollaborator, "color"> | DatabasePresenceCollaborator
     >,
   ) {
     const colored = collaborators
       .filter((item) => item.sessionId !== this.realtimeSessionId)
-      .map(withColor)
+      .map(withColor);
     this.setState({
       ...this.state,
       cellPresenceByKey: createCellPresenceByKey(colored),
       collaborators: colored,
-    })
+    });
   }
 
   private setState(state: DatabaseRealtimeState) {
-    this.state = state
-    for (const listener of this.listeners) listener()
+    this.state = state;
+    for (const listener of this.listeners) listener();
   }
 
   private scheduleStop() {
-    if (this.idleTimer) clearTimeout(this.idleTimer)
+    if (this.idleTimer) clearTimeout(this.idleTimer);
 
     // React Strict Mode briefly unsubscribes and resubscribes external stores.
     // A short grace period avoids tearing down a healthy socket in between.
     this.idleTimer = setTimeout(() => {
-      this.idleTimer = null
-      if (this.listeners.size === 0) this.stop()
-    }, 4_000)
+      this.idleTimer = null;
+      if (this.listeners.size === 0) this.stop();
+    }, 4_000);
   }
 
   private stop() {
-    this.stopped = true
-    this.connectionGeneration += 1
-    this.connecting = false
-    if (this.idleTimer) clearTimeout(this.idleTimer)
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
-    if (this.refreshTimer) clearTimeout(this.refreshTimer)
-    if (this.visibilityTimer) clearTimeout(this.visibilityTimer)
-    this.stopHeartbeat()
-    this.reconnectTimer = null
-    this.refreshTimer = null
-    this.visibilityTimer = null
-    closeRealtimeSocket(this.socket, 1000, "Database view closed")
-    this.socket = null
-    this.realtimeSessionId = null
-    this.presenceByOwner.clear()
-    this.paused = false
-    this.stopLifecycleListeners()
-    this.setState(this.terminal ? getUnavailableSnapshot() : getOfflineSnapshot())
-    this.idleTimer = setTimeout(this.onIdle, 60_000)
+    this.stopped = true;
+    this.connectionGeneration += 1;
+    this.connecting = false;
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    if (this.refreshTimer) clearTimeout(this.refreshTimer);
+    if (this.visibilityTimer) clearTimeout(this.visibilityTimer);
+    this.stopHeartbeat();
+    this.reconnectTimer = null;
+    this.refreshTimer = null;
+    this.visibilityTimer = null;
+    closeRealtimeSocket(this.socket, 1000, "Database view closed");
+    this.socket = null;
+    this.realtimeSessionId = null;
+    this.presenceByOwner.clear();
+    this.paused = false;
+    this.stopLifecycleListeners();
+    this.setState(this.terminal ? getUnavailableSnapshot() : getOfflineSnapshot());
+    this.idleTimer = setTimeout(this.onIdle, 60_000);
   }
 
   private markUnavailable() {
-    this.terminal = true
-    this.stopped = true
-    this.connectionGeneration += 1
-    this.connecting = false
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
-    if (this.refreshTimer) clearTimeout(this.refreshTimer)
-    if (this.visibilityTimer) clearTimeout(this.visibilityTimer)
-    this.stopHeartbeat()
-    this.reconnectTimer = null
-    this.refreshTimer = null
-    this.visibilityTimer = null
-    closeRealtimeSocket(this.socket, 1000, "Database realtime unavailable")
-    this.socket = null
-    this.realtimeSessionId = null
-    this.stopLifecycleListeners()
-    this.setState(getUnavailableSnapshot())
+    this.terminal = true;
+    this.stopped = true;
+    this.connectionGeneration += 1;
+    this.connecting = false;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    if (this.refreshTimer) clearTimeout(this.refreshTimer);
+    if (this.visibilityTimer) clearTimeout(this.visibilityTimer);
+    this.stopHeartbeat();
+    this.reconnectTimer = null;
+    this.refreshTimer = null;
+    this.visibilityTimer = null;
+    closeRealtimeSocket(this.socket, 1000, "Database realtime unavailable");
+    this.socket = null;
+    this.realtimeSessionId = null;
+    this.stopLifecycleListeners();
+    this.setState(getUnavailableSnapshot());
   }
 
-  private readonly handleOnline = () => this.handleLifecycleChange()
-  private readonly handleOffline = () => this.pause()
-  private readonly handleVisibility = () => this.handleLifecycleChange()
+  private readonly handleOnline = () => this.handleLifecycleChange();
+  private readonly handleOffline = () => this.pause();
+  private readonly handleVisibility = () => this.handleLifecycleChange();
 
   private startLifecycleListeners() {
-    if (this.lifecycleListening || typeof window === "undefined") return
-    window.addEventListener("online", this.handleOnline)
-    window.addEventListener("offline", this.handleOffline)
-    document.addEventListener("visibilitychange", this.handleVisibility)
-    this.lifecycleListening = true
+    if (this.lifecycleListening || typeof window === "undefined") return;
+    window.addEventListener("online", this.handleOnline);
+    window.addEventListener("offline", this.handleOffline);
+    document.addEventListener("visibilitychange", this.handleVisibility);
+    this.lifecycleListening = true;
   }
 
   private stopLifecycleListeners() {
-    if (!this.lifecycleListening || typeof window === "undefined") return
-    window.removeEventListener("online", this.handleOnline)
-    window.removeEventListener("offline", this.handleOffline)
-    document.removeEventListener("visibilitychange", this.handleVisibility)
-    this.lifecycleListening = false
+    if (!this.lifecycleListening || typeof window === "undefined") return;
+    window.removeEventListener("online", this.handleOnline);
+    window.removeEventListener("offline", this.handleOffline);
+    document.removeEventListener("visibilitychange", this.handleVisibility);
+    this.lifecycleListening = false;
   }
 
   private handleLifecycleChange() {
     if (!isBrowserOnline()) {
-      this.pause()
-      return
+      this.pause();
+      return;
     }
 
     if (typeof document !== "undefined" && document.visibilityState === "hidden") {
       if (!this.visibilityTimer) {
         this.visibilityTimer = setTimeout(() => {
-          this.visibilityTimer = null
-          if (document.visibilityState === "hidden") this.pause()
-        }, 60_000)
+          this.visibilityTimer = null;
+          if (document.visibilityState === "hidden") this.pause();
+        }, 60_000);
       }
-      if (!this.paused) void this.connect()
-      return
+      if (!this.paused) void this.connect();
+      return;
     }
 
-    if (this.visibilityTimer) clearTimeout(this.visibilityTimer)
-    this.visibilityTimer = null
-    this.resume()
+    if (this.visibilityTimer) clearTimeout(this.visibilityTimer);
+    this.visibilityTimer = null;
+    this.resume();
   }
 
   private pause() {
-    if (this.stopped || this.paused) return
-    this.paused = true
-    this.connectionGeneration += 1
-    this.connecting = false
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
-    if (this.refreshTimer) clearTimeout(this.refreshTimer)
-    this.stopHeartbeat()
-    this.reconnectTimer = null
-    this.refreshTimer = null
-    closeRealtimeSocket(this.socket, 1000, "Database realtime paused")
-    this.socket = null
-    this.realtimeSessionId = null
-    this.setState(getOfflineSnapshot())
+    if (this.stopped || this.paused) return;
+    this.paused = true;
+    this.connectionGeneration += 1;
+    this.connecting = false;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    if (this.refreshTimer) clearTimeout(this.refreshTimer);
+    this.stopHeartbeat();
+    this.reconnectTimer = null;
+    this.refreshTimer = null;
+    closeRealtimeSocket(this.socket, 1000, "Database realtime paused");
+    this.socket = null;
+    this.realtimeSessionId = null;
+    this.setState(getOfflineSnapshot());
   }
 
   private resume() {
-    if (this.stopped || this.listeners.size === 0 || !isBrowserOnline()) return
-    if (this.visibilityTimer) clearTimeout(this.visibilityTimer)
-    this.visibilityTimer = null
-    this.paused = false
-    void this.connect()
+    if (this.stopped || this.listeners.size === 0 || !isBrowserOnline()) return;
+    if (this.visibilityTimer) clearTimeout(this.visibilityTimer);
+    this.visibilityTimer = null;
+    this.paused = false;
+    void this.connect();
   }
 }
 
-const socketToken = new WeakMap<WebSocket, string>()
+const socketToken = new WeakMap<WebSocket, string>();
 
 function ticketTokenFor(socket: WebSocket) {
-  const token = socketToken.get(socket)
+  const token = socketToken.get(socket);
 
-  if (!token) throw new Error("Missing database realtime refresh token")
-  return token
+  if (!token) throw new Error("Missing database realtime refresh token");
+  return token;
 }
 
-const WEB_SOCKET_CONNECTING = 0
-const WEB_SOCKET_OPEN = 1
+const WEB_SOCKET_CONNECTING = 0;
+const WEB_SOCKET_OPEN = 1;
 
-export function closeRealtimeSocket(
-  socket: WebSocket | null,
-  code: number,
-  reason: string,
-) {
-  if (!socket) return
+export function closeRealtimeSocket(socket: WebSocket | null, code: number, reason: string) {
+  if (!socket) return;
 
   if (socket.readyState === WEB_SOCKET_CONNECTING) {
-    const closeWhenOpen = () => socket.close(code, reason)
-    socket.addEventListener("open", closeWhenOpen, { once: true })
-    socket.addEventListener("error", () => {
-      socket.removeEventListener("open", closeWhenOpen)
-    }, { once: true })
-    return
+    const closeWhenOpen = () => socket.close(code, reason);
+    socket.addEventListener("open", closeWhenOpen, { once: true });
+    socket.addEventListener(
+      "error",
+      () => {
+        socket.removeEventListener("open", closeWhenOpen);
+      },
+      { once: true },
+    );
+    return;
   }
 
   if (socket.readyState === WEB_SOCKET_OPEN) {
-    socket.close(code, reason)
+    socket.close(code, reason);
   }
 }
 
-export function reconnectDelay(
-  attempt: number,
-  random: () => number = Math.random,
-) {
-  const maximum = Math.min(30_000, 500 * 2 ** Math.max(attempt, 0))
-  return Math.floor(random() * maximum)
+export function reconnectDelay(attempt: number, random: () => number = Math.random) {
+  const maximum = Math.min(30_000, 500 * 2 ** Math.max(attempt, 0));
+  return Math.floor(random() * maximum);
 }
 
 export function ticketFailureAction(error: unknown): "retry" | "stop" {
   if (!error || typeof error !== "object" || !("status" in error)) {
-    return "retry"
+    return "retry";
   }
 
-  const status = (error as { status?: unknown }).status
-  return status === 401 || status === 403 || status === 404 ? "stop" : "retry"
+  const status = (error as { status?: unknown }).status;
+  return status === 401 || status === 403 || status === 404 ? "stop" : "retry";
 }
 
 function isBrowserOnline() {
-  return typeof navigator === "undefined" || navigator.onLine !== false
+  return typeof navigator === "undefined" || navigator.onLine !== false;
 }
 
-export function samePresence(
-  left: DatabasePresence | null,
-  right: DatabasePresence | null,
-) {
-  return left === right || Boolean(
-    left &&
-    right &&
-    left.rowId === right.rowId &&
-    left.columnKey === right.columnKey &&
-    left.viewId === right.viewId,
-  )
+export function samePresence(left: DatabasePresence | null, right: DatabasePresence | null) {
+  return (
+    left === right ||
+    Boolean(
+      left &&
+      right &&
+      left.rowId === right.rowId &&
+      left.columnKey === right.columnKey &&
+      left.viewId === right.viewId,
+    )
+  );
 }
 
 function getManager(
@@ -628,15 +590,15 @@ function getManager(
   databaseId: string,
   sessionId: string,
 ) {
-  let byDatabase = managers.get(queryClient)
+  let byDatabase = managers.get(queryClient);
 
   if (!byDatabase) {
-    byDatabase = new Map()
-    managers.set(queryClient, byDatabase)
+    byDatabase = new Map();
+    managers.set(queryClient, byDatabase);
   }
 
-  const managerKey = `${sessionId}:${databaseId}`
-  let manager = byDatabase.get(managerKey)
+  const managerKey = `${sessionId}:${databaseId}`;
+  let manager = byDatabase.get(managerKey);
 
   if (!manager) {
     const created = new DatabaseRealtimeManager(
@@ -646,104 +608,112 @@ function getManager(
       sessionId,
       () => {
         if (byDatabase?.get(managerKey) === created) {
-          byDatabase.delete(managerKey)
+          byDatabase.delete(managerKey);
         }
       },
-    )
-    manager = created
-    byDatabase.set(managerKey, manager)
+    );
+    manager = created;
+    byDatabase.set(managerKey, manager);
   }
 
-  return manager
+  return manager;
 }
 
 export type DatabaseRealtimeServerMessageParseResult =
   | { message: RealtimeServerMessage; ok: true }
-  | { ok: false; reason: "invalid" | "protocol_mismatch" }
+  | { ok: false; reason: "invalid" | "protocol_mismatch" };
 
 export function parseDatabaseRealtimeServerMessage(
   data: unknown,
 ): DatabaseRealtimeServerMessageParseResult {
-  if (typeof data !== "string") return { ok: false, reason: "invalid" }
+  if (typeof data !== "string") return { ok: false, reason: "invalid" };
 
   try {
-    const value = JSON.parse(data) as unknown
+    const value = JSON.parse(data) as unknown;
     if (!value || typeof value !== "object") {
-      return { ok: false, reason: "invalid" }
+      return { ok: false, reason: "invalid" };
     }
-    const message = value as Record<string, unknown>
-    const isKnownServerMessage = message.type === "database.mutation" ||
+    const message = value as Record<string, unknown>;
+    const isKnownServerMessage =
+      message.type === "database.mutation" ||
       message.type === "realtime.ready" ||
       message.type === "presence.update" ||
-      message.type === "presence.clear"
+      message.type === "presence.clear";
 
     if (isKnownServerMessage && message.protocolVersion !== 2) {
-      return { ok: false, reason: "protocol_mismatch" }
+      return { ok: false, reason: "protocol_mismatch" };
     }
 
     if (message.type === "database.mutation") {
-      const parsed = databaseMutationEventV2Schema.safeParse(value)
-      return parsed.success
-        ? { message: parsed.data, ok: true }
-        : { ok: false, reason: "invalid" }
+      const parsed = databaseMutationEventV2Schema.safeParse(value);
+      return parsed.success ? { message: parsed.data, ok: true } : { ok: false, reason: "invalid" };
     }
 
-    if (message.type === "realtime.ready" &&
+    if (
+      message.type === "realtime.ready" &&
       typeof message.databaseId === "string" &&
       typeof message.databaseVersion === "number" &&
       Number.isSafeInteger(message.databaseVersion) &&
       message.databaseVersion >= 0 &&
       typeof message.sessionId === "string" &&
-      Array.isArray(message.peers)) {
-      return { message: message as RealtimeReadyMessage, ok: true }
+      Array.isArray(message.peers)
+    ) {
+      return { message: message as RealtimeReadyMessage, ok: true };
     }
 
-    if (message.type === "presence.update" &&
+    if (
+      message.type === "presence.update" &&
       typeof message.databaseId === "string" &&
-      message.collaborator && typeof message.collaborator === "object") {
-      return { message: message as PresenceUpdateMessage, ok: true }
+      message.collaborator &&
+      typeof message.collaborator === "object"
+    ) {
+      return { message: message as PresenceUpdateMessage, ok: true };
     }
 
-    if (message.type === "presence.clear" &&
+    if (
+      message.type === "presence.clear" &&
       typeof message.databaseId === "string" &&
-      typeof message.sessionId === "string") {
-      return { message: message as PresenceClearMessage, ok: true }
+      typeof message.sessionId === "string"
+    ) {
+      return { message: message as PresenceClearMessage, ok: true };
     }
 
-    return { ok: false, reason: "invalid" }
+    return { ok: false, reason: "invalid" };
   } catch {
-    return { ok: false, reason: "invalid" }
+    return { ok: false, reason: "invalid" };
   }
 }
 
 type RealtimeReadyMessage = {
-  databaseVersion: number
-  databaseId: string
-  peers: Array<Omit<DatabasePresenceCollaborator, "color">>
-  protocolVersion: 2
-  sessionId: string
-  type: "realtime.ready"
-}
+  databaseVersion: number;
+  databaseId: string;
+  peers: Array<Omit<DatabasePresenceCollaborator, "color">>;
+  protocolVersion: 2;
+  sessionId: string;
+  type: "realtime.ready";
+};
 type PresenceUpdateMessage = {
-  collaborator: Omit<DatabasePresenceCollaborator, "color">
-  databaseId: string
-  protocolVersion: 2
-  type: "presence.update"
-}
+  collaborator: Omit<DatabasePresenceCollaborator, "color">;
+  databaseId: string;
+  protocolVersion: 2;
+  type: "presence.update";
+};
 type PresenceClearMessage = {
-  databaseId: string
-  protocolVersion: 2
-  sessionId: string
-  type: "presence.clear"
-}
-export type RealtimeServerMessage = DatabaseMutationEventV2 |
-  RealtimeReadyMessage |
-  PresenceUpdateMessage | PresenceClearMessage
+  databaseId: string;
+  protocolVersion: 2;
+  sessionId: string;
+  type: "presence.clear";
+};
+export type RealtimeServerMessage =
+  | DatabaseMutationEventV2
+  | RealtimeReadyMessage
+  | PresenceUpdateMessage
+  | PresenceClearMessage;
 
 function withColor<T extends Omit<DatabasePresenceCollaborator, "color">>(
   collaborator: T,
 ): DatabasePresenceCollaborator {
-  return { ...collaborator, color: stableColor(collaborator.user.id) }
+  return { ...collaborator, color: stableColor(collaborator.user.id) };
 }
 
 function stableColor(value: string) {
@@ -756,30 +726,30 @@ function stableColor(value: string) {
     "var(--editor-yellow)",
     "var(--editor-red)",
     "var(--editor-brown)",
-  ]
-  let hash = 0
+  ];
+  let hash = 0;
   for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
   }
-  return colors[hash % colors.length]
+  return colors[hash % colors.length];
 }
 
 const OFFLINE_STATE: DatabaseRealtimeState = {
   cellPresenceByKey: {},
   collaborators: [],
   status: "offline",
-}
+};
 const UNAVAILABLE_STATE: DatabaseRealtimeState = {
   cellPresenceByKey: {},
   collaborators: [],
   status: "unavailable",
-}
+};
 function getOfflineSnapshot() {
-  return OFFLINE_STATE
+  return OFFLINE_STATE;
 }
 function getUnavailableSnapshot() {
-  return UNAVAILABLE_STATE
+  return UNAVAILABLE_STATE;
 }
 function emptySubscribe() {
-  return () => undefined
+  return () => undefined;
 }

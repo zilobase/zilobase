@@ -11,10 +11,13 @@ function meetingIdFromDocumentName(documentName: string) {
 function createCollaborationHocuspocus() {
   const hocuspocus = {
     configuration: { extensions: [] as unknown[] },
-    documents: new Map<string, {
-      getConnectionsCount(): number;
-      name: string;
-    }>(),
+    documents: new Map<
+      string,
+      {
+        getConnectionsCount(): number;
+        name: string;
+      }
+    >(),
     handledConnections: 0,
     pageReplacementCalls: 0,
     runtimePortChecks: 0,
@@ -40,13 +43,17 @@ function createCollaborationHocuspocus() {
           getRuntimePorts();
           hocuspocus.runtimePortChecks += 1;
           for (const extension of hocuspocus.configuration.extensions) {
-            const connected = (extension as {
-              connected?: (input: { context: unknown }) => Promise<void> | void;
-            }).connected;
+            const connected = (
+              extension as {
+                connected?: (input: { context: unknown }) => Promise<void> | void;
+              }
+            ).connected;
             if (connected) void connected({ context });
-            const afterHandleMessage = (extension as {
-              afterHandleMessage?: (input: { context: unknown }) => Promise<void> | void;
-            }).afterHandleMessage;
+            const afterHandleMessage = (
+              extension as {
+                afterHandleMessage?: (input: { context: unknown }) => Promise<void> | void;
+              }
+            ).afterHandleMessage;
             if (afterHandleMessage) void afterHandleMessage({ context });
           }
         },
@@ -57,15 +64,15 @@ function createCollaborationHocuspocus() {
   return hocuspocus;
 }
 
-async function replacePageContentInHocuspocus(hocuspocus: ReturnType<
-  typeof createCollaborationHocuspocus
->) {
+async function replacePageContentInHocuspocus(
+  hocuspocus: ReturnType<typeof createCollaborationHocuspocus>,
+) {
   hocuspocus.pageReplacementCalls += 1;
 }
 
-async function appendMeetingTranscriptInHocuspocus(hocuspocus: ReturnType<
-  typeof createCollaborationHocuspocus
->) {
+async function appendMeetingTranscriptInHocuspocus(
+  hocuspocus: ReturnType<typeof createCollaborationHocuspocus>,
+) {
   hocuspocus.transcriptAppendCalls += 1;
 }
 
@@ -100,11 +107,7 @@ async function getMeetingOpenAiSafetyIdentifier() {
   return "test-safety-identifier";
 }
 
-function trimAcceptedMeetingAudio(
-  pcm: Uint8Array,
-  sequence: number,
-  lastAcceptedSequence: number,
-) {
+function trimAcceptedMeetingAudio(pcm: Uint8Array, sequence: number, lastAcceptedSequence: number) {
   const frameBytes = 480 * 2;
   const frameCount = pcm.byteLength / frameBytes;
   const endSequence = sequence + frameCount - 1;
@@ -165,9 +168,9 @@ class MeetingRealtimeTranscriber {
   async finish() {}
 }
 
-async function replaceMeetingSummaryInHocuspocus(hocuspocus: ReturnType<
-  typeof createCollaborationHocuspocus
->) {
+async function replaceMeetingSummaryInHocuspocus(
+  hocuspocus: ReturnType<typeof createCollaborationHocuspocus>,
+) {
   hocuspocus.summaryReplacementCalls += 1;
 }
 

@@ -1,4 +1,4 @@
-export type { Icon } from "@phosphor-icons/react"
+export type { Icon } from "@phosphor-icons/react";
 
 // App-wide Phosphor aliases keep icon intent readable while centralizing the
 // few naming differences between Phosphor and the rest of the UI.
@@ -265,4 +265,4 @@ export {
   X as XIcon,
   XCircle as CircleX,
   XCircle as OctagonXIcon,
-} from "@phosphor-icons/react"
+} from "@phosphor-icons/react";

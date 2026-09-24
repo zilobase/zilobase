@@ -25,9 +25,7 @@ import { runWithBackgroundTraceContext } from "../infrastructure/background/cont
 import { communityAppPolicy } from "../shared/app-policy";
 import { runWithRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 
-export function createApp(
-  options: EditionExtensionOptions & { ports: Partial<Ports<any>> },
-) {
+export function createApp(options: EditionExtensionOptions & { ports: Partial<Ports<any>> }) {
   const app = new Hono<AppBindings>();
   const appPolicy = options.policy ?? communityAppPolicy;
   registerAppEditionExtension(app, options.editionExtension);
@@ -80,9 +78,7 @@ export function createApp(
   return app;
 }
 
-export function createAppErrorHandler(
-  errorReporter?: AppErrorReporter,
-): ErrorHandler<AppBindings> {
+export function createAppErrorHandler(errorReporter?: AppErrorReporter): ErrorHandler<AppBindings> {
   return async (error, c) => {
     if (isDatabaseUnavailableError(error)) {
       const code = getDatabaseErrorCode(error) ?? DATABASE_UNAVAILABLE_CODE;
@@ -117,13 +113,7 @@ export function createAppErrorHandler(
         route: c.req.path,
       }),
     );
-    await reportAppError(
-      errorReporter,
-      error,
-      c,
-      "UNHANDLED_REQUEST_ERROR",
-      500,
-    );
+    await reportAppError(errorReporter, error, c, "UNHANDLED_REQUEST_ERROR", 500);
     return c.json({ error: "Internal server error" }, 500);
   };
 }

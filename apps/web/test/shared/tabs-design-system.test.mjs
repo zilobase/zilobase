@@ -2,23 +2,18 @@ import { readFile } from "node:fs/promises";
 
 export function register({ readSource, assert, test }) {
   test("all shared tabs use the canonical control, text, spacing, and icon sizes", async () => {
-    const [tabsSource, buttonSource, inputSource, sidebarSource, databaseStyles] = await Promise.all([
-      readSource("/src/shared/ui/app-tabs.tsx"),
-      readSource("/src/shared/ui/button.tsx"),
-      readSource("/src/shared/ui/input.tsx"),
-      readSource("/src/shared/ui/sidebar.tsx"),
-      readSource("/src/features/databases/styles/database.css"),
-    ]);
+    const [tabsSource, buttonSource, inputSource, sidebarSource, databaseStyles] =
+      await Promise.all([
+        readSource("/src/shared/ui/app-tabs.tsx"),
+        readSource("/src/shared/ui/button.tsx"),
+        readSource("/src/shared/ui/input.tsx"),
+        readSource("/src/shared/ui/sidebar.tsx"),
+        readSource("/src/features/databases/styles/database.css"),
+      ]);
 
     assert.match(buttonSource, /const buttonControlHeightClassName = "h-7"/);
-    assert.match(
-      buttonSource,
-      /const buttonControlTextClassName = "text-xs\/relaxed font-medium"/,
-    );
-    assert.match(
-      buttonSource,
-      /default:\s*\n?\s*`\$\{buttonControlHeightClassName\} gap-1 px-2/,
-    );
+    assert.match(buttonSource, /const buttonControlTextClassName = "text-xs\/relaxed font-medium"/);
+    assert.match(buttonSource, /default:\s*\n?\s*`\$\{buttonControlHeightClassName\} gap-1 px-2/);
     assert.match(
       tabsSource,
       /buttonControlHeightClassName,[\s\S]*?buttonControlTextClassName,[\s\S]*?gap-2[\s\S]*?px-3[\s\S]*?\[&_svg:not\(\[class\*='size-'\]\)\]:size-4/,

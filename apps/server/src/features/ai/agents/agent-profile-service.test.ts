@@ -48,8 +48,7 @@ vi.mock("../../../infrastructure/database", async () => {
       },
     }),
     delete: () => ({ where: async () => undefined }),
-    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> =>
-      callback(db),
+    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> => callback(db),
   };
   return { db };
 });
@@ -94,22 +93,15 @@ describe("standalone agent ownership and revisions", () => {
     expect(await getAgentProfileRole(input)).toBe("owner");
   });
   it("chooses the strongest explicit user/team role", async () => {
-    state.rows = [
-      [profile],
-      [{ role: "user" }, { role: "editor" }, { role: "user" }],
-    ];
-    expect(await getAgentProfileRole({ ...input, userId: "shared" })).toBe(
-      "editor",
-    );
+    state.rows = [[profile], [{ role: "user" }, { role: "editor" }, { role: "user" }]];
+    expect(await getAgentProfileRole({ ...input, userId: "shared" })).toBe("editor");
     state.rows = [[profile], []];
-    expect(
-      await getAgentProfileRole({ ...input, userId: "outsider" }),
-    ).toBeNull();
+    expect(await getAgentProfileRole({ ...input, userId: "outsider" })).toBeNull();
   });
   it("denies missing agents and insufficient roles", async () => {
-    await expect(
-      requireAgentProfileRole({ ...input, minimum: "user" }),
-    ).rejects.toThrow("not found");
+    await expect(requireAgentProfileRole({ ...input, minimum: "user" })).rejects.toThrow(
+      "not found",
+    );
     state.rows = [[profile], [{ role: "user" }]];
     await expect(
       requireAgentProfileRole({
@@ -141,9 +133,7 @@ describe("standalone agent ownership and revisions", () => {
     expect(state.writes[3]).toMatchObject({ scope: expect.stringMatching(/^agent:/) });
     expect(state.writes[5]).toMatchObject({ profileId: expect.any(String) });
     expect(
-      state.writes.some(
-        (value) => "authenticatedByUserId" in value || "principalId" in value,
-      ),
+      state.writes.some((value) => "authenticatedByUserId" in value || "principalId" in value),
     ).toBe(false);
   });
   it("returns an authorized detail without changing connection ownership", async () => {

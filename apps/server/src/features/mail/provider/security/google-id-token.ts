@@ -1,1 +1,1 @@
-export { verifyGoogleIdToken } from "../../../../shared/security/google-id-token"
+export { verifyGoogleIdToken } from "../../../../shared/security/google-id-token";

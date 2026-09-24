@@ -47,9 +47,7 @@ const UpdateProfile = Schema.Struct({
 );
 
 const UpdateUserSettings = Schema.Struct({
-  embeddedItemsOpenAs: Schema.optionalKey(
-    Schema.Literals(["dialog", "sidepanel"]),
-  ),
+  embeddedItemsOpenAs: Schema.optionalKey(Schema.Literals(["dialog", "sidepanel"])),
   pageFullWidth: Schema.optionalKey(Schema.Boolean),
   sidebarConfig: Schema.optionalKey(
     Schema.Unknown.check(
@@ -214,12 +212,9 @@ async function getOrCreateUserSettings(userId: string) {
   return toUserSettingsPayload(concurrent);
 }
 
-function toUserSettingsPayload(
-  settings: typeof pageSettings.$inferSelect,
-): UserSettingsPayload {
+function toUserSettingsPayload(settings: typeof pageSettings.$inferSelect): UserSettingsPayload {
   return {
-    embeddedItemsOpenAs:
-      settings.embeddedItemsOpenAs === "dialog" ? "dialog" : "sidepanel",
+    embeddedItemsOpenAs: settings.embeddedItemsOpenAs === "dialog" ? "dialog" : "sidepanel",
     pageFullWidth: settings.pageFullWidth,
     sidebarConfig: normalizeSidebarConfig(settings.sidebarConfig),
   };

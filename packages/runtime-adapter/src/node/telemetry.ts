@@ -8,11 +8,13 @@ export type NodeTelemetryOptions = {
 export function createNodeTelemetry(options: NodeTelemetryOptions = {}): Telemetry {
   return {
     error(error, properties) {
-      console.error(JSON.stringify({
-        error: error instanceof Error ? error.message : String(error),
-        event: "runtime.error",
-        ...properties,
-      }));
+      console.error(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : String(error),
+          event: "runtime.error",
+          ...properties,
+        }),
+      );
     },
     event(name, properties) {
       console.info(JSON.stringify({ event: name, ...properties }));

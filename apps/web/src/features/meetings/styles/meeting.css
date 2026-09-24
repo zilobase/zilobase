@@ -18,10 +18,7 @@
   @apply box-border px-4 pt-4;
 }
 
-.tiptap-editor
-  .node-meetingBlock
-  > [data-node-view-wrapper]
-  > .meeting-block-shell {
+.tiptap-editor .node-meetingBlock > [data-node-view-wrapper] > .meeting-block-shell {
   @apply min-w-0 overflow-visible rounded-xl border border-stroke-default bg-transparent transition-[border-color,box-shadow];
 }
 

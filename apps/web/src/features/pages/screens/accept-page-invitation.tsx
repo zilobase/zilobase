@@ -1,58 +1,48 @@
-import { Link, useNavigate } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router";
 import {
   AlertCircleIcon,
   CheckCircle2Icon,
   FileCheck2Icon,
   SendIcon,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 
-import { Button } from "@/shared/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/shared/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-} from "@/shared/ui/field"
-import { Spinner } from "@/shared/ui/spinner"
-import { getApiErrorMessage } from "@/platform/network/api"
-import { readSingleInvitationId } from "@/features/workspaces"
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Field, FieldDescription, FieldError, FieldGroup } from "@/shared/ui/field";
+import { Spinner } from "@/shared/ui/spinner";
+import { getApiErrorMessage } from "@/platform/network/api";
+import { readSingleInvitationId } from "@/features/workspaces";
 import { useSession } from "@zilobase/features/auth/react";
-import { useAcceptPageGuestInvitation, usePageGuestInvitation } from "@zilobase/features/pages/react";
-import posthog from "@/shared/lib/posthog"
+import {
+  useAcceptPageGuestInvitation,
+  usePageGuestInvitation,
+} from "@zilobase/features/pages/react";
+import posthog from "@/shared/lib/posthog";
 
 export default function AcceptPageInvitationPage() {
-  const navigate = useNavigate()
-  const invitationId = readSingleInvitationId(window.location.search)
-  const { data: session, isLoading: isLoadingSession } = useSession()
-  const invitationQuery = usePageGuestInvitation(invitationId)
-  const acceptInvitation = useAcceptPageGuestInvitation()
-  const isSignedIn = Boolean(session?.user)
-  const invitation = invitationQuery.data
-  const acceptedPageId = acceptInvitation.data?.pageId ?? invitation?.pageId
-  const hasAccepted = acceptInvitation.isSuccess
-  const isUnavailable = Boolean(
-    invitation && invitation.status !== "pending" && !hasAccepted,
-  )
-  const returnTo = `${window.location.pathname}${window.location.search}`
+  const navigate = useNavigate();
+  const invitationId = readSingleInvitationId(window.location.search);
+  const { data: session, isLoading: isLoadingSession } = useSession();
+  const invitationQuery = usePageGuestInvitation(invitationId);
+  const acceptInvitation = useAcceptPageGuestInvitation();
+  const isSignedIn = Boolean(session?.user);
+  const invitation = invitationQuery.data;
+  const acceptedPageId = acceptInvitation.data?.pageId ?? invitation?.pageId;
+  const hasAccepted = acceptInvitation.isSuccess;
+  const isUnavailable = Boolean(invitation && invitation.status !== "pending" && !hasAccepted);
+  const returnTo = `${window.location.pathname}${window.location.search}`;
 
   const signIn = () => {
-    void navigate({ to: "/login", search: { returnTo } })
-  }
+    void navigate({ to: "/login", search: { returnTo } });
+  };
 
   const acceptPageInvitation = () => {
-    if (!invitationId) return
+    if (!invitationId) return;
 
     acceptInvitation.mutate(invitationId, {
       onSuccess: () => posthog?.capture("page_invitation_accepted"),
-    })
-  }
+    });
+  };
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-surface-canvas p-6">
@@ -102,9 +92,7 @@ export default function AcceptPageInvitationPage() {
 
             {isUnavailable ? (
               <Field>
-                <FieldError>
-                  This invitation is {invitation?.status ?? "unavailable"}.
-                </FieldError>
+                <FieldError>This invitation is {invitation?.status ?? "unavailable"}.</FieldError>
               </Field>
             ) : null}
 
@@ -130,10 +118,7 @@ export default function AcceptPageInvitationPage() {
               <Field>
                 <Button
                   disabled={
-                    !invitationId ||
-                    !invitation ||
-                    isUnavailable ||
-                    acceptInvitation.isPending
+                    !invitationId || !invitation || isUnavailable || acceptInvitation.isPending
                   }
                   onClick={acceptPageInvitation}
                   type="button"
@@ -152,11 +137,7 @@ export default function AcceptPageInvitationPage() {
                 </Button>
                 <Button asChild disabled={!invitationId} variant="outline">
                   <Link
-                    search={
-                      invitationId
-                        ? { invitation: invitationId, returnTo }
-                        : {}
-                    }
+                    search={invitationId ? { invitation: invitationId, returnTo } : {}}
                     to="/signup"
                   >
                     Create an account
@@ -168,5 +149,5 @@ export default function AcceptPageInvitationPage() {
         </CardContent>
       </Card>
     </main>
-  )
+  );
 }

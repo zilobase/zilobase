@@ -1,44 +1,41 @@
-import type {
-  DatabaseProperty,
-  DatabaseRow,
-} from "@zilobase/features/databases"
+import type { DatabaseProperty, DatabaseRow } from "@zilobase/features/databases";
 
 import { isSelectLikePropertyType } from "../schema/model/property-defaults";
-import { serializePropertyValue } from "../schema/property-values"
+import { serializePropertyValue } from "../schema/property-values";
 import {
   canUpdateKanbanGroupProperty,
   type DatabasePropertyListItem,
-} from "../views/kanban/model/database-kanban-config"
+} from "../views/kanban/model/database-kanban-config";
 
 export type NewRowPropertyValue = {
-  propertyId: string
-  value: unknown
-}
+  propertyId: string;
+  value: unknown;
+};
 
 export type NewRowSetup = {
   parentRelation?: {
-    parentPropertyId: string
-    parentRow: DatabaseRow
-    subItemPropertyId: string
-  }
-  propertyValues: NewRowPropertyValue[]
-  title: string
-}
+    parentPropertyId: string;
+    parentRow: DatabaseRow;
+    subItemPropertyId: string;
+  };
+  propertyValues: NewRowPropertyValue[];
+  title: string;
+};
 
 export function getNewRowGroupSetup(
   groupValue?: string | null,
   groupProperty?: DatabasePropertyListItem | null,
 ): NewRowSetup {
   if (!groupValue || !groupProperty) {
-    return { propertyValues: [], title: "Untitled" }
+    return { propertyValues: [], title: "Untitled" };
   }
 
   if (groupProperty.id === "name") {
-    return { propertyValues: [], title: groupValue }
+    return { propertyValues: [], title: groupValue };
   }
 
   if (!canUpdateKanbanGroupProperty(groupProperty)) {
-    return { propertyValues: [], title: "Untitled" }
+    return { propertyValues: [], title: "Untitled" };
   }
 
   return {
@@ -49,7 +46,7 @@ export function getNewRowGroupSetup(
       },
     ],
     title: "Untitled",
-  }
+  };
 }
 
 export function getDraggedRowGroupSetup(
@@ -57,7 +54,7 @@ export function getDraggedRowGroupSetup(
   groupProperty?: DatabasePropertyListItem | null,
 ): NewRowSetup & { pageTitle?: string } {
   if (groupValue === undefined || !groupProperty) {
-    return { propertyValues: [], title: "Untitled" }
+    return { propertyValues: [], title: "Untitled" };
   }
 
   if (groupProperty.id === "name") {
@@ -65,11 +62,11 @@ export function getDraggedRowGroupSetup(
       pageTitle: groupValue,
       propertyValues: [],
       title: groupValue,
-    }
+    };
   }
 
   if (!canUpdateKanbanGroupProperty(groupProperty)) {
-    return { propertyValues: [], title: "Untitled" }
+    return { propertyValues: [], title: "Untitled" };
   }
 
   return {
@@ -80,21 +77,18 @@ export function getDraggedRowGroupSetup(
       },
     ],
     title: "Untitled",
-  }
+  };
 }
 
-export function getTimelineGroupPropertyId(
-  currentProperties: DatabaseProperty[],
-) {
+export function getTimelineGroupPropertyId(currentProperties: DatabaseProperty[]) {
   const groupProperty =
     currentProperties.find((property) => property.property.type === "status") ??
     currentProperties.find(
       (property) =>
-        property.property.type !== "status" &&
-        isSelectLikePropertyType(property.property.type),
+        property.property.type !== "status" && isSelectLikePropertyType(property.property.type),
     ) ??
     currentProperties[0] ??
-    null
+    null;
 
-  return groupProperty?.property.id
+  return groupProperty?.property.id;
 }

@@ -1,18 +1,9 @@
-import {
-  useRef,
-  useState,
-  type ComponentProps,
-  type ReactNode,
-} from "react"
-import { Check, Link2, List, Minus, MoreHorizontal, X } from "@/shared/components/icons"
-import { cn } from "@/shared/lib/utils"
-import {
-  ButtonGroup,
-  ButtonGroupItem,
-  ButtonGroupSection,
-} from "@/shared/ui/button-group"
-import { Input } from "@/shared/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover"
+import { useRef, useState, type ComponentProps, type ReactNode } from "react";
+import { Check, Link2, List, Minus, MoreHorizontal, X } from "@/shared/components/icons";
+import { cn } from "@/shared/lib/utils";
+import { ButtonGroup, ButtonGroupItem, ButtonGroupSection } from "@/shared/ui/button-group";
+import { Input } from "@/shared/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -23,15 +14,18 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
-import { DatabasePropertyDate } from "../../../schema/editors/database-property-date"
-import { DatabasePropertySelect } from "../../../schema/editors/database-property-select"
+} from "@/shared/ui/dropdrawer";
+import { DatabasePropertyDate } from "../../../schema/editors/database-property-date";
+import { DatabasePropertySelect } from "../../../schema/editors/database-property-select";
 import { defaultStatusOption, defaultStatusOptions } from "../../../schema/model/property-defaults";
-import { getDatabasePropertyCellKind, getDatabasePropertyType } from "../../../schema/property-catalog";
-import type { DatabasePropertyValue as DatabasePropertyValueType } from "../../../schema/property-values"
-import { getPersonLimit } from "../../model/database-view-config"
-import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config"
-import { splitDatabaseSelectionProperties } from "../model/database-table-selection"
+import {
+  getDatabasePropertyCellKind,
+  getDatabasePropertyType,
+} from "../../../schema/property-catalog";
+import type { DatabasePropertyValue as DatabasePropertyValueType } from "../../../schema/property-values";
+import { getPersonLimit } from "../../model/database-view-config";
+import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
+import { splitDatabaseSelectionProperties } from "../model/database-table-selection";
 
 function DatabaseSelectionPropertyTrigger({
   className,
@@ -39,9 +33,9 @@ function DatabaseSelectionPropertyTrigger({
   property,
   ...buttonProps
 }: {
-  property: DatabasePropertyListItem
+  property: DatabasePropertyListItem;
 } & Omit<ComponentProps<typeof ButtonGroupItem>, "property">) {
-  const PropertyIcon = getDatabasePropertyType(property.property.type).icon
+  const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
 
   return (
     <ButtonGroupItem
@@ -56,7 +50,7 @@ function DatabaseSelectionPropertyTrigger({
       <PropertyIcon />
       <span>{property.property.name}</span>
     </ButtonGroupItem>
-  )
+  );
 }
 
 function DatabaseSelectionPropertyAction({
@@ -70,34 +64,30 @@ function DatabaseSelectionPropertyAction({
   trigger: customTrigger,
   value,
 }: {
-  mixed: boolean
-  onApply: (value: DatabasePropertyValueType) => void
-  onOpenChange?: (open: boolean) => void
-  onUpdateConfig: (databasePropertyId: string, config: unknown) => Promise<unknown>
-  open?: boolean
-  personOptions: Array<{ id: string; name: string; suffix?: string }>
-  property: DatabasePropertyListItem
-  trigger?: ReactNode
-  value: DatabasePropertyValueType
+  mixed: boolean;
+  onApply: (value: DatabasePropertyValueType) => void;
+  onOpenChange?: (open: boolean) => void;
+  onUpdateConfig: (databasePropertyId: string, config: unknown) => Promise<unknown>;
+  open?: boolean;
+  personOptions: Array<{ id: string; name: string; suffix?: string }>;
+  property: DatabasePropertyListItem;
+  trigger?: ReactNode;
+  value: DatabasePropertyValueType;
 }) {
-  const [inputOpen, setInputOpen] = useState(false)
-  const [draftValue, setDraftValue] = useState("")
-  const pageProperty = property.property
-  const cellKind = getDatabasePropertyCellKind(pageProperty.type)
-  const scalarValue = Array.isArray(value) ? value[0] ?? "" : value
-  const resolvedInputOpen = open ?? inputOpen
-  const trigger =
-    customTrigger ?? <DatabaseSelectionPropertyTrigger property={property} />
+  const [inputOpen, setInputOpen] = useState(false);
+  const [draftValue, setDraftValue] = useState("");
+  const pageProperty = property.property;
+  const cellKind = getDatabasePropertyCellKind(pageProperty.type);
+  const scalarValue = Array.isArray(value) ? (value[0] ?? "") : value;
+  const resolvedInputOpen = open ?? inputOpen;
+  const trigger = customTrigger ?? <DatabaseSelectionPropertyTrigger property={property} />;
 
   if (cellKind === "select" || cellKind === "person") {
     const multiple =
       pageProperty.type === "multi_select" ||
-      (cellKind === "person" &&
-        getPersonLimit(pageProperty.config) !== "one_person")
+      (cellKind === "person" && getPersonLimit(pageProperty.config) !== "one_person");
     const selectionValue =
-      pageProperty.type === "status" && !mixed && !value
-        ? defaultStatusOption.name
-        : value
+      pageProperty.type === "status" && !mixed && !value ? defaultStatusOption.name : value;
 
     return (
       <DatabasePropertySelect
@@ -113,9 +103,7 @@ function DatabaseSelectionPropertyAction({
         multiple={multiple}
         open={open}
         onOpenChange={onOpenChange}
-        onPropertyConfigChange={(config) =>
-          onUpdateConfig(property.id, config)
-        }
+        onPropertyConfigChange={(config) => onUpdateConfig(property.id, config)}
         onSelect={onApply}
         propertyConfig={pageProperty.config}
         showStatusDot={pageProperty.type === "status"}
@@ -123,7 +111,7 @@ function DatabaseSelectionPropertyAction({
         value={selectionValue}
         valueKey={cellKind === "person" ? "id" : "name"}
       />
-    )
+    );
   }
 
   if (cellKind === "date") {
@@ -132,15 +120,13 @@ function DatabaseSelectionPropertyAction({
         label={pageProperty.name}
         open={open}
         onOpenChange={onOpenChange}
-        onPropertyConfigChange={(config) =>
-          onUpdateConfig(property.id, config)
-        }
+        onPropertyConfigChange={(config) => onUpdateConfig(property.id, config)}
         onSelect={onApply}
         propertyConfig={pageProperty.config}
         trigger={trigger}
         value={value}
       />
-    )
+    );
   }
 
   if (cellKind === "checkbox") {
@@ -152,8 +138,8 @@ function DatabaseSelectionPropertyAction({
             { icon: Check, label: "Checked", value: "true" },
             { icon: Minus, label: "Unchecked", value: "false" },
           ].map((option) => {
-            const OptionIcon = option.icon
-            const isCurrent = !mixed && scalarValue === option.value
+            const OptionIcon = option.icon;
+            const isCurrent = !mixed && scalarValue === option.value;
 
             return (
               <button
@@ -166,28 +152,26 @@ function DatabaseSelectionPropertyAction({
                 <span>{option.label}</span>
                 {isCurrent ? <Check className="ml-auto" /> : null}
               </button>
-            )
+            );
           })}
         </PopoverContent>
       </Popover>
-    )
+    );
   }
 
   if (cellKind !== "input") {
-    return customTrigger ?? (
-      <DatabaseSelectionPropertyTrigger disabled property={property} />
-    )
+    return customTrigger ?? <DatabaseSelectionPropertyTrigger disabled property={property} />;
   }
 
   return (
     <Popover
       open={resolvedInputOpen}
       onOpenChange={(nextOpen) => {
-        if (open === undefined) setInputOpen(nextOpen)
-        onOpenChange?.(nextOpen)
+        if (open === undefined) setInputOpen(nextOpen);
+        onOpenChange?.(nextOpen);
 
         if (nextOpen) {
-          setDraftValue(mixed ? "" : scalarValue)
+          setDraftValue(mixed ? "" : scalarValue);
         }
       }}
     >
@@ -196,10 +180,10 @@ function DatabaseSelectionPropertyAction({
         <form
           className="flex gap-2"
           onSubmit={(event) => {
-            event.preventDefault()
-            onApply(draftValue)
-            if (open === undefined) setInputOpen(false)
-            onOpenChange?.(false)
+            event.preventDefault();
+            onApply(draftValue);
+            if (open === undefined) setInputOpen(false);
+            onOpenChange?.(false);
           }}
         >
           <Input
@@ -216,7 +200,7 @@ function DatabaseSelectionPropertyAction({
         </form>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 export function DatabaseTableSelectionToolbar({
@@ -229,49 +213,42 @@ export function DatabaseTableSelectionToolbar({
   properties,
   selectedCount,
 }: {
-  clearSelection: () => void
-  copyLinks: () => void
+  clearSelection: () => void;
+  copyLinks: () => void;
   getSelectionValue: (property: DatabasePropertyListItem) => {
-    mixed: boolean
-    value: DatabasePropertyValueType
-  }
-  onApply: (
-    property: DatabasePropertyListItem,
-    value: DatabasePropertyValueType
-  ) => void
-  onUpdateConfig: (databasePropertyId: string, config: unknown) => Promise<unknown>
-  personOptions: Array<{ id: string; name: string; suffix?: string }>
-  properties: DatabasePropertyListItem[]
-  selectedCount: number
+    mixed: boolean;
+    value: DatabasePropertyValueType;
+  };
+  onApply: (property: DatabasePropertyListItem, value: DatabasePropertyValueType) => void;
+  onUpdateConfig: (databasePropertyId: string, config: unknown) => Promise<unknown>;
+  personOptions: Array<{ id: string; name: string; suffix?: string }>;
+  properties: DatabasePropertyListItem[];
+  selectedCount: number;
 }) {
-  const [menuPropertyId, setMenuPropertyId] = useState<string | null>(null)
-  const [moreOpen, setMoreOpen] = useState(false)
-  const [moreSearch, setMoreSearch] = useState("")
-  const ignoreMenuPropertyCloseUntilRef = useRef(0)
-  const { primary } = splitDatabaseSelectionProperties(properties)
-  const normalizedSearch = moreSearch.trim().toLowerCase()
+  const [menuPropertyId, setMenuPropertyId] = useState<string | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [moreSearch, setMoreSearch] = useState("");
+  const ignoreMenuPropertyCloseUntilRef = useRef(0);
+  const { primary } = splitDatabaseSelectionProperties(properties);
+  const normalizedSearch = moreSearch.trim().toLowerCase();
   const filteredProperties = normalizedSearch
     ? properties.filter((property) =>
-        property.property.name.toLowerCase().includes(normalizedSearch)
+        property.property.name.toLowerCase().includes(normalizedSearch),
       )
-    : properties
+    : properties;
   const showEditProperty =
     filteredProperties.length > 0 &&
     (!normalizedSearch ||
       "edit property".includes(normalizedSearch) ||
-      filteredProperties.length > 0)
-  const showCopyLinks =
-    !normalizedSearch || "copy links to all".includes(normalizedSearch)
-  const showClearSelection =
-    !normalizedSearch || "clear selection".includes(normalizedSearch)
+      filteredProperties.length > 0);
+  const showCopyLinks = !normalizedSearch || "copy links to all".includes(normalizedSearch);
+  const showClearSelection = !normalizedSearch || "clear selection".includes(normalizedSearch);
   const menuProperty = menuPropertyId
-    ? properties.find((property) => property.id === menuPropertyId) ?? null
-    : null
-  const menuSelectionValue = menuProperty
-    ? getSelectionValue(menuProperty)
-    : null
+    ? (properties.find((property) => property.id === menuPropertyId) ?? null)
+    : null;
+  const menuSelectionValue = menuProperty ? getSelectionValue(menuProperty) : null;
   const renderAction = (property: DatabasePropertyListItem) => {
-    const selectionValue = getSelectionValue(property)
+    const selectionValue = getSelectionValue(property);
 
     return (
       <DatabaseSelectionPropertyAction
@@ -283,11 +260,11 @@ export function DatabaseTableSelectionToolbar({
         property={property}
         value={selectionValue.value}
       />
-    )
-  }
+    );
+  };
   const renderMenuAction = (property: DatabasePropertyListItem) => {
-    const PropertyIcon = getDatabasePropertyType(property.property.type).icon
-    const cellKind = getDatabasePropertyCellKind(property.property.type)
+    const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
+    const cellKind = getDatabasePropertyCellKind(property.property.type);
     const canEdit = ![
       "button",
       "files",
@@ -295,25 +272,25 @@ export function DatabaseTableSelectionToolbar({
       "read_only_time",
       "relation",
       "rollup",
-    ].includes(cellKind)
+    ].includes(cellKind);
 
     return (
       <DropDrawerItem
         disabled={!canEdit}
         key={`menu:${property.id}`}
         onSelect={() => {
-          setMoreOpen(false)
+          setMoreOpen(false);
           window.setTimeout(() => {
-            ignoreMenuPropertyCloseUntilRef.current = performance.now() + 250
-            setMenuPropertyId(property.id)
-          }, 100)
+            ignoreMenuPropertyCloseUntilRef.current = performance.now() + 250;
+            setMenuPropertyId(property.id);
+          }, 100);
         }}
       >
         <PropertyIcon />
         <span className="truncate">{property.property.name}</span>
       </DropDrawerItem>
-    )
-  }
+    );
+  };
 
   return (
     <ButtonGroup
@@ -335,16 +312,12 @@ export function DatabaseTableSelectionToolbar({
         <DropDrawer
           open={moreOpen}
           onOpenChange={(open) => {
-            setMoreOpen(open)
-            if (!open) setMoreSearch("")
+            setMoreOpen(open);
+            if (!open) setMoreSearch("");
           }}
         >
           <DropDrawerTrigger asChild>
-            <ButtonGroupItem
-              aria-label="More selected row actions"
-              layout="icon"
-              type="button"
-            >
+            <ButtonGroupItem aria-label="More selected row actions" layout="icon" type="button">
               <MoreHorizontal />
             </ButtonGroupItem>
           </DropDrawerTrigger>
@@ -387,9 +360,7 @@ export function DatabaseTableSelectionToolbar({
               </>
             ) : null}
             {!showEditProperty && !showCopyLinks && !showClearSelection ? (
-              <div className="px-2 py-2 text-sm text-content-secondary">
-                No actions found.
-              </div>
+              <div className="px-2 py-2 text-sm text-content-secondary">No actions found.</div>
             ) : null}
           </DropDrawerContent>
         </DropDrawer>
@@ -398,11 +369,8 @@ export function DatabaseTableSelectionToolbar({
             mixed={menuSelectionValue.mixed}
             onApply={(value) => onApply(menuProperty, value)}
             onOpenChange={(open) => {
-              if (
-                !open &&
-                performance.now() >= ignoreMenuPropertyCloseUntilRef.current
-              ) {
-                setMenuPropertyId(null)
+              if (!open && performance.now() >= ignoreMenuPropertyCloseUntilRef.current) {
+                setMenuPropertyId(null);
               }
             }}
             onUpdateConfig={onUpdateConfig}
@@ -422,5 +390,5 @@ export function DatabaseTableSelectionToolbar({
         ) : null}
       </ButtonGroupSection>
     </ButtonGroup>
-  )
+  );
 }

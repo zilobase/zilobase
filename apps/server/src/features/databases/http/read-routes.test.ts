@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
-import type { AppBindings } from   "../../../shared/types";
-import { responseJson } from   "../../../test-support/response";
+import type { AppBindings } from "../../../shared/types";
+import { responseJson } from "../../../test-support/response";
 
 const mocks = vi.hoisted(() => ({
   access: vi.fn(),
@@ -17,33 +17,43 @@ const mocks = vi.hoisted(() => ({
   verifyTicket: vi.fn(),
 }));
 
-vi.mock(  "../../access", () => ({
+vi.mock("../../access", () => ({
   canAccessDatabaseRecord: mocks.access,
   getEffectiveDatabaseAccessForRecord: mocks.accessLevel,
   getMembership: mocks.membership,
   getWorkspaceRealtimeAccessExpiration: mocks.realtimeExpiration,
   isDatabasePublishedInWorkspace: mocks.published,
 }));
-vi.mock(  "../../../shared/security/database-realtime-ticket", () => ({
+vi.mock("../../../shared/security/database-realtime-ticket", () => ({
   createDatabaseRealtimeTicket: mocks.createTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX: "zilobase-auth.",
   DATABASE_REALTIME_PROTOCOL: "zilobase.database.v2",
   verifyDatabaseRealtimeTicket: mocks.verifyTicket,
 }));
-vi.mock(  "@zilobase/runtime-adapter/capabilities", () => ({
+vi.mock("@zilobase/runtime-adapter/capabilities", () => ({
   getDatabaseRealtimeWebSocketUrl: () => "ws://localhost/realtime",
 }));
-vi.mock(  "../../../infrastructure/database", () => {
+vi.mock("../../../infrastructure/database", () => {
   const emptyQuery = () => {
     const query = {
-      from() { return query; },
-      innerJoin() { return query; },
-      limit() { return Promise.resolve([]); },
-      orderBy() { return Promise.resolve([]); },
+      from() {
+        return query;
+      },
+      innerJoin() {
+        return query;
+      },
+      limit() {
+        return Promise.resolve([]);
+      },
+      orderBy() {
+        return Promise.resolve([]);
+      },
       then(resolve: (value: unknown[]) => unknown) {
         return Promise.resolve([]).then(resolve);
       },
-      where() { return query; },
+      where() {
+        return query;
+      },
     };
     return query;
   };
@@ -56,15 +66,15 @@ vi.mock(  "../../../infrastructure/database", () => {
   };
   return { db, runWithDb: (_transaction: unknown, read: () => Promise<unknown>) => read() };
 });
-vi.mock( "../access/database-access", async (original) => ({
-  ...(await original<typeof import( "../access/database-access")>()),
+vi.mock("../access/database-access", async (original) => ({
+  ...(await original<typeof import("../access/database-access")>()),
   getDatabaseRecord: mocks.getRecord,
 }));
-vi.mock( "../core/payload", () => ({
+vi.mock("../core/payload", () => ({
   getDatabaseExportPayload: mocks.payload,
 }));
 
-import { databaseReadRoutes } from    "./read-routes";
+import { databaseReadRoutes } from "./read-routes";
 
 const record = {
   config: {},
@@ -121,11 +131,17 @@ test("database bootstrap route serves schema-only entities", async () => {
   mocks.published.mockResolvedValue(true);
   const published = await databaseReadRoutes.request("/database-1/bootstrap");
   assert.equal(published.status, 200);
-  assert.equal((await responseJson<{ database: { accessLevel: null } }>(published)).database.accessLevel, null);
+  assert.equal(
+    (await responseJson<{ database: { accessLevel: null } }>(published)).database.accessLevel,
+    null,
+  );
 
   const response = await sessionApp().request("/database-1/bootstrap");
   assert.equal(response.status, 200);
-  assert.equal((await responseJson<{ database: { accessLevel: string } }>(response)).database.accessLevel, "full");
+  assert.equal(
+    (await responseJson<{ database: { accessLevel: string } }>(response)).database.accessLevel,
+    "full",
+  );
   assert.equal(mocks.payload.mock.calls.length, 0);
 });
 
@@ -135,15 +151,12 @@ test("database export route performs an explicit complete source read", async ()
     database: { id: "database-1" },
     rows: [{ id: "row-1" }],
   });
-  const response = await sessionApp().request(
-    "/database-1/export?dataSourceId=source-1",
-  );
+  const response = await sessionApp().request("/database-1/export?dataSourceId=source-1");
 
   assert.equal(response.status, 200);
-  assert.deepEqual(
-    (await responseJson<{ rows: Array<{ id: string }> }>(response)).rows,
-    [{ id: "row-1" }],
-  );
+  assert.deepEqual((await responseJson<{ rows: Array<{ id: string }> }>(response)).rows, [
+    { id: "row-1" },
+  ]);
   assert.deepEqual(mocks.payload.mock.calls[0]?.[3], {
     dataSourceId: "source-1",
   });
@@ -153,22 +166,21 @@ test("database read route authorizes deleted records through membership", async 
   mocks.getRecord.mockResolvedValue({ ...record, deletedAt: new Date() });
   const response = await sessionApp().request("/database-1/bootstrap?includeDeleted=1");
   assert.equal(response.status, 200);
-  assert.equal((await responseJson<{ database: { accessLevel: null } }>(response)).database.accessLevel, null);
+  assert.equal(
+    (await responseJson<{ database: { accessLevel: null } }>(response)).database.accessLevel,
+    null,
+  );
   assert.equal(mocks.membership.mock.calls.length, 1);
 });
 
 test("realtime ticket route requires a session and database access", async () => {
-  const unauthorized = await databaseReadRoutes.request(
-    "/database-1/realtime-ticket",
-    { method: "POST" },
-  );
+  const unauthorized = await databaseReadRoutes.request("/database-1/realtime-ticket", {
+    method: "POST",
+  });
   assert.equal(unauthorized.status, 401);
 
   mocks.accessLevel.mockResolvedValue("none");
-  const forbidden = await sessionApp().request(
-    "/database-1/realtime-ticket",
-    { method: "POST" },
-  );
+  const forbidden = await sessionApp().request("/database-1/realtime-ticket", { method: "POST" });
   assert.equal(forbidden.status, 403);
 });
 
@@ -178,14 +190,11 @@ test("realtime ticket route creates and refreshes scoped tickets", async () => {
     sessionId: "session-1",
     user: { id: "user-1" },
   });
-  const response = await sessionApp().request(
-    "/database-1/realtime-ticket",
-    {
-      body: JSON.stringify({ token: "old-ticket" }),
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    },
-  );
+  const response = await sessionApp().request("/database-1/realtime-ticket", {
+    body: JSON.stringify({ token: "old-ticket" }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
   const body = await responseJson<{
     databaseId: string;
     websocketProtocols: string[];
@@ -194,10 +203,7 @@ test("realtime ticket route creates and refreshes scoped tickets", async () => {
   assert.equal(response.status, 200);
   assert.equal(body.databaseId, "database-1");
   assert.equal(body.websocketUrl, "ws://localhost/realtime?database=database-1");
-  assert.deepEqual(body.websocketProtocols, [
-    "zilobase.database.v2",
-    "zilobase-auth.ticket",
-  ]);
+  assert.deepEqual(body.websocketProtocols, ["zilobase.database.v2", "zilobase-auth.ticket"]);
   assert.equal(mocks.createTicket.mock.calls[0]?.[0].sessionId, "session-1");
 });
 
@@ -210,7 +216,6 @@ test("published route reports missing and published databases", async () => {
   const response = await databaseReadRoutes.request("/database-1/published");
   assert.deepEqual(await response.json(), { published: true });
 });
-
 
 test("OAuth database workspace binding retains the existing ACL", async () => {
   const app = new Hono<AppBindings>();

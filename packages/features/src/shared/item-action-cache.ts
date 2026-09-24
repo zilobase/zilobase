@@ -27,9 +27,7 @@ export function isPageFavoriteInCache(
   pageId: string,
   workspaceId?: string | null,
 ) {
-  return Boolean(
-    getPageFromCache(queryClient, pageId, workspaceId)?.isFavorite,
-  );
+  return Boolean(getPageFromCache(queryClient, pageId, workspaceId)?.isFavorite);
 }
 
 export async function favoritePages({
@@ -136,8 +134,7 @@ export async function invalidateRestoredItems({
       : Promise.resolve(),
     ...result.restoredDatabaseIds.map((databaseId) =>
       queryClient.invalidateQueries({
-        predicate: (query) =>
-          query.queryKey[0] === "db" && query.queryKey.includes(databaseId),
+        predicate: (query) => query.queryKey[0] === "db" && query.queryKey.includes(databaseId),
       }),
     ),
     ...result.restoredDatabaseIds.map((databaseId) =>
@@ -152,46 +149,30 @@ export async function invalidateRestoredItems({
 }
 
 export function setPageDetailCache(queryClient: QueryClient, page: Page) {
-  queryClient.setQueryData<PageDetail | null>(
-    pageQueryKey(page.id),
-    (current) => ({
-      accessLevel: current?.accessLevel ?? null,
-      databaseIds: current?.databaseIds ?? [],
-      page,
-    }),
-  );
+  queryClient.setQueryData<PageDetail | null>(pageQueryKey(page.id), (current) => ({
+    accessLevel: current?.accessLevel ?? null,
+    databaseIds: current?.databaseIds ?? [],
+    page,
+  }));
 }
 
-function getPageFromCache(
-  queryClient: QueryClient,
-  pageId: string,
-  workspaceId?: string | null,
-) {
-  const detail = queryClient.getQueryData<PageDetail | null>(
-    pageQueryKey(pageId),
-  );
+function getPageFromCache(queryClient: QueryClient, pageId: string, workspaceId?: string | null) {
+  const detail = queryClient.getQueryData<PageDetail | null>(pageQueryKey(pageId));
 
   if (detail?.page.id === pageId) {
     return detail.page;
   }
 
   const workspacePages = workspaceId
-    ? queryClient.getQueryData<PageNavigationPayload>(
-        pagesQueryKey(workspaceId),
-      )
+    ? queryClient.getQueryData<PageNavigationPayload>(pagesQueryKey(workspaceId))
     : null;
-  const page = workspacePages?.pages.find(
-    (candidate) => candidate.id === pageId,
-  );
+  const page = workspacePages?.pages.find((candidate) => candidate.id === pageId);
 
   if (page) {
     return page;
   }
 
-  for (const [
-    ,
-    navigation,
-  ] of queryClient.getQueriesData<PageNavigationPayload>({
+  for (const [, navigation] of queryClient.getQueriesData<PageNavigationPayload>({
     queryKey: pagesRootQueryKey(),
   })) {
     const page = navigation?.pages.find((candidate) => candidate.id === pageId);

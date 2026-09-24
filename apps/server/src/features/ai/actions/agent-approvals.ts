@@ -15,40 +15,49 @@ export async function requestAgentActionApproval(input: {
   toolInput: unknown;
   userId: string;
   workspaceId: string;
-}): Promise<AgentToolResult<{ approval: {
-  actionId: string;
-  expiresAt: string;
-  title: string;
-  toolName: string;
-} }>> {
+}): Promise<
+  AgentToolResult<{
+    approval: {
+      actionId: string;
+      expiresAt: string;
+      title: string;
+      toolName: string;
+    };
+  }>
+> {
   const id = crypto.randomUUID();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + APPROVAL_TTL_MS);
   const inputHash = await hashAgentToolInput(input.toolInput);
-  await db.insert(aiAgentPendingAction).values({
-    createdAt: now,
-    expiresAt,
-    id,
-    inputHash,
-    status: "pending",
-    threadId: input.threadId,
-    toolCallId: input.toolCallId,
-    toolInput: input.toolInput,
-    toolName: input.descriptor.name,
-    toolVersion: input.descriptor.version,
-    updatedAt: now,
-    userId: input.userId,
-    workspaceId: input.workspaceId,
-  }).onConflictDoNothing({
-    target: [aiAgentPendingAction.threadId, aiAgentPendingAction.toolCallId],
-  });
+  await db
+    .insert(aiAgentPendingAction)
+    .values({
+      createdAt: now,
+      expiresAt,
+      id,
+      inputHash,
+      status: "pending",
+      threadId: input.threadId,
+      toolCallId: input.toolCallId,
+      toolInput: input.toolInput,
+      toolName: input.descriptor.name,
+      toolVersion: input.descriptor.version,
+      updatedAt: now,
+      userId: input.userId,
+      workspaceId: input.workspaceId,
+    })
+    .onConflictDoNothing({
+      target: [aiAgentPendingAction.threadId, aiAgentPendingAction.toolCallId],
+    });
   const [persisted] = await db
     .select()
     .from(aiAgentPendingAction)
-    .where(and(
-      eq(aiAgentPendingAction.threadId, input.threadId),
-      eq(aiAgentPendingAction.toolCallId, input.toolCallId),
-    ))
+    .where(
+      and(
+        eq(aiAgentPendingAction.threadId, input.threadId),
+        eq(aiAgentPendingAction.toolCallId, input.toolCallId),
+      ),
+    )
     .limit(1);
   if (
     !persisted ||
@@ -84,12 +93,14 @@ export async function getOwnedPendingAgentAction(input: {
   const [action] = await db
     .select()
     .from(aiAgentPendingAction)
-    .where(and(
-      eq(aiAgentPendingAction.id, input.actionId),
-      eq(aiAgentPendingAction.threadId, input.threadId),
-      eq(aiAgentPendingAction.userId, input.userId),
-      eq(aiAgentPendingAction.workspaceId, input.workspaceId),
-    ))
+    .where(
+      and(
+        eq(aiAgentPendingAction.id, input.actionId),
+        eq(aiAgentPendingAction.threadId, input.threadId),
+        eq(aiAgentPendingAction.userId, input.userId),
+        eq(aiAgentPendingAction.workspaceId, input.workspaceId),
+      ),
+    )
     .limit(1);
   return action ?? null;
 }
@@ -104,13 +115,15 @@ export async function rejectPendingAgentAction(input: {
   const [action] = await db
     .update(aiAgentPendingAction)
     .set({ rejectedAt: now, status: "rejected", updatedAt: now })
-    .where(and(
-      eq(aiAgentPendingAction.id, input.actionId),
-      eq(aiAgentPendingAction.threadId, input.threadId),
-      eq(aiAgentPendingAction.userId, input.userId),
-      eq(aiAgentPendingAction.workspaceId, input.workspaceId),
-      eq(aiAgentPendingAction.status, "pending"),
-    ))
+    .where(
+      and(
+        eq(aiAgentPendingAction.id, input.actionId),
+        eq(aiAgentPendingAction.threadId, input.threadId),
+        eq(aiAgentPendingAction.userId, input.userId),
+        eq(aiAgentPendingAction.workspaceId, input.workspaceId),
+        eq(aiAgentPendingAction.status, "pending"),
+      ),
+    )
     .returning({ id: aiAgentPendingAction.id });
   return action ?? null;
 }
@@ -125,14 +138,16 @@ export async function markPendingAgentActionExecuting(input: {
   const [action] = await db
     .update(aiAgentPendingAction)
     .set({ approvedAt: now, status: "executing", updatedAt: now })
-    .where(and(
-      eq(aiAgentPendingAction.id, input.actionId),
-      eq(aiAgentPendingAction.threadId, input.threadId),
-      eq(aiAgentPendingAction.userId, input.userId),
-      eq(aiAgentPendingAction.workspaceId, input.workspaceId),
-      eq(aiAgentPendingAction.status, "pending"),
-      gt(aiAgentPendingAction.expiresAt, now),
-    ))
+    .where(
+      and(
+        eq(aiAgentPendingAction.id, input.actionId),
+        eq(aiAgentPendingAction.threadId, input.threadId),
+        eq(aiAgentPendingAction.userId, input.userId),
+        eq(aiAgentPendingAction.workspaceId, input.workspaceId),
+        eq(aiAgentPendingAction.status, "pending"),
+        gt(aiAgentPendingAction.expiresAt, now),
+      ),
+    )
     .returning();
   return action ?? null;
 }
@@ -142,10 +157,7 @@ export async function expirePendingAgentAction(actionId: string) {
   await db
     .update(aiAgentPendingAction)
     .set({ status: "expired", updatedAt: now })
-    .where(and(
-      eq(aiAgentPendingAction.id, actionId),
-      eq(aiAgentPendingAction.status, "pending"),
-    ));
+    .where(and(eq(aiAgentPendingAction.id, actionId), eq(aiAgentPendingAction.status, "pending")));
 }
 
 export async function finishPendingAgentAction(input: {
@@ -163,8 +175,10 @@ export async function finishPendingAgentAction(input: {
       status: input.error ? "failed" : "succeeded",
       updatedAt: now,
     })
-    .where(and(
-      eq(aiAgentPendingAction.id, input.actionId),
-      eq(aiAgentPendingAction.status, "executing"),
-    ));
+    .where(
+      and(
+        eq(aiAgentPendingAction.id, input.actionId),
+        eq(aiAgentPendingAction.status, "executing"),
+      ),
+    );
 }

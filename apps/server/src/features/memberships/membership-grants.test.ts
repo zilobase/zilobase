@@ -13,7 +13,9 @@ test("membership grants run edition policy and audit inside the transaction", as
   const extension: ZilobaseEditionExtension = {
     id: "test-edition",
     capabilities: [],
-    async createAuthPlugins() { return []; },
+    async createAuthPlugins() {
+      return [];
+    },
     async beforeMembershipGrant(input) {
       assert.equal(input.database, database);
       events.push(`policy:${input.source}`);
@@ -45,10 +47,7 @@ test("membership grants run edition policy and audit inside the transaction", as
   ]);
 });
 
-function createMembershipDatabase(
-  rows: Array<Record<string, unknown>>,
-  events: string[],
-) {
+function createMembershipDatabase(rows: Array<Record<string, unknown>>, events: string[]) {
   const teamspaceRows: Array<Record<string, unknown>> = [];
   const principalRows: Array<Record<string, unknown>> = [];
   const database = {
@@ -62,11 +61,7 @@ function createMembershipDatabase(
           return {
             where() {
               const selectedRows =
-                table === member
-                  ? rows
-                  : table === teamspace
-                    ? teamspaceRows
-                    : principalRows;
+                table === member ? rows : table === teamspace ? teamspaceRows : principalRows;
               const result = Promise.resolve(selectedRows);
 
               return {
@@ -86,11 +81,7 @@ function createMembershipDatabase(
               return {
                 async returning() {
                   const selectedRows =
-                    table === member
-                      ? rows
-                      : table === teamspace
-                        ? teamspaceRows
-                        : principalRows;
+                    table === member ? rows : table === teamspace ? teamspaceRows : principalRows;
                   const created = {
                     createdAt: new Date(),
                     ...value,

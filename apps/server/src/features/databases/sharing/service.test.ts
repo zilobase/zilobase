@@ -22,41 +22,53 @@ vi.mock("../../teamspaces", () => ({
 vi.mock("../../../infrastructure/database", () => ({
   db: (() => {
     const databaseMock = {
-    delete() {
-      return {
-        async where(value: unknown) { mocks.delete(value); },
-      };
-    },
-    insert() {
-      mocks.insert();
-      return {
-        values(value: unknown) {
-          mocks.values(value);
-          return {
-            onConflictDoUpdate(config: unknown) {
-              mocks.conflict(config);
-              return {
-                async returning() { return mocks.insertRows; },
-              };
-            },
-          };
-        },
-      };
-    },
-    select() {
-      mocks.select();
-      const rows = mocks.selectResults.shift() ?? [];
-      const builder = {
-        from() { return builder; },
-        where() { return builder; },
-        orderBy() { return builder; },
-        async limit() { return rows; },
-        then(resolve: (value: unknown[]) => unknown) {
-          return Promise.resolve(rows).then(resolve);
-        },
-      };
-      return builder;
-    },
+      delete() {
+        return {
+          async where(value: unknown) {
+            mocks.delete(value);
+          },
+        };
+      },
+      insert() {
+        mocks.insert();
+        return {
+          values(value: unknown) {
+            mocks.values(value);
+            return {
+              onConflictDoUpdate(config: unknown) {
+                mocks.conflict(config);
+                return {
+                  async returning() {
+                    return mocks.insertRows;
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+      select() {
+        mocks.select();
+        const rows = mocks.selectResults.shift() ?? [];
+        const builder = {
+          from() {
+            return builder;
+          },
+          where() {
+            return builder;
+          },
+          orderBy() {
+            return builder;
+          },
+          async limit() {
+            return rows;
+          },
+          then(resolve: (value: unknown[]) => unknown) {
+            return Promise.resolve(rows).then(resolve);
+          },
+        };
+        return builder;
+      },
       async transaction(callback: (tx: unknown) => Promise<unknown>) {
         return callback(databaseMock);
       },
@@ -110,19 +122,13 @@ test("listDatabaseAccessRulesService returns ordered rules", async () => {
     }),
     { access: rules },
   );
-  assert.deepEqual(mocks.requireAccess.mock.calls[0], [
-    "database-1",
-    "user-1",
-    "full",
-  ]);
+  assert.deepEqual(mocks.requireAccess.mock.calls[0], ["database-1", "user-1", "full"]);
 });
 
 test("upsertDatabaseAccessRuleService creates public view access", async () => {
   const rule = { id: "rule-1", targetId: "*", targetType: "public" };
   mocks.insertRows = [rule];
-  vi.spyOn(crypto, "randomUUID").mockReturnValue(
-    "00000000-0000-4000-8000-000000000001",
-  );
+  vi.spyOn(crypto, "randomUUID").mockReturnValue("00000000-0000-4000-8000-000000000001");
 
   assert.deepEqual(
     await upsertDatabaseAccessRuleService({
@@ -153,8 +159,7 @@ test("teamspace security can disable database public sharing", async () => {
       databaseId: "database-1",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 403,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 403,
   );
   assert.equal(mocks.insert.mock.calls.length, 0);
 });
@@ -202,10 +207,7 @@ for (const [body, message] of [
   [null, "A JSON body is required"],
   [{ targetType: "invalid" }, "targetType must be public, user, team, or agent"],
   [{ targetType: "user" }, "targetId is required"],
-  [
-    { targetId: "user-1", targetType: "user" },
-    "accessLevel must be view, edit, or full",
-  ],
+  [{ targetId: "user-1", targetType: "user" }, "accessLevel must be view, edit, or full"],
   [
     { accessLevel: "full", targetId: "*", targetType: "public" },
     "public access must be view for *",
@@ -219,17 +221,13 @@ for (const [body, message] of [
         userId: "user-1",
       }),
       (error: unknown) =>
-        error instanceof ServiceMutationError &&
-        error.status === 400 &&
-        error.message === message,
+        error instanceof ServiceMutationError && error.status === 400 && error.message === message,
     );
   });
 }
 
 test("upsertDatabaseAccessRuleService checks access before body validation", async () => {
-  mocks.requireAccess.mockRejectedValue(
-    new ServiceMutationError("Forbidden", 403),
-  );
+  mocks.requireAccess.mockRejectedValue(new ServiceMutationError("Forbidden", 403));
 
   await assert.rejects(
     upsertDatabaseAccessRuleService({
@@ -237,8 +235,7 @@ test("upsertDatabaseAccessRuleService checks access before body validation", asy
       databaseId: "database-1",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 403,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 403,
   );
 });
 

@@ -35,9 +35,15 @@ export type RoomPeer<Attachment = unknown> = {
 };
 
 export interface RoomHost<Attachment = unknown> {
-  onMessage(handler: (peer: RoomPeer<Attachment>, message: RoomMessage) => void | Promise<void>): Unsubscribe;
-  onClose(handler: (peer: RoomPeer<Attachment>, event: RoomClose) => void | Promise<void>): Unsubscribe;
-  onError(handler: (peer: RoomPeer<Attachment>, error: unknown) => void | Promise<void>): Unsubscribe;
+  onMessage(
+    handler: (peer: RoomPeer<Attachment>, message: RoomMessage) => void | Promise<void>,
+  ): Unsubscribe;
+  onClose(
+    handler: (peer: RoomPeer<Attachment>, event: RoomClose) => void | Promise<void>,
+  ): Unsubscribe;
+  onError(
+    handler: (peer: RoomPeer<Attachment>, error: unknown) => void | Promise<void>,
+  ): Unsubscribe;
   peers(): readonly RoomPeer<Attachment>[];
   send(peer: RoomPeer<Attachment>, payload: RoomMessage): void;
   broadcast(payload: RoomMessage, options?: { except?: RoomPeer<Attachment> }): void;
@@ -55,7 +61,10 @@ export interface RoomState {
 
 export interface FanoutBus {
   publish(channel: string, payload: unknown): Promise<void>;
-  subscribe(channel: string, handler: (payload: unknown) => void | Promise<void>): Promise<Unsubscribe>;
+  subscribe(
+    channel: string,
+    handler: (payload: unknown) => void | Promise<void>,
+  ): Promise<Unsubscribe>;
 }
 
 export interface Scheduler {
@@ -136,7 +145,9 @@ export type OutboundRequest = {
 };
 
 export interface OutboundFetch {
-  fetchWebhook(request: OutboundRequest & { body: string; pinnedAddress: string }): Promise<Response>;
+  fetchWebhook(
+    request: OutboundRequest & { body: string; pinnedAddress: string },
+  ): Promise<Response>;
   fetchMcp(request: OutboundRequest): Promise<Response>;
 }
 
@@ -159,7 +170,12 @@ export type FetchApplication = {
 
 export interface HttpHost {
   serve(api: FetchApplication, webDist?: string): Promise<void>;
-  fetch(api: FetchApplication, request: Request, env: RuntimeEnv, execution?: unknown): Promise<Response>;
+  fetch(
+    api: FetchApplication,
+    request: Request,
+    env: RuntimeEnv,
+    execution?: unknown,
+  ): Promise<Response>;
   close(): Promise<void>;
 }
 
@@ -195,15 +211,19 @@ export type MeetingRecorderInput = {
 };
 
 export interface Meetings {
-  claim(input: MeetingRecorderInput & {
-    recorderImage?: string | null;
-    recorderName?: string;
-    workspaceId: string;
-  }): Promise<MeetingRecorderState>;
-  transition(input: MeetingRecorderInput & {
-    action: "pause" | "resume" | "start" | "stop";
-    durationMs?: number;
-  }): Promise<MeetingRecorderState>;
+  claim(
+    input: MeetingRecorderInput & {
+      recorderImage?: string | null;
+      recorderName?: string;
+      workspaceId: string;
+    },
+  ): Promise<MeetingRecorderState>;
+  transition(
+    input: MeetingRecorderInput & {
+      action: "pause" | "resume" | "start" | "stop";
+      durationMs?: number;
+    },
+  ): Promise<MeetingRecorderState>;
   release(input: MeetingRecorderInput): Promise<void>;
   get(meetingId: string): Promise<MeetingRecorderState | null>;
   applyTranscript(input: {
@@ -300,10 +320,7 @@ export interface RoomController {
   close(): void | Promise<void>;
 }
 
-export type RoomControllerFactory = (
-  roomId: string,
-  ports: RoomPorts,
-) => RoomController;
+export type RoomControllerFactory = (roomId: string, ports: RoomPorts) => RoomController;
 
 export type RuntimeRoomKind =
   | "calendar"

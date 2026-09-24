@@ -1,12 +1,12 @@
-export { createEditorDragDrop } from "./block-drag-controller"
-export type { DragDropBridge } from "./block-drag-controller"
-export { dropCrossEditorBlock, dropEditorBlock } from "./block-drop"
+export { createEditorDragDrop } from "./block-drag-controller";
+export type { DragDropBridge } from "./block-drag-controller";
+export { dropCrossEditorBlock, dropEditorBlock } from "./block-drop";
 export {
   canMoveDatabaseBlockToPage,
   getBlockDragDatabaseId,
   isMultiBlockDragPayload,
   type BlockDragPayload,
-} from "./block-drag-session"
+} from "./block-drag-session";
 
 export {
   getBlockCommentHandleRect,
@@ -14,9 +14,9 @@ export {
   getEditorInsertDropTarget,
   resolveBlockInsertPos,
   resolveBlockDragTargetFromPoint,
-} from "./block-drag-geometry"
+} from "./block-drag-geometry";
 
-export { getDatabaseBlockDragImagePlacement } from "./block-drag-preview"
+export { getDatabaseBlockDragImagePlacement } from "./block-drag-preview";
 
 export {
   armBlockDrag,
@@ -26,4 +26,4 @@ export {
   getDraggedEditorBlockPayload,
   registerBlockDragSource,
   startBlockDrag,
-} from "./block-drag-session"
+} from "./block-drag-session";

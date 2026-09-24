@@ -29,10 +29,7 @@ export function PersonPropertySettings({
   onUpdateConfig,
 }: {
   config: Required<
-    Pick<
-      DatabasePropertyConfig,
-      "personDefault" | "personLimit" | "personNotifications"
-    >
+    Pick<DatabasePropertyConfig, "personDefault" | "personLimit" | "personNotifications">
   >;
   onUpdateConfig: (config: DatabasePropertyConfig) => void;
 }) {
@@ -55,9 +52,7 @@ export function PersonPropertySettings({
       <PropertySettingSubmenu
         icon={<Bell />}
         label="Notifications"
-        onSelect={(personNotifications) =>
-          onUpdateConfig({ personNotifications })
-        }
+        onSelect={(personNotifications) => onUpdateConfig({ personNotifications })}
         options={personNotificationsOptions}
         selectedValue={config.personNotifications}
       />
@@ -67,9 +62,7 @@ export function PersonPropertySettings({
 
 export function getPersonPropertyConfig(config: unknown) {
   const parsedConfig =
-    config && typeof config === "object"
-      ? (config as DatabasePropertyConfig)
-      : {};
+    config && typeof config === "object" ? (config as DatabasePropertyConfig) : {};
 
   return {
     personDefault: isPersonDefaultValue(parsedConfig.personDefault)
@@ -78,9 +71,7 @@ export function getPersonPropertyConfig(config: unknown) {
     personLimit: isPersonLimitValue(parsedConfig.personLimit)
       ? parsedConfig.personLimit
       : "no_limit",
-    personNotifications: isPersonNotificationsValue(
-      parsedConfig.personNotifications,
-    )
+    personNotifications: isPersonNotificationsValue(parsedConfig.personNotifications)
       ? parsedConfig.personNotifications
       : "users_only",
   };
@@ -94,10 +85,6 @@ function isPersonDefaultValue(value: unknown): value is PersonDefaultValue {
   return value === "no_default" || value === "created_by";
 }
 
-function isPersonNotificationsValue(
-  value: unknown,
-): value is PersonNotificationsValue {
-  return (
-    value === "users_and_groups" || value === "users_only" || value === "none"
-  );
+function isPersonNotificationsValue(value: unknown): value is PersonNotificationsValue {
+  return value === "users_and_groups" || value === "users_only" || value === "none";
 }

@@ -13,11 +13,13 @@ async function connect(connectionId: string) {
     `https://example.com/mail-realtime?connection=${connectionId}`,
     {
       headers: {
-        [CLAIMS_HEADER]: encodeURIComponent(JSON.stringify({
-          connectionId,
-          exp: Date.now() + 60_000,
-          userId: "user-1",
-        })),
+        [CLAIMS_HEADER]: encodeURIComponent(
+          JSON.stringify({
+            connectionId,
+            exp: Date.now() + 60_000,
+            userId: "user-1",
+          }),
+        ),
         Upgrade: "websocket",
       },
     },
@@ -55,21 +57,30 @@ describe("MailNotificationRoom in the Workers runtime", () => {
   it("rejects malformed notification events", async () => {
     const stub = env.MAIL_NOTIFICATION_ROOM.getByName("user-1");
     await runInDurableObject(stub, async (instance: MailNotificationRoom) => {
-      expect(() => instance.publishNotification({
-        connectionId: "connection-1",
-        revision: -1,
-        userId: "user-1",
-      })).toThrow("Invalid mail notification event");
+      expect(() =>
+        instance.publishNotification({
+          connectionId: "connection-1",
+          revision: -1,
+          userId: "user-1",
+        }),
+      ).toThrow("Invalid mail notification event");
     });
   });
 });
 
 function nextMessage(socket: WebSocket) {
   return new Promise<string>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Timed out waiting for mail realtime message")), 2_000);
-    socket.addEventListener("message", (event) => {
-      clearTimeout(timeout);
-      resolve(String(event.data));
-    }, { once: true });
+    const timeout = setTimeout(
+      () => reject(new Error("Timed out waiting for mail realtime message")),
+      2_000,
+    );
+    socket.addEventListener(
+      "message",
+      (event) => {
+        clearTimeout(timeout);
+        resolve(String(event.data));
+      },
+      { once: true },
+    );
   });
 }

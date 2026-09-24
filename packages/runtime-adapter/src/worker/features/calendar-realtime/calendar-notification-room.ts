@@ -17,32 +17,41 @@ const PONG = JSON.stringify({ type: "calendar.pong" });
 
 export class CalendarNotificationRoom extends DurableObject<WorkerEnvBindings> {
   private readonly host: WorkerRoomHost<SocketAttachment>;
-  private readonly room: ReturnType<typeof createNotificationRoom<CalendarRealtimeTicketClaims, CalendarNotificationEvent>>;
+  private readonly room: ReturnType<
+    typeof createNotificationRoom<CalendarRealtimeTicketClaims, CalendarNotificationEvent>
+  >;
 
   constructor(ctx: DurableObjectState, env: WorkerEnvBindings) {
     super(ctx, env);
     this.host = createWorkerRoomHost(ctx);
-    this.room = createNotificationRoom("calendar", {
-      host: this.host,
-      telemetry: createWorkerTelemetry({ env }),
-    }, {
-      encode: (event) => JSON.stringify({
-        bindingId: event.bindingId,
-        calendarId: event.calendarId,
-        generation: event.generation,
-        revision: event.revision,
-        type: "calendar.invalidate",
-        workspaceId: event.workspaceId,
-      }),
-      errorReason: "Calendar realtime WebSocket error",
-      expiredReason: "Calendar realtime ticket expired",
-      matches: (claims, event) => claims.bindingId === event.bindingId &&
-        claims.userId === event.userId && claims.workspaceId === event.workspaceId &&
-        claims.accountId === event.accountId,
-      ping: PING,
-      pong: PONG,
-      validate: isValidNotification,
-    });
+    this.room = createNotificationRoom(
+      "calendar",
+      {
+        host: this.host,
+        telemetry: createWorkerTelemetry({ env }),
+      },
+      {
+        encode: (event) =>
+          JSON.stringify({
+            bindingId: event.bindingId,
+            calendarId: event.calendarId,
+            generation: event.generation,
+            revision: event.revision,
+            type: "calendar.invalidate",
+            workspaceId: event.workspaceId,
+          }),
+        errorReason: "Calendar realtime WebSocket error",
+        expiredReason: "Calendar realtime ticket expired",
+        matches: (claims, event) =>
+          claims.bindingId === event.bindingId &&
+          claims.userId === event.userId &&
+          claims.workspaceId === event.workspaceId &&
+          claims.accountId === event.accountId,
+        ping: PING,
+        pong: PONG,
+        validate: isValidNotification,
+      },
+    );
     void this.room.controller.start();
   }
 
@@ -93,7 +102,11 @@ export class CalendarNotificationRoom extends DurableObject<WorkerEnvBindings> {
 function isValidNotification(event: unknown): event is CalendarNotificationEvent {
   if (!event || typeof event !== "object") return false;
   const value = event as Record<string, unknown>;
-  return typeof value.bindingId === "string" && typeof value.calendarId === "string" &&
-    Number.isSafeInteger(value.generation) && Number.isSafeInteger(value.revision) &&
-    (value.revision as number) >= 0;
+  return (
+    typeof value.bindingId === "string" &&
+    typeof value.calendarId === "string" &&
+    Number.isSafeInteger(value.generation) &&
+    Number.isSafeInteger(value.revision) &&
+    (value.revision as number) >= 0
+  );
 }

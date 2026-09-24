@@ -1,7 +1,4 @@
-import {
-  AGENT_ICON_COLORS,
-  AGENT_ICON_NAMES,
-} from "@zilobase/features/ai-chat/live-agent";
+import { AGENT_ICON_COLORS, AGENT_ICON_NAMES } from "@zilobase/features/ai-chat/live-agent";
 import * as z from "zod";
 
 export const AGENT_CREATABLE_DATABASE_PROPERTY_TYPES = [
@@ -100,86 +97,103 @@ const databaseBlueprintPropertySchema = z.object({
 });
 
 export const databaseBlueprintViewSchema = z.object({
-  filters: z.array(z.object({
-    joinOperator: z.enum(["and", "or"]).optional(),
-    operator: databaseFilterOperatorSchema,
-    property: z.string().trim().min(1).max(120),
-    values: z.array(z.string().max(1_000)).max(10).default([]),
-  })).max(20).optional(),
+  filters: z
+    .array(
+      z.object({
+        joinOperator: z.enum(["and", "or"]).optional(),
+        operator: databaseFilterOperatorSchema,
+        property: z.string().trim().min(1).max(120),
+        values: z.array(z.string().max(1_000)).max(10).default([]),
+      }),
+    )
+    .max(20)
+    .optional(),
   groupBy: z.string().trim().min(1).max(120).optional(),
   icon: agentGlyphSchema.optional(),
   hiddenProperties: z.array(z.string().trim().min(1).max(120)).max(30).optional(),
   name: z.string().trim().min(1).max(120),
-  sorts: z.array(z.object({
-    direction: z.enum(["ascending", "descending"]),
-    property: z.string().trim().min(1).max(120),
-  })).max(10).optional(),
+  sorts: z
+    .array(
+      z.object({
+        direction: z.enum(["ascending", "descending"]),
+        property: z.string().trim().min(1).max(120),
+      }),
+    )
+    .max(10)
+    .optional(),
   timelineDateProperty: z.string().trim().min(1).max(120).optional(),
   type: agentDatabaseViewTypeSchema,
   useDefault: z.boolean().optional(),
 });
 
-export const databaseBlueprintSchema = z.object({
-  databaseName: z.string().trim().min(1).max(240),
-  hostPage: z.object({
+export const databaseBlueprintSchema = z
+  .object({
+    databaseName: z.string().trim().min(1).max(240),
+    hostPage: z
+      .object({
+        emoji: z.string().trim().max(32).optional(),
+        icon: agentIconSchema.optional(),
+        markdown: z.string().trim().max(64_000).optional(),
+        name: z.string().trim().min(1).max(240),
+        parentPageId: z.string().trim().min(1).optional(),
+      })
+      .refine((value) => !(value.emoji && value.icon), {
+        message: "Choose either an emoji or a colored icon for the host page.",
+      })
+      .optional(),
     emoji: z.string().trim().max(32).optional(),
     icon: agentIconSchema.optional(),
-    markdown: z.string().trim().max(64_000).optional(),
-    name: z.string().trim().min(1).max(240),
-    parentPageId: z.string().trim().min(1).optional(),
-  }).refine((value) => !(value.emoji && value.icon), {
-    message: "Choose either an emoji or a colored icon for the host page.",
-  }).optional(),
-  emoji: z.string().trim().max(32).optional(),
-  icon: agentIconSchema.optional(),
-  pageId: z.string().trim().min(1).optional(),
-  placement: z.enum(["standalone", "inline"]),
-  properties: z.array(databaseBlueprintPropertySchema).max(30).default([]),
-  rows: z.array(z.object({
-    markdown: z.string().trim().max(64_000).optional(),
-    title: z.string().trim().min(1).max(240),
-    values: z.record(z.string(), z.unknown()).default({}),
-  })).max(50).default([]),
-  showInlineDatabaseTitle: z.boolean().optional(),
-  teamspaceId: z.string().trim().min(1).nullable().optional(),
-  views: z.array(databaseBlueprintViewSchema).max(10).default([]),
-}).refine(
-  (value) => !(value.emoji && value.icon),
-  { message: "Choose either an emoji or a colored icon for the database." },
-).refine(
-  (value) =>
-    value.placement === "standalone" || Boolean(value.pageId || value.hostPage),
-  { message: "Inline databases require pageId or hostPage." },
-).refine(
-  (value) =>
-    value.placement === "inline" || (!value.pageId && !value.hostPage),
-  { message: "Standalone databases must not include pageId or hostPage." },
-).refine(
-  (value) =>
-    value.rows.reduce((total, row) => total + Object.keys(row.values).length, 0) <=
-      500,
-  { message: "A database blueprint can set at most 500 cell values." },
-).superRefine((value, context) => {
-  const references = new Set<string>();
+    pageId: z.string().trim().min(1).optional(),
+    placement: z.enum(["standalone", "inline"]),
+    properties: z.array(databaseBlueprintPropertySchema).max(30).default([]),
+    rows: z
+      .array(
+        z.object({
+          markdown: z.string().trim().max(64_000).optional(),
+          title: z.string().trim().min(1).max(240),
+          values: z.record(z.string(), z.unknown()).default({}),
+        }),
+      )
+      .max(50)
+      .default([]),
+    showInlineDatabaseTitle: z.boolean().optional(),
+    teamspaceId: z.string().trim().min(1).nullable().optional(),
+    views: z.array(databaseBlueprintViewSchema).max(10).default([]),
+  })
+  .refine((value) => !(value.emoji && value.icon), {
+    message: "Choose either an emoji or a colored icon for the database.",
+  })
+  .refine((value) => value.placement === "standalone" || Boolean(value.pageId || value.hostPage), {
+    message: "Inline databases require pageId or hostPage.",
+  })
+  .refine((value) => value.placement === "inline" || (!value.pageId && !value.hostPage), {
+    message: "Standalone databases must not include pageId or hostPage.",
+  })
+  .refine(
+    (value) => value.rows.reduce((total, row) => total + Object.keys(row.values).length, 0) <= 500,
+    { message: "A database blueprint can set at most 500 cell values." },
+  )
+  .superRefine((value, context) => {
+    const references = new Set<string>();
 
-  for (const [index, property] of value.properties.entries()) {
-    const propertyReferences = new Map(
-      [property.key, property.name].map((reference) => [
-        reference.trim().toLowerCase(),
-        reference,
-      ]),
-    );
-    for (const [normalized, reference] of propertyReferences) {
-      if (references.has(normalized)) {
-        context.addIssue({
-          code: "custom",
-          message: `Property key and name references must be unique; “${reference}” is duplicated.`,
-          path: ["properties", index],
-        });
+    for (const [index, property] of value.properties.entries()) {
+      const propertyReferences = new Map(
+        [property.key, property.name].map((reference) => [
+          reference.trim().toLowerCase(),
+          reference,
+        ]),
+      );
+      for (const [normalized, reference] of propertyReferences) {
+        if (references.has(normalized)) {
+          context.addIssue({
+            code: "custom",
+            message: `Property key and name references must be unique; “${reference}” is duplicated.`,
+            path: ["properties", index],
+          });
+        }
+        references.add(normalized);
       }
-      references.add(normalized);
     }
-  }
-});
+  });
 
 export type DatabaseBlueprintInput = z.infer<typeof databaseBlueprintSchema>;

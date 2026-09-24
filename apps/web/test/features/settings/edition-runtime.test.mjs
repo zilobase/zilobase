@@ -12,21 +12,14 @@ export function register({ assert, loadModule, readSource, test }) {
   });
 
   test("additional login methods receive the shared email below its field", async () => {
-    const source = await readSource(
-      "/src/features/auth/components/login-form.tsx",
-    );
+    const source = await readSource("/src/features/auth/components/login-form.tsx");
     const emailField = source.indexOf('htmlFor="email"');
-    const additionalMethods = source.indexOf(
-      "editionWebModule.additionalLoginMethods.map",
-    );
+    const additionalMethods = source.indexOf("editionWebModule.additionalLoginMethods.map");
     const passwordField = source.indexOf('htmlFor="password"');
 
     assert.ok(emailField >= 0);
     assert.ok(additionalMethods > emailField);
     assert.ok(passwordField > additionalMethods);
-    assert.match(
-      source,
-      /<LoginMethod disabled=\{isPending\} email=\{email\} key=\{index\} \/>/,
-    );
+    assert.match(source, /<LoginMethod disabled=\{isPending\} email=\{email\} key=\{index\} \/>/);
   });
 }

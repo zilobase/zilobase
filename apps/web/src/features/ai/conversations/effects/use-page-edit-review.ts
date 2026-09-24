@@ -22,30 +22,19 @@ export function usePageEditReview({
 }) {
   const { getEditorHandle } = usePageEditorRegistry();
   const { commitPageEdit, undoPageEdit } = usePageEditApplier();
-  const [visibleDiffToolCallId, setVisibleDiffToolCallId] = useState<
-    string | null
-  >(null);
+  const [visibleDiffToolCallId, setVisibleDiffToolCallId] = useState<string | null>(null);
 
-  const snapshotByToolCallId = useMemo(
-    () => buildPageEditSnapshotMap(messages),
-    [messages],
-  );
+  const snapshotByToolCallId = useMemo(() => buildPageEditSnapshotMap(messages), [messages]);
 
   const getPageEditBaselineCurrent = useCallback(
     (snapshot: PageEditSnapshotPart) => {
       const handle = getEditorHandle(snapshot.pageId);
       const currentContentJson = handle?.getContentJson() ?? null;
 
-      return isPageEditBaselineCurrent(
-        snapshot.beforeContentJson,
-        currentContentJson,
-        {
-          baselineMarkdown: snapshot.beforeMarkdown,
-          currentMarkdown: currentContentJson
-            ? prosemirrorToMarkdown(currentContentJson)
-            : undefined,
-        },
-      );
+      return isPageEditBaselineCurrent(snapshot.beforeContentJson, currentContentJson, {
+        baselineMarkdown: snapshot.beforeMarkdown,
+        currentMarkdown: currentContentJson ? prosemirrorToMarkdown(currentContentJson) : undefined,
+      });
     },
     [getEditorHandle],
   );
@@ -58,9 +47,7 @@ export function usePageEditReview({
       return isPageEditReviewAvailable(
         snapshot,
         currentContentJson,
-        currentContentJson
-          ? prosemirrorToMarkdown(currentContentJson)
-          : undefined,
+        currentContentJson ? prosemirrorToMarkdown(currentContentJson) : undefined,
       );
     },
     [getEditorHandle],
@@ -93,17 +80,13 @@ export function usePageEditReview({
     async (toolCallId: string) => {
       const snapshot = snapshotByToolCallId.get(toolCallId);
 
-      if (
-        !snapshot ||
-        (snapshot.status !== "preview" && snapshot.status !== "undone")
-      ) {
+      if (!snapshot || (snapshot.status !== "preview" && snapshot.status !== "undone")) {
         return;
       }
 
       if (!getPageEditReviewAvailable(snapshot)) {
         toast.error("This update is no longer available", {
-          description:
-            "The page has changed since this suggestion was created.",
+          description: "The page has changed since this suggestion was created.",
         });
         return;
       }
@@ -128,8 +111,7 @@ export function usePageEditReview({
         setVisibleDiffToolCallId(null);
       }
 
-      const afterContentJson =
-        getEditorHandle(snapshot.pageId)?.getContentJson() ?? null;
+      const afterContentJson = getEditorHandle(snapshot.pageId)?.getContentJson() ?? null;
 
       setMessages((currentMessages) =>
         updatePageEditSnapshotStatus(currentMessages, toolCallId, "applied", {
@@ -164,16 +146,14 @@ export function usePageEditReview({
 
       if (!getPageEditReviewAvailable(snapshot)) {
         toast.error("This update is no longer available", {
-          description:
-            "The page has changed since this suggestion was created.",
+          description: "The page has changed since this suggestion was created.",
         });
         return;
       }
 
       if (
         visibleDiffToolCallId === toolCallId ||
-        (handle.isEditDiffPreviewActive() &&
-          handle.getActiveEditDiffToolCallId() === toolCallId)
+        (handle.isEditDiffPreviewActive() && handle.getActiveEditDiffToolCallId() === toolCallId)
       ) {
         handle.clearEditDiffPreview({ silent: true });
         setVisibleDiffToolCallId(null);
@@ -198,12 +178,7 @@ export function usePageEditReview({
         .querySelector("[data-editor-surface]")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     },
-    [
-      getEditorHandle,
-      getPageEditReviewAvailable,
-      snapshotByToolCallId,
-      visibleDiffToolCallId,
-    ],
+    [getEditorHandle, getPageEditReviewAvailable, snapshotByToolCallId, visibleDiffToolCallId],
   );
 
   const handleUndoPageEdit = useCallback(
@@ -238,19 +213,10 @@ export function usePageEditReview({
         updatePageEditSnapshotStatus(currentMessages, toolCallId, "undone"),
       );
     },
-    [
-      getEditorHandle,
-      setMessages,
-      snapshotByToolCallId,
-      undoPageEdit,
-      visibleDiffToolCallId,
-    ],
+    [getEditorHandle, setMessages, snapshotByToolCallId, undoPageEdit, visibleDiffToolCallId],
   );
 
-  const resetPageEditReview = useCallback(
-    () => setVisibleDiffToolCallId(null),
-    [],
-  );
+  const resetPageEditReview = useCallback(() => setVisibleDiffToolCallId(null), []);
   return {
     snapshotByToolCallId,
     visibleDiffToolCallId,

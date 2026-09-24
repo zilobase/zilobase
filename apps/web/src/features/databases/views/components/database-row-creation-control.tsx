@@ -9,11 +9,7 @@ import {
 
 import { DatabaseFormShareMenu } from "../form/components/database-form-share-menu";
 
-export function DatabaseRowCreationControl({
-  onPreviewForm,
-}: {
-  onPreviewForm: () => void;
-}) {
+export function DatabaseRowCreationControl({ onPreviewForm }: { onPreviewForm: () => void }) {
   const { canAddDatabaseRows, editable } = useDatabaseDataContext();
   const { activeView, activeViewTabId, viewTabs } = useDatabaseUiContext();
   const canRenderAddRow = canAddDatabaseRows ?? editable;

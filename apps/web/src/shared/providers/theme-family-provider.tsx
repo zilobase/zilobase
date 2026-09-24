@@ -1,67 +1,61 @@
-import * as React from "react"
+import * as React from "react";
 
-import {
-  isThemeFamilyId,
-  THEME_FAMILY_STORAGE_KEY,
-  type ThemeFamilyId,
-} from "@/shared/lib/themes"
+import { isThemeFamilyId, THEME_FAMILY_STORAGE_KEY, type ThemeFamilyId } from "@/shared/lib/themes";
 
 type ThemeFamilyContextValue = {
-  themeFamily: ThemeFamilyId
-  setThemeFamily: (theme: ThemeFamilyId) => void
-}
+  themeFamily: ThemeFamilyId;
+  setThemeFamily: (theme: ThemeFamilyId) => void;
+};
 
-const ThemeFamilyContext = React.createContext<ThemeFamilyContextValue | null>(
-  null,
-)
+const ThemeFamilyContext = React.createContext<ThemeFamilyContextValue | null>(null);
 
 function readStoredThemeFamily(): ThemeFamilyId {
-  if (typeof window === "undefined") return "default"
+  if (typeof window === "undefined") return "default";
 
   try {
-    const storedFamily = window.localStorage.getItem(THEME_FAMILY_STORAGE_KEY)
-    if (isThemeFamilyId(storedFamily)) return storedFamily
+    const storedFamily = window.localStorage.getItem(THEME_FAMILY_STORAGE_KEY);
+    if (isThemeFamilyId(storedFamily)) return storedFamily;
 
-    return "default"
+    return "default";
   } catch {
-    return "default"
+    return "default";
   }
 }
 
 function applyThemeFamily(themeFamily: ThemeFamilyId) {
-  document.documentElement.dataset.themeFamily = themeFamily
+  document.documentElement.dataset.themeFamily = themeFamily;
   try {
-    window.localStorage.setItem(THEME_FAMILY_STORAGE_KEY, themeFamily)
+    window.localStorage.setItem(THEME_FAMILY_STORAGE_KEY, themeFamily);
   } catch {
     // The active document can still use the palette when storage is unavailable.
   }
 }
 
 export function ThemeFamilyProvider({ children }: React.PropsWithChildren) {
-  const [themeFamily, setThemeFamilyState] = React.useState(readStoredThemeFamily)
+  const [themeFamily, setThemeFamilyState] = React.useState(readStoredThemeFamily);
 
   React.useEffect(() => {
-    applyThemeFamily(themeFamily)
-  }, [themeFamily])
+    applyThemeFamily(themeFamily);
+  }, [themeFamily]);
 
   const setThemeFamily = React.useCallback((nextTheme: ThemeFamilyId) => {
-    applyThemeFamily(nextTheme)
-    setThemeFamilyState(nextTheme)
-  }, [])
+    applyThemeFamily(nextTheme);
+    setThemeFamilyState(nextTheme);
+  }, []);
 
   return (
     <ThemeFamilyContext.Provider value={{ themeFamily, setThemeFamily }}>
       {children}
     </ThemeFamilyContext.Provider>
-  )
+  );
 }
 
 export function useThemeFamily() {
-  const context = React.useContext(ThemeFamilyContext)
+  const context = React.useContext(ThemeFamilyContext);
 
   if (!context) {
-    throw new Error("useThemeFamily must be used within ThemeFamilyProvider")
+    throw new Error("useThemeFamily must be used within ThemeFamilyProvider");
   }
 
-  return context
+  return context;
 }

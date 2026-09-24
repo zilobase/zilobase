@@ -1,143 +1,131 @@
-import { useEffect } from "react"
-import { useRouterState } from "@tanstack/react-router"
-import { useTheme } from "next-themes"
+import { useEffect } from "react";
+import { useRouterState } from "@tanstack/react-router";
+import { useTheme } from "next-themes";
 
-import {
-  getDatabaseId,
-  getMeetingId,
-  getPageId,
-} from "@/features/pages/navigation/route-item-id"
+import { getDatabaseId, getMeetingId, getPageId } from "@/features/pages/navigation/route-item-id";
 import {
   createFaviconHref,
   DEFAULT_DOCUMENT_TITLE,
   getFaviconColor,
   getRouteDocumentTitle,
   getRouteFaviconIcon,
-} from "@/features/pages/icons/favicon"
+} from "@/features/pages/icons/favicon";
 import {
   DEFAULT_DATABASE_ITEM_ICON,
   DEFAULT_MEETING_ITEM_ICON,
   DEFAULT_PAGE_ITEM_ICON,
-} from "@/features/pages/icons/item-icons"
-import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata"
+} from "@/features/pages/icons/item-icons";
+import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata";
 import { getDatabaseEmoji } from "@zilobase/features/databases";
 import { useMeeting } from "@zilobase/features/meetings/react";
 import { getPageEmoji } from "@zilobase/features/pages";
 import { usePage } from "@zilobase/features/pages/react";
 
 export function DocumentFavicon() {
-  const location = useRouterState({ select: (state) => state.location })
-  const { resolvedTheme } = useTheme()
-  const directPageId = getPageId(location.pathname)
-  const databaseId = getDatabaseId(location.pathname)
-  const meetingId = getMeetingId(location.pathname)
+  const location = useRouterState({ select: (state) => state.location });
+  const { resolvedTheme } = useTheme();
+  const directPageId = getPageId(location.pathname);
+  const databaseId = getDatabaseId(location.pathname);
+  const meetingId = getMeetingId(location.pathname);
   const { data: databasePayload } = useDatabaseMetadata(databaseId, {
     includeDeleted: true,
-  })
-  const { data: meetingPayload } = useMeeting(meetingId)
+  });
+  const { data: meetingPayload } = useMeeting(meetingId);
   const pageId =
-    directPageId ??
-    meetingPayload?.meeting.notesPageId ??
-    meetingPayload?.meeting.pageId ??
-    null
-  const { data: page } = usePage(pageId, { refetchOnMount: false })
+    directPageId ?? meetingPayload?.meeting.notesPageId ?? meetingPayload?.meeting.pageId ?? null;
+  const { data: page } = usePage(pageId, { refetchOnMount: false });
   const itemIcon = databaseId
     ? databasePayload?.activeDataSource
-      ? getDatabaseEmoji(databasePayload.activeDataSource) ?? DEFAULT_DATABASE_ITEM_ICON
+      ? (getDatabaseEmoji(databasePayload.activeDataSource) ?? DEFAULT_DATABASE_ITEM_ICON)
       : DEFAULT_DATABASE_ITEM_ICON
     : meetingId
-      ? (page ? getPageEmoji(page) : null) ?? DEFAULT_MEETING_ITEM_ICON
+      ? ((page ? getPageEmoji(page) : null) ?? DEFAULT_MEETING_ITEM_ICON)
       : directPageId
-        ? (page ? getPageEmoji(page) : null) ?? DEFAULT_PAGE_ITEM_ICON
-        : null
+        ? ((page ? getPageEmoji(page) : null) ?? DEFAULT_PAGE_ITEM_ICON)
+        : null;
   const itemTitle = databaseId
     ? databasePayload?.database.name
     : meetingId
       ? meetingPayload?.meeting.title
       : directPageId
         ? page?.name
-        : null
+        : null;
   const icon = getRouteFaviconIcon({
     itemIcon,
     pathname: location.pathname,
-  })
+  });
   const title = getRouteDocumentTitle({
     itemTitle,
     pathname: location.pathname,
-  })
+  });
 
   useEffect(() => {
-    document.title = title
-  }, [title])
+    document.title = title;
+  }, [title]);
 
   useEffect(() => {
-    const links = getManagedFaviconLinks()
+    const links = getManagedFaviconLinks();
 
     if (!icon) {
-      restoreDefaultFavicons(links)
-      return
+      restoreDefaultFavicons(links);
+      return;
     }
 
-    const color = getFaviconColor(
-      icon,
-      resolveCssColorToken,
-    )
-    const href = createFaviconHref(icon, { color })
+    const color = getFaviconColor(icon, resolveCssColorToken);
+    const href = createFaviconHref(icon, { color });
 
     if (!href) {
-      restoreDefaultFavicons(links)
-      return
+      restoreDefaultFavicons(links);
+      return;
     }
 
     for (const link of links) {
-      link.href = href
-      link.type = "image/svg+xml"
-      link.removeAttribute("media")
+      link.href = href;
+      link.type = "image/svg+xml";
+      link.removeAttribute("media");
     }
-  }, [icon, resolvedTheme])
+  }, [icon, resolvedTheme]);
 
   useEffect(
     () => () => {
-      restoreDefaultFavicons(getManagedFaviconLinks())
-      document.title = DEFAULT_DOCUMENT_TITLE
+      restoreDefaultFavicons(getManagedFaviconLinks());
+      document.title = DEFAULT_DOCUMENT_TITLE;
     },
     [],
-  )
+  );
 
-  return null
+  return null;
 }
 
 function resolveCssColorToken(name: string) {
-  const probe = document.createElement("span")
-  probe.style.color = `var(${name})`
-  probe.style.display = "none"
-  document.body.append(probe)
-  const color = getComputedStyle(probe).color
-  probe.remove()
-  return color
+  const probe = document.createElement("span");
+  probe.style.color = `var(${name})`;
+  probe.style.display = "none";
+  document.body.append(probe);
+  const color = getComputedStyle(probe).color;
+  probe.remove();
+  return color;
 }
 
 type ManagedFaviconLink = HTMLLinkElement & {
   dataset: DOMStringMap & {
-    defaultHref?: string
-    defaultMedia?: string
-  }
-}
+    defaultHref?: string;
+    defaultMedia?: string;
+  };
+};
 
 function getManagedFaviconLinks() {
-  return Array.from(
-    document.querySelectorAll<ManagedFaviconLink>("link[data-app-favicon]"),
-  )
+  return Array.from(document.querySelectorAll<ManagedFaviconLink>("link[data-app-favicon]"));
 }
 
 function restoreDefaultFavicons(links: ManagedFaviconLink[]) {
   for (const link of links) {
-    if (link.dataset.defaultHref) link.href = link.dataset.defaultHref
+    if (link.dataset.defaultHref) link.href = link.dataset.defaultHref;
 
     if (link.dataset.defaultMedia) {
-      link.media = link.dataset.defaultMedia
+      link.media = link.dataset.defaultMedia;
     } else {
-      link.removeAttribute("media")
+      link.removeAttribute("media");
     }
   }
 }

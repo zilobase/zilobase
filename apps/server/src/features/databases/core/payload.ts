@@ -78,9 +78,7 @@ async function loadDatabasePayload(
             ),
           )
       : [];
-  const foreignParentsById = new Map(
-    foreignParents.map((parent) => [parent.id, parent]),
-  );
+  const foreignParentsById = new Map(foreignParents.map((parent) => [parent.id, parent]));
   const accessibleLinks: typeof sourceLinks = [];
 
   for (const sourceLink of sourceLinks) {
@@ -90,21 +88,13 @@ async function loadDatabasePayload(
     }
 
     const parent = foreignParentsById.get(sourceLink.source.parentDatabaseId);
-    if (
-      parent &&
-      userId &&
-      (await canAccessDatabaseRecord(parent, userId, "view"))
-    ) {
+    if (parent && userId && (await canAccessDatabaseRecord(parent, userId, "view"))) {
       accessibleLinks.push(sourceLink);
     }
   }
 
-  const accessibleSourceIds = new Set(
-    accessibleLinks.map(({ source }) => source.id),
-  );
-  const views = allViews.filter((view) =>
-    accessibleSourceIds.has(view.dataSourceId),
-  );
+  const accessibleSourceIds = new Set(accessibleLinks.map(({ source }) => source.id));
+  const views = allViews.filter((view) => accessibleSourceIds.has(view.dataSourceId));
   const requestedView = options?.viewId
     ? views.find((view) => view.id === options.viewId)
     : undefined;
@@ -134,12 +124,7 @@ async function loadDatabasePayload(
     .select({ column: databaseProperty, property: pageProperty })
     .from(databaseProperty)
     .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-    .where(
-      and(
-        eq(databaseProperty.dataSourceId, sourceId),
-        isNull(pageProperty.deletedAt),
-      ),
-    )
+    .where(and(eq(databaseProperty.dataSourceId, sourceId), isNull(pageProperty.deletedAt)))
     .orderBy(asc(databaseProperty.position));
   const rowsPromise = includeRows
     ? db

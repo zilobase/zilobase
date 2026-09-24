@@ -7,10 +7,26 @@ import { databaseRow } from "../../../infrastructure/database/schema";
 import { getEffectivePageAccessForUsers } from "../../access";
 import { createDatabaseRowService } from "../../databases/records/service";
 import { applyDatabaseAutomationRowOperations } from "../actions/internal-mutations";
-import { accessibleNotificationPageId, activeNotificationRecipientIds, createAutomationNotifications } from "../../notifications/notification-operations";
+import {
+  accessibleNotificationPageId,
+  activeNotificationRecipientIds,
+  createAutomationNotifications,
+} from "../../notifications/notification-operations";
 import { AutomationActionError } from "./action-error";
 import { type ExecutionContext } from "./execution-context";
-import { resolveRichText, scalarString, userIds, resolveExpression, resolveOperations, resolveEditTarget, requireTriggerRow, assertBoundedValue, stableActionSuffix, requireOwner, stringList } from "../actions/action-values";
+import {
+  resolveRichText,
+  scalarString,
+  userIds,
+  resolveExpression,
+  resolveOperations,
+  resolveEditTarget,
+  requireTriggerRow,
+  assertBoundedValue,
+  stableActionSuffix,
+  requireOwner,
+  stringList,
+} from "../actions/action-values";
 import { executeWebhookAction } from "../actions/webhook-action";
 import { executeSlackAction } from "../actions/slack-action";
 import { executeGmailAction } from "../actions/gmail-action";
@@ -66,9 +82,10 @@ export async function executeAction(
       newPageId: `automation-page:${suffix}`,
       newRowId: `automation-row:${suffix}`,
       origin: "automation",
-      title: titleOperation?.mode === "clear"
-        ? "Untitled"
-        : String(titleOperation?.value ?? "").trim() || "Untitled",
+      title:
+        titleOperation?.mode === "clear"
+          ? "Untitled"
+          : String(titleOperation?.value ?? "").trim() || "Untitled",
       userId: actorId,
     });
     return { pageId: created.rowPageId, rowId: created.rowId };
@@ -89,32 +106,55 @@ export async function executeAction(
     const candidates = action.recipients.flatMap((recipient) => {
       if (recipient.type === "selected_user") return [recipient.userId];
       if (recipient.type === "trigger_person") return stringList(context.run.triggerActorId);
-      if (recipient.type === "page_creator") return stringList(requireTriggerRow(context).createdById);
-      if (recipient.type === "person_property") return userIds(context.propertyValues[recipient.propertyId]);
+      if (recipient.type === "page_creator")
+        return stringList(requireTriggerRow(context).createdById);
+      if (recipient.type === "person_property")
+        return userIds(context.propertyValues[recipient.propertyId]);
       return userIds(context.variables[recipient.variableName]);
     });
     const uniqueCandidates = [...new Set(candidates)];
     if (uniqueCandidates.length > 20) {
-      throw new AutomationActionError("Notification has more than 20 recipients", "AUTOMATION_NOTIFICATION_RECIPIENT_LIMIT");
+      throw new AutomationActionError(
+        "Notification has more than 20 recipients",
+        "AUTOMATION_NOTIFICATION_RECIPIENT_LIMIT",
+      );
     }
     let recipientIds = await activeNotificationRecipientIds(
       context.automation.workspaceId,
       uniqueCandidates,
     );
     if (!recipientIds.length) {
-      throw new AutomationActionError("Notification has no valid workspace recipient", "AUTOMATION_NOTIFICATION_NO_RECIPIENTS");
+      throw new AutomationActionError(
+        "Notification has no valid workspace recipient",
+        "AUTOMATION_NOTIFICATION_NO_RECIPIENTS",
+      );
     }
     const message = resolveRichText(context, action.message);
     if (!message.trim()) {
-      throw new AutomationActionError("Notification message is empty", "AUTOMATION_NOTIFICATION_MESSAGE_EMPTY");
+      throw new AutomationActionError(
+        "Notification message is empty",
+        "AUTOMATION_NOTIFICATION_MESSAGE_EMPTY",
+      );
     }
-    const requestedPageId = action.pageLink ? scalarString(resolveExpression(context, action.pageLink)) : null;
-    const pageId = await accessibleNotificationPageId(context.automation.workspaceId, requestedPageId);
+    const requestedPageId = action.pageLink
+      ? scalarString(resolveExpression(context, action.pageLink))
+      : null;
+    const pageId = await accessibleNotificationPageId(
+      context.automation.workspaceId,
+      requestedPageId,
+    );
     if (pageId) {
-      const access = await getEffectivePageAccessForUsers(pageId, context.automation.workspaceId, recipientIds);
+      const access = await getEffectivePageAccessForUsers(
+        pageId,
+        context.automation.workspaceId,
+        recipientIds,
+      );
       recipientIds = recipientIds.filter((userId) => (access.get(userId) ?? "none") !== "none");
       if (!recipientIds.length) {
-        throw new AutomationActionError("No notification recipient can access the linked page", "AUTOMATION_NOTIFICATION_NO_RECIPIENTS");
+        throw new AutomationActionError(
+          "No notification recipient can access the linked page",
+          "AUTOMATION_NOTIFICATION_NO_RECIPIENTS",
+        );
       }
     }
     const notifications = await createAutomationNotifications({
@@ -138,5 +178,8 @@ export async function executeAction(
   if (action.type === "send_slack") {
     return executeSlackAction(context, action, env);
   }
-  throw new AutomationActionError("Automation action is not enabled", "AUTOMATION_CAPABILITY_DISABLED");
+  throw new AutomationActionError(
+    "Automation action is not enabled",
+    "AUTOMATION_CAPABILITY_DISABLED",
+  );
 }

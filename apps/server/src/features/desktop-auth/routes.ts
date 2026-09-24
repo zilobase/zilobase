@@ -61,10 +61,7 @@ desktopAuthRoutes.get("/desktop/connected", async (c) => {
   const user = c.get("user");
 
   return c.html(
-    renderConnectedPage(
-      openLink.toString(),
-      user ? { email: user.email, name: user.name } : null,
-    ),
+    renderConnectedPage(openLink.toString(), user ? { email: user.email, name: user.name } : null),
   );
 });
 
@@ -77,9 +74,7 @@ desktopAuthRoutes.get("/desktop/authorize", async (c) => {
   let authorizationRequest: DesktopAuthorizationRequest;
 
   try {
-    authorizationRequest = parseDesktopAuthorizationRequest(
-      new URL(c.req.url).searchParams,
-    );
+    authorizationRequest = parseDesktopAuthorizationRequest(new URL(c.req.url).searchParams);
   } catch (error) {
     return renderAuthorizationError(c, error);
   }
@@ -93,11 +88,7 @@ desktopAuthRoutes.get("/desktop/authorize", async (c) => {
 
   if (!user) {
     return c.redirect(
-      buildDesktopAuthorizeLoginUrl(
-        authorizationRequest,
-        c.req.raw,
-        c.env,
-      ).toString(),
+      buildDesktopAuthorizeLoginUrl(authorizationRequest, c.req.raw, c.env).toString(),
       303,
     );
   }
@@ -140,9 +131,7 @@ desktopAuthRoutes.post("/desktop/authorize/consent", async (c) => {
   let authorizationRequest: DesktopAuthorizationRequest;
 
   try {
-    authorizationRequest = parseDesktopAuthorizationRequest(
-      new URLSearchParams(body),
-    );
+    authorizationRequest = parseDesktopAuthorizationRequest(new URLSearchParams(body));
   } catch (error) {
     return renderAuthorizationError(c, error);
   }
@@ -182,10 +171,7 @@ desktopAuthRoutes.post("/desktop/authorize/consent", async (c) => {
     expiresAt,
   });
 
-  return c.redirect(
-    buildDesktopCallbackUrl(authorizationRequest, issuer, { code }),
-    303,
-  );
+  return c.redirect(buildDesktopCallbackUrl(authorizationRequest, issuer, { code }), 303);
 });
 
 desktopAuthRoutes.post("/desktop/authorize/switch", async (c) => {
@@ -209,11 +195,7 @@ desktopAuthRoutes.post("/desktop/authorize/switch", async (c) => {
     return renderAuthorizationError(c, error);
   }
 
-  const loginUrl = buildDesktopAuthorizeLoginUrl(
-    authorizationRequest,
-    c.req.raw,
-    c.env,
-  );
+  const loginUrl = buildDesktopAuthorizeLoginUrl(authorizationRequest, c.req.raw, c.env);
   const user = c.get("user");
 
   if (!user) {
@@ -262,9 +244,7 @@ desktopAuthRoutes.post("/api/auth/desktop/token", async (c) => {
   } catch (error) {
     return tokenError(
       c,
-      error instanceof DesktopAuthorizationError
-        ? error.code
-        : "invalid_request",
+      error instanceof DesktopAuthorizationError ? error.code : "invalid_request",
       400,
     );
   }
@@ -283,10 +263,7 @@ desktopAuthRoutes.post("/api/auth/desktop/token", async (c) => {
                 .where(
                   and(
                     eq(desktopAuthorizationCode.codeHash, input.codeHash),
-                    eq(
-                      desktopAuthorizationCode.codeChallenge,
-                      input.codeChallenge,
-                    ),
+                    eq(desktopAuthorizationCode.codeChallenge, input.codeChallenge),
                     eq(desktopAuthorizationCode.redirectUri, input.redirectUri),
                     isNull(desktopAuthorizationCode.consumedAt),
                     gt(desktopAuthorizationCode.expiresAt, input.now),
@@ -394,25 +371,16 @@ async function readBoundedBody(request: Request) {
   }
 
   try {
-    return new URLSearchParams(
-      new TextDecoder("utf-8", { fatal: true }).decode(body),
-    );
+    return new URLSearchParams(new TextDecoder("utf-8", { fatal: true }).decode(body));
   } catch {
     return null;
   }
 }
 
-function isAllowedConsentOrigin(
-  request: Request,
-  env: Record<string, unknown>,
-) {
+function isAllowedConsentOrigin(request: Request, env: Record<string, unknown>) {
   const origin = request.headers.get("origin");
 
-  return (
-    origin === null ||
-    origin === "null" ||
-    origin === getCanonicalApiOrigin(env)
-  );
+  return origin === null || origin === "null" || origin === getCanonicalApiOrigin(env);
 }
 
 function tokenError(c: Context<AppBindings>, error: string, status: 400) {
@@ -420,8 +388,7 @@ function tokenError(c: Context<AppBindings>, error: string, status: 400) {
 }
 
 function copySetCookieHeaders(from: Headers, to: Headers) {
-  const cookies =
-    typeof from.getSetCookie === "function" ? from.getSetCookie() : [];
+  const cookies = typeof from.getSetCookie === "function" ? from.getSetCookie() : [];
 
   if (cookies.length > 0) {
     for (const cookie of cookies) {
@@ -457,10 +424,7 @@ function buildDesktopAuthorizeLoginUrl(
   return loginUrl;
 }
 
-function authorizeFormFields(
-  request: DesktopAuthorizationRequest,
-  consentToken: string,
-) {
+function authorizeFormFields(request: DesktopAuthorizationRequest, consentToken: string) {
   const fields = new URLSearchParams({
     client_id: request.clientId,
     code_challenge: request.codeChallenge,
@@ -479,10 +443,7 @@ function authorizeFormFields(
     .join("");
 }
 
-function renderConnectedPage(
-  openLink: string,
-  user: { email: string; name: string } | null,
-) {
+function renderConnectedPage(openLink: string, user: { email: string; name: string } | null) {
   const signedIn = user
     ? `<p>This browser is signed in as <strong>${escapeHtml(user.name)}</strong> (${escapeHtml(user.email)}). You can close this tab or keep using Zilobase here.</p>`
     : `<p>This browser is signed in. You can close this tab or keep using Zilobase here.</p>`;

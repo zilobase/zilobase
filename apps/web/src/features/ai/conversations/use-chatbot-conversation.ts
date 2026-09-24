@@ -22,10 +22,7 @@ import {
   logPageEdit,
   type AiChatThreadMessagesResponse,
 } from "@zilobase/features/ai-chat";
-import {
-  useCreateAiChatThread,
-  useSubmitAiChatFeedback,
-} from "@zilobase/features/ai-chat/react";
+import { useCreateAiChatThread, useSubmitAiChatFeedback } from "@zilobase/features/ai-chat/react";
 
 import { useSession } from "@zilobase/features/auth/react";
 import { useZilobaseFeatures } from "@zilobase/features";
@@ -111,8 +108,11 @@ export function useChatbotConversation({
     () => new Map(initialFeedback.map((item) => [item.messageId, item])),
     [initialFeedback],
   );
-  const { isAgentReady, isComposerReady, conversationId } =
-    conversationReadiness(workspaceId, userId, threadId);
+  const { isAgentReady, isComposerReady, conversationId } = conversationReadiness(
+    workspaceId,
+    userId,
+    threadId,
+  );
 
   const { getEditorHandle } = usePageEditorRegistry();
   const buildChatRequestBody = useCallback(
@@ -134,10 +134,7 @@ export function useChatbotConversation({
   );
 
   const threadMessagesQueryKey = useMemo(
-    () =>
-      workspaceId && threadId
-        ? aiChatThreadMessagesQueryKey(workspaceId, threadId)
-        : null,
+    () => (workspaceId && threadId ? aiChatThreadMessagesQueryKey(workspaceId, threadId) : null),
     [workspaceId, threadId],
   );
   const {
@@ -178,13 +175,7 @@ export function useChatbotConversation({
     void sendMessage(pendingInitialSubmission.message, {
       body: pendingInitialSubmission.body,
     });
-  }, [
-    isAgentReady,
-    onInitialSubmissionConsumed,
-    pendingInitialSubmission,
-    sendMessage,
-    threadId,
-  ]);
+  }, [isAgentReady, onInitialSubmissionConsumed, pendingInitialSubmission, sendMessage, threadId]);
 
   const {
     snapshotByToolCallId,
@@ -212,10 +203,7 @@ export function useChatbotConversation({
     logPageEdit("chat:page-edit-config", {
       allowedPageIds,
       canApplyPageEdits,
-      primaryPageId:
-        effectivePrimarySource?.type === "page"
-          ? effectivePrimarySource.id
-          : null,
+      primaryPageId: effectivePrimarySource?.type === "page" ? effectivePrimarySource.id : null,
       pageAccessLevel: pageAccessLevel ?? null,
       pageContextChars: pageContext.length,
       pageId,
@@ -232,9 +220,7 @@ export function useChatbotConversation({
 
   const getContextPageMarkdown = useCallback(
     (targetPageId: string) =>
-      pageContext
-        ? extractPageMarkdownFromContext(pageContext, targetPageId)
-        : null,
+      pageContext ? extractPageMarkdownFromContext(pageContext, targetPageId) : null,
     [pageContext],
   );
 
@@ -258,9 +244,7 @@ export function useChatbotConversation({
   const visibleMessages = useMemo(
     () =>
       dedupeChatMessagesById(
-        messages.filter(
-          (message) => message.role === "user" || message.role === "assistant",
-        ),
+        messages.filter((message) => message.role === "user" || message.role === "assistant"),
       ),
     [messages],
   );
@@ -275,20 +259,17 @@ export function useChatbotConversation({
       return;
     }
 
-    queryClient.setQueryData<AiChatThreadMessagesResponse>(
-      threadMessagesQueryKey,
-      (current) => {
-        if (!current) {
-          return current;
-        }
+    queryClient.setQueryData<AiChatThreadMessagesResponse>(threadMessagesQueryKey, (current) => {
+      if (!current) {
+        return current;
+      }
 
-        if (areMessagesEquivalent(current.messages, messages)) {
-          return current;
-        }
+      if (areMessagesEquivalent(current.messages, messages)) {
+        return current;
+      }
 
-        return { ...current, messages };
-      },
-    );
+      return { ...current, messages };
+    });
   }, [messages, queryClient, status, threadMessagesQueryKey]);
 
   const submitText = useCallback(
@@ -304,8 +285,7 @@ export function useChatbotConversation({
 
       if (!isComposerReady || !workspaceId) {
         toast.error("Ask AI failed", {
-          description:
-            "Sign in and select an active workspace before using AI.",
+          description: "Sign in and select an active workspace before using AI.",
         });
         return;
       }
@@ -313,18 +293,12 @@ export function useChatbotConversation({
       try {
         await flushSettingsDrafts();
       } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Could not preserve settings draft.",
-        );
+        toast.error(error instanceof Error ? error.message : "Could not preserve settings draft.");
         return;
       }
 
       const referencedOpenPageIds = [
-        effectivePrimarySource?.type === "page"
-          ? effectivePrimarySource.id
-          : null,
+        effectivePrimarySource?.type === "page" ? effectivePrimarySource.id : null,
         ...attachments
           .filter((attachment) => attachment.type === "page")
           .map((attachment) => attachment.id),
@@ -356,10 +330,7 @@ export function useChatbotConversation({
           targetThreadId = await threadCreationPromiseRef.current;
         } catch (creationError) {
           toast.error("Failed to create chat", {
-            description:
-              creationError instanceof Error
-                ? creationError.message
-                : "Try again.",
+            description: creationError instanceof Error ? creationError.message : "Try again.",
           });
           return;
         } finally {
@@ -392,8 +363,7 @@ export function useChatbotConversation({
       } catch (uploadError) {
         devTrace.record("file-upload-error", uploadError, targetThreadId);
         toast.error("File upload failed", {
-          description:
-            uploadError instanceof Error ? uploadError.message : "Try again.",
+          description: uploadError instanceof Error ? uploadError.message : "Try again.",
         });
         throw uploadError;
       }
@@ -488,8 +458,7 @@ export function useChatbotConversation({
   );
 
   const handleSubmit = useCallback(
-    (message: PromptInputMessage) =>
-      submitText(message.text || "", message.files),
+    (message: PromptInputMessage) => submitText(message.text || "", message.files),
     [submitText],
   );
 
@@ -512,10 +481,7 @@ export function useChatbotConversation({
         toast.success("Feedback saved.");
       } catch (feedbackError) {
         toast.error("Could not save feedback", {
-          description:
-            feedbackError instanceof Error
-              ? feedbackError.message
-              : "Try again.",
+          description: feedbackError instanceof Error ? feedbackError.message : "Try again.",
         });
       }
     },
@@ -535,9 +501,7 @@ export function useChatbotConversation({
       return;
     }
 
-    const scrollShell = rootRef.current?.closest(
-      AI_SCROLL_SHELL_SELECTOR,
-    ) as HTMLElement | null;
+    const scrollShell = rootRef.current?.closest(AI_SCROLL_SHELL_SELECTOR) as HTMLElement | null;
 
     window.requestAnimationFrame(() => {
       scrollShell?.scrollTo({

@@ -35,10 +35,18 @@ vi.mock("../../../infrastructure/database", () => ({
     select() {
       const rows = mocks.selectResults.shift() ?? [];
       const builder = {
-        from() { return builder; },
-        innerJoin() { return builder; },
-        where() { return builder; },
-        async limit() { return rows; },
+        from() {
+          return builder;
+        },
+        innerJoin() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        async limit() {
+          return rows;
+        },
         then(resolve: (value: unknown[]) => unknown) {
           return Promise.resolve(rows).then(resolve);
         },
@@ -48,10 +56,7 @@ vi.mock("../../../infrastructure/database", () => ({
   },
 }));
 
-import {
-  createDatabasePropertyService,
-  updateDatabasePropertyService,
-} from "./properties";
+import { createDatabasePropertyService, updateDatabasePropertyService } from "./properties";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 beforeEach(() => {
@@ -71,28 +76,36 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-function transactionRecorder(options: {
-  selectResults?: unknown[][];
-  updateReturningResults?: unknown[][];
-} = {}) {
+function transactionRecorder(
+  options: {
+    selectResults?: unknown[][];
+    updateReturningResults?: unknown[][];
+  } = {},
+) {
   const inserts: unknown[] = [];
   const updates: unknown[] = [];
   const selectResults = [...(options.selectResults ?? [])];
-  const updateReturningResults = [
-    ...(options.updateReturningResults ?? []),
-  ];
+  const updateReturningResults = [...(options.updateReturningResults ?? [])];
   const tx = {
     insert() {
       return {
-        async values(value: unknown) { inserts.push(value); },
+        async values(value: unknown) {
+          inserts.push(value);
+        },
       };
     },
     select() {
       const rows = selectResults.shift() ?? [];
       const builder = {
-        from() { return builder; },
-        where() { return builder; },
-        async orderBy() { return rows; },
+        from() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        async orderBy() {
+          return rows;
+        },
         then(resolve: (value: unknown[]) => unknown) {
           return Promise.resolve(rows).then(resolve);
         },
@@ -107,7 +120,9 @@ function transactionRecorder(options: {
             returning: async () => updateReturningResults.shift() ?? [],
           };
           return {
-            where() { return result; },
+            where() {
+              return result;
+            },
           };
         },
       };
@@ -190,8 +205,7 @@ test("createDatabasePropertyService applies defaults and rejects invalid types",
       type: "unknown",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 400,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 400,
   );
 });
 
@@ -235,13 +249,15 @@ test("updateDatabasePropertyService normalizes retained status config", async ()
   const { updates } = transactionRecorder();
   mocks.selectResults.push(
     [{ id: "column-1", propertyId: "property-1" }],
-    [{
-      config: {
-        defaultOptionId: "todo",
-        options: [{ id: "todo", name: "Todo" }],
+    [
+      {
+        config: {
+          defaultOptionId: "todo",
+          options: [{ id: "todo", name: "Todo" }],
+        },
+        type: "text",
       },
-      type: "text",
-    }],
+    ],
   );
 
   await updateDatabasePropertyService({
@@ -252,23 +268,22 @@ test("updateDatabasePropertyService normalizes retained status config", async ()
   });
 
   assert.equal((updates[1] as Record<string, unknown>).type, "status");
-  assert.equal(
-    typeof (updates[1] as Record<string, unknown>).config,
-    "object",
-  );
+  assert.equal(typeof (updates[1] as Record<string, unknown>).config, "object");
 });
 
 test("updateDatabasePropertyService merges glyph patches without removing options", async () => {
   const { updates } = transactionRecorder();
   mocks.selectResults.push(
     [{ id: "column-1", propertyId: "property-1" }],
-    [{
-      config: {
-        icon: "old-icon",
-        options: [{ id: "todo", name: "Todo", color: "gray" }],
+    [
+      {
+        config: {
+          icon: "old-icon",
+          options: [{ id: "todo", name: "Todo", color: "gray" }],
+        },
+        type: "select",
       },
-      type: "select",
-    }],
+    ],
   );
 
   await updateDatabasePropertyService({
@@ -289,15 +304,17 @@ test("updateDatabasePropertyService invalidates only removed option dependencies
   transactionRecorder();
   mocks.selectResults.push(
     [{ id: "column-1", propertyId: "property-1" }],
-    [{
-      config: {
-        options: [
-          { id: "keep", name: "Keep", color: "blue" },
-          { id: "remove", name: "Remove me", color: "red" },
-        ],
+    [
+      {
+        config: {
+          options: [
+            { id: "keep", name: "Keep", color: "blue" },
+            { id: "remove", name: "Remove me", color: "red" },
+          ],
+        },
+        type: "multi_select",
       },
-      type: "multi_select",
-    }],
+    ],
   );
 
   await updateDatabasePropertyService({
@@ -322,26 +339,32 @@ test("updateDatabasePropertyService migrates renamed options and removes deleted
   const now = new Date("2026-09-03T00:00:00.000Z");
   const { updates } = transactionRecorder({
     selectResults: [[{ id: "value-1", value: ["Keep", "Remove me"] }]],
-    updateReturningResults: [[{
-      createdAt: now,
-      id: "value-1",
-      pageId: "page-1",
-      propertyId: "property-1",
-      updatedAt: now,
-      value: ["Renamed"],
-    }]],
+    updateReturningResults: [
+      [
+        {
+          createdAt: now,
+          id: "value-1",
+          pageId: "page-1",
+          propertyId: "property-1",
+          updatedAt: now,
+          value: ["Renamed"],
+        },
+      ],
+    ],
   });
   mocks.selectResults.push(
     [{ id: "column-1", propertyId: "property-1" }],
-    [{
-      config: {
-        options: [
-          { id: "keep", name: "Keep", color: "blue" },
-          { id: "remove", name: "Remove me", color: "red" },
-        ],
+    [
+      {
+        config: {
+          options: [
+            { id: "keep", name: "Keep", color: "blue" },
+            { id: "remove", name: "Remove me", color: "red" },
+          ],
+        },
+        type: "multi_select",
       },
-      type: "multi_select",
-    }],
+    ],
   );
 
   await updateDatabasePropertyService({
@@ -363,22 +386,17 @@ test("updateDatabasePropertyService rejects missing records and invalid types", 
       databasePropertyId: "missing",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
 
-  mocks.selectResults.push(
-    [{ id: "column-1", propertyId: "property-1" }],
-    [],
-  );
+  mocks.selectResults.push([{ id: "column-1", propertyId: "property-1" }], []);
   await assert.rejects(
     updateDatabasePropertyService({
       databaseId: "database-1",
       databasePropertyId: "column-1",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
 
   mocks.selectResults.push(
@@ -391,8 +409,7 @@ test("updateDatabasePropertyService rejects missing records and invalid types", 
       databasePropertyId: "column-1",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 400,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 400,
   );
   assert.equal(mocks.commit.mock.calls.length, 0);
 });
@@ -425,10 +442,7 @@ test("updateDatabasePropertyService clears incompatible values", async () => {
     updatedAt: (updates[0] as Record<string, unknown>).updatedAt,
     value: null,
   });
-  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].areas, [
-    "properties",
-    "records",
-  ]);
+  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].areas, ["properties", "records"]);
 });
 
 test("updateDatabasePropertyService converts date values to text", async () => {
@@ -441,10 +455,14 @@ test("updateDatabasePropertyService converts date values to text", async () => {
     value: "2026-07-10 - 2026-07-12",
   };
   const { updates } = transactionRecorder({
-    selectResults: [[{
-      id: "value-1",
-      value: { end: "2026-07-12", start: "2026-07-10" },
-    }]],
+    selectResults: [
+      [
+        {
+          id: "value-1",
+          value: { end: "2026-07-12", start: "2026-07-10" },
+        },
+      ],
+    ],
     updateReturningResults: [[convertedValue]],
   });
   mocks.selectResults.push(
@@ -459,12 +477,6 @@ test("updateDatabasePropertyService converts date values to text", async () => {
     userId: "user-1",
   });
 
-  assert.equal(
-    (updates[0] as Record<string, unknown>).value,
-    "2026-07-10 - 2026-07-12",
-  );
-  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].areas, [
-    "properties",
-    "records",
-  ]);
+  assert.equal((updates[0] as Record<string, unknown>).value, "2026-07-10 - 2026-07-12");
+  assert.deepEqual(mocks.commit.mock.calls[0]?.[0].areas, ["properties", "records"]);
 });

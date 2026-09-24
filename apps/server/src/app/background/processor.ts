@@ -32,9 +32,7 @@ export async function processBackgroundTask(input: {
     kind: input.task.kind,
     lane: backgroundTaskLane(input.task.kind),
     outcome: "claimed",
-    runtime: (input.env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node") as
-      | "edge"
-      | "node",
+    runtime: (input.env.ZILOBASE_RUNTIME_KIND === "worker" ? "edge" : "node") as "edge" | "node",
   };
   recordBackgroundCounter("claim", attributes);
   recordBackgroundHistogram(
@@ -55,11 +53,7 @@ export async function processBackgroundTask(input: {
           : "completion",
       outcomeAttributes,
     );
-    recordBackgroundHistogram(
-      "execution_duration_ms",
-      Date.now() - startedAt,
-      outcomeAttributes,
-    );
+    recordBackgroundHistogram("execution_duration_ms", Date.now() - startedAt, outcomeAttributes);
     recordBackgroundHistogram(
       "time_beyond_available_at_ms",
       startedAt - Date.parse(input.task.availableAt),
@@ -82,19 +76,14 @@ async function processBackgroundTaskInner(input: {
   workerId: string;
 }): Promise<BackgroundTaskResult> {
   const { env, task, workerId } = input;
-  const handlers: Record<
-    BackgroundTaskV1["kind"],
-    () => Promise<BackgroundTaskResult>
-  > = {
+  const handlers: Record<BackgroundTaskV1["kind"], () => Promise<BackgroundTaskResult>> = {
     "automation.event_window": () =>
       processDatabaseAutomationEventWindow(env, {
         windowId: task.resourceId,
         workerId,
       }),
-    "automation.run": () =>
-      processDatabaseAutomationRun(env, { runId: task.resourceId, workerId }),
-    "agent.run": () =>
-      processAgentRun(env, { runId: task.resourceId, workerId }),
+    "automation.run": () => processDatabaseAutomationRun(env, { runId: task.resourceId, workerId }),
+    "agent.run": () => processAgentRun(env, { runId: task.resourceId, workerId }),
     "ai.job": () =>
       runAiJobById({
         env,
@@ -104,12 +93,9 @@ async function processBackgroundTaskInner(input: {
       }),
     "calendar.sync": () => processCalendarSyncTask(env, task.resourceId),
     "mail.index": () => processMailIndexTask(env, task.resourceId),
-    "mail.database_sync": () =>
-      processMailDatabaseSyncTask(env, task.resourceId, workerId),
-    "realtime.database": () =>
-      processDatabaseRealtimeTask(env, task.resourceId),
-    "realtime.navigation": () =>
-      processNavigationRealtimeTask(env, task.resourceId),
+    "mail.database_sync": () => processMailDatabaseSyncTask(env, task.resourceId, workerId),
+    "realtime.database": () => processDatabaseRealtimeTask(env, task.resourceId),
+    "realtime.navigation": () => processNavigationRealtimeTask(env, task.resourceId),
     "notification.publish": () => processNotificationTask(env, task.resourceId),
   };
   return handlers[task.kind]();

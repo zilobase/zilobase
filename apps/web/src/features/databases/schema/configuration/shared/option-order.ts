@@ -8,17 +8,14 @@ export function reorderOptionsByIds<TOption extends { id: string }>(
 
     return option ? [option] : [];
   });
-  const remainingOptions = options.filter(
-    (option) => !optionIds.includes(option.id),
-  );
+  const remainingOptions = options.filter((option) => !optionIds.includes(option.id));
 
   return [...orderedOptions, ...remainingOptions];
 }
 
 export function areSameOrderedIds(firstIds: string[], secondIds: string[]) {
   return (
-    firstIds.length === secondIds.length &&
-    firstIds.every((id, index) => id === secondIds[index])
+    firstIds.length === secondIds.length && firstIds.every((id, index) => id === secondIds[index])
   );
 }
 

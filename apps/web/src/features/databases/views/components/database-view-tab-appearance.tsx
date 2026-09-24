@@ -32,8 +32,7 @@ export function DatabaseViewTabAppearance({
   const { databaseId, editable } = useDatabaseDataContext();
   const { activeViewTabId, draftViewTitle } = useDatabaseUiContext();
   const isActiveView = view.id === activeViewTabId;
-  const ViewIcon =
-    view.fallbackIcon ?? getDatabaseViewTypePresentation(view.type).Icon;
+  const ViewIcon = view.fallbackIcon ?? getDatabaseViewTypePresentation(view.type).Icon;
   const disabled = !editable || !databaseId;
   return (
     <div className="flex items-center gap-1.5 p-1.5">

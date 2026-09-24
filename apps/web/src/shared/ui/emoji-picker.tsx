@@ -1,13 +1,13 @@
-import * as React from "react"
-import { EmojiPicker as FrimousseEmojiPicker } from "frimousse"
+import * as React from "react";
+import { EmojiPicker as FrimousseEmojiPicker } from "frimousse";
 import type {
   Emoji,
   EmojiPickerListCategoryHeaderProps,
   EmojiPickerListEmojiProps,
   EmojiPickerListRowProps,
-} from "frimousse"
+} from "frimousse";
 
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
 function EmojiPicker({
   className,
@@ -18,12 +18,12 @@ function EmojiPicker({
     <FrimousseEmojiPicker.Root
       className={cn(
         "isolate flex h-[342px] w-72 flex-col bg-surface-overlay text-content-primary",
-        className
+        className,
       )}
       columns={columns}
       {...props}
     />
-  )
+  );
 }
 
 function EmojiPickerSearch({
@@ -34,11 +34,11 @@ function EmojiPickerSearch({
     <FrimousseEmojiPicker.Search
       className={cn(
         "mx-2 mt-2 h-7 rounded-md border border-control-border bg-control-background px-2 text-sm outline-none placeholder:text-content-secondary focus-visible:border-action-focus-ring focus-visible:ring-1 focus-visible:ring-action-focus-ring dark:bg-control-background",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 function EmojiPickerContent({
@@ -65,7 +65,7 @@ function EmojiPickerContent({
         }}
       />
     </FrimousseEmojiPicker.Viewport>
-  )
+  );
 }
 
 function EmojiPickerFooter({ className }: { className?: string }) {
@@ -73,7 +73,7 @@ function EmojiPickerFooter({ className }: { className?: string }) {
     <div
       className={cn(
         "flex h-10 items-center gap-2 border-t px-2 text-xs text-content-secondary",
-        className
+        className,
       )}
     >
       <FrimousseEmojiPicker.ActiveEmoji>
@@ -90,7 +90,7 @@ function EmojiPickerFooter({ className }: { className?: string }) {
       </FrimousseEmojiPicker.ActiveEmoji>
       <FrimousseEmojiPicker.SkinToneSelector className="ml-auto flex size-7 items-center justify-center rounded-md hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:bg-action-neutral-pressed" />
     </div>
-  )
+  );
 }
 
 function EmojiPickerCategoryHeader({
@@ -102,45 +102,33 @@ function EmojiPickerCategoryHeader({
     <div
       className={cn(
         "bg-surface-overlay px-3 py-1.5 text-xs font-medium text-content-secondary backdrop-blur",
-        className
+        className,
       )}
       {...props}
     >
       {category.label}
     </div>
-  )
+  );
 }
 
-function EmojiPickerEmoji({
-  emoji,
-  className,
-  ...props
-}: EmojiPickerListEmojiProps) {
+function EmojiPickerEmoji({ emoji, className, ...props }: EmojiPickerListEmojiProps) {
   return (
     <button
       className={cn(
         "flex aspect-square size-8 items-center justify-center rounded-md text-lg transition-colors hover:bg-action-neutral-hover data-[active]:bg-action-neutral-hover focus-visible:ring-2 focus-visible:ring-action-focus-ring focus-visible:outline-none active:bg-action-neutral-pressed",
-        className
+        className,
       )}
       type="button"
       {...props}
     >
       {emoji.emoji}
     </button>
-  )
+  );
 }
 
-function EmojiPickerRow({
-  className,
-  ...props
-}: EmojiPickerListRowProps) {
-  return <div className={cn("grid grid-cols-9 px-2", className)} {...props} />
+function EmojiPickerRow({ className, ...props }: EmojiPickerListRowProps) {
+  return <div className={cn("grid grid-cols-9 px-2", className)} {...props} />;
 }
 
-export {
-  EmojiPicker,
-  EmojiPickerSearch,
-  EmojiPickerContent,
-  EmojiPickerFooter,
-}
-export type { Emoji }
+export { EmojiPicker, EmojiPickerSearch, EmojiPickerContent, EmojiPickerFooter };
+export type { Emoji };

@@ -1,5 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
-import { getConvertedViewConfig, removeDatabaseGroupProperty } from "../views/model/view-type-transition";
+import {
+  getConvertedViewConfig,
+  removeDatabaseGroupProperty,
+} from "../views/model/view-type-transition";
 
 import type {
   DatabasePropertyEntity,
@@ -18,11 +21,11 @@ import {
   ganttMoveToDateValue,
   getTimelineDateProperty,
 } from "../views/timeline/model/database-timeline-config";
-import { getDefaultDatabasePropertyConfig, isSelectLikePropertyType } from "../schema/model/property-defaults";
 import {
-  serializePropertyValue,
-  type DatabasePropertyValue,
-} from "../schema/property-values";
+  getDefaultDatabasePropertyConfig,
+  isSelectLikePropertyType,
+} from "../schema/model/property-defaults";
+import { serializePropertyValue, type DatabasePropertyValue } from "../schema/property-values";
 import {
   areSerializedPropertyValuesEqual,
   hasViewHiddenPropertyIds,
@@ -48,7 +51,10 @@ import {
   type DatabaseSubItemsSettings,
 } from "../views/model/database-view-config";
 import type { DatabaseFilterUpdatePatch } from "../views/model/filter-sort-contracts";
-import { getRelationLimitTrimUpdates, relationPayloadFromViewData } from "../schema/relations/model/database-relation-sync";
+import {
+  getRelationLimitTrimUpdates,
+  relationPayloadFromViewData,
+} from "../schema/relations/model/database-relation-sync";
 import {
   defaultDatabaseChartSettings,
   getDatabaseChartSettings,
@@ -130,11 +136,7 @@ export function getDatabaseViewCommands({
   getSourcePropertyMode?: (
     dragPayload: DatabasePageDragPayload,
   ) => Promise<"duplicate" | "match" | null>;
-  setLatestViewConfig?: (
-    databaseId: string,
-    databaseViewId: string,
-    config: unknown,
-  ) => void;
+  setLatestViewConfig?: (databaseId: string, databaseViewId: string, config: unknown) => void;
 }) {
   const {
     addDatabaseView,
@@ -151,8 +153,8 @@ export function getDatabaseViewCommands({
   const databaseName = viewData?.bootstrap.database.name;
   const viewProperties = viewData
     ? viewData.bootstrap.properties.filter(
-      (property) => property.dataSourceId === viewData.dataSourceId,
-    )
+        (property) => property.dataSourceId === viewData.dataSourceId,
+      )
     : null;
   const ensureTimelineDatePropertyId = createTimelineDateResolver({
     addProperty,
@@ -212,25 +214,19 @@ export function getDatabaseViewCommands({
 
     updateDatabaseView.mutate({
       config: getMergedDatabaseConfig(activeView.config, {
-        conditionalColors:
-          nextConditionalColors.length > 0 ? nextConditionalColors : undefined,
+        conditionalColors: nextConditionalColors.length > 0 ? nextConditionalColors : undefined,
       }),
       databaseId: viewDatabaseId ?? databaseId,
       databaseViewId: activeView.id,
     });
   };
 
-  const getFilterPropertyType = (
-    propertyId: DatabasePropertyFilterConfig["propertyId"],
-  ) => {
+  const getFilterPropertyType = (propertyId: DatabasePropertyFilterConfig["propertyId"]) => {
     if (propertyId === "name") {
       return "text";
     }
 
-    return (
-      properties.find((property) => property.id === propertyId)?.property
-        .type ?? "text"
-    );
+    return properties.find((property) => property.id === propertyId)?.property.type ?? "text";
   };
 
   const createDatabaseFilter = (
@@ -240,8 +236,7 @@ export function getDatabaseViewCommands({
 
     return {
       id: createDatabaseFilterId(),
-      operator:
-        getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is",
+      operator: getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is",
       propertyId,
       values: [],
     };
@@ -250,10 +245,7 @@ export function getDatabaseViewCommands({
   const getPlainDatabaseFilters = () =>
     activeDatabaseFilters.map(({ id, operator, propertyId, values }) => ({
       id,
-      operator: getValidDatabaseFilterOperator(
-        operator,
-        getFilterPropertyType(propertyId),
-      ),
+      operator: getValidDatabaseFilterOperator(operator, getFilterPropertyType(propertyId)),
       propertyId,
       values,
     }));
@@ -272,16 +264,13 @@ export function getDatabaseViewCommands({
     });
   };
 
-  const updateDatabaseChartSettings = (
-    settings: Partial<DatabaseChartSettings>,
-  ) => {
+  const updateDatabaseChartSettings = (settings: Partial<DatabaseChartSettings>) => {
     if (!databaseId || !activeView?.id) {
       return;
     }
 
     const currentConfig =
-      getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-      activeView.config;
+      getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
     const nextConfig = getMergedDatabaseConfig(currentConfig, {
       chart: {
         ...getDatabaseChartSettings(currentConfig),
@@ -297,16 +286,13 @@ export function getDatabaseViewCommands({
     });
   };
 
-  const updateDatabaseLayoutSettings = (
-    settings: Partial<DatabaseLayoutSettings>,
-  ) => {
+  const updateDatabaseLayoutSettings = (settings: Partial<DatabaseLayoutSettings>) => {
     if (!databaseId || !activeView?.id) {
       return;
     }
 
     const currentConfig =
-      getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-      activeView.config;
+      getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
     const nextConfig = getMergedDatabaseConfig(currentConfig, {
       layout: {
         ...getDatabaseLayoutSettings(currentConfig),
@@ -323,11 +309,7 @@ export function getDatabaseViewCommands({
   };
 
   return {
-    addDatabaseProperty: (
-      type = "text",
-      label = "Property",
-      position?: number,
-    ) => {
+    addDatabaseProperty: (type = "text", label = "Property", position?: number) => {
       if (!editable || !databaseId) {
         return;
       }
@@ -354,28 +336,21 @@ export function getDatabaseViewCommands({
           ? defaultStatusValue
           : null);
       const groupSetup = getNewRowGroupSetup(nextGroupValue, nextGroupProperty);
-      const subItemsSettings = getDatabaseSubItemsSettings(
-        activeView?.config ?? databaseConfig,
-      );
+      const subItemsSettings = getDatabaseSubItemsSettings(activeView?.config ?? databaseConfig);
       if (
         parentRowId &&
-        (!subItemsSettings.parentPropertyId ||
-          !subItemsSettings.subItemPropertyId)
+        (!subItemsSettings.parentPropertyId || !subItemsSettings.subItemPropertyId)
       ) {
         notify.error("Sub-items are still being set up. Try again shortly.");
         return;
       }
-      const parentRow = parentRowId
-        ? items.find((row) => row.id === parentRowId)
-        : undefined;
+      const parentRow = parentRowId ? items.find((row) => row.id === parentRowId) : undefined;
       if (parentRowId && !parentRow) {
         notify.error("Parent item is no longer available.");
         return;
       }
       const parentRelation =
-        parentRow &&
-        subItemsSettings.parentPropertyId &&
-        subItemsSettings.subItemPropertyId
+        parentRow && subItemsSettings.parentPropertyId && subItemsSettings.subItemPropertyId
           ? {
               parentPropertyId: subItemsSettings.parentPropertyId,
               parentRow,
@@ -435,28 +410,18 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const groupSetup = getDraggedRowGroupSetup(
-        groupValue,
-        groupPropertyOverride,
-      );
+      const groupSetup = getDraggedRowGroupSetup(groupValue, groupPropertyOverride);
       const groupValues = new Map(
-        groupSetup.propertyValues.map((propertyValue) => [
-          propertyValue.propertyId,
-          propertyValue,
-        ]),
+        groupSetup.propertyValues.map((propertyValue) => [propertyValue.propertyId, propertyValue]),
       );
       addRow.mutate(
         {
           databaseId,
           ...(viewDatabaseId ? { hostDatabaseId: viewDatabaseId } : {}),
-          ...(groupValues.size > 0
-            ? { initialValues: [...groupValues.values()] }
-            : {}),
+          ...(groupValues.size > 0 ? { initialValues: [...groupValues.values()] } : {}),
           pageId: dragPayload.pageId,
           position,
-          sourceDataSourceId: isCrossDatabaseMove
-            ? dragPayload.databaseId
-            : undefined,
+          sourceDataSourceId: isCrossDatabaseMove ? dragPayload.databaseId : undefined,
           sourceRowId: isCrossDatabaseMove ? dragPayload.rowId : undefined,
           sourcePropertyMode: sourcePropertyMode ?? undefined,
           title: groupSetup.pageTitle ?? dragPayload.title,
@@ -470,10 +435,7 @@ export function getDatabaseViewCommands({
               updatePage.mutate(
                 { id: dragPayload.pageId, name: groupSetup.pageTitle },
                 {
-                  onError: () =>
-                    notify.error(
-                      "Moved the row, but couldn't update its group.",
-                    ),
+                  onError: () => notify.error("Moved the row, but couldn't update its group."),
                 },
               );
             }
@@ -561,13 +523,10 @@ export function getDatabaseViewCommands({
 
       const currentProperties = viewProperties ?? [];
       const groupProperty =
-        currentProperties.find(
-          (property) => property.property.type === "status",
-        ) ??
+        currentProperties.find((property) => property.property.type === "status") ??
         currentProperties.find(
           (property) =>
-            property.property.type !== "status" &&
-            isSelectLikePropertyType(property.property.type),
+            property.property.type !== "status" && isSelectLikePropertyType(property.property.type),
         ) ??
         currentProperties[0] ??
         null;
@@ -599,10 +558,7 @@ export function getDatabaseViewCommands({
       if (groupProperty) {
         addView(
           groupProperty.property.id,
-          getDefaultKanbanHiddenPropertyIds(
-            currentProperties,
-            groupProperty.property.id,
-          ),
+          getDefaultKanbanHiddenPropertyIds(currentProperties, groupProperty.property.id),
         );
         return;
       }
@@ -654,12 +610,7 @@ export function getDatabaseViewCommands({
       });
     },
     addTimelineView: () => {
-      if (
-        !editable ||
-        !databaseId ||
-        addDatabaseView.isPending ||
-        addProperty.isPending
-      ) {
+      if (!editable || !databaseId || addDatabaseView.isPending || addProperty.isPending) {
         return;
       }
 
@@ -736,8 +687,7 @@ export function getDatabaseViewCommands({
       }
 
       const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-        activeView.config;
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
       let nextConfig = getMergedDatabaseConfig(currentConfig, {
         groupPropertyId: groupPropertyId ?? undefined,
       });
@@ -748,16 +698,11 @@ export function getDatabaseViewCommands({
 
       if (isKanbanView) {
         const currentGroupPropertyId =
-          getKanbanGroupPropertyId(currentConfig) ??
-          kanbanGroupProperty?.property.id ??
-          null;
+          getKanbanGroupPropertyId(currentConfig) ?? kanbanGroupProperty?.property.id ?? null;
         const hiddenPropertyIds = new Set(
           hasViewHiddenPropertyIds(currentConfig)
             ? getViewHiddenPropertyIds(currentConfig)
-            : getDefaultKanbanHiddenPropertyIds(
-                properties,
-                currentGroupPropertyId,
-              ),
+            : getDefaultKanbanHiddenPropertyIds(properties, currentGroupPropertyId),
         );
         const previousGroupProperty = properties.find(
           (property) => property.property.id === currentGroupPropertyId,
@@ -817,18 +762,13 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      saveDatabaseFilters([
-        ...getPlainDatabaseFilters(),
-        createDatabaseFilter(field),
-      ]);
+      saveDatabaseFilters([...getPlainDatabaseFilters(), createDatabaseFilter(field)]);
       setShowFilterPill(true);
       setFilterPickerOpen(false);
     },
     removeDatabaseFilter: (index: number) => {
       saveDatabaseFilters(
-        getPlainDatabaseFilters().filter(
-          (_, filterIndex) => filterIndex !== index,
-        ),
+        getPlainDatabaseFilters().filter((_, filterIndex) => filterIndex !== index),
       );
     },
     reorderDatabaseFilters: (filterIds: string[]) => {
@@ -839,9 +779,7 @@ export function getDatabaseViewCommands({
 
         return filter ? [filter] : [];
       });
-      const remainingFilters = filters.filter(
-        (filter) => !filterIds.includes(filter.id),
-      );
+      const remainingFilters = filters.filter((filter) => !filterIds.includes(filter.id));
 
       saveDatabaseFilters([...reorderedFilters, ...remainingFilters]);
     },
@@ -870,16 +808,10 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      const validPropertyIds = new Set([
-        "name",
-        ...properties.map((property) => property.id),
-      ]);
+      const validPropertyIds = new Set(["name", ...properties.map((property) => property.id)]);
       const seenPropertyIds = new Set<string>();
       const orderedPropertyIds = propertyIds.filter((propertyId) => {
-        if (
-          !validPropertyIds.has(propertyId) ||
-          seenPropertyIds.has(propertyId)
-        ) {
+        if (!validPropertyIds.has(propertyId) || seenPropertyIds.has(propertyId)) {
           return false;
         }
 
@@ -893,8 +825,7 @@ export function getDatabaseViewCommands({
           .filter((propertyId) => !seenPropertyIds.has(propertyId)),
       ];
       const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-        activeView.config;
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
       const nextConfig = getMergedDatabaseConfig(currentConfig, {
         propertyOrder,
       });
@@ -941,14 +872,7 @@ export function getDatabaseViewCommands({
       });
     },
     setViewType: (
-      type:
-        | "table"
-        | "kanban"
-        | "timeline"
-        | "chart"
-        | "gallery"
-        | "list"
-        | "form",
+      type: "table" | "kanban" | "timeline" | "chart" | "gallery" | "list" | "form",
     ) => {
       if (!databaseId || !activeView?.id || type === activeView.type) {
         return;
@@ -975,11 +899,13 @@ export function getDatabaseViewCommands({
       }
 
       const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-        activeView.config;
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
       const nextConfig = getConvertedViewConfig({
-        currentConfig, type, previousType: activeView.type,
-        kanbanGroupProperty, properties,
+        currentConfig,
+        type,
+        previousType: activeView.type,
+        kanbanGroupProperty,
+        properties,
       });
 
       setLatestViewConfig?.(databaseId, activeView.id, nextConfig);
@@ -993,21 +919,13 @@ export function getDatabaseViewCommands({
     },
     updateDatabaseChartSettings,
     updateDatabaseLayoutSettings,
-    updateDatabaseFormHeaderSettings: (
-      settings: Partial<DatabaseFormHeaderSettings>,
-    ) => {
-      if (
-        !editable ||
-        !databaseId ||
-        !activeView?.id ||
-        activeView.type !== "form"
-      ) {
+    updateDatabaseFormHeaderSettings: (settings: Partial<DatabaseFormHeaderSettings>) => {
+      if (!editable || !databaseId || !activeView?.id || activeView.type !== "form") {
         return;
       }
 
       const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-        activeView.config;
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
       const nextConfig = getMergedDatabaseConfig(currentConfig, {
         formHeader: {
           ...getDatabaseFormHeaderSettings(currentConfig),
@@ -1026,20 +944,13 @@ export function getDatabaseViewCommands({
       propertyId: string,
       settings: DatabaseFormQuestionSettingsPatch,
     ) => {
-      if (
-        !editable ||
-        !databaseId ||
-        !activeView?.id ||
-        activeView.type !== "form"
-      ) {
+      if (!editable || !databaseId || !activeView?.id || activeView.type !== "form") {
         return;
       }
 
       const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-        activeView.config;
-      const currentQuestions =
-        getDatabaseFormQuestionSettingsById(currentConfig);
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
+      const currentQuestions = getDatabaseFormQuestionSettingsById(currentConfig);
       const nextConfig = getMergedDatabaseConfig(currentConfig, {
         formQuestions: {
           ...currentQuestions,
@@ -1057,16 +968,13 @@ export function getDatabaseViewCommands({
         databaseViewId: activeView.id,
       });
     },
-    updateDatabaseFormShareSettings: (
-      settings: Partial<DatabaseFormShareSettings>,
-    ) => {
+    updateDatabaseFormShareSettings: (settings: Partial<DatabaseFormShareSettings>) => {
       if (!databaseId || !activeView?.id || activeView.type !== "form") {
         return;
       }
 
       const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-        activeView.config;
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
       const nextConfig = getMergedDatabaseConfig(currentConfig, {
         formShare: {
           ...getDatabaseFormShareSettings(currentConfig),
@@ -1081,16 +989,13 @@ export function getDatabaseViewCommands({
         databaseViewId: activeView.id,
       });
     },
-    updateDatabaseSubItemsSettings: (
-      settings: Partial<DatabaseSubItemsSettings>,
-    ) => {
+    updateDatabaseSubItemsSettings: (settings: Partial<DatabaseSubItemsSettings>) => {
       if (!databaseId || !activeView?.id) {
         return;
       }
 
       const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-        activeView.config;
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
       const nextConfig = getMergedDatabaseConfig(currentConfig, {
         subItems: {
           ...getDatabaseSubItemsSettings(currentConfig),
@@ -1126,9 +1031,7 @@ export function getDatabaseViewCommands({
         return;
       }
 
-      if (
-        areSerializedPropertyValuesEqual(propertyType, currentValue, nextValue)
-      ) {
+      if (areSerializedPropertyValuesEqual(propertyType, currentValue, nextValue)) {
         return;
       }
 
@@ -1146,22 +1049,17 @@ export function getDatabaseViewCommands({
       }
 
       const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-        activeView.config;
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
       const hiddenPropertyIds = new Set(
         hasViewHiddenPropertyIds(currentConfig)
           ? getViewHiddenPropertyIds(currentConfig)
           : isKanbanView
             ? getDefaultKanbanHiddenPropertyIds(
                 properties,
-                getKanbanGroupPropertyId(currentConfig) ??
-                  kanbanGroupProperty?.property.id ??
-                  null,
+                getKanbanGroupPropertyId(currentConfig) ?? kanbanGroupProperty?.property.id ?? null,
               )
             : properties
-                .filter((property) =>
-                  getPropertyHidden(property.property.config),
-                )
+                .filter((property) => getPropertyHidden(property.property.config))
                 .map((property) => property.id),
       );
 
@@ -1188,8 +1086,7 @@ export function getDatabaseViewCommands({
       }
 
       const currentConfig =
-        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ??
-        activeView.config;
+        getLatestViewConfig?.(databaseId, activeView.id, activeView.config) ?? activeView.config;
       const nextConfig = getMergedDatabaseConfig(currentConfig, {
         showPropertyTitles: !getShowPropertyTitles(currentConfig),
       });
@@ -1207,10 +1104,7 @@ export function getDatabaseViewCommands({
     toggleFilterPillVisibility: () => {
       setShowFilterPill((visible) => !visible);
     },
-    updateDatabasePropertyConfig: (
-      databasePropertyId: string,
-      config: unknown,
-    ) => {
+    updateDatabasePropertyConfig: (databasePropertyId: string, config: unknown) => {
       if (!databaseId) {
         return Promise.resolve();
       }
@@ -1247,9 +1141,7 @@ export function getDatabaseViewCommands({
     updateDatabaseSort: (index: number, patch: Partial<DatabaseSortConfig>) => {
       saveDatabaseSorts(
         activeDatabaseSorts.map(({ column, direction }, sortIndex) =>
-          sortIndex === index
-            ? { column, direction, ...patch }
-            : { column, direction },
+          sortIndex === index ? { column, direction, ...patch } : { column, direction },
         ),
       );
     },
@@ -1262,8 +1154,7 @@ export function getDatabaseViewCommands({
 
           if (patch.propertyId && patch.propertyId !== filter.propertyId) {
             const propertyType = getFilterPropertyType(patch.propertyId);
-            const operator =
-              getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is";
+            const operator = getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is";
 
             return {
               ...filter,
@@ -1309,13 +1200,12 @@ function createTimelineDateResolver({
   return (onResolved: (datePropertyId: string) => void) => {
     const viewProperties = viewData
       ? viewData.bootstrap.properties.filter(
-        (property) => property.dataSourceId === viewData.dataSourceId,
-      )
+          (property) => property.dataSourceId === viewData.dataSourceId,
+        )
       : null;
     const currentProperties = viewProperties ?? properties;
     const existingDateProperty =
-      timelineDateProperty ??
-      getTimelineDateProperty(currentProperties, null);
+      timelineDateProperty ?? getTimelineDateProperty(currentProperties, null);
 
     if (existingDateProperty) {
       onResolved(existingDateProperty.property.id);
@@ -1349,7 +1239,5 @@ function createDatabaseFilterId() {
     return `filter-${crypto.randomUUID()}`;
   }
 
-  return `filter-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2)}`;
+  return `filter-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }

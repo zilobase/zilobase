@@ -16,10 +16,7 @@ const identity = {
 };
 
 test("chat agent identity round trips through a runtime-neutral room name", () => {
-  assert.deepEqual(
-    parseChatAgentInstanceName(buildChatAgentInstanceName(identity)),
-    identity,
-  );
+  assert.deepEqual(parseChatAgentInstanceName(buildChatAgentInstanceName(identity)), identity);
   assert.equal(parseChatAgentInstanceName("chat-not-ready"), null);
 });
 

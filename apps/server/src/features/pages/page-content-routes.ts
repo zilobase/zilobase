@@ -2,14 +2,34 @@ import { authorizePageRoute } from "./page-route-access";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 
-import { canAccessDatabaseInWorkspace, getWorkspaceRealtimeAccessExpiration, hasAccess } from "../access";
+import {
+  canAccessDatabaseInWorkspace,
+  getWorkspaceRealtimeAccessExpiration,
+  hasAccess,
+} from "../access";
 import { db } from "../../infrastructure/database";
-import { database, dataSource, databaseProperty, databaseRow, page, pageProperty, pagePropertyValue } from "../../infrastructure/database/schema";
+import {
+  database,
+  dataSource,
+  databaseProperty,
+  databaseRow,
+  page,
+  pageProperty,
+  pagePropertyValue,
+} from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
 import { readJsonBody } from "../../shared/http/request";
-import { createCollaborationTicket, documentNameForPage, getOrCreateCollaborationDocumentState, replacePageContent } from "../collaboration/service";
+import {
+  createCollaborationTicket,
+  documentNameForPage,
+  getOrCreateCollaborationDocumentState,
+  replacePageContent,
+} from "../collaboration/service";
 import { getCollaborationWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
-import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../workspaces/navigation-realtime/outbox";
+import {
+  enqueueNavigationInvalidation,
+  publishCommittedNavigationInvalidation,
+} from "../workspaces/navigation-realtime/outbox";
 import { commitDatabaseMutationBatch } from "../databases/core";
 import { lockDatabaseAutomationFactRows } from "../automations/triggers/event-capture";
 import { getDatabaseRecordEntity } from "../databases/commands/record-entity";
@@ -22,9 +42,7 @@ pageContentRoutes.get("/:id/properties", async (c) => {
   if (!authorization.ok) return authorization.response;
   const { user, record } = authorization;
 
-  return c.json(
-    await getPagePropertyPayload(record.id, record.workspaceId, user.id),
-  );
+  return c.json(await getPagePropertyPayload(record.id, record.workspaceId, user.id));
 });
 
 pageContentRoutes.put("/:id/properties/:propertyId/value", async (c) => {
@@ -70,22 +88,17 @@ pageContentRoutes.put("/:id/properties/:propertyId/value", async (c) => {
   const accessibleDatabaseIds = new Set(
     (
       await Promise.all(
-        [...new Set(candidateMemberships.map(({ databaseId }) => databaseId))]
-          .map(async (databaseId) =>
-            await canAccessDatabaseInWorkspace(
-                databaseId,
-                record.workspaceId,
-                user.id,
-                "view",
-              )
+        [...new Set(candidateMemberships.map(({ databaseId }) => databaseId))].map(
+          async (databaseId) =>
+            (await canAccessDatabaseInWorkspace(databaseId, record.workspaceId, user.id, "view"))
               ? databaseId
-              : null
-          ),
+              : null,
+        ),
       )
     ).filter((databaseId): databaseId is string => Boolean(databaseId)),
   );
   const memberships = candidateMemberships.filter(({ databaseId }) =>
-    accessibleDatabaseIds.has(databaseId)
+    accessibleDatabaseIds.has(databaseId),
   );
 
   if (memberships.length === 0) {
@@ -135,11 +148,13 @@ pageContentRoutes.put("/:id/properties/:propertyId/value", async (c) => {
       await tx
         .update(databaseRow)
         .set({ lastEditedById: user.id, updatedAt: now })
-        .where(inArray(databaseRow.id, memberships.map(({ rowId }) => rowId)));
-      await tx
-        .update(page)
-        .set({ updatedAt: now })
-        .where(eq(page.id, record.id));
+        .where(
+          inArray(
+            databaseRow.id,
+            memberships.map(({ rowId }) => rowId),
+          ),
+        );
+      await tx.update(page).set({ updatedAt: now }).where(eq(page.id, record.id));
 
       return {
         automationFacts: memberships.map(({ dataSourceId, rowId }) => ({
@@ -152,19 +167,18 @@ pageContentRoutes.put("/:id/properties/:propertyId/value", async (c) => {
             },
           ],
           dataSourceId,
-          origin:
-            c.get("authMethod") === "apiKey"
-              ? "api" as const
-              : "user" as const,
+          origin: c.get("authMethod") === "apiKey" ? ("api" as const) : ("user" as const),
           pageId: record.id,
           rowId,
         })),
-        mutations: await Promise.all(memberships.map(async ({ databaseId, dataSourceId, rowId }) => ({
-          areas: ["records" as const],
-          changes: { records: [await getDatabaseRecordEntity(tx, dataSourceId, rowId)] },
-          databaseId,
-          dataSourceId,
-        }))),
+        mutations: await Promise.all(
+          memberships.map(async ({ databaseId, dataSourceId, rowId }) => ({
+            areas: ["records" as const],
+            changes: { records: [await getDatabaseRecordEntity(tx, dataSourceId, rowId)] },
+            databaseId,
+            dataSourceId,
+          })),
+        ),
         result: undefined,
       };
     },
@@ -192,10 +206,7 @@ pageContentRoutes.post("/:id/collaboration-ticket", async (c) => {
       },
       c.env,
       {
-        maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(
-          existing.workspaceId,
-          user.id,
-        ),
+        maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(existing.workspaceId, user.id),
       },
     ),
     getOrCreateCollaborationDocumentState(existing.id),
@@ -322,89 +333,74 @@ pageContentRoutes.patch("/:id", async (c) => {
     values.metadata = patch.metadata;
   }
 
-  const updatesDatabaseRow =
-    patch.name !== undefined || patch.metadata !== undefined;
+  const updatesDatabaseRow = patch.name !== undefined || patch.metadata !== undefined;
   const changesNavigation =
     patch.name !== undefined || patch.metadata !== undefined || patch.type !== undefined;
   const mutationResult = updatesDatabaseRow
     ? (
-        await commitDatabaseMutationBatch(
-          { actorId: user.id, env: c.env },
-          async (tx) => {
-            const rowMemberships = await tx
-              .select({
-                dataSourceId: databaseRow.dataSourceId,
-                rowId: databaseRow.id,
-              })
-              .from(databaseRow)
-              .where(
-                and(
-                  eq(databaseRow.pageId, existing.id),
-                  isNull(databaseRow.deletedAt),
-                ),
-              );
-            await lockDatabaseAutomationFactRows(tx, rowMemberships);
-            const [updatedPage] = await tx
-              .update(page)
-              .set(values)
-              .where(eq(page.id, existing.id))
-              .returning();
+        await commitDatabaseMutationBatch({ actorId: user.id, env: c.env }, async (tx) => {
+          const rowMemberships = await tx
+            .select({
+              dataSourceId: databaseRow.dataSourceId,
+              rowId: databaseRow.id,
+            })
+            .from(databaseRow)
+            .where(and(eq(databaseRow.pageId, existing.id), isNull(databaseRow.deletedAt)));
+          await lockDatabaseAutomationFactRows(tx, rowMemberships);
+          const [updatedPage] = await tx
+            .update(page)
+            .set(values)
+            .where(eq(page.id, existing.id))
+            .returning();
 
-            if (!updatedPage) {
-              throw new Error("Page disappeared during update");
-            }
+          if (!updatedPage) {
+            throw new Error("Page disappeared during update");
+          }
 
-            const rows = await tx
-              .select({
-                databaseId: dataSource.parentDatabaseId,
-                dataSourceId: dataSource.id,
-                row: databaseRow,
-              })
-              .from(databaseRow)
-              .innerJoin(dataSource, eq(dataSource.id, databaseRow.dataSourceId))
-              .where(
-                and(
-                  eq(databaseRow.pageId, existing.id),
-                  isNull(databaseRow.deletedAt),
-                ),
-              );
+          const rows = await tx
+            .select({
+              databaseId: dataSource.parentDatabaseId,
+              dataSourceId: dataSource.id,
+              row: databaseRow,
+            })
+            .from(databaseRow)
+            .innerJoin(dataSource, eq(dataSource.id, databaseRow.dataSourceId))
+            .where(and(eq(databaseRow.pageId, existing.id), isNull(databaseRow.deletedAt)));
 
-            return {
-              automationFacts:
-                patch.name === undefined
-                  ? []
-                  : rows.map(({ dataSourceId, row }) => ({
-                      actorId: user.id,
-                      changedValues: [
-                        {
-                          after: updatedPage.name,
-                          before: existing.name,
-                          propertyId: "name",
-                        },
-                      ],
-                      dataSourceId,
-                      origin:
-                        c.get("authMethod") === "apiKey"
-                          ? "api" as const
-                          : "user" as const,
-                      pageId: existing.id,
-                      rowId: row.id,
-                    })),
-              mutations: await Promise.all(rows.map(async ({ databaseId, dataSourceId, row }) => ({
+          return {
+            automationFacts:
+              patch.name === undefined
+                ? []
+                : rows.map(({ dataSourceId, row }) => ({
+                    actorId: user.id,
+                    changedValues: [
+                      {
+                        after: updatedPage.name,
+                        before: existing.name,
+                        propertyId: "name",
+                      },
+                    ],
+                    dataSourceId,
+                    origin: c.get("authMethod") === "apiKey" ? ("api" as const) : ("user" as const),
+                    pageId: existing.id,
+                    rowId: row.id,
+                  })),
+            mutations: await Promise.all(
+              rows.map(async ({ databaseId, dataSourceId, row }) => ({
                 areas: ["records" as const],
                 changes: { records: [await getDatabaseRecordEntity(tx, dataSourceId, row.id)] },
                 databaseId,
                 dataSourceId,
-              }))),
-              result: {
-                navigationEvent: changesNavigation
-                  ? await enqueueNavigationInvalidation(tx, existing.workspaceId)
-                  : null,
-                page: updatedPage,
-              },
-            };
-          },
-        )
+              })),
+            ),
+            result: {
+              navigationEvent: changesNavigation
+                ? await enqueueNavigationInvalidation(tx, existing.workspaceId)
+                : null,
+              page: updatedPage,
+            },
+          };
+        })
       ).result
     : await db.transaction(async (tx) => {
         const [updatedPage] = await tx
@@ -426,10 +422,7 @@ pageContentRoutes.patch("/:id", async (c) => {
   }
 
   if (mutationResult.navigationEvent) {
-    await publishCommittedNavigationInvalidation(
-      mutationResult.navigationEvent,
-      c.env,
-    );
+    await publishCommittedNavigationInvalidation(mutationResult.navigationEvent, c.env);
   }
 
   if (patch.content !== undefined) {

@@ -30,10 +30,7 @@ export const OAUTH_API_RESOURCE_SCOPES = [
 export const OAUTH_ACCESS_TOKEN_TTL_SECONDS = 1800;
 export const OAUTH_REFRESH_TOKEN_REUSE_INTERVAL_SECONDS = 30;
 
-export function createOAuthProviderPlugin(
-  env: Record<string, unknown>,
-  apiOrigin: string,
-) {
+export function createOAuthProviderPlugin(env: Record<string, unknown>, apiOrigin: string) {
   const webOrigin = getPrimaryClientOrigin(env);
 
   return oauthProvider({
@@ -59,38 +56,39 @@ export function createOAuthProviderPlugin(
       shouldRedirect: () => false,
       consentReferenceId: ({ session }) => {
         const workspaceId = session.activeOrganizationId ?? session.activeWorkspaceId;
-        return typeof workspaceId === "string" && workspaceId.length > 0
-          ? workspaceId
-          : undefined;
+        return typeof workspaceId === "string" && workspaceId.length > 0 ? workspaceId : undefined;
       },
     },
-    extensions: [{
-      claims: {
-        async accessToken({ ctx, client, user, referenceId, scopes, resources }) {
-          const consent = user?.id && referenceId
-            ? await ctx.context.adapter.findOne<{ scopes: string[]; resources?: string[] }>({
-                model: "oauthConsent",
-                where: [
-                  { field: "clientId", value: client.clientId },
-                  { field: "userId", value: user.id },
-                  { field: "referenceId", value: referenceId },
-                ],
-              })
-            : null;
-          if (
-            !consent ||
-            !scopes.every((scope) => consent.scopes.includes(scope)) ||
-            !(resources ?? []).every((resource) => consent.resources?.includes(resource))
-          ) {
-            throw new APIError("FORBIDDEN", {
-              error: "invalid_grant",
-              error_description: "Workspace consent is missing or has been revoked.",
-            });
-          }
-          return {};
+    extensions: [
+      {
+        claims: {
+          async accessToken({ ctx, client, user, referenceId, scopes, resources }) {
+            const consent =
+              user?.id && referenceId
+                ? await ctx.context.adapter.findOne<{ scopes: string[]; resources?: string[] }>({
+                    model: "oauthConsent",
+                    where: [
+                      { field: "clientId", value: client.clientId },
+                      { field: "userId", value: user.id },
+                      { field: "referenceId", value: referenceId },
+                    ],
+                  })
+                : null;
+            if (
+              !consent ||
+              !scopes.every((scope) => consent.scopes.includes(scope)) ||
+              !(resources ?? []).every((resource) => consent.resources?.includes(resource))
+            ) {
+              throw new APIError("FORBIDDEN", {
+                error: "invalid_grant",
+                error_description: "Workspace consent is missing or has been revoked.",
+              });
+            }
+            return {};
+          },
         },
       },
-    }],
+    ],
     customAccessTokenClaims: async ({ referenceId, user }) => {
       if (!user?.id || !referenceId) {
         throw new APIError("FORBIDDEN", {

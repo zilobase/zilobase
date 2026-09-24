@@ -1,5 +1,5 @@
 import type { SidebarNavItem as NavigationItem } from "../model/sidebar-nav-item";
-"use client"
+("use client");
 
 import {
   useCallback,
@@ -9,60 +9,44 @@ import {
   type ComponentProps,
   type CSSProperties,
   type ReactNode,
-} from "react"
-import { Link } from "@tanstack/react-router"
-import { ArrowUpRightIcon, ChevronRightIcon } from "@/shared/components/icons"
+} from "react";
+import { Link } from "@tanstack/react-router";
+import { ArrowUpRightIcon, ChevronRightIcon } from "@/shared/components/icons";
 
-import { getSidebarDatabaseViewSearchId } from "@/features/sidebar/model/database-view-navigation"
+import { getSidebarDatabaseViewSearchId } from "@/features/sidebar/model/database-view-navigation";
 import {
   readExpandedSidebarItems,
   setSidebarItemExpanded,
   writeExpandedSidebarItems,
-} from "../model/sidebar-expansion-state"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/shared/ui/collapsible"
-import { SidebarMenuButton, SidebarMenuItem } from "@/shared/ui/sidebar"
+} from "../model/sidebar-expansion-state";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
+import { SidebarMenuButton, SidebarMenuItem } from "@/shared/ui/sidebar";
 import {
   SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
   SidebarNavItemAction,
-} from "@/shared/ui/sidebar-nav-item-action"
-import { cn } from "@/shared/lib/utils"
+} from "@/shared/ui/sidebar-nav-item-action";
+import { cn } from "@/shared/lib/utils";
 
-export type SidebarNavItem = NavigationItem<ReactNode>
+export type SidebarNavItem = NavigationItem<ReactNode>;
 
-
-type LinkProps = Partial<
-  Omit<ComponentProps<typeof Link>, "params" | "title" | "to">
->
+type LinkProps = Partial<Omit<ComponentProps<typeof Link>, "params" | "title" | "to">>;
 
 type SidebarNavListProps = {
-  activeDatabaseId: string | null
-  activeDatabaseViewId?: string | null
-  activePageId: string | null
-  activeMeetingId?: string | null
-  depthOffset?: number
-  getLinkProps?: (input: {
-    displayName: string
-    item: SidebarNavItem
-  }) => LinkProps | undefined
-  items: SidebarNavItem[]
-  renderItemMenu: (input: {
-    item: SidebarNavItem
-    nested: boolean
-  }) => ReactNode
-  storageKey: string
-}
+  activeDatabaseId: string | null;
+  activeDatabaseViewId?: string | null;
+  activePageId: string | null;
+  activeMeetingId?: string | null;
+  depthOffset?: number;
+  getLinkProps?: (input: { displayName: string; item: SidebarNavItem }) => LinkProps | undefined;
+  items: SidebarNavItem[];
+  renderItemMenu: (input: { item: SidebarNavItem; nested: boolean }) => ReactNode;
+  storageKey: string;
+};
 
-const rowClassName = cn(
-  "peer/menu-button pr-8",
-  SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
-)
+const rowClassName = cn("peer/menu-button pr-8", SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME);
 
 export function SidebarNavList(props: SidebarNavListProps) {
-  return <SidebarNavListContent key={props.storageKey} {...props} />
+  return <SidebarNavListContent key={props.storageKey} {...props} />;
 }
 
 function SidebarNavListContent({
@@ -76,18 +60,18 @@ function SidebarNavListContent({
   renderItemMenu,
   storageKey,
 }: SidebarNavListProps) {
-  const defaultViewIds = useMemo(() => getDefaultViewIds(items), [items])
+  const defaultViewIds = useMemo(() => getDefaultViewIds(items), [items]);
   const [expandedIds, setExpandedIds] = useState(
     () => new Set(readExpandedSidebarItems(storageKey)),
-  )
+  );
 
   useEffect(() => {
-    writeExpandedSidebarItems(storageKey, expandedIds)
-  }, [expandedIds, storageKey])
+    writeExpandedSidebarItems(storageKey, expandedIds);
+  }, [expandedIds, storageKey]);
 
   const setExpanded = useCallback((id: string, expanded: boolean) => {
-    setExpandedIds((current) => setSidebarItemExpanded(current, id, expanded))
-  }, [])
+    setExpandedIds((current) => setSidebarItemExpanded(current, id, expanded));
+  }, []);
 
   return items.map((item) => (
     <SidebarNavRow
@@ -104,7 +88,7 @@ function SidebarNavListContent({
       renderItemMenu={renderItemMenu}
       setExpanded={setExpanded}
     />
-  ))
+  ));
 }
 
 function SidebarNavRow({
@@ -120,33 +104,29 @@ function SidebarNavRow({
   renderItemMenu,
   setExpanded,
 }: Omit<SidebarNavListProps, "items" | "storageKey"> & {
-  defaultViewIds: Map<string, string>
-  depth: number
-  expandedIds: ReadonlySet<string>
-  item: SidebarNavItem
-  setExpanded: (id: string, expanded: boolean) => void
+  defaultViewIds: Map<string, string>;
+  depth: number;
+  expandedIds: ReadonlySet<string>;
+  item: SidebarNavItem;
+  setExpanded: (id: string, expanded: boolean) => void;
 }) {
-  const id = item.navNodeId ?? item.id
-  const displayName = item.name.trim() || "Untitled"
-  const hasChildren = item.pages.length > 0
-  const expanded = expandedIds.has(id)
-  const defaultViewId = item.databaseId
-    ? defaultViewIds.get(item.databaseId)
-    : undefined
+  const id = item.navNodeId ?? item.id;
+  const displayName = item.name.trim() || "Untitled";
+  const hasChildren = item.pages.length > 0;
+  const expanded = expandedIds.has(id);
+  const defaultViewId = item.databaseId ? defaultViewIds.get(item.databaseId) : undefined;
   const viewId = getSidebarDatabaseViewSearchId({
     databaseId: item.databaseId,
     databaseViewId: item.databaseViewId,
     defaultDatabaseViewId: defaultViewId,
     isDatabaseView: item.isDatabaseView,
-  })
-  const selectedViewId = item.databaseId
-    ? (viewId ?? defaultViewId ?? null)
-    : null
-  const linkProps = getLinkProps?.({ displayName, item })
+  });
+  const selectedViewId = item.databaseId ? (viewId ?? defaultViewId ?? null) : null;
+  const linkProps = getLinkProps?.({ displayName, item });
   const linkStyle = {
     ...linkProps?.style,
     paddingLeft: `${8 + depth * 16}px`,
-  } as CSSProperties
+  } as CSSProperties;
   const active = isActiveItem(
     item,
     activePageId,
@@ -154,7 +134,7 @@ function SidebarNavRow({
     activeDatabaseId,
     activeDatabaseViewId ?? null,
     defaultViewIds,
-  )
+  );
 
   const content = (
     <>
@@ -170,14 +150,10 @@ function SidebarNavRow({
       <span className="min-w-0 truncate">{displayName}</span>
       <ItemIndicators item={item} />
     </>
-  )
+  );
 
   return (
-    <Collapsible
-      asChild
-      onOpenChange={(open) => setExpanded(id, open)}
-      open={expanded}
-    >
+    <Collapsible asChild onOpenChange={(open) => setExpanded(id, open)} open={expanded}>
       <SidebarMenuItem>
         <div className="group/nav-row relative">
           <SidebarMenuButton asChild className={rowClassName} isActive={active}>
@@ -266,22 +242,20 @@ function SidebarNavRow({
         ) : null}
       </SidebarMenuItem>
     </Collapsible>
-  )
+  );
 }
 
 function ItemIndicators({ item }: { item: SidebarNavItem }) {
-  const showAiMode = item.zilobaseai && !item.isDatabase
+  const showAiMode = item.zilobaseai && !item.isDatabase;
 
   if (!showAiMode && !item.isLinked) {
-    return null
+    return null;
   }
 
   return (
     <span className="ml-auto flex shrink-0 items-center gap-1.5 transition-opacity group-hover/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu]:focus-visible]/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:opacity-0 group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:opacity-0">
       {showAiMode ? (
-        <span className="text-xs text-content-secondary">
-          {item.zilobaseai}
-        </span>
+        <span className="text-xs text-content-secondary">{item.zilobaseai}</span>
       ) : null}
       {item.isLinked ? (
         <ArrowUpRightIcon
@@ -290,7 +264,7 @@ function ItemIndicators({ item }: { item: SidebarNavItem }) {
         />
       ) : null}
     </span>
-  )
+  );
 }
 
 function isActiveItem(
@@ -302,52 +276,51 @@ function isActiveItem(
   defaultViewIds: Map<string, string>,
 ) {
   if (item.isMeeting) {
-    return activeMeetingId === item.meetingId
+    return activeMeetingId === item.meetingId;
   }
 
   if (item.isDatabaseView) {
     return (
       activeDatabaseId === item.databaseId &&
-      item.databaseViewId ===
-        (activeDatabaseViewId || defaultViewIds.get(item.databaseId ?? ""))
-    )
+      item.databaseViewId === (activeDatabaseViewId || defaultViewIds.get(item.databaseId ?? ""))
+    );
   }
 
   return item.isDatabase
     ? activeDatabaseId === item.databaseId
-    : activeMeetingId === null && activePageId === item.pageId
+    : activeMeetingId === null && activePageId === item.pageId;
 }
 
 function getDefaultViewIds(items: SidebarNavItem[]) {
-  const viewIds = new Map<string, string>()
+  const viewIds = new Map<string, string>();
 
   const visit = (item: SidebarNavItem) => {
     if (item.isDatabase && item.databaseId) {
-      const defaultView = item.pages.find((child) => child.isDatabaseView)
+      const defaultView = item.pages.find((child) => child.isDatabaseView);
       if (defaultView?.databaseViewId) {
-        viewIds.set(item.databaseId, defaultView.databaseViewId)
+        viewIds.set(item.databaseId, defaultView.databaseViewId);
       }
     }
-    item.pages.forEach(visit)
-  }
+    item.pages.forEach(visit);
+  };
 
-  items.forEach(visit)
-  return viewIds
+  items.forEach(visit);
+  return viewIds;
 }
 
 export function getActivePageId(pathname: string) {
-  const match = pathname.match(/^\/p\/([^/?#]+)/)
-  return match ? decodeURIComponent(match[1]) : null
+  const match = pathname.match(/^\/p\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 export function getActiveDatabaseId(pathname: string) {
-  const match = pathname.match(/^\/d\/([^/?#]+)/)
-  return match ? decodeURIComponent(match[1]) : null
+  const match = pathname.match(/^\/d\/([^/?#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 export function getActiveMeetingId(pathname: string, search?: unknown) {
-  const match = pathname.match(/^\/m\/([^/?#]+)/)
-  if (match) return decodeURIComponent(match[1])
+  const match = pathname.match(/^\/m\/([^/?#]+)/);
+  if (match) return decodeURIComponent(match[1]);
 
   if (
     search &&
@@ -355,25 +328,16 @@ export function getActiveMeetingId(pathname: string, search?: unknown) {
     "meeting" in search &&
     typeof search.meeting === "string"
   ) {
-    return search.meeting
+    return search.meeting;
   }
 
-  return typeof search === "string"
-    ? new URLSearchParams(search).get("meeting")
-    : null
+  return typeof search === "string" ? new URLSearchParams(search).get("meeting") : null;
 }
 
 export function getActiveDatabaseViewId(search: unknown) {
-  if (
-    search &&
-    typeof search === "object" &&
-    "view" in search &&
-    typeof search.view === "string"
-  ) {
-    return search.view
+  if (search && typeof search === "object" && "view" in search && typeof search.view === "string") {
+    return search.view;
   }
 
-  return typeof search === "string"
-    ? new URLSearchParams(search).get("view")
-    : null
+  return typeof search === "string" ? new URLSearchParams(search).get("view") : null;
 }

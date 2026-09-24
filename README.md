@@ -124,27 +124,27 @@ environment files and do not read `.env.keys`. Re-encrypt after editing with
 
 Common commands:
 
-| Command | Purpose |
-| --- | --- |
-| `npm run setup` | Run local bootstrap: install workspace dependencies, create local development files, and pull dependency images. |
-| `npm run setup:check` | Check prerequisites and optional tooling without running bootstrap steps. |
-| `npm run dev:doctor` | Validate source and optional Kubernetes tooling. |
-| `npm run dev:setup` | Create missing private development files without overwriting. |
-| `npm run dev` | Run the local Node profile, detected sibling development providers, and the loopback development hub. |
-| `npm run db:studio` | Open Drizzle Studio for the local development database. |
-| `npm run dev:status` | Inspect dependency and runtime health. |
-| `npm run build` | Type-check and build the web client and server. |
-| `npm run test:web` | Run web tests. |
-| `npm run build:desktop` | Build the Electron desktop app. |
-| `npm run build:clipper` | Build the browser clipper. |
-| `npm run dev:desktop` | Start the same local workspace as `dev`, then open Electron. Do not combine with `dev`. |
-| `npm run selfhost:up` | Build and start the loopback-only Compose stack. |
-| `npm run selfhost:logs` | Follow development stack logs. |
-| `npm run selfhost:down` | Stop containers and preserve data volumes. |
-| `npm run selfhost:reset` | Explicitly delete local self-hosted data volumes. |
-| `npm run test:selfhost` | Run the isolated end-to-end Compose smoke test. |
-| `npm run mail:config:check` | Validate Gmail OAuth, encryption, and Pub/Sub configuration. |
-| `npm run env:encrypt` | Encrypt local runtime env files at rest. |
+| Command                     | Purpose                                                                                                          |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `npm run setup`             | Run local bootstrap: install workspace dependencies, create local development files, and pull dependency images. |
+| `npm run setup:check`       | Check prerequisites and optional tooling without running bootstrap steps.                                        |
+| `npm run dev:doctor`        | Validate source and optional Kubernetes tooling.                                                                 |
+| `npm run dev:setup`         | Create missing private development files without overwriting.                                                    |
+| `npm run dev`               | Run the local Node profile, detected sibling development providers, and the loopback development hub.            |
+| `npm run db:studio`         | Open Drizzle Studio for the local development database.                                                          |
+| `npm run dev:status`        | Inspect dependency and runtime health.                                                                           |
+| `npm run build`             | Type-check and build the web client and server.                                                                  |
+| `npm run test:web`          | Run web tests.                                                                                                   |
+| `npm run build:desktop`     | Build the Electron desktop app.                                                                                  |
+| `npm run build:clipper`     | Build the browser clipper.                                                                                       |
+| `npm run dev:desktop`       | Start the same local workspace as `dev`, then open Electron. Do not combine with `dev`.                          |
+| `npm run selfhost:up`       | Build and start the loopback-only Compose stack.                                                                 |
+| `npm run selfhost:logs`     | Follow development stack logs.                                                                                   |
+| `npm run selfhost:down`     | Stop containers and preserve data volumes.                                                                       |
+| `npm run selfhost:reset`    | Explicitly delete local self-hosted data volumes.                                                                |
+| `npm run test:selfhost`     | Run the isolated end-to-end Compose smoke test.                                                                  |
+| `npm run mail:config:check` | Validate Gmail OAuth, encryption, and Pub/Sub configuration.                                                     |
+| `npm run env:encrypt`       | Encrypt local runtime env files at rest.                                                                         |
 
 See the [unified local-development guide](./docs/development-workflows.md) for
 runtime URLs, debugger profiles, Kubernetes workflows, dotenvx precedence,
@@ -210,13 +210,13 @@ public self-hosted deployment only.
 
 ## Community
 
-| Need | Where to go |
-| --- | --- |
-| Report a bug | [Open a bug report](./.github/ISSUE_TEMPLATE/bug_report.yml) |
-| Request a feature | [Open a feature request](./.github/ISSUE_TEMPLATE/feature_request.yml) |
-| Contribute code | Read [CONTRIBUTING.md](./CONTRIBUTING.md) |
-| Report a vulnerability | Read [SECURITY.md](./SECURITY.md) |
-| Understand governance | Read [GOVERNANCE.md](./GOVERNANCE.md) |
+| Need                   | Where to go                                                            |
+| ---------------------- | ---------------------------------------------------------------------- |
+| Report a bug           | [Open a bug report](./.github/ISSUE_TEMPLATE/bug_report.yml)           |
+| Request a feature      | [Open a feature request](./.github/ISSUE_TEMPLATE/feature_request.yml) |
+| Contribute code        | Read [CONTRIBUTING.md](./CONTRIBUTING.md)                              |
+| Report a vulnerability | Read [SECURITY.md](./SECURITY.md)                                      |
+| Understand governance  | Read [GOVERNANCE.md](./GOVERNANCE.md)                                  |
 
 ## License
 

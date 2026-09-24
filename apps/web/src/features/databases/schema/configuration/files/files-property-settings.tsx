@@ -30,14 +30,10 @@ export function FilesPropertySettings({
 
 export function getFilesPropertyConfig(config: unknown) {
   const parsedConfig =
-    config && typeof config === "object"
-      ? (config as DatabasePropertyConfig)
-      : {};
+    config && typeof config === "object" ? (config as DatabasePropertyConfig) : {};
 
   return {
-    filesLimit: isFilesLimitValue(parsedConfig.filesLimit)
-      ? parsedConfig.filesLimit
-      : "no_limit",
+    filesLimit: isFilesLimitValue(parsedConfig.filesLimit) ? parsedConfig.filesLimit : "no_limit",
   };
 }
 

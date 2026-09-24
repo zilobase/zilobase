@@ -1,64 +1,58 @@
-import { useEffect, useState } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 
-import { Button } from "@/shared/ui/button"
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  FieldSeparator,
-} from "@/shared/ui/field"
-import { Input } from "@/shared/ui/input"
-import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
+import { Button } from "@/shared/ui/button";
+import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo";
 import {
   desktopCloudConnectUrl,
   getSelectedDesktopServer,
   isCloudDesktopServer,
   listDesktopServerProfiles,
   type DesktopServerProfile,
-} from "@/features/desktop/server/index"
-import { requestDesktopServerReplacement } from "@/features/desktop/server/index"
-import { executeDesktopServerSwitch } from "@/features/desktop/server/index"
-import { DesktopDevCustomServerSelect } from "@/features/desktop/components/desktop-dev-custom-server-select"
+} from "@/features/desktop/server/index";
+import { requestDesktopServerReplacement } from "@/features/desktop/server/index";
+import { executeDesktopServerSwitch } from "@/features/desktop/server/index";
+import { DesktopDevCustomServerSelect } from "@/features/desktop/components/desktop-dev-custom-server-select";
 
 export default function ConnectPage() {
-  const navigate = useNavigate()
-  const server = getSelectedDesktopServer()
-  const onCloud = isCloudDesktopServer(server)
-  const [serverUrl, setServerUrl] = useState("")
-  const [profiles, setProfiles] = useState<DesktopServerProfile[]>([])
+  const navigate = useNavigate();
+  const server = getSelectedDesktopServer();
+  const onCloud = isCloudDesktopServer(server);
+  const [serverUrl, setServerUrl] = useState("");
+  const [profiles, setProfiles] = useState<DesktopServerProfile[]>([]);
 
   useEffect(() => {
-    let disposed = false
+    let disposed = false;
     void listDesktopServerProfiles()
       .then((result) => {
-        if (!disposed) setProfiles(result.profiles)
+        if (!disposed) setProfiles(result.profiles);
       })
       .catch(() => {
-        if (!disposed) setProfiles([])
-      })
+        if (!disposed) setProfiles([]);
+      });
     return () => {
-      disposed = true
-    }
-  }, [])
+      disposed = true;
+    };
+  }, []);
 
-  const otherProfiles = profiles.filter((profile) => !profile.active)
+  const otherProfiles = profiles.filter((profile) => !profile.active);
 
   const continueWithCurrent = () => {
-    void navigate({ to: "/login" })
-  }
+    void navigate({ to: "/login" });
+  };
 
   const useCloud = () => {
     if (onCloud) {
-      continueWithCurrent()
-      return
+      continueWithCurrent();
+      return;
     }
     requestDesktopServerReplacement({
       path: "/login",
       serverUrl: desktopCloudConnectUrl(),
-    })
-  }
+    });
+  };
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-surface-canvas p-6 md:p-10">
@@ -71,8 +65,7 @@ export default function ConnectPage() {
         <div>
           <h1 className="text-lg font-semibold">Choose a server</h1>
           <FieldDescription>
-            Start with Zilobase Cloud or connect a hosted instance, then
-            continue in your browser.
+            Start with Zilobase Cloud or connect a hosted instance, then continue in your browser.
           </FieldDescription>
         </div>
 
@@ -85,11 +78,7 @@ export default function ConnectPage() {
 
           {server && !onCloud ? (
             <Field>
-              <Button
-                onClick={continueWithCurrent}
-                type="button"
-                variant="outline"
-              >
+              <Button onClick={continueWithCurrent} type="button" variant="outline">
                 Continue with {server.displayName}
               </Button>
             </Field>
@@ -101,12 +90,10 @@ export default function ConnectPage() {
                 onClick={() => {
                   void executeDesktopServerSwitch({
                     hasCredentials: profile.hasCredentials,
-                    path: profile.hasCredentials
-                      ? (profile.lastPath ?? "/recents")
-                      : "/login",
+                    path: profile.hasCredentials ? (profile.lastPath ?? "/recents") : "/login",
                     server: profile.server,
                     workspaceId: profile.lastActiveWorkspaceId,
-                  })
+                  });
                 }}
                 type="button"
                 variant="outline"
@@ -121,7 +108,7 @@ export default function ConnectPage() {
               requestDesktopServerReplacement({
                 path: "/login",
                 serverUrl: nextServerUrl,
-              })
+              });
             }}
           />
 
@@ -130,9 +117,9 @@ export default function ConnectPage() {
           <form
             className="grid gap-4"
             onSubmit={(event) => {
-              event.preventDefault()
-              requestDesktopServerReplacement({ path: "/login", serverUrl })
-              setServerUrl("")
+              event.preventDefault();
+              requestDesktopServerReplacement({ path: "/login", serverUrl });
+              setServerUrl("");
             }}
           >
             <Field>
@@ -159,5 +146,5 @@ export default function ConnectPage() {
         </FieldGroup>
       </div>
     </main>
-  )
+  );
 }

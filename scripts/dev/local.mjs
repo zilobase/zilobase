@@ -20,11 +20,7 @@ import {
   loadGeneratedEnvironment,
   loadProfileEnvironment,
 } from "./env.mjs";
-import {
-  composeLogsHint,
-  ensureDockerSocket,
-  resolveComposeRunner,
-} from "./docker.mjs";
+import { composeLogsHint, ensureDockerSocket, resolveComposeRunner } from "./docker.mjs";
 import {
   assertPortsAvailable,
   run,
@@ -74,7 +70,11 @@ export async function startLocal() {
 }
 
 export async function startPreview() {
-  await startRuntime({ spawnWeb: spawnWebPreview, printSummary: printPreviewSummary, processLabel: "Preview" });
+  await startRuntime({
+    spawnWeb: spawnWebPreview,
+    printSummary: printPreviewSummary,
+    processLabel: "Preview",
+  });
 }
 
 async function startRuntime({ spawnWeb: spawnWebFn, printSummary, processLabel }) {
@@ -106,17 +106,31 @@ async function startRuntime({ spawnWeb: spawnWebFn, printSummary, processLabel }
   try {
     let color = 0;
     if (names.includes("node")) {
-      const spawned = await spawnNodeProfile(profiles.node, environments.node, logDir, spawnWebFn, color);
+      const spawned = await spawnNodeProfile(
+        profiles.node,
+        environments.node,
+        logDir,
+        spawnWebFn,
+        color,
+      );
       children.push(...spawned.children);
       color = spawned.color;
     }
     await mkdir(stateDir, { recursive: true });
-    await writeFile(runtimeStateFile, `${JSON.stringify({
-      profiles: Object.fromEntries(names.map((name) => [name, profiles[name]])),
-      pids: children.map((child) => child.pid).filter(Boolean),
-      startedAt: new Date().toISOString(),
-    }, null, 2)}
-`, { mode: 0o600 });
+    await writeFile(
+      runtimeStateFile,
+      `${JSON.stringify(
+        {
+          profiles: Object.fromEntries(names.map((name) => [name, profiles[name]])),
+          pids: children.map((child) => child.pid).filter(Boolean),
+          startedAt: new Date().toISOString(),
+        },
+        null,
+        2,
+      )}
+`,
+      { mode: 0o600 },
+    );
 
     for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
       process.once(signal, () => void stop(signal));
@@ -196,10 +210,15 @@ async function spawnNodeProfile(profile, environment, logDir, spawnWebFn, color)
 }
 
 function awaitFirstExit(children) {
-  return Promise.race(children.map((child) => new Promise((resolve) => {
-    child.once("error", (error) => resolve({ error }));
-    child.once("exit", (code, signal) => resolve({ code, signal }));
-  })));
+  return Promise.race(
+    children.map(
+      (child) =>
+        new Promise((resolve) => {
+          child.once("error", (error) => resolve({ error }));
+          child.once("exit", (code, signal) => resolve({ code, signal }));
+        }),
+    ),
+  );
 }
 
 export async function startStudio() {
@@ -223,30 +242,34 @@ export async function startStudio() {
     for (const service of services) {
       const generated = await loadGeneratedEnvironment(service.envFile);
       if (!generated.DATABASE_URL?.trim()) {
-        throw new Error(`${service.name} DATABASE_URL is missing from the generated local environment.`);
+        throw new Error(
+          `${service.name} DATABASE_URL is missing from the generated local environment.`,
+        );
       }
-      children.push(spawnService(
-        `${service.name}-studio`,
-        process.execPath,
-        [
-          path.join(coreDir, "node_modules", "drizzle-kit", "bin.cjs"),
-          "studio",
-          "--host",
-          "127.0.0.1",
-          "--port",
-          String(service.port),
-        ],
-        {
-          cwd: path.join(coreDir, "apps", "server"),
-          env: {
-            ...process.env,
-            ...generated,
-            DATABASE_URL: generated.DATABASE_URL,
-            ZILOBASE_ENV_FILE: service.envFile,
+      children.push(
+        spawnService(
+          `${service.name}-studio`,
+          process.execPath,
+          [
+            path.join(coreDir, "node_modules", "drizzle-kit", "bin.cjs"),
+            "studio",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            String(service.port),
+          ],
+          {
+            cwd: path.join(coreDir, "apps", "server"),
+            env: {
+              ...process.env,
+              ...generated,
+              DATABASE_URL: generated.DATABASE_URL,
+              ZILOBASE_ENV_FILE: service.envFile,
+            },
           },
-        },
-        color++,
-      ));
+          color++,
+        ),
+      );
     }
 
     for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
@@ -256,10 +279,15 @@ export async function startStudio() {
     await waitForStudioReadiness(services, children);
     printStudioSummary(services);
 
-    const result = await Promise.race(children.map((child) => new Promise((resolve) => {
-      child.once("error", (error) => resolve({ error }));
-      child.once("exit", (code, signal) => resolve({ code, signal }));
-    })));
+    const result = await Promise.race(
+      children.map(
+        (child) =>
+          new Promise((resolve) => {
+            child.once("error", (error) => resolve({ error }));
+            child.once("exit", (code, signal) => resolve({ code, signal }));
+          }),
+      ),
+    );
     if (!stopping && result.error) throw result.error;
     if (!stopping && result.code !== 0) {
       throw new Error(`Drizzle Studio exited with ${result.signal ?? result.code}.`);
@@ -279,20 +307,23 @@ export async function showStatus() {
   console.info("\nRuntime endpoints:");
   const state = await readRuntimeState();
   const livePids = (state?.pids ?? []).filter(isRunningPid);
-  const profiles = state?.profiles && !Array.isArray(state.profiles)
-    ? Object.values(state.profiles)
-    : Object.values(localProfiles);
+  const profiles =
+    state?.profiles && !Array.isArray(state.profiles)
+      ? Object.values(state.profiles)
+      : Object.values(localProfiles);
   console.info(
     livePids.length
       ? `Managed supervisor PIDs: ${livePids.join(", ")}`
       : state
         ? "Managed supervisor: stopped (stale state will be removed by dev:down)"
-      : "Managed supervisor: stopped (responding default ports are external/unmanaged)",
+        : "Managed supervisor: stopped (responding default ports are external/unmanaged)",
   );
   for (const profile of profiles) {
     const api = await probe(`http://127.0.0.1:${profile.apiPort}/ready`);
     const web = await probe(`http://127.0.0.1:${profile.appPort}`);
-    console.info(`${profile.name.padEnd(7)} API ${api.padEnd(10)} web ${web.padEnd(10)} ${runtimeUrl(profile)}`);
+    console.info(
+      `${profile.name.padEnd(7)} API ${api.padEnd(10)} web ${web.padEnd(10)} ${runtimeUrl(profile)}`,
+    );
   }
 }
 
@@ -318,14 +349,20 @@ export async function followLocalLogs() {
     console.info(lines.slice(-200).join("\n"));
     offsets.set(filename, Buffer.byteLength(content));
   }
-  console.info(`\nFollowing runtime logs. Press Ctrl-C to stop. Dependency logs: ${composeLogsHint()}`);
+  console.info(
+    `\nFollowing runtime logs. Press Ctrl-C to stop. Dependency logs: ${composeLogsHint()}`,
+  );
   const watcher = watch(logDir);
   for await (const event of watcher) {
     if (!event.filename?.endsWith(".log")) continue;
     const filename = path.join(logDir, event.filename);
     const offset = offsets.get(filename) ?? 0;
     let size;
-    try { size = (await stat(filename)).size; } catch { continue; }
+    try {
+      size = (await stat(filename)).size;
+    } catch {
+      continue;
+    }
     if (size < offset) offsets.set(filename, 0);
     const content = await readFile(filename);
     const start = offsets.get(filename) ?? 0;
@@ -339,7 +376,9 @@ export async function stopLocal() {
   if (await exists(generatedEnvironmentFiles.dependencies)) {
     await dependencies(["down", "--remove-orphans"]);
   }
-  console.info("Local runtime processes stopped; database and object-storage volumes were preserved.");
+  console.info(
+    "Local runtime processes stopped; database and object-storage volumes were preserved.",
+  );
 }
 
 export async function resetLocal(target, confirmed) {
@@ -371,7 +410,10 @@ export async function resetLocal(target, confirmed) {
 
   for (const namespace of ["zilobase-community-dev"]) {
     const result = runResult("kubectl", [
-      "delete", "namespace", namespace, "--ignore-not-found=true",
+      "delete",
+      "namespace",
+      namespace,
+      "--ignore-not-found=true",
     ]);
     if (result.error?.code === "ENOENT") {
       throw new Error("kubectl is required to reset Kubernetes data.");
@@ -408,7 +450,14 @@ function spawnWebPreview(name, profile, env, color) {
   return spawnService(
     name,
     process.execPath,
-    [path.join(coreDir, "node_modules", "vite", "bin", "vite.js"), "preview", "--host", "0.0.0.0", "--port", String(profile.appPort)],
+    [
+      path.join(coreDir, "node_modules", "vite", "bin", "vite.js"),
+      "preview",
+      "--host",
+      "0.0.0.0",
+      "--port",
+      String(profile.appPort),
+    ],
     {
       cwd: path.join(coreDir, "apps", "web"),
       logFile: path.join(stateDir, "logs", `${name}.log`),
@@ -435,7 +484,11 @@ async function dependencies(args, options = {}) {
     composeFile,
     ...args,
   ];
-  if (options.reject === false) return runResult(compose.command, commandArgs, { cwd: coreDir, env: { ...process.env, ...env } });
+  if (options.reject === false)
+    return runResult(compose.command, commandArgs, {
+      cwd: coreDir,
+      env: { ...process.env, ...env },
+    });
   return run(compose.command, commandArgs, { cwd: coreDir, env: { ...process.env, ...env } });
 }
 
@@ -443,8 +496,18 @@ async function recreateDatabase(database) {
   const env = await loadGeneratedEnvironment(generatedEnvironmentFiles.dependencies);
   for (const sql of databaseResetStatements(database)) {
     await dependencies([
-      "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1",
-      "-U", env.POSTGRES_USER, "-d", "postgres", "-c", sql,
+      "exec",
+      "-T",
+      "postgres",
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      env.POSTGRES_USER,
+      "-d",
+      "postgres",
+      "-c",
+      sql,
     ]);
   }
 }
@@ -453,16 +516,17 @@ export function databaseResetStatements(database) {
   if (!/^[a-z][a-z0-9_]*$/.test(database)) {
     throw new Error("Development database name is invalid.");
   }
-  return [
-    `DROP DATABASE IF EXISTS ${database} WITH (FORCE);`,
-    `CREATE DATABASE ${database};`,
-  ];
+  return [`DROP DATABASE IF EXISTS ${database} WITH (FORCE);`, `CREATE DATABASE ${database};`];
 }
 
 async function resetNodeBucket() {
   await dependencies([
-    "run", "--rm", "-T", "--no-deps", "minio-init",
-    "mc alias set local http://minio:9000 \"$MINIO_ROOT_USER\" \"$MINIO_ROOT_PASSWORD\" && " +
+    "run",
+    "--rm",
+    "-T",
+    "--no-deps",
+    "minio-init",
+    'mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" && ' +
       "mc rb --force local/zilobase-node || true; mc mb local/zilobase-node; mc anonymous set none local/zilobase-node",
   ]);
 }
@@ -478,7 +542,11 @@ async function stopRuntimeProcesses() {
       console.warn(`Skipped PID ${pid}: it no longer belongs to the Zilobase supervisor.`);
       continue;
     }
-    try { process.kill(pid, "SIGTERM"); } catch (error) { if (error?.code !== "ESRCH") throw error; }
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch (error) {
+      if (error?.code !== "ESRCH") throw error;
+    }
   }
   await rm(runtimeStateFile, { force: true });
 }
@@ -526,7 +594,9 @@ function printLocalSummary(names, profiles = localProfiles) {
   console.info("\nZilobase development runtimes are ready:\n");
   for (const name of names) {
     const profile = profiles[name];
-    console.info(`${name.padEnd(7)} ${runtimeUrl(profile)}  API ${apiUrl(profile)}  inspector ${profile.inspectorPort}`);
+    console.info(
+      `${name.padEnd(7)} ${runtimeUrl(profile)}  API ${apiUrl(profile)}  inspector ${profile.inspectorPort}`,
+    );
   }
   console.info("Mailpit http://127.0.0.1:18025");
   console.info("MinIO  http://127.0.0.1:19101");
@@ -537,7 +607,9 @@ function printPreviewSummary(names, profiles = localProfiles) {
   console.info("\nZilobase preview runtimes are ready (built web assets):\n");
   for (const name of names) {
     const profile = profiles[name];
-    console.info(`${name.padEnd(7)} ${runtimeUrl(profile)}  API ${apiUrl(profile)}  inspector ${profile.inspectorPort}`);
+    console.info(
+      `${name.padEnd(7)} ${runtimeUrl(profile)}  API ${apiUrl(profile)}  inspector ${profile.inspectorPort}`,
+    );
   }
   console.info("Mailpit http://127.0.0.1:18025");
   console.info("MinIO  http://127.0.0.1:19101");
@@ -550,10 +622,7 @@ export function effectiveProfile(name, env) {
   profile.apiPort = readPort(env.PORT, profile.apiPort);
   profile.healthPort = readPort(env.BACKGROUND_HEALTH_PORT, profile.healthPort);
   profile.appPort = readPort(env.ZILOBASE_NODE_WEB_PORT, profile.appPort);
-  profile.inspectorPort = readPort(
-    env.ZILOBASE_NODE_INSPECTOR_PORT,
-    profile.inspectorPort,
-  );
+  profile.inspectorPort = readPort(env.ZILOBASE_NODE_INSPECTOR_PORT, profile.inspectorPort);
   return profile;
 }
 
@@ -591,14 +660,17 @@ function websocketUrl(profile, pathname) {
 
 async function waitForStudioReadiness(services, children) {
   const ready = Promise.all(services.map((service) => waitForTcp(service.port)));
-  const exited = Promise.race(children.map((child) => new Promise((_, reject) => {
-    child.once("error", reject);
-    child.once("exit", (code, signal) => {
-      reject(new Error(
-        `Drizzle Studio exited before readiness with ${signal ?? code}.`,
-      ));
-    });
-  })));
+  const exited = Promise.race(
+    children.map(
+      (child) =>
+        new Promise((_, reject) => {
+          child.once("error", reject);
+          child.once("exit", (code, signal) => {
+            reject(new Error(`Drizzle Studio exited before readiness with ${signal ?? code}.`));
+          });
+        }),
+    ),
+  );
   await Promise.race([ready, exited]);
 }
 
@@ -625,19 +697,26 @@ function waitForTcp(port, host = "127.0.0.1") {
 }
 
 async function waitForRuntimeReadiness(names, profiles, children) {
-  const ready = Promise.all(names.map(async (name) => {
-    const profile = profiles[name];
-    await waitForUrl(`http://127.0.0.1:${profile.apiPort}/ready`);
-    await waitForUrl(`http://127.0.0.1:${profile.appPort}`);
-  }));
-  const exited = Promise.race(children.map((child) => new Promise((_, reject) => {
-    child.once("error", reject);
-    child.once("exit", (code, signal) => {
-      reject(new Error(
-        `Development process exited before readiness with ${signal ?? code}.`,
-      ));
-    });
-  })));
+  const ready = Promise.all(
+    names.map(async (name) => {
+      const profile = profiles[name];
+      await waitForUrl(`http://127.0.0.1:${profile.apiPort}/ready`);
+      await waitForUrl(`http://127.0.0.1:${profile.appPort}`);
+    }),
+  );
+  const exited = Promise.race(
+    children.map(
+      (child) =>
+        new Promise((_, reject) => {
+          child.once("error", reject);
+          child.once("exit", (code, signal) => {
+            reject(
+              new Error(`Development process exited before readiness with ${signal ?? code}.`),
+            );
+          });
+        }),
+    ),
+  );
   await Promise.race([ready, exited]);
 }
 
@@ -647,5 +726,10 @@ function readPort(value, fallback) {
 }
 
 async function exists(filename) {
-  try { await access(filename, constants.F_OK); return true; } catch { return false; }
+  try {
+    await access(filename, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }

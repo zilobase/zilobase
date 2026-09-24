@@ -1,4 +1,4 @@
-import { Skeleton } from "@/shared/ui/skeleton"
+import { Skeleton } from "@/shared/ui/skeleton";
 
 function DatabaseTableSkeleton() {
   return (
@@ -29,7 +29,7 @@ function DatabaseTableSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 function DatabaseKanbanSkeleton() {
@@ -41,21 +41,19 @@ function DatabaseKanbanSkeleton() {
             <Skeleton className="h-5 w-24 rounded-md" />
             <Skeleton className="size-5 rounded-full" />
           </div>
-          {Array.from({ length: columnIndex === 1 ? 2 : 3 }).map(
-            (_, cardIndex) => (
-              <div className="space-y-4 rounded-lg border p-3" key={cardIndex}>
-                <Skeleton className="h-4 w-4/5" />
-                <div className="space-y-2">
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-3 w-2/3" />
-                </div>
+          {Array.from({ length: columnIndex === 1 ? 2 : 3 }).map((_, cardIndex) => (
+            <div className="space-y-4 rounded-lg border p-3" key={cardIndex}>
+              <Skeleton className="h-4 w-4/5" />
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-1/2" />
+                <Skeleton className="h-3 w-2/3" />
               </div>
-            ),
-          )}
+            </div>
+          ))}
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 function DatabaseTimelineSkeleton() {
@@ -84,7 +82,7 @@ function DatabaseTimelineSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 function DatabaseChartSkeleton() {
@@ -92,14 +90,11 @@ function DatabaseChartSkeleton() {
     <div className="flex h-[360px] items-end gap-4 px-8 py-8">
       {[42, 70, 54, 88, 64, 76].map((height, index) => (
         <div className="flex h-full flex-1 items-end" key={index}>
-          <Skeleton
-            className="w-full rounded-t-md"
-            style={{ height: `${height}%` }}
-          />
+          <Skeleton className="w-full rounded-t-md" style={{ height: `${height}%` }} />
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 function DatabaseListSkeleton() {
@@ -114,7 +109,7 @@ function DatabaseListSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 function DatabaseGallerySkeleton() {
@@ -130,7 +125,7 @@ function DatabaseGallerySkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export function DatabaseViewSkeleton({ viewType }: { viewType?: string }) {
@@ -150,5 +145,5 @@ export function DatabaseViewSkeleton({ viewType }: { viewType?: string }) {
         <DatabaseTableSkeleton />
       )}
     </div>
-  )
+  );
 }

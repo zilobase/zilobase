@@ -2,7 +2,7 @@ export function register({ assert, loadModule, test }) {
   test("teamspace sidebar permissions follow role and invite policy", async () => {
     const { getTeamspaceSidebarPermissions } = await loadModule(
       "/src/features/teamspaces/model/teamspace-sidebar-permissions.ts",
-    )
+    );
 
     assert.deepEqual(
       getTeamspaceSidebarPermissions(
@@ -19,7 +19,7 @@ export function register({ assert, loadModule, test }) {
         canLeave: true,
         canManage: true,
       },
-    )
+    );
 
     assert.deepEqual(
       getTeamspaceSidebarPermissions(
@@ -36,7 +36,7 @@ export function register({ assert, loadModule, test }) {
         canLeave: true,
         canManage: false,
       },
-    )
+    );
 
     assert.equal(
       getTeamspaceSidebarPermissions(
@@ -48,13 +48,13 @@ export function register({ assert, loadModule, test }) {
         false,
       ).canInvite,
       true,
-    )
-  })
+    );
+  });
 
   test("default teamspaces cannot be left or archived from the sidebar", async () => {
     const { getTeamspaceSidebarPermissions } = await loadModule(
       "/src/features/teamspaces/model/teamspace-sidebar-permissions.ts",
-    )
+    );
     const permissions = getTeamspaceSidebarPermissions(
       {
         currentUserRole: "owner",
@@ -62,9 +62,9 @@ export function register({ assert, loadModule, test }) {
         isDefault: true,
       },
       true,
-    )
+    );
 
-    assert.equal(permissions.canArchive, false)
-    assert.equal(permissions.canLeave, false)
-  })
+    assert.equal(permissions.canArchive, false);
+    assert.equal(permissions.canLeave, false);
+  });
 }

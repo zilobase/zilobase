@@ -36,9 +36,12 @@ export function teamspacePrincipalAccess(
   principals: Array<{ role: string; accessLevelOverride: unknown }>,
 ): AccessLevel {
   return principals.reduce<AccessLevel>((best, principal) => {
-    const next = principal.role === "owner" ? "full"
-      : normalizeAccessLevel(principal.accessLevelOverride)
-        ?? normalizeAccessLevel(memberAccessLevel) ?? "none";
+    const next =
+      principal.role === "owner"
+        ? "full"
+        : (normalizeAccessLevel(principal.accessLevelOverride) ??
+          normalizeAccessLevel(memberAccessLevel) ??
+          "none");
     return maxAccess(best, next);
   }, "none");
 }

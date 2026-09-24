@@ -2,7 +2,10 @@ import { claimAutomationRuns } from "./run-claims";
 import { executeClaimedRun } from "./run-lifecycle";
 export { selectWorkspaceRunClaims } from "./run-claims";
 import { eq } from "drizzle-orm";
-import { isDatabaseAutomationExecutionEnabled, type RuntimeEnv } from "../../../shared/config/config";
+import {
+  isDatabaseAutomationExecutionEnabled,
+  type RuntimeEnv,
+} from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import { databaseAutomationRun } from "../../../infrastructure/database/schema";
 
@@ -55,10 +58,14 @@ export async function processDatabaseAutomationRun(
   } catch (error) {
     if (!(error instanceof AutomationRunCapacityError)) throw error;
   }
-  const [run] = await db.select({
-    availableAt: databaseAutomationRun.availableAt,
-    status: databaseAutomationRun.status,
-  }).from(databaseAutomationRun).where(eq(databaseAutomationRun.id, input.runId)).limit(1);
+  const [run] = await db
+    .select({
+      availableAt: databaseAutomationRun.availableAt,
+      status: databaseAutomationRun.status,
+    })
+    .from(databaseAutomationRun)
+    .where(eq(databaseAutomationRun.id, input.runId))
+    .limit(1);
   if (!run || ["succeeded", "failed", "skipped", "cancelled"].includes(run.status)) {
     return { outcome: "noop" as const };
   }

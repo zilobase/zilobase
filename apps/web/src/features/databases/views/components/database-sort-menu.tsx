@@ -12,18 +12,8 @@ import {
   DropDrawerSubTrigger,
   DropDrawerTrigger,
 } from "@/shared/ui/dropdrawer";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 import { type DatabaseSortDirection } from "../model/database-view-config";
 import { DatabaseSearchableMenuItems } from "./database-searchable-menu-items";
@@ -65,15 +55,10 @@ function DatabaseSortMenuContent({
         );
 
         return (
-          <div
-            className="flex items-center gap-2"
-            key={`${sort.column}:${index}`}
-          >
+          <div className="flex items-center gap-2" key={`${sort.column}:${index}`}>
             <ArrowDownUp className="size-4 text-content-secondary" />
             <Select
-              onValueChange={(field) =>
-                onUpdateDatabaseSort(index, { column: field })
-              }
+              onValueChange={(field) => onUpdateDatabaseSort(index, { column: field })}
               value={sort.column}
             >
               <SelectTrigger className="w-56">
@@ -115,10 +100,7 @@ function DatabaseSortMenuContent({
         );
       })}
       {canAddDatabaseSort ? (
-        <DropDrawer
-          open={addSortPickerOpen}
-          onOpenChange={setAddSortPickerOpen}
-        >
+        <DropDrawer open={addSortPickerOpen} onOpenChange={setAddSortPickerOpen}>
           <DropDrawerTrigger asChild>
             <button
               className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
@@ -200,9 +182,7 @@ function DatabaseSortNestedMenuContent({
                   options={availableSortOptions}
                   renderOption={(option) => (
                     <DropDrawerItem
-                      onSelect={() =>
-                        onUpdateDatabaseSort(index, { column: option.value })
-                      }
+                      onSelect={() => onUpdateDatabaseSort(index, { column: option.value })}
                     >
                       {option.icon}
                       <span>{option.label}</span>
@@ -277,10 +257,7 @@ export function DatabaseSortPopover({
   return (
     <Popover>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-fit min-w-0 max-w-[calc(100vw-2rem)] gap-2 p-3"
-      >
+      <PopoverContent align="start" className="w-fit min-w-0 max-w-[calc(100vw-2rem)] gap-2 p-3">
         <DatabaseSortMenuContent
           activeDatabaseSorts={activeDatabaseSorts}
           addableSortFieldOptions={addableSortFieldOptions}

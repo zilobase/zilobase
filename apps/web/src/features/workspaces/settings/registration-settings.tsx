@@ -1,25 +1,9 @@
-import {
-  queryOptions,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@/shared/ui/field";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/shared/ui/field";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 import { apiFetch } from "@/platform/network/api";
 
@@ -58,9 +42,7 @@ export function RegistrationSettingsSection() {
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Could not update registration settings.",
+        error instanceof Error ? error.message : "Could not update registration settings.",
       );
     },
   });
@@ -68,9 +50,7 @@ export function RegistrationSettingsSection() {
   return (
     <section className="grid gap-3">
       <div className="space-y-1">
-        <h3 className="font-heading text-base leading-snug font-medium">
-          Server registration
-        </h3>
+        <h3 className="font-heading text-base leading-snug font-medium">Server registration</h3>
         <p className="text-sm text-content-secondary">
           Choose who can create an account on this self-hosted server.
         </p>
@@ -79,9 +59,7 @@ export function RegistrationSettingsSection() {
         <FieldLabel>Registration mode</FieldLabel>
         <Select
           disabled={settingsQuery.isLoading || updateSettings.isPending}
-          onValueChange={(value) =>
-            updateSettings.mutate(value as RegistrationMode)
-          }
+          onValueChange={(value) => updateSettings.mutate(value as RegistrationMode)}
           value={settingsQuery.data?.settings.registrationMode ?? ""}
         >
           <SelectTrigger className="w-full">
@@ -93,8 +71,8 @@ export function RegistrationSettingsSection() {
           </SelectContent>
         </Select>
         <FieldDescription>
-          Invite only requires a pending invitation. Open registration adds
-          every verified account to this workspace as a member.
+          Invite only requires a pending invitation. Open registration adds every verified account
+          to this workspace as a member.
         </FieldDescription>
         {settingsQuery.isError ? (
           <FieldError>

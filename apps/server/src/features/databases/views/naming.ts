@@ -1,7 +1,4 @@
-export function getNextDatabaseViewName(
-  baseName: string,
-  existingNames: Set<string>,
-) {
+export function getNextDatabaseViewName(baseName: string, existingNames: Set<string>) {
   const trimmedName = baseName.trim() || "Table";
 
   if (!existingNames.has(trimmedName)) {

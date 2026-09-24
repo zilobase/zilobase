@@ -3,16 +3,36 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { getAuthenticatedUser as requireUser } from "../../shared/http/auth";
 import { hasPageBodyContent } from "@zilobase/features/pages/content-state";
-import { canAccessDatabaseInWorkspace, canAccessPageInWorkspace, getEffectiveTeamspaceAccessInWorkspace, getMembership, hasAccess } from "../access";
+import {
+  canAccessDatabaseInWorkspace,
+  canAccessPageInWorkspace,
+  getEffectiveTeamspaceAccessInWorkspace,
+  getMembership,
+  hasAccess,
+} from "../access";
 import { rejectMismatchedPinnedWorkspace } from "../auth/oauth-access";
 import { db } from "../../infrastructure/database";
-import { database, databaseRow, favorite, page, pageCollaborationDocument, pageItemPlacement } from "../../infrastructure/database/schema";
+import {
+  database,
+  databaseRow,
+  favorite,
+  page,
+  pageCollaborationDocument,
+  pageItemPlacement,
+} from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
 import { readJsonBody } from "../../shared/http/request";
-import { softDeletePageItemPlacement, upsertPageItemPlacement, type ItemRef } from "./placements/page-item-placements";
+import {
+  softDeletePageItemPlacement,
+  upsertPageItemPlacement,
+  type ItemRef,
+} from "./placements/page-item-placements";
 import { loadWorkspacePageGraph } from "./graph/loader";
 import { encodePageContentAsYjs } from "../collaboration/service";
-import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../workspaces/navigation-realtime/outbox";
+import {
+  enqueueNavigationInvalidation,
+  publishCommittedNavigationInvalidation,
+} from "../workspaces/navigation-realtime/outbox";
 import { TeamspaceManagementService } from "../teamspaces/management";
 import { enforceActiveWorkspace, getPage } from "./page-route-support";
 
@@ -65,11 +85,7 @@ pageHierarchyRoutes.post("/", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const createOrgMismatch = await enforceActiveWorkspace(
-    c,
-    workspaceId,
-    user.id,
-  );
+  const createOrgMismatch = await enforceActiveWorkspace(c, workspaceId, user.id);
 
   if (createOrgMismatch) {
     return createOrgMismatch;
@@ -85,12 +101,7 @@ pageHierarchyRoutes.post("/", async (c) => {
 
   if (
     typeof parentItemId === "string" &&
-    !(await canAccessPageInWorkspace(
-      parentItemId,
-      workspaceId,
-      user.id,
-      "edit",
-    ))
+    !(await canAccessPageInWorkspace(parentItemId, workspaceId, user.id, "edit"))
   ) {
     return c.json({ error: "Forbidden" }, 403);
   }
@@ -111,25 +122,14 @@ pageHierarchyRoutes.post("/", async (c) => {
       : [];
   const resolvedTeamspaceId = parentRecord?.teamspaceId ?? teamspaceId;
 
-  if (
-    parentRecord &&
-    teamspaceId !== null &&
-    teamspaceId !== parentRecord.teamspaceId
-  ) {
-    return c.json(
-      { error: "A nested page must use its parent teamspace." },
-      409,
-    );
+  if (parentRecord && teamspaceId !== null && teamspaceId !== parentRecord.teamspaceId) {
+    return c.json({ error: "A nested page must use its parent teamspace." }, 409);
   }
 
   if (
     resolvedTeamspaceId &&
     !hasAccess(
-      await getEffectiveTeamspaceAccessInWorkspace(
-        resolvedTeamspaceId,
-        workspaceId,
-        user.id,
-      ),
+      await getEffectiveTeamspaceAccessInWorkspace(resolvedTeamspaceId, workspaceId, user.id),
       "edit",
     )
   ) {
@@ -141,9 +141,7 @@ pageHierarchyRoutes.post("/", async (c) => {
     ? await db
         .select({ id: favorite.id })
         .from(favorite)
-        .where(
-          and(eq(favorite.userId, user.id), eq(favorite.pageId, parentItemId)),
-        )
+        .where(and(eq(favorite.userId, user.id), eq(favorite.pageId, parentItemId)))
         .limit(1)
     : [];
   const shouldInheritFavorite = Boolean(parentFavorite);
@@ -235,33 +233,20 @@ pageHierarchyRoutes.post("/:id/move-teamspace", async (c) => {
 
   const body = await readJsonBody(c.req);
   const destinationId =
-    body && typeof body === "object"
-      ? (body as { teamspaceId?: unknown }).teamspaceId
-      : undefined;
+    body && typeof body === "object" ? (body as { teamspaceId?: unknown }).teamspaceId : undefined;
   if (destinationId !== null && typeof destinationId !== "string") {
     return c.json({ error: "teamspaceId must be a string or null" }, 400);
   }
 
   const record = await getPage(c.req.param("id"));
   if (!record) return c.json({ error: "Page not found" }, 404);
-  if (
-    !(await canAccessPageInWorkspace(
-      record.id,
-      record.workspaceId,
-      user.id,
-      "full",
-    ))
-  ) {
+  if (!(await canAccessPageInWorkspace(record.id, record.workspaceId, user.id, "full"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
   if (
     destinationId &&
     !hasAccess(
-      await getEffectiveTeamspaceAccessInWorkspace(
-        destinationId,
-        record.workspaceId,
-        user.id,
-      ),
+      await getEffectiveTeamspaceAccessInWorkspace(destinationId, record.workspaceId, user.id),
       "edit",
     )
   ) {
@@ -310,27 +295,18 @@ pageHierarchyRoutes.post("/:id/convert-to-teamspace", async (c) => {
   if (record.teamspaceId) {
     return c.json({ error: "This page is already in a teamspace." }, 409);
   }
-  if (
-    !(await canAccessPageInWorkspace(
-      record.id,
-      record.workspaceId,
-      user.id,
-      "full",
-    ))
-  ) {
+  if (!(await canAccessPageInWorkspace(record.id, record.workspaceId, user.id, "full"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
   const body = await readJsonBody(c.req, {});
   const accessMode =
-    body && typeof body === "object" &&
-    ["open", "closed", "private"].includes(
-      String((body as { accessMode?: unknown }).accessMode),
-    )
+    body &&
+    typeof body === "object" &&
+    ["open", "closed", "private"].includes(String((body as { accessMode?: unknown }).accessMode))
       ? (body as { accessMode: "open" | "closed" | "private" }).accessMode
       : "closed";
   const requestedName =
-    body && typeof body === "object" &&
-    typeof (body as { name?: unknown }).name === "string"
+    body && typeof body === "object" && typeof (body as { name?: unknown }).name === "string"
       ? (body as { name: string }).name.trim()
       : "";
   const service = new TeamspaceManagementService(
@@ -374,10 +350,7 @@ pageHierarchyRoutes.post("/:id/convert-to-teamspace", async (c) => {
     return c.json({ movedPageIds: pageIds, teamspace: created }, 201);
   } catch (error) {
     if (error instanceof Error && "status" in error) {
-      return c.json(
-        { error: error.message },
-        (error as { status: 400 | 403 | 404 | 409 }).status,
-      );
+      return c.json({ error: error.message }, (error as { status: 400 | 403 | 404 | 409 }).status);
     }
     throw error;
   }
@@ -420,22 +393,11 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (
-    !(await canAccessPageInWorkspace(
-      host.id,
-      host.workspaceId,
-      user.id,
-      "edit",
-    ))
-  ) {
+  if (!(await canAccessPageInWorkspace(host.id, host.workspaceId, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const embedOrgMismatch = await enforceActiveWorkspace(
-    c,
-    host.workspaceId,
-    user.id,
-  );
+  const embedOrgMismatch = await enforceActiveWorkspace(c, host.workspaceId, user.id);
 
   if (embedOrgMismatch) {
     return embedOrgMismatch;
@@ -450,11 +412,7 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
       .select()
       .from(page)
       .where(
-        and(
-          eq(page.id, itemId),
-          eq(page.workspaceId, host.workspaceId),
-          isNull(page.deletedAt),
-        ),
+        and(eq(page.id, itemId), eq(page.workspaceId, host.workspaceId), isNull(page.deletedAt)),
       )
       .limit(1);
 
@@ -462,14 +420,7 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
       return c.json({ error: "Page not found" }, 404);
     }
 
-    if (
-      !(await canAccessPageInWorkspace(
-        child.id,
-        child.workspaceId,
-        user.id,
-        "view",
-      ))
-    ) {
+    if (!(await canAccessPageInWorkspace(child.id, child.workspaceId, user.id, "view"))) {
       return c.json({ error: "Forbidden" }, 403);
     }
 
@@ -496,9 +447,7 @@ pageHierarchyRoutes.post("/:id/embed-item", async (c) => {
       db
         .select({ id: databaseRow.id })
         .from(databaseRow)
-        .where(
-          and(eq(databaseRow.pageId, child.id), isNull(databaseRow.deletedAt)),
-        )
+        .where(and(eq(databaseRow.pageId, child.id), isNull(databaseRow.deletedAt)))
         .limit(1),
     ]);
     const action =
@@ -613,22 +562,11 @@ pageHierarchyRoutes.delete("/:id/embed-item", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (
-    !(await canAccessPageInWorkspace(
-      host.id,
-      host.workspaceId,
-      user.id,
-      "edit",
-    ))
-  ) {
+  if (!(await canAccessPageInWorkspace(host.id, host.workspaceId, user.id, "edit"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const unembedOrgMismatch = await enforceActiveWorkspace(
-    c,
-    host.workspaceId,
-    user.id,
-  );
+  const unembedOrgMismatch = await enforceActiveWorkspace(c, host.workspaceId, user.id);
 
   if (unembedOrgMismatch) {
     return unembedOrgMismatch;
@@ -662,8 +600,6 @@ pageHierarchyRoutes.delete("/:id/embed-item", async (c) => {
   await publishCommittedNavigationInvalidation(navigationEvent, c.env);
 
   return c.json({
-    action:
-      placement?.placementKind === "primary" ? "clearParent" : "removeLink",
+    action: placement?.placementKind === "primary" ? "clearParent" : "removeLink",
   });
 });
-

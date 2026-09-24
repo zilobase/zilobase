@@ -92,14 +92,8 @@ test("only active workspace members can self-join open teamspaces", () => {
 });
 
 test("teamspace roles determine management, invitations, and baseline access", () => {
-  assert.equal(
-    canManageTeamspace({ isWorkspaceOwner: false, teamspaceRole: "owner" }),
-    true,
-  );
-  assert.equal(
-    canManageTeamspace({ isWorkspaceOwner: false, teamspaceRole: "member" }),
-    false,
-  );
+  assert.equal(canManageTeamspace({ isWorkspaceOwner: false, teamspaceRole: "owner" }), true);
+  assert.equal(canManageTeamspace({ isWorkspaceOwner: false, teamspaceRole: "member" }), false);
   assert.equal(
     canInviteTeamspaceMembers({
       invitePolicy: "owners",

@@ -1,1 +1,1 @@
-export { mailProviderRoutes, mailRoutes } from "./routes"
+export { mailProviderRoutes, mailRoutes } from "./routes";

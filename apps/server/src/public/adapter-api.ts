@@ -9,10 +9,7 @@ export type {
   SecurityEvent,
   ZilobaseEditionExtension,
 } from "../shared/types";
-export {
-  coerceAiChatRequestBody,
-  runAiChatTurn,
-} from "../features/ai/conversations/chat-service";
+export { coerceAiChatRequestBody, runAiChatTurn } from "../features/ai/conversations/chat-service";
 export {
   getAiChatThreadForUser,
   loadAiChatThreadMessages,
@@ -22,11 +19,7 @@ export {
 } from "../features/ai/conversations/chat-persistence";
 export { createAuth } from "../features/auth";
 export { AI_JOB_HANDLERS } from "../features/ai/jobs/ai-job-handlers";
-export {
-  runAiJobBatch,
-  runAiJobById,
-  type AiJobHandler,
-} from "../features/ai/jobs/ai-jobs";
+export { runAiJobBatch, runAiJobById, type AiJobHandler } from "../features/ai/jobs/ai-jobs";
 export {
   appendMeetingTranscriptSegment,
   heartbeatMeetingRecorder,
@@ -232,7 +225,11 @@ export {
 export { getBackgroundOperationalSnapshot } from "../infrastructure/background/health";
 export type { AppBindings } from "../shared/types";
 
-export { getCalendarRealtimeWebSocketUrl, publishCalendarNotification, type CalendarNotificationEvent } from "@zilobase/runtime-adapter/capabilities";
+export {
+  getCalendarRealtimeWebSocketUrl,
+  publishCalendarNotification,
+  type CalendarNotificationEvent,
+} from "@zilobase/runtime-adapter/capabilities";
 export { advancePendingCalendars } from "../features/calendar/sync/sync";
 
 export { maintainCalendarWatches } from "../features/calendar/realtime/watches";

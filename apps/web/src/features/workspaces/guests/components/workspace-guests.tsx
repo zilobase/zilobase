@@ -4,13 +4,7 @@ import { Trash2Icon, UsersIcon } from "@/shared/components/icons";
 import { toast } from "sonner";
 
 import { Button } from "@/shared/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/shared/ui/empty";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
 import { Field, FieldLabel } from "@/shared/ui/field";
 
 import {
@@ -22,13 +16,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/shared/ui/item";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 import {
   usePromoteWorkspaceGuest,
@@ -70,9 +58,7 @@ export function GuestList({
             <UsersIcon />
           </EmptyMedia>
           <EmptyTitle>No page guests</EmptyTitle>
-          <EmptyDescription>
-            Invite an external person from a page’s Share menu.
-          </EmptyDescription>
+          <EmptyDescription>Invite an external person from a page’s Share menu.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
@@ -86,9 +72,7 @@ export function GuestList({
             {getInitials(guest.name || guest.email)}
           </ItemMedia>
           <ItemContent className="min-w-0">
-            <ItemTitle className="truncate">
-              {guest.name || guest.email}
-            </ItemTitle>
+            <ItemTitle className="truncate">{guest.name || guest.email}</ItemTitle>
             <ItemDescription className="flex flex-wrap gap-x-2 gap-y-1">
               <span>{guest.email}</span>
               {guest.pages.map((page) => (
@@ -114,12 +98,9 @@ export function GuestList({
                     {
                       onError: (error) =>
                         toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : "Could not convert guest.",
+                          error instanceof Error ? error.message : "Could not convert guest.",
                         ),
-                      onSuccess: () =>
-                        toast.success("Guest converted to member."),
+                      onSuccess: () => toast.success("Guest converted to member."),
                     },
                   );
                 }}
@@ -136,9 +117,7 @@ export function GuestList({
               onClick={() => {
                 if (
                   !workspaceId ||
-                  !window.confirm(
-                    `Remove ${guest.name || guest.email} from every shared page?`,
-                  )
+                  !window.confirm(`Remove ${guest.name || guest.email} from every shared page?`)
                 ) {
                   return;
                 }
@@ -147,9 +126,7 @@ export function GuestList({
                   {
                     onError: (error) =>
                       toast.error(
-                        error instanceof Error
-                          ? error.message
-                          : "Could not remove guest.",
+                        error instanceof Error ? error.message : "Could not remove guest.",
                       ),
                     onSuccess: () => toast.success("Guest access removed."),
                   },
@@ -186,12 +163,9 @@ export function GuestPolicySection({
   return (
     <section className="grid gap-4">
       <div className="space-y-1">
-        <h3 className="font-heading text-base leading-snug font-medium">
-          Guest invitations
-        </h3>
+        <h3 className="font-heading text-base leading-snug font-medium">Guest invitations</h3>
         <p className="text-sm text-content-secondary">
-          Choose whether members can invite page guests directly or need owner
-          approval.
+          Choose whether members can invite page guests directly or need owner approval.
         </p>
       </div>
       <Field>
@@ -205,9 +179,7 @@ export function GuestPolicySection({
               {
                 onError: (error) =>
                   toast.error(
-                    error instanceof Error
-                      ? error.message
-                      : "Could not update guest policy.",
+                    error instanceof Error ? error.message : "Could not update guest policy.",
                   ),
                 onSuccess: () => toast.success("Guest policy updated."),
               },
@@ -239,8 +211,7 @@ export function GuestPolicySection({
                   <ItemTitle>{request.email}</ItemTitle>
                   <ItemDescription>
                     {request.requesterName || request.requesterEmail} requested{" "}
-                    {request.accessLevel} access to{" "}
-                    {request.pageName || "Untitled"}.
+                    {request.accessLevel} access to {request.pageName || "Untitled"}.
                   </ItemDescription>
                 </ItemContent>
                 <ItemActions>
@@ -257,12 +228,9 @@ export function GuestPolicySection({
                         {
                           onError: (error) =>
                             toast.error(
-                              error instanceof Error
-                                ? error.message
-                                : "Could not reject request.",
+                              error instanceof Error ? error.message : "Could not reject request.",
                             ),
-                          onSuccess: () =>
-                            toast.success("Guest request rejected."),
+                          onSuccess: () => toast.success("Guest request rejected."),
                         },
                       )
                     }
@@ -285,14 +253,9 @@ export function GuestPolicySection({
                         {
                           onError: (error) =>
                             toast.error(
-                              error instanceof Error
-                                ? error.message
-                                : "Could not approve request.",
+                              error instanceof Error ? error.message : "Could not approve request.",
                             ),
-                          onSuccess: () =>
-                            toast.success(
-                              "Guest invitation approved and sent.",
-                            ),
+                          onSuccess: () => toast.success("Guest invitation approved and sent."),
                         },
                       )
                     }

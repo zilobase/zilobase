@@ -51,10 +51,12 @@ describe("MCP connection scopes", () => {
   });
 
   it("rejects incomplete persisted scope identities", () => {
-    expect(() => getMcpScopeFromConnection({
-      agentProfileId: null,
-      scopeType: "agent",
-      scopeUserId: null,
-    })).toThrow("invalid scope");
+    expect(() =>
+      getMcpScopeFromConnection({
+        agentProfileId: null,
+        scopeType: "agent",
+        scopeUserId: null,
+      }),
+    ).toThrow("invalid scope");
   });
 });

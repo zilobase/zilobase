@@ -3,27 +3,58 @@ export function register({ assert, loadModule, test }) {
   test("Skills and Instructions tabs contain only matching saved items", async () => {
     const { buildHomepageRows, applyHomepageView, buildHomepageViewData } = await load();
     const page = {
-      name: "Saved item", createdAt: "2026-09-08", updatedAt: "2026-09-08",
-      workspaceId: "workspace", type: "page", metadata: {},
+      name: "Saved item",
+      createdAt: "2026-09-08",
+      updatedAt: "2026-09-08",
+      workspaceId: "workspace",
+      type: "page",
+      metadata: {},
     };
-    const rows = buildHomepageRows({
-      pages: [
-        { ...page, id: "ordinary" },
-        { ...page, id: "skill", metadata: { zilobaseai: "skill" } },
-        { ...page, id: "instruction", metadata: { zilobaseai: "instruction" } },
-        { ...page, id: "deleted", deletedAt: "2026-09-08", metadata: { zilobaseai: "skill" } },
-        { ...page, id: "meeting", type: "meeting", metadata: { zilobaseai: "instruction" } },
+    const rows = buildHomepageRows(
+      {
+        pages: [
+          { ...page, id: "ordinary" },
+          { ...page, id: "skill", metadata: { zilobaseai: "skill" } },
+          { ...page, id: "instruction", metadata: { zilobaseai: "instruction" } },
+          { ...page, id: "deleted", deletedAt: "2026-09-08", metadata: { zilobaseai: "skill" } },
+          { ...page, id: "meeting", type: "meeting", metadata: { zilobaseai: "instruction" } },
+        ],
+        databases: [{ ...page, id: "database", metadata: { zilobaseai: "skill" } }],
+        placements: [],
+      },
+      [],
+      [
+        {
+          id: "agent",
+          name: "Agent",
+          ownerUserId: "owner",
+          status: "active",
+          updatedAt: "2026-09-08",
+        },
       ],
-      databases: [{ ...page, id: "database", metadata: { zilobaseai: "skill" } }],
-      placements: [],
-    }, [], [{ id: "agent", name: "Agent", ownerUserId: "owner", status: "active", updatedAt: "2026-09-08" }], "home");
-    for (const [view, id] of [["skills", "skill"], ["instructions", "instruction"]]) {
-      assert.deepEqual(applyHomepageView(rows, view).map((row) => row.id), [`page:${id}`]);
+      "home",
+    );
+    for (const [view, id] of [
+      ["skills", "skill"],
+      ["instructions", "instruction"],
+    ]) {
+      assert.deepEqual(
+        applyHomepageView(rows, view).map((row) => row.id),
+        [`page:${id}`],
+      );
       const viewData = buildHomepageViewData({
-        activeViewId: view, rows, mode: "home", workspaceId: "workspace",
-        databaseConfig: {}, propertyConfigs: {}, viewConfigs: {},
+        activeViewId: view,
+        rows,
+        mode: "home",
+        workspaceId: "workspace",
+        databaseConfig: {},
+        propertyConfigs: {},
+        viewConfigs: {},
       });
-      assert.deepEqual(viewData.records.map((record) => record.id), [`page:${id}`]);
+      assert.deepEqual(
+        viewData.records.map((record) => record.id),
+        [`page:${id}`],
+      );
       assert.equal(rows.find((row) => row.id === `page:${id}`).openPageId, id);
     }
     assert.deepEqual(applyHomepageView([], "skills"), []);
@@ -90,9 +121,7 @@ export function register({ assert, loadModule, test }) {
     );
     assert.equal(rows[0].createdBy, "Owner");
     assert.deepEqual(
-      buildHomepageRows(navigation, meetings, agents, "trash").map(
-        (row) => row.id,
-      ),
+      buildHomepageRows(navigation, meetings, agents, "trash").map((row) => row.id),
       ["page:deleted"],
     );
   });
@@ -155,10 +184,7 @@ export function register({ assert, loadModule, test }) {
       },
     ];
     assert.deepEqual(
-      buildTeamspaceLibraryRows(rows, "team").map(({ depth, row }) => [
-        depth,
-        row.id,
-      ]),
+      buildTeamspaceLibraryRows(rows, "team").map(({ depth, row }) => [depth, row.id]),
       [
         [0, "root"],
         [1, "child"],
@@ -166,11 +192,7 @@ export function register({ assert, loadModule, test }) {
     );
   });
   test("Library tabs nest descendants and Teamspaces uses teamspace parent rows", async () => {
-    const {
-      buildHomepageRows,
-      buildHomepageViewData,
-      libraryParentPropertyId,
-    } = await load();
+    const { buildHomepageRows, buildHomepageViewData, libraryParentPropertyId } = await load();
     const { deriveDatabaseViewModel } = await loadModule(
       "/src/features/databases/views/model/database-view-model.ts",
     );
@@ -194,35 +216,41 @@ export function register({ assert, loadModule, test }) {
       archivedAt: null,
       icon: null,
     });
-    const rows = buildHomepageRows({
-      pages: [
-        page("parent", null, true),
-        page("child", "parent", false),
-        page("grandchild", "child", false),
-        page("sibling", "parent", false),
-      ],
-      databases: [],
-      placements: [
-        {
-          id: "child-placement",
-          itemKind: "page",
-          itemId: "child",
-          parentKind: "page",
-          parentId: "parent",
-          placementKind: "primary",
-          position: 2,
-        },
-        {
-          id: "sibling-placement",
-          itemKind: "page",
-          itemId: "sibling",
-          parentKind: "page",
-          parentId: "parent",
-          placementKind: "primary",
-          position: 1,
-        },
-      ],
-    }, [], [], "home", [teamspace("team-a"), teamspace("empty")]);
+    const rows = buildHomepageRows(
+      {
+        pages: [
+          page("parent", null, true),
+          page("child", "parent", false),
+          page("grandchild", "child", false),
+          page("sibling", "parent", false),
+        ],
+        databases: [],
+        placements: [
+          {
+            id: "child-placement",
+            itemKind: "page",
+            itemId: "child",
+            parentKind: "page",
+            parentId: "parent",
+            placementKind: "primary",
+            position: 2,
+          },
+          {
+            id: "sibling-placement",
+            itemKind: "page",
+            itemId: "sibling",
+            parentKind: "page",
+            parentId: "parent",
+            placementKind: "primary",
+            position: 1,
+          },
+        ],
+      },
+      [],
+      [],
+      "home",
+      [teamspace("team-a"), teamspace("empty")],
+    );
     const subItems = {
       display: "nested",
       enabled: true,
@@ -234,48 +262,48 @@ export function register({ assert, loadModule, test }) {
       favourites: { subItems },
       teamspaces: { subItems },
     };
-    const viewData = (activeViewId) => buildHomepageViewData({
-      activeViewId,
-      databaseConfig: {},
-      mode: "home",
-      workspaceId: "workspace",
-      propertyConfigs: {},
-      rows,
-      viewConfigs,
-    });
+    const viewData = (activeViewId) =>
+      buildHomepageViewData({
+        activeViewId,
+        databaseConfig: {},
+        mode: "home",
+        workspaceId: "workspace",
+        propertyConfigs: {},
+        rows,
+        viewConfigs,
+      });
     const teamspaceModel = deriveDatabaseViewModel({
       activeViewId: "teamspaces",
       viewData: viewData("teamspaces"),
     });
-    assert.deepEqual(teamspaceModel.sortedItems.map((row) => row.id), [
-      "teamspace:team-a",
-      "page:parent",
-      "page:sibling",
-      "page:child",
-      "page:grandchild",
-      "teamspace:empty",
-    ]);
+    assert.deepEqual(
+      teamspaceModel.sortedItems.map((row) => row.id),
+      [
+        "teamspace:team-a",
+        "page:parent",
+        "page:sibling",
+        "page:child",
+        "page:grandchild",
+        "teamspace:empty",
+      ],
+    );
     assert.equal(teamspaceModel.subItemDepthByRowId["page:grandchild"], 3);
 
     const favouriteModel = deriveDatabaseViewModel({
       activeViewId: "favourites",
       viewData: viewData("favourites"),
     });
-    assert.deepEqual(favouriteModel.sortedItems.map((row) => row.id), [
-      "page:parent",
-      "page:sibling",
-      "page:child",
-      "page:grandchild",
-    ]);
+    assert.deepEqual(
+      favouriteModel.sortedItems.map((row) => row.id),
+      ["page:parent", "page:sibling", "page:child", "page:grandchild"],
+    );
     assert.equal(favouriteModel.subItemDepthByRowId["page:grandchild"], 2);
   });
   test("library synthetic payload retains source summaries, view order and trash properties", async () => {
     const { buildHomepageRows, buildHomepageViewData } = await load();
     const rows = buildHomepageRows(
       {
-        pages: [
-          { id: "p", name: "Page", createdAt: "", updatedAt: "", metadata: {} },
-        ],
+        pages: [{ id: "p", name: "Page", createdAt: "", updatedAt: "", metadata: {} }],
         databases: [],
         placements: [],
       },
@@ -295,7 +323,17 @@ export function register({ assert, loadModule, test }) {
     assert.equal(viewData.bootstrap.database.id, "homepage");
     assert.deepEqual(
       viewData.bootstrap.views.map((view) => view.id),
-      ["recents", "favourites", "meetings", "skills", "instructions", "shared", "teamspaces", "private", "trash"],
+      [
+        "recents",
+        "favourites",
+        "meetings",
+        "skills",
+        "instructions",
+        "shared",
+        "teamspaces",
+        "private",
+        "trash",
+      ],
     );
     assert.equal(viewData.records[0].id, "page:p");
     assert.equal(viewData.bootstrap.properties[0].property.config.custom, true);
@@ -317,11 +355,33 @@ export function register({ assert, loadModule, test }) {
   });
   test("library database rows retain backing-page audit and source fallbacks", async () => {
     const { buildHomepageRows } = await load();
-    const backing = { id: "backing", name: "Parent", type: "page", createdAt: "page-created", updatedAt: "page-updated", createdBy: { name: "", email: "owner@test" }, deletedBy: { name: "Deleter" }, deletedAt: "deleted", isShared: true, teamspaceId: "team", metadata: { emoji: "page-icon" } };
-    const database = { id: "db", pageId: "backing", name: "Database", createdAt: "db-created", updatedAt: "db-updated", isFavorite: true, dataSourceConfig: { emoji: "database-icon" } };
+    const backing = {
+      id: "backing",
+      name: "Parent",
+      type: "page",
+      createdAt: "page-created",
+      updatedAt: "page-updated",
+      createdBy: { name: "", email: "owner@test" },
+      deletedBy: { name: "Deleter" },
+      deletedAt: "deleted",
+      isShared: true,
+      teamspaceId: "team",
+      metadata: { emoji: "page-icon" },
+    };
+    const database = {
+      id: "db",
+      pageId: "backing",
+      name: "Database",
+      createdAt: "db-created",
+      updatedAt: "db-updated",
+      isFavorite: true,
+      dataSourceConfig: { emoji: "database-icon" },
+    };
     const navigation = { pages: [backing], databases: [database], placements: [] };
     assert.deepEqual(buildHomepageRows(navigation, [], [], "home"), []);
-    const row = buildHomepageRows(navigation, [], [], "trash").find(row => row.itemKind === "database");
+    const row = buildHomepageRows(navigation, [], [], "trash").find(
+      (row) => row.itemKind === "database",
+    );
     assert.equal(row.createdBy, "owner@test");
     assert.equal(row.deletedAt, "deleted");
     assert.equal(row.deletedBy, "Deleter");
@@ -333,5 +393,4 @@ export function register({ assert, loadModule, test }) {
     assert.equal(row.openPageId, "backing");
     assert.equal(row.position, Number.MAX_SAFE_INTEGER);
   });
-
 }

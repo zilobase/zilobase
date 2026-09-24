@@ -26,10 +26,18 @@ export function createWorkerImageStorage(bucket: WorkerR2Bucket): ImageStorage {
 class R2ImageStorage implements ImageStorage {
   readonly mode = "binding" as const;
   constructor(private readonly bucket: WorkerR2Bucket) {}
-  async checkReady() { await this.bucket.head("__zilobase_readiness__"); }
-  async createUploadUrl(): Promise<never> { throw new Error("Presigned upload URLs are only supported in s3 mode"); }
-  async createReadUrl(): Promise<never> { throw new Error("Presigned read URLs are only supported in s3 mode"); }
-  async delete(objectKey: string) { await this.bucket.delete(objectKey); }
+  async checkReady() {
+    await this.bucket.head("__zilobase_readiness__");
+  }
+  async createUploadUrl(): Promise<never> {
+    throw new Error("Presigned upload URLs are only supported in s3 mode");
+  }
+  async createReadUrl(): Promise<never> {
+    throw new Error("Presigned read URLs are only supported in s3 mode");
+  }
+  async delete(objectKey: string) {
+    await this.bucket.delete(objectKey);
+  }
   async get(objectKey: string) {
     const object = await this.bucket.get(objectKey);
     return object ? { body: object.body, ...metadata(object) } : null;
@@ -39,9 +47,11 @@ class R2ImageStorage implements ImageStorage {
     return object ? metadata(object) : null;
   }
   async putObject(options: Parameters<ImageStorage["putObject"]>[0]) {
-    return metadata(await this.bucket.put(options.objectKey, options.body, {
-      httpMetadata: { contentType: options.contentType },
-    }));
+    return metadata(
+      await this.bucket.put(options.objectKey, options.body, {
+        httpMetadata: { contentType: options.contentType },
+      }),
+    );
   }
 }
 

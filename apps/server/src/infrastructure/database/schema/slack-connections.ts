@@ -8,8 +8,12 @@ export const slackOauthAttempt = pgTable(
   "slack_oauth_attempt",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
-    workspaceId: text("workspace_id").notNull().references(() => workspace.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
     stateHash: text("state_hash").notNull(),
     codeVerifierCiphertext: text("code_verifier_ciphertext").notNull(),
     codeVerifierIv: text("code_verifier_iv").notNull(),
@@ -20,7 +24,11 @@ export const slackOauthAttempt = pgTable(
   },
   (table) => [
     uniqueIndex("slack_oauth_attempt_state_unique").on(table.stateHash),
-    index("slack_oauth_attempt_owner_expiry_idx").on(table.workspaceId, table.userId, table.expiresAt),
+    index("slack_oauth_attempt_owner_expiry_idx").on(
+      table.workspaceId,
+      table.userId,
+      table.expiresAt,
+    ),
   ],
 );
 
@@ -28,7 +36,9 @@ export const slackConnection = pgTable(
   "slack_connection",
   {
     id: text("id").primaryKey(),
-    workspaceId: text("workspace_id").notNull().references(() => workspace.id, { onDelete: "cascade" }),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspace.id, { onDelete: "cascade" }),
     ownerUserId: text("owner_user_id").references(() => user.id, { onDelete: "set null" }),
     teamId: text("team_id").notNull(),
     teamName: text("team_name").notNull(),
@@ -42,7 +52,11 @@ export const slackConnection = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("slack_connection_owner_team_unique").on(table.workspaceId, table.ownerUserId, table.teamId),
+    uniqueIndex("slack_connection_owner_team_unique").on(
+      table.workspaceId,
+      table.ownerUserId,
+      table.teamId,
+    ),
     index("slack_connection_workspace_status_idx").on(table.workspaceId, table.status),
     check("slack_connection_status_check", sql`${table.status} in ('connected', 'revoked')`),
   ],

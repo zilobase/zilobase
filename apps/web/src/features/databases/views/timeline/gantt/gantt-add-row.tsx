@@ -1,33 +1,25 @@
-import { PlusIcon } from "@/shared/components/icons"
-import type {
-  CSSProperties,
-  MouseEvent,
-  PointerEventHandler,
-} from "react"
-import { useCallback, useRef } from "react"
+import { PlusIcon } from "@/shared/components/icons";
+import type { CSSProperties, MouseEvent, PointerEventHandler } from "react";
+import { useCallback, useRef } from "react";
 
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
-import { useGanttContext } from "./gantt-context"
-import {
-  getGanttSelection,
-  getTimelineXFromElement,
-  type GanttSelection,
-} from "./gantt-geometry"
+import { useGanttContext } from "./gantt-context";
+import { getGanttSelection, getTimelineXFromElement, type GanttSelection } from "./gantt-geometry";
 import {
   hideGanttPreview,
   shouldPositionGanttPreviewOnFocus,
   showGanttPreview,
-} from "./gantt-preview"
-import { useGanttGeometry } from "./use-gantt-geometry"
+} from "./gantt-preview";
+import { useGanttGeometry } from "./use-gantt-geometry";
 
 export type GanttAddFeatureRowProps = {
-  "aria-label"?: string
-  className?: string
-  disabled?: boolean
-  durationDays?: number
-  onAddItem: (startAt: Date, endAt: Date) => void
-}
+  "aria-label"?: string;
+  className?: string;
+  disabled?: boolean;
+  durationDays?: number;
+  onAddItem: (startAt: Date, endAt: Date) => void;
+};
 
 export function GanttAddFeatureRow({
   "aria-label": ariaLabel = "Add timeline item",
@@ -36,65 +28,57 @@ export function GanttAddFeatureRow({
   durationDays = 1,
   onAddItem,
 }: GanttAddFeatureRowProps) {
-  const gantt = useGanttContext()
-  const geometry = useGanttGeometry()
-  const selectionRef = useRef<GanttSelection | null>(null)
-  const pendingRef = useRef(false)
+  const gantt = useGanttContext();
+  const geometry = useGanttGeometry();
+  const selectionRef = useRef<GanttSelection | null>(null);
+  const pendingRef = useRef(false);
 
   const selectAtClientX = useCallback(
     (element: HTMLButtonElement, clientX: number) => {
-      if (!geometry) return null
+      if (!geometry) return null;
       const selection = getGanttSelection(
         getTimelineXFromElement(element, clientX),
         durationDays,
         geometry,
-      )
-      selectionRef.current = selection
-      showGanttPreview(element, selection)
-      return selection
+      );
+      selectionRef.current = selection;
+      showGanttPreview(element, selection);
+      return selection;
     },
     [durationDays, geometry],
-  )
+  );
 
   const handlePointerMove: PointerEventHandler<HTMLButtonElement> = (event) => {
-    if (!pendingRef.current) selectAtClientX(event.currentTarget, event.clientX)
-  }
+    if (!pendingRef.current) selectAtClientX(event.currentTarget, event.clientX);
+  };
 
   const handlePointerLeave: PointerEventHandler<HTMLButtonElement> = (event) => {
-    pendingRef.current = false
-    selectionRef.current = null
-    hideGanttPreview(event.currentTarget)
-  }
+    pendingRef.current = false;
+    selectionRef.current = null;
+    hideGanttPreview(event.currentTarget);
+  };
 
   const handleFocus = (element: HTMLButtonElement) => {
-    if (!geometry || pendingRef.current) return
-    const scrollElement = gantt.ref?.current
-    if (!scrollElement) return
+    if (!geometry || pendingRef.current) return;
+    const scrollElement = gantt.ref?.current;
+    if (!scrollElement) return;
 
-    const scrollRect = scrollElement.getBoundingClientRect()
-    const visibleTimelineWidth = Math.max(
-      0,
-      scrollElement.clientWidth - gantt.sidebarWidth,
-    )
-    selectAtClientX(
-      element,
-      scrollRect.left + gantt.sidebarWidth + visibleTimelineWidth / 2,
-    )
-  }
+    const scrollRect = scrollElement.getBoundingClientRect();
+    const visibleTimelineWidth = Math.max(0, scrollElement.clientWidth - gantt.sidebarWidth);
+    selectAtClientX(element, scrollRect.left + gantt.sidebarWidth + visibleTimelineWidth / 2);
+  };
 
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-    const element = event.currentTarget
+    const element = event.currentTarget;
     const selection =
-      event.detail === 0
-        ? selectionRef.current
-        : selectAtClientX(element, event.clientX)
-    if (!selection) return
+      event.detail === 0 ? selectionRef.current : selectAtClientX(element, event.clientX);
+    if (!selection) return;
 
     // Hide synchronously before the database mutation can remount this row.
-    pendingRef.current = true
-    hideGanttPreview(element)
-    onAddItem(selection.startAt, selection.endAt)
-  }
+    pendingRef.current = true;
+    hideGanttPreview(element);
+    onAddItem(selection.startAt, selection.endAt);
+  };
 
   return (
     <button
@@ -106,14 +90,14 @@ export function GanttAddFeatureRow({
       data-preview-visible="false"
       disabled={disabled}
       onBlur={(event) => {
-        pendingRef.current = false
-        selectionRef.current = null
-        hideGanttPreview(event.currentTarget)
+        pendingRef.current = false;
+        selectionRef.current = null;
+        hideGanttPreview(event.currentTarget);
       }}
       onClick={handleClick}
       onFocus={(event) => {
         if (shouldPositionGanttPreviewOnFocus(event.currentTarget)) {
-          handleFocus(event.currentTarget)
+          handleFocus(event.currentTarget);
         }
       }}
       onMouseEnter={handlePointerMove}
@@ -141,5 +125,5 @@ export function GanttAddFeatureRow({
         <PlusIcon className="select-none text-content-secondary" size={16} />
       </span>
     </button>
-  )
+  );
 }

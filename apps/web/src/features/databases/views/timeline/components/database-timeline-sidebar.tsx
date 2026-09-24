@@ -1,29 +1,26 @@
-import { memo, type CSSProperties } from "react"
-import { ChevronDown, ChevronRight, Plus } from "@/shared/components/icons"
+import { memo, type CSSProperties } from "react";
+import { ChevronDown, ChevronRight, Plus } from "@/shared/components/icons";
 
-import {
-  getColorTokenBadgeClassName,
-  getColorTokenDotClassName,
-} from "@/shared/lib/color-tokens"
+import { getColorTokenBadgeClassName, getColorTokenDotClassName } from "@/shared/lib/color-tokens";
 
 import { databaseNameColumnDefaultWidth } from "../../model/column-dimensions";
-import { DatabasePageLink } from "../../../interactions/database-page-link"
-import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config"
-import { DatabaseCellContent } from "../../components/database-cell-content"
-import type { TimelineViewRow } from "../model/database-timeline-rows"
+import { DatabasePageLink } from "../../../interactions/database-page-link";
+import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
+import { DatabaseCellContent } from "../../components/database-cell-content";
+import type { TimelineViewRow } from "../model/database-timeline-rows";
 
-const timelineTableMinWidth = databaseNameColumnDefaultWidth
+const timelineTableMinWidth = databaseNameColumnDefaultWidth;
 
 export const timelineTableStyle = {
   "--database-table-min-width": `${timelineTableMinWidth}px`,
-} as CSSProperties
+} as CSSProperties;
 
 export function TimelineNameHeaderRow({
   label,
   sticky = false,
 }: {
-  label: string
-  sticky?: boolean
+  label: string;
+  sticky?: boolean;
 }) {
   return (
     <div
@@ -38,25 +35,22 @@ export function TimelineNameHeaderRow({
         <span>{label}</span>
       </span>
     </div>
-  )
+  );
 }
 
 export type TimelineSidebarRowCellProps = {
-  collapsedGroups: Record<string, boolean>
-  databaseId: string | null | undefined
-  editable: boolean
-  groupProperty: DatabasePropertyListItem | null
-  nameColumnLabel: string
-  onAddPage: (
-    groupValue?: string,
-    groupProperty?: DatabasePropertyListItem | null
-  ) => void
-  onOpenPage?: (pageId: string) => void
-  onRowMouseEnter?: (rowId: string) => void
-  onToggleGroup: (sectionId: string) => void
-  showPageIcon: boolean
-  viewRow: TimelineViewRow
-}
+  collapsedGroups: Record<string, boolean>;
+  databaseId: string | null | undefined;
+  editable: boolean;
+  groupProperty: DatabasePropertyListItem | null;
+  nameColumnLabel: string;
+  onAddPage: (groupValue?: string, groupProperty?: DatabasePropertyListItem | null) => void;
+  onOpenPage?: (pageId: string) => void;
+  onRowMouseEnter?: (rowId: string) => void;
+  onToggleGroup: (sectionId: string) => void;
+  showPageIcon: boolean;
+  viewRow: TimelineViewRow;
+};
 
 export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
   collapsedGroups,
@@ -79,11 +73,11 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
         data-roadmap-ui="gantt-sidebar"
         style={timelineTableStyle}
       />
-    )
+    );
   }
 
   if (viewRow.kind === "group-header") {
-    const isCollapsed = collapsedGroups[viewRow.section.id] === true
+    const isCollapsed = collapsedGroups[viewRow.section.id] === true;
 
     return (
       <div
@@ -103,18 +97,13 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
             <ChevronDown className="size-4 shrink-0" />
           )}
           <span className={getColorTokenBadgeClassName(viewRow.section.color)}>
-            <span
-              aria-hidden="true"
-              className={getColorTokenDotClassName(viewRow.section.color)}
-            />
+            <span aria-hidden="true" className={getColorTokenDotClassName(viewRow.section.color)} />
             {viewRow.section.name}
           </span>
-          <span className="database-table-group-count">
-            {viewRow.section.rows.length}
-          </span>
+          <span className="database-table-group-count">{viewRow.section.rows.length}</span>
         </button>
       </div>
-    )
+    );
   }
 
   if (viewRow.kind === "name-header") {
@@ -126,7 +115,7 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
       >
         <TimelineNameHeaderRow label={nameColumnLabel} />
       </div>
-    )
+    );
   }
 
   if (viewRow.kind === "new-page") {
@@ -140,9 +129,7 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
           <button
             className="database-page-create database-page-create-full"
             disabled={!databaseId}
-            onClick={() =>
-              onAddPage(viewRow.section?.groupValue, groupProperty)
-            }
+            onClick={() => onAddPage(viewRow.section?.groupValue, groupProperty)}
             type="button"
           >
             <Plus />
@@ -150,7 +137,7 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
           </button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -175,5 +162,5 @@ export const TimelineSidebarRowCell = memo(function TimelineSidebarRowCell({
         </DatabaseCellContent>
       </div>
     </div>
-  )
-})
+  );
+});

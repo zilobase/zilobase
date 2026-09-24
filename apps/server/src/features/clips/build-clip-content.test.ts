@@ -1,10 +1,10 @@
-import assert from "node:assert/strict"
-import { test } from "vitest"
+import assert from "node:assert/strict";
+import { test } from "vitest";
 
-import { installDomParser } from "@zilobase/html-to-page"
-import { buildClipContent } from "./build-clip-content"
+import { installDomParser } from "@zilobase/html-to-page";
+import { buildClipContent } from "./build-clip-content";
 
-installDomParser()
+installDomParser();
 
 test("buildClipContent converts html and prepends a bookmark", () => {
   const document = buildClipContent({
@@ -14,12 +14,12 @@ test("buildClipContent converts html and prepends a bookmark", () => {
     captureMode: "article",
     html: "<h1>Hello</h1><p>Body</p>",
     metadata: { description: "Desc" },
-  })
+  });
 
-  assert.equal(document.content[0]?.type, "bookmarkBlock")
-  assert.equal(document.content[0]?.attrs?.href, "https://example.com/post")
-  assert.ok(document.content.some((node) => node.type === "heading"))
-})
+  assert.equal(document.content[0]?.type, "bookmarkBlock");
+  assert.equal(document.content[0]?.attrs?.href, "https://example.com/post");
+  assert.ok(document.content.some((node) => node.type === "heading"));
+});
 
 test("buildClipContent drops javascript urls from submitted json", () => {
   const document = buildClipContent({
@@ -40,11 +40,11 @@ test("buildClipContent drops javascript urls from submitted json", () => {
         },
       ],
     },
-  })
+  });
 
   assert.equal(
     document.content.some((node) => node.type === "imageBlock"),
     false,
-  )
-  assert.ok(document.content.some((node) => node.type === "paragraph"))
-})
+  );
+  assert.ok(document.content.some((node) => node.type === "paragraph"));
+});

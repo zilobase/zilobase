@@ -5,18 +5,12 @@ import { desktopBridge } from "@/platform/desktop/native";
 
 import { toast } from "sonner";
 import { useSession } from "@zilobase/features/auth/react";
-import {
-  mailApiBasePath,
-  mailConnectionQueryOptions,
-} from "@zilobase/features/mail";
+import { mailApiBasePath, mailConnectionQueryOptions } from "@zilobase/features/mail";
 
 import { apiFetch, getApiErrorMessage, toApiUrl } from "@/platform/network/api";
 import { isDesktopApp } from "@/platform/environment";
 
-import {
-  destroyMailDatabase,
-  mailDatabaseName,
-} from "@/features/mail/storage/mail-database";
+import { destroyMailDatabase, mailDatabaseName } from "@/features/mail/storage/mail-database";
 
 export function useWorkspaceMailConnection({
   workspaceId,
@@ -28,9 +22,7 @@ export function useWorkspaceMailConnection({
   const [disconnectOpen, setDisconnectOpen] = React.useState(false);
   const [disconnecting, setDisconnecting] = React.useState(false);
   const mailBasePath = mailApiBasePath(workspaceId);
-  const connectionQuery = useQuery(
-    mailConnectionQueryOptions(apiFetch, workspaceId),
-  );
+  const connectionQuery = useQuery(mailConnectionQueryOptions(apiFetch, workspaceId));
   const connection = connectionQuery.data ?? null;
   const connected = connection?.status === "connected";
 
@@ -38,13 +30,10 @@ export function useWorkspaceMailConnection({
     if (!workspaceId) return;
     setConnecting(true);
     try {
-      const result = await apiFetch<{ authorizationUrl: string }>(
-        `${mailBasePath}/oauth/start`,
-        {
-          body: JSON.stringify({ client: isDesktopApp() ? "desktop" : "web" }),
-          method: "POST",
-        },
-      );
+      const result = await apiFetch<{ authorizationUrl: string }>(`${mailBasePath}/oauth/start`, {
+        body: JSON.stringify({ client: isDesktopApp() ? "desktop" : "web" }),
+        method: "POST",
+      });
       if (isDesktopApp()) {
         await desktopBridge().auth.openMailUrl(result.authorizationUrl);
         toast.info("Finish connecting Gmail in your browser.");

@@ -1,14 +1,7 @@
 import { getRuntimePorts } from "./context";
-import type {
-  CalendarNotificationEvent,
-  MailNotificationEvent,
-  RuntimeEnv,
-} from "./contracts";
+import type { CalendarNotificationEvent, MailNotificationEvent, RuntimeEnv } from "./contracts";
 
-export {
-  getRuntimePorts,
-  runWithRuntimePorts,
-} from "./context";
+export { getRuntimePorts, runWithRuntimePorts } from "./context";
 export type {
   OutboundEmailMessage,
   MailNotificationEvent,
@@ -18,27 +11,19 @@ export type {
   MeetingTranscriptYjsSegment,
 } from "./contracts";
 
-export function getDatabaseRealtimeWebSocketUrl(
-  request: Request,
-) {
+export function getDatabaseRealtimeWebSocketUrl(request: Request) {
   return requireRuntimePort("urls").getCollabUrl("database", request);
 }
 
-export function getCollaborationWebSocketUrl(
-  request: Request,
-) {
+export function getCollaborationWebSocketUrl(request: Request) {
   return requireRuntimePort("urls").getCollabUrl("collaboration", request);
 }
 
-export function getMeetingCollaborationWebSocketUrl(
-  request: Request,
-) {
+export function getMeetingCollaborationWebSocketUrl(request: Request) {
   return requireRuntimePort("urls").getCollabUrl("meeting-collaboration", request);
 }
 
-export function getMeetingAudioWebSocketUrl(
-  request: Request,
-) {
+export function getMeetingAudioWebSocketUrl(request: Request) {
   return requireRuntimePort("urls").getCollabUrl("meeting-audio", request);
 }
 
@@ -46,15 +31,11 @@ export function getMailRealtimeWebSocketUrl(request: Request) {
   return requireRuntimePort("urls").getCollabUrl("mail", request);
 }
 
-export function getNavigationRealtimeWebSocketUrl(
-  request: Request,
-) {
+export function getNavigationRealtimeWebSocketUrl(request: Request) {
   return requireRuntimePort("urls").getCollabUrl("navigation", request);
 }
 
-export async function publishMailNotification(
-  event: MailNotificationEvent,
-) {
+export async function publishMailNotification(event: MailNotificationEvent) {
   await requireRuntimePort("fanout").publish(`mail:${event.userId}`, event);
 }
 
@@ -94,9 +75,7 @@ export async function publishCalendarNotification(event: CalendarNotificationEve
   await requireRuntimePort("fanout").publish(`calendar:${event.bindingId}`, event);
 }
 
-export function requireRuntimePort<
-  Key extends keyof ReturnType<typeof getRuntimePorts>,
->(key: Key) {
+export function requireRuntimePort<Key extends keyof ReturnType<typeof getRuntimePorts>>(key: Key) {
   const port = getRuntimePorts()[key];
   if (!port) throw new Error(`Runtime ${String(key)} port is required`);
   return port;

@@ -1,5 +1,5 @@
-import { Extension } from "@tiptap/core"
-import type { Node as ProseMirrorNode, ResolvedPos } from "@tiptap/pm/model"
+import { Extension } from "@tiptap/core";
+import type { Node as ProseMirrorNode, ResolvedPos } from "@tiptap/pm/model";
 import {
   AllSelection,
   type EditorState,
@@ -7,32 +7,28 @@ import {
   PluginKey,
   TextSelection,
   type Selection,
-} from "@tiptap/pm/state"
-import {
-  Decoration,
-  DecorationSet,
-  type EditorView,
-} from "@tiptap/pm/view"
+} from "@tiptap/pm/state";
+import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 
-import { selectionAiPreviewPluginKey } from "./selection-ai-preview"
+import { selectionAiPreviewPluginKey } from "./selection-ai-preview";
 
-export const blockSelectionPluginKey = new PluginKey("blockSelection")
+export const blockSelectionPluginKey = new PluginKey("blockSelection");
 
-export type BlockRange = { from: number; to: number }
+export type BlockRange = { from: number; to: number };
 
-type BlockSelectionMode = "none" | "all"
+type BlockSelectionMode = "none" | "all";
 
 type BlockSelectionPluginState = {
-  decorations: DecorationSet
-  mode: BlockSelectionMode
-}
+  decorations: DecorationSet;
+  mode: BlockSelectionMode;
+};
 
-type BlockSelectionMeta = { type: "select-all" }
+type BlockSelectionMeta = { type: "select-all" };
 
 const emptyPluginState = (): BlockSelectionPluginState => ({
   decorations: DecorationSet.empty,
   mode: "none",
-})
+});
 
 const blockSelectionNavigationKeys = new Set([
   "ArrowDown",
@@ -44,101 +40,79 @@ const blockSelectionNavigationKeys = new Set([
   "Home",
   "PageDown",
   "PageUp",
-])
+]);
 
-const modifierKeys = new Set(["Alt", "Control", "Meta", "Shift"])
+const modifierKeys = new Set(["Alt", "Control", "Meta", "Shift"]);
 
-const dragInputTypes = new Set(["deleteByDrag", "insertFromDrop"])
+const dragInputTypes = new Set(["deleteByDrag", "insertFromDrop"]);
 
 export const isBlockSelectionActive = (state: EditorState) =>
-  blockSelectionPluginKey.getState(state)?.mode === "all"
+  blockSelectionPluginKey.getState(state)?.mode === "all";
 
 export const shouldBlockBlockSelectionKeydown = (
   event: Pick<KeyboardEvent, "altKey" | "ctrlKey" | "key" | "metaKey">,
 ) => {
-  const primaryModifier = event.metaKey || event.ctrlKey
-  const key = event.key.toLowerCase()
+  const primaryModifier = event.metaKey || event.ctrlKey;
+  const key = event.key.toLowerCase();
 
-  if (
-    modifierKeys.has(event.key) ||
-    blockSelectionNavigationKeys.has(event.key)
-  ) {
-    return false
+  if (modifierKeys.has(event.key) || blockSelectionNavigationKeys.has(event.key)) {
+    return false;
   }
 
   if (!event.altKey && primaryModifier && (key === "a" || key === "c")) {
-    return false
+    return false;
   }
 
   if (!event.altKey && event.ctrlKey && event.key === "Insert") {
-    return false
+    return false;
   }
 
-  return true
-}
+  return true;
+};
 
-export const handleBlockSelectionKeyDown = (
-  view: EditorView,
-  event: KeyboardEvent,
-) => {
-  if (
-    !isBlockSelectionActive(view.state) ||
-    !shouldBlockBlockSelectionKeydown(event)
-  ) {
-    return false
+export const handleBlockSelectionKeyDown = (view: EditorView, event: KeyboardEvent) => {
+  if (!isBlockSelectionActive(view.state) || !shouldBlockBlockSelectionKeydown(event)) {
+    return false;
   }
 
-  event.preventDefault()
-  return true
-}
+  event.preventDefault();
+  return true;
+};
 
-export const handleBlockSelectionBeforeInput = (
-  view: EditorView,
-  event: InputEvent,
-) => {
-  if (
-    !isBlockSelectionActive(view.state) ||
-    dragInputTypes.has(event.inputType)
-  ) {
-    return false
+export const handleBlockSelectionBeforeInput = (view: EditorView, event: InputEvent) => {
+  if (!isBlockSelectionActive(view.state) || dragInputTypes.has(event.inputType)) {
+    return false;
   }
 
-  event.preventDefault()
-  return true
-}
+  event.preventDefault();
+  return true;
+};
 
-export const handleBlockSelectionClipboardMutation = (
-  view: EditorView,
-  event: ClipboardEvent,
-) => {
+export const handleBlockSelectionClipboardMutation = (view: EditorView, event: ClipboardEvent) => {
   if (!isBlockSelectionActive(view.state)) {
-    return false
+    return false;
   }
 
-  event.preventDefault()
-  return true
-}
+  event.preventDefault();
+  return true;
+};
 
-const listContainerTypes = new Set([
-  "bulletList",
-  "orderedList",
-  "taskList",
-])
+const listContainerTypes = new Set(["bulletList", "orderedList", "taskList"]);
 
 const getActiveBlockContentRange = ($pos: ResolvedPos): BlockRange | null => {
   if ($pos.parent.isTextblock) {
-    return { from: $pos.start(), to: $pos.end() }
+    return { from: $pos.start(), to: $pos.end() };
   }
 
   for (let depth = $pos.depth; depth > 0; depth--) {
-    const node = $pos.node(depth)
+    const node = $pos.node(depth);
     if (node.isTextblock) {
-      return { from: $pos.start(depth), to: $pos.end(depth) }
+      return { from: $pos.start(depth), to: $pos.end(depth) };
     }
   }
 
-  return null
-}
+  return null;
+};
 
 const addBlockRange = (
   ranges: Map<string, BlockRange>,
@@ -148,71 +122,50 @@ const addBlockRange = (
   selectionFrom: number,
   selectionTo: number,
 ) => {
-  const contentFrom = node.isLeaf || node.isAtom ? from : from + 1
-  const contentTo = node.isLeaf || node.isAtom ? to : to - 1
+  const contentFrom = node.isLeaf || node.isAtom ? from : from + 1;
+  const contentTo = node.isLeaf || node.isAtom ? to : to - 1;
 
   if (contentTo <= selectionFrom || contentFrom >= selectionTo) {
-    return
+    return;
   }
 
-  ranges.set(`${from}:${to}`, { from, to })
-}
+  ranges.set(`${from}:${to}`, { from, to });
+};
 
 export const getBlockSelectionRanges = (
   doc: ProseMirrorNode,
   selectionFrom: number,
   selectionTo: number,
 ) => {
-  const ranges = new Map<string, BlockRange>()
+  const ranges = new Map<string, BlockRange>();
 
   doc.descendants((node, pos, parent) => {
     if (parent?.type.name === "doc") {
       if (listContainerTypes.has(node.type.name)) {
-        return
+        return;
       }
 
       if (node.isBlock) {
-        addBlockRange(
-          ranges,
-          node,
-          pos,
-          pos + node.nodeSize,
-          selectionFrom,
-          selectionTo,
-        )
-        return false
+        addBlockRange(ranges, node, pos, pos + node.nodeSize, selectionFrom, selectionTo);
+        return false;
       }
 
-      return
+      return;
     }
 
     if (node.type.name === "listItem") {
-      addBlockRange(
-        ranges,
-        node,
-        pos,
-        pos + node.nodeSize,
-        selectionFrom,
-        selectionTo,
-      )
-      return false
+      addBlockRange(ranges, node, pos, pos + node.nodeSize, selectionFrom, selectionTo);
+      return false;
     }
 
     if (node.type.name === "taskItem") {
-      addBlockRange(
-        ranges,
-        node,
-        pos,
-        pos + node.nodeSize,
-        selectionFrom,
-        selectionTo,
-      )
-      return false
+      addBlockRange(ranges, node, pos, pos + node.nodeSize, selectionFrom, selectionTo);
+      return false;
     }
-  })
+  });
 
-  return [...ranges.values()]
-}
+  return [...ranges.values()];
+};
 
 export const getSelectedBlockRangesForTarget = (
   doc: ProseMirrorNode,
@@ -220,17 +173,13 @@ export const getSelectedBlockRangesForTarget = (
   selectionTo: number,
   targetPos: number,
 ) => {
-  if (selectionFrom === selectionTo) return []
+  if (selectionFrom === selectionTo) return [];
 
-  const ranges = getBlockSelectionRanges(doc, selectionFrom, selectionTo)
-  if (ranges.length < 2) return []
+  const ranges = getBlockSelectionRanges(doc, selectionFrom, selectionTo);
+  if (ranges.length < 2) return [];
 
-  return ranges.some(
-    (range) => targetPos >= range.from && targetPos < range.to,
-  )
-    ? ranges
-    : []
-}
+  return ranges.some((range) => targetPos >= range.from && targetPos < range.to) ? ranges : [];
+};
 
 export const getSelectedTaskItemPositions = (
   doc: ProseMirrorNode,
@@ -238,14 +187,9 @@ export const getSelectedTaskItemPositions = (
   selectionTo: number,
   targetPos: number,
 ) =>
-  getSelectedBlockRangesForTarget(
-    doc,
-    selectionFrom,
-    selectionTo,
-    targetPos,
-  ).flatMap((range) =>
+  getSelectedBlockRangesForTarget(doc, selectionFrom, selectionTo, targetPos).flatMap((range) =>
     doc.nodeAt(range.from)?.type.name === "taskItem" ? [range.from] : [],
-  )
+  );
 
 const createBlockSelectionDecorations = (
   doc: ProseMirrorNode,
@@ -256,17 +200,11 @@ const createBlockSelectionDecorations = (
     Decoration.node(range.from, range.to, {
       class: "editor-block-selection",
     }),
-  )
-}
+  );
+};
 
-export const buildAllBlockDecorations = (
-  doc: ProseMirrorNode,
-  selection: Selection,
-) =>
-  DecorationSet.create(
-    doc,
-    createBlockSelectionDecorations(doc, selection.from, selection.to),
-  )
+export const buildAllBlockDecorations = (doc: ProseMirrorNode, selection: Selection) =>
+  DecorationSet.create(doc, createBlockSelectionDecorations(doc, selection.from, selection.to));
 
 export const BlockSelection = Extension.create({
   name: "blockSelection",
@@ -275,39 +213,39 @@ export const BlockSelection = Extension.create({
   addKeyboardShortcuts() {
     return {
       "Mod-a": ({ editor }) => {
-        const { state } = editor
-        const { selection, doc } = state
+        const { state } = editor;
+        const { selection, doc } = state;
 
         if (selection instanceof AllSelection) {
-          return true
+          return true;
         }
 
-        const contentRange = getActiveBlockContentRange(selection.$anchor)
+        const contentRange = getActiveBlockContentRange(selection.$anchor);
 
         if (!contentRange) {
-          const tr = state.tr.setSelection(new AllSelection(doc))
-          tr.setMeta(blockSelectionPluginKey, { type: "select-all" } satisfies BlockSelectionMeta)
-          editor.view.dispatch(tr)
-          return true
+          const tr = state.tr.setSelection(new AllSelection(doc));
+          tr.setMeta(blockSelectionPluginKey, { type: "select-all" } satisfies BlockSelectionMeta);
+          editor.view.dispatch(tr);
+          return true;
         }
 
         const blockFullySelected =
-          selection.from === contentRange.from && selection.to === contentRange.to
+          selection.from === contentRange.from && selection.to === contentRange.to;
 
         if (blockFullySelected) {
-          const tr = state.tr.setSelection(new AllSelection(doc))
-          tr.setMeta(blockSelectionPluginKey, { type: "select-all" } satisfies BlockSelectionMeta)
-          editor.view.dispatch(tr)
-          return true
+          const tr = state.tr.setSelection(new AllSelection(doc));
+          tr.setMeta(blockSelectionPluginKey, { type: "select-all" } satisfies BlockSelectionMeta);
+          editor.view.dispatch(tr);
+          return true;
         }
 
         const tr = state.tr.setSelection(
           TextSelection.create(doc, contentRange.from, contentRange.to),
-        )
-        editor.view.dispatch(tr)
-        return true
+        );
+        editor.view.dispatch(tr);
+        return true;
       },
-    }
+    };
   },
 
   addProseMirrorPlugins() {
@@ -318,68 +256,60 @@ export const BlockSelection = Extension.create({
           init: emptyPluginState,
           apply(tr, previous, _oldState, newState) {
             if (selectionAiPreviewPluginKey.getState(newState)) {
-              return emptyPluginState()
+              return emptyPluginState();
             }
 
-            const meta = tr.getMeta(blockSelectionPluginKey) as
-              | BlockSelectionMeta
-              | undefined
+            const meta = tr.getMeta(blockSelectionPluginKey) as BlockSelectionMeta | undefined;
 
             if (meta?.type === "select-all") {
               return {
                 mode: "all",
-                decorations: buildAllBlockDecorations(
-                  newState.doc,
-                  newState.selection,
-                ),
-              }
+                decorations: buildAllBlockDecorations(newState.doc, newState.selection),
+              };
             }
 
             if (tr.selectionSet) {
-              return emptyPluginState()
+              return emptyPluginState();
             }
 
             if (tr.docChanged && previous.mode !== "none") {
               return {
                 ...previous,
-                decorations: buildAllBlockDecorations(
-                  newState.doc,
-                  newState.selection,
-                ),
-              }
+                decorations: buildAllBlockDecorations(newState.doc, newState.selection),
+              };
             }
 
-            return previous
+            return previous;
           },
         },
         props: {
           decorations(state) {
-            return blockSelectionPluginKey.getState(state)?.decorations ?? DecorationSet.empty
+            return blockSelectionPluginKey.getState(state)?.decorations ?? DecorationSet.empty;
           },
         },
         view(view) {
           const syncNativeSelectionVisibility = () => {
-            const pluginState = blockSelectionPluginKey.getState(view.state)
-            const useBlockHighlight = pluginState?.mode === "all"
+            const pluginState = blockSelectionPluginKey.getState(view.state);
+            const useBlockHighlight = pluginState?.mode === "all";
 
             view.dom.classList.toggle(
               "ProseMirror-hideselection",
               view.hasFocus() && view.editable && useBlockHighlight,
-            )
-          }
+            );
+          };
 
-          syncNativeSelectionVisibility()
+          syncNativeSelectionVisibility();
 
           return {
             update() {
-              syncNativeSelectionVisibility()
+              syncNativeSelectionVisibility();
             },
             destroy() {
-              view.dom.classList.remove("ProseMirror-hideselection")
+              view.dom.classList.remove("ProseMirror-hideselection");
             },
-          }
+          };
         },
       }),
-    ]
+    ];
   },
-})
+});

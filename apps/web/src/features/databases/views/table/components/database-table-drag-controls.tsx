@@ -3,16 +3,12 @@ import {
   type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
-} from "react"
-import { Reorder, useDragControls } from "framer-motion"
-import { GripVertical } from "@/shared/components/icons"
-import { cn } from "@/shared/lib/utils"
-import { Checkbox } from "@/shared/ui/checkbox"
-import {
-  getRowTitle,
-  type RowLayout,
-  type TableRow,
-} from "../model/database-table-model"
+} from "react";
+import { Reorder, useDragControls } from "framer-motion";
+import { GripVertical } from "@/shared/components/icons";
+import { cn } from "@/shared/lib/utils";
+import { Checkbox } from "@/shared/ui/checkbox";
+import { getRowTitle, type RowLayout, type TableRow } from "../model/database-table-model";
 
 export function DatabaseHeaderReorderItem({
   children,
@@ -24,24 +20,22 @@ export function DatabaseHeaderReorderItem({
   onDragEnd,
   onDragStart,
 }: {
-  canReorder: boolean
-  children: (
-    onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => void
-  ) => ReactNode
-  className?: string
-  headerScope: string
-  isDragging: boolean
-  columnId: string
-  onDragEnd: () => void
-  onDragStart: () => void
+  canReorder: boolean;
+  children: (onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => void) => ReactNode;
+  className?: string;
+  headerScope: string;
+  isDragging: boolean;
+  columnId: string;
+  onDragEnd: () => void;
+  onDragStart: () => void;
 }) {
-  const dragControls = useDragControls()
+  const dragControls = useDragControls();
   const startDrag = (event: ReactPointerEvent<HTMLElement>) => {
-    if (!canReorder) return
+    if (!canReorder) return;
 
-    event.stopPropagation()
-    dragControls.start(event)
-  }
+    event.stopPropagation();
+    dragControls.start(event);
+  };
 
   return (
     <Reorder.Item
@@ -61,7 +55,7 @@ export function DatabaseHeaderReorderItem({
     >
       {children(startDrag)}
     </Reorder.Item>
-  )
+  );
 }
 
 export function DatabaseRowDragControls({
@@ -78,34 +72,32 @@ export function DatabaseRowDragControls({
   rowsById,
   selectedRowIds,
 }: {
-  canReorderRows: boolean
-  draggedRowId: string | null
-  editable: boolean
-  hoveredRowId: string | null
-  onDragEnd: () => void
-  onDragStart: (row: TableRow, event: ReactDragEvent<HTMLButtonElement>) => void
-  onHoveredRowChange: (rowId: string | null) => void
-  onSelectedRowChange: (rowId: string, selected: boolean) => void
-  rowDragTitle: string
-  rowLayout: RowLayout
-  rowsById: ReadonlyMap<string, TableRow>
-  selectedRowIds: Set<string>
+  canReorderRows: boolean;
+  draggedRowId: string | null;
+  editable: boolean;
+  hoveredRowId: string | null;
+  onDragEnd: () => void;
+  onDragStart: (row: TableRow, event: ReactDragEvent<HTMLButtonElement>) => void;
+  onHoveredRowChange: (rowId: string | null) => void;
+  onSelectedRowChange: (rowId: string, selected: boolean) => void;
+  rowDragTitle: string;
+  rowLayout: RowLayout;
+  rowsById: ReadonlyMap<string, TableRow>;
+  selectedRowIds: Set<string>;
 }) {
-  if (!editable) return null
+  if (!editable) return null;
 
   return (
     <div className="database-row-drag-rail">
       {rowLayout.rowIds.map((rowId) => {
-        const row = rowsById.get(rowId)
-        if (!row) return null
+        const row = rowsById.get(rowId);
+        if (!row) return null;
 
-        const rowCenter = rowLayout.centers[row.id]
-        if (rowCenter === undefined) return null
+        const rowCenter = rowLayout.centers[row.id];
+        if (rowCenter === undefined) return null;
 
         const isRowHandleVisible =
-          hoveredRowId === row.id ||
-          draggedRowId === row.id ||
-          selectedRowIds.has(row.id)
+          hoveredRowId === row.id || draggedRowId === row.id || selectedRowIds.has(row.id);
 
         return (
           <div
@@ -114,7 +106,7 @@ export function DatabaseRowDragControls({
             key={row.id}
             onMouseEnter={() => onHoveredRowChange(row.id)}
             onMouseLeave={() => {
-              if (!draggedRowId) onHoveredRowChange(null)
+              if (!draggedRowId) onHoveredRowChange(null);
             }}
             style={
               {
@@ -142,25 +134,17 @@ export function DatabaseRowDragControls({
               aria-label={`Select ${getRowTitle(row)}`}
               checked={selectedRowIds.has(row.id)}
               className="database-row-checkbox"
-              onCheckedChange={(checked) =>
-                onSelectedRowChange(row.id, checked === true)
-              }
+              onCheckedChange={(checked) => onSelectedRowChange(row.id, checked === true)}
             />
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
-export function DatabaseRowDropLine({
-  depth,
-  top,
-}: {
-  depth: number
-  top: number | null
-}) {
-  if (top === null) return null
+export function DatabaseRowDropLine({ depth, top }: { depth: number; top: number | null }) {
+  if (top === null) return null;
 
   return (
     <div
@@ -174,5 +158,5 @@ export function DatabaseRowDropLine({
         } as CSSProperties
       }
     />
-  )
+  );
 }

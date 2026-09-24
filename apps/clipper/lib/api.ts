@@ -1,39 +1,30 @@
-import { browser } from "wxt/browser"
-import type {
-  CreateClipRequest,
-  CreateClipResponse,
-} from "@zilobase/features/clips"
+import { browser } from "wxt/browser";
+import type { CreateClipRequest, CreateClipResponse } from "@zilobase/features/clips";
 
-import { refreshClipperAccessToken } from "./oauth"
-import type { ClipperSession } from "./session"
+import { refreshClipperAccessToken } from "./oauth";
+import type { ClipperSession } from "./session";
 
-export async function createClip(
-  session: ClipperSession,
-  body: CreateClipRequest,
-) {
-  const response = await authorizedClipRequest(session, body)
+export async function createClip(session: ClipperSession, body: CreateClipRequest) {
+  const response = await authorizedClipRequest(session, body);
 
   if (!response.ok) {
     const payload = (await response.json().catch(() => null)) as {
-      error?: string
-    } | null
-    throw new Error(payload?.error ?? `Save failed (${response.status})`)
+      error?: string;
+    } | null;
+    throw new Error(payload?.error ?? `Save failed (${response.status})`);
   }
 
-  return (await response.json()) as CreateClipResponse
+  return (await response.json()) as CreateClipResponse;
 }
 
-async function authorizedClipRequest(
-  session: ClipperSession,
-  body: CreateClipRequest,
-) {
-  const response = await postClip(session, body)
+async function authorizedClipRequest(session: ClipperSession, body: CreateClipRequest) {
+  const response = await postClip(session, body);
   if (response.status !== 401 || !session.refreshToken) {
-    return response
+    return response;
   }
 
-  const refreshed = await refreshClipperAccessToken(session)
-  return postClip(refreshed, body)
+  const refreshed = await refreshClipperAccessToken(session);
+  return postClip(refreshed, body);
 }
 
 function postClip(session: ClipperSession, body: CreateClipRequest) {
@@ -45,10 +36,10 @@ function postClip(session: ClipperSession, body: CreateClipRequest) {
       "x-zilobase-workspace-id": session.workspaceId,
     },
     body: JSON.stringify(body),
-  })
+  });
 }
 
 export function openClippedPage(session: ClipperSession, path: string) {
-  const url = new URL(path, session.webOrigin ?? session.instanceUrl)
-  void browser.tabs.create({ url: url.toString() })
+  const url = new URL(path, session.webOrigin ?? session.instanceUrl);
+  void browser.tabs.create({ url: url.toString() });
 }

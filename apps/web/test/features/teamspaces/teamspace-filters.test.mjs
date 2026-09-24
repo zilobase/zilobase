@@ -2,7 +2,7 @@ export function register({ assert, loadModule, test }) {
   test("teamspace administration filters by text, access, and membership", async () => {
     const { filterTeamspaces } = await loadModule(
       "/src/features/teamspaces/model/teamspace-filters.ts",
-    )
+    );
     const teamspaces = [
       {
         accessMode: "open",
@@ -20,7 +20,7 @@ export function register({ assert, loadModule, test }) {
         name: "Strategy",
         ownerIds: [],
       },
-    ]
+    ];
 
     assert.deepEqual(
       filterTeamspaces(teamspaces, {
@@ -29,7 +29,7 @@ export function register({ assert, loadModule, test }) {
         query: "delivery",
       }).map((teamspace) => teamspace.id),
       ["engineering"],
-    )
+    );
     assert.deepEqual(
       filterTeamspaces(teamspaces, {
         accessMode: "private",
@@ -37,7 +37,7 @@ export function register({ assert, loadModule, test }) {
         query: "",
       }).map((teamspace) => teamspace.id),
       ["strategy"],
-    )
+    );
     assert.deepEqual(
       filterTeamspaces(teamspaces, {
         accessMode: "all",
@@ -45,6 +45,6 @@ export function register({ assert, loadModule, test }) {
         query: "",
       }).map((teamspace) => teamspace.id),
       ["engineering"],
-    )
-  })
+    );
+  });
 }

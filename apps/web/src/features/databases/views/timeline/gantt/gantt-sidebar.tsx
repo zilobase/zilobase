@@ -1,47 +1,39 @@
-import { addDays, formatDistance, isSameDay } from "date-fns"
-import type {
-  KeyboardEventHandler,
-  MouseEventHandler,
-  ReactNode,
-} from "react"
+import { addDays, formatDistance, isSameDay } from "date-fns";
+import type { KeyboardEventHandler, MouseEventHandler, ReactNode } from "react";
 
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
-import { useGanttContext } from "./gantt-context"
-import type { GanttFeature } from "./gantt-types"
+import { useGanttContext } from "./gantt-context";
+import type { GanttFeature } from "./gantt-types";
 
 export type GanttSidebarItemProps = {
-  className?: string
-  feature: GanttFeature
-  onSelectItem?: (id: string) => void
-}
+  className?: string;
+  feature: GanttFeature;
+  onSelectItem?: (id: string) => void;
+};
 
-export function GanttSidebarItem({
-  className,
-  feature,
-  onSelectItem,
-}: GanttSidebarItemProps) {
-  const gantt = useGanttContext()
+export function GanttSidebarItem({ className, feature, onSelectItem }: GanttSidebarItemProps) {
+  const gantt = useGanttContext();
   const effectiveEnd = isSameDay(feature.startAt, feature.endAt)
     ? addDays(feature.endAt, 1)
-    : feature.endAt
+    : feature.endAt;
   const duration = effectiveEnd
     ? formatDistance(feature.startAt, effectiveEnd)
-    : `${formatDistance(feature.startAt, new Date())} so far`
+    : `${formatDistance(feature.startAt, new Date())} so far`;
 
   const select = () => {
-    gantt.scrollToFeature?.(feature)
-    onSelectItem?.(feature.id)
-  }
+    gantt.scrollToFeature?.(feature);
+    onSelectItem?.(feature.id);
+  };
   const handleClick: MouseEventHandler<HTMLDivElement> = (event) => {
-    if (event.target === event.currentTarget) select()
-  }
+    if (event.target === event.currentTarget) select();
+  };
   const handleKeyDown: KeyboardEventHandler<HTMLDivElement> = (event) => {
     if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault()
-      select()
+      event.preventDefault();
+      select();
     }
-  }
+  };
 
   return (
     <div
@@ -59,12 +51,10 @@ export function GanttSidebarItem({
         className="pointer-events-none h-2 w-2 shrink-0 rounded-full"
         style={{ backgroundColor: feature.status.color }}
       />
-      <p className="pointer-events-none flex-1 truncate text-left font-medium">
-        {feature.name}
-      </p>
+      <p className="pointer-events-none flex-1 truncate text-left font-medium">{feature.name}</p>
       <p className="pointer-events-none text-content-secondary">{duration}</p>
     </div>
-  )
+  );
 }
 
 export function GanttSidebarHeader() {
@@ -76,20 +66,16 @@ export function GanttSidebarHeader() {
       <p className="flex-1 truncate text-left">Issues</p>
       <p className="shrink-0">Duration</p>
     </div>
-  )
+  );
 }
 
 export type GanttSidebarGroupProps = {
-  children: ReactNode
-  className?: string
-  name: string
-}
+  children: ReactNode;
+  className?: string;
+  name: string;
+};
 
-export function GanttSidebarGroup({
-  children,
-  className,
-  name,
-}: GanttSidebarGroupProps) {
+export function GanttSidebarGroup({ children, className, name }: GanttSidebarGroupProps) {
   return (
     <div className={className}>
       <p
@@ -100,13 +86,13 @@ export function GanttSidebarGroup({
       </p>
       <div className="divide-y divide-data-grid">{children}</div>
     </div>
-  )
+  );
 }
 
 export type GanttSidebarProps = {
-  children: ReactNode
-  className?: string
-}
+  children: ReactNode;
+  className?: string;
+};
 
 export function GanttSidebar({ children, className }: GanttSidebarProps) {
   return (
@@ -120,5 +106,5 @@ export function GanttSidebar({ children, className }: GanttSidebarProps) {
       <GanttSidebarHeader />
       <div className="space-y-4">{children}</div>
     </div>
-  )
+  );
 }

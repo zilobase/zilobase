@@ -11,8 +11,7 @@ export {
   MAX_DATABASE_REALTIME_MESSAGE_BYTES,
   validateDatabaseRealtimeMessage,
 } from "@zilobase/features/databases/realtime/room-protocol";
-const DATABASE_REALTIME_CLAIMS_HEADER =
-  "x-zilobase-database-realtime-claims";
+const DATABASE_REALTIME_CLAIMS_HEADER = "x-zilobase-database-realtime-claims";
 const MAX_TICKET_BYTES = 8 * 1024;
 
 export type DatabaseRealtimeRouteEnv = Record<string, unknown> & {
@@ -47,18 +46,16 @@ export async function routeDatabaseRealtimeRequest(
 
   const clientAddress = request.headers.get("cf-connecting-ip") ?? "local";
 
-  const success = await limits.consume(
-    `database-realtime-connect:${clientAddress}`,
-    60,
-    60_000,
-  );
+  const success = await limits.consume(`database-realtime-connect:${clientAddress}`, 60, 60_000);
 
   if (!success) {
-    console.warn(JSON.stringify({
-      databaseId,
-      event: "database_realtime_connection_rate_limited",
-      clientAddress,
-    }));
+    console.warn(
+      JSON.stringify({
+        databaseId,
+        event: "database_realtime_connection_rate_limited",
+        clientAddress,
+      }),
+    );
     return new Response("Too Many Requests", {
       headers: { "Retry-After": "60" },
       status: 429,
@@ -72,10 +69,7 @@ export async function routeDatabaseRealtimeRequest(
   }
 
   try {
-    const claims = await verifyDatabaseRealtimeTicket(
-      authentication.token,
-      env,
-    );
+    const claims = await verifyDatabaseRealtimeTicket(authentication.token, env);
 
     if (claims.databaseId !== databaseId) {
       throw new Error("Database realtime ticket scope does not match");
@@ -95,27 +89,24 @@ export async function routeDatabaseRealtimeRequest(
     }
 
     const headers = new Headers(request.headers);
-    headers.set(
-      DATABASE_REALTIME_CLAIMS_HEADER,
-      encodeURIComponent(JSON.stringify(claims)),
-    );
+    headers.set(DATABASE_REALTIME_CLAIMS_HEADER, encodeURIComponent(JSON.stringify(claims)));
 
-    return env.DATABASE_COLLABORATION
-      .getByName(databaseId)
-      .fetch(new Request(request, { headers }));
+    return env.DATABASE_COLLABORATION.getByName(databaseId).fetch(
+      new Request(request, { headers }),
+    );
   } catch (error) {
-    console.warn(JSON.stringify({
-      databaseId,
-      error: error instanceof Error ? error.message : String(error),
-      event: "database_realtime_upgrade_authentication_failed",
-    }));
+    console.warn(
+      JSON.stringify({
+        databaseId,
+        error: error instanceof Error ? error.message : String(error),
+        event: "database_realtime_upgrade_authentication_failed",
+      }),
+    );
     return new Response("Invalid database realtime ticket", { status: 401 });
   }
 }
 
-export function readDatabaseRealtimeClaims(
-  headers: Headers,
-): DatabaseRealtimeTicketClaims | null {
+export function readDatabaseRealtimeClaims(headers: Headers): DatabaseRealtimeTicketClaims | null {
   const encoded = headers.get(DATABASE_REALTIME_CLAIMS_HEADER);
 
   if (!encoded) return null;
@@ -134,21 +125,16 @@ function readAuthenticationProtocol(headers: Headers) {
     .split(",")
     .map((protocol) => protocol.trim());
   const authentication = protocols.find((protocol) =>
-    protocol.startsWith(DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX)
+    protocol.startsWith(DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX),
   );
-  const token = authentication?.slice(
-    DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX.length,
-  );
+  const token = authentication?.slice(DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX.length);
 
-  return protocols.includes(DATABASE_REALTIME_PROTOCOL) &&
-      token && token.length <= MAX_TICKET_BYTES
+  return protocols.includes(DATABASE_REALTIME_PROTOCOL) && token && token.length <= MAX_TICKET_BYTES
     ? { token }
     : null;
 }
 
-function isTicketClaims(
-  value: unknown,
-): value is DatabaseRealtimeTicketClaims {
+function isTicketClaims(value: unknown): value is DatabaseRealtimeTicketClaims {
   if (!value || typeof value !== "object") return false;
   const claims = value as Record<string, unknown>;
 
@@ -157,7 +143,8 @@ function isTicketClaims(
     typeof claims.databaseId === "string" &&
     typeof claims.exp === "number" &&
     typeof claims.sessionId === "string" &&
-    typeof claims.user === "object" && claims.user !== null &&
+    typeof claims.user === "object" &&
+    claims.user !== null &&
     typeof (claims.user as Record<string, unknown>).id === "string" &&
     typeof claims.workspaceId === "string"
   );

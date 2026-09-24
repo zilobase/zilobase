@@ -16,10 +16,7 @@ import {
 } from "./queries";
 import type { PageDetail, AccessLevel, Page, PageNavigationPayload } from "./contracts";
 import type { PageMetadata } from "./item-relationships";
-import {
-  applyNavDelta,
-  type NavDelta,
-} from "./nav-delta";
+import { applyNavDelta, type NavDelta } from "./nav-delta";
 import { applyNavigationDeltaToCache } from "./navigation-realtime";
 
 type CreatePageInput = {
@@ -103,26 +100,20 @@ export function useCreatePage() {
           placement.placementKind === "primary",
       )?.parentId;
       const parentDetail = parentItemId
-        ? queryClient.getQueryData<PageDetail | null>(
-            pageQueryKey(parentItemId),
-          )
+        ? queryClient.getQueryData<PageDetail | null>(pageQueryKey(parentItemId))
         : null;
-      const inheritedAccessLevel =
-        parentDetail?.accessLevel ?? ("full" as AccessLevel);
+      const inheritedAccessLevel = parentDetail?.accessLevel ?? ("full" as AccessLevel);
 
-      queryClient.setQueryData<PageDetail | null>(
-        pageQueryKey(pageRecord.id),
-        (current) => ({
-          accessLevel: current?.accessLevel ?? inheritedAccessLevel,
-          databaseIds: current?.databaseIds ?? [],
-          page: {
-            ...(current?.page ?? {}),
-            ...pageRecord,
-            isFavorite: pageRecord.isFavorite ?? current?.page.isFavorite,
-            isShared: pageRecord.isShared ?? current?.page.isShared,
-          },
-        }),
-      );
+      queryClient.setQueryData<PageDetail | null>(pageQueryKey(pageRecord.id), (current) => ({
+        accessLevel: current?.accessLevel ?? inheritedAccessLevel,
+        databaseIds: current?.databaseIds ?? [],
+        page: {
+          ...(current?.page ?? {}),
+          ...pageRecord,
+          isFavorite: pageRecord.isFavorite ?? current?.page.isFavorite,
+          isShared: pageRecord.isShared ?? current?.page.isShared,
+        },
+      }));
       applyNavigationDeltaToCache(
         queryClient,
         pageRecord.workspaceId,
@@ -145,12 +136,8 @@ export function useUpdatePage() {
   return useMutation({
     mutationFn: async ({ id, ...patch }: UpdatePageInput) => {
       const isContentOnlyPatch =
-        patch.content !== undefined &&
-        patch.name === undefined &&
-        patch.metadata === undefined;
-      const current = queryClient.getQueryData<PageDetail | null>(
-        pageQueryKey(id),
-      );
+        patch.content !== undefined && patch.name === undefined && patch.metadata === undefined;
+      const current = queryClient.getQueryData<PageDetail | null>(pageQueryKey(id));
       const result = await apiFetch<UpdatePageResponse>(
         isContentOnlyPatch ? `/pages/${id}/content` : `/pages/${id}`,
         {
@@ -173,14 +160,11 @@ export function useUpdatePage() {
         queryClient.cancelQueries({ queryKey: pageQueryKey(variables.id) }),
         queryClient.cancelQueries({ queryKey: pagesRootQueryKey() }),
       ]);
-      const previous = queryClient.getQueryData<PageDetail | null>(
-        pageQueryKey(variables.id),
-      );
+      const previous = queryClient.getQueryData<PageDetail | null>(pageQueryKey(variables.id));
       const currentPage = previous?.page;
-      const previousNavQueries =
-        queryClient.getQueriesData<PageNavigationPayload>({
-          queryKey: pagesRootQueryKey(),
-        });
+      const previousNavQueries = queryClient.getQueriesData<PageNavigationPayload>({
+        queryKey: pagesRootQueryKey(),
+      });
 
       if (!currentPage) {
         return { previous, previousNavQueries };
@@ -194,23 +178,18 @@ export function useUpdatePage() {
               hasContent: hasPageBodyContent(variables.content),
             }
           : {}),
-        ...(variables.metadata !== undefined
-          ? { metadata: variables.metadata }
-          : {}),
+        ...(variables.metadata !== undefined ? { metadata: variables.metadata } : {}),
         ...(variables.name !== undefined ? { name: variables.name } : {}),
         ...(variables.name !== undefined || variables.metadata !== undefined
           ? { updatedAt: new Date().toISOString() }
           : {}),
       };
 
-      queryClient.setQueryData<PageDetail | null>(
-        pageQueryKey(variables.id),
-        (): PageDetail => ({
-          accessLevel: previous.accessLevel ?? null,
-          databaseIds: previous.databaseIds ?? [],
-          page: optimisticPage,
-        }),
-      );
+      queryClient.setQueryData<PageDetail | null>(pageQueryKey(variables.id), (): PageDetail => ({
+        accessLevel: previous.accessLevel ?? null,
+        databaseIds: previous.databaseIds ?? [],
+        page: optimisticPage,
+      }));
       queryClient.setQueriesData<PageNavigationPayload | undefined>(
         { queryKey: pagesNavRootQueryKey(optimisticPage.workspaceId) },
         (current) => applyNavDelta(current, { upsertPages: [optimisticPage] }),
@@ -230,9 +209,7 @@ export function useUpdatePage() {
       }
     },
     onSuccess: async (pagePatch, variables) => {
-      const current = queryClient.getQueryData<PageDetail | null>(
-        pageQueryKey(pagePatch.id),
-      );
+      const current = queryClient.getQueryData<PageDetail | null>(pageQueryKey(pagePatch.id));
       const page = resolveUpdatedPage(pagePatch, variables, current?.page);
 
       if (!page) {
@@ -242,17 +219,12 @@ export function useUpdatePage() {
         return;
       }
 
-      queryClient.setQueryData<PageDetail | null>(
-        pageQueryKey(page.id),
-        (current) => ({
-          accessLevel: current?.accessLevel ?? "full",
-          databaseIds: current?.databaseIds ?? [],
-          page,
-        }),
-      );
-      const detail = queryClient.getQueryData<PageDetail | null>(
-        pageQueryKey(page.id),
-      );
+      queryClient.setQueryData<PageDetail | null>(pageQueryKey(page.id), (current) => ({
+        accessLevel: current?.accessLevel ?? "full",
+        databaseIds: current?.databaseIds ?? [],
+        page,
+      }));
+      const detail = queryClient.getQueryData<PageDetail | null>(pageQueryKey(page.id));
       const rowPageDatabaseIds = detail?.databaseIds ?? [];
       for (const hostId of rowPageDatabaseIds) {
         invalidateDatabaseQueries(queryClient, sessionId, hostId);
@@ -345,9 +317,11 @@ function resolveUpdatedPage(
   return {
     ...current,
     ...pagePatch,
-    ...(variables.content !== undefined ? {
-      content: variables.content,
-      hasContent: hasPageBodyContent(variables.content),
-    } : {}),
+    ...(variables.content !== undefined
+      ? {
+          content: variables.content,
+          hasContent: hasPageBodyContent(variables.content),
+        }
+      : {}),
   };
 }

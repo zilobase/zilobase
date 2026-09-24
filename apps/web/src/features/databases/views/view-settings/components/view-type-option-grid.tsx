@@ -1,9 +1,6 @@
 import { cn } from "@/shared/lib/utils";
 
-import {
-  databaseViewTypeOptions,
-  type DatabaseViewType,
-} from "../model/view-type-options";
+import { databaseViewTypeOptions, type DatabaseViewType } from "../model/view-type-options";
 
 type ViewTypeOptionGridProps = {
   className?: string;
@@ -28,7 +25,8 @@ export function ViewTypeOptionGrid({
             aria-pressed={selectedType == null ? undefined : selected}
             className={cn(
               "flex h-20 flex-col items-center justify-center gap-1.5 rounded-md border text-xs font-medium text-content-secondary outline-none transition-colors hover:bg-action-neutral-hover hover:text-content-primary focus-visible:ring-2 focus-visible:ring-action-focus-ring disabled:pointer-events-none disabled:opacity-50",
-              selected && "border-action-selected-border bg-action-selected-subtle text-action-selected-text",
+              selected &&
+                "border-action-selected-border bg-action-selected-subtle text-action-selected-text",
             )}
             disabled={isOptionDisabled?.(option.type)}
             key={option.type}

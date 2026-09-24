@@ -1,25 +1,23 @@
 export function register({ assert, loadModule, test }) {
   test("notion import and the web clipper stay disabled unless config enables them", async () => {
-    const { isFeatureEnabled } = await loadModule("/src/shared/config/feature-flags.ts")
+    const { isFeatureEnabled } = await loadModule("/src/shared/config/feature-flags.ts");
 
-    assert.equal(isFeatureEnabled("notionImport"), false)
-    assert.equal(isFeatureEnabled("webClipper"), false)
-  })
+    assert.equal(isFeatureEnabled("notionImport"), false);
+    assert.equal(isFeatureEnabled("webClipper"), false);
+  });
 
   test("readBooleanFeatureFlag accepts common boolean config values", async () => {
-    const { readBooleanFeatureFlag } = await loadModule(
-      "/src/shared/config/feature-flags.ts",
-    )
+    const { readBooleanFeatureFlag } = await loadModule("/src/shared/config/feature-flags.ts");
 
-    assert.equal(readBooleanFeatureFlag("true"), true)
-    assert.equal(readBooleanFeatureFlag("1"), true)
-    assert.equal(readBooleanFeatureFlag("yes"), true)
-    assert.equal(readBooleanFeatureFlag("on"), true)
-    assert.equal(readBooleanFeatureFlag("false", true), false)
-    assert.equal(readBooleanFeatureFlag("0", true), false)
-    assert.equal(readBooleanFeatureFlag("no", true), false)
-    assert.equal(readBooleanFeatureFlag("off", true), false)
-    assert.equal(readBooleanFeatureFlag(undefined, true), true)
-    assert.equal(readBooleanFeatureFlag("unexpected", false), false)
-  })
+    assert.equal(readBooleanFeatureFlag("true"), true);
+    assert.equal(readBooleanFeatureFlag("1"), true);
+    assert.equal(readBooleanFeatureFlag("yes"), true);
+    assert.equal(readBooleanFeatureFlag("on"), true);
+    assert.equal(readBooleanFeatureFlag("false", true), false);
+    assert.equal(readBooleanFeatureFlag("0", true), false);
+    assert.equal(readBooleanFeatureFlag("no", true), false);
+    assert.equal(readBooleanFeatureFlag("off", true), false);
+    assert.equal(readBooleanFeatureFlag(undefined, true), true);
+    assert.equal(readBooleanFeatureFlag("unexpected", false), false);
+  });
 }

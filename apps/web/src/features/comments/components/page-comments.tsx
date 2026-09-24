@@ -1,15 +1,8 @@
-"use client"
+"use client";
 
-import {
-  memo,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react"
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-import { ThreadAvatar, ThreadLine } from "@/shared/ui/thread-line"
+import { ThreadAvatar, ThreadLine } from "@/shared/ui/thread-line";
 import {
   ArrowUp,
   AtSign,
@@ -21,7 +14,7 @@ import {
   SmilePlus,
   Trash2,
   X,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 
 import {
   AlertDialog,
@@ -33,34 +26,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/shared/ui/alert-dialog"
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
-import { Button } from "@/shared/ui/button"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/shared/ui/command"
+} from "@/shared/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
+import { Button } from "@/shared/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/shared/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu"
+} from "@/shared/ui/dropdown-menu";
 import {
   EmojiPicker,
   EmojiPickerContent,
   EmojiPickerFooter,
   EmojiPickerSearch,
-} from "@/shared/ui/emoji-picker"
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover"
-import { cn } from "@/shared/lib/utils"
-import { getUserImageUrl } from "@/platform/network/image-upload"
+} from "@/shared/ui/emoji-picker";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { cn } from "@/shared/lib/utils";
+import { getUserImageUrl } from "@/platform/network/image-upload";
 
-import { Skeleton } from "@/shared/ui/skeleton"
-import { Textarea } from "@/shared/ui/textarea"
+import { Skeleton } from "@/shared/ui/skeleton";
+import { Textarea } from "@/shared/ui/textarea";
 import {
   filterCommentMentionMembers,
   getCommentMentionLabels,
@@ -68,21 +55,24 @@ import {
   insertCommentMention,
   tokenizeCommentMentions,
   type CommentMentionMember,
-} from "@/features/comments/components/page-comment-mentions"
-import { useOptionalPageEditorComments } from "./page-editor-comments"
+} from "@/features/comments/components/page-comment-mentions";
+import { useOptionalPageEditorComments } from "./page-editor-comments";
 import { useSession } from "@zilobase/features/auth/react";
 import { usePagePersonAccessTargets } from "@zilobase/features/pages/react";
-import { usePageCommentController, usePageCommentsSnapshot } from "../context/page-comments-registry"
-import type { CommentAuthorSnapshot, CommentMessageSnapshot } from "../model/yjs-comments"
-import { toast } from "sonner"
+import {
+  usePageCommentController,
+  usePageCommentsSnapshot,
+} from "../context/page-comments-registry";
+import type { CommentAuthorSnapshot, CommentMessageSnapshot } from "../model/yjs-comments";
+import { toast } from "sonner";
 
-type CommentAuthor = CommentAuthorSnapshot
-type PageCommentMessage = CommentMessageSnapshot
+type CommentAuthor = CommentAuthorSnapshot;
+type PageCommentMessage = CommentMessageSnapshot;
 
 type CommentAvatarAuthor =
   | Pick<CommentAuthor, "email" | "id" | "image" | "name">
   | { email?: string | null; id?: string | null; image?: string | null; name?: string | null }
-  | null
+  | null;
 
 function CommentAvatar({
   author,
@@ -90,47 +80,45 @@ function CommentAvatar({
   className,
   small = false,
 }: {
-  author: CommentAvatarAuthor
-  authorId?: string | null
-  className?: string
-  small?: boolean
+  author: CommentAvatarAuthor;
+  authorId?: string | null;
+  className?: string;
+  small?: boolean;
 }) {
-  const label = getCommentAuthorName(author)
+  const label = getCommentAuthorName(author);
 
   return (
     <Avatar aria-hidden className={className} size={small ? "sm" : "default"}>
-      {author?.image ? (
-        <AvatarImage alt={label} src={getUserImageUrl(author.image)} />
-      ) : null}
+      {author?.image ? <AvatarImage alt={label} src={getUserImageUrl(author.image)} /> : null}
       <AvatarFallback gradientSeed={getCommentAvatarSeed(author, authorId, label)}>
         {getCommentInitials(label)}
       </AvatarFallback>
     </Avatar>
-  )
+  );
 }
 
 type CommentItemProps = {
-  canEdit: boolean
-  canReact: boolean
-  canResolve: boolean
-  className?: string
-  compact?: boolean
-  comment: PageCommentMessage
-  deletesThread?: boolean
-  editingBody: string | null
-  isMutating: boolean
-  mentionLabels?: string[]
-  onCancelEdit: () => void
-  onAddReaction: (emoji: string) => void
-  onDelete: () => void
-  onEdit: () => void
-  onEditingBodyChange: (body: string) => void
-  onResolve: () => void
-  onRemoveReaction: (emoji: string) => void
-  onSaveEdit: () => void
-  onUnresolve?: () => void
-  showResolveUnresolve?: boolean
-}
+  canEdit: boolean;
+  canReact: boolean;
+  canResolve: boolean;
+  className?: string;
+  compact?: boolean;
+  comment: PageCommentMessage;
+  deletesThread?: boolean;
+  editingBody: string | null;
+  isMutating: boolean;
+  mentionLabels?: string[];
+  onCancelEdit: () => void;
+  onAddReaction: (emoji: string) => void;
+  onDelete: () => void;
+  onEdit: () => void;
+  onEditingBodyChange: (body: string) => void;
+  onResolve: () => void;
+  onRemoveReaction: (emoji: string) => void;
+  onSaveEdit: () => void;
+  onUnresolve?: () => void;
+  showResolveUnresolve?: boolean;
+};
 
 function CommentItemComponent({
   canEdit,
@@ -154,12 +142,12 @@ function CommentItemComponent({
   onUnresolve,
   showResolveUnresolve = true,
 }: CommentItemProps) {
-  const isEditing = editingBody !== null
-  const reactions = comment.reactions ?? []
+  const isEditing = editingBody !== null;
+  const reactions = comment.reactions ?? [];
   const commentTextParts = useMemo(
     () => tokenizeCommentMentions(comment.body, mentionLabels ?? []),
     [comment.body, mentionLabels],
-  )
+  );
 
   return (
     <article
@@ -210,15 +198,12 @@ function CommentItemComponent({
               (edited)
             </span>
           ) : null}
-          {(canReact || canEdit || (showResolveUnresolve && (canResolve || onUnresolve))) && !isEditing ? (
+          {(canReact || canEdit || (showResolveUnresolve && (canResolve || onUnresolve))) &&
+          !isEditing ? (
             <AlertDialog>
               <span className="absolute right-0 top-0 flex shrink-0 items-center gap-1 rounded-xl border bg-surface-canvas p-1 opacity-0 shadow-sm transition-opacity group-hover/comment:opacity-100 group-focus-within/comment:opacity-100">
                 {canReact ? (
-                  <CommentReactionPicker
-                    align="end"
-                    disabled={isMutating}
-                    onSelect={onAddReaction}
-                  >
+                  <CommentReactionPicker align="end" disabled={isMutating} onSelect={onAddReaction}>
                     <Button
                       aria-label="Add reaction"
                       className="text-content-secondary"
@@ -273,11 +258,7 @@ function CommentItemComponent({
                         <MoreHorizontal />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="min-w-28"
-                      sideOffset={6}
-                    >
+                    <DropdownMenuContent align="end" className="min-w-28" sideOffset={6}>
                       <DropdownMenuItem disabled={isMutating} onClick={onEdit}>
                         <Pencil className="size-4" />
                         Edit
@@ -308,14 +289,8 @@ function CommentItemComponent({
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isMutating}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    disabled={isMutating}
-                    onClick={onDelete}
-                    variant="destructive"
-                  >
+                  <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction disabled={isMutating} onClick={onDelete} variant="destructive">
                     Delete
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -336,13 +311,13 @@ function CommentItemComponent({
               onChange={(event) => onEditingBodyChange(event.target.value)}
               onKeyDown={(event) => {
                 if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                  event.preventDefault()
-                  onSaveEdit()
+                  event.preventDefault();
+                  onSaveEdit();
                 }
 
                 if (event.key === "Escape") {
-                  event.preventDefault()
-                  onCancelEdit()
+                  event.preventDefault();
+                  onCancelEdit();
                 }
               }}
               value={editingBody}
@@ -405,19 +380,12 @@ function CommentItemComponent({
                     type="button"
                     variant={reaction.reactedByMe ? "secondary" : "ghost"}
                   >
-                    <span className="text-base leading-none">
-                      {reaction.emoji}
-                    </span>
-                    <span className="text-sm tabular-nums">
-                      {reaction.count}
-                    </span>
+                    <span className="text-base leading-none">{reaction.emoji}</span>
+                    <span className="text-sm tabular-nums">{reaction.count}</span>
                   </Button>
                 ))}
                 {canReact ? (
-                  <CommentReactionPicker
-                    disabled={isMutating}
-                    onSelect={onAddReaction}
-                  >
+                  <CommentReactionPicker disabled={isMutating} onSelect={onAddReaction}>
                     <Button
                       aria-label="Add another reaction"
                       className="h-7 rounded-md bg-surface-muted px-2 text-content-secondary hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
@@ -436,7 +404,7 @@ function CommentItemComponent({
         )}
       </div>
     </article>
-  )
+  );
 }
 
 const CommentItem = memo(
@@ -453,7 +421,7 @@ const CommentItem = memo(
     previous.mentionLabels === next.mentionLabels &&
     Boolean(previous.onUnresolve) === Boolean(next.onUnresolve) &&
     previous.showResolveUnresolve === next.showResolveUnresolve,
-)
+);
 
 function CommentReactionPicker({
   align = "start",
@@ -461,12 +429,12 @@ function CommentReactionPicker({
   disabled,
   onSelect,
 }: {
-  align?: "center" | "end" | "start"
-  children: ReactNode
-  disabled: boolean
-  onSelect: (emoji: string) => void
+  align?: "center" | "end" | "start";
+  children: ReactNode;
+  disabled: boolean;
+  onSelect: (emoji: string) => void;
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   return (
     <Popover open={open} onOpenChange={(nextOpen) => setOpen(nextOpen && !disabled)}>
@@ -480,8 +448,8 @@ function CommentReactionPicker({
       >
         <EmojiPicker
           onEmojiSelect={({ emoji }) => {
-            onSelect(emoji)
-            setOpen(false)
+            onSelect(emoji);
+            setOpen(false);
           }}
         >
           <EmojiPickerSearch autoFocus placeholder="Search emoji..." />
@@ -490,7 +458,7 @@ function CommentReactionPicker({
         </EmojiPicker>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 function CommentMentionMenu({
@@ -499,17 +467,17 @@ function CommentMentionMenu({
   selectedIndex,
   setSelectedIndex,
 }: {
-  members: CommentMentionMember[]
-  onSelect: (member: CommentMentionMember) => void
-  selectedIndex: number
-  setSelectedIndex: (index: number) => void
+  members: CommentMentionMember[];
+  onSelect: (member: CommentMentionMember) => void;
+  selectedIndex: number;
+  setSelectedIndex: (index: number) => void;
 }) {
-  const selectedItemRef = useRef<HTMLDivElement | null>(null)
-  const selectedMember = members[selectedIndex]
+  const selectedItemRef = useRef<HTMLDivElement | null>(null);
+  const selectedMember = members[selectedIndex];
 
   useEffect(() => {
-    selectedItemRef.current?.scrollIntoView({ block: "nearest" })
-  }, [selectedIndex])
+    selectedItemRef.current?.scrollIntoView({ block: "nearest" });
+  }, [selectedIndex]);
 
   return (
     <div className="absolute left-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-4rem))] overflow-hidden rounded-lg bg-surface-overlay text-content-primary shadow-md ring-1 ring-stroke-default">
@@ -518,10 +486,10 @@ function CommentMentionMenu({
         variant="menu"
         value={selectedMember?.id ?? ""}
         onValueChange={(value) => {
-          const nextIndex = members.findIndex((member) => member.id === value)
+          const nextIndex = members.findIndex((member) => member.id === value);
 
           if (nextIndex >= 0) {
-            setSelectedIndex(nextIndex)
+            setSelectedIndex(nextIndex);
           }
         }}
       >
@@ -529,7 +497,7 @@ function CommentMentionMenu({
           <CommandEmpty>No people found.</CommandEmpty>
           <CommandGroup>
             {members.map((member, index) => {
-              const label = member.name || member.email
+              const label = member.name || member.email;
 
               return (
                 <CommandItem
@@ -537,8 +505,8 @@ function CommentMentionMenu({
                   data-selected={index === selectedIndex ? true : undefined}
                   key={member.id}
                   onMouseDown={(event) => {
-                    event.preventDefault()
-                    onSelect(member)
+                    event.preventDefault();
+                    onSelect(member);
                   }}
                   onSelect={() => onSelect(member)}
                   ref={index === selectedIndex ? selectedItemRef : undefined}
@@ -552,20 +520,16 @@ function CommentMentionMenu({
                     </span>
                   </span>
                 </CommandItem>
-              )
+              );
             })}
           </CommandGroup>
         </CommandList>
       </Command>
     </div>
-  )
+  );
 }
 
-function CommentMentionText({
-  parts,
-}: {
-  parts: Array<{ isMention: boolean; text: string }>
-}) {
+function CommentMentionText({ parts }: { parts: Array<{ isMention: boolean; text: string }> }) {
   return (
     <>
       {parts.map((part, index) =>
@@ -578,19 +542,19 @@ function CommentMentionText({
         ),
       )}
     </>
-  )
+  );
 }
 
 export function formatCommentButtonLabel(commentCount: number) {
   if (commentCount === 0) {
-    return "Add comment"
+    return "Add comment";
   }
 
-  return `${commentCount} ${commentCount === 1 ? "comment" : "comments"}`
+  return `${commentCount} ${commentCount === 1 ? "comment" : "comments"}`;
 }
 
 function getCommentAuthorName(author: CommentAvatarAuthor) {
-  return author?.name?.trim() || author?.email?.trim() || "Unknown"
+  return author?.name?.trim() || author?.email?.trim() || "Unknown";
 }
 
 function getCommentAvatarSeed(
@@ -598,62 +562,62 @@ function getCommentAvatarSeed(
   authorId: string | null | undefined,
   label: string,
 ) {
-  return author?.id?.trim() || authorId?.trim() || label
+  return author?.id?.trim() || authorId?.trim() || label;
 }
 
 function getCommentInitials(label: string) {
   const parts = label
     .split(/\s+/)
     .map((part) => part.trim())
-    .filter(Boolean)
+    .filter(Boolean);
 
   if (parts.length === 0) {
-    return "?"
+    return "?";
   }
 
   return parts
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("")
+    .join("");
 }
 
 function formatCommentTime(value: string) {
-  const date = new Date(value)
+  const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return ""
+    return "";
   }
 
-  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000))
+  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
 
   if (seconds < 60) {
-    return "Just now"
+    return "Just now";
   }
 
-  const minutes = Math.floor(seconds / 60)
+  const minutes = Math.floor(seconds / 60);
 
   if (minutes < 60) {
-    return `${minutes}m ago`
+    return `${minutes}m ago`;
   }
 
-  const hours = Math.floor(minutes / 60)
+  const hours = Math.floor(minutes / 60);
 
   if (hours < 24) {
-    return `${hours}h ago`
+    return `${hours}h ago`;
   }
 
   return new Intl.DateTimeFormat(undefined, {
     day: "numeric",
     month: "short",
     year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
-  }).format(date)
+  }).format(date);
 }
 
 function runCommentAction(action: () => void) {
   try {
-    action()
+    action();
   } catch (error) {
-    toast.error(error instanceof Error ? error.message : "Could not update comment")
+    toast.error(error instanceof Error ? error.message : "Could not update comment");
   }
 }
 
@@ -679,57 +643,51 @@ export function PageCommentThread({
   collapseLongThreads = false,
   compact = false,
 }: {
-  pageId?: string | null
-  threadId?: string | null
-  label?: string
-  className?: string
-  placeholder?: string
-  onThreadResolved?: () => void
-  onThreadCreated?: (threadId: string) => void
-  onCreateThread?: (body: string) => string | null
-  collapseLongThreads?: boolean
-  compact?: boolean
+  pageId?: string | null;
+  threadId?: string | null;
+  label?: string;
+  className?: string;
+  placeholder?: string;
+  onThreadResolved?: () => void;
+  onThreadCreated?: (threadId: string) => void;
+  onCreateThread?: (body: string) => string | null;
+  collapseLongThreads?: boolean;
+  compact?: boolean;
 }) {
-  const editorComments = useOptionalPageEditorComments()
-  const { data: session } = useSession()
-  const inputRef = useRef<HTMLInputElement | null>(null)
-  const controller = usePageCommentController(pageId)
-  const commentsSnapshot = usePageCommentsSnapshot(pageId)
-  const { data: accessTargets } = usePagePersonAccessTargets(
-    pageId ?? null
-  )
+  const editorComments = useOptionalPageEditorComments();
+  const { data: session } = useSession();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const controller = usePageCommentController(pageId);
+  const commentsSnapshot = usePageCommentsSnapshot(pageId);
+  const { data: accessTargets } = usePagePersonAccessTargets(pageId ?? null);
 
   const thread = threadId
-    ? commentsSnapshot.threads.find((item) => item.id === threadId) ?? null
-    : null
-  const comments = thread?.comments ?? []
-  const commentsLoading = Boolean(pageId && !controller)
+    ? (commentsSnapshot.threads.find((item) => item.id === threadId) ?? null)
+    : null;
+  const comments = thread?.comments ?? [];
+  const commentsLoading = Boolean(pageId && !controller);
 
-  const [newCommentBody, setNewCommentBody] = useState("")
-  const [newCommentCursor, setNewCommentCursor] = useState(0)
-  const [dismissedMentionKey, setDismissedMentionKey] = useState<string | null>(
-    null
-  )
-  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
-  const [threadExpanded, setThreadExpanded] = useState(false)
+  const [newCommentBody, setNewCommentBody] = useState("");
+  const [newCommentCursor, setNewCommentCursor] = useState(0);
+  const [dismissedMentionKey, setDismissedMentionKey] = useState<string | null>(null);
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const [threadExpanded, setThreadExpanded] = useState(false);
   const [editingComment, setEditingComment] = useState<{
-    body: string
-    id: string
-  } | null>(null)
+    body: string;
+    id: string;
+  } | null>(null);
 
   useEffect(() => {
-    setThreadExpanded(false)
-  }, [threadId, comments.length])
+    setThreadExpanded(false);
+  }, [threadId, comments.length]);
 
   const mentionTrigger = useMemo(
     () => getCommentMentionTrigger(newCommentBody, newCommentCursor),
     [newCommentBody, newCommentCursor],
-  )
-  const mentionKey = mentionTrigger
-    ? `${mentionTrigger.start}:${mentionTrigger.query}`
-    : null
+  );
+  const mentionKey = mentionTrigger ? `${mentionTrigger.start}:${mentionTrigger.query}` : null;
   const activeMentionTrigger =
-    mentionTrigger && mentionKey !== dismissedMentionKey ? mentionTrigger : null
+    mentionTrigger && mentionKey !== dismissedMentionKey ? mentionTrigger : null;
   const mentionMembers = useMemo(
     () =>
       filterCommentMentionMembers(
@@ -738,199 +696,176 @@ export function PageCommentThread({
         activeMentionTrigger?.query ?? "",
       ),
     [accessTargets?.members, activeMentionTrigger?.query, session?.user?.id],
-  )
-  const mentionMenuOpen = Boolean(activeMentionTrigger)
+  );
+  const mentionMenuOpen = Boolean(activeMentionTrigger);
   const mentionLabels = useMemo(
     () => getCommentMentionLabels(accessTargets?.members ?? []),
     [accessTargets?.members],
-  )
+  );
   const newCommentTextParts = useMemo(
     () =>
-      newCommentBody.includes("@")
-        ? tokenizeCommentMentions(newCommentBody, mentionLabels)
-        : [],
+      newCommentBody.includes("@") ? tokenizeCommentMentions(newCommentBody, mentionLabels) : [],
     [mentionLabels, newCommentBody],
-  )
-  const showMentionHighlight = newCommentTextParts.some(
-    (part) => part.isMention,
-  )
+  );
+  const showMentionHighlight = newCommentTextParts.some((part) => part.isMention);
 
   useEffect(() => {
-    setSelectedMentionIndex(0)
-  }, [activeMentionTrigger?.query, mentionMembers.length])
+    setSelectedMentionIndex(0);
+  }, [activeMentionTrigger?.query, mentionMembers.length]);
 
   const focusCommentInput = (cursor: number) => {
     window.requestAnimationFrame(() => {
-      inputRef.current?.focus()
-      inputRef.current?.setSelectionRange(cursor, cursor)
-      setNewCommentCursor(cursor)
-    })
-  }
+      inputRef.current?.focus();
+      inputRef.current?.setSelectionRange(cursor, cursor);
+      setNewCommentCursor(cursor);
+    });
+  };
 
   const syncCommentInputCursor = () => {
-    const input = inputRef.current
+    const input = inputRef.current;
 
     if (input) {
-      const cursor = input.selectionStart ?? input.value.length
-      setNewCommentCursor((current) => current === cursor ? current : cursor)
+      const cursor = input.selectionStart ?? input.value.length;
+      setNewCommentCursor((current) => (current === cursor ? current : cursor));
     }
-  }
+  };
 
-  const isMutating = false
+  const isMutating = false;
 
-  const threadResolved = Boolean(thread?.resolvedAt)
-  const hasComments = comments.length > 0
+  const threadResolved = Boolean(thread?.resolvedAt);
+  const hasComments = comments.length > 0;
   const threadLineClassName =
-    pageId && !threadResolved
-      ? "bg-indicator-muted"
-      : "bg-indicator-muted"
+    pageId && !threadResolved ? "bg-indicator-muted" : "bg-indicator-muted";
 
   const createComment = () => {
-    const body = newCommentBody.trim()
-    if (!controller || !body) return
+    const body = newCommentBody.trim();
+    if (!controller || !body) return;
 
     runCommentAction(() => {
-      if (thread) controller.reply(thread.id, body)
+      if (thread) controller.reply(thread.id, body);
       else {
         const createdThreadId = onCreateThread
           ? onCreateThread(body)
-          : controller.createPageThread(body)
-        if (!createdThreadId) throw new Error("Could not attach the comment")
-        onThreadCreated?.(createdThreadId)
+          : controller.createPageThread(body);
+        if (!createdThreadId) throw new Error("Could not attach the comment");
+        onThreadCreated?.(createdThreadId);
       }
-      setNewCommentBody("")
-      setNewCommentCursor(0)
-      setDismissedMentionKey(null)
-    })
-  }
+      setNewCommentBody("");
+      setNewCommentCursor(0);
+      setDismissedMentionKey(null);
+    });
+  };
 
   const selectMentionMember = (member: CommentMentionMember) => {
     if (!activeMentionTrigger) {
-      return
+      return;
     }
 
-    const label = member.name || member.email
-    const next = insertCommentMention(
-      newCommentBody,
-      activeMentionTrigger,
-      label,
-    )
+    const label = member.name || member.email;
+    const next = insertCommentMention(newCommentBody, activeMentionTrigger, label);
 
-    setNewCommentBody(next.value)
-    setDismissedMentionKey(null)
-    focusCommentInput(next.cursor)
-  }
+    setNewCommentBody(next.value);
+    setDismissedMentionKey(null);
+    focusCommentInput(next.cursor);
+  };
 
   const openMentionPicker = () => {
-    const input = inputRef.current
-    const cursor = input?.selectionStart ?? newCommentBody.length
-    const existingTrigger = getCommentMentionTrigger(newCommentBody, cursor)
+    const input = inputRef.current;
+    const cursor = input?.selectionStart ?? newCommentBody.length;
+    const existingTrigger = getCommentMentionTrigger(newCommentBody, cursor);
 
     if (existingTrigger) {
-      setNewCommentCursor(cursor)
-      setDismissedMentionKey(null)
-      focusCommentInput(cursor)
-      return
+      setNewCommentCursor(cursor);
+      setDismissedMentionKey(null);
+      focusCommentInput(cursor);
+      return;
     }
 
-    const needsSeparator =
-      cursor > 0 && !/\s/.test(newCommentBody.charAt(cursor - 1))
-    const insertedText = `${needsSeparator ? " " : ""}@`
-    const nextValue =
-      newCommentBody.slice(0, cursor) +
-      insertedText +
-      newCommentBody.slice(cursor)
-    const nextCursor = cursor + insertedText.length
+    const needsSeparator = cursor > 0 && !/\s/.test(newCommentBody.charAt(cursor - 1));
+    const insertedText = `${needsSeparator ? " " : ""}@`;
+    const nextValue = newCommentBody.slice(0, cursor) + insertedText + newCommentBody.slice(cursor);
+    const nextCursor = cursor + insertedText.length;
 
-    setNewCommentBody(nextValue)
-    setDismissedMentionKey(null)
-    focusCommentInput(nextCursor)
-  }
+    setNewCommentBody(nextValue);
+    setDismissedMentionKey(null);
+    focusCommentInput(nextCursor);
+  };
 
   const saveEditedComment = () => {
-    const body = editingComment?.body.trim()
-    if (!controller || !thread || !editingComment || !body) return
+    const body = editingComment?.body.trim();
+    if (!controller || !thread || !editingComment || !body) return;
 
     runCommentAction(() => {
-      controller.editMessage(thread.id, editingComment.id, body)
-      setEditingComment(null)
-    })
-  }
+      controller.editMessage(thread.id, editingComment.id, body);
+      setEditingComment(null);
+    });
+  };
 
   const removeComment = (commentId: string) => {
-    if (!controller || !thread) return
-    runCommentAction(() => controller.deleteMessage(thread.id, commentId))
-  }
+    if (!controller || !thread) return;
+    runCommentAction(() => controller.deleteMessage(thread.id, commentId));
+  };
 
   const addCommentReaction = (commentId: string, emoji: string) => {
-    if (!controller || !thread) return
-    runCommentAction(() => controller.addReaction(thread.id, commentId, emoji))
-  }
+    if (!controller || !thread) return;
+    runCommentAction(() => controller.addReaction(thread.id, commentId, emoji));
+  };
 
   const removeCommentReaction = (commentId: string, emoji: string) => {
-    if (!controller || !thread) return
-    runCommentAction(() => controller.removeReaction(thread.id, commentId, emoji))
-  }
+    if (!controller || !thread) return;
+    runCommentAction(() => controller.removeReaction(thread.id, commentId, emoji));
+  };
 
   const resolveThread = () => {
-    if (!controller || !thread) return
+    if (!controller || !thread) return;
     runCommentAction(() => {
-      controller.resolveThread(thread.id)
-      onThreadResolved?.()
-    })
-  }
+      controller.resolveThread(thread.id);
+      onThreadResolved?.();
+    });
+  };
 
   const unresolveThread = () => {
-    if (!controller || !thread) return
+    if (!controller || !thread) return;
     runCommentAction(() => {
-      controller.unresolveThread(thread.id)
-      editorComments?.requestEditorComments()
-    })
-  }
+      controller.unresolveThread(thread.id);
+      editorComments?.requestEditorComments();
+    });
+  };
 
-  const shouldCollapse =
-    collapseLongThreads && comments.length > 3 && !threadExpanded
-  const hiddenReplyCount = Math.max(0, comments.length - 3)
+  const shouldCollapse = collapseLongThreads && comments.length > 3 && !threadExpanded;
+  const hiddenReplyCount = Math.max(0, comments.length - 3);
 
   const visibleComments = useMemo(() => {
     if (!shouldCollapse) {
-      return comments
+      return comments;
     }
 
-    return [comments[0], ...comments.slice(-2)]
-  }, [comments, shouldCollapse])
+    return [comments[0], ...comments.slice(-2)];
+  }, [comments, shouldCollapse]);
 
   const renderCommentItem = (comment: (typeof comments)[number], index: number) => {
-    const isRoot = index === 0
+    const isRoot = index === 0;
     return (
       <CommentItem
         key={comment.id}
         canEdit={Boolean(
           controller?.canEdit &&
-            (controller.canModerate ||
-              (comment.authorId && comment.authorId === session?.user?.id))
+          (controller.canModerate || (comment.authorId && comment.authorId === session?.user?.id)),
         )}
         canReact={Boolean(controller?.canEdit)}
         canResolve={Boolean(controller?.canEdit && !threadResolved && isRoot && thread)}
         comment={comment}
         compact={compact}
         deletesThread={isRoot}
-        editingBody={
-          editingComment?.id === comment.id ? editingComment.body : null
-        }
+        editingBody={editingComment?.id === comment.id ? editingComment.body : null}
         isMutating={isMutating}
         mentionLabels={mentionLabels}
         onAddReaction={(emoji) => addCommentReaction(comment.id, emoji)}
         onCancelEdit={() => setEditingComment(null)}
         onDelete={() => removeComment(comment.id)}
-        onEdit={() =>
-          comment.body &&
-          setEditingComment({ body: comment.body, id: comment.id })
-        }
+        onEdit={() => comment.body && setEditingComment({ body: comment.body, id: comment.id })}
         onEditingBodyChange={(body) =>
-          setEditingComment((cur) =>
-            cur?.id === comment.id ? { ...cur, body } : cur
-          )
+          setEditingComment((cur) => (cur?.id === comment.id ? { ...cur, body } : cur))
         }
         onRemoveReaction={(emoji) => removeCommentReaction(comment.id, emoji)}
         onResolve={resolveThread}
@@ -938,8 +873,8 @@ export function PageCommentThread({
         onUnresolve={controller?.canEdit && threadResolved && isRoot ? unresolveThread : undefined}
         showResolveUnresolve
       />
-    )
-  }
+    );
+  };
 
   return (
     <div className={className}>
@@ -965,26 +900,22 @@ export function PageCommentThread({
                     {renderCommentItem(visibleComments[0], 0)}
                     <div className="pb-1 pl-8">
                       <Button
-                        className={cn(
-                          "px-2 text-content-secondary",
-                          compact && "h-6 text-xs",
-                        )}
+                        className={cn("px-2 text-content-secondary", compact && "h-6 text-xs")}
                         onClick={() => setThreadExpanded(true)}
                         type="button"
                         variant="ghost"
                       >
-                        Show {hiddenReplyCount}{" "}
-                        {hiddenReplyCount === 1 ? "reply" : "replies"}
+                        Show {hiddenReplyCount} {hiddenReplyCount === 1 ? "reply" : "replies"}
                       </Button>
                     </div>
-                    {visibleComments.slice(1).map((comment, offset) =>
-                      renderCommentItem(comment, comments.length - 2 + offset)
-                    )}
+                    {visibleComments
+                      .slice(1)
+                      .map((comment, offset) =>
+                        renderCommentItem(comment, comments.length - 2 + offset),
+                      )}
                   </>
                 ) : (
-                  comments.map((comment, index) =>
-                    renderCommentItem(comment, index)
-                  )
+                  comments.map((comment, index) => renderCommentItem(comment, index))
                 )}
               </div>
             ) : null}
@@ -993,10 +924,7 @@ export function PageCommentThread({
                 The single ThreadLine spans to the reply avatar center. */}
             {pageId && controller?.canEdit && !threadResolved ? (
               <div
-                className={cn(
-                  "flex items-center gap-2",
-                  compact ? "mt-0.5 pt-1" : "mt-1 pt-1.5",
-                )}
+                className={cn("flex items-center gap-2", compact ? "mt-0.5 pt-1" : "mt-1 pt-1.5")}
               >
                 <ThreadAvatar>
                   <CommentAvatar
@@ -1027,66 +955,65 @@ export function PageCommentThread({
                     )}
                     disabled={isMutating}
                     onChange={(event) => {
-                      setNewCommentBody(event.target.value)
+                      setNewCommentBody(event.target.value);
                       setNewCommentCursor((current) => {
-                        const cursor =
-                          event.target.selectionStart ?? event.target.value.length
-                        return current === cursor ? current : cursor
-                      })
-                      setDismissedMentionKey(null)
+                        const cursor = event.target.selectionStart ?? event.target.value.length;
+                        return current === cursor ? current : cursor;
+                      });
+                      setDismissedMentionKey(null);
                     }}
                     onClick={syncCommentInputCursor}
                     onKeyDown={(event) => {
                       if (mentionMenuOpen) {
                         if (event.key === "ArrowDown") {
-                          event.preventDefault()
+                          event.preventDefault();
                           setSelectedMentionIndex((index) =>
-                            mentionMembers.length
-                              ? (index + 1) % mentionMembers.length
-                              : 0,
-                          )
-                          return
+                            mentionMembers.length ? (index + 1) % mentionMembers.length : 0,
+                          );
+                          return;
                         }
 
                         if (event.key === "ArrowUp") {
-                          event.preventDefault()
+                          event.preventDefault();
                           setSelectedMentionIndex((index) =>
                             mentionMembers.length
-                              ? (index - 1 + mentionMembers.length) %
-                                mentionMembers.length
+                              ? (index - 1 + mentionMembers.length) % mentionMembers.length
                               : 0,
-                          )
-                          return
+                          );
+                          return;
                         }
 
                         if (event.key === "Escape") {
-                          event.preventDefault()
-                          setDismissedMentionKey(mentionKey)
-                          return
+                          event.preventDefault();
+                          setDismissedMentionKey(mentionKey);
+                          return;
                         }
 
                         if (
                           (event.key === "Enter" || event.key === "Tab") &&
                           !event.nativeEvent.isComposing
                         ) {
-                          event.preventDefault()
+                          event.preventDefault();
 
-                          const selectedMember =
-                            mentionMembers[selectedMentionIndex]
+                          const selectedMember = mentionMembers[selectedMentionIndex];
 
                           if (selectedMember) {
-                            selectMentionMember(selectedMember)
+                            selectMentionMember(selectedMember);
                           } else {
-                            setDismissedMentionKey(mentionKey)
+                            setDismissedMentionKey(mentionKey);
                           }
 
-                          return
+                          return;
                         }
                       }
 
-                      if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-                        event.preventDefault()
-                        createComment()
+                      if (
+                        event.key === "Enter" &&
+                        !event.shiftKey &&
+                        !event.nativeEvent.isComposing
+                      ) {
+                        event.preventDefault();
+                        createComment();
                       }
                     }}
                     onKeyUp={syncCommentInputCursor}
@@ -1146,5 +1073,5 @@ export function PageCommentThread({
         </>
       )}
     </div>
-  )
+  );
 }

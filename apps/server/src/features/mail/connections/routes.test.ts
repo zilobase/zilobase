@@ -132,36 +132,22 @@ test("mail connection status preserves auth, membership and disconnected default
   assert.equal(result.watchExpiresAt, "2030-01-01T00:00:00.000Z");
 });
 test("OAuth callbacks handle cancellation without completing a provider exchange", async () => {
-  const response = await app(false).request(
-    "/oauth/google/callback?state=state&error=denied",
-  );
+  const response = await app(false).request("/oauth/google/callback?state=state&error=denied");
   assert.equal(response.status, 400);
   assert.match(await response.text(), /cancelled/);
-  assert.match(
-    response.headers.get("content-security-policy")!,
-    /default-src 'none'/,
-  );
+  assert.match(response.headers.get("content-security-policy")!, /default-src 'none'/);
   assert.deepEqual(state.calls, ["metric", "consume"]);
 });
 test("OAuth callbacks preserve browser and desktop destinations with controlled provider results", async () => {
-  const browser = await app(false).request(
-    "/oauth/google/callback?state=state&code=code",
-  );
+  const browser = await app(false).request("/oauth/google/callback?state=state&code=code");
   assert.equal(browser.status, 302);
-  assert.equal(
-    browser.headers.get("location"),
-    "https://app.example.test/mail?connection=success",
-  );
+  assert.equal(browser.headers.get("location"), "https://app.example.test/mail?connection=success");
   state.completed.clientKind = "desktop";
-  const desktop = await app(false).request(
-    "/oauth/google/callback?state=state&code=code",
-  );
+  const desktop = await app(false).request("/oauth/google/callback?state=state&code=code");
   assert.equal(desktop.status, 200);
   assert.match(await desktop.text(), /zilobase:\/\/open\?/);
   state.error = new Error("Provider unavailable");
-  const failed = await app(false).request(
-    "/oauth/google/callback?state=state&code=code",
-  );
+  const failed = await app(false).request("/oauth/google/callback?state=state&code=code");
   assert.equal(failed.status, 500);
   assert.match(await failed.text(), /Provider unavailable/);
 });

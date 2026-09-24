@@ -3,17 +3,11 @@ import { useZilobaseFeatures } from "../../shared/context";
 import { pagesNavRootQueryKey } from "../../pages/queries";
 import { type UpdateDatabaseInput } from "./databases";
 import { useDatabaseSessionId } from "../queries/session";
-import {
-  findDataSourceBootstrap,
-  resolveDataSourceCommandScope,
-} from "./scope";
+import { findDataSourceBootstrap, resolveDataSourceCommandScope } from "./scope";
 import { executeDatabaseCommand } from "./execute";
 import { invalidateDatabaseQueries } from "./invalidate";
 import { runSerialized, viewSerializationKey } from "./serialize";
-import type {
-  DatabaseViewEntity,
-  DataSourceEntity,
-} from "../core/entities";
+import type { DatabaseViewEntity, DataSourceEntity } from "../core/entities";
 
 type LinkDatabaseDataSourceInput = {
   config?: unknown;
@@ -43,11 +37,7 @@ export function useUpdateDataSource() {
 
   return useMutation({
     mutationFn: async ({ databaseId: dataSourceId, ...patch }: UpdateDatabaseInput) => {
-      const scope = await resolveDataSourceCommandScope(
-        queryClient,
-        apiFetch,
-        dataSourceId,
-      );
+      const scope = await resolveDataSourceCommandScope(queryClient, apiFetch, dataSourceId);
       const ack = await executeDatabaseCommand(apiFetch, {
         command: { patch, type: "dataSource.update" },
         databaseId: scope.hostDatabaseId,
@@ -57,10 +47,8 @@ export function useUpdateDataSource() {
       return ack.result as DataSourceEntity;
     },
     onSuccess: async (_result, variables) => {
-      const workspaceId = findDataSourceBootstrap(
-        queryClient,
-        variables.databaseId,
-      )?.database.workspaceId;
+      const workspaceId = findDataSourceBootstrap(queryClient, variables.databaseId)?.database
+        .workspaceId;
 
       await Promise.all([
         (async () => {
@@ -70,21 +58,17 @@ export function useUpdateDataSource() {
               apiFetch,
               variables.databaseId,
             );
-            invalidateDatabaseQueries(
-              queryClient,
-              sessionId,
-              scope.hostDatabaseId,
-            );
+            invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
           } catch {
             // Ignore.
           }
         })(),
         ...(workspaceId
           ? [
-            queryClient.invalidateQueries({
-              queryKey: pagesNavRootQueryKey(workspaceId),
-            }),
-          ]
+              queryClient.invalidateQueries({
+                queryKey: pagesNavRootQueryKey(workspaceId),
+              }),
+            ]
           : []),
       ]);
     },
@@ -103,26 +87,26 @@ export function useLinkDatabaseDataSource() {
       name,
       type,
     }: LinkDatabaseDataSourceInput) => {
-      const cachedSource = findDataSourceBootstrap(queryClient, dataSourceId)
-        ?.dataSources.find(({ id }) => id === dataSourceId);
+      const cachedSource = findDataSourceBootstrap(queryClient, dataSourceId)?.dataSources.find(
+        ({ id }) => id === dataSourceId,
+      );
       const dataSource = cachedSource
         ? null
-        : (await runSerialized(
-          viewSerializationKey(databaseId),
-          () =>
-            executeDatabaseCommand(apiFetch, {
-              command: {
-                afterId: null,
-                beforeId: null,
-                dataSourceId,
-                type: "dataSource.link",
-              },
-              databaseId,
-            }),
-        )).result as DataSourceEntity;
-      const view = (await runSerialized(
-        viewSerializationKey(databaseId),
-        () =>
+        : ((
+            await runSerialized(viewSerializationKey(databaseId), () =>
+              executeDatabaseCommand(apiFetch, {
+                command: {
+                  afterId: null,
+                  beforeId: null,
+                  dataSourceId,
+                  type: "dataSource.link",
+                },
+                databaseId,
+              }),
+            )
+          ).result as DataSourceEntity);
+      const view = (
+        await runSerialized(viewSerializationKey(databaseId), () =>
           executeDatabaseCommand(apiFetch, {
             command: {
               afterViewId: null,
@@ -135,7 +119,8 @@ export function useLinkDatabaseDataSource() {
             },
             databaseId,
           }),
-      )).result as DatabaseViewEntity;
+        )
+      ).result as DatabaseViewEntity;
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return { dataSource, view };
     },
@@ -147,23 +132,18 @@ export function useCreateDatabaseDataSource() {
   const sessionId = useDatabaseSessionId();
 
   return useMutation({
-    mutationFn: async ({
-      databaseId,
-      ...input
-    }: CreateDatabaseDataSourceInput) => {
-      const ack = await runSerialized(
-        viewSerializationKey(databaseId),
-        () =>
-          executeDatabaseCommand(apiFetch, {
-            command: {
-              config: input.config ?? {},
-              name: input.name?.trim() || "New data source",
-              type: "dataSource.create",
-              viewName: input.viewName?.trim() || "Table",
-              viewType: input.viewType?.trim() || "table",
-            },
-            databaseId,
-          }),
+    mutationFn: async ({ databaseId, ...input }: CreateDatabaseDataSourceInput) => {
+      const ack = await runSerialized(viewSerializationKey(databaseId), () =>
+        executeDatabaseCommand(apiFetch, {
+          command: {
+            config: input.config ?? {},
+            name: input.name?.trim() || "New data source",
+            type: "dataSource.create",
+            viewName: input.viewName?.trim() || "Table",
+            viewType: input.viewType?.trim() || "table",
+          },
+          databaseId,
+        }),
       );
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as {
@@ -187,17 +167,15 @@ export function useReplaceDatabaseViewDataSource() {
       databaseViewId,
       dataSourceId,
     }: ReplaceDatabaseViewDataSourceInput) => {
-      const ack = await runSerialized(
-        viewSerializationKey(databaseId),
-        () =>
-          executeDatabaseCommand(apiFetch, {
-            command: {
-              dataSourceId,
-              type: "view.setDataSource",
-              viewId: databaseViewId,
-            },
-            databaseId,
-          }),
+      const ack = await runSerialized(viewSerializationKey(databaseId), () =>
+        executeDatabaseCommand(apiFetch, {
+          command: {
+            dataSourceId,
+            type: "view.setDataSource",
+            viewId: databaseViewId,
+          },
+          databaseId,
+        }),
       );
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DatabaseViewEntity;
@@ -217,13 +195,11 @@ export function useUnlinkDatabaseDataSource() {
       databaseId,
       dataSourceId,
     }: Pick<LinkDatabaseDataSourceInput, "databaseId" | "dataSourceId">) => {
-      const ack = await runSerialized(
-        viewSerializationKey(databaseId),
-        () =>
-          executeDatabaseCommand(apiFetch, {
-            command: { dataSourceId, type: "dataSource.unlink" },
-            databaseId,
-          }),
+      const ack = await runSerialized(viewSerializationKey(databaseId), () =>
+        executeDatabaseCommand(apiFetch, {
+          command: { dataSourceId, type: "dataSource.unlink" },
+          databaseId,
+        }),
       );
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DataSourceEntity;

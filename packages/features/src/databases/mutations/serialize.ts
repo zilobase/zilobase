@@ -7,10 +7,7 @@ import { invalidateDatabaseQueries } from "./invalidate";
 
 const tails = new Map<string, Promise<void>>();
 
-export function runSerialized<T>(
-  key: string,
-  fn: () => Promise<T>,
-): Promise<T> {
+export function runSerialized<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const prev = tails.get(key) ?? Promise.resolve();
   let releaseTail: () => void = () => undefined;
   const tail = new Promise<void>((resolve) => {
@@ -18,10 +15,12 @@ export function runSerialized<T>(
   });
   tails.set(key, tail);
   const next = prev.catch(() => undefined).then(fn);
-  next.catch(() => undefined).finally(() => {
-    if (tails.get(key) === tail) tails.delete(key);
-    releaseTail();
-  });
+  next
+    .catch(() => undefined)
+    .finally(() => {
+      if (tails.get(key) === tail) tails.delete(key);
+      releaseTail();
+    });
   return next;
 }
 
@@ -29,20 +28,14 @@ export function dropSerializedQueue(key: string): void {
   tails.delete(key);
 }
 
-export const cellSerializationKey = (
-  dataSourceId: string,
-  rowId: string,
-  propertyId: string,
-) => `cell:${dataSourceId}:${rowId}:${propertyId}`;
+export const cellSerializationKey = (dataSourceId: string, rowId: string, propertyId: string) =>
+  `cell:${dataSourceId}:${rowId}:${propertyId}`;
 
-export const orderingSerializationKey = (dataSourceId: string) =>
-  `ordering:${dataSourceId}`;
+export const orderingSerializationKey = (dataSourceId: string) => `ordering:${dataSourceId}`;
 
-export const viewSerializationKey = (hostDatabaseId: string) =>
-  `view:${hostDatabaseId}`;
+export const viewSerializationKey = (hostDatabaseId: string) => `view:${hostDatabaseId}`;
 
-export const structuralSerializationKey = (dataSourceId: string) =>
-  `structural:${dataSourceId}`;
+export const structuralSerializationKey = (dataSourceId: string) => `structural:${dataSourceId}`;
 
 export type SaveCellValueInput = {
   apiFetch: ApiFetcher;
@@ -64,9 +57,7 @@ type QueuedCell = {
 const cellFlights = new Map<string, Promise<DatabaseCommandAck>>();
 const cellQueued = new Map<string, QueuedCell>();
 
-async function runCellCommand(
-  input: SaveCellValueInput,
-): Promise<DatabaseCommandAck> {
+async function runCellCommand(input: SaveCellValueInput): Promise<DatabaseCommandAck> {
   const ack = await executeDatabaseCommand(
     input.apiFetch,
     {
@@ -88,11 +79,7 @@ async function runCellCommand(
       },
     },
   );
-  invalidateDatabaseQueries(
-    input.queryClient,
-    input.sessionId,
-    input.hostDatabaseId,
-  );
+  invalidateDatabaseQueries(input.queryClient, input.sessionId, input.hostDatabaseId);
   return ack;
 }
 
@@ -108,7 +95,10 @@ async function runQueuedCell(key: string): Promise<void> {
     if (cellQueued.has(key)) {
       const flight = Promise.resolve(ack);
       cellFlights.set(key, flight);
-      void flight.then(() => runQueuedCell(key), () => runQueuedCell(key));
+      void flight.then(
+        () => runQueuedCell(key),
+        () => runQueuedCell(key),
+      );
     } else {
       cellFlights.delete(key);
     }
@@ -118,10 +108,12 @@ async function runQueuedCell(key: string): Promise<void> {
       const failed: Promise<DatabaseCommandAck> = Promise.reject(error);
       failed.catch(() => undefined);
       cellFlights.set(key, failed);
-      void failed.catch(() => undefined).then(
-        () => runQueuedCell(key),
-        () => runQueuedCell(key),
-      );
+      void failed
+        .catch(() => undefined)
+        .then(
+          () => runQueuedCell(key),
+          () => runQueuedCell(key),
+        );
     } else {
       cellFlights.delete(key);
     }
@@ -134,14 +126,8 @@ async function runQueuedCell(key: string): Promise<void> {
  * (source, row, prop). Different cells run in parallel.
  * Bulk edit / drag-fill call this in a loop (still per-cell keys).
  */
-export function saveCellValue(
-  input: SaveCellValueInput,
-): Promise<DatabaseCommandAck> {
-  const key = cellSerializationKey(
-    input.dataSourceId,
-    input.rowId,
-    input.propertyId,
-  );
+export function saveCellValue(input: SaveCellValueInput): Promise<DatabaseCommandAck> {
+  const key = cellSerializationKey(input.dataSourceId, input.rowId, input.propertyId);
   const flight = cellFlights.get(key);
   if (flight) {
     const existing = cellQueued.get(key);

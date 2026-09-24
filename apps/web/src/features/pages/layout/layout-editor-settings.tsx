@@ -1,25 +1,19 @@
-import type { ReactNode } from "react"
+import type { ReactNode } from "react";
 
-import { Switch } from "@/shared/ui/switch"
-import { cn } from "@/shared/lib/utils"
-import type { PageLayoutConfig } from "@zilobase/features/pages"
+import { Switch } from "@/shared/ui/switch";
+import { cn } from "@/shared/lib/utils";
+import type { PageLayoutConfig } from "@zilobase/features/pages";
 
 type LayoutEditorSettingsProps = {
-  draft: PageLayoutConfig
-  fullWidth: boolean
-  fullWidthPending?: boolean
-  onChange: (draft: PageLayoutConfig) => void
-  onDiscussionsVisibleChange: (visible: boolean) => void
-  onFullWidthChange: (fullWidth: boolean) => void
-}
+  draft: PageLayoutConfig;
+  fullWidth: boolean;
+  fullWidthPending?: boolean;
+  onChange: (draft: PageLayoutConfig) => void;
+  onDiscussionsVisibleChange: (visible: boolean) => void;
+  onFullWidthChange: (fullWidth: boolean) => void;
+};
 
-function SettingsSection({
-  children,
-  title,
-}: {
-  children: ReactNode
-  title: string
-}) {
+function SettingsSection({ children, title }: { children: ReactNode; title: string }) {
   return (
     <section className="mt-6">
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-content-secondary">
@@ -27,7 +21,7 @@ function SettingsSection({
       </h3>
       {children}
     </section>
-  )
+  );
 }
 
 function SettingToggle({
@@ -36,22 +30,17 @@ function SettingToggle({
   label,
   onCheckedChange,
 }: {
-  checked: boolean
-  disabled?: boolean
-  label: string
-  onCheckedChange: (checked: boolean) => void
+  checked: boolean;
+  disabled?: boolean;
+  label: string;
+  onCheckedChange: (checked: boolean) => void;
 }) {
   return (
     <label className="flex min-h-9 items-center gap-3 text-sm">
       <span className="flex-1">{label}</span>
-      <Switch
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onCheckedChange}
-        size="sm"
-      />
+      <Switch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} size="sm" />
     </label>
-  )
+  );
 }
 
 export function LayoutEditorSettings({
@@ -90,9 +79,7 @@ export function LayoutEditorSettings({
         <SettingToggle
           checked={draft.propertyIcons}
           label="Property icons"
-          onCheckedChange={(propertyIcons) =>
-            onChange({ ...draft, propertyIcons })
-          }
+          onCheckedChange={(propertyIcons) => onChange({ ...draft, propertyIcons })}
         />
         <SettingToggle
           checked={draft.discussionsVisible}
@@ -107,5 +94,5 @@ export function LayoutEditorSettings({
         />
       </SettingsSection>
     </aside>
-  )
+  );
 }

@@ -14,10 +14,7 @@ import {
 test("stale turn cutoff matches the configured total turn timeout", () => {
   const now = new Date("2026-08-28T00:00:00.000Z");
 
-  assert.equal(
-    getAiAgentTurnStaleBefore(now, 180_000).toISOString(),
-    "2026-08-27T23:57:00.000Z",
-  );
+  assert.equal(getAiAgentTurnStaleBefore(now, 180_000).toISOString(), "2026-08-27T23:57:00.000Z");
 });
 
 test("agent limits use bounded defaults and operator overrides", () => {
@@ -68,9 +65,7 @@ test("tool effects and failures normalize to finite audit labels", () => {
   assert.equal(normalizeAiAgentErrorCode(new DOMException("Stopped", "AbortError")), "cancelled");
   assert.equal(normalizeAiAgentErrorCode(new Error("request timed out")), "provider_timeout");
   assert.equal(
-    normalizeAiAgentErrorCode(
-      new AiAgentOperationalLimitError("quota_code", "limit", 30),
-    ),
+    normalizeAiAgentErrorCode(new AiAgentOperationalLimitError("quota_code", "limit", 30)),
     "quota_code",
   );
 });

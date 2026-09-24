@@ -6,52 +6,48 @@ import {
   useRef,
   useSyncExternalStore,
   type ReactNode,
-} from "react"
+} from "react";
 
-import type {
-  PageEditPreviewClearOptions,
-  PageEditPreviewRequest,
-} from "../core/types"
+import type { PageEditPreviewClearOptions, PageEditPreviewRequest } from "../core/types";
 
 export type PageEditorHandle = {
-  acceptEditDiffPreview: () => boolean
-  clearEditDiffPreview: (options?: PageEditPreviewClearOptions) => void
-  getActiveEditDiffToolCallId: () => string | null
-  getContentJson: () => unknown | null
-  isEditDiffPreviewActive: () => boolean
-  isEditable: () => boolean
-  isSynchronized: () => boolean
-  setContentFromMarkdown: (markdown: string) => boolean
-  setContentJson: (content: unknown) => boolean
-  showEditDiffPreview: (request: PageEditPreviewRequest) => boolean
-}
+  acceptEditDiffPreview: () => boolean;
+  clearEditDiffPreview: (options?: PageEditPreviewClearOptions) => void;
+  getActiveEditDiffToolCallId: () => string | null;
+  getContentJson: () => unknown | null;
+  isEditDiffPreviewActive: () => boolean;
+  isEditable: () => boolean;
+  isSynchronized: () => boolean;
+  setContentFromMarkdown: (markdown: string) => boolean;
+  setContentJson: (content: unknown) => boolean;
+  showEditDiffPreview: (request: PageEditPreviewRequest) => boolean;
+};
 
-export type { PageEditPreviewClearOptions, PageEditPreviewRequest }
+export type { PageEditPreviewClearOptions, PageEditPreviewRequest };
 
 type PageEditorRegistryValue = {
-  getEditorHandle: (pageId: string) => PageEditorHandle | null
-  registerEditor: (pageId: string, handle: PageEditorHandle) => void
-  unregisterEditor: (pageId: string) => void
-}
+  getEditorHandle: (pageId: string) => PageEditorHandle | null;
+  registerEditor: (pageId: string, handle: PageEditorHandle) => void;
+  unregisterEditor: (pageId: string) => void;
+};
 
-const PageEditorRegistryContext =
-  createContext<PageEditorRegistryValue | null>(null)
+const PageEditorRegistryContext = createContext<PageEditorRegistryValue | null>(null);
 
-let editorRegistryVersion = 0
-const editorRegistryListeners = new Set<() => void>()
+let editorRegistryVersion = 0;
+const editorRegistryListeners = new Set<() => void>();
 
 function emitEditorRegistryChange() {
-  editorRegistryVersion += 1
+  editorRegistryVersion += 1;
   for (const listener of editorRegistryListeners) {
-    listener()
+    listener();
   }
 }
 
 function subscribeEditorRegistry(listener: () => void) {
-  editorRegistryListeners.add(listener)
+  editorRegistryListeners.add(listener);
   return () => {
-    editorRegistryListeners.delete(listener)
-  }
+    editorRegistryListeners.delete(listener);
+  };
 }
 
 export function usePageEditorRegistryVersion() {
@@ -59,32 +55,25 @@ export function usePageEditorRegistryVersion() {
     subscribeEditorRegistry,
     () => editorRegistryVersion,
     () => editorRegistryVersion,
-  )
+  );
 }
 
-export function PageEditorRegistryProvider({
-  children,
-}: {
-  children: ReactNode
-}) {
-  const editorsRef = useRef(new Map<string, PageEditorHandle>())
+export function PageEditorRegistryProvider({ children }: { children: ReactNode }) {
+  const editorsRef = useRef(new Map<string, PageEditorHandle>());
 
-  const registerEditor = useCallback(
-    (pageId: string, handle: PageEditorHandle) => {
-      editorsRef.current.set(pageId, handle)
-      emitEditorRegistryChange()
-    },
-    [],
-  )
+  const registerEditor = useCallback((pageId: string, handle: PageEditorHandle) => {
+    editorsRef.current.set(pageId, handle);
+    emitEditorRegistryChange();
+  }, []);
 
   const unregisterEditor = useCallback((pageId: string) => {
-    editorsRef.current.delete(pageId)
-    emitEditorRegistryChange()
-  }, [])
+    editorsRef.current.delete(pageId);
+    emitEditorRegistryChange();
+  }, []);
 
   const getEditorHandle = useCallback((pageId: string) => {
-    return editorsRef.current.get(pageId) ?? null
-  }, [])
+    return editorsRef.current.get(pageId) ?? null;
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -93,23 +82,21 @@ export function PageEditorRegistryProvider({
       unregisterEditor,
     }),
     [getEditorHandle, registerEditor, unregisterEditor],
-  )
+  );
 
   return (
     <PageEditorRegistryContext.Provider value={value}>
       {children}
     </PageEditorRegistryContext.Provider>
-  )
+  );
 }
 
 export function usePageEditorRegistry() {
-  const value = useContext(PageEditorRegistryContext)
+  const value = useContext(PageEditorRegistryContext);
 
   if (!value) {
-    throw new Error(
-      "usePageEditorRegistry must be used inside PageEditorRegistryProvider",
-    )
+    throw new Error("usePageEditorRegistry must be used inside PageEditorRegistryProvider");
   }
 
-  return value
+  return value;
 }

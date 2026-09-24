@@ -3,11 +3,7 @@ import { PermanentAgentRunError } from "./agent-run-errors";
 
 import { and, asc, desc, eq, isNull, lt, lte, or, sql } from "drizzle-orm";
 
-import {
-  appendRunEvent,
-  serializeRun,
-  serializeRunEvent,
-} from "./agent-run-records";
+import { appendRunEvent, serializeRun, serializeRunEvent } from "./agent-run-records";
 
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
@@ -22,10 +18,7 @@ import {
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { getStringEnv } from "../../../shared/config/config";
 
-import {
-  AgentProfileError,
-  requireAgentProfileRole,
-} from "../agents/agent-profile-service";
+import { AgentProfileError, requireAgentProfileRole } from "../agents/agent-profile-service";
 
 import { AGENT_RUN_LEASE_MS, maintainAgentRunLease } from "./agent-run-lease";
 import { resumeAgentRunAfterApproval } from "./agent-run-checkpoint";
@@ -69,12 +62,7 @@ export async function getAgentRunDetail(input: {
       ),
     )
     .limit(1);
-  if (!run)
-    throw new AgentProfileError(
-      "agent_run_not_found",
-      "Agent run not found.",
-      404,
-    );
+  if (!run) throw new AgentProfileError("agent_run_not_found", "Agent run not found.", 404);
   const events = await db
     .select()
     .from(aiAgentRunEvent)
@@ -133,10 +121,7 @@ export async function cancelAgentRun(input: {
   return serializeRun(run);
 }
 
-export async function processAgentRun(
-  env: RuntimeEnv,
-  input: { runId: string; workerId: string },
-) {
+export async function processAgentRun(env: RuntimeEnv, input: { runId: string; workerId: string }) {
   if (
     getStringEnv(env, "AI_CUSTOM_AGENTS_ENABLED") !== "true" ||
     getStringEnv(env, "AI_CUSTOM_AGENT_EXECUTION_DISABLED") === "true"
@@ -171,12 +156,7 @@ export async function processAgentRun(
       await db
         .update(aiAgentRun)
         .set({ leaseExpiresAt: null, leaseOwner: null, updatedAt: new Date() })
-        .where(
-          and(
-            eq(aiAgentRun.id, run.id),
-            eq(aiAgentRun.leaseOwner, input.workerId),
-          ),
-        );
+        .where(and(eq(aiAgentRun.id, run.id), eq(aiAgentRun.leaseOwner, input.workerId)));
       return { outcome: "completed" as const };
     }
     const completedAt = new Date();
@@ -194,12 +174,7 @@ export async function processAgentRun(
         status: "succeeded",
         updatedAt: completedAt,
       })
-      .where(
-        and(
-          eq(aiAgentRun.id, run.id),
-          eq(aiAgentRun.leaseOwner, input.workerId),
-        ),
-      )
+      .where(and(eq(aiAgentRun.id, run.id), eq(aiAgentRun.leaseOwner, input.workerId)))
       .returning();
     if (!completed)
       return {
@@ -226,10 +201,7 @@ export async function processAgentRun(
   }
 }
 
-export async function drainAgentRuns(
-  env: RuntimeEnv,
-  input: { limit: number; workerId: string },
-) {
+export async function drainAgentRuns(env: RuntimeEnv, input: { limit: number; workerId: string }) {
   const now = new Date();
   // Recover an approval committed before its request process could dispatch.
   const waiting = await db
@@ -247,10 +219,7 @@ export async function drainAgentRuns(
         and(eq(aiAgentRun.status, "queued"), lte(aiAgentRun.availableAt, now)),
         and(
           eq(aiAgentRun.status, "running"),
-          or(
-            isNull(aiAgentRun.leaseExpiresAt),
-            lt(aiAgentRun.leaseExpiresAt, now),
-          ),
+          or(isNull(aiAgentRun.leaseExpiresAt), lt(aiAgentRun.leaseExpiresAt, now)),
         ),
       ),
     )
@@ -287,9 +256,7 @@ export async function expireAgentRunApprovals(now = new Date()) {
       ),
     )
     .returning({ runId: aiAgentPendingAction.agentRunId });
-  const runIds = [
-    ...new Set(expired.flatMap(({ runId }) => (runId ? [runId] : []))),
-  ];
+  const runIds = [...new Set(expired.flatMap(({ runId }) => (runId ? [runId] : [])))];
   for (const runId of runIds) {
     const [failed] = await db
       .update(aiAgentRun)
@@ -302,12 +269,7 @@ export async function expireAgentRunApprovals(now = new Date()) {
         status: "failed",
         updatedAt: now,
       })
-      .where(
-        and(
-          eq(aiAgentRun.id, runId),
-          eq(aiAgentRun.status, "waiting_approval"),
-        ),
-      )
+      .where(and(eq(aiAgentRun.id, runId), eq(aiAgentRun.status, "waiting_approval")))
       .returning({ id: aiAgentRun.id });
     if (!failed) continue;
     await db
@@ -343,10 +305,7 @@ async function hasAmbiguousAgentWrite(runId: string) {
   return Boolean(row);
 }
 
-async function claimAgentRun(
-  input: { runId: string; workerId: string },
-  now: Date,
-) {
+async function claimAgentRun(input: { runId: string; workerId: string }, now: Date) {
   const leaseExpiresAt = new Date(now.getTime() + AGENT_RUN_LEASE_MS);
   const [run] = await db.transaction(async (tx) => {
     const [candidate] = await tx
@@ -356,16 +315,10 @@ async function claimAgentRun(
         and(
           eq(aiAgentRun.id, input.runId),
           or(
-            and(
-              eq(aiAgentRun.status, "queued"),
-              lte(aiAgentRun.availableAt, now),
-            ),
+            and(eq(aiAgentRun.status, "queued"), lte(aiAgentRun.availableAt, now)),
             and(
               eq(aiAgentRun.status, "running"),
-              or(
-                isNull(aiAgentRun.leaseExpiresAt),
-                lt(aiAgentRun.leaseExpiresAt, now),
-              ),
+              or(isNull(aiAgentRun.leaseExpiresAt), lt(aiAgentRun.leaseExpiresAt, now)),
             ),
           ),
         ),
@@ -398,31 +351,22 @@ async function handleAgentRunFailure(
   workerId: string,
   error: unknown,
 ) {
-  const [live] = await db
-    .select()
-    .from(aiAgentRun)
-    .where(eq(aiAgentRun.id, run.id))
-    .limit(1);
+  const [live] = await db.select().from(aiAgentRun).where(eq(aiAgentRun.id, run.id)).limit(1);
   if (live?.leaseOwner !== workerId || live.status !== "running") {
     if (live?.leaseOwner === workerId && live.status === "waiting_approval") {
       await db
         .update(aiAgentRun)
         .set({ leaseExpiresAt: null, leaseOwner: null })
-        .where(
-          and(eq(aiAgentRun.id, run.id), eq(aiAgentRun.leaseOwner, workerId)),
-        );
+        .where(and(eq(aiAgentRun.id, run.id), eq(aiAgentRun.leaseOwner, workerId)));
     }
     return { outcome: "noop" as const };
   }
   const ambiguousWrite = await hasAmbiguousAgentWrite(run.id);
   const permanent =
-    ambiguousWrite ||
-    error instanceof PermanentAgentRunError ||
-    run.attempts >= run.maxAttempts;
+    ambiguousWrite || error instanceof PermanentAgentRunError || run.attempts >= run.maxAttempts;
   const failedAt = new Date();
   const availableAt = new Date(
-    failedAt.getTime() +
-      Math.min(60_000, 1_000 * 2 ** Math.max(0, run.attempts - 1)),
+    failedAt.getTime() + Math.min(60_000, 1_000 * 2 ** Math.max(0, run.attempts - 1)),
   );
   const code = ambiguousWrite
     ? "AGENT_WRITE_OUTCOME_UNKNOWN"
@@ -435,10 +379,7 @@ async function handleAgentRunFailure(
       availableAt,
       completedAt: permanent ? failedAt : null,
       errorCode: code,
-      errorSummary: (error instanceof Error
-        ? error.message
-        : String(error)
-      ).slice(0, 2_000),
+      errorSummary: (error instanceof Error ? error.message : String(error)).slice(0, 2_000),
       leaseExpiresAt: null,
       leaseOwner: null,
       status: permanent ? "failed" : "queued",
@@ -453,12 +394,7 @@ async function handleAgentRunFailure(
     )
     .returning({ id: aiAgentRun.id });
   if (!failed) return { outcome: "noop" as const };
-  await appendRunEvent(
-    run.id,
-    permanent ? "failed" : "retry_scheduled",
-    "shared",
-    { code },
-  );
+  await appendRunEvent(run.id, permanent ? "failed" : "retry_scheduled", "shared", { code });
   if (permanent) {
     await db
       .update(aiAgentConversationMessage)

@@ -1,3 +1,1 @@
-export {
-  desktopNetworkFetch,
-} from "./desktop-network"
+export { desktopNetworkFetch } from "./desktop-network";

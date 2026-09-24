@@ -3,10 +3,7 @@ import type {
   AgentCitation,
   AgentToolResult,
 } from "@zilobase/features/ai-chat/agent-contract";
-import {
-  type AgentIconName,
-  type AgentIconSpec,
-} from "@zilobase/features/ai-chat/live-agent";
+import { type AgentIconName, type AgentIconSpec } from "@zilobase/features/ai-chat/live-agent";
 import {
   buildAgentGlyphSvg,
   buildAgentIconSvg,
@@ -28,10 +25,7 @@ import {
 } from "../../databases/core";
 import { getDatabaseExportPayload } from "../../databases/core/payload";
 import { updateDataSourceService } from "../../databases/data-sources";
-import {
-  defaultStatusOptions,
-  selectOptionColors,
-} from "../../databases/schema";
+import { defaultStatusOptions, selectOptionColors } from "../../databases/schema";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import { runIdempotentAgentAction } from "../actions/agent-action-receipts";
 import { markdownToPageContent } from "../conversion/markdown-to-page-content";
@@ -112,11 +106,7 @@ type ToolResult = {
   summary: string;
 };
 
-function resolvePageId(
-  context: ToolContext,
-  inputPageId: string | undefined,
-  fieldName: string,
-) {
+function resolvePageId(context: ToolContext, inputPageId: string | undefined, fieldName: string) {
   const pageId = inputPageId?.trim() || context.primaryPageId;
 
   if (!pageId) {
@@ -133,9 +123,7 @@ function toToolResult(
   citations: AgentCitation[] = [],
 ): ToolResult {
   const filteredIds = Object.fromEntries(
-    Object.entries(ids).filter((entry): entry is [string, string] =>
-      Boolean(entry[1]),
-    ),
+    Object.entries(ids).filter((entry): entry is [string, string] => Boolean(entry[1])),
   );
 
   return {
@@ -188,11 +176,16 @@ function resolveStoredAgentIcon(input: {
   name: string;
   requested?: AgentIconSpec;
 }) {
-  return input.emoji || buildAgentIconSvg(resolveAgentIconSpec({
-    fallbackKind: input.fallbackKind,
-    name: input.name,
-    requested: input.requested,
-  }));
+  return (
+    input.emoji ||
+    buildAgentIconSvg(
+      resolveAgentIconSpec({
+        fallbackKind: input.fallbackKind,
+        name: input.name,
+        requested: input.requested,
+      }),
+    )
+  );
 }
 
 export function resolveAgentGlyphConfig(input: {
@@ -203,18 +196,20 @@ export function resolveAgentGlyphConfig(input: {
   requested?: AgentIconName;
   type?: string;
 }) {
-  const config = input.config && typeof input.config === "object" &&
-      !Array.isArray(input.config)
-    ? { ...(input.config as Record<string, unknown>) }
-    : {};
+  const config =
+    input.config && typeof input.config === "object" && !Array.isArray(input.config)
+      ? { ...(input.config as Record<string, unknown>) }
+      : {};
   delete config.icon;
   if (input.requested || input.includeFallback) {
-    config.icon = buildAgentGlyphSvg(resolveAgentGlyphName({
-      fallbackKind: input.fallbackKind,
-      name: input.name,
-      requested: input.requested,
-      type: input.type,
-    }));
+    config.icon = buildAgentGlyphSvg(
+      resolveAgentGlyphName({
+        fallbackKind: input.fallbackKind,
+        name: input.name,
+        requested: input.requested,
+        type: input.type,
+      }),
+    );
   }
   return config;
 }
@@ -237,9 +232,7 @@ function emitCreatedPageEffects(
   };
   const delta = {
     upsertPages: [page],
-    upsertPlacements: created.parentPlacement
-      ? [created.parentPlacement]
-      : [],
+    upsertPlacements: created.parentPlacement ? [created.parentPlacement] : [],
   };
 
   context.progress.effect({
@@ -266,10 +259,7 @@ async function emitCreatedDatabaseEffects(input: {
   toolCallId: string;
 }) {
   if (!input.context.progress) return;
-  const loaded = await getDatabaseExportPayload(
-    input.created.databaseId,
-    input.context.userId,
-  );
+  const loaded = await getDatabaseExportPayload(input.created.databaseId, input.context.userId);
   if (!loaded) return;
 
   const payload = serializeForClient<typeof loaded>({
@@ -277,13 +267,13 @@ async function emitCreatedDatabaseEffects(input: {
     database: { ...loaded.database, accessLevel: "full" },
   });
   const delta = {
-    upsertDatabases: [{
-      ...payload.database,
-      views: payload.views,
-    }],
-    upsertPlacements: input.created.parentPlacement
-      ? [input.created.parentPlacement]
-      : [],
+    upsertDatabases: [
+      {
+        ...payload.database,
+        views: payload.views,
+      },
+    ],
+    upsertPlacements: input.created.parentPlacement ? [input.created.parentPlacement] : [],
   };
 
   input.context.progress.effect({
@@ -299,9 +289,7 @@ async function emitCreatedDatabaseEffects(input: {
       databaseId: input.created.databaseId,
       kind: "page-embed",
       pageId: input.pageId,
-      ...(typeof input.showTitle === "boolean"
-        ? { showTitle: input.showTitle }
-        : {}),
+      ...(typeof input.showTitle === "boolean" ? { showTitle: input.showTitle } : {}),
       toolCallId: input.toolCallId,
       workspaceId: input.context.workspaceId,
     });
@@ -359,39 +347,45 @@ async function executeDatabaseBlueprint(
   };
 
   try {
-    const pageId = input.placement === "inline"
-      ? input.pageId ?? (await runStep(
-          "host-page",
-          "Create host page",
-          "container",
-          async () => {
-            const created = await createPageService({
-              content: input.hostPage?.markdown
-                ? markdownToPageContent(stripDuplicatePageTitleHeadings(
-                    input.hostPage.markdown,
-                    input.hostPage.name,
-                  ))
-                : undefined,
-              metadata: {
-                emoji: resolveStoredAgentIcon({
-                  emoji: input.hostPage?.emoji,
-                  fallbackKind: "page",
+    const pageId =
+      input.placement === "inline"
+        ? (input.pageId ??
+          (
+            await runStep(
+              "host-page",
+              "Create host page",
+              "container",
+              async () => {
+                const created = await createPageService({
+                  content: input.hostPage?.markdown
+                    ? markdownToPageContent(
+                        stripDuplicatePageTitleHeadings(
+                          input.hostPage.markdown,
+                          input.hostPage.name,
+                        ),
+                      )
+                    : undefined,
+                  metadata: {
+                    emoji: resolveStoredAgentIcon({
+                      emoji: input.hostPage?.emoji,
+                      fallbackKind: "page",
+                      name: input.hostPage!.name,
+                      requested: input.hostPage?.icon,
+                    }),
+                  },
+                  env: context.env,
                   name: input.hostPage!.name,
-                  requested: input.hostPage?.icon,
-                }),
+                  parentPageId: input.hostPage?.parentPageId,
+                  userId: context.userId,
+                  workspaceId: context.workspaceId,
+                });
+                emitCreatedPageEffects(context, toolCallId, created);
+                return created;
               },
-              env: context.env,
-              name: input.hostPage!.name,
-              parentPageId: input.hostPage?.parentPageId,
-              userId: context.userId,
-              workspaceId: context.workspaceId,
-            });
-            emitCreatedPageEffects(context, toolCallId, created);
-            return created;
-          },
-          () => `Created “${input.hostPage!.name}”.`,
-        )).pageId
-      : undefined;
+              () => `Created “${input.hostPage!.name}”.`,
+            )
+          ).pageId)
+        : undefined;
 
     if (pageId) {
       data.pageId = pageId;
@@ -413,12 +407,14 @@ async function executeDatabaseBlueprint(
       "container",
       async () => {
         const result = await createDatabaseService({
-          defaultViewIcon: buildAgentGlyphSvg(resolveAgentGlyphName({
-            fallbackKind: "view",
-            name: input.views[0]?.name ?? "Table",
-            requested: input.views[0]?.icon,
-            type: input.views[0]?.type ?? "table",
-          })),
+          defaultViewIcon: buildAgentGlyphSvg(
+            resolveAgentGlyphName({
+              fallbackKind: "view",
+              name: input.views[0]?.name ?? "Table",
+              requested: input.views[0]?.icon,
+              type: input.views[0]?.type ?? "table",
+            }),
+          ),
           env: context.env,
           icon: resolveStoredAgentIcon({
             emoji: input.emoji,
@@ -452,9 +448,10 @@ async function executeDatabaseBlueprint(
         });
         return result;
       },
-      () => input.placement === "standalone"
-        ? `Created full-page database “${input.databaseName}”.`
-        : `Created and embedded “${input.databaseName}”.`,
+      () =>
+        input.placement === "standalone"
+          ? `Created full-page database “${input.databaseName}”.`
+          : `Created and embedded “${input.databaseName}”.`,
     );
     data.databaseId = createdDatabase.databaseId;
     data.dataSourceId = createdDatabase.dataSourceId;
@@ -478,21 +475,22 @@ async function executeDatabaseBlueprint(
         `property:${property.key}`,
         `Add ${property.name}`,
         "schema",
-        () => createDatabasePropertyService({
-          config: resolveAgentGlyphConfig({
-            config: property.config,
-            fallbackKind: "property",
-            includeFallback: true,
+        () =>
+          createDatabasePropertyService({
+            config: resolveAgentGlyphConfig({
+              config: property.config,
+              fallbackKind: "property",
+              includeFallback: true,
+              name: property.name,
+              requested: property.icon,
+              type: property.type,
+            }),
+            databaseId: createdDatabase.dataSourceId,
+            env: context.env,
             name: property.name,
-            requested: property.icon,
             type: property.type,
+            userId: context.userId,
           }),
-          databaseId: createdDatabase.dataSourceId,
-          env: context.env,
-          name: property.name,
-          type: property.type,
-          userId: context.userId,
-        }),
         (result) => `Added ${result.name} (${result.type}).`,
       );
       const record: BlueprintPropertyRecord = {
@@ -509,49 +507,46 @@ async function executeDatabaseBlueprint(
 
     let defaultViewAvailable = true;
     for (const view of input.views) {
-      const config = resolveDatabaseBlueprintViewConfig(
-        view,
-        propertiesByReference,
-      );
-      const useDefault: boolean =
-        defaultViewAvailable && view.useDefault !== false;
+      const config = resolveDatabaseBlueprintViewConfig(view, propertiesByReference);
+      const useDefault: boolean = defaultViewAvailable && view.useDefault !== false;
       const result = await runStep(
         `view:${view.name.toLowerCase()}`,
         `Configure ${view.name}`,
         "views",
-        () => useDefault
-          ? updateDatabaseViewService({
-              config: resolveAgentGlyphConfig({
-                config,
-                fallbackKind: "view",
-                includeFallback: true,
+        () =>
+          useDefault
+            ? updateDatabaseViewService({
+                config: resolveAgentGlyphConfig({
+                  config,
+                  fallbackKind: "view",
+                  includeFallback: true,
+                  name: view.name,
+                  requested: view.icon,
+                  type: view.type,
+                }),
+                databaseId: createdDatabase.databaseId,
+                env: context.env,
                 name: view.name,
-                requested: view.icon,
                 type: view.type,
-              }),
-              databaseId: createdDatabase.databaseId,
-              env: context.env,
-              name: view.name,
-              type: view.type,
-              userId: context.userId,
-              viewId: createdDatabase.defaultViewId,
-            })
-          : createDatabaseViewService({
-              config: resolveAgentGlyphConfig({
-                config,
-                fallbackKind: "view",
-                includeFallback: true,
+                userId: context.userId,
+                viewId: createdDatabase.defaultViewId,
+              })
+            : createDatabaseViewService({
+                config: resolveAgentGlyphConfig({
+                  config,
+                  fallbackKind: "view",
+                  includeFallback: true,
+                  name: view.name,
+                  requested: view.icon,
+                  type: view.type,
+                }),
+                databaseId: createdDatabase.databaseId,
+                dataSourceId: createdDatabase.dataSourceId,
+                env: context.env,
                 name: view.name,
-                requested: view.icon,
                 type: view.type,
+                userId: context.userId,
               }),
-              databaseId: createdDatabase.databaseId,
-              dataSourceId: createdDatabase.dataSourceId,
-              env: context.env,
-              name: view.name,
-              type: view.type,
-              userId: context.userId,
-            }),
         () => `${useDefault ? "Configured" : "Created"} ${view.type} view “${view.name}”.`,
       );
       defaultViewAvailable = useDefault ? false : defaultViewAvailable;
@@ -584,10 +579,7 @@ async function executeDatabaseBlueprint(
           context.allowedPageIds.add(createdRow.rowPageId);
 
           for (const [reference, value] of Object.entries(row.values)) {
-            const property = requireBlueprintProperty(
-              reference,
-              propertiesByReference,
-            );
+            const property = requireBlueprintProperty(reference, propertiesByReference);
             await setDatabaseCellValueService({
               databaseId: createdDatabase.dataSourceId,
               env: context.env,
@@ -649,8 +641,7 @@ async function executeDatabaseBlueprint(
       ids: blueprintIds(data),
       ok: true,
       status: "succeeded",
-      summary:
-        `Built ${input.placement === "standalone" ? "full-page" : "inline"} database “${input.databaseName}” with ${data.properties.length} properties, ${data.views.length} views, and ${data.rowCount} rows.`,
+      summary: `Built ${input.placement === "standalone" ? "full-page" : "inline"} database “${input.databaseName}” with ${data.properties.length} properties, ${data.views.length} views, and ${data.rowCount} rows.`,
     };
   } catch (error) {
     return {
@@ -660,8 +651,7 @@ async function executeDatabaseBlueprint(
       ids: blueprintIds(data),
       ok: false,
       status: "failed",
-      summary:
-        `Database setup stopped after ${data.steps.filter((step) => step.status === "completed").length} completed steps: ${readBlueprintErrorMessage(error)}`,
+      summary: `Database setup stopped after ${data.steps.filter((step) => step.status === "completed").length} completed steps: ${readBlueprintErrorMessage(error)}`,
     };
   }
 }
@@ -676,10 +666,7 @@ function blueprintIds(data: DatabaseBlueprintData) {
   );
 }
 
-export {
-  resolveDatabaseBlueprintViewConfig,
-  stripDuplicatePageTitleHeadings,
-};
+export { resolveDatabaseBlueprintViewConfig, stripDuplicatePageTitleHeadings };
 export type { BlueprintPropertyRecord };
 
 function readBlueprintErrorMessage(error: unknown) {
@@ -702,37 +689,33 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
               userId: context.userId,
               workspaceId: context.workspaceId,
             },
-            execute: () => executeDatabaseBlueprint(
-              context,
-              input,
-              options.toolCallId,
-            ),
+            execute: () => executeDatabaseBlueprint(context, input, options.toolCallId),
             toolCallId: options.toolCallId,
             toolInput: input,
             toolName: "buildDatabaseFromBlueprint",
-          })
+          }),
         ),
     }),
 
     createPage: tool({
       description:
         "Create a new Zilobase page, optionally with an emoji and populated Markdown body. The native page name is already its title, so matching Markdown headings are removed. The returned pageId is authorized for later tools in this turn.",
-      inputSchema: z.object({
-        name: z.string().trim().min(1).max(240),
-        parentPageId: z.string().trim().optional(),
-        markdown: z.string().trim().max(64_000).optional(),
-        emoji: z.string().trim().max(32).optional(),
-        icon: agentIconSchema.optional(),
-      }).refine((value) => !(value.emoji && value.icon), {
-        message: "Choose either an emoji or a colored icon for the page.",
-      }),
+      inputSchema: z
+        .object({
+          name: z.string().trim().min(1).max(240),
+          parentPageId: z.string().trim().optional(),
+          markdown: z.string().trim().max(64_000).optional(),
+          emoji: z.string().trim().max(32).optional(),
+          icon: agentIconSchema.optional(),
+        })
+        .refine((value) => !(value.emoji && value.icon), {
+          message: "Choose either an emoji or a colored icon for the page.",
+        }),
       execute: withDbExecute(context, "createPage", async (input, options) => {
         const result = await createPageService({
           env: context.env,
           content: input.markdown
-            ? markdownToPageContent(
-                stripDuplicatePageTitleHeadings(input.markdown, input.name),
-              )
+            ? markdownToPageContent(stripDuplicatePageTitleHeadings(input.markdown, input.name))
             : undefined,
           metadata: {
             emoji: resolveStoredAgentIcon({
@@ -750,43 +733,53 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         context.allowedPageIds.add(result.pageId);
         emitCreatedPageEffects(context, options.toolCallId, result);
 
-        return toToolResult(`Created page "${input.name}".`, {
-          pageId: result.pageId,
-        }, [], [{
-          id: result.pageId,
-          source: "page",
-          title: input.name,
-          url: `/p/${encodeURIComponent(result.pageId)}`,
-        }]);
+        return toToolResult(
+          `Created page "${input.name}".`,
+          {
+            pageId: result.pageId,
+          },
+          [],
+          [
+            {
+              id: result.pageId,
+              source: "page",
+              title: input.name,
+              url: `/p/${encodeURIComponent(result.pageId)}`,
+            },
+          ],
+        );
       }),
     }),
 
     createDatabase: tool({
       description:
         "Create either a standalone full-page database or an inline database on a host page. Choose standalone when the database is the primary artifact; choose inline only when it belongs inside a page, dashboard, brief, or named section.",
-      inputSchema: z.object({
-        emoji: z.string().trim().max(32).optional(),
-        icon: agentIconSchema.optional(),
-        name: z.string().trim().min(1).max(240).optional(),
-        pageId: z.string().trim().optional(),
-        placement: z.enum(["standalone", "inline"]),
-        showInlineDatabaseTitle: z.boolean().optional(),
-        teamspaceId: z.string().trim().min(1).nullable().optional(),
-      }).refine((value) => !(value.emoji && value.icon), {
-        message: "Choose either an emoji or a colored icon for the database.",
-      }),
+      inputSchema: z
+        .object({
+          emoji: z.string().trim().max(32).optional(),
+          icon: agentIconSchema.optional(),
+          name: z.string().trim().min(1).max(240).optional(),
+          pageId: z.string().trim().optional(),
+          placement: z.enum(["standalone", "inline"]),
+          showInlineDatabaseTitle: z.boolean().optional(),
+          teamspaceId: z.string().trim().min(1).nullable().optional(),
+        })
+        .refine((value) => !(value.emoji && value.icon), {
+          message: "Choose either an emoji or a colored icon for the database.",
+        }),
       execute: withDbExecute(context, "createDatabase", async (input, options) => {
-        const pageId = input.placement === "inline"
-          ? resolvePageId(context, input.pageId, "pageId")
-          : undefined;
+        const pageId =
+          input.placement === "inline" ? resolvePageId(context, input.pageId, "pageId") : undefined;
 
         const result = await createDatabaseService({
           env: context.env,
-          defaultViewIcon: buildAgentGlyphSvg(resolveAgentGlyphName({
-            fallbackKind: "view",
-            name: "Table",
-            type: "table",
-          })),
+          defaultViewIcon: buildAgentGlyphSvg(
+            resolveAgentGlyphName({
+              fallbackKind: "view",
+              name: "Table",
+              type: "table",
+            }),
+          ),
           icon: resolveStoredAgentIcon({
             emoji: input.emoji,
             fallbackKind: "database",
@@ -820,26 +813,32 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         return toToolResult(
           input.placement === "standalone"
             ? `Created full-page database "${result.name}".`
-            : `Created and embedded database "${result.name}".`, {
-          databaseId: result.databaseId,
-          dataSourceId: result.dataSourceId,
-          defaultViewId: result.defaultViewId,
-          pageId,
-        }, [
-          "Default Table view already exists as defaultViewId.",
-          ...(embed
-            ? [
-                embed.alreadyEmbedded
-                  ? "The live database block was already present in the host page."
-                  : `The live database block is inline in the host page with its title ${embed.showTitle ? "shown" : "hidden"}.`,
-              ]
-            : ["The database is a standalone full-page workspace item."]),
-        ], [{
-          id: result.databaseId,
-          source: "database",
-          title: result.name,
-          url: `/d/${encodeURIComponent(result.databaseId)}`,
-        }]);
+            : `Created and embedded database "${result.name}".`,
+          {
+            databaseId: result.databaseId,
+            dataSourceId: result.dataSourceId,
+            defaultViewId: result.defaultViewId,
+            pageId,
+          },
+          [
+            "Default Table view already exists as defaultViewId.",
+            ...(embed
+              ? [
+                  embed.alreadyEmbedded
+                    ? "The live database block was already present in the host page."
+                    : `The live database block is inline in the host page with its title ${embed.showTitle ? "shown" : "hidden"}.`,
+                ]
+              : ["The database is a standalone full-page workspace item."]),
+          ],
+          [
+            {
+              id: result.databaseId,
+              source: "database",
+              title: result.name,
+              url: `/d/${encodeURIComponent(result.databaseId)}`,
+            },
+          ],
+        );
       }),
     }),
 
@@ -854,16 +853,15 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
           .trim()
           .optional()
           .describe("Section heading text to insert the database block after."),
-        showTitle: z.boolean().optional().describe(
-          "Override inline title visibility. By default it is hidden when the page and database names match.",
-        ),
+        showTitle: z
+          .boolean()
+          .optional()
+          .describe(
+            "Override inline title visibility. By default it is hidden when the page and database names match.",
+          ),
       }),
       execute: withDbExecute(context, "embedDatabaseInPage", async (input, options) => {
-        const pageId = resolvePageId(
-          context,
-          input.pageId,
-          "pageId",
-        );
+        const pageId = resolvePageId(context, input.pageId, "pageId");
 
         const result = await embedDatabaseInPageService({
           afterHeading: input.afterHeading,
@@ -878,9 +876,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
           databaseId: input.databaseId,
           kind: "page-embed",
           pageId,
-          ...(typeof result.showTitle === "boolean"
-            ? { showTitle: result.showTitle }
-            : {}),
+          ...(typeof result.showTitle === "boolean" ? { showTitle: result.showTitle } : {}),
           toolCallId: options.toolCallId,
           workspaceId: context.workspaceId,
         });
@@ -889,8 +885,8 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
           result.titleUpdated
             ? `Updated the inline database title to ${result.showTitle ? "shown" : "hidden"}.`
             : result.alreadyEmbedded
-            ? "Database block was already embedded in this page."
-            : `Embedded database in page content as ${result.embedMarkdown}.`,
+              ? "Database block was already embedded in this page."
+              : `Embedded database in page content as ${result.embedMarkdown}.`,
           {
             databaseId: result.databaseId,
             pageId: result.pageId,
@@ -907,11 +903,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         hostPageId: z.string().trim().optional(),
       }),
       execute: withDbExecute(context, "linkDatabaseInPage", async (input) => {
-        const hostPageId = resolvePageId(
-          context,
-          input.hostPageId,
-          "hostPageId",
-        );
+        const hostPageId = resolvePageId(context, input.hostPageId, "hostPageId");
 
         const result = await linkDatabaseInPageService({
           databaseId: input.databaseId,
@@ -975,21 +967,22 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
               .map((option) => `${option.name} (${option.color})`)
               .join(", ")}. Cell values use option names.`,
           );
-        } else if (
-          result.type === "select" ||
-          result.type === "multi_select"
-        ) {
+        } else if (result.type === "select" || result.type === "multi_select") {
           hints.push(
             `Select option colors cycle through: ${selectOptionColors.join(", ")} when omitted.`,
           );
         }
 
-        return toToolResult(`Created property "${result.name}" (${result.type}).`, {
-          databaseId: result.databaseId,
-          dataSourceId: result.dataSourceId,
-          databasePropertyId: result.databasePropertyId,
-          pagePropertyId: result.pagePropertyId,
-        }, hints);
+        return toToolResult(
+          `Created property "${result.name}" (${result.type}).`,
+          {
+            databaseId: result.databaseId,
+            dataSourceId: result.dataSourceId,
+            databasePropertyId: result.databasePropertyId,
+            pagePropertyId: result.pagePropertyId,
+          },
+          hints,
+        );
       }),
     }),
 
@@ -1163,20 +1156,27 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
         });
         context.allowedPageIds.add(result.rowPageId);
 
-        return toToolResult(`Created row "${result.title}".`, {
-          databaseId: result.databaseId,
-          dataSourceId: result.dataSourceId,
-          rowId: result.rowId,
-          rowPageId: result.rowPageId,
-        }, [
-          "Use rowId and pagePropertyId in setDatabaseCellValue.",
-          "Use rowPageId with readWorkspacePage and updateWorkspacePage for the page body.",
-        ], [{
-          id: result.rowPageId,
-          source: "page",
-          title: result.title,
-          url: `/p/${encodeURIComponent(result.rowPageId)}`,
-        }]);
+        return toToolResult(
+          `Created row "${result.title}".`,
+          {
+            databaseId: result.databaseId,
+            dataSourceId: result.dataSourceId,
+            rowId: result.rowId,
+            rowPageId: result.rowPageId,
+          },
+          [
+            "Use rowId and pagePropertyId in setDatabaseCellValue.",
+            "Use rowPageId with readWorkspacePage and updateWorkspacePage for the page body.",
+          ],
+          [
+            {
+              id: result.rowPageId,
+              source: "page",
+              title: result.title,
+              url: `/p/${encodeURIComponent(result.rowPageId)}`,
+            },
+          ],
+        );
       }),
     }),
 

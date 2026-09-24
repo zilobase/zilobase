@@ -1,28 +1,18 @@
-import { Palette } from "@/shared/components/icons"
+import { Palette } from "@/shared/components/icons";
 
-import { Button } from "@/shared/ui/button"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
+import { Button } from "@/shared/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 
 import {
   colorTokens,
   colorWithAlpha,
   getPaletteColor,
   isPaletteColorActive,
-} from "@/shared/lib/color-tokens"
-import type { ColorToken, EditorControlProps } from "./toolbar-contracts"
+} from "@/shared/lib/color-tokens";
+import type { ColorToken, EditorControlProps } from "./toolbar-contracts";
 
-function ColorSwatch({
-  token,
-  variant,
-}: {
-  token: ColorToken
-  variant: "text" | "background"
-}) {
-  const textClass = token.textClass
+function ColorSwatch({ token, variant }: { token: ColorToken; variant: "text" | "background" }) {
+  const textClass = token.textClass;
 
   return (
     <span
@@ -32,38 +22,30 @@ function ColorSwatch({
         <span className={`text-base font-semibold ${textClass}`}>A</span>
       ) : null}
     </span>
-  )
+  );
 }
 
 type ColorPickerProps = {
-  backgroundColor: string | null | undefined
-  onBackgroundColorSelect: (color: string | null) => void
-  onTextColorSelect: (color: string | null) => void
-  textColor: string | null | undefined
-}
+  backgroundColor: string | null | undefined;
+  onBackgroundColorSelect: (color: string | null) => void;
+  onTextColorSelect: (color: string | null) => void;
+  textColor: string | null | undefined;
+};
 
-function isBackgroundColorActive(
-  stored: string | null | undefined,
-  tokenValue: string | null,
-) {
+function isBackgroundColorActive(stored: string | null | undefined, tokenValue: string | null) {
   if (!tokenValue) {
-    return stored === null
+    return stored === null;
   }
 
-  return (
-    stored === tokenValue || stored === colorWithAlpha(tokenValue, 0.18)
-  )
+  return stored === tokenValue || stored === colorWithAlpha(tokenValue, 0.18);
 }
 
-function isTextColorActive(
-  stored: string | null | undefined,
-  tokenValue: string | null,
-) {
+function isTextColorActive(stored: string | null | undefined, tokenValue: string | null) {
   if (!tokenValue) {
-    return stored === null
+    return stored === null;
   }
 
-  return isPaletteColorActive(stored, tokenValue)
+  return isPaletteColorActive(stored, tokenValue);
 }
 
 export function ColorPicker({
@@ -74,9 +56,7 @@ export function ColorPicker({
 }: ColorPickerProps) {
   return (
     <>
-      <div className="px-2 py-1 text-xs font-medium text-content-secondary">
-        Text color
-      </div>
+      <div className="px-2 py-1 text-xs font-medium text-content-secondary">Text color</div>
       <div className="grid gap-1">
         {colorTokens.map((token) => (
           <button
@@ -89,17 +69,13 @@ export function ColorPicker({
             <ColorSwatch token={token} variant="text" />
             <span>{token.name} text</span>
             {isTextColorActive(textColor, token.value) ? (
-              <span className="ml-auto text-xs text-content-secondary">
-                Selected
-              </span>
+              <span className="ml-auto text-xs text-content-secondary">Selected</span>
             ) : null}
           </button>
         ))}
       </div>
       <div className="my-1 h-px bg-stroke-default" />
-      <div className="px-2 py-1 text-xs font-medium text-content-secondary">
-        Background color
-      </div>
+      <div className="px-2 py-1 text-xs font-medium text-content-secondary">Background color</div>
       <div className="grid gap-1">
         {colorTokens.map((token) => (
           <button
@@ -112,57 +88,44 @@ export function ColorPicker({
             <ColorSwatch token={token} variant="background" />
             <span>{token.name} background</span>
             {isBackgroundColorActive(backgroundColor, token.value) ? (
-              <span className="ml-auto text-xs text-content-secondary">
-                Selected
-              </span>
+              <span className="ml-auto text-xs text-content-secondary">Selected</span>
             ) : null}
           </button>
         ))}
       </div>
     </>
-  )
+  );
 }
 
 export function ColorMenu({ editor }: EditorControlProps) {
-  const textColor = editor?.getAttributes("textStyle").color ?? null
-  const backgroundColor =
-    editor?.getAttributes("textStyle").backgroundColor ?? null
+  const textColor = editor?.getAttributes("textStyle").color ?? null;
+  const backgroundColor = editor?.getAttributes("textStyle").backgroundColor ?? null;
 
   const applyTextColor = (color: string | null) => {
     if (!editor) {
-      return
+      return;
     }
 
     if (color) {
-      editor
-        .chain()
-        .focus()
-        .unsetBackgroundColor()
-        .setColor(getPaletteColor(color)!)
-        .run()
-      return
+      editor.chain().focus().unsetBackgroundColor().setColor(getPaletteColor(color)!).run();
+      return;
     }
 
-    editor.chain().focus().unsetColor().unsetBackgroundColor().run()
-  }
+    editor.chain().focus().unsetColor().unsetBackgroundColor().run();
+  };
 
   const applyBackgroundColor = (color: string | null) => {
     if (!editor) {
-      return
+      return;
     }
 
     if (color) {
-      editor
-        .chain()
-        .focus()
-        .unsetColor()
-        .setBackgroundColor(colorWithAlpha(color, 0.18)!)
-        .run()
-      return
+      editor.chain().focus().unsetColor().setBackgroundColor(colorWithAlpha(color, 0.18)!).run();
+      return;
     }
 
-    editor.chain().focus().unsetColor().unsetBackgroundColor().run()
-  }
+    editor.chain().focus().unsetColor().unsetBackgroundColor().run();
+  };
 
   return (
     <Popover>
@@ -195,5 +158,5 @@ export function ColorMenu({ editor }: EditorControlProps) {
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }

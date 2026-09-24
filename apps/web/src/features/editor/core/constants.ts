@@ -9,11 +9,36 @@ export const starterContent = `
     <li data-type="taskItem" data-checked="true">Shape it into a clean doc</li>
   </ul>
   <blockquote>Fast notes, structured blocks, zero ceremony.</blockquote>
-`
+`;
 
 export const pastedBlockElementSelector = [
-  "address", "article", "aside", "blockquote", "details", "div", "dl",
-  "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3",
-  "h4", "h5", "h6", "header", "hr", "li", "main", "nav", "ol", "p", "pre",
-  "section", "table", "ul",
-].join(",")
+  "address",
+  "article",
+  "aside",
+  "blockquote",
+  "details",
+  "div",
+  "dl",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "footer",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "header",
+  "hr",
+  "li",
+  "main",
+  "nav",
+  "ol",
+  "p",
+  "pre",
+  "section",
+  "table",
+  "ul",
+].join(",");

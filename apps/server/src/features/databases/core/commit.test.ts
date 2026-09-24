@@ -38,11 +38,12 @@ function transactionExecutor(versions: Array<number | null>) {
       return {
         async values(value: unknown) {
           insertCalls += 1;
-          const target = table === databaseRealtimeOutbox
-            ? outbox
-            : table === databaseMutationEvent
-              ? journal
-              : [];
+          const target =
+            table === databaseRealtimeOutbox
+              ? outbox
+              : table === databaseMutationEvent
+                ? journal
+                : [];
           target.push(...(Array.isArray(value) ? value : [value]));
         },
       };
@@ -56,9 +57,7 @@ function transactionExecutor(versions: Array<number | null>) {
               return {
                 async returning() {
                   const version = versions.shift();
-                  return version === null || version === undefined
-                    ? []
-                    : [{ version }];
+                  return version === null || version === undefined ? [] : [{ version }];
                 },
               };
             },
@@ -70,11 +69,15 @@ function transactionExecutor(versions: Array<number | null>) {
 
   mocks.transaction.mockImplementation(async (callback) => callback(tx));
   return {
-    get insertCalls() { return insertCalls; },
+    get insertCalls() {
+      return insertCalls;
+    },
     journal,
     outbox,
     tx,
-    get updateCalls() { return updateCalls; },
+    get updateCalls() {
+      return updateCalls;
+    },
   };
 }
 
@@ -141,10 +144,7 @@ test("commitDatabaseMutationBatch versions, bulk persists, and publishes each mu
     (transaction.outbox[0] as { eventId: string }).eventId,
     (transaction.journal[0] as { id: string }).id,
   );
-  assert.deepEqual(Object.keys(transaction.outbox[0] as object).sort(), [
-    "eventId",
-    "id",
-  ]);
+  assert.deepEqual(Object.keys(transaction.outbox[0] as object).sort(), ["eventId", "id"]);
   assert.equal(mocks.publish.mock.calls.length, 0);
   assert.deepEqual(
     mocks.dispatch.mock.calls[0]?.[1].map((task: { kind: string; resourceId: string }) => ({
@@ -161,19 +161,19 @@ test("commitDatabaseMutationBatch versions, bulk persists, and publishes each mu
 test("same-database batches reserve contiguous versions with one update", async () => {
   const transaction = transactionExecutor([12]);
 
-  const result = await commitDatabaseMutationBatch(
-    { actorId: "user-1" },
-    async () => ({
-      mutations: ["databases", "records", "properties"].map((area) => ({
-        areas: [area] as Array<"databases" | "records" | "properties">,
-        databaseId: "database-1",
-        changes: {},
-      })),
-      result: "saved",
-    }),
-  );
+  const result = await commitDatabaseMutationBatch({ actorId: "user-1" }, async () => ({
+    mutations: ["databases", "records", "properties"].map((area) => ({
+      areas: [area] as Array<"databases" | "records" | "properties">,
+      databaseId: "database-1",
+      changes: {},
+    })),
+    result: "saved",
+  }));
 
-  assert.deepEqual(result.commits.map(({ version }) => version), [10, 11, 12]);
+  assert.deepEqual(
+    result.commits.map(({ version }) => version),
+    [10, 11, 12],
+  );
   assert.equal(transaction.updateCalls, 1);
   assert.equal(transaction.insertCalls, 2);
   assert.deepEqual(
@@ -189,15 +189,14 @@ test("same-database batches reserve contiguous versions with one update", async 
 test("multi-database batches reserve locks deterministically and preserve commit order", async () => {
   const transaction = transactionExecutor([5, 12]);
 
-  const result = await commitDatabaseMutationBatch(
-    { actorId: "user-1" },
-    async () => ({
-      mutations: ["database-b", "database-a", "database-b"].map(
-        (databaseId) => ({ areas: ["records"] as const, databaseId, changes: {} }),
-      ),
-      result: undefined,
-    }),
-  );
+  const result = await commitDatabaseMutationBatch({ actorId: "user-1" }, async () => ({
+    mutations: ["database-b", "database-a", "database-b"].map((databaseId) => ({
+      areas: ["records"] as const,
+      databaseId,
+      changes: {},
+    })),
+    result: undefined,
+  }));
 
   assert.deepEqual(
     result.commits.map(({ databaseId, version }) => ({ databaseId, version })),
@@ -213,10 +212,10 @@ test("multi-database batches reserve locks deterministically and preserve commit
 test("empty batches avoid version and outbox writes", async () => {
   const transaction = transactionExecutor([]);
 
-  const result = await commitDatabaseMutationBatch(
-    { actorId: "user-1" },
-    async () => ({ mutations: [], result: "unchanged" }),
-  );
+  const result = await commitDatabaseMutationBatch({ actorId: "user-1" }, async () => ({
+    mutations: [],
+    result: "unchanged",
+  }));
 
   assert.deepEqual(result, { commits: [], result: "unchanged" });
   assert.equal(transaction.updateCalls, 0);
@@ -240,9 +239,7 @@ test("automation facts are captured inside the commit transaction and abort atom
   await assert.rejects(
     commitDatabaseMutationBatch({ actorId: "user-1" }, async () => ({
       automationFacts: facts,
-      mutations: [
-        { areas: ["records"], databaseId: "database-1", changes: {} },
-      ],
+      mutations: [{ areas: ["records"], databaseId: "database-1", changes: {} }],
       result: undefined,
     })),
     /capture failed/,
@@ -257,24 +254,21 @@ test("automation facts are captured inside the commit transaction and abort atom
 test("large commits persist reset events with reference-only delivery", async () => {
   const { journal, outbox } = transactionExecutor([2]);
 
-  const result = await commitDatabaseMutationBatch(
-    { actorId: "user-1" },
-    async () => ({
-      mutations: [
-        {
-          areas: ["records"],
-          databaseId: "database-1",
-          changes: {
-            removedRecordIds: Array.from(
-              { length: 700 },
-              (_, index) => `${index}-${"x".repeat(110)}`,
-            ),
-          },
+  const result = await commitDatabaseMutationBatch({ actorId: "user-1" }, async () => ({
+    mutations: [
+      {
+        areas: ["records"],
+        databaseId: "database-1",
+        changes: {
+          removedRecordIds: Array.from(
+            { length: 700 },
+            (_, index) => `${index}-${"x".repeat(110)}`,
+          ),
         },
-      ],
-      result: undefined,
-    }),
-  );
+      },
+    ],
+    result: undefined,
+  }));
 
   assert.equal(result.commits[0]?.requiresReset, true);
   assert.deepEqual(result.commits[0]?.changes, {});
@@ -287,19 +281,16 @@ test("background enqueue failures leave the committed outbox available for recov
   transactionExecutor([4]);
   mocks.dispatch.mockResolvedValue(false);
 
-  const result = await commitDatabaseMutationBatch(
-    { actorId: "user-1", env: {} },
-    async () => ({
-      mutations: [
-        {
-          areas: ["views"],
-          databaseId: "database-1",
-          changes: { views: [] },
-        },
-      ],
-      result: true,
-    }),
-  );
+  const result = await commitDatabaseMutationBatch({ actorId: "user-1", env: {} }, async () => ({
+    mutations: [
+      {
+        areas: ["views"],
+        databaseId: "database-1",
+        changes: { views: [] },
+      },
+    ],
+    result: true,
+  }));
 
   assert.equal(result.commits[0]?.version, 4);
   assert.equal(mocks.dispatch.mock.calls.length, 1);

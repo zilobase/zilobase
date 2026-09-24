@@ -16,41 +16,37 @@ export function resolveDatabaseBlueprintViewConfig(
     id: crypto.randomUUID(),
     ...(filter.joinOperator ? { joinOperator: filter.joinOperator } : {}),
     operator: filter.operator,
-    propertyId: resolveBlueprintDatabasePropertyId(
-      filter.property,
-      propertiesByReference,
-    ),
+    propertyId: resolveBlueprintDatabasePropertyId(filter.property, propertiesByReference),
     values: filter.values,
   }));
   const sorts = view.sorts?.map((sort) => ({
-    column: resolveBlueprintDatabasePropertyId(
-      sort.property,
-      propertiesByReference,
-    ),
+    column: resolveBlueprintDatabasePropertyId(sort.property, propertiesByReference),
     direction: sort.direction,
   }));
   const hiddenPropertyIds = view.hiddenProperties?.map((reference) =>
-    resolveBlueprintDatabasePropertyId(reference, propertiesByReference)
+    resolveBlueprintDatabasePropertyId(reference, propertiesByReference),
   );
   const explicitGroup = view.groupBy
     ? requireBlueprintProperty(view.groupBy, propertiesByReference)
     : null;
-  const inferredGroup = view.type === "kanban" && !explicitGroup
-    ? [...new Set(propertiesByReference.values())].find(
-        (property) =>
-          property.type === "status" ||
-          property.type === "select" ||
-          property.type === "multi_select",
-      ) ?? null
-    : null;
+  const inferredGroup =
+    view.type === "kanban" && !explicitGroup
+      ? ([...new Set(propertiesByReference.values())].find(
+          (property) =>
+            property.type === "status" ||
+            property.type === "select" ||
+            property.type === "multi_select",
+        ) ?? null)
+      : null;
   const explicitDate = view.timelineDateProperty
     ? requireBlueprintProperty(view.timelineDateProperty, propertiesByReference)
     : null;
-  const inferredDate = view.type === "timeline" && !explicitDate
-    ? [...new Set(propertiesByReference.values())].find(
-        (property) => property.type === "date",
-      ) ?? null
-    : null;
+  const inferredDate =
+    view.type === "timeline" && !explicitDate
+      ? ([...new Set(propertiesByReference.values())].find(
+          (property) => property.type === "date",
+        ) ?? null)
+      : null;
 
   return {
     ...(filters?.length ? { filters } : {}),
@@ -86,6 +82,5 @@ function resolveBlueprintDatabasePropertyId(
 ) {
   return normalizeBlueprintReference(reference) === "name"
     ? "name"
-    : requireBlueprintProperty(reference, propertiesByReference)
-        .databasePropertyId;
+    : requireBlueprintProperty(reference, propertiesByReference).databasePropertyId;
 }

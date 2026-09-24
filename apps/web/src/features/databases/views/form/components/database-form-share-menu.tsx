@@ -6,12 +6,12 @@ import {
   Link2,
   Share2,
   UserRoundCheck,
-} from "@/shared/components/icons"
-import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { toast } from "sonner"
+} from "@/shared/components/icons";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
-import { Badge } from "@/shared/ui/badge"
-import { Button } from "@/shared/ui/button"
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -20,23 +20,27 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
-import { Input } from "@/shared/ui/input"
-import { Switch } from "@/shared/ui/switch"
-import { cn } from "@/shared/lib/utils"
+} from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
+import { Switch } from "@/shared/ui/switch";
+import { cn } from "@/shared/lib/utils";
 
-import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
+import {
+  useDatabaseActionsContext,
+  useDatabaseDataContext,
+  useDatabaseUiContext,
+} from "../../state/database-view-context";
 import {
   getDatabaseFormShareSettings,
   type DatabaseFormFillAccess,
   type DatabaseFormSubmissionAccess,
-} from "../model/database-form-share-config"
+} from "../model/database-form-share-config";
 
 const fillAccessLabels: Record<DatabaseFormFillAccess, string> = {
   workspace: "Anyone in this workspace with link",
   public: "Anyone on the web with link",
   closed: "No access",
-}
+};
 
 const submissionAccessLabels: Record<DatabaseFormSubmissionAccess, string> = {
   none: "No access",
@@ -44,52 +48,44 @@ const submissionAccessLabels: Record<DatabaseFormSubmissionAccess, string> = {
   comment: "Can comment",
   edit: "Can edit",
   full: "Full access",
-}
+};
 const submissionAccessValues: DatabaseFormSubmissionAccess[] = [
   "none",
   "view",
   "comment",
   "edit",
   "full",
-]
+];
 
 export function DatabaseFormShareMenu() {
-  const {
-    updateDatabaseFormShareSettings,
-  } = useDatabaseActionsContext()
-  const {
-    databaseId,
-  } = useDatabaseDataContext()
-  const {
-    activeView,
-  } = useDatabaseUiContext()
-  const [settings, setSettings] = useState(() =>
-    getDatabaseFormShareSettings(activeView?.config),
-  )
+  const { updateDatabaseFormShareSettings } = useDatabaseActionsContext();
+  const { databaseId } = useDatabaseDataContext();
+  const { activeView } = useDatabaseUiContext();
+  const [settings, setSettings] = useState(() => getDatabaseFormShareSettings(activeView?.config));
   useEffect(() => {
-    setSettings(getDatabaseFormShareSettings(activeView?.config))
-  }, [activeView?.config, activeView?.id])
+    setSettings(getDatabaseFormShareSettings(activeView?.config));
+  }, [activeView?.config, activeView?.id]);
   const updateSettings = (patch: Partial<typeof settings>) => {
-    setSettings((currentSettings) => ({ ...currentSettings, ...patch }))
-    updateDatabaseFormShareSettings?.(patch)
-  }
+    setSettings((currentSettings) => ({ ...currentSettings, ...patch }));
+    updateDatabaseFormShareSettings?.(patch);
+  };
   const formLink = useMemo(() => {
-    if (typeof window === "undefined" || !databaseId) return ""
+    if (typeof window === "undefined" || !databaseId) return "";
 
-    const url = new URL(`/d/${databaseId}`, window.location.origin)
+    const url = new URL(`/d/${databaseId}`, window.location.origin);
 
-    if (activeView?.id) url.searchParams.set("view", activeView.id)
+    if (activeView?.id) url.searchParams.set("view", activeView.id);
 
-    return url.toString()
-  }, [activeView?.id, databaseId])
+    return url.toString();
+  }, [activeView?.id, databaseId]);
   const copyFormLink = async () => {
     try {
-      await navigator.clipboard.writeText(formLink || window.location.href)
-      toast.success("Form link copied.")
+      await navigator.clipboard.writeText(formLink || window.location.href);
+      toast.success("Form link copied.");
     } catch {
-      toast.error("Couldn't copy the form link.")
+      toast.error("Couldn't copy the form link.");
     }
-  }
+  };
 
   return (
     <DropDrawer>
@@ -104,10 +100,7 @@ export function DatabaseFormShareMenu() {
           <span>Share</span>
         </Button>
       </DropDrawerTrigger>
-      <DropDrawerContent
-        align="end"
-        className="w-[min(31rem,calc(100vw-1rem))] p-2"
-      >
+      <DropDrawerContent align="end" className="w-[min(31rem,calc(100vw-1rem))] p-2">
         <DropDrawerSub title="Who can fill out">
           <DropDrawerSubTrigger>
             <ShareMenuRow
@@ -149,12 +142,12 @@ export function DatabaseFormShareMenu() {
             })
           }
           onKeyDown={(event) => {
-            if (event.key !== "Enter" && event.key !== " ") return
+            if (event.key !== "Enter" && event.key !== " ") return;
 
-            event.preventDefault()
+            event.preventDefault();
             updateSettings({
               anonymousResponses: !settings.anonymousResponses,
-            })
+            });
           }}
           role="menuitemcheckbox"
           tabIndex={0}
@@ -165,9 +158,7 @@ export function DatabaseFormShareMenu() {
             aria-label="Allow anonymous responses"
             checked={settings.anonymousResponses}
             onClick={(event) => event.stopPropagation()}
-            onCheckedChange={(anonymousResponses) =>
-              updateSettings({ anonymousResponses })
-            }
+            onCheckedChange={(anonymousResponses) => updateSettings({ anonymousResponses })}
           />
         </div>
 
@@ -195,9 +186,7 @@ export function DatabaseFormShareMenu() {
                   key={submissionAccess}
                   onSelect={() => updateSettings({ submissionAccess })}
                 >
-                  <span className="min-w-0 flex-1">
-                    {submissionAccessLabels[submissionAccess]}
-                  </span>
+                  <span className="min-w-0 flex-1">{submissionAccessLabels[submissionAccess]}</span>
                   {settings.submissionAccess === submissionAccess ? (
                     <Check className="text-content-primary" />
                   ) : null}
@@ -226,27 +215,17 @@ export function DatabaseFormShareMenu() {
         </div>
       </DropDrawerContent>
     </DropDrawer>
-  )
+  );
 }
 
-function ShareMenuRow({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode
-  label: string
-  value: string
-}) {
+function ShareMenuRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
       {icon}
       <span className="shrink-0">{label}</span>
-      <span className="ml-auto max-w-60 truncate text-content-secondary">
-        {value}
-      </span>
+      <span className="ml-auto max-w-60 truncate text-content-secondary">{value}</span>
     </div>
-  )
+  );
 }
 
 function FillAccessItem({
@@ -256,11 +235,11 @@ function FillAccessItem({
   onSelect,
   value,
 }: {
-  activeValue: DatabaseFormFillAccess
-  badge?: string
-  label: string
-  onSelect: (value: DatabaseFormFillAccess) => void
-  value: DatabaseFormFillAccess
+  activeValue: DatabaseFormFillAccess;
+  badge?: string;
+  label: string;
+  onSelect: (value: DatabaseFormFillAccess) => void;
+  value: DatabaseFormFillAccess;
 }) {
   return (
     <DropDrawerItem onSelect={() => onSelect(value)}>
@@ -280,5 +259,5 @@ function FillAccessItem({
       ) : null}
       {activeValue === value ? <Check className="text-content-primary" /> : null}
     </DropDrawerItem>
-  )
+  );
 }

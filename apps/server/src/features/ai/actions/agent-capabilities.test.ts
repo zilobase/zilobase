@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import {
-  buildAgentPolicyInstruction,
-  resolveAgentCapabilityPolicy,
-} from "./agent-capabilities";
+import { buildAgentPolicyInstruction, resolveAgentCapabilityPolicy } from "./agent-capabilities";
 import { isFailedAgentToolResult } from "./agent-tool-registry";
 
 test("structured tool failures are treated as failed executions", () => {
@@ -20,9 +17,7 @@ test("agent capability policy keeps direct edits behind item-level checks", () =
   assert.equal(policy.hasCapability("workspace.search"), true);
   assert.equal(policy.hasCapability("page.content.update"), true);
   assert.deepEqual(
-    policy.capabilities.find(
-      (capability) => capability.id === "page.content.update",
-    )?.toolNames,
+    policy.capabilities.find((capability) => capability.id === "page.content.update")?.toolNames,
     ["updateWorkspacePage"],
   );
   assert.equal(policy.hasCapability("page.comments.mutate"), false);

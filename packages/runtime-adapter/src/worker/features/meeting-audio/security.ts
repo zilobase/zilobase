@@ -24,10 +24,7 @@ export async function routeMeetingAudioRequest(
   request: Request,
   env: MeetingAudioRouteEnv,
   _ctx?: Pick<ExecutionContext, "waitUntil">,
-  openSession?: (
-    claims: MeetingAudioTicketClaims,
-    env: MeetingAudioRouteEnv,
-  ) => Promise<Response>,
+  openSession?: (claims: MeetingAudioTicketClaims, env: MeetingAudioRouteEnv) => Promise<Response>,
   limits: Limits = createWorkerLimits(env),
 ) {
   if (request.method !== "GET") {
@@ -49,11 +46,7 @@ export async function routeMeetingAudioRequest(
   }
 
   const clientAddress = request.headers.get("cf-connecting-ip") ?? "local";
-  const allowed = await limits.consume(
-    `meeting-audio:${clientAddress}:${meetingId}`,
-    60,
-    60_000,
-  );
+  const allowed = await limits.consume(`meeting-audio:${clientAddress}:${meetingId}`, 60, 60_000);
   if (!allowed) {
     return new Response("Too Many Requests", {
       headers: { "Retry-After": "60" },
@@ -64,26 +57,21 @@ export async function routeMeetingAudioRequest(
   if (openSession) return openSession(claims, env);
 
   const headers = new Headers(request.headers);
-  headers.set(
-    MEETING_AUDIO_CLAIMS_HEADER,
-    encodeURIComponent(JSON.stringify(claims)),
+  headers.set(MEETING_AUDIO_CLAIMS_HEADER, encodeURIComponent(JSON.stringify(claims)));
+  return env.MEETING_COLLABORATION.getByName(`meeting:${claims.meetingId}`).fetch(
+    new Request(request, { headers }),
   );
-  return env.MEETING_COLLABORATION
-    .getByName(`meeting:${claims.meetingId}`)
-    .fetch(new Request(request, { headers }));
 }
 
 export function readMeetingAudioClaims(headers: Headers) {
   const encoded = headers.get(MEETING_AUDIO_CLAIMS_HEADER);
   if (!encoded) return null;
   try {
-    const value = JSON.parse(
-      decodeURIComponent(encoded),
-    ) as MeetingAudioTicketClaims;
+    const value = JSON.parse(decodeURIComponent(encoded)) as MeetingAudioTicketClaims;
     return value &&
-        typeof value.meetingId === "string" &&
-        typeof value.leaseId === "string" &&
-        typeof value.userId === "string"
+      typeof value.meetingId === "string" &&
+      typeof value.leaseId === "string" &&
+      typeof value.userId === "string"
       ? value
       : null;
   } catch {
@@ -95,12 +83,9 @@ function readAuthentication(headers: Headers) {
   const protocols = (headers.get("sec-websocket-protocol") ?? "")
     .split(",")
     .map((value) => value.trim());
-  const auth = protocols.find((value) =>
-    value.startsWith(MEETING_AUDIO_AUTH_PROTOCOL_PREFIX)
-  );
+  const auth = protocols.find((value) => value.startsWith(MEETING_AUDIO_AUTH_PROTOCOL_PREFIX));
   const token = auth?.slice(MEETING_AUDIO_AUTH_PROTOCOL_PREFIX.length);
-  return protocols.includes(MEETING_AUDIO_PROTOCOL) &&
-      token && token.length <= MAX_TICKET_BYTES
+  return protocols.includes(MEETING_AUDIO_PROTOCOL) && token && token.length <= MAX_TICKET_BYTES
     ? token
     : null;
 }

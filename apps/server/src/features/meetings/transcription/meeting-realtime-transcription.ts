@@ -1,13 +1,10 @@
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { runWithDbEnv } from "../../../infrastructure/database";
 import type { MeetingAudioTicketClaims } from "../audio/meeting-audio-ticket";
-import {
-  meetingTranscriptSequence,
-  type MeetingAudioSource,
-} from "../audio/meeting-audio-ticket";
+import { meetingTranscriptSequence, type MeetingAudioSource } from "../audio/meeting-audio-ticket";
 import { appendMeetingTranscriptSegment } from "../lifecycle/meeting-service";
 
-const AUDIO_PACKET_BYTES = 24_000 * 2 / 10;
+const AUDIO_PACKET_BYTES = (24_000 * 2) / 10;
 const FRAME_BYTES = 480 * 2;
 const MINIMUM_COMMIT_BYTES = AUDIO_PACKET_BYTES;
 const FINAL_TRANSCRIPT_TIMEOUT_MS = 12_000;
@@ -40,18 +37,9 @@ type SocketErrorEvent = {
 };
 
 export type RealtimeTranscriptionSocket = {
-  addEventListener(
-    type: "close",
-    listener: (event: SocketCloseEvent) => void,
-  ): void;
-  addEventListener(
-    type: "error",
-    listener: (event: SocketErrorEvent) => void,
-  ): void;
-  addEventListener(
-    type: "message",
-    listener: (event: SocketMessageEvent) => void,
-  ): void;
+  addEventListener(type: "close", listener: (event: SocketCloseEvent) => void): void;
+  addEventListener(type: "error", listener: (event: SocketErrorEvent) => void): void;
+  addEventListener(type: "message", listener: (event: SocketMessageEvent) => void): void;
   close(code?: number, reason?: string): void;
   send(data: string): void;
 };
@@ -93,9 +81,7 @@ export class MeetingRealtimeTranscriptionError extends Error {
   }
 }
 
-export function getMeetingRealtimeTranscriptionUrl(
-  protocol: "https" | "wss",
-) {
+export function getMeetingRealtimeTranscriptionUrl(protocol: "https" | "wss") {
   return `${protocol}://api.openai.com/v1/realtime?intent=transcription`;
 }
 
@@ -109,9 +95,7 @@ export async function getMeetingOpenAiSafetyIdentifier(userId: string) {
     "SHA-256",
     new TextEncoder().encode(`zilobase-meeting:${userId}`),
   );
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, "0")
-  ).join("");
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -133,9 +117,7 @@ export function trimAcceptedMeetingAudio(
   const skippedFrames = Math.max(0, lastAcceptedSequence - sequence + 1);
   return {
     endSequence,
-    pcm: skippedFrames === 0
-      ? pcm
-      : pcm.subarray(skippedFrames * FRAME_BYTES),
+    pcm: skippedFrames === 0 ? pcm : pcm.subarray(skippedFrames * FRAME_BYTES),
     sequence: sequence + skippedFrames,
   };
 }
@@ -147,15 +129,14 @@ export function getMeetingTranscriptionFailureCloseCode(error: unknown) {
 }
 
 export function getMeetingRealtimeTranscriptionConfig(env: RuntimeEnv) {
-  const apiKey = typeof env.OPENAI_API_KEY === "string"
-    ? env.OPENAI_API_KEY.trim()
-    : "";
+  const apiKey = typeof env.OPENAI_API_KEY === "string" ? env.OPENAI_API_KEY.trim() : "";
   if (!apiKey) {
     throw new Error("OPENAI_API_KEY is required for meeting transcription");
   }
-  const configuredModel = typeof env.OPENAI_REALTIME_TRANSCRIPTION_MODEL === "string"
-    ? env.OPENAI_REALTIME_TRANSCRIPTION_MODEL.trim()
-    : "";
+  const configuredModel =
+    typeof env.OPENAI_REALTIME_TRANSCRIPTION_MODEL === "string"
+      ? env.OPENAI_REALTIME_TRANSCRIPTION_MODEL.trim()
+      : "";
   return {
     apiKey,
     model: configuredModel || "gpt-live-transcribe",
@@ -197,9 +178,9 @@ export class MeetingRealtimeTranscriber {
         event.message ?? (event.error instanceof Error ? event.error.message : undefined),
         300,
       );
-      this.fail(new Error(
-        "Realtime transcription WebSocket failed" + (detail ? `: ${detail}` : ""),
-      ));
+      this.fail(
+        new Error("Realtime transcription WebSocket failed" + (detail ? `: ${detail}` : "")),
+      );
     });
     socket.addEventListener("close", (event) => {
       if (!this.finishing) this.fail(providerSocketCloseError(event));
@@ -252,9 +233,7 @@ export class MeetingRealtimeTranscriber {
     }
     this.finishWake = null;
     if (timedOut && this.hasOutstandingTranscripts() && !this.fatalError) {
-      this.fatalError = new Error(
-        "Timed out waiting for the final realtime transcription turn",
-      );
+      this.fatalError = new Error("Timed out waiting for the final realtime transcription turn");
     }
     this.drainCompletedTurns(true);
     this.closeSocket(1000, "Meeting audio finished");
@@ -284,30 +263,26 @@ export class MeetingRealtimeTranscriber {
       this.resetBufferedAudio();
       return;
     }
-    this.commitBufferedAudio(this.currentTurn ?? {
-      endSequence: this.bufferedAudioEndSequence,
-      startSequence: this.bufferedAudioStartSequence,
-    });
+    this.commitBufferedAudio(
+      this.currentTurn ?? {
+        endSequence: this.bufferedAudioEndSequence,
+        startSequence: this.bufferedAudioStartSequence,
+      },
+    );
   }
 
   private appendFrame(frame: Uint8Array, sequence: number) {
     this.sessionStartSequence ??= sequence;
     this.latestSequence = Math.max(this.latestSequence, sequence);
     this.bufferedAudioStartSequence ??= sequence;
-    this.bufferedAudioEndSequence = Math.max(
-      this.bufferedAudioEndSequence,
-      sequence,
-    );
+    this.bufferedAudioEndSequence = Math.max(this.bufferedAudioEndSequence, sequence);
     this.bufferedFrameCount += 1;
     this.packets.push(frame);
     this.packetBytes += frame.byteLength;
 
     if (isSpeechPcmFrame(frame)) {
       this.currentTurn ??= { endSequence: sequence, startSequence: sequence };
-      this.currentTurn.endSequence = Math.max(
-        this.currentTurn.endSequence,
-        sequence,
-      );
+      this.currentTurn.endSequence = Math.max(this.currentTurn.endSequence, sequence);
       this.silenceFrameCount = 0;
     } else if (this.currentTurn) {
       this.silenceFrameCount += 1;
@@ -317,20 +292,15 @@ export class MeetingRealtimeTranscriber {
 
     if (
       this.currentTurn &&
-      (
-        this.silenceFrameCount >= SILENCE_COMMIT_FRAMES ||
-        this.bufferedFrameCount >= MAX_TURN_FRAMES
-      )
+      (this.silenceFrameCount >= SILENCE_COMMIT_FRAMES ||
+        this.bufferedFrameCount >= MAX_TURN_FRAMES)
     ) {
       this.flushPackets();
       this.commitBufferedAudio(this.currentTurn);
       return;
     }
 
-    if (
-      !this.currentTurn &&
-      this.bufferedFrameCount >= LEADING_SILENCE_CLEAR_FRAMES
-    ) {
+    if (!this.currentTurn && this.bufferedFrameCount >= LEADING_SILENCE_CLEAR_FRAMES) {
       this.flushPackets();
       this.send({ type: "input_audio_buffer.clear" });
       this.resetBufferedAudio();
@@ -347,10 +317,7 @@ export class MeetingRealtimeTranscriber {
       this.outstandingItems.add(this.currentProviderItemId);
       this.addTurnOrder(this.currentProviderItemId);
     }
-    this.lastCommittedEndSequence = Math.max(
-      this.lastCommittedEndSequence,
-      committedEndSequence,
-    );
+    this.lastCommittedEndSequence = Math.max(this.lastCommittedEndSequence, committedEndSequence);
     this.send({ type: "input_audio_buffer.commit" });
     this.resetBufferedAudio();
   }
@@ -410,24 +377,29 @@ export class MeetingRealtimeTranscriber {
       return;
     }
     if (type === "error") {
-      const providerError = event.error && typeof event.error === "object"
-        ? event.error as Record<string, unknown>
-        : null;
-      const code = typeof providerError?.code === "string"
-        ? providerError.code.replace(/[^a-z0-9_.-]/gi, "").slice(0, 80)
-        : "provider_error";
-      const providerType = typeof providerError?.type === "string"
-        ? providerError.type.replace(/[^a-z0-9_.-]/gi, "").slice(0, 80)
-        : "";
+      const providerError =
+        event.error && typeof event.error === "object"
+          ? (event.error as Record<string, unknown>)
+          : null;
+      const code =
+        typeof providerError?.code === "string"
+          ? providerError.code.replace(/[^a-z0-9_.-]/gi, "").slice(0, 80)
+          : "provider_error";
+      const providerType =
+        typeof providerError?.type === "string"
+          ? providerError.type.replace(/[^a-z0-9_.-]/gi, "").slice(0, 80)
+          : "";
       const providerParam = sanitizeProviderDetail(providerError?.param, 160);
       const providerMessage = sanitizeProviderDetail(providerError?.message, 500);
-      this.fail(new MeetingRealtimeTranscriptionError(
-        code,
-        !NON_RETRYABLE_PROVIDER_CODES.has(code)
-          && !NON_RETRYABLE_PROVIDER_CODES.has(providerType),
-        providerParam,
-        providerMessage,
-      ));
+      this.fail(
+        new MeetingRealtimeTranscriptionError(
+          code,
+          !NON_RETRYABLE_PROVIDER_CODES.has(code) &&
+            !NON_RETRYABLE_PROVIDER_CODES.has(providerType),
+          providerParam,
+          providerMessage,
+        ),
+      );
       return;
     }
     if (type === "input_audio_buffer.committed" && itemId) {
@@ -439,28 +411,29 @@ export class MeetingRealtimeTranscriber {
       return;
     }
     if (
-      type === "conversation.item.input_audio_transcription.delta"
-      && itemId
-      && typeof event.delta === "string"
+      type === "conversation.item.input_audio_transcription.delta" &&
+      itemId &&
+      typeof event.delta === "string"
     ) {
       const text = `${this.itemText.get(itemId) ?? ""}${event.delta}`;
       this.itemText.set(itemId, text);
       const turn = this.resolveTurn(itemId);
-      if (turn) this.queueCallback(() => this.callbacks.onDelta({
-        ...turn,
-        itemId,
-        text,
-      }));
+      if (turn)
+        this.queueCallback(() =>
+          this.callbacks.onDelta({
+            ...turn,
+            itemId,
+            text,
+          }),
+        );
       return;
     }
-    if (
-      type === "conversation.item.input_audio_transcription.completed"
-      && itemId
-    ) {
+    if (type === "conversation.item.input_audio_transcription.completed" && itemId) {
       const turn = this.resolveTurn(itemId);
-      const text = typeof event.transcript === "string"
-        ? event.transcript.trim()
-        : (this.itemText.get(itemId) ?? "").trim();
+      const text =
+        typeof event.transcript === "string"
+          ? event.transcript.trim()
+          : (this.itemText.get(itemId) ?? "").trim();
       this.itemText.delete(itemId);
       this.turnsByItem.delete(itemId);
       this.outstandingItems.delete(itemId);
@@ -483,9 +456,9 @@ export class MeetingRealtimeTranscriber {
   private resolveTurn(itemId: string) {
     const existing = this.turnsByItem.get(itemId);
     if (existing) return existing;
-    const pending = this.pendingManualCommits.find((entry) =>
-      entry.itemId === itemId
-    ) ?? this.pendingManualCommits.find((entry) => entry.itemId === null);
+    const pending =
+      this.pendingManualCommits.find((entry) => entry.itemId === itemId) ??
+      this.pendingManualCommits.find((entry) => entry.itemId === null);
     if (pending) pending.itemId = itemId;
     const turn = pending?.turn ?? this.currentTurn ?? this.createFallbackTurn();
     this.turnsByItem.set(itemId, turn);
@@ -503,37 +476,35 @@ export class MeetingRealtimeTranscriber {
       this.lastCommittedEndSequence + 1,
     );
     return {
-      endSequence: Math.max(
-        startSequence,
-        this.bufferedAudioEndSequence,
-        this.latestSequence,
-      ),
+      endSequence: Math.max(startSequence, this.bufferedAudioEndSequence, this.latestSequence),
       startSequence,
     };
   }
 
   private removePendingManualCommit(turn: TurnRange) {
-    const index = this.pendingManualCommits.findIndex((entry) =>
-      entry.turn === turn
-    );
+    const index = this.pendingManualCommits.findIndex((entry) => entry.turn === turn);
     if (index >= 0) this.pendingManualCommits.splice(index, 1);
   }
 
   private hasOutstandingTranscripts() {
-    return this.currentTurn !== null
-      || this.outstandingItems.size > 0
-      || this.pendingManualCommits.length > 0;
+    return (
+      this.currentTurn !== null ||
+      this.outstandingItems.size > 0 ||
+      this.pendingManualCommits.length > 0
+    );
   }
 
   private addTurnOrder(itemId: string) {
     if (!this.turnOrder.includes(itemId)) this.turnOrder.push(itemId);
     this.turnOrder.sort((left, right) => {
-      const leftStart = this.turnsByItem.get(left)?.startSequence
-        ?? this.completedTurns.get(left)?.startSequence
-        ?? Number.MAX_SAFE_INTEGER;
-      const rightStart = this.turnsByItem.get(right)?.startSequence
-        ?? this.completedTurns.get(right)?.startSequence
-        ?? Number.MAX_SAFE_INTEGER;
+      const leftStart =
+        this.turnsByItem.get(left)?.startSequence ??
+        this.completedTurns.get(left)?.startSequence ??
+        Number.MAX_SAFE_INTEGER;
+      const rightStart =
+        this.turnsByItem.get(right)?.startSequence ??
+        this.completedTurns.get(right)?.startSequence ??
+        Number.MAX_SAFE_INTEGER;
       return leftStart - rightStart;
     });
   }
@@ -574,9 +545,7 @@ export class MeetingRealtimeTranscriber {
 function getRealtimeTranscriptionOptions(model: string) {
   // The low-latency delay control is part of the gpt-live-transcribe
   // configuration. Commit-based transcription models reject that field.
-  return model === "gpt-live-transcribe"
-    ? { delay: "minimal", model }
-    : { model };
+  return model === "gpt-live-transcribe" ? { delay: "minimal", model } : { model };
 }
 
 function isSpeechPcmFrame(frame: Uint8Array) {
@@ -593,7 +562,10 @@ function isSpeechPcmFrame(frame: Uint8Array) {
 
 function sanitizeProviderDetail(value: unknown, maxLength: number) {
   if (typeof value !== "string") return undefined;
-  const sanitized = value.replace(/[\r\n\t]+/g, " ").trim().slice(0, maxLength);
+  const sanitized = value
+    .replace(/[\r\n\t]+/g, " ")
+    .trim()
+    .slice(0, maxLength);
   return sanitized || undefined;
 }
 
@@ -602,19 +574,15 @@ function providerSocketCloseError(event: SocketCloseEvent) {
   const reason = sanitizeProviderDetail(event.reason, 300);
   const providerCode = reason
     ? [...NON_RETRYABLE_PROVIDER_CODES].find((candidate) =>
-      reason.split(/[^a-z0-9_-]+/i).includes(candidate)
-    )
+        reason.split(/[^a-z0-9_-]+/i).includes(candidate),
+      )
     : undefined;
-  const detail = `WebSocket closed with code ${code}`
-    + (reason ? `: ${reason}` : "")
-    + (typeof event.wasClean === "boolean" ? ` (clean=${event.wasClean})` : "");
+  const detail =
+    `WebSocket closed with code ${code}` +
+    (reason ? `: ${reason}` : "") +
+    (typeof event.wasClean === "boolean" ? ` (clean=${event.wasClean})` : "");
   return providerCode
-    ? new MeetingRealtimeTranscriptionError(
-      providerCode,
-      false,
-      undefined,
-      detail,
-    )
+    ? new MeetingRealtimeTranscriptionError(providerCode, false, undefined, detail)
     : new Error(`Realtime transcription ${detail}`);
 }
 
@@ -627,18 +595,20 @@ export function createMeetingRealtimeTranscriptSink(
   return {
     async onCompleted(turn: RealtimeTranscriptionTurn) {
       if (turn.text) {
-        await runWithDbEnv(env, () => appendMeetingTranscriptSegment({
-          draftItemId: turn.itemId,
-          endMs: (turn.endSequence + 1) * 20,
-          env,
-          meetingId: claims.meetingId,
-          providerItemId: `${claims.leaseId}:${turn.itemId}`,
-          sequence: meetingTranscriptSequence(source, turn.startSequence),
-          source,
-          startMs: turn.startSequence * 20,
-          text: turn.text,
-          userId: claims.userId,
-        }));
+        await runWithDbEnv(env, () =>
+          appendMeetingTranscriptSegment({
+            draftItemId: turn.itemId,
+            endMs: (turn.endSequence + 1) * 20,
+            env,
+            meetingId: claims.meetingId,
+            providerItemId: `${claims.leaseId}:${turn.itemId}`,
+            sequence: meetingTranscriptSequence(source, turn.startSequence),
+            source,
+            startMs: turn.startSequence * 20,
+            text: turn.text,
+            userId: claims.userId,
+          }),
+        );
       }
       publishDelta?.({ ...turn, text: "" });
     },

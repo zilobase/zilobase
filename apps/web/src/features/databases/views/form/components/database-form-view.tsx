@@ -12,12 +12,12 @@ import {
   MoveVertical,
   Plus,
   Trash2,
-} from "@/shared/components/icons"
-import { useState, type ReactNode } from "react"
+} from "@/shared/components/icons";
+import { useState, type ReactNode } from "react";
 
-import { PageMetadata } from "../../../access/page-metadata"
-import { Button } from "@/shared/ui/button"
-import { Checkbox } from "@/shared/ui/checkbox"
+import { PageMetadata } from "../../../access/page-metadata";
+import { Button } from "@/shared/ui/button";
+import { Checkbox } from "@/shared/ui/checkbox";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -28,56 +28,54 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
-import { Input } from "@/shared/ui/input"
-import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select"
-import { Switch } from "@/shared/ui/switch"
-import { Textarea } from "@/shared/ui/textarea"
-import type { DatabaseProperty } from "@zilobase/features/databases"
+} from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Switch } from "@/shared/ui/switch";
+import { Textarea } from "@/shared/ui/textarea";
+import type { DatabaseProperty } from "@zilobase/features/databases";
 
 import {
   getDatabasePropertyCellKind,
   getDatabasePropertyType,
   getNextDatabaseOptionColor,
-} from "../../../schema/property-catalog"
-import { DatabasePropertyDate } from "../../../schema/editors/database-property-date"
-import { formatDatabaseDateValue } from "../../../schema/model/database-date-config"
-import { getColorTokenDotClassName } from "@/shared/lib/color-tokens"
-import { cn } from "@/shared/lib/utils"
+} from "../../../schema/property-catalog";
+import { DatabasePropertyDate } from "../../../schema/editors/database-property-date";
+import { formatDatabaseDateValue } from "../../../schema/model/database-date-config";
+import { getColorTokenDotClassName } from "@/shared/lib/color-tokens";
+import { cn } from "@/shared/lib/utils";
 import {
   getDatabasePropertyOrder,
   getPersonLimit,
   getViewHiddenPropertyIds,
-} from "../../model/database-view-config"
-import { useDatabaseActionsContext, useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
-import { getDatabaseFormHeaderSettings } from "../model/database-form-header-config"
+} from "../../model/database-view-config";
+import {
+  useDatabaseActionsContext,
+  useDatabaseDataContext,
+  useDatabaseUiContext,
+} from "../../state/database-view-context";
+import { getDatabaseFormHeaderSettings } from "../model/database-form-header-config";
 import {
   getDatabaseFormQuestionSettings,
   moveDatabaseFormQuestion,
   type DatabaseFormQuestionMove,
   type DatabaseFormQuestionSettings,
   type DatabaseFormQuestionSettingsPatch,
-} from "../model/database-form-question-config"
+} from "../model/database-form-question-config";
 import {
   getFormOptions,
   getFormQuestionDescription,
   isOptionProperty,
   type FormOption,
-} from "../model/database-form-options"
+} from "../model/database-form-options";
 
 type FormQuestionEntry = {
-  id: string
-  property?: DatabaseProperty
-  propertyName: string
-  type: string
-}
+  id: string;
+  property?: DatabaseProperty;
+  propertyName: string;
+  type: string;
+};
 
 export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
   const {
@@ -88,7 +86,7 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
     updateDatabaseFormQuestionSettings,
     updateDatabasePropertyConfig,
     updateNameColumnConfig,
-  } = useDatabaseActionsContext()
+  } = useDatabaseActionsContext();
   const {
     databaseId,
     databasePageId,
@@ -97,30 +95,20 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
     personOptions,
     properties,
     visibleProperties,
-  } = useDatabaseDataContext()
-  const {
-    activeView,
-    titlePropertyLabel,
-  } = useDatabaseUiContext()
-  const [previewTitle, setPreviewTitle] = useState("")
-  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
-    null,
-  )
-  const canEditQuestions = editable && !preview
-  const headerSettings = getDatabaseFormHeaderSettings(activeView?.config)
-  const hiddenPropertyIds = new Set(
-    getViewHiddenPropertyIds(activeView?.config),
-  )
+  } = useDatabaseDataContext();
+  const { activeView, titlePropertyLabel } = useDatabaseUiContext();
+  const [previewTitle, setPreviewTitle] = useState("");
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null);
+  const canEditQuestions = editable && !preview;
+  const headerSettings = getDatabaseFormHeaderSettings(activeView?.config);
+  const hiddenPropertyIds = new Set(getViewHiddenPropertyIds(activeView?.config));
   const addableProperties = properties.filter(
-    (property) =>
-      !visibleProperties.some(
-        (visibleProperty) => visibleProperty.id === property.id,
-      ),
-  )
-  const questionOrder = getDatabasePropertyOrder(activeView?.config)
+    (property) => !visibleProperties.some((visibleProperty) => visibleProperty.id === property.id),
+  );
+  const questionOrder = getDatabasePropertyOrder(activeView?.config);
   const questionOrderIndexes = new Map(
     questionOrder.map((propertyId, index) => [propertyId, index]),
-  )
+  );
   const questions: FormQuestionEntry[] = [
     ...(hiddenPropertyIds.has("name")
       ? []
@@ -141,9 +129,9 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
     (left, right) =>
       (questionOrderIndexes.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
       (questionOrderIndexes.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-  )
-  const questionIds = questions.map((question) => question.id)
-  const TitleIcon = getDatabasePropertyType("text").icon
+  );
+  const questionIds = questions.map((question) => question.id);
+  const TitleIcon = getDatabasePropertyType("text").icon;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-10 py-10 sm:py-14">
@@ -160,21 +148,13 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
         icon={headerSettings.icon}
         iconPosition={headerSettings.iconPosition}
         layoutSection="heading"
-        onCoverChange={(cover) =>
-          updateDatabaseFormHeaderSettings?.({ cover })
-        }
-        onDescriptionChange={(description) =>
-          updateDatabaseFormHeaderSettings?.({ description })
-        }
-        onIconChange={(icon) =>
-          updateDatabaseFormHeaderSettings?.({ icon })
-        }
+        onCoverChange={(cover) => updateDatabaseFormHeaderSettings?.({ cover })}
+        onDescriptionChange={(description) => updateDatabaseFormHeaderSettings?.({ description })}
+        onIconChange={(icon) => updateDatabaseFormHeaderSettings?.({ icon })}
         onIconPositionChange={(iconPosition) =>
           updateDatabaseFormHeaderSettings?.({ iconPosition })
         }
-        onTitleChange={(title) =>
-          updateDatabaseFormHeaderSettings?.({ title })
-        }
+        onTitleChange={(title) => updateDatabaseFormHeaderSettings?.({ title })}
         title={headerSettings.title}
         titlePlaceholder="Form title"
         workspaceId={databaseWorkspaceId}
@@ -187,29 +167,23 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
             activeView?.config,
             question.id,
             question.propertyName,
-          )
-          const updateQuestion = (
-            patch: DatabaseFormQuestionSettingsPatch,
-          ) => updateDatabaseFormQuestionSettings?.(question.id, patch)
-          const property = question.property
-          const TitleControl = settings.longAnswer ? Textarea : Input
+          );
+          const updateQuestion = (patch: DatabaseFormQuestionSettingsPatch) =>
+            updateDatabaseFormQuestionSettings?.(question.id, patch);
+          const property = question.property;
+          const TitleControl = settings.longAnswer ? Textarea : Input;
 
           return (
             <FormQuestion
-              defaultDescription={
-                property ? getFormQuestionDescription(property) : undefined
-              }
+              defaultDescription={property ? getFormQuestionDescription(property) : undefined}
               editable={canEditQuestions}
               footer={
                 canEditQuestions && property && isOptionProperty(property) ? (
                   <Button
                     className="relative z-10 h-7 gap-2 px-1 text-content-secondary"
                     onClick={(event) => {
-                      event.stopPropagation()
-                      void addFormPropertyOption(
-                        property,
-                        updateDatabasePropertyConfig,
-                      )
+                      event.stopPropagation();
+                      void addFormPropertyOption(property, updateDatabasePropertyConfig);
                     }}
                     type="button"
                     variant="ghost"
@@ -221,30 +195,22 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
               }
               interactive={preview}
               key={question.id}
-              onDescriptionChange={(description) =>
-                updateQuestion({ description })
-              }
+              onDescriptionChange={(description) => updateQuestion({ description })}
               onLabelChange={(label) => updateQuestion({ label })}
               onLinkedPropertyRename={(name) => {
                 if (question.id === "name") {
-                  void updateNameColumnConfig?.({ label: name })
-                  return
+                  void updateNameColumnConfig?.({ label: name });
+                  return;
                 }
 
-                renameDatabaseProperty(question.id, name)
+                renameDatabaseProperty(question.id, name);
               }}
               onMove={(destination) =>
                 saveDatabasePropertyOrder(
-                  moveDatabaseFormQuestion(
-                    questionIds,
-                    question.id,
-                    destination,
-                  ),
+                  moveDatabaseFormQuestion(questionIds, question.id, destination),
                 )
               }
-              onOpenChange={(open) =>
-                setSelectedQuestionId(open ? question.id : null)
-              }
+              onOpenChange={(open) => setSelectedQuestionId(open ? question.id : null)}
               onRemove={() => togglePropertyVisibility(question.id)}
               onUpdate={updateQuestion}
               open={selectedQuestionId === question.id}
@@ -275,7 +241,7 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
                 />
               )}
             </FormQuestion>
-          )
+          );
         })}
 
         {canEditQuestions ? (
@@ -288,17 +254,13 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
             </DropDrawerTrigger>
             <DropDrawerContent align="start" className="w-64">
               {hiddenPropertyIds.has("name") ? (
-                <DropDrawerItem
-                  onSelect={() => togglePropertyVisibility("name")}
-                >
+                <DropDrawerItem onSelect={() => togglePropertyVisibility("name")}>
                   <TitleIcon />
                   <span>{titlePropertyLabel}</span>
                 </DropDrawerItem>
               ) : null}
               {addableProperties.map((property) => {
-                const PropertyIcon = getDatabasePropertyType(
-                  property.property.type,
-                ).icon
+                const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
 
                 return (
                   <DropDrawerItem
@@ -308,10 +270,9 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
                     <PropertyIcon />
                     <span>{property.property.name}</span>
                   </DropDrawerItem>
-                )
+                );
               })}
-              {addableProperties.length === 0 &&
-              !hiddenPropertyIds.has("name") ? (
+              {addableProperties.length === 0 && !hiddenPropertyIds.has("name") ? (
                 <DropDrawerItem disabled>
                   <span>All properties are already included</span>
                 </DropDrawerItem>
@@ -327,7 +288,7 @@ export function DatabaseFormView({ preview = false }: { preview?: boolean }) {
         ) : null}
       </div>
     </div>
-  )
+  );
 }
 
 function FormQuestion({
@@ -349,23 +310,23 @@ function FormQuestion({
   settings,
   type,
 }: {
-  children: ReactNode
-  defaultDescription?: string
-  editable: boolean
-  footer?: ReactNode
-  interactive: boolean
-  onDescriptionChange: (description: string) => void
-  onLabelChange: (label: string) => void
-  onLinkedPropertyRename: (name: string) => void
-  onMove: (destination: DatabaseFormQuestionMove) => void
-  onOpenChange: (open: boolean) => void
-  onRemove: () => void
-  onUpdate: (patch: DatabaseFormQuestionSettingsPatch) => void
-  open: boolean
-  position: { first: boolean; last: boolean }
-  propertyName: string
-  settings: DatabaseFormQuestionSettings
-  type: string
+  children: ReactNode;
+  defaultDescription?: string;
+  editable: boolean;
+  footer?: ReactNode;
+  interactive: boolean;
+  onDescriptionChange: (description: string) => void;
+  onLabelChange: (label: string) => void;
+  onLinkedPropertyRename: (name: string) => void;
+  onMove: (destination: DatabaseFormQuestionMove) => void;
+  onOpenChange: (open: boolean) => void;
+  onRemove: () => void;
+  onUpdate: (patch: DatabaseFormQuestionSettingsPatch) => void;
+  open: boolean;
+  position: { first: boolean; last: boolean };
+  propertyName: string;
+  settings: DatabaseFormQuestionSettings;
+  type: string;
 }) {
   return (
     <DropDrawer open={open} onOpenChange={onOpenChange}>
@@ -387,12 +348,12 @@ function FormQuestion({
                 defaultValue={settings.label}
                 key={settings.label}
                 onBlur={(event) => {
-                  const label = event.target.value.trim()
-                  if (label && label !== settings.label) onLabelChange(label)
+                  const label = event.target.value.trim();
+                  if (label && label !== settings.label) onLabelChange(label);
                 }}
                 onClick={(event) => event.stopPropagation()}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") event.currentTarget.blur()
+                  if (event.key === "Enter") event.currentTarget.blur();
                 }}
               />
             ) : (
@@ -412,22 +373,16 @@ function FormQuestion({
                   className="relative z-10 h-auto border-0 bg-transparent p-0 text-sm text-content-secondary shadow-none focus-visible:ring-0"
                   defaultValue={settings.description}
                   key={settings.description}
-                  onBlur={(event) =>
-                    onDescriptionChange(event.target.value.trim())
-                  }
+                  onBlur={(event) => onDescriptionChange(event.target.value.trim())}
                   onClick={(event) => event.stopPropagation()}
                   placeholder="Description (optional)"
                 />
               ) : settings.description ? (
-                <p className="text-sm text-content-secondary">
-                  {settings.description}
-                </p>
+                <p className="text-sm text-content-secondary">{settings.description}</p>
               ) : null
             ) : null}
             {defaultDescription ? (
-              <p className="text-sm text-content-secondary">
-                {defaultDescription}
-              </p>
+              <p className="text-sm text-content-secondary">{defaultDescription}</p>
             ) : null}
           </div>
           {editable ? (
@@ -464,7 +419,7 @@ function FormQuestion({
         />
       ) : null}
     </DropDrawer>
-  )
+  );
 }
 
 function QuestionOptions({
@@ -477,26 +432,20 @@ function QuestionOptions({
   settings,
   type,
 }: {
-  onLinkedPropertyRename: (name: string) => void
-  onMove: (destination: DatabaseFormQuestionMove) => void
-  onRemove: () => void
-  onUpdate: (patch: DatabaseFormQuestionSettingsPatch) => void
-  position: { first: boolean; last: boolean }
-  propertyName: string
-  settings: DatabaseFormQuestionSettings
-  type: string
+  onLinkedPropertyRename: (name: string) => void;
+  onMove: (destination: DatabaseFormQuestionMove) => void;
+  onRemove: () => void;
+  onUpdate: (patch: DatabaseFormQuestionSettingsPatch) => void;
+  position: { first: boolean; last: boolean };
+  propertyName: string;
+  settings: DatabaseFormQuestionSettings;
+  type: string;
 }) {
-  const isTitle = type === "title"
-  const propertyType = getDatabasePropertyType(isTitle ? "text" : type)
-  const PropertyIcon = propertyType.icon
-  const typeLabel = isTitle ? "Title" : propertyType.label
-  const acceptsAnswers = ![
-    "created_time",
-    "edited_time",
-    "formula",
-    "id",
-    "rollup",
-  ].includes(type)
+  const isTitle = type === "title";
+  const propertyType = getDatabasePropertyType(isTitle ? "text" : type);
+  const PropertyIcon = propertyType.icon;
+  const typeLabel = isTitle ? "Title" : propertyType.label;
+  const acceptsAnswers = !["created_time", "edited_time", "formula", "id", "rollup"].includes(type);
 
   return (
     <DropDrawerContent
@@ -520,9 +469,7 @@ function QuestionOptions({
         checked={settings.descriptionEnabled}
         icon={<AlignLeft />}
         label="Description"
-        onCheckedChange={(descriptionEnabled) =>
-          onUpdate({ descriptionEnabled })
-        }
+        onCheckedChange={(descriptionEnabled) => onUpdate({ descriptionEnabled })}
       />
       {isTitle || type === "text" ? (
         <QuestionOptionSwitch
@@ -552,11 +499,11 @@ function QuestionOptions({
               defaultValue={propertyName}
               key={propertyName}
               onBlur={(event) => {
-                const name = event.target.value.trim()
-                if (name && name !== propertyName) onLinkedPropertyRename(name)
+                const name = event.target.value.trim();
+                if (name && name !== propertyName) onLinkedPropertyRename(name);
               }}
               onKeyDown={(event) => {
-                if (event.key === "Enter") event.currentTarget.blur()
+                if (event.key === "Enter") event.currentTarget.blur();
               }}
             />
           </div>
@@ -618,7 +565,7 @@ function QuestionOptions({
         <span>Delete question</span>
       </DropDrawerItem>
     </DropDrawerContent>
-  )
+  );
 }
 
 function QuestionOptionSwitch({
@@ -627,16 +574,16 @@ function QuestionOptionSwitch({
   label,
   onCheckedChange,
 }: {
-  checked: boolean
-  icon: ReactNode
-  label: string
-  onCheckedChange: (checked: boolean) => void
+  checked: boolean;
+  icon: ReactNode;
+  label: string;
+  onCheckedChange: (checked: boolean) => void;
 }) {
   return (
     <DropDrawerItem
       onSelect={(event) => {
-        event.preventDefault()
-        onCheckedChange(!checked)
+        event.preventDefault();
+        onCheckedChange(!checked);
       }}
     >
       {icon}
@@ -649,7 +596,7 @@ function QuestionOptionSwitch({
         size="sm"
       />
     </DropDrawerItem>
-  )
+  );
 }
 
 function DatabaseFormPropertyControl({
@@ -659,25 +606,21 @@ function DatabaseFormPropertyControl({
   property,
   required,
 }: {
-  interactive: boolean
-  longAnswer: boolean
-  personOptions: Array<{ id: string; name: string; suffix?: string }>
-  property: DatabaseProperty
-  required: boolean
+  interactive: boolean;
+  longAnswer: boolean;
+  personOptions: Array<{ id: string; name: string; suffix?: string }>;
+  property: DatabaseProperty;
+  required: boolean;
 }) {
-  const pageProperty = property.property
-  const cellKind = getDatabasePropertyCellKind(pageProperty.type)
-  const [value, setValue] = useState("")
-  const [dateValue, setDateValue] = useState<string | string[]>("")
-  const [selectedValues, setSelectedValues] = useState<string[]>([])
-  const options = getFormOptions(
-    pageProperty.type,
-    pageProperty.config,
-    personOptions,
-  )
+  const pageProperty = property.property;
+  const cellKind = getDatabasePropertyCellKind(pageProperty.type);
+  const [value, setValue] = useState("");
+  const [dateValue, setDateValue] = useState<string | string[]>("");
+  const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const options = getFormOptions(pageProperty.type, pageProperty.config, personOptions);
   const isMultipleChoice =
     pageProperty.type === "multi_select" ||
-    (cellKind === "person" && getPersonLimit(pageProperty.config) !== "one_person")
+    (cellKind === "person" && getPersonLimit(pageProperty.config) !== "one_person");
 
   if (cellKind === "person") {
     return (
@@ -687,9 +630,7 @@ function DatabaseFormPropertyControl({
           aria-required={required}
           className="w-full"
         >
-          <SelectValue
-            placeholder={interactive ? "Your answer" : "Respondent's answer"}
-          />
+          <SelectValue placeholder={interactive ? "Your answer" : "Respondent's answer"} />
         </SelectTrigger>
         <SelectContent align="start">
           {personOptions.map((person) => (
@@ -705,14 +646,11 @@ function DatabaseFormPropertyControl({
           ) : null}
         </SelectContent>
       </Select>
-    )
+    );
   }
 
   if (cellKind === "date") {
-    const displayValue = formatDatabaseDateValue(
-      dateValue,
-      pageProperty.config,
-    )
+    const displayValue = formatDatabaseDateValue(dateValue, pageProperty.config);
 
     return (
       <DatabasePropertyDate
@@ -728,37 +666,31 @@ function DatabaseFormPropertyControl({
             variant="outline"
           >
             <span className={cn(!displayValue && "text-content-secondary")}>
-              {displayValue ||
-                (interactive ? "Your answer" : "Respondent's answer")}
+              {displayValue || (interactive ? "Your answer" : "Respondent's answer")}
             </span>
             <CalendarIcon className="text-content-secondary" />
           </Button>
         }
         value={dateValue}
       />
-    )
+    );
   }
 
   if (cellKind === "select") {
     if (options.length === 0) {
       return (
-        <p className="text-sm text-content-secondary">
-          No options configured for this property.
-        </p>
-      )
+        <p className="text-sm text-content-secondary">No options configured for this property.</p>
+      );
     }
 
     if (isMultipleChoice) {
       return (
         <div aria-required={required} className="grid gap-3">
           {options.map((option) => {
-            const checked = selectedValues.includes(option.id)
+            const checked = selectedValues.includes(option.id);
 
             return (
-              <label
-                className="flex cursor-pointer items-center gap-3 text-sm"
-                key={option.id}
-              >
+              <label className="flex cursor-pointer items-center gap-3 text-sm" key={option.id}>
                 <Checkbox
                   aria-label={option.name}
                   checked={checked}
@@ -772,29 +704,22 @@ function DatabaseFormPropertyControl({
                 />
                 <FormOptionLabel option={option} />
               </label>
-            )
+            );
           })}
         </div>
-      )
+      );
     }
 
     return (
-      <RadioGroup
-        aria-required={required}
-        onValueChange={setValue}
-        value={value}
-      >
+      <RadioGroup aria-required={required} onValueChange={setValue} value={value}>
         {options.map((option) => (
-          <label
-            className="flex cursor-pointer items-center gap-3 text-sm"
-            key={option.id}
-          >
+          <label className="flex cursor-pointer items-center gap-3 text-sm" key={option.id}>
             <RadioGroupItem aria-label={option.name} value={option.id} />
             <FormOptionLabel option={option} />
           </label>
         ))}
       </RadioGroup>
-    )
+    );
   }
 
   if (cellKind === "checkbox") {
@@ -807,7 +732,7 @@ function DatabaseFormPropertyControl({
         />
         <span>Yes</span>
       </label>
-    )
+    );
   }
 
   if (cellKind === "button") {
@@ -815,25 +740,19 @@ function DatabaseFormPropertyControl({
       <Button onClick={() => {}} type="button" variant="outline">
         {pageProperty.name}
       </Button>
-    )
+    );
   }
 
   if (cellKind === "files") {
-    return (
-      <Input
-        aria-label={`${pageProperty.name} answer`}
-        required={required}
-        type="file"
-      />
-    )
+    return <Input aria-label={`${pageProperty.name} answer`} required={required} type="file" />;
   }
 
   if (cellKind === "formula" || cellKind === "rollup") {
-    return <Input placeholder="Calculated automatically" readOnly />
+    return <Input placeholder="Calculated automatically" readOnly />;
   }
 
   if (cellKind === "read_only_time" || pageProperty.type === "id") {
-    return <Input placeholder="Generated automatically" readOnly />
+    return <Input placeholder="Generated automatically" readOnly />;
   }
 
   if (cellKind === "relation") {
@@ -846,7 +765,7 @@ function DatabaseFormPropertyControl({
       >
         Select a page...
       </Button>
-    )
+    );
   }
 
   const inputType =
@@ -856,9 +775,9 @@ function DatabaseFormPropertyControl({
         ? "email"
         : pageProperty.type === "phone"
           ? "tel"
-        : pageProperty.type === "url"
-          ? "url"
-          : "text"
+          : pageProperty.type === "url"
+            ? "url"
+            : "text";
 
   if (longAnswer && pageProperty.type === "text") {
     return (
@@ -868,7 +787,7 @@ function DatabaseFormPropertyControl({
         required={required}
         value={value}
       />
-    )
+    );
   }
 
   return (
@@ -879,49 +798,37 @@ function DatabaseFormPropertyControl({
       type={inputType}
       value={value}
     />
-  )
+  );
 }
 
 function FormOptionLabel({ option }: { option: FormOption }) {
   return (
     <span className="flex min-w-0 items-center gap-2">
       {option.color ? (
-        <span
-          aria-hidden
-          className={getColorTokenDotClassName(option.color)}
-        />
+        <span aria-hidden className={getColorTokenDotClassName(option.color)} />
       ) : null}
       <span>{option.name}</span>
-      {option.suffix ? (
-        <span className="text-content-secondary">{option.suffix}</span>
-      ) : null}
+      {option.suffix ? <span className="text-content-secondary">{option.suffix}</span> : null}
     </span>
-  )
+  );
 }
 
 async function addFormPropertyOption(
   property: DatabaseProperty,
-  updateDatabasePropertyConfig: (
-    databasePropertyId: string,
-    config: unknown,
-  ) => Promise<unknown>,
+  updateDatabasePropertyConfig: (databasePropertyId: string, config: unknown) => Promise<unknown>,
 ) {
-  const optionName = window.prompt("Option name")?.trim()
+  const optionName = window.prompt("Option name")?.trim();
 
-  if (!optionName) return
+  if (!optionName) return;
 
-  const options = getFormOptions(
-    property.property.type,
-    property.property.config,
-    [],
-  )
+  const options = getFormOptions(property.property.type, property.property.config, []);
 
-  if (options.some((option) => option.name === optionName)) return
+  if (options.some((option) => option.name === optionName)) return;
 
   const optionId =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
-      : `option-${Date.now()}`
+      : `option-${Date.now()}`;
 
   await updateDatabasePropertyConfig(property.id, {
     options: [
@@ -932,5 +839,5 @@ async function addFormPropertyOption(
         name: optionName,
       },
     ],
-  })
+  });
 }

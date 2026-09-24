@@ -5,8 +5,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { coreDir, generatedEnvironmentFiles, localProfiles } from "./config.mjs";
-import { DEFAULT_DASHBOARD_PORT, developmentDashboardModel, startDevelopmentDashboard } from "./dashboard.mjs";
-import { ensureDevelopmentEnvironment, loadGeneratedEnvironment, loadProfileEnvironment } from "./env.mjs";
+import {
+  DEFAULT_DASHBOARD_PORT,
+  developmentDashboardModel,
+  startDevelopmentDashboard,
+} from "./dashboard.mjs";
+import {
+  ensureDevelopmentEnvironment,
+  loadGeneratedEnvironment,
+  loadProfileEnvironment,
+} from "./env.mjs";
 import { effectiveProfile } from "./local.mjs";
 import { assertPortsAvailable } from "./process.mjs";
 import {
@@ -41,7 +49,9 @@ export async function startDevelopmentWorkspace() {
         try {
           await stopDevelopmentProvider(provider);
         } catch (error) {
-          console.warn(`Unable to stop development provider ${provider.id}: ${error instanceof Error ? error.message : String(error)}`);
+          console.warn(
+            `Unable to stop development provider ${provider.id}: ${error instanceof Error ? error.message : String(error)}`,
+          );
         }
       }
     })();
@@ -54,20 +64,27 @@ export async function startDevelopmentWorkspace() {
 
   try {
     console.info("Starting Community self-hosted development runtime...");
-    const coreChild = spawn(process.execPath, [path.join(coreDir, "scripts/dev/cli.mjs"), "local"], {
-      cwd: coreDir,
-      env: process.env,
-      stdio: "inherit",
-    });
+    const coreChild = spawn(
+      process.execPath,
+      [path.join(coreDir, "scripts/dev/cli.mjs"), "local"],
+      {
+        cwd: coreDir,
+        env: process.env,
+        stdio: "inherit",
+      },
+    );
     coreChild.zilobaseServiceName = "community";
     children.push(coreChild);
-    await waitForDevelopmentProvider({
-      id: "community",
-      readiness: [
-        `http://127.0.0.1:${nodeProfile.apiPort}/ready`,
-        `http://127.0.0.1:${nodeProfile.appPort}`,
-      ],
-    }, coreChild);
+    await waitForDevelopmentProvider(
+      {
+        id: "community",
+        readiness: [
+          `http://127.0.0.1:${nodeProfile.apiPort}/ready`,
+          `http://127.0.0.1:${nodeProfile.appPort}`,
+        ],
+      },
+      coreChild,
+    );
 
     for (const provider of providers) {
       if (stopping) break;
@@ -83,35 +100,43 @@ export async function startDevelopmentWorkspace() {
     }
     if (stopping) return;
 
-    const providerModels = await Promise.all(startedProviders.map((provider) => describeDevelopmentProvider(provider)));
+    const providerModels = await Promise.all(
+      startedProviders.map((provider) => describeDevelopmentProvider(provider)),
+    );
     const dependencies = await loadGeneratedEnvironment(generatedEnvironmentFiles.dependencies);
     dashboard = await startDevelopmentDashboard({
       model: developmentDashboardModel({
-        credentials: [{
-          description: "Initial setup credential for the Community self-hosted runtime.",
-          fields: [["Bootstrap token", nodeEnvironment.ZILOBASE_BOOTSTRAP_TOKEN]],
-          name: "Community setup",
-        }, {
-          description: "Local infrastructure credentials shared by development runtimes.",
-          fields: [
-            ["Postgres user", dependencies.POSTGRES_USER],
-            ["Postgres password", dependencies.POSTGRES_PASSWORD],
-            ["MinIO user", dependencies.MINIO_ROOT_USER],
-            ["MinIO password", dependencies.MINIO_ROOT_PASSWORD],
-          ],
-          name: "Infrastructure",
-        }],
+        credentials: [
+          {
+            description: "Initial setup credential for the Community self-hosted runtime.",
+            fields: [["Bootstrap token", nodeEnvironment.ZILOBASE_BOOTSTRAP_TOKEN]],
+            name: "Community setup",
+          },
+          {
+            description: "Local infrastructure credentials shared by development runtimes.",
+            fields: [
+              ["Postgres user", dependencies.POSTGRES_USER],
+              ["Postgres password", dependencies.POSTGRES_PASSWORD],
+              ["MinIO user", dependencies.MINIO_ROOT_USER],
+              ["MinIO password", dependencies.MINIO_ROOT_PASSWORD],
+            ],
+            name: "Infrastructure",
+          },
+        ],
         profiles: { node: nodeProfile },
         providerModels,
-        services: [{
-          detail: "Mailpit inbox for application OTPs",
-          name: "Development email",
-          url: `http://127.0.0.1:${dependencies.MAILPIT_UI_PORT}`,
-        }, {
-          detail: "MinIO object storage console",
-          name: "Object storage",
-          url: `http://127.0.0.1:${dependencies.MINIO_CONSOLE_PORT}`,
-        }],
+        services: [
+          {
+            detail: "Mailpit inbox for application OTPs",
+            name: "Development email",
+            url: `http://127.0.0.1:${dependencies.MAILPIT_UI_PORT}`,
+          },
+          {
+            detail: "MinIO object storage console",
+            name: "Object storage",
+            url: `http://127.0.0.1:${dependencies.MINIO_CONSOLE_PORT}`,
+          },
+        ],
       }),
       open: process.env.ZILOBASE_DEV_DASHBOARD_OPEN !== "false",
     });
@@ -132,7 +157,9 @@ export async function startDevelopmentWorkspace() {
         throw new Error(`${name} exited with ${detail}.`);
       }
       restarts.set(name, attempts + 1);
-      console.warn(`${name} exited with ${result.signal ?? result.code}. Restarting (${attempts + 1}/3).`);
+      console.warn(
+        `${name} exited with ${result.signal ?? result.code}. Restarting (${attempts + 1}/3).`,
+      );
       const index = children.indexOf(result.child);
       if (index >= 0) children.splice(index, 1);
       const replacement = startDevelopmentProvider(
@@ -169,18 +196,26 @@ export async function launchDevelopmentWorkspace() {
   });
   for (const [signal, handler] of signalHandlers) process.off(signal, handler);
   if (result.error) throw result.error;
-  if (result.code !== 0) throw new Error(`Development workspace exited with ${result.signal ?? result.code}.`);
+  if (result.code !== 0)
+    throw new Error(`Development workspace exited with ${result.signal ?? result.code}.`);
 }
 
 function firstExit(children) {
-  return Promise.race(children.map((child) => new Promise((resolve) => {
-    child.once("error", (error) => resolve({ child, error }));
-    child.once("exit", (code, signal) => resolve({ child, code, signal }));
-  })));
+  return Promise.race(
+    children.map(
+      (child) =>
+        new Promise((resolve) => {
+          child.once("error", (error) => resolve({ child, error }));
+          child.once("exit", (code, signal) => resolve({ child, code, signal }));
+        }),
+    ),
+  );
 }
 
 function isMain() {
-  return Boolean(process.argv[1]) && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  return (
+    Boolean(process.argv[1]) && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+  );
 }
 
 if (isMain()) {

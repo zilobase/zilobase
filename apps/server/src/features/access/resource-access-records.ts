@@ -32,21 +32,25 @@ export async function loadStandaloneDatabaseForPage(pageId: string, workspaceId:
 }
 
 export async function loadActivePageInWorkspace(pageId: string, workspaceId: string) {
-  const [record] = await db.select({ id: page.id }).from(page).where(and(
-      eq(page.id, pageId),
-      eq(page.workspaceId, workspaceId),
-      isNull(page.deletedAt),
-    )).limit(1);
+  const [record] = await db
+    .select({ id: page.id })
+    .from(page)
+    .where(and(eq(page.id, pageId), eq(page.workspaceId, workspaceId), isNull(page.deletedAt)))
+    .limit(1);
   return record;
 }
 
 export async function loadActiveDatabaseContainer(databaseId: string, workspaceId: string) {
-  const [record] = await db.select({ pageId: database.pageId })
+  const [record] = await db
+    .select({ pageId: database.pageId })
     .from(database)
-    .where(and(
-      eq(database.id, databaseId),
-      eq(database.workspaceId, workspaceId),
-      isNull(database.deletedAt),
-    )).limit(1);
+    .where(
+      and(
+        eq(database.id, databaseId),
+        eq(database.workspaceId, workspaceId),
+        isNull(database.deletedAt),
+      ),
+    )
+    .limit(1);
   return record;
 }

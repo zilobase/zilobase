@@ -15,9 +15,7 @@ vi.mock("../access", async (original) => ({
     state.calls.push("page");
     return state.record;
   },
-  rejectActiveWorkspaceMismatch: async (
-    c: import("hono").Context<AppBindings>,
-  ) => {
+  rejectActiveWorkspaceMismatch: async (c: import("hono").Context<AppBindings>) => {
     state.calls.push("workspace");
     return state.mismatch ? c.json({ error: "workspace mismatch" }, 409) : null;
   },
@@ -91,7 +89,6 @@ test("page routes preserve identity, existence, permission and workspace-check o
   assert.deepEqual(state.calls, ["page", "access", "workspace", "payload"]);
 });
 
-
 test("OAuth page routes bind IDs, list queries and creation bodies to the granted workspace", async () => {
   const oauth = new Hono<AppBindings>();
   oauth.use("*", async (c, next) => {
@@ -109,10 +106,16 @@ test("OAuth page routes bind IDs, list queries and creation bodies to the grante
     assert.equal((await oauth.request(path)).status, 403);
   }
   assert.equal((await oauth.request("/pages?workspaceId=other")).status, 403);
-  assert.equal((await oauth.request("/pages", {
-    method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ workspaceId: "other" }),
-  })).status, 403);
+  assert.equal(
+    (
+      await oauth.request("/pages", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: "other" }),
+      })
+    ).status,
+    403,
+  );
   state.record.workspaceId = "granted";
   state.access = "none";
   assert.equal((await oauth.request("/pages/page/properties")).status, 403);

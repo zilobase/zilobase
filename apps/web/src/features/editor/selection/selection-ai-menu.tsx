@@ -1,108 +1,94 @@
-import type { Editor, Range } from "@tiptap/core"
-import { Loader2, Sparkles } from "@/shared/components/icons"
-import * as React from "react"
-import { toast } from "sonner"
+import type { Editor, Range } from "@tiptap/core";
+import { Loader2, Sparkles } from "@/shared/components/icons";
+import * as React from "react";
+import { toast } from "sonner";
 
-import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import {
   normalizeSelectionReplacementMarkdown,
   nextPaint,
   readStreamError,
-} from "../commands/editor-ai-utils"
-import { getApiRequestHeaders, toApiUrl } from "@/platform/network/api"
-import { desktopNetworkFetch } from "@/platform/network/index"
-import { cn } from "@/shared/lib/utils"
-import type { SelectionAiDiffPreview } from "../core/types"
+} from "../commands/editor-ai-utils";
+import { getApiRequestHeaders, toApiUrl } from "@/platform/network/api";
+import { desktopNetworkFetch } from "@/platform/network/index";
+import { cn } from "@/shared/lib/utils";
+import type { SelectionAiDiffPreview } from "../core/types";
 import { useZilobaseAiPages } from "@zilobase/features/pages/react";
 
 type SelectionAiMenuProps = {
-  editor: Editor
-  onPreviewChange: (preview: SelectionAiDiffPreview | null) => void
-  workspaceId?: string | null
-}
+  editor: Editor;
+  onPreviewChange: (preview: SelectionAiDiffPreview | null) => void;
+  workspaceId?: string | null;
+};
 
-export function SelectionAiMenu({
-  editor,
-  onPreviewChange,
-  workspaceId,
-}: SelectionAiMenuProps) {
-  const { data: aiPages = [], isLoading } =
-    useZilobaseAiPages(workspaceId)
+export function SelectionAiMenu({ editor, onPreviewChange, workspaceId }: SelectionAiMenuProps) {
+  const { data: aiPages = [], isLoading } = useZilobaseAiPages(workspaceId);
   const skills = React.useMemo(
-    () =>
-      aiPages.filter(
-        (page) => page.metadata.zilobaseai === "skill",
-      ),
+    () => aiPages.filter((page) => page.metadata.zilobaseai === "skill"),
     [aiPages],
-  )
-  const [isOpen, setIsOpen] = React.useState(false)
-  const [isStreaming, setIsStreaming] = React.useState(false)
-  const [prompt, setPrompt] = React.useState("")
-  const [selectedSkillId, setSelectedSkillId] = React.useState<string | null>(
-    null,
-  )
-  const abortControllerRef = React.useRef<AbortController | null>(null)
-  const latestMarkdownRef = React.useRef("")
-  const selectedRangeRef = React.useRef<Range | null>(null)
-  const selectedTextRef = React.useRef("")
+  );
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [isStreaming, setIsStreaming] = React.useState(false);
+  const [prompt, setPrompt] = React.useState("");
+  const [selectedSkillId, setSelectedSkillId] = React.useState<string | null>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+  const latestMarkdownRef = React.useRef("");
+  const selectedRangeRef = React.useRef<Range | null>(null);
+  const selectedTextRef = React.useRef("");
 
   React.useEffect(() => {
     return () => {
-      abortControllerRef.current?.abort()
-    }
-  }, [])
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   const selectedSkill = React.useMemo(
     () => skills.find((skill) => skill.id === selectedSkillId) ?? null,
     [selectedSkillId, skills],
-  )
+  );
 
   const captureSelection = () => {
-    const { from, to } = editor.state.selection
+    const { from, to } = editor.state.selection;
 
     if (from === to) {
-      selectedRangeRef.current = null
-      selectedTextRef.current = ""
-      return
+      selectedRangeRef.current = null;
+      selectedTextRef.current = "";
+      return;
     }
 
-    selectedRangeRef.current = { from, to }
-    selectedTextRef.current = editor.state.doc.textBetween(from, to, "\n\n", "\n")
-  }
+    selectedRangeRef.current = { from, to };
+    selectedTextRef.current = editor.state.doc.textBetween(from, to, "\n\n", "\n");
+  };
 
   const submitPrompt = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+    event.preventDefault();
 
-    const trimmedPrompt = prompt.trim()
-    const selectedRange = selectedRangeRef.current
+    const trimmedPrompt = prompt.trim();
+    const selectedRange = selectedRangeRef.current;
 
     if (!trimmedPrompt || !selectedRange || isStreaming) {
-      return
+      return;
     }
 
-    setIsStreaming(true)
-    latestMarkdownRef.current = ""
-    abortControllerRef.current = new AbortController()
+    setIsStreaming(true);
+    latestMarkdownRef.current = "";
+    abortControllerRef.current = new AbortController();
     onPreviewChange({
       from: selectedRange.from,
       generatedMarkdown: "",
       isStreaming: true,
       to: selectedRange.to,
-    })
+    });
 
     try {
       const headers = getApiRequestHeaders({
         "content-type": "application/json",
-      })
+      });
 
       if (workspaceId) {
-        headers.set("x-zilobase-workspace-id", workspaceId)
+        headers.set("x-zilobase-workspace-id", workspaceId);
       }
 
       const response = await desktopNetworkFetch(toApiUrl("/api/ai/editor"), {
@@ -115,83 +101,81 @@ export function SelectionAiMenu({
         headers,
         method: "POST",
         signal: abortControllerRef.current.signal,
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(await readStreamError(response))
+        throw new Error(await readStreamError(response));
       }
 
       if (!response.body) {
-        throw new Error("The AI response did not include a stream.")
+        throw new Error("The AI response did not include a stream.");
       }
 
-      setIsOpen(false)
+      setIsOpen(false);
 
-      const reader = response.body.getReader()
-      const decoder = new TextDecoder()
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
       const updatePreview = (isStreamingPreview: boolean) => {
         const generatedMarkdown = isStreamingPreview
           ? latestMarkdownRef.current
-          : normalizeSelectionReplacementMarkdown(latestMarkdownRef.current)
+          : normalizeSelectionReplacementMarkdown(latestMarkdownRef.current);
 
         onPreviewChange({
           from: selectedRange.from,
           generatedMarkdown,
           isStreaming: isStreamingPreview,
           to: selectedRange.to,
-        })
-      }
+        });
+      };
 
       while (true) {
-        const { done, value } = await reader.read()
+        const { done, value } = await reader.read();
 
         if (done) {
-          break
+          break;
         }
 
-        latestMarkdownRef.current += decoder.decode(value, { stream: true })
-        updatePreview(true)
-        await nextPaint()
+        latestMarkdownRef.current += decoder.decode(value, { stream: true });
+        updatePreview(true);
+        await nextPaint();
       }
 
-      const flushed = decoder.decode()
+      const flushed = decoder.decode();
 
       if (flushed) {
-        latestMarkdownRef.current += flushed
-        updatePreview(true)
-        await nextPaint()
+        latestMarkdownRef.current += flushed;
+        updatePreview(true);
+        await nextPaint();
       }
 
-      updatePreview(false)
-      editor.chain().focus().setTextSelection(selectedRange).run()
-      setPrompt("")
+      updatePreview(false);
+      editor.chain().focus().setTextSelection(selectedRange).run();
+      setPrompt("");
     } catch (streamError) {
       if (streamError instanceof DOMException && streamError.name === "AbortError") {
-        return
+        return;
       }
 
       const message =
-        streamError instanceof Error
-          ? streamError.message
-          : "AI generation failed. Try again."
+        streamError instanceof Error ? streamError.message : "AI generation failed. Try again.";
 
-      toast.error("Selection AI failed", { description: message })
-      onPreviewChange(null)
+      toast.error("Selection AI failed", { description: message });
+      onPreviewChange(null);
     } finally {
-      setIsStreaming(false)
-      abortControllerRef.current = null
+      setIsStreaming(false);
+      abortControllerRef.current = null;
     }
-  }
+  };
 
   return (
     <Popover
       open={isOpen}
       onOpenChange={(nextOpen) => {
         if (nextOpen) {
-          captureSelection()
+          captureSelection();
         }
 
-        setIsOpen(nextOpen)
+        setIsOpen(nextOpen);
       }}
     >
       <PopoverTrigger asChild>
@@ -216,10 +200,7 @@ export function SelectionAiMenu({
       >
         <div className="selection-ai-skills" role="listbox">
           <button
-            className={cn(
-              "selection-ai-skill",
-              !selectedSkillId && "selection-ai-skill-active",
-            )}
+            className={cn("selection-ai-skill", !selectedSkillId && "selection-ai-skill-active")}
             onClick={() => setSelectedSkillId(null)}
             type="button"
           >
@@ -237,9 +218,7 @@ export function SelectionAiMenu({
               type="button"
             >
               {skill.metadata.emoji ? (
-                <span className="selection-ai-skill-emoji">
-                  {skill.metadata.emoji}
-                </span>
+                <span className="selection-ai-skill-emoji">{skill.metadata.emoji}</span>
               ) : null}
               <span className="truncate">{skill.name || "Untitled skill"}</span>
             </button>
@@ -265,5 +244,5 @@ export function SelectionAiMenu({
         </form>
       </PopoverContent>
     </Popover>
-  )
+  );
 }

@@ -49,8 +49,7 @@ const statusOptionAliases: Record<string, string> = {
   todo: "not-started",
 };
 
-const normalizeOptionKey = (value: string) =>
-  value.trim().toLowerCase().replace(/[_-]+/g, " ");
+const normalizeOptionKey = (value: string) => value.trim().toLowerCase().replace(/[_-]+/g, " ");
 
 const getNextSelectOptionColor = (index: number) =>
   selectOptionColors[index % selectOptionColors.length]!;
@@ -65,8 +64,7 @@ const resolveDefaultStatusOption = (
   }
 
   const aliasId =
-    statusOptionAliases[normalizeOptionKey(id)] ??
-    statusOptionAliases[normalizeOptionKey(name)];
+    statusOptionAliases[normalizeOptionKey(id)] ?? statusOptionAliases[normalizeOptionKey(name)];
 
   if (aliasId) {
     return defaultStatusOptions.find((option) => option.id === aliasId) ?? null;
@@ -121,10 +119,7 @@ const normalizeSelectOption = (
         typeof raw.color === "string" && raw.color.trim()
           ? raw.color.trim()
           : getNextSelectOptionColor(index),
-      group:
-        typeof raw.group === "string" && raw.group.trim()
-          ? raw.group.trim()
-          : "To-do",
+      group: typeof raw.group === "string" && raw.group.trim() ? raw.group.trim() : "To-do",
     };
   }
 
@@ -147,9 +142,7 @@ export function normalizePropertyConfig(type: string, config: unknown) {
 
   if (normalizedType === "status") {
     const baseConfig =
-      config && typeof config === "object"
-        ? { ...(config as Record<string, unknown>) }
-        : {};
+      config && typeof config === "object" ? { ...(config as Record<string, unknown>) } : {};
     const rawOptions = baseConfig.options;
 
     if (!Array.isArray(rawOptions) || rawOptions.length === 0) {
@@ -185,9 +178,7 @@ export function normalizePropertyConfig(type: string, config: unknown) {
     Array.isArray((config as { options?: unknown }).options)
   ) {
     const options = (config as { options: unknown[] }).options
-      .map((option, index) =>
-        normalizeSelectOption(option, index, normalizedType),
-      )
+      .map((option, index) => normalizeSelectOption(option, index, normalizedType))
       .filter((option): option is PropertySelectOption => option !== null);
 
     return {
@@ -256,9 +247,7 @@ export function getStatusDefaultValue(config: unknown) {
       : defaultStatusOptions[0]?.id;
 
   if (typeof defaultOptionId === "string") {
-    const defaultOption = options.find(
-      (option) => option.id === defaultOptionId,
-    );
+    const defaultOption = options.find((option) => option.id === defaultOptionId);
     if (defaultOption) {
       return defaultOption.name;
     }
@@ -290,11 +279,7 @@ function readSelectOptionNames(config: unknown): Set<string> {
   );
 }
 
-export function validateCellValue(
-  propertyType: string,
-  config: unknown,
-  value: unknown,
-) {
+export function validateCellValue(propertyType: string, config: unknown, value: unknown) {
   const normalizedType = normalizeDatabasePropertyType(propertyType, "");
 
   if (!normalizedType) {

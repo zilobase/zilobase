@@ -34,15 +34,15 @@ class CookieJar {
   private cookies = new Map<string, string>();
 
   header() {
-    return [...this.cookies.entries()]
-      .map(([name, value]) => `${name}=${value}`)
-      .join("; ");
+    return [...this.cookies.entries()].map(([name, value]) => `${name}=${value}`).join("; ");
   }
 
   store(headers: Headers) {
-    const getSetCookie = (headers as Headers & {
-      getSetCookie?: () => string[];
-    }).getSetCookie;
+    const getSetCookie = (
+      headers as Headers & {
+        getSetCookie?: () => string[];
+      }
+    ).getSetCookie;
     const values = getSetCookie?.call(headers) ?? splitSetCookie(headers.get("set-cookie"));
 
     for (const value of values) {
@@ -111,9 +111,7 @@ async function authRequest<T>(
   const data = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
-    throw new Error(
-      `${options.method ?? "GET"} ${path} failed (${response.status}): ${text}`,
-    );
+    throw new Error(`${options.method ?? "GET"} ${path} failed (${response.status}): ${text}`);
   }
 
   return {
@@ -141,10 +139,7 @@ function getLocalAuthRequest(path: string, body: string | null | undefined) {
 
   const nextBody = { ...parsed } as Record<string, unknown>;
 
-  if (
-    typeof nextBody.workspaceId === "string" &&
-    typeof nextBody.organizationId !== "string"
-  ) {
+  if (typeof nextBody.workspaceId === "string" && typeof nextBody.organizationId !== "string") {
     nextBody.organizationId = nextBody.workspaceId;
     delete nextBody.workspaceId;
   }
@@ -265,9 +260,7 @@ async function main() {
 
   console.info(`Second workspace created: ${secondOrg.data.id}`);
 
-  const workspaces = await authRequest<
-    Array<{ id: string; name: string; slug: string }>
-  >(
+  const workspaces = await authRequest<Array<{ id: string; name: string; slug: string }>>(
     "/workspace/list",
     {
       method: "GET",
@@ -276,9 +269,7 @@ async function main() {
   );
 
   if (workspaces.data.length < 2) {
-    throw new Error(
-      `Expected at least 2 workspaces, got ${workspaces.data.length}`,
-    );
+    throw new Error(`Expected at least 2 workspaces, got ${workspaces.data.length}`);
   }
 
   await jsonRequest(

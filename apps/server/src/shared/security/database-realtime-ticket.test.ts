@@ -18,11 +18,7 @@ async function signRawClaims(value: unknown, secret: string) {
     false,
     ["sign"],
   );
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(encoded),
-  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(encoded));
   return `${encoded}.${Buffer.from(signature).toString("base64url")}`;
 }
 
@@ -132,10 +128,7 @@ test("database realtime tickets validate shape, expiry, and configuration", asyn
     /Expired database realtime ticket/,
   );
   await assert.rejects(
-    verifyDatabaseRealtimeTicket(
-      await signRawClaims(null, env.COLLABORATION_SECRET),
-      env,
-    ),
+    verifyDatabaseRealtimeTicket(await signRawClaims(null, env.COLLABORATION_SECRET), env),
     /Expired database realtime ticket/,
   );
 

@@ -1,11 +1,7 @@
 import { and, count, eq, inArray, notInArray, sql } from "drizzle-orm";
 
 import type { Database } from "../infrastructure/database";
-import {
-  instanceSettings,
-  member,
-  user,
-} from "../infrastructure/database/schema";
+import { instanceSettings, member, user } from "../infrastructure/database/schema";
 
 /**
  * The database value is intentionally opaque to external editions. Core owns
@@ -35,10 +31,7 @@ export type EditionPersistencePort = {
     database: EditionDatabase,
     normalizedEmail: string,
   ): Promise<Array<{ emailVerified: boolean; id: string }>>;
-  hasEnabledMembershipTrigger(
-    database: EditionDatabase,
-    triggerName: string,
-  ): Promise<boolean>;
+  hasEnabledMembershipTrigger(database: EditionDatabase, triggerName: string): Promise<boolean>;
   readInstance(database: EditionDatabase): Promise<EditionInstance | null>;
   readWorkspaceMembership(
     database: EditionDatabase,
@@ -76,7 +69,7 @@ export const editionPersistencePort: EditionPersistencePort = {
 
   async hasEnabledMembershipTrigger(database, triggerName) {
     const coreDatabase = database as Database;
-    const result = await coreDatabase.execute(sql`
+    const result = (await coreDatabase.execute(sql`
       select exists (
         select 1
         from pg_trigger
@@ -85,7 +78,7 @@ export const editionPersistencePort: EditionPersistencePort = {
           and not tgisinternal
           and tgenabled <> 'D'
       ) as available
-    `) as unknown as { rows: Array<{ available: boolean }> };
+    `)) as unknown as { rows: Array<{ available: boolean }> };
     return result.rows[0]?.available ?? false;
   },
 
@@ -107,12 +100,7 @@ export const editionPersistencePort: EditionPersistencePort = {
     const [row] = await coreDatabase
       .select({ role: member.role })
       .from(member)
-      .where(
-        and(
-          eq(member.organizationId, input.workspaceId),
-          eq(member.userId, input.userId),
-        ),
-      )
+      .where(and(eq(member.organizationId, input.workspaceId), eq(member.userId, input.userId)))
       .limit(1);
     return row ?? null;
   },

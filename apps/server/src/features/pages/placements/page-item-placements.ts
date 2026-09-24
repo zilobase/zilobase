@@ -52,10 +52,8 @@ export function buildNavigationPlacements({
     }
 
     if (
-      (placement.itemKind === "database" &&
-        !visibleDatabaseIds.has(placement.itemId)) ||
-      (placement.parentKind === "database" &&
-        !visibleDatabaseIds.has(placement.parentId))
+      (placement.itemKind === "database" && !visibleDatabaseIds.has(placement.itemId)) ||
+      (placement.parentKind === "database" && !visibleDatabaseIds.has(placement.parentId))
     ) {
       continue;
     }

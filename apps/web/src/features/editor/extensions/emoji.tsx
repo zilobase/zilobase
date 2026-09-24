@@ -1,10 +1,10 @@
-import { Extension } from "@tiptap/core"
+import { Extension } from "@tiptap/core";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     emoji: {
-      insertEmoji: (emoji: string) => ReturnType
-    }
+      insertEmoji: (emoji: string) => ReturnType;
+    };
   }
 }
 
@@ -17,6 +17,6 @@ export const EmojiExtension = Extension.create({
         (emoji) =>
         ({ commands }) =>
           commands.insertContent(emoji),
-    }
+    };
   },
-})
+});

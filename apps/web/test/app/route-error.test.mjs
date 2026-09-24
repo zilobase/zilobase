@@ -1,9 +1,9 @@
 export function register({ assert, loadModule, test }) {
   test("route errors keep desktop reconnect copy off the web", async () => {
-    const { describeRouteError } = await loadModule("/src/app/routing/route-error.ts")
+    const { describeRouteError } = await loadModule("/src/app/routing/route-error.ts");
     const networkError = Object.assign(new Error("Zilobase is offline."), {
       name: "NetworkUnavailableError",
-    })
+    });
 
     assert.deepEqual(
       describeRouteError(new Error("boom"), {
@@ -15,7 +15,7 @@ export function register({ assert, loadModule, test }) {
         showChangeServer: false,
         title: "Something went wrong",
       },
-    )
+    );
 
     assert.deepEqual(
       describeRouteError(networkError, {
@@ -27,7 +27,7 @@ export function register({ assert, loadModule, test }) {
         showChangeServer: false,
         title: "Couldn't connect to Zilobase",
       },
-    )
+    );
 
     assert.deepEqual(
       describeRouteError(networkError, {
@@ -35,12 +35,11 @@ export function register({ assert, loadModule, test }) {
         selectedServer: null,
       }),
       {
-        description:
-          "Your desktop session is still saved. Check your connection and try again.",
+        description: "Your desktop session is still saved. Check your connection and try again.",
         showChangeServer: false,
         title: "Couldn't connect to Zilobase",
       },
-    )
+    );
 
     assert.deepEqual(
       describeRouteError(new Error("boom"), {
@@ -53,6 +52,6 @@ export function register({ assert, loadModule, test }) {
         showChangeServer: true,
         title: "Couldn't connect to Zilobase",
       },
-    )
-  })
+    );
+  });
 }

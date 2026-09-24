@@ -1,9 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 
-import {
-  canAccessDatabaseRecord,
-  type AccessLevel,
-} from "../../access";
+import { canAccessDatabaseRecord, type AccessLevel } from "../../access";
 import { db, type Database } from "../../../infrastructure/database";
 import { database } from "../../../infrastructure/database/schema";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
@@ -29,19 +26,13 @@ export async function getDatabaseRecord(
   explicitOptions?: GetDatabaseRecordOptions,
 ) {
   const executor =
-    "select" in executorOrOptions
-      ? executorOrOptions
-      : (executorOrOptions.executor ?? db);
-  const options =
-    "select" in executorOrOptions ? explicitOptions : executorOrOptions;
+    "select" in executorOrOptions ? executorOrOptions : (executorOrOptions.executor ?? db);
+  const options = "select" in executorOrOptions ? explicitOptions : executorOrOptions;
   const [record] = await executor
     .select()
     .from(database)
     .where(
-      and(
-        eq(database.id, id),
-        options?.includeDeleted ? undefined : isNull(database.deletedAt),
-      ),
+      and(eq(database.id, id), options?.includeDeleted ? undefined : isNull(database.deletedAt)),
     )
     .limit(1);
 
@@ -75,8 +66,7 @@ export async function requireDatabaseAccess(
     throw new ServiceMutationError("Database not found", 404);
   }
 
-  const canAccessRecord =
-    dependencies?.canAccessRecord ?? canAccessDatabaseRecord;
+  const canAccessRecord = dependencies?.canAccessRecord ?? canAccessDatabaseRecord;
   if (!(await canAccessRecord(record, userId, required))) {
     throw new ServiceMutationError("Forbidden", 403);
   }

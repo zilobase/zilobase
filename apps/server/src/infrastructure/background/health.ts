@@ -57,13 +57,15 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
       count(*) filter (where expires_at is null or expires_at <= current_timestamp)::integer as stale_count
     from leases
   `);
-  const maintenance = await db.select({
-    consecutiveFailures: backgroundMaintenanceTask.consecutiveFailures,
-    lastErrorCode: backgroundMaintenanceTask.lastErrorCode,
-    lastFailedAt: backgroundMaintenanceTask.lastFailedAt,
-    lastSucceededAt: backgroundMaintenanceTask.lastSucceededAt,
-    taskKey: backgroundMaintenanceTask.taskKey,
-  }).from(backgroundMaintenanceTask);
+  const maintenance = await db
+    .select({
+      consecutiveFailures: backgroundMaintenanceTask.consecutiveFailures,
+      lastErrorCode: backgroundMaintenanceTask.lastErrorCode,
+      lastFailedAt: backgroundMaintenanceTask.lastFailedAt,
+      lastSucceededAt: backgroundMaintenanceTask.lastSucceededAt,
+      taskKey: backgroundMaintenanceTask.taskKey,
+    })
+    .from(backgroundMaintenanceTask);
   const byLane = new Map(result.rows.map((row) => [row.lane, row]));
   const lanes = (["fast", "automation", "ai", "mail", "calendar"] as const).map((lane) => {
     const row = byLane.get(lane);
@@ -80,10 +82,10 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
   const readiness = readinessPort.background();
   const heartbeat = maintenance.find((task) => task.taskKey === "background.snapshot");
   const heartbeatFresh = Boolean(
-    heartbeat?.lastSucceededAt &&
-    now.getTime() - heartbeat.lastSucceededAt.getTime() < 2 * 60_000,
+    heartbeat?.lastSucceededAt && now.getTime() - heartbeat.lastSucceededAt.getTime() < 2 * 60_000,
   );
-  const healthy = lanes.every((lane) => lane.oldestDueAgeMs === null || lane.oldestDueAgeMs < 120_000) &&
+  const healthy =
+    lanes.every((lane) => lane.oldestDueAgeMs === null || lane.oldestDueAgeMs < 120_000) &&
     Number(lease?.stale_count ?? 0) === 0 &&
     maintenance.every((task) => task.consecutiveFailures < 2) &&
     heartbeatFresh &&

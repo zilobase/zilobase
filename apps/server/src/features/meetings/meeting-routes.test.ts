@@ -114,20 +114,14 @@ test("meeting list requires a workspace and returns accessible meetings", async 
   const missingWorkspace = await appFor().request("/meetings", {}, env);
   assert.equal(missingWorkspace.status, 400);
 
-  const response = await appFor().request(
-    "/meetings?workspaceId=workspace-1",
-    {},
-    env,
-  );
+  const response = await appFor().request("/meetings?workspaceId=workspace-1", {}, env);
   assert.equal(response.status, 200);
   assert.deepEqual(mocks.list.mock.calls[0]?.[0], {
     userId: "user-1",
     workspaceId: "workspace-1",
   });
   assert.deepEqual(await response.json(), {
-    meetings: [
-      { emoji: "📅", id: "meeting-1", status: "idle", title: "Weekly review" },
-    ],
+    meetings: [{ emoji: "📅", id: "meeting-1", status: "idle", title: "Weekly review" }],
   });
 });
 
@@ -196,21 +190,14 @@ test("recorder claim returns a scoped native audio ticket", async () => {
     env,
   );
   assert.equal(response.status, 200);
-  const payload = await response.json() as Record<string, unknown>;
+  const payload = (await response.json()) as Record<string, unknown>;
   assert.equal(payload.leaseId, "10000000-0000-4000-8000-000000000001");
   assert.equal(typeof payload.token, "string");
-  assert.equal(
-    payload.websocketUrl,
-    "ws://localhost/meeting-audio?meeting=meeting-1",
-  );
+  assert.equal(payload.websocketUrl, "ws://localhost/meeting-audio?meeting=meeting-1");
 });
 
 test("summary generation is scoped to the authenticated editor", async () => {
-  const response = await appFor().request(
-    "/meetings/meeting-1/summary",
-    { method: "POST" },
-    env,
-  );
+  const response = await appFor().request("/meetings/meeting-1/summary", { method: "POST" }, env);
   assert.equal(response.status, 202);
   assert.deepEqual(mocks.enqueueJob.mock.calls[0]?.[0], {
     dedupeKey: "meeting-1:2:2026-08-18T00:00:00.000Z",

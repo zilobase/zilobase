@@ -1,3 +1,1 @@
-export {
-  formatFormulaValue,
-} from "@zilobase/features/databases/formula"
+export { formatFormulaValue } from "@zilobase/features/databases/formula";

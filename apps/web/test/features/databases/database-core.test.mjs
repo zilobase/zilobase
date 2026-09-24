@@ -1,8 +1,6 @@
 export function register({ assert, loadModule, test }) {
   test("database block helpers preserve normal and setup attributes", async () => {
-    const utils = await loadModule(
-      "/src/features/databases/core/database-block-content.ts"
-    )
+    const utils = await loadModule("/src/features/databases/core/database-block-content.ts");
 
     assert.deepEqual(utils.createDatabaseSetupBlockContent("database-1"), [
       {
@@ -14,17 +12,17 @@ export function register({ assert, loadModule, test }) {
         },
       },
       { type: "paragraph" },
-    ])
-  })
+    ]);
+  });
 
   test("database setup prompts resolve to the existing template catalog", async () => {
     const templates = await loadModule(
-      "/src/features/databases/setup/model/database-setup-templates.ts"
-    )
+      "/src/features/databases/setup/model/database-setup-templates.ts",
+    );
 
-    assert.equal(templates.inferDatabaseSetupTemplateId("Sprint roadmap"), "projects")
-    assert.equal(templates.inferDatabaseSetupTemplateId("Customer CRM"), "crm")
-    assert.equal(templates.inferDatabaseSetupTemplateId("   "), null)
-    assert.equal(templates.getDatabaseSetupTemplate("projects")?.id, "projects")
-  })
+    assert.equal(templates.inferDatabaseSetupTemplateId("Sprint roadmap"), "projects");
+    assert.equal(templates.inferDatabaseSetupTemplateId("Customer CRM"), "crm");
+    assert.equal(templates.inferDatabaseSetupTemplateId("   "), null);
+    assert.equal(templates.getDatabaseSetupTemplate("projects")?.id, "projects");
+  });
 }

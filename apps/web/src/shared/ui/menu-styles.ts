@@ -1,4 +1,4 @@
-import { cva, type VariantProps } from "class-variance-authority"
+import { cva, type VariantProps } from "class-variance-authority";
 
 // View Settings is the visual baseline for action menus and option lists.
 // Every menu primitive consumes these variants so its interaction library does
@@ -16,10 +16,10 @@ export const menuSurfaceVariants = cva(
       elevation: "default",
     },
   },
-)
+);
 
 export const menuViewportClassName =
-  "max-h-[min(36rem,calc(100vh-1rem),var(--radix-dropdown-menu-content-available-height,100vh),var(--radix-select-content-available-height,100vh),var(--radix-context-menu-content-available-height,100vh),var(--radix-popover-content-available-height,100vh))] max-w-[min(20rem,calc(100vw-1rem))] overflow-x-hidden overflow-y-auto overscroll-contain"
+  "max-h-[min(36rem,calc(100vh-1rem),var(--radix-dropdown-menu-content-available-height,100vh),var(--radix-select-content-available-height,100vh),var(--radix-context-menu-content-available-height,100vh),var(--radix-popover-content-available-height,100vh))] max-w-[min(20rem,calc(100vw-1rem))] overflow-x-hidden overflow-y-auto overscroll-contain";
 
 export const menuContentVariants = cva("", {
   variants: {
@@ -39,7 +39,7 @@ export const menuContentVariants = cva("", {
       fit: "w-fit",
     },
   },
-})
+});
 
 export const menuItemVariants = cva(
   "relative my-0.5 flex cursor-default items-center gap-2 rounded-md outline-hidden select-none focus:bg-action-neutral-hover focus:text-action-on-neutral data-selected:bg-action-neutral-hover data-selected:text-action-on-neutral data-disabled:pointer-events-none data-disabled:opacity-50 data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5",
@@ -60,13 +60,12 @@ export const menuItemVariants = cva(
       variant: "default",
     },
   },
-)
+);
 
-export const menuLabelClassName =
-  "px-2 py-1.5 text-xs text-content-secondary"
+export const menuLabelClassName = "px-2 py-1.5 text-xs text-content-secondary";
 
-export const menuSeparatorClassName = "-mx-1 my-1 h-px bg-stroke-default"
+export const menuSeparatorClassName = "-mx-1 my-1 h-px bg-stroke-default";
 
-export type MenuItemVariantProps = VariantProps<typeof menuItemVariants>
-export type MenuContentVariantProps = VariantProps<typeof menuContentVariants>
-export type MenuSurfaceVariantProps = VariantProps<typeof menuSurfaceVariants>
+export type MenuItemVariantProps = VariantProps<typeof menuItemVariants>;
+export type MenuContentVariantProps = VariantProps<typeof menuContentVariants>;
+export type MenuSurfaceVariantProps = VariantProps<typeof menuSurfaceVariants>;

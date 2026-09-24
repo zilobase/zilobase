@@ -20,10 +20,7 @@ export type DatabaseWindowScope = {
   queryHash: string;
 };
 
-export const databaseBootstrapQueryKey = (
-  sessionId: string,
-  scope: DatabaseBootstrapScope,
-) =>
+export const databaseBootstrapQueryKey = (sessionId: string, scope: DatabaseBootstrapScope) =>
   [
     databaseQueryRoot,
     sessionId,
@@ -33,10 +30,7 @@ export const databaseBootstrapQueryKey = (
     scope.includeDeleted === true,
   ] as const;
 
-export const databaseWindowQueryKey = (
-  sessionId: string,
-  scope: DatabaseWindowScope,
-) =>
+export const databaseWindowQueryKey = (sessionId: string, scope: DatabaseWindowScope) =>
   [
     databaseQueryRoot,
     sessionId,
@@ -47,9 +41,8 @@ export const databaseWindowQueryKey = (
     scope.includeDeleted === true,
   ] as const;
 
-export const sessionIdForQueries = (
-  authSessionId: string | null | undefined,
-) => authSessionId ?? "public";
+export const sessionIdForQueries = (authSessionId: string | null | undefined) =>
+  authSessionId ?? "public";
 
 function bootstrapVersionOf(value: unknown): number | null {
   const parsed = databaseBootstrapResponseSchema.safeParse(value);
@@ -67,9 +60,7 @@ function windowVersionOf(value: unknown): number | null {
   for (const page of pages) {
     const parsed = databaseRecordWindowResponseSchema.safeParse(page);
     if (parsed.success) {
-      max = max === null
-        ? parsed.data.databaseVersion
-        : Math.max(max, parsed.data.databaseVersion);
+      max = max === null ? parsed.data.databaseVersion : Math.max(max, parsed.data.databaseVersion);
     }
   }
   return max;
@@ -104,17 +95,11 @@ function versionsInValue(value: unknown): number[] {
  * still refetch. Max/bootstrap-first would miss it. Min never misses
  * (at cost of extra refetch).
  */
-export function cachedVersion(
-  queryClient: QueryClient,
-  sessionId: string,
-  hostId: string,
-): number {
+export function cachedVersion(queryClient: QueryClient, sessionId: string, hostId: string): number {
   const versions: number[] = [];
-  for (
-    const [, data] of queryClient.getQueriesData({
-      queryKey: [databaseQueryRoot, sessionId, hostId],
-    })
-  ) {
+  for (const [, data] of queryClient.getQueriesData({
+    queryKey: [databaseQueryRoot, sessionId, hostId],
+  })) {
     versions.push(...versionsInValue(data));
   }
   return versions.length ? Math.min(...versions) : -1;
@@ -127,7 +112,9 @@ export function cachedWindowMaxVersion(
   const cached = queryClient.getQueryData(queryKey);
   if (!cached) return -1;
   if (
-    cached && typeof cached === "object" && "pages" in cached &&
+    cached &&
+    typeof cached === "object" &&
+    "pages" in cached &&
     Array.isArray((cached as { pages: unknown }).pages)
   ) {
     const pages = (cached as { pages: unknown[] }).pages;

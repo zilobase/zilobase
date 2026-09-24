@@ -1,9 +1,9 @@
-import { GripVertical } from "@/shared/components/icons"
-import { DefaultPageIcon } from "@/features/pages/index"
+import { GripVertical } from "@/shared/components/icons";
+import { DefaultPageIcon } from "@/features/pages/index";
 
-import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
-import type { TimelineRowLayout } from "../layout/database-timeline-layout"
-import type { TimelineRowDragController } from "./database-timeline-row-drag"
+import type { SortableDatabaseItem } from "../../../interactions/database-item-utils";
+import type { TimelineRowLayout } from "../layout/database-timeline-layout";
+import type { TimelineRowDragController } from "./database-timeline-row-drag";
 
 export function TimelineRowDragLayer({
   controller,
@@ -11,10 +11,10 @@ export function TimelineRowDragLayer({
   layout,
   sidebarCollapsed,
 }: {
-  controller: TimelineRowDragController
-  editable: boolean
-  layout: TimelineRowLayout
-  sidebarCollapsed: boolean
+  controller: TimelineRowDragController;
+  editable: boolean;
+  layout: TimelineRowLayout;
+  sidebarCollapsed: boolean;
 }) {
   return (
     <>
@@ -50,21 +50,21 @@ export function TimelineRowDragLayer({
         />
       ) : null}
     </>
-  )
+  );
 }
 
 function TimelineRowDragRail({
   controller,
   layout,
 }: {
-  controller: TimelineRowDragController
-  layout: TimelineRowLayout
+  controller: TimelineRowDragController;
+  layout: TimelineRowLayout;
 }) {
   return (
     <div className="database-row-drag-rail database-timeline-row-drag-rail">
       {controller.controlRows.map((row) => {
-        const rowCenter = layout.centers[row.id]
-        if (rowCenter === undefined) return null
+        const rowCenter = layout.centers[row.id];
+        if (rowCenter === undefined) return null;
 
         return (
           <div
@@ -73,24 +73,24 @@ function TimelineRowDragRail({
             key={row.id}
             onMouseEnter={() => controller.setHoveredRowId(row.id)}
             onMouseLeave={() => {
-              if (!controller.draggedRowId) controller.setHoveredRowId(null)
+              if (!controller.draggedRowId) controller.setHoveredRowId(null);
             }}
             style={{ top: rowCenter }}
           >
             <TimelineRowDragButton controller={controller} row={row} />
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
 function TimelineRowDragButton({
   controller,
   row,
 }: {
-  controller: TimelineRowDragController
-  row: SortableDatabaseItem
+  controller: TimelineRowDragController;
+  row: SortableDatabaseItem;
 }) {
   return (
     <button
@@ -107,9 +107,9 @@ function TimelineRowDragButton({
     >
       <GripVertical />
     </button>
-  )
+  );
 }
 
 function getTimelineRowTitle(row: SortableDatabaseItem) {
-  return row.page.name.trim() || "Untitled"
+  return row.page.name.trim() || "Untitled";
 }

@@ -23,9 +23,7 @@ const trimmedName = Schema.String.pipe(
 );
 
 const CreateApiKey = Schema.Struct({
-  expiresIn: Schema.optionalKey(
-    Schema.NullOr(Schema.Int.check(Schema.isGreaterThan(0))),
-  ),
+  expiresIn: Schema.optionalKey(Schema.NullOr(Schema.Int.check(Schema.isGreaterThan(0)))),
   name: trimmedName,
   workspaceId: Schema.String.pipe(
     Schema.decode(SchemaTransformation.trim()),
@@ -61,10 +59,7 @@ apiKeyRoutes.get("/", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const rows = await db
-    .select()
-    .from(apikey)
-    .where(eq(apikey.referenceId, auth.user.id));
+  const rows = await db.select().from(apikey).where(eq(apikey.referenceId, auth.user.id));
 
   return c.json({
     keys: rows
@@ -100,22 +95,24 @@ apiKeyRoutes.post("/", async (c) => {
     editionExtension: c.get("editionExtension") ?? undefined,
     policy: c.get("appPolicy"),
   });
-  const key = await auth.api.createApiKey({
-    body: {
-      expiresIn:
-        parsed.data.expiresIn === undefined
-          ? API_KEY_DEFAULT_EXPIRES_IN_SECONDS
-          : parsed.data.expiresIn,
-      metadata: { workspaceId: parsed.data.workspaceId },
-      name: parsed.data.name,
-      prefix: API_KEY_PREFIX,
-      userId: authContext.user.id,
-    },
-  }).catch((error: unknown) => {
-    return {
-      error: readApiKeyCreateError(error),
-    };
-  });
+  const key = await auth.api
+    .createApiKey({
+      body: {
+        expiresIn:
+          parsed.data.expiresIn === undefined
+            ? API_KEY_DEFAULT_EXPIRES_IN_SECONDS
+            : parsed.data.expiresIn,
+        metadata: { workspaceId: parsed.data.workspaceId },
+        name: parsed.data.name,
+        prefix: API_KEY_PREFIX,
+        userId: authContext.user.id,
+      },
+    })
+    .catch((error: unknown) => {
+      return {
+        error: readApiKeyCreateError(error),
+      };
+    });
 
   if ("error" in key) {
     return c.json(
@@ -208,10 +205,7 @@ async function requireSessionUser(c: Context<AppBindings>) {
 
   if (c.get("authMethod") === "apiKey") {
     return {
-      response: c.json(
-        { error: "API keys cannot manage API keys" },
-        403,
-      ),
+      response: c.json({ error: "API keys cannot manage API keys" }, 403),
     };
   }
 

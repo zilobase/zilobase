@@ -33,14 +33,12 @@ export class PageGraph {
   private readonly pageById: Map<string, PageGraphPage>;
   private readonly primaryParentIdByPageId = new Map<string, string>();
 
-  constructor(
-    options: {
-      databaseRecords?: PageGraphDatabase[];
-      databaseRows?: PageGraphDatabaseRow[];
-      pages: PageGraphPage[];
-      placements?: PageGraphPlacement[];
-    },
-  ) {
+  constructor(options: {
+    databaseRecords?: PageGraphDatabase[];
+    databaseRows?: PageGraphDatabaseRow[];
+    pages: PageGraphPage[];
+    placements?: PageGraphPlacement[];
+  }) {
     this.pageById = new Map(options.pages.map((item) => [item.id, item]));
     this.indexDatabases(options.databaseRecords ?? []);
     this.indexDatabaseRows(options.databaseRows ?? []);
@@ -71,8 +69,7 @@ export class PageGraph {
       ids.push(current.id);
       visited.add(current.id);
 
-      for (const parentId of this.accessParentIdsByChildId.get(current.id) ??
-        []) {
+      for (const parentId of this.accessParentIdsByChildId.get(current.id) ?? []) {
         pendingIds.push(parentId);
       }
     }
@@ -91,8 +88,7 @@ export class PageGraph {
       const ancestor = this.pageById.get(ancestorId);
       let hasAncestorParent = false;
 
-      for (const parentId of
-        this.accessParentIdsByChildId.get(ancestorId) ?? []) {
+      for (const parentId of this.accessParentIdsByChildId.get(ancestorId) ?? []) {
         if (ancestorIdSet.has(parentId)) {
           hasAncestorParent = true;
           break;
@@ -108,61 +104,31 @@ export class PageGraph {
   }
 
   getNestedPageIds(rootPageId: string, accessibleIds?: Set<string>) {
-    return this.collectNestedPageIds(
-      [rootPageId],
-      accessibleIds,
-      this.childIdsByParentId,
-    );
+    return this.collectNestedPageIds([rootPageId], accessibleIds, this.childIdsByParentId);
   }
 
   getPrimaryNestedPageIds(rootPageId: string, accessibleIds?: Set<string>) {
-    return this.collectNestedPageIds(
-      [rootPageId],
-      accessibleIds,
-      this.primaryChildIdsByParentId,
-    );
+    return this.collectNestedPageIds([rootPageId], accessibleIds, this.primaryChildIdsByParentId);
   }
 
-  getNestedDatabasePageIds(
-    rootDatabaseId: string,
-    accessibleIds?: Set<string>,
-  ) {
-    const rootPageIds =
-      this.databaseRowPageIdsByDatabaseId.get(rootDatabaseId) ?? [];
+  getNestedDatabasePageIds(rootDatabaseId: string, accessibleIds?: Set<string>) {
+    const rootPageIds = this.databaseRowPageIdsByDatabaseId.get(rootDatabaseId) ?? [];
 
-    return this.collectNestedPageIds(
-      rootPageIds,
-      accessibleIds,
-      this.childIdsByParentId,
-    );
+    return this.collectNestedPageIds(rootPageIds, accessibleIds, this.childIdsByParentId);
   }
 
-  getPrimaryNestedDatabasePageIds(
-    rootDatabaseId: string,
-    accessibleIds?: Set<string>,
-  ) {
-    const rootPageIds =
-      this.databaseRowPageIdsByDatabaseId.get(rootDatabaseId) ?? [];
+  getPrimaryNestedDatabasePageIds(rootDatabaseId: string, accessibleIds?: Set<string>) {
+    const rootPageIds = this.databaseRowPageIdsByDatabaseId.get(rootDatabaseId) ?? [];
 
-    return this.collectNestedPageIds(
-      rootPageIds,
-      accessibleIds,
-      this.primaryChildIdsByParentId,
-    );
+    return this.collectNestedPageIds(rootPageIds, accessibleIds, this.primaryChildIdsByParentId);
   }
 
-  getDatabaseIdsForPageIds(
-    pageIds: Iterable<string>,
-    accessibleIds?: Set<string>,
-  ) {
+  getDatabaseIdsForPageIds(pageIds: Iterable<string>, accessibleIds?: Set<string>) {
     const databaseIds: string[] = [];
     const seenPageIds = new Set<string>();
 
     for (const pageId of pageIds) {
-      if (
-        seenPageIds.has(pageId) ||
-        (accessibleIds && !accessibleIds.has(pageId))
-      ) {
+      if (seenPageIds.has(pageId) || (accessibleIds && !accessibleIds.has(pageId))) {
         continue;
       }
 
@@ -173,10 +139,7 @@ export class PageGraph {
     return databaseIds;
   }
 
-  getPagePath(
-    record: PageGraphPage & { name: string },
-    getTitle: (value: string) => string,
-  ) {
+  getPagePath(record: PageGraphPage & { name: string }, getTitle: (value: string) => string) {
     const path: string[] = [];
     const visited = new Set<string>();
     let current: (PageGraphPage & { name?: string }) | undefined = record;
@@ -208,11 +171,7 @@ export class PageGraph {
     while (pendingIndex < pendingIds.length) {
       const pageId = pendingIds[pendingIndex++];
 
-      if (
-        !pageId ||
-        nestedIds.has(pageId) ||
-        (accessibleIds && !accessibleIds.has(pageId))
-      ) {
+      if (!pageId || nestedIds.has(pageId) || (accessibleIds && !accessibleIds.has(pageId))) {
         continue;
       }
 
@@ -268,10 +227,7 @@ export class PageGraph {
         continue;
       }
 
-      if (
-        placement.placementKind === "primary" &&
-        placement.itemKind === "page"
-      ) {
+      if (placement.placementKind === "primary" && placement.itemKind === "page") {
         this.primaryParentIdByPageId.set(placement.itemId, placement.parentId);
         this.addPrimaryChild(placement.parentId, placement.itemId);
       }
@@ -279,8 +235,7 @@ export class PageGraph {
   }
 
   private indexDatabaseRowChildren() {
-    for (const [databaseId, rowPageIds] of this
-      .databaseRowPageIdsByDatabaseId) {
+    for (const [databaseId, rowPageIds] of this.databaseRowPageIdsByDatabaseId) {
       const parentItemId = this.databasePageIdByDatabaseId.get(databaseId);
 
       if (!parentItemId) {
@@ -295,19 +250,14 @@ export class PageGraph {
   }
 
   private addPrimaryChild(parentItemId: string, childPageId: string) {
-    const primaryChildIds =
-      this.primaryChildIdsByParentId.get(parentItemId) ?? new Set();
+    const primaryChildIds = this.primaryChildIdsByParentId.get(parentItemId) ?? new Set();
 
     primaryChildIds.add(childPageId);
     this.primaryChildIdsByParentId.set(parentItemId, primaryChildIds);
     this.addChild(parentItemId, childPageId, true);
   }
 
-  private addChild(
-    parentItemId: string,
-    childPageId: string,
-    inheritsAccess = false,
-  ) {
+  private addChild(parentItemId: string, childPageId: string, inheritsAccess = false) {
     const childIds = this.childIdsByParentId.get(parentItemId) ?? new Set();
 
     childIds.add(childPageId);
@@ -317,8 +267,7 @@ export class PageGraph {
       return;
     }
 
-    const parentIds =
-      this.accessParentIdsByChildId.get(childPageId) ?? new Set();
+    const parentIds = this.accessParentIdsByChildId.get(childPageId) ?? new Set();
 
     parentIds.add(parentItemId);
     this.accessParentIdsByChildId.set(childPageId, parentIds);

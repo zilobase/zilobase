@@ -6,9 +6,7 @@ export type DatabasePresence = {
   viewId: string | null;
 };
 
-export function validateDatabaseRealtimeMessage(
-  rawMessage: string | ArrayBuffer,
-) {
+export function validateDatabaseRealtimeMessage(rawMessage: string | ArrayBuffer) {
   if (typeof rawMessage !== "string") {
     return { code: 1003, ok: false as const, reason: "JSON messages are required" };
   }
@@ -28,11 +26,16 @@ export function validateDatabaseRealtimeMessage(
 export function isDatabasePresence(value: unknown): value is DatabasePresence {
   if (!value || typeof value !== "object") return false;
   const presence = value as Record<string, unknown>;
-  return typeof presence.columnKey === "string" && presence.columnKey.length > 0 &&
-    presence.columnKey.length <= 128 && typeof presence.rowId === "string" &&
-    presence.rowId.length > 0 && presence.rowId.length <= 128 &&
+  return (
+    typeof presence.columnKey === "string" &&
+    presence.columnKey.length > 0 &&
+    presence.columnKey.length <= 128 &&
+    typeof presence.rowId === "string" &&
+    presence.rowId.length > 0 &&
+    presence.rowId.length <= 128 &&
     (presence.viewId === null ||
-      (typeof presence.viewId === "string" && presence.viewId.length <= 128));
+      (typeof presence.viewId === "string" && presence.viewId.length <= 128))
+  );
 }
 
 export function toDatabaseCollaborator<User>(attachment: {

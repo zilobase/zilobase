@@ -1,4 +1,4 @@
-import type { ColorTokenId } from "@/shared/lib/color-tokens"
+import type { ColorTokenId } from "@/shared/lib/color-tokens";
 
 export type DatabaseChartType =
   | "bar"
@@ -7,44 +7,34 @@ export type DatabaseChartType =
   | "pie"
   | "radar"
   | "radial"
-  | "count"
+  | "count";
 
-export type DatabaseChartColor = "auto" | ColorTokenId
-export type DatabaseChartSort =
-  | "manual"
-  | "axis-asc"
-  | "axis-desc"
-  | "value-asc"
-  | "value-desc"
-export type DatabaseChartDateInterval =
-  | "day"
-  | "week"
-  | "month"
-  | "quarter"
-  | "year"
+export type DatabaseChartColor = "auto" | ColorTokenId;
+export type DatabaseChartSort = "manual" | "axis-asc" | "axis-desc" | "value-asc" | "value-desc";
+export type DatabaseChartDateInterval = "day" | "week" | "month" | "quarter" | "year";
 export type DatabaseChartReferenceLine = {
-  color: "black" | ColorTokenId
-  id: string
-  label: string
-  style: "solid" | "dashed" | "dotted"
-  value: number
-}
+  color: "black" | ColorTokenId;
+  id: string;
+  label: string;
+  style: "solid" | "dashed" | "dotted";
+  value: number;
+};
 
 export type DatabaseChartSettings = {
-  color: DatabaseChartColor
-  groupByPropertyId?: string
-  hiddenGroupNames?: string[]
-  measurePropertyId?: string
-  omitZeroValues: boolean
-  rangeMax?: number
-  rangeMin?: number
-  referenceLines?: DatabaseChartReferenceLine[]
-  sort?: DatabaseChartSort
-  splitByDateInterval?: DatabaseChartDateInterval
-  splitByPropertyId?: string
-  type: DatabaseChartType
-  valueColors: Record<string, ColorTokenId>
-}
+  color: DatabaseChartColor;
+  groupByPropertyId?: string;
+  hiddenGroupNames?: string[];
+  measurePropertyId?: string;
+  omitZeroValues: boolean;
+  rangeMax?: number;
+  rangeMin?: number;
+  referenceLines?: DatabaseChartReferenceLine[];
+  sort?: DatabaseChartSort;
+  splitByDateInterval?: DatabaseChartDateInterval;
+  splitByPropertyId?: string;
+  type: DatabaseChartType;
+  valueColors: Record<string, ColorTokenId>;
+};
 
 export const databaseChartTypes: DatabaseChartType[] = [
   "bar",
@@ -54,7 +44,7 @@ export const databaseChartTypes: DatabaseChartType[] = [
   "radar",
   "radial",
   "count",
-]
+];
 
 const chartColors: DatabaseChartColor[] = [
   "auto",
@@ -67,74 +57,71 @@ const chartColors: DatabaseChartColor[] = [
   "purple",
   "pink",
   "red",
-]
+];
 
-const valueColors = new Set(chartColors.filter((color) => color !== "auto"))
+const valueColors = new Set(chartColors.filter((color) => color !== "auto"));
 const chartSorts = new Set<DatabaseChartSort>([
   "manual",
   "axis-asc",
   "axis-desc",
   "value-asc",
   "value-desc",
-])
+]);
 const chartDateIntervals = new Set<DatabaseChartDateInterval>([
   "day",
   "week",
   "month",
   "quarter",
   "year",
-])
+]);
 const referenceLineStyles = new Set<DatabaseChartReferenceLine["style"]>([
   "solid",
   "dashed",
   "dotted",
-])
-const referenceLineColors = new Set<DatabaseChartReferenceLine["color"]>([
-  "black",
-  ...valueColors,
-])
+]);
+const referenceLineColors = new Set<DatabaseChartReferenceLine["color"]>(["black", ...valueColors]);
 
 export const defaultDatabaseChartSettings: DatabaseChartSettings = {
   color: "auto",
   omitZeroValues: false,
   type: "bar",
   valueColors: {},
-}
+};
 
 export function shouldSplitDatabaseChartSeries({
   axisPropertyId,
   splitPropertyId,
   type,
 }: {
-  axisPropertyId?: string
-  splitPropertyId?: string
-  type: DatabaseChartType
+  axisPropertyId?: string;
+  splitPropertyId?: string;
+  type: DatabaseChartType;
 }) {
   return (
     Boolean(splitPropertyId) &&
     axisPropertyId !== splitPropertyId &&
     type !== "count" &&
     type !== "radial"
-  )
+  );
 }
 
 export function getDatabaseChartSettings(config: unknown): DatabaseChartSettings {
   const chart =
     config && typeof config === "object" && !Array.isArray(config) && "chart" in config
       ? (config as { chart?: unknown }).chart
-      : undefined
+      : undefined;
 
   if (!chart || typeof chart !== "object" || Array.isArray(chart)) {
-    return defaultDatabaseChartSettings
+    return defaultDatabaseChartSettings;
   }
 
-  const record = chart as Record<string, unknown>
+  const record = chart as Record<string, unknown>;
   const type = databaseChartTypes.includes(record.type as DatabaseChartType)
     ? (record.type as DatabaseChartType)
-    : defaultDatabaseChartSettings.type
+    : defaultDatabaseChartSettings.type;
   const color = chartColors.includes(record.color as DatabaseChartColor)
     ? (record.color as DatabaseChartColor)
-    : defaultDatabaseChartSettings.color
+    : defaultDatabaseChartSettings.color;
   const storedValueColors =
     record.valueColors &&
     typeof record.valueColors === "object" &&
@@ -145,43 +132,36 @@ export function getDatabaseChartSettings(config: unknown): DatabaseChartSettings
               typeof entry[1] === "string" && valueColors.has(entry[1] as ColorTokenId),
           ),
         )
-      : {}
+      : {};
   const referenceLines = Array.isArray(record.referenceLines)
     ? record.referenceLines.flatMap((line, index) => {
         if (!line || typeof line !== "object" || Array.isArray(line)) {
-          return []
+          return [];
         }
 
-        const item = line as Record<string, unknown>
+        const item = line as Record<string, unknown>;
 
         if (typeof item.value !== "number" || !Number.isFinite(item.value)) {
-          return []
+          return [];
         }
 
         return [
           {
-            color: referenceLineColors.has(
-              item.color as DatabaseChartReferenceLine["color"],
-            )
+            color: referenceLineColors.has(item.color as DatabaseChartReferenceLine["color"])
               ? (item.color as DatabaseChartReferenceLine["color"])
               : "black",
-            id:
-              typeof item.id === "string" && item.id
-                ? item.id
-                : `reference-${index}`,
+            id: typeof item.id === "string" && item.id ? item.id : `reference-${index}`,
             label: typeof item.label === "string" ? item.label : "",
-            style: referenceLineStyles.has(
-              item.style as DatabaseChartReferenceLine["style"],
-            )
+            style: referenceLineStyles.has(item.style as DatabaseChartReferenceLine["style"])
               ? (item.style as DatabaseChartReferenceLine["style"])
               : "dashed",
             value: item.value,
           },
-        ]
+        ];
       })
-    : []
-  const rangeMin = getFiniteNumber(record.rangeMin)
-  const rangeMax = getFiniteNumber(record.rangeMax)
+    : [];
+  const rangeMin = getFiniteNumber(record.rangeMin);
+  const rangeMax = getFiniteNumber(record.rangeMax);
 
   return {
     color,
@@ -205,25 +185,19 @@ export function getDatabaseChartSettings(config: unknown): DatabaseChartSettings
     ...(chartSorts.has(record.sort as DatabaseChartSort)
       ? { sort: record.sort as DatabaseChartSort }
       : {}),
-    ...(chartDateIntervals.has(
-      record.splitByDateInterval as DatabaseChartDateInterval,
-    )
+    ...(chartDateIntervals.has(record.splitByDateInterval as DatabaseChartDateInterval)
       ? {
-          splitByDateInterval:
-            record.splitByDateInterval as DatabaseChartDateInterval,
+          splitByDateInterval: record.splitByDateInterval as DatabaseChartDateInterval,
         }
       : {}),
-    ...(typeof record.splitByPropertyId === "string" &&
-    record.splitByPropertyId
+    ...(typeof record.splitByPropertyId === "string" && record.splitByPropertyId
       ? { splitByPropertyId: record.splitByPropertyId }
       : {}),
     type,
     valueColors: storedValueColors,
-  }
+  };
 }
 
 function getFiniteNumber(value: unknown) {
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }

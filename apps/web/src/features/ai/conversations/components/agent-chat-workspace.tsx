@@ -3,15 +3,7 @@ import { SettingsDraftActions } from "../../settings/components/settings-draft-a
 import type { AgentSettingsEvent } from "@zilobase/features/ai-chat";
 ("use client");
 
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter, useRouterState } from "@tanstack/react-router";
 import { toast } from "sonner";
 
@@ -23,9 +15,7 @@ import {
   XIcon,
 } from "@/shared/components/icons";
 import { Button } from "@/shared/ui/button";
-import {
-  PageSidePaneLayout,
-} from "@/features/pages/pane/page-side-pane";
+import { PageSidePaneLayout } from "@/features/pages/pane/page-side-pane";
 
 import { useAiChatThreadState } from "../use-ai-chat-thread-state";
 import type { ChatPresentationMode } from "./chat-sidebar";
@@ -61,22 +51,16 @@ export function AgentChatWorkspace({
   const searchStr = useRouterState({
     select: (state) => state.location.searchStr,
   });
-  const routeSearch = useMemo(
-    () => new URLSearchParams(searchStr),
-    [searchStr],
-  );
-  const { activeThreadId, isBootstrapping, setActiveThreadId } =
-    useAiChatThreadState({ enabled: open });
+  const routeSearch = useMemo(() => new URLSearchParams(searchStr), [searchStr]);
+  const { activeThreadId, isBootstrapping, setActiveThreadId } = useAiChatThreadState({
+    enabled: open,
+  });
   const [, setDraftDirty] = useState(false);
   const [pendingInitialSubmission, setPendingInitialSubmission] =
     useState<PendingInitialChatSubmission | null>(null);
   const [sidebarSettingsOpen, setSidebarSettingsOpen] = useState(false);
-  const [sidebarSettingsTab, setSidebarSettingsTab] = useState<string | null>(
-    null,
-  );
-  const settingsOpen = isSidebar
-    ? sidebarSettingsOpen
-    : routeSearch.get("panel") === "settings";
+  const [sidebarSettingsTab, setSidebarSettingsTab] = useState<string | null>(null);
+  const settingsOpen = isSidebar ? sidebarSettingsOpen : routeSearch.get("panel") === "settings";
   const { settingsTab } = settingsLocation(routeSearch, isSidebar);
 
   const setSettings = useCallback(
@@ -107,11 +91,8 @@ export function AgentChatWorkspace({
     if (isSidebar) return;
     const result = readSearchParam("mcp");
     if (result === "connected")
-      toast.success(
-        "Account connected. Select permissions and Save to enable them.",
-      );
-    if (result === "failed")
-      toast.error("MCP connection failed. Try reconnecting.");
+      toast.success("Account connected. Select permissions and Save to enable them.");
+    if (result === "failed") toast.error("MCP connection failed. Try reconnecting.");
     if (result) clearSearchParams("mcp");
   }, [isSidebar]);
 
@@ -181,11 +162,7 @@ export function AgentChatWorkspace({
           }
           data-ai-workspace-shell
         >
-          {isSidebar && settingsOpen ? (
-            settingsPanel
-          ) : (
-            <div className="h-full min-h-0">{chat}</div>
-          )}
+          {isSidebar && settingsOpen ? settingsPanel : <div className="h-full min-h-0">{chat}</div>}
         </div>
       </div>
     );
@@ -231,14 +208,10 @@ function ChatHeader({
       {onPresentationModeChange ? (
         <Button
           aria-label={
-            presentationMode === "sidebar"
-              ? "Switch to floating chat"
-              : "Dock chat in sidebar"
+            presentationMode === "sidebar" ? "Switch to floating chat" : "Dock chat in sidebar"
           }
           onClick={() =>
-            onPresentationModeChange(
-              presentationMode === "sidebar" ? "floating" : "sidebar",
-            )
+            onPresentationModeChange(presentationMode === "sidebar" ? "floating" : "sidebar")
           }
           size="icon-sm"
           type="button"
@@ -282,8 +255,7 @@ function updateSettingsSearch(
   open: boolean,
   settingsTab: string | null,
 ) {
-  if (typeof window === "undefined" || window.location.pathname !== "/ai")
-    return;
+  if (typeof window === "undefined" || window.location.pathname !== "/ai") return;
   const url = new URL(window.location.href);
   if (open) {
     url.searchParams.set("panel", "settings");
@@ -304,9 +276,5 @@ function clearSearchParams(...names: string[]) {
   if (typeof window === "undefined") return;
   const url = new URL(window.location.href);
   for (const name of names) url.searchParams.delete(name);
-  window.history.replaceState(
-    window.history.state,
-    "",
-    `${url.pathname}${url.search}${url.hash}`,
-  );
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
 }

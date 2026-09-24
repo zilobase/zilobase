@@ -17,10 +17,7 @@ import {
   hashAgentDefinition,
   normalizeAgentDefinition,
 } from "./agent-definition";
-import {
-  AgentProfileError,
-  requireAgentProfileRole,
-} from "./agent-profile-service";
+import { AgentProfileError, requireAgentProfileRole } from "./agent-profile-service";
 
 export async function listAgentRevisions(input: {
   profileId: string;
@@ -60,8 +57,7 @@ export async function applyAgentDefinition(input: {
       )
       .limit(1)
       .for("update");
-    if (!profile)
-      throw new AgentProfileError("agent_not_found", "Agent not found.", 404);
+    if (!profile) throw new AgentProfileError("agent_not_found", "Agent not found.", 404);
     const nextVersion = profile.version + 1;
     await tx.insert(aiAgentRevision).values({
       compiledDefinition: compileAgentDefinition(definition),
@@ -122,24 +118,22 @@ export async function synchronizeMaterializedTriggers(
   for (const trigger of existing) {
     if (desiredIds.has(trigger.id)) continue;
     if (trigger.webhookSecretId) {
-      await tx
-        .delete(automationSecret)
-        .where(eq(automationSecret.id, trigger.webhookSecretId));
+      await tx.delete(automationSecret).where(eq(automationSecret.id, trigger.webhookSecretId));
     }
     await tx.delete(aiAgentTrigger).where(eq(aiAgentTrigger.id, trigger.id));
   }
 
-  const existingById = new Map(
-    existing.map((trigger) => [trigger.id, trigger]),
-  );
+  const existingById = new Map(existing.map((trigger) => [trigger.id, trigger]));
   for (const desired of desiredTriggers) {
     if (desired.kind === "manual") continue;
     const current = existingById.get(desired.id);
     const status = materializedTriggerStatus(desired, Boolean(current));
     const nextRunAt =
       desired.kind === "schedule" && status === "active"
-        ? current?.kind === "schedule" && current.status === "active" && JSON.stringify(current.config) === JSON.stringify(desired.config)
-          ? current.nextRunAt ?? computeNextAgentSchedule(desired.config, now)
+        ? current?.kind === "schedule" &&
+          current.status === "active" &&
+          JSON.stringify(current.config) === JSON.stringify(desired.config)
+          ? (current.nextRunAt ?? computeNextAgentSchedule(desired.config, now))
           : computeNextAgentSchedule(desired.config, now)
         : null;
     if (current) {
@@ -154,12 +148,7 @@ export async function synchronizeMaterializedTriggers(
           status,
           updatedAt: now,
         })
-        .where(
-          and(
-            eq(aiAgentTrigger.id, desired.id),
-            eq(aiAgentTrigger.profileId, profileId),
-          ),
-        );
+        .where(and(eq(aiAgentTrigger.id, desired.id), eq(aiAgentTrigger.profileId, profileId)));
     } else {
       await tx.insert(aiAgentTrigger).values({
         config: desired.config,
@@ -181,8 +170,7 @@ function materializedTriggerStatus(
   desired: CustomAgentDefinition["triggers"][number],
   exists: boolean,
 ) {
-  if (desired.kind === "connector" || desired.kind === "slack")
-    return "degraded" as const;
+  if (desired.kind === "connector" || desired.kind === "slack") return "degraded" as const;
   if (desired.kind === "webhook" && !exists) return "paused" as const;
   return desired.status;
 }
@@ -198,18 +186,11 @@ export async function revertAgentRevision(input: {
     .select()
     .from(aiAgentRevision)
     .where(
-      and(
-        eq(aiAgentRevision.id, input.revisionId),
-        eq(aiAgentRevision.profileId, input.profileId),
-      ),
+      and(eq(aiAgentRevision.id, input.revisionId), eq(aiAgentRevision.profileId, input.profileId)),
     )
     .limit(1);
   if (!revision)
-    throw new AgentProfileError(
-      "revision_not_found",
-      "Agent revision not found.",
-      404,
-    );
+    throw new AgentProfileError("revision_not_found", "Agent revision not found.", 404);
   return applyAgentDefinition({
     ...input,
     definition: normalizeAgentDefinition(revision.definition),
@@ -217,10 +198,7 @@ export async function revertAgentRevision(input: {
   });
 }
 
-export async function ensureInitialAgentRevision(input: {
-  profileId: string;
-  userId: string;
-}) {
+export async function ensureInitialAgentRevision(input: { profileId: string; userId: string }) {
   const now = new Date();
   return db.transaction(async (tx) => {
     const [profile] = await tx
@@ -229,8 +207,7 @@ export async function ensureInitialAgentRevision(input: {
       .where(eq(aiAgentProfile.id, input.profileId))
       .limit(1)
       .for("update");
-    if (!profile)
-      throw new AgentProfileError("agent_not_found", "Agent not found.", 404);
+    if (!profile) throw new AgentProfileError("agent_not_found", "Agent not found.", 404);
     if (profile.currentRevisionId) return profile.currentRevisionId;
     const revisionId = crypto.randomUUID();
     const definition = definitionForProfile(profile);
@@ -266,10 +243,7 @@ export async function getCurrentAgentRevision(profileId: string) {
   const [row] = await db
     .select({ revision: aiAgentRevision })
     .from(aiAgentProfile)
-    .innerJoin(
-      aiAgentRevision,
-      eq(aiAgentRevision.id, aiAgentProfile.currentRevisionId),
-    )
+    .innerJoin(aiAgentRevision, eq(aiAgentRevision.id, aiAgentProfile.currentRevisionId))
     .where(eq(aiAgentProfile.id, profileId))
     .limit(1);
   return row?.revision ?? null;
@@ -279,19 +253,9 @@ async function getAgentRevision(profileId: string, revisionId: string) {
   const [row] = await db
     .select()
     .from(aiAgentRevision)
-    .where(
-      and(
-        eq(aiAgentRevision.profileId, profileId),
-        eq(aiAgentRevision.id, revisionId),
-      ),
-    )
+    .where(and(eq(aiAgentRevision.profileId, profileId), eq(aiAgentRevision.id, revisionId)))
     .limit(1);
-  if (!row)
-    throw new AgentProfileError(
-      "revision_not_found",
-      "Agent revision not found.",
-      404,
-    );
+  if (!row) throw new AgentProfileError("revision_not_found", "Agent revision not found.", 404);
   return serializeRevision(row);
 }
 

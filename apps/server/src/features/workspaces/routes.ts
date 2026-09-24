@@ -3,8 +3,16 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import { Schema, SchemaTransformation } from "effect";
 import { getAuthenticatedUser as requireUser } from "../../shared/http/auth";
-import { getPinnedWorkspaceId, rejectMismatchedPinnedWorkspace, requireOAuthScope } from "../auth/oauth-access";
-import { getMembership, getWorkspaceRealtimeAccessExpiration, isPrivilegedOrgRole } from "../access";
+import {
+  getPinnedWorkspaceId,
+  rejectMismatchedPinnedWorkspace,
+  requireOAuthScope,
+} from "../auth/oauth-access";
+import {
+  getMembership,
+  getWorkspaceRealtimeAccessExpiration,
+  isPrivilegedOrgRole,
+} from "../access";
 import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import { db } from "../../infrastructure/database";
 import {
@@ -72,11 +80,13 @@ workspaceRoutes.get("/", async (c) => {
     .select({ workspace })
     .from(workspace)
     .innerJoin(member, eq(member.organizationId, workspace.id))
-    .where(and(
-      eq(member.userId, requestUser.id),
-      activeMembershipCondition(),
-      pinnedWorkspaceId ? eq(workspace.id, pinnedWorkspaceId) : undefined,
-    ))
+    .where(
+      and(
+        eq(member.userId, requestUser.id),
+        activeMembershipCondition(),
+        pinnedWorkspaceId ? eq(workspace.id, pinnedWorkspaceId) : undefined,
+      ),
+    )
     .orderBy(asc(workspace.name));
   return c.json({ workspaces: records.map(({ workspace: record }) => record) });
 });
@@ -96,36 +106,55 @@ workspaceRoutes.get("/:workspaceId", async (c) => {
 
 workspaceRoutes.post("/:workspaceId/navigation-realtime-ticket", async (c) => {
   const requestUser = c.get("user") ?? null;
-  if (!requestUser || c.get("authMethod") !== "session") return c.json({ error: "Unauthorized" }, 401);
+  if (!requestUser || c.get("authMethod") !== "session")
+    return c.json({ error: "Unauthorized" }, 401);
   const workspaceId = c.req.param("workspaceId");
-  if (!(await getMembership(workspaceId, requestUser.id))) return c.json({ error: "Forbidden" }, 403);
+  if (!(await getMembership(workspaceId, requestUser.id)))
+    return c.json({ error: "Forbidden" }, 403);
   const body = await readJsonBody(c.req);
-  const refreshToken = body && typeof body === "object" && "token" in body && typeof body.token === "string" ? body.token : undefined;
+  const refreshToken =
+    body && typeof body === "object" && "token" in body && typeof body.token === "string"
+      ? body.token
+      : undefined;
   let sessionId: string | undefined;
   if (refreshToken) {
     if (refreshToken.length > 8 * 1024) return c.json({ error: "Invalid realtime session" }, 400);
     try {
       const previous = await verifyNavigationRealtimeTicket(refreshToken, c.env);
-      if (previous.workspaceId !== workspaceId || previous.userId !== requestUser.id) return c.json({ error: "Invalid realtime session" }, 401);
+      if (previous.workspaceId !== workspaceId || previous.userId !== requestUser.id)
+        return c.json({ error: "Invalid realtime session" }, 401);
       sessionId = previous.sessionId;
-    } catch { return c.json({ error: "Invalid realtime session" }, 401); }
+    } catch {
+      return c.json({ error: "Invalid realtime session" }, 401);
+    }
   }
-  const ticket = await createNavigationRealtimeTicket({ sessionId, userId: requestUser.id, workspaceId }, c.env, {
-    maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(workspaceId, requestUser.id),
-  });
+  const ticket = await createNavigationRealtimeTicket(
+    { sessionId, userId: requestUser.id, workspaceId },
+    c.env,
+    {
+      maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(workspaceId, requestUser.id),
+    },
+  );
   const websocketUrl = new URL(getNavigationRealtimeWebSocketUrl(c.req.raw));
   websocketUrl.searchParams.set("workspace", workspaceId);
-  return c.json({ ...ticket, workspaceId, websocketProtocols: [NAVIGATION_REALTIME_PROTOCOL, `${NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket.token}`], websocketUrl: websocketUrl.toString() });
+  return c.json({
+    ...ticket,
+    workspaceId,
+    websocketProtocols: [
+      NAVIGATION_REALTIME_PROTOCOL,
+      `${NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket.token}`,
+    ],
+    websocketUrl: websocketUrl.toString(),
+  });
 });
 
 const strictJson = { onExcessProperty: "error" as const };
 
 const IsoDateTimeString = Schema.String.pipe(
   Schema.check(
-    Schema.isPattern(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/,
-      { message: "Invalid date-time format" },
-    ),
+    Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/, {
+      message: "Invalid date-time format",
+    }),
   ),
 );
 
@@ -158,13 +187,7 @@ const trimmedLogo = Schema.String.pipe(
 );
 
 const UpdateWorkspaceInput = Schema.Struct({
-  logo: Schema.optionalKey(
-    Schema.Union([
-      trimmedLogo,
-      Schema.Literal(""),
-      Schema.Null,
-    ]),
-  ),
+  logo: Schema.optionalKey(Schema.Union([trimmedLogo, Schema.Literal(""), Schema.Null])),
   metadata: Schema.optionalKey(
     Schema.Union([
       Schema.String.pipe(
@@ -241,12 +264,7 @@ workspaceRoutes.get("/:workspaceId/access-targets", async (c) => {
       })
       .from(member)
       .innerJoin(user, eq(member.userId, user.id))
-      .where(
-        and(
-          eq(member.organizationId, workspaceId),
-          activeMembershipCondition(),
-        ),
-      )
+      .where(and(eq(member.organizationId, workspaceId), activeMembershipCondition()))
       .orderBy(asc(user.name), asc(user.email)),
     db
       .select({
@@ -284,10 +302,7 @@ workspaceRoutes.post("/:workspaceId/member-invitations", async (c) => {
   const parsed = await parseJsonBody(c.req, MemberInvitationInput, strictJson);
 
   if (!parsed.ok) {
-    return c.json(
-      { error: parsed.message || "Invalid invitation." },
-      400,
-    );
+    return c.json({ error: parsed.message || "Invalid invitation." }, 400);
   }
 
   let membershipExpiresAt: Date | null;
@@ -405,19 +420,13 @@ workspaceRoutes.patch("/:workspaceId/members/:memberId", async (c) => {
   const parsed = await parseJsonBody(c.req, MemberUpdateInput, strictJson);
 
   if (!parsed.ok) {
-    return c.json(
-      { error: parsed.message || "Invalid member update." },
-      400,
-    );
+    return c.json({ error: parsed.message || "Invalid member update." }, 400);
   }
 
   let accessExpiresAt: Date | null;
 
   try {
-    accessExpiresAt = parseMembershipAccessExpiry(
-      parsed.data.role,
-      parsed.data.accessExpiresAt,
-    );
+    accessExpiresAt = parseMembershipAccessExpiry(parsed.data.role, parsed.data.accessExpiresAt);
   } catch (error) {
     if (error instanceof TemporaryMembershipValidationError) {
       return c.json({ error: error.message }, 400);
@@ -430,12 +439,7 @@ workspaceRoutes.patch("/:workspaceId/members/:memberId", async (c) => {
     const [target] = await transaction
       .select()
       .from(member)
-      .where(
-        and(
-          eq(member.id, c.req.param("memberId")),
-          eq(member.organizationId, workspaceId),
-        ),
-      )
+      .where(and(eq(member.id, c.req.param("memberId")), eq(member.organizationId, workspaceId)))
       .for("update")
       .limit(1);
 
@@ -443,8 +447,7 @@ workspaceRoutes.patch("/:workspaceId/members/:memberId", async (c) => {
       return { error: "Member not found.", status: 404 as const };
     }
 
-    const changesOwnerRole =
-      target.role === "owner" || parsed.data.role === "owner";
+    const changesOwnerRole = target.role === "owner" || parsed.data.role === "owner";
 
     if (changesOwnerRole && actorMembership.role !== "owner") {
       return {
@@ -457,12 +460,7 @@ workspaceRoutes.patch("/:workspaceId/members/:memberId", async (c) => {
       const [{ count: ownerCount }] = await transaction
         .select({ count: sql<number>`count(*)::integer` })
         .from(member)
-        .where(
-          and(
-            eq(member.organizationId, workspaceId),
-            eq(member.role, "owner"),
-          ),
-        );
+        .where(and(eq(member.organizationId, workspaceId), eq(member.role, "owner")));
 
       if ((ownerCount ?? 0) <= 1) {
         return {
@@ -519,12 +517,7 @@ workspaceRoutes.delete("/:workspaceId/members/:memberId", async (c) => {
     const [target] = await transaction
       .select()
       .from(member)
-      .where(
-        and(
-          eq(member.id, c.req.param("memberId")),
-          eq(member.organizationId, workspaceId),
-        ),
-      )
+      .where(and(eq(member.id, c.req.param("memberId")), eq(member.organizationId, workspaceId)))
       .for("update")
       .limit(1);
 
@@ -536,12 +529,7 @@ workspaceRoutes.delete("/:workspaceId/members/:memberId", async (c) => {
       const [{ count: ownerCount }] = await transaction
         .select({ count: sql<number>`count(*)::integer` })
         .from(member)
-        .where(
-          and(
-            eq(member.organizationId, workspaceId),
-            eq(member.role, "owner"),
-          ),
-        );
+        .where(and(eq(member.organizationId, workspaceId), eq(member.role, "owner")));
 
       if ((ownerCount ?? 0) <= 1) {
         return {
@@ -563,10 +551,7 @@ workspaceRoutes.delete("/:workspaceId/members/:memberId", async (c) => {
     await transaction
       .delete(teamMember)
       .where(
-        and(
-          eq(teamMember.userId, target.userId),
-          inArray(teamMember.teamId, workspaceTeamIds),
-        ),
+        and(eq(teamMember.userId, target.userId), inArray(teamMember.teamId, workspaceTeamIds)),
       );
     await transaction
       .delete(teamspacePrincipal)
@@ -581,10 +566,7 @@ workspaceRoutes.delete("/:workspaceId/members/:memberId", async (c) => {
       .update(authSession)
       .set({ activeTeamId: null, activeWorkspaceId: null })
       .where(
-        and(
-          eq(authSession.userId, target.userId),
-          eq(authSession.activeWorkspaceId, workspaceId),
-        ),
+        and(eq(authSession.userId, target.userId), eq(authSession.activeWorkspaceId, workspaceId)),
       );
     await transaction.delete(member).where(eq(member.id, target.id));
 
@@ -655,14 +637,9 @@ workspaceRoutes.patch("/:workspaceId", async (c) => {
   const [updatedWorkspace] = await db
     .update(workspace)
     .set({
-      logo:
-        parsed.data.logo !== undefined
-          ? parsed.data.logo?.trim() || null
-          : undefined,
+      logo: parsed.data.logo !== undefined ? parsed.data.logo?.trim() || null : undefined,
       metadata:
-        parsed.data.metadata !== undefined
-          ? parsed.data.metadata?.trim() || null
-          : undefined,
+        parsed.data.metadata !== undefined ? parsed.data.metadata?.trim() || null : undefined,
       name: parsed.data.name?.trim(),
       slug: nextSlug,
       updatedAt: new Date(),

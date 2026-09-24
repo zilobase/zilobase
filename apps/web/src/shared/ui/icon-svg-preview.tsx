@@ -1,4 +1,4 @@
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
 export function IconSvgPreview({
   className,
@@ -7,11 +7,11 @@ export function IconSvgPreview({
   size = 20,
   viewBox = "0 0 24 24",
 }: {
-  className?: string
-  content: string
-  fill?: string
-  size?: number
-  viewBox?: string
+  className?: string;
+  content: string;
+  fill?: string;
+  size?: number;
+  viewBox?: string;
 }) {
   return (
     <svg
@@ -24,5 +24,5 @@ export function IconSvgPreview({
       xmlns="http://www.w3.org/2000/svg"
       dangerouslySetInnerHTML={{ __html: content }}
     />
-  )
+  );
 }

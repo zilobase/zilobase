@@ -1,21 +1,16 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  type PointerEvent as ReactPointerEvent,
-} from "react"
-import type { HocuspocusProvider } from "@hocuspocus/provider"
-import type { Editor as TiptapEditor } from "@tiptap/core"
-import type * as Y from "yjs"
+import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
+import type { Editor as TiptapEditor } from "@tiptap/core";
+import type * as Y from "yjs";
 
 // Meeting fields intentionally reuse the complete editor inside the meeting
 // node view. The import cycle is bounded to this nested composition seam.
-import { Editor } from "../../composition/editor"
+import { Editor } from "../../composition/editor";
 import {
   setMeetingTranscriptPreview,
   type MeetingTranscriptPreviewState,
-} from "../meeting-transcript-preview"
-import type { OpenPageOptions } from "@/features/pages"
+} from "../meeting-transcript-preview";
+import type { OpenPageOptions } from "@/features/pages";
 
 export function MeetingCollaborativeEditor({
   document,
@@ -29,48 +24,45 @@ export function MeetingCollaborativeEditor({
   user,
   workspaceId,
 }: {
-  document: Y.Doc
-  editable: boolean
-  field: "notes" | "summary" | "transcript"
-  livePreview?: MeetingTranscriptPreviewState[] | null
-  onOpenPage: (pageId: string, options?: OpenPageOptions) => void
-  pageId: string
-  provider: HocuspocusProvider | null
-  status: "connecting" | "connected" | "disconnected" | "blocked"
-  user?: { avatar?: string | null; color: string; id: string; name: string }
-  workspaceId: string
+  document: Y.Doc;
+  editable: boolean;
+  field: "notes" | "summary" | "transcript";
+  livePreview?: MeetingTranscriptPreviewState[] | null;
+  onOpenPage: (pageId: string, options?: OpenPageOptions) => void;
+  pageId: string;
+  provider: HocuspocusProvider | null;
+  status: "connecting" | "connected" | "disconnected" | "blocked";
+  user?: { avatar?: string | null; color: string; id: string; name: string };
+  workspaceId: string;
 }) {
-  const editorRef = useRef<TiptapEditor | null>(null)
-  const livePreviewRef = useRef(livePreview)
-  livePreviewRef.current = livePreview
+  const editorRef = useRef<TiptapEditor | null>(null);
+  const livePreviewRef = useRef(livePreview);
+  livePreviewRef.current = livePreview;
   const onEditorReady = useCallback((editor: TiptapEditor | null) => {
-    editorRef.current = editor
-    if (editor) setMeetingTranscriptPreview(editor, livePreviewRef.current)
-  }, [])
-  const focusNestedEditor = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const editor = editorRef.current
-      const target = event.target
-      if (
-        !editor ||
-        editor.isDestroyed ||
-        !editor.isEditable ||
-        !(target instanceof Node) ||
-        !editor.view.dom.contains(target) ||
-        editor.view.hasFocus()
-      ) {
-        return
-      }
+    editorRef.current = editor;
+    if (editor) setMeetingTranscriptPreview(editor, livePreviewRef.current);
+  }, []);
+  const focusNestedEditor = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const editor = editorRef.current;
+    const target = event.target;
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !(target instanceof Node) ||
+      !editor.view.dom.contains(target) ||
+      editor.view.hasFocus()
+    ) {
+      return;
+    }
 
-      editor.view.dom.focus({ preventScroll: true })
-    },
-    [],
-  )
+    editor.view.dom.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => {
-    const editor = editorRef.current
-    if (editor) setMeetingTranscriptPreview(editor, livePreview)
-  }, [livePreview])
+    const editor = editorRef.current;
+    if (editor) setMeetingTranscriptPreview(editor, livePreview);
+  }, [livePreview]);
 
   return (
     <div
@@ -103,5 +95,5 @@ export function MeetingCollaborativeEditor({
         workspaceId={workspaceId}
       />
     </div>
-  )
+  );
 }

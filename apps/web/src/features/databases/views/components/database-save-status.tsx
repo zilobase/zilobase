@@ -21,13 +21,13 @@ export function DatabaseSaveStatus({ databaseId }: { databaseId: string }) {
     ? "Offline — reconnect to save"
     : state.error?.name === "DatabaseReconciliationError"
       ? "Saved — reload to refresh"
-    : state.error?.name === "DatabaseCommandUnconfirmedError"
-      ? "Save unconfirmed — reload to check"
-    : state.error
-      ? `Save failed${state.isPending ? " · Saving other changes…" : " — try your edit again"}`
-      : state.isPending
-        ? "Saving…"
-        : null;
+      : state.error?.name === "DatabaseCommandUnconfirmedError"
+        ? "Save unconfirmed — reload to check"
+        : state.error
+          ? `Save failed${state.isPending ? " · Saving other changes…" : " — try your edit again"}`
+          : state.isPending
+            ? "Saving…"
+            : null;
   if (!message) return null;
 
   return (

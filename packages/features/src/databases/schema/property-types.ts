@@ -20,54 +20,49 @@ export const databasePropertyTypes = [
   "verification",
   "created_time",
   "edited_time",
-] as const
+] as const;
 
-export type DatabasePropertyType = (typeof databasePropertyTypes)[number]
+export type DatabasePropertyType = (typeof databasePropertyTypes)[number];
 
-const databasePropertyTypeSet = new Set<string>(databasePropertyTypes)
+const databasePropertyTypeSet = new Set<string>(databasePropertyTypes);
 
-export function isDatabasePropertyType(
-  type: string
-): type is DatabasePropertyType {
-  return databasePropertyTypeSet.has(type)
+export function isDatabasePropertyType(type: string): type is DatabasePropertyType {
+  return databasePropertyTypeSet.has(type);
 }
 
 export function normalizeDatabasePropertyType(
   type: unknown,
-  fallback = "text"
+  fallback = "text",
 ): DatabasePropertyType | null {
   if (type !== undefined && type !== null && typeof type !== "string") {
-    return null
+    return null;
   }
 
-  const value = type && type.trim() ? type.trim().toLowerCase() : fallback
+  const value = type && type.trim() ? type.trim().toLowerCase() : fallback;
 
-  return isDatabasePropertyType(value) ? value : null
+  return isDatabasePropertyType(value) ? value : null;
 }
 
 export function isReadOnlyPropertyType(type: string) {
-  return type === "created_time" || type === "edited_time"
+  return type === "created_time" || type === "edited_time";
 }
 
 export function isSelectLikePropertyType(type: string) {
-  return type === "select" || type === "multi_select" || type === "status"
+  return type === "select" || type === "multi_select" || type === "status";
 }
 
-export function shouldClearValuesForPropertyTypeChange(
-  previousType: string,
-  nextType: string
-) {
+export function shouldClearValuesForPropertyTypeChange(previousType: string, nextType: string) {
   if (previousType === "date" && isSelectLikePropertyType(nextType)) {
-    return true
+    return true;
   }
 
   if (nextType === "files") {
-    return previousType !== "files"
+    return previousType !== "files";
   }
 
   if (nextType === "person") {
-    return previousType !== "person"
+    return previousType !== "person";
   }
 
-  return isReadOnlyPropertyType(nextType)
+  return isReadOnlyPropertyType(nextType);
 }

@@ -39,15 +39,13 @@ export function register({ assert, loadModule, test }) {
   });
 
   test("an open link for another instance requires verified replacement", async () => {
-    const { buildDesktopDeepLink, resolveDesktopDeepLinkAction } =
-      await loadModule("/src/features/desktop/deep-links/desktop-deep-link.ts");
+    const { buildDesktopDeepLink, resolveDesktopDeepLinkAction } = await loadModule(
+      "/src/features/desktop/deep-links/desktop-deep-link.ts",
+    );
     const other = { ...server, instanceId: "instance-2" };
 
     assert.deepEqual(
-      resolveDesktopDeepLinkAction(
-        buildDesktopDeepLink("/recents", other),
-        server,
-      ),
+      resolveDesktopDeepLinkAction(buildDesktopDeepLink("/recents", other), server),
       {
         expectedInstanceId: "instance-2",
         path: "/recents",

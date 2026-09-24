@@ -1,34 +1,32 @@
-import type { EmbeddedItemsOpenAs, Page } from "@zilobase/features/pages"
+import type { EmbeddedItemsOpenAs, Page } from "@zilobase/features/pages";
 
-const PUBLISHED_EMBEDDED_ITEMS_OPEN_AS_KEY =
-  "zilobase:published:embeddedItemsOpenAs"
+const PUBLISHED_EMBEDDED_ITEMS_OPEN_AS_KEY = "zilobase:published:embeddedItemsOpenAs";
 
 export function isPublishedFallbackPage(page: Page | null | undefined) {
-  return Boolean(page?.publishedOwnerPreferences)
+  return Boolean(page?.publishedOwnerPreferences);
 }
 
 export function readPublishedEmbeddedItemsOpenAs(): EmbeddedItemsOpenAs {
   if (typeof window === "undefined") {
-    return "sidepanel"
+    return "sidepanel";
   }
 
   try {
-    return window.localStorage.getItem(PUBLISHED_EMBEDDED_ITEMS_OPEN_AS_KEY) ===
-      "dialog"
+    return window.localStorage.getItem(PUBLISHED_EMBEDDED_ITEMS_OPEN_AS_KEY) === "dialog"
       ? "dialog"
-      : "sidepanel"
+      : "sidepanel";
   } catch {
-    return "sidepanel"
+    return "sidepanel";
   }
 }
 
 export function writePublishedEmbeddedItemsOpenAs(mode: EmbeddedItemsOpenAs) {
   if (typeof window === "undefined") {
-    return
+    return;
   }
 
   try {
-    window.localStorage.setItem(PUBLISHED_EMBEDDED_ITEMS_OPEN_AS_KEY, mode)
+    window.localStorage.setItem(PUBLISHED_EMBEDDED_ITEMS_OPEN_AS_KEY, mode);
   } catch {
     // The in-memory preference still applies when browser storage is blocked.
   }

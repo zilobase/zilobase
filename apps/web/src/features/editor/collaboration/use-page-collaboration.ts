@@ -1,19 +1,19 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
-import type { HocuspocusProvider } from "@hocuspocus/provider"
-import type { SessionUser } from "@zilobase/features/auth"
-import * as Y from "yjs"
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
+import type { SessionUser } from "@zilobase/features/auth";
+import * as Y from "yjs";
 
-import { ApiError, apiFetch } from "@/platform/network/api"
-import { scheduleRealtimeAfterPagePaint } from "@/shared/lib/deferred-realtime"
+import { ApiError, apiFetch } from "@/platform/network/api";
+import { scheduleRealtimeAfterPagePaint } from "@/shared/lib/deferred-realtime";
 import {
   applyTicketState,
   connectCollaborationDocument,
   type CollaborationTicket,
-} from "./collaboration-connection"
-import { collaborationColor } from "./color"
-import { getConnectivityState, subscribeConnectivity } from "@/platform/network/connectivity"
-import { startPageConnection } from "./connection-session"
-import type { CollaborationUser, CollaborationStatus } from "./collaboration-contracts"
+} from "./collaboration-connection";
+import { collaborationColor } from "./color";
+import { getConnectivityState, subscribeConnectivity } from "@/platform/network/connectivity";
+import { startPageConnection } from "./connection-session";
+import type { CollaborationUser, CollaborationStatus } from "./collaboration-contracts";
 
 export function usePageCollaboration({
   enabled,
@@ -21,110 +21,106 @@ export function usePageCollaboration({
   pageId,
   user,
 }: {
-  enabled: boolean
-  localOnly?: boolean
-  pageId: string
-  user: SessionUser | null | undefined
-  workspaceId?: string | null
+  enabled: boolean;
+  localOnly?: boolean;
+  pageId: string;
+  user: SessionUser | null | undefined;
+  workspaceId?: string | null;
 }) {
-  const demoMode = localOnly
+  const demoMode = localOnly;
   const connectivity = useSyncExternalStore(
     subscribeConnectivity,
     getConnectivityState,
     () => "online" as const,
-  )
-  const [document, setDocument] = useState<Y.Doc | null>(null)
-  const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
-  const [status, setStatus] = useState<CollaborationStatus>("disconnected")
-  const [synced, setSynced] = useState(false)
-  const [unsyncedChanges, setUnsyncedChanges] = useState(0)
-  const [users, setUsers] = useState<CollaborationUser[]>([])
-  const [error, setError] = useState<string | null>(null)
+  );
+  const [document, setDocument] = useState<Y.Doc | null>(null);
+  const [provider, setProvider] = useState<HocuspocusProvider | null>(null);
+  const [status, setStatus] = useState<CollaborationStatus>("disconnected");
+  const [synced, setSynced] = useState(false);
+  const [unsyncedChanges, setUnsyncedChanges] = useState(0);
+  const [users, setUsers] = useState<CollaborationUser[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const preparedTicketRef = useRef<{
-    pageId: string
-    ticket: CollaborationTicket
-  } | null>(null)
+    pageId: string;
+    ticket: CollaborationTicket;
+  } | null>(null);
 
   useEffect(() => {
     if (!enabled || !user) {
-      preparedTicketRef.current = null
-      setDocument(null)
-      setError(null)
-      return
+      preparedTicketRef.current = null;
+      setDocument(null);
+      setError(null);
+      return;
     }
 
-    let disposed = false
-    let preparationStarted = false
-    const controller = new AbortController()
-    let ephemeral: Y.Doc | null = null
+    let disposed = false;
+    let preparationStarted = false;
+    const controller = new AbortController();
+    let ephemeral: Y.Doc | null = null;
 
     if (demoMode) {
-      setStatus("local")
-      setError(null)
-      setDocument(null)
-      setSynced(false)
+      setStatus("local");
+      setError(null);
+      setDocument(null);
+      setSynced(false);
 
       return () => {
-        disposed = true
-        setDocument(null)
-        setSynced(false)
-      }
+        disposed = true;
+        setDocument(null);
+        setSynced(false);
+      };
     }
 
     const prepare = async () => {
-      if (preparationStarted) return
-      preparationStarted = true
+      if (preparationStarted) return;
+      preparationStarted = true;
 
       try {
-        if (connectivity !== "online") return
-        const ticket = await getTicket(pageId, controller.signal)
-        ephemeral = new Y.Doc()
-        applyTicketState(ephemeral, ticket)
+        if (connectivity !== "online") return;
+        const ticket = await getTicket(pageId, controller.signal);
+        ephemeral = new Y.Doc();
+        applyTicketState(ephemeral, ticket);
         if (!disposed) {
-          preparedTicketRef.current = { pageId, ticket }
-          setDocument(ephemeral)
+          preparedTicketRef.current = { pageId, ticket };
+          setDocument(ephemeral);
         }
       } catch (reason) {
         if (!disposed) {
-          setError(
-            reason instanceof Error ? reason.message : "Could not start collaboration.",
-          )
+          setError(reason instanceof Error ? reason.message : "Could not start collaboration.");
         }
       }
-    }
-    const cancelPreparation = scheduleRealtimeAfterPagePaint(() => void prepare())
+    };
+    const cancelPreparation = scheduleRealtimeAfterPagePaint(() => void prepare());
 
     return () => {
-      disposed = true
-      cancelPreparation?.()
-      controller.abort()
-      setDocument(null)
-      preparedTicketRef.current = null
-      ephemeral?.destroy()
-    }
-  }, [connectivity, demoMode, enabled, pageId, user?.id])
+      disposed = true;
+      cancelPreparation?.();
+      controller.abort();
+      setDocument(null);
+      preparedTicketRef.current = null;
+      ephemeral?.destroy();
+    };
+  }, [connectivity, demoMode, enabled, pageId, user?.id]);
 
   useEffect(() => {
     if (demoMode) {
-      setProvider(null)
-      setSynced(Boolean(document))
-      setUsers([])
-      if (document) setStatus("local")
-      return
+      setProvider(null);
+      setSynced(Boolean(document));
+      setUsers([]);
+      if (document) setStatus("local");
+      return;
     }
 
     if (!document || !enabled || !user || connectivity !== "online") {
-      setProvider(null)
-      setSynced(false)
-      setUsers([])
-      return
+      setProvider(null);
+      setSynced(false);
+      setUsers([]);
+      return;
     }
 
     const preparedTicket =
-      preparedTicketRef.current?.pageId === pageId
-        ? preparedTicketRef.current.ticket
-        : null
-    preparedTicketRef.current = null
+      preparedTicketRef.current?.pageId === pageId ? preparedTicketRef.current.ticket : null;
+    preparedTicketRef.current = null;
 
     return startPageConnection({
       document,
@@ -145,28 +141,28 @@ export function usePageCollaboration({
         users: setUsers,
       },
       services: pageConnectionServices,
-    })
-  }, [connectivity, demoMode, document, enabled, pageId, user?.id])
+    });
+  }, [connectivity, demoMode, document, enabled, pageId, user?.id]);
 
   useEffect(() => {
-    if (!provider || connectivity !== "online") return
+    if (!provider || connectivity !== "online") return;
 
-    let disposed = false
+    let disposed = false;
     const cancel = scheduleRealtimeAfterPagePaint(() => {
-      if (disposed) return
-      setStatus("connecting")
+      if (disposed) return;
+      setStatus("connecting");
       void provider.connect().catch(() => {
         if (!disposed) {
-          setStatus("disconnected")
+          setStatus("disconnected");
         }
-      })
-    })
+      });
+    });
 
     return () => {
-      disposed = true
-      cancel()
-    }
-  }, [connectivity, provider])
+      disposed = true;
+      cancel();
+    };
+  }, [connectivity, provider]);
 
   const collaborationUser = useMemo(
     () =>
@@ -179,7 +175,7 @@ export function usePageCollaboration({
           }
         : undefined,
     [user],
-  )
+  );
 
   return {
     document,
@@ -190,14 +186,14 @@ export function usePageCollaboration({
     unsyncedChanges,
     user: collaborationUser,
     users,
-  }
+  };
 }
 
 function getTicket(pageId: string, signal?: AbortSignal) {
   return apiFetch<CollaborationTicket>(
     `/pages/${encodeURIComponent(pageId)}/collaboration-ticket`,
     { method: "POST", signal },
-  )
+  );
 }
 
 const pageConnectionServices = {
@@ -207,4 +203,4 @@ const pageConnectionServices = {
   isAccessDenied: (reason: unknown) =>
     reason instanceof ApiError && (reason.status === 403 || reason.status === 404),
   schedule: scheduleRealtimeAfterPagePaint,
-}
+};

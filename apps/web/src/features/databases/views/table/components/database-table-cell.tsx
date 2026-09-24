@@ -1,14 +1,7 @@
-import {
-  type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-} from "react"
-import { Plus } from "@/shared/components/icons"
-import {
-  useDatabaseCellIsActive,
-  useSetActiveDatabaseCell,
-} from "../../state/database-cell-state"
-import { useDatabaseRealtimeState } from "../../state/database-view-context"
+import { type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { Plus } from "@/shared/components/icons";
+import { useDatabaseCellIsActive, useSetActiveDatabaseCell } from "../../state/database-cell-state";
+import { useDatabaseRealtimeState } from "../../state/database-view-context";
 
 export function DatabaseActiveTableCell({
   cellKey,
@@ -22,21 +15,21 @@ export function DatabaseActiveTableCell({
   selectOnPointerDown,
   wrapContent,
 }: {
-  cellKey: string
-  children: (setActive: (active: boolean) => void) => ReactNode
-  className?: string
-  isFillTarget?: boolean
-  isSelected: boolean
-  onFillStart?: (event: ReactPointerEvent<HTMLButtonElement>) => void
-  onSelect: () => void
-  presenceKey: string
-  selectOnPointerDown?: boolean
-  wrapContent?: boolean
+  cellKey: string;
+  children: (setActive: (active: boolean) => void) => ReactNode;
+  className?: string;
+  isFillTarget?: boolean;
+  isSelected: boolean;
+  onFillStart?: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onSelect: () => void;
+  presenceKey: string;
+  selectOnPointerDown?: boolean;
+  wrapContent?: boolean;
 }) {
-  const isActive = useDatabaseCellIsActive(cellKey)
-  const setActiveCell = useSetActiveDatabaseCell()
-  const { cellPresenceByKey } = useDatabaseRealtimeState()
-  const presence = cellPresenceByKey[presenceKey] ?? []
+  const isActive = useDatabaseCellIsActive(cellKey);
+  const setActiveCell = useSetActiveDatabaseCell();
+  const { cellPresenceByKey } = useDatabaseRealtimeState();
+  const presence = cellPresenceByKey[presenceKey] ?? [];
 
   return (
     <td
@@ -51,14 +44,12 @@ export function DatabaseActiveTableCell({
         selectOnPointerDown
           ? (event) => {
               if (
-                (event.target as Element).closest(
-                  ".database-page-open, .database-sub-item-toggle"
-                )
+                (event.target as Element).closest(".database-page-open, .database-sub-item-toggle")
               ) {
-                return
+                return;
               }
 
-              onSelect()
+              onSelect();
             }
           : undefined
       }
@@ -71,18 +62,22 @@ export function DatabaseActiveTableCell({
         >
           <span
             className="database-cell-presence-border"
-            style={{
-              "--database-presence-color": presence[0]?.color,
-            } as CSSProperties}
+            style={
+              {
+                "--database-presence-color": presence[0]?.color,
+              } as CSSProperties
+            }
           />
           <span className="database-cell-presence-stack">
             {presence.slice(0, 3).map((collaborator) => (
               <span
                 className="database-cell-presence-dot"
                 key={collaborator.sessionId}
-                style={{
-                  "--database-presence-color": collaborator.color,
-                } as CSSProperties}
+                style={
+                  {
+                    "--database-presence-color": collaborator.color,
+                  } as CSSProperties
+                }
               />
             ))}
           </span>
@@ -100,7 +95,7 @@ export function DatabaseActiveTableCell({
         />
       ) : null}
     </td>
-  )
+  );
 }
 
 export function CreateDatabaseRowButton({
@@ -108,15 +103,12 @@ export function CreateDatabaseRowButton({
   disabled,
   onClick,
 }: {
-  columnCount: number
-  disabled: boolean
-  onClick: () => void
+  columnCount: number;
+  disabled: boolean;
+  onClick: () => void;
 }) {
   return (
-    <tr
-      className="database-table-create-row"
-      data-database-row-drop-footer
-    >
+    <tr className="database-table-create-row" data-database-row-drop-footer>
       <td colSpan={columnCount}>
         <button
           className="database-table-create"
@@ -129,6 +121,5 @@ export function CreateDatabaseRowButton({
         </button>
       </td>
     </tr>
-  )
+  );
 }
-

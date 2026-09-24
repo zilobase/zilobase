@@ -9,9 +9,7 @@ const schema = z.object({ name: z.string().min(1) });
 
 function app() {
   const application = new Hono<AppBindings>();
-  application.post("/named", jsonValidator(schema), (c) =>
-    c.json(c.req.valid("json"), 201),
-  );
+  application.post("/named", jsonValidator(schema), (c) => c.json(c.req.valid("json"), 201));
   application.post("/any", jsonValidator(), (c) => c.json(c.req.valid("json")));
   return application;
 }

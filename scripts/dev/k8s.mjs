@@ -51,9 +51,16 @@ export async function followKubernetesLogs(target = "community") {
   assertCommunityTarget(target);
   await assertKubernetesTools();
   await run("kubectl", [
-    "-n", profile.namespace, "logs", "--follow", "--prefix=true",
-    "--all-containers=true", "--selector", `app.kubernetes.io/instance=${profile.release}`,
-    "--tail", "200",
+    "-n",
+    profile.namespace,
+    "logs",
+    "--follow",
+    "--prefix=true",
+    "--all-containers=true",
+    "--selector",
+    `app.kubernetes.io/instance=${profile.release}`,
+    "--tail",
+    "200",
   ]);
 }
 
@@ -71,13 +78,17 @@ export async function smokeKubernetes(target = "community") {
     signal: AbortSignal.timeout(10_000),
   });
   if (!ready.ok || !(await ready.json()).ok) throw new Error("Community readiness failed.");
-  const discovery = await fetch(
-    `http://127.0.0.1:${profile.appPort}/.well-known/zilobase`,
-    { signal: AbortSignal.timeout(10_000) },
-  );
+  const discovery = await fetch(`http://127.0.0.1:${profile.appPort}/.well-known/zilobase`, {
+    signal: AbortSignal.timeout(10_000),
+  });
   if (!discovery.ok) throw new Error(`Community discovery returned HTTP ${discovery.status}.`);
   const rollout = runResult("kubectl", [
-    "-n", profile.namespace, "rollout", "status", deploymentName(), "--timeout=30s",
+    "-n",
+    profile.namespace,
+    "rollout",
+    "status",
+    deploymentName(),
+    "--timeout=30s",
   ]);
   if (rollout.status !== 0) throw new Error(rollout.stderr || "Community rollout is not healthy.");
   const secrets = await loadGeneratedEnvironment(generatedEnvironmentFiles.kubernetes);
@@ -93,11 +104,18 @@ export async function smokeKubernetes(target = "community") {
   await run(process.execPath, [smokeScript, "seed"], { cwd: coreDir, env });
   await run("kubectl", ["-n", profile.namespace, "rollout", "restart", deploymentName()]);
   await run("kubectl", [
-    "-n", profile.namespace, "rollout", "status", deploymentName(), "--timeout=5m",
+    "-n",
+    profile.namespace,
+    "rollout",
+    "status",
+    deploymentName(),
+    "--timeout=5m",
   ]);
   await waitForUrl(`http://127.0.0.1:${profile.appPort}/ready`);
   await run(process.execPath, [smokeScript, "verify"], { cwd: coreDir, env });
-  console.info("✓ community migration, bootstrap, CRUD, upload, WebSocket, and restart persistence smoke");
+  console.info(
+    "✓ community migration, bootstrap, CRUD, upload, WebSocket, and restart persistence smoke",
+  );
 }
 
 async function deployKubernetesProfile(options = {}) {
@@ -108,7 +126,12 @@ async function deployKubernetesProfile(options = {}) {
     MINIO_ROOT_PASSWORD: secrets.COMMUNITY_MINIO_PASSWORD,
   });
   await run("kubectl", [
-    "-n", profile.namespace, "delete", "job", "minio-init", "--ignore-not-found=true",
+    "-n",
+    profile.namespace,
+    "delete",
+    "job",
+    "minio-init",
+    "--ignore-not-found=true",
   ]);
   await applyManifest(dependencyManifest, profile.namespace);
   await waitForDependencies(profile.namespace);
@@ -136,32 +159,55 @@ async function buildAndLoad(options = {}) {
 }
 
 async function helmDeploy(image) {
-  await run("helm", [
-    "upgrade", "--install", profile.release, path.join(coreDir, "deploy", "helm", "zilobase"),
-    "--namespace", profile.namespace,
-    "--set", `image.repository=${image.repository}`,
-    "--set", `image.digest=${image.digest}`,
-    "--set", "image.pullPolicy=Never",
-    "--set", "development.enabled=true",
-    "--set", "debug.enabled=true",
-    "--set", "debug.port=9229",
-    "--set", `config.externalUrl=http://${profile.appHost}:${profile.appPort}`,
-    "--set", `config.s3Endpoint=http://minio.${profile.namespace}.svc.cluster.local:9000`,
-    "--set", "config.s3PublicEndpoint=http://127.0.0.1:3210",
-    "--set", "config.s3Bucket=zilobase",
-    "--set", `config.smtpHost=mailpit.${profile.namespace}.svc.cluster.local`,
-    "--set", "config.smtpPort=1025",
-    "--set", "config.smtpSecure=false",
-    "--set-string", "config.smtpUser=",
-    "--set", "networkPolicy.enabled=false",
-    "--timeout", "10m", "--wait",
-  ], { cwd: coreDir });
+  await run(
+    "helm",
+    [
+      "upgrade",
+      "--install",
+      profile.release,
+      path.join(coreDir, "deploy", "helm", "zilobase"),
+      "--namespace",
+      profile.namespace,
+      "--set",
+      `image.repository=${image.repository}`,
+      "--set",
+      `image.digest=${image.digest}`,
+      "--set",
+      "image.pullPolicy=Never",
+      "--set",
+      "development.enabled=true",
+      "--set",
+      "debug.enabled=true",
+      "--set",
+      "debug.port=9229",
+      "--set",
+      `config.externalUrl=http://${profile.appHost}:${profile.appPort}`,
+      "--set",
+      `config.s3Endpoint=http://minio.${profile.namespace}.svc.cluster.local:9000`,
+      "--set",
+      "config.s3PublicEndpoint=http://127.0.0.1:3210",
+      "--set",
+      "config.s3Bucket=zilobase",
+      "--set",
+      `config.smtpHost=mailpit.${profile.namespace}.svc.cluster.local`,
+      "--set",
+      "config.smtpPort=1025",
+      "--set",
+      "config.smtpSecure=false",
+      "--set-string",
+      "config.smtpUser=",
+      "--set",
+      "networkPolicy.enabled=false",
+      "--timeout",
+      "10m",
+      "--wait",
+    ],
+    { cwd: coreDir },
+  );
 }
 
 async function startPortForwards() {
-  await assertPortsAvailable([
-    profile.appPort, profile.inspectorPort, profile.mailpitPort, 3210,
-  ]);
+  await assertPortsAvailable([profile.appPort, profile.inspectorPort, profile.mailpitPort, 3210]);
   const children = [
     portForward("community-app", `service/${serviceName()}`, `${profile.appPort}:80`, 0),
     portForward("community-debug", deploymentName(), `${profile.inspectorPort}:9229`, 1),
@@ -170,10 +216,18 @@ async function startPortForwards() {
   ];
   const firstExit = Promise.race(children.map(watchChildExit));
   await mkdir(stateDir, { recursive: true });
-  await writeFile(k8sStateFile, `${JSON.stringify({
-    pids: children.map((child) => child.pid).filter(Boolean),
-    profiles: ["community"],
-  }, null, 2)}\n`, { mode: 0o600 });
+  await writeFile(
+    k8sStateFile,
+    `${JSON.stringify(
+      {
+        pids: children.map((child) => child.pid).filter(Boolean),
+        profiles: ["community"],
+      },
+      null,
+      2,
+    )}\n`,
+    { mode: 0o600 },
+  );
   let stopPromise;
   const stop = (signal = "SIGTERM") => {
     if (stopPromise) return stopPromise;
@@ -191,10 +245,14 @@ async function startPortForwards() {
       waitForUrl("http://127.0.0.1:3210/minio/health/live"),
       waitForUrl(`http://127.0.0.1:${profile.mailpitPort}/api/v1/info`),
     ]),
-    firstExit.then((result) => { throw childExitError(result); }),
+    firstExit.then((result) => {
+      throw childExitError(result);
+    }),
   ]);
   console.info("\nCommunity Kubernetes development is ready:");
-  console.info(`Community  http://${profile.appHost}:${profile.appPort}  inspector ${profile.inspectorPort}`);
+  console.info(
+    `Community  http://${profile.appHost}:${profile.appPort}  inspector ${profile.inspectorPort}`,
+  );
   console.info(`${"".padEnd(10)} Mailpit http://127.0.0.1:${profile.mailpitPort}`);
   console.info("Ctrl-C stops port-forwards and preserves cluster data.\n");
   try {
@@ -221,16 +279,31 @@ function childExitError(result) {
 }
 
 function portForward(name, resource, mapping, color) {
-  return spawnService(name, process.execPath, [
-    path.join(coreDir, "scripts", "dev", "port-forward.mjs"),
-    "-n", profile.namespace, "port-forward", "--address", "127.0.0.1", resource, mapping,
-  ], { cwd: coreDir, env: process.env }, color);
+  return spawnService(
+    name,
+    process.execPath,
+    [
+      path.join(coreDir, "scripts", "dev", "port-forward.mjs"),
+      "-n",
+      profile.namespace,
+      "port-forward",
+      "--address",
+      "127.0.0.1",
+      resource,
+      mapping,
+    ],
+    { cwd: coreDir, env: process.env },
+    color,
+  );
 }
 
 async function stopPortForwards() {
   let state;
-  try { state = JSON.parse(await readFile(k8sStateFile, "utf8")); }
-  catch (error) { if (error?.code !== "ENOENT") throw error; }
+  try {
+    state = JSON.parse(await readFile(k8sStateFile, "utf8"));
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
   for (const pid of state?.pids ?? []) {
     if (!isRunningPid(pid)) continue;
     const result = runResult("ps", ["-p", String(pid), "-o", "command="]);
@@ -238,7 +311,11 @@ async function stopPortForwards() {
       console.warn(`Skipped PID ${pid}: it no longer belongs to a managed port-forward.`);
       continue;
     }
-    try { process.kill(pid, "SIGTERM"); } catch (error) { if (error?.code !== "ESRCH") throw error; }
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch (error) {
+      if (error?.code !== "ESRCH") throw error;
+    }
   }
   await rm(k8sStateFile, { force: true });
 }
@@ -261,9 +338,7 @@ async function tuneKindInotifyLimit() {
   const nodes = runResult("kind", ["get", "nodes", "--name", kindCluster]);
   if (nodes.status !== 0) throw new Error(nodes.stderr || "Unable to list kind nodes.");
   for (const node of nodes.stdout.trim().split(/\s+/).filter(Boolean)) {
-    await run("docker", [
-      "exec", node, "sysctl", "-q", "-w", "fs.inotify.max_user_instances=8192",
-    ]);
+    await run("docker", ["exec", node, "sysctl", "-q", "-w", "fs.inotify.max_user_instances=8192"]);
   }
 }
 
@@ -281,9 +356,16 @@ async function applyManifest(filename, namespace) {
 
 async function applySecret(namespace, name, values) {
   const create = runResult("kubectl", [
-    "-n", namespace, "create", "secret", "generic", name,
+    "-n",
+    namespace,
+    "create",
+    "secret",
+    "generic",
+    name,
     ...Object.entries(values).map(([key, value]) => `--from-literal=${key}=${value}`),
-    "--dry-run=client", "-o", "yaml",
+    "--dry-run=client",
+    "-o",
+    "yaml",
   ]);
   if (create.status !== 0) throw new Error(create.stderr || `Unable to render secret ${name}.`);
   await runWithInput("kubectl", ["apply", "-f", "-"], create.stdout, { cwd: coreDir });
@@ -292,11 +374,21 @@ async function applySecret(namespace, name, values) {
 async function waitForDependencies(namespace) {
   for (const deployment of ["postgres", "minio", "mailpit", "valkey"]) {
     await run("kubectl", [
-      "-n", namespace, "rollout", "status", `deployment/${deployment}`, "--timeout=5m",
+      "-n",
+      namespace,
+      "rollout",
+      "status",
+      `deployment/${deployment}`,
+      "--timeout=5m",
     ]);
   }
   await run("kubectl", [
-    "-n", namespace, "wait", "--for=condition=complete", "job/minio-init", "--timeout=5m",
+    "-n",
+    namespace,
+    "wait",
+    "--for=condition=complete",
+    "job/minio-init",
+    "--timeout=5m",
   ]);
 }
 
@@ -306,18 +398,33 @@ async function buildWithCache(args, options = {}) {
   const nextCache = path.join(cacheRoot, "community-next");
   await mkdir(cacheRoot, { recursive: true });
   await rm(nextCache, { force: true, recursive: true });
-  const cacheFrom = await exists(cache) ? ["--cache-from", `type=local,src=${cache}`] : [];
+  const cacheFrom = (await exists(cache)) ? ["--cache-from", `type=local,src=${cache}`] : [];
   console.info(`${options.rebuild ? "Rebuilding" : "Building"} Community with BuildKit cache...`);
-  await run("docker", [
-    "buildx", "build", "--load", ...cacheFrom,
-    "--cache-to", `type=local,dest=${nextCache},mode=max`, ...args,
-  ], { cwd: coreDir, env: { ...process.env, BUILDKIT_PROGRESS: "plain" } });
+  await run(
+    "docker",
+    [
+      "buildx",
+      "build",
+      "--load",
+      ...cacheFrom,
+      "--cache-to",
+      `type=local,dest=${nextCache},mode=max`,
+      ...args,
+    ],
+    { cwd: coreDir, env: { ...process.env, BUILDKIT_PROGRESS: "plain" } },
+  );
   await rm(cache, { force: true, recursive: true });
   await rename(nextCache, cache);
 }
 
 function imageDigest(tag) {
-  const result = runResult("docker", ["image", "inspect", tag, "--format", "{{.Id}}"]).stdout.trim();
+  const result = runResult("docker", [
+    "image",
+    "inspect",
+    tag,
+    "--format",
+    "{{.Id}}",
+  ]).stdout.trim();
   if (!/^sha256:[a-f0-9]{64}$/.test(result)) throw new Error(`Unexpected image digest: ${result}`);
   return result;
 }
@@ -336,25 +443,45 @@ async function loadKindImage(tag, digestTag) {
 function streamImageIntoKindNode(tag, node) {
   return new Promise((resolve, reject) => {
     const save = spawn("docker", ["image", "save", tag], {
-      cwd: coreDir, stdio: ["ignore", "pipe", "inherit"],
+      cwd: coreDir,
+      stdio: ["ignore", "pipe", "inherit"],
     });
-    const load = spawn("docker", [
-      "exec", "--interactive", node,
-      "ctr", "--namespace=k8s.io", "images", "import", "--snapshotter=overlayfs", "-",
-    ], { cwd: coreDir, stdio: ["pipe", "inherit", "inherit"] });
+    const load = spawn(
+      "docker",
+      [
+        "exec",
+        "--interactive",
+        node,
+        "ctr",
+        "--namespace=k8s.io",
+        "images",
+        "import",
+        "--snapshotter=overlayfs",
+        "-",
+      ],
+      { cwd: coreDir, stdio: ["pipe", "inherit", "inherit"] },
+    );
     save.stdout.pipe(load.stdin);
     let saveDone = false;
     let loadDone = false;
-    const finish = () => { if (saveDone && loadDone) resolve(); };
+    const finish = () => {
+      if (saveDone && loadDone) resolve();
+    };
     save.once("error", reject);
     load.once("error", reject);
     save.once("exit", (code, signal) => {
       if (code !== 0) reject(new Error(`docker image save failed with ${signal ?? code}`));
-      else { saveDone = true; finish(); }
+      else {
+        saveDone = true;
+        finish();
+      }
     });
     load.once("exit", (code, signal) => {
       if (code !== 0) reject(new Error(`containerd image import failed with ${signal ?? code}`));
-      else { loadDone = true; finish(); }
+      else {
+        loadDone = true;
+        finish();
+      }
     });
   });
 }
@@ -380,18 +507,26 @@ async function assertKubernetesTools() {
     ["helm", ["version", "--short"]],
   ]) {
     const result = runResult(executable, args);
-    if (result.status !== 0) throw new Error(`${executable} is required for Kubernetes development.`);
+    if (result.status !== 0)
+      throw new Error(`${executable} is required for Kubernetes development.`);
   }
 }
 
 async function exists(filename) {
-  try { await access(filename, constants.F_OK); return true; } catch { return false; }
+  try {
+    await access(filename, constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isRunningPid(pid) {
   if (!Number.isSafeInteger(pid) || pid <= 0) return false;
-  try { process.kill(pid, 0); return true; }
-  catch (error) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
     if (error?.code === "ESRCH") return false;
     return error?.code === "EPERM";
   }

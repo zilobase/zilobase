@@ -1,14 +1,9 @@
 import { Hono } from "hono";
 import { getAuthenticatedUser as requireUser } from "../../shared/http/auth";
 
-import {
-  getMembership,
-} from "../access";
+import { getMembership } from "../access";
 import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
-import {
-  rejectMismatchedPinnedWorkspace,
-  requireOAuthScope,
-} from "../auth/oauth-access";
+import { rejectMismatchedPinnedWorkspace, requireOAuthScope } from "../auth/oauth-access";
 import type { AppBindings } from "../../shared/types";
 import { searchWorkspaceItems } from "./workspace-search";
 
@@ -48,9 +43,7 @@ searchRoutes.get("/", async (c) => {
 
   const requestedTypes = (c.req.query("types") ?? "")
     .split(",")
-    .filter((type): type is "database" | "page" =>
-      type === "database" || type === "page",
-    );
+    .filter((type): type is "database" | "page" => type === "database" || type === "page");
 
   const results = await searchWorkspaceItems({
     limit: maxSearchResults,
@@ -62,8 +55,6 @@ searchRoutes.get("/", async (c) => {
   });
 
   return c.json({
-    results: results.map(({ excerpt: _excerpt, updatedAt: _updatedAt, ...result }) =>
-      result,
-    ),
+    results: results.map(({ excerpt: _excerpt, updatedAt: _updatedAt, ...result }) => result),
   });
 });

@@ -1,77 +1,68 @@
-import type { Editor as TiptapEditor } from "@tiptap/react"
-import type { Content } from "@tiptap/core"
-import { useCallback } from "react"
-import {
-  fetchBookmarkMetadata,
-  getFallbackBookmarkMetadata,
-} from "../extensions/bookmark-block"
+import type { Editor as TiptapEditor } from "@tiptap/react";
+import type { Content } from "@tiptap/core";
+import { useCallback } from "react";
+import { fetchBookmarkMetadata, getFallbackBookmarkMetadata } from "../extensions/bookmark-block";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu"
-import type { PasteChoiceState } from "../core/types"
+} from "@/shared/ui/dropdown-menu";
+import type { PasteChoiceState } from "../core/types";
 
 type PasteChoiceMenuProps = {
-  editor: TiptapEditor | null
-  pasteChoice: PasteChoiceState
-  onClose: () => void
-}
+  editor: TiptapEditor | null;
+  pasteChoice: PasteChoiceState;
+  onClose: () => void;
+};
 
-export function PasteChoiceMenu({
-  editor,
-  pasteChoice,
-  onClose,
-}: PasteChoiceMenuProps) {
+export function PasteChoiceMenu({ editor, pasteChoice, onClose }: PasteChoiceMenuProps) {
   const replacePastedUrl = useCallback(
     (content: Content) => {
-      if (!editor) return
+      if (!editor) return;
       editor
         .chain()
         .focus()
         .deleteRange({ from: pasteChoice.from, to: pasteChoice.to })
         .insertContentAt(pasteChoice.from, content)
-        .run()
-      onClose()
+        .run();
+      onClose();
     },
-    [editor, onClose, pasteChoice.from, pasteChoice.to]
-  )
+    [editor, onClose, pasteChoice.from, pasteChoice.to],
+  );
 
   const pasteAsBookmarkOrMention = useCallback(
     async (type: "bookmarkBlock" | "linkMention") => {
-      const fallback = getFallbackBookmarkMetadata(pasteChoice.url)
-      let metadata = fallback
+      const fallback = getFallbackBookmarkMetadata(pasteChoice.url);
+      let metadata = fallback;
       try {
-        metadata = { ...fallback, ...(await fetchBookmarkMetadata(pasteChoice.url)) }
+        metadata = { ...fallback, ...(await fetchBookmarkMetadata(pasteChoice.url)) };
       } catch {
         // Keep fallback metadata when bookmark fetch fails.
       }
       const block = {
         attrs: { ...metadata, href: pasteChoice.url },
         type,
-      }
-      replacePastedUrl(
-        type === "linkMention" ? [block, { text: " ", type: "text" }] : block
-      )
+      };
+      replacePastedUrl(type === "linkMention" ? [block, { text: " ", type: "text" }] : block);
     },
-    [pasteChoice.url, replacePastedUrl]
-  )
+    [pasteChoice.url, replacePastedUrl],
+  );
 
   const pasteAsUrl = useCallback(() => {
-    if (!editor) return
+    if (!editor) return;
     editor
       .chain()
       .focus()
       .setTextSelection({ from: pasteChoice.from, to: pasteChoice.to })
       .setLink({ href: pasteChoice.url })
       .setTextSelection(pasteChoice.to)
-      .run()
-    onClose()
-  }, [editor, onClose, pasteChoice.from, pasteChoice.to, pasteChoice.url])
+      .run();
+    onClose();
+  }, [editor, onClose, pasteChoice.from, pasteChoice.to, pasteChoice.url]);
 
-  const pasteChoiceRect = pasteChoice.anchor.getBoundingClientRect()
+  const pasteChoiceRect = pasteChoice.anchor.getBoundingClientRect();
 
   return (
     <DropdownMenu modal={false} onOpenChange={(open) => !open && onClose()} open>
@@ -99,9 +90,7 @@ export function PasteChoiceMenu({
         </DropdownMenuItem>
         {pasteChoice.embedAttrs ? (
           <DropdownMenuItem
-            onClick={() =>
-              replacePastedUrl({ attrs: pasteChoice.embedAttrs, type: "embedBlock" })
-            }
+            onClick={() => replacePastedUrl({ attrs: pasteChoice.embedAttrs, type: "embedBlock" })}
           >
             Embed
           </DropdownMenuItem>
@@ -109,5 +98,5 @@ export function PasteChoiceMenu({
         <DropdownMenuItem onClick={pasteAsUrl}>URL</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }

@@ -1,8 +1,5 @@
 export { DiscussionsSidebarPanel } from "./components/discussions-sidebar";
-export {
-  PageCommentThread,
-  formatCommentButtonLabel,
-} from "./components/page-comments";
+export { PageCommentThread, formatCommentButtonLabel } from "./components/page-comments";
 export {
   PageEditorCommentsProvider,
   usePageEditorComments,
@@ -13,7 +10,4 @@ export {
   usePageCommentsRegistry,
   usePageCommentsSnapshot,
 } from "./context/page-comments-registry";
-export {
-  createPageCommentController,
-  type PageCommentController,
-} from "./model/yjs-comments";
+export { createPageCommentController, type PageCommentController } from "./model/yjs-comments";

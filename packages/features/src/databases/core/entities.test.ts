@@ -1,5 +1,5 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import assert from "node:assert/strict";
+import test from "node:test";
 
 import {
   databaseBootstrapResponseSchema,
@@ -10,9 +10,9 @@ import {
   databaseProtocolErrorSchema,
   databaseRecordWindowResponseSchema,
   moveRowCommandSchema,
-} from  "./entities"
+} from "./entities";
 
-const now = "2026-09-14T10:00:00.000Z"
+const now = "2026-09-14T10:00:00.000Z";
 
 const host = {
   accessLevel: "edit" as const,
@@ -25,7 +25,7 @@ const host = {
   updatedAt: now,
   version: 4,
   workspaceId: "workspace-1",
-}
+};
 
 const record = {
   createdAt: now,
@@ -45,7 +45,7 @@ const record = {
   parentRowId: null,
   updatedAt: now,
   valuesByPropertyId: {},
-}
+};
 
 const event = {
   actorId: "user-1",
@@ -59,7 +59,7 @@ const event = {
   protocolVersion: 2 as const,
   type: "database.mutation" as const,
   version: 5,
-}
+};
 
 test("v2 bootstrap excludes monolithic row fields", () => {
   const parsed = databaseBootstrapResponseSchema.parse({
@@ -67,15 +67,12 @@ test("v2 bootstrap excludes monolithic row fields", () => {
     dataSources: [],
     properties: [],
     views: [],
-  })
+  });
 
-  assert.equal(parsed.database.id, "database-1")
-  assert.equal(parsed.database.deletedAt, null)
-  assert.equal(
-    databaseBootstrapResponseSchema.safeParse({ ...parsed, rows: [] }).success,
-    false,
-  )
-})
+  assert.equal(parsed.database.id, "database-1");
+  assert.equal(parsed.database.deletedAt, null);
+  assert.equal(databaseBootstrapResponseSchema.safeParse({ ...parsed, rows: [] }).success, false);
+});
 
 test("bootstrap preserves the host database deletion state", () => {
   const parsed = databaseBootstrapResponseSchema.parse({
@@ -83,10 +80,10 @@ test("bootstrap preserves the host database deletion state", () => {
     dataSources: [],
     properties: [],
     views: [],
-  })
+  });
 
-  assert.equal(parsed.database.deletedAt, now)
-})
+  assert.equal(parsed.database.deletedAt, now);
+});
 
 test("record windows require complete atomic records and snapshot versions", () => {
   const parsed = databaseRecordWindowResponseSchema.parse({
@@ -97,17 +94,17 @@ test("record windows require complete atomic records and snapshot versions", () 
     records: [record],
     snapshot: "snapshot-token",
     totalCount: 1,
-  })
+  });
 
-  assert.equal(parsed.records[0]?.page.hasContent, false)
+  assert.equal(parsed.records[0]?.page.hasContent, false);
   assert.equal(
     databaseRecordWindowResponseSchema.safeParse({
       ...parsed,
       records: [{ ...record, page: undefined }],
     }).success,
     false,
-  )
-})
+  );
+});
 
 test("row movement uses anchors and rejects legacy row id arrays", () => {
   assert.deepEqual(
@@ -123,7 +120,7 @@ test("row movement uses anchors and rejects legacy row id arrays", () => {
       rowId: "row-1",
       type: "row.move",
     },
-  )
+  );
   assert.equal(
     moveRowCommandSchema.safeParse({
       afterRowId: null,
@@ -133,8 +130,8 @@ test("row movement uses anchors and rejects legacy row id arrays", () => {
       type: "row.move",
     }).success,
     false,
-  )
-})
+  );
+});
 
 test("command requests are protocol-versioned discriminated unions", () => {
   assert.equal(
@@ -149,7 +146,7 @@ test("command requests are protocol-versioned discriminated unions", () => {
       protocolVersion: 2,
     }).command.type,
     "cell.set",
-  )
+  );
   assert.equal(
     databaseCommandRequestSchema.safeParse({
       command: { type: "unknown" },
@@ -157,18 +154,18 @@ test("command requests are protocol-versioned discriminated unions", () => {
       protocolVersion: 2,
     }).success,
     false,
-  )
-})
+  );
+});
 
 test("events and acknowledgements require complete v2 entity changes", () => {
-  assert.equal(databaseMutationEventV2Schema.parse(event).eventId, "event-5")
+  assert.equal(databaseMutationEventV2Schema.parse(event).eventId, "event-5");
   assert.equal(
     databaseMutationEventV2Schema.safeParse({
       ...event,
       changes: { records: [{ id: "row-1" }] },
     }).success,
     false,
-  )
+  );
   assert.equal(
     databaseCommandAckSchema.parse({
       commandId: "command-1",
@@ -176,17 +173,20 @@ test("events and acknowledgements require complete v2 entity changes", () => {
       result: { record },
     }).commandId,
     "command-1",
-  )
-})
+  );
+});
 
 test("mutation feeds expose ordered catch-up state", () => {
-  assert.equal(databaseMutationFeedResponseSchema.parse({
-    events: [event],
-    hasMore: false,
-    latestVersion: 5,
-    resetRequired: false,
-  }).events[0]?.version, 5)
-})
+  assert.equal(
+    databaseMutationFeedResponseSchema.parse({
+      events: [event],
+      hasMore: false,
+      latestVersion: 5,
+      resetRequired: false,
+    }).events[0]?.version,
+    5,
+  );
+});
 
 test("typed protocol errors preserve conflict-specific context", () => {
   assert.deepEqual(
@@ -200,5 +200,5 @@ test("typed protocol errors preserve conflict-specific context", () => {
       message: "The row anchors are no longer valid.",
       rowId: "row-1",
     },
-  )
-})
+  );
+});

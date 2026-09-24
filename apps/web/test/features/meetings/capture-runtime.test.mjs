@@ -26,16 +26,22 @@ export function register({ assert, loadModule, test }) {
     const { createNativeMeetingCaptureRuntime } = await loadModule(
       "/src/features/desktop/meetings/native-capture-runtime.ts",
     );
-    const handlers = new Map(), removed = [], calls = [];
+    const handlers = new Map(),
+      removed = [],
+      calls = [];
     const runtime = createNativeMeetingCaptureRuntime({
       state: async () => ({ meetingId: "meeting", phase: "recording" }),
       listDevices: async () => [{ id: "mic" }],
       recoverable: async () => [
-            { meetingId: "other" },
-            { meetingId: "meeting", audioPath: "local" },
-          ],
-      refreshTransport: async (...args) => { calls.push(["refresh", args]); },
-      deleteLocal: async (meetingId) => { calls.push(["delete", meetingId]); },
+        { meetingId: "other" },
+        { meetingId: "meeting", audioPath: "local" },
+      ],
+      refreshTransport: async (...args) => {
+        calls.push(["refresh", args]);
+      },
+      deleteLocal: async (meetingId) => {
+        calls.push(["delete", meetingId]);
+      },
       onState: (callback) => {
         const name = "meeting-capture-state";
         handlers.set(name, callback);
@@ -103,7 +109,8 @@ export function register({ assert, loadModule, test }) {
     const { createNativeMeetingCaptureRuntime } = await loadModule(
       "/src/features/desktop/meetings/native-capture-runtime.ts",
     );
-    const resolvers = [], removed = [];
+    const resolvers = [],
+      removed = [];
     const pending = () => new Promise((resolve) => resolvers.push(resolve));
     const runtime = createNativeMeetingCaptureRuntime({
       state: pending,
@@ -153,10 +160,7 @@ export function register({ assert, loadModule, test }) {
       },
     };
     const { state, observer } = observedState();
-    const dispose = createBrowserMeetingCaptureRuntime(capture).observe(
-      "meeting",
-      observer,
-    );
+    const dispose = createBrowserMeetingCaptureRuntime(capture).observe("meeting", observer);
     await settled();
     assert.equal(state.status, null);
     assert.equal(state.liveTranscripts.length, 1);

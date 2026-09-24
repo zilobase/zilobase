@@ -1,105 +1,100 @@
 import type { PageDocumentNode } from "../document/page-document";
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const DATABASE_MARKER =
-  /^\[Database(?:\s*\(([^)]+)\))?\]$/i
-const MEETING_MARKER = /^\[Meeting(?:\s*\(([^)]+)\))?\]$/i
-const PAGE_WITH_ID_MARKER =
-  /^\[Page:\s*(.+?)\s*\(([0-9a-f-]{36})\)\]$/i
-const PAGE_MARKER = /^\[Page:\s*(.+?)\]$/i
-const VIDEO_MARKER = /^\[Video\]\(([^)]+)\)$/i
-const FILE_MARKER = /^\[File:\s*(.+?)\]\(([^)]+)\)$/i
-const IMAGE_MARKER = /^!\[([^\]]*)\]\(([^)]+)\)$/i
+const DATABASE_MARKER = /^\[Database(?:\s*\(([^)]+)\))?\]$/i;
+const MEETING_MARKER = /^\[Meeting(?:\s*\(([^)]+)\))?\]$/i;
+const PAGE_WITH_ID_MARKER = /^\[Page:\s*(.+?)\s*\(([0-9a-f-]{36})\)\]$/i;
+const PAGE_MARKER = /^\[Page:\s*(.+?)\]$/i;
+const VIDEO_MARKER = /^\[Video\]\(([^)]+)\)$/i;
+const FILE_MARKER = /^\[File:\s*(.+?)\]\(([^)]+)\)$/i;
+const IMAGE_MARKER = /^!\[([^\]]*)\]\(([^)]+)\)$/i;
 
 export function isStructuralBlockMarkerLine(line: string) {
-  const trimmed = line.trim()
+  const trimmed = line.trim();
 
   if (!trimmed) {
-    return false
+    return false;
   }
 
-  return Boolean(matchStructuralBlockText(trimmed))
+  return Boolean(matchStructuralBlockText(trimmed));
 }
 
 export function preprocessStructuralBlockMarkdown(markdown: string) {
   return markdown
     .split("\n")
     .map((line) => {
-      const trimmed = line.trim()
+      const trimmed = line.trim();
 
       if (!isStructuralBlockMarkerLine(trimmed)) {
-        return line
+        return line;
       }
 
-      const block = matchStructuralBlockText(trimmed)
+      const block = matchStructuralBlockText(trimmed);
 
       if (!block) {
-        return line
+        return line;
       }
 
-      return structuralBlockToHtml(block)
+      return structuralBlockToHtml(block);
     })
-    .join("\n")
+    .join("\n");
 }
 
 export function restoreStructuralBlocksInMarkdownContent<T extends PageDocumentNode>(
   content: T[],
 ): T[] {
-  const restored: T[] = []
+  const restored: T[] = [];
 
   for (const node of content) {
-    const structuralBlock = matchStructuralBlockNode(node)
+    const structuralBlock = matchStructuralBlockNode(node);
 
     if (structuralBlock) {
-      restored.push(structuralBlock)
-      continue
+      restored.push(structuralBlock);
+      continue;
     }
 
-    restored.push(node)
+    restored.push(node);
   }
 
-  return restored
+  return restored;
 }
 
-function matchStructuralBlockNode<T extends PageDocumentNode>(
-  node: T,
-): T | null {
+function matchStructuralBlockNode<T extends PageDocumentNode>(node: T): T | null {
   if (node.type !== "paragraph") {
-    return null
+    return null;
   }
 
-  const plainText = readPlainParagraphText(node)
+  const plainText = readPlainParagraphText(node);
 
   if (plainText) {
-    const fromText = matchStructuralBlockText(plainText)
+    const fromText = matchStructuralBlockText(plainText);
 
     if (fromText) {
-      return fromText as unknown as T
+      return fromText as unknown as T;
     }
   }
 
-  const fromLink = matchStructuralLinkParagraph(node)
+  const fromLink = matchStructuralLinkParagraph(node);
 
   if (fromLink) {
-    return fromLink as unknown as T
+    return fromLink as unknown as T;
   }
 
-  return null
+  return null;
 }
 
 function matchStructuralBlockText(text: string) {
-  const trimmed = text.trim()
+  const trimmed = text.trim();
 
   if (!trimmed) {
-    return null
+    return null;
   }
 
-  const databaseMatch = DATABASE_MARKER.exec(trimmed)
+  const databaseMatch = DATABASE_MARKER.exec(trimmed);
 
   if (databaseMatch) {
-    const databaseId = databaseMatch[1]?.trim() ?? null
+    const databaseId = databaseMatch[1]?.trim() ?? null;
 
     return {
       attrs: {
@@ -107,21 +102,21 @@ function matchStructuralBlockText(text: string) {
         showTitle: true,
       },
       type: "databaseBlock",
-    }
+    };
   }
 
-  const pageWithIdMatch = PAGE_WITH_ID_MARKER.exec(trimmed)
+  const pageWithIdMatch = PAGE_WITH_ID_MARKER.exec(trimmed);
 
-  const meetingMatch = MEETING_MARKER.exec(trimmed)
+  const meetingMatch = MEETING_MARKER.exec(trimmed);
 
   if (meetingMatch) {
-    const meetingId = meetingMatch[1]?.trim() ?? null
+    const meetingId = meetingMatch[1]?.trim() ?? null;
     return {
       attrs: {
         meetingId: meetingId && UUID_PATTERN.test(meetingId) ? meetingId : null,
       },
       type: "meetingBlock",
-    }
+    };
   }
 
   if (pageWithIdMatch) {
@@ -130,10 +125,10 @@ function matchStructuralBlockText(text: string) {
         pageId: pageWithIdMatch[2],
       },
       type: "pageBlock",
-    }
+    };
   }
 
-  const pageMatch = PAGE_MARKER.exec(trimmed)
+  const pageMatch = PAGE_MARKER.exec(trimmed);
 
   if (pageMatch) {
     return {
@@ -141,10 +136,10 @@ function matchStructuralBlockText(text: string) {
         pageId: null,
       },
       type: "pageBlock",
-    }
+    };
   }
 
-  const videoMatch = VIDEO_MARKER.exec(trimmed)
+  const videoMatch = VIDEO_MARKER.exec(trimmed);
 
   if (videoMatch) {
     return {
@@ -153,7 +148,7 @@ function matchStructuralBlockText(text: string) {
         title: null,
       },
       type: "videoBlock",
-    }
+    };
   }
 
   if (trimmed.toLowerCase() === "[video]") {
@@ -163,10 +158,10 @@ function matchStructuralBlockText(text: string) {
         title: null,
       },
       type: "videoBlock",
-    }
+    };
   }
 
-  const fileMatch = FILE_MARKER.exec(trimmed)
+  const fileMatch = FILE_MARKER.exec(trimmed);
 
   if (fileMatch) {
     return {
@@ -175,10 +170,10 @@ function matchStructuralBlockText(text: string) {
         title: fileMatch[1].trim(),
       },
       type: "fileBlock",
-    }
+    };
   }
 
-  const imageMatch = IMAGE_MARKER.exec(trimmed)
+  const imageMatch = IMAGE_MARKER.exec(trimmed);
 
   if (imageMatch) {
     return {
@@ -188,28 +183,27 @@ function matchStructuralBlockText(text: string) {
         title: null,
       },
       type: "imageBlock",
-    }
+    };
   }
 
-  return null
+  return null;
 }
 
 function matchStructuralLinkParagraph<T extends PageDocumentNode>(node: T) {
-  const textNode = node.content?.find((entry) => entry.type === "text")
+  const textNode = node.content?.find((entry) => entry.type === "text");
 
   if (!textNode || node.content?.length !== 1) {
-    return null
+    return null;
   }
 
-  const linkMark = textNode.marks?.find((mark) => mark.type === "link")
-  const href =
-    typeof linkMark?.attrs?.href === "string" ? linkMark.attrs.href.trim() : ""
+  const linkMark = textNode.marks?.find((mark) => mark.type === "link");
+  const href = typeof linkMark?.attrs?.href === "string" ? linkMark.attrs.href.trim() : "";
 
   if (!href) {
-    return null
+    return null;
   }
 
-  const label = (textNode.text ?? "").trim()
+  const label = (textNode.text ?? "").trim();
 
   if (label.toLowerCase() === "video") {
     return {
@@ -218,10 +212,10 @@ function matchStructuralLinkParagraph<T extends PageDocumentNode>(node: T) {
         title: null,
       },
       type: "videoBlock",
-    }
+    };
   }
 
-  const fileMatch = /^File:\s*(.+)$/i.exec(label)
+  const fileMatch = /^File:\s*(.+)$/i.exec(label);
 
   if (fileMatch) {
     return {
@@ -230,89 +224,73 @@ function matchStructuralLinkParagraph<T extends PageDocumentNode>(node: T) {
         title: fileMatch[1].trim(),
       },
       type: "fileBlock",
-    }
+    };
   }
 
-  return null
+  return null;
 }
 
-function structuralBlockToHtml(block: {
-  attrs?: Record<string, unknown>
-  type: string
-}) {
+function structuralBlockToHtml(block: { attrs?: Record<string, unknown>; type: string }) {
   switch (block.type) {
     case "databaseBlock": {
-      const databaseId = block.attrs?.databaseId
+      const databaseId = block.attrs?.databaseId;
       return typeof databaseId === "string" && databaseId
         ? `<div data-type="databaseBlock" data-database-id="${escapeHtmlAttr(databaseId)}"></div>`
-        : `<div data-type="databaseBlock"></div>`
+        : `<div data-type="databaseBlock"></div>`;
     }
     case "pageBlock": {
-      const pageId = block.attrs?.pageId
+      const pageId = block.attrs?.pageId;
       return typeof pageId === "string" && pageId
         ? `<div data-type="pageBlock" data-page-id="${escapeHtmlAttr(pageId)}"></div>`
-        : `<div data-type="pageBlock"></div>`
+        : `<div data-type="pageBlock"></div>`;
     }
     case "meetingBlock": {
-      const meetingId = block.attrs?.meetingId
+      const meetingId = block.attrs?.meetingId;
       return typeof meetingId === "string" && meetingId
         ? `<div data-type="meetingBlock" data-meeting-id="${escapeHtmlAttr(meetingId)}"></div>`
-        : `<div data-type="meetingBlock"></div>`
+        : `<div data-type="meetingBlock"></div>`;
     }
     case "videoBlock": {
-      const src = block.attrs?.src
+      const src = block.attrs?.src;
       return typeof src === "string" && src
         ? `<div data-type="videoBlock" data-src="${escapeHtmlAttr(src)}"></div>`
-        : `<div data-type="videoBlock"></div>`
+        : `<div data-type="videoBlock"></div>`;
     }
     case "fileBlock": {
-      const href = block.attrs?.href
-      const title = block.attrs?.title
+      const href = block.attrs?.href;
+      const title = block.attrs?.title;
       const hrefAttr =
-        typeof href === "string" && href
-          ? ` data-href="${escapeHtmlAttr(href)}"`
-          : ""
+        typeof href === "string" && href ? ` data-href="${escapeHtmlAttr(href)}"` : "";
       const titleAttr =
-        typeof title === "string" && title
-          ? ` data-title="${escapeHtmlAttr(title)}"`
-          : ""
+        typeof title === "string" && title ? ` data-title="${escapeHtmlAttr(title)}"` : "";
 
-      return `<div data-type="fileBlock"${hrefAttr}${titleAttr}></div>`
+      return `<div data-type="fileBlock"${hrefAttr}${titleAttr}></div>`;
     }
     case "imageBlock": {
-      const src = block.attrs?.src
-      const alt = block.attrs?.alt
-      const srcAttr =
-        typeof src === "string" && src
-          ? ` data-src="${escapeHtmlAttr(src)}"`
-          : ""
-      const altAttr =
-        typeof alt === "string" && alt
-          ? ` data-alt="${escapeHtmlAttr(alt)}"`
-          : ""
+      const src = block.attrs?.src;
+      const alt = block.attrs?.alt;
+      const srcAttr = typeof src === "string" && src ? ` data-src="${escapeHtmlAttr(src)}"` : "";
+      const altAttr = typeof alt === "string" && alt ? ` data-alt="${escapeHtmlAttr(alt)}"` : "";
 
-      return `<div data-type="imageBlock"${srcAttr}${altAttr}></div>`
+      return `<div data-type="imageBlock"${srcAttr}${altAttr}></div>`;
     }
     default:
-      return ""
+      return "";
   }
 }
 
 function escapeHtmlAttr(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }
 
 function readPlainParagraphText(node: PageDocumentNode) {
   if (!node.content?.length) {
-    return ""
+    return "";
   }
 
   if (!node.content.every((entry) => entry.type === "text" && !entry.marks?.length)) {
-    return ""
+    return "";
   }
 
-  return node.content.map((entry) => entry.text ?? "").join("")
+  return node.content.map((entry) => entry.text ?? "").join("");
 }

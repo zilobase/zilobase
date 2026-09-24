@@ -35,14 +35,8 @@ import {
 
 import { meetingAudioMessageBytes } from "../meeting-audio/message-bytes";
 import { readMeetingAudioClaims } from "../meeting-audio/security";
-import {
-  PageCollaborationRoom,
-  type PageCollaborationEnv,
-} from "./page-collaboration-room";
-import {
-  MeetingRoomStorage,
-  type MeetingRoomRecorder,
-} from "./meeting-room-storage";
+import { PageCollaborationRoom, type PageCollaborationEnv } from "./page-collaboration-room";
+import { MeetingRoomStorage, type MeetingRoomRecorder } from "./meeting-room-storage";
 
 const PCM_FRAME_BYTES = 480 * 2;
 const AUDIO_PACKET_HEADER_BYTES = 9;
@@ -62,9 +56,9 @@ type AudioSocketAttachment = {
   sessionId: string;
 };
 
-type TranscriptDirectConnection = Awaited<ReturnType<
-  ReturnType<typeof createCollaborationHocuspocus>["openDirectConnection"]
->>;
+type TranscriptDirectConnection = Awaited<
+  ReturnType<ReturnType<typeof createCollaborationHocuspocus>["openDirectConnection"]>
+>;
 
 type AudioSession = {
   activeSources: MeetingAudioSource[];
@@ -96,17 +90,14 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   constructor(ctx: DurableObjectState, env: PageCollaborationEnv) {
     const roomStorage = new MeetingRoomStorage(ctx.storage);
     super(ctx, env, {
-      load: (documentName) =>
-        loadMeetingRoomDocument(roomStorage, documentName, env),
+      load: (documentName) => loadMeetingRoomDocument(roomStorage, documentName, env),
       store: ({ documentName, state }) => {
         roomStorage.storeDocument(documentName, state);
         return Promise.resolve();
       },
     });
     this.roomStorage = roomStorage;
-    this.hocuspocus.configuration.extensions.push(
-      meetingTranscriptWriteGuard(roomStorage),
-    );
+    this.hocuspocus.configuration.extensions.push(meetingTranscriptWriteGuard(roomStorage));
     ctx.blockConcurrencyWhile(async () => {
       this.roomStorage.migrate();
     });
@@ -128,23 +119,27 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
     const documentSync = this.roomStorage.getDocumentSync();
     if (documentSync && documentSync.nextAttemptAt <= now) {
       try {
-        await runWithDbEnv(this.env, () => persistMeetingTranscriptSession({
-          meetingId: documentSync.meetingId,
-          segments: [],
-          yjsState: documentSync.state,
-        }));
+        await runWithDbEnv(this.env, () =>
+          persistMeetingTranscriptSession({
+            meetingId: documentSync.meetingId,
+            segments: [],
+            yjsState: documentSync.state,
+          }),
+        );
         this.roomStorage.completeDocumentSync(documentSync.updatedAt);
       } catch (error) {
         this.roomStorage.retryDocumentSync(
           documentSync,
           now + documentSyncRetryDelay(documentSync.attempts),
         );
-        console.error(JSON.stringify({
-          attempts: documentSync.attempts + 1,
-          error: error instanceof Error ? error.message : String(error),
-          event: "meeting_document_sync_failed",
-          meetingId: documentSync.meetingId,
-        }));
+        console.error(
+          JSON.stringify({
+            attempts: documentSync.attempts + 1,
+            error: error instanceof Error ? error.message : String(error),
+            event: "meeting_document_sync_failed",
+            meetingId: documentSync.meetingId,
+          }),
+        );
       }
     }
 
@@ -157,9 +152,8 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
       session.socket?.readyState === WebSocket.OPEN
     ) {
       session.recorder = this.roomStorage.updateRecorder(recorder, {
-        expiresAt: now + (recorder.status === "paused"
-          ? RECORDER_PAUSED_TTL_MS
-          : RECORDER_ACTIVE_TTL_MS),
+        expiresAt:
+          now + (recorder.status === "paused" ? RECORDER_PAUSED_TTL_MS : RECORDER_ACTIVE_TTL_MS),
       });
       if (session.claims.exp - now <= AUDIO_TICKET_REFRESH_LEAD_MS) {
         await this.refreshAudioTicket(session);
@@ -188,18 +182,11 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
       : super.fetch(request);
   }
 
-  override async webSocketMessage(
-    ws: WebSocket,
-    rawMessage: string | ArrayBuffer,
-  ) {
-    return this.runWithRoomRuntime(() =>
-      this.handleMeetingWebSocketMessage(ws, rawMessage));
+  override async webSocketMessage(ws: WebSocket, rawMessage: string | ArrayBuffer) {
+    return this.runWithRoomRuntime(() => this.handleMeetingWebSocketMessage(ws, rawMessage));
   }
 
-  private async handleMeetingWebSocketMessage(
-    ws: WebSocket,
-    rawMessage: string | ArrayBuffer,
-  ) {
+  private async handleMeetingWebSocketMessage(ws: WebSocket, rawMessage: string | ArrayBuffer) {
     const attachment = readAudioAttachment(ws);
     if (!attachment) return super.webSocketMessage(ws, rawMessage);
 
@@ -217,14 +204,10 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
     }
   }
 
-  override async webSocketClose(
-    ws: WebSocket,
-    code: number,
-    reason: string,
-    wasClean: boolean,
-  ) {
+  override async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
     return this.runWithRoomRuntime(() =>
-      this.handleMeetingWebSocketClose(ws, code, reason, wasClean));
+      this.handleMeetingWebSocketClose(ws, code, reason, wasClean),
+    );
   }
 
   private async handleMeetingWebSocketClose(
@@ -244,8 +227,7 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   }
 
   override async webSocketError(ws: WebSocket, error: unknown) {
-    return this.runWithRoomRuntime(() =>
-      this.handleMeetingWebSocketError(ws, error));
+    return this.runWithRoomRuntime(() => this.handleMeetingWebSocketError(ws, error));
   }
 
   private async handleMeetingWebSocketError(ws: WebSocket, error: unknown) {
@@ -254,11 +236,13 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
 
     const session = this.audioSession;
     if (session?.sessionId === attachment.sessionId) {
-      console.warn(JSON.stringify({
-        error: error instanceof Error ? error.message : String(error),
-        event: "meeting_audio_client_socket_error",
-        meetingId: session.claims.meetingId,
-      }));
+      console.warn(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : String(error),
+          event: "meeting_audio_client_socket_error",
+          meetingId: session.claims.meetingId,
+        }),
+      );
       if (session.socket === ws) session.socket = null;
     }
   }
@@ -302,26 +286,16 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   private handleGetRecorderState(): MeetingRecorderRuntimeState | null {
     const recorder = this.roomStorage.getRecorder();
     if (!recorder) return null;
-    const recoverable = recorder.status !== "claimed" ||
-      this.roomStorage.listSegments(recorder.leaseId).length > 0;
-    return recorder.expiresAt > Date.now() || recoverable
-      ? toRuntimeRecorder(recorder)
-      : null;
+    const recoverable =
+      recorder.status !== "claimed" || this.roomStorage.listSegments(recorder.leaseId).length > 0;
+    return recorder.expiresAt > Date.now() || recoverable ? toRuntimeRecorder(recorder) : null;
   }
 
-  releaseRecorder(input: {
-    leaseId: string;
-    meetingId: string;
-    userId: string;
-  }) {
+  releaseRecorder(input: { leaseId: string; meetingId: string; userId: string }) {
     return this.runWithRoomRuntime(() => this.handleReleaseRecorder(input));
   }
 
-  private handleReleaseRecorder(input: {
-    leaseId: string;
-    meetingId: string;
-    userId: string;
-  }) {
+  private handleReleaseRecorder(input: { leaseId: string; meetingId: string; userId: string }) {
     const current = this.roomStorage.getRecorder();
     if (!current) return;
     const recorder = this.roomStorage.requireRecorder(input);
@@ -351,43 +325,30 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   }): MeetingRecorderRuntimeState {
     const recorder = this.roomStorage.requireRecorder(input);
     assertRecorderTransition(recorder.status, input.action);
-    const nextStatus = input.action === "pause"
-      ? "paused"
-      : input.action === "stop"
-        ? "finishing"
-        : "recording";
+    const nextStatus =
+      input.action === "pause" ? "paused" : input.action === "stop" ? "finishing" : "recording";
     const updated = this.roomStorage.updateRecorder(recorder, {
       durationMs: input.durationMs ?? recorder.durationMs,
-      expiresAt: Date.now() + (nextStatus === "paused"
-        ? RECORDER_PAUSED_TTL_MS
-        : RECORDER_ACTIVE_TTL_MS),
+      expiresAt:
+        Date.now() + (nextStatus === "paused" ? RECORDER_PAUSED_TTL_MS : RECORDER_ACTIVE_TTL_MS),
       status: nextStatus,
     });
     const session = this.audioSession;
     if (session?.recorder.leaseId === updated.leaseId) {
       session.recorder = updated;
-      this.updateRecordingPresence(session, nextStatus === "finishing"
-        ? "finishing"
-        : nextStatus);
+      this.updateRecordingPresence(session, nextStatus === "finishing" ? "finishing" : nextStatus);
     }
     this.scheduleMaintenanceInBackground();
     return toRuntimeRecorder(updated);
   }
 
-  async replaceMeetingSummary(
-    content: unknown,
-    meetingId: string,
-    userId: string,
-  ) {
+  async replaceMeetingSummary(content: unknown, meetingId: string, userId: string) {
     return this.runWithRoomRuntime(() =>
-      this.handleReplaceMeetingSummary(content, meetingId, userId));
+      this.handleReplaceMeetingSummary(content, meetingId, userId),
+    );
   }
 
-  private async handleReplaceMeetingSummary(
-    content: unknown,
-    meetingId: string,
-    userId: string,
-  ) {
+  private async handleReplaceMeetingSummary(content: unknown, meetingId: string, userId: string) {
     await this.restoreConnections();
     await replaceMeetingSummaryInHocuspocus(this.hocuspocus, {
       content,
@@ -403,12 +364,8 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
     userId: string,
   ) {
     return this.runWithRoomRuntime(() =>
-      this.handleAppendMeetingTranscript(
-        draftItemId,
-        meetingId,
-        segment,
-        userId,
-      ));
+      this.handleAppendMeetingTranscript(draftItemId, meetingId, segment, userId),
+    );
   }
 
   private async handleAppendMeetingTranscript(
@@ -541,16 +498,15 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
 
   private async createSessionTranscribers(session: AudioSession) {
     session.readySources.clear();
-    await Promise.all(session.activeSources.map(async (source) => {
-      const transcriber = await this.createSourceTranscriber(session, source);
-      session.transcribers.set(source, transcriber);
-    }));
+    await Promise.all(
+      session.activeSources.map(async (source) => {
+        const transcriber = await this.createSourceTranscriber(session, source);
+        session.transcribers.set(source, transcriber);
+      }),
+    );
   }
 
-  private createSourceTranscriber(
-    session: AudioSession,
-    source: MeetingAudioSource,
-  ) {
+  private createSourceTranscriber(session: AudioSession, source: MeetingAudioSource) {
     const generation = ++session.providerGenerations[source];
     const isCurrent = () => session.providerGenerations[source] === generation;
     const publicTurn = (turn: RealtimeTranscriptionTurn) => ({
@@ -621,11 +577,12 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
       throw new Error(`Realtime transcription provider returned ${response.status}`);
     }
     socket.accept();
-    return new MeetingRealtimeTranscriber(
-      socket as unknown as RealtimeTranscriptionSocket,
-      model,
-      { onCompleted, onDelta, onError, onReady },
-    );
+    return new MeetingRealtimeTranscriber(socket as unknown as RealtimeTranscriptionSocket, model, {
+      onCompleted,
+      onDelta,
+      onError,
+      onReady,
+    });
   }
 
   private async onAudioMessage(session: AudioSession, raw: unknown) {
@@ -663,18 +620,12 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
       session.socket?.close(1003, "PCM16 audio frames are required");
       return;
     }
-    const accepted = trimAcceptedMeetingAudio(
-      pcm,
-      sequence,
-      session.lastSequences[source],
-    );
+    const accepted = trimAcceptedMeetingAudio(pcm, sequence, session.lastSequences[source]);
     if (!accepted) return;
     session.lastSequences[source] = accepted.endSequence;
     transcriber.appendAudio(accepted.pcm, accepted.sequence);
 
-    if (
-      Date.now() - session.lastLeaseRefreshAt >= RECORDER_ACTIVE_TTL_MS / 2
-    ) {
+    if (Date.now() - session.lastLeaseRefreshAt >= RECORDER_ACTIVE_TTL_MS / 2) {
       session.lastLeaseRefreshAt = Date.now();
       session.recorder = this.roomStorage.updateRecorder(session.recorder, {
         expiresAt: Date.now() + RECORDER_ACTIVE_TTL_MS,
@@ -741,10 +692,10 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
     }
 
     if (message.type === "recording.stop") {
-      const durationMs = typeof message.durationMs === "number" &&
-          Number.isFinite(message.durationMs)
-        ? Math.max(0, Math.min(10_800_000, Math.round(message.durationMs)))
-        : Math.max(session.recorder.durationMs, audioSessionDurationMs(session));
+      const durationMs =
+        typeof message.durationMs === "number" && Number.isFinite(message.durationMs)
+          ? Math.max(0, Math.min(10_800_000, Math.round(message.durationMs)))
+          : Math.max(session.recorder.durationMs, audioSessionDurationMs(session));
       await this.finishAudioSession(session, { durationMs, notify: true });
       return;
     }
@@ -823,14 +774,10 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
       text,
     };
     const document = session.connection.document;
-    const checkpoint = this.roomStorage.checkpoint(
-      session.recorder,
-      segment,
-      {
-        durationMs: Math.max(session.recorder.durationMs, segment.endMs),
-        expiresAt: Date.now() + RECORDER_ACTIVE_TTL_MS,
-      },
-    );
+    const checkpoint = this.roomStorage.checkpoint(session.recorder, segment, {
+      durationMs: Math.max(session.recorder.durationMs, segment.endMs),
+      expiresAt: Date.now() + RECORDER_ACTIVE_TTL_MS,
+    });
     session.recorder = checkpoint.recorder;
     if (!checkpoint.inserted) {
       this.sendCompletedTurn(session, source, turn);
@@ -889,19 +836,13 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
     }, transientOrigin(session));
   }
 
-  private clearLiveDraft(
-    session: AudioSession,
-    source?: MeetingAudioSource,
-    itemId?: string,
-  ) {
+  private clearLiveDraft(session: AudioSession, source?: MeetingAudioSource, itemId?: string) {
     const document = session.connection.document;
     if (!document) return;
     document.transact(() => {
       const sources = source ? [source] : MEETING_AUDIO_SOURCES;
       for (const currentSource of sources) {
-        const draft = document.getMap<string | number>(
-          `liveTranscript:${currentSource}`,
-        );
+        const draft = document.getMap<string | number>(`liveTranscript:${currentSource}`);
         if (!itemId || draft.get("itemId") === itemId) draft.clear();
       }
     }, transientOrigin(session));
@@ -931,14 +872,14 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
       session.socket?.readyState !== WebSocket.OPEN ||
       session.activeSources.length === 0 ||
       session.activeSources.some((source) => !session.readySources.has(source))
-    ) return;
+    )
+      return;
     this.sendAudioEvent(session, {
       leaseId: session.claims.leaseId,
       meetingId: session.claims.meetingId,
-      nextSequences: Object.fromEntries(session.activeSources.map((source) => [
-        source,
-        session.lastSequences[source] + 1,
-      ])),
+      nextSequences: Object.fromEntries(
+        session.activeSources.map((source) => [source, session.lastSequences[source] + 1]),
+      ),
       type: "meeting.ready",
     });
   }
@@ -954,12 +895,11 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
     session.disconnectTimer = setTimeout(() => {
       session.disconnectTimer = null;
       if (this.audioSession?.sessionId !== session.sessionId || session.socket) return;
-      this.ctx.waitUntil(this.finishAudioSession(session, {
-        durationMs: Math.max(
-          session.recorder.durationMs,
-          audioSessionDurationMs(session),
-        ),
-      }));
+      this.ctx.waitUntil(
+        this.finishAudioSession(session, {
+          durationMs: Math.max(session.recorder.durationMs, audioSessionDurationMs(session)),
+        }),
+      );
     }, RECORDER_RECONNECT_GRACE_MS);
   }
 
@@ -990,32 +930,26 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
         document.getMap("recordingPresence").clear();
       }, transientOrigin(session));
       const finalState = Y.encodeStateAsUpdate(document);
-      await runWithDbEnv(this.env, () => persistMeetingTranscriptSession({
-        finalize: {
-          durationMs: options.durationMs,
-          startedAt: session.recorder.startedAt,
-          stoppedAt: session.recorder.stoppedAt ?? Date.now(),
-        },
-        meetingId: session.claims.meetingId,
-        segments: session.segments,
-        yjsState: finalState,
-      }));
-      const latestState = Y.encodeStateAsUpdate(document);
-      await this.persistConcurrentDocumentUpdate(
-        session.claims.meetingId,
-        finalState,
-        latestState,
+      await runWithDbEnv(this.env, () =>
+        persistMeetingTranscriptSession({
+          finalize: {
+            durationMs: options.durationMs,
+            startedAt: session.recorder.startedAt,
+            stoppedAt: session.recorder.stoppedAt ?? Date.now(),
+          },
+          meetingId: session.claims.meetingId,
+          segments: session.segments,
+          yjsState: finalState,
+        }),
       );
+      const latestState = Y.encodeStateAsUpdate(document);
+      await this.persistConcurrentDocumentUpdate(session.claims.meetingId, finalState, latestState);
       const documentName = documentNameForMeeting(session.claims.meetingId);
       const completionState = mergeMeetingDocumentStates(
         latestState,
         this.roomStorage.loadDocumentSync(documentName),
       );
-      this.roomStorage.completeSession(
-        documentName,
-        session.claims.meetingId,
-        completionState,
-      );
+      this.roomStorage.completeSession(documentName, session.claims.meetingId, completionState);
       this.scheduleMaintenanceInBackground();
       if (options.notify) {
         this.sendAudioEvent(session, {
@@ -1026,11 +960,13 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
       }
       session.socket?.close(1000, "Meeting transcript persisted");
     } catch (error) {
-      console.error(JSON.stringify({
-        error: error instanceof Error ? error.message : String(error),
-        event: "meeting_audio_transcription_finalize_error",
-        meetingId: session.claims.meetingId,
-      }));
+      console.error(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : String(error),
+          event: "meeting_audio_transcription_finalize_error",
+          meetingId: session.claims.meetingId,
+        }),
+      );
       if (options.notify) {
         this.sendAudioEvent(session, {
           message: "Could not persist the completed transcript",
@@ -1040,10 +976,7 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
       session.socket?.close(1011, "Meeting transcript persistence failed");
       this.scheduleMaintenanceInBackground();
     } finally {
-      this.releaseDirectConnectionInBackground(
-        session.connection,
-        session.claims.meetingId,
-      );
+      this.releaseDirectConnectionInBackground(session.connection, session.claims.meetingId);
     }
   }
 
@@ -1057,16 +990,19 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
       session.failed ||
       this.audioSession?.sessionId !== session.sessionId ||
       session.providerGenerations[source] !== generation
-    ) return;
+    )
+      return;
     const closeCode = getMeetingTranscriptionFailureCloseCode(error);
     const retryable = closeCode !== MEETING_TRANSCRIPTION_FATAL_CLOSE_CODE;
     this.abortSessionTranscribers(session);
-    console.error(JSON.stringify({
-      error: error instanceof Error ? error.message : String(error),
-      event: "meeting_audio_transcription_error",
-      meetingId: session.claims.meetingId,
-      retryable,
-    }));
+    console.error(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+        event: "meeting_audio_transcription_error",
+        meetingId: session.claims.meetingId,
+        retryable,
+      }),
+    );
     if (retryable) {
       this.clearDraftTimer(session);
       this.clearLiveDraft(session);
@@ -1076,20 +1012,14 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
     }
     if (session.socket?.readyState === WebSocket.OPEN) {
       try {
-        session.socket.close(
-          closeCode,
-          "Meeting transcription failed",
-        );
+        session.socket.close(closeCode, "Meeting transcription failed");
       } catch {
         // The recorder may already have disconnected.
       }
     }
     if (retryable) return;
     await this.finishAudioSession(session, {
-      durationMs: Math.max(
-        session.recorder.durationMs,
-        audioSessionDurationMs(session),
-      ),
+      durationMs: Math.max(session.recorder.durationMs, audioSessionDurationMs(session)),
     });
   }
 
@@ -1142,44 +1072,40 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
       const segments = this.roomStorage.listSegments(recorder.leaseId);
       applyRecoveredMeetingSegments(document, segments);
       const finalState = Y.encodeStateAsUpdate(document);
-      await runWithDbEnv(this.env, () => persistMeetingTranscriptSession({
-        finalize: {
-          durationMs: recorder.durationMs,
-          startedAt: recorder.startedAt,
-          stoppedAt: recorder.stoppedAt!,
-        },
-        meetingId: recorder.meetingId,
-        segments,
-        yjsState: finalState,
-      }));
+      await runWithDbEnv(this.env, () =>
+        persistMeetingTranscriptSession({
+          finalize: {
+            durationMs: recorder.durationMs,
+            startedAt: recorder.startedAt,
+            stoppedAt: recorder.stoppedAt!,
+          },
+          meetingId: recorder.meetingId,
+          segments,
+          yjsState: finalState,
+        }),
+      );
       const latestState = buildRecoveredMeetingState(
         this.roomStorage.loadDocumentSync(documentName),
         segments,
       );
-      await this.persistConcurrentDocumentUpdate(
-        recorder.meetingId,
-        finalState,
-        latestState,
-      );
+      await this.persistConcurrentDocumentUpdate(recorder.meetingId, finalState, latestState);
       const completionState = mergeMeetingDocumentStates(
         latestState,
         this.roomStorage.loadDocumentSync(documentName),
       );
-      this.roomStorage.completeSession(
-        documentName,
-        recorder.meetingId,
-        completionState,
-      );
+      this.roomStorage.completeSession(documentName, recorder.meetingId, completionState);
     } catch (error) {
       this.roomStorage.updateRecorder(recorder, {
         expiresAt: Date.now() + 30_000,
         status: "finishing",
       });
-      console.error(JSON.stringify({
-        error: error instanceof Error ? error.message : String(error),
-        event: "meeting_recording_recovery_failed",
-        meetingId: recorder.meetingId,
-      }));
+      console.error(
+        JSON.stringify({
+          error: error instanceof Error ? error.message : String(error),
+          event: "meeting_recording_recovery_failed",
+          meetingId: recorder.meetingId,
+        }),
+      );
     } finally {
       document.destroy();
     }
@@ -1201,11 +1127,13 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
     latestState: Uint8Array,
   ) {
     if (uint8ArraysEqual(persistedState, latestState)) return;
-    await runWithDbEnv(this.env, () => persistMeetingTranscriptSession({
-      meetingId,
-      segments: [],
-      yjsState: latestState,
-    }));
+    await runWithDbEnv(this.env, () =>
+      persistMeetingTranscriptSession({
+        meetingId,
+        segments: [],
+        yjsState: latestState,
+      }),
+    );
   }
 
   private releaseDirectConnectionInBackground(
@@ -1214,11 +1142,13 @@ export class MeetingCollaborationRoom extends PageCollaborationRoom {
   ) {
     this.ctx.waitUntil(
       releaseDirectConnection(this.hocuspocus, connection).catch((error) => {
-        console.error(JSON.stringify({
-          error: error instanceof Error ? error.message : String(error),
-          event: "meeting_direct_connection_release_failed",
-          meetingId,
-        }));
+        console.error(
+          JSON.stringify({
+            error: error instanceof Error ? error.message : String(error),
+            event: "meeting_direct_connection_release_failed",
+            meetingId,
+          }),
+        );
       }),
     );
   }
@@ -1263,9 +1193,7 @@ async function loadMeetingRoomDocument(
     baseState = await storage.loadDocument(documentName);
   } else {
     baseState = await runWithDbEnv(env, () =>
-      getOrCreateMeetingCollaborationDocumentState(
-        meetingIdFromDocumentName(documentName) ?? "",
-      )
+      getOrCreateMeetingCollaborationDocumentState(meetingIdFromDocumentName(documentName) ?? ""),
     );
     storage.storeDocument(documentName, baseState);
   }
@@ -1345,9 +1273,7 @@ function uint8ArraysEqual(left: Uint8Array, right: Uint8Array) {
   return true;
 }
 
-function lastCompletedTranscriptSequences(
-  segments: MeetingTranscriptSessionSegment[],
-) {
+function lastCompletedTranscriptSequences(segments: MeetingTranscriptSessionSegment[]) {
   const result: Record<MeetingAudioSource, number> = {
     microphone: -1,
     system: -1,
@@ -1362,29 +1288,26 @@ function lastCompletedTranscriptSequences(
 function audioSessionDurationMs(session: AudioSession) {
   return Math.max(
     0,
-    ...session.activeSources.map((source) =>
-      (session.lastSequences[source] + 1) * 20
-    ),
+    ...session.activeSources.map((source) => (session.lastSequences[source] + 1) * 20),
   );
 }
 
 function parseMeetingAudioSources(value: unknown): MeetingAudioSource[] | null {
   if (!Array.isArray(value) || value.length === 0) return null;
   const sources = [...new Set(value)];
-  return sources.length === value.length && sources.every((source) =>
-      MEETING_AUDIO_SOURCES.includes(source as MeetingAudioSource)
-    )
-    ? sources as MeetingAudioSource[]
+  return sources.length === value.length &&
+    sources.every((source) => MEETING_AUDIO_SOURCES.includes(source as MeetingAudioSource))
+    ? (sources as MeetingAudioSource[])
     : null;
 }
 
 function readAudioAttachment(ws: WebSocket): AudioSocketAttachment | null {
   const attachment = ws.deserializeAttachment();
   return attachment &&
-      typeof attachment === "object" &&
-      (attachment as { kind?: unknown }).kind === "meeting-audio" &&
-      typeof (attachment as { sessionId?: unknown }).sessionId === "string"
-    ? attachment as AudioSocketAttachment
+    typeof attachment === "object" &&
+    (attachment as { kind?: unknown }).kind === "meeting-audio" &&
+    typeof (attachment as { sessionId?: unknown }).sessionId === "string"
+    ? (attachment as AudioSocketAttachment)
     : null;
 }
 
@@ -1392,18 +1315,18 @@ async function releaseDirectConnection(
   hocuspocus: { unloadDocument(document: Y.Doc): Promise<unknown> },
   connection: TranscriptDirectConnection,
 ) {
-  const document = connection.document as (Y.Doc & {
-    removeDirectConnection?: () => void;
-  }) | null;
+  const document = connection.document as
+    | (Y.Doc & {
+        removeDirectConnection?: () => void;
+      })
+    | null;
   if (!document) return;
   document.removeDirectConnection?.();
   connection.document = null;
   await hocuspocus.unloadDocument(document);
 }
 
-function toRuntimeRecorder(
-  recorder: MeetingRoomRecorder,
-): MeetingRecorderRuntimeState {
+function toRuntimeRecorder(recorder: MeetingRoomRecorder): MeetingRecorderRuntimeState {
   return {
     durationMs: recorder.durationMs,
     expiresAt: recorder.expiresAt,
@@ -1420,21 +1343,20 @@ function assertRecorderTransition(
   status: MeetingRoomRecorder["status"],
   action: "pause" | "resume" | "start" | "stop",
 ) {
-  const allowed = action === "start"
-    ? status === "claimed" || status === "recording"
-    : action === "pause"
-      ? status === "recording" || status === "paused"
-      : action === "resume"
-        ? status === "paused" || status === "recording"
-        : status === "recording" || status === "paused" || status === "finishing";
+  const allowed =
+    action === "start"
+      ? status === "claimed" || status === "recording"
+      : action === "pause"
+        ? status === "recording" || status === "paused"
+        : action === "resume"
+          ? status === "paused" || status === "recording"
+          : status === "recording" || status === "paused" || status === "finishing";
   if (!allowed) {
     throw new Error(`Cannot ${action} a ${status} recorder session`);
   }
 }
 
-function meetingTranscriptWriteGuard(
-  storage: MeetingRoomStorage,
-): Extension {
+function meetingTranscriptWriteGuard(storage: MeetingRoomStorage): Extension {
   return {
     async beforeSync({ document, payload, type }) {
       // SyncStep1 is only a state-vector request. SyncStep2 and Update carry
@@ -1457,10 +1379,10 @@ function meetingTranscriptWriteGuard(
         transcript.unobserveDeep(changed);
         segmentIds.unobserveDeep(changed);
         if (transcriptChanged) {
-          throw Object.assign(
-            new Error("Transcript is read-only while recording"),
-            { code: 1008, reason: "Transcript is read-only while recording" },
-          );
+          throw Object.assign(new Error("Transcript is read-only while recording"), {
+            code: 1008,
+            reason: "Transcript is read-only while recording",
+          });
         }
       } finally {
         candidate.destroy();

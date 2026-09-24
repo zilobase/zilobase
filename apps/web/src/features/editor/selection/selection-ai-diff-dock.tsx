@@ -1,15 +1,15 @@
-import { CheckIcon, Loader2Icon, XIcon } from "@/shared/components/icons"
+import { CheckIcon, Loader2Icon, XIcon } from "@/shared/components/icons";
 
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/shared/ui/button";
 
 export function SelectionAiDiffDock({
   isStreaming,
   onAccept,
   onDecline,
 }: {
-  isStreaming: boolean
-  onAccept: () => void
-  onDecline: () => void
+  isStreaming: boolean;
+  onAccept: () => void;
+  onDecline: () => void;
 }) {
   return (
     <div className="selection-ai-diff-dock">
@@ -40,5 +40,5 @@ export function SelectionAiDiffDock({
         </Button>
       </div>
     </div>
-  )
+  );
 }

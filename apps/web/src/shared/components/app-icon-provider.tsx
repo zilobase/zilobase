@@ -1,14 +1,10 @@
-import * as React from "react"
-import { IconContext } from "@phosphor-icons/react"
+import * as React from "react";
+import { IconContext } from "@phosphor-icons/react";
 
 const appIconDefaults = {
   weight: "bold",
-} as const
+} as const;
 
 export function AppIconProvider({ children }: React.PropsWithChildren) {
-  return (
-    <IconContext.Provider value={appIconDefaults}>
-      {children}
-    </IconContext.Provider>
-  )
+  return <IconContext.Provider value={appIconDefaults}>{children}</IconContext.Provider>;
 }

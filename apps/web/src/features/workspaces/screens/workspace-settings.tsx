@@ -11,15 +11,10 @@ import { Separator } from "@/shared/ui/separator";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useWorkspaces } from "@zilobase/features/workspaces/react";
 
-export default function WorkspaceSettingsPage({
-  policySettings,
-}: {
-  policySettings?: ReactNode;
-}) {
+export default function WorkspaceSettingsPage({ policySettings }: { policySettings?: ReactNode }) {
   const activeWorkspaceId = useActiveWorkspaceId();
   const { data: workspaces = [] } = useWorkspaces();
-  const workspace =
-    workspaces.find((item) => item.id === activeWorkspaceId) ?? null;
+  const workspace = workspaces.find((item) => item.id === activeWorkspaceId) ?? null;
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-4 py-8">

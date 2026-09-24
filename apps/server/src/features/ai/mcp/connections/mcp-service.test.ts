@@ -41,8 +41,7 @@ vi.mock("../../../../infrastructure/database", () => {
         state.where.push(condition);
         return q;
       },
-      then: (resolve: (value: unknown) => unknown) =>
-        resolve(state.rows.shift() ?? []),
+      then: (resolve: (value: unknown) => unknown) => resolve(state.rows.shift() ?? []),
     };
     return q;
   }
@@ -68,8 +67,7 @@ vi.mock("../../../../infrastructure/database", () => {
         return q;
       },
     }),
-    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> =>
-      callback(db),
+    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> => callback(db),
   };
   return { db };
 });
@@ -251,9 +249,7 @@ describe("MCP connection policy and lifecycle", () => {
     ].map((headers) => ({ headers })),
   )("rejects invalid headers: %j", async ({ headers }) => {
     state.rows = [[connection]];
-    await expect(
-      submitMcpHeaders({ ...input, env, headers }),
-    ).rejects.toThrow();
+    await expect(submitMcpHeaders({ ...input, env, headers })).rejects.toThrow();
     expect(state.discover).not.toHaveBeenCalled();
   });
   it("encrypts header values and discovers tools", async () => {
@@ -264,33 +260,25 @@ describe("MCP connection policy and lifecycle", () => {
       headers: [{ name: "Authorization", value: "Bearer secret-test-value" }],
     });
     expect(JSON.stringify(state.writes)).not.toContain("secret-test-value");
-    expect(
-      state.writes.some((write) => typeof write.ciphertext === "string"),
-    ).toBe(true);
+    expect(state.writes.some((write) => typeof write.ciphertext === "string")).toBe(true);
     expect(state.discover).toHaveBeenCalledOnce();
   });
   it("preserves reconnect state when discovery fails", async () => {
     state.discover.mockRejectedValueOnce(new Error("private provider error"));
-    state.rows = [
-      [connection],
-      [{ ...connection, state: "reconnect_required" }],
-      [],
-    ];
+    state.rows = [[connection], [{ ...connection, state: "reconnect_required" }], []];
     const result = await submitMcpHeaders({
       ...input,
       env,
       headers: [{ name: "Authorization", value: "token" }],
     });
     expect(result.state).toBe("reconnect_required");
-    expect(JSON.stringify(state.writes)).not.toContain(
-      "private provider error",
-    );
+    expect(JSON.stringify(state.writes)).not.toContain("private provider error");
   });
   it("requires explicit confirmation to enable Always allow", async () => {
     state.rows = [[connection]];
-    await expect(
-      setMcpAlwaysAllow({ ...input, enabled: true, confirmed: false }),
-    ).rejects.toThrow("confirmation");
+    await expect(setMcpAlwaysAllow({ ...input, enabled: true, confirmed: false })).rejects.toThrow(
+      "confirmation",
+    );
     state.rows = [[connection], [connection], []];
     await setMcpAlwaysAllow({ ...input, enabled: true, confirmed: true });
     expect(state.writes[0]).toMatchObject({ alwaysAllowEnabled: true });
@@ -302,9 +290,7 @@ describe("MCP connection policy and lifecycle", () => {
     });
   });
   it("marks connections for reconnect after the authenticator leaves", async () => {
-    state.member
-      .mockResolvedValueOnce({ role: "member" })
-      .mockResolvedValueOnce(null);
+    state.member.mockResolvedValueOnce({ role: "member" }).mockResolvedValueOnce(null);
     state.rows = [[{ ...connection }], []];
     expect((await listMcpConnections(input))[0]).toMatchObject({
       state: "reconnect_required",
@@ -328,11 +314,7 @@ describe("MCP connection policy and lifecycle", () => {
     ).rejects.toThrow("unavailable");
   });
   it("enforces the enabled-tool quota before writing", async () => {
-    state.rows = [
-      [connection],
-      [{ id: "tool", enabled: false }],
-      [{ value: 100 }],
-    ];
+    state.rows = [[connection], [{ id: "tool", enabled: false }], [{ value: 100 }]];
     await expect(
       updateMcpToolPolicies({
         ...input,
@@ -348,13 +330,7 @@ describe("MCP connection policy and lifecycle", () => {
     ).rejects.toThrow("100");
   });
   it("updates valid tool policies", async () => {
-    state.rows = [
-      [connection],
-      [{ id: "tool", enabled: false }],
-      [{ value: 0 }],
-      [connection],
-      [],
-    ];
+    state.rows = [[connection], [{ id: "tool", enabled: false }], [{ value: 0 }], [connection], []];
     await updateMcpToolPolicies({
       ...input,
       policies: [
@@ -392,11 +368,7 @@ describe("MCP connection policy and lifecycle", () => {
       metadata: { token: "secret", classification: "read" },
     });
     expect(JSON.stringify(state.writes)).not.toContain("secret");
-    state.rows = [
-      [{ id: "event", createdAt: new Date(), metadata: { token: "secret" } }],
-    ];
-    expect(JSON.stringify(await listMcpActivity(input))).not.toContain(
-      "secret",
-    );
+    state.rows = [[{ id: "event", createdAt: new Date(), metadata: { token: "secret" } }]];
+    expect(JSON.stringify(await listMcpActivity(input))).not.toContain("secret");
   });
 });

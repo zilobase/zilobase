@@ -29,10 +29,7 @@ export async function setDatabaseCellValueService(input: {
   value: unknown;
   pagePropertyId: string;
 }) {
-  const existing = await requireDataSourceEditAccess(
-    input.databaseId,
-    input.userId,
-  );
+  const existing = await requireDataSourceEditAccess(input.databaseId, input.userId);
 
   const [row] = await db
     .select({ id: databaseRow.id, pageId: databaseRow.pageId })
@@ -80,9 +77,7 @@ export async function setDatabaseCellValueService(input: {
       env: input.env,
     },
     async (tx) => {
-      await lockDatabaseAutomationFactRows(tx, [
-        { dataSourceId: existing.id, rowId: row.id },
-      ]);
+      await lockDatabaseAutomationFactRows(tx, [{ dataSourceId: existing.id, rowId: row.id }]);
       const [previous] = await tx
         .select({ value: pagePropertyValue.value })
         .from(pagePropertyValue)
@@ -109,18 +104,13 @@ export async function setDatabaseCellValueService(input: {
         .update(databaseRow)
         .set({ lastEditedById: input.userId, updatedAt: now })
         .where(eq(databaseRow.id, row.id));
-      await tx
-        .update(page)
-        .set({ updatedAt: now })
-        .where(eq(page.id, row.pageId));
+      await tx.update(page).set({ updatedAt: now }).where(eq(page.id, row.pageId));
 
       return {
         automationFacts: [
           {
             actorId: input.userId,
-            ...(input.automationRunId
-              ? { automationRunId: input.automationRunId }
-              : {}),
+            ...(input.automationRunId ? { automationRunId: input.automationRunId } : {}),
             changedValues: [
               {
                 after: input.value,

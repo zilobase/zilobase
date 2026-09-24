@@ -7,19 +7,8 @@ import {
 } from "@/shared/components/icons";
 
 import { Button } from "@/shared/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/shared/ui/card";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-} from "@/shared/ui/field";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Field, FieldDescription, FieldError, FieldGroup } from "@/shared/ui/field";
 import { Spinner } from "@/shared/ui/spinner";
 import { useSession } from "@zilobase/features/auth/react";
 import { useAcceptWorkspaceInvitation } from "@zilobase/features/workspaces/react";
@@ -90,9 +79,7 @@ export default function AcceptInvitationPage() {
 
             {acceptInvitation.isError ? (
               <Field>
-                <FieldError>
-                  {getApiErrorMessage(acceptInvitation.error)}
-                </FieldError>
+                <FieldError>{getApiErrorMessage(acceptInvitation.error)}</FieldError>
               </Field>
             ) : null}
 
@@ -170,9 +157,7 @@ function getDescription({
   }
 
   if (isSignedIn) {
-    return userEmail
-      ? `Continue as ${userEmail}.`
-      : "Continue with your current account.";
+    return userEmail ? `Continue as ${userEmail}.` : "Continue with your current account.";
   }
 
   return "Use the email address that received the invitation.";

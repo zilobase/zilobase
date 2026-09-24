@@ -3,23 +3,23 @@ import type {
   PageDatabase,
   PageDatabaseView,
   PageItemPlacement,
-} from "@zilobase/features/pages"
-import type { MeetingListItem } from "@zilobase/features/meetings"
+} from "@zilobase/features/pages";
+import type { MeetingListItem } from "@zilobase/features/meetings";
 
-import type { SidebarNavItem } from "./sidebar-nav-item"
+import type { SidebarNavItem } from "./sidebar-nav-item";
 
 export type SidebarPageSections<Icon> = {
-  privatePages: SidebarNavItem<Icon>[]
-  teamspacePages: SidebarNavItem<Icon>[]
-  teamspacePagesById: Record<string, SidebarNavItem<Icon>[]>
-}
+  privatePages: SidebarNavItem<Icon>[];
+  teamspacePages: SidebarNavItem<Icon>[];
+  teamspacePagesById: Record<string, SidebarNavItem<Icon>[]>;
+};
 
 export type SidebarNavigationIcons<Icon> = {
-  getDatabaseIcon: (database: PageDatabase) => Icon
-  getDatabaseViewIcon: (view: PageDatabaseView) => Icon
-  getMeetingIcon?: (meeting: MeetingListItem) => Icon
-  getPageIcon: (page: Page) => Icon
-}
+  getDatabaseIcon: (database: PageDatabase) => Icon;
+  getDatabaseViewIcon: (view: PageDatabaseView) => Icon;
+  getMeetingIcon?: (meeting: MeetingListItem) => Icon;
+  getPageIcon: (page: Page) => Icon;
+};
 
 export function buildSidebarNavigation<Icon>(
   pages: Page[],
@@ -28,58 +28,39 @@ export function buildSidebarNavigation<Icon>(
   icons: SidebarNavigationIcons<Icon>,
   meetings: MeetingListItem[] = [],
 ) {
-  const activePages = pages.filter(
-    (page) => !page.deletedAt && page.type !== "meeting",
-  )
-  const activeDatabases = databases.filter((database) => !database.deletedAt)
-  const sections = buildPageSections(
-    activePages,
-    activeDatabases,
-    placements,
-    icons,
-    meetings,
-  )
-  const recents = buildRecentItems(activePages, activeDatabases, icons)
-  const favorites = buildFavoriteItems(getAllSectionItems(sections))
-  const representedFavoriteIds = new Set<string>()
+  const activePages = pages.filter((page) => !page.deletedAt && page.type !== "meeting");
+  const activeDatabases = databases.filter((database) => !database.deletedAt);
+  const sections = buildPageSections(activePages, activeDatabases, placements, icons, meetings);
+  const recents = buildRecentItems(activePages, activeDatabases, icons);
+  const favorites = buildFavoriteItems(getAllSectionItems(sections));
+  const representedFavoriteIds = new Set<string>();
 
-  favorites.forEach((item) => collectItemIds(item, representedFavoriteIds))
+  favorites.forEach((item) => collectItemIds(item, representedFavoriteIds));
   const detachedFavoritePages = activePages
-    .filter(
-      (page) => page.isFavorite && !representedFavoriteIds.has(page.id),
-    )
-    .sort(
-      (first, second) =>
-        getPageCreatedTime(first) - getPageCreatedTime(second),
-    )
-  const detachedFavoriteIds = new Set(
-    detachedFavoritePages.map((page) => page.id),
-  )
+    .filter((page) => page.isFavorite && !representedFavoriteIds.has(page.id))
+    .sort((first, second) => getPageCreatedTime(first) - getPageCreatedTime(second));
+  const detachedFavoriteIds = new Set(detachedFavoritePages.map((page) => page.id));
   const detachedSections = buildPageSections(
     activePages,
     activeDatabases,
     placements.filter(
-      (placement) =>
-        placement.itemKind !== "page" ||
-        !detachedFavoriteIds.has(placement.itemId),
+      (placement) => placement.itemKind !== "page" || !detachedFavoriteIds.has(placement.itemId),
     ),
     icons,
     meetings,
-  )
+  );
   const detachedNodesById = new Map(
-    getAllSectionItems(detachedSections).map(
-      (item) => [item.id, item],
-    ),
-  )
+    getAllSectionItems(detachedSections).map((item) => [item.id, item]),
+  );
   const detachedFavorites = detachedFavoritePages.map(
     (page) => detachedNodesById.get(page.id) ?? createPageNode(page, icons),
-  )
+  );
 
   return {
     favorites: [...favorites, ...detachedFavorites],
     recents,
     sections,
-  }
+  };
 }
 
 export function buildRecentItems<Icon>(
@@ -94,10 +75,7 @@ export function buildRecentItems<Icon>(
     ...databases
       .filter((database) => !database.deletedAt && database.lastVisitedAt)
       .map((database) => createDatabaseNode(database, undefined, icons)),
-  ].sort(
-    (first, second) =>
-      getTimestamp(second.lastVisitedAt) - getTimestamp(first.lastVisitedAt),
-  )
+  ].sort((first, second) => getTimestamp(second.lastVisitedAt) - getTimestamp(first.lastVisitedAt));
 }
 
 export function buildPageSections<Icon>(
@@ -109,26 +87,24 @@ export function buildPageSections<Icon>(
 ): SidebarPageSections<Icon> {
   const orderedPages = [...pages].sort(
     (first, second) => getPageCreatedTime(first) - getPageCreatedTime(second),
-  )
-  const pagesById = new Map(orderedPages.map((page) => [page.id, page]))
-  const pageNodesById = new Map(
-    orderedPages.map((page) => [page.id, createPageNode(page, icons)]),
-  )
-  const placementsByPageParent = groupPagePlacements(placements)
-  const placementsByDatabaseParent = groupDatabasePlacements(placements)
+  );
+  const pagesById = new Map(orderedPages.map((page) => [page.id, page]));
+  const pageNodesById = new Map(orderedPages.map((page) => [page.id, createPageNode(page, icons)]));
+  const placementsByPageParent = groupPagePlacements(placements);
+  const placementsByDatabaseParent = groupDatabasePlacements(placements);
   const meetingsByNotesPageId = new Map(
     meetings.flatMap((meeting) =>
       meeting.notesPageId ? [[meeting.notesPageId, meeting] as const] : [],
     ),
-  )
-  const meetingsByHostPageId = new Map<string, MeetingListItem[]>()
+  );
+  const meetingsByHostPageId = new Map<string, MeetingListItem[]>();
 
   for (const meeting of meetings) {
-    const siblings = meetingsByHostPageId.get(meeting.pageId)
+    const siblings = meetingsByHostPageId.get(meeting.pageId);
     if (siblings) {
-      siblings.push(meeting)
+      siblings.push(meeting);
     } else {
-      meetingsByHostPageId.set(meeting.pageId, [meeting])
+      meetingsByHostPageId.set(meeting.pageId, [meeting]);
     }
   }
   const databaseNodesById = new Map(
@@ -140,158 +116,145 @@ export function buildPageSections<Icon>(
         icons,
       ),
     ]),
-  )
-  const placedPageIds = new Set<string>()
-  const placedDatabaseIds = new Set<string>()
-  const databaseRowPageIds = new Set<string>()
+  );
+  const placedPageIds = new Set<string>();
+  const placedDatabaseIds = new Set<string>();
+  const databaseRowPageIds = new Set<string>();
 
   for (const placement of placements) {
     if (placement.itemKind === "page") {
-      placedPageIds.add(placement.itemId)
+      placedPageIds.add(placement.itemId);
       if (placement.placementKind === "database_row") {
-        databaseRowPageIds.add(placement.itemId)
+        databaseRowPageIds.add(placement.itemId);
       }
     } else {
-      placedDatabaseIds.add(placement.itemId)
+      placedDatabaseIds.add(placement.itemId);
     }
   }
 
-  const visitingDatabaseIds = new Set<string>()
+  const visitingDatabaseIds = new Set<string>();
   const buildDatabaseNode = (
     databaseId: string,
     navNodeId: string,
     isLinked = false,
   ): SidebarNavItem<Icon> | null => {
-    const node = databaseNodesById.get(databaseId)
+    const node = databaseNodesById.get(databaseId);
 
     if (!node) {
-      return null
+      return null;
     }
 
     if (visitingDatabaseIds.has(databaseId)) {
-      return { ...node, isLinked: true, navNodeId }
+      return { ...node, isLinked: true, navNodeId };
     }
 
-    visitingDatabaseIds.add(databaseId)
-    const nestedDataSources = (
-      placementsByDatabaseParent.get(databaseId) ?? []
-    ).flatMap((placement) => {
-      if (
-        placement.itemKind !== "database" ||
-        (placement.placementKind !== "primary" &&
-          placement.placementKind !== "linked")
-      ) {
-        return []
-      }
-
-      const child = buildDatabaseNode(
-        placement.itemId,
-        placement.id,
-        placement.placementKind !== "primary",
-      )
-
-      return child ? [child] : []
-    })
-    visitingDatabaseIds.delete(databaseId)
-
-    return {
-      ...node,
-      isLinked,
-      navNodeId,
-      pages: [...node.pages, ...nestedDataSources],
-    }
-  }
-
-  const visitingPageIds = new Set<string>()
-  const buildPageNode = (
-    pageId: string,
-    navNodeId: string,
-    isLinked = false,
-  ): SidebarNavItem<Icon> | null => {
-    const node = pageNodesById.get(pageId)
-
-    if (!node) {
-      return null
-    }
-
-    if (visitingPageIds.has(pageId)) {
-      return { ...node, isLinked: true, navNodeId }
-    }
-
-    visitingPageIds.add(pageId)
-    const representedMeetingIds = new Set<string>()
-    const pages = (placementsByPageParent.get(pageId) ?? []).flatMap(
+    visitingDatabaseIds.add(databaseId);
+    const nestedDataSources = (placementsByDatabaseParent.get(databaseId) ?? []).flatMap(
       (placement) => {
-        if (placement.itemKind === "page") {
-          const meeting = meetingsByNotesPageId.get(placement.itemId)
-
-          if (meeting?.pageId === pageId) {
-            representedMeetingIds.add(meeting.id)
-            return [createMeetingNode(meeting, placement.id, icons)]
-          }
-
-          if (placement.itemId === pageId) {
-            return []
-          }
-          if (pagesById.get(placement.itemId)?.type === "meeting") {
-            return []
-          }
-
-          const child = buildPageNode(
-            placement.itemId,
-            placement.id,
-            placement.placementKind !== "primary" ||
-              databaseRowPageIds.has(placement.itemId),
-          )
-
-          return child ? [child] : []
+        if (
+          placement.itemKind !== "database" ||
+          (placement.placementKind !== "primary" && placement.placementKind !== "linked")
+        ) {
+          return [];
         }
 
         const child = buildDatabaseNode(
           placement.itemId,
           placement.id,
           placement.placementKind !== "primary",
-        )
+        );
 
-        return child ? [child] : []
+        return child ? [child] : [];
       },
-    )
+    );
+    visitingDatabaseIds.delete(databaseId);
+
+    return {
+      ...node,
+      isLinked,
+      navNodeId,
+      pages: [...node.pages, ...nestedDataSources],
+    };
+  };
+
+  const visitingPageIds = new Set<string>();
+  const buildPageNode = (
+    pageId: string,
+    navNodeId: string,
+    isLinked = false,
+  ): SidebarNavItem<Icon> | null => {
+    const node = pageNodesById.get(pageId);
+
+    if (!node) {
+      return null;
+    }
+
+    if (visitingPageIds.has(pageId)) {
+      return { ...node, isLinked: true, navNodeId };
+    }
+
+    visitingPageIds.add(pageId);
+    const representedMeetingIds = new Set<string>();
+    const pages = (placementsByPageParent.get(pageId) ?? []).flatMap((placement) => {
+      if (placement.itemKind === "page") {
+        const meeting = meetingsByNotesPageId.get(placement.itemId);
+
+        if (meeting?.pageId === pageId) {
+          representedMeetingIds.add(meeting.id);
+          return [createMeetingNode(meeting, placement.id, icons)];
+        }
+
+        if (placement.itemId === pageId) {
+          return [];
+        }
+        if (pagesById.get(placement.itemId)?.type === "meeting") {
+          return [];
+        }
+
+        const child = buildPageNode(
+          placement.itemId,
+          placement.id,
+          placement.placementKind !== "primary" || databaseRowPageIds.has(placement.itemId),
+        );
+
+        return child ? [child] : [];
+      }
+
+      const child = buildDatabaseNode(
+        placement.itemId,
+        placement.id,
+        placement.placementKind !== "primary",
+      );
+
+      return child ? [child] : [];
+    });
     pages.push(
       ...(meetingsByHostPageId.get(pageId) ?? [])
         .filter((meeting) => !representedMeetingIds.has(meeting.id))
-        .map((meeting) =>
-          createMeetingNode(
-            meeting,
-            `meeting:${pageId}:${meeting.id}`,
-            icons,
-          ),
-        ),
-    )
-    visitingPageIds.delete(pageId)
+        .map((meeting) => createMeetingNode(meeting, `meeting:${pageId}:${meeting.id}`, icons)),
+    );
+    visitingPageIds.delete(pageId);
 
-    return { ...node, isLinked, navNodeId, pages }
-  }
+    return { ...node, isLinked, navNodeId, pages };
+  };
 
   const roots = orderedPages.flatMap((page) => {
     if (placedPageIds.has(page.id)) {
-      return []
+      return [];
     }
 
-    const node = buildPageNode(page.id, page.id)
-    return node ? [node] : []
-  })
+    const node = buildPageNode(page.id, page.id);
+    return node ? [node] : [];
+  });
 
   for (const database of databases) {
     if (placedDatabaseIds.has(database.id)) {
-      continue
+      continue;
     }
 
-    const node = buildDatabaseNode(
-      database.id,
-      `standalone-database:${database.id}`,
-    )
+    const node = buildDatabaseNode(database.id, `standalone-database:${database.id}`);
     if (node) {
-      roots.push(node)
+      roots.push(node);
     }
   }
 
@@ -299,13 +262,11 @@ export function buildPageSections<Icon>(
     privatePages: roots.filter((item) => !item.isShared && !item.teamspaceId),
     teamspacePages: roots.filter((item) => item.isShared && !item.teamspaceId),
     teamspacePagesById: Object.fromEntries(
-      [...new Set(roots.flatMap((item) => item.teamspaceId ? [item.teamspaceId] : []))]
-        .map((teamspaceId) => [
-          teamspaceId,
-          roots.filter((item) => item.teamspaceId === teamspaceId),
-        ]),
+      [...new Set(roots.flatMap((item) => (item.teamspaceId ? [item.teamspaceId] : [])))].map(
+        (teamspaceId) => [teamspaceId, roots.filter((item) => item.teamspaceId === teamspaceId)],
+      ),
     ),
-  }
+  };
 }
 
 function getAllSectionItems<Icon>(sections: SidebarPageSections<Icon>) {
@@ -313,7 +274,7 @@ function getAllSectionItems<Icon>(sections: SidebarPageSections<Icon>) {
     ...sections.privatePages,
     ...sections.teamspacePages,
     ...Object.values(sections.teamspacePagesById).flat(),
-  ]
+  ];
 }
 
 function createMeetingNode<Icon>(
@@ -332,11 +293,11 @@ function createMeetingNode<Icon>(
     pageId: meeting.pageId,
     pages: [],
     updatedAt: meeting.updatedAt,
-  }
+  };
 }
 
 export function buildFavoriteItems<Icon>(items: SidebarNavItem<Icon>[]) {
-  return items.flatMap(collectFavoriteItems)
+  return items.flatMap(collectFavoriteItems);
 }
 
 function createPageNode<Icon>(
@@ -355,7 +316,7 @@ function createPageNode<Icon>(
     pages: [],
     teamspaceId: page.teamspaceId,
     updatedAt: page.updatedAt,
-  }
+  };
 }
 
 function createDatabaseNode<Icon>(
@@ -391,33 +352,33 @@ function createDatabaseNode<Icon>(
       })),
     updatedAt: database.updatedAt,
     teamspaceId: database.teamspaceId ?? page?.teamspaceId,
-  }
+  };
 }
 
 function groupPagePlacements(placements: PageItemPlacement[]) {
-  return groupPlacements(placements, "page")
+  return groupPlacements(placements, "page");
 }
 
 function groupDatabasePlacements(placements: PageItemPlacement[]) {
-  return groupPlacements(placements, "database")
+  return groupPlacements(placements, "database");
 }
 
 function groupPlacements(
   placements: PageItemPlacement[],
   parentKind: PageItemPlacement["parentKind"],
 ) {
-  const grouped = new Map<string, PageItemPlacement[]>()
+  const grouped = new Map<string, PageItemPlacement[]>();
 
   for (const placement of placements) {
     if (placement.parentKind !== parentKind) {
-      continue
+      continue;
     }
 
-    const siblings = grouped.get(placement.parentId)
+    const siblings = grouped.get(placement.parentId);
     if (siblings) {
-      siblings.push(placement)
+      siblings.push(placement);
     } else {
-      grouped.set(placement.parentId, [placement])
+      grouped.set(placement.parentId, [placement]);
     }
   }
 
@@ -426,46 +387,40 @@ function groupPlacements(
       first.position === second.position
         ? first.id.localeCompare(second.id)
         : first.position - second.position,
-    )
+    );
   }
 
-  return grouped
+  return grouped;
 }
 
 function collectFavoriteItems<Icon>(item: SidebarNavItem<Icon>): SidebarNavItem<Icon>[] {
   if (item.isDatabaseView) {
-    return []
+    return [];
   }
 
-  const nestedFavorites = item.pages.flatMap((child) =>
-    collectFavoriteItems(child),
-  )
+  const nestedFavorites = item.pages.flatMap((child) => collectFavoriteItems(child));
 
-  return item.isFavorite
-    ? [cloneFavoriteHierarchy(item), ...nestedFavorites]
-    : nestedFavorites
+  return item.isFavorite ? [cloneFavoriteHierarchy(item), ...nestedFavorites] : nestedFavorites;
 }
 
 function cloneFavoriteHierarchy<Icon>(item: SidebarNavItem<Icon>): SidebarNavItem<Icon> {
   return {
     ...item,
-    pages: item.pages
-      .filter((child) => !child.isDatabaseView)
-      .map(cloneFavoriteHierarchy),
-  }
+    pages: item.pages.filter((child) => !child.isDatabaseView).map(cloneFavoriteHierarchy),
+  };
 }
 
 function collectItemIds<Icon>(item: SidebarNavItem<Icon>, ids: Set<string>) {
-  ids.add(item.id)
-  item.pages.forEach((child) => collectItemIds(child, ids))
+  ids.add(item.id);
+  item.pages.forEach((child) => collectItemIds(child, ids));
 }
 
 function getPageCreatedTime(page: Page) {
-  const time = new Date(page.createdAt).getTime()
-  return Number.isFinite(time) ? time : 0
+  const time = new Date(page.createdAt).getTime();
+  return Number.isFinite(time) ? time : 0;
 }
 
 function getTimestamp(value: string | null | undefined) {
-  const time = value ? new Date(value).getTime() : 0
-  return Number.isFinite(time) ? time : 0
+  const time = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(time) ? time : 0;
 }

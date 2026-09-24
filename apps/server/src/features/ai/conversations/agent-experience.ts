@@ -17,7 +17,16 @@ export async function loadAiAgentContextInstruction(input: {
   userId: string;
   workspaceId: string;
 }) {
-  const [saved] = await db.select().from(aiSettings).where(and(eq(aiSettings.workspaceId, input.workspaceId), eq(aiSettings.scope, `personal:${input.userId}`))).limit(1);
+  const [saved] = await db
+    .select()
+    .from(aiSettings)
+    .where(
+      and(
+        eq(aiSettings.workspaceId, input.workspaceId),
+        eq(aiSettings.scope, `personal:${input.userId}`),
+      ),
+    )
+    .limit(1);
   if (!saved) return "";
   const definition = settingsDefinitionSchema.parse(saved.definition);
   if (!definition.instructions.trim()) return "";
@@ -48,18 +57,11 @@ export async function loadMentionedPeopleInstruction(input: {
     })
     .from(member)
     .innerJoin(user, eq(user.id, member.userId))
-    .where(
-      and(
-        eq(member.organizationId, input.workspaceId),
-        inArray(member.userId, userIds),
-      ),
-    )
+    .where(and(eq(member.organizationId, input.workspaceId), inArray(member.userId, userIds)))
     .orderBy(asc(user.name), asc(user.email));
   const now = Date.now();
   const activeRows = rows.filter(
-    (row) =>
-      row.role !== "temporary" ||
-      (row.accessExpiresAt?.getTime() ?? 0) > now,
+    (row) => row.role !== "temporary" || (row.accessExpiresAt?.getTime() ?? 0) > now,
   );
 
   if (activeRows.length === 0) {

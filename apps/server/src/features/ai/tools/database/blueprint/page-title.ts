@@ -7,10 +7,7 @@ function normalizePageTitle(value: string) {
     .toLowerCase();
 }
 
-export function stripDuplicatePageTitleHeadings(
-  markdown: string,
-  pageTitle: string,
-) {
+export function stripDuplicatePageTitleHeadings(markdown: string, pageTitle: string) {
   const normalizedTitle = normalizePageTitle(pageTitle);
   if (!normalizedTitle) return markdown;
 

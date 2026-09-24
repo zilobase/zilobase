@@ -1,44 +1,34 @@
-const restoreModulePath = "/packages/page-context/src/markdown/restore-structural-blocks-from-markdown.ts"
-const markdownModulePath = "/packages/page-context/src/markdown/prosemirror-to-markdown.ts"
+const restoreModulePath =
+  "/packages/page-context/src/markdown/restore-structural-blocks-from-markdown.ts";
+const markdownModulePath = "/packages/page-context/src/markdown/prosemirror-to-markdown.ts";
 
-const DATABASE_ID = "bf51b30e-1234-5678-9abc-def012345678"
-const MEETING_ID = "a8ddbb95-1288-4f6f-a0f1-8cd02702d321"
+const DATABASE_ID = "bf51b30e-1234-5678-9abc-def012345678";
+const MEETING_ID = "a8ddbb95-1288-4f6f-a0f1-8cd02702d321";
 
 export function register({ assert, loadModule, test }) {
   test("isStructuralBlockMarkerLine recognizes database markers", async () => {
-    const {
-      isStructuralBlockMarkerLine,
-    } = await loadModule(restoreModulePath)
+    const { isStructuralBlockMarkerLine } = await loadModule(restoreModulePath);
 
-    assert.equal(isStructuralBlockMarkerLine("[Database]"), true)
-    assert.equal(
-      isStructuralBlockMarkerLine(`[Database (${DATABASE_ID})]`),
-      true,
-    )
-    assert.equal(isStructuralBlockMarkerLine("Regular paragraph"), false)
-  })
+    assert.equal(isStructuralBlockMarkerLine("[Database]"), true);
+    assert.equal(isStructuralBlockMarkerLine(`[Database (${DATABASE_ID})]`), true);
+    assert.equal(isStructuralBlockMarkerLine("Regular paragraph"), false);
+  });
 
   test("preprocessStructuralBlockMarkdown converts markers to structural HTML", async () => {
-    const {
-      preprocessStructuralBlockMarkdown,
-    } = await loadModule(restoreModulePath)
-    const markdown = `# Title\n\n[Database (${DATABASE_ID})]\n\nHello`
-    const processed = preprocessStructuralBlockMarkdown(markdown)
+    const { preprocessStructuralBlockMarkdown } = await loadModule(restoreModulePath);
+    const markdown = `# Title\n\n[Database (${DATABASE_ID})]\n\nHello`;
+    const processed = preprocessStructuralBlockMarkdown(markdown);
 
     assert.match(
       processed,
-      new RegExp(
-        `<div data-type="databaseBlock" data-database-id="${DATABASE_ID}"></div>`,
-      ),
-    )
-    assert.match(processed, /# Title/)
-    assert.match(processed, /Hello/)
-  })
+      new RegExp(`<div data-type="databaseBlock" data-database-id="${DATABASE_ID}"></div>`),
+    );
+    assert.match(processed, /# Title/);
+    assert.match(processed, /Hello/);
+  });
 
   test("restoreStructuralBlocksInMarkdownContent restores database blocks", async () => {
-    const {
-      restoreStructuralBlocksInMarkdownContent,
-    } = await loadModule(restoreModulePath)
+    const { restoreStructuralBlocksInMarkdownContent } = await loadModule(restoreModulePath);
     const content = [
       {
         type: "paragraph",
@@ -49,43 +39,39 @@ export function register({ assert, loadModule, test }) {
           },
         ],
       },
-    ]
+    ];
 
-    const restored = restoreStructuralBlocksInMarkdownContent(content)
+    const restored = restoreStructuralBlocksInMarkdownContent(content);
 
-    assert.equal(restored.length, 1)
-    assert.equal(restored[0].type, "databaseBlock")
-    assert.equal(restored[0].attrs.databaseId, DATABASE_ID)
-    assert.equal(restored[0].attrs.showTitle, true)
-  })
+    assert.equal(restored.length, 1);
+    assert.equal(restored[0].type, "databaseBlock");
+    assert.equal(restored[0].attrs.databaseId, DATABASE_ID);
+    assert.equal(restored[0].attrs.showTitle, true);
+  });
 
   test("meeting markers round trip as atomic editor blocks", async () => {
-    const {
-      preprocessStructuralBlockMarkdown,
-      restoreStructuralBlocksInMarkdownContent,
-    } = await loadModule(restoreModulePath)
-    const marker = `[Meeting (${MEETING_ID})]`
-    const { prosemirrorToMarkdown } = await loadModule(markdownModulePath)
+    const { preprocessStructuralBlockMarkdown, restoreStructuralBlocksInMarkdownContent } =
+      await loadModule(restoreModulePath);
+    const marker = `[Meeting (${MEETING_ID})]`;
+    const { prosemirrorToMarkdown } = await loadModule(markdownModulePath);
     const serialized = prosemirrorToMarkdown({
       type: "meetingBlock",
       attrs: { meetingId: MEETING_ID },
-    })
-    const processed = preprocessStructuralBlockMarkdown(marker)
+    });
+    const processed = preprocessStructuralBlockMarkdown(marker);
     const [restored] = restoreStructuralBlocksInMarkdownContent([
       { type: "paragraph", content: [{ type: "text", text: marker }] },
-    ])
+    ]);
 
-    assert.match(processed, /data-type="meetingBlock"/)
-    assert.equal(serialized, marker)
-    assert.match(processed, new RegExp(`data-meeting-id="${MEETING_ID}"`))
-    assert.equal(restored.type, "meetingBlock")
-    assert.equal(restored.attrs.meetingId, MEETING_ID)
-  })
+    assert.match(processed, /data-type="meetingBlock"/);
+    assert.equal(serialized, marker);
+    assert.match(processed, new RegExp(`data-meeting-id="${MEETING_ID}"`));
+    assert.equal(restored.type, "meetingBlock");
+    assert.equal(restored.attrs.meetingId, MEETING_ID);
+  });
 
   test("restoreStructuralBlocksInMarkdownContent restores link-style video blocks", async () => {
-    const {
-      restoreStructuralBlocksInMarkdownContent,
-    } = await loadModule(restoreModulePath)
+    const { restoreStructuralBlocksInMarkdownContent } = await loadModule(restoreModulePath);
     const content = [
       {
         type: "paragraph",
@@ -97,18 +83,16 @@ export function register({ assert, loadModule, test }) {
           },
         ],
       },
-    ]
+    ];
 
-    const restored = restoreStructuralBlocksInMarkdownContent(content)
+    const restored = restoreStructuralBlocksInMarkdownContent(content);
 
-    assert.equal(restored[0].type, "videoBlock")
-    assert.equal(restored[0].attrs.src, "https://example.com/v.mp4")
-  })
+    assert.equal(restored[0].type, "videoBlock");
+    assert.equal(restored[0].attrs.src, "https://example.com/v.mp4");
+  });
 
   test("restoreStructuralBlocksInMarkdownContent restores file blocks", async () => {
-    const {
-      restoreStructuralBlocksInMarkdownContent,
-    } = await loadModule(restoreModulePath)
+    const { restoreStructuralBlocksInMarkdownContent } = await loadModule(restoreModulePath);
     const content = [
       {
         type: "paragraph",
@@ -119,12 +103,12 @@ export function register({ assert, loadModule, test }) {
           },
         ],
       },
-    ]
+    ];
 
-    const restored = restoreStructuralBlocksInMarkdownContent(content)
+    const restored = restoreStructuralBlocksInMarkdownContent(content);
 
-    assert.equal(restored[0].type, "fileBlock")
-    assert.equal(restored[0].attrs.title, "Notes.pdf")
-    assert.equal(restored[0].attrs.href, "https://example.com/notes.pdf")
-  })
+    assert.equal(restored[0].type, "fileBlock");
+    assert.equal(restored[0].attrs.title, "Notes.pdf");
+    assert.equal(restored[0].attrs.href, "https://example.com/notes.pdf");
+  });
 }

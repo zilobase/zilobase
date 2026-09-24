@@ -1,4 +1,4 @@
-import * as React from "react"
+import * as React from "react";
 import {
   CheckIcon,
   CopyIcon,
@@ -6,10 +6,10 @@ import {
   Loader2Icon,
   PlusIcon,
   Trash2Icon,
-} from "@/shared/components/icons"
-import { toast } from "sonner"
+} from "@/shared/components/icons";
+import { toast } from "sonner";
 
-import { SettingsHeader } from "../components/settings-header"
+import { SettingsHeader } from "../components/settings-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,9 +19,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
-import { Badge } from "@/shared/ui/badge"
-import { Button } from "@/shared/ui/button"
+} from "@/shared/ui/alert-dialog";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -30,20 +30,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/shared/ui/dialog"
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/shared/ui/empty"
-import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-} from "@/shared/ui/field"
-import { Input } from "@/shared/ui/input"
+} from "@/shared/ui/dialog";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
+import { Field, FieldGroup, FieldLabel } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
 import {
   Item,
   ItemActions,
@@ -52,42 +42,34 @@ import {
   ItemGroup,
   ItemMedia,
   ItemTitle,
-} from "@/shared/ui/item"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select"
-import { Skeleton } from "@/shared/ui/skeleton"
-import { Spinner } from "@/shared/ui/spinner"
+} from "@/shared/ui/item";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Skeleton } from "@/shared/ui/skeleton";
+import { Spinner } from "@/shared/ui/spinner";
 import {
   useApiKeys,
   useCreateApiKey,
   useDeleteApiKey,
   useUpdateApiKey,
 } from "@zilobase/features/api-keys/react";
-import type { ApiKeyRecord, CreatedApiKeyRecord } from "@zilobase/features/api-keys"
+import type { ApiKeyRecord, CreatedApiKeyRecord } from "@zilobase/features/api-keys";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useWorkspaces } from "@zilobase/features/workspaces/react";
-import { getApiErrorMessage } from "@/platform/network/api"
+import { getApiErrorMessage } from "@/platform/network/api";
 
 const expirationOptions = [
   { label: "90 days", value: "7776000" },
   { label: "30 days", value: "2592000" },
   { label: "1 year", value: "31536000" },
   { label: "No expiry", value: "none" },
-] as const
+] as const;
 
 export default function ApiKeysSettingsPage() {
-  const activeWorkspaceId = useActiveWorkspaceId()
-  const { data: workspaces = [] } = useWorkspaces()
-  const apiKeys = useApiKeys(activeWorkspaceId ?? null)
-  const activeWorkspace = workspaces.find(
-    (workspace) => workspace.id === activeWorkspaceId,
-  )
-  const workspaceName = activeWorkspace?.name ?? "Current workspace"
+  const activeWorkspaceId = useActiveWorkspaceId();
+  const { data: workspaces = [] } = useWorkspaces();
+  const apiKeys = useApiKeys(activeWorkspaceId ?? null);
+  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId);
+  const workspaceName = activeWorkspace?.name ?? "Current workspace";
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-4 py-8">
@@ -123,7 +105,7 @@ export default function ApiKeysSettingsPage() {
         </section>
       </div>
     </main>
-  )
+  );
 }
 
 function CreateApiKeyDialog({
@@ -131,25 +113,23 @@ function CreateApiKeyDialog({
   workspaceId,
   workspaceName,
 }: {
-  disabled: boolean
-  workspaceId: string | null
-  workspaceName: string
+  disabled: boolean;
+  workspaceId: string | null;
+  workspaceName: string;
 }) {
-  const createApiKey = useCreateApiKey()
-  const [open, setOpen] = React.useState(false)
-  const [name, setName] = React.useState("")
-  const [expiration, setExpiration] = React.useState("7776000")
-  const [createdKey, setCreatedKey] = React.useState<CreatedApiKeyRecord | null>(
-    null,
-  )
-  const trimmedName = name.trim()
+  const createApiKey = useCreateApiKey();
+  const [open, setOpen] = React.useState(false);
+  const [name, setName] = React.useState("");
+  const [expiration, setExpiration] = React.useState("7776000");
+  const [createdKey, setCreatedKey] = React.useState<CreatedApiKeyRecord | null>(null);
+  const trimmedName = name.trim();
 
   const createKey = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+    event.preventDefault();
 
     if (!workspaceId) {
-      toast.error("The current workspace is unavailable.")
-      return
+      toast.error("The current workspace is unavailable.");
+      return;
     }
 
     createApiKey.mutate(
@@ -160,25 +140,25 @@ function CreateApiKeyDialog({
       },
       {
         onSuccess: (result) => {
-          setCreatedKey(result.key)
-          setName("")
-          setExpiration("7776000")
-          toast.success("API key created.")
+          setCreatedKey(result.key);
+          setName("");
+          setExpiration("7776000");
+          toast.success("API key created.");
         },
         onError: (error) => {
-          toast.error(getApiErrorMessage(error))
+          toast.error(getApiErrorMessage(error));
         },
       },
-    )
-  }
+    );
+  };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        setOpen(nextOpen)
+        setOpen(nextOpen);
         if (!nextOpen) {
-          setCreatedKey(null)
+          setCreatedKey(null);
         }
       }}
     >
@@ -192,8 +172,7 @@ function CreateApiKeyDialog({
         <DialogHeader>
           <DialogTitle>Create API key for {workspaceName}</DialogTitle>
           <DialogDescription>
-            This key is scoped to {workspaceName}. The full key is shown once
-            after creation.
+            This key is scoped to {workspaceName}. The full key is shown once after creation.
           </DialogDescription>
         </DialogHeader>
 
@@ -234,10 +213,7 @@ function CreateApiKeyDialog({
               </Field>
             </FieldGroup>
             <DialogFooter>
-              <Button
-                disabled={!trimmedName || createApiKey.isPending}
-                type="submit"
-              >
+              <Button disabled={!trimmedName || createApiKey.isPending} type="submit">
                 {createApiKey.isPending ? <Spinner /> : <KeyRoundIcon />}
                 Create key
               </Button>
@@ -246,17 +222,17 @@ function CreateApiKeyDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 function CreatedKeyPanel({ apiKey }: { apiKey: CreatedApiKeyRecord }) {
-  const [copied, setCopied] = React.useState(false)
+  const [copied, setCopied] = React.useState(false);
 
   const copyKey = async () => {
-    await navigator.clipboard.writeText(apiKey.key)
-    setCopied(true)
-    toast.success("API key copied.")
-  }
+    await navigator.clipboard.writeText(apiKey.key);
+    setCopied(true);
+    toast.success("API key copied.");
+  };
 
   return (
     <div className="grid gap-4">
@@ -268,7 +244,7 @@ function CreatedKeyPanel({ apiKey }: { apiKey: CreatedApiKeyRecord }) {
         {copied ? "Copied" : "Copy key"}
       </Button>
     </div>
-  )
+  );
 }
 
 function ApiKeyList({
@@ -276,12 +252,12 @@ function ApiKeyList({
   keys,
   workspaceName,
 }: {
-  isLoading: boolean
-  keys: ApiKeyRecord[]
-  workspaceName: string
+  isLoading: boolean;
+  keys: ApiKeyRecord[];
+  workspaceName: string;
 }) {
   if (isLoading) {
-    return <RowsSkeleton />
+    return <RowsSkeleton />;
   }
 
   if (keys.length === 0) {
@@ -297,7 +273,7 @@ function ApiKeyList({
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
-    )
+    );
   }
 
   return (
@@ -306,21 +282,19 @@ function ApiKeyList({
         <ApiKeyRow apiKey={apiKey} key={apiKey.id} />
       ))}
     </ItemGroup>
-  )
+  );
 }
 
 function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
-  const updateApiKey = useUpdateApiKey()
-  const deleteApiKey = useDeleteApiKey()
-  const [confirmOpen, setConfirmOpen] = React.useState(false)
-  const isExpired = apiKey.expiresAt
-    ? new Date(apiKey.expiresAt).getTime() <= Date.now()
-    : false
-  const isBusy = updateApiKey.isPending || deleteApiKey.isPending
+  const updateApiKey = useUpdateApiKey();
+  const deleteApiKey = useDeleteApiKey();
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const isExpired = apiKey.expiresAt ? new Date(apiKey.expiresAt).getTime() <= Date.now() : false;
+  const isBusy = updateApiKey.isPending || deleteApiKey.isPending;
 
   const toggleEnabled = () => {
     if (!apiKey.workspaceId) {
-      return
+      return;
     }
 
     updateApiKey.mutate(
@@ -332,12 +306,12 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
       {
         onError: (error) => toast.error(getApiErrorMessage(error)),
       },
-    )
-  }
+    );
+  };
 
   const revoke = () => {
     if (!apiKey.workspaceId) {
-      return
+      return;
     }
 
     deleteApiKey.mutate(
@@ -347,13 +321,13 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
       },
       {
         onSuccess: () => {
-          setConfirmOpen(false)
-          toast.success("API key revoked.")
+          setConfirmOpen(false);
+          toast.success("API key revoked.");
         },
         onError: (error) => toast.error(getApiErrorMessage(error)),
       },
-    )
-  }
+    );
+  };
 
   return (
     <>
@@ -369,12 +343,9 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
             </Badge>
           </div>
           <ItemDescription className="line-clamp-2">
-            {apiKey.start ?? apiKey.prefix ?? "Key"} - Created{" "}
-            {formatDate(apiKey.createdAt)} - Expires{" "}
-            {apiKey.expiresAt ? formatDate(apiKey.expiresAt) : "never"}
-            {apiKey.lastRequest
-              ? ` - Last used ${formatDate(apiKey.lastRequest)}`
-              : ""}
+            {apiKey.start ?? apiKey.prefix ?? "Key"} - Created {formatDate(apiKey.createdAt)} -
+            Expires {apiKey.expiresAt ? formatDate(apiKey.expiresAt) : "never"}
+            {apiKey.lastRequest ? ` - Last used ${formatDate(apiKey.lastRequest)}` : ""}
           </ItemDescription>
         </ItemContent>
         <ItemActions>
@@ -414,7 +385,7 @@ function ApiKeyRow({ apiKey }: { apiKey: ApiKeyRecord }) {
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }
 
 function RowsSkeleton() {
@@ -424,7 +395,7 @@ function RowsSkeleton() {
         <Skeleton className="h-16 rounded-lg" key={index} />
       ))}
     </div>
-  )
+  );
 }
 
 function formatDate(value: string) {
@@ -432,5 +403,5 @@ function formatDate(value: string) {
     day: "numeric",
     month: "short",
     year: "numeric",
-  }).format(new Date(value))
+  }).format(new Date(value));
 }

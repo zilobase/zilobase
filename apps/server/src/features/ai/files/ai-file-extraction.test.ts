@@ -27,7 +27,8 @@ test("extracts DOCX, PPTX, XLSX, and safe ZIP text", () => {
     ),
   });
   assert.match(
-    extractAiFile({ bytes: docx, contentType: "application/octet-stream", filename: "brief.docx" }).text ?? "",
+    extractAiFile({ bytes: docx, contentType: "application/octet-stream", filename: "brief.docx" })
+      .text ?? "",
     /Hello document/,
   );
 
@@ -35,16 +36,20 @@ test("extracts DOCX, PPTX, XLSX, and safe ZIP text", () => {
     "ppt/slides/slide1.xml": strToU8("<p:sld><a:t>Launch plan</a:t></p:sld>"),
   });
   assert.match(
-    extractAiFile({ bytes: pptx, contentType: "application/octet-stream", filename: "deck.pptx" }).text ?? "",
+    extractAiFile({ bytes: pptx, contentType: "application/octet-stream", filename: "deck.pptx" })
+      .text ?? "",
     /Launch plan/,
   );
 
   const xlsx = zipSync({
     "xl/sharedStrings.xml": strToU8("<sst><si><t>Revenue</t></si></sst>"),
-    "xl/worksheets/sheet1.xml": strToU8('<worksheet><row><c t="s"><v>0</v></c><c><v>42</v></c></row></worksheet>'),
+    "xl/worksheets/sheet1.xml": strToU8(
+      '<worksheet><row><c t="s"><v>0</v></c><c><v>42</v></c></row></worksheet>',
+    ),
   });
   assert.match(
-    extractAiFile({ bytes: xlsx, contentType: "application/octet-stream", filename: "data.xlsx" }).text ?? "",
+    extractAiFile({ bytes: xlsx, contentType: "application/octet-stream", filename: "data.xlsx" })
+      .text ?? "",
     /Revenue\t42/,
   );
 
@@ -65,19 +70,21 @@ test("keeps PDF bytes for provider-isolated reading and rejects disguised binary
   assert.equal(pdf.text, null);
 
   assert.throws(
-    () => extractAiFile({
-      bytes: new Uint8Array([0, 1, 2, 3]),
-      contentType: "text/plain",
-      filename: "fake.txt",
-    }),
+    () =>
+      extractAiFile({
+        bytes: new Uint8Array([0, 1, 2, 3]),
+        contentType: "text/plain",
+        filename: "fake.txt",
+      }),
     /binary/,
   );
   assert.throws(
-    () => extractAiFile({
-      bytes: strToU8("%PDF-1.4 disguised"),
-      contentType: "text/plain",
-      filename: "fake.txt",
-    }),
+    () =>
+      extractAiFile({
+        bytes: strToU8("%PDF-1.4 disguised"),
+        contentType: "text/plain",
+        filename: "fake.txt",
+      }),
     /do not match/,
   );
 });

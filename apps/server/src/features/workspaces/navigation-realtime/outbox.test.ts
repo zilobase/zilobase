@@ -26,7 +26,11 @@ test("enqueue writes only generic workspace invalidation metadata", async () => 
   const inserted: unknown[] = [];
   const tx = {
     insert() {
-      return { async values(value: unknown) { inserted.push(value); } };
+      return {
+        async values(value: unknown) {
+          inserted.push(value);
+        },
+      };
     },
   };
   const committedAt = new Date(event.committedAt);
@@ -47,15 +51,29 @@ test("enqueue writes only generic workspace invalidation metadata", async () => 
 test("immediate publication deletes delivered events", async () => {
   const deleted: string[] = [];
   const executor = {
-    delete() { return { async where() { deleted.push("deleted"); } }; },
-    update() { return { set() { return { async where() {} }; } }; },
+    delete() {
+      return {
+        async where() {
+          deleted.push("deleted");
+        },
+      };
+    },
+    update() {
+      return {
+        set() {
+          return { async where() {} };
+        },
+      };
+    },
   };
   const publish = vi.fn(async () => undefined);
 
-  assert.equal(await runWithRuntimePorts(
-    { fanout: { publish, subscribe: vi.fn() } as never },
-    () => publishNavigationInvalidation(event, { ENV: "test" }, executor as never),
-  ), true);
+  assert.equal(
+    await runWithRuntimePorts({ fanout: { publish, subscribe: vi.fn() } as never }, () =>
+      publishNavigationInvalidation(event, { ENV: "test" }, executor as never),
+    ),
+    true,
+  );
   assert.equal(publish.mock.calls.length, 1);
   assert.deepEqual(deleted, ["deleted"]);
 });
@@ -65,7 +83,9 @@ test("failed immediate publication retains the event and schedules retry", async
   vi.setSystemTime(new Date(event.committedAt));
   const updates: unknown[] = [];
   const executor = {
-    delete() { return { async where() {} }; },
+    delete() {
+      return { async where() {} };
+    },
     update() {
       return {
         set(value: unknown) {
@@ -76,24 +96,34 @@ test("failed immediate publication retains the event and schedules retry", async
     },
   };
 
-  await assert.rejects(runWithRuntimePorts(
-    {
-      fanout: { publish: async () => { throw new Error("offline"); }, subscribe: vi.fn() } as never,
-      jobs: { dispatch: vi.fn(), drain: vi.fn() },
-      telemetry: {
-        error: vi.fn(),
-        event: vi.fn(),
-        health: vi.fn(),
-        metrics: vi.fn(),
+  await assert.rejects(
+    runWithRuntimePorts(
+      {
+        fanout: {
+          publish: async () => {
+            throw new Error("offline");
+          },
+          subscribe: vi.fn(),
+        } as never,
+        jobs: { dispatch: vi.fn(), drain: vi.fn() },
+        telemetry: {
+          error: vi.fn(),
+          event: vi.fn(),
+          health: vi.fn(),
+          metrics: vi.fn(),
+        },
       },
+      () => publishNavigationInvalidation(event, {}, executor as never),
+    ),
+    /offline/,
+  );
+  assert.deepEqual(updates, [
+    {
+      attempts: 1,
+      lastAttemptAt: new Date("2026-09-01T00:00:00.000Z"),
+      nextAttemptAt: new Date("2026-09-01T00:01:00.000Z"),
     },
-    () => publishNavigationInvalidation(event, {}, executor as never),
-  ), /offline/);
-  assert.deepEqual(updates, [{
-    attempts: 1,
-    lastAttemptAt: new Date("2026-09-01T00:00:00.000Z"),
-    nextAttemptAt: new Date("2026-09-01T00:01:00.000Z"),
-  }]);
+  ]);
 });
 
 test("scheduled drain retries a retained event", async () => {
@@ -105,20 +135,54 @@ test("scheduled drain retries a retained event", async () => {
     async transaction(callback: (tx: unknown) => Promise<unknown>) {
       return callback({
         select() {
-          return { from() { return { where() { return { orderBy() { return {
-            limit() { return { async for() { return [{
-              attempts: 0,
-              committedAt,
-              id: event.eventId,
-              workspaceId: event.workspaceId,
-            }]; } }; },
-          }; } }; } }; } };
+          return {
+            from() {
+              return {
+                where() {
+                  return {
+                    orderBy() {
+                      return {
+                        limit() {
+                          return {
+                            async for() {
+                              return [
+                                {
+                                  attempts: 0,
+                                  committedAt,
+                                  id: event.eventId,
+                                  workspaceId: event.workspaceId,
+                                },
+                              ];
+                            },
+                          };
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
         },
-        update() { return { set() { return { async where() {} }; } }; },
+        update() {
+          return {
+            set() {
+              return { async where() {} };
+            },
+          };
+        },
       });
     },
-    delete() { return { async where() {} }; },
-    select() { return { async from() { return [{ backlog: 1, maxAttempts: 1, oldestCommittedAt: committedAt }]; } }; },
+    delete() {
+      return { async where() {} };
+    },
+    select() {
+      return {
+        async from() {
+          return [{ backlog: 1, maxAttempts: 1, oldestCommittedAt: committedAt }];
+        },
+      };
+    },
     update() {
       return {
         set(value: unknown) {
@@ -131,12 +195,21 @@ test("scheduled drain retries a retained event", async () => {
   vi.spyOn(console, "error").mockImplementation(() => undefined);
 
   const result = await runWithRuntimePorts(
-    { fanout: { publish: async () => { throw new Error("offline"); }, subscribe: vi.fn() } as never },
+    {
+      fanout: {
+        publish: async () => {
+          throw new Error("offline");
+        },
+        subscribe: vi.fn(),
+      } as never,
+    },
     () => drainNavigationRealtimeOutbox({}, { database: executor as never }),
   );
 
   assert.equal(result.failed, 1);
-  assert.deepEqual(retryUpdates, [{
-    nextAttemptAt: new Date("2026-09-01T00:11:00.000Z"),
-  }]);
+  assert.deepEqual(retryUpdates, [
+    {
+      nextAttemptAt: new Date("2026-09-01T00:11:00.000Z"),
+    },
+  ]);
 });

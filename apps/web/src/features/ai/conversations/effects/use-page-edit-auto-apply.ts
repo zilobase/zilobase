@@ -20,9 +20,7 @@ type UsePageEditAutoApplyOptions = {
   enabled?: boolean;
   getContextPageMarkdown?: (pageId: string) => string | null;
   messages: UIMessage[];
-  setMessages: (
-    messages: UIMessage[] | ((prev: UIMessage[]) => UIMessage[]),
-  ) => void;
+  setMessages: (messages: UIMessage[] | ((prev: UIMessage[]) => UIMessage[])) => void;
 };
 
 function buildSnapshotMessage(snapshotPart: PageEditSnapshotPart) {
@@ -33,10 +31,7 @@ function buildSnapshotMessage(snapshotPart: PageEditSnapshotPart) {
   } as unknown as UIMessage;
 }
 
-function upsertSnapshotMessage(
-  messages: UIMessage[],
-  snapshotPart: PageEditSnapshotPart,
-) {
+function upsertSnapshotMessage(messages: UIMessage[], snapshotPart: PageEditSnapshotPart) {
   const existingIndex = messages.findIndex(
     (entry) =>
       (entry.role as string) === "data" &&
@@ -50,10 +45,7 @@ function upsertSnapshotMessage(
   );
 
   if (existingIndex === -1) {
-    return dedupeChatMessagesById([
-      ...messages,
-      buildSnapshotMessage(snapshotPart),
-    ]);
+    return dedupeChatMessagesById([...messages, buildSnapshotMessage(snapshotPart)]);
   }
 
   return dedupeChatMessagesById(
@@ -78,9 +70,7 @@ function readEditorSnapshotState(
 
   return {
     beforeContentJson,
-    beforeMarkdown: beforeContentJson
-      ? prosemirrorToMarkdown(beforeContentJson)
-      : "",
+    beforeMarkdown: beforeContentJson ? prosemirrorToMarkdown(beforeContentJson) : "",
   };
 }
 
@@ -115,16 +105,10 @@ function invalidEditContent(
   output: ProposePageContentUpdateOutput,
   editMode: ProposePageContentUpdateOutput["editMode"],
 ) {
-  if (
-    editMode === "full" &&
-    (!output.afterMarkdown || !output.afterMarkdown.trim())
-  ) {
+  if (editMode === "full" && (!output.afterMarkdown || !output.afterMarkdown.trim())) {
     return "autoApply:missing-full-output";
   }
-  if (
-    editMode === "patch" &&
-    (!output.searchText || !output.searchText.trim())
-  ) {
+  if (editMode === "patch" && (!output.searchText || !output.searchText.trim())) {
     return "autoApply:missing-patch-output";
   }
   return null;
@@ -137,8 +121,7 @@ function readPageEditOutput(rawOutput: unknown, toolCallId: string) {
     return null;
   }
   const editMode =
-    output.editMode ??
-    (output.searchText ? "patch" : output.afterMarkdown ? "full" : null);
+    output.editMode ?? (output.searchText ? "patch" : output.afterMarkdown ? "full" : null);
   if (!editMode) {
     warnPageEdit("autoApply:missing-edit-mode", { output, toolCallId });
     return null;
@@ -231,19 +214,13 @@ export function usePageEditAutoApply({
 
     const snapshotByToolCallId = buildPageEditSnapshotMap(messages);
 
-    function prepareToolSnapshot(
-      message: UIMessage,
-      messagePart: UIMessage["parts"][number],
-    ) {
+    function prepareToolSnapshot(message: UIMessage, messagePart: UIMessage["parts"][number]) {
       const part = readAvailablePageEditPart(messagePart);
       if (!part) return;
 
       const toolCallId = part.toolCallId;
 
-      if (
-        processedToolCallIdsRef.current.has(toolCallId) ||
-        snapshotByToolCallId.has(toolCallId)
-      ) {
+      if (processedToolCallIdsRef.current.has(toolCallId) || snapshotByToolCallId.has(toolCallId)) {
         processedToolCallIdsRef.current.add(toolCallId);
         return;
       }
@@ -297,27 +274,16 @@ export function usePageEditAutoApply({
         getEditorHandle,
       );
 
-      setApplyingToolCallIds((current) =>
-        current.filter((entry) => entry !== toolCallId),
-      );
+      setApplyingToolCallIds((current) => current.filter((entry) => entry !== toolCallId));
 
-      setMessages((currentMessages) =>
-        upsertSnapshotMessage(currentMessages, snapshotPart),
-      );
+      setMessages((currentMessages) => upsertSnapshotMessage(currentMessages, snapshotPart));
     }
 
     for (const message of messages) {
       if (message.role !== "assistant") continue;
       for (const part of message.parts) prepareToolSnapshot(message, part);
     }
-  }, [
-    enabled,
-    getContextPageMarkdown,
-    getEditorHandle,
-    messages,
-    resolvePageEdit,
-    setMessages,
-  ]);
+  }, [enabled, getContextPageMarkdown, getEditorHandle, messages, resolvePageEdit, setMessages]);
 
   return {
     applyingToolCallIds,
@@ -353,16 +319,9 @@ export function updatePageEditSnapshotStatus(
           return {
             ...snapshot,
             status,
-            afterContentJson:
-              options?.afterContentJson ?? snapshot.afterContentJson,
-            appliedAt:
-              status === "applied"
-                ? new Date().toISOString()
-                : snapshot.appliedAt,
-            undoneAt:
-              status === "undone"
-                ? new Date().toISOString()
-                : snapshot.undoneAt,
+            afterContentJson: options?.afterContentJson ?? snapshot.afterContentJson,
+            appliedAt: status === "applied" ? new Date().toISOString() : snapshot.appliedAt,
+            undoneAt: status === "undone" ? new Date().toISOString() : snapshot.undoneAt,
           } as unknown as typeof part;
         }),
       };

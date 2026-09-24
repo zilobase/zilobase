@@ -1,11 +1,8 @@
-import type { DatabaseViewData } from "../views/model/database-controller-state"
+import type { DatabaseViewData } from "../views/model/database-controller-state";
 
-import {
-  toStringArray,
-  type DatabasePropertyValue,
-} from "../schema/property-values"
-import { type NewRowSetup } from "./row-plans"
-import type { DatabaseRowMutations } from "./mutation-adapters"
+import { toStringArray, type DatabasePropertyValue } from "../schema/property-values";
+import { type NewRowSetup } from "./row-plans";
+import type { DatabaseRowMutations } from "./mutation-adapters";
 
 export function createAddDatabaseRowMutation({
   addRow,
@@ -15,22 +12,19 @@ export function createAddDatabaseRowMutation({
   viewData,
   updateValue,
 }: {
-  addRow: DatabaseRowMutations["addRow"]
-  databaseId: string | null | undefined
-  editable: boolean
-  hostDatabaseId?: string | null
-  viewData: DatabaseViewData | null | undefined
-  updateValue: DatabaseRowMutations["updateValue"]
+  addRow: DatabaseRowMutations["addRow"];
+  databaseId: string | null | undefined;
+  editable: boolean;
+  hostDatabaseId?: string | null;
+  viewData: DatabaseViewData | null | undefined;
+  updateValue: DatabaseRowMutations["updateValue"];
 }) {
   return ({ parentRelation, propertyValues, title }: NewRowSetup) => {
-    if (!editable || !databaseId) return
+    if (!editable || !databaseId) return;
 
     const uniquePropertyValues = new Map(
-      propertyValues.map((propertyValue) => [
-        propertyValue.propertyId,
-        propertyValue,
-      ]),
-    )
+      propertyValues.map((propertyValue) => [propertyValue.propertyId, propertyValue]),
+    );
 
     addRow.mutate(
       {
@@ -42,22 +36,19 @@ export function createAddDatabaseRowMutation({
         title,
       },
       {
-      onSuccess: (addedItem) => {
-        if (!parentRelation) return
+        onSuccess: (addedItem) => {
+          if (!parentRelation) return;
 
-        const currentValue = viewData?.records
-          .flatMap((record) => Object.values(record.valuesByPropertyId))
-          .find(
-            (value) =>
-              value.pageId === parentRelation.parentRow.pageId &&
-              value.propertyId === parentRelation.subItemPropertyId,
-          )?.value
+          const currentValue = viewData?.records
+            .flatMap((record) => Object.values(record.valuesByPropertyId))
+            .find(
+              (value) =>
+                value.pageId === parentRelation.parentRow.pageId &&
+                value.propertyId === parentRelation.subItemPropertyId,
+            )?.value;
           const nextSubItemPageIds = [
-            ...new Set([
-              ...toStringArray(currentValue as DatabasePropertyValue),
-              addedItem.pageId,
-            ]),
-          ]
+            ...new Set([...toStringArray(currentValue as DatabasePropertyValue), addedItem.pageId]),
+          ];
 
           updateValue.mutate({
             databaseId,
@@ -65,9 +56,9 @@ export function createAddDatabaseRowMutation({
             propertyId: parentRelation.subItemPropertyId,
             rowId: parentRelation.parentRow.id,
             value: nextSubItemPageIds,
-          })
+          });
         },
       },
-    )
-  }
+    );
+  };
 }

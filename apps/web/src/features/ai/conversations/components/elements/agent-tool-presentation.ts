@@ -8,10 +8,7 @@ export function resolveAgentToolPresentation(input: {
   title?: string;
   toolName: string;
 }): AgentToolPresentation {
-  const title =
-    input.part.title?.trim() ||
-    input.title?.trim() ||
-    humanizeToolName(input.toolName);
+  const title = input.part.title?.trim() || input.title?.trim() || humanizeToolName(input.toolName);
 
   return {
     progressPhrases: [`Running ${title}`],
@@ -25,7 +22,5 @@ function humanizeToolName(toolName: string) {
     .replace(/([a-z\d])([A-Z])/g, "$1 $2")
     .trim();
 
-  return value
-    ? `${value.charAt(0).toUpperCase()}${value.slice(1)}`
-    : "Tool call";
+  return value ? `${value.charAt(0).toUpperCase()}${value.slice(1)}` : "Tool call";
 }

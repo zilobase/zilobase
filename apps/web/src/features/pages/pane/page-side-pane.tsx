@@ -12,114 +12,94 @@ import {
   type PointerEvent as ReactPointerEvent,
   type CSSProperties,
   type ReactNode,
-} from "react"
-import { useLocation, useRouter } from "@tanstack/react-router"
+} from "react";
+import { useLocation, useRouter } from "@tanstack/react-router";
 
-import { cn } from "@/shared/lib/utils"
-import { isMobileViewport, useIsMobile } from "@/shared/hooks/use-mobile"
-import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages"
+import { cn } from "@/shared/lib/utils";
+import { isMobileViewport, useIsMobile } from "@/shared/hooks/use-mobile";
+import type { EmbeddedItemsOpenAs } from "@zilobase/features/pages";
 
 export type OpenPageSidePaneOptions = {
-  databaseId?: string | null
-}
+  databaseId?: string | null;
+};
 
 export type PageSidePaneContextValue = {
-  closeEmbeddedPageDialog: () => void
-  closeSidePane: () => void
-  dialogDatabaseId: string | null
-  dialogPageId: string | null
-  embeddedItemsOpenAs: EmbeddedItemsOpenAs
-  mainPaneNavigationActive: boolean
-  openEmbeddedPageDialog: (
-    pageId: string,
-    options?: OpenPageSidePaneOptions,
-  ) => void
-  openDatabaseSidePane: (databaseId: string) => void
-  openDatabaseInMainPane: (databaseId: string) => void
-  openPageInMainPane: (
-    pageId: string,
-    options?: OpenPageSidePaneOptions,
-  ) => void
-  openSidePaneAsFullPage: () => void
-  openSidePane: (
-    pageId: string,
-    options?: OpenPageSidePaneOptions,
-  ) => void
-  renderedSidePaneDatabaseId: string | null
-  renderedSidePanePageId: string | null
-  sidePaneAnimatedOpen: boolean
-  sidePaneContentReady: boolean
-  sidePaneDatabaseId: string | null
-  sidePanePageId: string | null
-}
+  closeEmbeddedPageDialog: () => void;
+  closeSidePane: () => void;
+  dialogDatabaseId: string | null;
+  dialogPageId: string | null;
+  embeddedItemsOpenAs: EmbeddedItemsOpenAs;
+  mainPaneNavigationActive: boolean;
+  openEmbeddedPageDialog: (pageId: string, options?: OpenPageSidePaneOptions) => void;
+  openDatabaseSidePane: (databaseId: string) => void;
+  openDatabaseInMainPane: (databaseId: string) => void;
+  openPageInMainPane: (pageId: string, options?: OpenPageSidePaneOptions) => void;
+  openSidePaneAsFullPage: () => void;
+  openSidePane: (pageId: string, options?: OpenPageSidePaneOptions) => void;
+  renderedSidePaneDatabaseId: string | null;
+  renderedSidePanePageId: string | null;
+  sidePaneAnimatedOpen: boolean;
+  sidePaneContentReady: boolean;
+  sidePaneDatabaseId: string | null;
+  sidePanePageId: string | null;
+};
 
-export const PageSidePaneContext =
-  createContext<PageSidePaneContextValue | null>(null)
+export const PageSidePaneContext = createContext<PageSidePaneContextValue | null>(null);
 
-export const WORKSPACE_SIDE_PANE_TRANSITION_MS = 200
+export const WORKSPACE_SIDE_PANE_TRANSITION_MS = 200;
 
-const SIDE_PANE_DEFAULT_WIDTH = "clamp(22rem, 50%, 48rem)"
-const SIDE_PANE_MIN_WIDTH = 320
-const SIDE_PANE_MIN_MAIN_WIDTH = 256
-const SIDE_PANE_READABLE_MIN_WIDTH = 352
-const SIDE_PANE_KEYBOARD_RESIZE_STEP = 24
+const SIDE_PANE_DEFAULT_WIDTH = "clamp(22rem, 50%, 48rem)";
+const SIDE_PANE_MIN_WIDTH = 320;
+const SIDE_PANE_MIN_MAIN_WIDTH = 256;
+const SIDE_PANE_READABLE_MIN_WIDTH = 352;
+const SIDE_PANE_KEYBOARD_RESIZE_STEP = 24;
 
-const SIDE_PANE_PAGE_PARAM = "p"
-const SIDE_PANE_DATABASE_PARAM = "d"
+const SIDE_PANE_PAGE_PARAM = "p";
+const SIDE_PANE_DATABASE_PARAM = "d";
 
-export const getFullPagePath = (pageId: string) =>
-  `/p/${encodeURIComponent(pageId)}`
+export const getFullPagePath = (pageId: string) => `/p/${encodeURIComponent(pageId)}`;
 
-export const getFullDatabasePath = (databaseId: string) =>
-  `/d/${encodeURIComponent(databaseId)}`
+export const getFullDatabasePath = (databaseId: string) => `/d/${encodeURIComponent(databaseId)}`;
 
-let promotedFullPagePath: string | null = null
-const promotedFullPageListeners = new Set<() => void>()
+let promotedFullPagePath: string | null = null;
+const promotedFullPageListeners = new Set<() => void>();
 
 function setPromotedFullPagePath(path: string | null) {
-  if (promotedFullPagePath === path) return
-  promotedFullPagePath = path
-  for (const listener of promotedFullPageListeners) listener()
+  if (promotedFullPagePath === path) return;
+  promotedFullPagePath = path;
+  for (const listener of promotedFullPageListeners) listener();
 }
 
 export function clearPromotedFullPagePath() {
-  setPromotedFullPagePath(null)
-  document
-    .querySelectorAll<HTMLElement>("[data-page-side-pane-shell]")
-    .forEach((shell) => {
-      delete shell.dataset.pageSidePanePromoted
-      shell.style.setProperty(
-        "--page-side-pane-width",
-        SIDE_PANE_DEFAULT_WIDTH,
-      )
-    })
+  setPromotedFullPagePath(null);
+  document.querySelectorAll<HTMLElement>("[data-page-side-pane-shell]").forEach((shell) => {
+    delete shell.dataset.pageSidePanePromoted;
+    shell.style.setProperty("--page-side-pane-width", SIDE_PANE_DEFAULT_WIDTH);
+  });
 }
 
 export function usePromotedFullPagePath() {
   return useSyncExternalStore(
     (listener) => {
-      promotedFullPageListeners.add(listener)
-      return () => promotedFullPageListeners.delete(listener)
+      promotedFullPageListeners.add(listener);
+      return () => promotedFullPageListeners.delete(listener);
     },
     () => promotedFullPagePath,
     () => null,
-  )
+  );
 }
 
 export const pageSidePaneGridShellClass =
-  "grid min-h-0 flex-1 overflow-hidden [grid-template-rows:3rem_minmax(0,1fr)]"
+  "grid min-h-0 flex-1 overflow-hidden [grid-template-rows:3rem_minmax(0,1fr)]";
 
 export const pageSidePaneMobilePanelTransitionClass =
-  "transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+  "transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none";
 
-export function getPageSidePaneGridStyle(
-  _visible: boolean,
-  _open: boolean,
-): CSSProperties {
+export function getPageSidePaneGridStyle(_visible: boolean, _open: boolean): CSSProperties {
   return {
     "--page-side-pane-width": SIDE_PANE_DEFAULT_WIDTH,
     gridTemplateColumns: "minmax(0, 1fr)",
-  } as CSSProperties
+  } as CSSProperties;
 }
 
 export function getPageSidePaneMobilePanelClassName(open: boolean) {
@@ -129,7 +109,7 @@ export function getPageSidePaneMobilePanelClassName(open: boolean) {
     open
       ? "[transform:translate3d(0,0,0)]"
       : "pointer-events-none [transform:translate3d(100%,0,0)]",
-  )
+  );
 }
 
 export function PageSidePaneShell({
@@ -139,26 +119,23 @@ export function PageSidePaneShell({
   open,
   visible,
 }: {
-  body: ReactNode
-  className?: string
-  header?: ReactNode
-  open: boolean
-  visible: boolean
+  body: ReactNode;
+  className?: string;
+  header?: ReactNode;
+  open: boolean;
+  visible: boolean;
 }) {
-  const shellRef = useRef<HTMLDivElement | null>(null)
+  const shellRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (open) return
+    if (open) return;
 
     const timer = window.setTimeout(() => {
-      shellRef.current?.style.setProperty(
-        "--page-side-pane-width",
-        SIDE_PANE_DEFAULT_WIDTH,
-      )
-    }, WORKSPACE_SIDE_PANE_TRANSITION_MS)
+      shellRef.current?.style.setProperty("--page-side-pane-width", SIDE_PANE_DEFAULT_WIDTH);
+    }, WORKSPACE_SIDE_PANE_TRANSITION_MS);
 
-    return () => window.clearTimeout(timer)
-  }, [open])
+    return () => window.clearTimeout(timer);
+  }, [open]);
 
   return (
     <div
@@ -175,9 +152,7 @@ export function PageSidePaneShell({
       style={getPageSidePaneGridStyle(visible, open)}
     >
       {header ? (
-        <header className="relative col-span-full h-12 overflow-hidden">
-          {header}
-        </header>
+        <header className="relative col-span-full h-12 overflow-hidden">{header}</header>
       ) : null}
       <div
         className={cn(
@@ -188,7 +163,7 @@ export function PageSidePaneShell({
         {body}
       </div>
     </div>
-  )
+  );
 }
 
 export function getPageSidePaneHeaderCellClassName({
@@ -196,9 +171,9 @@ export function getPageSidePaneHeaderCellClassName({
   side,
   splitActive,
 }: {
-  className?: string
-  side: "main" | "side"
-  splitActive: boolean
+  className?: string;
+  side: "main" | "side";
+  splitActive: boolean;
 }) {
   return cn(
     "flex h-12 min-h-0 min-w-0 items-center overflow-hidden",
@@ -211,7 +186,7 @@ export function getPageSidePaneHeaderCellClassName({
         : "pointer-events-none [transform:translate3d(100%,0,0)]",
     ],
     className,
-  )
+  );
 }
 
 export function PageSidePaneHeaderCell({
@@ -220,10 +195,10 @@ export function PageSidePaneHeaderCell({
   splitActive = false,
   side = "main",
 }: {
-  children: ReactNode
-  className?: string
-  splitActive?: boolean
-  side?: "main" | "side"
+  children: ReactNode;
+  className?: string;
+  splitActive?: boolean;
+  side?: "main" | "side";
 }) {
   return (
     <div
@@ -237,28 +212,25 @@ export function PageSidePaneHeaderCell({
     >
       {children}
     </div>
-  )
+  );
 }
 
 export function PageSidePaneMainCell({
   children,
   className,
 }: {
-  children: ReactNode
-  className?: string
+  children: ReactNode;
+  className?: string;
 }) {
   return (
     <div className="h-full min-h-0 w-full min-w-0" data-page-side-pane-main>
       <PageScrollViewport className="h-full" scrollClassName={className}>
-        <div
-          className="flex min-h-full w-full min-w-0 flex-col"
-          data-page-side-pane-main-content
-        >
+        <div className="flex min-h-full w-full min-w-0 flex-col" data-page-side-pane-main-content>
           {children}
         </div>
       </PageScrollViewport>
     </div>
-  )
+  );
 }
 
 export function PageScrollViewport({
@@ -267,18 +239,13 @@ export function PageScrollViewport({
   edgeFadeClassName,
   scrollClassName,
 }: {
-  children: ReactNode
-  className?: string
-  edgeFadeClassName?: string
-  scrollClassName?: string
+  children: ReactNode;
+  className?: string;
+  edgeFadeClassName?: string;
+  scrollClassName?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "relative min-h-0 min-w-0 overflow-hidden",
-        className,
-      )}
-    >
+    <div className={cn("relative min-h-0 min-w-0 overflow-hidden", className)}>
       <div
         className={cn(
           "flex h-full min-h-0 min-w-0 flex-col overflow-y-auto [scrollbar-gutter:stable]",
@@ -296,7 +263,7 @@ export function PageScrollViewport({
         )}
       />
     </div>
-  )
+  );
 }
 
 export function PageSidePaneSideCell({
@@ -305,176 +272,167 @@ export function PageSidePaneSideCell({
   open,
   show,
 }: {
-  children?: ReactNode
-  className?: string
-  open: boolean
-  show?: boolean
+  children?: ReactNode;
+  className?: string;
+  open: boolean;
+  show?: boolean;
 }) {
-  const panelRef = useRef<HTMLElement | null>(null)
-  const pointerCleanupRef = useRef<() => void>(() => {})
-  const promotionTimerRef = useRef<number | null>(null)
-  const promotionPendingRef = useRef(false)
-  const sidePaneContext = useContext(PageSidePaneContext)
+  const panelRef = useRef<HTMLElement | null>(null);
+  const pointerCleanupRef = useRef<() => void>(() => {});
+  const promotionTimerRef = useRef<number | null>(null);
+  const promotionPendingRef = useRef(false);
+  const sidePaneContext = useContext(PageSidePaneContext);
 
   useEffect(
     () => () => {
-      pointerCleanupRef.current()
+      pointerCleanupRef.current();
       if (promotionTimerRef.current !== null) {
-        window.clearTimeout(promotionTimerRef.current)
+        window.clearTimeout(promotionTimerRef.current);
       }
     },
     [],
-  )
+  );
 
   if (!show) {
-    return null
+    return null;
   }
 
   const setPanelWidth = (width: number) => {
-    const panel = panelRef.current
-    const shell = panel?.closest<HTMLElement>("[data-page-side-pane-shell]")
-    if (!panel || !shell) return null
+    const panel = panelRef.current;
+    const shell = panel?.closest<HTMLElement>("[data-page-side-pane-shell]");
+    if (!panel || !shell) return null;
 
-    const shellWidth = shell.getBoundingClientRect().width
-    const maxWidth = Math.max(
-      SIDE_PANE_MIN_WIDTH,
-      shellWidth - SIDE_PANE_MIN_MAIN_WIDTH,
-    )
-    const nextWidth = Math.min(Math.max(width, SIDE_PANE_MIN_WIDTH), maxWidth)
-    shell.style.setProperty("--page-side-pane-width", `${nextWidth}px`)
+    const shellWidth = shell.getBoundingClientRect().width;
+    const maxWidth = Math.max(SIDE_PANE_MIN_WIDTH, shellWidth - SIDE_PANE_MIN_MAIN_WIDTH);
+    const nextWidth = Math.min(Math.max(width, SIDE_PANE_MIN_WIDTH), maxWidth);
+    shell.style.setProperty("--page-side-pane-width", `${nextWidth}px`);
 
     return {
       mainWidth: shellWidth - nextWidth,
       sideWidth: nextWidth,
-    }
-  }
+    };
+  };
 
   const promoteSidePaneToFullPage = () => {
-    if (!sidePaneContext || promotionPendingRef.current) return
+    if (!sidePaneContext || promotionPendingRef.current) return;
 
-    const panel = panelRef.current
-    const shell = panel?.closest<HTMLElement>("[data-page-side-pane-shell]")
+    const panel = panelRef.current;
+    const shell = panel?.closest<HTMLElement>("[data-page-side-pane-shell]");
     if (!panel || !shell) {
-      sidePaneContext.openSidePaneAsFullPage()
-      return
+      sidePaneContext.openSidePaneAsFullPage();
+      return;
     }
 
-    promotionPendingRef.current = true
-    shell.dataset.pageSidePanePromoting = "true"
-    shell.style.setProperty(
-      "--page-side-pane-width",
-      `${shell.getBoundingClientRect().width}px`,
-    )
+    promotionPendingRef.current = true;
+    shell.dataset.pageSidePanePromoting = "true";
+    shell.style.setProperty("--page-side-pane-width", `${shell.getBoundingClientRect().width}px`);
 
     promotionTimerRef.current = window.setTimeout(() => {
-      promotionTimerRef.current = null
-      delete shell.dataset.pageSidePanePromoting
-      shell.dataset.pageSidePanePromoted = "true"
-      promotionPendingRef.current = false
-      sidePaneContext.openSidePaneAsFullPage()
-    }, WORKSPACE_SIDE_PANE_TRANSITION_MS)
-  }
+      promotionTimerRef.current = null;
+      delete shell.dataset.pageSidePanePromoting;
+      shell.dataset.pageSidePanePromoted = "true";
+      promotionPendingRef.current = false;
+      sidePaneContext.openSidePaneAsFullPage();
+    }, WORKSPACE_SIDE_PANE_TRANSITION_MS);
+  };
 
   const expandUnreadablePane = (
     layout: { mainWidth: number; sideWidth: number },
     resizedSide: "main" | "side",
   ) => {
-    if (!open || !sidePaneContext) return false
+    if (!open || !sidePaneContext) return false;
 
-    const mainIsUnreadable = layout.mainWidth < SIDE_PANE_READABLE_MIN_WIDTH
-    const sideIsUnreadable = layout.sideWidth < SIDE_PANE_READABLE_MIN_WIDTH
+    const mainIsUnreadable = layout.mainWidth < SIDE_PANE_READABLE_MIN_WIDTH;
+    const sideIsUnreadable = layout.sideWidth < SIDE_PANE_READABLE_MIN_WIDTH;
 
-    if (!mainIsUnreadable && !sideIsUnreadable) return false
+    if (!mainIsUnreadable && !sideIsUnreadable) return false;
 
     if (mainIsUnreadable && sideIsUnreadable) {
       if (resizedSide === "side") {
-        sidePaneContext.closeSidePane()
+        sidePaneContext.closeSidePane();
       } else {
-        promoteSidePaneToFullPage()
+        promoteSidePaneToFullPage();
       }
-      return true
+      return true;
     }
 
     if (sideIsUnreadable) {
-      sidePaneContext.closeSidePane()
-      return true
+      sidePaneContext.closeSidePane();
+      return true;
     }
 
-    promoteSidePaneToFullPage()
-    return true
-  }
+    promoteSidePaneToFullPage();
+    return true;
+  };
 
-  const handleResizePointerDown = (
-    event: ReactPointerEvent<HTMLDivElement>,
-  ) => {
-    if (event.button !== 0) return
+  const handleResizePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
 
-    const panel = panelRef.current
-    const shell = panel?.closest<HTMLElement>("[data-page-side-pane-shell]")
-    if (!panel || !shell) return
+    const panel = panelRef.current;
+    const shell = panel?.closest<HTMLElement>("[data-page-side-pane-shell]");
+    if (!panel || !shell) return;
 
-    event.preventDefault()
-    pointerCleanupRef.current()
-    shell.dataset.pageSidePaneResizing = "true"
-    const startPanelWidth = panel.getBoundingClientRect().width
-    const previousCursor = document.body.style.cursor
-    const previousUserSelect = document.body.style.userSelect
-    document.body.style.cursor = "col-resize"
-    document.body.style.userSelect = "none"
+    event.preventDefault();
+    pointerCleanupRef.current();
+    shell.dataset.pageSidePaneResizing = "true";
+    const startPanelWidth = panel.getBoundingClientRect().width;
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
 
     const cleanup = () => {
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-      window.removeEventListener("pointercancel", handlePointerCancel)
-      delete shell.dataset.pageSidePaneResizing
-      document.body.style.cursor = previousCursor
-      document.body.style.userSelect = previousUserSelect
-      pointerCleanupRef.current = () => {}
-    }
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerCancel);
+      delete shell.dataset.pageSidePaneResizing;
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      pointerCleanupRef.current = () => {};
+    };
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
-      const shellRect = shell.getBoundingClientRect()
-      const layout = setPanelWidth(shellRect.right - moveEvent.clientX)
-      if (!layout) return
+      const shellRect = shell.getBoundingClientRect();
+      const layout = setPanelWidth(shellRect.right - moveEvent.clientX);
+      if (!layout) return;
 
-      const resizedSide = layout.sideWidth < startPanelWidth ? "side" : "main"
+      const resizedSide = layout.sideWidth < startPanelWidth ? "side" : "main";
       const crossedReadableLimit =
         layout.mainWidth < SIDE_PANE_READABLE_MIN_WIDTH ||
-        layout.sideWidth < SIDE_PANE_READABLE_MIN_WIDTH
+        layout.sideWidth < SIDE_PANE_READABLE_MIN_WIDTH;
 
-      if (!crossedReadableLimit) return
+      if (!crossedReadableLimit) return;
 
-      cleanup()
+      cleanup();
       window.requestAnimationFrame(() => {
-        expandUnreadablePane(layout, resizedSide)
-      })
-    }
+        expandUnreadablePane(layout, resizedSide);
+      });
+    };
 
-    const handlePointerUp = cleanup
-    const handlePointerCancel = cleanup
+    const handlePointerUp = cleanup;
+    const handlePointerCancel = cleanup;
 
-    window.addEventListener("pointermove", handlePointerMove)
-    window.addEventListener("pointerup", handlePointerUp)
-    window.addEventListener("pointercancel", handlePointerCancel)
-    pointerCleanupRef.current = handlePointerCancel
-  }
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerCancel);
+    pointerCleanupRef.current = handlePointerCancel;
+  };
 
   const handleResizeKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const panel = panelRef.current
+    const panel = panelRef.current;
     if (!panel || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) {
-      return
+      return;
     }
 
-    event.preventDefault()
-    const direction = event.key === "ArrowLeft" ? 1 : -1
+    event.preventDefault();
+    const direction = event.key === "ArrowLeft" ? 1 : -1;
     const layout = setPanelWidth(
-      panel.getBoundingClientRect().width +
-        direction * SIDE_PANE_KEYBOARD_RESIZE_STEP,
-    )
+      panel.getBoundingClientRect().width + direction * SIDE_PANE_KEYBOARD_RESIZE_STEP,
+    );
     if (layout) {
-      expandUnreadablePane(layout, event.key === "ArrowRight" ? "side" : "main")
+      expandUnreadablePane(layout, event.key === "ArrowRight" ? "side" : "main");
     }
-  }
+  };
 
   return (
     <aside
@@ -507,7 +465,7 @@ export function PageSidePaneSideCell({
         {children}
       </PageScrollViewport>
     </aside>
-  )
+  );
 }
 
 export function PageSidePaneLayout({
@@ -521,21 +479,19 @@ export function PageSidePaneLayout({
   standalone = false,
   viewportHeightClass = "h-[calc(100svh-3rem)]",
 }: {
-  className?: string
-  main: ReactNode
-  mainScrollClassName?: string
-  sidePane: ReactNode | null
-  sidePaneClassName?: string
-  sidePaneOpen: boolean
-  sidePaneVisible: boolean
-  standalone?: boolean
-  viewportHeightClass?: string
+  className?: string;
+  main: ReactNode;
+  mainScrollClassName?: string;
+  sidePane: ReactNode | null;
+  sidePaneClassName?: string;
+  sidePaneOpen: boolean;
+  sidePaneVisible: boolean;
+  standalone?: boolean;
+  viewportHeightClass?: string;
 }) {
   const split = (
     <>
-      <PageSidePaneMainCell
-        className={cn(!standalone && "min-h-0", mainScrollClassName)}
-      >
+      <PageSidePaneMainCell className={cn(!standalone && "min-h-0", mainScrollClassName)}>
         {main}
       </PageSidePaneMainCell>
       <PageSidePaneSideCell
@@ -546,10 +502,10 @@ export function PageSidePaneLayout({
         {sidePane}
       </PageSidePaneSideCell>
     </>
-  )
+  );
 
   if (!standalone) {
-    return split
+    return split;
   }
 
   return (
@@ -559,151 +515,138 @@ export function PageSidePaneLayout({
       open={sidePaneOpen}
       visible={sidePaneVisible}
     />
-  )
+  );
 }
 
 export function usePageSidePaneState(
   _resetKey?: string | null,
   embeddedItemsOpenAs: EmbeddedItemsOpenAs = "sidepanel",
 ): PageSidePaneContextValue {
-  const router = useRouter()
-  const isMobile = useIsMobile()
-  const promotedFullPagePath = usePromotedFullPagePath()
+  const router = useRouter();
+  const isMobile = useIsMobile();
+  const promotedFullPagePath = usePromotedFullPagePath();
   const location = useLocation({
     select: ({ hash, pathname, searchStr }) => ({
       hash,
       pathname,
       searchStr,
     }),
-  })
-  const sidePanePageId = getSearchParam(
-    location.searchStr,
-    SIDE_PANE_PAGE_PARAM,
-  )
-  const sidePaneDatabaseId = getSearchParam(
-    location.searchStr,
-    SIDE_PANE_DATABASE_PARAM,
-  )
-  const [dialogPageId, setDialogPageId] = useState<string | null>(
-    null,
-  )
-  const [dialogDatabaseId, setDialogDatabaseId] = useState<string | null>(null)
-  const [renderedSidePanePageId, setRenderedSidePanePageId] =
-    useState<string | null>(null)
-  const [renderedSidePaneDatabaseId, setRenderedSidePaneDatabaseId] =
-    useState<string | null>(null)
-  const [sidePaneAnimatedOpen, setSidePaneAnimatedOpen] = useState(false)
-  const [sidePaneContentReady, setSidePaneContentReady] = useState(false)
-  const sidePaneWasOpenRef = useRef(false)
-  const pendingMainPanePathRef = useRef<string | null>(null)
+  });
+  const sidePanePageId = getSearchParam(location.searchStr, SIDE_PANE_PAGE_PARAM);
+  const sidePaneDatabaseId = getSearchParam(location.searchStr, SIDE_PANE_DATABASE_PARAM);
+  const [dialogPageId, setDialogPageId] = useState<string | null>(null);
+  const [dialogDatabaseId, setDialogDatabaseId] = useState<string | null>(null);
+  const [renderedSidePanePageId, setRenderedSidePanePageId] = useState<string | null>(null);
+  const [renderedSidePaneDatabaseId, setRenderedSidePaneDatabaseId] = useState<string | null>(null);
+  const [sidePaneAnimatedOpen, setSidePaneAnimatedOpen] = useState(false);
+  const [sidePaneContentReady, setSidePaneContentReady] = useState(false);
+  const sidePaneWasOpenRef = useRef(false);
+  const pendingMainPanePathRef = useRef<string | null>(null);
   const writeSidePaneParams = useCallback(
     (pageId: string | null, databaseId?: string | null, replace = false) => {
-      const params = new URLSearchParams(location.searchStr)
-      const databaseParam = getSidePaneDatabaseParam(
-        location.pathname,
-        databaseId,
-      )
+      const params = new URLSearchParams(location.searchStr);
+      const databaseParam = getSidePaneDatabaseParam(location.pathname, databaseId);
 
       if (pageId) {
-        params.set(SIDE_PANE_PAGE_PARAM, pageId)
+        params.set(SIDE_PANE_PAGE_PARAM, pageId);
       } else {
-        params.delete(SIDE_PANE_PAGE_PARAM)
+        params.delete(SIDE_PANE_PAGE_PARAM);
       }
 
       if (databaseParam) {
-        params.set(SIDE_PANE_DATABASE_PARAM, databaseParam)
+        params.set(SIDE_PANE_DATABASE_PARAM, databaseParam);
       } else {
-        params.delete(SIDE_PANE_DATABASE_PARAM)
+        params.delete(SIDE_PANE_DATABASE_PARAM);
       }
 
-      const search = params.toString()
-      const hash = location.hash ? `#${location.hash}` : ""
-      const path = `${location.pathname}${search ? `?${search}` : ""}${hash}`
+      const search = params.toString();
+      const hash = location.hash ? `#${location.hash}` : "";
+      const path = `${location.pathname}${search ? `?${search}` : ""}${hash}`;
 
       if (path === `${location.pathname}${location.searchStr}${hash}`) {
-        return
+        return;
       }
 
       if (replace) {
-        router.history.replace(path)
-        return
+        router.history.replace(path);
+        return;
       }
 
-      router.history.push(path)
+      router.history.push(path);
     },
     [location.hash, location.pathname, location.searchStr, router.history],
-  )
+  );
   const closeSidePane = useCallback(() => {
-    clearPromotedFullPagePath()
-    writeSidePaneParams(null, null, true)
-  }, [writeSidePaneParams])
+    clearPromotedFullPagePath();
+    writeSidePaneParams(null, null, true);
+  }, [writeSidePaneParams]);
   const closeEmbeddedPageDialog = useCallback(() => {
-    setDialogPageId(null)
-    setDialogDatabaseId(null)
-  }, [])
+    setDialogPageId(null);
+    setDialogDatabaseId(null);
+  }, []);
   const openSidePane = useCallback(
     (nextPageId: string, options?: OpenPageSidePaneOptions) => {
-      closeEmbeddedPageDialog()
+      closeEmbeddedPageDialog();
 
       if (isMobile || isMobileViewport()) {
-        router.history.push(getFullPagePath(nextPageId))
-        return
+        router.history.push(getFullPagePath(nextPageId));
+        return;
       }
 
-      writeSidePaneParams(nextPageId, options?.databaseId)
+      writeSidePaneParams(nextPageId, options?.databaseId);
     },
     [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
-  )
+  );
   const openDatabaseSidePane = useCallback(
     (databaseId: string) => {
-      closeEmbeddedPageDialog()
+      closeEmbeddedPageDialog();
 
       if (isMobile || isMobileViewport()) {
-        router.history.push(getFullDatabasePath(databaseId))
-        return
+        router.history.push(getFullDatabasePath(databaseId));
+        return;
       }
 
-      writeSidePaneParams(null, databaseId)
+      writeSidePaneParams(null, databaseId);
     },
     [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
-  )
+  );
   const openPageInMainPane = useCallback(
     (nextPageId: string, options?: OpenPageSidePaneOptions) => {
-      closeEmbeddedPageDialog()
+      closeEmbeddedPageDialog();
 
       if (isMobile || isMobileViewport()) {
-        router.history.push(getFullPagePath(nextPageId))
-        return
+        router.history.push(getFullPagePath(nextPageId));
+        return;
       }
 
-      pendingMainPanePathRef.current = getFullPagePath(nextPageId)
-      writeSidePaneParams(nextPageId, options?.databaseId)
+      pendingMainPanePathRef.current = getFullPagePath(nextPageId);
+      writeSidePaneParams(nextPageId, options?.databaseId);
     },
     [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
-  )
+  );
   const openDatabaseInMainPane = useCallback(
     (databaseId: string) => {
-      closeEmbeddedPageDialog()
+      closeEmbeddedPageDialog();
 
       if (isMobile || isMobileViewport()) {
-        router.history.push(getFullDatabasePath(databaseId))
-        return
+        router.history.push(getFullDatabasePath(databaseId));
+        return;
       }
 
-      pendingMainPanePathRef.current = getFullDatabasePath(databaseId)
-      writeSidePaneParams(null, databaseId)
+      pendingMainPanePathRef.current = getFullDatabasePath(databaseId);
+      writeSidePaneParams(null, databaseId);
     },
     [closeEmbeddedPageDialog, isMobile, router.history, writeSidePaneParams],
-  )
+  );
   const openSidePaneAsFullPage = useCallback(() => {
     const targetPath = sidePanePageId
       ? getFullPagePath(sidePanePageId)
       : sidePaneDatabaseId
         ? getFullDatabasePath(sidePaneDatabaseId)
-        : null
-    if (!targetPath) return
+        : null;
+    if (!targetPath) return;
 
-    setPromotedFullPagePath(targetPath)
+    setPromotedFullPagePath(targetPath);
 
     // TanStack patches the instance history methods and treats direct calls as
     // router navigations. Use the native method so promotion only replaces the
@@ -713,127 +656,120 @@ export function usePageSidePaneState(
       window.history.state,
       "",
       targetPath,
-    )
-  }, [sidePaneDatabaseId, sidePanePageId])
+    );
+  }, [sidePaneDatabaseId, sidePanePageId]);
   const openEmbeddedPageDialog = useCallback(
     (nextPageId: string, options?: OpenPageSidePaneOptions) => {
       if (isMobile || isMobileViewport()) {
-        setDialogPageId(null)
-        setDialogDatabaseId(null)
-        router.history.push(getFullPagePath(nextPageId))
-        return
+        setDialogPageId(null);
+        setDialogDatabaseId(null);
+        router.history.push(getFullPagePath(nextPageId));
+        return;
       }
 
-      closeSidePane()
-      setDialogPageId(nextPageId)
-      setDialogDatabaseId(options?.databaseId ?? null)
+      closeSidePane();
+      setDialogPageId(nextPageId);
+      setDialogDatabaseId(options?.databaseId ?? null);
     },
     [closeSidePane, isMobile, router.history],
-  )
+  );
 
   useEffect(() => {
-    if (!isMobile) return
+    if (!isMobile) return;
 
     if (sidePanePageId) {
-      router.history.replace(getFullPagePath(sidePanePageId))
-      return
+      router.history.replace(getFullPagePath(sidePanePageId));
+      return;
     }
 
     if (sidePaneDatabaseId) {
-      router.history.replace(getFullDatabasePath(sidePaneDatabaseId))
+      router.history.replace(getFullDatabasePath(sidePaneDatabaseId));
     }
-  }, [isMobile, router.history, sidePaneDatabaseId, sidePanePageId])
+  }, [isMobile, router.history, sidePaneDatabaseId, sidePanePageId]);
 
   useEffect(() => {
     const sidePaneTargetKey = sidePanePageId
       ? `page:${sidePanePageId}`
       : sidePaneDatabaseId
         ? `database:${sidePaneDatabaseId}`
-        : null
+        : null;
 
     if (!sidePaneTargetKey) {
-      sidePaneWasOpenRef.current = false
-      setSidePaneContentReady(false)
-      setSidePaneAnimatedOpen(false)
+      sidePaneWasOpenRef.current = false;
+      setSidePaneContentReady(false);
+      setSidePaneAnimatedOpen(false);
 
       const timer = window.setTimeout(() => {
-        setRenderedSidePanePageId(null)
-        setRenderedSidePaneDatabaseId(null)
-      }, WORKSPACE_SIDE_PANE_TRANSITION_MS)
+        setRenderedSidePanePageId(null);
+        setRenderedSidePaneDatabaseId(null);
+      }, WORKSPACE_SIDE_PANE_TRANSITION_MS);
 
       return () => {
-        window.clearTimeout(timer)
-      }
+        window.clearTimeout(timer);
+      };
     }
 
-    const isAlreadyOpen = sidePaneWasOpenRef.current
+    const isAlreadyOpen = sidePaneWasOpenRef.current;
 
-    setRenderedSidePanePageId(sidePanePageId)
-    setRenderedSidePaneDatabaseId(
-      sidePanePageId ? null : sidePaneDatabaseId,
-    )
-    sidePaneWasOpenRef.current = true
+    setRenderedSidePanePageId(sidePanePageId);
+    setRenderedSidePaneDatabaseId(sidePanePageId ? null : sidePaneDatabaseId);
+    sidePaneWasOpenRef.current = true;
 
     if (isAlreadyOpen) {
-      setSidePaneAnimatedOpen(true)
-      setSidePaneContentReady(true)
-      return
+      setSidePaneAnimatedOpen(true);
+      setSidePaneContentReady(true);
+      return;
     }
 
-    setSidePaneContentReady(false)
-    setSidePaneAnimatedOpen(false)
+    setSidePaneContentReady(false);
+    setSidePaneAnimatedOpen(false);
 
-    let cancelled = false
-    let openFrame = 0
-    let settleFrame = 0
+    let cancelled = false;
+    let openFrame = 0;
+    let settleFrame = 0;
 
     openFrame = requestAnimationFrame(() => {
       settleFrame = requestAnimationFrame(() => {
         if (!cancelled) {
-          setSidePaneAnimatedOpen(true)
-          setSidePaneContentReady(true)
+          setSidePaneAnimatedOpen(true);
+          setSidePaneContentReady(true);
         }
-      })
-    })
+      });
+    });
 
     return () => {
-      cancelled = true
-      cancelAnimationFrame(openFrame)
-      cancelAnimationFrame(settleFrame)
-    }
-  }, [sidePaneDatabaseId, sidePanePageId])
+      cancelled = true;
+      cancelAnimationFrame(openFrame);
+      cancelAnimationFrame(settleFrame);
+    };
+  }, [sidePaneDatabaseId, sidePanePageId]);
 
   useLayoutEffect(() => {
-    const targetPath = pendingMainPanePathRef.current
+    const targetPath = pendingMainPanePathRef.current;
     const renderedTargetPath = renderedSidePanePageId
       ? getFullPagePath(renderedSidePanePageId)
       : renderedSidePaneDatabaseId
         ? getFullDatabasePath(renderedSidePaneDatabaseId)
-        : null
+        : null;
 
-    if (!targetPath || targetPath !== renderedTargetPath) return
+    if (!targetPath || targetPath !== renderedTargetPath) return;
 
-    const panel = document.querySelector<HTMLElement>(
-      "[data-page-side-pane-panel]",
-    )
-    const shell = panel?.closest<HTMLElement>("[data-page-side-pane-shell]")
-    if (!shell) return
+    const panel = document.querySelector<HTMLElement>("[data-page-side-pane-panel]");
+    const shell = panel?.closest<HTMLElement>("[data-page-side-pane-shell]");
+    if (!shell) return;
 
-    shell.style.setProperty(
-      "--page-side-pane-width",
-      `${shell.getBoundingClientRect().width}px`,
-    )
-    shell.dataset.pageSidePanePromoted = "true"
-    pendingMainPanePathRef.current = null
-    setPromotedFullPagePath(targetPath)
+    shell.style.setProperty("--page-side-pane-width", `${shell.getBoundingClientRect().width}px`);
+    shell.dataset.pageSidePanePromoted = "true";
+    pendingMainPanePathRef.current = null;
+    setPromotedFullPagePath(targetPath);
 
     window.History.prototype.replaceState.call(
       window.history,
       window.history.state,
       "",
       targetPath,
-    )
-  }, [renderedSidePaneDatabaseId, renderedSidePanePageId])
+    );
+  }, [renderedSidePaneDatabaseId, renderedSidePanePageId]);
 
   return useMemo<PageSidePaneContextValue>(
     () => ({
@@ -842,9 +778,7 @@ export function usePageSidePaneState(
       dialogDatabaseId,
       dialogPageId,
       embeddedItemsOpenAs,
-      mainPaneNavigationActive: Boolean(
-        promotedFullPagePath || pendingMainPanePathRef.current,
-      ),
+      mainPaneNavigationActive: Boolean(promotedFullPagePath || pendingMainPanePathRef.current),
       openEmbeddedPageDialog,
       openDatabaseInMainPane,
       openDatabaseSidePane,
@@ -878,27 +812,24 @@ export function usePageSidePaneState(
       sidePaneDatabaseId,
       sidePanePageId,
     ],
-  )
+  );
 }
 
 function getSearchParam(search: string, key: string) {
-  return new URLSearchParams(search).get(key)?.trim() || null
+  return new URLSearchParams(search).get(key)?.trim() || null;
 }
 
-export function getSidePaneDatabaseParam(
-  pathname: string,
-  databaseId?: string | null,
-) {
+export function getSidePaneDatabaseParam(pathname: string, databaseId?: string | null) {
   if (!databaseId) {
-    return null
+    return null;
   }
 
-  const routeDatabaseId = pathname.match(/^\/d\/([^/]+)/)?.[1]
+  const routeDatabaseId = pathname.match(/^\/d\/([^/]+)/)?.[1];
   if (!routeDatabaseId) {
-    return databaseId
+    return databaseId;
   }
 
-  return decodeURIComponent(routeDatabaseId) === databaseId ? null : databaseId
+  return decodeURIComponent(routeDatabaseId) === databaseId ? null : databaseId;
 }
 
 export function PageSidePaneProvider({
@@ -906,33 +837,31 @@ export function PageSidePaneProvider({
   embeddedItemsOpenAs = "sidepanel",
   resetKey,
 }: {
-  children: ReactNode
-  embeddedItemsOpenAs?: EmbeddedItemsOpenAs
-  resetKey?: string | null
+  children: ReactNode;
+  embeddedItemsOpenAs?: EmbeddedItemsOpenAs;
+  resetKey?: string | null;
 }) {
-  const sidePaneContext = usePageSidePaneState(resetKey, embeddedItemsOpenAs)
+  const sidePaneContext = usePageSidePaneState(resetKey, embeddedItemsOpenAs);
 
   return (
-    <PageSidePaneContext.Provider value={sidePaneContext}>
-      {children}
-    </PageSidePaneContext.Provider>
-  )
+    <PageSidePaneContext.Provider value={sidePaneContext}>{children}</PageSidePaneContext.Provider>
+  );
 }
 
 export function usePageSidePane() {
-  const context = useContext(PageSidePaneContext)
+  const context = useContext(PageSidePaneContext);
 
   if (!context) {
-    throw new Error("usePageSidePane must be used inside a side pane provider")
+    throw new Error("usePageSidePane must be used inside a side pane provider");
   }
 
-  return context
+  return context;
 }
 
 export function useOptionalPageSidePane() {
-  return useContext(PageSidePaneContext)
+  return useContext(PageSidePaneContext);
 }
 
 export function getPageSidePaneWidthClass() {
-  return "min-w-0"
+  return "min-w-0";
 }

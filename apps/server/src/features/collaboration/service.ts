@@ -1,4 +1,10 @@
-import { FIELD_NAME, encodePageContentAsYjs, materializePageContentFromYjs, encodeContentAsYjs, materializePageDocument } from "./document-codec";
+import {
+  FIELD_NAME,
+  encodePageContentAsYjs,
+  materializePageContentFromYjs,
+  encodeContentAsYjs,
+  materializePageDocument,
+} from "./document-codec";
 export { encodePageContentAsYjs, materializePageContentFromYjs } from "./document-codec";
 import { Database } from "@hocuspocus/extension-database";
 import { Hocuspocus, type Extension } from "@hocuspocus/server";
@@ -14,10 +20,7 @@ import {
   page,
   pageCollaborationDocument,
 } from "../../infrastructure/database/schema";
-import {
-  getRuntimePorts,
-  requireRuntimePort,
-} from "@zilobase/runtime-adapter/capabilities";
+import { getRuntimePorts, requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";
 import type { MeetingTranscriptYjsSegment } from "@zilobase/runtime-adapter/capabilities";
 import type { RuntimeEnv } from "../../shared/config/config";
 import {
@@ -83,10 +86,7 @@ export async function getOrCreateCollaborationDocumentState(pageId: string) {
   if (stored) {
     const storedState = new Uint8Array(stored.state);
 
-    if (
-      isPlaceholderCollaborationState(storedState) &&
-      !isEmptyPageContent(record.content)
-    ) {
+    if (isPlaceholderCollaborationState(storedState) && !isEmptyPageContent(record.content)) {
       const now = new Date();
       await db
         .update(pageCollaborationDocument)
@@ -127,9 +127,7 @@ export async function getOrCreateCollaborationDocumentState(pageId: string) {
   return new Uint8Array(concurrent.state);
 }
 
-export async function getOrCreateMeetingCollaborationDocumentState(
-  meetingId: string,
-) {
+export async function getOrCreateMeetingCollaborationDocumentState(meetingId: string) {
   const [record] = await db
     .select({
       transcriptRevision: meeting.transcriptRevision,
@@ -172,9 +170,10 @@ export async function getOrCreateMeetingCollaborationDocumentState(
     .orderBy(asc(meetingTranscriptSegment.sequence));
   document.transact(() => {
     for (const segment of segments) {
-      changed = appendMeetingTranscriptToDocument(document, {
-        ...segment,
-      }) || changed;
+      changed =
+        appendMeetingTranscriptToDocument(document, {
+          ...segment,
+        }) || changed;
     }
   }, "meeting-transcript-reconciliation");
 
@@ -211,11 +210,7 @@ export async function getOrCreateMeetingCollaborationDocumentState(
 
 export type CollaborationDocumentPersistence = {
   load(documentName: string): Promise<Uint8Array>;
-  store(input: {
-    document: Y.Doc;
-    documentName: string;
-    state: Uint8Array;
-  }): Promise<void>;
+  store(input: { document: Y.Doc; documentName: string; state: Uint8Array }): Promise<void>;
 };
 
 export function createCollaborationHocuspocus(
@@ -231,17 +226,14 @@ export function createCollaborationHocuspocus(
       return existing;
     }
 
-    const load = persistence
-      ? persistence.load(documentName)
-      : loadDocument(documentName, env);
+    const load = persistence ? persistence.load(documentName) : loadDocument(documentName, env);
     documentLoads.set(documentName, load);
     void load.catch(() => documentLoads.delete(documentName));
     return load;
   };
 
   const consumeDocument = (documentName: string) => {
-    const load =
-      documentLoads.get(documentName) ?? preloadDocument(documentName);
+    const load = documentLoads.get(documentName) ?? preloadDocument(documentName);
     documentLoads.delete(documentName);
     return load;
   };
@@ -262,9 +254,7 @@ export function createCollaborationHocuspocus(
     async onAuthenticate({ connectionConfig, documentName, requestParameters, token }) {
       const authenticateStartedAt = performance.now();
       const claims = await verifyCollaborationTicket(token, env);
-      const ticketVerifyMs = Math.round(
-        performance.now() - authenticateStartedAt,
-      );
+      const ticketVerifyMs = Math.round(performance.now() - authenticateStartedAt);
       const pageId = pageIdFromDocumentName(documentName);
       const meetingId = meetingIdFromDocumentName(documentName);
       const routedDocumentName = requestParameters.get("document");
@@ -280,9 +270,7 @@ export function createCollaborationHocuspocus(
       }
 
       if (routedDocumentName && routedDocumentName !== documentName) {
-        throw new Error(
-          "Collaboration document does not match the routed room",
-        );
+        throw new Error("Collaboration document does not match the routed room");
       }
 
       // Hocuspocus loads the document after authentication. Start the read once
@@ -291,7 +279,7 @@ export function createCollaborationHocuspocus(
       const documentLoad = preloadDocument(documentName);
       const pageAccessStartedAt = performance.now();
       const allowed = await withDatabase(env, async () => {
-        const accessPageId = pageId ?? await getMeetingPageId(meetingId!);
+        const accessPageId = pageId ?? (await getMeetingPageId(meetingId!));
         return accessPageId
           ? canAccessPageInWorkspace(
               accessPageId,
@@ -334,18 +322,13 @@ export function createCollaborationHocuspocus(
       }
     },
     async connected({ connection, context }) {
-      const timeout = setTimeout(
-        () => connection.close(),
-        Math.max(0, context.exp - Date.now()),
-      );
+      const timeout = setTimeout(() => connection.close(), Math.max(0, context.exp - Date.now()));
       connection.onClose(() => clearTimeout(timeout));
     },
   });
 }
 
-let collaborationExtensionsFactory:
-  | ((env: RuntimeEnv) => Extension[])
-  | null = null;
+let collaborationExtensionsFactory: ((env: RuntimeEnv) => Extension[]) | null = null;
 
 export function setCollaborationExtensionsFactory(
   factory: ((env: RuntimeEnv) => Extension[]) | null,
@@ -395,10 +378,7 @@ export async function replaceMeetingSummary(input: {
     await meetings.applySummary(input);
     return;
   }
-  await replaceMeetingSummaryInHocuspocus(
-    getDefaultCollaborationHocuspocus(input.env),
-    input,
-  );
+  await replaceMeetingSummaryInHocuspocus(getDefaultCollaborationHocuspocus(input.env), input);
 }
 
 export async function appendMeetingTranscript(input: {
@@ -413,10 +393,7 @@ export async function appendMeetingTranscript(input: {
     await meetings.applyTranscript(input);
     return;
   }
-  await appendMeetingTranscriptInHocuspocus(
-    getDefaultCollaborationHocuspocus(input.env),
-    input,
-  );
+  await appendMeetingTranscriptInHocuspocus(getDefaultCollaborationHocuspocus(input.env), input);
 }
 
 export function appendMeetingTranscriptToDocument(
@@ -439,23 +416,16 @@ export function appendMeetingTranscriptToDocument(
       paragraph.insert(0, [text]);
       const transcript = document.getXmlFragment("transcript");
       const timestampSeconds = Math.max(0, Math.floor(segment.startMs / 1_000));
-      const insertionIndex = transcript
-        .toArray()
-        .findIndex((node) => {
-          const existingTimestamp = transcriptTimestampSeconds(node.toString());
-          return existingTimestamp !== null && existingTimestamp > timestampSeconds;
-        });
-      transcript.insert(
-        insertionIndex === -1 ? transcript.length : insertionIndex,
-        [paragraph],
-      );
+      const insertionIndex = transcript.toArray().findIndex((node) => {
+        const existingTimestamp = transcriptTimestampSeconds(node.toString());
+        return existingTimestamp !== null && existingTimestamp > timestampSeconds;
+      });
+      transcript.insert(insertionIndex === -1 ? transcript.length : insertionIndex, [paragraph]);
       segmentIds.set(segment.id, true);
       appended = true;
     }
     if (draftItemId) {
-      const draft = document.getMap<string | number>(
-        `liveTranscript:${segment.source}`,
-      );
+      const draft = document.getMap<string | number>(`liveTranscript:${segment.source}`);
       if (draft.get("itemId") === draftItemId) draft.clear();
     }
   }, "meeting-transcription");
@@ -471,23 +441,16 @@ export async function appendMeetingTranscriptInHocuspocus(
     userId: string;
   },
 ) {
-  const direct = await hocuspocus.openDirectConnection(
-    documentNameForMeeting(input.meetingId),
-    {
-      exp: Date.now() + TICKET_TTL_MS,
-      meetingId: input.meetingId,
-      scope: "read-write",
-      userId: input.userId,
-      workspaceId: "server",
-    },
-  );
+  const direct = await hocuspocus.openDirectConnection(documentNameForMeeting(input.meetingId), {
+    exp: Date.now() + TICKET_TTL_MS,
+    meetingId: input.meetingId,
+    scope: "read-write",
+    userId: input.userId,
+    workspaceId: "server",
+  });
   try {
     await direct.transact((document) => {
-      appendMeetingTranscriptToDocument(
-        document,
-        input.segment,
-        input.draftItemId,
-      );
+      appendMeetingTranscriptToDocument(document, input.segment, input.draftItemId);
     });
   } finally {
     await direct.disconnect();
@@ -498,16 +461,13 @@ export async function replaceMeetingSummaryInHocuspocus(
   hocuspocus: Hocuspocus<CollaborationContext>,
   input: { content: unknown; meetingId: string; userId: string },
 ) {
-  const direct = await hocuspocus.openDirectConnection(
-    documentNameForMeeting(input.meetingId),
-    {
-      exp: Date.now() + TICKET_TTL_MS,
-      meetingId: input.meetingId,
-      scope: "read-write",
-      userId: input.userId,
-      workspaceId: "server",
-    },
-  );
+  const direct = await hocuspocus.openDirectConnection(documentNameForMeeting(input.meetingId), {
+    exp: Date.now() + TICKET_TTL_MS,
+    meetingId: input.meetingId,
+    scope: "read-write",
+    userId: input.userId,
+    workspaceId: "server",
+  });
   const update = encodeContentAsYjs(input.content, "summary");
   try {
     await direct.transact((document) => {
@@ -528,16 +488,13 @@ export async function replacePageContentInHocuspocus(
     userId: string;
   },
 ) {
-  const direct = await hocuspocus.openDirectConnection(
-    documentNameForPage(input.pageId),
-    {
-      exp: Date.now() + TICKET_TTL_MS,
-      pageId: input.pageId,
-      scope: "read-write",
-      userId: input.userId,
-      workspaceId: "server",
-    },
-  );
+  const direct = await hocuspocus.openDirectConnection(documentNameForPage(input.pageId), {
+    exp: Date.now() + TICKET_TTL_MS,
+    pageId: input.pageId,
+    scope: "read-write",
+    userId: input.userId,
+    workspaceId: "server",
+  });
   const update = encodePageContentAsYjs(input.content);
 
   try {
@@ -559,16 +516,13 @@ export async function appendPageCommentInHocuspocus(
     pageId: string;
   },
 ) {
-  const direct = await hocuspocus.openDirectConnection(
-    documentNameForPage(input.pageId),
-    {
-      exp: Date.now() + TICKET_TTL_MS,
-      pageId: input.pageId,
-      scope: "read-write",
-      userId: input.author.id,
-      workspaceId: "server",
-    },
-  );
+  const direct = await hocuspocus.openDirectConnection(documentNameForPage(input.pageId), {
+    exp: Date.now() + TICKET_TTL_MS,
+    pageId: input.pageId,
+    scope: "read-write",
+    userId: input.author.id,
+    workspaceId: "server",
+  });
   const threadId = crypto.randomUUID();
   const messageId = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -700,16 +654,20 @@ async function storeDocument(
   });
   try {
     const { dispatchPageCommentAgentTriggers } = await import("../ai/agents/agent-trigger-service");
-    await withDatabase(env, () => dispatchPageCommentAgentTriggers(env, {
-      nextState: new Uint8Array(state),
-      pageId,
-      previousState,
-    }));
+    await withDatabase(env, () =>
+      dispatchPageCommentAgentTriggers(env, {
+        nextState: new Uint8Array(state),
+        pageId,
+        previousState,
+      }),
+    );
   } catch (error) {
-    console.error(JSON.stringify({
-      error: error instanceof Error ? error.name : "UnknownError",
-      event: "custom_agent_comment_trigger_dispatch_failed",
-    }));
+    console.error(
+      JSON.stringify({
+        error: error instanceof Error ? error.name : "UnknownError",
+        event: "custom_agent_comment_trigger_dispatch_failed",
+      }),
+    );
   }
 }
 
@@ -729,9 +687,7 @@ function formatMeetingTimestamp(milliseconds: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-function meetingTranscriptSpeakerLabel(
-  source: MeetingTranscriptYjsSegment["source"],
-) {
+function meetingTranscriptSpeakerLabel(source: MeetingTranscriptYjsSegment["source"]) {
   if (source === "microphone") return "You";
   if (source === "system") return "Others";
   return null;
@@ -763,10 +719,7 @@ export function isPlaceholderCollaborationState(state: Uint8Array): boolean {
   }
 }
 
-export function assertCommentOnlyCollaborationUpdate(
-  document: Y.Doc,
-  update: Uint8Array,
-) {
+export function assertCommentOnlyCollaborationUpdate(document: Y.Doc, update: Uint8Array) {
   const before = serializeProtectedCollaborationFields(document);
   const candidate = new Y.Doc();
 
@@ -795,9 +748,7 @@ function serializeProtectedCollaborationFields(document: Y.Doc) {
       .map(([field, value]) => [
         field,
         stableJsonValue(
-          field === FIELD_NAME
-            ? document.getXmlFragment(FIELD_NAME).toJSON()
-            : value.toJSON(),
+          field === FIELD_NAME ? document.getXmlFragment(FIELD_NAME).toJSON() : value.toJSON(),
         ),
       ]),
   );

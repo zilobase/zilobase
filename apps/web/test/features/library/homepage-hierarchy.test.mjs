@@ -2,7 +2,7 @@ export function register({ readSource, assert, loadModule, test }) {
   test("homepage hierarchy follows canonical page and database placements", async () => {
     const { buildHomepageHierarchy } = await loadModule(
       "/src/features/library/model/homepage-hierarchy.ts",
-    )
+    );
     const hierarchy = buildHomepageHierarchy([
       createPlacement({
         id: "linked-page",
@@ -34,46 +34,40 @@ export function register({ readSource, assert, loadModule, test }) {
         placementKind: "database_row",
         position: 3,
       }),
-    ])
+    ]);
 
     assert.deepEqual(hierarchy.parentRowIdByRowId, {
       "page:child": "page:parent",
       "database:projects": "page:parent",
       "page:task": "database:projects",
-    })
+    });
     assert.deepEqual(hierarchy.positionByRowId, {
       "page:child": 1,
       "database:projects": 2,
       "page:task": 3,
-    })
-  })
+    });
+  });
 
   test("synthetic homepage databases do not request realtime tickets", async () => {
     const [homepage, context] = await Promise.all([
       readSource("/src/features/library/screens/recents.tsx"),
       readSource("/src/features/databases/views/state/database-view-context.tsx"),
-    ])
+    ]);
 
-    assert.match(homepage, /realtimeEnabled: false/)
-    assert.match(context, /value\.realtimeEnabled !== false/)
-  })
+    assert.match(homepage, /realtimeEnabled: false/);
+    assert.match(context, /value\.realtimeEnabled !== false/);
+  });
 
   test("database realtime tickets use the host database id", async () => {
     const [context, controller] = await Promise.all([
       readSource("/src/features/databases/views/state/database-view-context.tsx"),
       readSource("/src/features/databases/views/controller/use-database-view-controller.tsx"),
-    ])
+    ]);
 
-    assert.match(
-      context,
-      /useDatabaseRealtime\(value\.hostDatabaseId, \{/,
-    )
-    assert.doesNotMatch(context, /useDatabaseRealtime\(value\.databaseId, \{/)
-    assert.match(
-      controller,
-      /hostDatabaseId: bootstrap\?\.database\.id \?\? databaseId/,
-    )
-  })
+    assert.match(context, /useDatabaseRealtime\(value\.hostDatabaseId, \{/);
+    assert.doesNotMatch(context, /useDatabaseRealtime\(value\.databaseId, \{/);
+    assert.match(controller, /hostDatabaseId: bootstrap\?\.database\.id \?\? databaseId/);
+  });
 }
 
 function createPlacement({
@@ -94,5 +88,5 @@ function createPlacement({
     placementKind,
     position,
     workspaceId: "workspace",
-  }
+  };
 }

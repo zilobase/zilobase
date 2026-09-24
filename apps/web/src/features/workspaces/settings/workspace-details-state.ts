@@ -32,10 +32,7 @@ export function useWorkspaceDetails({
     setMetadata(workspaceDetailsDraft(workspace).metadata);
   }, [workspace]);
 
-  const hasChanges = workspaceDetailsChanged(
-    { name, slug, logo, metadata },
-    workspace,
-  );
+  const hasChanges = workspaceDetailsChanged({ name, slug, logo, metadata }, workspace);
 
   const saveWorkspace = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -121,15 +118,15 @@ function workspaceDetailsChanged(
 ) {
   const { name, slug, logo, metadata } = draft;
   const current = workspaceDetailsDraft(workspace);
-  return name.trim() !== current.name.trim() ||
+  return (
+    name.trim() !== current.name.trim() ||
     slug.trim().toLowerCase() !== current.slug.trim().toLowerCase() ||
     logo.trim() !== current.logo.trim() ||
-    metadata.trim() !== current.metadata.trim();
+    metadata.trim() !== current.metadata.trim()
+  );
 }
 
-function workspaceDetailsDraft(
-  workspace: Parameters<typeof useWorkspaceDetails>[0]["workspace"],
-) {
+function workspaceDetailsDraft(workspace: Parameters<typeof useWorkspaceDetails>[0]["workspace"]) {
   return {
     name: workspace?.name ?? "",
     slug: workspace?.slug ?? "",

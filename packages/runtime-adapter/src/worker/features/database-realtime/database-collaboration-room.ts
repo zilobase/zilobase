@@ -17,14 +17,9 @@ import {
 } from "@zilobase/features/databases/realtime/room-protocol";
 
 import type { WorkerEnvBindings } from "../../bindings";
-import {
-  readDatabaseRealtimeClaims,
-  validateDatabaseRealtimeMessage,
-} from "./security";
+import { readDatabaseRealtimeClaims, validateDatabaseRealtimeMessage } from "./security";
 
-type DatabaseCollaborationEnv = Cloudflare.Env &
-  AppBindings["Bindings"] &
-  WorkerEnvBindings;
+type DatabaseCollaborationEnv = Cloudflare.Env & AppBindings["Bindings"] & WorkerEnvBindings;
 
 type SocketAttachment = {
   claims: DatabaseRealtimeTicketClaims;
@@ -40,18 +35,12 @@ const REALTIME_PONG_MESSAGE = JSON.stringify({ type: "realtime.pong" });
 
 export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborationEnv> {
   private lastPublishedVersion: number | undefined;
-  private readonly messageRates = new WeakMap<
-    WebSocket,
-    { count: number; startedAt: number }
-  >();
+  private readonly messageRates = new WeakMap<WebSocket, { count: number; startedAt: number }>();
 
   constructor(ctx: DurableObjectState, env: DatabaseCollaborationEnv) {
     super(ctx, env);
     ctx.setWebSocketAutoResponse(
-      new WebSocketRequestResponsePair(
-        REALTIME_PING_MESSAGE,
-        REALTIME_PONG_MESSAGE,
-      ),
+      new WebSocketRequestResponsePair(REALTIME_PING_MESSAGE, REALTIME_PONG_MESSAGE),
     );
   }
 
@@ -72,11 +61,7 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
 
     const claims = readDatabaseRealtimeClaims(request.headers);
 
-    if (
-      !claims ||
-      claims.databaseId !== databaseId ||
-      claims.exp <= Date.now()
-    ) {
+    if (!claims || claims.databaseId !== databaseId || claims.exp <= Date.now()) {
       return new Response("Unauthorized", { status: 401 });
     }
 
@@ -88,17 +73,16 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
     writeAttachment(server, attachment);
     this.ctx.acceptWebSocket(server);
     await this.scheduleExpiration();
-    server.send(JSON.stringify({
-      databaseVersion: Math.max(
-        claims.version ?? 0,
-        await this.getLastPublishedVersion(),
-      ),
-      databaseId: claims.databaseId,
-      peers: this.readPeers(server, claims.databaseId),
-      protocolVersion: 2,
-      sessionId: claims.sessionId,
-      type: "realtime.ready",
-    }));
+    server.send(
+      JSON.stringify({
+        databaseVersion: Math.max(claims.version ?? 0, await this.getLastPublishedVersion()),
+        databaseId: claims.databaseId,
+        peers: this.readPeers(server, claims.databaseId),
+        protocolVersion: 2,
+        sessionId: claims.sessionId,
+        type: "realtime.ready",
+      }),
+    );
 
     return new Response(null, {
       headers: { "Sec-WebSocket-Protocol": DATABASE_REALTIME_PROTOCOL },
@@ -175,10 +159,12 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
   }
 
   async webSocketError(ws: WebSocket, error: unknown) {
-    console.error(JSON.stringify({
-      error: error instanceof Error ? error.message : String(error),
-      event: "database_realtime_websocket_error",
-    }));
+    console.error(
+      JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+        event: "database_realtime_websocket_error",
+      }),
+    );
     this.clearPresence(ws);
     ws.close(1011, "Database realtime WebSocket error");
     await this.scheduleExpiration();
@@ -204,8 +190,7 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
 
       if (
         claims.databaseId !== attachment.databaseId ||
-        (attachment.claims &&
-          claims.sessionId !== attachment.claims.sessionId)
+        (attachment.claims && claims.sessionId !== attachment.claims.sessionId)
       ) {
         throw new Error("Database realtime ticket does not match the session");
       }
@@ -214,11 +199,13 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
       writeAttachment(ws, attachment);
       await this.scheduleExpiration();
     } catch (error) {
-      console.warn(JSON.stringify({
-        databaseId: attachment.databaseId,
-        error: error instanceof Error ? error.message : String(error),
-        event: "database_realtime_authentication_failed",
-      }));
+      console.warn(
+        JSON.stringify({
+          databaseId: attachment.databaseId,
+          error: error instanceof Error ? error.message : String(error),
+          event: "database_realtime_authentication_failed",
+        }),
+      );
       ws.close(1008, "Database realtime authentication failed");
     }
   }
@@ -243,12 +230,15 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
     attachment.presence = message.presence;
     attachment.updatedAt = Date.now();
     writeAttachment(ws, attachment);
-    this.broadcast({
-      collaborator: toDatabaseCollaborator(attachment),
-      databaseId: attachment.databaseId,
-      protocolVersion: 2,
-      type: "presence.update",
-    }, ws);
+    this.broadcast(
+      {
+        collaborator: toDatabaseCollaborator(attachment),
+        databaseId: attachment.databaseId,
+        protocolVersion: 2,
+        type: "presence.update",
+      },
+      ws,
+    );
   }
 
   private clearPresence(ws: WebSocket) {
@@ -259,12 +249,15 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
     delete attachment.presence;
     delete attachment.updatedAt;
     writeAttachment(ws, attachment);
-    this.broadcast({
-      databaseId: attachment.databaseId,
-      protocolVersion: 2,
-      sessionId: attachment.claims.sessionId,
-      type: "presence.clear",
-    }, ws);
+    this.broadcast(
+      {
+        databaseId: attachment.databaseId,
+        protocolVersion: 2,
+        sessionId: attachment.claims.sessionId,
+        type: "presence.clear",
+      },
+      ws,
+    );
   }
 
   private readPeers(skip: WebSocket, databaseId: string) {
@@ -295,7 +288,7 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
   private async getLastPublishedVersion() {
     if (this.lastPublishedVersion === undefined) {
       this.lastPublishedVersion =
-        await this.ctx.storage.get<number>(LAST_PUBLISHED_VERSION_KEY) ?? 0;
+        (await this.ctx.storage.get<number>(LAST_PUBLISHED_VERSION_KEY)) ?? 0;
     }
 
     return this.lastPublishedVersion;
@@ -325,9 +318,10 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
       const attachment = readAttachment(ws);
       if (!attachment) continue;
 
-      nextExpiration = nextExpiration === null
-        ? attachment.claims.exp
-        : Math.min(nextExpiration, attachment.claims.exp);
+      nextExpiration =
+        nextExpiration === null
+          ? attachment.claims.exp
+          : Math.min(nextExpiration, attachment.claims.exp);
     }
 
     if (nextExpiration === null) {
@@ -339,20 +333,20 @@ export class DatabaseCollaborationRoom extends DurableObject<DatabaseCollaborati
   }
 }
 
-function isDatabaseMutationEventV2(
-  event: unknown,
-): event is DatabaseMutationEventV2 {
+function isDatabaseMutationEventV2(event: unknown): event is DatabaseMutationEventV2 {
   return databaseMutationEventV2Schema.safeParse(event).success;
 }
 
 function readAttachment(ws: WebSocket): SocketAttachment | null {
   const value = ws.deserializeAttachment();
 
-  return value && typeof value === "object" &&
+  return value &&
+    typeof value === "object" &&
     typeof value.connectedAt === "number" &&
     typeof value.databaseId === "string" &&
-    value.claims && typeof value.claims === "object"
-    ? value as SocketAttachment
+    value.claims &&
+    typeof value.claims === "object"
+    ? (value as SocketAttachment)
     : null;
 }
 

@@ -1,18 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
-import { useZilobaseFeatures } from  "../../shared/context";
-import {
-  invalidateDeletedItems,
-  invalidateRestoredItems,
-} from  "../../shared/item-action-cache";
-import {
-  applyDatabaseFavoriteToNav,
-  type NavDelta,
-} from  "../../pages/nav-delta";
-import { applyNavigationDeltaToCache } from  "../../pages/navigation-realtime";
-import {
-  pagesNavRootQueryKey,
-  pagesQueryKey,
-} from  "../../pages/queries";
+import { useZilobaseFeatures } from "../../shared/context";
+import { invalidateDeletedItems, invalidateRestoredItems } from "../../shared/item-action-cache";
+import { applyDatabaseFavoriteToNav, type NavDelta } from "../../pages/nav-delta";
+import { applyNavigationDeltaToCache } from "../../pages/navigation-realtime";
+import { pagesNavRootQueryKey, pagesQueryKey } from "../../pages/queries";
 import type { PageNavigationPayload } from "../../pages/contracts";
 import { useDatabaseSessionId } from "../queries/session";
 import type { DatabaseHostEntity, DataSourceEntity } from "../core/entities";
@@ -76,11 +67,7 @@ export function useCreateDatabase() {
       }
 
       // POST /databases always returns navDelta; apply it directly.
-      applyNavigationDeltaToCache(
-        queryClient,
-        payload.database.workspaceId,
-        payload.navDelta,
-      );
+      applyNavigationDeltaToCache(queryClient, payload.database.workspaceId, payload.navDelta);
     },
   });
 }
@@ -91,25 +78,18 @@ export function useUpdateDatabase() {
 
   return useMutation({
     mutationFn: async ({ databaseId, ...patch }: UpdateDatabaseInput) => {
-      const ack = await runSerialized(
-        viewSerializationKey(databaseId),
-        () =>
-          executeDatabaseCommand(apiFetch, {
-            command: { patch, type: "database.update" },
-            databaseId,
-          }),
+      const ack = await runSerialized(viewSerializationKey(databaseId), () =>
+        executeDatabaseCommand(apiFetch, {
+          command: { patch, type: "database.update" },
+          databaseId,
+        }),
       );
       invalidateDatabaseQueries(queryClient, sessionId, databaseId);
       return ack.result as DatabaseHostEntity;
     },
     onMutate: async ({ databaseId, ...patch }): Promise<OptimisticContext> => {
       await cancelHostQueries(queryClient, sessionId, databaseId);
-      const rollback = patchCachedDatabase(
-        queryClient,
-        sessionId,
-        databaseId,
-        patch,
-      );
+      const rollback = patchCachedDatabase(queryClient, sessionId, databaseId, patch);
       return { rollback, scope: { hostDatabaseId: databaseId } };
     },
     onError: (_error, _input, context) => {

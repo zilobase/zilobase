@@ -1,6 +1,6 @@
 export function readBooleanFeatureFlag(value: unknown, fallback = false) {
   if (typeof value !== "string") {
-    return fallback
+    return fallback;
   }
 
   switch (value.trim().toLowerCase()) {
@@ -8,32 +8,26 @@ export function readBooleanFeatureFlag(value: unknown, fallback = false) {
     case "true":
     case "yes":
     case "on":
-      return true
+      return true;
     case "0":
     case "false":
     case "no":
     case "off":
-      return false
+      return false;
     default:
-      return fallback
+      return fallback;
   }
 }
 
 export const appConfig = {
   featureFlags: {
-    notionImport: readBooleanFeatureFlag(
-      import.meta.env.VITE_FEATURE_NOTION_IMPORT,
-      false,
-    ),
-    webClipper: readBooleanFeatureFlag(
-      import.meta.env.VITE_FEATURE_WEB_CLIPPER,
-      false,
-    ),
+    notionImport: readBooleanFeatureFlag(import.meta.env.VITE_FEATURE_NOTION_IMPORT, false),
+    webClipper: readBooleanFeatureFlag(import.meta.env.VITE_FEATURE_WEB_CLIPPER, false),
   },
-} as const
+} as const;
 
-export type FeatureFlag = keyof typeof appConfig.featureFlags
+export type FeatureFlag = keyof typeof appConfig.featureFlags;
 
 export function isFeatureEnabled(flag: FeatureFlag) {
-  return appConfig.featureFlags[flag]
+  return appConfig.featureFlags[flag];
 }

@@ -1,28 +1,21 @@
-import { cn } from "@/shared/lib/utils"
-import { menuItemVariants } from "@/shared/ui/menu-styles"
-import { Check, GripVertical } from "@/shared/components/icons"
-import { useState, type ReactNode } from "react"
+import { cn } from "@/shared/lib/utils";
+import { menuItemVariants } from "@/shared/ui/menu-styles";
+import { Check, GripVertical } from "@/shared/components/icons";
+import { useState, type ReactNode } from "react";
 
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
-import {
-  getColorTokenBadgeClassName,
-  getColorTokenDotClassName,
-} from "@/shared/lib/color-tokens"
-import { getNextDatabaseOptionColor } from "../property-catalog"
-import type { DatabaseSelectOption } from "../../views/model/database-view-config"
-import { toStringArray } from "../property-values"
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { getColorTokenBadgeClassName, getColorTokenDotClassName } from "@/shared/lib/color-tokens";
+import { getNextDatabaseOptionColor } from "../property-catalog";
+import type { DatabaseSelectOption } from "../../views/model/database-view-config";
+import { toStringArray } from "../property-values";
 
 type DatabasePropertySelectOption = DatabaseSelectOption & {
-  suffix?: string
-}
+  suffix?: string;
+};
 
 type DatabasePropertyConfig = {
-  options?: DatabasePropertySelectOption[]
-}
+  options?: DatabasePropertySelectOption[];
+};
 
 function DatabaseSelectBadge({
   children,
@@ -30,34 +23,29 @@ function DatabaseSelectBadge({
   showDot = false,
   suffix,
 }: {
-  children: string
-  color?: string
-  showDot?: boolean
-  suffix?: string
+  children: string;
+  color?: string;
+  showDot?: boolean;
+  suffix?: string;
 }) {
   return (
     <span className={getColorTokenBadgeClassName(color)}>
-      {showDot ? (
-        <span
-          aria-hidden="true"
-          className={getColorTokenDotClassName(color)}
-        />
-      ) : null}
+      {showDot ? <span aria-hidden="true" className={getColorTokenDotClassName(color)} /> : null}
       {children}
       {suffix ? <span className="ml-1 opacity-70">{suffix}</span> : null}
     </span>
-  )
+  );
 }
 
 function getSelectOptions(config: unknown) {
   if (!config || typeof config !== "object" || !("options" in config)) {
-    return []
+    return [];
   }
 
-  const options = (config as DatabasePropertyConfig).options
+  const options = (config as DatabasePropertyConfig).options;
 
   if (!Array.isArray(options)) {
-    return []
+    return [];
   }
 
   return options.filter(
@@ -65,18 +53,15 @@ function getSelectOptions(config: unknown) {
       Boolean(option) &&
       typeof option === "object" &&
       typeof option.id === "string" &&
-      typeof option.name === "string"
-  )
+      typeof option.name === "string",
+  );
 }
 
-function getSelectConfigWithOptions(
-  config: unknown,
-  options: DatabasePropertySelectOption[]
-) {
+function getSelectConfigWithOptions(config: unknown, options: DatabasePropertySelectOption[]) {
   return {
     ...(config && typeof config === "object" ? config : {}),
     options,
-  }
+  };
 }
 
 export function DatabasePropertySelect({
@@ -96,116 +81,109 @@ export function DatabasePropertySelect({
   trigger: customTrigger,
   valueKey = "name",
 }: {
-  allowCreate?: boolean
-  defaultOptions?: DatabasePropertySelectOption[]
-  editable?: boolean
-  emptyLabel?: string
-  label: string
-  multiple?: boolean
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
+  allowCreate?: boolean;
+  defaultOptions?: DatabasePropertySelectOption[];
+  editable?: boolean;
+  emptyLabel?: string;
+  label: string;
+  multiple?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onPropertyConfigChange?: (
     config: unknown,
-    createdOption: DatabaseSelectOption
-  ) => Promise<unknown> | unknown
-  propertyConfig?: unknown
-  value: string | string[]
-  onSelect: (value: string | string[]) => void
-  showStatusDot?: boolean
-  trigger?: ReactNode
-  valueKey?: "id" | "name"
+    createdOption: DatabaseSelectOption,
+  ) => Promise<unknown> | unknown;
+  propertyConfig?: unknown;
+  value: string | string[];
+  onSelect: (value: string | string[]) => void;
+  showStatusDot?: boolean;
+  trigger?: ReactNode;
+  valueKey?: "id" | "name";
 }) {
-  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-  const [query, setQuery] = useState("")
-  const configuredOptions = getSelectOptions(propertyConfig)
-  const selectOptions =
-    configuredOptions.length > 0 ? configuredOptions : defaultOptions
-  const selectedValues = toStringArray(value)
-  const getOptionValue = (option: DatabasePropertySelectOption) => option[valueKey]
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [query, setQuery] = useState("");
+  const configuredOptions = getSelectOptions(propertyConfig);
+  const selectOptions = configuredOptions.length > 0 ? configuredOptions : defaultOptions;
+  const selectedValues = toStringArray(value);
+  const getOptionValue = (option: DatabasePropertySelectOption) => option[valueKey];
   const getSelectedOption = (optionValue: string) =>
-    selectOptions.find((option) => getOptionValue(option) === optionValue)
-  const getOptionColor = (optionValue: string) =>
-    getSelectedOption(optionValue)?.color
-  const normalizedQuery = query.trim().toLowerCase()
+    selectOptions.find((option) => getOptionValue(option) === optionValue);
+  const getOptionColor = (optionValue: string) => getSelectedOption(optionValue)?.color;
+  const normalizedQuery = query.trim().toLowerCase();
   const filteredSelectOptions = normalizedQuery
     ? selectOptions.filter((option) =>
-        `${option.name} ${option.suffix ?? ""}`
-          .toLowerCase()
-          .includes(normalizedQuery)
+        `${option.name} ${option.suffix ?? ""}`.toLowerCase().includes(normalizedQuery),
       )
-    : selectOptions
+    : selectOptions;
   const matchingSelectOption = selectOptions.find(
-    (option) => option.name.toLowerCase() === normalizedQuery
-  )
+    (option) => option.name.toLowerCase() === normalizedQuery,
+  );
   const canCreateSelectOption =
     allowCreate &&
     Boolean(onPropertyConfigChange) &&
     query.trim().length > 0 &&
-    !matchingSelectOption
-  const isOpen = controlledOpen ?? uncontrolledOpen
-  const selectedContent = selectedValues.length > 0 ? (
-    selectedValues.map((selectedValue) => {
-      const selectedOption = getSelectedOption(selectedValue)
+    !matchingSelectOption;
+  const isOpen = controlledOpen ?? uncontrolledOpen;
+  const selectedContent =
+    selectedValues.length > 0 ? (
+      selectedValues.map((selectedValue) => {
+        const selectedOption = getSelectedOption(selectedValue);
 
-      return (
-        <DatabaseSelectBadge
-          color={getOptionColor(selectedValue)}
-          key={selectedValue}
-          showDot={showStatusDot}
-          suffix={selectedOption?.suffix}
-        >
-          {selectedOption?.name ?? selectedValue}
-        </DatabaseSelectBadge>
-      )
-    })
-  ) : emptyLabel ? (
-    <span className="text-content-secondary">{emptyLabel}</span>
-  ) : null
+        return (
+          <DatabaseSelectBadge
+            color={getOptionColor(selectedValue)}
+            key={selectedValue}
+            showDot={showStatusDot}
+            suffix={selectedOption?.suffix}
+          >
+            {selectedOption?.name ?? selectedValue}
+          </DatabaseSelectBadge>
+        );
+      })
+    ) : emptyLabel ? (
+      <span className="text-content-secondary">{emptyLabel}</span>
+    ) : null;
 
   if (!editable) {
-    return (
-      <span className="database-select-cell-trigger">
-        {selectedContent}
-      </span>
-    )
+    return <span className="database-select-cell-trigger">{selectedContent}</span>;
   }
 
   const closePanel = () => {
-    if (controlledOpen === undefined) setUncontrolledOpen(false)
-    setQuery("")
-    onOpenChange?.(false)
-  }
+    if (controlledOpen === undefined) setUncontrolledOpen(false);
+    setQuery("");
+    onOpenChange?.(false);
+  };
 
   const setOpen = (open: boolean) => {
     if (open) {
-      if (controlledOpen === undefined) setUncontrolledOpen(true)
-      onOpenChange?.(true)
-      return
+      if (controlledOpen === undefined) setUncontrolledOpen(true);
+      onOpenChange?.(true);
+      return;
     }
 
-    closePanel()
-  }
+    closePanel();
+  };
 
   const selectOption = (optionValue: string) => {
     if (!multiple) {
-      onSelect(optionValue)
-      closePanel()
-      return
+      onSelect(optionValue);
+      closePanel();
+      return;
     }
 
     const nextValues = selectedValues.includes(optionValue)
       ? selectedValues.filter((selectedValue) => selectedValue !== optionValue)
-      : [...selectedValues, optionValue]
+      : [...selectedValues, optionValue];
 
-    onSelect(nextValues)
-  }
+    onSelect(nextValues);
+  };
 
   const createSelectOption = async () => {
-    const optionName = query.trim()
+    const optionName = query.trim();
 
     if (!optionName || !onPropertyConfigChange) {
-      return
+      return;
     }
 
     const nextOptions = [
@@ -215,41 +193,37 @@ export function DatabasePropertySelect({
         id: crypto.randomUUID(),
         name: optionName,
       },
-    ]
-    const createdOption = nextOptions[nextOptions.length - 1]
-    const optionValue = valueKey === "id" ? createdOption?.id : optionName
+    ];
+    const createdOption = nextOptions[nextOptions.length - 1];
+    const optionValue = valueKey === "id" ? createdOption?.id : optionName;
 
-    setIsCreating(true)
+    setIsCreating(true);
 
     try {
       await onPropertyConfigChange(
         getSelectConfigWithOptions(propertyConfig, nextOptions),
-        createdOption
-      )
+        createdOption,
+      );
 
       if (multiple) {
-        onSelect(optionValue ? [...selectedValues, optionValue] : selectedValues)
-        setQuery("")
-        return
+        onSelect(optionValue ? [...selectedValues, optionValue] : selectedValues);
+        setQuery("");
+        return;
       }
 
       if (optionValue) {
-        selectOption(optionValue)
+        selectOption(optionValue);
       }
     } finally {
-      setIsCreating(false)
+      setIsCreating(false);
     }
-  }
+  };
 
   const trigger = (
-    <button
-      aria-label={`${label} value`}
-      className="database-select-cell-trigger"
-      type="button"
-    >
+    <button aria-label={`${label} value`} className="database-select-cell-trigger" type="button">
       {selectedContent}
     </button>
-  )
+  );
   const panel = (
     <>
       <input
@@ -258,17 +232,17 @@ export function DatabasePropertySelect({
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
-            event.preventDefault()
+            event.preventDefault();
 
             if (canCreateSelectOption) {
-              void createSelectOption()
+              void createSelectOption();
             } else if (filteredSelectOptions[0]) {
-              selectOption(getOptionValue(filteredSelectOptions[0]))
+              selectOption(getOptionValue(filteredSelectOptions[0]));
             }
           }
 
           if (event.key === "Escape") {
-            closePanel()
+            closePanel();
           }
         }}
         placeholder="Search for an option..."
@@ -285,8 +259,8 @@ export function DatabasePropertySelect({
       </div>
       <div className="database-select-options">
         {filteredSelectOptions.map((option) => {
-          const optionValue = getOptionValue(option)
-          const isSelected = selectedValues.includes(optionValue)
+          const optionValue = getOptionValue(option);
+          const isSelected = selectedValues.includes(optionValue);
 
           return (
             <button
@@ -304,15 +278,16 @@ export function DatabasePropertySelect({
               >
                 {option.name}
               </DatabaseSelectBadge>
-              {isSelected ? (
-                <Check className="ml-auto text-content-primary" />
-              ) : null}
+              {isSelected ? <Check className="ml-auto text-content-primary" /> : null}
             </button>
-          )
+          );
         })}
         {canCreateSelectOption ? (
           <button
-            className={cn(menuItemVariants(), "w-full text-left hover:bg-action-neutral-hover disabled:pointer-events-none disabled:opacity-50")}
+            className={cn(
+              menuItemVariants(),
+              "w-full text-left hover:bg-action-neutral-hover disabled:pointer-events-none disabled:opacity-50",
+            )}
             disabled={isCreating}
             onClick={() => void createSelectOption()}
             type="button"
@@ -329,7 +304,7 @@ export function DatabasePropertySelect({
         ) : null}
       </div>
     </>
-  )
+  );
 
   return (
     <Popover open={isOpen} onOpenChange={setOpen}>
@@ -338,5 +313,5 @@ export function DatabasePropertySelect({
         {panel}
       </PopoverContent>
     </Popover>
-  )
+  );
 }

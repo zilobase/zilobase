@@ -1,7 +1,18 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ["replicaCount", "development", "debug", "realtime", "gmail", "image", "existingSecret", "config", "networkPolicy", "trustedCa"],
+  "required": [
+    "replicaCount",
+    "development",
+    "debug",
+    "realtime",
+    "gmail",
+    "image",
+    "existingSecret",
+    "config",
+    "networkPolicy",
+    "trustedCa"
+  ],
   "properties": {
     "replicaCount": { "type": "integer", "minimum": 1 },
     "development": {
@@ -29,7 +40,15 @@
     },
     "gmail": {
       "type": "object",
-      "required": ["enabled", "googleClientId", "pubsubTopic", "pubsubPushAudience", "pubsubServiceAccountEmail", "pubsubSubscription", "networkCIDR"],
+      "required": [
+        "enabled",
+        "googleClientId",
+        "pubsubTopic",
+        "pubsubPushAudience",
+        "pubsubServiceAccountEmail",
+        "pubsubSubscription",
+        "networkCIDR"
+      ],
       "properties": {
         "enabled": { "type": "boolean" },
         "googleClientId": { "type": "string" },
@@ -85,33 +104,40 @@
       }
     }
   },
-  "allOf": [{
-    "if": { "properties": { "development": { "properties": { "enabled": { "const": false } } } } },
-    "then": {
-      "properties": {
-        "config": {
-          "properties": {
-            "externalUrl": { "pattern": "^https://" },
-            "s3Endpoint": { "pattern": "^https://" },
-            "s3PublicEndpoint": { "pattern": "^https://" }
+  "allOf": [
+    {
+      "if": {
+        "properties": { "development": { "properties": { "enabled": { "const": false } } } }
+      },
+      "then": {
+        "properties": {
+          "config": {
+            "properties": {
+              "externalUrl": { "pattern": "^https://" },
+              "s3Endpoint": { "pattern": "^https://" },
+              "s3PublicEndpoint": { "pattern": "^https://" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "gmail": { "properties": { "enabled": { "const": true } } } } },
+      "then": {
+        "properties": {
+          "gmail": {
+            "properties": {
+              "googleClientId": { "pattern": "^[A-Za-z0-9._-]+\\.apps\\.googleusercontent\\.com$" },
+              "pubsubTopic": { "pattern": "^projects/.+/topics/.+$" },
+              "pubsubPushAudience": { "pattern": "^https://.+/mail/google/pubsub$" },
+              "pubsubServiceAccountEmail": {
+                "pattern": "^[^@]+@[^@]+\\.iam\\.gserviceaccount\\.com$"
+              },
+              "pubsubSubscription": { "pattern": "^projects/.+/subscriptions/.+$" }
+            }
           }
         }
       }
     }
-  }, {
-    "if": { "properties": { "gmail": { "properties": { "enabled": { "const": true } } } } },
-    "then": {
-      "properties": {
-        "gmail": {
-          "properties": {
-            "googleClientId": { "pattern": "^[A-Za-z0-9._-]+\\.apps\\.googleusercontent\\.com$" },
-            "pubsubTopic": { "pattern": "^projects/.+/topics/.+$" },
-            "pubsubPushAudience": { "pattern": "^https://.+/mail/google/pubsub$" },
-            "pubsubServiceAccountEmail": { "pattern": "^[^@]+@[^@]+\\.iam\\.gserviceaccount\\.com$" },
-            "pubsubSubscription": { "pattern": "^projects/.+/subscriptions/.+$" }
-          }
-        }
-      }
-    }
-  }]
+  ]
 }

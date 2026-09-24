@@ -3,8 +3,7 @@ import posthog, { type CaptureResult } from "posthog-js";
 const projectToken = import.meta.env.VITE_POSTHOG_KEY?.trim();
 const host = import.meta.env.VITE_POSTHOG_HOST?.trim();
 const uiHost = import.meta.env.VITE_POSTHOG_UI_HOST?.trim();
-const sessionReplayEnabled =
-  import.meta.env.VITE_POSTHOG_SESSION_REPLAY?.trim() === "true";
+const sessionReplayEnabled = import.meta.env.VITE_POSTHOG_SESSION_REPLAY?.trim() === "true";
 
 let configuredPosthog: typeof posthog | null = null;
 
@@ -22,13 +21,7 @@ if (projectToken && host) {
       ],
       dom_event_allowlist: ["click", "change", "submit"],
       element_allowlist: ["a", "button", "form", "input", "select"],
-      element_attribute_ignorelist: [
-        "aria-label",
-        "data-value",
-        "placeholder",
-        "title",
-        "value",
-      ],
+      element_attribute_ignorelist: ["aria-label", "data-value", "placeholder", "title", "value"],
     },
     before_send: sanitizeCapture,
     capture_dead_clicks: true,
@@ -45,13 +38,7 @@ if (projectToken && host) {
       web_vitals: true,
       web_vitals_attribution: ["INP", "LCP"],
     },
-    custom_personal_data_properties: [
-      "content",
-      "email",
-      "invitation",
-      "name",
-      "token",
-    ],
+    custom_personal_data_properties: ["content", "email", "invitation", "name", "token"],
     disable_capture_url_hashes: true,
     disable_session_recording: !sessionReplayEnabled,
     mask_all_text: true,
@@ -88,8 +75,7 @@ export function captureProductException(
   properties: Record<string, boolean | number | string | null> = {},
 ) {
   if (!configuredPosthog) return;
-  const normalizedError =
-    error instanceof Error ? error : new Error("Unknown application error");
+  const normalizedError = error instanceof Error ? error : new Error("Unknown application error");
   configuredPosthog.captureException(normalizedError, properties);
 }
 

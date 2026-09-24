@@ -15,9 +15,7 @@ import {
   runtimeUrl,
 } from "./config.mjs";
 
-const templates = [
-  [path.join(coreDir, ".env.development.example"), repoEnvironmentFiles.node],
-];
+const templates = [[path.join(coreDir, ".env.development.example"), repoEnvironmentFiles.node]];
 let environmentConflictsReported = false;
 const optionalCredentialKeys = [
   "GOOGLE_CLIENT_ID",
@@ -35,32 +33,32 @@ export async function ensureDevelopmentEnvironment(options = {}) {
     }
   }
 
-  const dependencies = await ensureGeneratedFile(
-    generatedEnvironmentFiles.dependencies,
-    () => ({
-      POSTGRES_USER: "zilobase_dev",
-      POSTGRES_PASSWORD: secret(32),
-      POSTGRES_HOST_PORT: "15432",
-      MINIO_ROOT_USER: "zilobase_dev",
-      MINIO_ROOT_PASSWORD: secret(32),
-      MINIO_API_PORT: "19100",
-      MINIO_CONSOLE_PORT: "19101",
-      MAILPIT_SMTP_PORT: "11025",
-      MAILPIT_UI_PORT: "18025",
-      VALKEY_HOST_PORT: "16379",
-    }),
-  );
+  const dependencies = await ensureGeneratedFile(generatedEnvironmentFiles.dependencies, () => ({
+    POSTGRES_USER: "zilobase_dev",
+    POSTGRES_PASSWORD: secret(32),
+    POSTGRES_HOST_PORT: "15432",
+    MINIO_ROOT_USER: "zilobase_dev",
+    MINIO_ROOT_PASSWORD: secret(32),
+    MINIO_API_PORT: "19100",
+    MINIO_CONSOLE_PORT: "19101",
+    MAILPIT_SMTP_PORT: "11025",
+    MAILPIT_UI_PORT: "18025",
+    VALKEY_HOST_PORT: "16379",
+  }));
 
-  const nodeEnvironment = await ensureGeneratedFile(
-    generatedEnvironmentFiles.node,
-    () => profileEnvironment(localProfiles.node, dependencies),
+  const nodeEnvironment = await ensureGeneratedFile(generatedEnvironmentFiles.node, () =>
+    profileEnvironment(localProfiles.node, dependencies),
   );
-  await ensureGeneratedFile(generatedEnvironmentFiles.kubernetes, () => ({
-    COMMUNITY_BETTER_AUTH_SECRET: secret(48),
-    COMMUNITY_BOOTSTRAP_TOKEN: secret(48),
-    COMMUNITY_POSTGRES_PASSWORD: secret(32),
-    COMMUNITY_MINIO_PASSWORD: secret(32),
-  }), { prune: true });
+  await ensureGeneratedFile(
+    generatedEnvironmentFiles.kubernetes,
+    () => ({
+      COMMUNITY_BETTER_AUTH_SECRET: secret(48),
+      COMMUNITY_BOOTSTRAP_TOKEN: secret(48),
+      COMMUNITY_POSTGRES_PASSWORD: secret(32),
+      COMMUNITY_MINIO_PASSWORD: secret(32),
+    }),
+    { prune: true },
+  );
   if (options.reportEnvironmentConflicts && !environmentConflictsReported) {
     await reportEnvironmentConflicts("node", nodeEnvironment);
     environmentConflictsReported = true;
@@ -78,8 +76,7 @@ export async function createFromTemplateIfMissing(template, destination) {
 export async function loadProfileEnvironment(name) {
   await ensureDevelopmentEnvironment();
   const target = {};
-  const sourceFiles = [repoEnvironmentFiles[name], generatedEnvironmentFiles[name]]
-    .filter(Boolean);
+  const sourceFiles = [repoEnvironmentFiles[name], generatedEnvironmentFiles[name]].filter(Boolean);
   loadDotenvx({
     path: sourceFiles,
     processEnv: target,
@@ -205,12 +202,15 @@ async function reportEnvironmentConflicts(name, generated) {
   const repositoryEnvironment = await readSimpleEnv(filename);
   const conflicts = Object.keys(generated)
     .filter((key) => !optionalCredentialKeys.includes(key))
-    .filter((key) => repositoryEnvironment[key] !== undefined && repositoryEnvironment[key] !== generated[key])
+    .filter(
+      (key) =>
+        repositoryEnvironment[key] !== undefined && repositoryEnvironment[key] !== generated[key],
+    )
     .sort();
   if (conflicts.length) {
     console.warn(
       `${path.relative(coreDir, filename)} values are ignored by the generated ` +
-      `${name} profile: ${conflicts.join(", ")}. Shell overrides still win.`,
+        `${name} profile: ${conflicts.join(", ")}. Shell overrides still win.`,
     );
   }
 }

@@ -1,6 +1,6 @@
 import { getNavigationItemPath } from "../model/database-view-navigation";
-import { useState, type DragEvent } from "react"
-import { useLocation, useNavigate } from "@tanstack/react-router"
+import { useState, type DragEvent } from "react";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useDeleteDatabase } from "@zilobase/features/databases/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import {
@@ -32,8 +32,8 @@ import {
   Trash2Icon,
   UploadIcon,
   UserPlusIcon,
-} from "@/shared/components/icons"
-import { toast } from "sonner"
+} from "@/shared/components/icons";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -44,12 +44,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/shared/ui/collapsible"
+} from "@/shared/ui/alert-dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 
 import {
   DropDrawer,
@@ -60,7 +56,7 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
+} from "@/shared/ui/dropdrawer";
 import {
   SidebarGroup,
   SidebarGroupAction,
@@ -70,40 +66,40 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/shared/ui/sidebar"
+} from "@/shared/ui/sidebar";
 import {
   getActiveDatabaseId,
   getActivePageId,
   SidebarNavList,
   type SidebarNavItem,
-} from "./sidebar-nav-list"
+} from "./sidebar-nav-list";
 import {
   SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
   SidebarNavItemAction,
-} from "@/shared/ui/sidebar-nav-item-action"
-import { useOpenInNewTab } from "@/features/desktop/components/index"
+} from "@/shared/ui/sidebar-nav-item-action";
+import { useOpenInNewTab } from "@/features/desktop/components/index";
 import { DATABASE_PAGE_DRAG_MIME } from "@/features/databases";
-import { cn } from "@/shared/lib/utils"
-import { getApiErrorMessage } from "@/platform/network/api"
-import { PageIconDisplay } from "@/features/pages/index"
-import { getTeamspaceSidebarPermissions } from "@/features/teamspaces/model/teamspace-sidebar-permissions"
-import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
-import { getConfiguredSidebarItems } from "../model/sidebar-section-items"
-import { SidebarLibraryLink } from "./sidebar-library-link"
+import { cn } from "@/shared/lib/utils";
+import { getApiErrorMessage } from "@/platform/network/api";
+import { PageIconDisplay } from "@/features/pages/index";
+import { getTeamspaceSidebarPermissions } from "@/features/teamspaces/model/teamspace-sidebar-permissions";
+import { useSidebarSectionOpen } from "../model/sidebar-section-open-state";
+import { getConfiguredSidebarItems } from "../model/sidebar-section-items";
+import { SidebarLibraryLink } from "./sidebar-library-link";
 import type {
   SidebarSectionId,
   SidebarSectionLimit,
   SidebarSectionSort,
-} from "@zilobase/features/user-settings"
+} from "@zilobase/features/user-settings";
 
-export type { SidebarNavItem } from "./sidebar-nav-list"
+export type { SidebarNavItem } from "./sidebar-nav-list";
 
 type DatabaseDropInput = {
-  databaseId: string
-  pageId: string
-  targetPageId: string | null
-  title?: string
-}
+  databaseId: string;
+  pageId: string;
+  targetPageId: string | null;
+  title?: string;
+};
 
 export function NavPageSection({
   activeDatabaseId,
@@ -128,90 +124,80 @@ export function NavPageSection({
   sort,
   storageKey,
 }: {
-  activeDatabaseId: string | null
-  activeDatabaseViewId: string | null
-  activePageId: string | null
-  activeMeetingId?: string | null
-  databaseDropTargetId: string | null
-  label: string
-  limit: SidebarSectionLimit
-  teamspace?: Teamspace
-  workspaceCanManage?: boolean
-  workspaceId?: string | null
-  onCreateDatabase?: () => void
-  onCreatePage?: () => void
-  onImportNotion?: () => void
-  onDatabaseDropTargetChange: (pageId: string | null) => void
-  onDropPageOnDatabase?: (input: DatabaseDropInput) => void
-  showCreateAction?: boolean
-  pages: SidebarNavItem[]
-  sectionId: SidebarSectionId
-  sectionStorageKey?: string
-  sort: SidebarSectionSort
-  storageKey: string
+  activeDatabaseId: string | null;
+  activeDatabaseViewId: string | null;
+  activePageId: string | null;
+  activeMeetingId?: string | null;
+  databaseDropTargetId: string | null;
+  label: string;
+  limit: SidebarSectionLimit;
+  teamspace?: Teamspace;
+  workspaceCanManage?: boolean;
+  workspaceId?: string | null;
+  onCreateDatabase?: () => void;
+  onCreatePage?: () => void;
+  onImportNotion?: () => void;
+  onDatabaseDropTargetChange: (pageId: string | null) => void;
+  onDropPageOnDatabase?: (input: DatabaseDropInput) => void;
+  showCreateAction?: boolean;
+  pages: SidebarNavItem[];
+  sectionId: SidebarSectionId;
+  sectionStorageKey?: string;
+  sort: SidebarSectionSort;
+  storageKey: string;
 }) {
-  const [sectionOpen, setSectionOpen] = useSidebarSectionOpen(sectionStorageKey ?? `${storageKey}:section`)
-  const displayedPages = getConfiguredSidebarItems(pages, sectionId, { limit, sort })
-  const getLinkProps = ({
-    displayName,
-    item,
-  }: {
-    displayName: string
-    item: SidebarNavItem
-  }) => {
-    const canDropOnDatabase = Boolean(
-      item.isDatabase && item.databaseId && onDropPageOnDatabase,
-    )
+  const [sectionOpen, setSectionOpen] = useSidebarSectionOpen(
+    sectionStorageKey ?? `${storageKey}:section`,
+  );
+  const displayedPages = getConfiguredSidebarItems(pages, sectionId, { limit, sort });
+  const getLinkProps = ({ displayName, item }: { displayName: string; item: SidebarNavItem }) => {
+    const canDropOnDatabase = Boolean(item.isDatabase && item.databaseId && onDropPageOnDatabase);
     const handleDatabaseDragOver = (event: DragEvent<HTMLAnchorElement>) => {
       if (!canDropOnDatabase || !hasDraggedPagePayload(event)) {
-        return
+        return;
       }
 
-      event.preventDefault()
-      event.dataTransfer.dropEffect = "move"
-      onDatabaseDropTargetChange(item.id)
-    }
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      onDatabaseDropTargetChange(item.id);
+    };
     const handleDatabaseDragLeave = (event: DragEvent<HTMLAnchorElement>) => {
-      if (
-        !event.currentTarget.contains(
-          event.relatedTarget as globalThis.Node | null,
-        )
-      ) {
-        onDatabaseDropTargetChange(null)
+      if (!event.currentTarget.contains(event.relatedTarget as globalThis.Node | null)) {
+        onDatabaseDropTargetChange(null);
       }
-    }
+    };
     const handleDatabaseDrop = (event: DragEvent<HTMLAnchorElement>) => {
-      const dragPayload = getDraggedPagePayload(event)
+      const dragPayload = getDraggedPagePayload(event);
 
       if (!canDropOnDatabase || !item.databaseId || !dragPayload) {
-        return
+        return;
       }
 
-      event.preventDefault()
-      event.stopPropagation()
-      onDatabaseDropTargetChange(null)
+      event.preventDefault();
+      event.stopPropagation();
+      onDatabaseDropTargetChange(null);
       onDropPageOnDatabase?.({
         databaseId: item.databaseId,
         pageId: dragPayload.pageId,
         targetPageId: item.pageId,
         title: dragPayload.title,
-      })
-    }
+      });
+    };
     const handlePageDragStart = (event: DragEvent<HTMLAnchorElement>) => {
       if (item.isDatabase || item.isDatabaseView || item.isMeeting) {
-        return
+        return;
       }
 
-      event.dataTransfer.effectAllowed = "copyMove"
+      event.dataTransfer.effectAllowed = "copyMove";
       event.dataTransfer.setData(
         DATABASE_PAGE_DRAG_MIME,
         JSON.stringify({
           pageId: item.pageId,
           title: displayName,
         }),
-      )
-      event.dataTransfer.setData("text/plain", displayName)
-    }
+      );
+      event.dataTransfer.setData("text/plain", displayName);
+    };
 
     return {
       className:
@@ -224,8 +210,8 @@ export function NavPageSection({
       onDragOver: handleDatabaseDragOver,
       onDragStart: handlePageDragStart,
       onDrop: handleDatabaseDrop,
-    }
-  }
+    };
+  };
 
   if (teamspace) {
     const icon =
@@ -233,24 +219,17 @@ export function NavPageSection({
         <PageIconDisplay size="sm" value={teamspace.icon} />
       ) : (
         <Layers3Icon className="size-4 text-content-secondary" />
-      )
+      );
 
     return (
-      <Collapsible
-        asChild
-        onOpenChange={setSectionOpen}
-        open={sectionOpen}
-      >
+      <Collapsible asChild onOpenChange={setSectionOpen} open={sectionOpen}>
         <SidebarGroup className="py-0">
           <SidebarMenu>
             <SidebarMenuItem>
               <div className="group/nav-row relative">
                 <CollapsibleTrigger asChild>
                   <SidebarMenuButton
-                    className={cn(
-                      "peer/menu-button pr-20",
-                      SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME,
-                    )}
+                    className={cn("peer/menu-button pr-20", SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME)}
                     title={teamspace.name}
                     type="button"
                   >
@@ -269,8 +248,7 @@ export function NavPageSection({
                   >
                     <ChevronRightIcon weight="fill" />
                     <span className="sr-only">
-                      {sectionOpen ? "Collapse" : "Expand"}{" "}
-                      {teamspace.name}
+                      {sectionOpen ? "Collapse" : "Expand"} {teamspace.name}
                     </span>
                   </SidebarNavItemAction>
                 </CollapsibleTrigger>
@@ -313,9 +291,7 @@ export function NavPageSection({
                     getLinkProps={getLinkProps}
                     items={displayedPages}
                     renderItemMenu={({ item }) =>
-                      item.isDatabaseView || item.isMeeting ? null : (
-                        <PageItemMenu item={item} />
-                      )
+                      item.isDatabaseView || item.isMeeting ? null : <PageItemMenu item={item} />
                     }
                     storageKey={storageKey}
                   />
@@ -332,7 +308,7 @@ export function NavPageSection({
           </SidebarMenu>
         </SidebarGroup>
       </Collapsible>
-    )
+    );
   }
 
   return (
@@ -347,10 +323,7 @@ export function NavPageSection({
                 showCreateAction ? "pr-16" : "pr-9",
               )}
             >
-              <button
-                className="group/section-label w-full cursor-pointer"
-                type="button"
-              >
+              <button className="group/section-label w-full cursor-pointer" type="button">
                 <span>{label}</span>
                 <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
               </button>
@@ -375,7 +348,7 @@ export function NavPageSection({
               <DropDrawerContent align="end" className="w-44 rounded-lg">
                 <DropDrawerItem
                   onSelect={() => {
-                    onCreatePage?.()
+                    onCreatePage?.();
                   }}
                 >
                   <FileIcon className="text-content-secondary" />
@@ -383,7 +356,7 @@ export function NavPageSection({
                 </DropDrawerItem>
                 <DropDrawerItem
                   onSelect={() => {
-                    onCreateDatabase?.()
+                    onCreateDatabase?.();
                   }}
                 >
                   <DatabaseIcon className="text-content-secondary" />
@@ -392,7 +365,7 @@ export function NavPageSection({
                 {onImportNotion ? (
                   <DropDrawerItem
                     onSelect={() => {
-                      onImportNotion()
+                      onImportNotion();
                     }}
                   >
                     <UploadIcon className="text-content-secondary" />
@@ -414,9 +387,7 @@ export function NavPageSection({
                 getLinkProps={getLinkProps}
                 items={displayedPages}
                 renderItemMenu={({ item }) =>
-                  item.isDatabaseView || item.isMeeting
-                    ? null
-                    : <PageItemMenu item={item} />
+                  item.isDatabaseView || item.isMeeting ? null : <PageItemMenu item={item} />
                 }
                 storageKey={storageKey}
               />
@@ -432,7 +403,7 @@ export function NavPageSection({
         </CollapsibleContent>
       </SidebarGroup>
     </Collapsible>
-  )
+  );
 }
 
 function TeamspaceActionsMenu({
@@ -440,21 +411,23 @@ function TeamspaceActionsMenu({
   workspaceCanManage,
   workspaceId,
 }: {
-  teamspace: Teamspace
-  workspaceCanManage: boolean
-  workspaceId?: string | null
+  teamspace: Teamspace;
+  workspaceCanManage: boolean;
+  workspaceId?: string | null;
 }) {
-  const navigate = useNavigate()
-  const membership = useSetTeamspaceMembership()
-  const lifecycle = useTeamspaceLifecycle()
-  const { canArchive, canInvite, canLeave, canManage } =
-    getTeamspaceSidebarPermissions(teamspace, workspaceCanManage)
+  const navigate = useNavigate();
+  const membership = useSetTeamspaceMembership();
+  const lifecycle = useTeamspaceLifecycle();
+  const { canArchive, canInvite, canLeave, canManage } = getTeamspaceSidebarPermissions(
+    teamspace,
+    workspaceCanManage,
+  );
   const openSettings = (tab: "general" | "members") => {
     void navigate({
       search: { tab, teamspace: teamspace.id },
       to: "/settings/teamspaces",
-    })
-  }
+    });
+  };
 
   return (
     <DropDrawer>
@@ -468,18 +441,12 @@ function TeamspaceActionsMenu({
         </SidebarNavItemAction>
       </DropDrawerTrigger>
       <DropDrawerContent align="start" className="w-72 rounded-lg" side="right">
-        <DropDrawerItem
-          disabled={!canInvite}
-          onSelect={() => openSettings("members")}
-        >
+        <DropDrawerItem disabled={!canInvite} onSelect={() => openSettings("members")}>
           <UserPlusIcon />
           <span>Add members</span>
         </DropDrawerItem>
         <DropDrawerSeparator />
-        <DropDrawerItem
-          disabled={!canManage}
-          onSelect={() => openSettings("general")}
-        >
+        <DropDrawerItem disabled={!canManage} onSelect={() => openSettings("general")}>
           <SettingsIcon />
           <span>Teamspace settings</span>
         </DropDrawerItem>
@@ -495,7 +462,7 @@ function TeamspaceActionsMenu({
         <DropDrawerItem
           disabled={!canLeave || membership.isPending}
           onSelect={() => {
-            if (!workspaceId) return
+            if (!workspaceId) return;
             membership.mutate(
               {
                 action: "leave",
@@ -506,7 +473,7 @@ function TeamspaceActionsMenu({
                 onError: (error) => toast.error(getApiErrorMessage(error)),
                 onSuccess: () => toast.success(`Left ${teamspace.name}.`),
               },
-            )
+            );
           }}
         >
           <HandIcon />
@@ -515,7 +482,7 @@ function TeamspaceActionsMenu({
         <DropDrawerItem
           disabled={!canArchive || lifecycle.isPending}
           onSelect={() => {
-            if (!workspaceId) return
+            if (!workspaceId) return;
             lifecycle.mutate(
               {
                 action: "archive",
@@ -526,7 +493,7 @@ function TeamspaceActionsMenu({
                 onError: (error) => toast.error(getApiErrorMessage(error)),
                 onSuccess: () => toast.success(`${teamspace.name} archived.`),
               },
-            )
+            );
           }}
           variant="destructive"
         >
@@ -535,80 +502,73 @@ function TeamspaceActionsMenu({
         </DropDrawerItem>
       </DropDrawerContent>
     </DropDrawer>
-  )
+  );
 }
 
 function PageItemMenu({ item }: { item: SidebarNavItem }) {
-  const workspaceId = useActiveWorkspaceId()
-  const { isMobile } = useSidebar()
-  const openInNewTab = useOpenInNewTab()
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const deletePage = useDeletePage()
-  const deleteDatabase = useDeleteDatabase()
-  const movePage = useMovePageToTeamspace()
-  const convertPage = useConvertPageToTeamspace()
-  const { data: teamspaces = [] } = useTeamspaces(workspaceId)
-  const activePageId = getActivePageId(location.pathname)
-  const activeDatabaseId = getActiveDatabaseId(location.pathname)
+  const workspaceId = useActiveWorkspaceId();
+  const { isMobile } = useSidebar();
+  const openInNewTab = useOpenInNewTab();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const deletePage = useDeletePage();
+  const deleteDatabase = useDeleteDatabase();
+  const movePage = useMovePageToTeamspace();
+  const convertPage = useConvertPageToTeamspace();
+  const { data: teamspaces = [] } = useTeamspaces(workspaceId);
+  const activePageId = getActivePageId(location.pathname);
+  const activeDatabaseId = getActiveDatabaseId(location.pathname);
   const linkPath = getNavigationItemPath({
     databaseId: item.isDatabase || item.isDatabaseView ? item.databaseId : null,
     pageId: item.pageId,
-  })
-  const displayName = item.name.trim() || "Untitled"
-  const isDeleting = deletePage.isPending || deleteDatabase.isPending
+  });
+  const displayName = item.name.trim() || "Untitled";
+  const isDeleting = deletePage.isPending || deleteDatabase.isPending;
 
   const redirectIfDeleted = (result: {
-    deletedDatabaseIds: string[]
-    deletedPageIds: string[]
+    deletedDatabaseIds: string[];
+    deletedPageIds: string[];
   }) => {
-    const deletedActivePage =
-      activePageId && result.deletedPageIds.includes(activePageId)
+    const deletedActivePage = activePageId && result.deletedPageIds.includes(activePageId);
     const deletedActiveDatabase =
-      activeDatabaseId && result.deletedDatabaseIds.includes(activeDatabaseId)
+      activeDatabaseId && result.deletedDatabaseIds.includes(activeDatabaseId);
 
     if (deletedActivePage || deletedActiveDatabase) {
-      void navigate({ to: "/" })
+      void navigate({ to: "/" });
     }
-  }
+  };
 
   const runDelete = () => {
     if (item.isDatabase && item.databaseId) {
       deleteDatabase.mutate(item.databaseId, {
         onSuccess: (result) => {
-          setConfirmOpen(false)
-          toast.success("Moved to trash.")
-          redirectIfDeleted(result)
+          setConfirmOpen(false);
+          toast.success("Moved to trash.");
+          redirectIfDeleted(result);
         },
         onError: (error) => {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not delete database.",
-          )
+          toast.error(error instanceof Error ? error.message : "Could not delete database.");
         },
-      })
-      return
+      });
+      return;
     }
 
     if (!item.pageId) {
-      return
+      return;
     }
 
     deletePage.mutate(item.pageId, {
       onSuccess: (result) => {
-        setConfirmOpen(false)
-        toast.success("Moved to trash.")
-        redirectIfDeleted(result)
+        setConfirmOpen(false);
+        toast.success("Moved to trash.");
+        redirectIfDeleted(result);
       },
       onError: (error) => {
-        toast.error(
-          error instanceof Error ? error.message : "Could not delete page.",
-        )
+        toast.error(error instanceof Error ? error.message : "Could not delete page.");
       },
-    })
-  }
+    });
+  };
 
   return (
     <>
@@ -626,9 +586,7 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
         >
           <DropDrawerItem
             onSelect={() => {
-              void navigator.clipboard?.writeText(
-                `${window.location.origin}${linkPath}`,
-              )
+              void navigator.clipboard?.writeText(`${window.location.origin}${linkPath}`);
             }}
           >
             <LinkIcon className="text-content-secondary" />
@@ -637,7 +595,7 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
           <DropDrawerSeparator />
           <DropDrawerItem
             onSelect={() => {
-              openInNewTab({ href: linkPath, title: displayName })
+              openInNewTab({ href: linkPath, title: displayName });
             }}
           >
             <ArrowUpRightIcon className="text-content-secondary" />
@@ -653,14 +611,17 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
                 <DropDrawerItem
                   disabled={!item.teamspaceId || movePage.isPending}
                   onSelect={() => {
-                    if (!workspaceId || !item.pageId) return
+                    if (!workspaceId || !item.pageId) return;
                     movePage.mutate(
                       { pageId: item.pageId, teamspaceId: null, workspaceId },
                       {
-                        onError: (error) => toast.error(error instanceof Error ? error.message : "Could not move page."),
+                        onError: (error) =>
+                          toast.error(
+                            error instanceof Error ? error.message : "Could not move page.",
+                          ),
                         onSuccess: () => toast.success("Moved to Private."),
                       },
-                    )
+                    );
                   }}
                 >
                   <span>Private</span>
@@ -672,14 +633,17 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
                       disabled={item.teamspaceId === teamspace.id || movePage.isPending}
                       key={teamspace.id}
                       onSelect={() => {
-                        if (!workspaceId || !item.pageId) return
+                        if (!workspaceId || !item.pageId) return;
                         movePage.mutate(
                           { pageId: item.pageId, teamspaceId: teamspace.id, workspaceId },
                           {
-                            onError: (error) => toast.error(error instanceof Error ? error.message : "Could not move page."),
+                            onError: (error) =>
+                              toast.error(
+                                error instanceof Error ? error.message : "Could not move page.",
+                              ),
                             onSuccess: () => toast.success(`Moved to ${teamspace.name}.`),
                           },
-                        )
+                        );
                       }}
                     >
                       <span>{teamspace.name}</span>
@@ -691,14 +655,19 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
                     <DropDrawerItem
                       disabled={convertPage.isPending}
                       onSelect={() => {
-                        if (!workspaceId || !item.pageId) return
+                        if (!workspaceId || !item.pageId) return;
                         convertPage.mutate(
                           { name: displayName, pageId: item.pageId, workspaceId },
                           {
-                            onError: (error) => toast.error(error instanceof Error ? error.message : "Could not create teamspace."),
+                            onError: (error) =>
+                              toast.error(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Could not create teamspace.",
+                              ),
                             onSuccess: () => toast.success("Page turned into a teamspace."),
                           },
-                        )
+                        );
                       }}
                     >
                       <Building2Icon />
@@ -713,7 +682,7 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
           <DropDrawerItem
             className="text-action-danger-text focus:text-action-danger-text"
             onSelect={() => {
-              setConfirmOpen(true)
+              setConfirmOpen(true);
             }}
           >
             <Trash2Icon className="text-action-danger-text" />
@@ -733,46 +702,42 @@ function PageItemMenu({ item }: { item: SidebarNavItem }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isDeleting}
-              onClick={runDelete}
-              variant="destructive"
-            >
+            <AlertDialogAction disabled={isDeleting} onClick={runDelete} variant="destructive">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }
 
 function getDraggedPagePayload(event: DragEvent) {
-  const payload = event.dataTransfer.getData(DATABASE_PAGE_DRAG_MIME)
+  const payload = event.dataTransfer.getData(DATABASE_PAGE_DRAG_MIME);
 
   if (!payload) {
-    return null
+    return null;
   }
 
   try {
     const parsed = JSON.parse(payload) as {
-      pageId?: unknown
-      title?: unknown
-    }
+      pageId?: unknown;
+      title?: unknown;
+    };
 
     if (typeof parsed.pageId !== "string" || !parsed.pageId) {
-      return null
+      return null;
     }
 
     return {
       pageId: parsed.pageId,
       title: typeof parsed.title === "string" ? parsed.title : undefined,
-    }
+    };
   } catch {
-    return null
+    return null;
   }
 }
 
 function hasDraggedPagePayload(event: DragEvent) {
-  return Array.from(event.dataTransfer.types).includes(DATABASE_PAGE_DRAG_MIME)
+  return Array.from(event.dataTransfer.types).includes(DATABASE_PAGE_DRAG_MIME);
 }

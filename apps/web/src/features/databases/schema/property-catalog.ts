@@ -1,4 +1,10 @@
-export { defaultStatusOption, defaultStatusOptions, getDefaultDatabasePropertyConfig, isReadOnlyPropertyType, isSelectLikePropertyType } from "./model/property-defaults"
+export {
+  defaultStatusOption,
+  defaultStatusOptions,
+  getDefaultDatabasePropertyConfig,
+  isReadOnlyPropertyType,
+  isSelectLikePropertyType,
+} from "./model/property-defaults";
 import {
   ArrowUpRight,
   AtSign,
@@ -21,9 +27,9 @@ import {
   Type,
   Users,
   type Icon,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 import { type DatabasePropertyType as DatabasePropertyTypeId } from "@zilobase/features/databases/property-types";
-import { cyclingColorTokens } from "@/shared/lib/color-tokens"
+import { cyclingColorTokens } from "@/shared/lib/color-tokens";
 
 export type DatabasePropertyFilterKind =
   | "checkbox"
@@ -31,7 +37,7 @@ export type DatabasePropertyFilterKind =
   | "files"
   | "number"
   | "person"
-  | "text"
+  | "text";
 
 export type DatabasePropertyCellKind =
   | "button"
@@ -44,17 +50,17 @@ export type DatabasePropertyCellKind =
   | "read_only_time"
   | "relation"
   | "rollup"
-  | "select"
+  | "select";
 
 export type DatabasePropertyType = {
-  cellKind?: DatabasePropertyCellKind
-  editable?: boolean
-  filterKind: DatabasePropertyFilterKind
-  hasEditSettings?: boolean
-  icon: Icon
-  label: string
-  type: DatabasePropertyTypeId
-}
+  cellKind?: DatabasePropertyCellKind;
+  editable?: boolean;
+  filterKind: DatabasePropertyFilterKind;
+  hasEditSettings?: boolean;
+  icon: Icon;
+  label: string;
+  type: DatabasePropertyTypeId;
+};
 
 export const databasePropertyTypes: DatabasePropertyType[][] = [
   [
@@ -191,43 +197,33 @@ export const databasePropertyTypes: DatabasePropertyType[][] = [
       type: "edited_time",
     },
   ],
-]
+];
 
-export const databasePropertyTypeItems = databasePropertyTypes.flat()
+export const databasePropertyTypeItems = databasePropertyTypes.flat();
 
 export function getNextDatabaseOptionColor(optionCount: number) {
-  return (
-    cyclingColorTokens[optionCount % cyclingColorTokens.length]?.value ?? "default"
-  )
+  return cyclingColorTokens[optionCount % cyclingColorTokens.length]?.value ?? "default";
 }
 
 export const textDatabasePropertyType =
-  databasePropertyTypeItems.find((item) => item.type === "text") ??
-  databasePropertyTypes[0][0]
+  databasePropertyTypeItems.find((item) => item.type === "text") ?? databasePropertyTypes[0][0];
 
 export function getDatabasePropertyType(type: string) {
-  return (
-    databasePropertyTypeItems.find((item) => item.type === type) ??
-    textDatabasePropertyType
-  )
+  return databasePropertyTypeItems.find((item) => item.type === type) ?? textDatabasePropertyType;
 }
 
-export function getDatabasePropertyFilterKind(
-  type: string
-): DatabasePropertyFilterKind {
-  return getDatabasePropertyType(type).filterKind
+export function getDatabasePropertyFilterKind(type: string): DatabasePropertyFilterKind {
+  return getDatabasePropertyType(type).filterKind;
 }
 
-export function getDatabasePropertyCellKind(
-  type: string
-): DatabasePropertyCellKind {
-  return getDatabasePropertyType(type).cellKind ?? "input"
+export function getDatabasePropertyCellKind(type: string): DatabasePropertyCellKind {
+  return getDatabasePropertyType(type).cellKind ?? "input";
 }
 
 export function hasDatabasePropertyTypeEditSettings(type: string) {
-  return getDatabasePropertyType(type).hasEditSettings === true
+  return getDatabasePropertyType(type).hasEditSettings === true;
 }
 
 export function isDateLikePropertyType(type: string) {
-  return getDatabasePropertyFilterKind(type) === "date"
+  return getDatabasePropertyFilterKind(type) === "date";
 }

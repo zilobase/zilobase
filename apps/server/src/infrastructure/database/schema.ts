@@ -28,12 +28,8 @@ export {
   teamspacePrincipal,
   workspaceGuest,
 } from "./schema/workspaces";
-export {
-  pageSettings,
-} from "./schema/user-settings";
-export {
-  instanceSettings,
-} from "./schema/instance";
+export { pageSettings } from "./schema/user-settings";
+export { instanceSettings } from "./schema/instance";
 export {
   gmailAccount,
   gmailOauthAttempt,
@@ -52,10 +48,7 @@ export {
   mailIndexState,
   mailThreadIndex,
 } from "./schema/mail-sync";
-export {
-  slackOauthAttempt,
-  slackConnection,
-} from "./schema/slack-connections";
+export { slackOauthAttempt, slackConnection } from "./schema/slack-connections";
 export {
   page,
   pageLayout,
@@ -70,10 +63,7 @@ export {
   meetingTranscriptSegment,
   meetingConsentEvent,
 } from "./schema/meetings";
-export {
-  pageProperty,
-  pagePropertyValue,
-} from "./schema/page-properties";
+export { pageProperty, pagePropertyValue } from "./schema/page-properties";
 export {
   database,
   dataSource,
@@ -96,21 +86,10 @@ export {
   databaseAutomationDelivery,
   automationSecret,
 } from "./schema/automations";
-export {
-  inProductNotification,
-  inProductNotificationOutbox,
-} from "./schema/notifications";
-export {
-  pageItemPlacement,
-} from "./schema/placements";
-export {
-  favorite,
-  itemVisit,
-  navigationRealtimeOutbox,
-} from "./schema/navigation";
-export {
-  imageAsset,
-} from "./schema/images";
+export { inProductNotification, inProductNotificationOutbox } from "./schema/notifications";
+export { pageItemPlacement } from "./schema/placements";
+export { favorite, itemVisit, navigationRealtimeOutbox } from "./schema/navigation";
+export { imageAsset } from "./schema/images";
 export {
   aiAgentProfile,
   aiAgentRevision,
@@ -158,12 +137,17 @@ export {
   aiSettingsDraft,
   aiSettingsVersion,
 } from "./schema/ai-settings";
+export { searchDocument, searchChunk } from "./schema/search";
+export { aiJob, backgroundMaintenanceTask } from "./schema/background";
 export {
-  searchDocument,
-  searchChunk,
-} from "./schema/search";
-export {
-  aiJob,
-  backgroundMaintenanceTask,
-} from "./schema/background";
-export { calendarAccount, calendarBinding, calendarOauthAttempt, calendarProviderCalendar, calendarEventRecord, calendarRangeSnapshot, calendarWatchChannel, calendarMutationReceipt, calendarNotificationOutbox, calendarPreference } from "./schema/calendar";
+  calendarAccount,
+  calendarBinding,
+  calendarOauthAttempt,
+  calendarProviderCalendar,
+  calendarEventRecord,
+  calendarRangeSnapshot,
+  calendarWatchChannel,
+  calendarMutationReceipt,
+  calendarNotificationOutbox,
+  calendarPreference,
+} from "./schema/calendar";

@@ -13,17 +13,11 @@ import {
   user,
   workspace,
 } from "../../infrastructure/database/schema";
-import type {
-  EditionExtensionOptions,
-  ZilobaseEditionExtension,
-} from "../../shared/types";
+import type { EditionExtensionOptions, ZilobaseEditionExtension } from "../../shared/types";
 import { MembershipService } from "../memberships";
 import type { AppPolicy } from "@zilobase/runtime-ports";
 import { communityAppPolicy, isCommunityRegistration } from "../../shared/app-policy";
-import {
-  ensureInstanceSettings,
-  INSTANCE_SETTINGS_ROW_ID,
-} from "./service";
+import { ensureInstanceSettings, INSTANCE_SETTINGS_ROW_ID } from "./service";
 
 const REGISTRATION_MODES = ["invite-only", "open"] as const;
 export const SELF_HOSTED_INVITATION_COOKIE = "zilobase_registration_invitation";
@@ -111,10 +105,7 @@ export async function bootstrapSelfHostedInstance(
     await dependencies.ensure(env);
 
     const passwordHash = await dependencies.hash(input.password);
-    return dependencies.execute(
-      { ...input, passwordHash },
-      options.editionExtension,
-    );
+    return dependencies.execute({ ...input, passwordHash }, options.editionExtension);
   });
 }
 
@@ -135,10 +126,7 @@ export function assertSelfHostedProductionConfiguration(
   }
 }
 
-export function assertBootstrapToken(
-  env: RuntimeEnv,
-  suppliedToken: string | null,
-) {
+export function assertBootstrapToken(env: RuntimeEnv, suppliedToken: string | null) {
   const expectedToken = getStringEnv(env, "ZILOBASE_BOOTSTRAP_TOKEN");
 
   if (!expectedToken) {
@@ -209,12 +197,8 @@ export async function updateInstanceAdministrationSettings(input: {
   const [settings] = await db
     .update(instanceSettings)
     .set({
-      ...(input.displayName === undefined
-        ? {}
-        : { displayName: input.displayName }),
-      ...(input.registrationMode === undefined
-        ? {}
-        : { registrationMode: input.registrationMode }),
+      ...(input.displayName === undefined ? {} : { displayName: input.displayName }),
+      ...(input.registrationMode === undefined ? {} : { registrationMode: input.registrationMode }),
       updatedAt: new Date(),
     })
     .where(eq(instanceSettings.id, INSTANCE_SETTINGS_ROW_ID))
@@ -246,10 +230,7 @@ export async function evaluateSelfHostedRegistration(
 
   const candidate =
     input.invitationId && settings.pinnedWorkspaceId
-      ? await getPendingPinnedInvitation(
-          input.invitationId,
-          settings.pinnedWorkspaceId,
-        )
+      ? await getPendingPinnedInvitation(input.invitationId, settings.pinnedWorkspaceId)
       : null;
 
   return decideSelfHostedRegistration(settings, input, candidate);
@@ -339,14 +320,9 @@ export async function validateSelfHostedInvitationCandidate(
     };
   }
 
-  const candidate = await getPendingPinnedInvitation(
-    invitationId,
-    settings.pinnedWorkspaceId,
-  );
+  const candidate = await getPendingPinnedInvitation(invitationId, settings.pinnedWorkspaceId);
 
-  return candidate
-    ? { allowed: true, invitationId: candidate.id }
-    : invalidInvitationDecision();
+  return candidate ? { allowed: true, invitationId: candidate.id } : invalidInvitationDecision();
 }
 
 async function executeDatabaseBootstrap(
@@ -413,10 +389,7 @@ async function executeDatabaseBootstrap(
       slug: "zilobase",
       updatedAt: now,
     });
-    await new MembershipService(
-      transaction as Database,
-      editionExtension,
-    ).grantMembership({
+    await new MembershipService(transaction as Database, editionExtension).grantMembership({
       role: "owner",
       source: "bootstrap",
       userId,
@@ -442,10 +415,7 @@ async function executeDatabaseBootstrap(
   });
 }
 
-async function getPendingPinnedInvitation(
-  invitationId: string,
-  pinnedWorkspaceId: string,
-) {
+async function getPendingPinnedInvitation(invitationId: string, pinnedWorkspaceId: string) {
   const [candidate] = await db
     .select({
       email: invitation.email,
@@ -482,8 +452,7 @@ async function getPendingPinnedInvitation(
     )
     .limit(1);
 
-  return pageGuestCandidate &&
-    isInvitationUnexpired(pageGuestCandidate.expiresAt)
+  return pageGuestCandidate && isInvitationUnexpired(pageGuestCandidate.expiresAt)
     ? pageGuestCandidate
     : null;
 }

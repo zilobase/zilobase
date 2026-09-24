@@ -1,24 +1,18 @@
-import { useState } from "react"
-import { Link } from "@tanstack/react-router"
-import type { CalendarPreferences } from "@zilobase/features/calendar"
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import type { CalendarPreferences } from "@zilobase/features/calendar";
 
-import { SettingsRow, SettingsSectionLayout } from "@/features/settings"
-import { Minus, Plus, RotateCcw } from "@/shared/components/icons"
-import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select"
-import { Spinner } from "@/shared/ui/spinner"
-import { Switch } from "@/shared/ui/switch"
+import { SettingsRow, SettingsSectionLayout } from "@/features/settings";
+import { Minus, Plus, RotateCcw } from "@/shared/components/icons";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Spinner } from "@/shared/ui/spinner";
+import { Switch } from "@/shared/ui/switch";
 
-import { CalendarBufferSettings } from "./calendar-buffer-preferences"
-import { CalendarTimeZones } from "./calendar-time-zones"
-import { requestCalendarNotificationPermission } from "../reminders/notification-delivery"
+import { CalendarBufferSettings } from "./calendar-buffer-preferences";
+import { CalendarTimeZones } from "./calendar-time-zones";
+import { requestCalendarNotificationPermission } from "../reminders/notification-delivery";
 
 const weekDays = [
   "Sunday",
@@ -28,27 +22,31 @@ const weekDays = [
   "Thursday",
   "Friday",
   "Saturday",
-] as const
+] as const;
 
 const togglePreferences = [
-  ["promptTimeZoneChanges", "Time zone changes", "Ask before updating when the system time zone changes."],
+  [
+    "promptTimeZoneChanges",
+    "Time zone changes",
+    "Ask before updating when the system time zone changes.",
+  ],
   ["showWeekends", "Weekends", "Show Saturday and Sunday in calendar views."],
   ["showDeclined", "Declined events", "Keep declined invitations visible."],
   ["showWeekNumbers", "Week numbers", "Show the week number alongside calendar dates."],
   ["remindersEnabled", "Upcoming event reminders", "Show reminders before events begin."],
-] as const
+] as const;
 
 export function CalendarSettings({
   value,
   onSave,
   pending,
 }: {
-  value: CalendarPreferences
-  onSave: (value: CalendarPreferences) => void
-  pending: boolean
+  value: CalendarPreferences;
+  onSave: (value: CalendarPreferences) => void;
+  pending: boolean;
 }) {
-  const [draft, setDraft] = useState(value)
-  const [permission, setPermission] = useState("")
+  const [draft, setDraft] = useState(value);
+  const [permission, setPermission] = useState("");
 
   return (
     <SettingsSectionLayout
@@ -65,8 +63,8 @@ export function CalendarSettings({
         className="grid gap-2"
         id="calendar-preferences-form"
         onSubmit={(event) => {
-          event.preventDefault()
-          onSave(draft)
+          event.preventDefault();
+          onSave(draft);
         }}
       >
         <SettingsRow title="Today navigation">
@@ -137,9 +135,7 @@ export function CalendarSettings({
             <Button
               aria-label="Decrease hour height"
               disabled={draft.hourHeight <= 32}
-              onClick={() =>
-                setDraft({ ...draft, hourHeight: Math.max(32, draft.hourHeight - 8) })
-              }
+              onClick={() => setDraft({ ...draft, hourHeight: Math.max(32, draft.hourHeight - 8) })}
               size="icon-sm"
               type="button"
               variant="outline"
@@ -152,9 +148,9 @@ export function CalendarSettings({
               max={120}
               min={32}
               onChange={(event) => {
-                const hourHeight = Number(event.target.value)
+                const hourHeight = Number(event.target.value);
                 if (Number.isInteger(hourHeight) && hourHeight >= 32 && hourHeight <= 120) {
-                  setDraft({ ...draft, hourHeight })
+                  setDraft({ ...draft, hourHeight });
                 }
               }}
               type="number"
@@ -238,9 +234,7 @@ export function CalendarSettings({
             <Switch
               aria-label={title}
               checked={draft[key]}
-              onCheckedChange={(checked) =>
-                setDraft({ ...draft, [key]: checked })
-              }
+              onCheckedChange={(checked) => setDraft({ ...draft, [key]: checked })}
             />
           </SettingsRow>
         ))}
@@ -264,7 +258,7 @@ export function CalendarSettings({
         </SettingsRow>
       </form>
     </SettingsSectionLayout>
-  )
+  );
 }
 
 function ReminderPermissionSettings({
@@ -272,11 +266,11 @@ function ReminderPermissionSettings({
   permission,
   onPermission,
 }: {
-  enabled: boolean
-  permission: string
-  onPermission: (value: string) => void
+  enabled: boolean;
+  permission: string;
+  onPermission: (value: string) => void;
 }) {
-  if (!enabled) return null
+  if (!enabled) return null;
 
   return (
     <SettingsRow
@@ -293,7 +287,7 @@ function ReminderPermissionSettings({
         onClick={() => {
           void requestCalendarNotificationPermission()
             .then(onPermission)
-            .catch(() => onPermission("denied"))
+            .catch(() => onPermission("denied"));
         }}
         size="sm"
         type="button"
@@ -302,5 +296,5 @@ function ReminderPermissionSettings({
         Allow notifications
       </Button>
     </SettingsRow>
-  )
+  );
 }

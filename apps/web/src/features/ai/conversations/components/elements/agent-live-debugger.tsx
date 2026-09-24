@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  isAgentDebugEvent,
-  type AgentDebugEvent,
-} from "@zilobase/features/ai-chat";
+import { isAgentDebugEvent, type AgentDebugEvent } from "@zilobase/features/ai-chat";
 import type { ChatStatus } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -34,11 +31,7 @@ export function useAgentLiveDebugger() {
   }, []);
 
   const onData = useCallback((part: AgentDataPart) => {
-    if (
-      !import.meta.env.DEV ||
-      part.type !== "data-agent-debug" ||
-      !isAgentDebugEvent(part.data)
-    ) {
+    if (!import.meta.env.DEV || part.type !== "data-agent-debug" || !isAgentDebugEvent(part.data)) {
       return;
     }
     const event = part.data;
@@ -163,9 +156,7 @@ export function AgentLiveDebugger({
           {visibleEvents.length === 0 ? (
             <div className="text-content-secondary">
               Waiting for the first streamed byte
-              {turnStartedAt === null
-                ? "…"
-                : ` (${formatElapsed(clock - turnStartedAt).slice(1)})`}
+              {turnStartedAt === null ? "…" : ` (${formatElapsed(clock - turnStartedAt).slice(1)})`}
               {turnStartedAt !== null && clock - turnStartedAt >= 3000
                 ? " — the request or proxy is still buffering."
                 : "…"}
@@ -182,9 +173,7 @@ export function AgentLiveDebugger({
                 </span>
                 <span
                   className={
-                    event.status === "failed"
-                      ? "text-action-danger-text"
-                      : "text-content-secondary"
+                    event.status === "failed" ? "text-action-danger-text" : "text-content-secondary"
                   }
                 >
                   {eventText(event)}

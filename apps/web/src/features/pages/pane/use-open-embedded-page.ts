@@ -1,23 +1,23 @@
-import { useCallback } from "react"
+import { useCallback } from "react";
 
-import { usePageSidePane } from "./page-side-pane"
-import type { OpenPageSidePaneOptions } from "./page-side-pane"
-import { useZilobaseFeatures } from "@zilobase/features"
+import { usePageSidePane } from "./page-side-pane";
+import type { OpenPageSidePaneOptions } from "./page-side-pane";
+import { useZilobaseFeatures } from "@zilobase/features";
 import {
   defaultUserSettings,
   userSettingsQueryKey,
   type UserSettings,
-} from "@zilobase/features/user-settings"
+} from "@zilobase/features/user-settings";
 import {
   getPageFromDetail,
   resolveEmbeddedItemsOpenAs,
   pageQueryKey,
   type Page,
-} from "@zilobase/features/pages"
+} from "@zilobase/features/pages";
 import {
   isPublishedFallbackPage,
   readPublishedEmbeddedItemsOpenAs,
-} from "../publication/published-page-preferences"
+} from "../publication/published-page-preferences";
 
 function resolveOpenPagesAsFromCache(
   queryClient: ReturnType<typeof useZilobaseFeatures>["queryClient"],
@@ -25,20 +25,15 @@ function resolveOpenPagesAsFromCache(
   fallbackPage: Page | null | undefined,
 ) {
   const userSettings =
-    queryClient.getQueryData<UserSettings>(userSettingsQueryKey) ??
-    defaultUserSettings
+    queryClient.getQueryData<UserSettings>(userSettingsQueryKey) ?? defaultUserSettings;
   const page =
-    getPageFromDetail(
-      queryClient.getQueryData(pageQueryKey(hostPageId)),
-    ) ?? fallbackPage
+    getPageFromDetail(queryClient.getQueryData(pageQueryKey(hostPageId))) ?? fallbackPage;
 
   if (isPublishedFallbackPage(page)) {
-    return readPublishedEmbeddedItemsOpenAs()
+    return readPublishedEmbeddedItemsOpenAs();
   }
 
-  return resolveEmbeddedItemsOpenAs(
-    userSettings.embeddedItemsOpenAs,
-  )
+  return resolveEmbeddedItemsOpenAs(userSettings.embeddedItemsOpenAs);
 }
 
 export function useOpenEmbeddedPage({
@@ -46,11 +41,11 @@ export function useOpenEmbeddedPage({
   databaseId,
   page,
 }: {
-  contextPageId: string | null
-  databaseId?: string | null
-  page: Page | null | undefined
+  contextPageId: string | null;
+  databaseId?: string | null;
+  page: Page | null | undefined;
 }) {
-  const { queryClient } = useZilobaseFeatures()
+  const { queryClient } = useZilobaseFeatures();
   const {
     closeEmbeddedPageDialog,
     closeSidePane,
@@ -58,38 +53,34 @@ export function useOpenEmbeddedPage({
     openEmbeddedPageDialog,
     openSidePane,
     sidePanePageId,
-  } = usePageSidePane()
+  } = usePageSidePane();
 
   const openPage = useCallback(
     (pageId: string, options?: OpenPageSidePaneOptions) => {
-      const mode = resolveOpenPagesAsFromCache(
-        queryClient,
-        contextPageId,
-        page,
-      )
-      const usesDialog = mode === "dialog"
-      const activePageId = usesDialog ? dialogPageId : sidePanePageId
-      const isCurrentlyOpen = activePageId === pageId
+      const mode = resolveOpenPagesAsFromCache(queryClient, contextPageId, page);
+      const usesDialog = mode === "dialog";
+      const activePageId = usesDialog ? dialogPageId : sidePanePageId;
+      const isCurrentlyOpen = activePageId === pageId;
 
       if (pageId === contextPageId || isCurrentlyOpen) {
         if (usesDialog) {
-          closeEmbeddedPageDialog()
+          closeEmbeddedPageDialog();
         } else {
-          closeSidePane()
+          closeSidePane();
         }
-        return
+        return;
       }
 
       if (usesDialog) {
         openEmbeddedPageDialog(pageId, {
           databaseId: options?.databaseId ?? databaseId,
-        })
-        return
+        });
+        return;
       }
 
       openSidePane(pageId, {
         databaseId: options?.databaseId ?? databaseId,
-      })
+      });
     },
     [
       closeEmbeddedPageDialog,
@@ -103,7 +94,7 @@ export function useOpenEmbeddedPage({
       sidePanePageId,
       page,
     ],
-  )
+  );
 
-  return { openPage }
+  return { openPage };
 }

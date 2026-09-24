@@ -4,10 +4,7 @@ import type { AppBindings } from "../shared/types";
 
 export const REQUEST_ID_HEADER = "x-zilobase-request-id";
 
-export const serverTimingMiddleware: MiddlewareHandler<AppBindings> = async (
-  c,
-  next,
-) => {
+export const serverTimingMiddleware: MiddlewareHandler<AppBindings> = async (c, next) => {
   c.set("serverTimings", []);
   c.header("x-zilobase-app-path", c.req.path);
   await next();

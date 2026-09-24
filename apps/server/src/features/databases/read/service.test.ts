@@ -1,15 +1,15 @@
-import assert from "node:assert/strict"
-import { test, vi } from "vitest"
+import assert from "node:assert/strict";
+import { test, vi } from "vitest";
 
-import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
+import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import {
   DatabaseWindowStaleError,
   getDatabaseBootstrapService,
   getDatabaseExportService,
   getDatabaseRecordWindowService,
-} from "./service"
+} from "./service";
 
-const instant = new Date("2026-09-14T10:00:00.000Z")
+const instant = new Date("2026-09-14T10:00:00.000Z");
 
 function databaseRecord() {
   return {
@@ -25,7 +25,7 @@ function databaseRecord() {
     updatedAt: instant,
     version: 7,
     workspaceId: "workspace-1",
-  }
+  };
 }
 
 function source(id = "source-1", position = 0) {
@@ -44,7 +44,7 @@ function source(id = "source-1", position = 0) {
     updatedAt: instant,
     version: 3,
     workspaceId: "workspace-1",
-  }
+  };
 }
 
 function property(dataSourceId = "source-1") {
@@ -68,7 +68,7 @@ function property(dataSourceId = "source-1") {
     updatedAt: instant,
     visible: true,
     width: null,
-  }
+  };
 }
 
 function view(config: unknown = { initialPageSize: 10 }) {
@@ -82,11 +82,11 @@ function view(config: unknown = { initialPageSize: 10 }) {
     position: 0,
     type: "table",
     updatedAt: instant,
-  }
+  };
 }
 
 function row(position: number) {
-  const number = position + 1
+  const number = position + 1;
   return {
     createdAt: instant,
     createdById: "user-1",
@@ -109,11 +109,11 @@ function row(position: number) {
     parentRowId: null,
     position,
     updatedAt: instant,
-  }
+  };
 }
 
 function value(position: number) {
-  const number = position + 1
+  const number = position + 1;
   return {
     createdAt: instant,
     id: `value-${number}`,
@@ -121,11 +121,11 @@ function value(position: number) {
     propertyId: "property-source-1",
     updatedAt: instant,
     value: String(number),
-  }
+  };
 }
 
 function payload(options: { config?: unknown; rows?: number } = {}) {
-  const count = options.rows ?? 12
+  const count = options.rows ?? 12;
   return {
     activeDataSource: source(),
     dataSources: [source(), source("source-2", 1)],
@@ -134,11 +134,11 @@ function payload(options: { config?: unknown; rows?: number } = {}) {
     rows: Array.from({ length: count }, (_, position) => row(position)),
     values: Array.from({ length: count }, (_, position) => value(position)),
     views: [view(options.config)],
-  }
+  };
 }
 
 function readModel(options: { config?: unknown; rows?: number } = {}) {
-  const data = payload(options)
+  const data = payload(options);
   return {
     dataSources: data.dataSources.map((item) => ({
       ...item,
@@ -165,91 +165,119 @@ function readModel(options: { config?: unknown; rows?: number } = {}) {
         updatedAt: item.page.updatedAt.toISOString(),
       },
       updatedAt: item.updatedAt.toISOString(),
-      valuesByPropertyId: Object.fromEntries(data.values
-        .filter((entry) => entry.pageId === item.pageId)
-        .map((entry) => [entry.propertyId, {
-          ...entry,
-          createdAt: entry.createdAt.toISOString(),
-          updatedAt: entry.updatedAt.toISOString(),
-        }])),
+      valuesByPropertyId: Object.fromEntries(
+        data.values
+          .filter((entry) => entry.pageId === item.pageId)
+          .map((entry) => [
+            entry.propertyId,
+            {
+              ...entry,
+              createdAt: entry.createdAt.toISOString(),
+              updatedAt: entry.updatedAt.toISOString(),
+            },
+          ]),
+      ),
     })),
     views: data.views.map((item) => ({
       ...item,
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
     })),
-  }
+  };
 }
 
 test("bootstrap reloads a preauthorized host inside the entity read snapshot", async () => {
-  let inSnapshot = false
-  const result = await getDatabaseBootstrapService({
-    databaseId: "database-1", existingRecord: databaseRecord(), accessLevel: "edit",
-  }, {
-    getPayload: vi.fn(), requireAccess: vi.fn(),
-    readSnapshot: async (read) => {
-      inSnapshot = true
-      try { return await read() } finally { inSnapshot = false }
+  let inSnapshot = false;
+  const result = await getDatabaseBootstrapService(
+    {
+      databaseId: "database-1",
+      existingRecord: databaseRecord(),
+      accessLevel: "edit",
     },
-    reloadRecord: async () => {
-      assert.equal(inSnapshot, true)
-      return { ...databaseRecord(), version: 8, name: "Committed" }
+    {
+      getPayload: vi.fn(),
+      requireAccess: vi.fn(),
+      readSnapshot: async (read) => {
+        inSnapshot = true;
+        try {
+          return await read();
+        } finally {
+          inSnapshot = false;
+        }
+      },
+      reloadRecord: async () => {
+        assert.equal(inSnapshot, true);
+        return { ...databaseRecord(), version: 8, name: "Committed" };
+      },
+      loadReadModel: async ({ record }) => {
+        assert.equal(inSnapshot, true);
+        assert.equal(record.version, 8);
+        return readModel({ rows: 0 });
+      },
     },
-    loadReadModel: async ({ record }) => {
-      assert.equal(inSnapshot, true)
-      assert.equal(record.version, 8)
-      return readModel({ rows: 0 })
-    },
-  })
-  assert.equal(result.database.version, 8)
-  assert.equal(result.database.name, "Committed")
-  assert.equal(result.database.deletedAt, null)
-  assert.equal(inSnapshot, false)
-})
+  );
+  assert.equal(result.database.version, 8);
+  assert.equal(result.database.name, "Committed");
+  assert.equal(result.database.deletedAt, null);
+  assert.equal(inSnapshot, false);
+});
 
 test("bootstrap exposes a deleted host when deleted reads are requested", async () => {
-  const deleted = { ...databaseRecord(), deletedAt: instant }
-  const result = await getDatabaseBootstrapService({
-    accessLevel: "full",
-    databaseId: "database-1",
-    existingRecord: deleted,
-    includeDeleted: true,
-  }, {
-    getPayload: vi.fn(),
-    loadReadModel: async () => readModel({ rows: 0 }),
-    readSnapshot: async (read) => read(),
-    reloadRecord: async () => deleted,
-    requireAccess: vi.fn(),
-  })
+  const deleted = { ...databaseRecord(), deletedAt: instant };
+  const result = await getDatabaseBootstrapService(
+    {
+      accessLevel: "full",
+      databaseId: "database-1",
+      existingRecord: deleted,
+      includeDeleted: true,
+    },
+    {
+      getPayload: vi.fn(),
+      loadReadModel: async () => readModel({ rows: 0 }),
+      readSnapshot: async (read) => read(),
+      reloadRecord: async () => deleted,
+      requireAccess: vi.fn(),
+    },
+  );
 
-  assert.equal(result.database.deletedAt, instant.toISOString())
-})
+  assert.equal(result.database.deletedAt, instant.toISOString());
+});
 
 test("record windows use the host version from their read snapshot", async () => {
-  let inSnapshot = false
-  const result = await getDatabaseRecordWindowService({
-    databaseId: "database-1", dataSourceId: "source-1", existingRecord: databaseRecord(),
-  }, {
-    getPayload: vi.fn(), requireAccess: vi.fn(),
-    readSnapshot: async (read) => {
-      inSnapshot = true
-      try { return await read() } finally { inSnapshot = false }
+  let inSnapshot = false;
+  const result = await getDatabaseRecordWindowService(
+    {
+      databaseId: "database-1",
+      dataSourceId: "source-1",
+      existingRecord: databaseRecord(),
     },
-    reloadRecord: async () => {
-      assert.equal(inSnapshot, true)
-      return { ...databaseRecord(), version: 9 }
+    {
+      getPayload: vi.fn(),
+      requireAccess: vi.fn(),
+      readSnapshot: async (read) => {
+        inSnapshot = true;
+        try {
+          return await read();
+        } finally {
+          inSnapshot = false;
+        }
+      },
+      reloadRecord: async () => {
+        assert.equal(inSnapshot, true);
+        return { ...databaseRecord(), version: 9 };
+      },
+      loadReadModel: async () => {
+        assert.equal(inSnapshot, true);
+        return readModel();
+      },
     },
-    loadReadModel: async () => {
-      assert.equal(inSnapshot, true)
-      return readModel()
-    },
-  })
-  assert.equal(result.databaseVersion, 9)
-  assert.equal(inSnapshot, false)
-})
+  );
+  assert.equal(result.databaseVersion, 9);
+  assert.equal(inSnapshot, false);
+});
 
 test("bootstrap aggregates metadata for every accessible linked source", async () => {
-  const base = readModel({ rows: 0 })
+  const base = readModel({ rows: 0 });
   const loadReadModel = vi.fn(async () => ({
     ...base,
     properties: [
@@ -265,7 +293,7 @@ test("bootstrap aggregates metadata for every accessible linked source", async (
         propertyId: "property-source-2",
       },
     ],
-  }))
+  }));
 
   const result = await getDatabaseBootstrapService(
     {
@@ -280,28 +308,33 @@ test("bootstrap aggregates metadata for every accessible linked source", async (
       loadReadModel,
       requireAccess: vi.fn(),
     } as never,
-  )
+  );
 
-  assert.equal(result.database.accessLevel, "edit")
-  assert.deepEqual(result.dataSources.map(({ id }) => id), ["source-1", "source-2"])
-  assert.deepEqual(result.properties.map(({ id }) => id), [
-    "column-source-1",
-    "column-source-2",
-  ])
-  assert.equal("rows" in result, false)
-})
+  assert.equal(result.database.accessLevel, "edit");
+  assert.deepEqual(
+    result.dataSources.map(({ id }) => id),
+    ["source-1", "source-2"],
+  );
+  assert.deepEqual(
+    result.properties.map(({ id }) => id),
+    ["column-source-1", "column-source-2"],
+  );
+  assert.equal("rows" in result, false);
+});
 
 test("database exports deliberately load the complete requested data source", async () => {
   const exported = {
     ...payload(),
     activeDataSource: source("source-2", 1),
-  }
-  const getPayload = vi.fn(async (
-    _databaseId: string,
-    _userId?: string,
-    _record?: unknown,
-    _options?: { dataSourceId?: string },
-  ) => exported)
+  };
+  const getPayload = vi.fn(
+    async (
+      _databaseId: string,
+      _userId?: string,
+      _record?: unknown,
+      _options?: { dataSourceId?: string },
+    ) => exported,
+  );
   const result = await getDatabaseExportService(
     {
       dataSourceId: "source-2",
@@ -314,13 +347,13 @@ test("database exports deliberately load the complete requested data source", as
       loadReadModel: vi.fn(),
       requireAccess: vi.fn(),
     } as never,
-  )
+  );
 
-  assert.equal(result.rows.length, 12)
+  assert.equal(result.rows.length, 12);
   assert.deepEqual(getPayload.mock.calls[0]?.[3], {
     dataSourceId: "source-2",
-  })
-})
+  });
+});
 
 test("database exports reject a mismatched requested data source", async () => {
   await assert.rejects(
@@ -337,18 +370,17 @@ test("database exports reject a mismatched requested data source", async () => {
         requireAccess: vi.fn(),
       } as never,
     ),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
-  )
-})
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
+  );
+});
 
 test("record windows use view page size, complete aggregates, and load-more offsets", async () => {
-  const loadReadModel = vi.fn(async () => readModel())
+  const loadReadModel = vi.fn(async () => readModel());
   const dependencies = {
     getPayload: vi.fn(),
     loadReadModel,
     requireAccess: vi.fn(),
-  } as never
+  } as never;
   const first = await getDatabaseRecordWindowService(
     {
       databaseId: "database-1",
@@ -358,7 +390,7 @@ test("record windows use view page size, complete aggregates, and load-more offs
       viewId: "view-1",
     },
     dependencies,
-  )
+  );
   const second = await getDatabaseRecordWindowService(
     {
       databaseId: "database-1",
@@ -370,27 +402,32 @@ test("record windows use view page size, complete aggregates, and load-more offs
       viewId: "view-1",
     },
     dependencies,
-  )
+  );
 
-  assert.equal(first.records.length, 10)
-  assert.equal(first.hasMore, true)
-  assert.equal(first.totalCount, 12)
-  assert.equal(first.records[0]?.valuesByPropertyId["property-source-1"]?.value, "1")
-  assert.deepEqual(second.records.map(({ id }) => id), ["row-11", "row-12"])
-  assert.equal(second.hasMore, false)
-})
+  assert.equal(first.records.length, 10);
+  assert.equal(first.hasMore, true);
+  assert.equal(first.totalCount, 12);
+  assert.equal(first.records[0]?.valuesByPropertyId["property-source-1"]?.value, "1");
+  assert.deepEqual(
+    second.records.map(({ id }) => id),
+    ["row-11", "row-12"],
+  );
+  assert.equal(second.hasMore, false);
+});
 
 test("record windows apply normalized filters and formula-safe numeric sorts before slicing", async () => {
   const config = {
-    filters: [{
-      id: "filter-1",
-      operator: "greater_than",
-      propertyId: "column-source-1",
-      values: ["8"],
-    }],
+    filters: [
+      {
+        id: "filter-1",
+        operator: "greater_than",
+        propertyId: "column-source-1",
+        values: ["8"],
+      },
+    ],
     initialPageSize: 10,
     sorts: [{ column: "column-source-1", direction: "descending" }],
-  }
+  };
   const result = await getDatabaseRecordWindowService(
     {
       databaseId: "database-1",
@@ -403,23 +440,21 @@ test("record windows apply normalized filters and formula-safe numeric sorts bef
       loadReadModel: vi.fn(async () => readModel({ config })),
       requireAccess: vi.fn(),
     } as never,
-  )
+  );
 
-  assert.deepEqual(result.records.map(({ id }) => id), [
-    "row-12",
-    "row-11",
-    "row-10",
-    "row-9",
-  ])
-  assert.equal(result.totalCount, 4)
-})
+  assert.deepEqual(
+    result.records.map(({ id }) => id),
+    ["row-12", "row-11", "row-10", "row-9"],
+  );
+  assert.equal(result.totalCount, 4);
+});
 
 test("stale snapshots and invalid source/view windows fail with typed conflicts", async () => {
   const dependencies = {
     getPayload: vi.fn(),
     loadReadModel: vi.fn(async () => readModel()),
     requireAccess: vi.fn(),
-  } as never
+  } as never;
 
   await assert.rejects(
     getDatabaseRecordWindowService(
@@ -436,7 +471,7 @@ test("stale snapshots and invalid source/view windows fail with typed conflicts"
       error instanceof DatabaseWindowStaleError &&
       error.status === 409 &&
       error.currentSnapshot.length > 0,
-  )
+  );
 
   await assert.rejects(
     getDatabaseRecordWindowService(
@@ -449,15 +484,15 @@ test("stale snapshots and invalid source/view windows fail with typed conflicts"
       dependencies,
     ),
     (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
-  )
-})
+  );
+});
 
 test("record window validates offsets and bounded collection limits", async () => {
   const dependencies = {
     getPayload: vi.fn(),
     loadReadModel: vi.fn(async () => readModel()),
     requireAccess: vi.fn(),
-  } as never
+  } as never;
 
   for (const request of [{ limit: 1_002 }, { offset: -1 }]) {
     await assert.rejects(
@@ -472,6 +507,6 @@ test("record window validates offsets and bounded collection limits", async () =
         dependencies,
       ),
       (error: unknown) => error instanceof ServiceMutationError && error.status === 400,
-    )
+    );
   }
-})
+});

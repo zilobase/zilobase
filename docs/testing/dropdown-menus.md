@@ -13,33 +13,33 @@ select/status property-value control used by mail and automation controls.
 
 ## Page and control checklist
 
-| Page / app area | Controls to open and test |
-| --- | --- |
-| Every workspace: sidebar | Workspace/server switcher; page and favorite actions; sharing/permissions; section options (Sort and Show now open as subpages); sidebar customization, shortcuts, library views, move-to-tab and database pickers. |
-| Page editor: header and navigation | Page actions, overflow breadcrumbs, embedded item presentation (inline/peek/full page), page layout database picker and save scope. |
-| Page editor: blocks | Drag-handle action menu and nested menus, paste-as choices, code-block language, meeting options. Slash-command suggestions remain unchanged. |
-| Page editor: comments | Comment edit/delete menu, discussion filtering. |
-| Database: all views | View switcher/actions, View Settings, layout, property visibility, filter, sort, grouping, conditional color, data sources, sub-items, lock placeholder, More settings flyout. |
-| Database: property headers | Add property/type picker; name/property actions; number, select, status, URL, relation and rollup settings; option editing and formula controls. |
-| Database: cells and page properties | Select, multi-select and status option search, selection, creation and selected checks; property-value select/status control and Empty. |
-| Database: data sources | Link existing source, search databases, open views, Back and select a linked view. |
-| Database: table | Multi-row selection toolbar menus and bulk property controls. |
-| Database: kanban | Group actions and board/group selectors. |
-| Database: timeline/Gantt | Setup property selectors, timescale/toolbar options and Gantt interaction menus. |
-| Database: forms | Field actions, move/reorder submenus, form options and share menu. |
-| Database: automations | Automation actions, trigger/action option lists, property-value controls and Notion action configuration. |
-| Library / Recents | Create-agent menu. |
-| AI conversations | Chat history actions, prompt-input attachment/options menus, code-block selects. |
-| AI agent settings | Agent options, sharing roles, saved instructions, MCP connections and workspace MCP policy selectors. |
-| Mail: conversation/message | Message actions, viewer menus and hover-action menus. |
-| Mail: View Settings | Group, Filter, Properties, Database panels and their option lists; database-sync selectors and property-value controls. |
-| Notifications | Notification center options. |
-| Settings: Preferences | Preference selectors. |
-| Settings: API keys | Key-related selectors. |
-| Settings: workspace | Registration settings, member roles/actions, invitation options and guest actions. |
-| Teamspaces | Teamspace list actions, create dialog and management selectors. |
-| OAuth consent | Workspace selector. |
-| Shared utilities | Icon/emoji and Phosphor picker select controls; time-picker option lists. Their specialized grids remain unchanged. |
+| Page / app area                     | Controls to open and test                                                                                                                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Every workspace: sidebar            | Workspace/server switcher; page and favorite actions; sharing/permissions; section options (Sort and Show now open as subpages); sidebar customization, shortcuts, library views, move-to-tab and database pickers. |
+| Page editor: header and navigation  | Page actions, overflow breadcrumbs, embedded item presentation (inline/peek/full page), page layout database picker and save scope.                                                                                 |
+| Page editor: blocks                 | Drag-handle action menu and nested menus, paste-as choices, code-block language, meeting options. Slash-command suggestions remain unchanged.                                                                       |
+| Page editor: comments               | Comment edit/delete menu, discussion filtering.                                                                                                                                                                     |
+| Database: all views                 | View switcher/actions, View Settings, layout, property visibility, filter, sort, grouping, conditional color, data sources, sub-items, lock placeholder, More settings flyout.                                      |
+| Database: property headers          | Add property/type picker; name/property actions; number, select, status, URL, relation and rollup settings; option editing and formula controls.                                                                    |
+| Database: cells and page properties | Select, multi-select and status option search, selection, creation and selected checks; property-value select/status control and Empty.                                                                             |
+| Database: data sources              | Link existing source, search databases, open views, Back and select a linked view.                                                                                                                                  |
+| Database: table                     | Multi-row selection toolbar menus and bulk property controls.                                                                                                                                                       |
+| Database: kanban                    | Group actions and board/group selectors.                                                                                                                                                                            |
+| Database: timeline/Gantt            | Setup property selectors, timescale/toolbar options and Gantt interaction menus.                                                                                                                                    |
+| Database: forms                     | Field actions, move/reorder submenus, form options and share menu.                                                                                                                                                  |
+| Database: automations               | Automation actions, trigger/action option lists, property-value controls and Notion action configuration.                                                                                                           |
+| Library / Recents                   | Create-agent menu.                                                                                                                                                                                                  |
+| AI conversations                    | Chat history actions, prompt-input attachment/options menus, code-block selects.                                                                                                                                    |
+| AI agent settings                   | Agent options, sharing roles, saved instructions, MCP connections and workspace MCP policy selectors.                                                                                                               |
+| Mail: conversation/message          | Message actions, viewer menus and hover-action menus.                                                                                                                                                               |
+| Mail: View Settings                 | Group, Filter, Properties, Database panels and their option lists; database-sync selectors and property-value controls.                                                                                             |
+| Notifications                       | Notification center options.                                                                                                                                                                                        |
+| Settings: Preferences               | Preference selectors.                                                                                                                                                                                               |
+| Settings: API keys                  | Key-related selectors.                                                                                                                                                                                              |
+| Settings: workspace                 | Registration settings, member roles/actions, invitation options and guest actions.                                                                                                                                  |
+| Teamspaces                          | Teamspace list actions, create dialog and management selectors.                                                                                                                                                     |
+| OAuth consent                       | Workspace selector.                                                                                                                                                                                                 |
+| Shared utilities                    | Icon/emoji and Phosphor picker select controls; time-picker option lists. Their specialized grids remain unchanged.                                                                                                 |
 
 For each relevant control:
 
@@ -57,7 +57,7 @@ For each relevant control:
 Slash commands, mentions, command palette/search results, AI skill suggestions,
 date/calendar editors, color grids, emoji/icon grids, rich property/formula editors,
 sharing forms, and media/embed configuration popovers keep their specialized content
-and interaction patterns. Select/dropdown controls *inside* these surfaces inherit
+and interaction patterns. Select/dropdown controls _inside_ these surfaces inherit
 shared menu styles. Generic Popover and Command components are not globally restyled.
 The landing site, console and clipper are separate applications and were not modified.
 

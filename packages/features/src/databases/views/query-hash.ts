@@ -23,16 +23,13 @@ function readViewSorts(config: unknown): DatabaseViewQuerySort[] {
     if (!sort || typeof sort !== "object" || Array.isArray(sort)) return [];
     const candidate = sort as { column?: unknown; direction?: unknown };
     return typeof candidate.column === "string" &&
-        (candidate.direction === "ascending" ||
-          candidate.direction === "descending")
+      (candidate.direction === "ascending" || candidate.direction === "descending")
       ? [{ column: candidate.column, direction: candidate.direction }]
       : [];
   });
 }
 
-function stripFilterIds(
-  filters: DatabaseFilterItemConfig[],
-): DatabaseFilterItemConfig[] {
+function stripFilterIds(filters: DatabaseFilterItemConfig[]): DatabaseFilterItemConfig[] {
   return filters.map((filter) => {
     if (isDatabaseFilterGroup(filter)) {
       const group: DatabaseFilterItemConfig = {
@@ -69,11 +66,13 @@ export function normalizeDatabaseViewQuery(
   config: unknown,
   includeDeleted = false,
 ): DatabaseViewQuery {
-  const rawFilters = config && typeof config === "object" &&
-      !Array.isArray(config) &&
-      Array.isArray((config as { filters?: unknown }).filters)
-    ? (config as { filters: unknown[] }).filters
-    : [];
+  const rawFilters =
+    config &&
+    typeof config === "object" &&
+    !Array.isArray(config) &&
+    Array.isArray((config as { filters?: unknown }).filters)
+      ? (config as { filters: unknown[] }).filters
+      : [];
   return {
     filters: stripFilterIds(normalizeDatabaseFilters(rawFilters)),
     includeDeleted: includeDeleted === true,
@@ -89,7 +88,7 @@ function stableStringify(value: unknown): string {
   if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, entry]) => entry !== undefined)
-      .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+      .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
     return `{${entries.map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`).join(",")}}`;
   }
   if (typeof value === "string") return JSON.stringify(value);
@@ -105,10 +104,8 @@ function hash53(input: string, seed = 0): string {
     high = Math.imul(high ^ char, 2654435761);
     low = Math.imul(low ^ char, 1597334677);
   }
-  high = Math.imul(high ^ (high >>> 16), 2246822507) ^
-    Math.imul(low ^ (low >>> 13), 3266489909);
-  low = Math.imul(low ^ (low >>> 16), 2246822507) ^
-    Math.imul(high ^ (high >>> 13), 3266489909);
+  high = Math.imul(high ^ (high >>> 16), 2246822507) ^ Math.imul(low ^ (low >>> 13), 3266489909);
+  low = Math.imul(low ^ (low >>> 16), 2246822507) ^ Math.imul(high ^ (high >>> 13), 3266489909);
   return (4294967296 * (2097151 & low) + (high >>> 0)).toString(16);
 }
 
@@ -117,9 +114,6 @@ function hash53(input: string, seed = 0): string {
  * evaluates the same rows in the same order, so the cached window can be
  * reused without a fetch regardless of view type or other presentation.
  */
-export function databaseViewQueryHash(
-  config: unknown,
-  includeDeleted = false,
-): string {
+export function databaseViewQueryHash(config: unknown, includeDeleted = false): string {
   return `q${hash53(stableStringify(normalizeDatabaseViewQuery(config, includeDeleted)))}`;
 }

@@ -20,17 +20,19 @@ export function createWorkerJobs(
 ): Jobs {
   return {
     async dispatch(tasks) {
-      await Promise.all(tasks.map(async (task) => {
-        const lane = backgroundTaskLane(task.kind as never);
-        const queue = queueForLane(env, lane);
-        if (!queue) throw new Error(`BACKGROUND_${lane.toUpperCase()}_QUEUE_REQUIRED`);
-        const delaySeconds = Math.max(
-          0,
-          Math.min(43_200, Math.ceil((Date.parse(task.availableAt) - Date.now()) / 1_000)),
-        );
-        if (delaySeconds > 0) await queue.send(task, { delaySeconds });
-        else await queue.send(task);
-      }));
+      await Promise.all(
+        tasks.map(async (task) => {
+          const lane = backgroundTaskLane(task.kind as never);
+          const queue = queueForLane(env, lane);
+          if (!queue) throw new Error(`BACKGROUND_${lane.toUpperCase()}_QUEUE_REQUIRED`);
+          const delaySeconds = Math.max(
+            0,
+            Math.min(43_200, Math.ceil((Date.parse(task.availableAt) - Date.now()) / 1_000)),
+          );
+          if (delaySeconds > 0) await queue.send(task, { delaySeconds });
+          else await queue.send(task);
+        }),
+      );
     },
     async drain(lane) {
       await drainLane?.(lane);

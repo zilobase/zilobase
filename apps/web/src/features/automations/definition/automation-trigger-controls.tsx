@@ -1,5 +1,15 @@
 import { AutomationPickerTrigger } from "../automation-picker-controls";
-import { type TriggerPickerSelection, type TriggerDraft, humanize, isChoiceTriggerProperty, triggerConfigurationTitle, operandless, hasRequiredTriggerValues, nextTriggerOperands, triggerOperatorLabel } from "./automation-draft";
+import {
+  type TriggerPickerSelection,
+  type TriggerDraft,
+  humanize,
+  isChoiceTriggerProperty,
+  triggerConfigurationTitle,
+  operandless,
+  hasRequiredTriggerValues,
+  nextTriggerOperands,
+  triggerOperatorLabel,
+} from "./automation-draft";
 import { AutomationPropertyIcon, TriggerOptionRow } from "../automation-picker-controls";
 import { useState, type ReactNode } from "react";
 import type { DatabaseAutomationCatalog } from "@zilobase/features/automations";
@@ -29,7 +39,12 @@ import type { DatabasePropertyFilterOperator } from "../../databases/views/model
 import { ScheduleEditor } from "./automation-schedule";
 import { scheduleTriggerLabel, type ScheduleDraft } from "./schedule-model";
 
-export function TriggerCard({ catalog, onRemove, onSelect, trigger }: {
+export function TriggerCard({
+  catalog,
+  onRemove,
+  onSelect,
+  trigger,
+}: {
   catalog?: DatabaseAutomationCatalog;
   onRemove?: () => void;
   onSelect: (selection: TriggerPickerSelection) => void;
@@ -42,21 +57,38 @@ export function TriggerCard({ catalog, onRemove, onSelect, trigger }: {
         catalog={catalog}
         label={triggerPickerLabel(trigger, catalog)}
         onSelect={onSelect}
-        selection={trigger.type === "page_added"
-          ? { type: "page_added" }
-          : {
-              operands: trigger.operands,
-              operator: trigger.operator,
-              propertyId: trigger.propertyId,
-              type: "property_edited",
-            }}
+        selection={
+          trigger.type === "page_added"
+            ? { type: "page_added" }
+            : {
+                operands: trigger.operands,
+                operator: trigger.operator,
+                propertyId: trigger.propertyId,
+                type: "property_edited",
+              }
+        }
       />
-      {onRemove ? <Button aria-label="Remove trigger" className="ml-auto text-content-secondary opacity-0 group-hover/trigger:opacity-100 focus-visible:opacity-100" onClick={onRemove} size="icon-sm" variant="ghost"><X /></Button> : null}
+      {onRemove ? (
+        <Button
+          aria-label="Remove trigger"
+          className="ml-auto text-content-secondary opacity-0 group-hover/trigger:opacity-100 focus-visible:opacity-100"
+          onClick={onRemove}
+          size="icon-sm"
+          variant="ghost"
+        >
+          <X />
+        </Button>
+      ) : null}
     </div>
   );
 }
 
-function AutomationTriggerValueControl({ catalog, onChange, property, trigger }: {
+function AutomationTriggerValueControl({
+  catalog,
+  onChange,
+  property,
+  trigger,
+}: {
   catalog?: DatabaseAutomationCatalog;
   onChange: (operands: string[]) => void;
   property?: DatabaseAutomationCatalog["properties"][number];
@@ -81,9 +113,10 @@ function AutomationTriggerValueControl({ catalog, onChange, property, trigger }:
     propertyType: property.type,
     values: trigger.operands,
   };
-  const valueOptions = property.type === "person"
-    ? (catalog?.users ?? []).map(({ id, name }) => ({ label: name, value: id }))
-    : property.options.map(({ color, id, name }) => ({ color, label: name, value: id }));
+  const valueOptions =
+    property.type === "person"
+      ? (catalog?.users ?? []).map(({ id, name }) => ({ label: name, value: id }))
+      : property.options.map(({ color, id, name }) => ({ color, label: name, value: id }));
   return (
     <DatabaseConditionValueControl
       condition={condition}
@@ -93,7 +126,12 @@ function AutomationTriggerValueControl({ catalog, onChange, property, trigger }:
   );
 }
 
-export function ScheduleTriggerCard({ catalog, onChange, onSelect, schedule }: {
+export function ScheduleTriggerCard({
+  catalog,
+  onChange,
+  onSelect,
+  schedule,
+}: {
   catalog?: DatabaseAutomationCatalog;
   onChange: (schedule: ScheduleDraft) => void;
   onSelect: (selection: TriggerPickerSelection) => void;
@@ -132,7 +170,13 @@ export function ScheduleTriggerCard({ catalog, onChange, onSelect, schedule }: {
   );
 }
 
-export function TriggerPicker({ catalog, label, onSelect, selection, variant = "card" }: {
+export function TriggerPicker({
+  catalog,
+  label,
+  onSelect,
+  selection,
+  variant = "card",
+}: {
   catalog?: DatabaseAutomationCatalog;
   label: ReactNode;
   onSelect: (selection: TriggerPickerSelection) => void;
@@ -149,14 +193,13 @@ export function TriggerPicker({ catalog, label, onSelect, selection, variant = "
     setConfiguration(null);
   };
   const openProperty = (property: DatabaseAutomationCatalog["properties"][number]) => {
-    const isCurrentProperty = selection?.type === "property_edited" && selection.propertyId === property.id;
+    const isCurrentProperty =
+      selection?.type === "property_edited" && selection.propertyId === property.id;
     const defaultOperator = property.operators[0] ?? "was_edited";
     const next: TriggerDraft = {
       id: crypto.randomUUID(),
-      operands: isCurrentProperty ? selection.operands ?? [] : [],
-      operator: isCurrentProperty
-        ? selection.operator ?? defaultOperator
-        : defaultOperator,
+      operands: isCurrentProperty ? (selection.operands ?? []) : [],
+      operator: isCurrentProperty ? (selection.operator ?? defaultOperator) : defaultOperator,
       propertyId: property.id,
       type: "property_edited",
     };
@@ -165,14 +208,16 @@ export function TriggerPicker({ catalog, label, onSelect, selection, variant = "
   };
   const finishConfiguration = () => {
     if (!configuration || !configuredProperty) return;
-    const normalizeAnyChoice = isChoiceTriggerProperty(configuredProperty.type)
-      && configuration.operator === "was_edited";
+    const normalizeAnyChoice =
+      isChoiceTriggerProperty(configuredProperty.type) && configuration.operator === "was_edited";
     choose({
       operands: normalizeAnyChoice
         ? configuredProperty.options.map((option) => option.id)
         : configuration.operands,
       operator: normalizeAnyChoice
-        ? configuredProperty.type === "multi_select" ? "contains" : "is"
+        ? configuredProperty.type === "multi_select"
+          ? "contains"
+          : "is"
         : configuration.operator,
       propertyId: configuration.propertyId,
       type: "property_edited",
@@ -195,16 +240,29 @@ export function TriggerPicker({ catalog, label, onSelect, selection, variant = "
     : undefined;
   return (
     <Popover modal open={open} onOpenChange={handleOpenChange}>
-      <AutomationPickerTrigger kind="trigger" variant={variant} icon={triggerPickerIcon(selection)}><span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">{label}</span></AutomationPickerTrigger>
+      <AutomationPickerTrigger kind="trigger" variant={variant} icon={triggerPickerIcon(selection)}>
+        <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">{label}</span>
+      </AutomationPickerTrigger>
       <PopoverContent align="start" padding="none" variant="menu">
         {step === "root" ? (
-          <TriggerTypeMenu catalog={catalog} selection={selection} onSelect={choose} onProperty={openProperty} />
+          <TriggerTypeMenu
+            catalog={catalog}
+            selection={selection}
+            onSelect={choose}
+            onProperty={openProperty}
+          />
         ) : configuration && configuredProperty ? (
           <div className="min-w-0">
             <div className="flex h-10 items-center gap-1 border-b border-stroke-default px-1.5">
               <Button
                 aria-label="Back to triggers"
-                onClick={() => setStep(step === "value" && !isChoiceTriggerProperty(configuredProperty.type) ? "operator" : "root")}
+                onClick={() =>
+                  setStep(
+                    step === "value" && !isChoiceTriggerProperty(configuredProperty.type)
+                      ? "operator"
+                      : "root",
+                  )
+                }
                 size="icon-sm"
                 type="button"
                 variant="ghost"
@@ -219,7 +277,10 @@ export function TriggerPicker({ catalog, label, onSelect, selection, variant = "
               {step === "value" ? (
                 <Button
                   className="h-7 px-2 text-action-link"
-                  disabled={!operandless.has(configuration.operator) && !hasRequiredTriggerValues(configuration)}
+                  disabled={
+                    !operandless.has(configuration.operator) &&
+                    !hasRequiredTriggerValues(configuration)
+                  }
                   onClick={finishConfiguration}
                   type="button"
                   variant="ghost"
@@ -239,7 +300,11 @@ export function TriggerPicker({ catalog, label, onSelect, selection, variant = "
                         onSelect={() => {
                           const next = {
                             ...configuration,
-                            operands: nextTriggerOperands(configuration, operator, configuredProperty.type),
+                            operands: nextTriggerOperands(
+                              configuration,
+                              operator,
+                              configuredProperty.type,
+                            ),
                             operator,
                           };
                           setConfiguration(next);
@@ -256,7 +321,9 @@ export function TriggerPicker({ catalog, label, onSelect, selection, variant = "
                         }}
                         value={`${configuredProperty.name} ${humanize(operator)}`}
                       >
-                        <span className="min-w-0 flex-1 truncate">{triggerOperatorLabel(operator)}</span>
+                        <span className="min-w-0 flex-1 truncate">
+                          {triggerOperatorLabel(operator)}
+                        </span>
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -277,7 +344,12 @@ export function TriggerPicker({ catalog, label, onSelect, selection, variant = "
   );
 }
 
-function TriggerConfigurationValueStep({ catalog, onChange, property, trigger }: {
+function TriggerConfigurationValueStep({
+  catalog,
+  onChange,
+  property,
+  trigger,
+}: {
   catalog?: DatabaseAutomationCatalog;
   onChange: (trigger: TriggerDraft) => void;
   property: DatabaseAutomationCatalog["properties"][number];
@@ -316,9 +388,12 @@ function TriggerConfigurationValueStep({ catalog, onChange, property, trigger }:
               onChange({
                 ...trigger,
                 operands,
-                operator: operands.length === 0
-                  ? "was_edited"
-                  : property.type === "multi_select" ? "contains" : "is",
+                operator:
+                  operands.length === 0
+                    ? "was_edited"
+                    : property.type === "multi_select"
+                      ? "contains"
+                      : "is",
               });
             }}
           />
@@ -352,67 +427,114 @@ function triggerPickerLabel(trigger: TriggerDraft, catalog?: DatabaseAutomationC
   const propertyName = property?.name ?? "Property";
   const propertyBadge = (
     <span className="flex max-w-32 shrink-0 items-center gap-1 rounded-md bg-surface-subtle px-1.5 py-0.5 text-xs font-medium text-content-primary">
-      {property ? <AutomationPropertyIcon property={property} /> : <Pencil className="size-3.5 shrink-0 text-content-secondary" />}
+      {property ? (
+        <AutomationPropertyIcon property={property} />
+      ) : (
+        <Pencil className="size-3.5 shrink-0 text-content-secondary" />
+      )}
       <span className="truncate">{propertyName}</span>
     </span>
   );
-  if (trigger.operator === "was_edited") return <>{propertyBadge}<span className="shrink-0">edited</span></>;
-  const options = trigger.operands.map((operand) => {
-    const option = property?.options.find((item) => item.id === operand);
-    return { color: option?.color, label: option?.name ?? operand, value: operand };
-  }).filter(({ label }) => Boolean(label));
+  if (trigger.operator === "was_edited")
+    return (
+      <>
+        {propertyBadge}
+        <span className="shrink-0">edited</span>
+      </>
+    );
+  const options = trigger.operands
+    .map((operand) => {
+      const option = property?.options.find((item) => item.id === operand);
+      return { color: option?.color, label: option?.name ?? operand, value: operand };
+    })
+    .filter(({ label }) => Boolean(label));
   return (
     <>
       {propertyBadge}
       <span className="shrink-0">{triggerOperatorLabel(trigger.operator).toLowerCase()}</span>
-      {options.map((option) => option.color ? (
-        <span className={cn("max-w-32 shrink-0 truncate", getColorTokenBadgeClassName(option.color))} key={option.value}>
-          {option.label}
-        </span>
-      ) : (
-        <span className="max-w-32 shrink-0 truncate rounded-md bg-surface-subtle px-1.5 py-0.5 text-xs" key={option.value}>
-          {option.label}
-        </span>
-      ))}
+      {options.map((option) =>
+        option.color ? (
+          <span
+            className={cn("max-w-32 shrink-0 truncate", getColorTokenBadgeClassName(option.color))}
+            key={option.value}
+          >
+            {option.label}
+          </span>
+        ) : (
+          <span
+            className="max-w-32 shrink-0 truncate rounded-md bg-surface-subtle px-1.5 py-0.5 text-xs"
+            key={option.value}
+          >
+            {option.label}
+          </span>
+        ),
+      )}
     </>
   );
 }
 
-function TriggerTypeMenu({ catalog, selection, onSelect, onProperty }: { catalog?: DatabaseAutomationCatalog; selection?: TriggerPickerSelection; onSelect: (selection: TriggerPickerSelection) => void; onProperty: (property: DatabaseAutomationCatalog["properties"][number]) => void }) {
+function TriggerTypeMenu({
+  catalog,
+  selection,
+  onSelect,
+  onProperty,
+}: {
+  catalog?: DatabaseAutomationCatalog;
+  selection?: TriggerPickerSelection;
+  onSelect: (selection: TriggerPickerSelection) => void;
+  onProperty: (property: DatabaseAutomationCatalog["properties"][number]) => void;
+}) {
   const selectedPropertyId = selection?.type === "property_edited" ? selection.propertyId : null;
-  return (<Command variant="menu">
-            <CommandInput autoFocus placeholder="Search triggers…" />
-            <CommandList
-              className="max-h-[min(20rem,calc(100dvh-10rem))] touch-pan-y overscroll-contain"
-              onWheelCapture={(event) => event.stopPropagation()}
+  return (
+    <Command variant="menu">
+      <CommandInput autoFocus placeholder="Search triggers…" />
+      <CommandList
+        className="max-h-[min(20rem,calc(100dvh-10rem))] touch-pan-y overscroll-contain"
+        onWheelCapture={(event) => event.stopPropagation()}
+      >
+        <CommandEmpty>No triggers found.</CommandEmpty>
+        <CommandGroup heading="Event">
+          <CommandItem
+            data-checked={selection?.type === "page_added"}
+            onSelect={() => onSelect({ type: "page_added" })}
+            value="Page added"
+          >
+            <Plus />
+            Page added
+          </CommandItem>
+          <CommandItem
+            data-checked={selection?.type === "schedule"}
+            onSelect={() => onSelect({ type: "schedule" })}
+            value="Every schedule"
+          >
+            <Clock />
+            Every…
+          </CommandItem>
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Property edited">
+          <CommandItem
+            data-checked={selectedPropertyId === "any"}
+            onSelect={() => onSelect({ propertyId: "any", type: "property_edited" })}
+            value="Any property edited"
+          >
+            <Pencil />
+            Any property
+          </CommandItem>
+          {(catalog?.properties ?? []).map((property) => (
+            <CommandItem
+              data-checked={selectedPropertyId === property.id}
+              key={property.id}
+              onSelect={() => onProperty(property)}
+              value={`${property.name} property edited`}
             >
-              <CommandEmpty>No triggers found.</CommandEmpty>
-              <CommandGroup heading="Event">
-                <CommandItem data-checked={selection?.type === "page_added"} onSelect={() => onSelect({ type: "page_added" })} value="Page added">
-                  <Plus />Page added
-                </CommandItem>
-                <CommandItem data-checked={selection?.type === "schedule"} onSelect={() => onSelect({ type: "schedule" })} value="Every schedule">
-                  <Clock />Every…
-                </CommandItem>
-              </CommandGroup>
-              <CommandSeparator />
-              <CommandGroup heading="Property edited">
-                <CommandItem data-checked={selectedPropertyId === "any"} onSelect={() => onSelect({ propertyId: "any", type: "property_edited" })} value="Any property edited">
-                  <Pencil />Any property
-                </CommandItem>
-                {(catalog?.properties ?? []).map((property) => (
-                  <CommandItem
-                    data-checked={selectedPropertyId === property.id}
-                    key={property.id}
-                    onSelect={() => onProperty(property)}
-                    value={`${property.name} property edited`}
-                  >
-                    <AutomationPropertyIcon property={property} />
-                    <span className="min-w-0 flex-1 truncate">{property.name}</span>
-                    <ChevronDownIcon className="order-last -rotate-90 text-content-secondary" />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>);
+              <AutomationPropertyIcon property={property} />
+              <span className="min-w-0 flex-1 truncate">{property.name}</span>
+              <ChevronDownIcon className="order-last -rotate-90 text-content-secondary" />
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </Command>
+  );
 }

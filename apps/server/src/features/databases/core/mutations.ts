@@ -1,4 +1,4 @@
-export { setDatabaseCellValueService } from  "../schema/cells";
+export { setDatabaseCellValueService } from "../schema/cells";
 export {
   defaultStatusOptions,
   formatDatePropertyValueAsText,
@@ -6,10 +6,7 @@ export {
   selectOptionColors,
   validateCellValue,
 } from "../schema/config";
-export {
-  createDatabasePropertyService,
-  updateDatabasePropertyService,
-} from  "../schema/properties";
+export { createDatabasePropertyService, updateDatabasePropertyService } from "../schema/properties";
 export { createDatabaseRowService } from "../records/service";
 export {
   deleteDatabaseAccessRuleService,
@@ -17,12 +14,5 @@ export {
   listDatabaseAccessRulesService,
   upsertDatabaseAccessRuleService,
 } from "../sharing/service";
-export {
-  createDatabaseService,
-  deleteDatabaseService,
-  restoreDatabaseService,
-} from "./service";
-export {
-  createDatabaseViewService,
-  updateDatabaseViewService,
-} from "../views/service";
+export { createDatabaseService, deleteDatabaseService, restoreDatabaseService } from "./service";
+export { createDatabaseViewService, updateDatabaseViewService } from "../views/service";

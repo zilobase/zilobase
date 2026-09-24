@@ -3,7 +3,7 @@ import test from "node:test";
 import { createMutationTestRuntime } from "../shared/mutation-runtime.test";
 import { useEmbedPageItem } from "./placement-mutations";
 
-const tick = () => new Promise<void>(resolve => setImmediate(resolve));
+const tick = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 for (const kind of ["page", "database"] as const) {
   for (const refreshFails of [false, true]) {
@@ -16,10 +16,17 @@ for (const kind of ["page", "database"] as const) {
         return payload as T;
       });
       let invalidations = 0;
-      queryClient.invalidateQueries = () => { invalidations++; return refresh.promise; };
+      queryClient.invalidateQueries = () => {
+        invalidations++;
+        return refresh.promise;
+      };
       let settled = false;
-      const completion = mutation.mutateAsync({ hostPageId: "host", itemId: "child", kind })
-        .then(result => { settled = true; return result; });
+      const completion = mutation
+        .mutateAsync({ hostPageId: "host", itemId: "child", kind })
+        .then((result) => {
+          settled = true;
+          return result;
+        });
       try {
         await tick();
         assert.equal(settled, false, "server acceptance is still required");
@@ -32,7 +39,9 @@ for (const kind of ["page", "database"] as const) {
         assert.equal(settledBeforeRefresh, true, "navigation must not delay saved embeds");
         assert.equal(invalidations, 1);
       } finally {
-        save.resolve(); refresh.resolve(); queryClient.clear();
+        save.resolve();
+        refresh.resolve();
+        queryClient.clear();
       }
     });
   }
@@ -40,9 +49,16 @@ for (const kind of ["page", "database"] as const) {
 
 test("rejected embed propagates the save error without refreshing navigation", async () => {
   const failure = new Error("Forbidden");
-  const { mutation, queryClient } = createMutationTestRuntime(useEmbedPageItem, async () => { throw failure; });
+  const { mutation, queryClient } = createMutationTestRuntime(useEmbedPageItem, async () => {
+    throw failure;
+  });
   queryClient.invalidateQueries = () => assert.fail("must not refresh a rejected embed");
   try {
-    await assert.rejects(mutation.mutateAsync({ hostPageId: "host", itemId: "child", kind: "page" }), failure);
-  } finally { queryClient.clear(); }
+    await assert.rejects(
+      mutation.mutateAsync({ hostPageId: "host", itemId: "child", kind: "page" }),
+      failure,
+    );
+  } finally {
+    queryClient.clear();
+  }
 });

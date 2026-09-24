@@ -5,11 +5,7 @@ import {
   shouldShowInlineDatabaseTitle,
 } from "@zilobase/page-context/insert-database-block";
 
-import {
-  canAccessDatabaseInWorkspace,
-  canAccessPage,
-  getMembership,
-} from "../../access";
+import { canAccessDatabaseInWorkspace, canAccessPage, getMembership } from "../../access";
 import { db } from "../../../infrastructure/database";
 import { database, page, pageCollaborationDocument } from "../../../infrastructure/database/schema";
 import {
@@ -20,7 +16,10 @@ import {
   replacePageContent,
 } from "../../collaboration/service";
 import type { RuntimeEnv } from "../../../shared/config/config";
-import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../../workspaces/navigation-realtime/outbox";
+import {
+  enqueueNavigationInvalidation,
+  publishCommittedNavigationInvalidation,
+} from "../../workspaces/navigation-realtime/outbox";
 import { upsertPageItemPlacement } from "../placements/page-item-placements";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
@@ -98,19 +97,20 @@ export async function createPageService(input: {
   return {
     page: record,
     pageId: record.id,
-    parentPlacement: parentPlacementId && input.parentPageId
-      ? {
-          id: parentPlacementId,
-          workspaceId: input.workspaceId,
-          parentKind: "page" as const,
-          parentId: input.parentPageId,
-          itemKind: "page" as const,
-          itemId: record.id,
-          placementKind: "primary" as const,
-          sourceRowId: null,
-          position: 0,
-        }
-      : null,
+    parentPlacement:
+      parentPlacementId && input.parentPageId
+        ? {
+            id: parentPlacementId,
+            workspaceId: input.workspaceId,
+            parentKind: "page" as const,
+            parentId: input.parentPageId,
+            itemKind: "page" as const,
+            itemId: record.id,
+            placementKind: "primary" as const,
+            sourceRowId: null,
+            position: 0,
+          }
+        : null,
   };
 }
 
@@ -232,9 +232,7 @@ export async function embedDatabaseInPageService(input: {
   let baseContent = existing.content;
 
   try {
-    const collaborationState = await getOrCreateCollaborationDocumentState(
-      existing.id,
-    );
+    const collaborationState = await getOrCreateCollaborationDocumentState(existing.id);
     const liveContent = materializePageContentFromYjs(collaborationState);
 
     if (!isEmptyPageContent(liveContent)) {
@@ -244,16 +242,13 @@ export async function embedDatabaseInPageService(input: {
     // Fall back to the stored page snapshot when collaboration state is missing.
   }
 
-  const showTitle = input.showTitle ??
-    shouldShowInlineDatabaseTitle(existing.name, databaseRecord.name);
-  const { content, alreadyEmbedded, titleUpdated } = insertDatabaseBlockInContent(
-    baseContent,
-    {
-      afterHeading: input.afterHeading,
-      databaseId: input.databaseId,
-      showTitle,
-    },
-  );
+  const showTitle =
+    input.showTitle ?? shouldShowInlineDatabaseTitle(existing.name, databaseRecord.name);
+  const { content, alreadyEmbedded, titleUpdated } = insertDatabaseBlockInContent(baseContent, {
+    afterHeading: input.afterHeading,
+    databaseId: input.databaseId,
+    showTitle,
+  });
 
   if (alreadyEmbedded && !titleUpdated) {
     return {

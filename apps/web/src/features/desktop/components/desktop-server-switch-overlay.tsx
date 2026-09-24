@@ -1,18 +1,17 @@
-import * as React from "react"
+import * as React from "react";
 
-import { Spinner } from "@/shared/ui/spinner"
+import { Spinner } from "@/shared/ui/spinner";
 import {
   subscribeDesktopServerSwitch,
   type DesktopServerSwitchProgress,
-} from "../server/desktop-server-switch"
+} from "../server/desktop-server-switch";
 
 export function DesktopServerSwitchOverlay() {
-  const [progress, setProgress] =
-    React.useState<DesktopServerSwitchProgress | null>(null)
+  const [progress, setProgress] = React.useState<DesktopServerSwitchProgress | null>(null);
 
-  React.useEffect(() => subscribeDesktopServerSwitch(setProgress), [])
+  React.useEffect(() => subscribeDesktopServerSwitch(setProgress), []);
 
-  if (!progress) return null
+  if (!progress) return null;
 
   return (
     <div
@@ -25,18 +24,14 @@ export function DesktopServerSwitchOverlay() {
         <div>
           <p className="text-sm font-medium">
             Switching to{" "}
-            {progress.workspaceName
-              ? progress.workspaceName
-              : progress.server.displayName}
+            {progress.workspaceName ? progress.workspaceName : progress.server.displayName}
           </p>
           <p className="mt-1 text-xs text-content-secondary">
             {progress.server.displayName}
-            {progress.server.apiOrigin
-              ? ` — ${progress.server.apiOrigin}`
-              : ""}
+            {progress.server.apiOrigin ? ` — ${progress.server.apiOrigin}` : ""}
           </p>
         </div>
       </div>
     </div>
-  )
+  );
 }

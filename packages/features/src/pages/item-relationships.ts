@@ -26,15 +26,11 @@ export type PageMetadata = {
   zilobaseai?: "instruction" | "skill" | null;
 };
 
-export function isPageLocked(
-  page: { metadata?: PageMetadata | null } | null | undefined,
-) {
+export function isPageLocked(page: { metadata?: PageMetadata | null } | null | undefined) {
   return page?.metadata?.locked === true;
 }
 
-export function isMeetingLocked(
-  page: { metadata?: PageMetadata | null } | null | undefined,
-) {
+export function isMeetingLocked(page: { metadata?: PageMetadata | null } | null | undefined) {
   return page?.metadata?.meetingLocked === true;
 }
 

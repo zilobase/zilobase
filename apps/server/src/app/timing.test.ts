@@ -35,10 +35,7 @@ test("server timing omits empty metrics", async () => {
 
   const response = await app.request("/plain");
 
-  assert.match(
-    response.headers.get("x-zilobase-request-id") ?? "",
-    /^[0-9a-f-]{36}$/,
-  );
+  assert.match(response.headers.get("x-zilobase-request-id") ?? "", /^[0-9a-f-]{36}$/);
   assert.equal(response.headers.has("server-timing"), false);
 });
 
@@ -48,8 +45,5 @@ test("server timing generates an ID when upstream provides none", async () => {
 
   const response = await app.request("/generated");
 
-  assert.match(
-    response.headers.get("x-zilobase-request-id") ?? "",
-    /^[0-9a-f-]{36}$/,
-  );
+  assert.match(response.headers.get("x-zilobase-request-id") ?? "", /^[0-9a-f-]{36}$/);
 });

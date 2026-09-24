@@ -16,10 +16,7 @@ export function getToolbarSourceIdentity(host: SourceHost) {
   return {
     databaseId: host.hostDatabaseId ?? host.databaseId ?? "",
     workspaceId:
-      host.hostDatabaseWorkspaceId ??
-      host.databaseWorkspaceId ??
-      host.workspaceId ??
-      undefined,
+      host.hostDatabaseWorkspaceId ?? host.databaseWorkspaceId ?? host.workspaceId ?? undefined,
     expandDatabaseId: host.hostDatabaseId ?? host.databaseId,
   };
 }
@@ -31,8 +28,8 @@ export function getToolbarSourceTitle(
 ) {
   const external = Boolean(
     view?.sourceParentDatabaseId &&
-      host.hostDatabaseId &&
-      view.sourceParentDatabaseId !== host.hostDatabaseId,
+    host.hostDatabaseId &&
+    view.sourceParentDatabaseId !== host.hostDatabaseId,
   );
   return external
     ? host.hostDatabaseName || "Untitled"

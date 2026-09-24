@@ -29,8 +29,7 @@ aiAgentWebhookRoutes.post("/agents/:agentId/hooks/:triggerId", async (c) => {
     return c.json({ error: "Payload too large" }, 413);
   }
   const { timestamp, delivery, signature } = webhookHeaders(c);
-  if (!validDelivery(timestamp, delivery))
-    return c.json({ error: "Invalid webhook request" }, 401);
+  if (!validDelivery(timestamp, delivery)) return c.json({ error: "Invalid webhook request" }, 401);
   const [record] = await db
     .select({
       profile: aiAgentProfile,
@@ -39,10 +38,7 @@ aiAgentWebhookRoutes.post("/agents/:agentId/hooks/:triggerId", async (c) => {
     })
     .from(aiAgentTrigger)
     .innerJoin(aiAgentProfile, eq(aiAgentProfile.id, aiAgentTrigger.profileId))
-    .innerJoin(
-      automationSecret,
-      eq(automationSecret.id, aiAgentTrigger.webhookSecretId),
-    )
+    .innerJoin(automationSecret, eq(automationSecret.id, aiAgentTrigger.webhookSecretId))
     .where(
       and(
         eq(aiAgentProfile.id, c.req.param("agentId")),
@@ -87,11 +83,7 @@ aiAgentWebhookRoutes.post("/agents/:agentId/hooks/:triggerId", async (c) => {
   );
 });
 
-async function verifySignature(
-  secret: string,
-  message: string,
-  signature: string,
-) {
+async function verifySignature(secret: string, message: string, signature: string) {
   const supplied = signature.startsWith("sha256=") ? signature.slice(7) : "";
   if (!/^[0-9a-f]{64}$/i.test(supplied)) return false;
   const key = await crypto.subtle.importKey(
@@ -104,16 +96,13 @@ async function verifySignature(
   return crypto.subtle.verify(
     "HMAC",
     key,
-    Uint8Array.from(supplied.match(/../g) ?? [], (value) =>
-      Number.parseInt(value, 16),
-    ),
+    Uint8Array.from(supplied.match(/../g) ?? [], (value) => Number.parseInt(value, 16)),
     new TextEncoder().encode(message),
   );
 }
 
 async function readWebhookBody(request: Request): Promise<string | null> {
-  if (Number(request.headers.get("content-length")) > MAX_WEBHOOK_BYTES)
-    return null;
+  if (Number(request.headers.get("content-length")) > MAX_WEBHOOK_BYTES) return null;
   if (!request.body) return "";
   const reader = request.body.getReader();
   const decoder = new TextDecoder();

@@ -58,21 +58,14 @@ async function resolveCreationTeamspace(
     input.teamspaceId !== undefined &&
     input.teamspaceId !== pageRecord.teamspaceId
   ) {
-    throw new ServiceMutationError(
-      "A database must use its parent page teamspace.",
-      409,
-    );
+    throw new ServiceMutationError("A database must use its parent page teamspace.", 409);
   }
   const teamspaceId = pageRecord?.teamspaceId ?? input.teamspaceId ?? null;
 
   if (standalone && teamspaceId) {
     if (
       !hasAccess(
-        await getEffectiveTeamspaceAccessInWorkspace(
-          teamspaceId,
-          input.workspaceId,
-          input.userId,
-        ),
+        await getEffectiveTeamspaceAccessInWorkspace(teamspaceId, input.workspaceId, input.userId),
         "edit",
       )
     ) {
@@ -82,10 +75,7 @@ async function resolveCreationTeamspace(
     if (!(await getMembership(input.workspaceId, input.userId))) {
       throw new ServiceMutationError("Forbidden", 403);
     }
-  } else if (
-    !pageRecord ||
-    !(await canAccessPage(pageRecord.id, input.userId, "edit"))
-  ) {
+  } else if (!pageRecord || !(await canAccessPage(pageRecord.id, input.userId, "edit"))) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 
@@ -121,12 +111,7 @@ export async function createDatabaseService(input: {
       ? await db
           .select({ id: favorite.id })
           .from(favorite)
-          .where(
-            and(
-              eq(favorite.userId, input.userId),
-              eq(favorite.pageId, input.pageId),
-            ),
-          )
+          .where(and(eq(favorite.userId, input.userId), eq(favorite.pageId, input.pageId)))
           .limit(1)
       : [];
 
@@ -161,9 +146,7 @@ export async function createDatabaseService(input: {
       position: 0,
     });
     await tx.insert(databaseView).values({
-      ...(input.defaultViewIcon
-        ? { config: { icon: input.defaultViewIcon } }
-        : {}),
+      ...(input.defaultViewIcon ? { config: { icon: input.defaultViewIcon } } : {}),
       id: defaultViewId,
       databaseId,
       dataSourceId,
@@ -281,12 +264,9 @@ export async function restoreDatabaseService(input: {
   }
 
   if (!existing.deletedAt) {
-    const payload = await getDatabaseExportPayload(
-      existing.id,
-      input.userId,
-      existing,
-      { includeDeleted: true },
-    );
+    const payload = await getDatabaseExportPayload(existing.id, input.userId, existing, {
+      includeDeleted: true,
+    });
 
     return {
       database: payload?.database ?? existing,
@@ -309,9 +289,7 @@ export async function restoreDatabaseService(input: {
         and(
           eq(database.workspaceId, existing.workspaceId),
           eq(database.deletedAt, deletedAt),
-          existing.deletedById
-            ? eq(database.deletedById, existing.deletedById)
-            : undefined,
+          existing.deletedById ? eq(database.deletedById, existing.deletedById) : undefined,
         ),
       )
       .returning({ id: database.id });
@@ -332,14 +310,10 @@ export async function restoreDatabaseService(input: {
               tx
                 .select({ id: dataSource.id })
                 .from(dataSource)
-                .where(
-                  inArray(dataSource.parentDatabaseId, restoredDatabaseIds),
-                ),
+                .where(inArray(dataSource.parentDatabaseId, restoredDatabaseIds)),
             ),
             eq(databaseRow.deletedAt, deletedAt),
-            existing.deletedById
-              ? eq(databaseRow.deletedById, existing.deletedById)
-              : undefined,
+            existing.deletedById ? eq(databaseRow.deletedById, existing.deletedById) : undefined,
           ),
         );
     }
@@ -355,19 +329,15 @@ export async function restoreDatabaseService(input: {
         and(
           eq(page.workspaceId, existing.workspaceId),
           eq(page.deletedAt, deletedAt),
-          existing.deletedById
-            ? eq(page.deletedById, existing.deletedById)
-            : undefined,
+          existing.deletedById ? eq(page.deletedById, existing.deletedById) : undefined,
         ),
       )
       .returning({ id: page.id });
 
     return {
-      navigationEvent: await enqueueNavigationInvalidation(
-        tx,
-        existing.workspaceId,
-        { committedAt: now },
-      ),
+      navigationEvent: await enqueueNavigationInvalidation(tx, existing.workspaceId, {
+        committedAt: now,
+      }),
       restoredDatabaseIds,
       restoredPageIds: restoredPages.map((record) => record.id),
     };
@@ -380,12 +350,9 @@ export async function restoreDatabaseService(input: {
     deletedById: null,
     updatedAt: now,
   };
-  const payload = await getDatabaseExportPayload(
-    existing.id,
-    input.userId,
-    restoredRecord,
-    { includeDeleted: true },
-  );
+  const payload = await getDatabaseExportPayload(existing.id, input.userId, restoredRecord, {
+    includeDeleted: true,
+  });
 
   if (!payload) {
     throw new ServiceMutationError("Database not found", 404);

@@ -40,8 +40,12 @@ test("collaboration Redis clients share the realtime reconnect and structured er
 
   const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
   redisExtension.pub.emit("error", new Error("connection lost"));
-  assert.deepEqual(error.mock.calls, [[JSON.stringify({
-    error: "connection lost",
-    event: "realtime_redis_error",
-  })]]);
+  assert.deepEqual(error.mock.calls, [
+    [
+      JSON.stringify({
+        error: "connection lost",
+        event: "realtime_redis_error",
+      }),
+    ],
+  ]);
 });

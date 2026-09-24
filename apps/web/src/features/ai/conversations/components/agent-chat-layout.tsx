@@ -12,9 +12,7 @@ export function AgentChatLayout({
   const { data: settings = defaultUserSettings } = useUserSettings();
   return (
     <div
-      data-agent-chat-layout={
-        sidebar ? "sidebar" : settings.pageFullWidth ? "full" : "page"
-      }
+      data-agent-chat-layout={sidebar ? "sidebar" : settings.pageFullWidth ? "full" : "page"}
       className={
         sidebar
           ? "w-full shrink-0"

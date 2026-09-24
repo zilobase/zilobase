@@ -3,14 +3,7 @@ import {
   recoverMissingPlacedDatabaseBlocks,
   recoverPageEditorContent,
 } from "./page-content-recovery";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { TrashedItemBanner } from "../components/trashed-item-banner";
 import { cn } from "@/shared/lib/utils";
@@ -24,14 +17,8 @@ import {
   type PageIconPosition,
   type PageMetadata,
 } from "@zilobase/features/pages";
-import {
-  useDeleteDatabase,
-  useRestoreDatabase,
-} from "@zilobase/features/databases/react";
-import {
-  useDeleteMeeting,
-  useWorkspaceMeetings,
-} from "@zilobase/features/meetings/react";
+import { useDeleteDatabase, useRestoreDatabase } from "@zilobase/features/databases/react";
+import { useDeleteMeeting, useWorkspaceMeetings } from "@zilobase/features/meetings/react";
 import {
   useUpdatePage,
   useRestorePage,
@@ -49,10 +36,7 @@ import { useSession } from "@zilobase/features/auth/react";
 import { useUserSettings } from "@zilobase/features/user-settings/react";
 import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry";
 import { createPageEditorHandle } from "@/features/editor/runtime/page-editor-handle";
-import {
-  Editor,
-  type PageEditPreviewControls,
-} from "@/features/editor";
+import { Editor, type PageEditPreviewControls } from "@/features/editor";
 import type {
   PageLayoutPanelMode,
   StructuralBlockDeleteRequest,
@@ -112,7 +96,10 @@ export function PageEditorPane({
   });
   const pageLocked = isPageLocked(page);
   const { pageEditable, commentsEditable } = resolvePageEditability({
-    readOnly, locked: pageLocked, deletedAt: page?.deletedAt, accessLevel,
+    readOnly,
+    locked: pageLocked,
+    deletedAt: page?.deletedAt,
+    accessLevel,
   });
   const { data: pageDatabaseIds = [] } = usePageDatabaseIds(pageId, {
     refetchOnMount: false,
@@ -139,9 +126,9 @@ export function PageEditorPane({
   const deleteMeeting = useDeleteMeeting();
   const updatePage = useUpdatePage();
   const restorePage = useRestorePage();
-  const [demoPersistenceReadyPageId, setDemoPersistenceReadyPageId] = useState<
-    string | null
-  >(demoMode ? null : pageId);
+  const [demoPersistenceReadyPageId, setDemoPersistenceReadyPageId] = useState<string | null>(
+    demoMode ? null : pageId,
+  );
   const contentSaveTimeoutRef = useRef<number | null>(null);
   const lastSavedContentRef = useRef<string | null>(null);
   const lastPageBlockIdsRef = useRef<Set<string>>(new Set());
@@ -151,56 +138,39 @@ export function PageEditorPane({
   // command inserts its structural node. Keep hierarchy recovery from treating
   // that short-lived state as lost content and replacing the live document.
   const pendingStructuralInsertionsRef = useRef(0);
-  const [structuralInsertionRevision, setStructuralInsertionRevision] =
-    useState(0);
+  const [structuralInsertionRevision, setStructuralInsertionRevision] = useState(0);
   const [editorReadyRevision, setEditorReadyRevision] = useState(0);
   const editorContentRef = useRef<(() => unknown) | null>(null);
   const editorInstanceRef = useRef<import("@tiptap/core").Editor | null>(null);
   const pageEditPreviewRef = useRef<PageEditPreviewControls | null>(null);
   const paneRef = useRef<HTMLElement | null>(null);
-  const { getEditorHandle, registerEditor, unregisterEditor } =
-    usePageEditorRegistry();
+  const { getEditorHandle, registerEditor, unregisterEditor } = usePageEditorRegistry();
 
-  const handleStructuralInsertionPendingChange = useCallback(
-    (pending: boolean) => {
-      pendingStructuralInsertionsRef.current = Math.max(
-        0,
-        pendingStructuralInsertionsRef.current + (pending ? 1 : -1),
-      );
-      setStructuralInsertionRevision((current) => current + 1);
-    },
-    [],
-  );
+  const handleStructuralInsertionPendingChange = useCallback((pending: boolean) => {
+    pendingStructuralInsertionsRef.current = Math.max(
+      0,
+      pendingStructuralInsertionsRef.current + (pending ? 1 : -1),
+    );
+    setStructuralInsertionRevision((current) => current + 1);
+  }, []);
 
-  const handleEditorReady = useCallback(
-    (editor: import("@tiptap/core").Editor | null) => {
-      const editorChanged = Boolean(
-        editor && editorInstanceRef.current !== editor,
-      );
+  const handleEditorReady = useCallback((editor: import("@tiptap/core").Editor | null) => {
+    const editorChanged = Boolean(editor && editorInstanceRef.current !== editor);
 
-      editorInstanceRef.current = editor;
-      lastSavedContentRef.current = editor
-        ? serializePageContent(editor.getJSON())
-        : null;
-      lastPageBlockIdsRef.current = editor
-        ? extractPageBlockIds(editor.getJSON())
-        : new Set();
+    editorInstanceRef.current = editor;
+    lastSavedContentRef.current = editor ? serializePageContent(editor.getJSON()) : null;
+    lastPageBlockIdsRef.current = editor ? extractPageBlockIds(editor.getJSON()) : new Set();
 
-      if (editorChanged) {
-        setEditorReadyRevision((current) => current + 1);
-      }
-    },
-    [],
-  );
+    if (editorChanged) {
+      setEditorReadyRevision((current) => current + 1);
+    }
+  }, []);
 
   useEffect(() => {
     if (!demoMode) return;
     // TipTap normalizes seeded JSON during mount. Ignore that initialization
     // write so it cannot cancel the page query that is still settling.
-    const timer = window.setTimeout(
-      () => setDemoPersistenceReadyPageId(pageId),
-      1_000,
-    );
+    const timer = window.setTimeout(() => setDemoPersistenceReadyPageId(pageId), 1_000);
     return () => window.clearTimeout(timer);
   }, [demoMode, pageId]);
 
@@ -278,8 +248,7 @@ export function PageEditorPane({
   const commentsRegistry = usePageCommentsRegistry();
   const [cover, setCover] = useState("");
   const [emoji, setEmoji] = useState("");
-  const [iconPosition, setIconPosition] =
-    useState<PageIconPosition>("top");
+  const [iconPosition, setIconPosition] = useState<PageIconPosition>("top");
   const fullWidth = resolvePageFullWidth(page, userSettings?.pageFullWidth);
   const { setTitle: setName, title: name } = useTitleDraft({
     enabled: pageEditable,
@@ -342,9 +311,7 @@ export function PageEditorPane({
       return;
     }
 
-    const placedDatabaseIds = new Set(
-      getPlacedDatabaseIds(navigation.placements, page.id),
-    );
+    const placedDatabaseIds = new Set(getPlacedDatabaseIds(navigation.placements, page.id));
 
     for (const databaseId of extractDatabaseIds(page.content)) {
       const requestKey = `${page.id}:${databaseId}`;
@@ -371,10 +338,7 @@ export function PageEditorPane({
 
   const collaborationEnabled =
     !demoMode &&
-    Boolean(
-      pageEditable ||
-        (enableComments && session?.user && page && !page.deletedAt),
-    );
+    Boolean(pageEditable || (enableComments && session?.user && page && !page.deletedAt));
   const collaboration = usePageCollaboration({
     enabled: collaborationEnabled,
     localOnly: demoMode,
@@ -417,9 +381,7 @@ export function PageEditorPane({
     };
   }, [commentController, commentsRegistry, pageId]);
   const liveEditingReady =
-    demoMode ||
-    !pageEditable ||
-    Boolean(collaboration.document && !collaboration.error);
+    demoMode || !pageEditable || Boolean(collaboration.document && !collaboration.error);
   const waitingForCollaboration =
     !demoMode &&
     collaborationEnabled &&
@@ -461,9 +423,7 @@ export function PageEditorPane({
         toast.success("Page restored.");
       },
       onError: (error) => {
-        toast.error(
-          error instanceof Error ? error.message : "Could not restore page.",
-        );
+        toast.error(error instanceof Error ? error.message : "Could not restore page.");
       },
     });
   };
@@ -531,18 +491,12 @@ export function PageEditorPane({
 
       const serializedContent = serializePageContent(content);
 
-      if (
-        demoMode &&
-        demoPersistenceReadyPageId !== pageId
-      ) {
+      if (demoMode && demoPersistenceReadyPageId !== pageId) {
         lastSavedContentRef.current = serializedContent;
         return;
       }
 
-      if (
-        serializedContent &&
-        serializedContent === lastSavedContentRef.current
-      ) {
+      if (serializedContent && serializedContent === lastSavedContentRef.current) {
         return;
       }
 
@@ -596,8 +550,7 @@ export function PageEditorPane({
         editable: pageEditable && liveEditingReady,
         getEditor: () => editorInstanceRef.current,
         isSynchronized: () =>
-          !collaboration.document ||
-          (collaboration.synced && collaboration.unsyncedChanges === 0),
+          !collaboration.document || (collaboration.synced && collaboration.unsyncedChanges === 0),
         onContentChange: updateContent,
         pageEditPreviewRef,
       }),
@@ -631,8 +584,7 @@ export function PageEditorPane({
 
     recoverMissingPlacedDatabaseBlocks({
       handle,
-      localStructuralInsertionPending:
-        pendingStructuralInsertionsRef.current > 0,
+      localStructuralInsertionPending: pendingStructuralInsertionsRef.current > 0,
       pageId: page.id,
       placements: navigation.placements,
       savedContent: page.content,
@@ -757,13 +709,15 @@ export function PageEditorPane({
     <section
       className={cn(className, "animate-in fade-in-0 duration-300")}
       onDragOverCapture={pageLocked ? (event) => event.preventDefault() : undefined}
-      onDropCapture={pageLocked
-        ? (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            toast.error("This page is locked.");
-          }
-        : undefined}
+      onDropCapture={
+        pageLocked
+          ? (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              toast.error("This page is locked.");
+            }
+          : undefined
+      }
       ref={paneRef}
     >
       {page.deletedAt ? (
@@ -820,9 +774,7 @@ export function PageEditorPane({
         onIconPositionChange={updateIconPosition}
         onDeleteStructuralBlock={deleteStructuralBlock}
         onOpenPage={onOpenPage}
-        onStructuralInsertionPendingChange={
-          handleStructuralInsertionPendingChange
-        }
+        onStructuralInsertionPendingChange={handleStructuralInsertionPendingChange}
         onTitleChange={setName}
         workspaceId={page.workspaceId}
         title={name}

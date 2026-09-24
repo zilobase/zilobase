@@ -1,4 +1,3 @@
-
 export class AutomationActionError extends Error {
   constructor(
     message: string,
@@ -21,7 +20,6 @@ export class RetryableAutomationActionError extends AutomationActionError {
     this.name = "RetryableAutomationActionError";
   }
 }
-
 
 export function actionFailure(error: unknown, actionId: string | null = null) {
   if (error instanceof RetryableAutomationActionError) {

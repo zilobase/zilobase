@@ -94,14 +94,16 @@ const openAiModels: AiModelCatalogItem[] = [
   },
 ];
 
-export const aiProviderCatalog: AiProviderCatalogItem[] = [{
-  baseUrl: "https://api.openai.com/v1",
-  id: "openai",
-  kind: "openai",
-  models: openAiModels,
-  name: "OpenAI",
-  requiresApiKey: true,
-}];
+export const aiProviderCatalog: AiProviderCatalogItem[] = [
+  {
+    baseUrl: "https://api.openai.com/v1",
+    id: "openai",
+    kind: "openai",
+    models: openAiModels,
+    name: "OpenAI",
+    requiresApiKey: true,
+  },
+];
 
 export function getAiProviderCatalogItem(providerId: string) {
   const provider = aiProviderCatalog.find((item) => item.id === providerId);
@@ -110,20 +112,23 @@ export function getAiProviderCatalogItem(providerId: string) {
 }
 
 export function getAiModelCatalogItem(providerId: string, modelId: string) {
-  return getAiProviderCatalogItem(providerId).models.find(
-    (model) => model.id === modelId,
-  ) ?? null;
+  return getAiProviderCatalogItem(providerId).models.find((model) => model.id === modelId) ?? null;
 }
 
 export function defaultAiModelForWorkload(workload: AiWorkload) {
-  const preferredModelId = ({
-    chat: "gpt-5.6-terra",
-    editor: "gpt-5.6-terra",
-    "meeting-summary": "gpt-5.6-luna",
-  } as Partial<Record<AiWorkload, string>>)[workload];
+  const preferredModelId = (
+    {
+      chat: "gpt-5.6-terra",
+      editor: "gpt-5.6-terra",
+      "meeting-summary": "gpt-5.6-luna",
+    } as Partial<Record<AiWorkload, string>>
+  )[workload];
 
-  return openAiModels.find(
-    (model) =>
-      model.id === preferredModelId && model.workloads.includes(workload),
-  ) ?? openAiModels.find((model) => model.workloads.includes(workload)) ?? null;
+  return (
+    openAiModels.find(
+      (model) => model.id === preferredModelId && model.workloads.includes(workload),
+    ) ??
+    openAiModels.find((model) => model.workloads.includes(workload)) ??
+    null
+  );
 }

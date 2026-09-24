@@ -4,10 +4,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import * as z from "zod";
 
-import {
-  AiProviderConfigError,
-  resolveWorkspaceAiModel,
-} from "../providers/ai-provider";
+import { AiProviderConfigError, resolveWorkspaceAiModel } from "../providers/ai-provider";
 import { canAccessPage, getMembership, getPageRecord } from "../../access";
 import { db, runWithDbEnv } from "../../../infrastructure/database";
 import type { AppBindings } from "../../../shared/types";
@@ -28,10 +25,7 @@ import {
 import { hashAgentToolInput } from "../actions/agent-action-receipts";
 import { buildRegisteredAgentTools } from "../actions/agent-tool-registry";
 import { aiFileRoutes } from "../files/routes";
-import {
-  executeApprovedMcpAction,
-  isMcpPendingAction,
-} from "../mcp/execution/mcp-approval";
+import { executeApprovedMcpAction, isMcpPendingAction } from "../mcp/execution/mcp-approval";
 
 const editorAiRequestSchema = z.object({
   model: z.string().trim().optional(),
@@ -102,8 +96,7 @@ aiRoutes.post("/threads/:threadId/turns", async (c) => {
   });
   const messages = await loadAiChatThreadMessages(threadId);
   const pageRefs = body.data.contextRefs.filter((ref) => ref.type === "page");
-  const primaryPageId =
-    pageRefs.find((ref) => ref.role === "primary")?.id ?? null;
+  const primaryPageId = pageRefs.find((ref) => ref.role === "primary")?.id ?? null;
 
   return runAiChatTurn({
     abortSignal: c.req.raw.signal,
@@ -212,10 +205,7 @@ aiRoutes.post("/threads/:threadId/actions/:actionId/approve", async (c) => {
       await finishPendingAgentAction({ actionId, result });
       return c.json({ actionId, result, status: "succeeded" });
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Approved connector action failed";
+      const message = error instanceof Error ? error.message : "Approved connector action failed";
       await finishPendingAgentAction({ actionId, error: message });
       return c.json({ error: message, status: "failed" }, 409);
     }
@@ -227,10 +217,7 @@ aiRoutes.post("/threads/:threadId/actions/:actionId/approve", async (c) => {
     descriptor.version !== action.toolVersion ||
     (await hashAgentToolInput(action.toolInput)) !== action.inputHash
   ) {
-    return c.json(
-      { error: "Review request no longer matches the executable tool" },
-      409,
-    );
+    return c.json({ error: "Review request no longer matches the executable tool" }, 409);
   }
 
   const executing = await markPendingAgentActionExecuting({
@@ -290,16 +277,14 @@ aiRoutes.post("/threads/:threadId/actions/:actionId/approve", async (c) => {
     await finishPendingAgentAction({ actionId, result });
     return c.json({ actionId, result, status: "succeeded" });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Approved action failed";
+    const message = error instanceof Error ? error.message : "Approved action failed";
     await finishPendingAgentAction({ actionId, error: message });
     return c.json({ error: message, status: "failed" }, 409);
   }
 });
 
 function approvedActionFailure(result: unknown): string | null {
-  if (!result || typeof result !== "object" || Array.isArray(result))
-    return null;
+  if (!result || typeof result !== "object" || Array.isArray(result)) return null;
   if (!("ok" in result) || result.ok !== false) return null;
   return "summary" in result && typeof result.summary === "string"
     ? result.summary
@@ -334,23 +319,14 @@ aiRoutes.post("/editor", async (c) => {
 
   try {
     const skillContext = body.data.skillPageId
-      ? await resolveEditorSkillContext(
-          body.data.skillPageId,
-          auth.workspaceId,
-          auth.user.id,
-        )
+      ? await resolveEditorSkillContext(body.data.skillPageId, auth.workspaceId, auth.user.id)
       : null;
 
     if (skillContext && "response" in skillContext) {
       return skillContext.response;
     }
 
-    const model = await resolveWorkspaceAiModel(
-      auth.workspaceId,
-      body.data.model,
-      c.env,
-      "editor",
-    );
+    const model = await resolveWorkspaceAiModel(auth.workspaceId, body.data.model, c.env, "editor");
     const result = streamText({
       abortSignal: c.req.raw.signal,
       experimental_transform: smoothStream({ chunking: "word", delayInMs: 16 }),
@@ -375,10 +351,7 @@ aiRoutes.post("/editor", async (c) => {
       ].join("\n"),
       temperature: model.providerOptions ? undefined : 0.45,
       onError: ({ error }) => {
-        console.warn(
-          "Editor AI stream provider error",
-          toProviderErrorMessage(error),
-        );
+        console.warn("Editor AI stream provider error", toProviderErrorMessage(error));
       },
     });
 
@@ -424,10 +397,7 @@ async function resolveEditorSkillContext(
 
   if (!(await canAccessPage(skill.id, userId, "view"))) {
     return {
-      response: Response.json(
-        { error: "Forbidden", message: "Forbidden" },
-        { status: 403 },
-      ),
+      response: Response.json({ error: "Forbidden", message: "Forbidden" }, { status: 403 }),
     };
   }
 
@@ -464,11 +434,9 @@ function buildEditorPrompt({
 
   if (skill?.content.trim()) {
     parts.push(
-      [
-        `Skill: ${skill.name}`,
-        "Use this skill content as guidance:",
-        skill.content.trim(),
-      ].join("\n"),
+      [`Skill: ${skill.name}`, "Use this skill content as guidance:", skill.content.trim()].join(
+        "\n",
+      ),
     );
   }
 
@@ -523,9 +491,7 @@ function createPlainTextStreamResponse(textStream: AsyncIterable<string>) {
 async function requireActiveWorkspace(c: Context<AppBindings>) {
   const user = c.get("user");
   const session = c.get("session");
-  const workspaceId =
-    session?.activeWorkspaceId ??
-    c.req.header("x-zilobase-workspace-id")?.trim();
+  const workspaceId = session?.activeWorkspaceId ?? c.req.header("x-zilobase-workspace-id")?.trim();
 
   if (!user) {
     return { response: c.json({ error: "Unauthorized" }, 401) };
@@ -601,23 +567,16 @@ function serializeSkillBlock(node: ProseMirrorNode): string {
 
   if (node.type === "heading") {
     const level =
-      typeof node.attrs?.level === "number"
-        ? Math.min(Math.max(node.attrs.level, 1), 6)
-        : 1;
+      typeof node.attrs?.level === "number" ? Math.min(Math.max(node.attrs.level, 1), 6) : 1;
     return `${"#".repeat(level)} ${serializeSkillInline(node.content ?? [])}`.trim();
   }
 
-  if (
-    node.type === "bulletList" ||
-    node.type === "orderedList" ||
-    node.type === "taskList"
-  ) {
+  if (node.type === "bulletList" || node.type === "orderedList" || node.type === "taskList") {
     return serializeSkillList(node);
   }
 
   if (node.type === "codeBlock") {
-    const language =
-      typeof node.attrs?.language === "string" ? node.attrs.language : "";
+    const language = typeof node.attrs?.language === "string" ? node.attrs.language : "";
     return `\`\`\`${language}\n${serializeSkillInline(node.content ?? [])}\n\`\`\``;
   }
 
@@ -697,9 +656,7 @@ function applySkillMarks(
 async function parseJson<T extends z.ZodType>(
   c: Context<AppBindings>,
   schema: T,
-): Promise<
-  { success: true; data: z.infer<T> } | { success: false; response: Response }
-> {
+): Promise<{ success: true; data: z.infer<T> } | { success: false; response: Response }> {
   let body: unknown;
 
   try {
@@ -734,9 +691,7 @@ async function parseJson<T extends z.ZodType>(
 }
 
 function readObject(value: unknown) {
-  return value && typeof value === "object"
-    ? (value as Record<string, unknown>)
-    : {};
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
 function toProviderErrorMessage(error: unknown) {

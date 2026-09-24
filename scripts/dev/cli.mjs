@@ -53,9 +53,7 @@ try {
   else if (command === "env-decrypt") await runDotenvx("decrypt");
   else if (command === "local") {
     if (args.includes("--target")) {
-      throw new Error(
-        "dev no longer accepts --target. It starts the Node development profile.",
-      );
+      throw new Error("dev no longer accepts --target. It starts the Node development profile.");
     }
     await startLocal();
   } else if (command === "preview") {
@@ -67,17 +65,18 @@ try {
       );
     }
     await startStudio();
-  }
-  else if (command === "status") await showStatus();
+  } else if (command === "status") await showStatus();
   else if (command === "logs") await followLocalLogs();
   else if (command === "down") await stopLocal();
   else if (command === "reset") {
     await resetLocal(readOption(args, "--target") ?? "all", args.includes("--yes"));
   } else if (command === "k8s") await startKubernetes(readOption(args, "--target") ?? "community");
   else if (command === "k8s-rebuild") await rebuildKubernetes(readOption(args, "--target"));
-  else if (command === "k8s-logs") await followKubernetesLogs(readOption(args, "--target") ?? "community");
+  else if (command === "k8s-logs")
+    await followKubernetesLogs(readOption(args, "--target") ?? "community");
   else if (command === "k8s-down") await stopKubernetes();
-  else if (command === "k8s-smoke") await smokeKubernetes(readOption(args, "--target") ?? "community");
+  else if (command === "k8s-smoke")
+    await smokeKubernetes(readOption(args, "--target") ?? "community");
   else throw new Error(`Unknown development command: ${command ?? "(missing)"}.`);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
@@ -111,21 +110,25 @@ async function ensureDependencies() {
       "Docker daemon is not running. Start it (Docker.app or `colima start`) and re-run setup.",
     );
     const runner = resolveComposeRunner();
-    await run(runner.command, [
-      ...runner.args,
-      "--env-file",
-      generatedEnvironmentFiles.dependencies,
-      "-f",
-      composeFile,
-      "pull",
-      "postgres",
-      "minio",
-      "mailpit",
-      "valkey",
-    ], {
-      cwd: coreDir,
-      stdio: "inherit",
-    });
+    await run(
+      runner.command,
+      [
+        ...runner.args,
+        "--env-file",
+        generatedEnvironmentFiles.dependencies,
+        "-f",
+        composeFile,
+        "pull",
+        "postgres",
+        "minio",
+        "mailpit",
+        "valkey",
+      ],
+      {
+        cwd: coreDir,
+        stdio: "inherit",
+      },
+    );
   } catch (error) {
     throw new Error(
       `Failed to pre-pull local dependency images: ${error instanceof Error ? error.message : String(error)}`,
@@ -142,7 +145,9 @@ async function runDotenvx(action) {
       await mkdir(path.dirname(file.plaintext), { recursive: true });
       await writeFile(file.plaintext, plaintext, { mode: 0o600 });
       await chmod(file.plaintext, 0o600);
-      console.info(`Decrypted ${file.name} into ignored private state: ${path.relative(coreDir, file.plaintext)}`);
+      console.info(
+        `Decrypted ${file.name} into ignored private state: ${path.relative(coreDir, file.plaintext)}`,
+      );
       continue;
     }
 
@@ -160,7 +165,9 @@ async function runDotenvx(action) {
           { cwd: coreDir, stdio: "inherit" },
         );
         child.once("error", reject);
-        child.once("exit", (code) => code === 0 ? resolve() : reject(new Error(`dotenvx ${action} failed.`)));
+        child.once("exit", (code) =>
+          code === 0 ? resolve() : reject(new Error(`dotenvx ${action} failed.`)),
+        );
       });
     } catch (error) {
       if (encryptedBackup) await writeFile(file.filename, encryptedBackup, { mode: 0o600 });
@@ -182,7 +189,8 @@ function captureDotenvx(args) {
     child.once("error", reject);
     child.once("exit", (code) => {
       if (code === 0) resolve(Buffer.concat(stdout).toString("utf8"));
-      else reject(new Error("dotenvx decrypt failed; verify the matching private key is available."));
+      else
+        reject(new Error("dotenvx decrypt failed; verify the matching private key is available."));
     });
   });
 }

@@ -14,9 +14,7 @@ import {
   getSelectedDesktopServer,
   type DesktopServer,
 } from "@/platform/server/desktop-server";
-import type {
-  DesktopServerReplacementDependencies,
-} from "@/features/desktop/server/desktop-server-replacement-core";
+import type { DesktopServerReplacementDependencies } from "@/features/desktop/server/desktop-server-replacement-core";
 import { useAppStore } from "@/features/desktop/state/app-store";
 import { useAuthFlowStore } from "@/features/auth/state/auth-flow-store";
 
@@ -41,10 +39,7 @@ async function clearDesktopServerBrowserState() {
   queryClient.clear();
   useAppStore.getState().resetAccountState();
   useAuthFlowStore.getState().clearAuthFlow();
-  await Promise.all([
-    useAppStore.persist.clearStorage(),
-    useAuthFlowStore.persist.clearStorage(),
-  ]);
+  await Promise.all([useAppStore.persist.clearStorage(), useAuthFlowStore.persist.clearStorage()]);
   window.localStorage.removeItem("zilobase-app");
   window.localStorage.removeItem("zilobase-auth-flow");
   const server = getSelectedDesktopServer();
@@ -62,16 +57,13 @@ async function bestEffortRevokeDesktopSession(server: DesktopServer) {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 3_000);
   try {
-    const response = await desktopNetworkFetch(
-      `${server.apiOrigin}/api/auth/sign-out`,
-      {
-        body: "{}",
-        credentials: "include",
-        headers: getApiRequestHeaders({ "content-type": "application/json" }),
-        method: "POST",
-        signal: controller.signal,
-      },
-    );
+    const response = await desktopNetworkFetch(`${server.apiOrigin}/api/auth/sign-out`, {
+      body: "{}",
+      credentials: "include",
+      headers: getApiRequestHeaders({ "content-type": "application/json" }),
+      method: "POST",
+      signal: controller.signal,
+    });
     await response.arrayBuffer();
   } finally {
     window.clearTimeout(timeout);

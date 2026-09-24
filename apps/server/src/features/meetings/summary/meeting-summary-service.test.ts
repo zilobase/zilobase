@@ -19,5 +19,5 @@ test("summary documents contain structured meeting sections", () => {
 test("long transcripts split on line boundaries", () => {
   const chunks = splitTranscript(`${"a".repeat(40_000)}\n${"b".repeat(40_000)}`);
   assert.equal(chunks.length, 2);
-  assert.equal(chunks.join("" ).length, 80_001);
+  assert.equal(chunks.join("").length, 80_001);
 });

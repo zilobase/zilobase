@@ -2,10 +2,7 @@ import { generateText, stepCountIs } from "ai";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "../../../infrastructure/database";
-import {
-  aiAgentRun,
-  aiAgentToolExecution,
-} from "../../../infrastructure/database/schema";
+import { aiAgentRun, aiAgentToolExecution } from "../../../infrastructure/database/schema";
 import type { RuntimeEnv } from "../../../shared/config/config";
 
 import type { maintainAgentRunLease } from "./agent-run-lease";
@@ -21,37 +18,25 @@ export async function continueAgentRunModel(
   env: RuntimeEnv,
   run: typeof aiAgentRun.$inferSelect,
   workerId: string,
-  lease: Pick<
-    ReturnType<typeof maintainAgentRunLease>,
-    "signal" | "guardTools"
-  >,
+  lease: Pick<ReturnType<typeof maintainAgentRunLease>, "signal" | "guardTools">,
 ) {
   // A restarted model produces new tool-call IDs. Until model/tool results
   // are durably checkpointed, replaying a run after a write is unsafe.
   const checkpoint = await readAgentRunCheckpoint(env, run);
-  if (
-    run.attempts > 1 &&
-    (await hasAgentWriteReceipt(run.id, checkpoint.toolCallIds))
-  ) {
+  if (run.attempts > 1 && (await hasAgentWriteReceipt(run.id, checkpoint.toolCallIds))) {
     throw new PermanentAgentRunError(
       "A prior attempt performed a write. Review its outcome before starting another run.",
       "AGENT_RETRY_REQUIRES_REVIEW",
     );
   }
-  const { definition, profile, model, prompt, mcpTools, nativeTools } =
-    await prepareAgentRun(env, run);
-  if (checkpoint.steps >= 15 && !checkpoint.finalResult)
-    throw new PermanentAgentRunError(
-      "Agent reached its model step limit.",
-      "AGENT_STEP_LIMIT",
-    );
-  // Validate encryption and persistence before any tool can perform a write.
-  let waitingForApproval = await saveAgentRunCheckpoint(
+  const { definition, profile, model, prompt, mcpTools, nativeTools } = await prepareAgentRun(
     env,
     run,
-    workerId,
-    checkpoint,
   );
+  if (checkpoint.steps >= 15 && !checkpoint.finalResult)
+    throw new PermanentAgentRunError("Agent reached its model step limit.", "AGENT_STEP_LIMIT");
+  // Validate encryption and persistence before any tool can perform a write.
+  let waitingForApproval = await saveAgentRunCheckpoint(env, run, workerId, checkpoint);
   if (waitingForApproval) return null;
   let completedSteps = checkpoint.steps;
   const result =
@@ -88,20 +73,12 @@ export async function continueAgentRunModel(
   return result;
 }
 
-async function hasAgentWriteReceipt(
-  runId: string,
-  checkpointedToolCallIds: string[],
-) {
+async function hasAgentWriteReceipt(runId: string, checkpointedToolCallIds: string[]) {
   const receipts = await db
     .select({ toolCallId: aiAgentToolExecution.toolCallId })
     .from(aiAgentToolExecution)
     .where(
-      and(
-        eq(aiAgentToolExecution.agentRunId, runId),
-        eq(aiAgentToolExecution.effect, "write"),
-      ),
+      and(eq(aiAgentToolExecution.agentRunId, runId), eq(aiAgentToolExecution.effect, "write")),
     );
-  return receipts.some(
-    (receipt) => !checkpointedToolCallIds.includes(receipt.toolCallId),
-  );
+  return receipts.some((receipt) => !checkpointedToolCallIds.includes(receipt.toolCallId));
 }

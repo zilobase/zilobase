@@ -1,1 +1,1 @@
-export { DatabaseMainPane } from "./database-screen"
+export { DatabaseMainPane } from "./database-screen";

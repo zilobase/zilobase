@@ -6,7 +6,7 @@ import type {
   SidebarShortcut,
   SidebarTab,
   SidebarWorkspaceLayout,
-} from "@zilobase/features/user-settings"
+} from "@zilobase/features/user-settings";
 
 export const sidebarSectionLabels: Record<SidebarSectionKind, string> = {
   aiChats: "AI chats",
@@ -18,7 +18,7 @@ export const sidebarSectionLabels: Record<SidebarSectionKind, string> = {
   shared: "Shared",
   teamspaces: "Teamspaces",
   tasks: "Tasks",
-}
+};
 
 export const libraryViewLabels: Record<LibraryView, string> = {
   skills: "Skills",
@@ -30,7 +30,7 @@ export const libraryViewLabels: Record<LibraryView, string> = {
   shared: "Shared",
   teamspaces: "Teamspaces",
   trash: "Trash",
-}
+};
 
 export const mailViewLabels: Record<MailView, string> = {
   archive: "Archive",
@@ -41,19 +41,19 @@ export const mailViewLabels: Record<MailView, string> = {
   starred: "Starred",
   trash: "Trash",
   unread: "Unread",
-}
+};
 
 export function getShortcutLabel(shortcut: SidebarShortcut) {
-  if (shortcut.label) return shortcut.label
-  const target = shortcut.target
+  if (shortcut.label) return shortcut.label;
+  const target = shortcut.target;
   if (target.type === "action") {
     return target.action === "composeMail"
       ? "Compose"
       : target.action === "createPage"
-      ? "New page"
-      : target.action === "createDatabase"
-        ? "New database"
-        : "New AI chat"
+        ? "New page"
+        : target.action === "createDatabase"
+          ? "New database"
+          : "New AI chat";
   }
   if (target.type === "route") {
     return {
@@ -62,11 +62,11 @@ export function getShortcutLabel(shortcut: SidebarShortcut) {
       settings: "Settings",
       tasks: "Tasks",
       trash: "Trash",
-    }[target.route]
+    }[target.route];
   }
-  if (target.type === "library") return libraryViewLabels[target.view]
-  if (target.type === "mail") return mailViewLabels[target.view]
-  return target.type === "page" ? "Page" : "Database"
+  if (target.type === "library") return libraryViewLabels[target.view];
+  if (target.type === "mail") return mailViewLabels[target.view];
+  return target.type === "page" ? "Page" : "Database";
 }
 
 export function isShortcutActive(
@@ -75,31 +75,32 @@ export function isShortcutActive(
   search: Record<string, unknown>,
   settingsOpen = false,
 ) {
-  const target = shortcut.target
-  if (target.type === "action") return false
+  const target = shortcut.target;
+  if (target.type === "action") return false;
   if (target.type === "library") {
-    return pathname === "/recents" && search.view === target.view
+    return pathname === "/recents" && search.view === target.view;
   }
   if (target.type === "mail") {
-    return pathname === "/mail" && search.view === target.view
+    return pathname === "/mail" && search.view === target.view;
   }
-  if (target.type === "page") return pathname === `/p/${target.pageId}`
+  if (target.type === "page") return pathname === `/p/${target.pageId}`;
   if (target.type === "database") {
-    return pathname === `/d/${target.databaseId}` &&
-      (!target.viewId || search.view === target.viewId)
+    return (
+      pathname === `/d/${target.databaseId}` && (!target.viewId || search.view === target.viewId)
+    );
   }
-  if (target.route === "settings") return settingsOpen
+  if (target.route === "settings") return settingsOpen;
   if (target.route === "meetings") {
-    return pathname === "/recents" && search.view === "meetings"
+    return pathname === "/recents" && search.view === "meetings";
   }
   if (target.route === "trash") {
-    return pathname === "/recents" && search.view === "trash"
+    return pathname === "/recents" && search.view === "trash";
   }
-  return pathname === `/${target.route}`
+  return pathname === `/${target.route}`;
 }
 
 export function getSectionLabel(section: SidebarSection) {
-  return section.label || sidebarSectionLabels[section.kind]
+  return section.label || sidebarSectionLabels[section.kind];
 }
 
 export function updateSidebarTab(
@@ -110,7 +111,7 @@ export function updateSidebarTab(
   return {
     ...layout,
     tabs: layout.tabs.map((tab) => (tab.id === tabId ? update(tab) : tab)),
-  }
+  };
 }
 
 export function hideUnconfiguredIntegrationTabs(
@@ -120,17 +121,19 @@ export function hideUnconfiguredIntegrationTabs(
   return {
     ...layout,
     tabs: layout.tabs.flatMap((tab) => {
-      if (tab.id === "mail" && !availability.mail) return []
-      if (tab.id === "calendar" && !availability.calendar) return []
+      if (tab.id === "mail" && !availability.mail) return [];
+      if (tab.id === "calendar" && !availability.calendar) return [];
       if (availability.mail || !tab.shortcuts.some((shortcut) => isMailShortcut(shortcut))) {
-        return [tab]
+        return [tab];
       }
-      return [{
-        ...tab,
-        shortcuts: tab.shortcuts.filter((shortcut) => !isMailShortcut(shortcut)),
-      }]
+      return [
+        {
+          ...tab,
+          shortcuts: tab.shortcuts.filter((shortcut) => !isMailShortcut(shortcut)),
+        },
+      ];
     }),
-  }
+  };
 }
 
 export function restoreUnconfiguredIntegrationTabs(
@@ -138,29 +141,29 @@ export function restoreUnconfiguredIntegrationTabs(
   next: SidebarWorkspaceLayout,
   availability: { mail: boolean; calendar: boolean },
 ): SidebarWorkspaceLayout {
-  const hidden = stored.tabs.filter((tab) =>
-    (tab.id === "mail" && !availability.mail) ||
-    (tab.id === "calendar" && !availability.calendar),
-  )
-  if (hidden.length === 0) return next
-  const tabs = next.tabs.filter((tab) => !hidden.some((item) => item.id === tab.id))
-  const anchor = tabs.findIndex((tab) => tab.id === "ai")
-  tabs.splice(anchor >= 0 ? anchor + 1 : tabs.length, 0, ...hidden)
-  return { ...next, tabs }
+  const hidden = stored.tabs.filter(
+    (tab) =>
+      (tab.id === "mail" && !availability.mail) ||
+      (tab.id === "calendar" && !availability.calendar),
+  );
+  if (hidden.length === 0) return next;
+  const tabs = next.tabs.filter((tab) => !hidden.some((item) => item.id === tab.id));
+  const anchor = tabs.findIndex((tab) => tab.id === "ai");
+  tabs.splice(anchor >= 0 ? anchor + 1 : tabs.length, 0, ...hidden);
+  return { ...next, tabs };
 }
 
 function isMailShortcut(shortcut: SidebarShortcut) {
-  const target = shortcut.target
-  return target.type === "mail" ||
-    (target.type === "action" && target.action === "composeMail")
+  const target = shortcut.target;
+  return target.type === "mail" || (target.type === "action" && target.action === "composeMail");
 }
 
 export function moveArrayItem<T>(items: T[], index: number, offset: -1 | 1) {
-  const nextIndex = index + offset
-  if (index < 0 || nextIndex < 0 || nextIndex >= items.length) return items
-  const next = [...items]
-  ;[next[index], next[nextIndex]] = [next[nextIndex]!, next[index]!]
-  return next
+  const nextIndex = index + offset;
+  if (index < 0 || nextIndex < 0 || nextIndex >= items.length) return items;
+  const next = [...items];
+  [next[index], next[nextIndex]] = [next[nextIndex]!, next[index]!];
+  return next;
 }
 
 export function moveLayoutEntry(
@@ -170,35 +173,32 @@ export function moveLayoutEntry(
   entryType: "sections" | "shortcuts",
   entryId: string,
 ) {
-  if (
-    sourceTabId === targetTabId ||
-    isStaticTabId(sourceTabId) ||
-    isStaticTabId(targetTabId)
-  ) return layout
-  const source = layout.tabs.find((tab) => tab.id === sourceTabId)
-  const entry = source?.[entryType].find((item) => item.id === entryId)
-  if (!entry) return layout
+  if (sourceTabId === targetTabId || isStaticTabId(sourceTabId) || isStaticTabId(targetTabId))
+    return layout;
+  const source = layout.tabs.find((tab) => tab.id === sourceTabId);
+  const entry = source?.[entryType].find((item) => item.id === entryId);
+  if (!entry) return layout;
 
   return {
     ...layout,
     tabs: layout.tabs.map((tab) => {
       if (tab.id === sourceTabId) {
-        return { ...tab, [entryType]: tab[entryType].filter((item) => item.id !== entryId) }
+        return { ...tab, [entryType]: tab[entryType].filter((item) => item.id !== entryId) };
       }
       if (tab.id === targetTabId) {
-        return { ...tab, [entryType]: [...tab[entryType], entry] }
+        return { ...tab, [entryType]: [...tab[entryType], entry] };
       }
-      return tab
+      return tab;
     }),
-  }
+  };
 }
 
 function isStaticTabId(tabId: string) {
-  return tabId === "ai" || tabId === "mail" || tabId === "calendar"
+  return tabId === "ai" || tabId === "mail" || tabId === "calendar";
 }
 
 export function hasShortcutTarget(tab: SidebarTab, target: SidebarShortcut["target"]) {
-  return tab.shortcuts.some((shortcut) =>
-    JSON.stringify(shortcut.target) === JSON.stringify(target),
-  )
+  return tab.shortcuts.some(
+    (shortcut) => JSON.stringify(shortcut.target) === JSON.stringify(target),
+  );
 }

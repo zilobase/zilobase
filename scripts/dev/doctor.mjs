@@ -5,14 +5,19 @@ export async function doctor() {
   const checks = await collectDependencyChecks();
 
   for (const check of checks) {
-    console.info(`${check.ok ? "✓" : check.required === false ? "○" : "✗"} ${check.label}: ${check.detail}`);
+    console.info(
+      `${check.ok ? "✓" : check.required === false ? "○" : "✗"} ${check.label}: ${check.detail}`,
+    );
   }
   const requiredFailures = checks.filter((check) => check.required !== false && !check.ok);
-  const kubeMissing = checks.filter((check) => check.label.includes("Kubernetes only") && !check.ok);
+  const kubeMissing = checks.filter(
+    (check) => check.label.includes("Kubernetes only") && !check.ok,
+  );
   if (kubeMissing.length) {
     console.info("\nKubernetes tooling is optional. On macOS: brew install kubectl kind helm");
   }
-  if (requiredFailures.length) throw new Error("Required local-development prerequisites are missing.");
+  if (requiredFailures.length)
+    throw new Error("Required local-development prerequisites are missing.");
 }
 
 export async function collectDependencyChecks() {
@@ -44,7 +49,12 @@ function gitHooksCheck() {
 
 function versionCheck(label, executable, args, validate = () => true) {
   const result = runResult(executable, args);
-  const detail = (result.stdout || result.stderr || result.error?.message || "not installed").trim();
+  const detail = (
+    result.stdout ||
+    result.stderr ||
+    result.error?.message ||
+    "not installed"
+  ).trim();
   return {
     label,
     required: !label.includes("Kubernetes only"),

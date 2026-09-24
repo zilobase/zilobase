@@ -3,4 +3,4 @@ export {
   initializeDesktopTranslucency,
   MAX_DESKTOP_TRANSLUCENCY,
   setDesktopTranslucency,
-} from "./desktop-translucency"
+} from "./desktop-translucency";

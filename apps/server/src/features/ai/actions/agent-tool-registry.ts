@@ -52,20 +52,16 @@ export function buildRegisteredAgentTools(
       workspaceId: context.workspaceId,
       withDb: context.withDb,
     }),
-    ...(context.editablePageIds.length > 0
-      ? buildPageEditTools(context.editablePageIds)
-      : {}),
+    ...(context.editablePageIds.length > 0 ? buildPageEditTools(context.editablePageIds) : {}),
   };
 
-  const unknownTools = Object.keys(tools).filter(
-    (name) => !getAgentToolDescriptor(name),
-  );
+  const unknownTools = Object.keys(tools).filter((name) => !getAgentToolDescriptor(name));
   if (unknownTools.length > 0) {
     throw new Error(`Agent tools missing registry descriptors: ${unknownTools.join(", ")}`);
   }
-  const duplicateNames = AGENT_TOOL_DESCRIPTORS
-    .map((descriptor) => descriptor.name)
-    .filter((name, index, names) => names.indexOf(name) !== index);
+  const duplicateNames = AGENT_TOOL_DESCRIPTORS.map((descriptor) => descriptor.name).filter(
+    (name, index, names) => names.indexOf(name) !== index,
+  );
   if (duplicateNames.length > 0) {
     throw new Error(`Duplicate agent tool descriptors: ${duplicateNames.join(", ")}`);
   }
@@ -73,93 +69,103 @@ export function buildRegisteredAgentTools(
 
   const createdObjectIds = new Set<string>();
   const pendingReviewTargetKeys = new Set<string>();
-  return Object.fromEntries(Object.entries(tools).map(([name, registeredTool]) => {
-    const descriptor = getAgentToolDescriptor(name)!;
-    if (!("execute" in registeredTool) || typeof registeredTool.execute !== "function") {
-      return [name, registeredTool];
-    }
-    const execute = registeredTool.execute;
+  return Object.fromEntries(
+    Object.entries(tools).map(([name, registeredTool]) => {
+      const descriptor = getAgentToolDescriptor(name)!;
+      if (!("execute" in registeredTool) || typeof registeredTool.execute !== "function") {
+        return [name, registeredTool];
+      }
+      const execute = registeredTool.execute;
 
-    return [name, {
-      ...registeredTool,
-      execute: async (toolInput: unknown, toolOptions: { toolCallId: string }) => {
-        context.progress?.startTool({
-          title: descriptor.title,
-          toolCallId: toolOptions.toolCallId,
-          toolName: name,
-        });
-        try {
-          if (
-            descriptor.risk === "review" &&
-            name !== "proposePageContentUpdate" &&
-            !isSameTurnCreatedTarget(name, toolInput, createdObjectIds)
-          ) {
-            const targetKey = getReviewTargetKey(name, toolInput);
-            if (targetKey && pendingReviewTargetKeys.has(targetKey)) {
-              const duplicateResult = {
-                error: { code: "duplicate_review_target", retryable: false },
-                ok: false,
-                status: "unavailable" as const,
-                summary: "Only one approval can be requested for the same object in a turn. Combine all requested changes into one update.",
-              };
+      return [
+        name,
+        {
+          ...registeredTool,
+          execute: async (toolInput: unknown, toolOptions: { toolCallId: string }) => {
+            context.progress?.startTool({
+              title: descriptor.title,
+              toolCallId: toolOptions.toolCallId,
+              toolName: name,
+            });
+            try {
+              if (
+                descriptor.risk === "review" &&
+                name !== "proposePageContentUpdate" &&
+                !isSameTurnCreatedTarget(name, toolInput, createdObjectIds)
+              ) {
+                const targetKey = getReviewTargetKey(name, toolInput);
+                if (targetKey && pendingReviewTargetKeys.has(targetKey)) {
+                  const duplicateResult = {
+                    error: { code: "duplicate_review_target", retryable: false },
+                    ok: false,
+                    status: "unavailable" as const,
+                    summary:
+                      "Only one approval can be requested for the same object in a turn. Combine all requested changes into one update.",
+                  };
+                  context.progress?.finishTool({
+                    failed: true,
+                    toolCallId: toolOptions.toolCallId,
+                  });
+                  return duplicateResult;
+                }
+                if (targetKey) pendingReviewTargetKeys.add(targetKey);
+                try {
+                  const approvalResult = await context.withDb(() =>
+                    requestAgentActionApproval({
+                      descriptor,
+                      threadId: context.threadId,
+                      toolCallId: toolOptions.toolCallId,
+                      toolInput,
+                      userId: context.userId,
+                      workspaceId: context.workspaceId,
+                    }),
+                  );
+                  context.progress?.finishTool({
+                    failed: isFailedAgentToolResult(approvalResult),
+                    toolCallId: toolOptions.toolCallId,
+                  });
+                  return approvalResult;
+                } catch (error) {
+                  if (targetKey) pendingReviewTargetKeys.delete(targetKey);
+                  throw error;
+                }
+              }
+              const result = await execute(toolInput as never, toolOptions as never);
+              if (CREATION_TOOL_NAMES.has(name)) collectCreatedIds(result, createdObjectIds);
               context.progress?.finishTool({
+                failed: isFailedAgentToolResult(result),
+                toolCallId: toolOptions.toolCallId,
+              });
+              return result;
+            } catch (error) {
+              context.progress?.finishTool({
+                detail: error instanceof Error ? error.message : undefined,
                 failed: true,
                 toolCallId: toolOptions.toolCallId,
               });
-              return duplicateResult;
+              console.error(
+                JSON.stringify({
+                  code: readSafeToolErrorCode(error),
+                  event: "ai_agent_tool_execution_failed",
+                  toolName: name,
+                  toolVersion: descriptor.version,
+                }),
+              );
+              throw new Error(`${descriptor.title} could not be completed. Please try again.`);
             }
-            if (targetKey) pendingReviewTargetKeys.add(targetKey);
-            try {
-              const approvalResult = await context.withDb(() => requestAgentActionApproval({
-                descriptor,
-                threadId: context.threadId,
-                toolCallId: toolOptions.toolCallId,
-                toolInput,
-                userId: context.userId,
-                workspaceId: context.workspaceId,
-              }));
-              context.progress?.finishTool({
-                failed: isFailedAgentToolResult(approvalResult),
-                toolCallId: toolOptions.toolCallId,
-              });
-              return approvalResult;
-            } catch (error) {
-              if (targetKey) pendingReviewTargetKeys.delete(targetKey);
-              throw error;
-            }
-          }
-          const result = await execute(toolInput as never, toolOptions as never);
-          if (CREATION_TOOL_NAMES.has(name)) collectCreatedIds(result, createdObjectIds);
-          context.progress?.finishTool({
-            failed: isFailedAgentToolResult(result),
-            toolCallId: toolOptions.toolCallId,
-          });
-          return result;
-        } catch (error) {
-          context.progress?.finishTool({
-            detail: error instanceof Error ? error.message : undefined,
-            failed: true,
-            toolCallId: toolOptions.toolCallId,
-          });
-          console.error(JSON.stringify({
-            code: readSafeToolErrorCode(error),
-            event: "ai_agent_tool_execution_failed",
-            toolName: name,
-            toolVersion: descriptor.version,
-          }));
-          throw new Error(`${descriptor.title} could not be completed. Please try again.`);
-        }
-      },
-    }];
-  })) as ToolSet;
+          },
+        },
+      ];
+    }),
+  ) as ToolSet;
 }
 
 export function isFailedAgentToolResult(value: unknown) {
   return Boolean(
     value &&
-      typeof value === "object" &&
-      !Array.isArray(value) &&
-      (value as { ok?: unknown }).ok === false,
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    (value as { ok?: unknown }).ok === false,
   );
 }
 
@@ -172,7 +178,8 @@ function getReviewTargetKey(toolName: string, input: unknown) {
     updateDatabaseView: ["viewId"],
     updateWorkspacePage: ["pageId"],
   };
-  const targetId = (targetFields[toolName] ?? []).map((field) => value[field])
+  const targetId = (targetFields[toolName] ?? [])
+    .map((field) => value[field])
     .find((item): item is string => typeof item === "string" && item.length > 0);
 
   return targetId ? `${toolName}:${targetId}` : null;
@@ -186,11 +193,7 @@ const CREATION_TOOL_NAMES = new Set([
   "createDatabaseRow",
 ]);
 
-function isSameTurnCreatedTarget(
-  toolName: string,
-  input: unknown,
-  createdObjectIds: Set<string>,
-) {
+function isSameTurnCreatedTarget(toolName: string, input: unknown, createdObjectIds: Set<string>) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return false;
   const value = input as Record<string, unknown>;
   const targetFields: Record<string, string[]> = {
@@ -199,8 +202,8 @@ function isSameTurnCreatedTarget(
     updateDatabaseView: ["viewId"],
     updateWorkspacePage: ["pageId"],
   };
-  return (targetFields[toolName] ?? []).some((field) =>
-    typeof value[field] === "string" && createdObjectIds.has(value[field])
+  return (targetFields[toolName] ?? []).some(
+    (field) => typeof value[field] === "string" && createdObjectIds.has(value[field]),
   );
 }
 
@@ -223,10 +226,7 @@ function readSafeToolErrorCode(error: unknown) {
   while (current && typeof current === "object" && !seen.has(current)) {
     seen.add(current);
     const record = current as { cause?: unknown; code?: unknown };
-    if (
-      typeof record.code === "string" &&
-      /^[a-z0-9_]{2,40}$/i.test(record.code)
-    ) {
+    if (typeof record.code === "string" && /^[a-z0-9_]{2,40}$/i.test(record.code)) {
       return record.code;
     }
     current = record.cause;

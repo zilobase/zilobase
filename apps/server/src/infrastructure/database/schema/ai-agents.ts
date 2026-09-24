@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import {
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { workspace } from "./workspaces";
 import { user } from "./authentication";
 import { timestampColumns } from "./columns";
@@ -34,14 +44,8 @@ export const aiAgentProfile = pgTable(
       table.status,
       table.updatedAt,
     ),
-    check(
-      "ai_agent_profile_status_check",
-      sql`${table.status} in ('active', 'archived')`,
-    ),
-    check(
-      "ai_agent_profile_icon_position_check",
-      sql`${table.iconPosition} in ('inline', 'top')`,
-    ),
+    check("ai_agent_profile_status_check", sql`${table.status} in ('active', 'archived')`),
+    check("ai_agent_profile_icon_position_check", sql`${table.iconPosition} in ('inline', 'top')`),
     check("ai_agent_profile_version_check", sql`${table.version} > 0`),
   ],
 );
@@ -66,14 +70,8 @@ export const aiAgentRevision = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("ai_agent_revision_profile_version_unique").on(
-      table.profileId,
-      table.version,
-    ),
-    index("ai_agent_revision_profile_created_idx").on(
-      table.profileId,
-      table.createdAt,
-    ),
+    uniqueIndex("ai_agent_revision_profile_version_unique").on(table.profileId, table.version),
+    index("ai_agent_revision_profile_created_idx").on(table.profileId, table.createdAt),
     check("ai_agent_revision_version_check", sql`${table.version} > 0`),
   ],
 );
@@ -93,10 +91,7 @@ export const aiAgentConversation = pgTable(
   },
   (table) => [
     uniqueIndex("ai_agent_conversation_profile_unique").on(table.profileId),
-    index("ai_agent_conversation_profile_activity_idx").on(
-      table.profileId,
-      table.lastActivityAt,
-    ),
+    index("ai_agent_conversation_profile_activity_idx").on(table.profileId, table.lastActivityAt),
   ],
 );
 
@@ -130,10 +125,7 @@ export const aiAgentConversationMessage = pgTable(
     uniqueIndex("ai_agent_conversation_message_client_unique")
       .on(table.conversationId, table.clientId)
       .where(sql`${table.clientId} is not null`),
-    index("ai_agent_conversation_message_created_idx").on(
-      table.conversationId,
-      table.createdAt,
-    ),
+    index("ai_agent_conversation_message_created_idx").on(table.conversationId, table.createdAt),
     check(
       "ai_agent_conversation_message_role_check",
       sql`${table.role} in ('user', 'assistant', 'system')`,
@@ -170,10 +162,7 @@ export const aiAgentTrigger = pgTable(
   },
   (table) => [
     index("ai_agent_trigger_due_idx").on(table.status, table.nextRunAt),
-    index("ai_agent_trigger_profile_status_idx").on(
-      table.profileId,
-      table.status,
-    ),
+    index("ai_agent_trigger_profile_status_idx").on(table.profileId, table.status),
     check(
       "ai_agent_trigger_kind_check",
       sql`${table.kind} in ('manual', 'schedule', 'database', 'comment', 'mention', 'meeting', 'webhook', 'slack', 'connector')`,
@@ -236,10 +225,7 @@ export const aiAgentRun = pgTable(
     index("ai_agent_run_claim_idx")
       .on(table.status, table.availableAt, table.leaseExpiresAt)
       .where(sql`${table.status} in ('queued', 'running')`),
-    index("ai_agent_run_profile_created_idx").on(
-      table.profileId,
-      table.createdAt,
-    ),
+    index("ai_agent_run_profile_created_idx").on(table.profileId, table.createdAt),
     check(
       "ai_agent_run_status_check",
       sql`${table.status} in ('queued', 'running', 'waiting_approval', 'succeeded', 'failed', 'cancelled', 'skipped')`,
@@ -271,15 +257,9 @@ export const aiAgentRunEvent = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("ai_agent_run_event_sequence_unique").on(
-      table.runId,
-      table.sequence,
-    ),
+    uniqueIndex("ai_agent_run_event_sequence_unique").on(table.runId, table.sequence),
     index("ai_agent_run_event_created_idx").on(table.runId, table.createdAt),
-    check(
-      "ai_agent_run_event_visibility_check",
-      sql`${table.visibility} in ('shared', 'editor')`,
-    ),
+    check("ai_agent_run_event_visibility_check", sql`${table.visibility} in ('shared', 'editor')`),
   ],
 );
 
@@ -305,14 +285,8 @@ export const aiAgentEventReceipt = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("ai_agent_event_receipt_profile_event_unique").on(
-      table.profileId,
-      table.eventKey,
-    ),
-    index("ai_agent_event_receipt_received_idx").on(
-      table.workspaceId,
-      table.receivedAt,
-    ),
+    uniqueIndex("ai_agent_event_receipt_profile_event_unique").on(table.profileId, table.eventKey),
+    index("ai_agent_event_receipt_received_idx").on(table.workspaceId, table.receivedAt),
   ],
 );
 
@@ -346,9 +320,6 @@ export const aiAgentProfileAccess = pgTable(
       "ai_agent_profile_access_principal_check",
       sql`${table.principalType} in ('user', 'team')`,
     ),
-    check(
-      "ai_agent_profile_access_role_check",
-      sql`${table.role} in ('editor', 'user')`,
-    ),
+    check("ai_agent_profile_access_role_check", sql`${table.role} in ('editor', 'user')`),
   ],
 );

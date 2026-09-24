@@ -1,9 +1,9 @@
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate } from "@tanstack/react-router";
 import { useAiAgentProfiles, useCreateAiAgentProfile } from "@zilobase/features/ai-chat/react";
-import { toast } from "sonner"
+import { toast } from "sonner";
 
-import { BotIcon, ChevronRightIcon, PlusIcon } from "@/shared/components/icons"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible"
+import { BotIcon, ChevronRightIcon, PlusIcon } from "@/shared/components/icons";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import {
   SidebarGroup,
   SidebarGroupAction,
@@ -12,25 +12,25 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/shared/ui/sidebar"
-import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
+} from "@/shared/ui/sidebar";
+import { useSidebarSectionOpen } from "../model/sidebar-section-open-state";
 
 export function AgentsSection({ activeAgentId }: { activeAgentId: string | null }) {
-  const navigate = useNavigate()
-  const agents = useAiAgentProfiles()
-  const createAgent = useCreateAiAgentProfile()
-  const [open, setOpen] = useSidebarSectionOpen("zilobase:sidebar:agents")
+  const navigate = useNavigate();
+  const agents = useAiAgentProfiles();
+  const createAgent = useCreateAiAgentProfile();
+  const [open, setOpen] = useSidebarSectionOpen("zilobase:sidebar:agents");
 
   const createCustomAgent = async () => {
-    if (createAgent.isPending) return
+    if (createAgent.isPending) return;
 
     try {
-      const payload = await createAgent.mutateAsync({ name: "Untitled agent" })
-      await navigate({ params: { agentId: payload.agent.id }, to: "/agents/$agentId" })
+      const payload = await createAgent.mutateAsync({ name: "Untitled agent" });
+      await navigate({ params: { agentId: payload.agent.id }, to: "/agents/$agentId" });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not create agent.")
+      toast.error(error instanceof Error ? error.message : "Could not create agent.");
     }
-  }
+  };
 
   return (
     <Collapsible asChild onOpenChange={setOpen} open={open}>
@@ -65,11 +65,14 @@ export function AgentsSection({ activeAgentId }: { activeAgentId: string | null 
                 <SidebarMenuItem key={agent.id}>
                   <SidebarMenuButton
                     isActive={activeAgentId === agent.id}
-                    onClick={() => void navigate({ params: { agentId: agent.id }, to: "/agents/$agentId" })}
+                    onClick={() =>
+                      void navigate({ params: { agentId: agent.id }, to: "/agents/$agentId" })
+                    }
                     title={agent.name}
                     type="button"
                   >
-                    <BotIcon /><span className="truncate">{agent.name}</span>
+                    <BotIcon />
+                    <span className="truncate">{agent.name}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -78,5 +81,5 @@ export function AgentsSection({ activeAgentId }: { activeAgentId: string | null 
         </CollapsibleContent>
       </SidebarGroup>
     </Collapsible>
-  )
+  );
 }

@@ -1,7 +1,4 @@
-import {
-  getToolbarSourceIdentity,
-  getToolbarSourceTitle,
-} from "../model/toolbar-source";
+import { getToolbarSourceIdentity, getToolbarSourceTitle } from "../model/toolbar-source";
 import { DatabaseSettingsControl } from "./database-settings-control";
 import { DatabaseRowCreationControl } from "./database-row-creation-control";
 import { DatabaseSortControl } from "./database-sort-control";
@@ -12,10 +9,7 @@ import { Link } from "@tanstack/react-router";
 import { Maximize2 } from "@/shared/components/icons";
 import { Button } from "@/shared/ui/button";
 
-import {
-  useDatabaseDataContext,
-  useDatabaseUiContext,
-} from "../state/database-view-context";
+import { useDatabaseDataContext, useDatabaseUiContext } from "../state/database-view-context";
 
 import { DatabaseAutomationManager } from "../../../automations";
 import { useDatabaseAutomationCapability } from "@zilobase/features/automations/react";
@@ -61,10 +55,7 @@ export function DatabaseToolbarActions({
     workspaceId,
   });
   const automationDataSourceId = activeViewTab?.dataSourceId ?? "";
-  const automationsEnabled = useAutomationsEnabled(
-    automationDatabaseId,
-    automationWorkspaceId,
-  );
+  const automationsEnabled = useAutomationsEnabled(automationDatabaseId, automationWorkspaceId);
   const sourceHost = {
     hostDatabaseId,
     databaseId,
@@ -73,17 +64,10 @@ export function DatabaseToolbarActions({
     databaseWorkspaceId,
     workspaceId,
   };
-  const hostDisplayTitle = getToolbarSourceTitle(
-    sourceHost,
-    activeViewTab,
-    draftDatabaseTitle,
-  );
+  const hostDisplayTitle = getToolbarSourceTitle(sourceHost, activeViewTab, draftDatabaseTitle);
 
   return (
-    <div
-      className="ml-auto flex shrink-0 items-center gap-0"
-      data-page-side-pane-avoid
-    >
+    <div className="ml-auto flex shrink-0 items-center gap-0" data-page-side-pane-avoid>
       {editable ? (
         <>
           <DatabaseSaveStatus databaseId={automationDatabaseId} />
@@ -101,9 +85,7 @@ export function DatabaseToolbarActions({
             open={settingsOpen}
             onOpenChange={onSettingsOpenChange}
             onOpenAutomations={
-              automationsEnabled
-                ? () => setAutomationManagerOpen(true)
-                : undefined
+              automationsEnabled ? () => setAutomationManagerOpen(true) : undefined
             }
           />
           <DatabaseRowCreationControl onPreviewForm={onPreviewForm} />
@@ -134,17 +116,13 @@ export function DatabaseToolbarActions({
   );
 }
 
-function useAutomationsEnabled(
-  automationDatabaseId: string,
-  automationWorkspaceId: string,
-) {
+function useAutomationsEnabled(automationDatabaseId: string, automationWorkspaceId: string) {
   const automationUiAvailable = import.meta.env.DEV;
   const automationCapability = useDatabaseAutomationCapability(
     automationUiAvailable ? automationDatabaseId : null,
     automationUiAvailable ? automationWorkspaceId : null,
   );
-  const automationsEnabled =
-    automationUiAvailable && automationCapability.data?.enabled === true;
+  const automationsEnabled = automationUiAvailable && automationCapability.data?.enabled === true;
   return automationsEnabled;
 }
 

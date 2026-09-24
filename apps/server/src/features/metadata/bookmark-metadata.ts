@@ -22,11 +22,7 @@ const bookmarkUrlFromString = SchemaTransformation.transformEffect<string, strin
     return url
       ? Effect.succeed(url)
       : Effect.fail(
-          new SchemaIssue.InvalidValue(
-            { expected: "a public http or https URL" },
-            value,
-            options,
-          ),
+          new SchemaIssue.InvalidValue({ expected: "a public http or https URL" }, value, options),
         );
   },
   encode: (url) => Effect.succeed(url),
@@ -39,65 +35,59 @@ export const BookmarkUrl = Schema.String.pipe(
 
 export const decodeBookmarkUrl = Schema.decodeUnknownEffect(BookmarkUrl);
 
-export const readBookmarkMetadata = Effect.fn("readBookmarkMetadata")(
-  function* (rawUrl: unknown) {
-    const url = yield* decodeBookmarkUrl(rawUrl).pipe(
-      Effect.mapError(() => new InvalidBookmarkUrl({})),
-    );
-    const response = yield* Effect.tryPromise({
-      try: (signal) =>
-        fetch(url, {
-          headers: {
-            accept: "text/html,application/xhtml+xml",
-            "user-agent":
-              "Mozilla/5.0 (compatible; ZilobaseBookmarkBot/1.0; +https://zilobase.com)",
-          },
-          redirect: "follow",
-          signal,
-        }),
-      catch: () => new BookmarkFetchFailed({}),
-    });
+export const readBookmarkMetadata = Effect.fn("readBookmarkMetadata")(function* (rawUrl: unknown) {
+  const url = yield* decodeBookmarkUrl(rawUrl).pipe(
+    Effect.mapError(() => new InvalidBookmarkUrl({})),
+  );
+  const response = yield* Effect.tryPromise({
+    try: (signal) =>
+      fetch(url, {
+        headers: {
+          accept: "text/html,application/xhtml+xml",
+          "user-agent": "Mozilla/5.0 (compatible; ZilobaseBookmarkBot/1.0; +https://zilobase.com)",
+        },
+        redirect: "follow",
+        signal,
+      }),
+    catch: () => new BookmarkFetchFailed({}),
+  });
 
-    if (!response.ok) {
-      return yield* new BookmarkFetchFailed({});
-    }
+  if (!response.ok) {
+    return yield* new BookmarkFetchFailed({});
+  }
 
-    const contentType = response.headers.get("content-type") ?? "";
-    if (!contentType.includes("text/html")) {
-      return yield* new UnsupportedBookmarkContent({});
-    }
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("text/html")) {
+    return yield* new UnsupportedBookmarkContent({});
+  }
 
-    const html = yield* Effect.tryPromise({
-      try: () => readLimitedResponse(response, 1_000_000),
-      catch: () => new BookmarkFetchFailed({}),
-    });
+  const html = yield* Effect.tryPromise({
+    try: () => readLimitedResponse(response, 1_000_000),
+    catch: () => new BookmarkFetchFailed({}),
+  });
 
-    return {
-      description:
-        getMetaContent(html, "og:description") ??
-        getMetaContent(html, "twitter:description") ??
-        getMetaContent(html, "description"),
-      favicon:
-        resolveUrl(
-          getLinkHref(html, "icon") ??
-            getLinkHref(html, "shortcut icon") ??
-            getLinkHref(html, "apple-touch-icon"),
-          url,
-        ) ?? getFallbackFavicon(url),
-      image:
-        resolveUrl(
-          getMetaContent(html, "og:image") ??
-            getMetaContent(html, "twitter:image"),
-          url,
-        ) ?? null,
-      title:
-        getMetaContent(html, "og:title") ??
-        getMetaContent(html, "twitter:title") ??
-        getTitle(html) ??
-        getUrlTitle(url),
-    };
-  },
-);
+  return {
+    description:
+      getMetaContent(html, "og:description") ??
+      getMetaContent(html, "twitter:description") ??
+      getMetaContent(html, "description"),
+    favicon:
+      resolveUrl(
+        getLinkHref(html, "icon") ??
+          getLinkHref(html, "shortcut icon") ??
+          getLinkHref(html, "apple-touch-icon"),
+        url,
+      ) ?? getFallbackFavicon(url),
+    image:
+      resolveUrl(getMetaContent(html, "og:image") ?? getMetaContent(html, "twitter:image"), url) ??
+      null,
+    title:
+      getMetaContent(html, "og:title") ??
+      getMetaContent(html, "twitter:title") ??
+      getTitle(html) ??
+      getUrlTitle(url),
+  };
+});
 
 export function normalizeUrl(value: string) {
   const trimmed = value.trim();
@@ -107,9 +97,7 @@ export function normalizeUrl(value: string) {
   }
 
   try {
-    const url = new URL(
-      /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`,
-    );
+    const url = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
 
     if (url.protocol !== "http:" && url.protocol !== "https:") {
       return null;

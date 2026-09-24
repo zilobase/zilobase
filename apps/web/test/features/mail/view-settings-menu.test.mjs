@@ -18,40 +18,37 @@ export function register({ assert, appPath, test }) {
         {
           name: "controlled-menu-surfaces",
           setup(builder) {
-            builder.onResolve(
-              { filter: /^@\/shared\/(ui|components)\// },
-              (args) => ({ path: args.path, namespace: "mail-menu-test" }),
-            );
-            builder.onLoad(
-              { filter: /.*/, namespace: "mail-menu-test" },
-              () => ({
-                contents:
-                  'import {createElement} from "react";' +
-                  [
-                    "DatabaseIcon",
-                    "FilterIcon",
-                    "IntersectSquareIcon",
-                    "ListIcon",
-                    "SlidersHorizontalIcon",
-                    "Button",
-                    "DropDrawer",
-                    "DropDrawerContent",
-                    "DropDrawerItem",
-                    "DropDrawerSeparator",
-                    "DropDrawerSub",
-                    "DropDrawerSubContent",
-                    "DropDrawerSubTrigger",
-                    "DropDrawerTrigger",
-                  ]
-                    .map(
-                      (name) =>
-                        `export const ${name}=props=>createElement("div",{"aria-label":props["aria-label"]},props.children);`,
-                    )
-                    .join(""),
-                loader: "ts",
-                resolveDir: appPath("/"),
-              }),
-            );
+            builder.onResolve({ filter: /^@\/shared\/(ui|components)\// }, (args) => ({
+              path: args.path,
+              namespace: "mail-menu-test",
+            }));
+            builder.onLoad({ filter: /.*/, namespace: "mail-menu-test" }, () => ({
+              contents:
+                'import {createElement} from "react";' +
+                [
+                  "DatabaseIcon",
+                  "FilterIcon",
+                  "IntersectSquareIcon",
+                  "ListIcon",
+                  "SlidersHorizontalIcon",
+                  "Button",
+                  "DropDrawer",
+                  "DropDrawerContent",
+                  "DropDrawerItem",
+                  "DropDrawerSeparator",
+                  "DropDrawerSub",
+                  "DropDrawerSubContent",
+                  "DropDrawerSubTrigger",
+                  "DropDrawerTrigger",
+                ]
+                  .map(
+                    (name) =>
+                      `export const ${name}=props=>createElement("div",{"aria-label":props["aria-label"]},props.children);`,
+                  )
+                  .join(""),
+              loader: "ts",
+              resolveDir: appPath("/"),
+            }));
           },
         },
       ],
@@ -62,8 +59,7 @@ export function register({ assert, appPath, test }) {
       module,
       module.exports,
     );
-    const render = (props) =>
-      module.exports.render(props).replace(/<!--.*?-->/g, "");
+    const render = (props) => module.exports.render(props).replace(/<!--.*?-->/g, "");
     const html = render({
       groupEditor: "Group editor",
       filterEditor: "Filter editor",

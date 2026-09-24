@@ -24,13 +24,9 @@ export function useConversationDraft({
   const [textCursor, setTextCursor] = useState(0);
   const [attachments, setAttachments] = useState<ContextAttachment[]>([]);
   const [primaryDismissed, setPrimaryDismissed] = useState(false);
-  const [dismissedMentionKey, setDismissedMentionKey] = useState<string | null>(
-    null,
-  );
+  const [dismissedMentionKey, setDismissedMentionKey] = useState<string | null>(null);
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
-  const [mentionMenuEntries, setMentionMenuEntries] = useState<
-    ContextAttachMenuEntry[]
-  >([]);
+  const [mentionMenuEntries, setMentionMenuEntries] = useState<ContextAttachMenuEntry[]>([]);
   const mentionMenuRef = useRef<ContextAttachMenuHandle | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const context = useConversationContext({
@@ -50,17 +46,12 @@ export function useConversationDraft({
     setTextCursor(0);
   }, [databaseId, pageId]);
 
-  const mentionTrigger = useMemo(
-    () => parseMentionState(text, textCursor),
-    [text, textCursor],
-  );
+  const mentionTrigger = useMemo(() => parseMentionState(text, textCursor), [text, textCursor]);
   const mentionKey = mentionTrigger
     ? `${mentionTrigger.mentionStart}:${mentionTrigger.mentionQuery}`
     : null;
   const activeMentionTrigger =
-    mentionTrigger && mentionKey !== dismissedMentionKey
-      ? mentionTrigger
-      : null;
+    mentionTrigger && mentionKey !== dismissedMentionKey ? mentionTrigger : null;
   const mentionMenuOpen = Boolean(activeMentionTrigger);
 
   useEffect(() => {
@@ -82,17 +73,14 @@ export function useConversationDraft({
     setTextCursor(cursor);
   }, [text.length]);
 
-  const handleTextChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const nextValue = event.target.value;
-      const caretPosition = event.target.selectionStart ?? nextValue.length;
+  const handleTextChange = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const nextValue = event.target.value;
+    const caretPosition = event.target.selectionStart ?? nextValue.length;
 
-      setText(nextValue);
-      setTextCursor(caretPosition);
-      setDismissedMentionKey(null);
-    },
-    [],
-  );
+    setText(nextValue);
+    setTextCursor(caretPosition);
+    setDismissedMentionKey(null);
+  }, []);
 
   const clearMentionTrigger = useCallback(() => {
     if (!activeMentionTrigger) {
@@ -141,9 +129,7 @@ export function useConversationDraft({
       if (event.key === "ArrowDown") {
         event.preventDefault();
         setSelectedMentionIndex((index) =>
-          mentionMenuEntries.length
-            ? (index + 1) % mentionMenuEntries.length
-            : 0,
+          mentionMenuEntries.length ? (index + 1) % mentionMenuEntries.length : 0,
         );
         return;
       }
@@ -152,8 +138,7 @@ export function useConversationDraft({
         event.preventDefault();
         setSelectedMentionIndex((index) =>
           mentionMenuEntries.length
-            ? (index - 1 + mentionMenuEntries.length) %
-              mentionMenuEntries.length
+            ? (index - 1 + mentionMenuEntries.length) % mentionMenuEntries.length
             : 0,
         );
         return;
@@ -180,16 +165,11 @@ export function useConversationDraft({
     [mentionKey, mentionMenuEntries, mentionMenuOpen, selectedMentionIndex],
   );
 
-  const handleRemoveAttachment = useCallback(
-    (attachment: ContextAttachment) => {
-      setAttachments((current) =>
-        current.filter(
-          (item) => getAttachmentKey(item) !== getAttachmentKey(attachment),
-        ),
-      );
-    },
-    [],
-  );
+  const handleRemoveAttachment = useCallback((attachment: ContextAttachment) => {
+    setAttachments((current) =>
+      current.filter((item) => getAttachmentKey(item) !== getAttachmentKey(attachment)),
+    );
+  }, []);
 
   const resetDraft = useCallback(() => {
     setText("");

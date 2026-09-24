@@ -1,14 +1,6 @@
-import {
-  and,
-  asc,
-  eq,
-} from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "../../infrastructure/database";
-import {
-  member,
-  workspace,
-  workspaceGuest,
-} from "../../infrastructure/database/schema";
+import { member, workspace, workspaceGuest } from "../../infrastructure/database/schema";
 import { activeMembershipCondition } from "../memberships";
 
 export async function getMembership(workspaceId: string, userId: string) {
@@ -31,12 +23,7 @@ export async function getWorkspaceGuest(workspaceId: string, userId: string) {
   const [record] = await db
     .select()
     .from(workspaceGuest)
-    .where(
-      and(
-        eq(workspaceGuest.workspaceId, workspaceId),
-        eq(workspaceGuest.userId, userId),
-      ),
-    )
+    .where(and(eq(workspaceGuest.workspaceId, workspaceId), eq(workspaceGuest.userId, userId)))
     .limit(1);
 
   return record ?? null;
@@ -78,9 +65,6 @@ export function isPrivilegedOrgRole(role: string | null | undefined) {
   return role === "owner" || role === "admin";
 }
 
-export async function isWorkspaceMember(
-  workspaceId: string,
-  userId: string,
-) {
+export async function isWorkspaceMember(workspaceId: string, userId: string) {
   return Boolean(await getMembership(workspaceId, userId));
 }

@@ -12,10 +12,7 @@ export type RoomControllerHandlers<Attachment = unknown> = {
   close?: () => void | Promise<void>;
   error?: (peer: RoomPeer<Attachment>, error: unknown) => void | Promise<void>;
   invoke?: (invocation: RoomInvocation) => unknown | Promise<unknown>;
-  message: (
-    peer: RoomPeer<Attachment>,
-    message: RoomMessage,
-  ) => void | Promise<void>;
+  message: (peer: RoomPeer<Attachment>, message: RoomMessage) => void | Promise<void>;
   peerClose?: (peer: RoomPeer<Attachment>) => void | Promise<void>;
   start?: () => void | Promise<void>;
 };
@@ -67,7 +64,8 @@ export function createRoomController<Attachment = unknown>(
       }
     },
     invoke(invocation) {
-      if (!handlers.invoke) throw new Error(`Room ${roomId} does not support invocation ${invocation.type}`);
+      if (!handlers.invoke)
+        throw new Error(`Room ${roomId} does not support invocation ${invocation.type}`);
       return handlers.invoke(invocation);
     },
     async close() {

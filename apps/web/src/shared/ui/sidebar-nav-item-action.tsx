@@ -1,18 +1,18 @@
-import type { ComponentProps, CSSProperties } from "react"
+import type { ComponentProps, CSSProperties } from "react";
 
-import { SidebarMenuAction } from "@/shared/ui/sidebar"
-import { cn } from "@/shared/lib/utils"
+import { SidebarMenuAction } from "@/shared/ui/sidebar";
+import { cn } from "@/shared/lib/utils";
 
-const SIDEBAR_NAV_ACTION_EDGE_INSET = 6
+const SIDEBAR_NAV_ACTION_EDGE_INSET = 6;
 
 export const SIDEBAR_NAV_ROW_INTERACTION_CLASS_NAME =
-  "group-hover/nav-row:bg-action-neutral-hover group-hover/nav-row:text-action-on-neutral group-hover/nav-row:data-active:bg-action-neutral-pressed group-hover/nav-row:data-active:text-action-on-neutral group-active/nav-row:bg-action-neutral-pressed group-active/nav-row:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:bg-action-neutral-hover group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:data-active:bg-action-neutral-pressed group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:data-active:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:bg-action-neutral-hover group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:data-active:bg-action-neutral-pressed group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:data-active:text-action-on-neutral"
+  "group-hover/nav-row:bg-action-neutral-hover group-hover/nav-row:text-action-on-neutral group-hover/nav-row:data-active:bg-action-neutral-pressed group-hover/nav-row:data-active:text-action-on-neutral group-active/nav-row:bg-action-neutral-pressed group-active/nav-row:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:bg-action-neutral-hover group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:data-active:bg-action-neutral-pressed group-has-[>[data-nav-menu-action=menu][aria-expanded=true]]/nav-row:data-active:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:bg-action-neutral-hover group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:text-action-on-neutral group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:data-active:bg-action-neutral-pressed group-has-[>[data-nav-menu-action=menu][data-state=open]]/nav-row:data-active:text-action-on-neutral";
 
 type SidebarNavItemActionProps = ComponentProps<typeof SidebarMenuAction> & {
-  depth?: number
-  position?: "start" | "end"
-  variant: "disclosure" | "menu"
-}
+  depth?: number;
+  position?: "start" | "end";
+  variant: "disclosure" | "menu";
+};
 
 export function SidebarNavItemAction({
   className,
@@ -22,12 +22,11 @@ export function SidebarNavItemAction({
   variant,
   ...props
 }: SidebarNavItemActionProps) {
-  const edgeOffset =
-    SIDEBAR_NAV_ACTION_EDGE_INSET + (position === "start" ? depth * 16 : 0)
+  const edgeOffset = SIDEBAR_NAV_ACTION_EDGE_INSET + (position === "start" ? depth * 16 : 0);
   const positionStyle: CSSProperties =
     position === "start"
       ? { left: `${edgeOffset}px`, right: "auto" }
-      : { right: `${edgeOffset}px` }
+      : { right: `${edgeOffset}px` };
 
   return (
     <SidebarMenuAction
@@ -42,5 +41,5 @@ export function SidebarNavItemAction({
       style={{ ...positionStyle, ...style }}
       {...props}
     />
-  )
+  );
 }

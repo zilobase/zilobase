@@ -4,6 +4,6 @@ export function safeMailDownloadFilename(value: string) {
     .replace(/[\u0000-\u001f\u007f/\\:*?"<>|]/g, "_")
     .replace(/^\.+/, "")
     .trim()
-    .slice(0, 180)
-  return normalized || "attachment"
+    .slice(0, 180);
+  return normalized || "attachment";
 }

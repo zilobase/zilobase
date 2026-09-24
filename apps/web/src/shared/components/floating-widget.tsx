@@ -1,11 +1,8 @@
-import type { ComponentPropsWithoutRef } from "react"
+import type { ComponentPropsWithoutRef } from "react";
 
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
-export function FloatingWidget({
-  className,
-  ...props
-}: ComponentPropsWithoutRef<"aside">) {
+export function FloatingWidget({ className, ...props }: ComponentPropsWithoutRef<"aside">) {
   return (
     <aside
       className={cn(
@@ -14,5 +11,5 @@ export function FloatingWidget({
       )}
       {...props}
     />
-  )
+  );
 }

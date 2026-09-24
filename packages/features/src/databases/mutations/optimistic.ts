@@ -57,10 +57,7 @@ function hostQueryEntries(
     }));
 }
 
-function restoreEntries(
-  queryClient: QueryClient,
-  previous: HostQueryEntry[],
-): OptimisticRollback {
+function restoreEntries(queryClient: QueryClient, previous: HostQueryEntry[]): OptimisticRollback {
   return () => {
     for (const { data, queryKey } of previous) {
       queryClient.setQueryData(queryKey, data);
@@ -81,21 +78,16 @@ export function resolveOptimisticScope(
   if (explicitHostDatabaseId) {
     return { hostDatabaseId: explicitHostDatabaseId };
   }
-  const sourceBootstrap = findDataSourceBootstrap(
-    queryClient,
-    databaseOrSourceId,
-  );
+  const sourceBootstrap = findDataSourceBootstrap(queryClient, databaseOrSourceId);
   if (sourceBootstrap) {
     return {
       dataSourceId: databaseOrSourceId,
       hostDatabaseId: sourceBootstrap.database.id,
     };
   }
-  for (
-    const [, candidate] of queryClient.getQueriesData({
-      queryKey: [databaseQueryRoot],
-    })
-  ) {
+  for (const [, candidate] of queryClient.getQueriesData({
+    queryKey: [databaseQueryRoot],
+  })) {
     const parsed = databaseBootstrapResponseSchema.safeParse(candidate);
     if (parsed.success && parsed.data.database.id === databaseOrSourceId) {
       return { hostDatabaseId: parsed.data.database.id };
@@ -165,7 +157,9 @@ function patchWindowRecords(
     };
   }
   if (
-    data && typeof data === "object" && "pages" in data &&
+    data &&
+    typeof data === "object" &&
+    "pages" in data &&
     Array.isArray((data as { pages?: unknown }).pages)
   ) {
     const holder = data as { pages: unknown[] } & Record<string, unknown>;
@@ -234,9 +228,7 @@ function patchBootstraps(
   queryClient: QueryClient,
   sessionId: string,
   hostDatabaseId: string,
-  patch: (
-    bootstrap: DatabaseBootstrapResponse,
-  ) => DatabaseBootstrapResponse | null,
+  patch: (bootstrap: DatabaseBootstrapResponse) => DatabaseBootstrapResponse | null,
 ): OptimisticRollback {
   const previous = hostQueryEntries(queryClient, sessionId, hostDatabaseId);
   for (const { data, queryKey } of previous) {
@@ -283,12 +275,12 @@ export function patchCachedView(
       views: bootstrap.views.map((view) =>
         view.id === viewId
           ? {
-            ...view,
-            ...(patch.config !== undefined ? { config: patch.config } : {}),
-            ...(patch.name !== undefined ? { name: patch.name } : {}),
-            ...(patch.type !== undefined ? { type: patch.type } : {}),
-          }
-          : view
+              ...view,
+              ...(patch.config !== undefined ? { config: patch.config } : {}),
+              ...(patch.name !== undefined ? { name: patch.name } : {}),
+              ...(patch.type !== undefined ? { type: patch.type } : {}),
+            }
+          : view,
       ),
     };
   });
@@ -368,8 +360,7 @@ export function insertOptimisticProperty(
     type: string;
   },
 ): { propertyId: string; rollback: OptimisticRollback } {
-  const propertyId =
-    `optimistic-property-${Date.now().toString(36)}-${(optimisticPropertyCounter += 1)}`;
+  const propertyId = `optimistic-property-${Date.now().toString(36)}-${(optimisticPropertyCounter += 1)}`;
   const now = new Date().toISOString();
   const workspaceId = workspaceIdForDataSource(
     queryClient,
@@ -396,14 +387,9 @@ export function insertOptimisticProperty(
     visible: true,
     width: null,
   };
-  const rollback = patchBootstraps(
-    queryClient,
-    sessionId,
-    hostDatabaseId,
-    (bootstrap) => ({
-      ...bootstrap,
-      properties: [...bootstrap.properties, property],
-    }),
-  );
+  const rollback = patchBootstraps(queryClient, sessionId, hostDatabaseId, (bootstrap) => ({
+    ...bootstrap,
+    properties: [...bootstrap.properties, property],
+  }));
   return { propertyId, rollback };
 }

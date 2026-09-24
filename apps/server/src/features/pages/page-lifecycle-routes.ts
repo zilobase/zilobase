@@ -6,7 +6,10 @@ import { db } from "../../infrastructure/database";
 import { database, dataSource, databaseRow, page } from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
 import { softDeletePageTree } from "./mutations/soft-delete-nav-items";
-import { enqueueNavigationInvalidation, publishCommittedNavigationInvalidation } from "../workspaces/navigation-realtime/outbox";
+import {
+  enqueueNavigationInvalidation,
+  publishCommittedNavigationInvalidation,
+} from "../workspaces/navigation-realtime/outbox";
 import { enforceActiveWorkspace, getPage, getPageIncludingDeleted } from "./page-route-support";
 
 export const pageLifecycleRoutes = new Hono<AppBindings>();
@@ -28,11 +31,7 @@ pageLifecycleRoutes.post("/:id/restore", async (c) => {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const restoreOrgMismatch = await enforceActiveWorkspace(
-    c,
-    existing.workspaceId,
-    user.id,
-  );
+  const restoreOrgMismatch = await enforceActiveWorkspace(c, existing.workspaceId, user.id);
 
   if (restoreOrgMismatch) {
     return restoreOrgMismatch;
@@ -60,9 +59,7 @@ pageLifecycleRoutes.post("/:id/restore", async (c) => {
         and(
           eq(page.workspaceId, existing.workspaceId),
           eq(page.deletedAt, deletedAt),
-          existing.deletedById
-            ? eq(page.deletedById, existing.deletedById)
-            : undefined,
+          existing.deletedById ? eq(page.deletedById, existing.deletedById) : undefined,
         ),
       )
       .returning();
@@ -77,9 +74,7 @@ pageLifecycleRoutes.post("/:id/restore", async (c) => {
         and(
           eq(database.workspaceId, existing.workspaceId),
           eq(database.deletedAt, deletedAt),
-          existing.deletedById
-            ? eq(database.deletedById, existing.deletedById)
-            : undefined,
+          existing.deletedById ? eq(database.deletedById, existing.deletedById) : undefined,
         ),
       )
       .returning({ id: database.id });
@@ -100,26 +95,19 @@ pageLifecycleRoutes.post("/:id/restore", async (c) => {
               tx
                 .select({ id: dataSource.id })
                 .from(dataSource)
-                .where(
-                  inArray(dataSource.parentDatabaseId, restoredDatabaseIds),
-                ),
+                .where(inArray(dataSource.parentDatabaseId, restoredDatabaseIds)),
             ),
             eq(databaseRow.deletedAt, deletedAt),
-            existing.deletedById
-              ? eq(databaseRow.deletedById, existing.deletedById)
-              : undefined,
+            existing.deletedById ? eq(databaseRow.deletedById, existing.deletedById) : undefined,
           ),
         );
     }
 
     return {
-      navigationEvent: await enqueueNavigationInvalidation(
-        tx,
-        existing.workspaceId,
-        { committedAt: now },
-      ),
-      page:
-        restoredPages.find((record) => record.id === existing.id) ?? existing,
+      navigationEvent: await enqueueNavigationInvalidation(tx, existing.workspaceId, {
+        committedAt: now,
+      }),
+      page: restoredPages.find((record) => record.id === existing.id) ?? existing,
       restoredDatabaseIds,
       restoredPageIds: restoredPages.map((record) => record.id),
     };
@@ -142,22 +130,11 @@ pageLifecycleRoutes.delete("/:id", async (c) => {
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (
-    !(await canAccessPageInWorkspace(
-      existing.id,
-      existing.workspaceId,
-      user.id,
-      "full",
-    ))
-  ) {
+  if (!(await canAccessPageInWorkspace(existing.id, existing.workspaceId, user.id, "full"))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
-  const deleteOrgMismatch = await enforceActiveWorkspace(
-    c,
-    existing.workspaceId,
-    user.id,
-  );
+  const deleteOrgMismatch = await enforceActiveWorkspace(c, existing.workspaceId, user.id);
 
   if (deleteOrgMismatch) {
     return deleteOrgMismatch;
@@ -170,11 +147,7 @@ pageLifecycleRoutes.delete("/:id", async (c) => {
     userId: user.id,
   });
 
-  const [record] = await db
-    .select()
-    .from(page)
-    .where(eq(page.id, existing.id))
-    .limit(1);
+  const [record] = await db.select().from(page).where(eq(page.id, existing.id)).limit(1);
 
   return c.json({
     deletedDatabaseIds,

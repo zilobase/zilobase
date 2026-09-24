@@ -60,7 +60,9 @@ export async function assertPortsAvailable(ports) {
     if (!(await isPortAvailable(port))) unavailable.push(port);
   }
   if (unavailable.length) {
-    throw new Error(`Ports already in use: ${unavailable.join(", ")}. Run npm run dev:status for details.`);
+    throw new Error(
+      `Ports already in use: ${unavailable.join(", ")}. Run npm run dev:status for details.`,
+    );
   }
 }
 
@@ -84,16 +86,21 @@ export async function waitForUrl(url, options = {}) {
 export async function stopChildren(children, signal = "SIGTERM") {
   const live = children.filter((child) => child && child.exitCode === null && !child.killed);
   for (const child of live) child.kill(signal);
-  await Promise.all(live.map((child) => new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      if (child.exitCode === null) child.kill("SIGKILL");
-      resolve();
-    }, 5_000);
-    child.once("exit", () => {
-      clearTimeout(timer);
-      resolve();
-    });
-  })));
+  await Promise.all(
+    live.map(
+      (child) =>
+        new Promise((resolve) => {
+          const timer = setTimeout(() => {
+            if (child.exitCode === null) child.kill("SIGKILL");
+            resolve();
+          }, 5_000);
+          child.once("exit", () => {
+            clearTimeout(timer);
+            resolve();
+          });
+        }),
+    ),
+  );
 }
 
 function pipeLines(stream, name, target, color, log) {

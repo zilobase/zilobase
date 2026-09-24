@@ -96,10 +96,7 @@ test("canonical page JSON round-trips through Yjs", () => {
     ],
   };
 
-  assert.deepEqual(
-    materializePageContentFromYjs(encodePageContentAsYjs(content)),
-    content,
-  );
+  assert.deepEqual(materializePageContentFromYjs(encodePageContentAsYjs(content)), content);
 });
 
 test("materialized page JSON ignores Yjs-native comment metadata", () => {
@@ -111,10 +108,7 @@ test("materialized page JSON ignores Yjs-native comment metadata", () => {
   Y.applyUpdate(document, encodePageContentAsYjs(content));
   document.getMap("commentThreads").set("thread-1", { kind: "page" });
 
-  assert.deepEqual(
-    materializePageContentFromYjs(Y.encodeStateAsUpdate(document)),
-    content,
-  );
+  assert.deepEqual(materializePageContentFromYjs(Y.encodeStateAsUpdate(document)), content);
 });
 
 test("comment collaboration updates cannot modify protected page fields", () => {
@@ -174,14 +168,8 @@ test("empty page content and placeholder collaboration state are detected", () =
     }),
     false,
   );
-  assert.equal(
-    isPlaceholderCollaborationState(Uint8Array.from([0, 0])),
-    true,
-  );
-  assert.equal(
-    isPlaceholderCollaborationState(encodePageContentAsYjs(null)),
-    true,
-  );
+  assert.equal(isPlaceholderCollaborationState(Uint8Array.from([0, 0])), true);
+  assert.equal(isPlaceholderCollaborationState(encodePageContentAsYjs(null)), true);
   assert.equal(
     isPlaceholderCollaborationState(
       encodePageContentAsYjs({
@@ -292,16 +280,12 @@ test("a finalized transcript clears only its matching live Yjs draft", () => {
     text: "Finished",
   });
 
-  const microphoneDraft = document.getMap<string | number>(
-    "liveTranscript:microphone",
-  );
+  const microphoneDraft = document.getMap<string | number>("liveTranscript:microphone");
   microphoneDraft.set("itemId", "item-2");
   microphoneDraft.set("startMs", 5_000);
   microphoneDraft.set("text", "Still speaking");
   microphoneDraft.set("updatedAt", 123);
-  const systemDraft = document.getMap<string | number>(
-    "liveTranscript:system",
-  );
+  const systemDraft = document.getMap<string | number>("liveTranscript:system");
   systemDraft.set("itemId", "item-2");
   systemDraft.set("text", "Overlapping speech");
   assert.deepEqual(microphoneDraft.toJSON(), {
@@ -315,12 +299,19 @@ test("a finalized transcript clears only its matching live Yjs draft", () => {
     "<paragraph>[0:00] You: Finished</paragraph>",
   );
 
-  assert.equal(appendMeetingTranscriptToDocument(document, {
-    id: "segment-2",
-    source: "microphone",
-    startMs: 5_000,
-    text: "Still speaking",
-  }, "item-2"), true);
+  assert.equal(
+    appendMeetingTranscriptToDocument(
+      document,
+      {
+        id: "segment-2",
+        source: "microphone",
+        startMs: 5_000,
+        text: "Still speaking",
+      },
+      "item-2",
+    ),
+    true,
+  );
   assert.equal(microphoneDraft.size, 0);
   assert.equal(systemDraft.size, 2);
 
@@ -328,12 +319,16 @@ test("a finalized transcript clears only its matching live Yjs draft", () => {
   microphoneDraft.set("startMs", 10_000);
   microphoneDraft.set("text", "Another turn");
   microphoneDraft.set("updatedAt", 456);
-  appendMeetingTranscriptToDocument(document, {
-    id: "segment-3",
-    source: "microphone",
-    startMs: 10_000,
-    text: "Different final",
-  }, "different-item");
+  appendMeetingTranscriptToDocument(
+    document,
+    {
+      id: "segment-3",
+      source: "microphone",
+      startMs: 10_000,
+      text: "Different final",
+    },
+    "different-item",
+  );
   assert.equal(microphoneDraft.size, 4);
 });
 
@@ -341,12 +336,12 @@ test("explicit WebSocket URL overrides a rewritten request host", () => {
   const runtimeEnv = createRuntimeEnv({
     COLLABORATION_WEBSOCKET_URL: "ws://localhost:3000/collaboration",
   });
-  assert.equal(runWithRuntimePorts(
-    { env: runtimeEnv, urls: createUrlResolver(runtimeEnv) },
-    () => getCollaborationWebSocketUrl(
-      new Request("http://api.zilobase.com/pages/page-1/collaboration-ticket"),
+  assert.equal(
+    runWithRuntimePorts({ env: runtimeEnv, urls: createUrlResolver(runtimeEnv) }, () =>
+      getCollaborationWebSocketUrl(
+        new Request("http://api.zilobase.com/pages/page-1/collaboration-ticket"),
+      ),
     ),
-  ),
     "ws://localhost:3000/collaboration",
   );
 });
@@ -416,10 +411,7 @@ test("two Hocuspocus clients sync Yjs updates through the server", async () => {
   } finally {
     first.destroy();
     second.destroy();
-    await Promise.race([
-      server.destroy(),
-      new Promise((resolve) => setTimeout(resolve, 1_000)),
-    ]);
+    await Promise.race([server.destroy(), new Promise((resolve) => setTimeout(resolve, 1_000))]);
   }
 });
 

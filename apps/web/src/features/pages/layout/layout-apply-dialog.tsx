@@ -1,4 +1,4 @@
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -6,19 +6,19 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/ui/dialog"
-import type { PageLayoutScope } from "@zilobase/features/pages"
+} from "@/shared/ui/dialog";
+import type { PageLayoutScope } from "@zilobase/features/pages";
 
-type ApplyScope = Extract<PageLayoutScope, "database" | "page">
+type ApplyScope = Extract<PageLayoutScope, "database" | "page">;
 
 type LayoutApplyDialogProps = {
-  databaseAvailable: boolean
-  onApply: (scope: ApplyScope) => void
-  onOpenChange: (open: boolean) => void
-  open: boolean
-  pageAvailable: boolean
-  pending?: boolean
-}
+  databaseAvailable: boolean;
+  onApply: (scope: ApplyScope) => void;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  pageAvailable: boolean;
+  pending?: boolean;
+};
 
 export function LayoutApplyDialog({
   databaseAvailable,
@@ -57,16 +57,12 @@ export function LayoutApplyDialog({
             </Button>
           ) : null}
           {databaseAvailable ? (
-            <Button
-              disabled={pending}
-              onClick={() => onApply("database")}
-              type="button"
-            >
+            <Button disabled={pending} onClick={() => onApply("database")} type="button">
               All pages in this database
             </Button>
           ) : null}
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

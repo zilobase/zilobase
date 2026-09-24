@@ -28,14 +28,10 @@ export function getChartSortOptions(axisLabel: string, measureLabel: string) {
 }
 
 export function isChartDateProperty(property: DatabaseViewProperty) {
-  return ["date", "created_time", "edited_time"].includes(
-    property.property.type,
-  );
+  return ["date", "created_time", "edited_time"].includes(property.property.type);
 }
 
-export function getChartAxisGroups(
-  property: DatabaseViewProperty | undefined,
-) {
+export function getChartAxisGroups(property: DatabaseViewProperty | undefined) {
   if (property?.property.type === "checkbox") {
     return [
       { color: "green", name: "True" },
@@ -70,13 +66,8 @@ export function getChartAxisGroups(
     : [];
 }
 
-export function getChartDateIntervalLabel(
-  interval: DatabaseChartDateInterval,
-) {
-  return (
-    chartDateIntervalOptions.find((option) => option.value === interval)
-      ?.label ?? "Day"
-  );
+export function getChartDateIntervalLabel(interval: DatabaseChartDateInterval) {
+  return chartDateIntervalOptions.find((option) => option.value === interval)?.label ?? "Day";
 }
 
 export function getChartRangeLabel(settings: DatabaseChartSettings) {

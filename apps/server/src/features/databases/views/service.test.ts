@@ -65,10 +65,7 @@ vi.mock("../../../infrastructure/database", () => ({
   },
 }));
 
-import {
-  createDatabaseViewService,
-  updateDatabaseViewService,
-} from "./service";
+import { createDatabaseViewService, updateDatabaseViewService } from "./service";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 beforeEach(() => {
@@ -129,9 +126,7 @@ test("createDatabaseViewService creates a uniquely named trailing view", async (
     { name: "Board", position: 0 },
     { name: "Board 2", position: 1 },
   ]);
-  vi.spyOn(crypto, "randomUUID").mockReturnValue(
-    "00000000-0000-4000-8000-000000000001",
-  );
+  vi.spyOn(crypto, "randomUUID").mockReturnValue("00000000-0000-4000-8000-000000000001");
 
   const result = await createDatabaseViewService({
     config: { layout: "compact" },
@@ -222,11 +217,13 @@ test("updateDatabaseViewService updates supplied view fields", async () => {
 
 test("updateDatabaseViewService merges glyph patches without removing view config", async () => {
   const { updates } = transactionRecorder();
-  mocks.selectResults.push([{
-    config: { filters: [{ propertyId: "property-1" }], icon: "old-icon" },
-    dataSourceId: "database-1",
-    id: "view-1",
-  }]);
+  mocks.selectResults.push([
+    {
+      config: { filters: [{ propertyId: "property-1" }], icon: "old-icon" },
+      dataSourceId: "database-1",
+      id: "view-1",
+    },
+  ]);
 
   await updateDatabaseViewService({
     config: { icon: "safe-new-icon" },
@@ -281,26 +278,21 @@ test("updateDatabaseViewService creates single-parent sub-item relation properti
   assert.equal((inserts[0] as Record<string, unknown>).name, "Parent item");
   assert.equal((inserts[2] as Record<string, unknown>).name, "Sub-item");
   assert.equal(
-    (inserts[0] as { config: { relation: { limit: string } } }).config.relation
-      .limit,
+    (inserts[0] as { config: { relation: { limit: string } } }).config.relation.limit,
     "one_page",
   );
   assert.equal(
-    (inserts[2] as { config: { relation: { limit: string } } }).config.relation
-      .limit,
+    (inserts[2] as { config: { relation: { limit: string } } }).config.relation.limit,
     "no_limit",
   );
-  assert.deepEqual(
-    (updates.at(-1) as { config: { subItems: unknown } }).config.subItems,
-    {
-      display: "nested",
-      enabled: true,
-      filter: "parents-only",
-      parentPropertyId: "00000000-0000-4000-8000-000000000001",
-      property: "sub-item",
-      subItemPropertyId: "00000000-0000-4000-8000-000000000002",
-    },
-  );
+  assert.deepEqual((updates.at(-1) as { config: { subItems: unknown } }).config.subItems, {
+    display: "nested",
+    enabled: true,
+    filter: "parents-only",
+    parentPropertyId: "00000000-0000-4000-8000-000000000001",
+    property: "sub-item",
+    subItemPropertyId: "00000000-0000-4000-8000-000000000002",
+  });
   assert.equal(mocks.upsertValues.mock.calls.length, 0);
 });
 
@@ -313,8 +305,7 @@ test("updateDatabaseViewService rejects missing views", async () => {
       userId: "user-1",
       viewId: "missing",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
   assert.equal(mocks.commit.mock.calls.length, 0);
 });

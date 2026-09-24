@@ -1,7 +1,4 @@
-import {
-  hasPendingDatabaseWrites,
-  subscribeAnyPending,
-} from "./pending";
+import { hasPendingDatabaseWrites, subscribeAnyPending } from "./pending";
 
 export function guardPendingDatabaseWrites(target: Window): () => void {
   const onBeforeUnload = (event: BeforeUnloadEvent) => {

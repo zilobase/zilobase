@@ -14,10 +14,7 @@ Standalone TypeScript markdown text splitters inspired by LangChain's `markdown.
 ## Example
 
 ```ts
-import {
-  MarkdownTextSplitter,
-  RecursiveMarkdownTextSplitter,
-} from "markdown-text-splitter";
+import { MarkdownTextSplitter, RecursiveMarkdownTextSplitter } from "markdown-text-splitter";
 
 const markdown = `# Title
 

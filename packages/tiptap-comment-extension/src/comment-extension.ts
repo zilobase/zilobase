@@ -1,30 +1,30 @@
-import { Mark, mergeAttributes, type Range } from "@tiptap/core"
-import type { Mark as ProseMirrorMark } from "@tiptap/pm/model"
+import { Mark, mergeAttributes, type Range } from "@tiptap/core";
+import type { Mark as ProseMirrorMark } from "@tiptap/pm/model";
 
-import { getCommentIdsAtSelection } from "./comment-selection"
+import { getCommentIdsAtSelection } from "./comment-selection";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     comment: {
-      setComment: (threadId: string) => ReturnType
-      unsetComment: (threadId: string) => ReturnType
-    }
+      setComment: (threadId: string) => ReturnType;
+      unsetComment: (threadId: string) => ReturnType;
+    };
   }
 }
 
 export type CommentOptions = {
-  HTMLAttributes: Record<string, unknown>
-  onCommentActivated: (threadId: string | null) => void
-}
+  HTMLAttributes: Record<string, unknown>;
+  onCommentActivated: (threadId: string | null) => void;
+};
 
 export type CommentStorage = {
-  activeThreadId: string | null
-}
+  activeThreadId: string | null;
+};
 
 type AnchoredMark = {
-  mark: ProseMirrorMark
-  range: Range
-}
+  mark: ProseMirrorMark;
+  range: Range;
+};
 
 export const CommentExtension = Mark.create<CommentOptions, CommentStorage>({
   name: "comment",
@@ -33,11 +33,11 @@ export const CommentExtension = Mark.create<CommentOptions, CommentStorage>({
     return {
       HTMLAttributes: {},
       onCommentActivated: () => undefined,
-    }
+    };
   },
 
   addStorage() {
-    return { activeThreadId: null }
+    return { activeThreadId: null };
   },
 
   addAttributes() {
@@ -54,27 +54,25 @@ export const CommentExtension = Mark.create<CommentOptions, CommentStorage>({
         default: null,
         parseHTML: (element) => element.dataset.commentKind ?? null,
         renderHTML: ({ commentKind }) =>
-          commentKind === "block"
-            ? { "data-comment-kind": commentKind }
-            : {},
+          commentKind === "block" ? { "data-comment-kind": commentKind } : {},
       },
-    }
+    };
   },
 
   parseHTML() {
-    return [{ tag: "span[data-comment-id]" }]
+    return [{ tag: "span[data-comment-id]" }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ["span", mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0]
+    return ["span", mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0];
   },
 
   onSelectionUpdate() {
-    const activeThreadId = getCommentIdsAtSelection(this.editor)[0] ?? null
-    if (activeThreadId === this.storage.activeThreadId) return
+    const activeThreadId = getCommentIdsAtSelection(this.editor)[0] ?? null;
+    if (activeThreadId === this.storage.activeThreadId) return;
 
-    this.storage.activeThreadId = activeThreadId
-    this.options.onCommentActivated(activeThreadId)
+    this.storage.activeThreadId = activeThreadId;
+    this.options.onCommentActivated(activeThreadId);
   },
 
   addCommands() {
@@ -82,40 +80,40 @@ export const CommentExtension = Mark.create<CommentOptions, CommentStorage>({
       setComment:
         (threadId) =>
         ({ commands }) => {
-          if (!threadId) return false
+          if (!threadId) return false;
           return commands.setMark(this.name, {
             commentId: threadId,
             commentKind: "inline",
-          })
+          });
         },
       unsetComment:
         (threadId) =>
         ({ dispatch, tr }) => {
-          if (!threadId) return false
+          if (!threadId) return false;
 
-          const anchors: AnchoredMark[] = []
+          const anchors: AnchoredMark[] = [];
           tr.doc.descendants((node, position) => {
             for (const mark of node.marks) {
-              if (mark.type.name !== this.name || mark.attrs.commentId !== threadId) continue
+              if (mark.type.name !== this.name || mark.attrs.commentId !== threadId) continue;
               anchors.push({
                 mark,
                 range: { from: position, to: position + node.nodeSize },
-              })
-              break
+              });
+              break;
             }
-          })
-          if (anchors.length === 0) return false
+          });
+          if (anchors.length === 0) return false;
 
           if (dispatch) {
             for (const anchor of anchors) {
-              tr.removeMark(anchor.range.from, anchor.range.to, anchor.mark)
+              tr.removeMark(anchor.range.from, anchor.range.to, anchor.mark);
             }
-            dispatch(tr)
+            dispatch(tr);
           }
-          return true
+          return true;
         },
-    }
+    };
   },
-})
+});
 
-export default CommentExtension
+export default CommentExtension;

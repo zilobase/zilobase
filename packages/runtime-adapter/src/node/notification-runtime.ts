@@ -54,10 +54,14 @@ export function attachNodeNotificationRuntime<Claims extends { exp: number }, Ev
         let room = rooms.get(roomId);
         if (!room) {
           const host = createNodeRoomHost<ExpiringRoomAttachment<Claims>>();
-          const notification = createNotificationRoom(roomId, {
-            host,
-            telemetry: createNodeTelemetry(),
-          }, options.config);
+          const notification = createNotificationRoom(
+            roomId,
+            {
+              host,
+              telemetry: createNodeTelemetry(),
+            },
+            options.config,
+          );
           await notification.controller.start();
           room = { host, notification };
           rooms.set(roomId, room);
@@ -123,10 +127,12 @@ export function attachNodeNotificationRuntime<Claims extends { exp: number }, Ev
   return {
     async destroy() {
       server.off("upgrade", upgrade);
-      await Promise.allSettled([...rooms.values()].map(async (room) => {
-        await room.unsubscribe?.();
-        await room.notification.controller.close();
-      }));
+      await Promise.allSettled(
+        [...rooms.values()].map(async (room) => {
+          await room.unsubscribe?.();
+          await room.notification.controller.close();
+        }),
+      );
       await websocket.close(1001, "Server shutting down");
     },
     async publish(event: Event) {
@@ -147,5 +153,6 @@ function roomForPeer<Claims extends { exp: number }, Event>(
 }
 
 function rejectUpgrade(socket: Duplex, status = "401 Unauthorized") {
-  if (!socket.destroyed) socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
+  if (!socket.destroyed)
+    socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
 }

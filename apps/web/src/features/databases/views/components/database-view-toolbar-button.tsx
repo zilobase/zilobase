@@ -1,12 +1,12 @@
-import type { ComponentProps } from "react"
+import type { ComponentProps } from "react";
 
-import { Button } from "@/shared/ui/button"
-import { cn } from "@/shared/lib/utils"
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 
 type DatabaseViewToolbarButtonProps = Omit<
   ComponentProps<typeof Button>,
   "size" | "type" | "variant"
->
+>;
 
 export function DatabaseViewToolbarButton({
   children,
@@ -23,5 +23,5 @@ export function DatabaseViewToolbarButton({
     >
       {children}
     </Button>
-  )
+  );
 }

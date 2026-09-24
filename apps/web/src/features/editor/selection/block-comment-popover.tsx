@@ -1,32 +1,32 @@
-import type { Editor as TiptapEditor } from "@tiptap/react"
+import type { Editor as TiptapEditor } from "@tiptap/react";
 import {
   ChevronsLeftIcon,
   MessageSquareIcon,
   MessageSquarePlusIcon,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 
-import type { PageCommentController } from "@/features/comments/index"
-import { usePageEditorComments } from "@/features/comments/index"
-import { PageCommentThread } from "@/features/comments/index"
-import { Button } from "@/shared/ui/button"
+import type { PageCommentController } from "@/features/comments/index";
+import { usePageEditorComments } from "@/features/comments/index";
+import { PageCommentThread } from "@/features/comments/index";
+import { Button } from "@/shared/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
-} from "@/shared/ui/popover"
-import { usePageCommentsSnapshot } from "@/features/comments/index"
-import { getCommentIdsInRange } from "@zilobase/tiptap-comment-extension"
+} from "@/shared/ui/popover";
+import { usePageCommentsSnapshot } from "@/features/comments/index";
+import { getCommentIdsInRange } from "@zilobase/tiptap-comment-extension";
 
-import type { DragHandleTarget } from "../toolbar/toolbar-contracts"
+import type { DragHandleTarget } from "../toolbar/toolbar-contracts";
 
 function getBlockCommentRange(target: DragHandleTarget) {
-  if (target.node.isLeaf || target.node.isAtom) return null
+  if (target.node.isLeaf || target.node.isAtom) return null;
 
-  const from = target.pos + 1
-  const to = target.pos + target.node.nodeSize - 1
-  return target.node.textContent.trim() && to > from ? { from, to } : null
+  const from = target.pos + 1;
+  const to = target.pos + target.node.nodeSize - 1;
+  return target.node.textContent.trim() && to > from ? { from, to } : null;
 }
 
 export function BlockCommentPopover({
@@ -37,30 +37,27 @@ export function BlockCommentPopover({
   pageId,
   target,
 }: {
-  commentController: PageCommentController
-  editor: TiptapEditor
-  onOpenChange: (open: boolean) => void
-  open: boolean
-  pageId: string
-  target: DragHandleTarget
+  commentController: PageCommentController;
+  editor: TiptapEditor;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  pageId: string;
+  target: DragHandleTarget;
 }) {
-  const editorComments = usePageEditorComments()
-  const snapshot = usePageCommentsSnapshot(pageId)
-  const range = getBlockCommentRange(target)
+  const editorComments = usePageEditorComments();
+  const snapshot = usePageCommentsSnapshot(pageId);
+  const range = getBlockCommentRange(target);
   const threadIds = range
     ? new Set(getCommentIdsInRange(editor, range.from, range.to))
-    : new Set<string>()
+    : new Set<string>();
   const blockThreads = snapshot.threads.filter(
     (thread) => thread.kind === "block" && threadIds.has(thread.id),
-  )
-  const openThreads = blockThreads.filter((thread) => !thread.resolvedAt)
-  const activeThread = openThreads[0] ?? null
-  const commentCount = openThreads.reduce(
-    (count, thread) => count + thread.comments.length,
-    0,
-  )
+  );
+  const openThreads = blockThreads.filter((thread) => !thread.resolvedAt);
+  const activeThread = openThreads[0] ?? null;
+  const commentCount = openThreads.reduce((count, thread) => count + thread.comments.length, 0);
 
-  if (!range) return null
+  if (!range) return null;
 
   return (
     <Popover onOpenChange={onOpenChange} open={open}>
@@ -74,9 +71,7 @@ export function BlockCommentPopover({
           variant="ghost"
         >
           {commentCount ? <MessageSquareIcon /> : <MessageSquarePlusIcon />}
-          {commentCount ? (
-            <span className="block-comment-count">{commentCount}</span>
-          ) : null}
+          {commentCount ? <span className="block-comment-count">{commentCount}</span> : null}
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -99,10 +94,10 @@ export function BlockCommentPopover({
               if (activeThread) {
                 commentController.activateThread(activeThread.id, {
                   openSidebar: false,
-                })
+                });
               }
-              onOpenChange(false)
-              editorComments.requestEditorComments()
+              onOpenChange(false);
+              editorComments.requestEditorComments();
             }}
             size="icon-sm"
             title="Expand in discussions"
@@ -116,14 +111,12 @@ export function BlockCommentPopover({
           <PageCommentThread pageId={pageId} threadId={activeThread.id} />
         ) : (
           <PageCommentThread
-            onCreateThread={(body) =>
-              commentController.createBlockThread(body, range)
-            }
+            onCreateThread={(body) => commentController.createBlockThread(body, range)}
             pageId={pageId}
             placeholder="Add a comment…"
           />
         )}
       </PopoverContent>
     </Popover>
-  )
+  );
 }

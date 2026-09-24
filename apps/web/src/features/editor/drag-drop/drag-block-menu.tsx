@@ -1,5 +1,5 @@
-import type { Editor } from "@tiptap/react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import type { Editor } from "@tiptap/react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Clipboard,
   Copy,
@@ -8,7 +8,7 @@ import {
   Plus,
   Trash2,
   Type,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 
 import {
   DropDrawer,
@@ -21,8 +21,8 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
-import { Input } from "@/shared/ui/input"
+} from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,70 +32,55 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
-import {
-  slashCommandItems,
-  type SlashCommandItem,
-} from "../extensions/slash-command"
-import { SlashCommandMenu } from "../extensions/slash-command-menu"
-import { getSelectedBlockRangesForTarget } from "../extensions/block-selection"
+} from "@/shared/ui/alert-dialog";
+import { slashCommandItems, type SlashCommandItem } from "../extensions/slash-command";
+import { SlashCommandMenu } from "../extensions/slash-command-menu";
+import { getSelectedBlockRangesForTarget } from "../extensions/block-selection";
 
-import {
-  blockContentForConversion,
-  insertBlockFromPlus,
-} from "../commands/block-insert";
-import {
-  armBlockDrag,
-  endBlockDrag,
-  startBlockDrag,
-} from "./block-drag"
-import { colorWithAlpha, getPaletteColor } from "@/shared/lib/color-tokens"
-import { setDatabasePageDragPayload } from "@/features/databases"
-import type { DragHandleTarget } from "../toolbar/toolbar-contracts"
+import { blockContentForConversion, insertBlockFromPlus } from "../commands/block-insert";
+import { armBlockDrag, endBlockDrag, startBlockDrag } from "./block-drag";
+import { colorWithAlpha, getPaletteColor } from "@/shared/lib/color-tokens";
+import { setDatabasePageDragPayload } from "@/features/databases";
+import type { DragHandleTarget } from "../toolbar/toolbar-contracts";
 import type {
   StructuralBlockDeleteAction,
   StructuralBlockDeleteHistory,
   StructuralBlockDeleteRequest,
-} from "../core/types"
-import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
-import { toast } from "sonner"
-import { ColorPicker } from "../toolbar/color-menu"
-import { useOptionalUndoHistory } from "@/shared/shortcuts"
-import { createStructuralBlockDeleteHistoryAction } from "./structural-block-delete-history"
+} from "../core/types";
+import type { StructuralInsertionPendingChange } from "../commands/structural-insertion";
+import { toast } from "sonner";
+import { ColorPicker } from "../toolbar/color-menu";
+import { useOptionalUndoHistory } from "@/shared/shortcuts";
+import { createStructuralBlockDeleteHistoryAction } from "./structural-block-delete-history";
 
 type PendingStructuralBlockDelete = StructuralBlockDeleteRequest & {
-  action: StructuralBlockDeleteAction
-  pos: number
-}
+  action: StructuralBlockDeleteAction;
+  pos: number;
+};
 
-function findStructuralBlock(
-  editor: Editor,
-  target: PendingStructuralBlockDelete,
-) {
-  const idAttribute = target.type === "database" ? "databaseId" : "meetingId"
-  const nodeAtOriginalPosition = editor.state.doc.nodeAt(target.pos)
+function findStructuralBlock(editor: Editor, target: PendingStructuralBlockDelete) {
+  const idAttribute = target.type === "database" ? "databaseId" : "meetingId";
+  const nodeAtOriginalPosition = editor.state.doc.nodeAt(target.pos);
 
   if (nodeAtOriginalPosition?.attrs[idAttribute] === target.id) {
-    return { node: nodeAtOriginalPosition, pos: target.pos }
+    return { node: nodeAtOriginalPosition, pos: target.pos };
   }
 
-  let match: { node: typeof nodeAtOriginalPosition; pos: number } | null = null
+  let match: { node: typeof nodeAtOriginalPosition; pos: number } | null = null;
 
   editor.state.doc.descendants((node, pos) => {
     if (node.attrs[idAttribute] !== target.id) {
-      return match === null
+      return match === null;
     }
 
-    match = { node, pos }
-    return false
-  })
+    match = { node, pos };
+    return false;
+  });
 
-  return match
+  return match;
 }
 
-const blockCommandItems = slashCommandItems.filter(
-  (item) => item.title !== "Emoji"
-)
+const blockCommandItems = slashCommandItems.filter((item) => item.title !== "Emoji");
 
 const turnIntoItems = blockCommandItems.filter((item) =>
   [
@@ -109,8 +94,8 @@ const turnIntoItems = blockCommandItems.filter((item) =>
     "Quote",
     "Code Block",
     "Toggle",
-  ].includes(item.title)
-)
+  ].includes(item.title),
+);
 
 export function DragBlockMenu({
   editor,
@@ -125,51 +110,50 @@ export function DragBlockMenu({
   getStructuralBlockDeleteAction,
   onDeleteStructuralBlock,
 }: {
-  editor: Editor
-  editorId: string
-  isOpen: boolean
-  target: DragHandleTarget | null
-  onOpenChange: (open: boolean) => void
-  onMenuStateChange?: (open: boolean) => void
-  onCreateDatabase?: () => Promise<string | null>
-  onCreateMeeting?: () => Promise<string | null>
-  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
+  editor: Editor;
+  editorId: string;
+  isOpen: boolean;
+  target: DragHandleTarget | null;
+  onOpenChange: (open: boolean) => void;
+  onMenuStateChange?: (open: boolean) => void;
+  onCreateDatabase?: () => Promise<string | null>;
+  onCreateMeeting?: () => Promise<string | null>;
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange;
   getStructuralBlockDeleteAction?: (
     request: StructuralBlockDeleteRequest,
-  ) => StructuralBlockDeleteAction
+  ) => StructuralBlockDeleteAction;
   onDeleteStructuralBlock?: (
     request: StructuralBlockDeleteRequest,
-  ) => Promise<StructuralBlockDeleteHistory | void>
+  ) => Promise<StructuralBlockDeleteHistory | void>;
 }) {
-  const undoHistory = useOptionalUndoHistory()
-  const menuRootRef = useRef<HTMLDivElement | null>(null)
-  const [actionsOpen, setActionsOpen] = useState(false)
-  const [search, setSearch] = useState("")
-  const [pendingDelete, setPendingDelete] =
-    useState<PendingStructuralBlockDelete | null>(null)
-  const [deletePending, setDeletePending] = useState(false)
+  const undoHistory = useOptionalUndoHistory();
+  const menuRootRef = useRef<HTMLDivElement | null>(null);
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<PendingStructuralBlockDelete | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
   const gripPointerRef = useRef<{
-    moved: boolean
-    x: number
-    y: number
-  } | null>(null)
-  const suppressGripMenuOpenRef = useRef(false)
+    moved: boolean;
+    x: number;
+    y: number;
+  } | null>(null);
+  const suppressGripMenuOpenRef = useRef(false);
   const gripPointerListenersRef = useRef<{
-    onPointerCancel: (event: PointerEvent) => void
-    onPointerMove: (event: PointerEvent) => void
-    onPointerUp: (event: PointerEvent) => void
-  } | null>(null)
+    onPointerCancel: (event: PointerEvent) => void;
+    onPointerMove: (event: PointerEvent) => void;
+    onPointerUp: (event: PointerEvent) => void;
+  } | null>(null);
   const filteredTurnIntoItems = useMemo(
     () =>
       turnIntoItems.filter((item) =>
-        item.title.toLowerCase().includes(search.trim().toLowerCase())
+        item.title.toLowerCase().includes(search.trim().toLowerCase()),
       ),
-    [search]
-  )
-  const isPageBlock = target?.node.type.name === "pageBlock"
+    [search],
+  );
+  const isPageBlock = target?.node.type.name === "pageBlock";
   const targetColors = useMemo(() => {
     if (!target) {
-      return { backgroundColor: null, textColor: null }
+      return { backgroundColor: null, textColor: null };
     }
 
     if (target.node.type.name === "pageBlock") {
@@ -179,233 +163,216 @@ export function DragBlockMenu({
             ? target.node.attrs.backgroundColor
             : null,
         textColor:
-          typeof target.node.attrs.textColor === "string"
-            ? target.node.attrs.textColor
-            : null,
-      }
+          typeof target.node.attrs.textColor === "string" ? target.node.attrs.textColor : null,
+      };
     }
 
-    const backgroundColors = new Set<string | null>()
-    const textColors = new Set<string | null>()
+    const backgroundColors = new Set<string | null>();
+    const textColors = new Set<string | null>();
 
     target.node.descendants((node) => {
       if (!node.isText) {
-        return
+        return;
       }
 
-      const textStyle = node.marks.find(
-        (mark) => mark.type.name === "textStyle",
-      )
+      const textStyle = node.marks.find((mark) => mark.type.name === "textStyle");
       backgroundColors.add(
         typeof textStyle?.attrs.backgroundColor === "string"
           ? textStyle.attrs.backgroundColor
           : null,
-      )
-      textColors.add(
-        typeof textStyle?.attrs.color === "string" ? textStyle.attrs.color : null,
-      )
-    })
+      );
+      textColors.add(typeof textStyle?.attrs.color === "string" ? textStyle.attrs.color : null);
+    });
 
     return {
-      backgroundColor:
-        backgroundColors.size < 2
-          ? ([...backgroundColors][0] ?? null)
-          : undefined,
-      textColor:
-        textColors.size < 2 ? ([...textColors][0] ?? null) : undefined,
-    }
-  }, [target])
+      backgroundColor: backgroundColors.size < 2 ? ([...backgroundColors][0] ?? null) : undefined,
+      textColor: textColors.size < 2 ? ([...textColors][0] ?? null) : undefined,
+    };
+  }, [target]);
 
   useEffect(() => {
-    onMenuStateChange?.(isOpen || actionsOpen || pendingDelete !== null)
-  }, [actionsOpen, isOpen, onMenuStateChange, pendingDelete])
+    onMenuStateChange?.(isOpen || actionsOpen || pendingDelete !== null);
+  }, [actionsOpen, isOpen, onMenuStateChange, pendingDelete]);
 
   useEffect(() => {
     return () => {
-      onMenuStateChange?.(false)
-    }
-  }, [onMenuStateChange])
+      onMenuStateChange?.(false);
+    };
+  }, [onMenuStateChange]);
 
   useEffect(() => {
     return () => {
-      const listeners = gripPointerListenersRef.current
+      const listeners = gripPointerListenersRef.current;
 
       if (!listeners) {
-        return
+        return;
       }
 
-      document.removeEventListener("pointermove", listeners.onPointerMove)
-      document.removeEventListener("pointerup", listeners.onPointerUp)
-      document.removeEventListener("pointercancel", listeners.onPointerCancel)
-      gripPointerListenersRef.current = null
-    }
-  }, [])
+      document.removeEventListener("pointermove", listeners.onPointerMove);
+      document.removeEventListener("pointerup", listeners.onPointerUp);
+      document.removeEventListener("pointercancel", listeners.onPointerCancel);
+      gripPointerListenersRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
-      return
+      return;
     }
 
     const close = (event: MouseEvent) => {
-      if (
-        event.target instanceof Node &&
-        menuRootRef.current?.contains(event.target)
-      ) {
-        return
+      if (event.target instanceof Node && menuRootRef.current?.contains(event.target)) {
+        return;
       }
 
-      onOpenChange(false)
-    }
+      onOpenChange(false);
+    };
 
-    document.addEventListener("mousedown", close)
+    document.addEventListener("mousedown", close);
 
     return () => {
-      document.removeEventListener("mousedown", close)
-    }
-  }, [isOpen, onOpenChange])
+      document.removeEventListener("mousedown", close);
+    };
+  }, [isOpen, onOpenChange]);
 
   const handleActionsOpenChange = (open: boolean) => {
     if (open) {
       if (!target || suppressGripMenuOpenRef.current) {
-        return
+        return;
       }
 
-      onOpenChange(false)
+      onOpenChange(false);
     } else {
-      setSearch("")
+      setSearch("");
     }
 
-    setActionsOpen(open)
-  }
+    setActionsOpen(open);
+  };
 
   const openGripActionsMenu = () => {
     if (!target || suppressGripMenuOpenRef.current) {
-      return
+      return;
     }
 
-    onOpenChange(false)
-    setActionsOpen(true)
-  }
+    onOpenChange(false);
+    setActionsOpen(true);
+  };
 
   const markGripDragInteraction = () => {
-    suppressGripMenuOpenRef.current = true
-    const pointer = gripPointerRef.current
+    suppressGripMenuOpenRef.current = true;
+    const pointer = gripPointerRef.current;
 
     if (pointer) {
-      pointer.moved = true
+      pointer.moved = true;
     }
 
-    setActionsOpen(false)
-  }
+    setActionsOpen(false);
+  };
 
   const unbindGripPointerTracking = () => {
-    const listeners = gripPointerListenersRef.current
+    const listeners = gripPointerListenersRef.current;
 
     if (!listeners) {
-      return
+      return;
     }
 
-    document.removeEventListener("pointermove", listeners.onPointerMove)
-    document.removeEventListener("pointerup", listeners.onPointerUp)
-    document.removeEventListener("pointercancel", listeners.onPointerCancel)
-    gripPointerListenersRef.current = null
-  }
+    document.removeEventListener("pointermove", listeners.onPointerMove);
+    document.removeEventListener("pointerup", listeners.onPointerUp);
+    document.removeEventListener("pointercancel", listeners.onPointerCancel);
+    gripPointerListenersRef.current = null;
+  };
 
   const bindGripPointerTracking = () => {
-    unbindGripPointerTracking()
+    unbindGripPointerTracking();
 
     const handlePointerMove = (event: PointerEvent) => {
-      const pointer = gripPointerRef.current
+      const pointer = gripPointerRef.current;
 
       if (!pointer) {
-        return
+        return;
       }
 
-      const deltaX = Math.abs(event.clientX - pointer.x)
-      const deltaY = Math.abs(event.clientY - pointer.y)
+      const deltaX = Math.abs(event.clientX - pointer.x);
+      const deltaY = Math.abs(event.clientY - pointer.y);
 
       if (deltaX > 4 || deltaY > 4) {
-        markGripDragInteraction()
+        markGripDragInteraction();
       }
-    }
+    };
 
     const handlePointerUp = (event: PointerEvent) => {
       if (event.button !== 0) {
-        return
+        return;
       }
 
-      const pointer = gripPointerRef.current
+      const pointer = gripPointerRef.current;
 
       if (!pointer) {
-        unbindGripPointerTracking()
-        return
+        unbindGripPointerTracking();
+        return;
       }
 
       window.setTimeout(() => {
         if (!pointer.moved && !suppressGripMenuOpenRef.current) {
-          openGripActionsMenu()
+          openGripActionsMenu();
         }
 
         if (!pointer.moved) {
-          endBlockDrag(editor.view)
+          endBlockDrag(editor.view);
         }
 
-        gripPointerRef.current = null
-      }, 0)
+        gripPointerRef.current = null;
+      }, 0);
 
-      unbindGripPointerTracking()
-    }
+      unbindGripPointerTracking();
+    };
 
     const handlePointerCancel = () => {
-      gripPointerRef.current = null
-      endBlockDrag(editor.view)
-      unbindGripPointerTracking()
-    }
+      gripPointerRef.current = null;
+      endBlockDrag(editor.view);
+      unbindGripPointerTracking();
+    };
 
     gripPointerListenersRef.current = {
       onPointerCancel: handlePointerCancel,
       onPointerMove: handlePointerMove,
       onPointerUp: handlePointerUp,
-    }
+    };
 
-    document.addEventListener("pointermove", handlePointerMove)
-    document.addEventListener("pointerup", handlePointerUp)
-    document.addEventListener("pointercancel", handlePointerUp)
-  }
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+  };
 
   const runTargetCommand = (command: () => void) => {
     if (!target) {
-      return
+      return;
     }
 
-    command()
-    handleActionsOpenChange(false)
-  }
+    command();
+    handleActionsOpenChange(false);
+  };
 
   const selectTarget = () => {
     if (!target) {
-      return false
+      return false;
     }
 
-    editor
-      .chain()
-      .focus()
-      .setNodeSelection(target.pos)
-      .run()
+    editor.chain().focus().setNodeSelection(target.pos).run();
 
-    return true
-  }
+    return true;
+  };
 
   const turnTargetInto = (item: SlashCommandItem) => {
     runTargetCommand(() => {
       if (!target) {
-        return
+        return;
       }
 
       const content = blockContentForConversion(item, target.node);
 
       if (!content) {
-        return
+        return;
       }
       editor
         .chain()
@@ -415,17 +382,14 @@ export function DragBlockMenu({
           to: target.pos + target.node.nodeSize,
         })
         .insertContentAt(target.pos, content)
-        .run()
-    })
-  }
+        .run();
+    });
+  };
 
-  const applyColor = (
-    color: string | null,
-    variant: "text" | "background"
-  ) => {
+  const applyColor = (color: string | null, variant: "text" | "background") => {
     runTargetCommand(() => {
       if (!target) {
-        return
+        return;
       }
 
       if (target.node.type.name === "pageBlock") {
@@ -437,95 +401,90 @@ export function DragBlockMenu({
             backgroundColor: variant === "background" ? color : null,
             textColor: variant === "text" ? color : null,
           })
-          .run()
-        return
+          .run();
+        return;
       }
 
       if (target.node.isAtom) {
-        return
+        return;
       }
 
-      const from = target.pos + 1
-      const to = target.pos + target.node.nodeSize - 1
-      const chain = editor.chain().focus().setTextSelection({ from, to })
+      const from = target.pos + 1;
+      const to = target.pos + target.node.nodeSize - 1;
+      const chain = editor.chain().focus().setTextSelection({ from, to });
 
       if (!color) {
-        chain.unsetColor().unsetBackgroundColor().run()
-        return
+        chain.unsetColor().unsetBackgroundColor().run();
+        return;
       }
 
       if (variant === "text") {
-        chain
-          .unsetBackgroundColor()
-          .setColor(getPaletteColor(color)!)
-          .run()
-        return
+        chain.unsetBackgroundColor().setColor(getPaletteColor(color)!).run();
+        return;
       }
 
-      chain.unsetColor().setBackgroundColor(colorWithAlpha(color, 0.18)!).run()
-    })
-  }
+      chain.unsetColor().setBackgroundColor(colorWithAlpha(color, 0.18)!).run();
+    });
+  };
 
   const duplicateTarget = () => {
     runTargetCommand(() => {
       if (!target) {
-        return
+        return;
       }
 
       editor
         .chain()
         .focus()
         .insertContentAt(target.pos + target.node.nodeSize, target.node.toJSON())
-        .run()
-    })
-  }
+        .run();
+    });
+  };
 
   const copyTarget = () => {
     runTargetCommand(() => {
       if (!target || !selectTarget()) {
-        return
+        return;
       }
 
-      document.execCommand("copy")
-    })
-  }
+      document.execCommand("copy");
+    });
+  };
 
   const deleteTarget = () => {
     if (target?.node.type.name === "databaseBlock") {
-      const id = target.node.attrs.databaseId
+      const id = target.node.attrs.databaseId;
 
       if (typeof id === "string" && id) {
-        const request = { id, type: "database" as const }
+        const request = { id, type: "database" as const };
         setPendingDelete({
           ...request,
-          action:
-            getStructuralBlockDeleteAction?.(request) ?? "move-to-trash",
+          action: getStructuralBlockDeleteAction?.(request) ?? "move-to-trash",
           pos: target.pos,
-        })
-        handleActionsOpenChange(false)
-        return
+        });
+        handleActionsOpenChange(false);
+        return;
       }
     }
 
     if (target?.node.type.name === "meetingBlock") {
-      const id = target.node.attrs.meetingId
+      const id = target.node.attrs.meetingId;
 
       if (typeof id === "string" && id) {
-        const request = { id, type: "meeting" as const }
+        const request = { id, type: "meeting" as const };
         setPendingDelete({
           ...request,
-          action:
-            getStructuralBlockDeleteAction?.(request) ?? "move-to-trash",
+          action: getStructuralBlockDeleteAction?.(request) ?? "move-to-trash",
           pos: target.pos,
-        })
-        handleActionsOpenChange(false)
-        return
+        });
+        handleActionsOpenChange(false);
+        return;
       }
     }
 
     runTargetCommand(() => {
       if (!target) {
-        return
+        return;
       }
 
       editor
@@ -535,28 +494,28 @@ export function DragBlockMenu({
           from: target.pos,
           to: target.pos + target.node.nodeSize,
         })
-        .run()
-    })
-  }
+        .run();
+    });
+  };
 
   const confirmStructuralBlockDelete = async () => {
     if (!pendingDelete || deletePending) {
-      return
+      return;
     }
 
-    setDeletePending(true)
+    setDeletePending(true);
 
     try {
       if (!onDeleteStructuralBlock) {
-        throw new Error("This block cannot be deleted from this editor.")
+        throw new Error("This block cannot be deleted from this editor.");
       }
 
       const resourceHistory = await onDeleteStructuralBlock({
         id: pendingDelete.id,
         type: pendingDelete.type,
-      })
+      });
 
-      const match = findStructuralBlock(editor, pendingDelete)
+      const match = findStructuralBlock(editor, pendingDelete);
 
       if (match?.node) {
         const deleteEditorBlock = () =>
@@ -567,290 +526,269 @@ export function DragBlockMenu({
               from: match.pos,
               to: match.pos + match.node.nodeSize,
             })
-            .run()
+            .run();
 
         if (resourceHistory && undoHistory) {
-          undoHistory.runWithoutRecording(deleteEditorBlock)
+          undoHistory.runWithoutRecording(deleteEditorBlock);
           undoHistory.pushAction(
             createStructuralBlockDeleteHistoryAction({
               editor: {
-                redo: () =>
-                  undoHistory.runWithoutRecording(() => editor.commands.redo()),
-                undo: () =>
-                  undoHistory.runWithoutRecording(() => editor.commands.undo()),
+                redo: () => undoHistory.runWithoutRecording(() => editor.commands.redo()),
+                undo: () => undoHistory.runWithoutRecording(() => editor.commands.undo()),
               },
               onError: (error) => {
                 toast.error(
-                  error instanceof Error
-                    ? error.message
-                    : "Could not update the deleted block.",
-                )
+                  error instanceof Error ? error.message : "Could not update the deleted block.",
+                );
               },
               resource: resourceHistory,
             }),
-          )
+          );
         } else {
-          deleteEditorBlock()
+          deleteEditorBlock();
         }
       }
 
-      setPendingDelete(null)
+      setPendingDelete(null);
       toast.success(
-        pendingDelete.action === "remove-link"
-          ? "Removed from page."
-          : "Moved to trash.",
-      )
+        pendingDelete.action === "remove-link" ? "Removed from page." : "Moved to trash.",
+      );
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : `Could not delete ${pendingDelete.type}.`,
-      )
+        error instanceof Error ? error.message : `Could not delete ${pendingDelete.type}.`,
+      );
     } finally {
-      setDeletePending(false)
+      setDeletePending(false);
     }
-  }
+  };
 
   return (
     <>
       <div className="contents" ref={menuRootRef}>
-      <button
-        aria-label="Add block below"
-        className="drag-handle-plus"
-        onClick={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          handleActionsOpenChange(false)
-          onOpenChange(!isOpen)
-        }}
-        onDragStart={(event) => event.preventDefault()}
-        onMouseDown={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-        }}
-        title="Add block"
-        type="button"
-      >
-        <Plus />
-      </button>
-      <DropDrawer onOpenChange={handleActionsOpenChange} open={actionsOpen}>
-        <div className="drag-handle-grip relative">
-          <DropDrawerTrigger asChild>
-            <span
-              aria-hidden
-              className="absolute inset-0 pointer-events-none"
-              tabIndex={-1}
-            />
-          </DropDrawerTrigger>
-          <span
-            aria-expanded={actionsOpen}
-            aria-haspopup="menu"
-            aria-label="Open block actions"
-            className="absolute inset-0 flex cursor-grab items-center justify-center active:cursor-grabbing"
-            draggable
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
-            onDragEnd={() => {
-              endBlockDrag(editor.view)
-              markGripDragInteraction()
-              window.setTimeout(() => {
-                suppressGripMenuOpenRef.current = false
-              }, 300)
-            }}
-            onDragStart={(event) => {
-              if (!target) {
-                event.preventDefault()
-                return
-              }
-
-              const { doc, selection } = editor.state
-              const draggingMultipleBlocks =
-                getSelectedBlockRangesForTarget(
-                  doc,
-                  selection.from,
-                  selection.to,
-                  target.pos,
-                ).length > 1
-
-              event.stopPropagation()
-              event.nativeEvent.stopImmediatePropagation()
-              const didStartDrag = startBlockDrag({
-                editorId,
-                event: event.nativeEvent,
-                target,
-                view: editor.view,
-              })
-
-              if (!didStartDrag) {
-                event.preventDefault()
-                return
-              }
-
-              markGripDragInteraction()
-
-              const pageId = target.node.attrs.pageId
-
-              if (
-                !draggingMultipleBlocks &&
-                target.node.type.name === "pageBlock" &&
-                typeof pageId === "string"
-              ) {
-                setDatabasePageDragPayload(event.dataTransfer, {
-                  pageId,
-                  title: target.node.textContent || "Untitled",
-                })
-              }
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter" && event.key !== " ") {
-                return
-              }
-
-              event.preventDefault()
-              openGripActionsMenu()
-            }}
-            onPointerDown={(event) => {
-              if (event.button !== 0) {
-                return
-              }
-
-              event.stopPropagation()
-              event.nativeEvent.stopImmediatePropagation()
-              suppressGripMenuOpenRef.current = false
-              gripPointerRef.current = {
-                moved: false,
-                x: event.clientX,
-                y: event.clientY,
-              }
-              bindGripPointerTracking()
-
-              if (target) {
-                armBlockDrag(editorId, target)
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            title="Block actions"
-          >
-            <GripVertical />
-          </span>
-        </div>
-        <DropDrawerContent
-          align="start"
-          className="w-72"
-          onCloseAutoFocus={(event) => event.preventDefault()}
-          side="right"
-          sideOffset={8}
+        <button
+          aria-label="Add block below"
+          className="drag-handle-plus"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            handleActionsOpenChange(false);
+            onOpenChange(!isOpen);
+          }}
+          onDragStart={(event) => event.preventDefault()}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          title="Add block"
+          type="button"
         >
-          <div className="flex items-center gap-1.5 px-1.5 py-1">
-            <Input
-              aria-label="Search block actions"
-              autoComplete="off"
-              className="h-auto rounded-none border-0 bg-transparent px-0 py-0 text-sm font-medium shadow-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
-              onChange={(event) => setSearch(event.target.value)}
-              onKeyDown={(event) => event.stopPropagation()}
-              placeholder="Search actions..."
-              value={search}
-            />
+          <Plus />
+        </button>
+        <DropDrawer onOpenChange={handleActionsOpenChange} open={actionsOpen}>
+          <div className="drag-handle-grip relative">
+            <DropDrawerTrigger asChild>
+              <span aria-hidden className="absolute inset-0 pointer-events-none" tabIndex={-1} />
+            </DropDrawerTrigger>
+            <span
+              aria-expanded={actionsOpen}
+              aria-haspopup="menu"
+              aria-label="Open block actions"
+              className="absolute inset-0 flex cursor-grab items-center justify-center active:cursor-grabbing"
+              draggable
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              }}
+              onDragEnd={() => {
+                endBlockDrag(editor.view);
+                markGripDragInteraction();
+                window.setTimeout(() => {
+                  suppressGripMenuOpenRef.current = false;
+                }, 300);
+              }}
+              onDragStart={(event) => {
+                if (!target) {
+                  event.preventDefault();
+                  return;
+                }
+
+                const { doc, selection } = editor.state;
+                const draggingMultipleBlocks =
+                  getSelectedBlockRangesForTarget(doc, selection.from, selection.to, target.pos)
+                    .length > 1;
+
+                event.stopPropagation();
+                event.nativeEvent.stopImmediatePropagation();
+                const didStartDrag = startBlockDrag({
+                  editorId,
+                  event: event.nativeEvent,
+                  target,
+                  view: editor.view,
+                });
+
+                if (!didStartDrag) {
+                  event.preventDefault();
+                  return;
+                }
+
+                markGripDragInteraction();
+
+                const pageId = target.node.attrs.pageId;
+
+                if (
+                  !draggingMultipleBlocks &&
+                  target.node.type.name === "pageBlock" &&
+                  typeof pageId === "string"
+                ) {
+                  setDatabasePageDragPayload(event.dataTransfer, {
+                    pageId,
+                    title: target.node.textContent || "Untitled",
+                  });
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter" && event.key !== " ") {
+                  return;
+                }
+
+                event.preventDefault();
+                openGripActionsMenu();
+              }}
+              onPointerDown={(event) => {
+                if (event.button !== 0) {
+                  return;
+                }
+
+                event.stopPropagation();
+                event.nativeEvent.stopImmediatePropagation();
+                suppressGripMenuOpenRef.current = false;
+                gripPointerRef.current = {
+                  moved: false,
+                  x: event.clientX,
+                  y: event.clientY,
+                };
+                bindGripPointerTracking();
+
+                if (target) {
+                  armBlockDrag(editorId, target);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              title="Block actions"
+            >
+              <GripVertical />
+            </span>
           </div>
-          <DropDrawerSeparator />
-          <DropDrawerLabel>{isPageBlock ? "Page" : "Block"}</DropDrawerLabel>
-          {!isPageBlock ? (
+          <DropDrawerContent
+            align="start"
+            className="w-72"
+            onCloseAutoFocus={(event) => event.preventDefault()}
+            side="right"
+            sideOffset={8}
+          >
+            <div className="flex items-center gap-1.5 px-1.5 py-1">
+              <Input
+                aria-label="Search block actions"
+                autoComplete="off"
+                className="h-auto rounded-none border-0 bg-transparent px-0 py-0 text-sm font-medium shadow-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent"
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => event.stopPropagation()}
+                placeholder="Search actions..."
+                value={search}
+              />
+            </div>
+            <DropDrawerSeparator />
+            <DropDrawerLabel>{isPageBlock ? "Page" : "Block"}</DropDrawerLabel>
+            {!isPageBlock ? (
+              <DropDrawerSub>
+                <DropDrawerSubTrigger>
+                  <Type />
+                  <span>Turn into</span>
+                </DropDrawerSubTrigger>
+                <DropDrawerSubContent className="w-64">
+                  {filteredTurnIntoItems.length > 0 ? (
+                    filteredTurnIntoItems.map((item) => {
+                      const Icon = item.icon;
+
+                      return (
+                        <DropDrawerItem key={item.title} onSelect={() => turnTargetInto(item)}>
+                          <Icon />
+                          <span>{item.title}</span>
+                        </DropDrawerItem>
+                      );
+                    })
+                  ) : (
+                    <DropDrawerItem disabled>No matching block types.</DropDrawerItem>
+                  )}
+                </DropDrawerSubContent>
+              </DropDrawerSub>
+            ) : null}
             <DropDrawerSub>
               <DropDrawerSubTrigger>
-                <Type />
-                <span>Turn into</span>
+                <Palette />
+                <span>Color</span>
               </DropDrawerSubTrigger>
-              <DropDrawerSubContent className="w-64">
-                {filteredTurnIntoItems.length > 0 ? (
-                  filteredTurnIntoItems.map((item) => {
-                    const Icon = item.icon
-
-                    return (
-                      <DropDrawerItem
-                        key={item.title}
-                        onSelect={() => turnTargetInto(item)}
-                      >
-                        <Icon />
-                        <span>{item.title}</span>
-                      </DropDrawerItem>
-                    )
-                  })
-                ) : (
-                  <DropDrawerItem disabled>No matching block types.</DropDrawerItem>
-                )}
+              <DropDrawerSubContent className="w-64 p-2">
+                <ColorPicker
+                  backgroundColor={targetColors.backgroundColor}
+                  onBackgroundColorSelect={(color) => applyColor(color, "background")}
+                  onTextColorSelect={(color) => applyColor(color, "text")}
+                  textColor={targetColors.textColor}
+                />
               </DropDrawerSubContent>
             </DropDrawerSub>
-          ) : null}
-          <DropDrawerSub>
-            <DropDrawerSubTrigger>
-              <Palette />
-              <span>Color</span>
-            </DropDrawerSubTrigger>
-            <DropDrawerSubContent className="w-64 p-2">
-              <ColorPicker
-                backgroundColor={targetColors.backgroundColor}
-                onBackgroundColorSelect={(color) =>
-                  applyColor(color, "background")
-                }
-                onTextColorSelect={(color) => applyColor(color, "text")}
-                textColor={targetColors.textColor}
-              />
-            </DropDrawerSubContent>
-          </DropDrawerSub>
-          <DropDrawerSeparator />
-          <DropDrawerItem onSelect={copyTarget}>
-            <Clipboard />
-            <span>Copy</span>
-            <DropDrawerShortcut>⌘C</DropDrawerShortcut>
-          </DropDrawerItem>
-          <DropDrawerItem onSelect={duplicateTarget}>
-            <Copy />
-            <span>Duplicate</span>
-            <DropDrawerShortcut>⌘D</DropDrawerShortcut>
-          </DropDrawerItem>
-          <DropDrawerSeparator />
-          <DropDrawerItem onSelect={deleteTarget} variant="destructive">
-            <Trash2 />
-            <span>Delete</span>
-          </DropDrawerItem>
-        </DropDrawerContent>
-      </DropDrawer>
-      {isOpen && target ? (
-        <div
-          className="plus-block-menu w-72 overflow-hidden rounded-xl border bg-surface-overlay text-content-primary shadow-md"
-          onMouseDown={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-          }}
-        >
-          <SlashCommandMenu
-            items={blockCommandItems}
-            selectedIndex={0}
-            setSelectedIndex={() => undefined}
-            selectItem={(index) => {
-              const item = blockCommandItems[index]
-
-              if (!item) {
-                return
-              }
-
-              void insertBlockFromPlus(editor, target, item, {
-                onCreateDatabase,
-                onCreateMeeting,
-                onStructuralInsertionPendingChange,
-              })
-              onOpenChange(false)
+            <DropDrawerSeparator />
+            <DropDrawerItem onSelect={copyTarget}>
+              <Clipboard />
+              <span>Copy</span>
+              <DropDrawerShortcut>⌘C</DropDrawerShortcut>
+            </DropDrawerItem>
+            <DropDrawerItem onSelect={duplicateTarget}>
+              <Copy />
+              <span>Duplicate</span>
+              <DropDrawerShortcut>⌘D</DropDrawerShortcut>
+            </DropDrawerItem>
+            <DropDrawerSeparator />
+            <DropDrawerItem onSelect={deleteTarget} variant="destructive">
+              <Trash2 />
+              <span>Delete</span>
+            </DropDrawerItem>
+          </DropDrawerContent>
+        </DropDrawer>
+        {isOpen && target ? (
+          <div
+            className="plus-block-menu w-72 overflow-hidden rounded-xl border bg-surface-overlay text-content-primary shadow-md"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
             }}
-          />
-        </div>
-      ) : null}
+          >
+            <SlashCommandMenu
+              items={blockCommandItems}
+              selectedIndex={0}
+              setSelectedIndex={() => undefined}
+              selectItem={(index) => {
+                const item = blockCommandItems[index];
+
+                if (!item) {
+                  return;
+                }
+
+                void insertBlockFromPlus(editor, target, item, {
+                  onCreateDatabase,
+                  onCreateMeeting,
+                  onStructuralInsertionPendingChange,
+                });
+                onOpenChange(false);
+              }}
+            />
+          </div>
+        ) : null}
       </div>
       <AlertDialog
         onOpenChange={(open) => {
-          if (!open && !deletePending) setPendingDelete(null)
+          if (!open && !deletePending) setPendingDelete(null);
         }}
         open={pendingDelete !== null}
       >
@@ -874,8 +812,8 @@ export function DragBlockMenu({
             <AlertDialogAction
               disabled={deletePending}
               onClick={(event) => {
-                event.preventDefault()
-                void confirmStructuralBlockDelete()
+                event.preventDefault();
+                void confirmStructuralBlockDelete();
               }}
               variant="destructive"
             >
@@ -885,5 +823,5 @@ export function DragBlockMenu({
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

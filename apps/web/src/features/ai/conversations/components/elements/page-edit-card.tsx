@@ -1,10 +1,7 @@
-"use client"
+"use client";
 
-import { Button } from "@/shared/ui/button"
-import {
-  isStalePageEditResolveError,
-  type PageEditSnapshotPart,
-} from "@zilobase/features/ai-chat"
+import { Button } from "@/shared/ui/button";
+import { isStalePageEditResolveError, type PageEditSnapshotPart } from "@zilobase/features/ai-chat";
 import {
   CheckIcon,
   EyeIcon,
@@ -13,8 +10,8 @@ import {
   Loader2Icon,
   Undo2Icon,
   XIcon,
-} from "@/shared/components/icons"
-import { useState } from "react"
+} from "@/shared/components/icons";
+import { useState } from "react";
 
 export function PageEditCard({
   isApplying,
@@ -29,44 +26,42 @@ export function PageEditCard({
   summary,
   toolError = null,
 }: {
-  isApplying: boolean
-  isBaselineCurrent: boolean
-  isDiffVisible: boolean
-  isReviewAvailable: boolean
-  onApply: () => void | Promise<void>
-  onDiscard: () => void | Promise<void>
-  onToggleChanges: () => void
-  onUndo: () => void | Promise<void>
-  snapshot: PageEditSnapshotPart | null
-  summary: string
-  toolError?: string | null
+  isApplying: boolean;
+  isBaselineCurrent: boolean;
+  isDiffVisible: boolean;
+  isReviewAvailable: boolean;
+  onApply: () => void | Promise<void>;
+  onDiscard: () => void | Promise<void>;
+  onToggleChanges: () => void;
+  onUndo: () => void | Promise<void>;
+  snapshot: PageEditSnapshotPart | null;
+  summary: string;
+  toolError?: string | null;
 }) {
-  const [isApplyingEdit, setIsApplyingEdit] = useState(false)
-  const [isDiscarding, setIsDiscarding] = useState(false)
-  const [isUndoing, setIsUndoing] = useState(false)
+  const [isApplyingEdit, setIsApplyingEdit] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
 
-  const isPreview = snapshot?.status === "preview"
-  const isDeclined = snapshot?.status === "declined"
-  const isApplied = snapshot?.status === "applied"
-  const isUndone = snapshot?.status === "undone"
+  const isPreview = snapshot?.status === "preview";
+  const isDeclined = snapshot?.status === "declined";
+  const isApplied = snapshot?.status === "applied";
+  const isUndone = snapshot?.status === "undone";
   const pageChangedSinceSuggestion =
-    Boolean(snapshot) && !isBaselineCurrent && (isPreview || isDeclined)
-  const pageChangedSinceApplied = isApplied && !isReviewAvailable
-  const pageChangedSinceUndo = isUndone && !isReviewAvailable
-  const canReviewChanges = isReviewAvailable && Boolean(snapshot?.afterMarkdown)
-  const canApply =
-    (isPreview || isUndone) && isReviewAvailable && !isApplying
-  const canDiscard = isPreview && !isApplying
-  const canUndo = snapshot?.status === "applied" && !isApplying
+    Boolean(snapshot) && !isBaselineCurrent && (isPreview || isDeclined);
+  const pageChangedSinceApplied = isApplied && !isReviewAvailable;
+  const pageChangedSinceUndo = isUndone && !isReviewAvailable;
+  const canReviewChanges = isReviewAvailable && Boolean(snapshot?.afterMarkdown);
+  const canApply = (isPreview || isUndone) && isReviewAvailable && !isApplying;
+  const canDiscard = isPreview && !isApplying;
+  const canUndo = snapshot?.status === "applied" && !isApplying;
   const snapshotErrorMessage =
-    snapshot?.errorMessage &&
-    !isStalePageEditResolveError(snapshot.errorMessage)
+    snapshot?.errorMessage && !isStalePageEditResolveError(snapshot.errorMessage)
       ? snapshot.errorMessage
-      : null
+      : null;
   const isStaleResolveFailure =
     snapshot?.status === "failed" &&
     snapshot.errorMessage != null &&
-    isStalePageEditResolveError(snapshot.errorMessage)
+    isStalePageEditResolveError(snapshot.errorMessage);
   const title = toolError
     ? "Page update failed"
     : isStaleResolveFailure
@@ -74,16 +69,16 @@ export function PageEditCard({
       : snapshot?.status === "failed" && snapshotErrorMessage
         ? "Page update not applied"
         : isDeclined
-        ? isBaselineCurrent
-          ? "Page change discarded"
-          : "Page change unavailable"
-        : snapshot?.status === "undone"
-          ? "Page change undone"
-          : isPreview
-            ? "Page update ready"
-            : isApplying
-              ? "Preparing page update"
-              : "Page updated"
+          ? isBaselineCurrent
+            ? "Page change discarded"
+            : "Page change unavailable"
+          : snapshot?.status === "undone"
+            ? "Page change undone"
+            : isPreview
+              ? "Page update ready"
+              : isApplying
+                ? "Preparing page update"
+                : "Page updated";
 
   return (
     <div className="not-prose mb-3 space-y-3 rounded-xl border bg-surface-card p-3">
@@ -112,16 +107,12 @@ export function PageEditCard({
               The page has changed since this update was undone.
             </p>
           ) : null}
-          {toolError ? (
-            <p className="text-action-danger-text text-sm">{toolError}</p>
-          ) : null}
+          {toolError ? <p className="text-action-danger-text text-sm">{toolError}</p> : null}
           {snapshot?.status === "failed" && snapshotErrorMessage ? (
             <p className="text-action-danger-text text-sm">{snapshotErrorMessage}</p>
           ) : null}
           {isDeclined && isBaselineCurrent ? (
-            <p className="text-content-secondary text-xs">
-              This suggested change was not applied.
-            </p>
+            <p className="text-content-secondary text-xs">This suggested change was not applied.</p>
           ) : null}
           {isUndone && isReviewAvailable ? (
             <p className="text-content-secondary text-xs">
@@ -143,11 +134,7 @@ export function PageEditCard({
             type="button"
             variant="outline"
           >
-            {isDiffVisible ? (
-              <EyeOffIcon className="size-4" />
-            ) : (
-              <EyeIcon className="size-4" />
-            )}
+            {isDiffVisible ? <EyeOffIcon className="size-4" /> : <EyeIcon className="size-4" />}
             {isDiffVisible ? "Hide changes" : "Show changes"}
           </Button>
         ) : null}
@@ -155,10 +142,10 @@ export function PageEditCard({
           <Button
             disabled={isApplyingEdit}
             onClick={() => {
-              setIsApplyingEdit(true)
+              setIsApplyingEdit(true);
               void Promise.resolve(onApply()).finally(() => {
-                setIsApplyingEdit(false)
-              })
+                setIsApplyingEdit(false);
+              });
             }}
             size="sm"
             type="button"
@@ -175,10 +162,10 @@ export function PageEditCard({
           <Button
             disabled={isDiscarding}
             onClick={() => {
-              setIsDiscarding(true)
+              setIsDiscarding(true);
               void Promise.resolve(onDiscard()).finally(() => {
-                setIsDiscarding(false)
-              })
+                setIsDiscarding(false);
+              });
             }}
             size="sm"
             type="button"
@@ -196,10 +183,10 @@ export function PageEditCard({
           <Button
             disabled={isUndoing}
             onClick={() => {
-              setIsUndoing(true)
+              setIsUndoing(true);
               void Promise.resolve(onUndo()).finally(() => {
-                setIsUndoing(false)
-              })
+                setIsUndoing(false);
+              });
             }}
             size="sm"
             type="button"
@@ -221,5 +208,5 @@ export function PageEditCard({
         ) : null}
       </div>
     </div>
-  )
+  );
 }

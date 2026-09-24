@@ -10,12 +10,7 @@ import {
   teamspacePrincipal,
 } from "../../infrastructure/database/schema";
 
-const WORKSPACE_ROLES = [
-  "owner",
-  "admin",
-  "member",
-  "temporary",
-] as const;
+const WORKSPACE_ROLES = ["owner", "admin", "member", "temporary"] as const;
 export type WorkspaceRole = (typeof WORKSPACE_ROLES)[number];
 
 const TEMPORARY_MEMBER_ROLE = "temporary" as const;
@@ -32,11 +27,7 @@ function isWorkspaceRole(value: unknown): value is WorkspaceRole {
   return WORKSPACE_ROLES.includes(value as WorkspaceRole);
 }
 
-export function parseMembershipAccessExpiry(
-  role: WorkspaceRole,
-  value: unknown,
-  now = new Date(),
-) {
+export function parseMembershipAccessExpiry(role: WorkspaceRole, value: unknown, now = new Date()) {
   if (role !== TEMPORARY_MEMBER_ROLE) {
     if (value !== undefined && value !== null && value !== "") {
       throw new TemporaryMembershipValidationError(
@@ -48,17 +39,13 @@ export function parseMembershipAccessExpiry(
   }
 
   if (typeof value !== "string" && !(value instanceof Date)) {
-    throw new TemporaryMembershipValidationError(
-      "Temporary members require an expiration date.",
-    );
+    throw new TemporaryMembershipValidationError("Temporary members require an expiration date.");
   }
 
   const expiresAt = value instanceof Date ? value : new Date(value);
 
   if (Number.isNaN(expiresAt.getTime())) {
-    throw new TemporaryMembershipValidationError(
-      "Enter a valid temporary-member expiration date.",
-    );
+    throw new TemporaryMembershipValidationError("Enter a valid temporary-member expiration date.");
   }
 
   if (expiresAt.getTime() <= now.getTime()) {
@@ -68,19 +55,14 @@ export function parseMembershipAccessExpiry(
   }
 
   if (expiresAt.getTime() - now.getTime() > MAX_TEMPORARY_ACCESS_MS) {
-    throw new TemporaryMembershipValidationError(
-      "Temporary-member access cannot exceed one year.",
-    );
+    throw new TemporaryMembershipValidationError("Temporary-member access cannot exceed one year.");
   }
 
   return expiresAt;
 }
 
 export function activeMembershipCondition(now = new Date()) {
-  return or(
-    ne(member.role, TEMPORARY_MEMBER_ROLE),
-    sql`${member.accessExpiresAt} > ${now}`,
-  );
+  return or(ne(member.role, TEMPORARY_MEMBER_ROLE), sql`${member.accessExpiresAt} > ${now}`);
 }
 
 export async function expireTemporaryMemberships(
@@ -88,10 +70,7 @@ export async function expireTemporaryMemberships(
   options: { now?: Date; userId?: string } = {},
 ) {
   const now = options.now ?? new Date();
-  const filters = [
-    eq(member.role, TEMPORARY_MEMBER_ROLE),
-    lte(member.accessExpiresAt, now),
-  ];
+  const filters = [eq(member.role, TEMPORARY_MEMBER_ROLE), lte(member.accessExpiresAt, now)];
 
   if (options.userId) {
     filters.push(eq(member.userId, options.userId));
@@ -127,10 +106,7 @@ export async function expireTemporaryMemberships(
       await transaction
         .delete(teamMember)
         .where(
-          and(
-            inArray(teamMember.userId, userIds),
-            inArray(teamMember.teamId, workspaceTeamIds),
-          ),
+          and(inArray(teamMember.userId, userIds), inArray(teamMember.teamId, workspaceTeamIds)),
         );
 
       await transaction
@@ -146,17 +122,15 @@ export async function expireTemporaryMemberships(
       await transaction
         .update(session)
         .set({ activeTeamId: null, activeWorkspaceId: null })
-        .where(
-          and(
-            inArray(session.userId, userIds),
-            eq(session.activeWorkspaceId, workspaceId),
-          ),
-        );
+        .where(and(inArray(session.userId, userIds), eq(session.activeWorkspaceId, workspaceId)));
     }
 
-    await transaction
-      .delete(member)
-      .where(inArray(member.id, expired.map((row) => row.id)));
+    await transaction.delete(member).where(
+      inArray(
+        member.id,
+        expired.map((row) => row.id),
+      ),
+    );
 
     return expired;
   });

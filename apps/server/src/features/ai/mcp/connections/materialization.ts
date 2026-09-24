@@ -30,11 +30,7 @@ import {
   databaseBlueprintViewSchema,
 } from "../../tools/database/blueprint/schema";
 import { resolveDatabaseBlueprintViewConfig } from "../../tools/database/blueprint/view-config";
-import {
-  enqueueAiJob,
-  PermanentAiJobError,
-  type AiJobHandler,
-} from "../../jobs/ai-jobs";
+import { enqueueAiJob, PermanentAiJobError, type AiJobHandler } from "../../jobs/ai-jobs";
 import {
   agentMcpScope,
   getMcpScopeColumns,
@@ -43,15 +39,7 @@ import {
   type McpScope,
 } from "../mcp-scope";
 
-const supportedTypeSchema = z.enum([
-  "text",
-  "number",
-  "checkbox",
-  "url",
-  "email",
-  "phone",
-  "date",
-]);
+const supportedTypeSchema = z.enum(["text", "number", "checkbox", "url", "email", "phone", "date"]);
 export const mcpMaterializationInputSchema = z
   .object({
     datasetIds: z.array(z.string().uuid()).max(10).default([]),
@@ -82,8 +70,7 @@ export const mcpMaterializationInputSchema = z
     if (value.datasetIds.length + value.toolExecutionIds.length === 0) {
       context.addIssue({
         code: "custom",
-        message:
-          "At least one connector dataset or tool execution ID is required.",
+        message: "At least one connector dataset or tool execution ID is required.",
       });
     }
   });
@@ -158,16 +145,10 @@ export async function queueMcpMaterialization(input: {
   });
   const datasetIds = [...new Set(input.spec.datasetIds)];
   const toolExecutionIds = [...new Set(input.spec.toolExecutionIds)];
-  const datasets = await loadThreadDatasets(
-    input,
-    datasetIds,
-    toolExecutionIds,
-  );
+  const datasets = await loadThreadDatasets(input, datasetIds, toolExecutionIds);
   const foundDatasetIds = new Set(datasets.map((dataset) => dataset.id));
   const foundExecutionIds = new Set(
-    datasets.flatMap((dataset) =>
-      dataset.toolExecutionId ? [dataset.toolExecutionId] : [],
-    ),
+    datasets.flatMap((dataset) => (dataset.toolExecutionId ? [dataset.toolExecutionId] : [])),
   );
   if (
     datasetIds.some((id) => !foundDatasetIds.has(id)) ||
@@ -179,10 +160,7 @@ export async function queueMcpMaterialization(input: {
     );
   }
   const resolvedDatasetIds = [...foundDatasetIds].sort();
-  const totalRows = datasets.reduce(
-    (total, dataset) => total + dataset.rowCount,
-    0,
-  );
+  const totalRows = datasets.reduce((total, dataset) => total + dataset.rowCount, 0);
   if (totalRows > 10_000)
     return unavailable(
       "mcp_dataset_row_limit",
@@ -192,9 +170,7 @@ export async function queueMcpMaterialization(input: {
     datasets.flatMap((dataset) => {
       const schema = isRecord(dataset.schema) ? dataset.schema : {};
       return Array.isArray(schema.columns)
-        ? schema.columns.filter(
-            (column): column is string => typeof column === "string",
-          )
+        ? schema.columns.filter((column): column is string => typeof column === "string")
         : [];
     }),
   );
@@ -223,9 +199,7 @@ export async function queueMcpMaterialization(input: {
     })
     .from(aiMcpConnection)
     .where(
-      inArray(aiMcpConnection.id, [
-        ...new Set(datasets.map((dataset) => dataset.connectionId)),
-      ]),
+      inArray(aiMcpConnection.id, [...new Set(datasets.map((dataset) => dataset.connectionId))]),
     );
   const target = {
     databaseId: crypto.randomUUID(),
@@ -242,9 +216,7 @@ export async function queueMcpMaterialization(input: {
     })),
   };
   try {
-    const propertiesByReference = materializationPropertyReferences(
-      target.properties,
-    );
+    const propertiesByReference = materializationPropertyReferences(target.properties);
     for (const view of target.views) {
       resolveDatabaseBlueprintViewConfig(view, propertiesByReference);
     }
@@ -259,9 +231,7 @@ export async function queueMcpMaterialization(input: {
     datasetIds: resolvedDatasetIds,
     toolExecutionIds,
     provenance: {
-      providers: [
-        ...new Set(connections.map((connection) => connection.serverLabel)),
-      ],
+      providers: [...new Set(connections.map((connection) => connection.serverLabel))],
       tools: [...new Set(datasets.map((dataset) => dataset.externalToolName))],
     },
     target,
@@ -427,12 +397,7 @@ const materializeMcpDatasetJobAttempt: AiJobHandler = async ({
   const availableDatasets = await db
     .select({ id: aiMcpDataset.id })
     .from(aiMcpDataset)
-    .where(
-      and(
-        inArray(aiMcpDataset.id, spec.datasetIds),
-        gt(aiMcpDataset.expiresAt, new Date()),
-      ),
-    );
+    .where(and(inArray(aiMcpDataset.id, spec.datasetIds), gt(aiMcpDataset.expiresAt, new Date())));
   if (availableDatasets.length !== spec.datasetIds.length) {
     throw new PermanentAiJobError(
       "Connector source data expired or was disconnected before import.",
@@ -489,11 +454,7 @@ const materializeMcpDatasetJobAttempt: AiJobHandler = async ({
   };
 };
 
-async function markReservation(
-  id: string,
-  status: "inserted" | "failed",
-  errorCode?: string,
-) {
+async function markReservation(id: string, status: "inserted" | "failed", errorCode?: string) {
   await db
     .update(aiMcpMaterializationReservation)
     .set({
@@ -504,24 +465,19 @@ async function markReservation(
     .where(eq(aiMcpMaterializationReservation.id, id));
 }
 
-function coercePropertyValue(
-  value: unknown,
-  type: z.infer<typeof supportedTypeSchema>,
-) {
+function coercePropertyValue(value: unknown, type: z.infer<typeof supportedTypeSchema>) {
   if (value == null) return type === "checkbox" ? false : "";
   if (type === "number") {
     const number = Number(value);
     return Number.isFinite(number) ? number : 0;
   }
-  if (type === "checkbox")
-    return value === true || value === "true" || value === 1;
+  if (type === "checkbox") return value === true || value === "true" || value === 1;
   return displayCell(value);
 }
 
 function displayCell(value: unknown) {
   if (typeof value === "string") return value.slice(0, 64 * 1024);
-  if (typeof value === "number" || typeof value === "boolean")
-    return String(value);
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (value == null) return "";
   return JSON.stringify(value).slice(0, 64 * 1024);
 }
@@ -614,10 +570,7 @@ async function ensureMaterializationStructure(
       });
     }
     await reportProgress(
-      5 +
-        Math.round(
-          ((index + 1) / Math.max(1, spec.target.properties.length)) * 10,
-        ),
+      5 + Math.round(((index + 1) / Math.max(1, spec.target.properties.length)) * 10),
     );
   }
 
@@ -629,9 +582,7 @@ async function ensureMaterializationStructure(
       .where(eq(databaseView.id, view.id))
       .limit(1);
     if (!existing) {
-      const propertiesByReference = materializationPropertyReferences(
-        spec.target.properties,
-      );
+      const propertiesByReference = materializationPropertyReferences(spec.target.properties);
       await createDatabaseViewService({
         config: resolveDatabaseBlueprintViewConfig(view, propertiesByReference),
         databaseId: spec.target.databaseId,
@@ -678,9 +629,7 @@ function importProperties(spec: z.infer<typeof mcpMaterializationInputSchema>) {
   const mappedProperties = [...spec.properties];
   if (
     spec.sourceUrlColumn &&
-    !mappedProperties.some(
-      (property) => property.sourceColumn === spec.sourceUrlColumn,
-    )
+    !mappedProperties.some((property) => property.sourceColumn === spec.sourceUrlColumn)
   ) {
     if (mappedProperties.length >= 30) {
       return null;
@@ -694,10 +643,7 @@ function importProperties(spec: z.infer<typeof mcpMaterializationInputSchema>) {
   return mappedProperties;
 }
 
-function isTerminalMaterializationFailure(
-  error: unknown,
-  job: Parameters<AiJobHandler>[0]["job"],
-) {
+function isTerminalMaterializationFailure(error: unknown, job: Parameters<AiJobHandler>[0]["job"]) {
   return error instanceof PermanentAiJobError || job.attempt >= job.maxAttempts;
 }
 
@@ -711,32 +657,23 @@ async function importReservedRows(
   const reservations = await db
     .select()
     .from(aiMcpMaterializationReservation)
-    .where(
-      eq(aiMcpMaterializationReservation.materializationId, materializationId),
-    )
+    .where(eq(aiMcpMaterializationReservation.materializationId, materializationId))
     .orderBy(
       asc(aiMcpMaterializationReservation.datasetId),
       asc(aiMcpMaterializationReservation.sourceRowIndex),
     );
-  let completed = reservations.filter(
-    (reservation) => reservation.status === "inserted",
-  ).length;
-  let failed = reservations.filter(
-    (reservation) => reservation.status === "failed",
-  ).length;
+  let completed = reservations.filter((reservation) => reservation.status === "inserted").length;
+  let failed = reservations.filter((reservation) => reservation.status === "failed").length;
   for (const reservation of reservations) {
     if (reservation.status !== "reserved") continue;
     await assertLease();
-    const row = rowsByDataset.get(reservation.datasetId)?.[
-      reservation.sourceRowIndex
-    ];
+    const row = rowsByDataset.get(reservation.datasetId)?.[reservation.sourceRowIndex];
     if (!row) {
       failed += 1;
       await markReservation(reservation.id, "failed", "source_row_missing");
       continue;
     }
-    if (await importReservedRow(env, userId, spec, reservation, row))
-      completed += 1;
+    if (await importReservedRow(env, userId, spec, reservation, row)) completed += 1;
     else failed += 1;
     await db
       .update(aiMcpMaterialization)
@@ -747,10 +684,7 @@ async function importReservedRows(
       })
       .where(eq(aiMcpMaterialization.id, materializationId));
     await reportProgress(
-      15 +
-        Math.round(
-          ((completed + failed) / Math.max(1, reservations.length)) * 84,
-        ),
+      15 + Math.round(((completed + failed) / Math.max(1, reservations.length)) * 84),
     );
   }
   return { completed, failed };
@@ -761,10 +695,7 @@ async function readDatasetRows(datasetIds: string[]) {
     .select()
     .from(aiMcpDatasetChunk)
     .where(inArray(aiMcpDatasetChunk.datasetId, datasetIds))
-    .orderBy(
-      asc(aiMcpDatasetChunk.datasetId),
-      asc(aiMcpDatasetChunk.chunkIndex),
-    );
+    .orderBy(asc(aiMcpDatasetChunk.datasetId), asc(aiMcpDatasetChunk.chunkIndex));
   const rowsByDataset = new Map<string, Array<Record<string, unknown>>>();
   for (const chunk of chunks) {
     const current = rowsByDataset.get(chunk.datasetId) ?? [];
@@ -812,8 +743,7 @@ async function importReservedRow(
     await markReservation(reservation.id, "inserted");
     return true;
   } catch (error) {
-    if (!(error instanceof ServiceMutationError) || error.status >= 500)
-      throw error;
+    if (!(error instanceof ServiceMutationError) || error.status >= 500) throw error;
     await markReservation(reservation.id, "failed", "row_validation_failed");
     return false;
   }

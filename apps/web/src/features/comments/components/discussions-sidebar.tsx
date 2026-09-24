@@ -1,76 +1,69 @@
-"use client"
+"use client";
 
-import {
-  ChevronsRightIcon,
-  FilterIcon,
-  MessageSquarePlusIcon,
-} from "@/shared/components/icons"
-import { useEffect, useMemo, useState } from "react"
+import { ChevronsRightIcon, FilterIcon, MessageSquarePlusIcon } from "@/shared/components/icons";
+import { useEffect, useMemo, useState } from "react";
 
-import { PageCommentThread } from "./page-comments"
-import { Button } from "@/shared/ui/button"
+import { PageCommentThread } from "./page-comments";
+import { Button } from "@/shared/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu"
+} from "@/shared/ui/dropdown-menu";
+import { Tabs, TabsBadge, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 import {
-  Tabs,
-  TabsBadge,
-  TabsList,
-  TabsTrigger,
-} from "@/shared/ui/app-tabs"
-import { usePageCommentController, usePageCommentsSnapshot } from "../context/page-comments-registry"
-import type { CommentThreadSnapshot } from "../model/yjs-comments"
+  usePageCommentController,
+  usePageCommentsSnapshot,
+} from "../context/page-comments-registry";
+import type { CommentThreadSnapshot } from "../model/yjs-comments";
 
-type DiscussionFilter = "all" | "block" | "page"
-type DiscussionStatus = "open" | "resolved"
+type DiscussionFilter = "all" | "block" | "page";
+type DiscussionStatus = "open" | "resolved";
 
 export function DiscussionsSidebarPanel({
   open,
   pageId,
   onClose,
 }: {
-  open: boolean
-  pageId?: string | null
-  onClose: () => void
+  open: boolean;
+  pageId?: string | null;
+  onClose: () => void;
 }) {
-  const controller = usePageCommentController(pageId)
-  const snapshot = usePageCommentsSnapshot(pageId)
-  const [filter, setFilter] = useState<DiscussionFilter>("all")
-  const [status, setStatus] = useState<DiscussionStatus>("open")
-  const [composePage, setComposePage] = useState(false)
+  const controller = usePageCommentController(pageId);
+  const snapshot = usePageCommentsSnapshot(pageId);
+  const [filter, setFilter] = useState<DiscussionFilter>("all");
+  const [status, setStatus] = useState<DiscussionStatus>("open");
+  const [composePage, setComposePage] = useState(false);
 
   useEffect(() => {
     if (!open) {
-      setComposePage(false)
+      setComposePage(false);
     }
-  }, [open])
+  }, [open]);
 
   useEffect(() => {
-    if (!snapshot.activeThreadId) return
-    const activeThread = snapshot.threads.find(
-      (thread) => thread.id === snapshot.activeThreadId,
-    )
-    if (!activeThread) return
+    if (!snapshot.activeThreadId) return;
+    const activeThread = snapshot.threads.find((thread) => thread.id === snapshot.activeThreadId);
+    if (!activeThread) return;
 
-    setStatus(activeThread.resolvedAt ? "resolved" : "open")
-    setFilter((current) => matchesFilter(activeThread, current) ? current : "all")
-    setComposePage(false)
-  }, [snapshot.activeThreadId, snapshot.threads])
+    setStatus(activeThread.resolvedAt ? "resolved" : "open");
+    setFilter((current) => (matchesFilter(activeThread, current) ? current : "all"));
+    setComposePage(false);
+  }, [snapshot.activeThreadId, snapshot.threads]);
 
   const visibleThreads = useMemo(
-    () => snapshot.threads.filter(
-      (thread) => matchesStatus(thread, status) && matchesFilter(thread, filter),
-    ),
+    () =>
+      snapshot.threads.filter(
+        (thread) => matchesStatus(thread, status) && matchesFilter(thread, filter),
+      ),
     [filter, snapshot.threads, status],
-  )
-  const openCount = snapshot.threads.filter((thread) => !thread.resolvedAt).length
-  const resolvedCount = snapshot.threads.length - openCount
+  );
+  const openCount = snapshot.threads.filter((thread) => !thread.resolvedAt).length;
+  const resolvedCount = snapshot.threads.length - openCount;
   const hasOpenPageDiscussion = snapshot.threads.some(
     (thread) => thread.kind === "page" && !thread.resolvedAt,
-  )
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -93,8 +86,8 @@ export function DiscussionsSidebarPanel({
             aria-label="New page discussion"
             className="text-content-secondary"
             onClick={() => {
-              setStatus("open")
-              setComposePage(true)
+              setStatus("open");
+              setComposePage(true);
             }}
             size="icon-sm"
             type="button"
@@ -118,7 +111,8 @@ export function DiscussionsSidebarPanel({
           <DropdownMenuContent align="end">
             {(["all", "block", "page"] as const).map((value) => (
               <DropdownMenuItem key={value} onClick={() => setFilter(value)}>
-                {filter === value ? "✓ " : ""}{filterLabel(value)}
+                {filter === value ? "✓ " : ""}
+                {filterLabel(value)}
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -128,10 +122,10 @@ export function DiscussionsSidebarPanel({
       <Tabs
         className="shrink-0 px-3"
         onValueChange={(value) => {
-          const nextStatus = value as DiscussionStatus
-          setStatus(nextStatus)
+          const nextStatus = value as DiscussionStatus;
+          setStatus(nextStatus);
           if (nextStatus === "resolved") {
-            setComposePage(false)
+            setComposePage(false);
           }
         }}
         value={status}
@@ -211,7 +205,7 @@ export function DiscussionsSidebarPanel({
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function ComposerCard({
@@ -219,9 +213,9 @@ function ComposerCard({
   onCancel,
   title,
 }: {
-  children: React.ReactNode
-  onCancel: () => void
-  title: string
+  children: React.ReactNode;
+  onCancel: () => void;
+  title: string;
 }) {
   return (
     <section className="rounded-xl border border-stroke-default bg-surface-subtle p-3">
@@ -233,26 +227,22 @@ function ComposerCard({
       </div>
       {children}
     </section>
-  )
+  );
 }
 
 function EmptyState({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="px-3 py-8 text-center text-xs text-content-secondary">
-      {children}
-    </div>
-  )
+  return <div className="px-3 py-8 text-center text-xs text-content-secondary">{children}</div>;
 }
 
 function matchesFilter(thread: CommentThreadSnapshot, filter: DiscussionFilter) {
-  if (filter !== "all") return thread.kind === filter
-  return true
+  if (filter !== "all") return thread.kind === filter;
+  return true;
 }
 
 function matchesStatus(thread: CommentThreadSnapshot, status: DiscussionStatus) {
-  return status === "resolved" ? Boolean(thread.resolvedAt) : !thread.resolvedAt
+  return status === "resolved" ? Boolean(thread.resolvedAt) : !thread.resolvedAt;
 }
 
 function filterLabel(filter: DiscussionFilter) {
-  return filter === "all" ? "All discussions" : filter[0].toUpperCase() + filter.slice(1)
+  return filter === "all" ? "All discussions" : filter[0].toUpperCase() + filter.slice(1);
 }

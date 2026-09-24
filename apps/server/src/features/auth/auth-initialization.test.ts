@@ -17,9 +17,11 @@ test("auth initialization propagates database failure to its caller", async () =
   const query = vi.spyOn(client, "query").mockRejectedValue(failure);
   const database = drizzle(client, { schema });
   try {
-    await expect((async () => {
-      await createAuth(env, new Request(env.BETTER_AUTH_URL), database);
-    })()).rejects.toMatchObject({ cause: failure });
+    await expect(
+      (async () => {
+        await createAuth(env, new Request(env.BETTER_AUTH_URL), database);
+      })(),
+    ).rejects.toMatchObject({ cause: failure });
     expect(query).toHaveBeenCalled();
   } finally {
     // Let pending plugin initialization settle so Vitest detects escaped failures.
@@ -30,13 +32,15 @@ test("auth initialization propagates database failure to its caller", async () =
 
 test("a new request initializes successfully after a database failure", async () => {
   const client = new Client();
-  const query = vi.spyOn(client, "query")
+  const query = vi
+    .spyOn(client, "query")
     .mockRejectedValueOnce(new Error("timeout exceeded when trying to connect"))
     .mockImplementation(async () => ({ rows: [] }));
   const database = drizzle(client, { schema });
   try {
-    await expect(createAuth(env, new Request(env.BETTER_AUTH_URL), database))
-      .rejects.toMatchObject({ cause: { message: "timeout exceeded when trying to connect" } });
+    await expect(createAuth(env, new Request(env.BETTER_AUTH_URL), database)).rejects.toMatchObject(
+      { cause: { message: "timeout exceeded when trying to connect" } },
+    );
     const auth = await createAuth(env, new Request(env.BETTER_AUTH_URL), database);
     await expect(auth.$context).resolves.toBeDefined();
     expect(query).toHaveBeenCalledTimes(3);
@@ -47,8 +51,7 @@ test("a new request initializes successfully after a database failure", async ()
 
 test("edition auth plugins are created with the current request scope", async () => {
   const client = new Client();
-  const query = vi.spyOn(client, "query")
-    .mockImplementation(async () => ({ rows: [] }));
+  const query = vi.spyOn(client, "query").mockImplementation(async () => ({ rows: [] }));
   const database = drizzle(client, { schema });
   const request = new Request(`${env.BETTER_AUTH_URL}/api/auth/get-session`);
   const createAuthPlugins = vi.fn(async () => []);

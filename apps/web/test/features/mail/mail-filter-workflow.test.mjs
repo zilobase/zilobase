@@ -1,4 +1,4 @@
-import { readMailFeatureSource } from "./mail-feature-source.mjs"
+import { readMailFeatureSource } from "./mail-feature-source.mjs";
 
 export function register({ assert, readSource, readWorkspace, test }) {
   test("mail filter drafts preview without persistence and expose explicit save actions", async () => {
@@ -7,67 +7,79 @@ export function register({ assert, readSource, readWorkspace, test }) {
       readMailFeatureSource(readSource),
       readWorkspace("/packages/features/src/mail/hooks.ts"),
       readWorkspace("/packages/features/src/mail/queries.ts"),
-    ])
+    ]);
 
-    assert.match(page, /const \[draftFilter, setDraftFilter\]/)
-    assert.match(page, /filter: activePersistedView && effectiveFilter/)
-    assert.match(page, /onSave=\{\(\) => void saveFilters\(\)\}/)
-    assert.match(page, /saveFiltersAsNewView/)
-    assert.match(editor, /Unsaved filter/)
-    assert.match(editor, /Save filters/)
-    assert.match(editor, /Save as new view/)
-    assert.match(editor, /maxMailFilterConditions/)
-    assert.match(editor, /DatabaseConditionEditor/)
-    assert.match(editor, /additionalProperties/)
-    assert.match(editor, /MailFilterPropertyList/)
-    assert.match(editor, /MailFromFilterEditor/)
-    assert.match(editor, /MailCategoriesFilterEditor/)
-    assert.match(editor, /Search for one or more Categories/)
-    assert.match(editor, /<Checkbox checked=\{checked\}/)
-    assert.match(editor, /<SelectItem value="contains">Contain<\/SelectItem>/)
-    assert.match(editor, /MailFilterPill/)
-    assert.match(editor, /condition\.propertyId === "attachments"/)
-    assert.match(editor, /condition\.propertyId === "unread"/)
-    assert.match(editor, /aria-pressed=\{enabled\}/)
-    assert.match(editor, /onClick=\{onToggleEnabled\}/)
-    assert.match(editor, /toggleConditionEnabled/)
-    assert.match(editor, /categoryQuickFilterIds/)
-    assert.match(editor, /values\.includes\(category\)/)
-    assert.match(editor, /operator: "contains"/)
-    assert.match(editor, /hideImplicitInbox/)
-    assert.match(editor, /isImplicitInboxCondition/)
-    assert.match(editor, /toggleQuickFilterIds/)
-    assert.match(editor, /"has_attachments", "show_archived", "is_unread"/)
-    assert.match(editor, /border-action-selected-border bg-action-selected-subtle text-action-selected-text/)
-    assert.match(editor, /size="lg"/)
-    assert.match(editor, /<Switch/)
-    assert.match(editor, /filter\.id === "has_attachments"[\s\S]*<Paperclip/)
-    assert.match(editor, /filter\.id === "is_unread"[\s\S]*<MailIcon/)
-    assert.match(editor, /primaryMailQuickFilters/)
-    assert.match(editor, /\.slice\(0, 6\)/)
-    assert.match(editor, /aria-label="Filter by"/)
-    assert.match(editor, /setExpanded\(true\)/)
-    assert.match(editor, /condition\.propertyId === "attachments" && \["is_not_empty", "is_empty"\]\.includes\(condition\.operator\)/)
-    assert.match(editor, /node\.operator === "is_not_empty" \? "is_empty" : "is_not_empty"/)
-    assert.match(editor, /_condition\.values\[0\] === true \? "Is read" : "Is unread"/)
-    assert.match(editor, /values: \[node\.values\[0\] !== true\]/)
-    assert.match(editor, /Search people or emails/)
-    assert.match(editor, /Clear filter/)
-    assert.match(page, /senders=\{filterSenders\}/)
-    assert.match(viewsHook, /method: "PATCH"/)
-    assert.match(viewsHook, /method: "POST"/)
-    assert.match(queryHook, /filter: scope\.filter/)
-  })
+    assert.match(page, /const \[draftFilter, setDraftFilter\]/);
+    assert.match(page, /filter: activePersistedView && effectiveFilter/);
+    assert.match(page, /onSave=\{\(\) => void saveFilters\(\)\}/);
+    assert.match(page, /saveFiltersAsNewView/);
+    assert.match(editor, /Unsaved filter/);
+    assert.match(editor, /Save filters/);
+    assert.match(editor, /Save as new view/);
+    assert.match(editor, /maxMailFilterConditions/);
+    assert.match(editor, /DatabaseConditionEditor/);
+    assert.match(editor, /additionalProperties/);
+    assert.match(editor, /MailFilterPropertyList/);
+    assert.match(editor, /MailFromFilterEditor/);
+    assert.match(editor, /MailCategoriesFilterEditor/);
+    assert.match(editor, /Search for one or more Categories/);
+    assert.match(editor, /<Checkbox\s+checked=\{checked\}/);
+    assert.match(editor, /<SelectItem value="contains">Contain<\/SelectItem>/);
+    assert.match(editor, /MailFilterPill/);
+    assert.match(editor, /condition\.propertyId === "attachments"/);
+    assert.match(editor, /condition\.propertyId === "unread"/);
+    assert.match(editor, /aria-pressed=\{enabled\}/);
+    assert.match(editor, /onClick=\{onToggleEnabled\}/);
+    assert.match(editor, /toggleConditionEnabled/);
+    assert.match(editor, /categoryQuickFilterIds/);
+    assert.match(editor, /values\.includes\(category\)/);
+    assert.match(editor, /operator: "contains"/);
+    assert.match(editor, /hideImplicitInbox/);
+    assert.match(editor, /isImplicitInboxCondition/);
+    assert.match(editor, /toggleQuickFilterIds/);
+    assert.match(editor, /"has_attachments", "show_archived", "is_unread"/);
+    assert.match(
+      editor,
+      /border-action-selected-border bg-action-selected-subtle text-action-selected-text/,
+    );
+    assert.match(editor, /size="lg"/);
+    assert.match(editor, /<Switch/);
+    assert.match(editor, /filter\.id === "has_attachments"[\s\S]*<Paperclip/);
+    assert.match(editor, /filter\.id === "is_unread"[\s\S]*<MailIcon/);
+    assert.match(editor, /primaryMailQuickFilters/);
+    assert.match(editor, /\.slice\(0, 6\)/);
+    assert.match(editor, /aria-label="Filter by"/);
+    assert.match(editor, /setExpanded\(true\)/);
+    assert.match(
+      editor,
+      /condition\.propertyId === "attachments"\s+&&\s+\["is_not_empty", "is_empty"\]\.includes\(condition\.operator\)/,
+    );
+    assert.match(editor, /node\.operator === "is_not_empty" \? "is_empty" : "is_not_empty"/);
+    assert.match(editor, /_condition\.values\[0\] === true \? "Is read" : "Is unread"/);
+    assert.match(editor, /values: \[node\.values\[0\] !== true\]/);
+    assert.match(editor, /Search people or emails/);
+    assert.match(editor, /Clear filter/);
+    assert.match(page, /senders=\{filterSenders\}/);
+    assert.match(viewsHook, /method: "PATCH"/);
+    assert.match(viewsHook, /method: "POST"/);
+    assert.match(queryHook, /filter: scope\.filter/);
+  });
 
   test("mail filter picker exposes quick and searchable full catalogs", async () => {
-    const editor = await readSource("/src/features/mail/organization/mail-filter-editor.tsx")
+    const editor = await readSource("/src/features/mail/organization/mail-filter-editor.tsx");
 
-    assert.match(editor, /primaryMailQuickFilters\.filter/)
-    assert.match(editor, /Filter by/)
-    assert.match(editor, /More filters/)
-    assert.match(editor, /placeholder="Filter by"/)
-    assert.match(editor, /mailSystemPropertyCatalog/)
-    assert.match(editor, /hiddenMailFilterPropertyIds = new Set<string>\(\["mailbox", "email_domain"\]\)/)
-    assert.match(editor, /property\.filterable && !hiddenMailFilterPropertyIds\.has\(property\.id\)/)
-  })
+    assert.match(editor, /primaryMailQuickFilters\.filter/);
+    assert.match(editor, /Filter by/);
+    assert.match(editor, /More filters/);
+    assert.match(editor, /placeholder="Filter by"/);
+    assert.match(editor, /mailSystemPropertyCatalog/);
+    assert.match(
+      editor,
+      /hiddenMailFilterPropertyIds = new Set<string>\(\["mailbox", "email_domain"\]\)/,
+    );
+    assert.match(
+      editor,
+      /property\.filterable && !hiddenMailFilterPropertyIds\.has\(property\.id\)/,
+    );
+  });
 }

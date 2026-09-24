@@ -4,10 +4,7 @@ import { getMembership } from "./principal-access";
 
 const ACTIVE_ORGANIZATION_MISMATCH_CODE = "ACTIVE_ORGANIZATION_MISMATCH";
 
-function activeWorkspaceMismatchResponse(
-  c: Context<AppBindings>,
-  workspaceId: string,
-) {
+function activeWorkspaceMismatchResponse(c: Context<AppBindings>, workspaceId: string) {
   return c.json(
     {
       code: ACTIVE_ORGANIZATION_MISMATCH_CODE,

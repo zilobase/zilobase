@@ -36,10 +36,18 @@ vi.mock("../../../infrastructure/database", () => ({
     select() {
       mocks.selectCalls += 1;
       const builder = {
-        from() { return builder; },
-        where() { return builder; },
-        orderBy() { return builder; },
-        async offset() { return mocks.limitRows; },
+        from() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        orderBy() {
+          return builder;
+        },
+        async offset() {
+          return mocks.limitRows;
+        },
       };
       return builder;
     },
@@ -54,10 +62,7 @@ vi.mock("../../../infrastructure/database", () => ({
   },
 }));
 
-import {
-  selectCanonicalAssistantMessages,
-  syncAiChatThreadMessages,
-} from "./chat-persistence";
+import { selectCanonicalAssistantMessages, syncAiChatThreadMessages } from "./chat-persistence";
 
 beforeEach(() => {
   mocks.conflictOptions.length = 0;
@@ -79,22 +84,22 @@ function message(id: string, role: "assistant" | "user", text: string) {
 test("canonical assistant selection accepts response-only finish payloads", () => {
   const assistant = message("assistant-1", "assistant", "Answer");
 
-  assert.deepEqual(
-    selectCanonicalAssistantMessages([assistant], "user-1"),
-    [assistant],
-  );
+  assert.deepEqual(selectCanonicalAssistantMessages([assistant], "user-1"), [assistant]);
 });
 
 test("canonical assistant selection ignores history before the submitted user", () => {
   const currentAssistant = message("assistant-2", "assistant", "Current answer");
 
   assert.deepEqual(
-    selectCanonicalAssistantMessages([
-      message("user-0", "user", "Old question"),
-      message("assistant-0", "assistant", "Old answer"),
-      message("user-1", "user", "Current question"),
-      currentAssistant,
-    ], "user-1"),
+    selectCanonicalAssistantMessages(
+      [
+        message("user-0", "user", "Old question"),
+        message("assistant-0", "assistant", "Old answer"),
+        message("user-1", "user", "Current question"),
+        currentAssistant,
+      ],
+      "user-1",
+    ),
     [currentAssistant],
   );
 });
@@ -112,26 +117,17 @@ test("syncAiChatThreadMessages bulk upserts persistable messages", async () => {
     target: Array<{ name: string }>;
   };
   const dialect = new PgDialect();
-  assert.deepEqual(conflict.target.map((column) => column.name), [
-    "thread_id",
-    "sequence",
-  ]);
+  assert.deepEqual(
+    conflict.target.map((column) => column.name),
+    ["thread_id", "sequence"],
+  );
   assert.equal(
     dialect.sqlToQuery(conflict.set.clientId as never).sql,
     'coalesce("ai_chat_message"."client_id", excluded."client_id")',
   );
-  assert.equal(
-    dialect.sqlToQuery(conflict.set.role as never).sql,
-    'excluded."role"',
-  );
-  assert.equal(
-    dialect.sqlToQuery(conflict.set.parts as never).sql,
-    'excluded."parts"',
-  );
-  assert.equal(
-    dialect.sqlToQuery(conflict.set.sequence as never).sql,
-    'excluded."sequence"',
-  );
+  assert.equal(dialect.sqlToQuery(conflict.set.role as never).sql, 'excluded."role"');
+  assert.equal(dialect.sqlToQuery(conflict.set.parts as never).sql, 'excluded."parts"');
+  assert.equal(dialect.sqlToQuery(conflict.set.sequence as never).sql, 'excluded."sequence"');
   assert.equal((mocks.insertedValues[0] as unknown[]).length, 2);
   assert.deepEqual(
     (mocks.insertedValues[0] as Array<Record<string, unknown>>).map(
@@ -173,19 +169,15 @@ test("syncAiChatThreadMessages deduplicates IDs with last-message-wins semantics
   const values = mocks.insertedValues[0] as Array<Record<string, unknown>>;
   assert.equal(values.length, 1);
   assert.equal(values[0]?.role, "assistant");
-  assert.deepEqual(values[0]?.parts, [
-    { type: "text", text: "Replacement" },
-  ]);
+  assert.deepEqual(values[0]?.parts, [{ type: "text", text: "Replacement" }]);
 });
 
 test("syncAiChatThreadMessages deletes stale and over-limit rows", async () => {
   mocks.limitRows = [{ id: "old-1" }, { id: "old-2" }];
 
-  await syncAiChatThreadMessages(
-    "thread-1",
-    [message("message-1", "user", "Keep")],
-    { deleteStaleRows: true },
-  );
+  await syncAiChatThreadMessages("thread-1", [message("message-1", "user", "Keep")], {
+    deleteStaleRows: true,
+  });
 
   assert.equal(mocks.deleteWhere.length, 2);
   assert.equal(mocks.selectCalls, 1);

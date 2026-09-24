@@ -11,10 +11,7 @@ test("first default membership creates a General teamspace and owner", async () 
   const database = createTeamspaceDatabase(events);
   const extension = createExtension(events);
 
-  const result = await new TeamspaceService(
-    database,
-    extension,
-  ).ensureDefaultMembership({
+  const result = await new TeamspaceService(database, extension).ensureDefaultMembership({
     userId: "user-1",
     workspaceId: "workspace-1",
   });
@@ -53,7 +50,9 @@ function createExtension(events: string[]): ZilobaseEditionExtension {
   return {
     id: "test-edition",
     capabilities: [],
-    async createAuthPlugins() { return []; },
+    async createAuthPlugins() {
+      return [];
+    },
     async beforeMembershipGrant() {},
     async recordSecurityEvent(event) {
       events.push(`audit:${event.type}`);
@@ -92,9 +91,7 @@ function createTeamspaceDatabase(events: string[]) {
                   const duplicate =
                     table === teamspace
                       ? rows.some(
-                          (row) =>
-                            row.workspaceId === value.workspaceId &&
-                            row.name === value.name,
+                          (row) => row.workspaceId === value.workspaceId && row.name === value.name,
                         )
                       : rows.some(
                           (row) =>
@@ -104,11 +101,7 @@ function createTeamspaceDatabase(events: string[]) {
                   if (duplicate) return [];
                   const created = { createdAt: new Date(), ...value };
                   rows.push(created);
-                  events.push(
-                    table === teamspace
-                      ? "insert:teamspace"
-                      : "insert:principal",
-                  );
+                  events.push(table === teamspace ? "insert:teamspace" : "insert:principal");
                   return [created];
                 },
               };

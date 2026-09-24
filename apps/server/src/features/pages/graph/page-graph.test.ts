@@ -4,10 +4,7 @@ import { PageGraph } from "./page-graph";
 
 test("getTeamspaceId returns the page placement boundary", () => {
   const graph = new PageGraph({
-    pages: [
-      { id: "private-page" },
-      { id: "team-page", teamspaceId: "teamspace-1" },
-    ],
+    pages: [{ id: "private-page" }, { id: "team-page", teamspaceId: "teamspace-1" }],
   });
 
   assert.equal(graph.getTeamspaceId("private-page"), null);
@@ -43,15 +40,8 @@ test("getPrimaryNestedPageIds skips linked children", () => {
     ],
   });
 
-  assert.deepEqual(graph.getNestedPageIds("parent").sort(), [
-    "linked",
-    "parent",
-    "primary",
-  ]);
-  assert.deepEqual(graph.getPrimaryNestedPageIds("parent").sort(), [
-    "parent",
-    "primary",
-  ]);
+  assert.deepEqual(graph.getNestedPageIds("parent").sort(), ["linked", "parent", "primary"]);
+  assert.deepEqual(graph.getPrimaryNestedPageIds("parent").sort(), ["parent", "primary"]);
 });
 
 test("getAncestorIds includes embedded database row parents", () => {
@@ -70,11 +60,7 @@ test("getAncestorIds includes embedded database row parents", () => {
     ],
   });
 
-  assert.deepEqual(graph.getAncestorIds("row-page"), [
-    "row-page",
-    "database-page",
-    "host-page",
-  ]);
+  assert.deepEqual(graph.getAncestorIds("row-page"), ["row-page", "database-page", "host-page"]);
 });
 
 test("getAncestorIds excludes ordinary linked pages", () => {
@@ -138,23 +124,15 @@ test("database indexes preserve rows and de-duplicate requested page ids", () =>
       { databaseId: "first-database", pageId: "first-row" },
       { databaseId: "second-database", pageId: "second-row" },
     ],
-    pages: [
-      { id: "shared-page" },
-      { id: "first-row" },
-      { id: "second-row" },
-    ],
+    pages: [{ id: "shared-page" }, { id: "first-row" }, { id: "second-row" }],
   });
 
-  assert.deepEqual(
-    graph.getDatabaseIdsForPageIds(["shared-page", "shared-page"]),
-    ["first-database", "second-database"],
-  );
-  assert.deepEqual(graph.getNestedDatabasePageIds("first-database"), [
-    "first-row",
+  assert.deepEqual(graph.getDatabaseIdsForPageIds(["shared-page", "shared-page"]), [
+    "first-database",
+    "second-database",
   ]);
-  assert.deepEqual(graph.getNestedDatabasePageIds("second-database"), [
-    "second-row",
-  ]);
+  assert.deepEqual(graph.getNestedDatabasePageIds("first-database"), ["first-row"]);
+  assert.deepEqual(graph.getNestedDatabasePageIds("second-database"), ["second-row"]);
 });
 
 test("accessible traversal stops at inaccessible parents and children", () => {
@@ -186,22 +164,11 @@ test("accessible traversal stops at inaccessible parents and children", () => {
     ],
   });
 
+  assert.deepEqual(graph.getNestedPageIds("root", new Set(["root", "grandchild"])), ["root"]);
+  assert.deepEqual(graph.getNestedDatabasePageIds("database", new Set()), []);
+  assert.deepEqual(graph.getPrimaryNestedDatabasePageIds("database"), ["row-page"]);
   assert.deepEqual(
-    graph.getNestedPageIds("root", new Set(["root", "grandchild"])),
-    ["root"],
-  );
-  assert.deepEqual(
-    graph.getNestedDatabasePageIds("database", new Set()),
-    [],
-  );
-  assert.deepEqual(graph.getPrimaryNestedDatabasePageIds("database"), [
-    "row-page",
-  ]);
-  assert.deepEqual(
-    graph.getDatabaseIdsForPageIds(
-      ["database-page", "database-page"],
-      new Set(),
-    ),
+    graph.getDatabaseIdsForPageIds(["database-page", "database-page"], new Set()),
     [],
   );
   assert.deepEqual(graph.getNestedDatabasePageIds("missing"), []);
@@ -238,10 +205,7 @@ test("primary paths are cycle-safe and include database row parents", () => {
   assert.equal(graph.getPrimaryParentId("child"), "root");
   assert.equal(graph.getPrimaryParentId("missing"), null);
   assert.equal(
-    graph.getPagePath(
-      { id: "child", name: "Child" },
-      (title) => title.toUpperCase(),
-    ),
+    graph.getPagePath({ id: "child", name: "Child" }, (title) => title.toUpperCase()),
     "ROOT / CHILD",
   );
   assert.equal(graph.getPrimaryParentId("row-page"), "database-page");

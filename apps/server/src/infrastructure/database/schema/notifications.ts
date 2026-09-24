@@ -29,16 +29,8 @@ export const inProductNotification = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    index("in_product_notification_inbox_idx").on(
-      table.workspaceId,
-      table.userId,
-      table.createdAt,
-    ),
-    index("in_product_notification_unread_idx").on(
-      table.workspaceId,
-      table.userId,
-      table.readAt,
-    ),
+    index("in_product_notification_inbox_idx").on(table.workspaceId, table.userId, table.createdAt),
+    index("in_product_notification_unread_idx").on(table.workspaceId, table.userId, table.readAt),
     uniqueIndex("in_product_notification_run_recipient_unique").on(
       table.runId,
       table.actionId,

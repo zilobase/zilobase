@@ -27,11 +27,12 @@ export async function runMailThreadMutation(input: {
 }) {
   let snapshot: MailMutationSnapshot | null = null;
   try {
-    if (await input.database.threads.get(input.threadId)) snapshot = await optimisticallyModifyThread(
-      input.database,
-      input.threadId,
-      input.modification,
-    );
+    if (await input.database.threads.get(input.threadId))
+      snapshot = await optimisticallyModifyThread(
+        input.database,
+        input.threadId,
+        input.modification,
+      );
     await upsertFullMailThread(input.database, await input.request());
   } catch (error) {
     if (snapshot && isDefiniteMailMutationFailure(error))

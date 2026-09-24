@@ -1,12 +1,5 @@
-import {
-  Fragment,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactElement,
-  type ReactNode,
-} from "react"
-import { createPortal } from "react-dom"
+import { Fragment, useEffect, useMemo, useState, type ReactElement, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   closestCenter,
   DndContext,
@@ -18,15 +11,13 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-} from "@dnd-kit/core"
-import { GripVertical, Plus } from "@/shared/components/icons"
+} from "@dnd-kit/core";
+import { GripVertical, Plus } from "@/shared/components/icons";
 
-import { Button } from "@/shared/ui/button"
-import { cn } from "@/shared/lib/utils"
-import {
-  useOptionalPageLayoutSidebar,
-} from "@/features/pages/layout/page-layout-sidebar";
-import type { PageLayoutPanelMode } from "../core/types"
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
+import { useOptionalPageLayoutSidebar } from "@/features/pages/layout/page-layout-sidebar";
+import type { PageLayoutPanelMode } from "../core/types";
 import {
   canMovePageLayoutModuleToRegion,
   movePageLayoutModule,
@@ -34,34 +25,31 @@ import {
   type PageLayoutModule,
   type PageLayoutModuleDestination,
   type PageLayoutRegion,
-} from "@zilobase/features/pages"
+} from "@zilobase/features/pages";
 
 type PageLayoutModuleCanvasProps = {
-  config: PageLayoutConfig
-  fixedAfterHeading?: ReactNode
-  fullWidth?: boolean
-  mainContentOverride?: ReactNode
-  onChange?: (config: PageLayoutConfig) => void
-  panelMode?: PageLayoutPanelMode
-  pageId?: string | null
-  renderModule: (module: PageLayoutModule) => ReactNode
-}
+  config: PageLayoutConfig;
+  fixedAfterHeading?: ReactNode;
+  fullWidth?: boolean;
+  mainContentOverride?: ReactNode;
+  onChange?: (config: PageLayoutConfig) => void;
+  panelMode?: PageLayoutPanelMode;
+  pageId?: string | null;
+  renderModule: (module: PageLayoutModule) => ReactNode;
+};
 
 type LayoutDropSlot = {
-  destination: PageLayoutModuleDestination
-  id: string
-}
+  destination: PageLayoutModuleDestination;
+  id: string;
+};
 
-const draggableId = (moduleId: string) => `page-layout-module:${moduleId}`
+const draggableId = (moduleId: string) => `page-layout-module:${moduleId}`;
 const propertyGroupHomeSlot: LayoutDropSlot = {
   destination: { region: "main" },
   id: "page-layout-slot:main:property-group",
-}
+};
 
-function createRegionDropSlots(
-  modules: PageLayoutModule[],
-  region: PageLayoutRegion,
-) {
+function createRegionDropSlots(modules: PageLayoutModule[], region: PageLayoutRegion) {
   return [
     ...modules.map((module) => ({
       destination: { beforeModuleId: module.id, region },
@@ -71,15 +59,15 @@ function createRegionDropSlots(
       destination: { region },
       id: `page-layout-slot:${region}:end`,
     },
-  ] satisfies LayoutDropSlot[]
+  ] satisfies LayoutDropSlot[];
 }
 
 function formatModuleLabel(module: PageLayoutModule) {
-  if (module.type === "property" && module.propertyId) return "Property"
+  if (module.type === "property" && module.propertyId) return "Property";
   return module.type
     .split("_")
     .map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`)
-    .join(" ")
+    .join(" ");
 }
 
 function DropSlot({
@@ -87,23 +75,20 @@ function DropSlot({
   fill = false,
   slot,
 }: {
-  disabled?: boolean
-  fill?: boolean
-  slot: LayoutDropSlot
+  disabled?: boolean;
+  fill?: boolean;
+  slot: LayoutDropSlot;
 }) {
   const { isOver, setNodeRef } = useDroppable({
     data: { destination: slot.destination },
     disabled,
     id: slot.id,
-  })
+  });
 
   return (
     <div
       aria-hidden
-      className={cn(
-        "relative shrink-0",
-        fill ? "min-h-16 flex-1" : "h-3",
-      )}
+      className={cn("relative shrink-0", fill ? "min-h-16 flex-1" : "h-3")}
       ref={setNodeRef}
     >
       <div
@@ -114,7 +99,7 @@ function DropSlot({
         )}
       />
     </div>
-  )
+  );
 }
 
 function ModuleSection({
@@ -123,10 +108,10 @@ function ModuleSection({
   handle,
   module,
 }: {
-  children: ReactNode
-  fixed?: boolean
-  handle?: ReactNode
-  module: PageLayoutModule
+  children: ReactNode;
+  fixed?: boolean;
+  handle?: ReactNode;
+  module: PageLayoutModule;
 }) {
   return (
     <section className="min-w-0 max-w-full overflow-hidden rounded-lg border border-stroke-default bg-surface-canvas transition-colors group-hover/layout-module:border-action-selected-border">
@@ -141,23 +126,17 @@ function ModuleSection({
       </header>
       <div className="min-w-0">{children}</div>
     </section>
-  )
+  );
 }
 
-function FixedModule({
-  children,
-  module,
-}: {
-  children: ReactNode
-  module: PageLayoutModule
-}) {
+function FixedModule({ children, module }: { children: ReactNode; module: PageLayoutModule }) {
   return (
     <div data-layout-module={module.id}>
       <ModuleSection fixed module={module}>
         {children}
       </ModuleSection>
     </div>
-  )
+  );
 }
 
 function ModuleSeparator() {
@@ -173,19 +152,13 @@ function ModuleSeparator() {
         <Plus />
       </Button>
     </div>
-  )
+  );
 }
 
-function DraggableModule({
-  children,
-  module,
-}: {
-  children: ReactNode
-  module: PageLayoutModule
-}) {
+function DraggableModule({ children, module }: { children: ReactNode; module: PageLayoutModule }) {
   const { attributes, isDragging, listeners, setNodeRef } = useDraggable({
     id: draggableId(module.id),
-  })
+  });
 
   return (
     <div
@@ -209,7 +182,7 @@ function DraggableModule({
         {children}
       </ModuleSection>
     </div>
-  )
+  );
 }
 
 function LayoutRegion({
@@ -217,9 +190,9 @@ function LayoutRegion({
   constrained = false,
   region,
 }: {
-  children: ReactNode
-  constrained?: boolean
-  region: PageLayoutRegion
+  children: ReactNode;
+  constrained?: boolean;
+  region: PageLayoutRegion;
 }) {
   return (
     <div
@@ -229,15 +202,12 @@ function LayoutRegion({
       )}
     >
       <div
-        className={cn(
-          "flex min-h-full flex-col p-3",
-          constrained && "mx-auto w-full max-w-3xl",
-        )}
+        className={cn("flex min-h-full flex-col p-3", constrained && "mx-auto w-full max-w-3xl")}
       >
         {children}
       </div>
     </div>
-  )
+  );
 }
 
 function DroppableModuleSequence({
@@ -246,16 +216,16 @@ function DroppableModuleSequence({
   region,
   renderModuleFrame,
 }: {
-  activeModule?: PageLayoutModule
-  modules: PageLayoutModule[]
-  region: PageLayoutRegion
-  renderModuleFrame: (module: PageLayoutModule) => ReactElement
+  activeModule?: PageLayoutModule;
+  modules: PageLayoutModule[];
+  region: PageLayoutRegion;
+  renderModuleFrame: (module: PageLayoutModule) => ReactElement;
 }) {
-  const slots = createRegionDropSlots(modules, region)
+  const slots = createRegionDropSlots(modules, region);
   const disabled =
     !activeModule ||
     !canMovePageLayoutModuleToRegion(activeModule, region) ||
-    (region === "main" && activeModule.type === "property_group")
+    (region === "main" && activeModule.type === "property_group");
 
   return (
     <>
@@ -265,13 +235,9 @@ function DroppableModuleSequence({
           {renderModuleFrame(module)}
         </Fragment>
       ))}
-      <DropSlot
-        disabled={disabled}
-        fill={modules.length === 0}
-        slot={slots[slots.length - 1]!}
-      />
+      <DropSlot disabled={disabled} fill={modules.length === 0} slot={slots[slots.length - 1]!} />
     </>
-  )
+  );
 }
 
 export function PageLayoutModuleCanvas({
@@ -284,106 +250,76 @@ export function PageLayoutModuleCanvas({
   pageId,
   renderModule,
 }: PageLayoutModuleCanvasProps) {
-  const [activeModuleId, setActiveModuleId] = useState<string | null>(null)
-  const pageLayoutSidebar = useOptionalPageLayoutSidebar()
-  const registeredPageId = pageLayoutSidebar?.pageId
-  const registerOverlaySidebar = pageLayoutSidebar?.registerOverlaySidebar
-  const setHasPageLayoutSidebar = pageLayoutSidebar?.setHasSidebar
+  const [activeModuleId, setActiveModuleId] = useState<string | null>(null);
+  const pageLayoutSidebar = useOptionalPageLayoutSidebar();
+  const registeredPageId = pageLayoutSidebar?.pageId;
+  const registerOverlaySidebar = pageLayoutSidebar?.registerOverlaySidebar;
+  const setHasPageLayoutSidebar = pageLayoutSidebar?.setHasSidebar;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor),
-  )
-  const activeModule = config.modules.find(
-    (module) => module.id === activeModuleId,
-  )
+  );
+  const activeModule = config.modules.find((module) => module.id === activeModuleId);
   const { mainModules, panelModules } = useMemo(() => {
-    const main: PageLayoutModule[] = []
-    const panel: PageLayoutModule[] = []
+    const main: PageLayoutModule[] = [];
+    const panel: PageLayoutModule[] = [];
 
     for (const module of config.modules) {
-      if (module.region === "panel") panel.push(module)
-      else main.push(module)
+      if (module.region === "panel") panel.push(module);
+      else main.push(module);
     }
 
-    return { mainModules: main, panelModules: panel }
-  }, [config.modules])
-  const panelVisible = Boolean(onChange) || panelModules.length > 0
+    return { mainModules: main, panelModules: panel };
+  }, [config.modules]);
+  const panelVisible = Boolean(onChange) || panelModules.length > 0;
   const usesAppSidebar = Boolean(
-    !onChange &&
-      panelMode === "auto" &&
-      pageId &&
-      pageLayoutSidebar &&
-      registeredPageId === pageId,
-  )
+    !onChange && panelMode === "auto" && pageId && pageLayoutSidebar && registeredPageId === pageId,
+  );
   const usesOverlayDrawer = Boolean(
-    !onChange &&
-      panelMode === "overlay" &&
-      pageId &&
-      pageLayoutSidebar,
-  )
+    !onChange && panelMode === "overlay" && pageId && pageLayoutSidebar,
+  );
 
   useEffect(() => {
-    if (!usesAppSidebar || !setHasPageLayoutSidebar) return
+    if (!usesAppSidebar || !setHasPageLayoutSidebar) return;
 
-    setHasPageLayoutSidebar(panelModules.length > 0)
-    return () => setHasPageLayoutSidebar(false)
-  }, [
-    panelModules.length,
-    registeredPageId,
-    setHasPageLayoutSidebar,
-    usesAppSidebar,
-  ])
+    setHasPageLayoutSidebar(panelModules.length > 0);
+    return () => setHasPageLayoutSidebar(false);
+  }, [panelModules.length, registeredPageId, setHasPageLayoutSidebar, usesAppSidebar]);
 
   useEffect(() => {
-    if (
-      !usesOverlayDrawer ||
-      !pageId ||
-      !registerOverlaySidebar ||
-      panelModules.length === 0
-    ) {
-      return
+    if (!usesOverlayDrawer || !pageId || !registerOverlaySidebar || panelModules.length === 0) {
+      return;
     }
 
-    return registerOverlaySidebar(pageId)
-  }, [
-    pageId,
-    panelModules.length,
-    registerOverlaySidebar,
-    usesOverlayDrawer,
-  ])
-  const heading = mainModules.find((module) => module.type === "heading")
-  const propertyGroup = mainModules.find(
-    (module) => module.type === "property_group",
-  )
+    return registerOverlaySidebar(pageId);
+  }, [pageId, panelModules.length, registerOverlaySidebar, usesOverlayDrawer]);
+  const heading = mainModules.find((module) => module.type === "heading");
+  const propertyGroup = mainModules.find((module) => module.type === "property_group");
   const movableMainModules = mainModules.filter(
-    (module) =>
-      module.type !== "heading" && module.type !== "property_group",
-  )
+    (module) => module.type !== "heading" && module.type !== "property_group",
+  );
 
   if (!onChange) {
-    const inlinePanelVisible =
-      panelVisible && !usesAppSidebar && !usesOverlayDrawer
+    const inlinePanelVisible = panelVisible && !usesAppSidebar && !usesOverlayDrawer;
     const externalPanelTarget = usesAppSidebar
       ? pageLayoutSidebar?.panelTarget
       : pageLayoutSidebar?.overlayPageId === pageId
         ? pageLayoutSidebar?.overlayPanelTarget
-        : null
+        : null;
 
     return (
       <>
         <div
-          className={cn(
-            "grid min-w-0",
-            inlinePanelVisible && "md:grid-cols-[minmax(0,1fr)_24rem]",
-          )}
+          className={cn("grid min-w-0", inlinePanelVisible && "md:grid-cols-[minmax(0,1fr)_24rem]")}
         >
           <div className="min-w-0">
             {heading ? renderModule(heading) : null}
             {fixedAfterHeading}
             {propertyGroup ? renderModule(propertyGroup) : null}
-            {mainContentOverride ?? movableMainModules.map((module) => (
-              <Fragment key={module.id}>{renderModule(module)}</Fragment>
-            ))}
+            {mainContentOverride ??
+              movableMainModules.map((module) => (
+                <Fragment key={module.id}>{renderModule(module)}</Fragment>
+              ))}
           </div>
           {inlinePanelVisible ? (
             <aside className="min-w-0 border-l bg-surface-subtle">
@@ -404,28 +340,26 @@ export function PageLayoutModuleCanvas({
             )
           : null}
       </>
-    )
+    );
   }
 
   const renderModuleFrame = (module: PageLayoutModule) => (
     <DraggableModule key={module.id} module={module}>
       {renderModule(module)}
     </DraggableModule>
-  )
+  );
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    setActiveModuleId(null)
-    if (!over) return
+    setActiveModuleId(null);
+    if (!over) return;
 
-    const moduleId = String(active.id).replace("page-layout-module:", "")
-    const destination = over.data.current?.destination as
-      | PageLayoutModuleDestination
-      | undefined
+    const moduleId = String(active.id).replace("page-layout-module:", "");
+    const destination = over.data.current?.destination as PageLayoutModuleDestination | undefined;
 
     if (destination) {
-      onChange(movePageLayoutModule(config, moduleId, destination))
+      onChange(movePageLayoutModule(config, moduleId, destination));
     }
-  }
+  };
 
   return (
     <DndContext
@@ -433,9 +367,7 @@ export function PageLayoutModuleCanvas({
       onDragCancel={() => setActiveModuleId(null)}
       onDragEnd={handleDragEnd}
       onDragStart={({ active }) =>
-        setActiveModuleId(
-          String(active.id).replace("page-layout-module:", ""),
-        )
+        setActiveModuleId(String(active.id).replace("page-layout-module:", ""))
       }
       sensors={sensors}
     >
@@ -446,15 +378,10 @@ export function PageLayoutModuleCanvas({
         )}
       >
         <LayoutRegion constrained={!fullWidth} region="main">
-          {heading ? (
-            <FixedModule module={heading}>{renderModule(heading)}</FixedModule>
-          ) : null}
+          {heading ? <FixedModule module={heading}>{renderModule(heading)}</FixedModule> : null}
           {fixedAfterHeading}
           <DropSlot
-            disabled={
-              activeModule?.type !== "property_group" ||
-              activeModule.region !== "panel"
-            }
+            disabled={activeModule?.type !== "property_group" || activeModule.region !== "panel"}
             slot={propertyGroupHomeSlot}
           />
           {propertyGroup ? renderModuleFrame(propertyGroup) : null}
@@ -488,5 +415,5 @@ export function PageLayoutModuleCanvas({
         ) : null}
       </DragOverlay>
     </DndContext>
-  )
+  );
 }

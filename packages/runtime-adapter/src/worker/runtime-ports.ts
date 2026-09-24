@@ -13,10 +13,7 @@ import { createWorkerMailer } from "./mailer";
 import { createWorkerMeetings } from "./meetings";
 import { createWorkerOutboundFetch } from "./outbound-fetch";
 import { createWorkerScheduler } from "./scheduler";
-import {
-  createWorkerTelemetry,
-  type WorkerTelemetryOptions,
-} from "./telemetry";
+import { createWorkerTelemetry, type WorkerTelemetryOptions } from "./telemetry";
 
 type WorkerRuntimePortOptions<Env> = {
   execution?: Parameters<typeof createWorkerScheduler>[0];
@@ -34,9 +31,7 @@ export function createWorkerRuntimePorts<Env extends WorkerEnvBindings>(
   });
 
   return {
-    ...(env.IMAGE_BUCKET
-      ? { blobs: createWorkerImageStorage(env.IMAGE_BUCKET) }
-      : {}),
+    ...(env.IMAGE_BUCKET ? { blobs: createWorkerImageStorage(env.IMAGE_BUCKET) } : {}),
     documents: createWorkerDocuments(env),
     env: runtimeEnv,
     fanout: createWorkerFanout(env),

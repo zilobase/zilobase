@@ -5,7 +5,10 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { type AiAgentProfileDetail } from "@zilobase/features/ai-chat";
-import { useArchiveAiAgentProfile, useTransferAiAgentProfile } from "@zilobase/features/ai-chat/react";
+import {
+  useArchiveAiAgentProfile,
+  useTransferAiAgentProfile,
+} from "@zilobase/features/ai-chat/react";
 import { usePageAccessTargets } from "@zilobase/features/pages/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 
@@ -20,19 +23,8 @@ import {
   CommandList,
 } from "@/shared/ui/command";
 import { Input } from "@/shared/ui/input";
-import {
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 export function AgentSharePopover({
   agent,
@@ -70,19 +62,12 @@ export function AgentSharePopover({
         }}
       >
         <div className="mb-4 grid gap-1.5">
-          <div className="font-semibold leading-none tracking-tight">
-            Share agent
-          </div>
+          <div className="font-semibold leading-none tracking-tight">Share agent</div>
           <div className="text-sm text-content-secondary">
-            Members can chat with this agent using the agent's own explicitly
-            granted access.
+            Members can chat with this agent using the agent's own explicitly granted access.
           </div>
         </div>
-        <AgentShare
-          agent={effectiveAgent}
-          draft={draft}
-          showLifecycle={false}
-        />
+        <AgentShare agent={effectiveAgent} draft={draft} showLifecycle={false} />
         {draft.error && (
           <p role="alert" className="mt-3 text-sm text-feedback-danger-text">
             {draft.error}
@@ -136,9 +121,7 @@ function AgentShare({
   const transferOwnership = useTransferAiAgentProfile(agent.id);
   const archiveAgent = useArchiveAiAgentProfile(agent.id);
   const [principalId, setPrincipalId] = React.useState("");
-  const [principalType, setPrincipalType] = React.useState<"user" | "team">(
-    "user",
-  );
+  const [principalType, setPrincipalType] = React.useState<"user" | "team">("user");
   const [targetPickerOpen, setTargetPickerOpen] = React.useState(false);
   const [role, setRole] = React.useState<"editor" | "user">("user");
   const [newOwnerUserId, setNewOwnerUserId] = React.useState("");
@@ -213,9 +196,7 @@ function AgentShare({
                       value={`${member.name} ${member.email}`}
                     >
                       <div className="min-w-0">
-                        <div className="truncate font-medium">
-                          {member.name || member.email}
-                        </div>
+                        <div className="truncate font-medium">{member.name || member.email}</div>
                         <div className="truncate text-xs text-content-secondary">
                           {member.email}
                         </div>
@@ -254,8 +235,8 @@ function AgentShare({
         <div className="mt-3 grid gap-2 border-t pt-3">
           <p className="text-sm font-medium">Ownership and lifecycle</p>
           <p className="text-xs text-content-secondary">
-            Transferring ownership does not transfer connector credentials. All
-            connections will require their authenticators to reconnect.
+            Transferring ownership does not transfer connector credentials. All connections will
+            require their authenticators to reconnect.
           </p>
           <div className="flex flex-wrap gap-2">
             <Input
@@ -275,9 +256,7 @@ function AgentShare({
                   void transferOwnership
                     .mutateAsync({ newOwnerUserId: newOwnerUserId.trim() })
                     .then(() => toast.success("Agent ownership transferred."))
-                    .catch((error) =>
-                      showError("Could not transfer ownership", error),
-                    );
+                    .catch((error) => showError("Could not transfer ownership", error));
                 }
               }}
               type="button"
@@ -296,9 +275,7 @@ function AgentShare({
                   void archiveAgent
                     .mutateAsync({})
                     .then(() => toast.success("Agent archived."))
-                    .catch((error) =>
-                      showError("Could not archive agent", error),
-                    );
+                    .catch((error) => showError("Could not archive agent", error));
                 }
               }}
               type="button"
@@ -315,33 +292,47 @@ function AgentShare({
   return (
     <div className="grid gap-3">
       <p className="text-sm text-content-secondary">
-        Everyone with agent access can see its shared Chat and run summaries.
-        Only editors can change configuration; sensitive tool arguments and
-        diagnostics remain editor-only.
+        Everyone with agent access can see its shared Chat and run summaries. Only editors can
+        change configuration; sensitive tool arguments and diagnostics remain editor-only.
       </p>
       <div className="rounded-md bg-feedback-warning-background px-3 py-2 text-xs text-feedback-warning-text">
-        This agent uses its own resource permissions. People you share it with
-        may receive information from granted pages or databases even when they
-        cannot open those resources directly.
+        This agent uses its own resource permissions. People you share it with may receive
+        information from granted pages or databases even when they cannot open those resources
+        directly.
       </div>
       <div className="flex items-center gap-2 rounded border p-2 text-sm">
         <Badge variant="outline">owner</Badge>
         <span className="min-w-0 truncate">
-          {targetByKey.get(`user:${agent.ownerUserId}`)?.label ??
-            agent.ownerUserId}
+          {targetByKey.get(`user:${agent.ownerUserId}`)?.label ?? agent.ownerUserId}
         </span>
         <span className="ml-auto text-content-secondary">Full access</span>
       </div>
       {agent.access.map((grant) => (
         <div
           className="flex items-center gap-2 rounded border p-2 text-sm"
-          data-ai-changed={draft?.reviewOpen && draft.state?.review?.fields.includes("grants") && JSON.stringify(draft.state.review.before.grants.find((old) => old.principalId === grant.principalId && old.principalType === grant.principalType)) !== JSON.stringify({ principalType: grant.principalType, principalId: grant.principalId, role: grant.role }) || undefined}
+          data-ai-changed={
+            (draft?.reviewOpen &&
+              draft.state?.review?.fields.includes("grants") &&
+              JSON.stringify(
+                draft.state.review.before.grants.find(
+                  (old) =>
+                    old.principalId === grant.principalId &&
+                    old.principalType === grant.principalType,
+                ),
+              ) !==
+                JSON.stringify({
+                  principalType: grant.principalType,
+                  principalId: grant.principalId,
+                  role: grant.role,
+                })) ||
+            undefined
+          }
           key={grant.id}
         >
           <Badge variant="outline">{grant.principalType}</Badge>
           <span className="min-w-0 truncate">
-            {targetByKey.get(`${grant.principalType}:${grant.principalId}`)
-              ?.label ?? grant.principalId}
+            {targetByKey.get(`${grant.principalType}:${grant.principalId}`)?.label ??
+              grant.principalId}
           </span>
           <span className="ml-auto text-content-secondary">
             {grant.role === "editor" ? "Can edit" : "Can use"}
@@ -349,9 +340,7 @@ function AgentShare({
           {canEdit && (
             <Button
               aria-label="Remove access"
-              onClick={() =>
-                void save(agent.access.filter((item) => item.id !== grant.id))
-              }
+              onClick={() => void save(agent.access.filter((item) => item.id !== grant.id))}
               size="icon"
               type="button"
               variant="ghost"
@@ -364,10 +353,7 @@ function AgentShare({
       {canEdit && (
         <div className="flex flex-wrap gap-2">
           {renderTargetPicker()}
-          <Select
-            onValueChange={(value) => setRole(value as "editor" | "user")}
-            value={role}
-          >
+          <Select onValueChange={(value) => setRole(value as "editor" | "user")} value={role}>
             <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
@@ -382,8 +368,7 @@ function AgentShare({
               const grants = agent.access.filter(
                 (item) =>
                   !(
-                    item.principalId === principalId.trim() &&
-                    item.principalType === principalType
+                    item.principalId === principalId.trim() && item.principalType === principalType
                   ),
               );
               void save([

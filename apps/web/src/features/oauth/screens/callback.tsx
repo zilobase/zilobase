@@ -1,38 +1,40 @@
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo } from "react";
 
-import { FieldDescription } from "@/shared/ui/field"
-import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
+import { FieldDescription } from "@/shared/ui/field";
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo";
 
-const OAUTH_CALLBACK_MESSAGE = "zilobase-oauth-callback"
+const OAUTH_CALLBACK_MESSAGE = "zilobase-oauth-callback";
 
 export default function OAuthCallbackPage() {
   const result = useMemo(() => {
-    const params = new URLSearchParams(window.location.search)
+    const params = new URLSearchParams(window.location.search);
     return {
       code: params.get("code"),
       error: params.get("error"),
       errorDescription: params.get("error_description"),
       state: params.get("state"),
-    }
-  }, [])
+    };
+  }, []);
 
   useEffect(() => {
     const payload = {
       type: OAUTH_CALLBACK_MESSAGE,
       ...result,
-    }
+    };
 
-    window.opener?.postMessage(payload, window.location.origin)
+    window.opener?.postMessage(payload, window.location.origin);
 
-    const chromeRuntime = (globalThis as { chrome?: { runtime?: { sendMessage?: (message: unknown) => void } } }).chrome?.runtime
+    const chromeRuntime = (
+      globalThis as { chrome?: { runtime?: { sendMessage?: (message: unknown) => void } } }
+    ).chrome?.runtime;
     try {
-      chromeRuntime?.sendMessage?.(payload)
+      chromeRuntime?.sendMessage?.(payload);
     } catch {
       // The page also works when opened outside the extension.
     }
-  }, [result])
+  }, [result]);
 
-  const failed = Boolean(result.error) || !result.code
+  const failed = Boolean(result.error) || !result.code;
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-surface-canvas p-6">
@@ -52,5 +54,5 @@ export default function OAuthCallbackPage() {
         </FieldDescription>
       </div>
     </main>
-  )
+  );
 }

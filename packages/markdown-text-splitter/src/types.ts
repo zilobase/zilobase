@@ -1,6 +1,4 @@
-export interface Document<
-  TMetadata extends Record<string, unknown> = Record<string, unknown>,
-> {
+export interface Document<TMetadata extends Record<string, unknown> = Record<string, unknown>> {
   pageContent: string;
   metadata: TMetadata;
 }

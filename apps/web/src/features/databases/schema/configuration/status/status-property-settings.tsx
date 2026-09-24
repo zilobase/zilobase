@@ -2,25 +2,15 @@ import { Plus } from "@/shared/components/icons";
 import { Reorder } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
-import {
-  DropDrawerLabel,
-  DropDrawerSeparator,
-} from "@/shared/ui/dropdrawer";
+import { DropDrawerLabel, DropDrawerSeparator } from "@/shared/ui/dropdrawer";
 
 import { defaultStatusOptions } from "../../model/property-defaults";
 import { getNextDatabaseOptionColor } from "../../property-catalog";
 import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
 import { OptionCreateInput } from "../shared/option-create-input";
 import { OptionEditorSubmenu } from "../shared/option-editor-submenu";
-import {
-  areSameOrderedIds,
-  haveSameIds,
-  reorderOptionsByIds,
-} from "../shared/option-order";
-import {
-  getStatusOptionGroup,
-  getStatusOptionGroups,
-} from "./status-property-settings-model";
+import { areSameOrderedIds, haveSameIds, reorderOptionsByIds } from "../shared/option-order";
+import { getStatusOptionGroup, getStatusOptionGroups } from "./status-property-settings-model";
 import type { StatusOption } from "./status-property-settings-model";
 
 export type { StatusOption } from "./status-property-settings-model";
@@ -36,9 +26,7 @@ export function StatusPropertySettings({
 }) {
   const groups = getStatusOptionGroups(options);
   const resolvedDefaultOptionId = defaultOptionId ?? options[0]?.id;
-  const [creatingGroupName, setCreatingGroupName] = useState<string | null>(
-    null,
-  );
+  const [creatingGroupName, setCreatingGroupName] = useState<string | null>(null);
   const [draftGroupOptionIdsByName, setDraftGroupOptionIdsByName] = useState<
     Record<string, string[]>
   >({});
@@ -72,9 +60,7 @@ export function StatusPropertySettings({
   const updateOption = (optionId: string, patch: Partial<StatusOption>) => {
     onUpdateConfig({
       defaultOptionId: resolvedDefaultOptionId,
-      options: options.map((option) =>
-        option.id === optionId ? { ...option, ...patch } : option,
-      ),
+      options: options.map((option) => (option.id === optionId ? { ...option, ...patch } : option)),
     });
   };
   const setDefaultOption = (optionId: string) => {
@@ -128,10 +114,7 @@ export function StatusPropertySettings({
       return nextStateDrafts;
     });
   };
-  const commitGroupOptionReorder = (
-    groupName: string,
-    groupOptions: StatusOption[],
-  ) => {
+  const commitGroupOptionReorder = (groupName: string, groupOptions: StatusOption[]) => {
     const draftOptionIds = draftGroupOptionIdsByNameRef.current[groupName];
 
     if (!draftOptionIds) {
@@ -158,12 +141,8 @@ export function StatusPropertySettings({
     <>
       {groups.map((group, groupIndex) => {
         const groupOptionIds = group.options.map((option) => option.id);
-        const renderedOptionIds =
-          draftGroupOptionIdsByName[group.name] ?? groupOptionIds;
-        const renderedOptions = reorderOptionsByIds(
-          group.options,
-          renderedOptionIds,
-        );
+        const renderedOptionIds = draftGroupOptionIdsByName[group.name] ?? groupOptionIds;
+        const renderedOptions = reorderOptionsByIds(group.options, renderedOptionIds);
 
         return (
           <div key={group.name}>
@@ -184,9 +163,7 @@ export function StatusPropertySettings({
               axis="y"
               layoutScroll
               values={renderedOptionIds}
-              onReorder={(optionIds) =>
-                setDraftGroupOptionIds(group.name, optionIds)
-              }
+              onReorder={(optionIds) => setDraftGroupOptionIds(group.name, optionIds)}
             >
               {renderedOptions.map((option) => (
                 <OptionEditorSubmenu
@@ -195,9 +172,7 @@ export function StatusPropertySettings({
                   draggable
                   key={option.id}
                   onDeleteOption={(optionId) => {
-                    const nextOptions = options.filter(
-                      (item) => item.id !== optionId,
-                    );
+                    const nextOptions = options.filter((item) => item.id !== optionId);
                     onUpdateConfig({
                       defaultOptionId:
                         optionId === resolvedDefaultOptionId
@@ -206,9 +181,7 @@ export function StatusPropertySettings({
                       options: nextOptions,
                     });
                   }}
-                  onDragEnd={() =>
-                    commitGroupOptionReorder(group.name, group.options)
-                  }
+                  onDragEnd={() => commitGroupOptionReorder(group.name, group.options)}
                   onSetDefaultOption={setDefaultOption}
                   onUpdateOption={updateOption}
                   option={option}

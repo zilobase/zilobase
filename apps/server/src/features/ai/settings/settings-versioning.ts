@@ -14,7 +14,11 @@ export const settingsConflict = () =>
     409,
   );
 
-export async function loadLockedSettingsDraft(tx: SettingsTransaction, settingsId: string, userId: string) {
+export async function loadLockedSettingsDraft(
+  tx: SettingsTransaction,
+  settingsId: string,
+  userId: string,
+) {
   const [saved] = await tx
     .select()
     .from(aiSettings)
@@ -23,11 +27,6 @@ export async function loadLockedSettingsDraft(tx: SettingsTransaction, settingsI
   const [draft] = await tx
     .select()
     .from(aiSettingsDraft)
-    .where(
-      and(
-        eq(aiSettingsDraft.settingsId, settingsId),
-        eq(aiSettingsDraft.userId, userId),
-      ),
-    );
+    .where(and(eq(aiSettingsDraft.settingsId, settingsId), eq(aiSettingsDraft.userId, userId)));
   return { saved, draft };
 }

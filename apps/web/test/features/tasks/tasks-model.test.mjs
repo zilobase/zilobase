@@ -18,10 +18,7 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.match(source, /addDatabaseRow: createTask/);
     assert.match(source, /initialValues: initialValues/);
     assert.match(source, /configureDataSources: onConfigureDataSources/);
-    assert.match(
-      source,
-      /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/,
-    );
+    assert.match(source, /addDataSource: \(\) => setDataSourceSetupOpen\(true\)/);
     assert.match(source, /dataSources: payloads\.flatMap/);
     assert.match(source, /<DatabaseSetupCard/);
     assert.match(source, /onSelectDataSource=\{onSelectDataSource\}/);
@@ -37,20 +34,12 @@ export function register({ readSource, assert, loadModule, test }) {
       /displayMode="inline"[\s\S]*?title="Source"[\s\S]*?label="Source"/,
     );
     assert.doesNotMatch(dataSourceSettings, /Configure data sources/);
-    assert.match(
-      dataSourceSettings,
-      /disabled=\{!onAddDataSource \|\| isAddingDataSource\}/,
-    );
-    assert.match(
-      styles,
-      /\.database-list-drag-handle\s*\{[\s\S]*?@apply absolute left-\[-2rem\]/,
-    );
+    assert.match(dataSourceSettings, /disabled=\{!onAddDataSource \|\| isAddingDataSource\}/);
+    assert.match(styles, /\.database-list-drag-handle\s*\{[\s\S]*?@apply absolute left-\[-2rem\]/);
   });
 
   test("task databases require status, assignee, and due date properties", async () => {
-    const { getTaskDatabaseSchema } = await loadModule(
-      "/src/features/tasks/model/tasks-model.ts",
-    );
+    const { getTaskDatabaseSchema } = await loadModule("/src/features/tasks/model/tasks-model.ts");
     const payload = createPayload({
       properties: [
         createProperty("state", "Workflow", "status"),
@@ -89,8 +78,9 @@ export function register({ readSource, assert, loadModule, test }) {
   });
 
   test("task completion follows status groups and restores the default status", async () => {
-    const { buildTaskRows, filterMyTaskRows, getTaskStatusForCompletion } =
-      await loadModule("/src/features/tasks/model/tasks-model.ts");
+    const { buildTaskRows, filterMyTaskRows, getTaskStatusForCompletion } = await loadModule(
+      "/src/features/tasks/model/tasks-model.ts",
+    );
     const payload = createPayload({
       properties: [
         createProperty("state", "Status", "status", {

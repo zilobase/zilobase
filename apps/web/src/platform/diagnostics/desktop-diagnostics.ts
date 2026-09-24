@@ -1,22 +1,18 @@
-import { desktopBridge, isDesktopApp } from "@/platform/desktop/native"
+import { desktopBridge, isDesktopApp } from "@/platform/desktop/native";
 
-type DiagnosticLevel = "error" | "info" | "warn"
-type DiagnosticValue = boolean | number | string | null | undefined
-type DiagnosticFields = Record<string, DiagnosticValue>
+type DiagnosticLevel = "error" | "info" | "warn";
+type DiagnosticValue = boolean | number | string | null | undefined;
+type DiagnosticFields = Record<string, DiagnosticValue>;
 
-const startupStartedAt = now()
-const safeNumericFields = new Set([
-  "duration_ms",
-  "elapsed_ms",
-  "http_status",
-])
+const startupStartedAt = now();
+const safeNumericFields = new Set(["duration_ms", "elapsed_ms", "http_status"]);
 const safeBooleanFields = new Set([
   "owner_present",
   "session_present",
   "token_present",
   "user_present",
   "value_present",
-])
+]);
 const safeStatusValues = new Set([
   "complete",
   "disabled",
@@ -25,75 +21,73 @@ const safeStatusValues = new Set([
   "started",
   "success",
   "timeout",
-])
-const safePlatformValues = new Set(["linux", "macos", "windows", "unknown"])
+]);
+const safePlatformValues = new Set(["linux", "macos", "windows", "unknown"]);
 
-let installed = false
-let appReady = false
-let startupTimer: number | undefined
+let installed = false;
+let appReady = false;
+let startupTimer: number | undefined;
 
 export function installDesktopDiagnostics() {
-  if (installed || typeof window === "undefined" || !isDesktopApp()) return
-  installed = true
+  if (installed || typeof window === "undefined" || !isDesktopApp()) return;
+  installed = true;
 
   recordDesktopDiagnostic("renderer.started", {
     elapsed_ms: desktopStartupElapsedMs(),
     platform: desktopPlatform(),
     status: "success",
-  })
+  });
 
   window.addEventListener("error", (event) => {
-    recordDesktopDiagnostic(
-      "renderer.uncaught_error",
-      describeDesktopError(event.error),
-      "error",
-    )
-  })
+    recordDesktopDiagnostic("renderer.uncaught_error", describeDesktopError(event.error), "error");
+  });
   window.addEventListener("unhandledrejection", (event) => {
     recordDesktopDiagnostic(
       "renderer.unhandled_rejection",
       describeDesktopError(event.reason),
       "error",
-    )
-  })
+    );
+  });
 
   startupTimer = window.setTimeout(() => {
-    if (appReady) return
+    if (appReady) return;
     recordDesktopDiagnostic(
       "renderer.startup_timeout",
       { elapsed_ms: desktopStartupElapsedMs(), status: "timeout" },
       "warn",
-    )
-  }, 15_000)
+    );
+  }, 15_000);
 }
 
 export function markDesktopRootMounted() {
   recordDesktopDiagnostic("renderer.root_mounted", {
     elapsed_ms: desktopStartupElapsedMs(),
     status: "success",
-  })
+  });
 }
 
 export function markDesktopAppReady() {
-  if (appReady || !isDesktopApp()) return
-  appReady = true
-  window.clearTimeout(startupTimer)
-  const elapsedMs = desktopStartupElapsedMs()
+  if (appReady || !isDesktopApp()) return;
+  appReady = true;
+  window.clearTimeout(startupTimer);
+  const elapsedMs = desktopStartupElapsedMs();
   recordDesktopDiagnostic("renderer.app_ready", {
     elapsed_ms: elapsedMs,
     status: "success",
-  })
-  void desktopBridge().diagnostics.rendererReady(elapsedMs).catch(() => {
-    recordDesktopDiagnostic(
-      "renderer.ready_signal",
-      { error_type: "InvokeError", status: "error" },
-      "error",
-    )
-  })
+  });
+  void desktopBridge()
+    .diagnostics.rendererReady(elapsedMs)
+    .catch(() => {
+      recordDesktopDiagnostic(
+        "renderer.ready_signal",
+        { error_type: "InvokeError", status: "error" },
+        "error",
+      );
+    });
 }
 
 export function desktopStartupElapsedMs() {
-  return Math.max(0, Math.round(now() - startupStartedAt))
+  return Math.max(0, Math.round(now() - startupStartedAt));
 }
 
 export function describeDesktopError(error: unknown): DiagnosticFields {
@@ -102,20 +96,20 @@ export function describeDesktopError(error: unknown): DiagnosticFields {
       ? error.name
       : typeof error === "object" && error && "name" in error
         ? String(error.name)
-        : "UnknownError"
+        : "UnknownError";
   const status =
     typeof error === "object" &&
     error !== null &&
     "status" in error &&
     typeof error.status === "number"
       ? error.status
-      : undefined
+      : undefined;
 
   return {
     error_type: errorType,
     ...(status === undefined ? {} : { http_status: status }),
     status: "error",
-  }
+  };
 }
 
 export function recordDesktopDiagnostic(
@@ -123,62 +117,57 @@ export function recordDesktopDiagnostic(
   fields: DiagnosticFields = {},
   level: DiagnosticLevel = "info",
 ) {
-  if (!isDesktopApp()) return
-  if (!formatDesktopDiagnostic(event, fields)) return
+  if (!isDesktopApp()) return;
+  if (!formatDesktopDiagnostic(event, fields)) return;
 
-  void desktopBridge().diagnostics.record(event, fields, level).catch(
-    () => undefined,
-  )
+  void desktopBridge()
+    .diagnostics.record(event, fields, level)
+    .catch(() => undefined);
 }
 
-export function formatDesktopDiagnostic(
-  event: string,
-  fields: DiagnosticFields = {},
-) {
-  if (!/^[a-z][a-z0-9_.-]{0,63}$/.test(event)) return null
+export function formatDesktopDiagnostic(event: string, fields: DiagnosticFields = {}) {
+  if (!/^[a-z][a-z0-9_.-]{0,63}$/.test(event)) return null;
 
   const serializedFields = Object.entries(fields)
     .sort(([left], [right]) => left.localeCompare(right))
     .flatMap(([key, value]) => {
-      const safe = safeDiagnosticField(key, value)
-      return safe === null ? [] : [`${key}=${safe}`]
-    })
+      const safe = safeDiagnosticField(key, value);
+      return safe === null ? [] : [`${key}=${safe}`];
+    });
 
-  return [`[diagnostics] event=${event}`, ...serializedFields].join(" ")
+  return [`[diagnostics] event=${event}`, ...serializedFields].join(" ");
 }
 
 function safeDiagnosticField(key: string, value: DiagnosticValue) {
-  if (value === null || value === undefined) return null
+  if (value === null || value === undefined) return null;
   if (safeNumericFields.has(key)) {
     return typeof value === "number" && Number.isFinite(value)
       ? String(Math.max(0, Math.round(value)))
-      : null
+      : null;
   }
   if (safeBooleanFields.has(key)) {
-    return typeof value === "boolean" ? String(value) : null
+    return typeof value === "boolean" ? String(value) : null;
   }
   if (key === "status") {
-    return typeof value === "string" && safeStatusValues.has(value) ? value : null
+    return typeof value === "string" && safeStatusValues.has(value) ? value : null;
   }
   if (key === "platform") {
-    return typeof value === "string" && safePlatformValues.has(value) ? value : null
+    return typeof value === "string" && safePlatformValues.has(value) ? value : null;
   }
   if (key === "error_type" || key === "value_kind") {
-    return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_-]{0,47}$/.test(value)
-      ? value
-      : null
+    return typeof value === "string" && /^[A-Za-z][A-Za-z0-9_-]{0,47}$/.test(value) ? value : null;
   }
-  return null
+  return null;
 }
 
 function desktopPlatform() {
-  const userAgent = navigator.userAgent
-  if (userAgent.includes("Linux")) return "linux"
-  if (userAgent.includes("Mac")) return "macos"
-  if (userAgent.includes("Windows")) return "windows"
-  return "unknown"
+  const userAgent = navigator.userAgent;
+  if (userAgent.includes("Linux")) return "linux";
+  if (userAgent.includes("Mac")) return "macos";
+  if (userAgent.includes("Windows")) return "windows";
+  return "unknown";
 }
 
 function now() {
-  return typeof performance === "undefined" ? Date.now() : performance.now()
+  return typeof performance === "undefined" ? Date.now() : performance.now();
 }

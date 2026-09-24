@@ -1,14 +1,8 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef } from "react";
 
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/shared/ui/command"
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/shared/ui/command";
 
-import type { SlashCommandItem } from "./slash-command"
+import type { SlashCommandItem } from "./slash-command";
 
 export function SlashCommandMenu({
   items,
@@ -16,28 +10,28 @@ export function SlashCommandMenu({
   setSelectedIndex,
   selectItem,
 }: {
-  items: SlashCommandItem[]
-  selectedIndex: number
-  setSelectedIndex: (index: number) => void
-  selectItem: (index: number) => void
+  items: SlashCommandItem[];
+  selectedIndex: number;
+  setSelectedIndex: (index: number) => void;
+  selectItem: (index: number) => void;
 }) {
-  const selectedItemRef = useRef<HTMLDivElement | null>(null)
-  const selectedItem = items[selectedIndex]
+  const selectedItemRef = useRef<HTMLDivElement | null>(null);
+  const selectedItem = items[selectedIndex];
 
   useEffect(() => {
     selectedItemRef.current?.scrollIntoView({
       block: "nearest",
-    })
-  }, [selectedIndex])
+    });
+  }, [selectedIndex]);
 
   return (
     <Command
       variant="menu"
       onValueChange={(value) => {
-        const nextIndex = items.findIndex((item) => item.title === value)
+        const nextIndex = items.findIndex((item) => item.title === value);
 
         if (nextIndex >= 0) {
-          setSelectedIndex(nextIndex)
+          setSelectedIndex(nextIndex);
         }
       }}
       value={selectedItem?.title ?? ""}
@@ -46,7 +40,7 @@ export function SlashCommandMenu({
         <CommandEmpty>No blocks found</CommandEmpty>
         <CommandGroup>
           {items.map((item, index) => {
-            const Icon = item.icon
+            const Icon = item.icon;
 
             return (
               <CommandItem
@@ -54,7 +48,7 @@ export function SlashCommandMenu({
                 data-selected={index === selectedIndex ? true : undefined}
                 key={item.title}
                 onMouseDown={(event) => {
-                  event.preventDefault()
+                  event.preventDefault();
                 }}
                 onSelect={() => selectItem(index)}
                 ref={index === selectedIndex ? selectedItemRef : undefined}
@@ -68,10 +62,10 @@ export function SlashCommandMenu({
                   </span>
                 </span>
               </CommandItem>
-            )
+            );
           })}
         </CommandGroup>
       </CommandList>
     </Command>
-  )
+  );
 }

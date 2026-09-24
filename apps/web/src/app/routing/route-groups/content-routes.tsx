@@ -1,9 +1,5 @@
 import { createRoute, lazyRouteComponent } from "@tanstack/react-router";
-import {
-  applyDatabaseShareAccess,
-  applyPageShareAccess,
-  getFreshSession,
-} from "../guards";
+import { applyDatabaseShareAccess, applyPageShareAccess, getFreshSession } from "../guards";
 import { PendingPage } from "../pending-page";
 import { rootRoute } from "../route-roots";
 import { validateDatabaseSearch, validateMeetingSearch } from "../search-validators";
@@ -23,9 +19,7 @@ export const contentRoutes = [
     getParentRoute: () => rootRoute,
     path: "/m/$meetingId",
     beforeLoad: async () => ({
-      authenticatedMeeting: Boolean(
-        (await getFreshSession({ optional: true })).user,
-      ),
+      authenticatedMeeting: Boolean((await getFreshSession({ optional: true })).user),
     }),
     component: lazyRouteComponent(() => import("@/features/meetings/screens/meeting")),
     pendingComponent: PendingPage,

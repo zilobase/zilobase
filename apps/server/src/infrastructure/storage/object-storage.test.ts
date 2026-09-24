@@ -45,9 +45,7 @@ test("ObjectStorage.checkReady delegates to the required storage readiness check
   const runtime = createAppRuntime(ObjectStorage.layer);
 
   try {
-    await runtime.runPromise(
-      ObjectStorage.use((objectStorage) => objectStorage.checkReady({})),
-    );
+    await runtime.runPromise(ObjectStorage.use((objectStorage) => objectStorage.checkReady({})));
     assert.equal(ready.checkReady.mock.calls.length, 1);
     assert.equal(ready.head.mock.calls.length, 0);
   } finally {
@@ -65,10 +63,7 @@ test("ObjectStorage maps client failures to ObjectStorageUnavailable", async () 
 
   try {
     await assert.rejects(
-      () =>
-        runtime.runPromise(
-          ObjectStorage.use((objectStorage) => objectStorage.checkReady({})),
-        ),
+      () => runtime.runPromise(ObjectStorage.use((objectStorage) => objectStorage.checkReady({}))),
       (error: unknown) => error instanceof ObjectStorageUnavailable,
     );
   } finally {

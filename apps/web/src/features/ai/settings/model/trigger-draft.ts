@@ -14,8 +14,7 @@ type TriggerDraft = {
 export function canSaveSettingsTrigger(draft: TriggerDraft) {
   if (!draft.label.trim()) return false;
   if (draft.kind === "webhook") return true;
-  if (draft.kind === "schedule")
-    return draft.cadence !== "custom" || validInterval(draft.target);
+  if (draft.kind === "schedule") return draft.cadence !== "custom" || validInterval(draft.target);
   return Boolean(draft.target.trim());
 }
 
@@ -28,9 +27,7 @@ function triggerConfiguration(draft: TriggerDraft) {
     case "schedule":
       return {
         cadence: draft.cadence,
-        ...(draft.cadence === "custom"
-          ? { intervalMinutes: Number(draft.target) }
-          : {}),
+        ...(draft.cadence === "custom" ? { intervalMinutes: Number(draft.target) } : {}),
       };
     case "database":
       return {

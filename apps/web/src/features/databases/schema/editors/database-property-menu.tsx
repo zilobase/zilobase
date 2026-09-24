@@ -46,11 +46,7 @@ import {
 import { Input } from "@/shared/ui/input";
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
 import { PageIconDisplay } from "@/features/pages/index";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import {
   Dialog,
@@ -71,10 +67,7 @@ import { Separator } from "@/shared/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 import { Textarea } from "@/shared/ui/textarea";
 
-import {
-  databasePropertyTypes,
-  getDatabasePropertyType,
-} from "../property-catalog";
+import { databasePropertyTypes, getDatabasePropertyType } from "../property-catalog";
 import {
   getDatabaseSorts,
   getDatabasePropertyIcon,
@@ -146,9 +139,7 @@ export function DatabasePropertyMenu({
   const [automationDialogOpen, setAutomationDialogOpen] = useState(false);
   const [basicAutofillDialogOpen, setBasicAutofillDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [relationDeleteMode, setRelationDeleteMode] = useState<
-    "this" | "related"
-  >("this");
+  const [relationDeleteMode, setRelationDeleteMode] = useState<"this" | "related">("this");
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const updateDatabase = useUpdateDatabase();
@@ -161,17 +152,12 @@ export function DatabasePropertyMenu({
   const customIcon = getDatabasePropertyIcon(config);
   const currentSorts = getDatabaseSorts(databaseConfig);
   const currentSortDirection =
-    sortDirection ??
-    currentSorts.find((sort) => sort.column === databasePropertyId)?.direction;
+    sortDirection ?? currentSorts.find((sort) => sort.column === databasePropertyId)?.direction;
   const isButtonProperty = type === "button";
   const isFormulaProperty = type === "formula";
   const hidesEditProperty =
-    type === "text" ||
-    type === "checkbox" ||
-    type === "email" ||
-    type === "phone";
-  const canBasicAutofill =
-    type === "text" || type === "select" || type === "multi_select";
+    type === "text" || type === "checkbox" || type === "email" || type === "phone";
+  const canBasicAutofill = type === "text" || type === "select" || type === "multi_select";
   const relationDeleteConfig = getRelationDeleteConfig(config);
   const { data: relatedDatabasePayload } = useDatabaseMetadata(
     type === "relation" ? relationDeleteConfig.relatedDatabaseId : null,
@@ -343,10 +329,7 @@ export function DatabasePropertyMenu({
               <span>Edit automation</span>
             </DropDrawerItem>
           ) : isFormulaProperty && schemaActionsEnabled ? (
-            <DropDrawerItem
-              disabled={!onEditFormula}
-              onSelect={() => onEditFormula?.()}
-            >
+            <DropDrawerItem disabled={!onEditFormula} onSelect={() => onEditFormula?.()}>
               <Sigma />
               <span>Edit formula</span>
             </DropDrawerItem>
@@ -392,9 +375,7 @@ export function DatabasePropertyMenu({
                       return (
                         <DropDrawerItem
                           key={nextPropertyType.type}
-                          onSelect={() =>
-                            changePropertyType(nextPropertyType.type)
-                          }
+                          onSelect={() => changePropertyType(nextPropertyType.type)}
                         >
                           <TypeIcon />
                           <span>{nextPropertyType.label}</span>
@@ -414,9 +395,7 @@ export function DatabasePropertyMenu({
                 <span>AI Autofill</span>
               </DropDrawerSubTrigger>
               <DropDrawerSubContent>
-                <DropDrawerItem
-                  onSelect={() => setBasicAutofillDialogOpen(true)}
-                >
+                <DropDrawerItem onSelect={() => setBasicAutofillDialogOpen(true)}>
                   Basic Autofill
                 </DropDrawerItem>
                 <DropDrawerItem disabled>Agent Autofill</DropDrawerItem>
@@ -450,9 +429,7 @@ export function DatabasePropertyMenu({
                 }}
               >
                 <span>Ascending</span>
-                {currentSortDirection === "ascending" ? (
-                  <Check className="ml-auto" />
-                ) : null}
+                {currentSortDirection === "ascending" ? <Check className="ml-auto" /> : null}
               </DropDrawerItem>
               <DropDrawerItem
                 onSelect={(event) => {
@@ -461,15 +438,11 @@ export function DatabasePropertyMenu({
                 }}
               >
                 <span>Descending</span>
-                {currentSortDirection === "descending" ? (
-                  <Check className="ml-auto" />
-                ) : null}
+                {currentSortDirection === "descending" ? <Check className="ml-auto" /> : null}
               </DropDrawerItem>
             </DropDrawerSubContent>
           </DropDrawerSub>
-          <DropDrawerItem
-            onSelect={() => updatePropertyConfig({ hidden: true })}
-          >
+          <DropDrawerItem onSelect={() => updatePropertyConfig({ hidden: true })}>
             <EyeOff />
             <span>Hide</span>
           </DropDrawerItem>
@@ -503,16 +476,12 @@ export function DatabasePropertyMenu({
           ) : null}
         </DropDrawerContent>
       </DropDrawer>
-      <AlertDialog
-        open={duplicateDialogOpen}
-        onOpenChange={setDuplicateDialogOpen}
-      >
+      <AlertDialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Duplicate property?</AlertDialogTitle>
             <AlertDialogDescription>
-              Choose whether to copy only the property setup or also duplicate
-              its existing values.
+              Choose whether to copy only the property setup or also duplicate its existing values.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -538,47 +507,46 @@ export function DatabasePropertyMenu({
                 : "This property and its values will be deleted. Automations using it will be paused and must be repaired before they can run again."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {type === "relation" ? <RadioGroup
-            className="grid gap-2"
-            onValueChange={(value) =>
-              setRelationDeleteMode(value === "related" ? "related" : "this")
-            }
-            value={relationDeleteMode}
-          >
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-action-neutral-hover has-[[data-state=checked]]:border-action-selected-border has-[[data-state=checked]]:bg-action-neutral-hover">
-              <RadioGroupItem className="mt-0.5" value="this" />
-              <span className="grid gap-1">
-                <span className="text-sm font-medium">
-                  Delete this property only
+          {type === "relation" ? (
+            <RadioGroup
+              className="grid gap-2"
+              onValueChange={(value) =>
+                setRelationDeleteMode(value === "related" ? "related" : "this")
+              }
+              value={relationDeleteMode}
+            >
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-action-neutral-hover has-[[data-state=checked]]:border-action-selected-border has-[[data-state=checked]]:bg-action-neutral-hover">
+                <RadioGroupItem className="mt-0.5" value="this" />
+                <span className="grid gap-1">
+                  <span className="text-sm font-medium">Delete this property only</span>
+                  <span className="text-xs text-content-secondary">
+                    Keep the related property in the connected database.
+                  </span>
                 </span>
-                <span className="text-xs text-content-secondary">
-                  Keep the related property in the connected database.
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-action-neutral-hover has-[[data-state=checked]]:border-action-selected-border has-[[data-state=checked]]:bg-action-neutral-hover has-[[data-disabled]]:cursor-not-allowed has-[[data-disabled]]:opacity-50">
+                <RadioGroupItem
+                  className="mt-0.5"
+                  disabled={!relatedDatabaseProperty}
+                  value="related"
+                />
+                <span className="grid gap-1">
+                  <span className="text-sm font-medium">Also delete related property</span>
+                  <span className="text-xs text-content-secondary">
+                    Remove the matching relation property from the connected database too.
+                  </span>
                 </span>
-              </span>
-            </label>
-            <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-action-neutral-hover has-[[data-state=checked]]:border-action-selected-border has-[[data-state=checked]]:bg-action-neutral-hover has-[[data-disabled]]:cursor-not-allowed has-[[data-disabled]]:opacity-50">
-              <RadioGroupItem
-                className="mt-0.5"
-                disabled={!relatedDatabaseProperty}
-                value="related"
-              />
-              <span className="grid gap-1">
-                <span className="text-sm font-medium">
-                  Also delete related property
-                </span>
-                <span className="text-xs text-content-secondary">
-                  Remove the matching relation property from the connected
-                  database too.
-                </span>
-              </span>
-            </label>
-          </RadioGroup> : null}
+              </label>
+            </RadioGroup>
+          ) : null}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => type === "relation"
-                ? deleteRelationProperties(relationDeleteMode === "related")
-                : deleteDatabaseProperty()}
+              onClick={() =>
+                type === "relation"
+                  ? deleteRelationProperties(relationDeleteMode === "related")
+                  : deleteDatabaseProperty()
+              }
               variant="destructive"
             >
               Delete
@@ -586,18 +554,12 @@ export function DatabasePropertyMenu({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Dialog
-        open={automationDialogOpen}
-        onOpenChange={setAutomationDialogOpen}
-      >
+      <Dialog open={automationDialogOpen} onOpenChange={setAutomationDialogOpen}>
         <DialogContent className="sm:max-w-xl">
           <ButtonAutomationDialog propertyName={name} />
         </DialogContent>
       </Dialog>
-      <Dialog
-        open={basicAutofillDialogOpen}
-        onOpenChange={setBasicAutofillDialogOpen}
-      >
+      <Dialog open={basicAutofillDialogOpen} onOpenChange={setBasicAutofillDialogOpen}>
         <DialogContent className="sm:max-w-5xl">
           <BasicAutofillDialog propertyName={name} />
         </DialogContent>
@@ -638,18 +600,14 @@ function ButtonAutomationDialog({ propertyName }: { propertyName: string }) {
     <>
       <DialogHeader>
         <DialogTitle>{propertyName}</DialogTitle>
-        <DialogDescription>
-          Configure what happens when this button is clicked.
-        </DialogDescription>
+        <DialogDescription>Configure what happens when this button is clicked.</DialogDescription>
       </DialogHeader>
       <div className="grid gap-6">
         <section className="grid gap-2">
           <div className="text-sm font-medium text-content-secondary">When</div>
           <Button className="w-full" type="button" variant="outline">
             <Sparkles className="size-5 shrink-0 text-content-secondary" />
-            <span className="font-medium text-content-primary">
-              Button is clicked
-            </span>
+            <span className="font-medium text-content-primary">Button is clicked</span>
           </Button>
         </section>
         <div className="flex justify-center">
@@ -684,10 +642,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
           </DialogDescription>
         </DialogHeader>
 
-        <Separator
-          className="hidden md:row-span-2 md:block"
-          orientation="vertical"
-        />
+        <Separator className="hidden md:row-span-2 md:block" orientation="vertical" />
 
         <div className="flex items-center gap-2 text-sm font-medium text-content-secondary">
           <span>Preview with</span>
@@ -711,9 +666,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
             </TabsList>
             <TabsContent className="grid gap-5" value="basic">
               <div className="grid gap-2">
-                <div className="text-sm font-medium text-content-secondary">
-                  Suggested
-                </div>
+                <div className="text-sm font-medium text-content-secondary">Suggested</div>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" variant="secondary">
                     Translate
@@ -727,9 +680,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
               </div>
 
               <label className="grid gap-2">
-                <span className="text-sm font-medium text-content-secondary">
-                  Instructions
-                </span>
+                <span className="text-sm font-medium text-content-secondary">Instructions</span>
                 <Textarea
                   className="min-h-40 resize-none"
                   placeholder="How would you like to autofill this property?"
@@ -737,9 +688,7 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
               </label>
 
               <div className="grid gap-3">
-                <div className="text-sm font-medium text-content-secondary">
-                  Triggers
-                </div>
+                <div className="text-sm font-medium text-content-secondary">Triggers</div>
                 <button
                   className="flex items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral active:bg-action-neutral-pressed active:text-action-on-neutral"
                   type="button"

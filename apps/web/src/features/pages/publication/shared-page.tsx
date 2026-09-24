@@ -1,16 +1,6 @@
-import {
-  Link,
-  useParams,
-} from "@tanstack/react-router";
-import {
-  ArrowRight,
-  Maximize2,
-} from "@/shared/components/icons";
-import {
-  PageSidePaneLayout,
-  PageSidePaneProvider,
-  usePageSidePane,
-} from "../pane/page-side-pane";
+import { Link, useParams } from "@tanstack/react-router";
+import { ArrowRight, Maximize2 } from "@/shared/components/icons";
+import { PageSidePaneLayout, PageSidePaneProvider, usePageSidePane } from "../pane/page-side-pane";
 import { Button } from "@/shared/ui/button";
 import { usePage } from "@zilobase/features/pages/react";
 import { EmbeddedPageDialog } from "../pane/embedded-page-dialog";
@@ -38,13 +28,7 @@ export function GuestPage() {
   );
 }
 
-function PublicPageContent({
-  guest = false,
-  pageId,
-}: {
-  guest?: boolean;
-  pageId: string;
-}) {
+function PublicPageContent({ guest = false, pageId }: { guest?: boolean; pageId: string }) {
   const { data: page } = usePage(pageId, { refetchOnMount: false });
   const {
     closeSidePane,
@@ -66,11 +50,7 @@ function PublicPageContent({
         viewportHeightClass="h-svh"
         main={
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {guest ? (
-              <GuestPaneTopbar pageId={pageId} />
-            ) : (
-              <PublicPaneTopbar pageId={pageId} />
-            )}
+            {guest ? <GuestPaneTopbar pageId={pageId} /> : <PublicPaneTopbar pageId={pageId} />}
             <PageEditorPane
               className="min-h-0 min-w-0 flex-1 overflow-y-auto"
               key={pageId}
@@ -94,16 +74,8 @@ function PublicPageContent({
                   >
                     <ArrowRight />
                   </Button>
-                  <Button
-                    aria-label="Open as main page"
-                    asChild
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <Link
-                      params={{ pageId: renderedSidePanePageId }}
-                      to="/p/$pageId"
-                    >
+                  <Button aria-label="Open as main page" asChild size="icon" variant="ghost">
+                    <Link params={{ pageId: renderedSidePanePageId }} to="/p/$pageId">
                       <Maximize2 />
                     </Link>
                   </Button>
@@ -126,10 +98,7 @@ function PublicPageContent({
         sidePaneOpen={sidePaneAnimatedOpen}
         sidePaneVisible={renderedSidePanePageId !== null}
       />
-      <EmbeddedPageDialog
-        onOpenPage={openPage}
-        pageRenderer={PageEditorPane}
-      />
+      <EmbeddedPageDialog onOpenPage={openPage} pageRenderer={PageEditorPane} />
     </>
   );
 }

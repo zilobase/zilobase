@@ -84,69 +84,321 @@
   --zb-color-palette-text-on-subtle: #37352f;
 
   /* Chart shades derived from the shared persisted palette. */
-  --zb-color-palette-background-gray-variant-82: color-mix(in srgb, var(--zb-color-palette-text-gray) 82%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-gray-variant-68: color-mix(in srgb, var(--zb-color-palette-text-gray) 68%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-gray-variant-54: color-mix(in srgb, var(--zb-color-palette-text-gray) 54%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-gray-variant-88: color-mix(in srgb, var(--zb-color-palette-text-gray) 88%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-gray-variant-74: color-mix(in srgb, var(--zb-color-palette-text-gray) 74%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-gray-variant-60: color-mix(in srgb, var(--zb-color-palette-text-gray) 60%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-gray-variant-46: color-mix(in srgb, var(--zb-color-palette-text-gray) 46%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-brown-variant-82: color-mix(in srgb, var(--zb-color-palette-text-brown) 82%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-brown-variant-68: color-mix(in srgb, var(--zb-color-palette-text-brown) 68%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-brown-variant-54: color-mix(in srgb, var(--zb-color-palette-text-brown) 54%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-brown-variant-88: color-mix(in srgb, var(--zb-color-palette-text-brown) 88%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-brown-variant-74: color-mix(in srgb, var(--zb-color-palette-text-brown) 74%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-brown-variant-60: color-mix(in srgb, var(--zb-color-palette-text-brown) 60%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-brown-variant-46: color-mix(in srgb, var(--zb-color-palette-text-brown) 46%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-orange-variant-82: color-mix(in srgb, var(--zb-color-palette-text-orange) 82%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-orange-variant-68: color-mix(in srgb, var(--zb-color-palette-text-orange) 68%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-orange-variant-54: color-mix(in srgb, var(--zb-color-palette-text-orange) 54%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-orange-variant-88: color-mix(in srgb, var(--zb-color-palette-text-orange) 88%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-orange-variant-74: color-mix(in srgb, var(--zb-color-palette-text-orange) 74%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-orange-variant-60: color-mix(in srgb, var(--zb-color-palette-text-orange) 60%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-orange-variant-46: color-mix(in srgb, var(--zb-color-palette-text-orange) 46%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-yellow-variant-82: color-mix(in srgb, var(--zb-color-palette-text-yellow) 82%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-yellow-variant-68: color-mix(in srgb, var(--zb-color-palette-text-yellow) 68%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-yellow-variant-54: color-mix(in srgb, var(--zb-color-palette-text-yellow) 54%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-yellow-variant-88: color-mix(in srgb, var(--zb-color-palette-text-yellow) 88%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-yellow-variant-74: color-mix(in srgb, var(--zb-color-palette-text-yellow) 74%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-yellow-variant-60: color-mix(in srgb, var(--zb-color-palette-text-yellow) 60%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-yellow-variant-46: color-mix(in srgb, var(--zb-color-palette-text-yellow) 46%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-green-variant-82: color-mix(in srgb, var(--zb-color-palette-text-green) 82%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-green-variant-68: color-mix(in srgb, var(--zb-color-palette-text-green) 68%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-green-variant-54: color-mix(in srgb, var(--zb-color-palette-text-green) 54%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-green-variant-88: color-mix(in srgb, var(--zb-color-palette-text-green) 88%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-green-variant-74: color-mix(in srgb, var(--zb-color-palette-text-green) 74%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-green-variant-60: color-mix(in srgb, var(--zb-color-palette-text-green) 60%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-green-variant-46: color-mix(in srgb, var(--zb-color-palette-text-green) 46%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-blue-variant-82: color-mix(in srgb, var(--zb-color-palette-text-blue) 82%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-blue-variant-68: color-mix(in srgb, var(--zb-color-palette-text-blue) 68%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-blue-variant-54: color-mix(in srgb, var(--zb-color-palette-text-blue) 54%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-blue-variant-88: color-mix(in srgb, var(--zb-color-palette-text-blue) 88%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-blue-variant-74: color-mix(in srgb, var(--zb-color-palette-text-blue) 74%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-blue-variant-60: color-mix(in srgb, var(--zb-color-palette-text-blue) 60%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-blue-variant-46: color-mix(in srgb, var(--zb-color-palette-text-blue) 46%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-purple-variant-82: color-mix(in srgb, var(--zb-color-palette-text-purple) 82%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-purple-variant-68: color-mix(in srgb, var(--zb-color-palette-text-purple) 68%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-purple-variant-54: color-mix(in srgb, var(--zb-color-palette-text-purple) 54%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-purple-variant-88: color-mix(in srgb, var(--zb-color-palette-text-purple) 88%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-purple-variant-74: color-mix(in srgb, var(--zb-color-palette-text-purple) 74%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-purple-variant-60: color-mix(in srgb, var(--zb-color-palette-text-purple) 60%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-purple-variant-46: color-mix(in srgb, var(--zb-color-palette-text-purple) 46%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-pink-variant-82: color-mix(in srgb, var(--zb-color-palette-text-pink) 82%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-pink-variant-68: color-mix(in srgb, var(--zb-color-palette-text-pink) 68%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-pink-variant-54: color-mix(in srgb, var(--zb-color-palette-text-pink) 54%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-pink-variant-88: color-mix(in srgb, var(--zb-color-palette-text-pink) 88%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-pink-variant-74: color-mix(in srgb, var(--zb-color-palette-text-pink) 74%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-pink-variant-60: color-mix(in srgb, var(--zb-color-palette-text-pink) 60%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-pink-variant-46: color-mix(in srgb, var(--zb-color-palette-text-pink) 46%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-red-variant-82: color-mix(in srgb, var(--zb-color-palette-text-red) 82%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-red-variant-68: color-mix(in srgb, var(--zb-color-palette-text-red) 68%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-red-variant-54: color-mix(in srgb, var(--zb-color-palette-text-red) 54%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-red-variant-88: color-mix(in srgb, var(--zb-color-palette-text-red) 88%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-red-variant-74: color-mix(in srgb, var(--zb-color-palette-text-red) 74%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-red-variant-60: color-mix(in srgb, var(--zb-color-palette-text-red) 60%, var(--zb-color-surface-background-canvas));
-  --zb-color-palette-background-red-variant-46: color-mix(in srgb, var(--zb-color-palette-text-red) 46%, var(--zb-color-surface-background-canvas));
+  --zb-color-palette-background-gray-variant-82: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-gray) 82%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-gray-variant-68: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-gray) 68%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-gray-variant-54: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-gray) 54%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-gray-variant-88: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-gray) 88%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-gray-variant-74: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-gray) 74%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-gray-variant-60: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-gray) 60%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-gray-variant-46: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-gray) 46%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-brown-variant-82: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-brown) 82%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-brown-variant-68: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-brown) 68%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-brown-variant-54: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-brown) 54%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-brown-variant-88: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-brown) 88%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-brown-variant-74: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-brown) 74%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-brown-variant-60: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-brown) 60%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-brown-variant-46: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-brown) 46%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-orange-variant-82: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-orange) 82%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-orange-variant-68: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-orange) 68%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-orange-variant-54: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-orange) 54%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-orange-variant-88: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-orange) 88%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-orange-variant-74: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-orange) 74%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-orange-variant-60: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-orange) 60%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-orange-variant-46: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-orange) 46%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-yellow-variant-82: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-yellow) 82%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-yellow-variant-68: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-yellow) 68%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-yellow-variant-54: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-yellow) 54%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-yellow-variant-88: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-yellow) 88%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-yellow-variant-74: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-yellow) 74%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-yellow-variant-60: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-yellow) 60%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-yellow-variant-46: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-yellow) 46%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-green-variant-82: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-green) 82%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-green-variant-68: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-green) 68%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-green-variant-54: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-green) 54%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-green-variant-88: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-green) 88%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-green-variant-74: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-green) 74%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-green-variant-60: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-green) 60%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-green-variant-46: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-green) 46%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-blue-variant-82: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-blue) 82%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-blue-variant-68: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-blue) 68%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-blue-variant-54: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-blue) 54%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-blue-variant-88: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-blue) 88%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-blue-variant-74: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-blue) 74%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-blue-variant-60: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-blue) 60%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-blue-variant-46: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-blue) 46%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-purple-variant-82: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-purple) 82%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-purple-variant-68: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-purple) 68%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-purple-variant-54: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-purple) 54%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-purple-variant-88: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-purple) 88%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-purple-variant-74: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-purple) 74%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-purple-variant-60: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-purple) 60%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-purple-variant-46: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-purple) 46%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-pink-variant-82: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-pink) 82%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-pink-variant-68: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-pink) 68%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-pink-variant-54: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-pink) 54%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-pink-variant-88: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-pink) 88%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-pink-variant-74: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-pink) 74%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-pink-variant-60: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-pink) 60%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-pink-variant-46: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-pink) 46%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-red-variant-82: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-red) 82%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-red-variant-68: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-red) 68%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-red-variant-54: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-red) 54%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-red-variant-88: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-red) 88%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-red-variant-74: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-red) 74%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-red-variant-60: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-red) 60%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-palette-background-red-variant-46: color-mix(
+    in srgb,
+    var(--zb-color-palette-text-red) 46%,
+    var(--zb-color-surface-background-canvas)
+  );
 
   /* Fixed semantic black and white */
   --zb-color-data-background-media: #000000;
@@ -154,26 +406,98 @@
   --zb-color-effect-shadow-base: #000000;
 
   /* Derived application roles */
-  --zb-color-effect-background-backdrop: color-mix(in srgb, var(--zb-color-surface-background-canvas) 90%, transparent);
-  --zb-color-effect-background-scrim: color-mix(in srgb, var(--zb-color-effect-shadow-base) 50%, transparent);
-  --zb-color-effect-scrollbar-default: color-mix(in srgb, var(--zb-color-content-text-secondary) 22%, transparent);
-  --zb-color-effect-scrollbar-firefox: color-mix(in srgb, var(--zb-color-content-text-secondary) 24%, transparent);
-  --zb-color-effect-scrollbar-hover: color-mix(in srgb, var(--zb-color-content-text-secondary) 32%, transparent);
-  --zb-color-indicator-background-muted: color-mix(in srgb, var(--zb-color-content-text-secondary) 40%, transparent);
-  --zb-color-selection-background-editor: color-mix(in srgb, var(--zb-color-action-ring-focus) 14%, transparent);
-  --zb-color-selection-background-row: color-mix(in srgb, var(--zb-color-action-background-selected) 10%, var(--zb-color-surface-background-canvas));
-  --zb-color-data-border-timeline-grid: color-mix(in srgb, var(--zb-color-border-stroke-default) 72%, transparent);
+  --zb-color-effect-background-backdrop: color-mix(
+    in srgb,
+    var(--zb-color-surface-background-canvas) 90%,
+    transparent
+  );
+  --zb-color-effect-background-scrim: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 50%,
+    transparent
+  );
+  --zb-color-effect-scrollbar-default: color-mix(
+    in srgb,
+    var(--zb-color-content-text-secondary) 22%,
+    transparent
+  );
+  --zb-color-effect-scrollbar-firefox: color-mix(
+    in srgb,
+    var(--zb-color-content-text-secondary) 24%,
+    transparent
+  );
+  --zb-color-effect-scrollbar-hover: color-mix(
+    in srgb,
+    var(--zb-color-content-text-secondary) 32%,
+    transparent
+  );
+  --zb-color-indicator-background-muted: color-mix(
+    in srgb,
+    var(--zb-color-content-text-secondary) 40%,
+    transparent
+  );
+  --zb-color-selection-background-editor: color-mix(
+    in srgb,
+    var(--zb-color-action-ring-focus) 14%,
+    transparent
+  );
+  --zb-color-selection-background-row: color-mix(
+    in srgb,
+    var(--zb-color-action-background-selected) 10%,
+    var(--zb-color-surface-background-canvas)
+  );
+  --zb-color-data-border-timeline-grid: color-mix(
+    in srgb,
+    var(--zb-color-border-stroke-default) 72%,
+    transparent
+  );
   --zb-color-data-background-bar: var(--zb-color-action-background-selected);
   --zb-color-data-text-on-bar: var(--zb-color-action-text-on-selected);
-  --zb-color-effect-shadow-pane: color-mix(in srgb, var(--zb-color-effect-shadow-base) 22%, transparent);
-  --zb-color-effect-shadow-2xs: color-mix(in srgb, var(--zb-color-effect-shadow-base) 5%, transparent);
-  --zb-color-effect-shadow-xs: color-mix(in srgb, var(--zb-color-effect-shadow-base) 5%, transparent);
-  --zb-color-effect-shadow-sm: color-mix(in srgb, var(--zb-color-effect-shadow-base) 10%, transparent);
-  --zb-color-effect-shadow-default: color-mix(in srgb, var(--zb-color-effect-shadow-base) 10%, transparent);
-  --zb-color-effect-shadow-md: color-mix(in srgb, var(--zb-color-effect-shadow-base) 10%, transparent);
-  --zb-color-effect-shadow-lg: color-mix(in srgb, var(--zb-color-effect-shadow-base) 10%, transparent);
-  --zb-color-effect-shadow-xl: color-mix(in srgb, var(--zb-color-effect-shadow-base) 10%, transparent);
-  --zb-color-effect-shadow-2xl: color-mix(in srgb, var(--zb-color-effect-shadow-base) 25%, transparent);
+  --zb-color-effect-shadow-pane: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 22%,
+    transparent
+  );
+  --zb-color-effect-shadow-2xs: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 5%,
+    transparent
+  );
+  --zb-color-effect-shadow-xs: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 5%,
+    transparent
+  );
+  --zb-color-effect-shadow-sm: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 10%,
+    transparent
+  );
+  --zb-color-effect-shadow-default: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 10%,
+    transparent
+  );
+  --zb-color-effect-shadow-md: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 10%,
+    transparent
+  );
+  --zb-color-effect-shadow-lg: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 10%,
+    transparent
+  );
+  --zb-color-effect-shadow-xl: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 10%,
+    transparent
+  );
+  --zb-color-effect-shadow-2xl: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 25%,
+    transparent
+  );
 }
 
 .dark {
@@ -232,17 +556,61 @@
   --zb-color-palette-text-red: #e26661;
   --zb-color-palette-background-red-subtle: #5a2d2b;
   --zb-color-palette-text-on-subtle: #ffffff;
-  --zb-color-effect-background-backdrop: color-mix(in srgb, var(--zb-color-surface-background-canvas) 90%, transparent);
-  --zb-color-effect-background-scrim: color-mix(in srgb, var(--zb-color-effect-shadow-base) 72%, transparent);
-  --zb-color-selection-background-editor: color-mix(in srgb, var(--zb-color-action-ring-focus) 22%, transparent);
-  --zb-color-effect-shadow-2xs: color-mix(in srgb, var(--zb-color-effect-shadow-base) 30%, transparent);
-  --zb-color-effect-shadow-xs: color-mix(in srgb, var(--zb-color-effect-shadow-base) 35%, transparent);
-  --zb-color-effect-shadow-sm: color-mix(in srgb, var(--zb-color-effect-shadow-base) 40%, transparent);
-  --zb-color-effect-shadow-default: color-mix(in srgb, var(--zb-color-effect-shadow-base) 45%, transparent);
-  --zb-color-effect-shadow-md: color-mix(in srgb, var(--zb-color-effect-shadow-base) 45%, transparent);
-  --zb-color-effect-shadow-lg: color-mix(in srgb, var(--zb-color-effect-shadow-base) 50%, transparent);
-  --zb-color-effect-shadow-xl: color-mix(in srgb, var(--zb-color-effect-shadow-base) 50%, transparent);
-  --zb-color-effect-shadow-2xl: color-mix(in srgb, var(--zb-color-effect-shadow-base) 55%, transparent);
+  --zb-color-effect-background-backdrop: color-mix(
+    in srgb,
+    var(--zb-color-surface-background-canvas) 90%,
+    transparent
+  );
+  --zb-color-effect-background-scrim: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 72%,
+    transparent
+  );
+  --zb-color-selection-background-editor: color-mix(
+    in srgb,
+    var(--zb-color-action-ring-focus) 22%,
+    transparent
+  );
+  --zb-color-effect-shadow-2xs: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 30%,
+    transparent
+  );
+  --zb-color-effect-shadow-xs: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 35%,
+    transparent
+  );
+  --zb-color-effect-shadow-sm: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 40%,
+    transparent
+  );
+  --zb-color-effect-shadow-default: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 45%,
+    transparent
+  );
+  --zb-color-effect-shadow-md: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 45%,
+    transparent
+  );
+  --zb-color-effect-shadow-lg: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 50%,
+    transparent
+  );
+  --zb-color-effect-shadow-xl: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 50%,
+    transparent
+  );
+  --zb-color-effect-shadow-2xl: color-mix(
+    in srgb,
+    var(--zb-color-effect-shadow-base) 55%,
+    transparent
+  );
 }
 
 :root[data-theme-family="notion"],

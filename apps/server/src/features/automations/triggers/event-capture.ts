@@ -6,9 +6,7 @@ import type {
 import { databaseAutomationMutationFactSchema } from "@zilobase/features/automations";
 
 import { db, type Database } from "../../../infrastructure/database";
-import {
-  databaseAutomationEventWindow,
-} from "../../../infrastructure/database/schema";
+import { databaseAutomationEventWindow } from "../../../infrastructure/database/schema";
 
 export const DATABASE_AUTOMATION_EVENT_WINDOW_MS = 3_000;
 
@@ -46,8 +44,7 @@ const eligibleOrigins = new Set<DatabaseMutationOrigin>([
   "ai",
 ]);
 
-const jsonValue = (value: unknown): unknown =>
-  value === undefined ? null : value;
+const jsonValue = (value: unknown): unknown => (value === undefined ? null : value);
 
 const canonicalValue = (value: unknown): string => {
   if (value === undefined || value === null) {
@@ -68,10 +65,8 @@ const canonicalValue = (value: unknown): string => {
   return `${typeof value}:${String(value)}`;
 };
 
-export const databaseAutomationValuesEqual = (
-  left: unknown,
-  right: unknown,
-) => canonicalValue(left) === canonicalValue(right);
+export const databaseAutomationValuesEqual = (left: unknown, right: unknown) =>
+  canonicalValue(left) === canonicalValue(right);
 
 export function mergeDatabaseAutomationEventWindowState(
   current: DatabaseAutomationEventWindowState,
@@ -98,10 +93,7 @@ export function mergeDatabaseAutomationEventWindowState(
     afterValues[value.propertyId] = jsonValue(value.after);
 
     if (
-      databaseAutomationValuesEqual(
-        beforeValues[value.propertyId],
-        afterValues[value.propertyId],
-      )
+      databaseAutomationValuesEqual(beforeValues[value.propertyId], afterValues[value.propertyId])
     ) {
       delete beforeValues[value.propertyId];
       delete afterValues[value.propertyId];
@@ -152,11 +144,7 @@ const factGroupKey = (fact: DatabaseAutomationMutationFact) =>
 
 export const databaseAutomationFactLockKeys = (
   rows: ReadonlyArray<{ dataSourceId: string; rowId: string }>,
-) => [
-    ...new Set(
-      rows.map((row) => JSON.stringify([row.dataSourceId, row.rowId])),
-    ),
-  ].sort();
+) => [...new Set(rows.map((row) => JSON.stringify([row.dataSourceId, row.rowId])))].sort();
 
 export async function lockDatabaseAutomationFactRows(
   tx: Pick<DatabaseTransaction, "execute">,
@@ -164,9 +152,7 @@ export async function lockDatabaseAutomationFactRows(
 ) {
   const keys = databaseAutomationFactLockKeys(rows);
   for (const key of keys) {
-    await tx.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${key}, 0))`,
-    );
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${key}, 0))`);
   }
 }
 
@@ -178,9 +164,7 @@ export async function captureDatabaseAutomationMutationFacts(
     clock?: () => Date;
   } = {},
 ) {
-  const facts = candidates.map((fact) =>
-    databaseAutomationMutationFactSchema.parse(fact),
-  );
+  const facts = candidates.map((fact) => databaseAutomationMutationFactSchema.parse(fact));
   const grouped = new Map<string, DatabaseAutomationMutationFact[]>();
   for (const fact of facts) {
     if (!eligibleOrigins.has(fact.origin)) {
@@ -202,22 +186,21 @@ export async function captureDatabaseAutomationMutationFacts(
     const now = options.clock?.() ?? new Date();
     let existing: typeof databaseAutomationEventWindow.$inferSelect | undefined = (
       await tx
-      .select()
-      .from(databaseAutomationEventWindow)
-      .where(
-        and(
-          eq(databaseAutomationEventWindow.dataSourceId, first.dataSourceId),
-          eq(databaseAutomationEventWindow.rowId, first.rowId),
-          eq(databaseAutomationEventWindow.status, "accumulating"),
-        ),
-      )
-      .orderBy(asc(databaseAutomationEventWindow.openedAt))
-      .limit(1)
+        .select()
+        .from(databaseAutomationEventWindow)
+        .where(
+          and(
+            eq(databaseAutomationEventWindow.dataSourceId, first.dataSourceId),
+            eq(databaseAutomationEventWindow.rowId, first.rowId),
+            eq(databaseAutomationEventWindow.status, "accumulating"),
+          ),
+        )
+        .orderBy(asc(databaseAutomationEventWindow.openedAt))
+        .limit(1)
     )[0];
 
     if (existing && existing.closesAt.getTime() <= now.getTime()) {
-      const discarded =
-        !existing.rowAdded && existing.changedPropertyIds.length === 0;
+      const discarded = !existing.rowAdded && existing.changedPropertyIds.length === 0;
       await tx
         .update(databaseAutomationEventWindow)
         .set({
@@ -272,9 +255,7 @@ export async function captureDatabaseAutomationMutationFacts(
         })
         .where(eq(databaseAutomationEventWindow.id, existing.id));
     } else {
-      const closesAt = new Date(
-        now.getTime() + DATABASE_AUTOMATION_EVENT_WINDOW_MS,
-      );
+      const closesAt = new Date(now.getTime() + DATABASE_AUTOMATION_EVENT_WINDOW_MS);
       const id = crypto.randomUUID();
       await tx.insert(databaseAutomationEventWindow).values({
         actorIds: state.actorIds,
@@ -389,9 +370,7 @@ export async function getDatabaseAutomationEventCaptureMetrics() {
 
   return rows.map((row) => ({
     count: row.count,
-    oldestAgeMs: row.oldestOpenedAt
-      ? Math.max(0, Date.now() - row.oldestOpenedAt.getTime())
-      : null,
+    oldestAgeMs: row.oldestOpenedAt ? Math.max(0, Date.now() - row.oldestOpenedAt.getTime()) : null,
     status: row.status,
   }));
 }

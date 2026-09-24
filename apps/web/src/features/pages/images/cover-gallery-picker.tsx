@@ -1,16 +1,12 @@
-import { Check, Palette } from "@/shared/components/icons"
-import { Button } from "@/shared/ui/button"
-import { ButtonGroup } from "@/shared/ui/button-group"
-import { Card, CardContent } from "@/shared/ui/card"
-import { Field, FieldGroup, FieldLabel } from "@/shared/ui/field"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupText,
-} from "@/shared/ui/input-group"
-import { Slider } from "@/shared/ui/slider"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
-import { useEffect, useId, useMemo, useState } from "react"
+import { Check, Palette } from "@/shared/components/icons";
+import { Button } from "@/shared/ui/button";
+import { ButtonGroup } from "@/shared/ui/button-group";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Field, FieldGroup, FieldLabel } from "@/shared/ui/field";
+import { InputGroup, InputGroupAddon, InputGroupText } from "@/shared/ui/input-group";
+import { Slider } from "@/shared/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import {
   buildCoverGalleryDataUrl,
@@ -22,49 +18,42 @@ import {
   type CoverGalleryConfig,
   type DitherCoverConfig,
   type GradientCoverConfig,
-} from "./cover-gallery"
+} from "./cover-gallery";
 
-type CoverKind = CoverGalleryConfig["kind"]
+type CoverKind = CoverGalleryConfig["kind"];
 
 type CoverGalleryPickerProps = {
-  initialCover?: string
-  onChange: (url: string) => void
-}
+  initialCover?: string;
+  onChange: (url: string) => void;
+};
 
-export function CoverGalleryPicker({
-  initialCover,
-  onChange,
-}: CoverGalleryPickerProps) {
-  const [config, setConfig] = useState<CoverGalleryConfig>(() =>
-    parseCoverGalleryDataUrl(initialCover) ?? defaultCoverGalleryConfig,
-  )
-  const [customizing, setCustomizing] = useState(false)
-  const previewUrl = useMemo(() => buildCoverGalleryDataUrl(config), [config])
+export function CoverGalleryPicker({ initialCover, onChange }: CoverGalleryPickerProps) {
+  const [config, setConfig] = useState<CoverGalleryConfig>(
+    () => parseCoverGalleryDataUrl(initialCover) ?? defaultCoverGalleryConfig,
+  );
+  const [customizing, setCustomizing] = useState(false);
+  const previewUrl = useMemo(() => buildCoverGalleryDataUrl(config), [config]);
 
   useEffect(() => {
-    const parsed = parseCoverGalleryDataUrl(initialCover)
-    if (parsed) setConfig(parsed)
-  }, [initialCover])
+    const parsed = parseCoverGalleryDataUrl(initialCover);
+    if (parsed) setConfig(parsed);
+  }, [initialCover]);
 
   const updateConfig = (nextConfig: CoverGalleryConfig) => {
-    setConfig(nextConfig)
-    onChange(buildCoverGalleryDataUrl(nextConfig))
-  }
+    setConfig(nextConfig);
+    onChange(buildCoverGalleryDataUrl(nextConfig));
+  };
 
   const chooseKind = (kind: CoverKind) => {
-    if (kind === "solid") updateConfig(solidCoverPresets[0])
-    if (kind === "gradient") updateConfig(gradientCoverPresets[0])
-    if (kind === "dither") updateConfig(ditherCoverPresets[0])
-  }
+    if (kind === "solid") updateConfig(solidCoverPresets[0]);
+    if (kind === "gradient") updateConfig(gradientCoverPresets[0]);
+    if (kind === "dither") updateConfig(ditherCoverPresets[0]);
+  };
 
   return (
     <div className="min-w-0 space-y-4">
       <Card className="relative p-0" size="sm">
-        <img
-          alt="Cover preview"
-          className="aspect-[3/1] w-full object-cover"
-          src={previewUrl}
-        />
+        <img alt="Cover preview" className="aspect-[3/1] w-full object-cover" src={previewUrl} />
         <Button
           aria-pressed={customizing}
           className="absolute right-2 top-2 bg-effect-backdrop shadow-sm backdrop-blur"
@@ -82,7 +71,7 @@ export function CoverGalleryPicker({
         className="gap-3"
         onValueChange={(value) => {
           if (value === "solid" || value === "gradient" || value === "dither") {
-            chooseKind(value)
+            chooseKind(value);
           }
         }}
         value={config.kind}
@@ -96,11 +85,7 @@ export function CoverGalleryPicker({
           {customizing ? (
             <CoverCustomizer config={config} onChange={updateConfig} />
           ) : (
-            <PresetGrid
-              activeConfig={config}
-              onSelect={updateConfig}
-              presets={solidCoverPresets}
-            />
+            <PresetGrid activeConfig={config} onSelect={updateConfig} presets={solidCoverPresets} />
           )}
         </TabsContent>
         <TabsContent value="gradient">
@@ -127,15 +112,15 @@ export function CoverGalleryPicker({
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
 
 function CoverCustomizer({
   config,
   onChange,
 }: {
-  config: CoverGalleryConfig
-  onChange: (config: CoverGalleryConfig) => void
+  config: CoverGalleryConfig;
+  onChange: (config: CoverGalleryConfig) => void;
 }) {
   return (
     <Card size="sm">
@@ -154,12 +139,10 @@ function CoverCustomizer({
           <GradientControls config={config} onChange={onChange} />
         ) : null}
 
-        {config.kind === "dither" ? (
-          <DitherControls config={config} onChange={onChange} />
-        ) : null}
+        {config.kind === "dither" ? <DitherControls config={config} onChange={onChange} /> : null}
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function PresetGrid({
@@ -167,15 +150,15 @@ function PresetGrid({
   onSelect,
   presets,
 }: {
-  activeConfig: CoverGalleryConfig
-  onSelect: (config: CoverGalleryConfig) => void
-  presets: CoverGalleryConfig[]
+  activeConfig: CoverGalleryConfig;
+  onSelect: (config: CoverGalleryConfig) => void;
+  presets: CoverGalleryConfig[];
 }) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {presets.map((preset, index) => {
-        const url = buildCoverGalleryDataUrl(preset)
-        const selected = JSON.stringify(preset) === JSON.stringify(activeConfig)
+        const url = buildCoverGalleryDataUrl(preset);
+        const selected = JSON.stringify(preset) === JSON.stringify(activeConfig);
 
         return (
           <Button
@@ -194,10 +177,10 @@ function PresetGrid({
               </span>
             ) : null}
           </Button>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
 function ColorControl({
@@ -205,11 +188,11 @@ function ColorControl({
   onChange,
   value,
 }: {
-  label: string
-  onChange: (value: string) => void
-  value: string
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
 }) {
-  const inputId = useId()
+  const inputId = useId();
 
   return (
     <Field className="gap-1.5">
@@ -230,7 +213,7 @@ function ColorControl({
         </InputGroupText>
       </InputGroup>
     </Field>
-  )
+  );
 }
 
 function RangeControl({
@@ -241,21 +224,22 @@ function RangeControl({
   suffix,
   value,
 }: {
-  label: string
-  maximum: number
-  minimum?: number
-  onChange: (value: number) => void
-  suffix?: string
-  value: number
+  label: string;
+  maximum: number;
+  minimum?: number;
+  onChange: (value: number) => void;
+  suffix?: string;
+  value: number;
 }) {
-  const inputId = useId()
+  const inputId = useId();
 
   return (
     <Field className="gap-2">
       <span className="flex items-center justify-between gap-2">
         <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
         <span className="text-xs/relaxed tabular-nums text-content-secondary">
-          {value}{suffix}
+          {value}
+          {suffix}
         </span>
       </span>
       <Slider
@@ -268,28 +252,28 @@ function RangeControl({
         value={[value]}
       />
     </Field>
-  )
+  );
 }
 
 function GradientControls({
   config,
   onChange,
 }: {
-  config: GradientCoverConfig
-  onChange: (config: GradientCoverConfig) => void
+  config: GradientCoverConfig;
+  onChange: (config: GradientCoverConfig) => void;
 }) {
   return (
     <FieldGroup className="grid gap-4 sm:grid-cols-2">
-        <ColorControl
-          label="Start"
-          onChange={(startColor) => onChange({ ...config, startColor })}
-          value={config.startColor}
-        />
-        <ColorControl
-          label="End"
-          onChange={(endColor) => onChange({ ...config, endColor })}
-          value={config.endColor}
-        />
+      <ColorControl
+        label="Start"
+        onChange={(startColor) => onChange({ ...config, startColor })}
+        value={config.startColor}
+      />
+      <ColorControl
+        label="End"
+        onChange={(endColor) => onChange({ ...config, endColor })}
+        value={config.endColor}
+      />
       <Field className="gap-1.5">
         <FieldLabel>Type</FieldLabel>
         <ButtonGroup variant="connected" width="full">
@@ -317,28 +301,28 @@ function GradientControls({
         />
       ) : null}
     </FieldGroup>
-  )
+  );
 }
 
 function DitherControls({
   config,
   onChange,
 }: {
-  config: DitherCoverConfig
-  onChange: (config: DitherCoverConfig) => void
+  config: DitherCoverConfig;
+  onChange: (config: DitherCoverConfig) => void;
 }) {
   return (
     <FieldGroup className="grid gap-4 sm:grid-cols-2">
-        <ColorControl
-          label="Background"
-          onChange={(backgroundColor) => onChange({ ...config, backgroundColor })}
-          value={config.backgroundColor}
-        />
-        <ColorControl
-          label="Dots"
-          onChange={(foregroundColor) => onChange({ ...config, foregroundColor })}
-          value={config.foregroundColor}
-        />
+      <ColorControl
+        label="Background"
+        onChange={(backgroundColor) => onChange({ ...config, backgroundColor })}
+        value={config.backgroundColor}
+      />
+      <ColorControl
+        label="Dots"
+        onChange={(foregroundColor) => onChange({ ...config, foregroundColor })}
+        value={config.foregroundColor}
+      />
       <RangeControl
         label="Wave frequency"
         maximum={10}
@@ -367,5 +351,5 @@ function DitherControls({
         value={config.angle}
       />
     </FieldGroup>
-  )
+  );
 }

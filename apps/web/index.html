@@ -37,9 +37,7 @@
           const mode = savedTheme;
           const family = localStorage.getItem("zilobase-theme-family");
 
-          const resolvedMode = ["light", "dark"].includes(mode)
-            ? mode
-            : systemTheme;
+          const resolvedMode = ["light", "dark"].includes(mode) ? mode : systemTheme;
           const resolvedFamily = families.includes(family) ? family : "default";
 
           document.documentElement.classList.remove("light", "dark");

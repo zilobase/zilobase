@@ -1,9 +1,6 @@
 import { DatabaseViewTabAppearance } from "./database-view-tab-appearance";
 import { getDatabaseViewTypePresentation } from "../view-settings/model/view-type-options";
-import {
-  getVisibleToolbarViewCount,
-  partitionToolbarViews,
-} from "../model/toolbar-view-overflow";
+import { getVisibleToolbarViewCount, partitionToolbarViews } from "../model/toolbar-view-overflow";
 import { DatabaseToolbarActions } from "./database-toolbar-actions";
 import {
   useLayoutEffect,
@@ -112,18 +109,13 @@ export function DatabaseViewToolbar({
   const overflowTriggerMeasurementRef = useRef<HTMLSpanElement | null>(null);
   const pendingViewScrollRef = useRef<DatabaseViewScrollSnapshot | null>(null);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [viewIconPickerOpenId, setViewIconPickerOpenId] = useState<
-    string | null
-  >(null);
+  const [viewIconPickerOpenId, setViewIconPickerOpenId] = useState<string | null>(null);
   const [titleActionsOpen, setTitleActionsOpen] = useState(false);
   const [openViewMenuId, setOpenViewMenuId] = useState<string | null>(null);
-  const [pendingDeleteView, setPendingDeleteView] =
-    useState<DatabaseViewTab | null>(null);
+  const [pendingDeleteView, setPendingDeleteView] = useState<DatabaseViewTab | null>(null);
   const [addViewMenuOpen, setAddViewMenuOpen] = useState(false);
   const [viewSwitcherOpen, setViewSwitcherOpen] = useState(false);
-  const [visibleViewCount, setVisibleViewCount] = useState(
-    Number.MAX_SAFE_INTEGER,
-  );
+  const [visibleViewCount, setVisibleViewCount] = useState(Number.MAX_SAFE_INTEGER);
   const [localViewSettingsOpen, setLocalViewSettingsOpen] = useState(false);
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [formPreviewOpen, setFormPreviewOpen] = useState(false);
@@ -202,8 +194,8 @@ export function DatabaseViewToolbar({
   const isExternalDataSourceView = (view?: DatabaseViewTab | null) =>
     Boolean(
       view?.sourceParentDatabaseId &&
-        hostDatabaseId &&
-        view.sourceParentDatabaseId !== hostDatabaseId,
+      hostDatabaseId &&
+      view.sourceParentDatabaseId !== hostDatabaseId,
     );
 
   const selectActiveView = (viewId: string) => {
@@ -211,9 +203,7 @@ export function DatabaseViewToolbar({
       return;
     }
 
-    pendingViewScrollRef.current = captureDatabaseViewScroll(
-      toolbarRef.current,
-    );
+    pendingViewScrollRef.current = captureDatabaseViewScroll(toolbarRef.current);
     setActiveViewId(viewId);
   };
   const addView = (type: DatabaseViewType) => {
@@ -264,20 +254,13 @@ export function DatabaseViewToolbar({
     const measurements = viewTabMeasurementsRef.current;
     const overflowTrigger = overflowTriggerMeasurementRef.current;
 
-    if (
-      !navigation ||
-      !measurements ||
-      !overflowTrigger ||
-      typeof ResizeObserver === "undefined"
-    ) {
+    if (!navigation || !measurements || !overflowTrigger || typeof ResizeObserver === "undefined") {
       return;
     }
 
     const measure = () => {
       const tabWidths = Array.from(
-        measurements.querySelectorAll<HTMLElement>(
-          "[data-view-tab-measurement]",
-        ),
+        measurements.querySelectorAll<HTMLElement>("[data-view-tab-measurement]"),
         (tab) => tab.offsetWidth,
       );
       setVisibleViewCount(
@@ -286,9 +269,7 @@ export function DatabaseViewToolbar({
           tabWidths,
           availableWidth: navigation.clientWidth,
           overflowWidth: overflowTrigger.offsetWidth,
-          activeIndex: viewTabs.findIndex(
-            (view) => view.id === activeViewTabId,
-          ),
+          activeIndex: viewTabs.findIndex((view) => view.id === activeViewTabId),
           canAddView: canRenderAddView,
         }),
       );
@@ -420,10 +401,7 @@ export function DatabaseViewToolbar({
             ref={databaseTitleInputRef}
             value={draftDatabaseTitle}
           />
-          <DropDrawer
-            open={titleActionsOpen}
-            onOpenChange={setTitleActionsOpen}
-          >
+          <DropDrawer open={titleActionsOpen} onOpenChange={setTitleActionsOpen}>
             <DropDrawerTrigger asChild>
               <DatabaseViewToolbarButton
                 aria-label="Open database title actions"
@@ -436,16 +414,12 @@ export function DatabaseViewToolbar({
               <DropDrawerItem
                 disabled={!databaseId}
                 onSelect={() =>
-                  openDatabaseFullPage(
-                    activeViewTab?.sourceParentDatabaseId ?? databaseId,
-                  )
+                  openDatabaseFullPage(activeViewTab?.sourceParentDatabaseId ?? databaseId)
                 }
               >
                 <ArrowUpRightIcon />
                 <span>
-                  {isExternalDataSourceView(activeViewTab)
-                    ? "View data source"
-                    : "View database"}
+                  {isExternalDataSourceView(activeViewTab) ? "View data source" : "View database"}
                 </span>
               </DropDrawerItem>
               <DropDrawerItem
@@ -458,8 +432,7 @@ export function DatabaseViewToolbar({
               <DropDrawerSub>
                 <DropDrawerSubTrigger
                   className={cn(
-                    (!canEditDatabaseEmoji || !databaseId) &&
-                      "pointer-events-none opacity-50",
+                    (!canEditDatabaseEmoji || !databaseId) && "pointer-events-none opacity-50",
                   )}
                 >
                   <Smile />
@@ -510,22 +483,16 @@ export function DatabaseViewToolbar({
                 {visibleViewTabs.map((view) => {
                   const isActiveView = view.id === activeViewTabId;
                   const ViewIcon =
-                    view.fallbackIcon ??
-                    getDatabaseViewTypePresentation(view.type).Icon;
+                    view.fallbackIcon ?? getDatabaseViewTypePresentation(view.type).Icon;
                   const sourceParentDatabaseId =
                     view.sourceParentDatabaseId ?? hostDatabaseId ?? databaseId;
-                  const sourceDatabaseName =
-                    view.dataSourceName ?? hostDisplayTitle;
-                  const handleViewContextMenu = (
-                    event: MouseEvent<HTMLButtonElement>,
-                  ) => {
+                  const sourceDatabaseName = view.dataSourceName ?? hostDisplayTitle;
+                  const handleViewContextMenu = (event: MouseEvent<HTMLButtonElement>) => {
                     event.preventDefault();
                     selectActiveView(view.id);
                     setOpenViewMenuId(view.id);
                   };
-                  const handleViewClick = (
-                    event: MouseEvent<HTMLButtonElement>,
-                  ) => {
+                  const handleViewClick = (event: MouseEvent<HTMLButtonElement>) => {
                     if (isActiveView) {
                       return;
                     }
@@ -539,9 +506,7 @@ export function DatabaseViewToolbar({
                     setOpenViewMenuId(null);
                     selectActiveView(view.id);
                   };
-                  const handleViewPointerDownCapture = (
-                    event: PointerEvent<HTMLButtonElement>,
-                  ) => {
+                  const handleViewPointerDownCapture = (event: PointerEvent<HTMLButtonElement>) => {
                     if (isActiveView || event.button !== 0) {
                       return;
                     }
@@ -550,13 +515,8 @@ export function DatabaseViewToolbar({
                     event.stopPropagation();
                     selectInactiveView();
                   };
-                  const handleViewKeyDownCapture = (
-                    event: KeyboardEvent<HTMLButtonElement>,
-                  ) => {
-                    if (
-                      isActiveView ||
-                      (event.key !== "Enter" && event.key !== " ")
-                    ) {
+                  const handleViewKeyDownCapture = (event: KeyboardEvent<HTMLButtonElement>) => {
+                    if (isActiveView || (event.key !== "Enter" && event.key !== " ")) {
                       return;
                     }
 
@@ -587,9 +547,7 @@ export function DatabaseViewToolbar({
                         <DropDrawerSubContent className="w-60">
                           <DropDrawerItem
                             disabled={!sourceParentDatabaseId}
-                            onSelect={() =>
-                              openDatabaseFullPage(sourceParentDatabaseId)
-                            }
+                            onSelect={() => openDatabaseFullPage(sourceParentDatabaseId)}
                           >
                             <ArrowUpRightIcon />
                             <span>
@@ -612,9 +570,7 @@ export function DatabaseViewToolbar({
                         </DropDrawerItem>
                         <DropDrawerItem
                           disabled={!sourceParentDatabaseId}
-                          onSelect={() =>
-                            openDatabaseFullPage(sourceParentDatabaseId)
-                          }
+                          onSelect={() => openDatabaseFullPage(sourceParentDatabaseId)}
                         >
                           <ArrowUpRightIcon />
                           <span>
@@ -629,9 +585,7 @@ export function DatabaseViewToolbar({
                         >
                           <EyeOff />
                           <span>
-                            {showTitle
-                              ? "Hide data source titles"
-                              : "Show data source title"}
+                            {showTitle ? "Hide data source titles" : "Show data source title"}
                           </span>
                         </DropDrawerItem>
                         <DropDrawerSeparator />
@@ -643,9 +597,7 @@ export function DatabaseViewToolbar({
                           <span>Duplicate view</span>
                         </DropDrawerItem>
                         <DropDrawerItem
-                          disabled={
-                            !editable || !databaseId || viewTabs.length <= 1
-                          }
+                          disabled={!editable || !databaseId || viewTabs.length <= 1}
                           onSelect={() => setPendingDeleteView(view)}
                         >
                           <Trash2 />
@@ -714,10 +666,7 @@ export function DatabaseViewToolbar({
                         />
                         <DropDrawerSub>
                           <DropDrawerSubTrigger>
-                            <ToolbarMenuRow
-                              icon={<Paintbrush />}
-                              label="Display as"
-                            />
+                            <ToolbarMenuRow icon={<Paintbrush />} label="Display as" />
                           </DropDrawerSubTrigger>
                           <DropDrawerSubContent width="md">
                             {(
@@ -731,8 +680,7 @@ export function DatabaseViewToolbar({
                                 "form",
                               ] as const
                             ).map((type) => {
-                              const { Icon, label } =
-                                getDatabaseViewTypePresentation(type);
+                              const { Icon, label } = getDatabaseViewTypePresentation(type);
                               return (
                                 <DropDrawerItem
                                   key={type}
@@ -743,9 +691,7 @@ export function DatabaseViewToolbar({
                                   }}
                                 >
                                   <Icon />
-                                  <span>
-                                    {type === "kanban" ? "Board" : label}
-                                  </span>
+                                  <span>{type === "kanban" ? "Board" : label}</span>
                                   {view.type === type ? (
                                     <Check className="ml-auto text-content-primary" />
                                   ) : null}
@@ -773,10 +719,7 @@ export function DatabaseViewToolbar({
               </TabsList>
             </Tabs>
             {overflowViewTabs.length > 0 ? (
-              <DropDrawer
-                onOpenChange={setViewSwitcherOpen}
-                open={viewSwitcherOpen}
-              >
+              <DropDrawer onOpenChange={setViewSwitcherOpen} open={viewSwitcherOpen}>
                 <DropDrawerTrigger asChild>
                   <Button
                     aria-label={`${overflowViewTabs.length} more database views`}
@@ -787,28 +730,19 @@ export function DatabaseViewToolbar({
                     {overflowViewTabs.length} more…
                   </Button>
                 </DropDrawerTrigger>
-                <DropDrawerContent
-                  align="start"
-                  className="w-72 max-w-[calc(100vw-1rem)]"
-                >
+                <DropDrawerContent align="start" className="w-72 max-w-[calc(100vw-1rem)]">
                   <DatabaseSearchableMenuItems
                     inputAriaLabel="Search database views"
                     inputPlaceholder="Search for a view..."
                     open={viewSwitcherOpen}
                     options={viewTabs.map((view) => ({
-                      label:
-                        view.id === activeViewTabId
-                          ? draftViewTitle
-                          : view.name,
+                      label: view.id === activeViewTabId ? draftViewTitle : view.name,
                       value: view.id,
                     }))}
                     renderOption={(option) => {
-                      const view = viewTabs.find(
-                        (item) => item.id === option.value,
-                      )!;
+                      const view = viewTabs.find((item) => item.id === option.value)!;
                       const ViewIcon =
-                        view.fallbackIcon ??
-                        getDatabaseViewTypePresentation(view.type).Icon;
+                        view.fallbackIcon ?? getDatabaseViewTypePresentation(view.type).Icon;
 
                       return (
                         <DropDrawerItem
@@ -823,9 +757,7 @@ export function DatabaseViewToolbar({
                             <ViewIcon />
                           )}
                           <span className="truncate">{option.label}</span>
-                          {view.id === activeViewTabId ? (
-                            <Check className="ml-auto" />
-                          ) : null}
+                          {view.id === activeViewTabId ? <Check className="ml-auto" /> : null}
                         </DropDrawerItem>
                       );
                     }}
@@ -834,30 +766,17 @@ export function DatabaseViewToolbar({
               </DropDrawer>
             ) : null}
             {canRenderAddView ? (
-              <DropDrawer
-                onOpenChange={setAddViewMenuOpen}
-                open={addViewMenuOpen}
-              >
+              <DropDrawer onOpenChange={setAddViewMenuOpen} open={addViewMenuOpen}>
                 <DropDrawerTrigger asChild>
                   <DatabaseViewToolbarButton
                     aria-label="Add database view"
                     disabled={!databaseId || isAddingDatabaseView}
                   >
-                    {isAddingDatabaseView ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Plus />
-                    )}
+                    {isAddingDatabaseView ? <Loader2 className="animate-spin" /> : <Plus />}
                   </DatabaseViewToolbarButton>
                 </DropDrawerTrigger>
-                <DropDrawerContent
-                  align="start"
-                  className="w-72 max-w-[calc(100vw-1rem)] p-1"
-                >
-                  <ViewTypeOptionGrid
-                    isOptionDisabled={isAddViewTypeDisabled}
-                    onSelect={addView}
-                  />
+                <DropDrawerContent align="start" className="w-72 max-w-[calc(100vw-1rem)] p-1">
+                  <ViewTypeOptionGrid isOptionDisabled={isAddViewTypeDisabled} onSelect={addView} />
                 </DropDrawerContent>
               </DropDrawer>
             ) : null}
@@ -873,12 +792,8 @@ export function DatabaseViewToolbar({
                   key={view.id}
                 >
                   <span className="size-4 shrink-0" />
-                  <span>
-                    {view.id === activeViewTabId ? draftViewTitle : view.name}
-                  </span>
-                  {isExternalDataSourceView(view) ? (
-                    <span className="size-3 shrink-0" />
-                  ) : null}
+                  <span>{view.id === activeViewTabId ? draftViewTitle : view.name}</span>
+                  {isExternalDataSourceView(view) ? <span className="size-3 shrink-0" /> : null}
                 </span>
               ))}
             </div>
@@ -965,11 +880,7 @@ export function DatabaseViewToolbar({
         isAddingDatabaseView={isAddingDatabaseView}
         onCreateForm={(includeExistingProperties) => {
           setFormDialogOpen(false);
-          addFormView(
-            includeExistingProperties
-              ? []
-              : properties.map((property) => property.id),
-          );
+          addFormView(includeExistingProperties ? [] : properties.map((property) => property.id));
         }}
         onDeleteView={() => {
           if (pendingDeleteView) deleteDatabaseView(pendingDeleteView);

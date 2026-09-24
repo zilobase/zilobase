@@ -1,28 +1,25 @@
 export type DatabaseFormQuestionSettings = {
-  description: string
-  descriptionEnabled: boolean
-  label: string
-  longAnswer: boolean
-  required: boolean
-  syncWithPropertyName: boolean
-}
+  description: string;
+  descriptionEnabled: boolean;
+  label: string;
+  longAnswer: boolean;
+  required: boolean;
+  syncWithPropertyName: boolean;
+};
 
-export type DatabaseFormQuestionSettingsPatch = Partial<
-  DatabaseFormQuestionSettings
->
+export type DatabaseFormQuestionSettingsPatch = Partial<DatabaseFormQuestionSettings>;
 
-export type DatabaseFormQuestionMove = "bottom" | "down" | "top" | "up"
+export type DatabaseFormQuestionMove = "bottom" | "down" | "top" | "up";
 
 export function getDatabaseFormQuestionSettings(
   config: unknown,
   propertyId: string,
   propertyName: string,
 ): DatabaseFormQuestionSettings {
-  const settings = getDatabaseFormQuestionSettingsById(config)[propertyId]
+  const settings = getDatabaseFormQuestionSettingsById(config)[propertyId];
 
   return {
-    description:
-      typeof settings?.description === "string" ? settings.description : "",
+    description: typeof settings?.description === "string" ? settings.description : "",
     descriptionEnabled: settings?.descriptionEnabled === true,
     label:
       settings?.syncWithPropertyName === false &&
@@ -33,30 +30,25 @@ export function getDatabaseFormQuestionSettings(
     longAnswer: settings?.longAnswer === true,
     required: settings?.required === true,
     syncWithPropertyName: settings?.syncWithPropertyName !== false,
-  }
+  };
 }
 
 export function getDatabaseFormQuestionSettingsById(
   config: unknown,
 ): Record<string, DatabaseFormQuestionSettingsPatch> {
-  if (!config || typeof config !== "object" || Array.isArray(config)) return {}
+  if (!config || typeof config !== "object" || Array.isArray(config)) return {};
 
-  const formQuestions = (config as { formQuestions?: unknown }).formQuestions
+  const formQuestions = (config as { formQuestions?: unknown }).formQuestions;
 
-  if (
-    !formQuestions ||
-    typeof formQuestions !== "object" ||
-    Array.isArray(formQuestions)
-  ) {
-    return {}
+  if (!formQuestions || typeof formQuestions !== "object" || Array.isArray(formQuestions)) {
+    return {};
   }
 
   return Object.fromEntries(
     Object.entries(formQuestions).filter(
-      ([, settings]) =>
-        settings && typeof settings === "object" && !Array.isArray(settings),
+      ([, settings]) => settings && typeof settings === "object" && !Array.isArray(settings),
     ),
-  ) as Record<string, DatabaseFormQuestionSettingsPatch>
+  ) as Record<string, DatabaseFormQuestionSettingsPatch>;
 }
 
 export function moveDatabaseFormQuestion(
@@ -64,9 +56,9 @@ export function moveDatabaseFormQuestion(
   questionId: string,
   destination: DatabaseFormQuestionMove,
 ) {
-  const currentIndex = questionIds.indexOf(questionId)
+  const currentIndex = questionIds.indexOf(questionId);
 
-  if (currentIndex < 0 || questionIds.length < 2) return questionIds
+  if (currentIndex < 0 || questionIds.length < 2) return questionIds;
 
   const nextIndex =
     destination === "top"
@@ -75,12 +67,12 @@ export function moveDatabaseFormQuestion(
         ? questionIds.length - 1
         : destination === "up"
           ? Math.max(0, currentIndex - 1)
-          : Math.min(questionIds.length - 1, currentIndex + 1)
+          : Math.min(questionIds.length - 1, currentIndex + 1);
 
-  if (nextIndex === currentIndex) return questionIds
+  if (nextIndex === currentIndex) return questionIds;
 
-  const nextQuestionIds = [...questionIds]
-  nextQuestionIds.splice(currentIndex, 1)
-  nextQuestionIds.splice(nextIndex, 0, questionId)
-  return nextQuestionIds
+  const nextQuestionIds = [...questionIds];
+  nextQuestionIds.splice(currentIndex, 1);
+  nextQuestionIds.splice(nextIndex, 0, questionId);
+  return nextQuestionIds;
 }

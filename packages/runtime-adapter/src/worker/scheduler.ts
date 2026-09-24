@@ -23,7 +23,9 @@ export function createWorkerScheduler(
         if (!cancelled) await operation();
       });
       waitUntil(promise);
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     },
     async setAlarm(timestamp) {
       if (!storage) throw new Error("Durable Object alarm storage is required");

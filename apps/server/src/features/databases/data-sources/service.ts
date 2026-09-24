@@ -13,10 +13,7 @@ export async function updateDataSourceService(input: {
   name?: string;
   userId: string;
 }) {
-  const existing = await requireDataSourceEditAccess(
-    input.dataSourceId,
-    input.userId,
-  );
+  const existing = await requireDataSourceEditAccess(input.dataSourceId, input.userId);
   const values: Partial<typeof dataSource.$inferInsert> = {
     updatedAt: new Date(),
   };
@@ -31,16 +28,12 @@ export async function updateDataSourceService(input: {
       env: input.env,
     },
     async (tx) => {
-      await tx
-        .update(dataSource)
-        .set(values)
-        .where(eq(dataSource.id, existing.id))
+      await tx.update(dataSource).set(values).where(eq(dataSource.id, existing.id));
       return {
-        changes: (databaseId: string) => getDataSourceEntity(
-          { transaction: tx },
-          databaseId,
-          existing.id,
-        ).then((source) => ({ dataSources: [source] })),
+        changes: (databaseId: string) =>
+          getDataSourceEntity({ transaction: tx }, databaseId, existing.id).then((source) => ({
+            dataSources: [source],
+          })),
       };
     },
   );

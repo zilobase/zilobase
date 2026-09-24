@@ -65,9 +65,7 @@ export function markdownToPageContent(markdown: string) {
       const items: PageContentNode[] = [];
 
       while (index < lines.length) {
-        const match = lines[index]!.trim().match(
-          /^[-*+]\s+\[([ xX])\]\s+(.+)$/,
-        );
+        const match = lines[index]!.trim().match(/^[-*+]\s+\[([ xX])\]\s+(.+)$/);
 
         if (!match) break;
         items.push({
@@ -143,11 +141,7 @@ export function markdownToPageContent(markdown: string) {
     const paragraphLines = [line];
     index += 1;
 
-    while (
-      index < lines.length &&
-      lines[index]!.trim() &&
-      !startsBlock(lines[index]!.trim())
-    ) {
+    while (index < lines.length && lines[index]!.trim() && !startsBlock(lines[index]!.trim())) {
       paragraphLines.push(lines[index]!);
       index += 1;
     }
@@ -166,9 +160,7 @@ function isTaskListHeading(value: string) {
 }
 
 function startsBlock(line: string) {
-  return /^(?:```|#{1,6}\s|[-*+]\s|\d+\.\s|>\s?|(?:[-*_]\s*){3,}$)/.test(
-    line,
-  );
+  return /^(?:```|#{1,6}\s|[-*+]\s|\d+\.\s|>\s?|(?:[-*_]\s*){3,}$)/.test(line);
 }
 
 function paragraph(text: string): PageContentNode {

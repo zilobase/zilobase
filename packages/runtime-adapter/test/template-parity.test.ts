@@ -18,15 +18,13 @@ const HOSTED_MARKERS = [
   "POSTHOG_",
   "posthog-logs",
   "ZILOBASE_IDENTITY_CONFIG_KEYS",
-  "ZILOBASE_DEMO_ENABLED\": \"true",
+  'ZILOBASE_DEMO_ENABLED": "true',
   "889807576206",
   "no-reply@zilobase.com",
 ];
 
 function stripJsonComments(value: string) {
-  return value
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
+  return value.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
 async function readJsonc(url: URL) {
@@ -80,14 +78,16 @@ describe("template parity with the hosted composition", () => {
     expect(template.assets).toMatchObject({ binding: "ASSETS" });
     expect(template.services).toEqual(prod.services);
     expect(Object.keys(template.vars ?? {}).sort()).toEqual(
-      Object.keys(prod.vars ?? {}).filter((key) => !key.startsWith("POSTHOG_")).sort(),
+      Object.keys(prod.vars ?? {})
+        .filter((key) => !key.startsWith("POSTHOG_"))
+        .sort(),
     );
   });
 
   it("contains zero hosted credentials, hosts, or placement values", async () => {
     const templates = await Promise.all(
-      ["wrangler.template.jsonc", "background.template.jsonc", "web.template.jsonc"].map(
-        (name) => readFile(new URL(name, templateRoot), "utf8"),
+      ["wrangler.template.jsonc", "background.template.jsonc", "web.template.jsonc"].map((name) =>
+        readFile(new URL(name, templateRoot), "utf8"),
       ),
     );
     for (const [index, content] of templates.entries()) {

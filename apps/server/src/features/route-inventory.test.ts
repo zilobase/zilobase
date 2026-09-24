@@ -3,8 +3,13 @@ import { describe, expect, it } from "vitest";
 import { databaseRoutes } from "./databases/http/routes";
 import { pageRoutes } from "./pages/page-routes";
 
-const inventory = (routes: typeof pageRoutes) =>
-  [...new Set(routes.routes.filter(({ method }) => method !== "ALL").map(({ method, path }) => `${method} ${path}`))];
+const inventory = (routes: typeof pageRoutes) => [
+  ...new Set(
+    routes.routes
+      .filter(({ method }) => method !== "ALL")
+      .map(({ method, path }) => `${method} ${path}`),
+  ),
+];
 
 describe("feature route composition", () => {
   it("preserves every page endpoint and its registration order", () => {

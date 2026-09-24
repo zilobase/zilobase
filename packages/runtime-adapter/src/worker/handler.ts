@@ -3,11 +3,7 @@ import { routeAgentRequest } from "agents";
 import type { WorkerEnvBindings } from "./bindings";
 
 type FetchableApp = {
-  fetch(
-    request: Request,
-    env: Record<string, unknown>,
-    ctx: unknown,
-  ): Response | Promise<Response>;
+  fetch(request: Request, env: Record<string, unknown>, ctx: unknown): Response | Promise<Response>;
 };
 
 export function createWorkerHandler<
@@ -24,10 +20,7 @@ export function createWorkerHandler<
     lobby: unknown,
     env: Env,
   ) => Promise<Response | void> | Response | void;
-  getAgentCorsHeaders?: (
-    env: Env,
-    request: Request,
-  ) => Record<string, string>;
+  getAgentCorsHeaders?: (env: Env, request: Request) => Record<string, string>;
   loadApp: (env: Env) => Promise<App>;
 }) {
   let appPromise: Promise<App> | null = null;
@@ -40,8 +33,7 @@ export function createWorkerHandler<
             routeAgentRequest(request, env, {
               cors: options.getAgentCorsHeaders?.(env, request),
               onBeforeConnect: options.authorizeAgentRequest
-                ? (req: Request, lobby: unknown) =>
-                    options.authorizeAgentRequest?.(req, lobby, env)
+                ? (req: Request, lobby: unknown) => options.authorizeAgentRequest?.(req, lobby, env)
                 : undefined,
               onBeforeRequest: options.authenticateAgentRequest
                 ? (req: Request, lobby: unknown) =>
@@ -121,10 +113,7 @@ function respondWithTiming(
   });
 }
 
-function formatServerTiming(
-  metrics: Record<string, number | string>,
-  totalMs: number,
-) {
+function formatServerTiming(metrics: Record<string, number | string>, totalMs: number) {
   return Object.entries({ ...metrics, totalMs })
     .flatMap(([key, value]) => {
       if (typeof value !== "number" || !Number.isFinite(value)) {

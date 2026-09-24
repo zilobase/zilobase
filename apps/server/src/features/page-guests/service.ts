@@ -42,10 +42,7 @@ export function parseGuestAccessLevel(value: unknown): Exclude<AccessLevel, "non
   const accessLevel = normalizeAccessLevel(value);
 
   if (!accessLevel || accessLevel === "none") {
-    throw new PageGuestServiceError(
-      "Guest access must be view, comment, edit, or full.",
-      400,
-    );
+    throw new PageGuestServiceError("Guest access must be view, comment, edit, or full.", 400);
   }
 
   return accessLevel;
@@ -65,20 +62,14 @@ export function canAcceptPageGuestInvitation(
 
 export type GuestInviteMode = "direct" | "owners_only" | "request";
 
-export function resolveGuestInviteSubmission(
-  mode: GuestInviteMode,
-  role: string | null,
-) {
+export function resolveGuestInviteSubmission(mode: GuestInviteMode, role: string | null) {
   if (!role) return "forbidden" as const;
   if (role === "owner" || mode === "direct") return "invitation" as const;
   if (mode === "request") return "request" as const;
   return "forbidden" as const;
 }
 
-export async function getWorkspaceGuestInvitePolicy(
-  workspaceId: string,
-  userId: string,
-) {
+export async function getWorkspaceGuestInvitePolicy(workspaceId: string, userId: string) {
   const membership = await getMembership(workspaceId, userId);
 
   if (!membership) {
@@ -138,29 +129,16 @@ async function createPageGuestRequest(input: {
   if (!pageRecord) throw new PageGuestServiceError("Page not found.", 404);
   const [membership, access] = await Promise.all([
     getMembership(pageRecord.workspaceId, input.requesterId),
-    getEffectivePageAccessInWorkspace(
-      pageRecord.id,
-      pageRecord.workspaceId,
-      input.requesterId,
-    ),
+    getEffectivePageAccessInWorkspace(pageRecord.id, pageRecord.workspaceId, input.requesterId),
   ]);
 
   if (!membership || !hasAccess(access, "full")) {
-    throw new PageGuestServiceError(
-      "Full page access and workspace membership are required.",
-      403,
-    );
+    throw new PageGuestServiceError("Full page access and workspace membership are required.", 403);
   }
-  const policy = await getWorkspaceGuestInvitePolicy(
-    pageRecord.workspaceId,
-    input.requesterId,
-  );
+  const policy = await getWorkspaceGuestInvitePolicy(pageRecord.workspaceId, input.requesterId);
 
   if (policy.mode !== "request" || membership.role === "owner") {
-    throw new PageGuestServiceError(
-      "A guest invitation request is not required.",
-      409,
-    );
+    throw new PageGuestServiceError("A guest invitation request is not required.", 409);
   }
 
   const email = normalizeGuestEmail(input.email);
@@ -216,16 +194,15 @@ export async function submitPageGuestInvitation(input: {
     .limit(1);
   if (!pageRecord) throw new PageGuestServiceError("Page not found.", 404);
 
-  const membership = await getMembership(
-    pageRecord.workspaceId,
-    input.inviterId,
-  );
+  const membership = await getMembership(pageRecord.workspaceId, input.inviterId);
   const submission = resolveGuestInviteSubmission(
-    (await db
-      .select({ mode: workspace.guestInviteMode })
-      .from(workspace)
-      .where(eq(workspace.id, pageRecord.workspaceId))
-      .limit(1))[0]?.mode as GuestInviteMode,
+    (
+      await db
+        .select({ mode: workspace.guestInviteMode })
+        .from(workspace)
+        .where(eq(workspace.id, pageRecord.workspaceId))
+        .limit(1)
+    )[0]?.mode as GuestInviteMode,
     membership?.role ?? null,
   );
   if (submission === "forbidden") {
@@ -290,16 +267,10 @@ export async function listPageGuestRequests(pageId: string, userId: string) {
     .orderBy(asc(pageGuestRequest.createdAt));
 }
 
-export async function listWorkspaceGuestRequests(
-  workspaceId: string,
-  userId: string,
-) {
+export async function listWorkspaceGuestRequests(workspaceId: string, userId: string) {
   const membership = await getMembership(workspaceId, userId);
   if (!membership || membership.role !== "owner") {
-    throw new PageGuestServiceError(
-      "Only workspace owners can review guest requests.",
-      403,
-    );
+    throw new PageGuestServiceError("Only workspace owners can review guest requests.", 403);
   }
 
   return db
@@ -330,10 +301,7 @@ export async function rejectPageGuestRequest(input: {
 }) {
   const membership = await getMembership(input.workspaceId, input.reviewerId);
   if (!membership || membership.role !== "owner") {
-    throw new PageGuestServiceError(
-      "Only workspace owners can review guest requests.",
-      403,
-    );
+    throw new PageGuestServiceError("Only workspace owners can review guest requests.", 403);
   }
   const now = new Date();
   const [request] = await db
@@ -365,10 +333,7 @@ export async function approvePageGuestRequest(input: {
 }) {
   const membership = await getMembership(input.workspaceId, input.reviewerId);
   if (!membership || membership.role !== "owner") {
-    throw new PageGuestServiceError(
-      "Only workspace owners can review guest requests.",
-      403,
-    );
+    throw new PageGuestServiceError("Only workspace owners can review guest requests.", 403);
   }
   const [request] = await db
     .select()
@@ -400,12 +365,7 @@ export async function approvePageGuestRequest(input: {
       status: "approved",
       updatedAt: now,
     })
-    .where(
-      and(
-        eq(pageGuestRequest.id, request.id),
-        eq(pageGuestRequest.status, "pending"),
-      ),
-    )
+    .where(and(eq(pageGuestRequest.id, request.id), eq(pageGuestRequest.status, "pending")))
     .returning();
   if (!approved) {
     throw new PageGuestServiceError("Guest request was already reviewed.", 409);
@@ -441,10 +401,7 @@ async function createPageGuestInvitation(input: {
   );
 
   if (!hasAccess(inviterAccess, "full")) {
-    throw new PageGuestServiceError(
-      "Full page access is required to invite guests.",
-      403,
-    );
+    throw new PageGuestServiceError("Full page access is required to invite guests.", 403);
   }
 
   const email = normalizeGuestEmail(input.email);
@@ -455,10 +412,7 @@ async function createPageGuestInvitation(input: {
     .where(sql`lower(${user.email}) = ${email}`)
     .limit(1);
 
-  if (
-    existingUser &&
-    (await getMembership(pageRecord.workspaceId, existingUser.id))
-  ) {
+  if (existingUser && (await getMembership(pageRecord.workspaceId, existingUser.id))) {
     throw new PageGuestServiceError(
       "This person is already a workspace member. Share the page with them directly.",
       409,
@@ -548,12 +502,7 @@ export async function getPageGuestInvitation(invitationId: string) {
     .from(pageGuestInvitation)
     .innerJoin(page, eq(page.id, pageGuestInvitation.pageId))
     .innerJoin(workspace, eq(workspace.id, pageGuestInvitation.workspaceId))
-    .where(
-      and(
-        eq(pageGuestInvitation.id, invitationId),
-        isNull(page.deletedAt),
-      ),
-    )
+    .where(and(eq(pageGuestInvitation.id, invitationId), isNull(page.deletedAt)))
     .limit(1);
 
   return record ?? null;
@@ -598,10 +547,7 @@ export async function acceptPageGuestInvitation(input: {
       .returning();
 
     if (!accepted) {
-      throw new PageGuestServiceError(
-        "This page invitation is no longer available.",
-        409,
-      );
+      throw new PageGuestServiceError("This page invitation is no longer available.", 409);
     }
 
     const [membership] = await tx
@@ -840,10 +786,7 @@ export async function listWorkspaceGuests(workspaceId: string) {
   return [...guests.values()];
 }
 
-export async function revokeWorkspaceGuest(
-  workspaceId: string,
-  targetUserId: string,
-) {
+export async function revokeWorkspaceGuest(workspaceId: string, targetUserId: string) {
   return db.transaction(async (tx) => {
     await tx
       .delete(pageAccess)
@@ -857,10 +800,7 @@ export async function revokeWorkspaceGuest(
     const [guest] = await tx
       .delete(workspaceGuest)
       .where(
-        and(
-          eq(workspaceGuest.workspaceId, workspaceId),
-          eq(workspaceGuest.userId, targetUserId),
-        ),
+        and(eq(workspaceGuest.workspaceId, workspaceId), eq(workspaceGuest.userId, targetUserId)),
       )
       .returning();
 
@@ -891,10 +831,7 @@ export async function promoteWorkspaceGuest(input: {
     throw new PageGuestServiceError("Workspace guest not found.", 404);
   }
 
-  const result = await new MembershipService(
-    db,
-    input.editionExtension,
-  ).grantMembership({
+  const result = await new MembershipService(db, input.editionExtension).grantMembership({
     role: "member",
     source: "admin",
     userId: input.targetUserId,

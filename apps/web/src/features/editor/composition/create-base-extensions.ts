@@ -1,90 +1,77 @@
-import { PendingPageEmbeds } from "../drag-drop/pending-page-embed"
-import CharacterCount from "@tiptap/extension-character-count"
-import {
-  Details,
-  DetailsContent,
-  DetailsSummary,
-} from "@tiptap/extension-details"
-import Placeholder from "@tiptap/extension-placeholder"
-import Link from "@tiptap/extension-link"
-import {
-  TableOfContents,
-  type TableOfContentDataItem,
-} from "@tiptap/extension-table-of-contents"
-import { Table } from "@tiptap/extension-table"
-import { TableCell } from "@tiptap/extension-table-cell"
-import { TableHeader } from "@tiptap/extension-table-header"
-import { TableRow } from "@tiptap/extension-table-row"
-import { Markdown } from "@tiptap/markdown"
-import TaskList from "@tiptap/extension-task-list"
-import TextAlign from "@tiptap/extension-text-align"
-import { BackgroundColor, Color, TextStyle } from "@tiptap/extension-text-style"
-import Typography from "@tiptap/extension-typography"
-import type { Extensions } from "@tiptap/core"
-import StarterKit from "@tiptap/starter-kit"
-import Collaboration from "@tiptap/extension-collaboration"
-import CollaborationCaret from "@tiptap/extension-collaboration-caret"
-import { CommentExtension } from "@zilobase/tiptap-comment-extension"
-import { AskAiBlock } from "../extensions/ask-ai-block"
-import { BookmarkBlock } from "../extensions/bookmark-block"
-import { CodeBlockShiki } from "../extensions/code-block-shiki"
-import { ColumnsExtension } from "../extensions/columns"
-import {
-  DatabaseBlock,
-  type DatabaseBlockEditorRuntime,
-} from "@/features/databases"
-import { EmbedBlock } from "../extensions/embed-block"
-import { EmojiExtension } from "../extensions/emoji"
-import { FileBlock } from "../extensions/file-block"
-import { ImageBlock } from "../extensions/image-block"
-import { LinkMention } from "../extensions/link-mention"
-import { MeetingBlock } from "../extensions/meeting"
-import { MeetingTranscriptPreview } from "../extensions/meeting-transcript-preview"
-import {
-  PageBlock,
-  type CreatedPage,
-} from "../extensions/page-block"
-import { BlockSelection } from "../extensions/block-selection"
-import { ShadcnTaskItem } from "../extensions/shadcn-task-item"
-import { SelectionAiPreview } from "../extensions/selection-ai-preview"
-import { SlashCommand } from "../extensions/slash-command"
-import { VideoBlock } from "../extensions/video-block"
-import type { OpenPageOptions } from "@/features/pages"
-import type { StructuralInsertionPendingChange } from "../commands/structural-insertion"
+import { PendingPageEmbeds } from "../drag-drop/pending-page-embed";
+import CharacterCount from "@tiptap/extension-character-count";
+import { Details, DetailsContent, DetailsSummary } from "@tiptap/extension-details";
+import Placeholder from "@tiptap/extension-placeholder";
+import Link from "@tiptap/extension-link";
+import { TableOfContents, type TableOfContentDataItem } from "@tiptap/extension-table-of-contents";
+import { Table } from "@tiptap/extension-table";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableRow } from "@tiptap/extension-table-row";
+import { Markdown } from "@tiptap/markdown";
+import TaskList from "@tiptap/extension-task-list";
+import TextAlign from "@tiptap/extension-text-align";
+import { BackgroundColor, Color, TextStyle } from "@tiptap/extension-text-style";
+import Typography from "@tiptap/extension-typography";
+import type { Extensions } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
+import { CommentExtension } from "@zilobase/tiptap-comment-extension";
+import { AskAiBlock } from "../extensions/ask-ai-block";
+import { BookmarkBlock } from "../extensions/bookmark-block";
+import { CodeBlockShiki } from "../extensions/code-block-shiki";
+import { ColumnsExtension } from "../extensions/columns";
+import { DatabaseBlock, type DatabaseBlockEditorRuntime } from "@/features/databases";
+import { EmbedBlock } from "../extensions/embed-block";
+import { EmojiExtension } from "../extensions/emoji";
+import { FileBlock } from "../extensions/file-block";
+import { ImageBlock } from "../extensions/image-block";
+import { LinkMention } from "../extensions/link-mention";
+import { MeetingBlock } from "../extensions/meeting";
+import { MeetingTranscriptPreview } from "../extensions/meeting-transcript-preview";
+import { PageBlock, type CreatedPage } from "../extensions/page-block";
+import { BlockSelection } from "../extensions/block-selection";
+import { ShadcnTaskItem } from "../extensions/shadcn-task-item";
+import { SelectionAiPreview } from "../extensions/selection-ai-preview";
+import { SlashCommand } from "../extensions/slash-command";
+import { VideoBlock } from "../extensions/video-block";
+import type { OpenPageOptions } from "@/features/pages";
+import type { StructuralInsertionPendingChange } from "../commands/structural-insertion";
 
 export type BaseExtensionsOptions = {
-  collaboration?: import("../core/types").EditorCollaboration
-  collaborationField?: string
-  createEditorDatabase: () => Promise<string | null>
-  createEditorMeeting: () => Promise<string | null>
-  databaseEditorRuntime: DatabaseBlockEditorRuntime
-  editable: boolean
-  structuralEditingEnabled: boolean
-  onCreatePage?: () => Promise<CreatedPage>
-  onEmbedPage?: (pageId: string) => void | Promise<void>
-  onOpenPage?: (pageId: string, options?: OpenPageOptions) => void
-  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange
-  onTocUpdate: (items: TableOfContentDataItem[]) => void
-  workspaceId?: string | null
-  pageId?: string | null
-}
+  collaboration?: import("../core/types").EditorCollaboration;
+  collaborationField?: string;
+  createEditorDatabase: () => Promise<string | null>;
+  createEditorMeeting: () => Promise<string | null>;
+  databaseEditorRuntime: DatabaseBlockEditorRuntime;
+  editable: boolean;
+  structuralEditingEnabled: boolean;
+  onCreatePage?: () => Promise<CreatedPage>;
+  onEmbedPage?: (pageId: string) => void | Promise<void>;
+  onOpenPage?: (pageId: string, options?: OpenPageOptions) => void;
+  onStructuralInsertionPendingChange?: StructuralInsertionPendingChange;
+  onTocUpdate: (items: TableOfContentDataItem[]) => void;
+  workspaceId?: string | null;
+  pageId?: string | null;
+};
 
 export function normalizeEditorContent(content: unknown) {
   if (typeof content === "string") {
-    const trimmed = content.trim()
+    const trimmed = content.trim();
 
     if (!trimmed) {
-      return ""
+      return "";
     }
 
     try {
-      return JSON.parse(trimmed) as unknown
+      return JSON.parse(trimmed) as unknown;
     } catch {
-      return content
+      return content;
     }
   }
 
-  return content ?? ""
+  return content ?? "";
 }
 
 export const createBaseExtensions = ({
@@ -131,9 +118,7 @@ export const createBaseExtensions = ({
   }),
   Placeholder.configure({
     placeholder: ({ node }) =>
-      node.type.name === "heading"
-        ? "Heading"
-        : "Type / for blocks, or just start writing",
+      node.type.name === "heading" ? "Heading" : "Type / for blocks, or just start writing",
   }),
   TaskList,
   ShadcnTaskItem.configure({ editable, nested: true }),
@@ -212,4 +197,4 @@ export const createBaseExtensions = ({
         }),
       ]
     : []),
-]
+];

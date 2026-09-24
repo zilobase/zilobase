@@ -21,9 +21,7 @@ function request(body: unknown) {
 }
 
 test("decodeJsonBody decodes a valid JSON object", async () => {
-  const payload = await Effect.runPromise(
-    decodeJsonBody(request({ name: " Inbox " }), Payload),
-  );
+  const payload = await Effect.runPromise(decodeJsonBody(request({ name: " Inbox " }), Payload));
   assert.deepEqual(payload, { name: "Inbox" });
 });
 

@@ -19,7 +19,9 @@ export async function discoverDevelopmentProviders(workspaceDir = path.dirname(c
     const descriptor = JSON.parse(await readFile(filename, "utf8"));
     providers.push(validateDevelopmentProvider(descriptor, directory));
   }
-  return providers.sort((left, right) => left.order - right.order || left.id.localeCompare(right.id));
+  return providers.sort(
+    (left, right) => left.order - right.order || left.id.localeCompare(right.id),
+  );
 }
 
 export function validateDevelopmentProvider(descriptor, directory) {
@@ -32,7 +34,10 @@ export function validateDevelopmentProvider(descriptor, directory) {
   validateCommand(descriptor.start, descriptor.id, "start");
   if (descriptor.stop) validateCommand(descriptor.stop, descriptor.id, "stop");
   if (descriptor.describe) validateCommand(descriptor.describe, descriptor.id, "describe");
-  if (!Array.isArray(descriptor.readiness) || descriptor.readiness.some((url) => !isLoopbackHttpUrl(url))) {
+  if (
+    !Array.isArray(descriptor.readiness) ||
+    descriptor.readiness.some((url) => !isLoopbackHttpUrl(url))
+  ) {
     throw new Error(`Development provider ${descriptor.id} must declare loopback readiness URLs.`);
   }
   return {
@@ -62,9 +67,13 @@ export async function waitForDevelopmentProvider(provider, child) {
   const ready = Promise.all(provider.readiness.map((url) => waitForProviderUrl(url, child)));
   const exited = new Promise((_, reject) => {
     child.once("error", reject);
-    child.once("exit", (code, signal) => reject(new Error(
-      `Development provider ${provider.id} exited before readiness with ${signal ?? code}.`,
-    )));
+    child.once("exit", (code, signal) =>
+      reject(
+        new Error(
+          `Development provider ${provider.id} exited before readiness with ${signal ?? code}.`,
+        ),
+      ),
+    );
   });
   await Promise.race([ready, exited]);
 }
@@ -83,7 +92,10 @@ export async function describeDevelopmentProvider(provider, environment = proces
     child.once("error", reject);
     child.once("exit", (code, signal) => {
       if (code === 0) resolve();
-      else reject(new Error(`Development provider ${provider.id} describe exited with ${signal ?? code}.`));
+      else
+        reject(
+          new Error(`Development provider ${provider.id} describe exited with ${signal ?? code}.`),
+        );
     });
   });
   return JSON.parse(Buffer.concat(output).toString("utf8"));
@@ -101,16 +113,21 @@ export async function stopDevelopmentProvider(provider, environment = process.en
 export async function stopDevelopmentChildren(children, signal = "SIGTERM") {
   const live = children.filter((child) => child.exitCode === null);
   for (const child of live) child.kill(signal);
-  await Promise.all(live.map((child) => new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      if (child.exitCode === null) child.kill("SIGKILL");
-      resolve();
-    }, 30_000);
-    child.once("exit", () => {
-      clearTimeout(timer);
-      resolve();
-    });
-  })));
+  await Promise.all(
+    live.map(
+      (child) =>
+        new Promise((resolve) => {
+          const timer = setTimeout(() => {
+            if (child.exitCode === null) child.kill("SIGKILL");
+            resolve();
+          }, 30_000);
+          child.once("exit", () => {
+            clearTimeout(timer);
+            resolve();
+          });
+        }),
+    ),
+  );
 }
 
 function providerEnvironment(environment) {
@@ -141,7 +158,11 @@ function delay(milliseconds) {
 }
 
 function validateCommand(command, id, kind) {
-  if (!Array.isArray(command) || !command.length || command.some((part) => typeof part !== "string" || !part)) {
+  if (
+    !Array.isArray(command) ||
+    !command.length ||
+    command.some((part) => typeof part !== "string" || !part)
+  ) {
     throw new Error(`Development provider ${id} has an invalid ${kind} command.`);
   }
 }
@@ -159,7 +180,10 @@ function validIdentifier(value) {
 function isLoopbackHttpUrl(value) {
   try {
     const url = new URL(value);
-    return ["http:", "https:"].includes(url.protocol) && ["127.0.0.1", "localhost"].includes(url.hostname);
+    return (
+      ["http:", "https:"].includes(url.protocol) &&
+      ["127.0.0.1", "localhost"].includes(url.hostname)
+    );
   } catch {
     return false;
   }

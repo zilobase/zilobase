@@ -1,39 +1,39 @@
-import { serializePropertyValue } from "../../../schema/property-values"
-import { getDatabaseGroupMoveValue } from "../../../interactions/database-group-values"
-import type { SortableDatabaseItem } from "../../../interactions/database-item-utils"
+import { serializePropertyValue } from "../../../schema/property-values";
+import { getDatabaseGroupMoveValue } from "../../../interactions/database-group-values";
+import type { SortableDatabaseItem } from "../../../interactions/database-item-utils";
 import {
   getAnchoredReorderedRowIds,
   getFilteredReorderedRowIds,
   getReorderedRowIds,
-} from "../../../interactions/database-row-drag"
+} from "../../../interactions/database-row-drag";
 import {
   canUpdateKanbanGroupProperty,
   type DatabasePropertyListItem,
-} from "../../kanban/model/database-kanban-config"
-import type { TimelineGroupSection } from "./database-timeline-rows"
+} from "../../kanban/model/database-kanban-config";
+import type { TimelineGroupSection } from "./database-timeline-rows";
 
 export type TimelineRowMove = {
-  groupPropertyId?: string
-  groupValue?: unknown
-  rowId: string
-  rowIds: string[]
-}
+  groupPropertyId?: string;
+  groupValue?: unknown;
+  rowId: string;
+  rowIds: string[];
+};
 
 export type TimelineRowMoveInput = {
-  draggedRowId: string | null
-  dropTargetIndex: number | null
-  groupProperty: DatabasePropertyListItem | null
-  groupSectionByRowId: Map<string, TimelineGroupSection>
-  groupedSections: TimelineGroupSection[]
-  isFiltered: boolean
-  isGrouped: boolean
-  isSorted: boolean
-  items: SortableDatabaseItem[]
-  propertyValuesByKey: Record<string, string | string[]>
-  rowsById: Map<string, SortableDatabaseItem>
-  sortedItems: SortableDatabaseItem[]
-  visibleRows: SortableDatabaseItem[]
-}
+  draggedRowId: string | null;
+  dropTargetIndex: number | null;
+  groupProperty: DatabasePropertyListItem | null;
+  groupSectionByRowId: Map<string, TimelineGroupSection>;
+  groupedSections: TimelineGroupSection[];
+  isFiltered: boolean;
+  isGrouped: boolean;
+  isSorted: boolean;
+  items: SortableDatabaseItem[];
+  propertyValuesByKey: Record<string, string | string[]>;
+  rowsById: Map<string, SortableDatabaseItem>;
+  sortedItems: SortableDatabaseItem[];
+  visibleRows: SortableDatabaseItem[];
+};
 
 export function getTimelineRowMove({
   draggedRowId,
@@ -50,39 +50,28 @@ export function getTimelineRowMove({
   sortedItems,
   visibleRows,
 }: TimelineRowMoveInput): TimelineRowMove | null {
-  if (draggedRowId === null || dropTargetIndex === null) return null
+  if (draggedRowId === null || dropTargetIndex === null) return null;
 
   if (!isGrouped) {
     const rowIds = isFiltered
-      ? getFilteredReorderedRowIds(
-          items,
-          sortedItems,
-          draggedRowId,
-          dropTargetIndex,
-        )
-      : getReorderedRowIds(
-          isSorted ? sortedItems : items,
-          draggedRowId,
-          dropTargetIndex,
-        )
+      ? getFilteredReorderedRowIds(items, sortedItems, draggedRowId, dropTargetIndex)
+      : getReorderedRowIds(isSorted ? sortedItems : items, draggedRowId, dropTargetIndex);
 
-    return rowIds ? { rowId: draggedRowId, rowIds } : null
+    return rowIds ? { rowId: draggedRowId, rowIds } : null;
   }
 
-  const sourceSection = groupSectionByRowId.get(draggedRowId)
-  const targetRow = visibleRows[Math.min(dropTargetIndex, visibleRows.length - 1)]
-  const targetSection = targetRow
-    ? groupSectionByRowId.get(targetRow.id)
-    : groupedSections.at(-1)
+  const sourceSection = groupSectionByRowId.get(draggedRowId);
+  const targetRow = visibleRows[Math.min(dropTargetIndex, visibleRows.length - 1)];
+  const targetSection = targetRow ? groupSectionByRowId.get(targetRow.id) : groupedSections.at(-1);
 
-  if (!sourceSection || !targetSection) return null
+  if (!sourceSection || !targetSection) return null;
 
   const localTargetIndex = getLocalTargetIndex(
     visibleRows,
     dropTargetIndex,
     targetSection.id,
     groupSectionByRowId,
-  )
+  );
 
   if (sourceSection.id === targetSection.id) {
     const rowIds = getFilteredReorderedRowIds(
@@ -90,56 +79,47 @@ export function getTimelineRowMove({
       targetSection.rows,
       draggedRowId,
       localTargetIndex,
-    )
-    return rowIds ? { rowId: draggedRowId, rowIds } : null
+    );
+    return rowIds ? { rowId: draggedRowId, rowIds } : null;
   }
 
   if (!groupProperty || !canUpdateKanbanGroupProperty(groupProperty)) {
-    return null
+    return null;
   }
 
-  const draggedRow = rowsById.get(draggedRowId)
-  if (!draggedRow) return null
+  const draggedRow = rowsById.get(draggedRowId);
+  if (!draggedRow) return null;
 
   const rowIds =
-    getAnchoredReorderedRowIds(
-      items,
-      draggedRowId,
-      targetSection.rows,
-      localTargetIndex,
-    ) ?? items.map((row) => row.id)
+    getAnchoredReorderedRowIds(items, draggedRowId, targetSection.rows, localTargetIndex) ??
+    items.map((row) => row.id);
   const currentValue =
-    propertyValuesByKey[
-      `${draggedRow.pageId}:${groupProperty.property.id}`
-    ] ?? ""
+    propertyValuesByKey[`${draggedRow.pageId}:${groupProperty.property.id}`] ?? "";
   const nextValue = getDatabaseGroupMoveValue({
     currentValue,
     propertyType: groupProperty.property.type,
     sourceGroupValue: sourceSection.groupValue,
     targetGroupValue: targetSection.groupValue,
-  })
+  });
 
   return {
     groupPropertyId: groupProperty.property.id,
-    groupValue: serializePropertyValue(
-      groupProperty.property.type,
-      nextValue,
-    ),
+    groupValue: serializePropertyValue(groupProperty.property.type, nextValue),
     rowId: draggedRowId,
     rowIds,
-  }
+  };
 }
 
 export function indexTimelineGroupSections(sections: TimelineGroupSection[]) {
-  const sectionByRowId = new Map<string, TimelineGroupSection>()
+  const sectionByRowId = new Map<string, TimelineGroupSection>();
 
   for (const section of sections) {
     for (const row of section.rows) {
-      sectionByRowId.set(row.id, section)
+      sectionByRowId.set(row.id, section);
     }
   }
 
-  return sectionByRowId
+  return sectionByRowId;
 }
 
 function getLocalTargetIndex(
@@ -148,14 +128,14 @@ function getLocalTargetIndex(
   targetSectionId: string,
   groupSectionByRowId: Map<string, TimelineGroupSection>,
 ) {
-  let localTargetIndex = 0
+  let localTargetIndex = 0;
 
   for (let index = 0; index < dropTargetIndex; index += 1) {
-    const row = visibleRows[index]
+    const row = visibleRows[index];
     if (row && groupSectionByRowId.get(row.id)?.id === targetSectionId) {
-      localTargetIndex += 1
+      localTargetIndex += 1;
     }
   }
 
-  return localTargetIndex
+  return localTargetIndex;
 }

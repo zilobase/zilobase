@@ -9,9 +9,7 @@ test("Db.withEnv reuses an active database context", async () => {
   const runtime = createAppRuntime(Db.layer);
   try {
     const result = await runWithDb({} as never, () =>
-      runtime.runPromise(
-        Db.use((database) => database.withEnv({}, async () => "ok")),
-      ),
+      runtime.runPromise(Db.use((database) => database.withEnv({}, async () => "ok"))),
     );
     assert.equal(result, "ok");
   } finally {
@@ -23,10 +21,7 @@ test("Db.withEnv maps connection failures to DatabaseUnavailable", async () => {
   const runtime = createAppRuntime(Db.layer);
   try {
     await assert.rejects(
-      () =>
-        runtime.runPromise(
-          Db.use((database) => database.withEnv({}, async () => "ok")),
-        ),
+      () => runtime.runPromise(Db.use((database) => database.withEnv({}, async () => "ok"))),
       (error: unknown) => error instanceof DatabaseUnavailable,
     );
   } finally {

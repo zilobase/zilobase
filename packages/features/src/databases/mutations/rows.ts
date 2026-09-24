@@ -14,10 +14,7 @@ import {
   resolveOptimisticScope,
   type OptimisticContext,
 } from "./optimistic";
-import {
-  findLoadedDataSourceRecords,
-  resolveDataSourceCommandScope,
-} from "./scope";
+import { findLoadedDataSourceRecords, resolveDataSourceCommandScope } from "./scope";
 import {
   dropSerializedQueue,
   orderingSerializationKey,
@@ -63,8 +60,7 @@ type UpdatePropertyValueInput = {
 function isRowMoveConflict(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const candidate = error as { body?: { code?: unknown }; code?: unknown };
-  return candidate.code === "ROW_MOVE_CONFLICT" ||
-    candidate.body?.code === "ROW_MOVE_CONFLICT";
+  return candidate.code === "ROW_MOVE_CONFLICT" || candidate.body?.code === "ROW_MOVE_CONFLICT";
 }
 
 export function useAddDatabaseRow() {
@@ -82,29 +78,24 @@ export function useAddDatabaseRow() {
         ...variables,
         databaseId: scope.dataSourceId,
       });
-      const ack = await runSerialized(
-        orderingSerializationKey(scope.dataSourceId),
-        () =>
-          executeDatabaseCommand(apiFetch, {
-            command: {
-              afterRowId: anchors.afterRowId,
-              beforeRowId: anchors.beforeRowId,
-              pageId: variables.pageId,
-              parentRowId: variables.parentRowId ?? null,
-              title: variables.title ?? "Untitled",
-              type: "row.create",
-              valuesByPropertyId: variables.initialValues
-                ? Object.fromEntries(
-                  variables.initialValues.map(({ propertyId, value }) => [
-                    propertyId,
-                    value,
-                  ]),
+      const ack = await runSerialized(orderingSerializationKey(scope.dataSourceId), () =>
+        executeDatabaseCommand(apiFetch, {
+          command: {
+            afterRowId: anchors.afterRowId,
+            beforeRowId: anchors.beforeRowId,
+            pageId: variables.pageId,
+            parentRowId: variables.parentRowId ?? null,
+            title: variables.title ?? "Untitled",
+            type: "row.create",
+            valuesByPropertyId: variables.initialValues
+              ? Object.fromEntries(
+                  variables.initialValues.map(({ propertyId, value }) => [propertyId, value]),
                 )
-                : undefined,
-            },
-            databaseId: scope.hostDatabaseId,
-            dataSourceId: scope.dataSourceId,
-          }),
+              : undefined,
+          },
+          databaseId: scope.hostDatabaseId,
+          dataSourceId: scope.dataSourceId,
+        }),
       );
 
       if (
@@ -118,20 +109,14 @@ export function useAddDatabaseRow() {
           variables.sourceDataSourceId,
           variables.sourceHostDatabaseId,
         );
-        await runSerialized(
-          orderingSerializationKey(sourceScope.dataSourceId),
-          () =>
-            executeDatabaseCommand(apiFetch, {
-              command: { rowId: variables.sourceRowId!, type: "row.archive" },
-              databaseId: sourceScope.hostDatabaseId,
-              dataSourceId: sourceScope.dataSourceId,
-            }),
+        await runSerialized(orderingSerializationKey(sourceScope.dataSourceId), () =>
+          executeDatabaseCommand(apiFetch, {
+            command: { rowId: variables.sourceRowId!, type: "row.archive" },
+            databaseId: sourceScope.hostDatabaseId,
+            dataSourceId: sourceScope.dataSourceId,
+          }),
         );
-        invalidateDatabaseQueries(
-          queryClient,
-          sessionId,
-          sourceScope.hostDatabaseId,
-        );
+        invalidateDatabaseQueries(queryClient, sessionId, sourceScope.hostDatabaseId);
       }
 
       invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
@@ -173,37 +158,31 @@ export function useMoveDatabaseRow() {
       );
       input.onOptimisticAccepted?.();
       try {
-        const ack = await runSerialized(
-          orderingSerializationKey(scope.dataSourceId),
-          () =>
-            executeDatabaseCommand(apiFetch, {
-              command: {
-                afterRowId: input.afterRowId,
-                beforeRowId: input.beforeRowId,
-                ...(input.groupPropertyId
-                  ? {
+        const ack = await runSerialized(orderingSerializationKey(scope.dataSourceId), () =>
+          executeDatabaseCommand(apiFetch, {
+            command: {
+              afterRowId: input.afterRowId,
+              beforeRowId: input.beforeRowId,
+              ...(input.groupPropertyId
+                ? {
                     group: {
                       propertyId: input.groupPropertyId,
                       value: input.groupValue,
                     },
                   }
-                  : {}),
-                rowId: input.rowId,
-                type: "row.move",
-              },
-              databaseId: scope.hostDatabaseId,
-              dataSourceId: scope.dataSourceId,
-            }),
+                : {}),
+              rowId: input.rowId,
+              type: "row.move",
+            },
+            databaseId: scope.hostDatabaseId,
+            dataSourceId: scope.dataSourceId,
+          }),
         );
         invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
         return ack.result as DatabaseRecordEntity;
       } catch (error) {
         if (isRowMoveConflict(error)) {
-          invalidateDatabaseQueries(
-            queryClient,
-            sessionId,
-            scope.hostDatabaseId,
-          );
+          invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
           dropSerializedQueue(orderingSerializationKey(scope.dataSourceId));
           throw new Error("Order changed — try again.", { cause: error });
         }
@@ -215,23 +194,14 @@ export function useMoveDatabaseRow() {
       // patch the cached cell with the same helper so every view converges
       // instantly. Pure reorders keep their view-local preview instead.
       if (!input.groupPropertyId) return undefined;
-      const scope = resolveOptimisticScope(
-        queryClient,
-        input.databaseId,
-        input.hostDatabaseId,
-      );
+      const scope = resolveOptimisticScope(queryClient, input.databaseId, input.hostDatabaseId);
       if (!scope) return undefined;
       await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
-      const rollback = patchCachedCellValue(
-        queryClient,
-        sessionId,
-        scope.hostDatabaseId,
-        {
-          propertyId: input.groupPropertyId,
-          rowId: input.rowId,
-          value: input.groupValue,
-        },
-      );
+      const rollback = patchCachedCellValue(queryClient, sessionId, scope.hostDatabaseId, {
+        propertyId: input.groupPropertyId,
+        rowId: input.rowId,
+        value: input.groupValue,
+      });
       return { rollback, scope };
     },
     onError: (_error, _input, context) => {
@@ -279,24 +249,15 @@ export function useUpdateDatabasePropertyValue() {
       return ack.result as DatabaseRecordEntity;
     },
     onMutate: async (input): Promise<OptimisticContext | undefined> => {
-      const scope = resolveOptimisticScope(
-        queryClient,
-        input.databaseId,
-        input.hostDatabaseId,
-      );
+      const scope = resolveOptimisticScope(queryClient, input.databaseId, input.hostDatabaseId);
       if (!scope) return undefined;
       await cancelHostQueries(queryClient, sessionId, scope.hostDatabaseId);
-      const rollback = patchCachedCellValue(
-        queryClient,
-        sessionId,
-        scope.hostDatabaseId,
-        {
-          dataSourceId: scope.dataSourceId,
-          propertyId: input.propertyId,
-          rowId: input.rowId,
-          value: input.value,
-        },
-      );
+      const rollback = patchCachedCellValue(queryClient, sessionId, scope.hostDatabaseId, {
+        dataSourceId: scope.dataSourceId,
+        propertyId: input.propertyId,
+        rowId: input.rowId,
+        value: input.value,
+      });
       return { rollback, scope };
     },
     onError: (_error, _input, context) => {
@@ -318,11 +279,7 @@ function useDatabaseRowStateMutation(type: "row.archive" | "row.restore") {
   const { apiFetch, queryClient } = useZilobaseFeatures();
   const sessionId = useDatabaseSessionId();
   return useMutation({
-    mutationFn: async (input: {
-      databaseId: string;
-      hostDatabaseId?: string;
-      rowId: string;
-    }) => {
+    mutationFn: async (input: { databaseId: string; hostDatabaseId?: string; rowId: string }) => {
       const scope = await resolveDataSourceCommandScope(
         queryClient,
         apiFetch,
@@ -330,24 +287,18 @@ function useDatabaseRowStateMutation(type: "row.archive" | "row.restore") {
         input.hostDatabaseId,
       );
       try {
-        const ack = await runSerialized(
-          orderingSerializationKey(scope.dataSourceId),
-          () =>
-            executeDatabaseCommand(apiFetch, {
-              command: { rowId: input.rowId, type },
-              databaseId: scope.hostDatabaseId,
-              dataSourceId: scope.dataSourceId,
-            }),
+        const ack = await runSerialized(orderingSerializationKey(scope.dataSourceId), () =>
+          executeDatabaseCommand(apiFetch, {
+            command: { rowId: input.rowId, type },
+            databaseId: scope.hostDatabaseId,
+            dataSourceId: scope.dataSourceId,
+          }),
         );
         invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
         return ack.result as DatabaseRecordEntity;
       } catch (error) {
         if (isRowMoveConflict(error)) {
-          invalidateDatabaseQueries(
-            queryClient,
-            sessionId,
-            scope.hostDatabaseId,
-          );
+          invalidateDatabaseQueries(queryClient, sessionId, scope.hostDatabaseId);
           dropSerializedQueue(orderingSerializationKey(scope.dataSourceId));
           throw new Error("Order changed — try again.", { cause: error });
         }
@@ -389,14 +340,13 @@ function resolveCreateAnchors(queryClient: QueryClient, input: AddRowInput) {
       beforeRowId: input.beforeRowId ?? null,
     };
   }
-  const rowIds = findLoadedDataSourceRecords(queryClient, input.databaseId)
-    .slice()
-    .sort((left, right) =>
-      Number(
-        parseDatabaseOrderKey(left.orderKey) - parseDatabaseOrderKey(right.orderKey),
+  const rowIds =
+    findLoadedDataSourceRecords(queryClient, input.databaseId)
+      .slice()
+      .sort((left, right) =>
+        Number(parseDatabaseOrderKey(left.orderKey) - parseDatabaseOrderKey(right.orderKey)),
       )
-    )
-    .map(({ id }) => id) ?? [];
+      .map(({ id }) => id) ?? [];
   const index = Math.max(0, Math.min(input.position ?? rowIds.length, rowIds.length));
   return {
     afterRowId: rowIds[index - 1] ?? null,

@@ -3,16 +3,8 @@ import { Plus, Search, Trash2 } from "@/shared/components/icons";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/shared/ui/button";
-import {
-  DropDrawerSeparator,
-} from "@/shared/ui/dropdrawer";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { DropDrawerSeparator } from "@/shared/ui/dropdrawer";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { cyclingColorTokens, getColorToken } from "@/shared/lib/color-tokens";
 import { cn } from "@/shared/lib/utils";
 
@@ -41,9 +33,7 @@ function createConditionalColorId(prefix: string) {
     return `${prefix}-${crypto.randomUUID()}`;
   }
 
-  return `${prefix}-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2)}`;
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
 function getPlainConditionalColorSettings(
@@ -63,18 +53,12 @@ function getPlainConditionalColorSettings(
   }));
 }
 
-function getFilterPropertyType(
-  propertyId: string,
-  properties: DatabaseViewProperty[],
-) {
+function getFilterPropertyType(propertyId: string, properties: DatabaseViewProperty[]) {
   if (propertyId === "name") {
     return "text";
   }
 
-  return (
-    properties.find((property) => property.id === propertyId)?.property.type ??
-    "text"
-  );
+  return properties.find((property) => property.id === propertyId)?.property.type ?? "text";
 }
 
 function getConditionalColorLabel(value: string) {
@@ -96,15 +80,10 @@ function ConditionalColorPreview() {
         ["Marcus", "Tampa", "100", "bg-feedback-warning-subtle"],
         ["John", "Miami", "100", "bg-feedback-error-subtle"],
       ].map(([name, office, units, colorClass]) => (
-        <div
-          className={cn("grid grid-cols-3 text-xs text-content-primary", colorClass)}
-          key={name}
-        >
+        <div className={cn("grid grid-cols-3 text-xs text-content-primary", colorClass)} key={name}>
           <div className="px-2 py-1.5">{name}</div>
           <div className="border-l border-stroke-default px-2 py-1.5">{office}</div>
-          <div className="border-l border-stroke-default px-2 py-1.5 text-right">
-            {units}
-          </div>
+          <div className="border-l border-stroke-default px-2 py-1.5 text-right">{units}</div>
         </div>
       ))}
     </div>
@@ -126,9 +105,7 @@ function ConditionalColorPropertyPicker({
       return filterFieldOptions;
     }
 
-    return filterFieldOptions.filter((option) =>
-      option.label.toLowerCase().includes(query),
-    );
+    return filterFieldOptions.filter((option) => option.label.toLowerCase().includes(query));
   }, [filterFieldOptions, propertySearch]);
 
   return (
@@ -159,9 +136,7 @@ function ConditionalColorPropertyPicker({
             </button>
           ))
         ) : (
-          <div className="px-2 py-1.5 text-sm text-content-secondary">
-            No properties found
-          </div>
+          <div className="px-2 py-1.5 text-sm text-content-secondary">No properties found</div>
         )}
       </div>
     </div>
@@ -194,9 +169,8 @@ function ConditionalColorRuleItem({
   const filter = setting.filter;
   const color = getColorToken(setting.color);
   const applyTarget =
-    conditionalColorApplyTargetOptions.find(
-      (option) => option.value === setting.applyTo,
-    ) ?? conditionalColorApplyTargetOptions[0];
+    conditionalColorApplyTargetOptions.find((option) => option.value === setting.applyTo) ??
+    conditionalColorApplyTargetOptions[0];
 
   return (
     <DatabaseConditionEditor
@@ -217,20 +191,12 @@ function ConditionalColorRuleItem({
               value={setting.color}
             >
               <SelectTrigger className="text-xs">
-                <span
-                  className={cn(
-                    "size-3 rounded-sm border",
-                    color.swatchClass,
-                  )}
-                />
+                <span className={cn("size-3 rounded-sm border", color.swatchClass)} />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent align="start">
                 {cyclingColorTokens.map((option) => (
-                  <SelectItem
-                    key={option.value}
-                    value={option.value ?? "default"}
-                  >
+                  <SelectItem key={option.value} value={option.value ?? "default"}>
                     <span
                       className={cn(
                         "mr-2 inline-flex size-3 rounded-sm border align-middle",
@@ -275,8 +241,7 @@ function ConditionalColorRuleItem({
         const propertyType = getFilterPropertyType(field, properties);
 
         onUpdateFilter({
-          operator:
-            getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is",
+          operator: getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is",
           propertyId: field,
           values: [],
         });
@@ -301,9 +266,7 @@ export function ConditionalColorPanel({
   onSettingsChange: (settings: DatabaseConditionalColorConfig[]) => void;
 }) {
   const [isChoosingProperty, setIsChoosingProperty] = useState(false);
-  const [draggingSettingId, setDraggingSettingId] = useState<string | null>(
-    null,
-  );
+  const [draggingSettingId, setDraggingSettingId] = useState<string | null>(null);
 
   const saveSettings = (nextSettings: DatabaseConditionalColorConfig[]) => {
     onSettingsChange(nextSettings);
@@ -319,8 +282,7 @@ export function ConditionalColorPanel({
         color: DEFAULT_CONDITIONAL_COLOR,
         filter: {
           id: createConditionalColorId("conditional-filter"),
-          operator:
-            getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is",
+          operator: getDatabaseFilterOperatorsForType(propertyType)[0]?.value ?? "is",
           propertyId,
           values: [],
         },
@@ -331,10 +293,7 @@ export function ConditionalColorPanel({
     setIsChoosingProperty(false);
   };
 
-  const updateSetting = (
-    settingId: string,
-    updates: Partial<DatabaseConditionalColorConfig>,
-  ) => {
+  const updateSetting = (settingId: string, updates: Partial<DatabaseConditionalColorConfig>) => {
     saveSettings(
       getPlainConditionalColorSettings(settings).map((setting) =>
         setting.id === settingId ? { ...setting, ...updates } : setting,
@@ -342,10 +301,7 @@ export function ConditionalColorPanel({
     );
   };
 
-  const updateFilter = (
-    settingId: string,
-    updates: DatabaseFilterUpdatePatch,
-  ) => {
+  const updateFilter = (settingId: string, updates: DatabaseFilterUpdatePatch) => {
     saveSettings(
       getPlainConditionalColorSettings(settings).map((setting) =>
         setting.id === settingId
@@ -357,18 +313,13 @@ export function ConditionalColorPanel({
 
   const removeSetting = (settingId: string) => {
     saveSettings(
-      getPlainConditionalColorSettings(settings).filter(
-        (setting) => setting.id !== settingId,
-      ),
+      getPlainConditionalColorSettings(settings).filter((setting) => setting.id !== settingId),
     );
   };
 
   const reorderSettings = (settingIds: string[]) => {
     const settingsById = new Map(
-      getPlainConditionalColorSettings(settings).map((setting) => [
-        setting.id,
-        setting,
-      ]),
+      getPlainConditionalColorSettings(settings).map((setting) => [setting.id, setting]),
     );
     const reorderedSettings = settingIds.flatMap((settingId) => {
       const setting = settingsById.get(settingId);
@@ -428,9 +379,7 @@ export function ConditionalColorPanel({
             variant="secondary"
           >
             <Plus className="size-4" />
-            <span>
-              {settings.length > 0 ? "Add another" : "New color setting"}
-            </span>
+            <span>{settings.length > 0 ? "Add another" : "New color setting"}</span>
           </Button>
         )}
       </div>

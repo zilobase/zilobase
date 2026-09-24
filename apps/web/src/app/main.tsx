@@ -59,14 +59,10 @@ async function bootstrap() {
   await initializeDesktopTranslucency().catch(() => {
     // Older desktop shells can continue at the default, fully opaque setting.
   });
-  await Promise.all([
-    useAppStore.persist.rehydrate(),
-    useAuthFlowStore.persist.rehydrate(),
-  ]);
+  await Promise.all([useAppStore.persist.rehydrate(), useAuthFlowStore.persist.rehydrate()]);
   try {
-    applyActiveDesktopProfileWorkspace(
-      await listDesktopServerProfiles(),
-      (workspaceId) => useAppStore.getState().setActiveWorkspaceId(workspaceId),
+    applyActiveDesktopProfileWorkspace(await listDesktopServerProfiles(), (workspaceId) =>
+      useAppStore.getState().setActiveWorkspaceId(workspaceId),
     );
   } catch {
     // Profiles are optional until the native list command is available.

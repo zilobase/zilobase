@@ -3,7 +3,12 @@ import { and, eq } from "drizzle-orm";
 import { type AgentSettingsDefinition } from "@zilobase/features/ai-chat/settings-contract";
 
 import { db } from "../../../infrastructure/database";
-import { aiAgentTrigger, aiMcpConnection, aiMcpToolSnapshot, meeting } from "../../../infrastructure/database/schema";
+import {
+  aiAgentTrigger,
+  aiMcpConnection,
+  aiMcpToolSnapshot,
+  meeting,
+} from "../../../infrastructure/database/schema";
 import { canAccessPageInWorkspace, canAccessDatabaseInWorkspace } from "../../access";
 import { AgentProfileError, validateAccessPrincipals } from "../agents/agent-profile-service";
 
@@ -28,18 +33,8 @@ async function validateResourceGrants(a: SettingsActor, d: AgentSettingsDefiniti
     const required = r.accessLevel === "view" ? "view" : "full";
     const allowed =
       r.resourceType === "page"
-        ? await canAccessPageInWorkspace(
-          r.resourceId,
-          a.workspaceId,
-          a.userId,
-          required,
-        )
-        : await canAccessDatabaseInWorkspace(
-          r.resourceId,
-          a.workspaceId,
-          a.userId,
-          required,
-        );
+        ? await canAccessPageInWorkspace(r.resourceId, a.workspaceId, a.userId, required)
+        : await canAccessDatabaseInWorkspace(r.resourceId, a.workspaceId, a.userId, required);
     if (!allowed)
       throw new AgentProfileError(
         "agent_resource_grant_forbidden",
@@ -49,17 +44,15 @@ async function validateResourceGrants(a: SettingsActor, d: AgentSettingsDefiniti
   }
 }
 
-async function validateWebhookSecret(a: SettingsActor, t: AgentSettingsDefinition["triggers"][number]) {
+async function validateWebhookSecret(
+  a: SettingsActor,
+  t: AgentSettingsDefinition["triggers"][number],
+) {
   if (t.kind === "webhook" && t.status === "active") {
     const [existing] = await db
       .select()
       .from(aiAgentTrigger)
-      .where(
-        and(
-          eq(aiAgentTrigger.id, t.id),
-          eq(aiAgentTrigger.profileId, a.scope),
-        ),
-      );
+      .where(and(eq(aiAgentTrigger.id, t.id), eq(aiAgentTrigger.profileId, a.scope)));
     if (!existing?.webhookSecretId)
       throw new AgentProfileError(
         "webhook_secret_required",
@@ -83,14 +76,9 @@ function validateTriggerConfiguration(t: AgentSettingsDefinition["triggers"][num
     );
   if (
     t.kind === "schedule" &&
-    !["daily", "weekly", "monthly", "yearly", "custom"].includes(
-      String(t.config.cadence),
-    )
+    !["daily", "weekly", "monthly", "yearly", "custom"].includes(String(t.config.cadence))
   )
-    throw new AgentProfileError(
-      "invalid_schedule",
-      "Choose a supported schedule cadence.",
-    );
+    throw new AgentProfileError("invalid_schedule", "Choose a supported schedule cadence.");
   if (["connector", "slack"].includes(t.kind) && t.status === "active")
     throw new AgentProfileError(
       "trigger_adapter_required",
@@ -99,17 +87,16 @@ function validateTriggerConfiguration(t: AgentSettingsDefinition["triggers"][num
     );
   if (
     t.kind === "database" &&
-    !["row_added", "row_removed", "property_changed"].includes(
-      String(t.config.event),
-    )
+    !["row_added", "row_removed", "property_changed"].includes(String(t.config.event))
   )
-    throw new AgentProfileError(
-      "invalid_database_event",
-      "Choose a supported database event.",
-    );
+    throw new AgentProfileError("invalid_database_event", "Choose a supported database event.");
 }
 
-async function validateTriggerResources(a: SettingsActor, d: AgentSettingsDefinition, t: AgentSettingsDefinition["triggers"][number]) {
+async function validateTriggerResources(
+  a: SettingsActor,
+  d: AgentSettingsDefinition,
+  t: AgentSettingsDefinition["triggers"][number],
+) {
   if (t.kind === "meeting") {
     const [record] = await db
       .select({ pageId: meeting.pageId })
@@ -154,10 +141,7 @@ async function validateTriggerResources(a: SettingsActor, d: AgentSettingsDefini
 }
 
 async function validateConnectorPolicy(a: SettingsActor, d: AgentSettingsDefinition) {
-  const connections = await db
-    .select()
-    .from(aiMcpConnection)
-    .where(settingsConnectionCondition(a));
+  const connections = await db.select().from(aiMcpConnection).where(settingsConnectionCondition(a));
   let enabled = 0;
   for (const c of d.connectors) {
     const connection = connections.find((x) => x.id === c.connectionId);

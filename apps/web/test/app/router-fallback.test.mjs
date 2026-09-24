@@ -1,71 +1,77 @@
 export function register({ readSource, assert, test }) {
   test("route authentication never leaves a blank screen", async () => {
     const source = (
-      await Promise.all([
-        "router",
-        "pending-page",
-        "route-error-page",
-        "guards",
-        "route-roots",
-        "route-groups/app-routes",
-        "route-groups/public-routes",
-        "route-groups/content-routes",
-      ].map((path) => readSource(`/src/app/routing/${path}.tsx`).catch(() =>
-        readSource(`/src/app/routing/${path}.ts`),
-      )))
-    ).join("\n")
-    const errorSource = await readSource("/src/app/routing/route-error.ts")
+      await Promise.all(
+        [
+          "router",
+          "pending-page",
+          "route-error-page",
+          "guards",
+          "route-roots",
+          "route-groups/app-routes",
+          "route-groups/public-routes",
+          "route-groups/content-routes",
+        ].map((path) =>
+          readSource(`/src/app/routing/${path}.tsx`).catch(() =>
+            readSource(`/src/app/routing/${path}.ts`),
+          ),
+        ),
+      )
+    ).join("\n");
+    const errorSource = await readSource("/src/app/routing/route-error.ts");
 
-    assert.match(source, /export function PendingPage\(\)/)
-    assert.match(source, /defaultPendingComponent: PendingPage/)
-    assert.doesNotMatch(source, /RoutePendingPage|AppContentPendingPage/)
-    assert.match(source, /defaultErrorComponent: lazyRouteComponent/)
-    assert.match(source, /import\("\.\/route-error-page"\)/)
-    assert.match(source, /Connecting to Zilobase\.\.\./)
-    assert.match(errorSource, /Your desktop session is still saved/)
-    assert.match(errorSource, /Something went wrong/)
-    assert.match(source, /decidePublishedShareAccess/)
-    assert.match(source, /describeRouteError/)
-    assert.match(source, /publishedShare/)
-    assert.match(source, /window\.location\.reload\(\)/)
-    assert.match(source, /path: "\/connect"/)
-    assert.match(source, /Change server/)
-    assert.match(source, /useNavigate/)
-    assert.match(source, /navigate\(\{ to: "\/connect" \}\)/)
-    assert.doesNotMatch(source, /window\.location\.assign\("\/connect"\)/)
-    assert.match(source, /getFreshSession\(\{ optional: true \}\)/)
-    assert.match(source, /path: "\/recents"/)
-    assert.doesNotMatch(source, /\/dashboard/)
-  })
+    assert.match(source, /export function PendingPage\(\)/);
+    assert.match(source, /defaultPendingComponent: PendingPage/);
+    assert.doesNotMatch(source, /RoutePendingPage|AppContentPendingPage/);
+    assert.match(source, /defaultErrorComponent: lazyRouteComponent/);
+    assert.match(source, /import\("\.\/route-error-page"\)/);
+    assert.match(source, /Connecting to Zilobase\.\.\./);
+    assert.match(errorSource, /Your desktop session is still saved/);
+    assert.match(errorSource, /Something went wrong/);
+    assert.match(source, /decidePublishedShareAccess/);
+    assert.match(source, /describeRouteError/);
+    assert.match(source, /publishedShare/);
+    assert.match(source, /window\.location\.reload\(\)/);
+    assert.match(source, /path: "\/connect"/);
+    assert.match(source, /Change server/);
+    assert.match(source, /useNavigate/);
+    assert.match(source, /navigate\(\{ to: "\/connect" \}\)/);
+    assert.doesNotMatch(source, /window\.location\.assign\("\/connect"\)/);
+    assert.match(source, /getFreshSession\(\{ optional: true \}\)/);
+    assert.match(source, /path: "\/recents"/);
+    assert.doesNotMatch(source, /\/dashboard/);
+  });
 
   test("published routes keep the authenticated shell after route authorization", async () => {
     const routerSource = (
-      await Promise.all([
-        "router.tsx",
-        "route-roots.tsx",
-        "route-shell.tsx",
-        "route-groups/content-routes.tsx",
-      ].map((path) => readSource(`/src/app/routing/${path}`)))
-    ).join("\n")
-    const pageSource = await readSource("/src/features/pages/screens/page.tsx")
-    const databaseSource = await readSource("/src/features/databases/core/database-screen.tsx")
-    const meetingSource = await readSource("/src/features/meetings/screens/meeting.tsx")
+      await Promise.all(
+        ["router.tsx", "route-roots.tsx", "route-shell.tsx", "route-groups/content-routes.tsx"].map(
+          (path) => readSource(`/src/app/routing/${path}`),
+        ),
+      )
+    ).join("\n");
+    const pageSource = await readSource("/src/features/pages/screens/page.tsx");
+    const databaseSource = await readSource("/src/features/databases/core/database-screen.tsx");
+    const meetingSource = await readSource("/src/features/meetings/screens/meeting.tsx");
 
     for (const source of [pageSource, databaseSource]) {
-      assert.match(source, /if \(publishedShare === "public"\)/)
-      assert.doesNotMatch(source, /!session\?\.user \|\| publishedShare/)
-      assert.match(source, /<AuthenticatedRouteError resource=/)
+      assert.match(source, /if \(publishedShare === "public"\)/);
+      assert.doesNotMatch(source, /!session\?\.user \|\| publishedShare/);
+      assert.match(source, /<AuthenticatedRouteError resource=/);
     }
 
-    assert.doesNotMatch(pageSource, /fallback=\{<PublicPage \/>\}/)
-    assert.doesNotMatch(databaseSource, /fallback=\{publicPage\}/)
-    assert.match(routerSource, /component: RootRouteShell/)
-    assert.match(routerSource, /<Suspense fallback=\{<PendingPage \/>\}>[\s\S]*<AppLayout>[\s\S]*<Outlet \/>[\s\S]*<\/AppLayout>[\s\S]*<\/Suspense>/)
-    assert.match(routerSource, /authenticatedMeeting/)
-    assert.match(routerSource, /component: Outlet,\s*pendingComponent: PendingPage/)
-    assert.doesNotMatch(routerSource, /staleTime: 0/)
-    assert.doesNotMatch(pageSource, /import \{ AppLayout \}/)
-    assert.doesNotMatch(databaseSource, /import \{ AppLayout \}/)
-    assert.doesNotMatch(meetingSource, /import \{ AppLayout \}/)
-  })
+    assert.doesNotMatch(pageSource, /fallback=\{<PublicPage \/>\}/);
+    assert.doesNotMatch(databaseSource, /fallback=\{publicPage\}/);
+    assert.match(routerSource, /component: RootRouteShell/);
+    assert.match(
+      routerSource,
+      /<Suspense fallback=\{<PendingPage \/>\}>[\s\S]*<AppLayout>[\s\S]*<Outlet \/>[\s\S]*<\/AppLayout>[\s\S]*<\/Suspense>/,
+    );
+    assert.match(routerSource, /authenticatedMeeting/);
+    assert.match(routerSource, /component: Outlet,\s*pendingComponent: PendingPage/);
+    assert.doesNotMatch(routerSource, /staleTime: 0/);
+    assert.doesNotMatch(pageSource, /import \{ AppLayout \}/);
+    assert.doesNotMatch(databaseSource, /import \{ AppLayout \}/);
+    assert.doesNotMatch(meetingSource, /import \{ AppLayout \}/);
+  });
 }

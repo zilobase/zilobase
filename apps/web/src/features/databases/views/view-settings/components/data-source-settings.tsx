@@ -20,7 +20,7 @@ import {
   DropDrawerSubTrigger,
 } from "@/shared/ui/dropdrawer";
 import { Input } from "@/shared/ui/input";
-import { useDatabaseMetadata } from "../../../access/use-database-metadata"
+import { useDatabaseMetadata } from "../../../access/use-database-metadata";
 import { type PageDatabase } from "@zilobase/features/pages";
 import { usePageNavigation } from "@zilobase/features/pages/react";
 import { DEFAULT_DATABASE_ITEM_ICON } from "@/features/pages/index";
@@ -44,10 +44,7 @@ import {
 import { partitionManagedDataSources } from "../model/data-source-model";
 import type { DatabaseViewSettingsMenuProps } from "../view-settings-contracts";
 import { ViewTypeOptionGrid } from "./view-type-option-grid";
-import {
-  getDatabaseViewTypePresentation,
-  type DatabaseViewType,
-} from "../model/view-type-options";
+import { getDatabaseViewTypePresentation, type DatabaseViewType } from "../model/view-type-options";
 import { ViewSettingsRow } from "./view-settings-row";
 import { SubItemsSettingsSection } from "./sub-items-settings";
 
@@ -90,23 +87,18 @@ function LinkExistingDataSourcePicker({
   onCloseSettings: () => void;
   onLinkDataSourceView: DatabaseViewSettingsMenuProps["onLinkDataSourceView"];
 }) {
-  const [selectedDatabaseId, setSelectedDatabaseId] = useState<string | null>(
-    null,
-  );
+  const [selectedDatabaseId, setSelectedDatabaseId] = useState<string | null>(null);
   const [creatingView, setCreatingView] = useState(false);
   const [viewName, setViewName] = useState("");
-  const { data: databasePayload, isLoading } =
-    useDatabaseMetadata(selectedDatabaseId);
+  const { data: databasePayload, isLoading } = useDatabaseMetadata(selectedDatabaseId);
   const selectedDatabase = selectedDatabaseId
     ? databaseOptions.find((option) => option.value === selectedDatabaseId)
     : null;
   const selectedDataSourceId =
-    databasePayload?.activeDataSource?.id ??
-    selectedDatabase?.database.views[0]?.dataSourceId;
+    databasePayload?.activeDataSource?.id ?? selectedDatabase?.database.views[0]?.dataSourceId;
   const views =
     databasePayload?.views.filter(
-      (view) =>
-        !selectedDataSourceId || view.dataSourceId === selectedDataSourceId,
+      (view) => !selectedDataSourceId || view.dataSourceId === selectedDataSourceId,
     ) ?? [];
 
   const resetSelection = () => {
@@ -281,18 +273,11 @@ export function DataSourceSettingsSection({
   const [manageDataSourcesOpen, setManageDataSourcesOpen] = useState(false);
   const [linkExistingOpen, setLinkExistingOpen] = useState(false);
   const [linkExistingSession, setLinkExistingSession] = useState(0);
-  const { data: navigation, isLoading: isLoadingPages } = usePageNavigation(
-    workspaceId,
-    {
-      enabled: open,
-    },
-  );
-  const pagesById = new Map(
-    (navigation?.pages ?? []).map((page) => [page.id, page]),
-  );
-  const databaseOptions = (
-    navigation?.databases ?? []
-  ).map<LinkableDatabaseOption>((database) => {
+  const { data: navigation, isLoading: isLoadingPages } = usePageNavigation(workspaceId, {
+    enabled: open,
+  });
+  const pagesById = new Map((navigation?.pages ?? []).map((page) => [page.id, page]));
+  const databaseOptions = (navigation?.databases ?? []).map<LinkableDatabaseOption>((database) => {
     const pageName = database.pageId
       ? pagesById.get(database.pageId)?.name || "Untitled"
       : "Standalone";
@@ -318,8 +303,10 @@ export function DataSourceSettingsSection({
     activeDataSourceName ||
     dataSources.find((source) => source.id === activeDataSourceId)?.name ||
     "No data source";
-  const { linked: linkedDataSources, owned: ownedDataSources } =
-    partitionManagedDataSources(dataSources, resolvedHostDatabaseId);
+  const { linked: linkedDataSources, owned: ownedDataSources } = partitionManagedDataSources(
+    dataSources,
+    resolvedHostDatabaseId,
+  );
 
   useEffect(() => {
     if (open) return;
@@ -331,35 +318,34 @@ export function DataSourceSettingsSection({
 
   const renderDataSourcePicker = (options: LinkableDatabaseOption[]) => (
     <PageDatabasePicker
-        ariaLabel="Search databases"
-        className="h-[min(32rem,calc(100dvh-5rem))]"
-        emptyMessage="No databases available."
-        heading="Databases"
-        isLoading={isLoadingPages}
-        loadingMessage="Loading databases..."
-        onSelect={(databaseOption) => {
-          const sourceView = databaseOption.database.views[0];
+      ariaLabel="Search databases"
+      className="h-[min(32rem,calc(100dvh-5rem))]"
+      emptyMessage="No databases available."
+      heading="Databases"
+      isLoading={isLoadingPages}
+      loadingMessage="Loading databases..."
+      onSelect={(databaseOption) => {
+        const sourceView = databaseOption.database.views[0];
 
-          if (!sourceView) return;
+        if (!sourceView) return;
 
-          const sourceSelection = {
-            dataSourceId: sourceView.dataSourceId,
-            dataSourceName:
-              databaseOption.database.name || "Untitled database",
-            parentDatabaseId: databaseOption.database.id,
-            viewId: sourceView.id,
-            viewName: sourceView.name,
-            viewType: sourceView.type,
-          };
+        const sourceSelection = {
+          dataSourceId: sourceView.dataSourceId,
+          dataSourceName: databaseOption.database.name || "Untitled database",
+          parentDatabaseId: databaseOption.database.id,
+          viewId: sourceView.id,
+          viewName: sourceView.name,
+          viewType: sourceView.type,
+        };
 
-          onReplaceActiveViewSource(sourceSelection);
-          onCloseSettings();
-        }}
-        options={options.map((option) => ({
-          ...option,
-          disabled: option.database.views.length === 0,
-        }))}
-        placeholder="Search databases..."
+        onReplaceActiveViewSource(sourceSelection);
+        onCloseSettings();
+      }}
+      options={options.map((option) => ({
+        ...option,
+        disabled: option.database.views.length === 0,
+      }))}
+      placeholder="Search databases..."
     />
   );
 
@@ -368,26 +354,15 @@ export function DataSourceSettingsSection({
       <DropDrawerLabel className="px-2 py-1.5 text-xs font-medium text-content-secondary">
         Data source settings
       </DropDrawerLabel>
-      <DropDrawerSub
-        displayMode="inline"
-        id="database-view-source"
-        title="Source"
-      >
+      <DropDrawerSub displayMode="inline" id="database-view-source" title="Source">
         <DropDrawerSubTrigger>
           <ViewSettingsRow
             icon={<Cable />}
             label="Source"
-            right={
-              <span className="block max-w-28 truncate">
-                {currentSourceName}
-              </span>
-            }
+            right={<span className="block max-w-28 truncate">{currentSourceName}</span>}
           />
         </DropDrawerSubTrigger>
-        <DropDrawerSubContent
-          className="w-72 p-0"
-          style={{ overflow: "hidden" }}
-        >
+        <DropDrawerSubContent className="w-72 p-0" style={{ overflow: "hidden" }}>
           {renderDataSourcePicker(dataSourceOptions)}
         </DropDrawerSubContent>
       </DropDrawerSub>
@@ -404,13 +379,9 @@ export function DataSourceSettingsSection({
             inputPlaceholder="Edit property..."
             open={open}
             options={properties
-              .filter((property) =>
-                hasDatabasePropertyEditSettings(property.property.type),
-              )
+              .filter((property) => hasDatabasePropertyEditSettings(property.property.type))
               .map((property) => {
-                const PropertyIcon = getDatabasePropertyType(
-                  property.property.type,
-                ).icon;
+                const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
 
                 return {
                   icon: <PropertyIcon />,
@@ -419,9 +390,7 @@ export function DataSourceSettingsSection({
                 };
               })}
             renderOption={(option) => {
-              const property = properties.find(
-                (candidate) => candidate.id === option.value,
-              );
+              const property = properties.find((candidate) => candidate.id === option.value);
 
               if (!property || !databaseId) {
                 return (
@@ -482,11 +451,7 @@ export function DataSourceSettingsSection({
           <DropDrawerItem disabled>Archived pages</DropDrawerItem>
         </DropDrawerSubContent>
       </DropDrawerSub>
-      <DropDrawerSub
-        displayMode="nested"
-        id="database-more-settings"
-        title="More settings"
-      >
+      <DropDrawerSub displayMode="nested" id="database-more-settings" title="More settings">
         <DropDrawerSubTrigger>
           <MoreHorizontal />
           <span>More settings</span>
@@ -521,10 +486,7 @@ export function DataSourceSettingsSection({
               <DataSourceMenuItem
                 icon={
                   getDatabaseIconNode(source) ?? (
-                    <PageIconDisplay
-                      size="sm"
-                      value={DEFAULT_DATABASE_ITEM_ICON}
-                    />
+                    <PageIconDisplay size="sm" value={DEFAULT_DATABASE_ITEM_ICON} />
                   )
                 }
                 item={source}
@@ -547,11 +509,7 @@ export function DataSourceSettingsSection({
             }}
           >
             <DataSourceAddGlyph />
-            <span>
-              {isAddingDataSource
-                ? "Adding data source..."
-                : "Add data source"}
-            </span>
+            <span>{isAddingDataSource ? "Adding data source..." : "Add data source"}</span>
           </DropDrawerItem>
           <DropDrawerSeparator />
           <DataSourceSectionLabel>Linked</DataSourceSectionLabel>
@@ -559,10 +517,7 @@ export function DataSourceSettingsSection({
             <LinkedDataSourceMenuItem
               icon={
                 getDatabaseIconNode(source) ?? (
-                  <PageIconDisplay
-                    size="sm"
-                    value={DEFAULT_DATABASE_ITEM_ICON}
-                  />
+                  <PageIconDisplay size="sm" value={DEFAULT_DATABASE_ITEM_ICON} />
                 )
               }
               item={source}
@@ -584,10 +539,7 @@ export function DataSourceSettingsSection({
               <DataSourceAddGlyph />
               <span>Link existing data source</span>
             </DropDrawerSubTrigger>
-            <DropDrawerSubContent
-              className="w-72 p-0"
-              style={{ overflow: "hidden" }}
-            >
+            <DropDrawerSubContent className="w-72 p-0" style={{ overflow: "hidden" }}>
               <LinkExistingDataSourcePicker
                 databaseOptions={linkableDatabaseOptions}
                 isLoadingPages={isLoadingPages}

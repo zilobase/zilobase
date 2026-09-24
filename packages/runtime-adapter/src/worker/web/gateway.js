@@ -45,16 +45,12 @@ export function createWebGateway(options) {
         url.pathname === COLLABORATION_PATH ||
         url.pathname === DATABASE_COLLABORATION_PATH
       ) {
-        if (
-          demoOrigin &&
-          !["GET", "HEAD", "OPTIONS"].includes(request.method)
-        ) {
+        if (demoOrigin && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
           return demoReadOnlyResponse();
         }
         if (
           demoOrigin &&
-          (url.pathname === COLLABORATION_PATH ||
-            url.pathname === DATABASE_COLLABORATION_PATH)
+          (url.pathname === COLLABORATION_PATH || url.pathname === DATABASE_COLLABORATION_PATH)
         ) {
           return demoReadOnlyResponse();
         }
@@ -66,10 +62,10 @@ export function createWebGateway(options) {
         request.headers.get("accept")?.includes("text/html") &&
         isSpaRoute(url.pathname)
       ) {
-        const response = await env.ASSETS.fetch(
-          new Request(new URL("/index.html", url), request),
-        );
-        return demoOrigin ? applyDemoSecurityHeaders(response, demoFrameAncestors, demoFormActions) : response;
+        const response = await env.ASSETS.fetch(new Request(new URL("/index.html", url), request));
+        return demoOrigin
+          ? applyDemoSecurityHeaders(response, demoFrameAncestors, demoFormActions)
+          : response;
       }
 
       const response = await env.ASSETS.fetch(request);
@@ -78,12 +74,14 @@ export function createWebGateway(options) {
         request.headers.get("accept")?.includes("text/html") &&
         response.status === 404
       ) {
-        const fallback = await env.ASSETS.fetch(
-          new Request(new URL("/index.html", url), request),
-        );
-        return demoOrigin ? applyDemoSecurityHeaders(fallback, demoFrameAncestors, demoFormActions) : fallback;
+        const fallback = await env.ASSETS.fetch(new Request(new URL("/index.html", url), request));
+        return demoOrigin
+          ? applyDemoSecurityHeaders(fallback, demoFrameAncestors, demoFormActions)
+          : fallback;
       }
-      return demoOrigin ? applyDemoSecurityHeaders(response, demoFrameAncestors, demoFormActions) : response;
+      return demoOrigin
+        ? applyDemoSecurityHeaders(response, demoFrameAncestors, demoFormActions)
+        : response;
     },
   };
 }
@@ -94,9 +92,7 @@ async function proxyPostHogRequest(request, env) {
   }
   const sourceUrl = new URL(request.url);
   const assetRequest = sourceUrl.pathname.startsWith("/ingest/static/");
-  const configuredHost = assetRequest
-    ? env.POSTHOG_ASSET_HOST
-    : env.POSTHOG_HOST;
+  const configuredHost = assetRequest ? env.POSTHOG_ASSET_HOST : env.POSTHOG_HOST;
   const targetOrigin = readPostHogOrigin(configuredHost);
   if (!targetOrigin) return new Response("Not found", { status: 404 });
 
@@ -145,12 +141,7 @@ function buildTargetRequest(targetUrl, request, { demo, demoOrigin }) {
     return new Request(new Request(targetUrl, request), { headers });
   }
 
-  for (const header of [
-    "authorization",
-    "cookie",
-    "x-api-key",
-    "x-mobile-auth-cookie",
-  ]) {
+  for (const header of ["authorization", "cookie", "x-api-key", "x-mobile-auth-cookie"]) {
     headers.delete(header);
   }
   headers.set(demoHeader, "1");
@@ -220,9 +211,7 @@ function isApiRoute(pathname) {
   return (
     pathname === API_PREFIX ||
     pathname.startsWith(`${API_PREFIX}/`) ||
-    API_PATH_PREFIXES.some(
-      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-    )
+    API_PATH_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
   );
 }
 

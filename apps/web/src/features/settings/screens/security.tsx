@@ -1,12 +1,12 @@
-import * as React from "react"
-import { useNavigate } from "@tanstack/react-router"
-import { Trash2Icon } from "@/shared/components/icons"
-import { toast } from "sonner"
+import * as React from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { Trash2Icon } from "@/shared/components/icons";
+import { toast } from "sonner";
 
-import { clearApiAuthToken, getApiErrorMessage } from "@/platform/network/api"
-import { useAppStore } from "@/features/desktop/state/app-store"
-import { clearAllIndexedData } from "@/platform/storage/indexed-data-cleanup"
-import { useQueryClient } from "@tanstack/react-query"
+import { clearApiAuthToken, getApiErrorMessage } from "@/platform/network/api";
+import { useAppStore } from "@/features/desktop/state/app-store";
+import { clearAllIndexedData } from "@/platform/storage/indexed-data-cleanup";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -15,18 +15,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
-import { Button } from "@/shared/ui/button"
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/shared/ui/field"
-import { Input } from "@/shared/ui/input"
-import { Separator } from "@/shared/ui/separator"
-import { Spinner } from "@/shared/ui/spinner"
+} from "@/shared/ui/alert-dialog";
+import { Button } from "@/shared/ui/button";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { Separator } from "@/shared/ui/separator";
+import { Spinner } from "@/shared/ui/spinner";
 import {
   useChangePassword,
   useDeleteAccount,
@@ -34,24 +28,18 @@ import {
   useSetPassword,
 } from "@zilobase/features/auth/react";
 
-import { SettingsHeader } from "../components/settings-header"
+import { SettingsHeader } from "../components/settings-header";
 
 export default function SecuritySettingsPage() {
-  const { data: sessionData } = useSession()
-  const user = sessionData?.user
+  const { data: sessionData } = useSession();
+  const user = sessionData?.user;
 
   return (
     <main className="flex min-h-full flex-1 flex-col gap-6 px-4 py-8">
-      <SettingsHeader
-        title="Security"
-        description="Manage your password and account security."
-      />
+      <SettingsHeader title="Security" description="Manage your password and account security." />
 
       <div className="mx-auto grid w-full max-w-3xl gap-6">
-        <PasswordCard
-          hasPassword={user?.hasPassword ?? true}
-          isReady={Boolean(user)}
-        />
+        <PasswordCard hasPassword={user?.hasPassword ?? true} isReady={Boolean(user)} />
         <Separator />
         <DeleteAccountSection
           email={user?.email ?? ""}
@@ -60,57 +48,50 @@ export default function SecuritySettingsPage() {
         />
       </div>
     </main>
-  )
+  );
 }
 
-function PasswordCard({
-  hasPassword,
-  isReady,
-}: {
-  hasPassword: boolean
-  isReady: boolean
-}) {
-  const changePassword = useChangePassword()
-  const setPassword = useSetPassword()
-  const [currentPassword, setCurrentPassword] = React.useState("")
-  const [newPassword, setNewPassword] = React.useState("")
-  const [confirmPassword, setConfirmPassword] = React.useState("")
-  const [error, setError] = React.useState("")
-  const isPending = changePassword.isPending || setPassword.isPending
-  const canSubmit = Boolean(
-    (hasPassword ? currentPassword : true) && newPassword && confirmPassword,
-  ) && !isPending
+function PasswordCard({ hasPassword, isReady }: { hasPassword: boolean; isReady: boolean }) {
+  const changePassword = useChangePassword();
+  const setPassword = useSetPassword();
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [error, setError] = React.useState("");
+  const isPending = changePassword.isPending || setPassword.isPending;
+  const canSubmit =
+    Boolean((hasPassword ? currentPassword : true) && newPassword && confirmPassword) && !isPending;
 
   const updatePassword = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+    event.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      setError("New passwords do not match.")
-      return
+      setError("New passwords do not match.");
+      return;
     }
 
     if (hasPassword && newPassword === currentPassword) {
-      setError("Choose a new password that is different from the current one.")
-      return
+      setError("Choose a new password that is different from the current one.");
+      return;
     }
 
-    setError("")
+    setError("");
     const onSuccess = () => {
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
-      toast.success(hasPassword ? "Password updated." : "Password set.")
-    }
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success(hasPassword ? "Password updated." : "Password set.");
+    };
     const onError = (mutationError: Error) => {
-      setError(getApiErrorMessage(mutationError))
-    }
+      setError(getApiErrorMessage(mutationError));
+    };
 
     if (hasPassword) {
-      changePassword.mutate({ currentPassword, newPassword }, { onError, onSuccess })
+      changePassword.mutate({ currentPassword, newPassword }, { onError, onSuccess });
     } else {
-      setPassword.mutate({ newPassword }, { onError, onSuccess })
+      setPassword.mutate({ newPassword }, { onError, onSuccess });
     }
-  }
+  };
 
   return (
     <section className="grid gap-3">
@@ -143,8 +124,8 @@ function PasswordCard({
                 disabled={!isReady || isPending}
                 id="security-current-password"
                 onChange={(event) => {
-                  setCurrentPassword(event.target.value)
-                  if (error) setError("")
+                  setCurrentPassword(event.target.value);
+                  if (error) setError("");
                 }}
                 type="password"
                 value={currentPassword}
@@ -161,8 +142,8 @@ function PasswordCard({
               id="security-new-password"
               minLength={8}
               onChange={(event) => {
-                setNewPassword(event.target.value)
-                if (error) setError("")
+                setNewPassword(event.target.value);
+                if (error) setError("");
               }}
               type="password"
               value={newPassword}
@@ -176,8 +157,8 @@ function PasswordCard({
               id="security-confirm-password"
               minLength={8}
               onChange={(event) => {
-                setConfirmPassword(event.target.value)
-                if (error) setError("")
+                setConfirmPassword(event.target.value);
+                if (error) setError("");
               }}
               type="password"
               value={confirmPassword}
@@ -188,7 +169,7 @@ function PasswordCard({
         </FieldGroup>
       </form>
     </section>
-  )
+  );
 }
 
 function DeleteAccountSection({
@@ -196,45 +177,45 @@ function DeleteAccountSection({
   hasPassword,
   isReady,
 }: {
-  email: string
-  hasPassword: boolean
-  isReady: boolean
+  email: string;
+  hasPassword: boolean;
+  isReady: boolean;
 }) {
-  const queryClient = useQueryClient()
-  const navigate = useNavigate()
-  const deleteAccount = useDeleteAccount()
-  const [open, setOpen] = React.useState(false)
-  const [confirmation, setConfirmation] = React.useState("")
-  const [password, setPassword] = React.useState("")
-  const [error, setError] = React.useState("")
-  const matches = confirmation.trim().toLowerCase() === email.trim().toLowerCase()
-  const canDelete = matches && (!hasPassword || Boolean(password)) && !deleteAccount.isPending
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const deleteAccount = useDeleteAccount();
+  const [open, setOpen] = React.useState(false);
+  const [confirmation, setConfirmation] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [error, setError] = React.useState("");
+  const matches = confirmation.trim().toLowerCase() === email.trim().toLowerCase();
+  const canDelete = matches && (!hasPassword || Boolean(password)) && !deleteAccount.isPending;
 
   const reset = () => {
-    setConfirmation("")
-    setPassword("")
-    setError("")
-  }
+    setConfirmation("");
+    setPassword("");
+    setError("");
+  };
 
   const confirmDelete = () => {
-    if (!canDelete) return
-    setError("")
+    if (!canDelete) return;
+    setError("");
     deleteAccount.mutate(
       { password: hasPassword ? password : undefined },
       {
         onError: (mutationError) => setError(getApiErrorMessage(mutationError)),
         onSuccess: async () => {
-          await clearApiAuthToken()
-          await clearAllIndexedData().catch(() => undefined)
-          queryClient.clear()
-          useAppStore.getState().resetAccountState()
-          setOpen(false)
-          toast.success("Your account was deleted.")
-          await navigate({ to: "/login", replace: true })
+          await clearApiAuthToken();
+          await clearAllIndexedData().catch(() => undefined);
+          queryClient.clear();
+          useAppStore.getState().resetAccountState();
+          setOpen(false);
+          toast.success("Your account was deleted.");
+          await navigate({ to: "/login", replace: true });
         },
       },
-    )
-  }
+    );
+  };
 
   return (
     <section className="grid gap-3">
@@ -242,7 +223,8 @@ function DeleteAccountSection({
         <div className="min-w-0 space-y-1">
           <h3 className="font-heading text-base leading-snug font-medium">Delete account</h3>
           <p className="text-sm text-content-secondary">
-            Permanently delete your account, sessions, and personal settings. Workspaces you solely own must be deleted or assigned another owner first.
+            Permanently delete your account, sessions, and personal settings. Workspaces you solely
+            own must be deleted or assigned another owner first.
           </p>
         </div>
         <Button
@@ -260,9 +242,9 @@ function DeleteAccountSection({
       <AlertDialog
         open={open}
         onOpenChange={(nextOpen) => {
-          if (deleteAccount.isPending) return
-          setOpen(nextOpen)
-          if (!nextOpen) reset()
+          if (deleteAccount.isPending) return;
+          setOpen(nextOpen);
+          if (!nextOpen) reset();
         }}
       >
         <AlertDialogContent>
@@ -281,8 +263,8 @@ function DeleteAccountSection({
                 disabled={deleteAccount.isPending}
                 id="delete-account-confirmation"
                 onChange={(event) => {
-                  setConfirmation(event.target.value)
-                  if (error) setError("")
+                  setConfirmation(event.target.value);
+                  if (error) setError("");
                 }}
                 value={confirmation}
               />
@@ -295,8 +277,8 @@ function DeleteAccountSection({
                   disabled={deleteAccount.isPending}
                   id="delete-account-password"
                   onChange={(event) => {
-                    setPassword(event.target.value)
-                    if (error) setError("")
+                    setPassword(event.target.value);
+                    if (error) setError("");
                   }}
                   type="password"
                   value={password}
@@ -309,7 +291,12 @@ function DeleteAccountSection({
           </FieldGroup>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteAccount.isPending}>Cancel</AlertDialogCancel>
-            <Button disabled={!canDelete} onClick={confirmDelete} type="button" variant="destructive">
+            <Button
+              disabled={!canDelete}
+              onClick={confirmDelete}
+              type="button"
+              variant="destructive"
+            >
               {deleteAccount.isPending ? <Spinner /> : <Trash2Icon />}
               {deleteAccount.isPending ? "Deleting..." : "Delete account"}
             </Button>
@@ -317,5 +304,5 @@ function DeleteAccountSection({
         </AlertDialogContent>
       </AlertDialog>
     </section>
-  )
+  );
 }

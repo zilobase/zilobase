@@ -1,4 +1,8 @@
-export const calendarRuntimeSecretNames = ["CALENDAR_GOOGLE_CLIENT_ID", "CALENDAR_GOOGLE_CLIENT_SECRET", "CALENDAR_TOKEN_ENCRYPTION_KEY"];
+export const calendarRuntimeSecretNames = [
+  "CALENDAR_GOOGLE_CLIENT_ID",
+  "CALENDAR_GOOGLE_CLIENT_SECRET",
+  "CALENDAR_TOKEN_ENCRYPTION_KEY",
+];
 export const gmailRuntimeSecretNames = [
   "GMAIL_GOOGLE_CLIENT_ID",
   "GMAIL_GOOGLE_CLIENT_SECRET",
@@ -42,9 +46,17 @@ export const runtimeSecretNames = [
 ];
 
 export function requiredRuntimeSecretNames({ mailEnabled, calendarEnabled = false }) {
-  return [...coreRuntimeSecretNames, ...(mailEnabled ? gmailRuntimeSecretNames : []), ...(calendarEnabled ? calendarRuntimeSecretNames : [])];
+  return [
+    ...coreRuntimeSecretNames,
+    ...(mailEnabled ? gmailRuntimeSecretNames : []),
+    ...(calendarEnabled ? calendarRuntimeSecretNames : []),
+  ];
 }
 
 export function requiredBackgroundRuntimeSecretNames({ mailEnabled, calendarEnabled = false }) {
-  return [...backgroundCoreRuntimeSecretNames, ...(mailEnabled ? backgroundMailRuntimeSecretNames : []), ...(calendarEnabled ? calendarRuntimeSecretNames : [])];
+  return [
+    ...backgroundCoreRuntimeSecretNames,
+    ...(mailEnabled ? backgroundMailRuntimeSecretNames : []),
+    ...(calendarEnabled ? calendarRuntimeSecretNames : []),
+  ];
 }

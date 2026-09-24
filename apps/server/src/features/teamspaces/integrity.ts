@@ -55,16 +55,12 @@ export type TeamspaceIntegritySnapshot = {
 export function findTeamspaceIntegrityIssues(
   snapshot: TeamspaceIntegritySnapshot,
 ): TeamspaceIntegrityIssue[] {
-  const teamspacesById = new Map(
-    snapshot.teamspaces.map((record) => [record.id, record]),
-  );
+  const teamspacesById = new Map(snapshot.teamspaces.map((record) => [record.id, record]));
   const pagesById = new Map(snapshot.pages.map((record) => [record.id, record]));
   const memberKeys = new Set(
     snapshot.members.map((record) => `${record.workspaceId}:${record.userId}`),
   );
-  const teamKeys = new Set(
-    snapshot.teams.map((record) => `${record.workspaceId}:${record.id}`),
-  );
+  const teamKeys = new Set(snapshot.teams.map((record) => `${record.workspaceId}:${record.id}`));
   const ownerTeamspaceIds = new Set(
     snapshot.principals
       .filter((record) => record.role === "owner")
@@ -91,9 +87,7 @@ function findWorkspaceDefaultIssues(
       (workspaceRecord) =>
         !snapshot.teamspaces.some(
           (record) =>
-            record.workspaceId === workspaceRecord.id &&
-            record.isDefault &&
-            !record.archived,
+            record.workspaceId === workspaceRecord.id && record.isDefault && !record.archived,
         ),
     )
     .map((workspaceRecord) => ({
@@ -145,10 +139,7 @@ function findPrincipalIssues(
   lookup: {
     memberKeys: Set<string>;
     teamKeys: Set<string>;
-    teamspacesById: Map<
-      string,
-      TeamspaceIntegritySnapshot["teamspaces"][number]
-    >;
+    teamspacesById: Map<string, TeamspaceIntegritySnapshot["teamspaces"][number]>;
   },
 ): TeamspaceIntegrityIssue[] {
   const issues: TeamspaceIntegrityIssue[] = [];
@@ -203,9 +194,7 @@ function findPlacementIssues(
   return issues;
 }
 
-function isPrimaryPagePlacement(
-  placement: TeamspaceIntegritySnapshot["placements"][number],
-) {
+function isPrimaryPagePlacement(placement: TeamspaceIntegritySnapshot["placements"][number]) {
   return (
     !placement.deleted &&
     placement.parentKind === "page" &&
@@ -246,9 +235,7 @@ export async function inspectTeamspaceIntegrity(
         teamspaceId: teamspacePrincipal.teamspaceId,
       })
       .from(teamspacePrincipal),
-    database
-      .select({ userId: member.userId, workspaceId: member.organizationId })
-      .from(member),
+    database.select({ userId: member.userId, workspaceId: member.organizationId }).from(member),
     database.select({ id: team.id, workspaceId: team.organizationId }).from(team),
     database
       .select({

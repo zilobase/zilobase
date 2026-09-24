@@ -16,27 +16,18 @@ import {
   usePageNavigation,
 } from "@zilobase/features/pages/react";
 
-import {
-  getNavigationItemState,
-  getNavigationPendingState,
-} from "../model/navigation-item-state";
+import { getNavigationItemState, getNavigationPendingState } from "../model/navigation-item-state";
 import {
   useDeleteDatabase,
   useSetDatabaseFavorite,
   useUpdateDatabase,
 } from "@zilobase/features/databases/react";
-import {
-  useUpdateUserSettings,
-  useUserSettings,
-} from "@zilobase/features/user-settings/react";
+import { useUpdateUserSettings, useUserSettings } from "@zilobase/features/user-settings/react";
 
 import { useLayoutEditor } from "@/features/pages/layout";
-import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata"
+import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata";
 
-import {
-  getPrimaryPageParentId,
-  resolvePageFullWidth,
-} from "@zilobase/features/pages/queries";
+import { getPrimaryPageParentId, resolvePageFullWidth } from "@zilobase/features/pages/queries";
 import type { ZilobaseAiMode, PageMetadata } from "@zilobase/features/pages";
 import { buildPageDuplicateInput } from "../model/page-duplication";
 
@@ -82,25 +73,16 @@ export function useNavigationItemActions({
   const { data: pageAccessLevel } = usePageAccessLevel(actionPageId, {
     refetchOnMount: false,
   });
-  const {
-    isFavorite,
-    displayName,
-    lockLabel,
-    locked,
-    canToggleLock,
-    zilobaseAiMode,
-  } = getNavigationItemState({
-    databaseId,
-    meetingId,
-    page,
-    listedPage: listPage,
-    database: databasePayload?.database,
-    pageAccessLevel,
-  });
-  const effectiveFullWidth = resolvePageFullWidth(
-    page,
-    userSettings?.pageFullWidth,
-  );
+  const { isFavorite, displayName, lockLabel, locked, canToggleLock, zilobaseAiMode } =
+    getNavigationItemState({
+      databaseId,
+      meetingId,
+      page,
+      listedPage: listPage,
+      database: databasePayload?.database,
+      pageAccessLevel,
+    });
+  const effectiveFullWidth = resolvePageFullWidth(page, userSettings?.pageFullWidth);
 
   const {
     fullWidthUpdatePending,
@@ -132,9 +114,7 @@ export function useNavigationItemActions({
 
     const onError = (error: unknown) => {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : `Could not update ${lockLabel.toLowerCase()}.`,
+        error instanceof Error ? error.message : `Could not update ${lockLabel.toLowerCase()}.`,
       );
     };
 
@@ -147,10 +127,7 @@ export function useNavigationItemActions({
         {
           databaseId,
           config: {
-            ...((databasePayload.database.config ?? {}) as Record<
-              string,
-              unknown
-            >),
+            ...((databasePayload.database.config ?? {}) as Record<string, unknown>),
             locked: !locked,
           },
         },
@@ -184,11 +161,7 @@ export function useNavigationItemActions({
         { databaseId, isFavorite: !isFavorite },
         {
           onError: (error) => {
-            toast.error(
-              error instanceof Error
-                ? error.message
-                : "Could not update favorite.",
-            );
+            toast.error(error instanceof Error ? error.message : "Could not update favorite.");
           },
         },
       );
@@ -203,11 +176,7 @@ export function useNavigationItemActions({
       { isFavorite: !isFavorite, pageId },
       {
         onError: (error) => {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not update favorite.",
-          );
+          toast.error(error instanceof Error ? error.message : "Could not update favorite.");
         },
       },
     );
@@ -233,8 +202,7 @@ export function useNavigationItemActions({
         buildPageDuplicateInput(
           page,
           pageId
-            ? (getPrimaryPageParentId(navigation?.placements ?? [], pageId) ??
-                undefined)
+            ? (getPrimaryPageParentId(navigation?.placements ?? [], pageId) ?? undefined)
             : undefined,
         ),
       );
@@ -246,9 +214,7 @@ export function useNavigationItemActions({
         params: { pageId: duplicate.id },
       });
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not duplicate page.",
-      );
+      toast.error(error instanceof Error ? error.message : "Could not duplicate page.");
     }
   };
   const moveToTrash = () => {
@@ -265,11 +231,7 @@ export function useNavigationItemActions({
           void navigate({ to: "/" });
         },
         onError: (error) => {
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not delete database.",
-          );
+          toast.error(error instanceof Error ? error.message : "Could not delete database.");
         },
       });
       return;
@@ -287,9 +249,7 @@ export function useNavigationItemActions({
         void navigate({ to: "/" });
       },
       onError: (error) => {
-        toast.error(
-          error instanceof Error ? error.message : "Could not delete page.",
-        );
+        toast.error(error instanceof Error ? error.message : "Could not delete page.");
       },
     });
   };
@@ -323,9 +283,7 @@ export function useNavigationItemActions({
       {
         onError: (error) => {
           toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not update full width setting.",
+            error instanceof Error ? error.message : "Could not update full width setting.",
           );
         },
       },
@@ -348,9 +306,7 @@ export function useNavigationItemActions({
       {
         onError: (error) => {
           toast.error(
-            error instanceof Error
-              ? error.message
-              : "Could not update Zilobase AI setting.",
+            error instanceof Error ? error.message : "Could not update Zilobase AI setting.",
           );
         },
       },

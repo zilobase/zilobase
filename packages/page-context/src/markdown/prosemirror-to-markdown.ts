@@ -34,10 +34,7 @@ function serializeBlocks(nodes: PageDocumentNode[]) {
   return parts.join("\n\n").trim();
 }
 
-function stringAttr(
-  attrs: Record<string, unknown> | undefined,
-  key: string,
-): string {
+function stringAttr(attrs: Record<string, unknown> | undefined, key: string): string {
   return typeof attrs?.[key] === "string" ? attrs[key] : "";
 }
 
@@ -56,17 +53,13 @@ function serializeParagraph(node: PageDocumentNode) {
 
 function serializeHeading(node: PageDocumentNode) {
   const level =
-    typeof node.attrs?.level === "number"
-      ? Math.min(Math.max(node.attrs.level, 1), 6)
-      : 1;
+    typeof node.attrs?.level === "number" ? Math.min(Math.max(node.attrs.level, 1), 6) : 1;
 
   return `${"#".repeat(level)} ${serializeInline(node.content ?? [])}`.trim();
 }
 
 function serializeBlockquote(node: PageDocumentNode) {
-  return (node.content ?? [])
-    .map((child) => `> ${serializeBlock(child)}`)
-    .join("\n");
+  return (node.content ?? []).map((child) => `> ${serializeBlock(child)}`).join("\n");
 }
 
 function serializeCodeBlock(node: PageDocumentNode) {
@@ -130,8 +123,7 @@ function serializeLinkMention(node: PageDocumentNode) {
 function serializeDetailsSummary(node: PageDocumentNode) {
   const summary = serializeInline(node.content ?? []);
   const body = serializeBlocks(
-    (node as PageDocumentNode & { parentContent?: PageDocumentNode[] }).content ??
-      [],
+    (node as PageDocumentNode & { parentContent?: PageDocumentNode[] }).content ?? [],
   );
   return summary ? `**${summary}**\n${body}`.trim() : body;
 }
@@ -222,12 +214,8 @@ function serializeTable(rows: PageDocumentNode[]) {
     .filter((row) => row.type === "tableRow")
     .map((row) =>
       (row.content ?? [])
-        .filter(
-          (cell) => cell.type === "tableCell" || cell.type === "tableHeader",
-        )
-        .map((cell) =>
-          serializeInline(cell.content ?? []).replace(/\|/g, "\\|"),
-        ),
+        .filter((cell) => cell.type === "tableCell" || cell.type === "tableHeader")
+        .map((cell) => serializeInline(cell.content ?? []).replace(/\|/g, "\\|")),
     );
 
   if (tableRows.length === 0) {
@@ -265,10 +253,7 @@ function serializeInline(nodes: PageDocumentNode[]) {
     .join("");
 }
 
-function applyMarks(
-  text: string,
-  marks: Array<{ attrs?: Record<string, unknown>; type: string }>,
-) {
+function applyMarks(text: string, marks: Array<{ attrs?: Record<string, unknown>; type: string }>) {
   return marks.reduce((current, mark) => {
     switch (mark.type) {
       case "bold":
@@ -282,8 +267,7 @@ function applyMarks(
       case "code":
         return `\`${current}\``;
       case "link": {
-        const href =
-          typeof mark.attrs?.href === "string" ? mark.attrs.href : undefined;
+        const href = typeof mark.attrs?.href === "string" ? mark.attrs.href : undefined;
         return href ? `[${current}](${href})` : current;
       }
       default:

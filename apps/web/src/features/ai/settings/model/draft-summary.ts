@@ -12,8 +12,7 @@ export function settingsDraftSummary(state: AgentSettingsState | undefined) {
     changedTabs: [...new Set(changedFields.map(settingsFieldTab))],
     dirty: Boolean(
       state &&
-        (hasAgentConfigurationChanges(state.definition, state.saved) ||
-          state.review?.fields.length),
+      (hasAgentConfigurationChanges(state.definition, state.saved) || state.review?.fields.length),
     ),
   };
 }

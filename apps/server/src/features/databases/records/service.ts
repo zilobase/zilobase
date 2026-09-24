@@ -18,10 +18,7 @@ import {
   pagePropertyValue,
 } from "../../../infrastructure/database/schema";
 import { upsertPageItemPlacement } from "../../pages/placements";
-import {
-  requireDataSourceAccess,
-  requireDataSourceEditAccess,
-} from "../access/data-source-access";
+import { requireDataSourceAccess, requireDataSourceEditAccess } from "../access/data-source-access";
 import {
   commitDataSourceMutation,
   commitDataSourceMutationBatch,
@@ -62,12 +59,8 @@ export async function createDatabaseRowService(input: {
   title?: string;
   userId: string;
 }) {
-  const existing = await requireDataSourceEditAccess(
-    input.databaseId,
-    input.userId,
-  );
-  let sourceDataSource: Awaited<ReturnType<typeof requireDataSourceAccess>> | null =
-    null;
+  const existing = await requireDataSourceEditAccess(input.databaseId, input.userId);
+  let sourceDataSource: Awaited<ReturnType<typeof requireDataSourceAccess>> | null = null;
 
   if (input.sourceDataSourceId && input.sourceDataSourceId !== existing.id) {
     try {
@@ -98,27 +91,20 @@ export async function createDatabaseRowService(input: {
   }
 
   if (isDatabaseHostPageId(input.pageId, existing.parentPageId)) {
-    throw new ServiceMutationError(
-      "A page cannot be nested inside itself",
-      400,
-    );
+    throw new ServiceMutationError("A page cannot be nested inside itself", 400);
   }
 
-  const rows = (await db
-    .select({
-      id: databaseRow.id,
-      orderKey: databaseRow.orderKey,
-      pageId: databaseRow.pageId,
-    })
-    .from(databaseRow)
-    .where(
-      and(
-        eq(databaseRow.dataSourceId, existing.id),
-        isNull(databaseRow.deletedAt),
-      ),
-    )
-    .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id)))
-    .map((row, position) => ({ ...row, position }));
+  const rows = (
+    await db
+      .select({
+        id: databaseRow.id,
+        orderKey: databaseRow.orderKey,
+        pageId: databaseRow.pageId,
+      })
+      .from(databaseRow)
+      .where(and(eq(databaseRow.dataSourceId, existing.id), isNull(databaseRow.deletedAt)))
+      .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
+  ).map((row, position) => ({ ...row, position }));
 
   const sourceRows =
     sourceDataSource && input.sourceRowId
@@ -131,29 +117,19 @@ export async function createDatabaseRowService(input: {
           })
           .from(databaseRow)
           .where(
-            and(
-              eq(databaseRow.dataSourceId, sourceDataSource.id),
-              isNull(databaseRow.deletedAt),
-            ),
+            and(eq(databaseRow.dataSourceId, sourceDataSource.id), isNull(databaseRow.deletedAt)),
           )
           .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
-          .then((sourceRows) =>
-            sourceRows.map((row, position) => ({ ...row, position }))
-          )
+          .then((sourceRows) => sourceRows.map((row, position) => ({ ...row, position })))
       : [];
   const sourceRow = sourceRows.find((row) => row.id === input.sourceRowId);
 
-  if (
-    input.sourceRowId &&
-    (!sourceRow || (input.pageId && sourceRow.pageId !== input.pageId))
-  ) {
+  if (input.sourceRowId && (!sourceRow || (input.pageId && sourceRow.pageId !== input.pageId))) {
     throw new ServiceMutationError("Source row not found", 404);
   }
 
   let targetPosition =
-    input.position === undefined
-      ? rows.length
-      : Math.max(0, Math.min(input.position, rows.length));
+    input.position === undefined ? rows.length : Math.max(0, Math.min(input.position, rows.length));
   let targetRows = rows;
 
   let pageId =
@@ -209,22 +185,14 @@ export async function createDatabaseRowService(input: {
   }
 
   if (rows.some((row) => row.pageId === pageId)) {
-    throw new ServiceMutationError(
-      "This page is already in this database",
-      409,
-    );
+    throw new ServiceMutationError("This page is already in this database", 409);
   }
 
   const sourceProperties = await db
     .select({ config: pageProperty.config, id: pageProperty.id, type: pageProperty.type })
     .from(databaseProperty)
     .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-    .where(
-      and(
-        eq(databaseProperty.dataSourceId, existing.id),
-        isNull(pageProperty.deletedAt),
-      ),
-    );
+    .where(and(eq(databaseProperty.dataSourceId, existing.id), isNull(pageProperty.deletedAt)));
 
   const defaultStatusValues = sourceProperties
     .filter((property) => property.type === "status")
@@ -236,22 +204,17 @@ export async function createDatabaseRowService(input: {
       (property): property is { propertyId: string; value: string } =>
         typeof property.value === "string" && property.value.length > 0,
     );
-  const sourcePropertiesById = new Map(
-    sourceProperties.map((property) => [property.id, property]),
-  );
-  const initialValues = [...new Map(
-    (input.initialValues ?? []).map((value) => [value.propertyId, value]),
-  ).values()];
+  const sourcePropertiesById = new Map(sourceProperties.map((property) => [property.id, property]));
+  const initialValues = [
+    ...new Map((input.initialValues ?? []).map((value) => [value.propertyId, value])).values(),
+  ];
   for (const value of initialValues) {
     const property = sourcePropertiesById.get(value.propertyId);
     if (!property) {
       throw new ServiceMutationError("Initial-value property not found", 404);
     }
     value.value = normalizeAutomationValue(property.config, value.value);
-    if (
-      value.value === null &&
-      ["multi_select", "person", "relation"].includes(property.type)
-    ) {
+    if (value.value === null && ["multi_select", "person", "relation"].includes(property.type)) {
       value.value = [];
     }
     validateCellValue(property.type, property.config, value.value);
@@ -261,10 +224,7 @@ export async function createDatabaseRowService(input: {
     .select({ id: favorite.id })
     .from(favorite)
     .where(
-      and(
-        eq(favorite.userId, input.userId),
-        eq(favorite.databaseId, existing.parentDatabaseId),
-      ),
+      and(eq(favorite.userId, input.userId), eq(favorite.databaseId, existing.parentDatabaseId)),
     )
     .limit(1);
   const shouldInheritFavorite = Boolean(databaseFavorite);
@@ -280,38 +240,34 @@ export async function createDatabaseRowService(input: {
     orderingLocked = false,
   ) => {
     if (!orderingLocked) await lockDatabaseRowOrdering(tx, existing.id);
-    await lockDatabaseAutomationFactRows(tx, [
-      { dataSourceId: existing.id, rowId },
-    ]);
+    await lockDatabaseAutomationFactRows(tx, [{ dataSourceId: existing.id, rowId }]);
     const now = new Date();
     if (typeof (tx as { select?: unknown }).select === "function") {
-      targetRows = (await tx
-        .select({
-          id: databaseRow.id,
-          orderKey: databaseRow.orderKey,
-          pageId: databaseRow.pageId,
-        })
-        .from(databaseRow)
-        .where(
-          and(
-            eq(databaseRow.dataSourceId, existing.id),
-            isNull(databaseRow.deletedAt),
-          ),
-        )
-        .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id)))
-        .map((row, position) => ({ ...row, position }));
+      targetRows = (
+        await tx
+          .select({
+            id: databaseRow.id,
+            orderKey: databaseRow.orderKey,
+            pageId: databaseRow.pageId,
+          })
+          .from(databaseRow)
+          .where(and(eq(databaseRow.dataSourceId, existing.id), isNull(databaseRow.deletedAt)))
+          .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
+      ).map((row, position) => ({ ...row, position }));
     }
-    targetPosition = input.position === undefined
-      ? targetRows.length
-      : Math.max(0, Math.min(input.position, targetRows.length));
+    targetPosition =
+      input.position === undefined
+        ? targetRows.length
+        : Math.max(0, Math.min(input.position, targetRows.length));
 
     const previousKey = targetRows[targetPosition - 1]?.orderKey ?? null;
     const nextKey = targetRows[targetPosition]?.orderKey ?? null;
-    let orderKey = previousKey !== null || nextKey !== null
-      ? databaseOrderKeyBetween(previousKey, nextKey)
-      : targetRows.length === 0
-        ? databaseOrderKeyBetween(null, null)
-        : null;
+    let orderKey =
+      previousKey !== null || nextKey !== null
+        ? databaseOrderKeyBetween(previousKey, nextKey)
+        : targetRows.length === 0
+          ? databaseOrderKeyBetween(null, null)
+          : null;
 
     if (orderKey === null) {
       await rebalanceDatabaseRowOrderKeys(
@@ -321,12 +277,8 @@ export async function createDatabaseRowService(input: {
         now,
       );
       orderKey = databaseOrderKeyBetween(
-        targetPosition === 0
-          ? null
-          : databaseOrderKeyAtPosition(targetPosition - 1),
-        targetPosition === targetRows.length
-          ? null
-          : databaseOrderKeyAtPosition(targetPosition),
+        targetPosition === 0 ? null : databaseOrderKeyAtPosition(targetPosition - 1),
+        targetPosition === targetRows.length ? null : databaseOrderKeyAtPosition(targetPosition),
       );
     }
 
@@ -407,9 +359,7 @@ export async function createDatabaseRowService(input: {
     });
 
     const inheritedValuePropertyIds = new Set(
-      inherited.values
-        .filter((value) => value.pageId === pageId)
-        .map((value) => value.propertyId),
+      inherited.values.filter((value) => value.pageId === pageId).map((value) => value.propertyId),
     );
     const valuesToWrite = new Map<string, { propertyId: string; value: unknown }>(
       defaultStatusValues
@@ -420,28 +370,31 @@ export async function createDatabaseRowService(input: {
       valuesToWrite.set(value.propertyId, value);
     }
     const insertedValues = [...valuesToWrite.values()].map((property) => ({
-        createdAt: now.toISOString(),
-        id: crypto.randomUUID(),
-        propertyId: property.propertyId,
-        updatedAt: now.toISOString(),
-        value: property.value,
-        pageId,
-      }));
+      createdAt: now.toISOString(),
+      id: crypto.randomUUID(),
+      propertyId: property.propertyId,
+      updatedAt: now.toISOString(),
+      value: property.value,
+      pageId,
+    }));
 
     if (insertedValues.length > 0) {
-      await tx.insert(pagePropertyValue).values(
-        insertedValues.map((propertyValue) => ({
-          id: propertyValue.id,
-          propertyId: propertyValue.propertyId,
-          value: propertyValue.value,
-          pageId: propertyValue.pageId,
-          createdAt: now,
-          updatedAt: now,
-        })),
-      ).onConflictDoUpdate({
-        target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
-        set: { updatedAt: now, value: sql`excluded.value` },
-      });
+      await tx
+        .insert(pagePropertyValue)
+        .values(
+          insertedValues.map((propertyValue) => ({
+            id: propertyValue.id,
+            propertyId: propertyValue.propertyId,
+            value: propertyValue.value,
+            pageId: propertyValue.pageId,
+            createdAt: now,
+            updatedAt: now,
+          })),
+        )
+        .onConflictDoUpdate({
+          target: [pagePropertyValue.pageId, pagePropertyValue.propertyId],
+          set: { updatedAt: now, value: sql`excluded.value` },
+        });
     }
 
     if (shouldInheritFavorite) {
@@ -467,9 +420,7 @@ export async function createDatabaseRowService(input: {
       automationFacts: [
         {
           actorId: input.userId,
-          ...(input.automationRunId
-            ? { automationRunId: input.automationRunId }
-            : {}),
+          ...(input.automationRunId ? { automationRunId: input.automationRunId } : {}),
           changedValues: [
             { after: title, before: null, propertyId: "name" },
             ...[...insertedValues, ...inherited.values].map((value) => ({
@@ -501,10 +452,7 @@ export async function createDatabaseRowService(input: {
     const batch = await commitDataSourceMutationBatch(
       { actorId: input.userId, env: input.env },
       async (tx) => {
-        await lockDatabaseRowOrderingSources(tx, [
-          existing.id,
-          sourceDataSourceId,
-        ]);
+        await lockDatabaseRowOrderingSources(tx, [existing.id, sourceDataSourceId]);
         const targetResult = await createTargetRow(tx, true);
         const now = new Date();
         const lockedSourceRows =
@@ -524,21 +472,14 @@ export async function createDatabaseRowService(input: {
                   ),
                 )
                 .orderBy(asc(databaseRow.orderKey), asc(databaseRow.id))
-                .then((sourceRows) =>
-                  sourceRows.map((row, position) => ({ ...row, position }))
-                )
+                .then((sourceRows) => sourceRows.map((row, position) => ({ ...row, position })))
             : sourceRows;
-        const remainingSourceRows = lockedSourceRows.filter(
-          (row) => row.id !== sourceRowId,
-        );
+        const remainingSourceRows = lockedSourceRows.filter((row) => row.id !== sourceRowId);
 
         await tx
           .delete(databaseRow)
           .where(
-            and(
-              eq(databaseRow.id, sourceRowId),
-              eq(databaseRow.dataSourceId, sourceDataSourceId),
-            ),
+            and(eq(databaseRow.id, sourceRowId), eq(databaseRow.dataSourceId, sourceDataSourceId)),
           );
 
         await tx
@@ -565,9 +506,7 @@ export async function createDatabaseRowService(input: {
             ...targetResult.automationFacts,
             {
               actorId: input.userId,
-              ...(input.automationRunId
-                ? { automationRunId: input.automationRunId }
-                : {}),
+              ...(input.automationRunId ? { automationRunId: input.automationRunId } : {}),
               changedValues: [],
               dataSourceId: sourceDataSourceId,
               origin: input.origin ?? "user",
@@ -585,9 +524,11 @@ export async function createDatabaseRowService(input: {
             {
               areas: ["records"],
               changes: {
-                records: await Promise.all(remainingSourceRows.map((row) =>
-                  getDatabaseRecordEntity(tx, sourceDataSource.id, row.id)
-                )),
+                records: await Promise.all(
+                  remainingSourceRows.map((row) =>
+                    getDatabaseRecordEntity(tx, sourceDataSource.id, row.id),
+                  ),
+                ),
                 removedRecordIds: [sourceRowId],
               },
               dataSourceId: sourceDataSource.id,
@@ -646,7 +587,8 @@ function normalizeAutomationValue(config: unknown, value: unknown): unknown {
       ? (config as { options: unknown[] }).options
       : [];
   const option = options.find(
-    (candidate) => candidate && typeof candidate === "object" && (candidate as { id?: unknown }).id === id,
+    (candidate) =>
+      candidate && typeof candidate === "object" && (candidate as { id?: unknown }).id === id,
   ) as { name?: unknown } | undefined;
   return typeof option?.name === "string" ? option.name : id;
 }

@@ -1,34 +1,34 @@
-import { useEffect, useMemo, useState } from "react"
-import type { HocuspocusProvider } from "@hocuspocus/provider"
-import type { SessionUser } from "@zilobase/features/auth"
-import * as Y from "yjs"
+import { useEffect, useMemo, useState } from "react";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
+import type { SessionUser } from "@zilobase/features/auth";
+import * as Y from "yjs";
 
-import { collaborationColor } from "../../collaboration/color"
-import { apiFetch } from "@/platform/network/api"
+import { collaborationColor } from "../../collaboration/color";
+import { apiFetch } from "@/platform/network/api";
 import {
   applyTicketState,
   connectCollaborationDocument,
   type CollaborationTicket,
-} from "../../collaboration/collaboration-connection"
+} from "../../collaboration/collaboration-connection";
 
 function getMeetingTicket(meetingId: string, signal?: AbortSignal) {
-  return apiFetch<CollaborationTicket>(
-    `/meetings/${meetingId}/collaboration-ticket`,
-    { method: "POST", signal },
-  )
+  return apiFetch<CollaborationTicket>(`/meetings/${meetingId}/collaboration-ticket`, {
+    method: "POST",
+    signal,
+  });
 }
 
 export function useMeetingCollaboration(
   meetingId: string | null,
   user: SessionUser | null | undefined,
 ) {
-  const [document, setDocument] = useState<Y.Doc | null>(null)
-  const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
-  const [status, setStatus] = useState<
-    "connecting" | "connected" | "disconnected" | "blocked"
-  >("disconnected")
-  const [error, setError] = useState<string | null>(null)
-  const [, setRevision] = useState(0)
+  const [document, setDocument] = useState<Y.Doc | null>(null);
+  const [provider, setProvider] = useState<HocuspocusProvider | null>(null);
+  const [status, setStatus] = useState<"connecting" | "connected" | "disconnected" | "blocked">(
+    "disconnected",
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [, setRevision] = useState(0);
   const collaborationUser = useMemo(
     () =>
       user
@@ -40,67 +40,63 @@ export function useMeetingCollaboration(
           }
         : undefined,
     [user?.email, user?.id, user?.image, user?.name],
-  )
+  );
 
   useEffect(() => {
-    if (!meetingId || !collaborationUser) return
+    if (!meetingId || !collaborationUser) return;
 
-    const controller = new AbortController()
-    const nextDocument = new Y.Doc()
-    const handleDocumentUpdate = () => setRevision((current) => current + 1)
-    nextDocument.on("update", handleDocumentUpdate)
-    let activeProvider: HocuspocusProvider | null = null
-    let disposed = false
-    setStatus("connecting")
-    setError(null)
+    const controller = new AbortController();
+    const nextDocument = new Y.Doc();
+    const handleDocumentUpdate = () => setRevision((current) => current + 1);
+    nextDocument.on("update", handleDocumentUpdate);
+    let activeProvider: HocuspocusProvider | null = null;
+    let disposed = false;
+    setStatus("connecting");
+    setError(null);
 
     void getMeetingTicket(meetingId, controller.signal)
       .then((ticket) => {
-        if (disposed) return
-        applyTicketState(nextDocument, ticket)
+        if (disposed) return;
+        applyTicketState(nextDocument, ticket);
         activeProvider = connectCollaborationDocument({
           autoConnect: false,
           document: nextDocument,
           onAuthenticationFailed: (reason) => {
             if (!disposed) {
-              setStatus("blocked")
-              setError(reason)
+              setStatus("blocked");
+              setError(reason);
             }
           },
           onStatus: (nextStatus) => {
-            if (!disposed) setStatus(nextStatus)
+            if (!disposed) setStatus(nextStatus);
           },
           pageId: meetingId,
           refreshTicket: () => getMeetingTicket(meetingId),
           ticket,
-        })
-        activeProvider.setAwarenessField("user", collaborationUser)
-        setDocument(nextDocument)
-        setProvider(activeProvider)
+        });
+        activeProvider.setAwarenessField("user", collaborationUser);
+        setDocument(nextDocument);
+        setProvider(activeProvider);
         void activeProvider.connect().catch(() => {
-          if (!disposed) setStatus("disconnected")
-        })
+          if (!disposed) setStatus("disconnected");
+        });
       })
       .catch((reason: unknown) => {
-        if (disposed || controller.signal.aborted) return
-        setStatus("disconnected")
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : "Could not connect meeting content.",
-        )
-      })
+        if (disposed || controller.signal.aborted) return;
+        setStatus("disconnected");
+        setError(reason instanceof Error ? reason.message : "Could not connect meeting content.");
+      });
 
     return () => {
-      disposed = true
-      controller.abort()
-      activeProvider?.destroy()
-      nextDocument.off("update", handleDocumentUpdate)
-      nextDocument.destroy()
-      setDocument(null)
-      setProvider(null)
-    }
-  }, [collaborationUser, meetingId])
+      disposed = true;
+      controller.abort();
+      activeProvider?.destroy();
+      nextDocument.off("update", handleDocumentUpdate);
+      nextDocument.destroy();
+      setDocument(null);
+      setProvider(null);
+    };
+  }, [collaborationUser, meetingId]);
 
-  return { document, error, provider, status, user: collaborationUser }
+  return { document, error, provider, status, user: collaborationUser };
 }

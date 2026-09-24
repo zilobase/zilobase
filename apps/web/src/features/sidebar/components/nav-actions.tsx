@@ -1,7 +1,16 @@
 import { useNavigationItemActions } from "../commands/use-navigation-item-actions";
 import { ItemShareDropdown } from "./item-share-dropdown";
 
-import { CheckIcon, ChevronsLeftIcon, ChevronsRightIcon, LockIcon, MoreHorizontalIcon, MessageSquareTextIcon, SparklesIcon, StarIcon } from "@/shared/components/icons";
+import {
+  CheckIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
+  LockIcon,
+  MoreHorizontalIcon,
+  MessageSquareTextIcon,
+  SparklesIcon,
+  StarIcon,
+} from "@/shared/components/icons";
 
 import { Button } from "@/shared/ui/button";
 import {
@@ -59,14 +68,16 @@ export function NavActions({
   pageId?: string | null;
   meetingId?: string | null;
 }) {
-  const { item, favorite, lock, layout, aiMode, moreMenu, trash } = useNavigationItemActions({databaseId, pageId, meetingId});
+  const { item, favorite, lock, layout, aiMode, moreMenu, trash } = useNavigationItemActions({
+    databaseId,
+    pageId,
+    meetingId,
+  });
 
-const isMobile = useIsMobile();
-const comments = usePageCommentsSnapshot(pageId);
-const openDiscussionCount = comments.threads.filter((thread) => !thread.resolvedAt).length;
-  const discussionsActionLabel = discussionsOpen
-    ? "Close discussions"
-    : "Open discussions";
+  const isMobile = useIsMobile();
+  const comments = usePageCommentsSnapshot(pageId);
+  const openDiscussionCount = comments.threads.filter((thread) => !thread.resolvedAt).length;
+  const discussionsActionLabel = discussionsOpen ? "Close discussions" : "Open discussions";
   return (
     <div className="flex items-center gap-2 text-sm">
       <div className="hidden text-sm font-medium text-content-secondary md:inline-block">
@@ -94,26 +105,18 @@ const openDiscussionCount = comments.threads.filter((thread) => !thread.resolved
           ) : null}
           {pageId && onTogglePageSidebar ? (
             <Button
-              aria-label={
-                pageSidebarOpen ? "Close page sidebar" : "Open page sidebar"
-              }
+              aria-label={pageSidebarOpen ? "Close page sidebar" : "Open page sidebar"}
               className={cn(
                 "h-7 w-7",
                 pageSidebarOpen && "bg-action-neutral-pressed text-action-on-neutral",
               )}
               onClick={onTogglePageSidebar}
               size="icon"
-              title={
-                pageSidebarOpen ? "Close page sidebar" : "Open page sidebar"
-              }
+              title={pageSidebarOpen ? "Close page sidebar" : "Open page sidebar"}
               type="button"
               variant="ghost"
             >
-              {pageSidebarOpen ? (
-                <ChevronsRightIcon />
-              ) : (
-                <ChevronsLeftIcon />
-              )}
+              {pageSidebarOpen ? <ChevronsRightIcon /> : <ChevronsLeftIcon />}
             </Button>
           ) : null}
           {item.pageId || databaseId ? (
@@ -123,9 +126,7 @@ const openDiscussionCount = comments.threads.filter((thread) => !thread.resolved
             />
           ) : null}
           <Button
-            aria-label={
-              favorite.active ? "Remove from favorites" : "Add to favorites"
-            }
+            aria-label={favorite.active ? "Remove from favorites" : "Add to favorites"}
             className={cn("h-7 w-7", favorite.active && "text-feedback-favorite")}
             disabled={favorite.disabled}
             onClick={favorite.toggle}
@@ -146,10 +147,7 @@ const openDiscussionCount = comments.threads.filter((thread) => !thread.resolved
                 <MoreHorizontalIcon />
               </Button>
             </DropDrawerTrigger>
-            <DropDrawerContent
-              align="end"
-              className="w-64 overflow-hidden rounded-lg p-1"
-            >
+            <DropDrawerContent align="end" className="w-64 overflow-hidden rounded-lg p-1">
               <DropDrawerItem
                 disabled={!lock.canToggle || lock.pending}
                 onSelect={(event) => {
@@ -208,10 +206,7 @@ const openDiscussionCount = comments.threads.filter((thread) => !thread.resolved
               ))}
             </DropDrawerContent>
           </DropDrawer>
-          <AlertDialog
-            open={trash.open}
-            onOpenChange={trash.setOpen}
-          >
+          <AlertDialog open={trash.open} onOpenChange={trash.setOpen}>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Move to trash?</AlertDialogTitle>
@@ -222,9 +217,7 @@ const openDiscussionCount = comments.threads.filter((thread) => !thread.resolved
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel disabled={trash.pending}>
-                  Cancel
-                </AlertDialogCancel>
+                <AlertDialogCancel disabled={trash.pending}>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   disabled={trash.pending}
                   onClick={trash.confirm}

@@ -1,16 +1,12 @@
-import { useState } from "react"
-import {
-  SettingsPage,
-  SettingsRow,
-  SettingsSection,
-} from "../components/settings-layout"
-import { CalendarConnectButton } from "@/features/calendar/connections/calendar-connect-button"
-import { useCalendarAccounts } from "@/features/calendar/connections/use-calendar-accounts"
-import { CalendarSettings } from "@/features/calendar/preferences/calendar-settings"
-import { RemovedCalendars } from "@/features/calendar/preferences/removed-calendars"
-import { useCalendarPreferences } from "@/features/calendar/preferences/use-calendar-preferences"
-import { getApiErrorMessage } from "@/platform/network/api"
-import { Button } from "@/shared/ui/button"
+import { useState } from "react";
+import { SettingsPage, SettingsRow, SettingsSection } from "../components/settings-layout";
+import { CalendarConnectButton } from "@/features/calendar/connections/calendar-connect-button";
+import { useCalendarAccounts } from "@/features/calendar/connections/use-calendar-accounts";
+import { CalendarSettings } from "@/features/calendar/preferences/calendar-settings";
+import { RemovedCalendars } from "@/features/calendar/preferences/removed-calendars";
+import { useCalendarPreferences } from "@/features/calendar/preferences/use-calendar-preferences";
+import { getApiErrorMessage } from "@/platform/network/api";
+import { Button } from "@/shared/ui/button";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -19,12 +15,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
-import { Separator } from "@/shared/ui/separator"
-import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react"
+} from "@/shared/ui/alert-dialog";
+import { Separator } from "@/shared/ui/separator";
+import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 
 export default function CalendarSettingsPage() {
-  const workspaceId = useActiveWorkspaceId()
+  const workspaceId = useActiveWorkspaceId();
 
   return (
     <SettingsPage
@@ -34,19 +30,17 @@ export default function CalendarSettingsPage() {
       {workspaceId ? (
         <CalendarWorkspaceSettings workspaceId={workspaceId} />
       ) : (
-        <p className="text-sm text-content-secondary">
-          Select a workspace to manage Calendar.
-        </p>
+        <p className="text-sm text-content-secondary">Select a workspace to manage Calendar.</p>
       )}
     </SettingsPage>
-  )
+  );
 }
 
 function CalendarWorkspaceSettings({ workspaceId }: { workspaceId: string }) {
-  const { accounts, connect, disconnect } = useCalendarAccounts(workspaceId)
-  const preferences = useCalendarPreferences(workspaceId)
-  const [disconnectId, setDisconnectId] = useState<string | null>(null)
-  const connections = accounts.data?.connections ?? []
+  const { accounts, connect, disconnect } = useCalendarAccounts(workspaceId);
+  const preferences = useCalendarPreferences(workspaceId);
+  const [disconnectId, setDisconnectId] = useState<string | null>(null);
+  const connections = accounts.data?.connections ?? [];
 
   return (
     <>
@@ -63,15 +57,17 @@ function CalendarWorkspaceSettings({ workspaceId }: { workspaceId: string }) {
           <div className="grid gap-1">
             {connections.map((connection) => (
               <SettingsRow
-                action={<Button
-                  disabled={disconnect.isPending}
-                  onClick={() => setDisconnectId(connection.bindingId)}
-                  size="sm"
-                  type="button"
-                  variant="outline"
-                >
-                  Disconnect
-                </Button>}
+                action={
+                  <Button
+                    disabled={disconnect.isPending}
+                    onClick={() => setDisconnectId(connection.bindingId)}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    Disconnect
+                  </Button>
+                }
                 description={connection.status}
                 key={connection.bindingId}
                 title={connection.email}
@@ -92,14 +88,16 @@ function CalendarWorkspaceSettings({ workspaceId }: { workspaceId: string }) {
           value={preferences.query.data}
         />
       ) : preferences.query.error ? (
-        <p className="text-sm text-feedback-danger-text">{getApiErrorMessage(preferences.query.error)}</p>
+        <p className="text-sm text-feedback-danger-text">
+          {getApiErrorMessage(preferences.query.error)}
+        </p>
       ) : (
         <p className="text-sm text-content-secondary">Loading calendar preferences…</p>
       )}
       <RemovedCalendars workspaceId={workspaceId} />
       <AlertDialog
         onOpenChange={(open) => {
-          if (!open && !disconnect.isPending) setDisconnectId(null)
+          if (!open && !disconnect.isPending) setDisconnectId(null);
         }}
         open={Boolean(disconnectId)}
       >
@@ -115,8 +113,8 @@ function CalendarWorkspaceSettings({ workspaceId }: { workspaceId: string }) {
             <Button
               disabled={disconnect.isPending || !disconnectId}
               onClick={() => {
-                if (!disconnectId) return
-                disconnect.mutate(disconnectId, { onSuccess: () => setDisconnectId(null) })
+                if (!disconnectId) return;
+                disconnect.mutate(disconnectId, { onSuccess: () => setDisconnectId(null) });
               }}
               type="button"
               variant="destructive"
@@ -127,5 +125,5 @@ function CalendarWorkspaceSettings({ workspaceId }: { workspaceId: string }) {
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

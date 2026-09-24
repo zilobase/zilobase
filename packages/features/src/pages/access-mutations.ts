@@ -1,10 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "../shared/context";
-import {
-  pageQueryKey,
-  pageAccessQueryKey,
-} from "./queries";
+import { pageQueryKey, pageAccessQueryKey } from "./queries";
 import type { AccessLevel, AccessTargetType } from "./contracts";
 
 type UpsertPageAccessInput = {
@@ -23,19 +20,11 @@ export function useUpsertPageAccess() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: async ({
-      accessLevel,
-      targetId,
-      targetType,
-      pageId,
-    }: UpsertPageAccessInput) => {
-      const result = await apiFetch<{ access: unknown }>(
-        `/pages/${pageId}/access`,
-        {
-          method: "PUT",
-          body: JSON.stringify({ accessLevel, targetId, targetType }),
-        },
-      );
+    mutationFn: async ({ accessLevel, targetId, targetType, pageId }: UpsertPageAccessInput) => {
+      const result = await apiFetch<{ access: unknown }>(`/pages/${pageId}/access`, {
+        method: "PUT",
+        body: JSON.stringify({ accessLevel, targetId, targetType }),
+      });
 
       return result.access;
     },
@@ -49,13 +38,7 @@ export function useDeletePageAccess() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: async ({
-      ruleId,
-      pageId,
-    }: {
-      ruleId: string;
-      pageId: string;
-    }) =>
+    mutationFn: async ({ ruleId, pageId }: { ruleId: string; pageId: string }) =>
       apiFetch<{ access: unknown }>(`/pages/${pageId}/access/${ruleId}`, {
         method: "DELETE",
       }),
@@ -71,17 +54,14 @@ export function useSetPagePublished() {
   return useMutation({
     mutationFn: async ({ isPublished, pageId }: SetPagePublishedInput) => {
       if (isPublished) {
-        const result = await apiFetch<{ access: unknown }>(
-          `/pages/${pageId}/access`,
-          {
-            method: "PUT",
-            body: JSON.stringify({
-              accessLevel: "view",
-              targetId: "*",
-              targetType: "public",
-            }),
-          },
-        );
+        const result = await apiFetch<{ access: unknown }>(`/pages/${pageId}/access`, {
+          method: "PUT",
+          body: JSON.stringify({
+            accessLevel: "view",
+            targetId: "*",
+            targetType: "public",
+          }),
+        });
 
         return result.access;
       }

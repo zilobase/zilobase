@@ -36,11 +36,7 @@ export async function authorizePageRoute(
       ok: false as const,
       response: c.json({ error: "Forbidden" }, 403),
     };
-  const mismatch = await rejectActiveWorkspaceMismatch(
-    c,
-    record.workspaceId,
-    user.id,
-  );
+  const mismatch = await rejectActiveWorkspaceMismatch(c, record.workspaceId, user.id);
   if (mismatch) return { ok: false as const, response: mismatch };
   return { ok: true as const, user, record, accessLevel };
 }

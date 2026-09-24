@@ -20,18 +20,11 @@ import {
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
 import { Button } from "@/shared/ui/button";
-import {
-  DropDrawerItem,
-  DropDrawerSeparator,
-} from "@/shared/ui/dropdrawer";
+import { DropDrawerItem, DropDrawerSeparator } from "@/shared/ui/dropdrawer";
 import { Input } from "@/shared/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { Switch } from "@/shared/ui/switch";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/shared/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import {
   useAddDatabaseProperty,
   useUpdateDatabaseProperty,
@@ -82,12 +75,8 @@ export function RelationPropertySettings({
   const updateProperty = useUpdateDatabaseProperty();
   const updateValue = useUpdateDatabasePropertyValue();
   const [repairDialogOpen, setRepairDialogOpen] = useState(false);
-  const [repairPrimarySource, setRepairPrimarySource] = useState<
-    "source" | "related"
-  >("source");
-  const [optimisticTwoWayRelation, setOptimisticTwoWayRelation] = useState<
-    boolean | null
-  >(null);
+  const [repairPrimarySource, setRepairPrimarySource] = useState<"source" | "related">("source");
+  const [optimisticTwoWayRelation, setOptimisticTwoWayRelation] = useState<boolean | null>(null);
   const [selectedDatabaseId, setSelectedDatabaseId] = useState<string | null>(
     relationConfig.relatedDatabaseId ?? null,
   );
@@ -98,9 +87,7 @@ export function RelationPropertySettings({
     enabled: Boolean(workspaceId),
   });
   const { data: relatedDatabaseSchema } = useDatabaseMetadata(selectedDatabaseId);
-  const pagesById = new Map(
-    (navigation?.pages ?? []).map((page) => [page.id, page]),
-  );
+  const pagesById = new Map((navigation?.pages ?? []).map((page) => [page.id, page]));
   const databaseOptions = (navigation?.databases ?? [])
     .filter((database) => database.id !== sourceDatabaseId)
     .map<RelationDatabaseOption>((database) => {
@@ -121,10 +108,8 @@ export function RelationPropertySettings({
     ? databaseOptions.find((option) => option.value === selectedDatabaseId)
     : null;
   const limit = relationConfig.limit ?? "no_limit";
-  const twoWayRelation =
-    optimisticTwoWayRelation ?? relationConfig.twoWayRelation ?? false;
-  const relationCreated =
-    relationConfig.relatedDatabaseId === selectedDatabaseId;
+  const twoWayRelation = optimisticTwoWayRelation ?? relationConfig.twoWayRelation ?? false;
+  const relationCreated = relationConfig.relatedDatabaseId === selectedDatabaseId;
   const needsRepair = getRelationNeedsRepair({
     propertyConfig: config,
     relatedDatabasePayload: relatedDatabaseSchema,
@@ -137,8 +122,8 @@ export function RelationPropertySettings({
     enabled: repairDialogOpen,
     loadAll: true,
   });
-  const repairDataLoading = repairDialogOpen &&
-    (!currentDatabaseRead.isComplete || !relatedDatabaseRead.isComplete);
+  const repairDataLoading =
+    repairDialogOpen && (!currentDatabaseRead.isComplete || !relatedDatabaseRead.isComplete);
 
   useEffect(() => {
     setOptimisticTwoWayRelation(null);
@@ -154,9 +139,7 @@ export function RelationPropertySettings({
       payload: relationPayloadFromViewData(currentDatabaseRead.data),
       primarySource: repairPrimarySource,
       propertyConfig: config,
-      relatedDatabasePayload: relationPayloadFromViewData(
-        relatedDatabaseRead.data,
-      ),
+      relatedDatabasePayload: relationPayloadFromViewData(relatedDatabaseRead.data),
     });
 
     if (!repairPlan) {
@@ -255,9 +238,7 @@ export function RelationPropertySettings({
               </DropDrawerItem>
             </div>
           </TooltipTrigger>
-          <TooltipContent>
-            A related database cannot be changed after creation
-          </TooltipContent>
+          <TooltipContent>A related database cannot be changed after creation</TooltipContent>
         </Tooltip>
         <DropDrawerItem
           onSelect={(event) => {
@@ -344,17 +325,14 @@ export function RelationPropertySettings({
               className="w-full"
               disabled={
                 addProperty.isPending ||
-                (twoWayRelation &&
-                  (!relatedPropertyName.trim() || !sourcePropertyId))
+                (twoWayRelation && (!relatedPropertyName.trim() || !sourcePropertyId))
               }
               onClick={saveRelation}
               size="sm"
               type="button"
             >
               <Plus />
-              <span>
-                {addProperty.isPending ? "Adding..." : "Add relation"}
-              </span>
+              <span>{addProperty.isPending ? "Adding..." : "Add relation"}</span>
             </Button>
           </div>
         ) : null}
@@ -376,18 +354,14 @@ export function RelationPropertySettings({
             <RadioGroup
               className="grid gap-2"
               onValueChange={(value) =>
-                setRepairPrimarySource(
-                  value === "related" ? "related" : "source",
-                )
+                setRepairPrimarySource(value === "related" ? "related" : "source")
               }
               value={repairPrimarySource}
             >
               <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-action-neutral-hover has-[[data-state=checked]]:border-action-selected-border has-[[data-state=checked]]:bg-action-neutral-hover">
                 <RadioGroupItem className="mt-0.5" value="source" />
                 <span className="grid gap-1">
-                  <span className="text-sm font-medium">
-                    Use this database as primary
-                  </span>
+                  <span className="text-sm font-medium">Use this database as primary</span>
                   <span className="text-xs text-content-secondary">
                     Mirror {sourceDatabaseName || "this database"} links into{" "}
                     {selectedDatabase.label}.
@@ -397,9 +371,7 @@ export function RelationPropertySettings({
               <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left hover:bg-action-neutral-hover has-[[data-state=checked]]:border-action-selected-border has-[[data-state=checked]]:bg-action-neutral-hover">
                 <RadioGroupItem className="mt-0.5" value="related" />
                 <span className="grid gap-1">
-                  <span className="text-sm font-medium">
-                    Use related database as primary
-                  </span>
+                  <span className="text-sm font-medium">Use related database as primary</span>
                   <span className="text-xs text-content-secondary">
                     Mirror {selectedDatabase.label} links into{" "}
                     {sourceDatabaseName || "this database"}.
@@ -503,8 +475,7 @@ export function getRelationConfig(config: unknown): {
         ? relationConfig.relatedPropertyName
         : undefined,
     syncStatus:
-      relationConfig.syncStatus === "not_synced" ||
-      relationConfig.syncStatus === "synced"
+      relationConfig.syncStatus === "not_synced" || relationConfig.syncStatus === "synced"
         ? relationConfig.syncStatus
         : undefined,
     twoWayRelation:

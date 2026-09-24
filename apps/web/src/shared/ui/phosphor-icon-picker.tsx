@@ -1,84 +1,75 @@
-import * as React from "react"
-import type { Icon } from "@/shared/components/icons"
-import { Search } from "@/shared/components/icons"
+import * as React from "react";
+import type { Icon } from "@/shared/components/icons";
+import { Search } from "@/shared/components/icons";
 
-import { IconColorGrid } from "@/shared/ui/icon-color-grid"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu"
-import { cn } from "@/shared/lib/utils"
-import { buildStoredSvgFromRenderedSvg } from "@/shared/lib/page-icon-utils"
+import { IconColorGrid } from "@/shared/ui/icon-color-grid";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { cn } from "@/shared/lib/utils";
+import { buildStoredSvgFromRenderedSvg } from "@/shared/lib/page-icon-utils";
 
 type PhosphorCatalogEntry = {
-  Icon: React.LazyExoticComponent<Icon>
-  label: string
-  name: string
-  searchText: string
-}
+  Icon: React.LazyExoticComponent<Icon>;
+  label: string;
+  name: string;
+  searchText: string;
+};
 
-type PhosphorIconModule = Record<string, Icon>
+type PhosphorIconModule = Record<string, Icon>;
 
 const iconModules = import.meta.glob<PhosphorIconModule>(
   "../../../../../node_modules/@phosphor-icons/react/dist/csr/*.es.js",
-)
+);
 
 const phosphorCatalog = Object.entries(iconModules)
   .map(([path, loadIcon]) => {
-    const name = path.slice(path.lastIndexOf("/") + 1, -6)
-    const label = formatPhosphorLabel(name)
+    const name = path.slice(path.lastIndexOf("/") + 1, -6);
+    const label = formatPhosphorLabel(name);
     const Icon = React.lazy(async () => {
-      const module = await loadIcon()
-      const component = module[`${name}Icon`] ?? module[name]
+      const module = await loadIcon();
+      const component = module[`${name}Icon`] ?? module[name];
 
       if (!component) {
-        throw new Error(`Phosphor icon module did not export ${name}`)
+        throw new Error(`Phosphor icon module did not export ${name}`);
       }
 
-      return { default: component }
-    })
+      return { default: component };
+    });
 
     return {
       Icon,
       label,
       name,
       searchText: `${name.toLowerCase()} ${label.toLowerCase()}`,
-    }
+    };
   })
-  .sort((first, second) => first.label.localeCompare(second.label))
+  .sort((first, second) => first.label.localeCompare(second.label));
 
 type PhosphorIconPickerProps = {
-  className?: string
-  onIconSelect: (svg: string) => void
-}
+  className?: string;
+  onIconSelect: (svg: string) => void;
+};
 
-const ICON_BATCH_SIZE = 72
+const ICON_BATCH_SIZE = 72;
 
-export function PhosphorIconPicker({
-  className,
-  onIconSelect,
-}: PhosphorIconPickerProps) {
-  const [query, setQuery] = React.useState("")
-  const [visibleCount, setVisibleCount] = React.useState(ICON_BATCH_SIZE)
+export function PhosphorIconPicker({ className, onIconSelect }: PhosphorIconPickerProps) {
+  const [query, setQuery] = React.useState("");
+  const [visibleCount, setVisibleCount] = React.useState(ICON_BATCH_SIZE);
 
   const filteredIcons = React.useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
+    const normalizedQuery = query.trim().toLowerCase();
 
     if (!normalizedQuery) {
-      return phosphorCatalog
+      return phosphorCatalog;
     }
 
-    return phosphorCatalog.filter((icon) =>
-      icon.searchText.includes(normalizedQuery),
-    )
-  }, [query])
+    return phosphorCatalog.filter((icon) => icon.searchText.includes(normalizedQuery));
+  }, [query]);
 
   React.useEffect(() => {
-    setVisibleCount(ICON_BATCH_SIZE)
-  }, [query])
+    setVisibleCount(ICON_BATCH_SIZE);
+  }, [query]);
 
-  const visibleIcons = filteredIcons.slice(0, visibleCount)
+  const visibleIcons = filteredIcons.slice(0, visibleCount);
 
   return (
     <div
@@ -101,15 +92,13 @@ export function PhosphorIconPicker({
       <div
         className="relative flex-1 overflow-y-auto pb-2 outline-none"
         onScroll={(event) => {
-          const element = event.currentTarget
+          const element = event.currentTarget;
 
           if (
             element.scrollHeight - element.scrollTop - element.clientHeight < 96 &&
             visibleCount < filteredIcons.length
           ) {
-            setVisibleCount((count) =>
-              Math.min(count + ICON_BATCH_SIZE, filteredIcons.length),
-            )
+            setVisibleCount((count) => Math.min(count + ICON_BATCH_SIZE, filteredIcons.length));
           }
         }}
       >
@@ -120,11 +109,7 @@ export function PhosphorIconPicker({
         ) : (
           <div className="grid grid-cols-9 px-2 pt-2">
             {visibleIcons.map((icon) => (
-              <PhosphorIconOption
-                icon={icon}
-                key={icon.name}
-                onIconSelect={onIconSelect}
-              />
+              <PhosphorIconOption icon={icon} key={icon.name} onIconSelect={onIconSelect} />
             ))}
           </div>
         )}
@@ -133,17 +118,17 @@ export function PhosphorIconPicker({
         Select a Phosphor icon
       </div>
     </div>
-  )
+  );
 }
 
 function PhosphorIconOption({
   icon,
   onIconSelect,
 }: {
-  icon: PhosphorCatalogEntry
-  onIconSelect: (svg: string) => void
+  icon: PhosphorCatalogEntry;
+  onIconSelect: (svg: string) => void;
 }) {
-  const { Icon } = icon
+  const { Icon } = icon;
 
   return (
     <DropdownMenu modal={false}>
@@ -159,26 +144,21 @@ function PhosphorIconOption({
           </React.Suspense>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        className="w-auto min-w-0 p-2"
-        side="right"
-        sideOffset={6}
-      >
+      <DropdownMenuContent align="start" className="w-auto min-w-0 p-2" side="right" sideOffset={6}>
         <IconColorGrid
           label={icon.label}
           onSelect={(colorValue, svgElement) => {
             if (!svgElement) {
-              return
+              return;
             }
 
             const storedSvg = buildStoredSvgFromRenderedSvg({
               color: colorValue,
               svg: svgElement.outerHTML,
-            })
+            });
 
             if (storedSvg) {
-              onIconSelect(storedSvg)
+              onIconSelect(storedSvg);
             }
           }}
           preview={
@@ -189,7 +169,7 @@ function PhosphorIconOption({
         />
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
 
 function formatPhosphorLabel(name: string) {
@@ -197,5 +177,5 @@ function formatPhosphorLabel(name: string) {
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
     .replace(/(\D)(\d+)/g, "$1 $2")
-    .trim()
+    .trim();
 }

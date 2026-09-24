@@ -30,8 +30,6 @@ export function isAgentLiveEffect(value: unknown): value is AgentLiveEffect {
     typeof effect.effectId === "string" &&
     typeof effect.toolCallId === "string" &&
     typeof effect.workspaceId === "string" &&
-    (effect.kind === "nav-delta" ||
-      effect.kind === "page-upsert" ||
-      effect.kind === "page-embed")
+    (effect.kind === "nav-delta" || effect.kind === "page-upsert" || effect.kind === "page-embed")
   );
 }

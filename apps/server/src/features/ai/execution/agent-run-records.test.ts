@@ -3,13 +3,28 @@ import { describe, expect, it, vi } from "vitest";
 const calls = vi.hoisted(() => [] as string[]);
 vi.mock("../../../infrastructure/database", () => ({
   db: {
-    transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback({
-      select: () => ({ from: () => ({ where: () => ({
-        for: async () => { calls.push("lock"); return [{ id: "run" }]; },
-        then: (resolve: (value: unknown) => void) => { calls.push("sequence"); resolve([{ sequence: 4 }]); },
-      }) }) }),
-      insert: () => ({ values: async (value: { sequence: number }) => { calls.push(`insert:${value.sequence}`); } }),
-    }),
+    transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
+      callback({
+        select: () => ({
+          from: () => ({
+            where: () => ({
+              for: async () => {
+                calls.push("lock");
+                return [{ id: "run" }];
+              },
+              then: (resolve: (value: unknown) => void) => {
+                calls.push("sequence");
+                resolve([{ sequence: 4 }]);
+              },
+            }),
+          }),
+        }),
+        insert: () => ({
+          values: async (value: { sequence: number }) => {
+            calls.push(`insert:${value.sequence}`);
+          },
+        }),
+      }),
   },
 }));
 
@@ -24,7 +39,11 @@ describe("agent run records", () => {
   });
 
   it("does not expose provider diagnostics in shared summaries", () => {
-    const row = { createdAt: new Date(), errorCode: "FAILED", errorSummary: "private provider diagnostic" } as typeof aiAgentRun.$inferSelect;
+    const row = {
+      createdAt: new Date(),
+      errorCode: "FAILED",
+      errorSummary: "private provider diagnostic",
+    } as typeof aiAgentRun.$inferSelect;
     expect(serializeRun(row).errorSummary).toBe("Run could not complete.");
     expect(serializeRun(row, true).errorSummary).toBe("private provider diagnostic");
     expect(serializeRun({ ...row, errorCode: null }).errorSummary).toBeNull();

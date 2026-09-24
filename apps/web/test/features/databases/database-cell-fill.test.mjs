@@ -1,41 +1,32 @@
 export function register({ assert, loadModule, test }) {
   test("database cell fill resolves vertical targets in either direction", async () => {
     const { getDatabaseCellFillRowIds } = await loadModule(
-      "/src/features/databases/interactions/database-cell-fill.ts"
-    )
-    const rowIds = ["first", "second", "third", "fourth"]
+      "/src/features/databases/interactions/database-cell-fill.ts",
+    );
+    const rowIds = ["first", "second", "third", "fourth"];
 
-    assert.deepEqual(
-      getDatabaseCellFillRowIds(rowIds, "second", "fourth"),
-      ["third", "fourth"]
-    )
-    assert.deepEqual(
-      getDatabaseCellFillRowIds(rowIds, "third", "first"),
-      ["first", "second"]
-    )
-    assert.deepEqual(
-      getDatabaseCellFillRowIds(rowIds, "second", "second"),
-      []
-    )
-  })
+    assert.deepEqual(getDatabaseCellFillRowIds(rowIds, "second", "fourth"), ["third", "fourth"]);
+    assert.deepEqual(getDatabaseCellFillRowIds(rowIds, "third", "first"), ["first", "second"]);
+    assert.deepEqual(getDatabaseCellFillRowIds(rowIds, "second", "second"), []);
+  });
 
   test("database cell fill is limited to safely writable property kinds", async () => {
     const { isDatabasePropertyFillable } = await loadModule(
-      "/src/features/databases/interactions/database-cell-fill.ts"
-    )
+      "/src/features/databases/interactions/database-cell-fill.ts",
+    );
 
-    assert.equal(isDatabasePropertyFillable("status"), true)
-    assert.equal(isDatabasePropertyFillable("number"), true)
-    assert.equal(isDatabasePropertyFillable("date"), true)
-    assert.equal(isDatabasePropertyFillable("formula"), false)
-    assert.equal(isDatabasePropertyFillable("rollup"), false)
-    assert.equal(isDatabasePropertyFillable("relation"), false)
-  })
+    assert.equal(isDatabasePropertyFillable("status"), true);
+    assert.equal(isDatabasePropertyFillable("number"), true);
+    assert.equal(isDatabasePropertyFillable("date"), true);
+    assert.equal(isDatabasePropertyFillable("formula"), false);
+    assert.equal(isDatabasePropertyFillable("rollup"), false);
+    assert.equal(isDatabasePropertyFillable("relation"), false);
+  });
 
   test("database cell fill undo preserves values edited after filling", async () => {
     const { getUndoableDatabaseCellFillChanges } = await loadModule(
-      "/src/features/databases/interactions/database-cell-fill.ts"
-    )
+      "/src/features/databases/interactions/database-cell-fill.ts",
+    );
     const changes = [
       {
         nextValue: "Done",
@@ -53,21 +44,21 @@ export function register({ assert, loadModule, test }) {
         propertyType: "status",
         rowId: "second-row",
       },
-    ]
+    ];
 
     assert.deepEqual(
       getUndoableDatabaseCellFillChanges(changes, {
         "first-page:status": "Done",
         "second-page:status": "Blocked",
       }),
-      [changes[0]]
-    )
-  })
+      [changes[0]],
+    );
+  });
 
   test("database cell fill redo preserves values edited after undo", async () => {
     const { getRedoableDatabaseCellFillChanges } = await loadModule(
-      "/src/features/databases/interactions/database-cell-fill.ts"
-    )
+      "/src/features/databases/interactions/database-cell-fill.ts",
+    );
     const changes = [
       {
         nextValue: "Done",
@@ -85,14 +76,14 @@ export function register({ assert, loadModule, test }) {
         propertyType: "status",
         rowId: "second-row",
       },
-    ]
+    ];
 
     assert.deepEqual(
       getRedoableDatabaseCellFillChanges(changes, {
         "first-page:status": "To do",
         "second-page:status": "Blocked",
       }),
-      [changes[0]]
-    )
-  })
+      [changes[0]],
+    );
+  });
 }

@@ -1,25 +1,18 @@
-"use client"
+"use client";
 
 import type {
   CSSProperties,
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
-} from "react"
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+} from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   motion,
   Reorder,
   useMotionValue,
   useMotionValueEvent,
   type MotionValue,
-} from "framer-motion"
+} from "framer-motion";
 import {
   DatabaseIcon,
   HomeIcon,
@@ -28,30 +21,26 @@ import {
   SparklesIcon,
   Trash2Icon,
   XIcon,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 
-import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
-import { cn } from "@/shared/lib/utils"
-import { isOpenInNewTabShortcut } from "@/shared/shortcuts"
-import type { DesktopTab } from "@/features/desktop/state/app-store"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/shared/ui/tooltip"
-import { hasEditorBlockDragData } from "@/features/editor/drag-drop/block-drag-session"
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
+import { cn } from "@/shared/lib/utils";
+import { isOpenInNewTabShortcut } from "@/shared/shortcuts";
+import type { DesktopTab } from "@/features/desktop/state/app-store";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
+import { hasEditorBlockDragData } from "@/features/editor/drag-drop/block-drag-session";
 
 type DesktopTabStripProps = {
-  activeTabId: string | null
-  macDesktopApp: boolean
-  onCloneTab: (tab: DesktopTab) => void
-  onCreateTab: () => void
-  onPreloadTab: (tab: DesktopTab) => void
-  onRemoveTab: (tabId: string) => void
-  onReorderTabs: (orderedTabIds: string[]) => void
-  onSelectTab: (tab: DesktopTab) => void
-  tabs: DesktopTab[]
-}
+  activeTabId: string | null;
+  macDesktopApp: boolean;
+  onCloneTab: (tab: DesktopTab) => void;
+  onCreateTab: () => void;
+  onPreloadTab: (tab: DesktopTab) => void;
+  onRemoveTab: (tabId: string) => void;
+  onReorderTabs: (orderedTabIds: string[]) => void;
+  onSelectTab: (tab: DesktopTab) => void;
+  tabs: DesktopTab[];
+};
 
 export function DesktopTabStrip({
   activeTabId,
@@ -64,31 +53,31 @@ export function DesktopTabStrip({
   onSelectTab,
   tabs,
 }: DesktopTabStripProps) {
-  const [draggingTabId, setDraggingTabId] = useState<string | null>(null)
-  const trailingOffset = useMotionValue(0)
-  const tabIds = useMemo(() => tabs.map((tab) => tab.id), [tabs])
+  const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
+  const trailingOffset = useMotionValue(0);
+  const tabIds = useMemo(() => tabs.map((tab) => tab.id), [tabs]);
 
   const handleDragStart = useCallback((tabId: string) => {
-    setDraggingTabId(tabId)
-  }, [])
+    setDraggingTabId(tabId);
+  }, []);
   const handleDragSettled = useCallback(
     (tabId: string) => {
-      trailingOffset.set(0)
-      setDraggingTabId((current) => (current === tabId ? null : current))
+      trailingOffset.set(0);
+      setDraggingTabId((current) => (current === tabId ? null : current));
     },
     [trailingOffset],
-  )
+  );
   const handleTrailingOffsetChange = useCallback(
     (offset: number) => trailingOffset.set(offset),
     [trailingOffset],
-  )
+  );
 
   useEffect(() => {
     if (draggingTabId && !tabIds.includes(draggingTabId)) {
-      trailingOffset.set(0)
-      setDraggingTabId(null)
+      trailingOffset.set(0);
+      setDraggingTabId(null);
     }
-  }, [draggingTabId, tabIds, trailingOffset])
+  }, [draggingTabId, tabIds, trailingOffset]);
 
   return (
     <div
@@ -136,7 +125,7 @@ export function DesktopTabStrip({
         />
       </Reorder.Group>
     </div>
-  )
+  );
 }
 
 const DesktopTabItem = memo(function DesktopTabItem({
@@ -152,27 +141,27 @@ const DesktopTabItem = memo(function DesktopTabItem({
   tab,
   trailing,
 }: {
-  active: boolean
-  onClone: (tab: DesktopTab) => void
-  onDragSettled: (tabId: string) => void
-  onDragStart: (tabId: string) => void
-  onPreload: (tab: DesktopTab) => void
-  onRemove: (tabId: string) => void
-  onSelect: (tab: DesktopTab) => void
-  onTrailingOffsetChange: (offset: number) => void
-  preloadEnabled: boolean
-  tab: DesktopTab
-  trailing: boolean
+  active: boolean;
+  onClone: (tab: DesktopTab) => void;
+  onDragSettled: (tabId: string) => void;
+  onDragStart: (tabId: string) => void;
+  onPreload: (tab: DesktopTab) => void;
+  onRemove: (tabId: string) => void;
+  onSelect: (tab: DesktopTab) => void;
+  onTrailingOffsetChange: (offset: number) => void;
+  preloadEnabled: boolean;
+  tab: DesktopTab;
+  trailing: boolean;
 }) {
-  const x = useMotionValue(0)
+  const x = useMotionValue(0);
 
   useMotionValueEvent(x, "change", (offset) => {
-    if (trailing) onTrailingOffsetChange(offset)
-  })
+    if (trailing) onTrailingOffsetChange(offset);
+  });
 
   useEffect(() => {
-    if (trailing) onTrailingOffsetChange(x.get())
-  }, [onTrailingOffsetChange, trailing, x])
+    if (trailing) onTrailingOffsetChange(x.get());
+  }, [onTrailingOffsetChange, trailing, x]);
 
   return (
     <Reorder.Item
@@ -186,7 +175,7 @@ const DesktopTabItem = memo(function DesktopTabItem({
       dragElastic={0.04}
       dragMomentum={false}
       onDragEnter={(event) => {
-        if (hasEditorBlockDragData(event.dataTransfer)) onSelect(tab)
+        if (hasEditorBlockDragData(event.dataTransfer)) onSelect(tab);
       }}
       onDragStart={() => onDragStart(tab.id)}
       onDragTransitionEnd={() => onDragSettled(tab.id)}
@@ -199,7 +188,7 @@ const DesktopTabItem = memo(function DesktopTabItem({
         active={active}
         onClone={() => onClone(tab)}
         onPreload={() => {
-          if (preloadEnabled) onPreload(tab)
+          if (preloadEnabled) onPreload(tab);
         }}
         onRemove={() => onRemove(tab.id)}
         onSelect={() => onSelect(tab)}
@@ -216,17 +205,17 @@ const DesktopTabItem = memo(function DesktopTabItem({
         <XIcon className="size-3.5" />
       </button>
     </Reorder.Item>
-  )
-})
+  );
+});
 
 function DesktopNewTabButton({
   macDesktopApp,
   offset,
   onCreate,
 }: {
-  macDesktopApp: boolean
-  offset: MotionValue<number>
-  onCreate: () => void
+  macDesktopApp: boolean;
+  offset: MotionValue<number>;
+  onCreate: () => void;
 }) {
   return (
     <motion.button
@@ -242,7 +231,7 @@ function DesktopNewTabButton({
     >
       <PlusIcon className="size-4" />
     </motion.button>
-  )
+  );
 }
 
 function DesktopTabButton({
@@ -253,29 +242,29 @@ function DesktopTabButton({
   onSelect,
   tab,
 }: {
-  active: boolean
-  onClone: () => void
-  onPreload: () => void
-  onRemove: () => void
-  onSelect: () => void
-  tab: DesktopTab
+  active: boolean;
+  onClone: () => void;
+  onPreload: () => void;
+  onRemove: () => void;
+  onSelect: () => void;
+  tab: DesktopTab;
 }) {
-  const titleRef = useRef<HTMLSpanElement>(null)
-  const [titleTruncated, setTitleTruncated] = useState(false)
+  const titleRef = useRef<HTMLSpanElement>(null);
+  const [titleTruncated, setTitleTruncated] = useState(false);
 
   useEffect(() => {
-    const titleElement = titleRef.current
-    if (!titleElement) return
+    const titleElement = titleRef.current;
+    if (!titleElement) return;
 
     const updateTruncatedState = () => {
-      setTitleTruncated(titleElement.scrollWidth > titleElement.clientWidth)
-    }
-    const observer = new ResizeObserver(updateTruncatedState)
+      setTitleTruncated(titleElement.scrollWidth > titleElement.clientWidth);
+    };
+    const observer = new ResizeObserver(updateTruncatedState);
 
-    updateTruncatedState()
-    observer.observe(titleElement)
-    return () => observer.disconnect()
-  }, [tab.title])
+    updateTruncatedState();
+    observer.observe(titleElement);
+    return () => observer.disconnect();
+  }, [tab.title]);
 
   return (
     <Tooltip>
@@ -284,17 +273,17 @@ function DesktopTabButton({
           aria-selected={active}
           className="flex h-full min-w-0 flex-1 items-center gap-2 overflow-hidden pl-2 pr-1 text-left focus-visible:rounded-md"
           onAuxClick={(event) => {
-            if (event.button === 1) onRemove()
+            if (event.button === 1) onRemove();
           }}
           onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
             if (isOpenInNewTabShortcut(event)) {
-              event.preventDefault()
-              event.stopPropagation()
-              onClone()
-              return
+              event.preventDefault();
+              event.stopPropagation();
+              onClone();
+              return;
             }
 
-            onSelect()
+            onSelect();
           }}
           onFocus={onPreload}
           onPointerDown={(event) => {
@@ -304,7 +293,8 @@ function DesktopTabButton({
               !event.ctrlKey &&
               !event.altKey &&
               !event.shiftKey
-            ) onSelect()
+            )
+              onSelect();
           }}
           onPointerEnter={onPreload}
           role="tab"
@@ -322,12 +312,12 @@ function DesktopTabButton({
         </TooltipContent>
       ) : null}
     </Tooltip>
-  )
+  );
 }
 
 function DesktopTabIcon({ tab }: { tab: DesktopTab }) {
   if (tab.icon) {
-    return <PageIconDisplay className="size-4" size="sm" value={tab.icon} />
+    return <PageIconDisplay className="size-4" size="sm" value={tab.icon} />;
   }
 
   const Icon = tab.href.startsWith("/d/")
@@ -340,11 +330,11 @@ function DesktopTabIcon({ tab }: { tab: DesktopTab }) {
           ? SparklesIcon
           : tab.href.startsWith("/trash")
             ? Trash2Icon
-            : HomeIcon
+            : HomeIcon;
 
-  return <Icon className="size-4 shrink-0" />
+  return <Icon className="size-4 shrink-0" />;
 }
 
 function stopReorderPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
-  event.stopPropagation()
+  event.stopPropagation();
 }

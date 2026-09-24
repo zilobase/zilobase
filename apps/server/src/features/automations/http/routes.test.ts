@@ -52,11 +52,13 @@ vi.mock("../service", () => {
 import { databaseAutomationRoutes } from "./routes";
 
 const validDefinition = {
-  actions: [{
-    id: "action-1",
-    operations: [{ mode: "clear", propertyId: "name" }],
-    type: "edit_trigger_page",
-  }],
+  actions: [
+    {
+      id: "action-1",
+      operations: [{ mode: "clear", propertyId: "name" }],
+      type: "edit_trigger_page",
+    },
+  ],
   definitionVersion: 1,
   scope: { type: "data_source" },
   timezone: "UTC",
@@ -105,15 +107,15 @@ describe("database automation routes", () => {
   });
 
   it("requires authentication and a source-scoped list query", async () => {
-    expect((await app(false).request("/database-1/automations?dataSourceId=source-1")).status).toBe(401);
+    expect((await app(false).request("/database-1/automations?dataSourceId=source-1")).status).toBe(
+      401,
+    );
     expect((await app().request("/database-1/automations")).status).toBe(400);
   });
 
   it("forwards Gmail as an available automation action", async () => {
     mocks.catalog.mockResolvedValue({ actions: [], canManage: true, dataSourceId: "source-1" });
-    const response = await app().request(
-      "/database-1/automation-catalog?dataSourceId=source-1",
-    );
+    const response = await app().request("/database-1/automation-catalog?dataSourceId=source-1");
     expect(response.status).toBe(200);
     expect(mocks.catalog).toHaveBeenCalledWith(expect.objectContaining({ gmailEnabled: true }));
   });
@@ -123,17 +125,23 @@ describe("database automation routes", () => {
     const response = await app().request(
       "/database-1/automation-secrets",
       {
-        body: JSON.stringify({ dataSourceId: "source-1", purpose: "webhook_header", value: "Bearer secret" }),
+        body: JSON.stringify({
+          dataSourceId: "source-1",
+          purpose: "webhook_header",
+          value: "Bearer secret",
+        }),
         headers: { "content-type": "application/json" },
         method: "POST",
       },
       { AUTOMATION_WEBHOOKS_ENABLED: "true" },
     );
     expect(response.status).toBe(200);
-    expect(mocks.createSecret).toHaveBeenCalledWith(expect.objectContaining({
-      webhooksEnabled: true,
-      body: expect.objectContaining({ value: "Bearer secret" }),
-    }));
+    expect(mocks.createSecret).toHaveBeenCalledWith(
+      expect.objectContaining({
+        webhooksEnabled: true,
+        body: expect.objectContaining({ value: "Bearer secret" }),
+      }),
+    );
   });
 
   it("requires matching creation idempotency keys", async () => {
@@ -143,36 +151,45 @@ describe("database automation routes", () => {
       idempotencyKey: "request-1",
       name: "Automation",
     });
-    expect((await app().request("/database-1/automations", {
-      body,
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    })).status).toBe(400);
-    expect((await app().request("/database-1/automations", {
-      body,
-      headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": "different",
-      },
-      method: "POST",
-    })).status).toBe(400);
+    expect(
+      (
+        await app().request("/database-1/automations", {
+          body,
+          headers: { "content-type": "application/json" },
+          method: "POST",
+        })
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await app().request("/database-1/automations", {
+          body,
+          headers: {
+            "content-type": "application/json",
+            "Idempotency-Key": "different",
+          },
+          method: "POST",
+        })
+      ).status,
+    ).toBe(400);
     expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it("creates idempotently and preserves 201 versus replayed 200", async () => {
-    const request = () => app().request("/database-1/automations", {
-      body: JSON.stringify({
-        dataSourceId: "source-1",
-        definition: validDefinition,
-        idempotencyKey: "request-1",
-        name: "Automation",
-      }),
-      headers: {
-        "content-type": "application/json",
-        "Idempotency-Key": "request-1",
-      },
-      method: "POST",
-    });
+    const request = () =>
+      app().request("/database-1/automations", {
+        body: JSON.stringify({
+          dataSourceId: "source-1",
+          definition: validDefinition,
+          idempotencyKey: "request-1",
+          name: "Automation",
+        }),
+        headers: {
+          "content-type": "application/json",
+          "Idempotency-Key": "request-1",
+        },
+        method: "POST",
+      });
     mocks.create.mockResolvedValueOnce({ automation: { id: "automation-1" }, created: true });
     expect((await request()).status).toBe(201);
     mocks.create.mockResolvedValueOnce({ automation: { id: "automation-1" }, created: false });
@@ -180,14 +197,15 @@ describe("database automation routes", () => {
   });
 
   it("requires a revision If-Match for edits and forwards its version", async () => {
-    const request = (ifMatch?: string) => app().request("/database-1/automations/automation-1", {
-      body: JSON.stringify({ definition: validDefinition, name: "Updated" }),
-      headers: {
-        "content-type": "application/json",
-        ...(ifMatch ? { "If-Match": ifMatch } : {}),
-      },
-      method: "PATCH",
-    });
+    const request = (ifMatch?: string) =>
+      app().request("/database-1/automations/automation-1", {
+        body: JSON.stringify({ definition: validDefinition, name: "Updated" }),
+        headers: {
+          "content-type": "application/json",
+          ...(ifMatch ? { "If-Match": ifMatch } : {}),
+        },
+        method: "PATCH",
+      });
     expect((await request()).status).toBe(428);
     mocks.update.mockResolvedValue({ id: "automation-1", version: 4 });
     expect((await request('W/"3"')).status).toBe(200);

@@ -7,14 +7,14 @@ export type ColorTokenId =
   | "blue"
   | "purple"
   | "pink"
-  | "red"
+  | "red";
 
 type PaletteEntry = {
-  name: string
-  textClass: string
-  backgroundClass: string
-  swatchClass: string
-}
+  name: string;
+  textClass: string;
+  backgroundClass: string;
+  swatchClass: string;
+};
 
 // Values live in color-tokens.css; this file maps persisted IDs to shared utilities.
 export const PALETTE: Record<ColorTokenId, PaletteEntry> = {
@@ -72,20 +72,20 @@ export const PALETTE: Record<ColorTokenId, PaletteEntry> = {
     backgroundClass: "bg-palette-red-subtle",
     swatchClass: "bg-palette-red",
   },
-}
+};
 
-const isPaletteColor = (value: string): value is ColorTokenId => value in PALETTE
-const SOLID_FG = "text-palette-on-subtle"
+const isPaletteColor = (value: string): value is ColorTokenId => value in PALETTE;
+const SOLID_FG = "text-palette-on-subtle";
 
 export type ColorToken = {
-  name: string
-  value: string | null
-  textClass: string
-  backgroundClass: string
-  swatchClass: string
-  dotClass: string
-  solidClass: string
-}
+  name: string;
+  value: string | null;
+  textClass: string;
+  backgroundClass: string;
+  swatchClass: string;
+  dotClass: string;
+  solidClass: string;
+};
 
 export const colorTokens: ColorToken[] = [
   {
@@ -106,9 +106,9 @@ export const colorTokens: ColorToken[] = [
     dotClass: SOLID_FG,
     solidClass: `${entry.backgroundClass} ${SOLID_FG}`,
   })),
-]
+];
 
-export const cyclingColorTokens = colorTokens.filter((token) => token.value)
+export const cyclingColorTokens = colorTokens.filter((token) => token.value);
 
 export const collaboratorColorIds = [
   "blue",
@@ -119,7 +119,7 @@ export const collaboratorColorIds = [
   "yellow",
   "red",
   "brown",
-] as const satisfies readonly ColorTokenId[]
+] as const satisfies readonly ColorTokenId[];
 
 export const iconColorOptions = colorTokens.map((token) => ({
   name: token.name,
@@ -127,82 +127,73 @@ export const iconColorOptions = colorTokens.map((token) => ({
   textClass: token.textClass,
   backgroundClass: token.backgroundClass,
   solidClass: token.solidClass,
-}))
+}));
 
 export function getPaletteColor(color?: string | null) {
   if (!color || color === "default" || !isPaletteColor(color)) {
-    return null
+    return null;
   }
 
-  return `var(--zb-color-palette-text-${color})`
+  return `var(--zb-color-palette-text-${color})`;
 }
 
 export function getColorToken(color?: string | null) {
   if (!color || color === "default") {
-    return colorTokens[0]
+    return colorTokens[0];
   }
 
-  const normalizedColor = color.toLowerCase()
+  const normalizedColor = color.toLowerCase();
 
   return (
     colorTokens.find(
-      (token) =>
-        token.value === normalizedColor ||
-        token.name.toLowerCase() === normalizedColor,
+      (token) => token.value === normalizedColor || token.name.toLowerCase() === normalizedColor,
     ) ?? colorTokens[0]
-  )
+  );
 }
 
 export function getColorTokenValue(color?: string | null) {
-  return getColorToken(color).value ?? "default"
+  return getColorToken(color).value ?? "default";
 }
 
 export function getIconSolidClassName(colorValue?: string | null) {
-  return getColorToken(colorValue === "default" ? null : colorValue).solidClass
+  return getColorToken(colorValue === "default" ? null : colorValue).solidClass;
 }
 
 export function getIconTextClassName(colorValue?: string | null) {
-  return getColorToken(colorValue === "default" ? null : colorValue).textClass
+  return getColorToken(colorValue === "default" ? null : colorValue).textClass;
 }
 
-export function isPaletteColorActive(
-  stored: string | null | undefined,
-  tokenValue: string | null,
-) {
+export function isPaletteColorActive(stored: string | null | undefined, tokenValue: string | null) {
   if (!tokenValue) {
-    return !stored
+    return !stored;
   }
 
   if (!stored) {
-    return false
+    return false;
   }
 
-  const expected = getPaletteColor(tokenValue)
+  const expected = getPaletteColor(tokenValue);
 
-  return stored === tokenValue || stored === expected
+  return stored === tokenValue || stored === expected;
 }
 
 export function getColorTokenBadgeClassName(color?: string | null) {
-  const token = getColorToken(color)
-  const textClass = token.value ? token.dotClass : "text-content-primary"
+  const token = getColorToken(color);
+  const textClass = token.value ? token.dotClass : "text-content-primary";
 
-  return `database-select-badge ${textClass} ${token.backgroundClass}`
+  return `database-select-badge ${textClass} ${token.backgroundClass}`;
 }
 
 export function getColorTokenDotClassName(color?: string | null) {
-  return `database-select-badge-dot ${getColorToken(color).dotClass}`
+  return `database-select-badge-dot ${getColorToken(color).dotClass}`;
 }
 
 export function colorWithAlpha(color?: string | null, alpha = 1) {
-  const normalizedColor = color?.toLowerCase()
+  const normalizedColor = color?.toLowerCase();
 
-  if (
-    !normalizedColor ||
-    !isPaletteColor(normalizedColor) ||
-    Math.round(alpha * 100) !== 18
-  ) {
-    return null
+  if (!normalizedColor || !isPaletteColor(normalizedColor) || Math.round(alpha * 100) !== 18) {
+    return null;
   }
 
-  return `var(--zb-color-palette-background-${normalizedColor}-subtle)`
+  return `var(--zb-color-palette-background-${normalizedColor}-subtle)`;
 }

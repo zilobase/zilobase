@@ -47,11 +47,7 @@ import {
   PromptInputTools,
   type PromptInputMessage,
 } from "./prompt-input";
-import {
-  AI_FILE_ACCEPT,
-  MAX_AI_FILE_BYTES,
-  MAX_AI_FILES,
-} from "../../../files/ai-file-upload";
+import { AI_FILE_ACCEPT, MAX_AI_FILE_BYTES, MAX_AI_FILES } from "../../../files/ai-file-upload";
 import { ChatbotScrollButton } from "./chatbot-scroll-control";
 
 const ModelItem = ({
@@ -68,26 +64,15 @@ const ModelItem = ({
   }, [onSelect, m.id]);
 
   return (
-    <ModelSelectorItem
-      onSelect={handleSelect}
-      title={m.description}
-      value={m.id}
-    >
+    <ModelSelectorItem onSelect={handleSelect} title={m.description} value={m.id}>
       <ModelSelectorLogo provider={getProviderLogoSlug(m.chefSlug)} />
       <ModelSelectorName>{m.name}</ModelSelectorName>
       <ModelSelectorLogoGroup>
         {m.providers.map((provider) => (
-          <ModelSelectorLogo
-            key={provider}
-            provider={getProviderLogoSlug(provider)}
-          />
+          <ModelSelectorLogo key={provider} provider={getProviderLogoSlug(provider)} />
         ))}
       </ModelSelectorLogoGroup>
-      {isSelected ? (
-        <CheckIcon className="ml-auto size-4" />
-      ) : (
-        <div className="ml-auto size-4" />
-      )}
+      {isSelected ? <CheckIcon className="ml-auto size-4" /> : <div className="ml-auto size-4" />}
     </ModelSelectorItem>
   );
 };
@@ -251,16 +236,11 @@ export const ChatbotComposer = ({
                 <PromptInputActionAddAttachments />
               </PromptInputActionMenuContent>
             </PromptInputActionMenu>
-            <ModelSelector
-              onOpenChange={onModelSelectorOpenChange}
-              open={modelSelectorOpen}
-            >
+            <ModelSelector onOpenChange={onModelSelectorOpenChange} open={modelSelectorOpen}>
               <ModelSelectorTrigger asChild>
                 <PromptInputButton>
                   {selectedModel?.chefSlug ? (
-                    <ModelSelectorLogo
-                      provider={getProviderLogoSlug(selectedModel.chefSlug)}
-                    />
+                    <ModelSelectorLogo provider={getProviderLogoSlug(selectedModel.chefSlug)} />
                   ) : null}
                   {selectedModel?.name ? (
                     <ModelSelectorName>{selectedModel.name}</ModelSelectorName>
@@ -289,10 +269,7 @@ export const ChatbotComposer = ({
               </ModelSelectorContent>
             </ModelSelector>
           </PromptInputTools>
-          <PromptInputSubmit
-            onStop={onStop}
-            status={createThreadPending ? "submitted" : status}
-          />
+          <PromptInputSubmit onStop={onStop} status={createThreadPending ? "submitted" : status} />
         </PromptInputFooter>
       </PromptInput>
     </div>

@@ -4,18 +4,18 @@
 
 The browser editor composes Tiptap, structural blocks, comments, selection tools and Yjs collaboration. [The feature entrypoint](../../../apps/web/src/features/editor/index.ts) exposes `Editor` and `PageEditPreviewControls`. Internal consumers use `@/features/editor`; local editor imports use relative paths.
 
-| Capability | Owning modules |
-| --- | --- |
-| Assembly and extension selection | [composition](../../../apps/web/src/features/editor/composition), including `create-base-extensions.ts` and `use-editor-extensions.ts` |
-| Editor instance and live integration registry | [runtime](../../../apps/web/src/features/editor/runtime) |
-| Node behavior and node views | [extensions](../../../apps/web/src/features/editor/extensions) |
-| Block, column, table and database-page movement | [drag-drop](../../../apps/web/src/features/editor/drag-drop) |
-| Formatting controls and toolbar contracts | [toolbar](../../../apps/web/src/features/editor/toolbar) |
-| Page layout canvas and tabs | [layout](../../../apps/web/src/features/editor/layout) |
-| Insertion and editing commands | [commands](../../../apps/web/src/features/editor/commands) |
-| Paste decisions and structural protection | [paste](../../../apps/web/src/features/editor/paste) |
-| Selection, AI preview and comment popovers | [selection](../../../apps/web/src/features/editor/selection) |
-| Document connection and presence | [collaboration](../../../apps/web/src/features/editor/collaboration) |
+| Capability                                      | Owning modules                                                                                                                         |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Assembly and extension selection                | [composition](../../../apps/web/src/features/editor/composition), including `create-base-extensions.ts` and `use-editor-extensions.ts` |
+| Editor instance and live integration registry   | [runtime](../../../apps/web/src/features/editor/runtime)                                                                               |
+| Node behavior and node views                    | [extensions](../../../apps/web/src/features/editor/extensions)                                                                         |
+| Block, column, table and database-page movement | [drag-drop](../../../apps/web/src/features/editor/drag-drop)                                                                           |
+| Formatting controls and toolbar contracts       | [toolbar](../../../apps/web/src/features/editor/toolbar)                                                                               |
+| Page layout canvas and tabs                     | [layout](../../../apps/web/src/features/editor/layout)                                                                                 |
+| Insertion and editing commands                  | [commands](../../../apps/web/src/features/editor/commands)                                                                             |
+| Paste decisions and structural protection       | [paste](../../../apps/web/src/features/editor/paste)                                                                                   |
+| Selection, AI preview and comment popovers      | [selection](../../../apps/web/src/features/editor/selection)                                                                           |
+| Document connection and presence                | [collaboration](../../../apps/web/src/features/editor/collaboration)                                                                   |
 
 Cross-feature consumers use these additional concrete interfaces: [page-editor-registry](../../../apps/web/src/features/editor/runtime/page-editor-registry.tsx) for app registration and AI live edits; [use-page-collaboration](../../../apps/web/src/features/editor/collaboration/use-page-collaboration.ts) for page document connections; [collaboration-presence](../../../apps/web/src/features/editor/collaboration/collaboration-presence.tsx) for database metadata; [meeting](../../../apps/web/src/features/editor/extensions/meeting/index.ts) for meeting screens; [editor-ai-utils](../../../apps/web/src/features/editor/commands/editor-ai-utils.ts) for markdown edits; [block-drag-session](../../../apps/web/src/features/editor/drag-drop/block-drag-session.ts) for desktop tab drag detection; and [database-editability](../../../apps/web/src/features/editor/database-editability.ts) for page database controls. [Core contracts](../../../apps/web/src/features/editor/core/types.ts) describe the existing page integration. These are separate imports to avoid pulling editor assembly into state-only consumers.
 

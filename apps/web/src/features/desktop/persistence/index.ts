@@ -1,4 +1,1 @@
-export {
-  clearDesktopPersistKeys,
-  desktopPersistOptions,
-} from "./desktop-persist-storage"
+export { clearDesktopPersistKeys, desktopPersistOptions } from "./desktop-persist-storage";

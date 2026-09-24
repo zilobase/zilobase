@@ -2,5 +2,5 @@ import { WorkspaceMcpPolicyPanel } from "@/features/ai/settings/components/works
 import { WorkspaceSettingsPage } from "@/features/workspaces";
 
 export default function WorkspaceSettings() {
- return <WorkspaceSettingsPage policySettings={<WorkspaceMcpPolicyPanel />} />;
+  return <WorkspaceSettingsPage policySettings={<WorkspaceMcpPolicyPanel />} />;
 }

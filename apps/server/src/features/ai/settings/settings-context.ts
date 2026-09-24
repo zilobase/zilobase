@@ -9,10 +9,7 @@ import {
   aiMcpConnection,
   aiMcpToolSnapshot,
 } from "../../../infrastructure/database/schema";
-import {
-  canAccessPageInWorkspace,
-  canAccessDatabaseInWorkspace,
-} from "../../access";
+import { canAccessPageInWorkspace, canAccessDatabaseInWorkspace } from "../../access";
 import { authorizeSettings, type SettingsActor } from "./settings-access";
 import { MCP_SERVER_CATALOG } from "../mcp/connections/catalog";
 import { activeMembershipCondition } from "../../memberships";
@@ -29,12 +26,7 @@ export async function settingsEditContext(a: SettingsActor) {
     db
       .select({ id: database.id, name: database.name })
       .from(database)
-      .where(
-        and(
-          eq(database.workspaceId, a.workspaceId),
-          isNull(database.deletedAt),
-        ),
-      )
+      .where(and(eq(database.workspaceId, a.workspaceId), isNull(database.deletedAt)))
       .limit(100),
     a.scope === "personal"
       ? []
@@ -42,12 +34,7 @@ export async function settingsEditContext(a: SettingsActor) {
           .select({ id: user.id, name: user.name })
           .from(member)
           .innerJoin(user, eq(user.id, member.userId))
-          .where(
-            and(
-              eq(member.organizationId, a.workspaceId),
-              activeMembershipCondition(),
-            ),
-          )
+          .where(and(eq(member.organizationId, a.workspaceId), activeMembershipCondition()))
           .limit(100),
     a.scope === "personal"
       ? []
@@ -82,12 +69,7 @@ export async function settingsEditContext(a: SettingsActor) {
           : null,
       ),
       ...databases.map(async (d) =>
-        (await canAccessDatabaseInWorkspace(
-          d.id,
-          a.workspaceId,
-          a.userId,
-          "view",
-        ))
+        (await canAccessDatabaseInWorkspace(d.id, a.workspaceId, a.userId, "view"))
           ? { resourceType: "database", resourceId: d.id, name: d.name }
           : null,
       ),
@@ -117,10 +99,7 @@ export async function settingsEditContext(a: SettingsActor) {
           })
           .from(aiMcpToolSnapshot)
           .where(
-            and(
-              eq(aiMcpToolSnapshot.connectionId, c.id),
-              eq(aiMcpToolSnapshot.available, true),
-            ),
+            and(eq(aiMcpToolSnapshot.connectionId, c.id), eq(aiMcpToolSnapshot.available, true)),
           ),
       })),
     ),

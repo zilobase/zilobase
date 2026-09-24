@@ -5,8 +5,7 @@ import type { RuntimeEnv } from "../config/config";
 const TICKET_TTL_MS = 30 * 60 * 1000;
 
 export const DATABASE_REALTIME_PROTOCOL = "zilobase.database.v2";
-export const DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX =
-  "zilobase.database.auth.";
+export const DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX = "zilobase.database.auth.";
 
 export type DatabaseRealtimeTicketClaims = {
   canEdit: boolean;
@@ -24,10 +23,7 @@ export type DatabaseRealtimeTicketClaims = {
 };
 
 export async function createDatabaseRealtimeTicket(
-  claims: Omit<
-    DatabaseRealtimeTicketClaims,
-    "exp" | "sessionId" | "version"
-  > & {
+  claims: Omit<DatabaseRealtimeTicketClaims, "exp" | "sessionId" | "version"> & {
     sessionId?: string;
     version: number;
   },
@@ -56,10 +52,7 @@ export async function createDatabaseRealtimeTicket(
   };
 }
 
-export async function verifyDatabaseRealtimeTicket(
-  token: string,
-  env: RuntimeEnv,
-) {
+export async function verifyDatabaseRealtimeTicket(token: string, env: RuntimeEnv) {
   const [encoded, signature, extra] = token.split(".");
 
   if (!encoded || !signature || extra) {
@@ -91,11 +84,7 @@ function getTicketSecret(env: RuntimeEnv) {
 
 async function sign(value: string, secret: string) {
   const key = await importSigningKey(secret, ["sign"]);
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(value),
-  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
 
   return Buffer.from(signature).toString("base64url");
 }
@@ -140,8 +129,7 @@ function isTicketClaims(value: unknown): value is DatabaseRealtimeTicketClaims {
     typeof claims.databaseId === "string" &&
     typeof claims.exp === "number" &&
     typeof claims.sessionId === "string" &&
-    (claims.version === undefined ||
-      (typeof claims.version === "number" && claims.version >= 0)) &&
+    (claims.version === undefined || (typeof claims.version === "number" && claims.version >= 0)) &&
     typeof claims.workspaceId === "string" &&
     Boolean(ticketUser) &&
     typeof ticketUser === "object" &&

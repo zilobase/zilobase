@@ -65,9 +65,11 @@ export function recordWindowPath(
   });
   if (scope.includeDeleted) query.set("includeDeleted", "1");
   if (window.snapshot) query.set("snapshot", window.snapshot);
-  return `/databases/${encodeURIComponent(scope.databaseId)}` +
+  return (
+    `/databases/${encodeURIComponent(scope.databaseId)}` +
     `/data-sources/${encodeURIComponent(scope.dataSourceId)}` +
-    `/records?${query.toString()}`;
+    `/records?${query.toString()}`
+  );
 }
 
 export async function fetchRecordWindow(
@@ -81,10 +83,7 @@ export async function fetchRecordWindow(
   let incoming: DatabaseRecordWindowResponse;
   try {
     incoming = databaseRecordWindowResponseSchema.parse(
-      await apiFetch<DatabaseRecordWindowResponse>(
-        recordWindowPath(scope, window),
-        { signal },
-      ),
+      await apiFetch<DatabaseRecordWindowResponse>(recordWindowPath(scope, window), { signal }),
     );
   } catch (error) {
     if (!isWindowStaleError(error)) throw error;
@@ -100,9 +99,7 @@ export async function fetchRecordWindow(
   if (queryClient && queryKey) {
     const cachedMax = cachedWindowMaxVersion(queryClient, queryKey);
     if (incoming.databaseVersion < cachedMax) {
-      const cached = queryClient.getQueryData<
-        InfiniteData<DatabaseRecordWindowResponse>
-      >(queryKey);
+      const cached = queryClient.getQueryData<InfiniteData<DatabaseRecordWindowResponse>>(queryKey);
       const last = cached?.pages.at(-1);
       if (last) return last;
     }
@@ -117,8 +114,10 @@ export function isWindowStaleError(error: unknown): boolean {
     code?: unknown;
     status?: unknown;
   };
-  return candidate.code === "WINDOW_STALE" ||
-    (candidate.status === 409 && candidate.body?.code === "WINDOW_STALE");
+  return (
+    candidate.code === "WINDOW_STALE" ||
+    (candidate.status === 409 && candidate.body?.code === "WINDOW_STALE")
+  );
 }
 
 /**
@@ -152,25 +151,14 @@ export function databaseWindowQueryOptions(
     queryKey,
     staleTime: 30_000,
     initialPageParam: { limit: pageSize, snapshot: undefined },
-    queryFn: async (
-      { pageParam, signal },
-    ): Promise<DatabaseRecordWindowResponse> =>
-      fetchRecordWindow(
-        apiFetch,
-        scope,
-        pageParam,
-        queryClient,
-        queryKey,
-        signal,
-      ),
-    getNextPageParam: (
-      last: DatabaseRecordWindowResponse,
-    ): RecordWindowPageParam | undefined =>
+    queryFn: async ({ pageParam, signal }): Promise<DatabaseRecordWindowResponse> =>
+      fetchRecordWindow(apiFetch, scope, pageParam, queryClient, queryKey, signal),
+    getNextPageParam: (last: DatabaseRecordWindowResponse): RecordWindowPageParam | undefined =>
       last.hasMore
         ? {
-          limit: last.records.length + pageSize,
-          snapshot: last.snapshot,
-        }
+            limit: last.records.length + pageSize,
+            snapshot: last.snapshot,
+          }
         : undefined,
   });
 }
@@ -202,17 +190,11 @@ function resolvePageSize(
     database: { config: unknown };
     views: Array<{ config: unknown; id: string }>;
   }>(databaseBootstrapQueryKey(sessionId, scope));
-  const view = bootstrap?.views.find(
-    (candidate) => candidate.id === scope.viewId,
-  );
-  return getDatabaseInitialPageSize(
-    view?.config ?? bootstrap?.database.config,
-  );
+  const view = bootstrap?.views.find((candidate) => candidate.id === scope.viewId);
+  return getDatabaseInitialPageSize(view?.config ?? bootstrap?.database.config);
 }
 
-export function useDatabaseRecords(
-  scope: DatabaseViewScope | null,
-): DatabaseRecordHookWindow {
+export function useDatabaseRecords(scope: DatabaseViewScope | null): DatabaseRecordHookWindow {
   const { apiFetch, queryClient } = useZilobaseFeatures();
   const sessionId = useDatabaseSessionId();
 
@@ -227,9 +209,7 @@ export function useDatabaseRecords(
   }
   const pageSize = pageSizeRef.current ?? 50;
 
-  const queryKey = scope
-    ? databaseWindowQueryKey(sessionId, scope)
-    : null;
+  const queryKey = scope ? databaseWindowQueryKey(sessionId, scope) : null;
 
   const options = infiniteQueryOptions({
     ...databaseWindowQueryOptions(
@@ -254,11 +234,10 @@ export function useDatabaseRecords(
     placeholderData: (previousData, previousQuery) =>
       scope
         ? selectSameSourcePlaceholder(
-          previousData,
-          (previousQuery as { queryKey?: readonly unknown[] } | undefined)
-            ?.queryKey,
-          scope.dataSourceId,
-        )
+            previousData,
+            (previousQuery as { queryKey?: readonly unknown[] } | undefined)?.queryKey,
+            scope.dataSourceId,
+          )
         : previousData,
     staleTime: 30_000,
   });
@@ -281,11 +260,12 @@ export function useDatabaseRecords(
   }
 
   const latest = query.data?.pages.at(-1);
-  const error = query.error instanceof Error
-    ? query.error
-    : query.error
-      ? new Error(String(query.error))
-      : null;
+  const error =
+    query.error instanceof Error
+      ? query.error
+      : query.error
+        ? new Error(String(query.error))
+        : null;
 
   return {
     error,
@@ -299,13 +279,7 @@ export function useDatabaseRecords(
     pageSize,
     records: latest?.records ?? [],
     scope,
-    status: query.isError
-      ? "error"
-      : query.isLoading
-        ? "loading"
-        : latest
-          ? "success"
-          : "idle",
+    status: query.isError ? "error" : query.isLoading ? "loading" : latest ? "success" : "idle",
     totalCount: latest?.totalCount ?? 0,
   };
 }

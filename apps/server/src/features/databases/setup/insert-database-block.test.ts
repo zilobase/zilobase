@@ -27,27 +27,26 @@ test("insertDatabaseBlockInContent can hide a redundant inline title", () => {
 });
 
 test("matching page and database names use the native page title only", () => {
-  assert.equal(
-    shouldShowInlineDatabaseTitle("🚀 Release Tracker", "Release Tracker"),
-    false,
-  );
-  assert.equal(
-    shouldShowInlineDatabaseTitle("Launch Dashboard", "Release Tracker"),
-    true,
-  );
+  assert.equal(shouldShowInlineDatabaseTitle("🚀 Release Tracker", "Release Tracker"), false);
+  assert.equal(shouldShowInlineDatabaseTitle("Launch Dashboard", "Release Tracker"), true);
 });
 
 test("insertDatabaseBlockInContent repairs an existing block title", () => {
-  const result = insertDatabaseBlockInContent({
-    type: "doc",
-    content: [{
-      attrs: { databaseId: DATABASE_ID, showTitle: true },
-      type: "databaseBlock",
-    }],
-  }, {
-    databaseId: DATABASE_ID,
-    showTitle: false,
-  });
+  const result = insertDatabaseBlockInContent(
+    {
+      type: "doc",
+      content: [
+        {
+          attrs: { databaseId: DATABASE_ID, showTitle: true },
+          type: "databaseBlock",
+        },
+      ],
+    },
+    {
+      databaseId: DATABASE_ID,
+      showTitle: false,
+    },
+  );
 
   assert.equal(result.alreadyEmbedded, true);
   assert.equal(result.titleUpdated, true);
@@ -101,10 +100,13 @@ test("insertDatabaseBlockInContent detects duplicate embeds", () => {
 test("insertDatabaseBlockInContent rejects unknown heading", () => {
   assert.throws(
     () =>
-      insertDatabaseBlockInContent({ type: "doc", content: [] }, {
-        afterHeading: "Missing",
-        databaseId: DATABASE_ID,
-      }),
+      insertDatabaseBlockInContent(
+        { type: "doc", content: [] },
+        {
+          afterHeading: "Missing",
+          databaseId: DATABASE_ID,
+        },
+      ),
     /Could not find section heading/,
   );
 });
@@ -158,10 +160,7 @@ test("insertDatabaseBlockInContent normalizes heading markup and boundaries", ()
 });
 
 test("insertDatabaseBlockInContent handles sparse valid documents", () => {
-  const appended = insertDatabaseBlockInContent(
-    { type: "doc" },
-    { databaseId: DATABASE_ID },
-  );
+  const appended = insertDatabaseBlockInContent({ type: "doc" }, { databaseId: DATABASE_ID });
   assert.equal(appended.content.content?.[0]?.type, "databaseBlock");
 
   assert.throws(

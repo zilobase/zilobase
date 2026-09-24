@@ -31,35 +31,50 @@ describe("collaboration upgrade security", () => {
     const { env, getByName, limit } = createRouteEnv();
     const authenticate = vi.fn(async () => "user-1");
 
-    expect((await routeCollaborationRequest(
-      new Request(websocketRequest, { method: "POST" }),
-      env,
-      authenticate,
-      parsePageId,
-    )).status).toBe(405);
-    expect((await routeCollaborationRequest(
-      new Request(websocketRequest.url),
-      env,
-      authenticate,
-      parsePageId,
-    )).status).toBe(426);
-    expect((await routeCollaborationRequest(
-      new Request("https://api.zilobase.com/collaboration?document=invalid", {
-        headers: { Upgrade: "websocket" },
-      }),
-      env,
-      authenticate,
-      parsePageId,
-    )).status).toBe(400);
-    expect((await routeCollaborationRequest(
-      new Request(
-        `https://api.zilobase.com/collaboration?document=page:${"x".repeat(129)}`,
-        { headers: { Upgrade: "websocket" } },
-      ),
-      env,
-      authenticate,
-      parsePageId,
-    )).status).toBe(400);
+    expect(
+      (
+        await routeCollaborationRequest(
+          new Request(websocketRequest, { method: "POST" }),
+          env,
+          authenticate,
+          parsePageId,
+        )
+      ).status,
+    ).toBe(405);
+    expect(
+      (
+        await routeCollaborationRequest(
+          new Request(websocketRequest.url),
+          env,
+          authenticate,
+          parsePageId,
+        )
+      ).status,
+    ).toBe(426);
+    expect(
+      (
+        await routeCollaborationRequest(
+          new Request("https://api.zilobase.com/collaboration?document=invalid", {
+            headers: { Upgrade: "websocket" },
+          }),
+          env,
+          authenticate,
+          parsePageId,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await routeCollaborationRequest(
+          new Request(`https://api.zilobase.com/collaboration?document=page:${"x".repeat(129)}`, {
+            headers: { Upgrade: "websocket" },
+          }),
+          env,
+          authenticate,
+          parsePageId,
+        )
+      ).status,
+    ).toBe(400);
     expect(authenticate).not.toHaveBeenCalled();
     expect(limit).not.toHaveBeenCalled();
     expect(getByName).not.toHaveBeenCalled();
@@ -125,8 +140,7 @@ describe("collaboration upgrade security", () => {
       meetingRequest,
       env,
       async () => "user-1",
-      (documentName) =>
-        documentName.startsWith("meeting:") ? documentName.slice(8) : null,
+      (documentName) => (documentName.startsWith("meeting:") ? documentName.slice(8) : null),
     );
 
     expect(response.status).toBe(200);
@@ -136,9 +150,7 @@ describe("collaboration upgrade security", () => {
 
 describe("collaboration WebSocket message limits", () => {
   it("accepts binary messages at the configured limit", () => {
-    const result = validateCollaborationMessage(
-      new ArrayBuffer(MAX_COLLABORATION_MESSAGE_BYTES),
-    );
+    const result = validateCollaborationMessage(new ArrayBuffer(MAX_COLLABORATION_MESSAGE_BYTES));
 
     expect(result.ok).toBe(true);
     expect(validateCollaborationMessage(new Uint8Array([1, 2, 3])).ok).toBe(true);
@@ -170,13 +182,10 @@ describe("collaboration WebSocket message limits", () => {
 describe("collaboration WebSocket protocol negotiation", () => {
   it("selects the stable collaboration protocol without echoing auth data", () => {
     const headers = new Headers({
-      "Sec-WebSocket-Protocol":
-        "zilobase.collaboration.v1, zilobase.session.v1.c2Vzc2lvbg",
+      "Sec-WebSocket-Protocol": "zilobase.collaboration.v1, zilobase.session.v1.c2Vzc2lvbg",
     });
 
-    expect(selectCollaborationWebSocketProtocol(headers)).toBe(
-      "zilobase.collaboration.v1",
-    );
+    expect(selectCollaborationWebSocketProtocol(headers)).toBe("zilobase.collaboration.v1");
   });
 
   it("does not negotiate a protocol for cookie-authenticated web clients", () => {

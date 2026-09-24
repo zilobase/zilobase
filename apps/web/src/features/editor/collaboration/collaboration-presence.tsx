@@ -4,62 +4,55 @@ import {
   AvatarGroup,
   AvatarGroupCount,
   AvatarImage,
-} from "@/shared/ui/avatar"
-import { cn } from "@/shared/lib/utils"
-import { getUserImageUrl } from "@/platform/network/image-upload"
+} from "@/shared/ui/avatar";
+import { cn } from "@/shared/lib/utils";
+import { getUserImageUrl } from "@/platform/network/image-upload";
 
 export type CollaborationPresenceUser = {
-  avatar?: string | null
-  id: string
-  name: string
-}
+  avatar?: string | null;
+  id: string;
+  name: string;
+};
 
 export function CollaborationPresence({
   className,
   users,
 }: {
-  className?: string
-  users: CollaborationPresenceUser[]
+  className?: string;
+  users: CollaborationPresenceUser[];
 }) {
-  const visibleUsers = users.slice(0, 4)
-  const hiddenCount = Math.max(0, users.length - visibleUsers.length)
+  const visibleUsers = users.slice(0, 4);
+  const hiddenCount = Math.max(0, users.length - visibleUsers.length);
 
   return (
     <div
-      className={cn(
-        "absolute right-4 top-4 z-10 flex h-8 items-center gap-2",
-        className,
-      )}
+      className={cn("absolute right-4 top-4 z-10 flex h-8 items-center gap-2", className)}
       contentEditable={false}
     >
       {visibleUsers.length > 0 ? (
         <AvatarGroup>
           {visibleUsers.map((user) => (
             <Avatar key={user.id} size="sm" title={user.name}>
-              {user.avatar ? (
-                <AvatarImage alt="" src={getUserImageUrl(user.avatar)} />
-              ) : null}
-              <AvatarFallback gradientSeed={user.id}>
-                {initials(user.name)}
-              </AvatarFallback>
+              {user.avatar ? <AvatarImage alt="" src={getUserImageUrl(user.avatar)} /> : null}
+              <AvatarFallback gradientSeed={user.id}>{initials(user.name)}</AvatarFallback>
             </Avatar>
           ))}
           {hiddenCount > 0 ? (
-            <AvatarGroupCount className="size-6 text-xs">
-              +{hiddenCount}
-            </AvatarGroupCount>
+            <AvatarGroupCount className="size-6 text-xs">+{hiddenCount}</AvatarGroupCount>
           ) : null}
         </AvatarGroup>
       ) : null}
     </div>
-  )
+  );
 }
 
 function initials(name: string) {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "?"
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "?"
+  );
 }

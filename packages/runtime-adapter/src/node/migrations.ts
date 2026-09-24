@@ -21,9 +21,7 @@ export async function runMigrationSets(
 ) {
   assertMigrationSets(migrationSets);
 
-  await database.execute(
-    sql`select pg_advisory_lock(hashtext('zilobase-database-migrations'))`,
-  );
+  await database.execute(sql`select pg_advisory_lock(hashtext('zilobase-database-migrations'))`);
 
   try {
     for (const migrationSet of migrationSets) {
@@ -49,9 +47,7 @@ export function assertMigrationSets(migrationSets: readonly MigrationSet[]) {
     }
 
     if (!/^__[a-z][a-z0-9_]*_migrations$/.test(migrationSet.journalTable)) {
-      throw new Error(
-        `Invalid migration journal table: ${migrationSet.journalTable}`,
-      );
+      throw new Error(`Invalid migration journal table: ${migrationSet.journalTable}`);
     }
 
     if (ids.has(migrationSet.id)) {
@@ -59,9 +55,7 @@ export function assertMigrationSets(migrationSets: readonly MigrationSet[]) {
     }
 
     if (journalTables.has(migrationSet.journalTable)) {
-      throw new Error(
-        `Migration sets must use distinct journals: ${migrationSet.journalTable}`,
-      );
+      throw new Error(`Migration sets must use distinct journals: ${migrationSet.journalTable}`);
     }
 
     ids.add(migrationSet.id);

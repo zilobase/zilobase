@@ -27,11 +27,7 @@ export {
   isPrivilegedOrgRole,
   isWorkspaceMember,
 } from "./principal-access";
-export {
-  hasAccess,
-  normalizeAccessLevel,
-  type AccessLevel,
-} from "./access-level";
+export { hasAccess, normalizeAccessLevel, type AccessLevel } from "./access-level";
 export { rejectActiveWorkspaceMismatch } from "./workspace-mismatch";
 export type { AgentPermissionSnapshotGrant } from "./access-decisions";
 export { getPageRecord } from "./resource-access-records";

@@ -53,39 +53,37 @@ export class ReadinessChecks extends Context.Service<
   );
 }
 
-export const evaluateReadiness = Effect.fn("evaluateReadiness")(
-  function* (env: RuntimeEnv) {
-    const dependencies = yield* ReadinessChecks;
-    const [database, objectStorage] = yield* Effect.all(
-      [
-        dependencies.checkDatabase(env).pipe(
-          Effect.as("ok" as const),
-          Effect.orElseSucceed(() => "unavailable" as const),
-        ),
-        dependencies.checkObjectStorage(env).pipe(
-          Effect.as("ok" as const),
-          Effect.orElseSucceed(() => "unavailable" as const),
-        ),
-      ],
-      { concurrency: "unbounded" },
-    );
-    const readiness = requireRuntimePort("readiness");
-    const checks: ReadinessResult["checks"] = {
-      database,
-      objectStorage,
-      realtime: readiness.realtime() ? "ok" : "unavailable",
-    };
-    if (readiness.background().coordinatorReady === false) {
-      checks.background = "unavailable";
-    }
+export const evaluateReadiness = Effect.fn("evaluateReadiness")(function* (env: RuntimeEnv) {
+  const dependencies = yield* ReadinessChecks;
+  const [database, objectStorage] = yield* Effect.all(
+    [
+      dependencies.checkDatabase(env).pipe(
+        Effect.as("ok" as const),
+        Effect.orElseSucceed(() => "unavailable" as const),
+      ),
+      dependencies.checkObjectStorage(env).pipe(
+        Effect.as("ok" as const),
+        Effect.orElseSucceed(() => "unavailable" as const),
+      ),
+    ],
+    { concurrency: "unbounded" },
+  );
+  const readiness = requireRuntimePort("readiness");
+  const checks: ReadinessResult["checks"] = {
+    database,
+    objectStorage,
+    realtime: readiness.realtime() ? "ok" : "unavailable",
+  };
+  if (readiness.background().coordinatorReady === false) {
+    checks.background = "unavailable";
+  }
 
-    return {
-      checks,
-      ok: Object.values(checks).every((check) => check === "ok"),
-      service: "zilobase-server",
-    } satisfies ReadinessResult;
-  },
-);
+  return {
+    checks,
+    ok: Object.values(checks).every((check) => check === "ok"),
+    service: "zilobase-server",
+  } satisfies ReadinessResult;
+});
 
 export const readinessRuntime = createAppRuntime(ReadinessChecks.layer, {
   process: true,

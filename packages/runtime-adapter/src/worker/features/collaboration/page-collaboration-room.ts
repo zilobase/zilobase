@@ -1,10 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import {
-  IncomingMessage,
-  MessageType,
-  OutgoingMessage,
-  type Extension,
-} from "@hocuspocus/server";
+import { IncomingMessage, MessageType, OutgoingMessage, type Extension } from "@hocuspocus/server";
 import {
   createCollaborationHocuspocus,
   pageIdFromDocumentName,
@@ -23,9 +18,7 @@ import {
   validateCollaborationUpgradeRequest,
 } from "./security";
 
-export type PageCollaborationEnv = Cloudflare.Env &
-  AppBindings["Bindings"] &
-  WorkerEnvBindings;
+export type PageCollaborationEnv = Cloudflare.Env & AppBindings["Bindings"] & WorkerEnvBindings;
 
 type HibernationContext = CollaborationContext & {
   hibernationConnectionId?: string;
@@ -44,9 +37,7 @@ type SocketAttachment = {
 };
 
 type LiveConnection = {
-  client: ReturnType<
-    ReturnType<typeof createCollaborationHocuspocus>["handleConnection"]
-  >;
+  client: ReturnType<ReturnType<typeof createCollaborationHocuspocus>["handleConnection"]>;
   ready: Promise<void>;
 };
 
@@ -88,19 +79,15 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     this.hocuspocus = createCollaborationHocuspocus(env, persistence);
     this.hocuspocus.configuration.extensions.push({
       connected: async ({ context }) => {
-        const connectionId = (context as HibernationContext)
-          .hibernationConnectionId;
+        const connectionId = (context as HibernationContext).hibernationConnectionId;
 
         if (connectionId) {
           this.pendingConnections.get(connectionId)?.resolve();
         }
       },
       afterHandleMessage: async ({ context }) => {
-        const connectionId = (context as HibernationContext)
-          .hibernationConnectionId;
-        const pending = connectionId
-          ? this.pendingMessages.get(connectionId)?.shift()
-          : undefined;
+        const connectionId = (context as HibernationContext).hibernationConnectionId;
+        const pending = connectionId ? this.pendingMessages.get(connectionId)?.shift() : undefined;
 
         pending?.resolve();
         if (connectionId && this.pendingMessages.get(connectionId)?.length === 0) {
@@ -120,9 +107,8 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
 
   private async handleFetch(request: Request) {
     const startedAt = performance.now();
-    const validation = validateCollaborationUpgradeRequest(
-      request,
-      (documentName) => this.parseDocumentId(documentName),
+    const validation = validateCollaborationUpgradeRequest(request, (documentName) =>
+      this.parseDocumentId(documentName),
     );
     if (!validation.ok) return validation.response;
     const { documentName } = validation;
@@ -141,10 +127,12 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     this.ctx.acceptWebSocket(server);
     this.scheduleMaintenanceInBackground();
 
-    console.info(JSON.stringify({
-      event: "collaboration_do_upgrade_accepted",
-      handlerMs: Math.round(performance.now() - startedAt),
-    }));
+    console.info(
+      JSON.stringify({
+        event: "collaboration_do_upgrade_accepted",
+        handlerMs: Math.round(performance.now() - startedAt),
+      }),
+    );
 
     const protocol = selectCollaborationWebSocketProtocol(request.headers);
 
@@ -156,22 +144,20 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   }
 
   async webSocketMessage(ws: WebSocket, rawMessage: string | ArrayBuffer) {
-    return this.runWithRoomRuntime(() =>
-      this.handleWebSocketMessage(ws, rawMessage));
+    return this.runWithRoomRuntime(() => this.handleWebSocketMessage(ws, rawMessage));
   }
 
-  private async handleWebSocketMessage(
-    ws: WebSocket,
-    rawMessage: string | ArrayBuffer,
-  ) {
+  private async handleWebSocketMessage(ws: WebSocket, rawMessage: string | ArrayBuffer) {
     const validation = validateCollaborationMessage(rawMessage);
 
     if (!validation.ok) {
-      console.warn(JSON.stringify({
-        event: "collaboration_invalid_websocket_message",
-        messageBytes: validation.messageBytes,
-        reason: validation.reason,
-      }));
+      console.warn(
+        JSON.stringify({
+          event: "collaboration_invalid_websocket_message",
+          messageBytes: validation.messageBytes,
+          reason: validation.reason,
+        }),
+      );
       ws.close(validation.code, validation.reason);
       return;
     }
@@ -216,12 +202,14 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     await this.restoreConnections(ws);
 
     if (metadata?.type === MessageType.Auth && !hadLiveConnection) {
-      console.info(JSON.stringify({
-        connectionId: attachment.connectionId,
-        documentName: attachment.documentName,
-        event: "collaboration_initial_sync_ready",
-        restoreMs: Math.round(performance.now() - restoreStartedAt),
-      }));
+      console.info(
+        JSON.stringify({
+          connectionId: attachment.connectionId,
+          documentName: attachment.documentName,
+          event: "collaboration_initial_sync_ready",
+          restoreMs: Math.round(performance.now() - restoreStartedAt),
+        }),
+      );
     }
 
     if (metadata?.type !== MessageType.Auth) {
@@ -232,14 +220,8 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     }
   }
 
-  async webSocketClose(
-    ws: WebSocket,
-    code: number,
-    reason: string,
-    wasClean: boolean,
-  ) {
-    return this.runWithRoomRuntime(() =>
-      this.handleWebSocketClose(ws, code, reason, wasClean));
+  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
+    return this.runWithRoomRuntime(() => this.handleWebSocketClose(ws, code, reason, wasClean));
   }
 
   private async handleWebSocketClose(
@@ -250,17 +232,17 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   ) {
     const attachment = readAttachment(ws);
 
-    const expectedClose = wasClean && (
-      code === 1000 || code === 1001 || code === 1005
-    );
+    const expectedClose = wasClean && (code === 1000 || code === 1001 || code === 1005);
     if (!expectedClose) {
-      console.warn(JSON.stringify({
-        code,
-        documentName: attachment?.documentName,
-        event: "collaboration_websocket_closed",
-        reason,
-        wasClean,
-      }));
+      console.warn(
+        JSON.stringify({
+          code,
+          documentName: attachment?.documentName,
+          event: "collaboration_websocket_closed",
+          reason,
+          wasClean,
+        }),
+      );
     }
 
     await this.closeConnection(ws, code, reason);
@@ -268,17 +250,18 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   }
 
   async webSocketError(ws: WebSocket, error: unknown) {
-    return this.runWithRoomRuntime(() =>
-      this.handleWebSocketError(ws, error));
+    return this.runWithRoomRuntime(() => this.handleWebSocketError(ws, error));
   }
 
   private async handleWebSocketError(ws: WebSocket, error: unknown) {
     const attachment = readAttachment(ws);
-    console.error(JSON.stringify({
-      documentName: attachment?.documentName,
-      error: error instanceof Error ? error.message : String(error),
-      event: "collaboration_websocket_error",
-    }));
+    console.error(
+      JSON.stringify({
+        documentName: attachment?.documentName,
+        error: error instanceof Error ? error.message : String(error),
+        event: "collaboration_websocket_error",
+      }),
+    );
     await this.closeConnection(ws, 1011, "Collaboration WebSocket error");
     ws.close(1011, "Collaboration WebSocket error");
     await this.scheduleMaintenance();
@@ -309,14 +292,8 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
       }
 
       if (attachment.tokenRefreshRequestedAt) {
-        if (
-          attachment.tokenRefreshRequestedAt + TOKEN_REFRESH_GRACE_MS <= now
-        ) {
-          await this.closeConnection(
-            ws,
-            1008,
-            "Collaboration authentication refresh timed out",
-          );
+        if (attachment.tokenRefreshRequestedAt + TOKEN_REFRESH_GRACE_MS <= now) {
+          await this.closeConnection(ws, 1008, "Collaboration authentication refresh timed out");
           ws.close(1008, "Collaboration authentication refresh timed out");
         }
         continue;
@@ -328,9 +305,7 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
         attachment.messageAddress
       ) {
         ws.send(
-          new OutgoingMessage(attachment.messageAddress)
-            .writeTokenSyncRequest()
-            .toUint8Array(),
+          new OutgoingMessage(attachment.messageAddress).writeTokenSyncRequest().toUint8Array(),
         );
         attachment.tokenRefreshRequestedAt = now;
         writeAttachment(ws, attachment);
@@ -341,20 +316,11 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     await this.scheduleMaintenance();
   }
 
-  async replacePageContent(
-    content: unknown,
-    pageId: string,
-    userId: string,
-  ) {
-    return this.runWithRoomRuntime(() =>
-      this.handleReplacePageContent(content, pageId, userId));
+  async replacePageContent(content: unknown, pageId: string, userId: string) {
+    return this.runWithRoomRuntime(() => this.handleReplacePageContent(content, pageId, userId));
   }
 
-  private async handleReplacePageContent(
-    content: unknown,
-    pageId: string,
-    userId: string,
-  ) {
+  private async handleReplacePageContent(content: unknown, pageId: string, userId: string) {
     await this.restoreConnections();
     await replacePageContentInHocuspocus(this.hocuspocus, {
       content,
@@ -378,10 +344,7 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     return runWithRuntimePorts(this.runtimePorts, run);
   }
 
-  private createConnection(
-    ws: WebSocket,
-    attachment: SocketAttachment,
-  ): LiveConnection {
+  private createConnection(ws: WebSocket, attachment: SocketAttachment): LiveConnection {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let settle: PendingConnection | undefined;
     const ready = new Promise<void>((resolve, reject) => {
@@ -439,10 +402,7 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
     return connection;
   }
 
-  private getOrCreateConnection(
-    ws: WebSocket,
-    attachment: SocketAttachment,
-  ) {
+  private getOrCreateConnection(ws: WebSocket, attachment: SocketAttachment) {
     return this.connections.get(ws) ?? this.createConnection(ws, attachment);
   }
 
@@ -503,9 +463,7 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
       const attachment = readAttachment(ws);
 
       if (attachment?.awarenessMessage) {
-        this.connections
-          .get(ws)
-          ?.client.handleMessage(new Uint8Array(attachment.awarenessMessage));
+        this.connections.get(ws)?.client.handleMessage(new Uint8Array(attachment.awarenessMessage));
       }
     }
   }
@@ -522,23 +480,25 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
         // releasing the Hocuspocus connection. Durable Objects may hibernate as
         // soon as this event completes; an in-memory debounce is not a durability
         // boundary.
-        const pending = attachment
-          ? this.pendingMessages.get(attachment.connectionId) ?? []
-          : [];
+        const pending = attachment ? (this.pendingMessages.get(attachment.connectionId) ?? []) : [];
         await Promise.all(pending.map((message) => message.promise));
         const document = attachment
           ? this.hocuspocus.documents.get(attachment.documentName)
           : undefined;
 
         if (document) {
-          await this.hocuspocus.storeDocumentHooks(document, {
-            clientsCount: document.getConnectionsCount(),
+          await this.hocuspocus.storeDocumentHooks(
             document,
-            documentName: document.name,
-            instance: this.hocuspocus,
-            lastContext: {},
-            lastTransactionOrigin: null,
-          }, true);
+            {
+              clientsCount: document.getConnectionsCount(),
+              document,
+              documentName: document.name,
+              instance: this.hocuspocus,
+              lastContext: {},
+              lastTransactionOrigin: null,
+            },
+            true,
+          );
         }
       }
     } finally {
@@ -574,16 +534,13 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
       if (!attachment.authMessage) {
         candidate = attachment.connectedAt + UNAUTHENTICATED_TIMEOUT_MS;
       } else if (attachment.tokenRefreshRequestedAt) {
-        candidate =
-          attachment.tokenRefreshRequestedAt + TOKEN_REFRESH_GRACE_MS;
+        candidate = attachment.tokenRefreshRequestedAt + TOKEN_REFRESH_GRACE_MS;
       } else if (attachment.tokenExpiresAt) {
         candidate = attachment.tokenExpiresAt - TOKEN_REFRESH_LEAD_MS;
       } else {
         continue;
       }
-      nextMaintenance = nextMaintenance === null
-        ? candidate
-        : Math.min(nextMaintenance, candidate);
+      nextMaintenance = nextMaintenance === null ? candidate : Math.min(nextMaintenance, candidate);
     }
 
     if (nextMaintenance === null) {
@@ -597,10 +554,12 @@ export class PageCollaborationRoom extends DurableObject<PageCollaborationEnv> {
   protected scheduleMaintenanceInBackground() {
     this.ctx.waitUntil(
       this.scheduleMaintenance().catch((error) => {
-        console.error(JSON.stringify({
-          error: error instanceof Error ? error.message : String(error),
-          event: "collaboration_maintenance_schedule_failed",
-        }));
+        console.error(
+          JSON.stringify({
+            error: error instanceof Error ? error.message : String(error),
+            event: "collaboration_maintenance_schedule_failed",
+          }),
+        );
       }),
     );
   }
@@ -627,9 +586,9 @@ function isForeignRoomSocket(ws: WebSocket) {
   const attachment = ws.deserializeAttachment();
   return Boolean(
     attachment &&
-      typeof attachment === "object" &&
-      "kind" in attachment &&
-      (attachment as { kind?: unknown }).kind !== "collaboration",
+    typeof attachment === "object" &&
+    "kind" in attachment &&
+    (attachment as { kind?: unknown }).kind !== "collaboration",
   );
 }
 
@@ -659,9 +618,7 @@ function readMessageMetadata(message: Uint8Array) {
     const authType = incoming.readVarUint();
     return {
       messageAddress,
-      token: authType === AUTH_MESSAGE_TYPE_TOKEN
-        ? incoming.readVarString()
-        : undefined,
+      token: authType === AUTH_MESSAGE_TYPE_TOKEN ? incoming.readVarString() : undefined,
       type,
     };
   } catch {

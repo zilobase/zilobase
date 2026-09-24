@@ -1,44 +1,37 @@
-import { memo, useCallback } from "react"
+import { memo, useCallback } from "react";
 
-import {
-  GanttAddFeatureRow,
-  GanttFeatureItem,
-  GanttHeader,
-} from "../gantt"
+import { GanttAddFeatureRow, GanttFeatureItem, GanttHeader } from "../gantt";
 
-import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config"
+import type { DatabasePropertyListItem } from "../../kanban/model/database-kanban-config";
 import {
   TimelineNameHeaderRow,
   TimelineSidebarRowCell,
   timelineTableStyle,
   type TimelineSidebarRowCellProps,
-} from "../components/database-timeline-sidebar"
-import {
-  getTimelineViewRowKey,
-  type TimelineViewRow,
-} from "../model/database-timeline-rows"
+} from "../components/database-timeline-sidebar";
+import { getTimelineViewRowKey, type TimelineViewRow } from "../model/database-timeline-rows";
 import {
   DEFAULT_TIMELINE_ITEM_DURATION_DAYS,
   type TimelineRowItem,
-} from "../model/database-timeline-config"
+} from "../model/database-timeline-config";
 
 type AddTimelineItem = (
   startAt: Date,
   endAt: Date,
   groupValue?: string,
   groupProperty?: DatabasePropertyListItem | null,
-) => void
+) => void;
 
 type TimelineGridProps = {
-  addTimelineItem: AddTimelineItem
-  grouped: boolean
-  onMoveItem: (id: string, startAt: Date, endAt: Date | null) => void
-  onSelectItem: (rowId: string) => void
-  sidebarCellProps: Omit<TimelineSidebarRowCellProps, "viewRow">
-  timelineItemsById: Map<string, TimelineRowItem>
-  titlePropertyLabel: string
-  viewRows: TimelineViewRow[]
-}
+  addTimelineItem: AddTimelineItem;
+  grouped: boolean;
+  onMoveItem: (id: string, startAt: Date, endAt: Date | null) => void;
+  onSelectItem: (rowId: string) => void;
+  sidebarCellProps: Omit<TimelineSidebarRowCellProps, "viewRow">;
+  timelineItemsById: Map<string, TimelineRowItem>;
+  titlePropertyLabel: string;
+  viewRows: TimelineViewRow[];
+};
 
 export const DatabaseTimelineGrid = memo(function DatabaseTimelineGrid({
   addTimelineItem,
@@ -53,20 +46,13 @@ export const DatabaseTimelineGrid = memo(function DatabaseTimelineGrid({
   return (
     <>
       <TimelineGridBackground />
-      <TimelineGridHeader
-        grouped={grouped}
-        titlePropertyLabel={titlePropertyLabel}
-      />
+      <TimelineGridHeader grouped={grouped} titlePropertyLabel={titlePropertyLabel} />
 
       {viewRows.flatMap((viewRow, index) => {
-        const key = getTimelineViewRowKey(viewRow, index)
+        const key = getTimelineViewRowKey(viewRow, index);
 
         return [
-          <TimelineSidebarRowCell
-            {...sidebarCellProps}
-            key={`sidebar-${key}`}
-            viewRow={viewRow}
-          />,
+          <TimelineSidebarRowCell {...sidebarCellProps} key={`sidebar-${key}`} viewRow={viewRow} />,
           <TimelineGridRowCell
             addTimelineItem={addTimelineItem}
             key={`timeline-${key}`}
@@ -76,7 +62,7 @@ export const DatabaseTimelineGrid = memo(function DatabaseTimelineGrid({
             timelineItemsById={timelineItemsById}
             viewRow={viewRow}
           />,
-        ]
+        ];
       })}
 
       <div
@@ -85,31 +71,25 @@ export const DatabaseTimelineGrid = memo(function DatabaseTimelineGrid({
         data-roadmap-ui="gantt-sidebar"
         style={timelineTableStyle}
       />
-      <div
-        aria-hidden
-        className="database-timeline-gantt-cell database-timeline-gantt-fill"
-      />
+      <div aria-hidden className="database-timeline-gantt-cell database-timeline-gantt-fill" />
     </>
-  )
-})
+  );
+});
 
 function TimelineGridBackground() {
   return (
     <div className="database-timeline-gantt-grid-overlay">
-      <GanttHeader
-        className="database-timeline-gantt-grid h-full"
-        variant="grid"
-      />
+      <GanttHeader className="database-timeline-gantt-grid h-full" variant="grid" />
     </div>
-  )
+  );
 }
 
 function TimelineGridHeader({
   grouped,
   titlePropertyLabel,
 }: {
-  grouped: boolean
-  titlePropertyLabel: string
+  grouped: boolean;
+  titlePropertyLabel: string;
 }) {
   return (
     <>
@@ -130,13 +110,10 @@ function TimelineGridHeader({
         </div>
       )}
       <div className="database-timeline-gantt-header-cell">
-        <GanttHeader
-          className="database-timeline-gantt-dates"
-          variant="dates"
-        />
+        <GanttHeader className="database-timeline-gantt-dates" variant="dates" />
       </div>
     </>
-  )
+  );
 }
 
 const TimelineGridRowCell = memo(function TimelineGridRowCell({
@@ -147,12 +124,12 @@ const TimelineGridRowCell = memo(function TimelineGridRowCell({
   timelineItemsById,
   viewRow,
 }: {
-  addTimelineItem: AddTimelineItem
-  onMoveItem: TimelineGridProps["onMoveItem"]
-  onSelectItem: TimelineGridProps["onSelectItem"]
-  sidebarCellProps: TimelineGridProps["sidebarCellProps"]
-  timelineItemsById: TimelineGridProps["timelineItemsById"]
-  viewRow: TimelineViewRow
+  addTimelineItem: AddTimelineItem;
+  onMoveItem: TimelineGridProps["onMoveItem"];
+  onSelectItem: TimelineGridProps["onSelectItem"];
+  sidebarCellProps: TimelineGridProps["sidebarCellProps"];
+  timelineItemsById: TimelineGridProps["timelineItemsById"];
+  viewRow: TimelineViewRow;
 }) {
   const addItem = useCallback(
     (startAt: Date, endAt: Date) =>
@@ -163,38 +140,34 @@ const TimelineGridRowCell = memo(function TimelineGridRowCell({
         sidebarCellProps.groupProperty,
       ),
     [addTimelineItem, sidebarCellProps.groupProperty, viewRow],
-  )
+  );
   const scheduleItem = useCallback(
     (startAt: Date, endAt: Date) => {
       if (viewRow.kind === "item") {
-        onMoveItem(viewRow.item.id, startAt, endAt)
+        onMoveItem(viewRow.item.id, startAt, endAt);
       }
     },
     [onMoveItem, viewRow],
-  )
+  );
 
   if (viewRow.kind === "new-page") {
     return (
       <div className="database-timeline-gantt-cell database-timeline-add-cell database-timeline-new-page-cell">
         <GanttAddFeatureRow
-          aria-label={
-            viewRow.section
-              ? `Add page to ${viewRow.section.name}`
-              : "Add page"
-          }
+          aria-label={viewRow.section ? `Add page to ${viewRow.section.name}` : "Add page"}
           disabled={!sidebarCellProps.databaseId}
           durationDays={DEFAULT_TIMELINE_ITEM_DURATION_DAYS}
           onAddItem={addItem}
         />
       </div>
-    )
+    );
   }
 
   if (viewRow.kind !== "item") {
-    return <div aria-hidden className="database-timeline-gantt-cell" />
+    return <div aria-hidden className="database-timeline-gantt-cell" />;
   }
 
-  const timelineItem = timelineItemsById.get(viewRow.item.id)
+  const timelineItem = timelineItemsById.get(viewRow.item.id);
 
   if (!timelineItem?.feature) {
     return (
@@ -209,14 +182,11 @@ const TimelineGridRowCell = memo(function TimelineGridRowCell({
           onAddItem={scheduleItem}
         />
       </div>
-    )
+    );
   }
 
   return (
-    <div
-      className="database-timeline-gantt-cell"
-      data-timeline-row-id={viewRow.item.id}
-    >
+    <div className="database-timeline-gantt-cell" data-timeline-row-id={viewRow.item.id}>
       <GanttFeatureItem
         {...timelineItem.feature}
         className="database-timeline-bar"
@@ -230,11 +200,9 @@ const TimelineGridRowCell = memo(function TimelineGridRowCell({
           onClick={() => onSelectItem(viewRow.item.id)}
           type="button"
         >
-          <span className="truncate text-xs text-content-secondary">
-            {timelineItem.name}
-          </span>
+          <span className="truncate text-xs text-content-secondary">{timelineItem.name}</span>
         </button>
       </GanttFeatureItem>
     </div>
-  )
-})
+  );
+});

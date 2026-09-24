@@ -5,15 +5,26 @@ test("10000-item surface benchmark bounds month DOM", async ({ page }, testInfo)
   await expect(page.locator("[data-calendar-event-card]").first()).toBeVisible();
   const samples = [];
   for (const view of ["month", "day", "week"]) {
-    const duration = await page.evaluate(async view => {
-      const begin = performance.now(); window.surfaceFixture.navigate(view);
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const duration = await page.evaluate(async (view) => {
+      const begin = performance.now();
+      window.surfaceFixture.navigate(view);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       return performance.now() - begin;
     }, view);
-    samples.push({ view, duration, cards: await page.locator("[data-calendar-event-card]").count(), nodes: await page.locator("main *").count() });
+    samples.push({
+      view,
+      duration,
+      cards: await page.locator("[data-calendar-event-card]").count(),
+      nodes: await page.locator("main *").count(),
+    });
   }
-  await testInfo.attach("surface-benchmark.json", { body: JSON.stringify({ count: 10000, baseline, samples }), contentType: "application/json" });
-  if (!baseline) for (const sample of samples.filter(sample => ["month"].includes(sample.view))) expect(sample.cards).toBeLessThan(100);
+  await testInfo.attach("surface-benchmark.json", {
+    body: JSON.stringify({ count: 10000, baseline, samples }),
+    contentType: "application/json",
+  });
+  if (!baseline)
+    for (const sample of samples.filter((sample) => ["month"].includes(sample.view)))
+      expect(sample.cards).toBeLessThan(100);
 });
 test("clock ticks and unrelated updates leave event cards untouched", async ({ page }) => {
   test.skip(baseline, "Regression assertion applies to the optimized component");
@@ -37,6 +48,10 @@ test("large overflow stays bounded and keeps keyboard access", async ({ page }) 
   await expect(popup.locator("[data-calendar-virtual-list]")).toBeVisible();
   await popup.locator("[data-calendar-event-card]").first().focus();
   for (let i = 0; i < 45; i++) await page.keyboard.press("Tab");
-  await expect.poll(() => popup.locator("[data-calendar-virtual-list]").evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  await expect
+    .poll(() =>
+      popup.locator("[data-calendar-virtual-list]").evaluate((element) => element.scrollTop),
+    )
+    .toBeGreaterThan(0);
   expect(await popup.locator("[data-calendar-event-card]").count()).toBeLessThan(40);
 });

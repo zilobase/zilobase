@@ -6,10 +6,7 @@ export * from "./access/access-contracts";
 export * from "./queries/keys";
 export * from "./queries/queries";
 export * from "./mutations/optimistic";
-export {
-  databaseBootstrapPath,
-  databaseBootstrapQueryOptions,
-} from "./queries/bootstrap";
+export { databaseBootstrapPath, databaseBootstrapQueryOptions } from "./queries/bootstrap";
 export type { DatabaseScope, DatabaseBootstrapHookState } from "./queries/bootstrap";
 export {
   recordWindowPath,

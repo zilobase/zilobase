@@ -33,13 +33,8 @@ export function getMaximumTemporaryExpiration(now = Date.now()) {
   return isoToLocalDateTime(new Date(now + 365 * DAY_IN_MS).toISOString());
 }
 
-export function normalizeWorkspaceRole(
-  value: string | null | undefined,
-): WorkspaceRole | null {
-  return value === "owner" ||
-    value === "admin" ||
-    value === "member" ||
-    value === "temporary"
+export function normalizeWorkspaceRole(value: string | null | undefined): WorkspaceRole | null {
+  return value === "owner" || value === "admin" || value === "member" || value === "temporary"
     ? value
     : null;
 }
@@ -52,8 +47,8 @@ export function canEditWorkspaceMember(input: {
 }) {
   return Boolean(
     input.canManage &&
-      input.workspaceId &&
-      (input.memberRole !== "owner" || input.actorRole === "owner"),
+    input.workspaceId &&
+    (input.memberRole !== "owner" || input.actorRole === "owner"),
   );
 }
 

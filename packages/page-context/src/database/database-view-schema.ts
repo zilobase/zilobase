@@ -22,12 +22,7 @@ type DatabaseConfig = {
 };
 
 export function getNameColumnLabel(config: unknown) {
-  if (
-    !config ||
-    typeof config !== "object" ||
-    Array.isArray(config) ||
-    !("nameColumn" in config)
-  ) {
+  if (!config || typeof config !== "object" || Array.isArray(config) || !("nameColumn" in config)) {
     return "Name";
   }
 
@@ -37,9 +32,7 @@ export function getNameColumnLabel(config: unknown) {
       ? nameColumn.label
       : undefined;
 
-  return typeof label === "string" && label.trim().length > 0
-    ? label.trim()
-    : "Name";
+  return typeof label === "string" && label.trim().length > 0 ? label.trim() : "Name";
 }
 
 export function getViewHiddenPropertyIds(config: unknown) {
@@ -55,9 +48,7 @@ export function getViewHiddenPropertyIds(config: unknown) {
   const hiddenPropertyIds = (config as DatabaseConfig).hiddenPropertyIds;
 
   return Array.isArray(hiddenPropertyIds)
-    ? hiddenPropertyIds.filter(
-        (propertyId): propertyId is string => typeof propertyId === "string",
-      )
+    ? hiddenPropertyIds.filter((propertyId): propertyId is string => typeof propertyId === "string")
     : [];
 }
 
@@ -113,17 +104,13 @@ export function getActiveVisibilityConfig({
     typeof activeViewConfig === "object" &&
     !Array.isArray(activeViewConfig) &&
     typeof (activeViewConfig as DatabaseConfig).groupPropertyId === "string"
-      ? (activeViewConfig as DatabaseConfig).groupPropertyId ?? null
+      ? ((activeViewConfig as DatabaseConfig).groupPropertyId ?? null)
       : null;
   const groupProperty = configuredGroupPropertyId
-    ? properties.find(
-        (property) => property.property.id === configuredGroupPropertyId,
-      )
-    : properties.find((property) => property.property.type === "status") ??
-      properties.find((property) =>
-        ["select", "multi_select"].includes(property.property.type),
-      ) ??
-      properties[0];
+    ? properties.find((property) => property.property.id === configuredGroupPropertyId)
+    : (properties.find((property) => property.property.type === "status") ??
+      properties.find((property) => ["select", "multi_select"].includes(property.property.type)) ??
+      properties[0]);
   let visiblePropertyCount = 0;
   const hiddenPropertyIds = properties.flatMap((property) => {
     const hiddenByDefault =
@@ -138,9 +125,7 @@ export function getActiveVisibilityConfig({
   });
 
   return {
-    ...(activeViewConfig && typeof activeViewConfig === "object"
-      ? activeViewConfig
-      : {}),
+    ...(activeViewConfig && typeof activeViewConfig === "object" ? activeViewConfig : {}),
     hiddenPropertyIds,
   };
 }
@@ -162,9 +147,7 @@ export function getDatabaseSorts(config: unknown): DatabaseSortConfig[] {
   return isDatabaseSortConfig(sort) ? [sort] : [];
 }
 
-export function getDatabaseFilters(
-  config: unknown,
-): DatabasePropertyFilterConfig[] {
+export function getDatabaseFilters(config: unknown): DatabasePropertyFilterConfig[] {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     return [];
   }
@@ -201,27 +184,18 @@ export function getVisiblePropertiesForView(
 
   return schema.properties.filter(
     (property) =>
-      !getPropertyHiddenForView(
-        property.id,
-        property.property.config,
-        activeVisibilityConfig,
-      ),
+      !getPropertyHiddenForView(property.id, property.property.config, activeVisibilityConfig),
   );
 }
 
-export function getPropertyLabel(
-  schema: DatabaseContextPayload,
-  propertyId: string,
-) {
+export function getPropertyLabel(schema: DatabaseContextPayload, propertyId: string) {
   if (propertyId === "name") {
     return getNameColumnLabel(schema.database.config);
   }
 
   return (
-    schema.properties.find((property) => property.property.id === propertyId)
-      ?.property.name ??
-    schema.properties.find((property) => property.id === propertyId)?.property
-      .name ??
+    schema.properties.find((property) => property.property.id === propertyId)?.property.name ??
+    schema.properties.find((property) => property.id === propertyId)?.property.name ??
     propertyId
   );
 }
@@ -237,13 +211,9 @@ export function getPropertyTypeHint(property: DatabasePropertySchema) {
     !Array.isArray(config) &&
     Array.isArray((config as { options?: unknown }).options)
   ) {
-    const optionNames = (
-      config as { options: Array<{ name?: string }> }
-    ).options
+    const optionNames = (config as { options: Array<{ name?: string }> }).options
       .map((option) => option.name)
-      .filter(
-        (name): name is string => typeof name === "string" && name.length > 0,
-      );
+      .filter((name): name is string => typeof name === "string" && name.length > 0);
 
     if (optionNames.length > 0) {
       hints.push(optionNames.join(" | "));
@@ -270,9 +240,7 @@ function normalizeDatabaseFilters(values: unknown[]) {
   });
 }
 
-function normalizeDatabaseFilter(
-  value: unknown,
-): DatabasePropertyFilterConfig | null {
+function normalizeDatabaseFilter(value: unknown): DatabasePropertyFilterConfig | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
@@ -284,8 +252,7 @@ function normalizeDatabaseFilter(
   }
 
   const propertyId = getDatabaseFilterPropertyId(valueRecord.propertyId);
-  const operator =
-    typeof valueRecord.operator === "string" ? valueRecord.operator : null;
+  const operator = typeof valueRecord.operator === "string" ? valueRecord.operator : null;
 
   if (!propertyId || !operator) {
     return null;
@@ -309,9 +276,7 @@ function getDatabaseFilterValues(value: unknown) {
   }
 
   return value.flatMap((item) =>
-    typeof item === "string" ||
-    typeof item === "number" ||
-    typeof item === "boolean"
+    typeof item === "string" || typeof item === "number" || typeof item === "boolean"
       ? [String(item)]
       : [],
   );

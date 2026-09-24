@@ -18,9 +18,9 @@ import {
   Strikethrough,
   Table2,
   Underline,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 
-import type { ToolbarItem } from "./toolbar-contracts"
+import type { ToolbarItem } from "./toolbar-contracts";
 
 export const toolbarGroups: ToolbarItem[][] = [
   [
@@ -149,4 +149,4 @@ export const toolbarGroups: ToolbarItem[][] = [
       attrs: { align: "right" },
     },
   ],
-]
+];

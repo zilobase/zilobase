@@ -12,14 +12,30 @@ export function createMutationTestRuntime<T>(
 ) {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
   let mutation: T | undefined;
-  function Capture() { mutation = useHook(); return null; }
+  function Capture() {
+    mutation = useHook();
+    return null;
+  }
   const auth = new Proxy({} as ZilobaseFeaturesConfig["auth"], {
-    get() { throw new Error("Unexpected authentication call in mutation test"); },
+    get() {
+      throw new Error("Unexpected authentication call in mutation test");
+    },
   });
-  renderToString(createElement(QueryClientProvider, { client: queryClient },
-    createElement(ZilobaseFeaturesProvider, { value: { apiFetch, queryClient, auth } },
-      createElement(DbProvider, { apiFetch, queryClient, sessionId: "test-session" },
-        createElement(Capture)))));
+  renderToString(
+    createElement(
+      QueryClientProvider,
+      { client: queryClient },
+      createElement(
+        ZilobaseFeaturesProvider,
+        { value: { apiFetch, queryClient, auth } },
+        createElement(
+          DbProvider,
+          { apiFetch, queryClient, sessionId: "test-session" },
+          createElement(Capture),
+        ),
+      ),
+    ),
+  );
   if (!mutation) throw new Error("Hook did not render");
   return { mutation, queryClient };
 }
@@ -29,6 +45,12 @@ import test from "node:test";
 import { useZilobaseFeatures } from "./context";
 
 test("feature hooks reject composition without a feature provider", () => {
-  function Unconfigured() { useZilobaseFeatures(); return null; }
-  assert.throws(() => renderToString(createElement(Unconfigured)), /ZilobaseFeaturesProvider is missing/);
+  function Unconfigured() {
+    useZilobaseFeatures();
+    return null;
+  }
+  assert.throws(
+    () => renderToString(createElement(Unconfigured)),
+    /ZilobaseFeaturesProvider is missing/,
+  );
 });

@@ -4,10 +4,9 @@ import { CalendarProviderError, normalizeEvent, type CalendarGateway } from "../
 
 const IsoDateTime = Schema.String.pipe(
   Schema.check(
-    Schema.isPattern(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/,
-      { message: "Invalid date-time format" },
-    ),
+    Schema.isPattern(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/, {
+      message: "Invalid date-time format",
+    }),
   ),
 );
 
@@ -42,9 +41,27 @@ export const calendarSearchSchema = {
   },
 };
 
-export async function searchCalendarEvents(input: CalendarSearch, scope: CalendarScope, calendar: CalendarRecord | undefined, gateway: Pick<CalendarGateway, "events">) {
-  if (!calendar?.permissions.read || calendar.permissions.freeBusyOnly) throw new CalendarProviderError(403, "calendar_unavailable");
-  const response = await gateway.events(input.calendarId, { q: input.q, singleEvents: "true", maxResults: "100", orderBy: "startTime", ...(input.start ? { timeMin: input.start } : {}), ...(input.end ? { timeMax: input.end } : {}), ...(input.pageToken ? { pageToken: input.pageToken } : {}) });
-  return { events: (response.items ?? []).map(raw => normalizeEvent(raw, { ...scope, calendarId: input.calendarId }, calendar.timeZone)), nextPageToken: response.nextPageToken ?? null };
+export async function searchCalendarEvents(
+  input: CalendarSearch,
+  scope: CalendarScope,
+  calendar: CalendarRecord | undefined,
+  gateway: Pick<CalendarGateway, "events">,
+) {
+  if (!calendar?.permissions.read || calendar.permissions.freeBusyOnly)
+    throw new CalendarProviderError(403, "calendar_unavailable");
+  const response = await gateway.events(input.calendarId, {
+    q: input.q,
+    singleEvents: "true",
+    maxResults: "100",
+    orderBy: "startTime",
+    ...(input.start ? { timeMin: input.start } : {}),
+    ...(input.end ? { timeMax: input.end } : {}),
+    ...(input.pageToken ? { pageToken: input.pageToken } : {}),
+  });
+  return {
+    events: (response.items ?? []).map((raw) =>
+      normalizeEvent(raw, { ...scope, calendarId: input.calendarId }, calendar.timeZone),
+    ),
+    nextPageToken: response.nextPageToken ?? null,
+  };
 }
-

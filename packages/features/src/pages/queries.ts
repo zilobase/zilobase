@@ -1,4 +1,20 @@
-import type { ZilobaseAiMode, PageDatabase, PageItemPlacement, Page, ZilobaseAiPageSummary, PagePropertiesPayload, AccessLevel, PageAccessPayload, PageAccessTargetsPayload, PagePersonAccessTargetsPayload, PageGuestInvitation, PageGuestInvitationDetail, PageGuestRequest, PagesDeletedFilter, PageDetail } from "./contracts";
+import type {
+  ZilobaseAiMode,
+  PageDatabase,
+  PageItemPlacement,
+  Page,
+  ZilobaseAiPageSummary,
+  PagePropertiesPayload,
+  AccessLevel,
+  PageAccessPayload,
+  PageAccessTargetsPayload,
+  PagePersonAccessTargetsPayload,
+  PageGuestInvitation,
+  PageGuestInvitationDetail,
+  PageGuestRequest,
+  PagesDeletedFilter,
+  PageDetail,
+} from "./contracts";
 import { type QueryClient, queryOptions } from "@tanstack/react-query";
 
 import {
@@ -7,7 +23,6 @@ import {
 } from "../shared/api-errors";
 import type { ApiFetcher } from "../shared/api-fetcher";
 import type { EmbeddedItemsOpenAs } from "./item-relationships";
-
 
 export const zilobaseAiModeLabels: Record<ZilobaseAiMode, string> = {
   instruction: "Use as instruction",
@@ -19,15 +34,9 @@ export const embeddedItemsOpenAsLabels: Record<EmbeddedItemsOpenAs, string> = {
   sidepanel: "Side panel",
 };
 
-export const embeddedItemsOpenAsModes: EmbeddedItemsOpenAs[] = [
-  "sidepanel",
-  "dialog",
-];
+export const embeddedItemsOpenAsModes: EmbeddedItemsOpenAs[] = ["sidepanel", "dialog"];
 
-export function getPrimaryPageParentId(
-  placements: PageItemPlacement[],
-  pageId: string,
-) {
+export function getPrimaryPageParentId(placements: PageItemPlacement[], pageId: string) {
   return (
     placements.find(
       (placement) =>
@@ -47,9 +56,7 @@ export function resolvePageFullWidth(
     | undefined,
   userFullWidthPreference: boolean | null | undefined,
 ) {
-  return Boolean(
-    page?.publishedOwnerPreferences?.pageFullWidth ?? userFullWidthPreference,
-  );
+  return Boolean(page?.publishedOwnerPreferences?.pageFullWidth ?? userFullWidthPreference);
 }
 
 export function resolveEmbeddedItemsOpenAs(
@@ -68,18 +75,15 @@ export const pagesRootQueryKey = () => ["pages"] as const;
 export const pagesNavRootQueryKey = (workspaceId: string | null | undefined) =>
   ["pages", workspaceId ?? "none", "nav"] as const;
 
-export const zilobaseAiPagesQueryKey = (
-  workspaceId: string | null | undefined,
-) => ["pages", workspaceId ?? "none", "zilobase-ai"] as const;
+export const zilobaseAiPagesQueryKey = (workspaceId: string | null | undefined) =>
+  ["pages", workspaceId ?? "none", "zilobase-ai"] as const;
 
 export const pageQueryKey = (pageId: string | null | undefined) =>
   ["page", pageId ?? "none"] as const;
 
 export const pageRootQueryKey = () => ["page"] as const;
 
-export function getPageFromDetail(
-  detail: PageDetail | Page | null | undefined,
-) {
+export function getPageFromDetail(detail: PageDetail | Page | null | undefined) {
   if (!detail || typeof detail !== "object") {
     return null;
   }
@@ -97,25 +101,20 @@ export const pagePropertiesQueryKey = (pageId: string | null | undefined) =>
 export const pageAccessQueryKey = (pageId: string | null | undefined) =>
   ["page", pageId ?? "none", "access"] as const;
 
-export const pageAccessTargetsQueryKey = (
-  workspaceId: string | null | undefined,
-) => ["pages", workspaceId ?? "none", "access-targets"] as const;
+export const pageAccessTargetsQueryKey = (workspaceId: string | null | undefined) =>
+  ["pages", workspaceId ?? "none", "access-targets"] as const;
 
-export const pagePersonAccessTargetsQueryKey = (
-  pageId: string | null | undefined,
-) => ["page", pageId ?? "none", "access-targets"] as const;
+export const pagePersonAccessTargetsQueryKey = (pageId: string | null | undefined) =>
+  ["page", pageId ?? "none", "access-targets"] as const;
 
-export const pageGuestInvitationsQueryKey = (
-  pageId: string | null | undefined,
-) => ["page", pageId ?? "none", "guest-invitations"] as const;
+export const pageGuestInvitationsQueryKey = (pageId: string | null | undefined) =>
+  ["page", pageId ?? "none", "guest-invitations"] as const;
 
-export const pageGuestInvitationQueryKey = (
-  invitationId: string | null | undefined,
-) => ["page-guest-invitation", invitationId ?? "none"] as const;
+export const pageGuestInvitationQueryKey = (invitationId: string | null | undefined) =>
+  ["page-guest-invitation", invitationId ?? "none"] as const;
 
-export const pageGuestRequestsQueryKey = (
-  pageId: string | null | undefined,
-) => ["page", pageId ?? "none", "guest-requests"] as const;
+export const pageGuestRequestsQueryKey = (pageId: string | null | undefined) =>
+  ["page", pageId ?? "none", "guest-requests"] as const;
 
 export const pagesQueryOptions = (
   apiFetch: ApiFetcher,
@@ -207,10 +206,7 @@ export const zilobaseAiPagesQueryOptions = (
     },
   });
 
-export const pageQueryOptions = (
-  apiFetch: ApiFetcher,
-  pageId: string | null | undefined,
-) =>
+export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | undefined) =>
   queryOptions({
     queryKey: pageQueryKey(pageId),
     enabled: Boolean(pageId),
@@ -252,15 +248,9 @@ export const pageQueryOptions = (
             error?: unknown;
             workspaceId: string;
           };
-          const message =
-            typeof mismatchBody.error === "string"
-              ? mismatchBody.error
-              : undefined;
+          const message = typeof mismatchBody.error === "string" ? mismatchBody.error : undefined;
 
-          throw new ActiveWorkspaceMismatchError(
-            mismatchBody.workspaceId,
-            message,
-          );
+          throw new ActiveWorkspaceMismatchError(mismatchBody.workspaceId, message);
         }
 
         if (
@@ -285,10 +275,7 @@ export async function ensurePageDetail(
   return queryClient.ensureQueryData(pageQueryOptions(apiFetch, pageId));
 }
 
-export const pageAccessQueryOptions = (
-  apiFetch: ApiFetcher,
-  pageId: string | null | undefined,
-) =>
+export const pageAccessQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | undefined) =>
   queryOptions({
     queryKey: pageAccessQueryKey(pageId),
     enabled: Boolean(pageId),
@@ -329,10 +316,10 @@ export const pageAccessTargetsQueryOptions = (
         return { members: [], teams: [] };
       }
 
-      return apiFetch<PageAccessTargetsPayload>(
-        `/workspaces/${workspaceId}/access-targets`,
-        { method: "GET", signal },
-      );
+      return apiFetch<PageAccessTargetsPayload>(`/workspaces/${workspaceId}/access-targets`, {
+        method: "GET",
+        signal,
+      });
     },
   });
 
@@ -348,10 +335,10 @@ export const pagePersonAccessTargetsQueryOptions = (
         return { guests: [], members: [] };
       }
 
-      return apiFetch<PagePersonAccessTargetsPayload>(
-        `/pages/${pageId}/access-targets`,
-        { method: "GET", signal },
-      );
+      return apiFetch<PagePersonAccessTargetsPayload>(`/pages/${pageId}/access-targets`, {
+        method: "GET",
+        signal,
+      });
     },
   });
 
@@ -371,12 +358,7 @@ export const pageGuestInvitationsQueryOptions = (
         );
         return result.invitations;
       } catch (error) {
-        if (
-          error &&
-          typeof error === "object" &&
-          "status" in error &&
-          error.status === 403
-        ) {
+        if (error && typeof error === "object" && "status" in error && error.status === 403) {
           return [];
         }
         throw error;
@@ -400,12 +382,7 @@ export const pageGuestRequestsQueryOptions = (
         );
         return result.requests;
       } catch (error) {
-        if (
-          error &&
-          typeof error === "object" &&
-          "status" in error &&
-          error.status === 403
-        ) {
+        if (error && typeof error === "object" && "status" in error && error.status === 403) {
           return [];
         }
         throw error;

@@ -2,10 +2,7 @@ import assert from "node:assert/strict";
 import { Hono } from "hono";
 import { beforeEach, test, vi } from "vitest";
 
-import type {
-  AppBindings,
-  ZilobaseEditionExtension,
-} from "../../shared/types";
+import type { AppBindings, ZilobaseEditionExtension } from "../../shared/types";
 
 const mocks = vi.hoisted(() => ({
   createAuth: vi.fn(),
@@ -69,23 +66,22 @@ test("session middleware is unchanged when no edition policy is installed", asyn
 });
 
 test("session middleware returns an edition policy denial after membership validation", async () => {
-  const assertSession = vi.fn<
-    NonNullable<ZilobaseEditionExtension["assertSession"]>
-  >(async () => ({
-      code: "SESSION_POLICY_DENIED",
-      message: "This session does not satisfy workspace policy.",
-      status: 403,
-    }));
-  const response = await createSessionApp(createExtension(assertSession))
-    .request("/");
+  const assertSession = vi.fn<NonNullable<ZilobaseEditionExtension["assertSession"]>>(async () => ({
+    code: "SESSION_POLICY_DENIED",
+    message: "This session does not satisfy workspace policy.",
+    status: 403,
+  }));
+  const response = await createSessionApp(createExtension(assertSession)).request("/");
 
   assert.equal(response.status, 403);
   assert.deepEqual(await response.json(), {
     code: "SESSION_POLICY_DENIED",
     message: "This session does not satisfy workspace policy.",
   });
-  assert.equal(mocks.getMembership.mock.invocationCallOrder[0]
-    < assertSession.mock.invocationCallOrder[0], true);
+  assert.equal(
+    mocks.getMembership.mock.invocationCallOrder[0] < assertSession.mock.invocationCallOrder[0],
+    true,
+  );
   const assertion = assertSession.mock.calls[0]?.[0];
   assert.equal(assertion?.request.url, "http://localhost/");
   const { request: _request, ...assertionWithoutRequest } = assertion!;
@@ -105,11 +101,13 @@ function createSessionApp(extension?: ZilobaseEditionExtension) {
     await next();
   });
   app.use("*", sessionMiddleware);
-  app.get("/", (c) => c.json({
-    authMethod: c.get("authMethod"),
-    userId: c.get("user")?.id,
-    workspaceId: c.get("session")?.activeWorkspaceId,
-  }));
+  app.get("/", (c) =>
+    c.json({
+      authMethod: c.get("authMethod"),
+      userId: c.get("user")?.id,
+      workspaceId: c.get("session")?.activeWorkspaceId,
+    }),
+  );
   return app;
 }
 
@@ -119,7 +117,9 @@ function createExtension(
   return {
     id: "test-edition",
     capabilities: [],
-    async createAuthPlugins() { return []; },
+    async createAuthPlugins() {
+      return [];
+    },
     async beforeMembershipGrant() {},
     assertSession,
     async recordSecurityEvent() {},

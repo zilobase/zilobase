@@ -8,11 +8,18 @@ test("runs deterministic grouped calculations", () => {
     operation: { aggregate: "sum", groupBy: "Team", kind: "group", valueColumn: "Hours" },
     table: {
       columns: ["Team", "Hours"],
-      rows: [["A", 2], ["A", 3], ["B", 4]],
+      rows: [
+        ["A", 2],
+        ["A", 3],
+        ["B", 4],
+      ],
     },
   });
-  assert.deepEqual(result.data?.table.rows.map((row) => row.cells), [
-    { group: "A", value: "5" },
-    { group: "B", value: "4" },
-  ]);
+  assert.deepEqual(
+    result.data?.table.rows.map((row) => row.cells),
+    [
+      { group: "A", value: "5" },
+      { group: "B", value: "4" },
+    ],
+  );
 });

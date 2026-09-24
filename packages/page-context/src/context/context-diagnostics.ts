@@ -1,69 +1,63 @@
 export type PageContextLogMeta = {
-  primaryId?: string | null
-  attachmentIds?: string[]
-  charCount: number
-  buildMs: number
-  trimmedAttachmentIds?: string[]
-}
+  primaryId?: string | null;
+  attachmentIds?: string[];
+  charCount: number;
+  buildMs: number;
+  trimmedAttachmentIds?: string[];
+};
 
 function shouldLogPageContext() {
-  const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env
+  const env = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env;
   if (env?.DEV) {
-    return true
+    return true;
   }
 
   if (typeof localStorage === "undefined") {
-    return false
+    return false;
   }
 
-  return localStorage.getItem("zilobaseDebugAiContext") === "1"
+  return localStorage.getItem("zilobaseDebugAiContext") === "1";
 }
 
-export function logPageContext(
-  markdown: string,
-  meta: PageContextLogMeta,
-) {
+export function logPageContext(markdown: string, meta: PageContextLogMeta) {
   if (!shouldLogPageContext()) {
-    return
+    return;
   }
 
-  console.group("[Zilobase AI Context]")
-  console.log("meta:", meta)
-  console.log(`markdown (${meta.charCount} chars):\n`, markdown)
-  console.groupEnd()
+  console.group("[Zilobase AI Context]");
+  console.log("meta:", meta);
+  console.log(`markdown (${meta.charCount} chars):\n`, markdown);
+  console.groupEnd();
 }
 
 export function logPageContextRebuild(meta: {
-  attachmentCount: number
-  charCount: number
-  buildMs: number
+  attachmentCount: number;
+  charCount: number;
+  buildMs: number;
 }) {
   if (!shouldLogPageContext()) {
-    return
+    return;
   }
 
   console.log(
     `[Zilobase AI Context] rebuilt (${meta.attachmentCount} attachments, ${meta.charCount} chars, ${meta.buildMs}ms)`,
-  )
+  );
 }
 
-export function logPageContextSent(meta: {
-  charCount: number
-  attachmentCount: number
-}) {
+export function logPageContextSent(meta: { charCount: number; attachmentCount: number }) {
   if (!shouldLogPageContext()) {
-    return
+    return;
   }
 
-  console.log("[Zilobase AI Context] sent with message", meta)
+  console.log("[Zilobase AI Context] sent with message", meta);
 }
 
 export function warnPageContextTrimmed(droppedAttachmentIds: string[]) {
   if (!shouldLogPageContext()) {
-    return
+    return;
   }
 
   console.warn("[Zilobase AI Context] trimmed attachments", {
     dropped: droppedAttachmentIds,
-  })
+  });
 }

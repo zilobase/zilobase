@@ -1,44 +1,30 @@
 import { bootstrapInstance } from "../setup/bootstrap-instance";
-import { useState } from "react"
+import { useState } from "react";
 
-import { Button } from "@/shared/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/shared/ui/card"
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/shared/ui/field"
-import { Input } from "@/shared/ui/input"
-import {
-  getApiErrorMessage,
-} from "@/platform/network/api"
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { getApiErrorMessage } from "@/platform/network/api";
 
 export default function SetupPage() {
-  const [error, setError] = useState<unknown>(null)
-  const [bootstrapCompleted, setBootstrapCompleted] = useState(false)
-  const [isPending, setIsPending] = useState(false)
+  const [error, setError] = useState<unknown>(null);
+  const [bootstrapCompleted, setBootstrapCompleted] = useState(false);
+  const [isPending, setIsPending] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError(null)
-    setIsPending(true)
+    event.preventDefault();
+    setError(null);
+    setIsPending(true);
 
-    const form = new FormData(event.currentTarget)
+    const form = new FormData(event.currentTarget);
 
     try {
       await bootstrapInstance(form, () => setBootstrapCompleted(true));
-      window.location.assign("/recents")
+      window.location.assign("/recents");
     } catch (error) {
-      setError(error)
-      setIsPending(false)
+      setError(error);
+      setIsPending(false);
     }
   }
 
@@ -48,8 +34,7 @@ export default function SetupPage() {
         <CardHeader>
           <CardTitle>Set up your Zilobase server</CardTitle>
           <CardDescription>
-            Create the initial owner and workspace. This operation can only run
-            once.
+            Create the initial owner and workspace. This operation can only run once.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -67,8 +52,8 @@ export default function SetupPage() {
                   type="password"
                 />
                 <FieldDescription>
-                  Use the token from your self-host environment file. It is sent
-                  only in the request header and is never saved by this page.
+                  Use the token from your self-host environment file. It is sent only in the request
+                  header and is never saved by this page.
                 </FieldDescription>
               </Field>
 
@@ -108,8 +93,7 @@ export default function SetupPage() {
                   type="email"
                 />
                 <FieldDescription>
-                  The bootstrap token verifies the initial owner, so no OTP is
-                  sent during setup.
+                  The bootstrap token verifies the initial owner, so no OTP is sent during setup.
                 </FieldDescription>
               </Field>
 
@@ -149,5 +133,5 @@ export default function SetupPage() {
         </CardContent>
       </Card>
     </main>
-  )
+  );
 }

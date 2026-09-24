@@ -66,9 +66,7 @@ export function DeleteWorkspaceSection({
     <section className="grid gap-3">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
-          <h3 className="font-heading text-base leading-snug font-medium">
-            Delete workspace
-          </h3>
+          <h3 className="font-heading text-base leading-snug font-medium">Delete workspace</h3>
           <p className="text-sm text-content-secondary">
             Permanently delete this workspace and all of its pages and data.
           </p>
@@ -97,14 +95,11 @@ export function DeleteWorkspaceSection({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this workspace?</AlertDialogTitle>
             <AlertDialogDescription>
-              This cannot be undone. Type <strong>{workspace?.name}</strong> to
-              confirm.
+              This cannot be undone. Type <strong>{workspace?.name}</strong> to confirm.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Field data-invalid={Boolean(error)}>
-            <FieldLabel htmlFor="delete-workspace-confirmation">
-              Workspace name
-            </FieldLabel>
+            <FieldLabel htmlFor="delete-workspace-confirmation">Workspace name</FieldLabel>
             <Input
               autoComplete="off"
               autoFocus
@@ -119,9 +114,7 @@ export function DeleteWorkspaceSection({
             <FieldError>{error}</FieldError>
           </Field>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteWorkspace.isPending}>
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteWorkspace.isPending}>Cancel</AlertDialogCancel>
             <Button
               disabled={!canDelete}
               onClick={confirmDelete}

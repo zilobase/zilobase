@@ -8,15 +8,19 @@ describe("worker Jobs port", () => {
     const send = vi.fn(async () => undefined);
     const jobs = createWorkerJobs({ AI_JOBS: { send } });
 
-    await jobs.dispatch([{
-      availableAt: "2026-01-01T00:00:10.000Z",
-      cellId: "default",
-      kind: "ai.job",
-      resourceId: "job-1",
-      version: 1,
-    }]);
+    await jobs.dispatch([
+      {
+        availableAt: "2026-01-01T00:00:10.000Z",
+        cellId: "default",
+        kind: "ai.job",
+        resourceId: "job-1",
+        version: 1,
+      },
+    ]);
 
-    expect(send).toHaveBeenCalledWith(expect.objectContaining({ resourceId: "job-1" }), { delaySeconds: 10 });
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ resourceId: "job-1" }), {
+      delaySeconds: 10,
+    });
     vi.useRealTimers();
   });
 });

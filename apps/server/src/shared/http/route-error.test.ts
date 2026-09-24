@@ -30,7 +30,10 @@ describe("http route errors", () => {
     app.get("/domain", () => {
       throw new ServiceMutationError("Database not found", 404);
     });
-    app.onError((error, c) => httpRouteErrorResponse(c, error) ?? c.json({ error: "Internal server error" }, 500));
+    app.onError(
+      (error, c) =>
+        httpRouteErrorResponse(c, error) ?? c.json({ error: "Internal server error" }, 500),
+    );
 
     const unauthorized = await app.request("/exception");
     expect(unauthorized.status).toBe(401);

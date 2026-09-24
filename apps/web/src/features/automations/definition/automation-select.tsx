@@ -1,5 +1,5 @@
-import { cn } from "@/shared/lib/utils"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select"
+import { cn } from "@/shared/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 const emptySelectValue = "__automation_select_empty__";
 
@@ -40,4 +40,3 @@ export function AutomationSelect({
     </Select>
   );
 }
-

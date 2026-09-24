@@ -1,7 +1,4 @@
-import type {
-  MeetingLifecycleAction,
-  MeetingStatus,
-} from "./meeting-contracts";
+import type { MeetingLifecycleAction, MeetingStatus } from "./meeting-contracts";
 
 export const MEETING_MAX_DURATION_MS = 3 * 60 * 60 * 1000;
 

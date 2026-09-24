@@ -1,5 +1,5 @@
-import { Button } from "@/shared/ui/button"
-import { cn } from "@/shared/lib/utils"
+import { Button } from "@/shared/ui/button";
+import { cn } from "@/shared/lib/utils";
 
 export function DatabasePropertyButton({
   className,
@@ -8,24 +8,21 @@ export function DatabasePropertyButton({
   onClick,
   value,
 }: {
-  className?: string
-  editable?: boolean
-  label: string
-  onClick?: () => void
-  value: string | string[]
+  className?: string;
+  editable?: boolean;
+  label: string;
+  onClick?: () => void;
+  value: string | string[];
 }) {
   const resolvedValue = Array.isArray(value)
-    ? value.find((item) => item.trim().length > 0) ?? ""
-    : value
-  const buttonLabel = resolvedValue.trim() || label
+    ? (value.find((item) => item.trim().length > 0) ?? "")
+    : value;
+  const buttonLabel = resolvedValue.trim() || label;
 
   return (
     <div className={cn("flex min-h-8 items-center", className)}>
       <Button
-        className={cn(
-          "h-7 max-w-full px-2.5",
-          !onClick ? "pointer-events-none" : undefined
-        )}
+        className={cn("h-7 max-w-full px-2.5", !onClick ? "pointer-events-none" : undefined)}
         disabled={!editable && Boolean(onClick)}
         onClick={onClick}
         size="sm"
@@ -35,5 +32,5 @@ export function DatabasePropertyButton({
         <span className="truncate">{buttonLabel}</span>
       </Button>
     </div>
-  )
+  );
 }

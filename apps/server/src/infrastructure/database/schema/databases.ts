@@ -1,4 +1,15 @@
-import { boolean, foreignKey, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  foreignKey,
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { workspace, teamspace } from "./workspaces";
 import { user } from "./authentication";
@@ -20,18 +31,14 @@ export const database = pgTable(
     createdById: text("created_by_id").references(() => user.id, {
       onDelete: "set null",
     }),
-    pageId: text("page_id")
-      .references(() => page.id, { onDelete: "cascade" }),
+    pageId: text("page_id").references(() => page.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     config: jsonb("config"),
     version: integer("version").notNull().default(0),
     ...softDeleteColumns(),
   },
   (table) => [
-    index("database_workspace_deleted_idx").on(
-      table.workspaceId,
-      table.deletedAt,
-    ),
+    index("database_workspace_deleted_idx").on(table.workspaceId, table.deletedAt),
     index("database_workspace_teamspace_deleted_idx").on(
       table.workspaceId,
       table.teamspaceId,
@@ -62,10 +69,7 @@ export const dataSource = pgTable(
     ...softDeleteColumns(),
   },
   (table) => [
-    index("data_source_workspace_deleted_idx").on(
-      table.workspaceId,
-      table.deletedAt,
-    ),
+    index("data_source_workspace_deleted_idx").on(table.workspaceId, table.deletedAt),
     index("data_source_parent_database_idx").on(table.parentDatabaseId),
   ],
 );
@@ -86,14 +90,8 @@ export const databaseDataSource = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("database_data_source_unique").on(
-      table.databaseId,
-      table.dataSourceId,
-    ),
-    index("database_data_source_position_idx").on(
-      table.databaseId,
-      table.position,
-    ),
+    uniqueIndex("database_data_source_unique").on(table.databaseId, table.dataSourceId),
+    index("database_data_source_position_idx").on(table.databaseId, table.position),
     index("database_data_source_source_idx").on(table.dataSourceId),
   ],
 );
@@ -115,19 +113,14 @@ export const databaseMutationEvent = pgTable(
     areas: text("areas").array().notNull(),
     changes: jsonb("changes").notNull().default({}),
     requiresReset: boolean("requires_reset").notNull().default(false),
-    committedAt: timestamp("committed_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    committedAt: timestamp("committed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("database_mutation_event_database_version_unique").on(
       table.databaseId,
       table.version,
     ),
-    index("database_mutation_event_database_committed_idx").on(
-      table.databaseId,
-      table.committedAt,
-    ),
+    index("database_mutation_event_database_committed_idx").on(table.databaseId, table.committedAt),
     index("database_mutation_event_command_idx").on(table.commandId),
     index("database_mutation_event_retention_idx").on(table.committedAt),
   ],
@@ -142,15 +135,10 @@ export const databaseRealtimeOutbox = pgTable(
       .references(() => databaseMutationEvent.id, { onDelete: "restrict" }),
     attempts: integer("attempts").notNull().default(0),
     lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
-    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    index("database_realtime_outbox_ready_idx").on(
-      table.nextAttemptAt,
-      table.id,
-    ),
+    index("database_realtime_outbox_ready_idx").on(table.nextAttemptAt, table.id),
     uniqueIndex("database_realtime_outbox_event_unique").on(table.eventId),
   ],
 );
@@ -171,16 +159,11 @@ export const databaseCommandReceipt = pgTable(
       .notNull()
       .references(() => databaseMutationEvent.id, { onDelete: "cascade" }),
     acknowledgement: jsonb("acknowledgement").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
   (table) => [
-    index("database_command_receipt_database_created_idx").on(
-      table.databaseId,
-      table.createdAt,
-    ),
+    index("database_command_receipt_database_created_idx").on(table.databaseId, table.createdAt),
     index("database_command_receipt_retention_idx").on(table.expiresAt),
   ],
 );
@@ -201,11 +184,7 @@ export const databaseAccess = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    index("database_access_target_idx").on(
-      table.workspaceId,
-      table.targetType,
-      table.targetId,
-    ),
+    index("database_access_target_idx").on(table.workspaceId, table.targetType, table.targetId),
     uniqueIndex("database_access_target_unique").on(
       table.databaseId,
       table.targetType,
@@ -230,10 +209,7 @@ export const databaseProperty = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    index("database_property_position_idx").on(
-      table.dataSourceId,
-      table.position,
-    ),
+    index("database_property_position_idx").on(table.dataSourceId, table.position),
     uniqueIndex("database_property_database_property_unique").on(
       table.dataSourceId,
       table.propertyId,
@@ -262,10 +238,7 @@ export const databaseView = pgTable(
     index("database_view_data_source_idx").on(table.dataSourceId),
     foreignKey({
       columns: [table.databaseId, table.dataSourceId],
-      foreignColumns: [
-        databaseDataSource.databaseId,
-        databaseDataSource.dataSourceId,
-      ],
+      foreignColumns: [databaseDataSource.databaseId, databaseDataSource.dataSourceId],
       name: "database_view_database_data_source_fk",
     }).onDelete("cascade"),
   ],
@@ -298,9 +271,6 @@ export const databaseRow = pgTable(
       .where(sql`${table.deletedAt} is null`),
     index("database_row_page_id_idx").on(table.pageId),
     index("database_row_deleted_at_idx").on(table.deletedAt),
-    uniqueIndex("database_row_database_page_unique").on(
-      table.dataSourceId,
-      table.pageId,
-    ),
+    uniqueIndex("database_row_database_page_unique").on(table.dataSourceId, table.pageId),
   ],
 );

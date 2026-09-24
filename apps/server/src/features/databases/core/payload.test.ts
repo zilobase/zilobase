@@ -12,11 +12,21 @@ vi.mock("../../../infrastructure/database", () => ({
       mocks.selectCalls += 1;
       const rows = mocks.selectResults.shift() ?? [];
       const builder = {
-        from() { return builder; },
-        innerJoin() { return builder; },
-        where() { return builder; },
-        async limit() { return rows; },
-        async orderBy() { return rows; },
+        from() {
+          return builder;
+        },
+        innerJoin() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        async limit() {
+          return rows;
+        },
+        async orderBy() {
+          return rows;
+        },
         then(resolve: (value: unknown[]) => unknown) {
           return Promise.resolve(rows).then(resolve);
         },
@@ -27,10 +37,7 @@ vi.mock("../../../infrastructure/database", () => ({
 }));
 
 import { database } from "../../../infrastructure/database/schema";
-import {
-  getDatabaseExportPayload,
-  getDatabaseSchemaExportPayload,
-} from "./payload";
+import { getDatabaseExportPayload, getDatabaseSchemaExportPayload } from "./payload";
 
 const existingRecord: typeof database.$inferSelect = {
   config: {},
@@ -54,47 +61,53 @@ beforeEach(() => {
 
 test("getDatabaseExportPayload assembles rows, values, schema, and favorite state", async () => {
   mocks.selectResults.push(
-    [{
-      link: { createdAt: new Date("2026-01-01"), position: 0 },
-      source: {
-        id: "source-1",
-        name: "Tasks",
-        parentDatabaseId: "database-1",
+    [
+      {
+        link: { createdAt: new Date("2026-01-01"), position: 0 },
+        source: {
+          id: "source-1",
+          name: "Tasks",
+          parentDatabaseId: "database-1",
+        },
       },
-    }],
+    ],
     [{ dataSourceId: "source-1", id: "view-1", name: "Table" }],
     [{ id: "favorite-1" }],
-    [{
-      column: { dataSourceId: "source-1", id: "column-1", propertyId: "property-1" },
-      property: { id: "property-1", name: "Status" },
-    }],
-    [{
-      page: { id: "page-1", name: "Task" },
-      row: { dataSourceId: "source-1", id: "row-1", pageId: "page-1", position: 0 },
-    }],
+    [
+      {
+        column: { dataSourceId: "source-1", id: "column-1", propertyId: "property-1" },
+        property: { id: "property-1", name: "Status" },
+      },
+    ],
+    [
+      {
+        page: { id: "page-1", name: "Task" },
+        row: { dataSourceId: "source-1", id: "row-1", pageId: "page-1", position: 0 },
+      },
+    ],
     [{ id: "value-1", pageId: "page-1", propertyId: "property-1" }],
   );
 
-  const payload = await getDatabaseExportPayload(
-    "database-1",
-    "user-1",
-    existingRecord,
-  );
+  const payload = await getDatabaseExportPayload("database-1", "user-1", existingRecord);
 
   assert.equal(payload?.database.isFavorite, true);
-  assert.deepEqual(payload?.properties, [{
-    dataSourceId: "source-1",
-    id: "column-1",
-    property: { id: "property-1", name: "Status" },
-    propertyId: "property-1",
-  }]);
-  assert.deepEqual(payload?.rows, [{
-    dataSourceId: "source-1",
-    id: "row-1",
-    page: { id: "page-1", name: "Task" },
-    pageId: "page-1",
-    position: 0,
-  }]);
+  assert.deepEqual(payload?.properties, [
+    {
+      dataSourceId: "source-1",
+      id: "column-1",
+      property: { id: "property-1", name: "Status" },
+      propertyId: "property-1",
+    },
+  ]);
+  assert.deepEqual(payload?.rows, [
+    {
+      dataSourceId: "source-1",
+      id: "row-1",
+      page: { id: "page-1", name: "Task" },
+      pageId: "page-1",
+      position: 0,
+    },
+  ]);
   assert.equal(payload?.values[0]?.id, "value-1");
   assert.equal(payload?.activeDataSource?.id, "source-1");
   assert.equal(payload?.views[0]?.dataSourceId, "source-1");
@@ -103,23 +116,23 @@ test("getDatabaseExportPayload assembles rows, values, schema, and favorite stat
 
 test("getDatabaseSchemaExportPayload skips row and value queries", async () => {
   mocks.selectResults.push(
-    [{
-      link: { createdAt: new Date("2026-01-01"), position: 0 },
-      source: { id: "source-1", name: "Tasks", parentDatabaseId: "database-1" },
-    }],
+    [
+      {
+        link: { createdAt: new Date("2026-01-01"), position: 0 },
+        source: { id: "source-1", name: "Tasks", parentDatabaseId: "database-1" },
+      },
+    ],
     [{ dataSourceId: "source-1", id: "view-1", name: "Table" }],
     [],
-    [{
-      column: { dataSourceId: "source-1", id: "column-1", propertyId: "property-1" },
-      property: { id: "property-1", name: "Status" },
-    }],
+    [
+      {
+        column: { dataSourceId: "source-1", id: "column-1", propertyId: "property-1" },
+        property: { id: "property-1", name: "Status" },
+      },
+    ],
   );
 
-  const payload = await getDatabaseSchemaExportPayload(
-    "database-1",
-    "user-1",
-    existingRecord,
-  );
+  const payload = await getDatabaseSchemaExportPayload("database-1", "user-1", existingRecord);
 
   assert.deepEqual(payload?.rows, []);
   assert.deepEqual(payload?.values, []);
@@ -130,11 +143,7 @@ test("getDatabaseSchemaExportPayload skips row and value queries", async () => {
 test("getDatabaseExportPayload skips favorite and source queries when no sources are linked", async () => {
   mocks.selectResults.push([], []);
 
-  const payload = await getDatabaseExportPayload(
-    "database-1",
-    undefined,
-    existingRecord,
-  );
+  const payload = await getDatabaseExportPayload("database-1", undefined, existingRecord);
 
   assert.equal(payload?.database.isFavorite, false);
   assert.deepEqual(payload?.rows, []);

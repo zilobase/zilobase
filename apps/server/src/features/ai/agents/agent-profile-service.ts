@@ -49,20 +49,18 @@ export class AgentProfileError extends Error {
   }
 }
 
-export async function listAccessibleAgentProfiles(input: {
-  userId: string;
-  workspaceId: string;
-}) {
+export async function listAccessibleAgentProfiles(input: { userId: string; workspaceId: string }) {
   if (!(await isActiveMember(input.workspaceId, input.userId))) return [];
   const profiles = await db
     .select()
     .from(aiAgentProfile)
-    .where(and(
-      eq(aiAgentProfile.workspaceId, input.workspaceId),
-      eq(aiAgentProfile.status, "active"),
-      or(
-        eq(aiAgentProfile.ownerUserId, input.userId),
-        sql`exists (
+    .where(
+      and(
+        eq(aiAgentProfile.workspaceId, input.workspaceId),
+        eq(aiAgentProfile.status, "active"),
+        or(
+          eq(aiAgentProfile.ownerUserId, input.userId),
+          sql`exists (
           select 1 from ${aiAgentProfileAccess} access
           where access.profile_id = ${aiAgentProfile.id}
             and (
@@ -76,28 +74,42 @@ export async function listAccessibleAgentProfiles(input: {
               ))
             )
         )`,
+        ),
       ),
-    ))
+    )
     .orderBy(desc(aiAgentProfile.updatedAt), desc(aiAgentProfile.id));
 
   const visits = profiles.length
-    ? await db.select({ itemId: itemVisit.itemId, lastVisitedAt: itemVisit.lastVisitedAt })
+    ? await db
+        .select({ itemId: itemVisit.itemId, lastVisitedAt: itemVisit.lastVisitedAt })
         .from(itemVisit)
-        .where(and(
-          eq(itemVisit.userId, input.userId),
-          eq(itemVisit.workspaceId, input.workspaceId),
-          eq(itemVisit.itemKind, "agent"),
-          inArray(itemVisit.itemId, profiles.map((profile) => profile.id)),
-        ))
+        .where(
+          and(
+            eq(itemVisit.userId, input.userId),
+            eq(itemVisit.workspaceId, input.workspaceId),
+            eq(itemVisit.itemKind, "agent"),
+            inArray(
+              itemVisit.itemId,
+              profiles.map((profile) => profile.id),
+            ),
+          ),
+        )
     : [];
   const visitedAtByAgentId = new Map(visits.map((visit) => [visit.itemId, visit.lastVisitedAt]));
 
-  return Promise.all(profiles.map(async (profile) =>
-    serializeProfileSummary(profile, await getAgentProfileRole({
-      profileId: profile.id,
-      userId: input.userId,
-      workspaceId: input.workspaceId,
-    }) ?? "user", visitedAtByAgentId.get(profile.id) ?? null)));
+  return Promise.all(
+    profiles.map(async (profile) =>
+      serializeProfileSummary(
+        profile,
+        (await getAgentProfileRole({
+          profileId: profile.id,
+          userId: input.userId,
+          workspaceId: input.workspaceId,
+        })) ?? "user",
+        visitedAtByAgentId.get(profile.id) ?? null,
+      ),
+    ),
+  );
 }
 
 export async function createAgentProfile(input: {
@@ -112,7 +124,11 @@ export async function createAgentProfile(input: {
   workspaceId: string;
 }) {
   if (!(await isActiveMember(input.workspaceId, input.ownerUserId))) {
-    throw new AgentProfileError("agent_membership_required", "An active workspace membership is required.", 403);
+    throw new AgentProfileError(
+      "agent_membership_required",
+      "An active workspace membership is required.",
+      403,
+    );
   }
   const now = new Date();
   const id = crypto.randomUUID();
@@ -128,9 +144,7 @@ export async function createAgentProfile(input: {
     name: input.name,
   };
   const definition = definitionForProfile(values);
-  const instructionPageId = input.instructions?.trim()
-    ? crypto.randomUUID()
-    : undefined;
+  const instructionPageId = input.instructions?.trim() ? crypto.randomUUID() : undefined;
   const instructionDocument = markdownToPageContent(input.instructions ?? "");
   const settingsDefinition = {
     ...emptySettingsDefinition(),
@@ -146,8 +160,20 @@ export async function createAgentProfile(input: {
   const settingsId = crypto.randomUUID();
   await db.transaction(async (tx) => {
     if (instructionPageId) {
-      await tx.insert(page).values({ id: instructionPageId, workspaceId: input.workspaceId, createdById: input.ownerUserId, type: "pageblock", name: "", content: instructionDocument, metadata: { zilobaseai: "instruction", agentInstructionsScope: `agent:${id}` } });
-      await tx.insert(pageCollaborationDocument).values({ pageId: instructionPageId, state: Buffer.from(encodePageContentAsYjs(instructionDocument)), updatedAt: now });
+      await tx.insert(page).values({
+        id: instructionPageId,
+        workspaceId: input.workspaceId,
+        createdById: input.ownerUserId,
+        type: "pageblock",
+        name: "",
+        content: instructionDocument,
+        metadata: { zilobaseai: "instruction", agentInstructionsScope: `agent:${id}` },
+      });
+      await tx.insert(pageCollaborationDocument).values({
+        pageId: instructionPageId,
+        state: Buffer.from(encodePageContentAsYjs(instructionDocument)),
+        updatedAt: now,
+      });
     }
     await tx.insert(aiAgentProfile).values({
       ...values,
@@ -170,7 +196,9 @@ export async function createAgentProfile(input: {
       profileId: id,
       version: 1,
     });
-    await tx.update(aiAgentProfile).set({ currentRevisionId: revisionId })
+    await tx
+      .update(aiAgentProfile)
+      .set({ currentRevisionId: revisionId })
       .where(eq(aiAgentProfile.id, id));
     await tx.insert(aiSettings).values({
       id: settingsId,
@@ -213,11 +241,13 @@ export async function getAgentProfileRole(input: {
   const [profile] = await db
     .select({ ownerUserId: aiAgentProfile.ownerUserId })
     .from(aiAgentProfile)
-    .where(and(
-      eq(aiAgentProfile.id, input.profileId),
-      eq(aiAgentProfile.workspaceId, input.workspaceId),
-      eq(aiAgentProfile.status, "active"),
-    ))
+    .where(
+      and(
+        eq(aiAgentProfile.id, input.profileId),
+        eq(aiAgentProfile.workspaceId, input.workspaceId),
+        eq(aiAgentProfile.status, "active"),
+      ),
+    )
     .limit(1);
   if (!profile) return null;
   if (profile.ownerUserId === input.userId) return "owner";
@@ -225,25 +255,27 @@ export async function getAgentProfileRole(input: {
   const grants = await db
     .select({ role: aiAgentProfileAccess.role })
     .from(aiAgentProfileAccess)
-    .where(and(
-      eq(aiAgentProfileAccess.profileId, input.profileId),
-      or(
-        and(
-          eq(aiAgentProfileAccess.principalType, "user"),
-          eq(aiAgentProfileAccess.principalId, input.userId),
-        ),
-        and(
-          eq(aiAgentProfileAccess.principalType, "team"),
-          sql`exists (
+    .where(
+      and(
+        eq(aiAgentProfileAccess.profileId, input.profileId),
+        or(
+          and(
+            eq(aiAgentProfileAccess.principalType, "user"),
+            eq(aiAgentProfileAccess.principalId, input.userId),
+          ),
+          and(
+            eq(aiAgentProfileAccess.principalType, "team"),
+            sql`exists (
             select 1 from ${teamMember} tm
             inner join ${team} t on t.id = tm.team_id
             where tm.team_id = ${aiAgentProfileAccess.principalId}
               and tm.user_id = ${input.userId}
               and t.workspace_id = ${input.workspaceId}
           )`,
+          ),
         ),
       ),
-    ));
+    );
 
   return grants.reduce<AiAgentProfileRole | null>((best, grant) => {
     const role = grant.role === "editor" ? "editor" : "user";
@@ -260,7 +292,11 @@ export async function requireAgentProfileRole(input: {
   const role = await getAgentProfileRole(input);
   if (!role) throw new AgentProfileError("agent_not_found", "Agent not found.", 404);
   if (ROLE_RANK[role] < ROLE_RANK[input.minimum]) {
-    throw new AgentProfileError("agent_forbidden", "You do not have permission to manage this agent.", 403);
+    throw new AgentProfileError(
+      "agent_forbidden",
+      "You do not have permission to manage this agent.",
+      403,
+    );
   }
   return role;
 }
@@ -272,19 +308,31 @@ export async function getAgentProfileDetail(input: {
 }): Promise<AiAgentProfileDetail | null> {
   const role = await getAgentProfileRole(input);
   if (!role) return null;
-  const [profile] = await db.select().from(aiAgentProfile).where(and(
-    eq(aiAgentProfile.id, input.profileId),
-    eq(aiAgentProfile.workspaceId, input.workspaceId),
-  )).limit(1);
+  const [profile] = await db
+    .select()
+    .from(aiAgentProfile)
+    .where(
+      and(
+        eq(aiAgentProfile.id, input.profileId),
+        eq(aiAgentProfile.workspaceId, input.workspaceId),
+      ),
+    )
+    .limit(1);
   if (!profile) return null;
   const [access, connections] = await Promise.all([
-    db.select().from(aiAgentProfileAccess).where(
-      eq(aiAgentProfileAccess.profileId, input.profileId),
-    ),
-    db.select().from(aiMcpConnection).where(and(
-      eq(aiMcpConnection.scopeType, "agent"),
-      eq(aiMcpConnection.agentProfileId, input.profileId),
-    )),
+    db
+      .select()
+      .from(aiAgentProfileAccess)
+      .where(eq(aiAgentProfileAccess.profileId, input.profileId)),
+    db
+      .select()
+      .from(aiMcpConnection)
+      .where(
+        and(
+          eq(aiMcpConnection.scopeType, "agent"),
+          eq(aiMcpConnection.agentProfileId, input.profileId),
+        ),
+      ),
   ]);
   return {
     ...serializeProfileSummary(profile, role),
@@ -307,20 +355,30 @@ export async function transferAgentProfileOwnership(input: {
 }) {
   await requireAgentProfileRole({ ...input, minimum: "owner" });
   if (!(await isActiveMember(input.workspaceId, input.newOwnerUserId))) {
-    throw new AgentProfileError("new_owner_not_member", "The new owner must be an active workspace member.", 409);
+    throw new AgentProfileError(
+      "new_owner_not_member",
+      "The new owner must be an active workspace member.",
+      409,
+    );
   }
   const now = new Date();
   await db.transaction(async (tx) => {
-    await tx.update(aiAgentProfile).set({
-      ownerUserId: input.newOwnerUserId,
-      updatedAt: now,
-      version: sql`${aiAgentProfile.version} + 1`,
-    }).where(eq(aiAgentProfile.id, input.profileId));
-    await tx.update(aiMcpConnection).set({
-      lastErrorCode: "ownership_changed",
-      state: "reconnect_required",
-      updatedAt: now,
-    }).where(eq(aiMcpConnection.agentProfileId, input.profileId));
+    await tx
+      .update(aiAgentProfile)
+      .set({
+        ownerUserId: input.newOwnerUserId,
+        updatedAt: now,
+        version: sql`${aiAgentProfile.version} + 1`,
+      })
+      .where(eq(aiAgentProfile.id, input.profileId));
+    await tx
+      .update(aiMcpConnection)
+      .set({
+        lastErrorCode: "ownership_changed",
+        state: "reconnect_required",
+        updatedAt: now,
+      })
+      .where(eq(aiMcpConnection.agentProfileId, input.profileId));
   });
   return getAgentProfileDetail({ ...input, userId: input.newOwnerUserId });
 }
@@ -333,17 +391,23 @@ export async function archiveAgentProfile(input: {
   await requireAgentProfileRole({ ...input, minimum: "owner" });
   const now = new Date();
   await db.transaction(async (tx) => {
-    await tx.update(aiAgentProfile).set({
-      archivedAt: now,
-      status: "archived",
-      updatedAt: now,
-      version: sql`${aiAgentProfile.version} + 1`,
-    }).where(eq(aiAgentProfile.id, input.profileId));
-    await tx.update(aiMcpConnection).set({
-      disabledAt: now,
-      state: "disabled",
-      updatedAt: now,
-    }).where(eq(aiMcpConnection.agentProfileId, input.profileId));
+    await tx
+      .update(aiAgentProfile)
+      .set({
+        archivedAt: now,
+        status: "archived",
+        updatedAt: now,
+        version: sql`${aiAgentProfile.version} + 1`,
+      })
+      .where(eq(aiAgentProfile.id, input.profileId));
+    await tx
+      .update(aiMcpConnection)
+      .set({
+        disabledAt: now,
+        state: "disabled",
+        updatedAt: now,
+      })
+      .where(eq(aiMcpConnection.agentProfileId, input.profileId));
   });
   return { archived: true };
 }
@@ -354,10 +418,16 @@ export async function duplicateAgentProfile(input: {
   workspaceId: string;
 }) {
   await requireAgentProfileRole({ ...input, minimum: "user" });
-  const [profile] = await db.select().from(aiAgentProfile).where(and(
-    eq(aiAgentProfile.id, input.profileId),
-    eq(aiAgentProfile.workspaceId, input.workspaceId),
-  )).limit(1);
+  const [profile] = await db
+    .select()
+    .from(aiAgentProfile)
+    .where(
+      and(
+        eq(aiAgentProfile.id, input.profileId),
+        eq(aiAgentProfile.workspaceId, input.workspaceId),
+      ),
+    )
+    .limit(1);
   if (!profile) throw new AgentProfileError("agent_not_found", "Agent not found.", 404);
   return createAgentProfile({
     cover: profile.cover,
@@ -423,12 +493,18 @@ export async function validateAccessPrincipals(
   grants: Array<{ principalId: string; principalType: "user" | "team" }>,
 ) {
   for (const grant of grants) {
-    const valid = grant.principalType === "user"
-      ? await isActiveMember(workspaceId, grant.principalId)
-      : Boolean((await db.select({ id: team.id }).from(team).where(and(
-          eq(team.id, grant.principalId),
-          eq(team.organizationId, workspaceId),
-        )).limit(1))[0]);
+    const valid =
+      grant.principalType === "user"
+        ? await isActiveMember(workspaceId, grant.principalId)
+        : Boolean(
+            (
+              await db
+                .select({ id: team.id })
+                .from(team)
+                .where(and(eq(team.id, grant.principalId), eq(team.organizationId, workspaceId)))
+                .limit(1)
+            )[0],
+          );
     if (!valid) {
       throw new AgentProfileError(
         "invalid_access_principal",
@@ -440,9 +516,19 @@ export async function validateAccessPrincipals(
 }
 
 async function isActiveMember(workspaceId: string, userId: string) {
-  return Boolean((await db.select({ id: member.id }).from(member).where(and(
-    eq(member.organizationId, workspaceId),
-    eq(member.userId, userId),
-    activeMembershipCondition(),
-  )).limit(1))[0]);
+  return Boolean(
+    (
+      await db
+        .select({ id: member.id })
+        .from(member)
+        .where(
+          and(
+            eq(member.organizationId, workspaceId),
+            eq(member.userId, userId),
+            activeMembershipCondition(),
+          ),
+        )
+        .limit(1)
+    )[0],
+  );
 }

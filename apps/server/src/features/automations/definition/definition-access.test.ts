@@ -23,11 +23,21 @@ vi.mock("../../../infrastructure/database", () => ({
     select() {
       const rows = mocks.selectResults.shift() ?? [];
       const builder = {
-        from() { return builder; },
-        innerJoin() { return builder; },
-        where() { return builder; },
-        orderBy() { return builder; },
-        async limit() { return rows; },
+        from() {
+          return builder;
+        },
+        innerJoin() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        orderBy() {
+          return builder;
+        },
+        async limit() {
+          return rows;
+        },
         then(resolve: (value: unknown[]) => unknown) {
           return Promise.resolve(rows).then(resolve);
         },
@@ -61,11 +71,13 @@ describe("database automation management access", () => {
 
   it("rejects page guests even when a source lookup succeeds", async () => {
     mocks.membership.mockResolvedValue(null);
-    await expect(listDatabaseAutomations({
-      databaseId: "host-database",
-      dataSourceId: "source-1",
-      userId: "guest-1",
-    })).rejects.toMatchObject({
+    await expect(
+      listDatabaseAutomations({
+        databaseId: "host-database",
+        dataSourceId: "source-1",
+        userId: "guest-1",
+      }),
+    ).rejects.toMatchObject({
       code: "AUTOMATION_MEMBER_REQUIRED",
       status: 403,
     });
@@ -74,11 +86,13 @@ describe("database automation management access", () => {
 
   it("requires full canonical-source access", async () => {
     mocks.sourceAccess.mockRejectedValue(Object.assign(new Error("Forbidden"), { status: 403 }));
-    await expect(listDatabaseAutomations({
-      databaseId: "host-database",
-      dataSourceId: "source-1",
-      userId: "member-1",
-    })).rejects.toMatchObject({
+    await expect(
+      listDatabaseAutomations({
+        databaseId: "host-database",
+        dataSourceId: "source-1",
+        userId: "member-1",
+      }),
+    ).rejects.toMatchObject({
       code: "AUTOMATION_MANAGE_FORBIDDEN",
       status: 403,
     });
@@ -86,22 +100,26 @@ describe("database automation management access", () => {
 
   it("rejects inaccessible linked containers and locked canonical sources", async () => {
     mocks.databaseAccess.mockRejectedValue(new Error("Forbidden"));
-    await expect(listDatabaseAutomations({
-      databaseId: "hidden-host",
-      dataSourceId: "source-1",
-      userId: "member-1",
-    })).rejects.toMatchObject({ code: "AUTOMATION_HOST_FORBIDDEN" });
+    await expect(
+      listDatabaseAutomations({
+        databaseId: "hidden-host",
+        dataSourceId: "source-1",
+        userId: "member-1",
+      }),
+    ).rejects.toMatchObject({ code: "AUTOMATION_HOST_FORBIDDEN" });
 
     mocks.databaseAccess.mockResolvedValue({ id: "host-database" });
     mocks.selectResults.push(
       [{ databaseId: "host-database" }],
       [{ config: { locked: true }, id: "canonical-database" }],
     );
-    await expect(listDatabaseAutomations({
-      databaseId: "host-database",
-      dataSourceId: "source-1",
-      userId: "member-1",
-    })).rejects.toMatchObject({ code: "AUTOMATION_SOURCE_LOCKED", status: 409 });
+    await expect(
+      listDatabaseAutomations({
+        databaseId: "host-database",
+        dataSourceId: "source-1",
+        userId: "member-1",
+      }),
+    ).rejects.toMatchObject({ code: "AUTOMATION_SOURCE_LOCKED", status: 409 });
   });
 
   it("resolves linked views through one canonical source owner", async () => {
@@ -110,30 +128,36 @@ describe("database automation management access", () => {
       [{ config: {}, id: "canonical-database" }],
       [],
     );
-    await expect(listDatabaseAutomations({
-      databaseId: "linked-host",
-      dataSourceId: "source-1",
-      userId: "member-1",
-    })).resolves.toEqual({ automations: [] });
+    await expect(
+      listDatabaseAutomations({
+        databaseId: "linked-host",
+        dataSourceId: "source-1",
+        userId: "member-1",
+      }),
+    ).resolves.toEqual({ automations: [] });
     expect(mocks.sourceAccess).toHaveBeenCalledWith("source-1", "member-1", "full");
     expect(mocks.databaseAccess).toHaveBeenCalledWith("linked-host", "member-1", "view");
   });
 
   it("returns a disabled catalog instead of definitions to lower-access users", async () => {
     mocks.sourceAccess.mockRejectedValue(Object.assign(new Error("Forbidden"), { status: 403 }));
-    await expect(getDatabaseAutomationCatalog({
-      databaseId: "host-database",
-      dataSourceId: "source-1",
-      userId: "viewer-1",
-    })).resolves.toEqual(expect.objectContaining({
-      actions: [],
-      canManage: false,
-      dataSourceId: "source-1",
-      dataSources: [],
-      properties: [],
-      users: [],
-      views: [],
-    }));
+    await expect(
+      getDatabaseAutomationCatalog({
+        databaseId: "host-database",
+        dataSourceId: "source-1",
+        userId: "viewer-1",
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        actions: [],
+        canManage: false,
+        dataSourceId: "source-1",
+        dataSources: [],
+        properties: [],
+        users: [],
+        views: [],
+      }),
+    );
   });
 
   it("uses stable typed errors for clients", () => {

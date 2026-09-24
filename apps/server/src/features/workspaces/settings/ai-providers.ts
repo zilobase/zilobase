@@ -35,10 +35,7 @@ export async function listAiProviderConfigs(workspaceId: string) {
   });
 }
 
-export async function getAiProviderConfig(
-  workspaceId: string,
-  providerId: string,
-) {
+export async function getAiProviderConfig(workspaceId: string, providerId: string) {
   const [row] = await db
     .select()
     .from(workspaceAiProviderConfig)

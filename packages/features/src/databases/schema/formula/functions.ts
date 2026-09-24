@@ -1,12 +1,12 @@
-import { formatFormulaValue } from "./formatters"
-import type { DatabaseFormulaPropertyValue, FormulaRuntimeOptions, FormulaValue } from "./types"
+import { formatFormulaValue } from "./formatters";
+import type { DatabaseFormulaPropertyValue, FormulaRuntimeOptions, FormulaValue } from "./types";
 import {
   getRuntimeTimezone,
   getZonedDateParts,
   getZonedIsoWeek,
   getZonedWeekday,
   startOfDayInTimezone,
-} from "./time"
+} from "./time";
 
 export function callEagerFormulaFunction(
   name: string,
@@ -15,197 +15,193 @@ export function callEagerFormulaFunction(
 ) {
   switch (name) {
     case "abs":
-      return Math.abs(requireNumber(args[0]))
+      return Math.abs(requireNumber(args[0]));
     case "add":
-      return requireNumber(args[0]) + requireNumber(args[1])
+      return requireNumber(args[0]) + requireNumber(args[1]);
     case "and":
-      return args.every(isTruthy)
+      return args.every(isTruthy);
     case "at":
-      return valueAtIndex(args[0], requireNumber(args[1]))
+      return valueAtIndex(args[0], requireNumber(args[1]));
     case "cbrt":
-      return Math.cbrt(requireNumber(args[0]))
+      return Math.cbrt(requireNumber(args[0]));
     case "ceil":
-      return Math.ceil(requireNumber(args[0]))
+      return Math.ceil(requireNumber(args[0]));
     case "concat":
-      return args.flatMap(listValue)
+      return args.flatMap(listValue);
     case "contains":
-      return formulaContains(args[0], args[1])
+      return formulaContains(args[0], args[1]);
     case "date":
-      return getZonedDateParts(requireDate(args[0]), options.timezone).day
+      return getZonedDateParts(requireDate(args[0]), options.timezone).day;
     case "dateadd":
-      return addDate(args[0], requireNumber(args[1]), textValue(args[2]))
+      return addDate(args[0], requireNumber(args[1]), textValue(args[2]));
     case "datebetween":
-      return dateBetween(args[0], args[1], textValue(args[2]))
+      return dateBetween(args[0], args[1], textValue(args[2]));
     case "dateend":
-      return Array.isArray(args[0]) ? args[0][1] ?? args[0][0] ?? null : args[0]
+      return Array.isArray(args[0]) ? (args[0][1] ?? args[0][0] ?? null) : args[0];
     case "daterange":
       return [normalizeDate(args[0]), normalizeDate(args[1])].filter(
-        (date): date is Date => date instanceof Date
-      )
+        (date): date is Date => date instanceof Date,
+      );
     case "datestart":
-      return Array.isArray(args[0]) ? args[0][0] ?? null : args[0]
+      return Array.isArray(args[0]) ? (args[0][0] ?? null) : args[0];
     case "datesubtract":
-      return addDate(args[0], requireNumber(args[1]) * -1, textValue(args[2]))
+      return addDate(args[0], requireNumber(args[1]) * -1, textValue(args[2]));
     case "day":
-      return notionDay(requireDate(args[0]), options.timezone)
+      return notionDay(requireDate(args[0]), options.timezone);
     case "divide":
-      return requireNumber(args[0]) / requireNumber(args[1])
+      return requireNumber(args[0]) / requireNumber(args[1]);
     case "e":
-      return Math.E
+      return Math.E;
     case "email":
-      return personTextValue(args[0])
+      return personTextValue(args[0]);
     case "empty":
-      return isEmptyFormulaValue(args[0])
+      return isEmptyFormulaValue(args[0]);
     case "equal":
-      return areFormulaValuesEqual(args[0], args[1])
+      return areFormulaValuesEqual(args[0], args[1]);
     case "exp":
-      return Math.exp(requireNumber(args[0]))
+      return Math.exp(requireNumber(args[0]));
     case "first":
-      return valueAtIndex(args[0], 0)
+      return valueAtIndex(args[0], 0);
     case "flat":
-      return flattenList(listValue(args[0]))
+      return flattenList(listValue(args[0]));
     case "floor":
-      return Math.floor(requireNumber(args[0]))
+      return Math.floor(requireNumber(args[0]));
     case "format":
-      return formatFormulaValue(args[0])
+      return formatFormulaValue(args[0]);
     case "formatdate":
-      return formatFormulaDate(args[0], textValue(args[1]), options)
+      return formatFormulaDate(args[0], textValue(args[1]), options);
     case "formatnumber":
-      return formatFormulaNumber(args[0], args[1], args[2], options.locale)
+      return formatFormulaNumber(args[0], args[1], args[2], options.locale);
     case "fromtimestamp": {
-      const date = new Date(requireNumber(args[0]))
+      const date = new Date(requireNumber(args[0]));
 
-      date.setSeconds(0, 0)
+      date.setSeconds(0, 0);
 
-      return Number.isFinite(date.getTime()) ? date : null
+      return Number.isFinite(date.getTime()) ? date : null;
     }
     case "hour":
-      return getZonedDateParts(requireDate(args[0]), options.timezone).hour
+      return getZonedDateParts(requireDate(args[0]), options.timezone).hour;
     case "includes":
-      return formulaContains(args[0], args[1])
+      return formulaContains(args[0], args[1]);
     case "join":
-      return listValue(args[0]).map(formatFormulaValue).join(textValue(args[1]))
+      return listValue(args[0]).map(formatFormulaValue).join(textValue(args[1]));
     case "last":
-      return valueAtIndex(args[0], -1)
+      return valueAtIndex(args[0], -1);
     case "length":
-      return getFormulaLength(args[0])
+      return getFormulaLength(args[0]);
     case "link":
-      return textValue(args[0])
+      return textValue(args[0]);
     case "ln":
-      return Math.log(requireNumber(args[0]))
+      return Math.log(requireNumber(args[0]));
     case "log10":
-      return Math.log10(requireNumber(args[0]))
+      return Math.log10(requireNumber(args[0]));
     case "log2":
-      return Math.log2(requireNumber(args[0]))
+      return Math.log2(requireNumber(args[0]));
     case "lower":
-      return textValue(args[0]).toLowerCase()
+      return textValue(args[0]).toLowerCase();
     case "match":
-      return regexMatches(args[0], args[1])
+      return regexMatches(args[0], args[1]);
     case "max":
-      return Math.max(...flattenNumbers(args))
+      return Math.max(...flattenNumbers(args));
     case "mean": {
-      const numbers = flattenNumbers(args)
+      const numbers = flattenNumbers(args);
 
       return numbers.length
         ? numbers.reduce((sum, value) => sum + value, 0) / numbers.length
-        : null
+        : null;
     }
     case "median":
-      return median(args)
+      return median(args);
     case "min":
-      return Math.min(...flattenNumbers(args))
+      return Math.min(...flattenNumbers(args));
     case "minute":
-      return getZonedDateParts(requireDate(args[0]), options.timezone).minute
+      return getZonedDateParts(requireDate(args[0]), options.timezone).minute;
     case "mod":
-      return requireNumber(args[0]) % requireNumber(args[1])
+      return requireNumber(args[0]) % requireNumber(args[1]);
     case "month":
-      return getZonedDateParts(requireDate(args[0]), options.timezone).month
+      return getZonedDateParts(requireDate(args[0]), options.timezone).month;
     case "multiply":
-      return requireNumber(args[0]) * requireNumber(args[1])
+      return requireNumber(args[0]) * requireNumber(args[1]);
     case "name":
-      return personTextValue(args[0])
+      return personTextValue(args[0]);
     case "not":
-      return !isTruthy(args[0])
+      return !isTruthy(args[0]);
     case "now":
-      return new Date(options.now ?? Date.now())
+      return new Date(options.now ?? Date.now());
     case "or":
-      return args.some(isTruthy)
+      return args.some(isTruthy);
     case "parsedate":
-      return normalizeDate(args[0])
+      return normalizeDate(args[0]);
     case "pi":
-      return Math.PI
+      return Math.PI;
     case "pow":
-      return requireNumber(args[0]) ** requireNumber(args[1])
+      return requireNumber(args[0]) ** requireNumber(args[1]);
     case "replace":
-      return replaceWithRegex(args[0], args[1], args[2], false)
+      return replaceWithRegex(args[0], args[1], args[2], false);
     case "replaceall":
-      return replaceWithRegex(args[0], args[1], args[2], true)
+      return replaceWithRegex(args[0], args[1], args[2], true);
     case "repeat":
-      return textValue(args[0]).repeat(Math.max(0, Math.trunc(requireNumber(args[1]))))
+      return textValue(args[0]).repeat(Math.max(0, Math.trunc(requireNumber(args[1]))));
     case "reverse":
-      return [...listValue(args[0])].reverse()
+      return [...listValue(args[0])].reverse();
     case "round":
-      return roundNumber(args[0], args[1])
+      return roundNumber(args[0], args[1]);
     case "sign":
-      return Math.sign(requireNumber(args[0]))
+      return Math.sign(requireNumber(args[0]));
     case "slice":
-      return sliceFormulaValue(args[0], args[1], args[2])
+      return sliceFormulaValue(args[0], args[1], args[2]);
     case "sort":
-      return [...listValue(args[0])].sort(compareListItems)
+      return [...listValue(args[0])].sort(compareListItems);
     case "split":
-      return textValue(args[0]).split(textValue(args[1]))
+      return textValue(args[0]).split(textValue(args[1]));
     case "sqrt":
-      return Math.sqrt(requireNumber(args[0]))
+      return Math.sqrt(requireNumber(args[0]));
     case "style":
-      return textValue(args[0])
+      return textValue(args[0]);
     case "substring":
       return textValue(args[0]).slice(
         requireNumber(args[1]),
-        args[2] === undefined ? undefined : requireNumber(args[2])
-      )
+        args[2] === undefined ? undefined : requireNumber(args[2]),
+      );
     case "subtract":
-      return requireNumber(args[0]) - requireNumber(args[1])
+      return requireNumber(args[0]) - requireNumber(args[1]);
     case "sum":
-      return flattenNumbers(args).reduce((sum, value) => sum + value, 0)
+      return flattenNumbers(args).reduce((sum, value) => sum + value, 0);
     case "test":
-      return regexTest(args[0], args[1])
+      return regexTest(args[0], args[1]);
     case "timestamp":
-      return requireDate(args[0]).getTime()
+      return requireDate(args[0]).getTime();
     case "today": {
-      return startOfDayInTimezone(
-        new Date(options.now ?? Date.now()),
-        options.timezone,
-      )
+      return startOfDayInTimezone(new Date(options.now ?? Date.now()), options.timezone);
     }
     case "tonumber":
-      return numberValue(args[0])
+      return numberValue(args[0]);
     case "trim":
-      return textValue(args[0]).trim()
+      return textValue(args[0]).trim();
     case "unequal":
-      return !areFormulaValuesEqual(args[0], args[1])
+      return !areFormulaValuesEqual(args[0], args[1]);
     case "unique":
-      return uniqueFormulaList(listValue(args[0]))
+      return uniqueFormulaList(listValue(args[0]));
     case "unstyle":
-      return textValue(args[0])
+      return textValue(args[0]);
     case "upper":
-      return textValue(args[0]).toUpperCase()
+      return textValue(args[0]).toUpperCase();
     case "week":
-      return isoWeek(requireDate(args[0]), options.timezone)
+      return isoWeek(requireDate(args[0]), options.timezone);
     case "year":
-      return getZonedDateParts(requireDate(args[0]), options.timezone).year
+      return getZonedDateParts(requireDate(args[0]), options.timezone).year;
     default:
-      throw new Error(`Unknown function: ${name}()`)
+      throw new Error(`Unknown function: ${name}()`);
   }
 }
 
-
 export function normalizePropertyName(name: string) {
-  return name.trim().toLowerCase()
+  return name.trim().toLowerCase();
 }
 
 export function addFormulaValues(left: FormulaValue, right: FormulaValue) {
-  const leftNumber = numberValue(left)
-  const rightNumber = numberValue(right)
+  const leftNumber = numberValue(left);
+  const rightNumber = numberValue(right);
 
   if (
     leftNumber !== null &&
@@ -213,255 +209,248 @@ export function addFormulaValues(left: FormulaValue, right: FormulaValue) {
     typeof left !== "string" &&
     typeof right !== "string"
   ) {
-    return leftNumber + rightNumber
+    return leftNumber + rightNumber;
   }
 
-  return textValue(left) + textValue(right)
+  return textValue(left) + textValue(right);
 }
 
-export function compareFormulaValues(
-  left: FormulaValue,
-  right: FormulaValue,
-  operator: string
-) {
-  const leftComparable = comparableValue(left)
-  const rightComparable = comparableValue(right)
+export function compareFormulaValues(left: FormulaValue, right: FormulaValue, operator: string) {
+  const leftComparable = comparableValue(left);
+  const rightComparable = comparableValue(right);
   const comparison =
     typeof leftComparable === "number" && typeof rightComparable === "number"
       ? leftComparable - rightComparable
       : String(leftComparable).localeCompare(String(rightComparable), undefined, {
           numeric: true,
           sensitivity: "base",
-        })
+        });
 
   if (operator === ">") {
-    return comparison > 0
+    return comparison > 0;
   }
 
   if (operator === ">=") {
-    return comparison >= 0
+    return comparison >= 0;
   }
 
   if (operator === "<") {
-    return comparison < 0
+    return comparison < 0;
   }
 
-  return comparison <= 0
+  return comparison <= 0;
 }
 
 export function areFormulaValuesEqual(left: FormulaValue, right: FormulaValue) {
-  const leftComparable = comparableValue(left)
-  const rightComparable = comparableValue(right)
+  const leftComparable = comparableValue(left);
+  const rightComparable = comparableValue(right);
 
-  return leftComparable === rightComparable
+  return leftComparable === rightComparable;
 }
 
 function comparableValue(value: FormulaValue): number | string {
   if (value instanceof Date) {
-    return value.getTime()
+    return value.getTime();
   }
 
   if (typeof value === "number") {
-    return value
+    return value;
   }
 
   if (typeof value === "boolean") {
-    return value ? 1 : 0
+    return value ? 1 : 0;
   }
 
   if (Array.isArray(value)) {
-    return value.map(formatFormulaValue).join(", ")
+    return value.map(formatFormulaValue).join(", ");
   }
 
-  return formatFormulaValue(value)
+  return formatFormulaValue(value);
 }
 
 export function isTruthy(value: FormulaValue) {
   if (Array.isArray(value)) {
-    return value.length > 0
+    return value.length > 0;
   }
 
   if (value instanceof Date) {
-    return Number.isFinite(value.getTime())
+    return Number.isFinite(value.getTime());
   }
 
   if (typeof value === "number") {
-    return value !== 0 && Number.isFinite(value)
+    return value !== 0 && Number.isFinite(value);
   }
 
   if (typeof value === "boolean") {
-    return value
+    return value;
   }
 
-  return Boolean(value)
+  return Boolean(value);
 }
 
 export function isEmptyFormulaValue(value: FormulaValue | undefined) {
   if (value === undefined || value === null || value === "") {
-    return true
+    return true;
   }
 
   if (typeof value === "number") {
-    return value === 0
+    return value === 0;
   }
 
   if (Array.isArray(value)) {
-    return value.length === 0
+    return value.length === 0;
   }
 
-  return false
+  return false;
 }
 
 export function getFormulaLength(value: FormulaValue | undefined) {
   if (Array.isArray(value) || typeof value === "string") {
-    return value.length
+    return value.length;
   }
 
-  return formatFormulaValue(value ?? null).length
+  return formatFormulaValue(value ?? null).length;
 }
 
 export function formulaContains(value: FormulaValue, search: FormulaValue) {
   if (Array.isArray(value)) {
-    return value.some((item) => areFormulaValuesEqual(item, search))
+    return value.some((item) => areFormulaValuesEqual(item, search));
   }
 
-  return textValue(value).includes(textValue(search))
+  return textValue(value).includes(textValue(search));
 }
 
 export function listValue(value: FormulaValue | undefined): FormulaValue[] {
   if (Array.isArray(value)) {
-    return value
+    return value;
   }
 
   if (value === undefined || value === null || value === "") {
-    return []
+    return [];
   }
 
-  return [value]
+  return [value];
 }
 
 export function flattenList(values: FormulaValue[]): FormulaValue[] {
-  return values.flatMap((value) =>
-    Array.isArray(value) ? flattenList(value) : [value]
-  )
+  return values.flatMap((value) => (Array.isArray(value) ? flattenList(value) : [value]));
 }
 
 export function uniqueFormulaList(values: FormulaValue[]) {
   return values.filter(
     (value, index) =>
-      values.findIndex((candidate) => areFormulaValuesEqual(candidate, value)) ===
-      index
-  )
+      values.findIndex((candidate) => areFormulaValuesEqual(candidate, value)) === index,
+  );
 }
 
 export function compareListItems(left: FormulaValue, right: FormulaValue) {
-  const leftComparable = comparableValue(left)
-  const rightComparable = comparableValue(right)
+  const leftComparable = comparableValue(left);
+  const rightComparable = comparableValue(right);
 
   if (typeof leftComparable === "number" && typeof rightComparable === "number") {
-    return leftComparable - rightComparable
+    return leftComparable - rightComparable;
   }
 
   return String(leftComparable).localeCompare(String(rightComparable), undefined, {
     numeric: true,
     sensitivity: "base",
-  })
+  });
 }
 
 export function sliceFormulaValue(
   value: FormulaValue,
   start: FormulaValue | undefined,
-  end: FormulaValue | undefined
+  end: FormulaValue | undefined,
 ) {
-  const startIndex = Math.trunc(requireNumber(start))
-  const endIndex = end === undefined ? undefined : Math.trunc(requireNumber(end))
+  const startIndex = Math.trunc(requireNumber(start));
+  const endIndex = end === undefined ? undefined : Math.trunc(requireNumber(end));
 
   if (typeof value === "string") {
-    return value.slice(startIndex, endIndex)
+    return value.slice(startIndex, endIndex);
   }
 
-  return listValue(value).slice(startIndex, endIndex)
+  return listValue(value).slice(startIndex, endIndex);
 }
 
 export function personTextValue(value: FormulaValue | undefined) {
   return Array.isArray(value)
     ? formatFormulaValue(value[0] ?? null)
-    : formatFormulaValue(value ?? null)
+    : formatFormulaValue(value ?? null);
 }
 
 export function textValue(value: FormulaValue | undefined) {
-  return formatFormulaValue(value ?? null)
+  return formatFormulaValue(value ?? null);
 }
 
 export function numberValue(value: FormulaValue | DatabaseFormulaPropertyValue): number | null {
   if (Array.isArray(value)) {
-    return numberValue(value[0] ?? null)
+    return numberValue(value[0] ?? null);
   }
 
   if (value instanceof Date) {
-    return value.getTime()
+    return value.getTime();
   }
 
   if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null
+    return Number.isFinite(value) ? value : null;
   }
 
   if (typeof value === "boolean") {
-    return value ? 1 : 0
+    return value ? 1 : 0;
   }
 
   if (typeof value === "string") {
-    const trimmedValue = value.trim()
+    const trimmedValue = value.trim();
 
     if (!trimmedValue) {
-      return null
+      return null;
     }
 
-    const nextValue = Number(trimmedValue)
+    const nextValue = Number(trimmedValue);
 
-    return Number.isFinite(nextValue) ? nextValue : null
+    return Number.isFinite(nextValue) ? nextValue : null;
   }
 
-  return null
+  return null;
 }
 
 export function requireNumber(value: FormulaValue | undefined): number {
-  const nextValue = numberValue(value ?? null)
+  const nextValue = numberValue(value ?? null);
 
   if (nextValue === null) {
-    throw new Error(`Expected a number, received ${formatFormulaValue(value ?? null) || "empty"}.`)
+    throw new Error(`Expected a number, received ${formatFormulaValue(value ?? null) || "empty"}.`);
   }
 
-  return nextValue
+  return nextValue;
 }
 
 function flattenNumbers(values: FormulaValue[]): number[] {
   const numbers: number[] = values.flatMap((value) =>
-    Array.isArray(value) ? flattenNumbers(value) : [requireNumber(value)]
-  )
+    Array.isArray(value) ? flattenNumbers(value) : [requireNumber(value)],
+  );
 
   if (numbers.length === 0) {
-    throw new Error("Expected at least one number.")
+    throw new Error("Expected at least one number.");
   }
 
-  return numbers
+  return numbers;
 }
 
 function median(values: FormulaValue[]): number | null {
-  const numbers = flattenNumbers(values).sort((left, right) => left - right)
-  const midpoint = Math.floor(numbers.length / 2)
+  const numbers = flattenNumbers(values).sort((left, right) => left - right);
+  const midpoint = Math.floor(numbers.length / 2);
 
   return numbers.length % 2 === 0
     ? ((numbers[midpoint - 1] ?? 0) + (numbers[midpoint] ?? 0)) / 2
-    : numbers[midpoint] ?? null
+    : (numbers[midpoint] ?? null);
 }
 
 function roundNumber(value: FormulaValue | undefined, places: FormulaValue | undefined) {
-  const number = requireNumber(value)
-  const decimalPlaces = places === undefined ? 0 : requireNumber(places)
-  const multiplier = 10 ** decimalPlaces
+  const number = requireNumber(value);
+  const decimalPlaces = places === undefined ? 0 : requireNumber(places);
+  const multiplier = 10 ** decimalPlaces;
 
-  return Math.round(number * multiplier) / multiplier
+  return Math.round(number * multiplier) / multiplier;
 }
 
 export function formatFormulaNumber(
@@ -470,32 +459,30 @@ export function formatFormulaNumber(
   decimalPlaces: FormulaValue | undefined,
   locale?: string,
 ) {
-  const number = requireNumber(value)
-  const normalizedFormat = textValue(format).trim().toLowerCase()
+  const number = requireNumber(value);
+  const normalizedFormat = textValue(format).trim().toLowerCase();
   const digits =
-    decimalPlaces === undefined
-      ? undefined
-      : Math.max(0, Math.trunc(requireNumber(decimalPlaces)))
-  const options: Intl.NumberFormatOptions = {}
-  const currency = getCurrencyCode(normalizedFormat)
+    decimalPlaces === undefined ? undefined : Math.max(0, Math.trunc(requireNumber(decimalPlaces)));
+  const options: Intl.NumberFormatOptions = {};
+  const currency = getCurrencyCode(normalizedFormat);
 
   if (digits !== undefined) {
-    options.minimumFractionDigits = digits
-    options.maximumFractionDigits = digits
+    options.minimumFractionDigits = digits;
+    options.maximumFractionDigits = digits;
   }
 
   if (normalizedFormat === "percent" || normalizedFormat === "%") {
-    options.style = "percent"
+    options.style = "percent";
   } else if (currency) {
-    options.currency = currency
-    options.style = "currency"
+    options.currency = currency;
+    options.style = "currency";
   }
 
-  return new Intl.NumberFormat(locale, options).format(number)
+  return new Intl.NumberFormat(locale, options).format(number);
 }
 
 function getCurrencyCode(format: string) {
-  const normalizedFormat = format.toUpperCase()
+  const normalizedFormat = format.toUpperCase();
   const currencyAliases: Record<string, string> = {
     DOLLAR: "USD",
     DOLLARS: "USD",
@@ -506,13 +493,13 @@ function getCurrencyCode(format: string) {
     RUPEE: "INR",
     RUPEES: "INR",
     YEN: "JPY",
-  }
+  };
 
   if (/^[A-Z]{3}$/.test(normalizedFormat)) {
-    return normalizedFormat
+    return normalizedFormat;
   }
 
-  return currencyAliases[normalizedFormat] ?? null
+  return currencyAliases[normalizedFormat] ?? null;
 }
 
 export function formatFormulaDate(
@@ -520,11 +507,11 @@ export function formatFormulaDate(
   format: string,
   options: FormulaRuntimeOptions = {},
 ) {
-  const date = requireDate(value)
-  const trimmedFormat = format.trim()
+  const date = requireDate(value);
+  const trimmedFormat = format.trim();
 
   if (!trimmedFormat) {
-    return formatFormulaValue(date)
+    return formatFormulaValue(date);
   }
 
   const monthNames = [
@@ -540,12 +527,12 @@ export function formatFormulaDate(
     "October",
     "November",
     "December",
-  ]
-  const shortMonthNames = monthNames.map((month) => month.slice(0, 3))
-  const timezone = getRuntimeTimezone(options.timezone)
-  const parts = getZonedDateParts(date, timezone)
-  const hours = parts.hour
-  const twelveHour = hours % 12 || 12
+  ];
+  const shortMonthNames = monthNames.map((month) => month.slice(0, 3));
+  const timezone = getRuntimeTimezone(options.timezone);
+  const parts = getZonedDateParts(date, timezone);
+  const hours = parts.hour;
+  const twelveHour = hours % 12 || 12;
   const replacements: Record<string, string> = {
     A: hours >= 12 ? "PM" : "AM",
     a: hours >= 12 ? "pm" : "am",
@@ -564,150 +551,146 @@ export function formatFormulaDate(
     Y: String(parts.year),
     YY: String(parts.year).slice(-2),
     YYYY: String(parts.year),
-  }
+  };
 
   return trimmedFormat.replace(
     /YYYY|MMMM|MMM|YY|MM|DD|HH|hh|mm|ss|Y|M|D|H|h|A|a/g,
-    (token) => replacements[token] ?? token
-  )
+    (token) => replacements[token] ?? token,
+  );
 }
 
 function padDatePart(value: number) {
-  return String(value).padStart(2, "0")
+  return String(value).padStart(2, "0");
 }
 
 export function normalizeDate(value: FormulaValue | DatabaseFormulaPropertyValue): Date | null {
   if (Array.isArray(value)) {
-    return normalizeDate(value[0] ?? null)
+    return normalizeDate(value[0] ?? null);
   }
 
   if (value instanceof Date) {
-    return Number.isFinite(value.getTime()) ? value : null
+    return Number.isFinite(value.getTime()) ? value : null;
   }
 
   if (typeof value === "number") {
-    const date = new Date(value)
+    const date = new Date(value);
 
-    return Number.isFinite(date.getTime()) ? date : null
+    return Number.isFinite(date.getTime()) ? date : null;
   }
 
   if (typeof value === "string" && value.trim()) {
-    const date = new Date(value)
+    const date = new Date(value);
 
-    return Number.isFinite(date.getTime()) ? date : null
+    return Number.isFinite(date.getTime()) ? date : null;
   }
 
-  return null
+  return null;
 }
 
 export function requireDate(value: FormulaValue | undefined) {
-  const date = normalizeDate(value ?? null)
+  const date = normalizeDate(value ?? null);
 
   if (!date) {
-    throw new Error("Expected a date value.")
+    throw new Error("Expected a date value.");
   }
 
-  return date
+  return date;
 }
 
 function addDate(value: FormulaValue, amount: number, unit: string) {
-  const date = new Date(requireDate(value))
-  const normalizedUnit = unit.toLowerCase()
+  const date = new Date(requireDate(value));
+  const normalizedUnit = unit.toLowerCase();
 
   if (normalizedUnit.startsWith("year")) {
-    date.setFullYear(date.getFullYear() + amount)
+    date.setFullYear(date.getFullYear() + amount);
   } else if (normalizedUnit.startsWith("quarter")) {
-    date.setMonth(date.getMonth() + amount * 3)
+    date.setMonth(date.getMonth() + amount * 3);
   } else if (normalizedUnit.startsWith("month")) {
-    date.setMonth(date.getMonth() + amount)
+    date.setMonth(date.getMonth() + amount);
   } else if (normalizedUnit.startsWith("week")) {
-    date.setDate(date.getDate() + amount * 7)
+    date.setDate(date.getDate() + amount * 7);
   } else if (normalizedUnit.startsWith("day")) {
-    date.setDate(date.getDate() + amount)
+    date.setDate(date.getDate() + amount);
   } else if (normalizedUnit.startsWith("hour")) {
-    date.setHours(date.getHours() + amount)
+    date.setHours(date.getHours() + amount);
   } else if (normalizedUnit.startsWith("minute")) {
-    date.setMinutes(date.getMinutes() + amount)
+    date.setMinutes(date.getMinutes() + amount);
   } else {
-    throw new Error(`Unknown date unit: ${unit}`)
+    throw new Error(`Unknown date unit: ${unit}`);
   }
 
-  return date
+  return date;
 }
 
 function dateBetween(left: FormulaValue, right: FormulaValue, unit: string) {
-  const diff = requireDate(left).getTime() - requireDate(right).getTime()
-  const normalizedUnit = unit.toLowerCase()
-  const day = 24 * 60 * 60 * 1000
+  const diff = requireDate(left).getTime() - requireDate(right).getTime();
+  const normalizedUnit = unit.toLowerCase();
+  const day = 24 * 60 * 60 * 1000;
 
   if (normalizedUnit.startsWith("year")) {
-    return Math.trunc(diff / (365 * day))
+    return Math.trunc(diff / (365 * day));
   }
 
   if (normalizedUnit.startsWith("quarter")) {
-    return Math.trunc(diff / (91.25 * day))
+    return Math.trunc(diff / (91.25 * day));
   }
 
   if (normalizedUnit.startsWith("month")) {
-    return Math.trunc(diff / (30.4375 * day))
+    return Math.trunc(diff / (30.4375 * day));
   }
 
   if (normalizedUnit.startsWith("week")) {
-    return Math.trunc(diff / (7 * day))
+    return Math.trunc(diff / (7 * day));
   }
 
   if (normalizedUnit.startsWith("day")) {
-    return Math.trunc(diff / day)
+    return Math.trunc(diff / day);
   }
 
   if (normalizedUnit.startsWith("hour")) {
-    return Math.trunc(diff / (60 * 60 * 1000))
+    return Math.trunc(diff / (60 * 60 * 1000));
   }
 
   if (normalizedUnit.startsWith("minute")) {
-    return Math.trunc(diff / (60 * 1000))
+    return Math.trunc(diff / (60 * 1000));
   }
 
-  throw new Error(`Unknown date unit: ${unit}`)
+  throw new Error(`Unknown date unit: ${unit}`);
 }
 
 export function notionDay(date: Date, timezone?: string) {
-  const day = getZonedWeekday(date, timezone)
+  const day = getZonedWeekday(date, timezone);
 
-  return day === 0 ? 7 : day
+  return day === 0 ? 7 : day;
 }
 
 export function isoWeek(date: Date, timezone?: string) {
-  return getZonedIsoWeek(date, timezone)
+  return getZonedIsoWeek(date, timezone);
 }
 
 export function valueAtIndex(value: FormulaValue, rawIndex: number) {
-  const index = Math.trunc(rawIndex)
-  const values =
-    typeof value === "string"
-      ? [...value]
-      : Array.isArray(value)
-        ? value
-        : [value]
-  const normalizedIndex = index < 0 ? values.length + index : index
+  const index = Math.trunc(rawIndex);
+  const values = typeof value === "string" ? [...value] : Array.isArray(value) ? value : [value];
+  const normalizedIndex = index < 0 ? values.length + index : index;
 
-  return values[normalizedIndex] ?? null
+  return values[normalizedIndex] ?? null;
 }
 
 export function regexTest(value: FormulaValue, pattern: FormulaValue) {
   try {
-    return new RegExp(textValue(pattern)).test(textValue(value))
+    return new RegExp(textValue(pattern)).test(textValue(value));
   } catch {
-    return false
+    return false;
   }
 }
 
 export function regexMatches(value: FormulaValue, pattern: FormulaValue) {
   try {
-    return Array.from(textValue(value).matchAll(new RegExp(textValue(pattern), "g")))
-      .map((match) => match[0])
+    return Array.from(textValue(value).matchAll(new RegExp(textValue(pattern), "g"))).map(
+      (match) => match[0],
+    );
   } catch {
-    return []
+    return [];
   }
 }
 
@@ -715,14 +698,14 @@ export function replaceWithRegex(
   value: FormulaValue,
   pattern: FormulaValue,
   replacement: FormulaValue,
-  all: boolean
+  all: boolean,
 ) {
   try {
     return textValue(value).replace(
       new RegExp(textValue(pattern), all ? "g" : undefined),
-      textValue(replacement)
-    )
+      textValue(replacement),
+    );
   } catch {
-    return textValue(value)
+    return textValue(value);
   }
 }

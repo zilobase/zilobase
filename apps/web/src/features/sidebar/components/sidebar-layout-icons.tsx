@@ -25,10 +25,15 @@ import {
   StarIcon,
   Trash2Icon,
   UsersIcon,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 
-import type { LibraryView, MailView, SidebarShortcut, SidebarTabIconId } from "@zilobase/features/user-settings"
-import { PageIconDisplay } from "@/features/pages/index"
+import type {
+  LibraryView,
+  MailView,
+  SidebarShortcut,
+  SidebarTabIconId,
+} from "@zilobase/features/user-settings";
+import { PageIconDisplay } from "@/features/pages/index";
 
 export const libraryViewIcons = {
   skills: SparklesIcon,
@@ -40,7 +45,7 @@ export const libraryViewIcons = {
   shared: UsersIcon,
   teamspaces: Layers3Icon,
   trash: Trash2Icon,
-} satisfies Record<LibraryView, typeof HistoryIcon>
+} satisfies Record<LibraryView, typeof HistoryIcon>;
 
 const sidebarTabIcons = {
   briefcase: BriefcaseIcon,
@@ -53,7 +58,7 @@ const sidebarTabIcons = {
   mail: MailIcon,
   sparkles: SparklesIcon,
   star: StarIcon,
-} satisfies Record<SidebarTabIconId, typeof HomeIcon>
+} satisfies Record<SidebarTabIconId, typeof HomeIcon>;
 
 export const mailViewIcons = {
   archive: ArchiveIcon,
@@ -64,22 +69,22 @@ export const mailViewIcons = {
   starred: StarIcon,
   trash: Trash2Icon,
   unread: MailCheckIcon,
-} satisfies Record<MailView, typeof MailIcon>
+} satisfies Record<MailView, typeof MailIcon>;
 
 export function SidebarTabIcon({ value }: { value: string }) {
-  const Icon = sidebarTabIcons[value as SidebarTabIconId]
+  const Icon = sidebarTabIcons[value as SidebarTabIconId];
   return Icon ? (
     <Icon aria-hidden="true" className="size-4" />
   ) : (
     <PageIconDisplay className="pointer-events-none" size="sm" value={value} />
-  )
+  );
 }
 
 export function SidebarShortcutIcon({ shortcut }: { shortcut: SidebarShortcut }) {
-  if (shortcut.icon) return <SidebarTabIcon value={shortcut.icon} />
+  if (shortcut.icon) return <SidebarTabIcon value={shortcut.icon} />;
 
-  const Icon = getDefaultShortcutIcon(shortcut.target)
-  return <Icon aria-hidden="true" className="size-4" />
+  const Icon = getDefaultShortcutIcon(shortcut.target);
+  return <Icon aria-hidden="true" className="size-4" />;
 }
 
 function getDefaultShortcutIcon(target: SidebarShortcut["target"]) {
@@ -87,20 +92,20 @@ function getDefaultShortcutIcon(target: SidebarShortcut["target"]) {
     return target.action === "composeMail"
       ? MailPlusIcon
       : target.action === "createPage"
-      ? FileIcon
-      : target.action === "createDatabase"
-        ? DatabaseIcon
-        : BotIcon
+        ? FileIcon
+        : target.action === "createDatabase"
+          ? DatabaseIcon
+          : BotIcon;
   }
-  if (target.type === "page") return FileIcon
-  if (target.type === "database") return DatabaseIcon
-  if (target.type === "library") return libraryViewIcons[target.view]
-  if (target.type === "mail") return mailViewIcons[target.view]
+  if (target.type === "page") return FileIcon;
+  if (target.type === "database") return DatabaseIcon;
+  if (target.type === "library") return libraryViewIcons[target.view];
+  if (target.type === "mail") return mailViewIcons[target.view];
   return {
     ai: SparklesIcon,
     meetings: CalendarDaysIcon,
     settings: SettingsIcon,
     tasks: ListChecksIcon,
     trash: Trash2Icon,
-  }[target.route]
+  }[target.route];
 }

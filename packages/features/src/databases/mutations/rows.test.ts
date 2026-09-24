@@ -3,21 +3,15 @@ import test from "node:test";
 
 import type { QueryClient } from "@tanstack/react-query";
 
-import { createMutationTestRuntime } from  "../../shared/mutation-runtime.test";
-import type {
-  DatabaseCommandRequest,
-  DatabaseRecordEntity,
-} from  "../core/entities";
+import { createMutationTestRuntime } from "../../shared/mutation-runtime.test";
+import type { DatabaseCommandRequest, DatabaseRecordEntity } from "../core/entities";
 import {
   getDatabaseRowMoveAnchors,
   useAddDatabaseRow,
   useMoveDatabaseRow,
   useUpdateDatabasePropertyValue,
-} from  "./mutation-hooks";
-import {
-  createTestDatabasePayload,
-  setTestDatabaseClientState,
-} from "./test-helpers";
+} from "./mutation-hooks";
+import { createTestDatabasePayload, setTestDatabaseClientState } from "./test-helpers";
 import { databaseWindowQueryKey } from "../queries/keys";
 import { databaseViewQueryHash } from "../views/query-hash";
 
@@ -41,9 +35,7 @@ const record: DatabaseRecordEntity = {
   valuesByPropertyId: {},
 };
 
-function commandApi(
-  inspect: (request: DatabaseCommandRequest, path: string) => void,
-) {
+function commandApi(inspect: (request: DatabaseCommandRequest, path: string) => void) {
   return async <T>(path: string, init?: RequestInit) => {
     const request = JSON.parse(String(init?.body)) as DatabaseCommandRequest;
     inspect(request, path);
@@ -71,18 +63,14 @@ for (const operation of ["move", "value"] as const) {
   test(`${operation} sends a v2 command without payload snapshots`, async () => {
     const original = createTestDatabasePayload();
     const sent: DatabaseCommandRequest[] = [];
-    const useHook = operation === "move"
-        ? useMoveDatabaseRow
-        : useUpdateDatabasePropertyValue;
-    const { mutation, queryClient } = createMutationTestRuntime<
-      ReturnType<typeof useHook>
-    >(useHook, commandApi((request, path) => {
-      sent.push(request);
-      assert.equal(
-        path,
-        "/databases/database-1/data-sources/data-source-1/commands",
-      );
-    }));
+    const useHook = operation === "move" ? useMoveDatabaseRow : useUpdateDatabasePropertyValue;
+    const { mutation, queryClient } = createMutationTestRuntime<ReturnType<typeof useHook>>(
+      useHook,
+      commandApi((request, path) => {
+        sent.push(request);
+        assert.equal(path, "/databases/database-1/data-sources/data-source-1/commands");
+      }),
+    );
     setTestDatabaseClientState(queryClient, original);
     try {
       const anchors = getDatabaseRowMoveAnchors(["row-2", "row-1"], "row-1");
@@ -119,7 +107,9 @@ test("adding a row sends initial values atomically and returns the created recor
   const sent: DatabaseCommandRequest[] = [];
   const { mutation, queryClient } = createMutationTestRuntime(
     useAddDatabaseRow,
-    commandApi((request) => { sent.push(request); }),
+    commandApi((request) => {
+      sent.push(request);
+    }),
   );
   setTestDatabaseClientState(queryClient, original);
   try {
@@ -143,10 +133,11 @@ test("adding a row sends initial values atomically and returns the created recor
 });
 
 test("row move anchors contain only immediate neighbors", () => {
-  assert.deepEqual(
-    getDatabaseRowMoveAnchors(["row-3", "row-1", "row-2"], "row-1"),
-    { afterRowId: "row-3", beforeRowId: "row-2", rowId: "row-1" },
-  );
+  assert.deepEqual(getDatabaseRowMoveAnchors(["row-3", "row-1", "row-2"], "row-1"), {
+    afterRowId: "row-3",
+    beforeRowId: "row-2",
+    rowId: "row-1",
+  });
   assert.throws(
     () => getDatabaseRowMoveAnchors(["row-1"], "missing"),
     /missing from the requested order/,
@@ -185,9 +176,9 @@ test("rapid row moves serialize per source in order", async () => {
     ]);
     assert.deepEqual(accepted, ["first", "second"]);
     assert.equal(paths.length, 2);
-    assert.ok(paths.every((path) =>
-      path === "/databases/database-1/data-sources/data-source-1/commands"
-    ));
+    assert.ok(
+      paths.every((path) => path === "/databases/database-1/data-sources/data-source-1/commands"),
+    );
     assert.equal(first.id, "row-1");
     assert.equal(second.id, "row-1");
   } finally {
@@ -197,15 +188,12 @@ test("rapid row moves serialize per source in order", async () => {
 
 test("row move conflict invalidates host and surfaces order message", async () => {
   const original = createTestDatabasePayload();
-  const { mutation, queryClient } = createMutationTestRuntime(
-    useMoveDatabaseRow,
-    (async () => {
-      throw {
-        body: { code: "ROW_MOVE_CONFLICT", message: "stale", rowId: "row-1" },
-        status: 409,
-      };
-    }) as unknown as import("../../shared/api-fetcher").ApiFetcher,
-  );
+  const { mutation, queryClient } = createMutationTestRuntime(useMoveDatabaseRow, (async () => {
+    throw {
+      body: { code: "ROW_MOVE_CONFLICT", message: "stale", rowId: "row-1" },
+      status: 409,
+    };
+  }) as unknown as import("../../shared/api-fetcher").ApiFetcher);
   setTestDatabaseClientState(queryClient, original);
   try {
     await assert.rejects(
@@ -237,8 +225,9 @@ function readTestStatusValue(queryClient: QueryClient) {
       }>;
     }>;
   };
-  return data.pages[0]?.records.find((row) => row.id === "row-1")
-    ?.valuesByPropertyId["property-status"]?.value;
+  return data.pages[0]?.records.find((row) => row.id === "row-1")?.valuesByPropertyId[
+    "property-status"
+  ]?.value;
 }
 
 test("grouped row move patches the group cell before commit", async () => {
@@ -250,14 +239,14 @@ test("grouped row move patches the group cell before commit", async () => {
   const inner = commandApi((request) => {
     assert.equal(request.command.type, "row.move");
   });
-  const { mutation, queryClient } = createMutationTestRuntime(
-    useMoveDatabaseRow,
-    (async <T>(path: string, init?: RequestInit) => {
-      const pending = inner(path, init);
-      await gate;
-      return pending;
-    }) as unknown as import("../../shared/api-fetcher").ApiFetcher,
-  );
+  const { mutation, queryClient } = createMutationTestRuntime(useMoveDatabaseRow, (async <T>(
+    path: string,
+    init?: RequestInit,
+  ) => {
+    const pending = inner(path, init);
+    await gate;
+    return pending;
+  }) as unknown as import("../../shared/api-fetcher").ApiFetcher);
   setTestDatabaseClientState(queryClient, original);
   try {
     assert.equal(readTestStatusValue(queryClient), "Not started");
@@ -287,12 +276,9 @@ test("grouped row move patches the group cell before commit", async () => {
 
 test("failed grouped row move rolls back the optimistic group cell", async () => {
   const original = createTestDatabasePayload();
-  const { mutation, queryClient } = createMutationTestRuntime(
-    useMoveDatabaseRow,
-    (async () => {
-      throw new Error("network down");
-    }) as unknown as import("../../shared/api-fetcher").ApiFetcher,
-  );
+  const { mutation, queryClient } = createMutationTestRuntime(useMoveDatabaseRow, (async () => {
+    throw new Error("network down");
+  }) as unknown as import("../../shared/api-fetcher").ApiFetcher);
   setTestDatabaseClientState(queryClient, original);
   try {
     assert.equal(readTestStatusValue(queryClient), "Not started");

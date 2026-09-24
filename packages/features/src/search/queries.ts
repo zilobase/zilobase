@@ -1,13 +1,13 @@
 import type { AppSearchResult, AppSearchResultType } from "./contracts";
-import { queryOptions } from "@tanstack/react-query"
+import { queryOptions } from "@tanstack/react-query";
 
-import type { ApiFetcher } from "../shared/api-fetcher"
+import type { ApiFetcher } from "../shared/api-fetcher";
 
 export const appSearchQueryKey = (
   workspaceId: string | null | undefined,
   query: string,
   types?: AppSearchResultType[],
-) => ["search", workspaceId ?? "none", query, types?.join(",") ?? "all"] as const
+) => ["search", workspaceId ?? "none", query, types?.join(",") ?? "all"] as const;
 
 export const appSearchQueryOptions = (
   apiFetch: ApiFetcher,
@@ -22,22 +22,22 @@ export const appSearchQueryOptions = (
     staleTime: 15_000,
     queryFn: async ({ signal }) => {
       if (!workspaceId) {
-        return []
+        return [];
       }
 
       const params = new URLSearchParams({
         workspaceId,
         q: query,
-      })
-      if (types?.length) params.set("types", types.join(","))
+      });
+      if (types?.length) params.set("types", types.join(","));
 
       try {
         const result = await apiFetch<{ results: AppSearchResult[] }>(
           `/search?${params.toString()}`,
           { method: "GET", signal },
-        )
+        );
 
-        return result.results
+        return result.results;
       } catch (error) {
         if (
           typeof error === "object" &&
@@ -45,10 +45,10 @@ export const appSearchQueryOptions = (
           "status" in error &&
           error.status === 401
         ) {
-          return []
+          return [];
         }
 
-        throw error
+        throw error;
       }
     },
-  })
+  });

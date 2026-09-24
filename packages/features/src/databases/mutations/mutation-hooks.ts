@@ -2,27 +2,27 @@ export {
   useUpsertDatabaseAccess,
   useDeleteDatabaseAccess,
   useSetDatabasePublished,
-} from  "../access/access-mutations";
+} from "../access/access-mutations";
 export {
   useCreateDatabase,
   useUpdateDatabase,
   useDeleteDatabase,
   useRestoreDatabase,
   useSetDatabaseFavorite,
-} from  "./databases";
+} from "./databases";
 export {
   useUpdateDataSource,
   useLinkDatabaseDataSource,
   useCreateDatabaseDataSource,
   useReplaceDatabaseViewDataSource,
   useUnlinkDatabaseDataSource,
-} from  "./data-sources";
+} from "./data-sources";
 export {
   updateDatabaseViewInNavigation,
   useUpdateDatabaseView,
   useAddDatabaseView,
   useDeleteDatabaseView,
-} from  "./views";
+} from "./views";
 export {
   type ApplyDatabaseTemplateInput,
   useAddDatabaseProperty,
@@ -30,14 +30,14 @@ export {
   useUpdateDatabaseProperty,
   useDeleteDatabaseProperty,
   useDuplicateDatabaseProperty,
-} from  "./properties";
+} from "./properties";
 export {
   type DatabaseStoredTemplate,
   useArchiveDatabaseTemplate,
   useCreateDatabaseTemplate,
   useRestoreDatabaseTemplate,
   useUpdateDatabaseTemplate,
-} from  "./templates";
+} from "./templates";
 export {
   useAddDatabaseRow,
   useArchiveDatabaseRow,
@@ -45,4 +45,4 @@ export {
   useMoveDatabaseRow,
   useUpdateDatabasePropertyValue,
   getDatabaseRowMoveAnchors,
-} from  "./rows";
+} from "./rows";

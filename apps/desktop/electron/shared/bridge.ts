@@ -111,8 +111,17 @@ export interface ZilobaseDesktopBridge {
     discard(candidateId: string): Promise<void>;
     commit(candidateId: string): Promise<{ changed: boolean; server: DesktopServer }>;
     list(): Promise<DesktopProfileList>;
-    switch(input: { instanceId: string; apiOrigin: string; workspaceId?: string | null; path?: string | null }): Promise<DesktopServer>;
-    updateSnapshot(input: { workspaces: DesktopWorkspaceSnapshot[]; lastActiveWorkspaceId?: string | null; lastPath?: string | null }): Promise<void>;
+    switch(input: {
+      instanceId: string;
+      apiOrigin: string;
+      workspaceId?: string | null;
+      path?: string | null;
+    }): Promise<DesktopServer>;
+    updateSnapshot(input: {
+      workspaces: DesktopWorkspaceSnapshot[];
+      lastActiveWorkspaceId?: string | null;
+      lastPath?: string | null;
+    }): Promise<void>;
     remove(input: { instanceId: string; apiOrigin: string }): Promise<DesktopServer>;
     developmentTargets(): Promise<{
       cloudApiOrigin: string | null;
@@ -133,14 +142,23 @@ export interface ZilobaseDesktopBridge {
   };
   readonly diagnostics: {
     rendererReady(elapsedMs: number): Promise<void>;
-    record(event: string, fields: Record<string, unknown>, level: "info" | "warn" | "error"): Promise<void>;
+    record(
+      event: string,
+      fields: Record<string, unknown>,
+      level: "info" | "warn" | "error",
+    ): Promise<void>;
     info(): Promise<{ logDirectory: string }>;
     openFolder(): Promise<void>;
     export(): Promise<string>;
   };
   readonly capture: {
     listDevices(): Promise<DesktopAudioDevice[]>;
-    permissions(): Promise<{ microphone: string; systemAudio: string; systemAudioSupported: boolean; detail: string }>;
+    permissions(): Promise<{
+      microphone: string;
+      systemAudio: string;
+      systemAudioSupported: boolean;
+      detail: string;
+    }>;
     start(config: DesktopCaptureConfig): Promise<DesktopCaptureStatus>;
     pause(): Promise<DesktopCaptureStatus>;
     resume(): Promise<DesktopCaptureStatus>;

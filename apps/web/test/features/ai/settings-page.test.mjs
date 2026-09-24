@@ -31,83 +31,73 @@ export function register({ assert, appPath, test }) {
               },
               (args) => ({ path: args.path, namespace: "settings-page" }),
             );
-            builder.onLoad(
-              { filter: /.*/, namespace: "settings-page" },
-              ({ path }) => {
-                if (path === "settings-page-runtime")
-                  return { contents: "export const runtime={};", loader: "ts" };
-                let code =
-                  'import {runtime} from "settings-page-runtime";import {createElement} from "react";';
-                if (path.startsWith("@/shared/ui/"))
-                  code += [
-                    "Button",
-                    "Input",
-                    "Select",
-                    "SelectContent",
-                    "SelectItem",
-                    "SelectTrigger",
-                    "SelectValue",
-                    "Tabs",
-                    "TabsList",
-                    "TabsTrigger",
-                  ]
-                    .map(
-                      (name) =>
-                        `export function ${name}(props){if("${name}"==="Button")runtime.buttons.push(props);return createElement("${name}"==="Button"?"button":"div",{"data-control":"${name}",disabled:props.disabled},props.children);}`,
-                    )
-                    .join("");
-                else if (path === "@tanstack/react-query")
-                  code +=
-                    "export const useQuery=()=>({data:{versions:runtime.versions||[]}});";
-                else if (path === "@tanstack/react-router")
-                  code +=
-                    "export const useNavigate=()=>value=>runtime.calls.push(value);";
-                else if (path === "@zilobase/features")
-                  code +=
-                    "export const useZilobaseFeatures=()=>({apiFetch(){}});";
-                else if (path.endsWith("/auth/react"))
-                  code +=
-                    'export const useSession=()=>({data:{user:{id:"user"}}});';
-                else if (path.endsWith("/workspaces/react"))
-                  code += 'export const useActiveWorkspaceId=()=>"workspace";';
-                else if (path.endsWith("/pages/react"))
-                  code +=
-                    "export const usePageNavigation=()=>({data:{pages:[],databases:[]}});export const usePageAccessTargets=()=>({data:{teams:[],members:[]}});";
-                else if (path.endsWith("/ai-chat/react"))
-                  code +=
-                    "export const useCustomAgentRuns=()=>({data:{runs:[]}});export const useCustomAgentTriggers=()=>({data:{triggers:[]}});export const useRotateCustomAgentWebhookSecret=()=>({isPending:false,mutate(){}});";
-                else if (path.endsWith("/ai-chat"))
-                  code +=
-                    'export const settingsDefinitionSchema={parse:value=>value};export const settingsFieldTab=()=>"instructions";';
-                else if (path.endsWith("use-settings-draft"))
-                  code +=
-                    "export const agentSettingsVersionsQueryOptions=()=>({});export const isSettingsEditing=()=>false;export const useSettingsDraft=()=>runtime.draft;";
-                else if (path.endsWith("page-editor-pane"))
-                  code +=
-                    'export function PageEditorPane(props){runtime.editors.push(props);return createElement("div",{"data-editor":props.pageId});}';
-                else if (path.endsWith("saved-instruction-picker"))
-                  code +=
-                    "export function SavedInstructionPicker(){return null;}";
-                else if (path.endsWith("settings-connectors"))
-                  code +=
-                    'export function SettingsConnectors(){return createElement("div",null,"Connector panel");}';
-                else if (path.endsWith("settings-review-summary"))
-                  code +=
-                    "export function SettingsReviewSummary(){return null;}";
-                else if (path.endsWith("mcp-connections"))
-                  code +=
-                    'export function PersonalMcpActivity(){return createElement("div",null,"Personal activity");}export function AgentMcpActivity(){return createElement("div",null,"Agent activity");}';
-                else if (path === "sonner")
-                  code +=
-                    "export const toast={error:value=>runtime.calls.push(value)};";
-                else throw new Error(path);
-                return {
-                  contents: code,
-                  loader: "ts",
-                  resolveDir: appPath("/"),
-                };
-              },
-            );
+            builder.onLoad({ filter: /.*/, namespace: "settings-page" }, ({ path }) => {
+              if (path === "settings-page-runtime")
+                return { contents: "export const runtime={};", loader: "ts" };
+              let code =
+                'import {runtime} from "settings-page-runtime";import {createElement} from "react";';
+              if (path.startsWith("@/shared/ui/"))
+                code += [
+                  "Button",
+                  "Input",
+                  "Select",
+                  "SelectContent",
+                  "SelectItem",
+                  "SelectTrigger",
+                  "SelectValue",
+                  "Tabs",
+                  "TabsList",
+                  "TabsTrigger",
+                ]
+                  .map(
+                    (name) =>
+                      `export function ${name}(props){if("${name}"==="Button")runtime.buttons.push(props);return createElement("${name}"==="Button"?"button":"div",{"data-control":"${name}",disabled:props.disabled},props.children);}`,
+                  )
+                  .join("");
+              else if (path === "@tanstack/react-query")
+                code += "export const useQuery=()=>({data:{versions:runtime.versions||[]}});";
+              else if (path === "@tanstack/react-router")
+                code += "export const useNavigate=()=>value=>runtime.calls.push(value);";
+              else if (path === "@zilobase/features")
+                code += "export const useZilobaseFeatures=()=>({apiFetch(){}});";
+              else if (path.endsWith("/auth/react"))
+                code += 'export const useSession=()=>({data:{user:{id:"user"}}});';
+              else if (path.endsWith("/workspaces/react"))
+                code += 'export const useActiveWorkspaceId=()=>"workspace";';
+              else if (path.endsWith("/pages/react"))
+                code +=
+                  "export const usePageNavigation=()=>({data:{pages:[],databases:[]}});export const usePageAccessTargets=()=>({data:{teams:[],members:[]}});";
+              else if (path.endsWith("/ai-chat/react"))
+                code +=
+                  "export const useCustomAgentRuns=()=>({data:{runs:[]}});export const useCustomAgentTriggers=()=>({data:{triggers:[]}});export const useRotateCustomAgentWebhookSecret=()=>({isPending:false,mutate(){}});";
+              else if (path.endsWith("/ai-chat"))
+                code +=
+                  'export const settingsDefinitionSchema={parse:value=>value};export const settingsFieldTab=()=>"instructions";';
+              else if (path.endsWith("use-settings-draft"))
+                code +=
+                  "export const agentSettingsVersionsQueryOptions=()=>({});export const isSettingsEditing=()=>false;export const useSettingsDraft=()=>runtime.draft;";
+              else if (path.endsWith("page-editor-pane"))
+                code +=
+                  'export function PageEditorPane(props){runtime.editors.push(props);return createElement("div",{"data-editor":props.pageId});}';
+              else if (path.endsWith("saved-instruction-picker"))
+                code += "export function SavedInstructionPicker(){return null;}";
+              else if (path.endsWith("settings-connectors"))
+                code +=
+                  'export function SettingsConnectors(){return createElement("div",null,"Connector panel");}';
+              else if (path.endsWith("settings-review-summary"))
+                code += "export function SettingsReviewSummary(){return null;}";
+              else if (path.endsWith("mcp-connections"))
+                code +=
+                  'export function PersonalMcpActivity(){return createElement("div",null,"Personal activity");}export function AgentMcpActivity(){return createElement("div",null,"Agent activity");}';
+              else if (path === "sonner")
+                code += "export const toast={error:value=>runtime.calls.push(value)};";
+              else throw new Error(path);
+              return {
+                contents: code,
+                loader: "ts",
+                resolveDir: appPath("/"),
+              };
+            });
             builder.onLoad({ filter: /\.css$/ }, () => ({
               contents: "",
               loader: "text",

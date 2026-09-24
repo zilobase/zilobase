@@ -1,1 +1,1 @@
-export { buildDesktopDeepLink } from "./desktop-deep-link"
+export { buildDesktopDeepLink } from "./desktop-deep-link";

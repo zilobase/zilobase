@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { workspace } from "./workspaces";
 import { user } from "./authentication";
 import { timestampColumns } from "./columns";
@@ -29,11 +38,7 @@ export const aiJob = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("ai_job_dedupe_unique").on(
-      table.workspaceId,
-      table.type,
-      table.dedupeKey,
-    ),
+    uniqueIndex("ai_job_dedupe_unique").on(table.workspaceId, table.type, table.dedupeKey),
     index("ai_job_claim_idx").on(table.status, table.availableAt, table.leaseExpiresAt),
     index("ai_job_active_due_idx")
       .on(table.availableAt, table.leaseExpiresAt, table.createdAt)
@@ -62,9 +67,6 @@ export const backgroundMaintenanceTask = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    index("background_maintenance_task_due_idx").on(
-      table.nextRunAt,
-      table.leaseExpiresAt,
-    ),
+    index("background_maintenance_task_due_idx").on(table.nextRunAt, table.leaseExpiresAt),
   ],
 );

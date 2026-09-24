@@ -1,39 +1,39 @@
-import * as React from "react"
-import { ChevronRight, PanelTop } from "@/shared/components/icons"
+import * as React from "react";
+import { ChevronRight, PanelTop } from "@/shared/components/icons";
 
 import {
   EmojiPicker,
   EmojiPickerContent,
   EmojiPickerFooter,
   EmojiPickerSearch,
-} from "@/shared/ui/emoji-picker"
-import { IconUploadPicker } from "@/shared/ui/icon-upload-picker"
+} from "@/shared/ui/emoji-picker";
+import { IconUploadPicker } from "@/shared/ui/icon-upload-picker";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from "@/shared/ui/dropdown-menu"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
-import { cn } from "@/shared/lib/utils"
+} from "@/shared/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
+import { cn } from "@/shared/lib/utils";
 
-type IconPosition = "inline" | "top"
+type IconPosition = "inline" | "top";
 
 const PhosphorIconPicker = React.lazy(() =>
   import("@/shared/ui/phosphor-icon-picker").then((module) => ({
     default: module.PhosphorIconPicker,
   })),
-)
+);
 
 type IconEmojiPickerProps = {
-  allowUpload?: boolean
-  className?: string
-  iconPosition?: IconPosition
-  onEmojiSelect: (emoji: string) => void
-  onIconSelect: (svg: string) => void
-  onIconPositionChange?: (position: IconPosition) => void
-}
+  allowUpload?: boolean;
+  className?: string;
+  iconPosition?: IconPosition;
+  onEmojiSelect: (emoji: string) => void;
+  onIconSelect: (svg: string) => void;
+  onIconPositionChange?: (position: IconPosition) => void;
+};
 
 export function IconEmojiPicker({
   allowUpload = true,
@@ -43,7 +43,7 @@ export function IconEmojiPicker({
   onIconSelect,
   onIconPositionChange,
 }: IconEmojiPickerProps) {
-  const [activeTab, setActiveTab] = React.useState("emoji")
+  const [activeTab, setActiveTab] = React.useState("emoji");
 
   return (
     <div className={cn("flex w-72 flex-col", className)}>
@@ -56,13 +56,10 @@ export function IconEmojiPicker({
         <TabsContent className="mt-0" value="emoji">
           <EmojiPicker
             onEmojiSelect={({ emoji }) => {
-              onEmojiSelect(emoji)
+              onEmojiSelect(emoji);
             }}
           >
-            <EmojiPickerSearch
-              autoFocus={activeTab === "emoji"}
-              placeholder="Search emoji..."
-            />
+            <EmojiPickerSearch autoFocus={activeTab === "emoji"} placeholder="Search emoji..." />
             <EmojiPickerContent />
             <EmojiPickerFooter />
           </EmojiPicker>
@@ -102,31 +99,22 @@ export function IconEmojiPicker({
                 <ChevronRight className="size-4 text-content-secondary" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="w-40"
-              side="right"
-              sideOffset={6}
-            >
+            <DropdownMenuContent align="start" className="w-40" side="right" sideOffset={6}>
               <DropdownMenuRadioGroup
                 onValueChange={(value) => {
                   if (value === "inline" || value === "top") {
-                    onIconPositionChange(value)
+                    onIconPositionChange(value);
                   }
                 }}
                 value={iconPosition}
               >
-                <DropdownMenuRadioItem value="inline">
-                  Inline
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="top">
-                  Top
-                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="inline">Inline</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="top">Top</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       ) : null}
     </div>
-  )
+  );
 }

@@ -1,13 +1,13 @@
-import { build } from "esbuild"
-import { createRequire } from "node:module"
-import { parseHTML } from "linkedom"
+import { build } from "esbuild";
+import { createRequire } from "node:module";
+import { parseHTML } from "linkedom";
 
 export function register({ assert, appPath, test }) {
   test("dropdown defaults, inline navigation, overrides and selection persistence", async () => {
-    const saved = Object.getOwnPropertyDescriptors(globalThis)
-    const { window, document } = parseHTML("<html><body><div id='root'></div></body></html>")
-    Object.assign(globalThis, { window, document })
-    let fixture
+    const saved = Object.getOwnPropertyDescriptors(globalThis);
+    const { window, document } = parseHTML("<html><body><div id='root'></div></body></html>");
+    Object.assign(globalThis, { window, document });
+    let fixture;
     try {
       const result = await build({
         stdin: {
@@ -44,15 +44,24 @@ export function register({ assert, appPath, test }) {
             }
           `,
         },
-        bundle: true, write: false, platform: "node", format: "cjs", logLevel: "silent",
-        plugins: [{
-          name: "headless-menu-primitives",
-          setup(builder) {
-            builder.onResolve({ filter: /^radix-ui$/ }, () => ({ path: "radix", namespace: "fixture" }))
-            builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
-              resolveDir: appPath("/"), loader: "tsx",
-              // Test our navigation and event policy; positioning/focus internals remain Radix-owned.
-              contents: `
+        bundle: true,
+        write: false,
+        platform: "node",
+        format: "cjs",
+        logLevel: "silent",
+        plugins: [
+          {
+            name: "headless-menu-primitives",
+            setup(builder) {
+              builder.onResolve({ filter: /^radix-ui$/ }, () => ({
+                path: "radix",
+                namespace: "fixture",
+              }));
+              builder.onLoad({ filter: /.*/, namespace: "fixture" }, () => ({
+                resolveDir: appPath("/"),
+                loader: "tsx",
+                // Test our navigation and event policy; positioning/focus internals remain Radix-owned.
+                contents: `
                 import * as React from "react";
                 const Context = React.createContext(null);
                 function Root({open, onOpenChange, children}) {return <Context.Provider value={{open,onOpenChange}}>{children}</Context.Provider>}
@@ -61,50 +70,76 @@ export function register({ assert, appPath, test }) {
                 const Plain = ({children,sideOffset,collisionPadding,...props}) => <div {...props}>{children}</div>;
                 export const DropdownMenu={Root, Content, Item, CheckboxItem:Item, RadioItem:Item, Portal:({children})=>children, Sub:({children})=><div data-outside="true">{children}</div>, SubTrigger:Plain, SubContent:Plain, ItemIndicator:Plain};
               `,
-            }))
-            builder.onResolve({ filter: /^@\/shared\/(components\/icons|ui\/button)$/ }, args => ({ path: args.path, namespace: "controls" }))
-            builder.onLoad({ filter: /.*/, namespace: "controls" }, () => ({
-              resolveDir: appPath("/"), loader: "tsx",
-              contents: 'import * as React from "react";export const Button=props=><button {...props}/>;export const CheckIcon=()=>null;export const ChevronLeftIcon=CheckIcon;export const ChevronRightIcon=CheckIcon;export const XIcon=CheckIcon;',
-            }))
+              }));
+              builder.onResolve(
+                { filter: /^@\/shared\/(components\/icons|ui\/button)$/ },
+                (args) => ({ path: args.path, namespace: "controls" }),
+              );
+              builder.onLoad({ filter: /.*/, namespace: "controls" }, () => ({
+                resolveDir: appPath("/"),
+                loader: "tsx",
+                contents:
+                  'import * as React from "react";export const Button=props=><button {...props}/>;export const CheckIcon=()=>null;export const ChevronLeftIcon=CheckIcon;export const ChevronRightIcon=CheckIcon;export const XIcon=CheckIcon;',
+              }));
+            },
           },
-        }],
-      })
-      const module = { exports: {} }
-      new Function("require", "module", "exports", result.outputFiles[0].text)(createRequire(import.meta.url), module, module.exports)
-      fixture = module.exports.mount(document.getElementById("root"))
-      const visible = selector => [...document.querySelectorAll(selector)].filter(el => !el.closest("[hidden]"))
-      const item = text => visible('[data-slot="dropdown-menu-item"],[data-slot="dropdown-menu-sub-trigger"],[data-slot="dropdown-menu-checkbox-item"],[data-slot="dropdown-menu-radio-item"]').find(el => el.textContent === text)
-      fixture.click(item("Settings"))
-      assert.ok(document.querySelector('[aria-label="Back from Settings"]'))
-      assert.ok(visible('[data-outside="true"]').length, "explicit nested mode must keep a separate Radix submenu")
-      fixture.click(item("Choice"))
-      fixture.click(item("Check"))
-      fixture.click(item("Radio"))
-      assert.ok(item("Done"), "inline choices remain open")
-      fixture.rename()
-      assert.ok(item("Updated choice"), "open panels receive current parent values")
-      fixture.click(item("Advanced"))
-      assert.ok(item("Deep choice"))
-      fixture.click(document.querySelector('[aria-label="Back from Advanced"]'))
-      assert.ok(item("Updated choice"))
-      fixture.click(item("Done"))
-      assert.equal(document.querySelector('[data-slot="dropdown-menu-content"]'), null)
-      fixture.reopen()
-      assert.ok(item("Settings"))
-      assert.equal(document.querySelector('[aria-label="Back from Settings"]'), null, "reopening resets navigation")
-      fixture.click(item("Settings"))
-      fixture.click(item("Flyout choice"))
-      assert.equal(document.querySelector('[data-slot="dropdown-menu-content"]'), null, "flyout actions close even inside an inline page")
-      fixture.reopen()
-      fixture.click(item("Settings"))
-      fixture.click(document.querySelector('[aria-label="Back from Settings"]'))
-      assert.ok(item("Settings"))
+        ],
+      });
+      const module = { exports: {} };
+      new Function("require", "module", "exports", result.outputFiles[0].text)(
+        createRequire(import.meta.url),
+        module,
+        module.exports,
+      );
+      fixture = module.exports.mount(document.getElementById("root"));
+      const visible = (selector) =>
+        [...document.querySelectorAll(selector)].filter((el) => !el.closest("[hidden]"));
+      const item = (text) =>
+        visible(
+          '[data-slot="dropdown-menu-item"],[data-slot="dropdown-menu-sub-trigger"],[data-slot="dropdown-menu-checkbox-item"],[data-slot="dropdown-menu-radio-item"]',
+        ).find((el) => el.textContent === text);
+      fixture.click(item("Settings"));
+      assert.ok(document.querySelector('[aria-label="Back from Settings"]'));
+      assert.ok(
+        visible('[data-outside="true"]').length,
+        "explicit nested mode must keep a separate Radix submenu",
+      );
+      fixture.click(item("Choice"));
+      fixture.click(item("Check"));
+      fixture.click(item("Radio"));
+      assert.ok(item("Done"), "inline choices remain open");
+      fixture.rename();
+      assert.ok(item("Updated choice"), "open panels receive current parent values");
+      fixture.click(item("Advanced"));
+      assert.ok(item("Deep choice"));
+      fixture.click(document.querySelector('[aria-label="Back from Advanced"]'));
+      assert.ok(item("Updated choice"));
+      fixture.click(item("Done"));
+      assert.equal(document.querySelector('[data-slot="dropdown-menu-content"]'), null);
+      fixture.reopen();
+      assert.ok(item("Settings"));
+      assert.equal(
+        document.querySelector('[aria-label="Back from Settings"]'),
+        null,
+        "reopening resets navigation",
+      );
+      fixture.click(item("Settings"));
+      fixture.click(item("Flyout choice"));
+      assert.equal(
+        document.querySelector('[data-slot="dropdown-menu-content"]'),
+        null,
+        "flyout actions close even inside an inline page",
+      );
+      fixture.reopen();
+      fixture.click(item("Settings"));
+      fixture.click(document.querySelector('[aria-label="Back from Settings"]'));
+      assert.ok(item("Settings"));
     } finally {
-      fixture?.unmount()
-      await new Promise(resolve => setTimeout(resolve, 10))
-      for (const key of Object.getOwnPropertyNames(globalThis)) if (!saved[key]) delete globalThis[key]
-      Object.defineProperties(globalThis, saved)
+      fixture?.unmount();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      for (const key of Object.getOwnPropertyNames(globalThis))
+        if (!saved[key]) delete globalThis[key];
+      Object.defineProperties(globalThis, saved);
     }
-  })
+  });
 }

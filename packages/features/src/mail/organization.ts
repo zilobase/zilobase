@@ -1,6 +1,6 @@
-import type { MailAddress, MailThreadSummary } from "./contracts"
+import type { MailAddress, MailThreadSummary } from "./contracts";
 
-export const mailOrganizationContractVersion = 1 as const
+export const mailOrganizationContractVersion = 1 as const;
 
 export const mailCustomPropertyTypes = [
   "text",
@@ -13,19 +13,13 @@ export const mailCustomPropertyTypes = [
   "checkbox",
   "url",
   "files",
-] as const
+] as const;
 
-export type MailCustomPropertyType = (typeof mailCustomPropertyTypes)[number]
+export type MailCustomPropertyType = (typeof mailCustomPropertyTypes)[number];
 
-export const mailSystemFolderIds = [
-  "all_mail",
-  "sent",
-  "drafts",
-  "spam",
-  "bin",
-] as const
+export const mailSystemFolderIds = ["all_mail", "sent", "drafts", "spam", "bin"] as const;
 
-export type MailSystemFolderId = (typeof mailSystemFolderIds)[number]
+export type MailSystemFolderId = (typeof mailSystemFolderIds)[number];
 
 export const mailFilterOperators = [
   "is",
@@ -46,109 +40,109 @@ export const mailFilterOperators = [
   "is_relative_to_today",
   "is_empty",
   "is_not_empty",
-] as const
+] as const;
 
-export type MailFilterOperator = (typeof mailFilterOperators)[number]
-export type MailFilterValue = boolean | number | string | null
+export type MailFilterOperator = (typeof mailFilterOperators)[number];
+export type MailFilterValue = boolean | number | string | null;
 
 export type MailFilterCondition = {
-  enabled?: boolean
-  id: string
-  operator: MailFilterOperator
-  propertyId: string
-  type: "condition"
-  values: MailFilterValue[]
-}
+  enabled?: boolean;
+  id: string;
+  operator: MailFilterOperator;
+  propertyId: string;
+  type: "condition";
+  values: MailFilterValue[];
+};
 
 export type MailFilterGroup = {
-  filters: MailFilterNode[]
-  id: string
-  operator: "and" | "or"
-  type: "group"
-}
+  filters: MailFilterNode[];
+  id: string;
+  operator: "and" | "or";
+  type: "group";
+};
 
-export type MailFilterNode = MailFilterCondition | MailFilterGroup
-export type MailFilterExpression = MailFilterGroup
+export type MailFilterNode = MailFilterCondition | MailFilterGroup;
+export type MailFilterExpression = MailFilterGroup;
 
-export const maxMailFilterDepth = 3
-export const maxMailFilterConditions = 50
+export const maxMailFilterDepth = 3;
+export const maxMailFilterConditions = 50;
 
 export type MailWorkspaceConnection = {
-  accountId: string
-  bindingId: string
-  email: string
-  mailboxReady: boolean
-  mailboxRevision: number
-  status: "connected" | "disconnected" | "reconnect_required"
-  userId: string
-  watchExpiresAt: string | null
-  workspaceId: string
-}
+  accountId: string;
+  bindingId: string;
+  email: string;
+  mailboxReady: boolean;
+  mailboxRevision: number;
+  status: "connected" | "disconnected" | "reconnect_required";
+  userId: string;
+  watchExpiresAt: string | null;
+  workspaceId: string;
+};
 
 export type MailPropertyOption = {
-  color: string
-  id: string
-  name: string
-}
+  color: string;
+  id: string;
+  name: string;
+};
 
 export type MailPropertyDefinition = {
-  bindingId: string
-  createdAt: string
-  id: string
-  name: string
-  options: MailPropertyOption[]
-  type: MailCustomPropertyType
-  updatedAt: string
-}
+  bindingId: string;
+  createdAt: string;
+  id: string;
+  name: string;
+  options: MailPropertyOption[];
+  type: MailCustomPropertyType;
+  updatedAt: string;
+};
 
 export type MailThreadPropertyValue = {
-  files?: Array<{ id: string; name: string; url: string }>
-  propertyId: string
-  value: MailFilterValue | MailFilterValue[] | Array<{ id: string; name: string; url: string }>
-}
+  files?: Array<{ id: string; name: string; url: string }>;
+  propertyId: string;
+  value: MailFilterValue | MailFilterValue[] | Array<{ id: string; name: string; url: string }>;
+};
 
 export type MailPropertyWorkspaceMember = {
-  email: string
-  id: string
-  image: string | null
-  name: string
-}
+  email: string;
+  id: string;
+  image: string | null;
+  name: string;
+};
 
 export type MailPropertiesBootstrap = {
-  members: MailPropertyWorkspaceMember[]
-  properties: MailPropertyDefinition[]
-}
+  members: MailPropertyWorkspaceMember[];
+  properties: MailPropertyDefinition[];
+};
 
 export type MailPropertyWriteInput = {
-  name: string
-  options?: MailPropertyOption[]
-  type: MailCustomPropertyType
-}
+  name: string;
+  options?: MailPropertyOption[];
+  type: MailCustomPropertyType;
+};
 
 export type MailThreadPropertyValuesResponse = {
-  values: MailThreadPropertyValue[]
-}
+  values: MailThreadPropertyValue[];
+};
 
 export type MailReminder = {
-  id: string
-  remindAt: string
-  status: "pending" | "fired" | "cancelled"
-  threadId: string
-}
+  id: string;
+  remindAt: string;
+  status: "pending" | "fired" | "cancelled";
+  threadId: string;
+};
 
 export type MailUnsubscribeResponse = {
-  executed: boolean
-  fallback: { kind: "browser" | "mailto"; url: string } | null
-}
+  executed: boolean;
+  fallback: { kind: "browser" | "mailto"; url: string } | null;
+};
 
 export type MailSystemProperty = {
-  filterable: boolean
-  groupable: boolean
-  id: string
-  label: string
-  quickFilter: boolean
-  type: "address" | "boolean" | "date" | "files" | "mailbox" | "select" | "text"
-}
+  filterable: boolean;
+  groupable: boolean;
+  id: string;
+  label: string;
+  quickFilter: boolean;
+  type: "address" | "boolean" | "date" | "files" | "mailbox" | "select" | "text";
+};
 
 export const mailSystemPropertyCatalog = [
   {
@@ -311,15 +305,15 @@ export const mailSystemPropertyCatalog = [
     groupable: true,
     quickFilter: false,
   },
-] as const satisfies readonly MailSystemProperty[]
+] as const satisfies readonly MailSystemProperty[];
 
 export type MailQuickFilterDefinition = {
-  defaultOperator: MailFilterOperator
-  defaultValues: MailFilterValue[]
-  id: string
-  label: string
-  propertyId: string
-}
+  defaultOperator: MailFilterOperator;
+  defaultValues: MailFilterValue[];
+  id: string;
+  label: string;
+  propertyId: string;
+};
 
 export const mailQuickFilterCatalog = [
   {
@@ -518,13 +512,13 @@ export const mailQuickFilterCatalog = [
     defaultOperator: "is_not",
     defaultValues: ["forums"],
   },
-] as const satisfies readonly MailQuickFilterDefinition[]
+] as const satisfies readonly MailQuickFilterDefinition[];
 
 export type MailGroupConfig = {
-  direction: "ascending" | "descending"
-  hideEmptyGroups: boolean
-  propertyId: string
-}
+  direction: "ascending" | "descending";
+  hideEmptyGroups: boolean;
+  propertyId: string;
+};
 
 export type MailHoverActionKind =
   | "star"
@@ -537,16 +531,16 @@ export type MailHoverActionKind =
   | "spam"
   | "reply"
   | "specific_label"
-  | "unsubscribe"
+  | "unsubscribe";
 
 export type MailHoverAction = {
-  effect?: "archive" | "bin" | "none"
-  hidden: boolean
-  icon?: "bookmark" | "heart" | "star" | "tag"
-  id: string
-  kind: MailHoverActionKind
-  labelId?: string
-}
+  effect?: "archive" | "bin" | "none";
+  hidden: boolean;
+  icon?: "bookmark" | "heart" | "star" | "tag";
+  id: string;
+  kind: MailHoverActionKind;
+  labelId?: string;
+};
 
 export const defaultMailHoverActions: readonly MailHoverAction[] = [
   { id: "star", kind: "star", hidden: false },
@@ -554,128 +548,123 @@ export const defaultMailHoverActions: readonly MailHoverAction[] = [
   { id: "bin", kind: "bin", hidden: false },
   { id: "read-unread", kind: "read_unread", hidden: false },
   { id: "remind", kind: "remind", hidden: false },
-]
+];
 
 export type MailDatabaseFieldMapping = {
-  destinationPropertyId: string
-  sourcePropertyId: string
-}
+  destinationPropertyId: string;
+  sourcePropertyId: string;
+};
 
 export type MailDatabaseSyncConfig = {
-  activatedAt: string | null
-  destinationDataSourceId: string | null
-  destinationDatabaseId: string | null
-  enabled: boolean
-  mappings: MailDatabaseFieldMapping[]
-  workspaceId: string | null
-}
+  activatedAt: string | null;
+  destinationDataSourceId: string | null;
+  destinationDatabaseId: string | null;
+  enabled: boolean;
+  mappings: MailDatabaseFieldMapping[];
+  workspaceId: string | null;
+};
 
 export type MailDatabaseSyncViewStatus = {
-  lastError: string | null
-  paused: number
-  pending: number
-  synced: number
-  viewId: string
-}
+  lastError: string | null;
+  paused: number;
+  pending: number;
+  synced: number;
+  viewId: string;
+};
 
 export type MailViewConfig = {
-  databaseSync: MailDatabaseSyncConfig
-  filter: MailFilterExpression
-  group: MailGroupConfig | null
-  hiddenPropertyIds: string[]
-  hoverActions: MailHoverAction[]
-  propertyOrder: string[]
-}
+  databaseSync: MailDatabaseSyncConfig;
+  filter: MailFilterExpression;
+  group: MailGroupConfig | null;
+  hiddenPropertyIds: string[];
+  hoverActions: MailHoverAction[];
+  propertyOrder: string[];
+};
 
 export type MailPersistedView = {
-  bindingId: string
-  config: MailViewConfig
-  createdAt: string
-  icon: string | null
-  id: string
-  name: string
-  position: number
-  protected: boolean
-  templateId: MailViewTemplateId | null
-  updatedAt: string
-}
+  bindingId: string;
+  config: MailViewConfig;
+  createdAt: string;
+  icon: string | null;
+  id: string;
+  name: string;
+  position: number;
+  protected: boolean;
+  templateId: MailViewTemplateId | null;
+  updatedAt: string;
+};
 
 export type MailViewsBootstrap = {
-  index?: MailIndexProgress
-  systemFolders: readonly MailSystemFolderId[]
-  views: MailPersistedView[]
-}
+  index?: MailIndexProgress;
+  systemFolders: readonly MailSystemFolderId[];
+  views: MailPersistedView[];
+};
 
 export type MailViewCreateInput = {
-  config?: MailViewConfig
-  icon?: string | null
-  name?: string
-  templateId?: MailViewTemplateId
-}
+  config?: MailViewConfig;
+  icon?: string | null;
+  name?: string;
+  templateId?: MailViewTemplateId;
+};
 
 export type MailViewUpdateInput = {
-  config?: MailViewConfig
-  icon?: string | null
-  name?: string
-}
+  config?: MailViewConfig;
+  icon?: string | null;
+  name?: string;
+};
 
 export type MailViewReorderInput = {
-  viewIds: string[]
-}
+  viewIds: string[];
+};
 
-export type MailIndexStatus =
-  | "pending"
-  | "backfilling"
-  | "syncing"
-  | "ready"
-  | "error"
+export type MailIndexStatus = "pending" | "backfilling" | "syncing" | "ready" | "error";
 
 export type MailIndexProgress = {
-  completedAt: string | null
-  indexedThreadCount: number
-  lastErrorCode: string | null
-  resultSizeEstimate: number | null
-  status: MailIndexStatus
-}
+  completedAt: string | null;
+  indexedThreadCount: number;
+  lastErrorCode: string | null;
+  resultSizeEstimate: number | null;
+  status: MailIndexStatus;
+};
 
 export type MailIndexedThread = {
-  bcc: MailAddress[]
-  cc: MailAddress[]
-  customValues: Record<string, MailThreadPropertyValue["value"]>
-  from: MailAddress[]
-  hasCalendarEvent: boolean
-  important: boolean
-  thread: MailThreadSummary
-  to: MailAddress[]
-}
+  bcc: MailAddress[];
+  cc: MailAddress[];
+  customValues: Record<string, MailThreadPropertyValue["value"]>;
+  from: MailAddress[];
+  hasCalendarEvent: boolean;
+  important: boolean;
+  thread: MailThreadSummary;
+  to: MailAddress[];
+};
 
 export type MailQueryGroup = {
-  count: number
-  cursor: string
-  key: string
-  label: string
-  mutable: boolean
-}
+  count: number;
+  cursor: string;
+  key: string;
+  label: string;
+  mutable: boolean;
+};
 
 export type MailViewGroupsResponse = {
-  group: MailGroupConfig | null
-  groups: MailQueryGroup[]
-  index: MailIndexProgress
-}
+  group: MailGroupConfig | null;
+  groups: MailQueryGroup[];
+  index: MailIndexProgress;
+};
 
 export type MailViewQueryResponse = {
-  index: MailIndexProgress
-  nextCursor: string | null
-  searchTruncated: boolean
-  threads: MailIndexedThread[]
-}
+  index: MailIndexProgress;
+  nextCursor: string | null;
+  searchTruncated: boolean;
+  threads: MailIndexedThread[];
+};
 
 const emptyFilter = (id = "root"): MailFilterExpression => ({
   filters: [],
   id,
   operator: "and",
   type: "group",
-})
+});
 
 const emptyDatabaseSync = (): MailDatabaseSyncConfig => ({
   activatedAt: null,
@@ -684,7 +673,7 @@ const emptyDatabaseSync = (): MailDatabaseSyncConfig => ({
   enabled: false,
   mappings: [],
   workspaceId: null,
-})
+});
 
 function condition(
   id: string,
@@ -692,7 +681,7 @@ function condition(
   operator: MailFilterOperator,
   values: MailFilterValue[],
 ): MailFilterCondition {
-  return { id, operator, propertyId, type: "condition", values }
+  return { id, operator, propertyId, type: "condition", values };
 }
 
 export const mailViewTemplateIds = [
@@ -703,17 +692,17 @@ export const mailViewTemplateIds = [
   "attachments",
   "promotions",
   "social",
-] as const
+] as const;
 
-export type MailViewTemplateId = (typeof mailViewTemplateIds)[number]
+export type MailViewTemplateId = (typeof mailViewTemplateIds)[number];
 
 export type MailViewTemplate = {
-  config: MailViewConfig
-  icon: string
-  id: MailViewTemplateId
-  name: string
-  protected: boolean
-}
+  config: MailViewConfig;
+  icon: string;
+  id: MailViewTemplateId;
+  name: string;
+  protected: boolean;
+};
 
 function createTemplateConfig(filters: MailFilterCondition[]): MailViewConfig {
   return {
@@ -723,7 +712,7 @@ function createTemplateConfig(filters: MailFilterCondition[]): MailViewConfig {
     hiddenPropertyIds: [],
     hoverActions: defaultMailHoverActions.map((action) => ({ ...action })),
     propertyOrder: ["from", "subject", "labels", "received_date"],
-  }
+  };
 }
 
 export const mailViewTemplates = [
@@ -732,9 +721,7 @@ export const mailViewTemplates = [
     name: "Inbox",
     icon: "inbox",
     protected: true,
-    config: createTemplateConfig([
-      condition("inbox", "mailbox", "is", ["inbox"]),
-    ]),
+    config: createTemplateConfig([condition("inbox", "mailbox", "is", ["inbox"])]),
   },
   {
     id: "unread",
@@ -748,49 +735,39 @@ export const mailViewTemplates = [
     name: "Starred",
     icon: "star",
     protected: false,
-    config: createTemplateConfig([
-      condition("starred", "starred", "is", [true]),
-    ]),
+    config: createTemplateConfig([condition("starred", "starred", "is", [true])]),
   },
   {
     id: "important",
     name: "Important",
     icon: "circle-alert",
     protected: false,
-    config: createTemplateConfig([
-      condition("important", "important", "is", [true]),
-    ]),
+    config: createTemplateConfig([condition("important", "important", "is", [true])]),
   },
   {
     id: "attachments",
     name: "Attachments",
     icon: "paperclip",
     protected: false,
-    config: createTemplateConfig([
-      condition("attachments", "attachments", "is_not_empty", []),
-    ]),
+    config: createTemplateConfig([condition("attachments", "attachments", "is_not_empty", [])]),
   },
   {
     id: "promotions",
     name: "Promotions",
     icon: "shopping-bag",
     protected: false,
-    config: createTemplateConfig([
-      condition("promotions", "categories", "is", ["promotions"]),
-    ]),
+    config: createTemplateConfig([condition("promotions", "categories", "is", ["promotions"])]),
   },
   {
     id: "social",
     name: "Social",
     icon: "message-circle",
     protected: false,
-    config: createTemplateConfig([
-      condition("social", "categories", "is", ["social"]),
-    ]),
+    config: createTemplateConfig([condition("social", "categories", "is", ["social"])]),
   },
-] as const satisfies readonly MailViewTemplate[]
+] as const satisfies readonly MailViewTemplate[];
 
-const filterOperatorSet = new Set<string>(mailFilterOperators)
+const filterOperatorSet = new Set<string>(mailFilterOperators);
 const hoverActionKindSet = new Set<string>([
   "star",
   "archive",
@@ -803,14 +780,14 @@ const hoverActionKindSet = new Set<string>([
   "reply",
   "specific_label",
   "unsubscribe",
-])
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function stringValue(value: unknown, fallback: string) {
-  return typeof value === "string" && value.trim() ? value : fallback
+  return typeof value === "string" && value.trim() ? value : fallback;
 }
 
 function normalizeFilterValue(value: unknown): MailFilterValue | undefined {
@@ -819,36 +796,27 @@ function normalizeFilterValue(value: unknown): MailFilterValue | undefined {
     typeof value === "number" ||
     typeof value === "boolean"
     ? value
-    : undefined
+    : undefined;
 }
 
-export function normalizeMailFilterExpression(
-  value: unknown,
-): MailFilterExpression {
-  let conditionCount = 0
-  let generatedId = 0
+export function normalizeMailFilterExpression(value: unknown): MailFilterExpression {
+  let conditionCount = 0;
+  let generatedId = 0;
 
-  const normalizeNode = (
-    node: unknown,
-    depth: number,
-  ): MailFilterNode | null => {
-    if (!isRecord(node)) return null
+  const normalizeNode = (node: unknown, depth: number): MailFilterNode | null => {
+    if (!isRecord(node)) return null;
 
     if (node.type === "condition") {
-      if (conditionCount >= maxMailFilterConditions) return null
-      const propertyId = stringValue(node.propertyId, "")
-      if (
-        !propertyId ||
-        typeof node.operator !== "string" ||
-        !filterOperatorSet.has(node.operator)
-      )
-        return null
-      conditionCount += 1
+      if (conditionCount >= maxMailFilterConditions) return null;
+      const propertyId = stringValue(node.propertyId, "");
+      if (!propertyId || typeof node.operator !== "string" || !filterOperatorSet.has(node.operator))
+        return null;
+      conditionCount += 1;
       const values = Array.isArray(node.values)
         ? node.values
             .map(normalizeFilterValue)
             .filter((item): item is MailFilterValue => item !== undefined)
-        : []
+        : [];
       return {
         ...(node.enabled === false ? { enabled: false } : {}),
         id: stringValue(node.id, `condition-${generatedId++}`),
@@ -856,34 +824,32 @@ export function normalizeMailFilterExpression(
         propertyId,
         type: "condition",
         values,
-      }
+      };
     }
 
-    if (node.type !== "group" || depth >= maxMailFilterDepth) return null
+    if (node.type !== "group" || depth >= maxMailFilterDepth) return null;
     const filters = Array.isArray(node.filters)
       ? node.filters
           .map((child) => normalizeNode(child, depth + 1))
           .filter((child): child is MailFilterNode => child !== null)
-      : []
+      : [];
     return {
       filters,
       id: stringValue(node.id, `group-${generatedId++}`),
       operator: node.operator === "or" ? "or" : "and",
       type: "group",
-    }
-  }
+    };
+  };
 
-  const normalized = normalizeNode(value, 0)
-  return normalized?.type === "group" ? normalized : emptyFilter()
+  const normalized = normalizeNode(value, 0);
+  return normalized?.type === "group" ? normalized : emptyFilter();
 }
 
 export function normalizeMailViewConfig(value: unknown): MailViewConfig {
-  const record = isRecord(value) ? value : {}
-  const databaseSync = isRecord(record.databaseSync) ? record.databaseSync : {}
+  const record = isRecord(value) ? value : {};
+  const databaseSync = isRecord(record.databaseSync) ? record.databaseSync : {};
   const group =
-    isRecord(record.group) &&
-    typeof record.group.propertyId === "string" &&
-    record.group.propertyId
+    isRecord(record.group) && typeof record.group.propertyId === "string" && record.group.propertyId
       ? {
           direction:
             record.group.direction === "ascending"
@@ -892,29 +858,23 @@ export function normalizeMailViewConfig(value: unknown): MailViewConfig {
           hideEmptyGroups: record.group.hideEmptyGroups === true,
           propertyId: record.group.propertyId,
         }
-      : null
+      : null;
 
   const hoverActions = Array.isArray(record.hoverActions)
     ? record.hoverActions.flatMap((item, index): MailHoverAction[] => {
-        if (
-          !isRecord(item) ||
-          typeof item.kind !== "string" ||
-          !hoverActionKindSet.has(item.kind)
-        )
-          return []
+        if (!isRecord(item) || typeof item.kind !== "string" || !hoverActionKindSet.has(item.kind))
+          return [];
         const effect =
-          item.effect === "archive" ||
-          item.effect === "bin" ||
-          item.effect === "none"
+          item.effect === "archive" || item.effect === "bin" || item.effect === "none"
             ? item.effect
-            : undefined
+            : undefined;
         const icon =
           item.icon === "bookmark" ||
           item.icon === "heart" ||
           item.icon === "star" ||
           item.icon === "tag"
             ? item.icon
-            : undefined
+            : undefined;
         return [
           {
             effect,
@@ -922,12 +882,11 @@ export function normalizeMailViewConfig(value: unknown): MailViewConfig {
             icon,
             id: stringValue(item.id, `action-${index}`),
             kind: item.kind as MailHoverActionKind,
-            labelId:
-              typeof item.labelId === "string" ? item.labelId : undefined,
+            labelId: typeof item.labelId === "string" ? item.labelId : undefined,
           },
-        ]
+        ];
       })
-    : defaultMailHoverActions.map((action) => ({ ...action }))
+    : defaultMailHoverActions.map((action) => ({ ...action }));
 
   const mappings = Array.isArray(databaseSync.mappings)
     ? databaseSync.mappings.flatMap((mapping): MailDatabaseFieldMapping[] => {
@@ -936,22 +895,19 @@ export function normalizeMailViewConfig(value: unknown): MailViewConfig {
           typeof mapping.sourcePropertyId !== "string" ||
           typeof mapping.destinationPropertyId !== "string"
         )
-          return []
+          return [];
         return [
           {
             sourcePropertyId: mapping.sourcePropertyId,
             destinationPropertyId: mapping.destinationPropertyId,
           },
-        ]
+        ];
       })
-    : []
+    : [];
 
   return {
     databaseSync: {
-      activatedAt:
-        typeof databaseSync.activatedAt === "string"
-          ? databaseSync.activatedAt
-          : null,
+      activatedAt: typeof databaseSync.activatedAt === "string" ? databaseSync.activatedAt : null,
       destinationDataSourceId:
         typeof databaseSync.destinationDataSourceId === "string"
           ? databaseSync.destinationDataSourceId
@@ -962,35 +918,28 @@ export function normalizeMailViewConfig(value: unknown): MailViewConfig {
           : null,
       enabled: databaseSync.enabled === true,
       mappings,
-      workspaceId:
-        typeof databaseSync.workspaceId === "string"
-          ? databaseSync.workspaceId
-          : null,
+      workspaceId: typeof databaseSync.workspaceId === "string" ? databaseSync.workspaceId : null,
     },
     filter: normalizeMailFilterExpression(record.filter),
     group,
     hiddenPropertyIds: Array.isArray(record.hiddenPropertyIds)
-      ? record.hiddenPropertyIds.filter(
-          (item): item is string => typeof item === "string",
-        )
+      ? record.hiddenPropertyIds.filter((item): item is string => typeof item === "string")
       : [],
     hoverActions,
     propertyOrder: Array.isArray(record.propertyOrder)
-      ? record.propertyOrder.filter(
-          (item): item is string => typeof item === "string",
-        )
+      ? record.propertyOrder.filter((item): item is string => typeof item === "string")
       : [],
-  }
+  };
 }
 
 export function createMailViewFromTemplate(templateId: MailViewTemplateId) {
-  const template = mailViewTemplates.find((item) => item.id === templateId)
-  if (!template) throw new Error(`Unknown mail view template: ${templateId}`)
+  const template = mailViewTemplates.find((item) => item.id === templateId);
+  if (!template) throw new Error(`Unknown mail view template: ${templateId}`);
   return {
     icon: template.icon,
     name: template.name,
     protected: template.protected,
     templateId: template.id,
     config: normalizeMailViewConfig(template.config),
-  }
+  };
 }

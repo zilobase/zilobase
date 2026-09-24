@@ -1,8 +1,8 @@
 export function register({ assert, loadModule, test }) {
   test("sidebar omits the default database view from the URL", async () => {
     const { getSidebarDatabaseViewSearchId } = await loadModule(
-      "/src/features/sidebar/model/database-view-navigation.ts"
-    )
+      "/src/features/sidebar/model/database-view-navigation.ts",
+    );
 
     assert.equal(
       getSidebarDatabaseViewSearchId({
@@ -11,14 +11,14 @@ export function register({ assert, loadModule, test }) {
         defaultDatabaseViewId: "view-1",
         isDatabaseView: true,
       }),
-      undefined
-    )
-  })
+      undefined,
+    );
+  });
 
   test("sidebar includes a non-default database view in the URL", async () => {
     const { getSidebarDatabaseViewSearchId } = await loadModule(
-      "/src/features/sidebar/model/database-view-navigation.ts"
-    )
+      "/src/features/sidebar/model/database-view-navigation.ts",
+    );
 
     assert.equal(
       getSidebarDatabaseViewSearchId({
@@ -27,7 +27,7 @@ export function register({ assert, loadModule, test }) {
         defaultDatabaseViewId: "view-1",
         isDatabaseView: true,
       }),
-      "view-2"
-    )
-  })
+      "view-2",
+    );
+  });
 }

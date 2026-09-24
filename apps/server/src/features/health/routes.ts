@@ -18,8 +18,11 @@ healthRoutes.get("/health", (c) => {
 healthRoutes.get("/health/background", async (c) => {
   const expected = getStringEnv(c.env ?? {}, "ZILOBASE_OPERATIONS_TOKEN");
   const supplied = c.req.header("authorization")?.replace(/^Bearer\s+/i, "");
-  if (!expected || !supplied || !(await equalSecret(expected, supplied))) return c.json({ error: "Not found" }, 404);
-  const snapshot = await runWithDbEnv(c.env ?? {}, () => getBackgroundOperationalSnapshot(c.env ?? {}));
+  if (!expected || !supplied || !(await equalSecret(expected, supplied)))
+    return c.json({ error: "Not found" }, 404);
+  const snapshot = await runWithDbEnv(c.env ?? {}, () =>
+    getBackgroundOperationalSnapshot(c.env ?? {}),
+  );
   if (!snapshot.healthy) {
     c.header("Retry-After", "30");
     return c.json(snapshot, 503);
@@ -34,19 +37,24 @@ healthRoutes.get("/ready", async (c) => {
     return c.json(result);
   }
 
-  console.warn(JSON.stringify({
-    checks: result.checks,
-    event: "readiness_check_failed",
-    requestId: c.get("requestId"),
-  }));
+  console.warn(
+    JSON.stringify({
+      checks: result.checks,
+      event: "readiness_check_failed",
+      requestId: c.get("requestId"),
+    }),
+  );
   c.header("Retry-After", "5");
   return c.json(result, 503);
 });
 
 async function equalSecret(expected: string, supplied: string) {
-  const [left, right] = await Promise.all([expected, supplied].map(async (value) =>
-    new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)))
-  ));
+  const [left, right] = await Promise.all(
+    [expected, supplied].map(
+      async (value) =>
+        new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value))),
+    ),
+  );
   let mismatch = 0;
   for (let index = 0; index < left.length; index += 1) mismatch |= left[index]! ^ right[index]!;
   return mismatch === 0;

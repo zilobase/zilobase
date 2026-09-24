@@ -1,4 +1,4 @@
-import type { ColorTokenId } from "@/shared/lib/color-tokens"
+import type { ColorTokenId } from "@/shared/lib/color-tokens";
 
 import { defaultStatusOption, defaultStatusOptions } from "../../schema/model/property-defaults";
 
@@ -8,39 +8,39 @@ export type DatabaseSetupTemplateId =
   | "document-hub"
   | "content-calendar"
   | "meeting-notes"
-  | "crm"
+  | "crm";
 
 export type DatabaseSetupTemplateProperty = {
-  config?: unknown
-  name: string
-  type: string
-}
+  config?: unknown;
+  name: string;
+  type: string;
+};
 
 export type DatabaseSetupTemplateSampleRow = {
-  content: string
-  emoji: string
-  title: string
-  values: Record<string, string | string[]>
-}
+  content: string;
+  emoji: string;
+  title: string;
+  values: Record<string, string | string[]>;
+};
 
 export type DatabaseSetupTemplate = {
-  colorId: ColorTokenId
-  emoji: string
-  id: DatabaseSetupTemplateId
-  name: string
-  properties: DatabaseSetupTemplateProperty[]
-  sampleRows: DatabaseSetupTemplateSampleRow[]
-}
+  colorId: ColorTokenId;
+  emoji: string;
+  id: DatabaseSetupTemplateId;
+  name: string;
+  properties: DatabaseSetupTemplateProperty[];
+  sampleRows: DatabaseSetupTemplateSampleRow[];
+};
 
 function getDefaultPropertyConfig(type: string) {
   if (type === "status") {
     return {
       defaultOptionId: defaultStatusOption.id,
       options: defaultStatusOptions,
-    }
+    };
   }
 
-  return undefined
+  return undefined;
 }
 
 export const databaseSetupSuggestedTemplates: DatabaseSetupTemplate[] = [
@@ -380,7 +380,7 @@ What makes a database template feel useful immediately after creation?
       },
     ],
   },
-]
+];
 
 export const databaseSetupMoreTemplates: DatabaseSetupTemplate[] = [
   {
@@ -726,7 +726,7 @@ Bright Market completed the initial rollout and is ready for a customer success 
       },
     ],
   },
-]
+];
 
 export function getDatabaseSetupTemplate(
   templateId: DatabaseSetupTemplateId,
@@ -735,41 +735,39 @@ export function getDatabaseSetupTemplate(
     [...databaseSetupSuggestedTemplates, ...databaseSetupMoreTemplates].find(
       (template) => template.id === templateId,
     ) ?? null
-  )
+  );
 }
 
-export function inferDatabaseSetupTemplateId(
-  prompt: string,
-): DatabaseSetupTemplateId | null {
-  const normalized = prompt.trim().toLowerCase()
+export function inferDatabaseSetupTemplateId(prompt: string): DatabaseSetupTemplateId | null {
+  const normalized = prompt.trim().toLowerCase();
 
   if (!normalized) {
-    return null
+    return null;
   }
 
   if (/(task|todo|tracker)/.test(normalized)) {
-    return "tasks-tracker"
+    return "tasks-tracker";
   }
 
   if (/(project|roadmap|sprint)/.test(normalized)) {
-    return "projects"
+    return "projects";
   }
 
   if (/(document|doc|wiki|hub)/.test(normalized)) {
-    return "document-hub"
+    return "document-hub";
   }
 
   if (/(calendar|content|publish)/.test(normalized)) {
-    return "content-calendar"
+    return "content-calendar";
   }
 
   if (/(meeting|notes|standup)/.test(normalized)) {
-    return "meeting-notes"
+    return "meeting-notes";
   }
 
   if (/(crm|customer|lead|sales)/.test(normalized)) {
-    return "crm"
+    return "crm";
   }
 
-  return null
+  return null;
 }

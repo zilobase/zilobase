@@ -5,15 +5,15 @@ export function register({ readSource, assert, test }) {
       readSource("/src/features/ai/screens/ai.tsx"),
       readSource("/src/features/ai/conversations/use-ai-chat-thread-state.ts"),
       readSource("/src/features/ai/conversations/components/agent-chat-workspace.tsx"),
-    ])
+    ]);
 
     assert.match(
       layoutSource,
       /if \(pathname === "\/ai" && chatSidebarOpen\) \{[\s\S]*setChatSidebarOpen\(false\)/,
-    )
-    assert.match(pageSource, /<AgentChatWorkspace/)
-    assert.match(workspaceSource, /useAiChatThreadState\(\{ enabled: open \}\)/)
-    assert.match(workspaceSource, /threadId=\{activeThreadId\}/)
-    assert.match(stateSource, /threadStateByWorkspaceId/)
-  })
+    );
+    assert.match(pageSource, /<AgentChatWorkspace/);
+    assert.match(workspaceSource, /useAiChatThreadState\(\{\s*enabled:\s*open,?\s*\}\)/);
+    assert.match(workspaceSource, /threadId=\{activeThreadId\}/);
+    assert.match(stateSource, /threadStateByWorkspaceId/);
+  });
 }

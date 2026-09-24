@@ -8,25 +8,17 @@ const wranglerConfigPath = process.env.HYPERDRIVE_WRANGLER_CONFIG ?? "deploy/wor
 const wranglerConfig = JSON.parse(
   stripJsonComments(await readFile(path.join(adapterDir, wranglerConfigPath), "utf8")),
 );
-const binding = wranglerConfig.hyperdrive?.find(
-  (candidate) => candidate.binding === "HYPERDRIVE",
-);
+const binding = wranglerConfig.hyperdrive?.find((candidate) => candidate.binding === "HYPERDRIVE");
 
 if (!binding?.id) {
   throw new Error(`${wranglerConfigPath} must define the HYPERDRIVE binding.`);
 }
 
-const output = await runWrangler([
-  "hyperdrive",
-  "get",
-  binding.id,
-]);
+const output = await runWrangler(["hyperdrive", "get", binding.id]);
 const config = readJsonObject(output);
 const expectedHost = requiredEnv("HYPERDRIVE_EXPECTED_HOST");
 const expectedPort = Number(requiredEnv("HYPERDRIVE_EXPECTED_PORT"));
-const expectedConnectionLimit = Number(
-  process.env.HYPERDRIVE_EXPECTED_CONNECTION_LIMIT ?? "5",
-);
+const expectedConnectionLimit = Number(process.env.HYPERDRIVE_EXPECTED_CONNECTION_LIMIT ?? "5");
 const expected = {
   cachingDisabled: true,
   connectionLimit: expectedConnectionLimit,
@@ -40,8 +32,7 @@ const failures = [
   config.origin?.port === expected.port || `origin port must be ${expected.port}`,
   config.origin_connection_limit === expected.connectionLimit ||
     `origin connection limit must be ${expected.connectionLimit}`,
-  config.caching?.disabled === expected.cachingDisabled ||
-    "query caching must be disabled",
+  config.caching?.disabled === expected.cachingDisabled || "query caching must be disabled",
 ].filter((result) => result !== true);
 
 if (failures.length > 0) {
@@ -53,13 +44,7 @@ console.info(
 );
 
 function runWrangler(args) {
-  const wranglerBin = path.join(
-    adapterDir,
-    "node_modules",
-    "wrangler",
-    "bin",
-    "wrangler.js",
-  );
+  const wranglerBin = path.join(adapterDir, "node_modules", "wrangler", "bin", "wrangler.js");
 
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [wranglerBin, ...args], {
@@ -69,14 +54,21 @@ function runWrangler(args) {
     });
     let stdout = "";
     let stderr = "";
-    child.stdout.on("data", (chunk) => { stdout += chunk; });
-    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
     child.once("error", reject);
     child.once("exit", (code) => {
       if (code === 0) resolve(`${stdout}\n${stderr}`);
-      else reject(new Error(
-        `Wrangler Hyperdrive inspection failed with code ${code}: ${stderr.trim() || stdout.trim()}`,
-      ));
+      else
+        reject(
+          new Error(
+            `Wrangler Hyperdrive inspection failed with code ${code}: ${stderr.trim() || stdout.trim()}`,
+          ),
+        );
     });
   });
 }
@@ -92,9 +84,7 @@ function readJsonObject(value) {
 }
 
 function stripJsonComments(value) {
-  return value
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
+  return value.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
 function requiredEnv(name) {

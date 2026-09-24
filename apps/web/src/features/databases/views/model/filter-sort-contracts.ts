@@ -1,24 +1,24 @@
-import type { DatabasePropertyFilterOperator, DatabaseSortDirection } from "./database-view-config"
+import type { DatabasePropertyFilterOperator, DatabaseSortDirection } from "./database-view-config";
 
 export type DatabaseCondition = {
-  id: string
-  label: string
-  operator: DatabasePropertyFilterOperator
-  operatorLabel: string
-  propertyId: string
-  propertyType: string
-  values: string[]
-}
+  id: string;
+  label: string;
+  operator: DatabasePropertyFilterOperator;
+  operatorLabel: string;
+  propertyId: string;
+  propertyType: string;
+  values: string[];
+};
 
 export type DatabaseConditionUpdatePatch = {
-  operator?: DatabasePropertyFilterOperator
-  propertyId?: string
-  values?: string[]
-}
+  operator?: DatabasePropertyFilterOperator;
+  propertyId?: string;
+  values?: string[];
+};
 
-export type DatabaseActiveFilter = DatabaseCondition
+export type DatabaseActiveFilter = DatabaseCondition;
 
-export type DatabaseFilterUpdatePatch = DatabaseConditionUpdatePatch
+export type DatabaseFilterUpdatePatch = DatabaseConditionUpdatePatch;
 
 export type DatabaseActiveSort = {
   column: string;

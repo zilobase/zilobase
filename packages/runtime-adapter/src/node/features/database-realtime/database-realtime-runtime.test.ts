@@ -154,9 +154,7 @@ test("serverful database rooms fan out across realtime bus instances", async () 
       firstTicket.sessionId,
     );
 
-    await firstFixture.runtime.publishMutation(
-      mutationEvent("distributed-mutation", 2),
-    );
+    await firstFixture.runtime.publishMutation(mutationEvent("distributed-mutation", 2));
     assert.equal((await second.next("database.mutation")).version, 2);
   } finally {
     first.websocket.close();
@@ -175,10 +173,7 @@ test("background-only publication reaches an API replica through the realtime bu
   try {
     await client.opened;
     await client.next("realtime.ready");
-    await workerFixture.runtime.publishMutation(mutationEvent(
-      "worker-mutation",
-      2,
-    ));
+    await workerFixture.runtime.publishMutation(mutationEvent("worker-mutation", 2));
 
     assert.equal((await client.next("database.mutation")).eventId, "worker-mutation");
   } finally {
@@ -207,10 +202,7 @@ test("database rooms suppress duplicate versions and preserve catch-up position 
       assert.equal(ready.databaseVersion, 2);
 
       await fixture.runtime.publishMutation(mutationEvent("duplicate-version", 2));
-      await assert.rejects(
-        reconnected.next("database.mutation", 100),
-        /Timed out/,
-      );
+      await assert.rejects(reconnected.next("database.mutation", 100), /Timed out/);
     } finally {
       reconnected.websocket.close();
     }
@@ -236,9 +228,7 @@ function mutationEvent(eventId: string, version: number) {
   };
 }
 
-async function startFixture(
-  realtimeBus: NodeRealtimeBus = new TestRealtimeBroker().createBus(),
-) {
+async function startFixture(realtimeBus: NodeRealtimeBus = new TestRealtimeBroker().createBus()) {
   const server = createServer((_request, response) => response.end());
   const runtime = attachNodeDatabaseRealtimeRuntime(server, env, {
     limits: {
@@ -300,13 +290,16 @@ class TestRealtimeBroker {
 }
 
 async function createTicket(userId: string, version: number) {
-  return createDatabaseRealtimeTicket({
-    canEdit: true,
-    databaseId: "database-1",
-    user: { id: userId, name: userId },
-    version,
-    workspaceId: "workspace-1",
-  }, env);
+  return createDatabaseRealtimeTicket(
+    {
+      canEdit: true,
+      databaseId: "database-1",
+      user: { id: userId, name: userId },
+      version,
+      workspaceId: "workspace-1",
+    },
+    env,
+  );
 }
 
 class RealtimeClient {
@@ -336,9 +329,13 @@ class RealtimeClient {
     });
     this.opened = new Promise((resolve, reject) => {
       this.websocket.addEventListener("open", () => resolve(), { once: true });
-      this.websocket.addEventListener("error", () => {
-        reject(new Error("WebSocket upgrade failed"));
-      }, { once: true });
+      this.websocket.addEventListener(
+        "error",
+        () => {
+          reject(new Error("WebSocket upgrade failed"));
+        },
+        { once: true },
+      );
     });
   }
 
@@ -382,7 +379,7 @@ function listen(server: Server) {
 
 function closeServer(server: Server) {
   return new Promise<void>((resolve, reject) => {
-    server.close((error) => error ? reject(error) : resolve());
+    server.close((error) => (error ? reject(error) : resolve()));
   });
 }
 
@@ -409,16 +406,18 @@ function requestUpgradeStatus(value: string) {
       resolve(status);
     });
     socket.once("connect", () => {
-      socket.write([
-        `GET ${url.pathname}${url.search} HTTP/1.1`,
-        `Host: ${url.host}`,
-        "Connection: Upgrade",
-        "Upgrade: websocket",
-        "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
-        "Sec-WebSocket-Version: 13",
-        "",
-        "",
-      ].join("\r\n"));
+      socket.write(
+        [
+          `GET ${url.pathname}${url.search} HTTP/1.1`,
+          `Host: ${url.host}`,
+          "Connection: Upgrade",
+          "Upgrade: websocket",
+          "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
+          "Sec-WebSocket-Version: 13",
+          "",
+          "",
+        ].join("\r\n"),
+      );
     });
   });
 }

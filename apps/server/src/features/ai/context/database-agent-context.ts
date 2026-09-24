@@ -4,10 +4,7 @@ import type { DatabaseContextPayload } from "@zilobase/page-context/types";
 
 import { canAccessDatabaseRecord } from "../../access";
 import { getDatabaseRecord } from "../../databases/access";
-import {
-  getDatabaseExportPayload,
-  getDatabaseSchemaExportPayload,
-} from "../../databases/core";
+import { getDatabaseExportPayload, getDatabaseSchemaExportPayload } from "../../databases/core";
 
 export type AgentDatabaseDescriptor = {
   id: string;
@@ -39,15 +36,8 @@ export async function loadAgentDatabaseContext(input: {
   if (!state) return null;
 
   return {
-    descriptor: describeDatabase(
-      state.hostSchema,
-      state.dataSourceSchemas,
-      true,
-    ),
-    markdown: buildDatabaseMarkdown(
-      state.hostSchema,
-      state.dataSourceSchemas,
-    ),
+    descriptor: describeDatabase(state.hostSchema, state.dataSourceSchemas, true),
+    markdown: buildDatabaseMarkdown(state.hostSchema, state.dataSourceSchemas),
   };
 }
 
@@ -57,9 +47,7 @@ export async function loadAgentDatabaseDescriptor(input: {
   workspaceId: string;
 }): Promise<AgentDatabaseDescriptor | null> {
   const state = await loadAgentDatabaseState(input, false);
-  return state
-    ? describeDatabase(state.hostSchema, state.dataSourceSchemas, false)
-    : null;
+  return state ? describeDatabase(state.hostSchema, state.dataSourceSchemas, false) : null;
 }
 
 async function loadAgentDatabaseState(
@@ -75,14 +63,8 @@ async function loadAgentDatabaseState(
     return null;
   }
 
-  const loadPayload = includeRows
-    ? getDatabaseExportPayload
-    : getDatabaseSchemaExportPayload;
-  const payload = await loadPayload(
-    record.id,
-    input.userId,
-    record,
-  );
+  const loadPayload = includeRows ? getDatabaseExportPayload : getDatabaseSchemaExportPayload;
+  const payload = await loadPayload(record.id, input.userId, record);
   if (!payload) return null;
 
   const hostSchema = stripDatabasePayload(payload);
@@ -105,33 +87,28 @@ async function loadDataSourceSchemas(
   workspaceId: string,
   includeRows: boolean,
 ) {
-  const entries = await Promise.all(hostSchema.dataSources.map(async (source) => {
-    if (source.id === hostSchema.activeDataSource?.id) {
-      return [source.id, hostSchema] as const;
-    }
+  const entries = await Promise.all(
+    hostSchema.dataSources.map(async (source) => {
+      if (source.id === hostSchema.activeDataSource?.id) {
+        return [source.id, hostSchema] as const;
+      }
 
-    const parent = await getDatabaseRecord(source.parentDatabaseId);
-    if (
-      !parent ||
-      parent.workspaceId !== workspaceId ||
-      !(await canAccessDatabaseRecord(parent, userId, "view"))
-    ) {
-      return null;
-    }
+      const parent = await getDatabaseRecord(source.parentDatabaseId);
+      if (
+        !parent ||
+        parent.workspaceId !== workspaceId ||
+        !(await canAccessDatabaseRecord(parent, userId, "view"))
+      ) {
+        return null;
+      }
 
-    const loadPayload = includeRows
-      ? getDatabaseExportPayload
-      : getDatabaseSchemaExportPayload;
-    const payload = await loadPayload(
-      parent.id,
-      userId,
-      parent,
-      { dataSourceId: source.id },
-    );
-    if (payload?.activeDataSource?.id !== source.id) return null;
+      const loadPayload = includeRows ? getDatabaseExportPayload : getDatabaseSchemaExportPayload;
+      const payload = await loadPayload(parent.id, userId, parent, { dataSourceId: source.id });
+      if (payload?.activeDataSource?.id !== source.id) return null;
 
-    return [source.id, stripDatabasePayload(payload)] as const;
-  }));
+      return [source.id, stripDatabasePayload(payload)] as const;
+    }),
+  );
 
   return Object.fromEntries(
     entries.filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
@@ -150,20 +127,22 @@ function describeDatabase(
       const schema = dataSourceSchemas[source.id];
       if (!schema) return [];
 
-      return [{
-        id: source.id,
-        name: source.name,
-        parentDatabaseId: source.parentDatabaseId,
-        ...(includeRowCount ? { rowCount: schema.rowCount } : {}),
-        views: hostSchema.views
-          .filter((view) => view.dataSourceId === source.id)
-          .sort((left, right) => left.position - right.position)
-          .map((view) => ({
-            id: view.id,
-            name: view.name,
-            type: view.type,
-          })),
-      }];
+      return [
+        {
+          id: source.id,
+          name: source.name,
+          parentDatabaseId: source.parentDatabaseId,
+          ...(includeRowCount ? { rowCount: schema.rowCount } : {}),
+          views: hostSchema.views
+            .filter((view) => view.dataSourceId === source.id)
+            .sort((left, right) => left.position - right.position)
+            .map((view) => ({
+              id: view.id,
+              name: view.name,
+              type: view.type,
+            })),
+        },
+      ];
     }),
   };
 }

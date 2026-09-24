@@ -97,28 +97,16 @@ export function LayoutSettingsSection({
     (property) => property.property.id === groupPropertyId,
   );
   const visibleCardProperties = properties.filter(
-    (property) =>
-      !getPropertyHiddenForView(
-        property.id,
-        property.property.config,
-        viewConfig,
-      ),
+    (property) => !getPropertyHiddenForView(property.id, property.property.config, viewConfig),
   );
 
   return (
     <DropDrawerSub displayMode="inline" title="Layout">
       <DropDrawerSubTrigger>
-        <ViewSettingsRow
-          icon={<ViewTypeIcon />}
-          label="Layout"
-          right={viewTypeLabel}
-        />
+        <ViewSettingsRow icon={<ViewTypeIcon />} label="Layout" right={viewTypeLabel} />
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-72 max-w-[calc(100vw-1rem)] p-1">
-        <ViewTypeOptionGrid
-          onSelect={onSetViewType}
-          selectedType={activeViewType}
-        />
+        <ViewTypeOptionGrid onSelect={onSetViewType} selectedType={activeViewType} />
 
         <DropDrawerSeparator />
         <DropDrawerItem
@@ -162,9 +150,7 @@ export function LayoutSettingsSection({
               onSetAllContentWrapped(!allContentWrapped);
             }}
           >
-            <span>
-              {allContentWrapped ? "Unwrap all content" : "Wrap all content"}
-            </span>
+            <span>{allContentWrapped ? "Unwrap all content" : "Wrap all content"}</span>
           </DropDrawerItem>
         ) : !isChartView && !isTimelineView ? (
           <DropDrawerItem
@@ -185,11 +171,7 @@ export function LayoutSettingsSection({
             />
           </DropDrawerItem>
         ) : null}
-        {!isKanbanView &&
-        !isTimelineView &&
-        !isChartView &&
-        !isGalleryView &&
-        !isListView ? (
+        {!isKanbanView && !isTimelineView && !isChartView && !isGalleryView && !isListView ? (
           <DropDrawerItem
             aria-pressed={layoutSettings.showVerticalLines}
             onSelect={(event) => {
@@ -226,16 +208,12 @@ export function LayoutSettingsSection({
                 ) : null}
               </DropDrawerItem>
               {groupProperties.map((property) => {
-                const PropertyIcon = getDatabasePropertyType(
-                  property.property.type,
-                ).icon;
+                const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
 
                 return (
                   <DropDrawerItem
                     key={property.id}
-                    onSelect={() =>
-                      onSetViewGroupProperty(property.property.id)
-                    }
+                    onSelect={() => onSetViewGroupProperty(property.property.id)}
                   >
                     <PropertyIcon />
                     <span>{property.property.name}</span>
@@ -277,16 +255,12 @@ export function LayoutSettingsSection({
             <DropDrawerSubContent className="w-72">
               {dateProperties.length > 0 ? (
                 dateProperties.map((property) => {
-                  const PropertyIcon = getDatabasePropertyType(
-                    property.property.type,
-                  ).icon;
+                  const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
 
                   return (
                     <DropDrawerItem
                       key={property.id}
-                      onSelect={() =>
-                        onSetViewDateProperty(property.property.id)
-                      }
+                      onSelect={() => onSetViewDateProperty(property.property.id)}
                     >
                       <PropertyIcon />
                       <span>{property.property.name}</span>
@@ -309,11 +283,7 @@ export function LayoutSettingsSection({
                 <ViewSettingsRow
                   icon={<ImageIcon />}
                   label="Card preview"
-                  right={
-                    layoutSettings.cardPreview === "page-cover"
-                      ? "Page cover"
-                      : "None"
-                  }
+                  right={layoutSettings.cardPreview === "page-cover" ? "Page cover" : "None"}
                 />
               </DropDrawerSubTrigger>
               <DropDrawerSubContent className="w-72">
@@ -356,9 +326,7 @@ export function LayoutSettingsSection({
                         "bg-surface-canvas text-content-primary shadow-sm",
                     )}
                     key={size}
-                    onClick={() =>
-                      onUpdateDatabaseLayoutSettings({ cardSize: size })
-                    }
+                    onClick={() => onUpdateDatabaseLayoutSettings({ cardSize: size })}
                     type="button"
                   >
                     {size}
@@ -379,9 +347,7 @@ export function LayoutSettingsSection({
                         "border-action-selected-border text-action-selected-text ring-1 ring-action-selected-border",
                     )}
                     key={cardLayout}
-                    onClick={() =>
-                      onUpdateDatabaseLayoutSettings({ cardLayout })
-                    }
+                    onClick={() => onUpdateDatabaseLayoutSettings({ cardLayout })}
                     type="button"
                   >
                     <span className="mb-1.5 block h-12 rounded bg-surface-canvas p-2">
@@ -426,15 +392,12 @@ export function LayoutSettingsSection({
                       </div>
                     </div>
                     <p className="px-1 pt-2 text-xs leading-5 text-content-secondary">
-                      Enabled properties appear on their own line instead of
-                      wrapping with other properties.
+                      Enabled properties appear on their own line instead of wrapping with other
+                      properties.
                     </p>
                   </div>
                   <DropDrawerLabel>Full line display</DropDrawerLabel>
-                  <DropDrawerItem
-                    aria-pressed="true"
-                    onSelect={(event) => event.preventDefault()}
-                  >
+                  <DropDrawerItem aria-pressed="true" onSelect={(event) => event.preventDefault()}>
                     <NameColumnGlyph />
                     <span>{titlePropertyLabel}</span>
                     <Switch
@@ -447,13 +410,8 @@ export function LayoutSettingsSection({
                   </DropDrawerItem>
                   {visibleCardProperties.length > 0 ? (
                     visibleCardProperties.map((property) => {
-                      const PropertyIcon = getDatabasePropertyType(
-                        property.property.type,
-                      ).icon;
-                      const fullLine =
-                        layoutSettings.fullLinePropertyIds.includes(
-                          property.id,
-                        );
+                      const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
+                      const fullLine = layoutSettings.fullLinePropertyIds.includes(property.id);
 
                       return (
                         <DropDrawerItem
@@ -466,10 +424,7 @@ export function LayoutSettingsSection({
                                 ? layoutSettings.fullLinePropertyIds.filter(
                                     (propertyId) => propertyId !== property.id,
                                   )
-                                : [
-                                    ...layoutSettings.fullLinePropertyIds,
-                                    property.id,
-                                  ],
+                                : [...layoutSettings.fullLinePropertyIds, property.id],
                             });
                           }}
                         >
@@ -485,9 +440,7 @@ export function LayoutSettingsSection({
                       );
                     })
                   ) : (
-                    <DropDrawerItem disabled>
-                      No visible properties
-                    </DropDrawerItem>
+                    <DropDrawerItem disabled>No visible properties</DropDrawerItem>
                   )}
                   <DropDrawerSeparator />
                   <DropDrawerSub title="Show properties">
@@ -502,9 +455,7 @@ export function LayoutSettingsSection({
                         <Eye className="ml-auto text-content-secondary" />
                       </DropDrawerItem>
                       {properties.map((property) => {
-                        const PropertyIcon = getDatabasePropertyType(
-                          property.property.type,
-                        ).icon;
+                        const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
                         const visible = visibleCardProperties.some(
                           (candidate) => candidate.id === property.id,
                         );

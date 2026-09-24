@@ -1,5 +1,5 @@
-import type { SidebarNavItem } from "./sidebar-nav-item"
-import type { SidebarSectionId, SidebarSectionSort } from "@zilobase/features/user-settings"
+import type { SidebarNavItem } from "./sidebar-nav-item";
+import type { SidebarSectionId, SidebarSectionSort } from "@zilobase/features/user-settings";
 
 export function getConfiguredSidebarItems<Icon>(
   items: SidebarNavItem<Icon>[],
@@ -10,24 +10,24 @@ export function getConfiguredSidebarItems<Icon>(
     if (presentation.sort === "alphabetical") {
       return getDisplayName(first).localeCompare(getDisplayName(second), undefined, {
         sensitivity: "base",
-      })
+      });
     }
 
     if (sectionId === "recents") {
-      return getTime(second.lastVisitedAt) - getTime(first.lastVisitedAt)
+      return getTime(second.lastVisitedAt) - getTime(first.lastVisitedAt);
     }
 
-    return getTime(second.updatedAt) - getTime(first.updatedAt)
-  })
+    return getTime(second.updatedAt) - getTime(first.updatedAt);
+  });
 
-  return sorted.slice(0, presentation.limit)
+  return sorted.slice(0, presentation.limit);
 }
 
 function getDisplayName(item: SidebarNavItem) {
-  return item.name.trim() || "Untitled"
+  return item.name.trim() || "Untitled";
 }
 
 function getTime(value: string | null | undefined) {
-  const time = value ? new Date(value).getTime() : 0
-  return Number.isFinite(time) ? time : 0
+  const time = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(time) ? time : 0;
 }

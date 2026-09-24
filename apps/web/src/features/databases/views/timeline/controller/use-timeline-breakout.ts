@@ -5,22 +5,19 @@ import {
   useState,
   type CSSProperties,
   type RefObject,
-} from "react"
+} from "react";
 
 type TimelineBreakoutLayout = {
-  marginLeft: number
-  width: number
-}
+  marginLeft: number;
+  width: number;
+};
 
-function layoutsMatch(
-  current: TimelineBreakoutLayout | null,
-  next: TimelineBreakoutLayout,
-) {
+function layoutsMatch(current: TimelineBreakoutLayout | null, next: TimelineBreakoutLayout) {
   return (
     current !== null &&
     Math.abs(current.marginLeft - next.marginLeft) < 0.5 &&
     Math.abs(current.width - next.width) < 0.5
-  )
+  );
 }
 
 /**
@@ -33,74 +30,57 @@ export function useTimelineBreakout(
   enabled: boolean,
   measureKey?: unknown,
 ) {
-  const [layout, setLayout] = useState<TimelineBreakoutLayout | null>(null)
+  const [layout, setLayout] = useState<TimelineBreakoutLayout | null>(null);
   const measure = useCallback(() => {
-    const timeline = ref.current
-    const narrowPage = timeline?.closest<HTMLElement>(
-      '[data-editor-page-content="narrow"]',
-    )
-    const editorSurface = timeline?.closest<HTMLElement>(
-      "[data-editor-surface]",
-    )
-    const editor = timeline?.closest<HTMLElement>(".tiptap-editor")
-    const anchor = timeline?.parentElement
+    const timeline = ref.current;
+    const narrowPage = timeline?.closest<HTMLElement>('[data-editor-page-content="narrow"]');
+    const editorSurface = timeline?.closest<HTMLElement>("[data-editor-surface]");
+    const editor = timeline?.closest<HTMLElement>(".tiptap-editor");
+    const anchor = timeline?.parentElement;
 
-    if (
-      !enabled ||
-      !timeline ||
-      !narrowPage ||
-      !editorSurface ||
-      !editor ||
-      !anchor
-    ) {
-      setLayout((current) => (current === null ? current : null))
-      return
+    if (!enabled || !timeline || !narrowPage || !editorSurface || !editor || !anchor) {
+      setLayout((current) => (current === null ? current : null));
+      return;
     }
 
-    const surfaceRect = editorSurface.getBoundingClientRect()
-    const anchorRect = anchor.getBoundingClientRect()
-    const editorStyle = getComputedStyle(editor)
-    const paddingLeft = Number.parseFloat(editorStyle.paddingLeft) || 0
-    const paddingRight = Number.parseFloat(editorStyle.paddingRight) || 0
-    const left = surfaceRect.left + paddingLeft
-    const right = surfaceRect.right - paddingRight
+    const surfaceRect = editorSurface.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    const editorStyle = getComputedStyle(editor);
+    const paddingLeft = Number.parseFloat(editorStyle.paddingLeft) || 0;
+    const paddingRight = Number.parseFloat(editorStyle.paddingRight) || 0;
+    const left = surfaceRect.left + paddingLeft;
+    const right = surfaceRect.right - paddingRight;
     const nextLayout = {
       marginLeft: left - anchorRect.left,
       width: Math.max(anchorRect.width, right - left),
-    }
+    };
 
-    setLayout((current) =>
-      layoutsMatch(current, nextLayout) ? current : nextLayout,
-    )
-  }, [enabled, measureKey, ref])
+    setLayout((current) => (layoutsMatch(current, nextLayout) ? current : nextLayout));
+  }, [enabled, measureKey, ref]);
 
   useLayoutEffect(() => {
-    measure()
+    measure();
 
-    const timeline = ref.current
-    const narrowPage = timeline?.closest<HTMLElement>(
-      '[data-editor-page-content="narrow"]',
-    )
-    const editorSurface = timeline?.closest<HTMLElement>(
-      "[data-editor-surface]",
-    )
+    const timeline = ref.current;
+    const narrowPage = timeline?.closest<HTMLElement>('[data-editor-page-content="narrow"]');
+    const editorSurface = timeline?.closest<HTMLElement>("[data-editor-surface]");
 
     if (typeof ResizeObserver === "undefined" || !timeline) {
-      window.addEventListener("resize", measure)
-      return () => window.removeEventListener("resize", measure)
+      window.addEventListener("resize", measure);
+      return () => window.removeEventListener("resize", measure);
     }
 
-    const observer = new ResizeObserver(measure)
-    observer.observe(timeline.parentElement ?? timeline)
-    if (narrowPage) observer.observe(narrowPage)
-    if (editorSurface) observer.observe(editorSurface)
-    window.addEventListener("resize", measure)
+    const observer = new ResizeObserver(measure);
+    observer.observe(timeline.parentElement ?? timeline);
+    if (narrowPage) observer.observe(narrowPage);
+    if (editorSurface) observer.observe(editorSurface);
+    window.addEventListener("resize", measure);
 
     return () => {
-      observer.disconnect()
-      window.removeEventListener("resize", measure)
-    }
-  }, [measure, ref])
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [measure, ref]);
 
   return useMemo(
     () =>
@@ -112,5 +92,5 @@ export function useTimelineBreakout(
           } as CSSProperties)
         : undefined,
     [layout],
-  )
+  );
 }

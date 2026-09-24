@@ -32,7 +32,7 @@ export function useCalendarWheelScroll({
   itemSize,
   axis,
   onNavigate,
-  clampOffset = value => value,
+  clampOffset = (value) => value,
   disabled,
 }: CalendarWheelScrollOptions): CalendarWheelScroll {
   const [scrollOffset, setScrollOffset] = useState(0);
@@ -46,12 +46,21 @@ export function useCalendarWheelScroll({
   const onNavigateRef = useRef(onNavigate);
   const clampOffsetRef = useRef(clampOffset);
   const itemSizeRef = useRef(itemSize);
-  useEffect(() => { onNavigateRef.current = onNavigate; }, [onNavigate]);
-  useEffect(() => { clampOffsetRef.current = clampOffset; }, [clampOffset]);
-  useEffect(() => { itemSizeRef.current = itemSize; }, [itemSize]);
-  useEffect(() => () => {
-    if (animationTimer.current) clearTimeout(animationTimer.current);
-  }, []);
+  useEffect(() => {
+    onNavigateRef.current = onNavigate;
+  }, [onNavigate]);
+  useEffect(() => {
+    clampOffsetRef.current = clampOffset;
+  }, [clampOffset]);
+  useEffect(() => {
+    itemSizeRef.current = itemSize;
+  }, [itemSize]);
+  useEffect(
+    () => () => {
+      if (animationTimer.current) clearTimeout(animationTimer.current);
+    },
+    [],
+  );
 
   const finishAnimation = useCallback((commit?: () => void) => {
     if (animationTimer.current) clearTimeout(animationTimer.current);
@@ -65,35 +74,43 @@ export function useCalendarWheelScroll({
     }, CALENDAR_SNAP_ANIMATION_MS);
   }, []);
 
-  const snapAndNavigate = useCallback((offset: number) => {
-    const size = itemSizeRef.current;
-    if (size <= 0) return;
-    const itemsDelta = Math.round(offset / size);
+  const snapAndNavigate = useCallback(
+    (offset: number) => {
+      const size = itemSizeRef.current;
+      if (size <= 0) return;
+      const itemsDelta = Math.round(offset / size);
 
-    setIsAnimating(true);
-    if (itemsDelta === 0) {
-      setScrollOffset(0);
-      finishAnimation();
-      return;
-    }
-
-    setScrollOffset(itemsDelta * size);
-    finishAnimation(() => onNavigateRef.current(-itemsDelta));
-  }, [finishAnimation]);
-
-  const triggerSlideAnimation = useCallback((itemsDelta: number) => {
-    if (itemSize <= 0 || isAnimating || isScrolling || itemsDelta === 0) return;
-    setSlideOffset(itemsDelta * itemSize);
-    requestAnimationFrame(() => requestAnimationFrame(() => {
       setIsAnimating(true);
-      setSlideOffset(0);
-      if (animationTimer.current) clearTimeout(animationTimer.current);
-      animationTimer.current = setTimeout(() => {
-        setIsAnimating(false);
-        animationTimer.current = null;
-      }, CALENDAR_SNAP_ANIMATION_MS);
-    }));
-  }, [isAnimating, isScrolling, itemSize]);
+      if (itemsDelta === 0) {
+        setScrollOffset(0);
+        finishAnimation();
+        return;
+      }
+
+      setScrollOffset(itemsDelta * size);
+      finishAnimation(() => onNavigateRef.current(-itemsDelta));
+    },
+    [finishAnimation],
+  );
+
+  const triggerSlideAnimation = useCallback(
+    (itemsDelta: number) => {
+      if (itemSize <= 0 || isAnimating || isScrolling || itemsDelta === 0) return;
+      setSlideOffset(itemsDelta * itemSize);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          setIsAnimating(true);
+          setSlideOffset(0);
+          if (animationTimer.current) clearTimeout(animationTimer.current);
+          animationTimer.current = setTimeout(() => {
+            setIsAnimating(false);
+            animationTimer.current = null;
+          }, CALENDAR_SNAP_ANIMATION_MS);
+        }),
+      );
+    },
+    [isAnimating, isScrolling, itemSize],
+  );
 
   useEffect(() => {
     const container = containerRef.current;

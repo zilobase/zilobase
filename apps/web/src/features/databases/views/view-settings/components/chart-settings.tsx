@@ -20,11 +20,7 @@ import {
 } from "@/shared/components/icons";
 
 import { Button } from "@/shared/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/shared/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import {
   DropDrawerItem,
   DropDrawerLabel,
@@ -35,18 +31,8 @@ import {
 } from "@/shared/ui/dropdrawer";
 import { Input } from "@/shared/ui/input";
 import { Switch } from "@/shared/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
-import {
-  cyclingColorTokens,
-  getColorToken,
-  getPaletteColor,
-} from "@/shared/lib/color-tokens";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { cyclingColorTokens, getColorToken, getPaletteColor } from "@/shared/lib/color-tokens";
 import { cn } from "@/shared/lib/utils";
 
 import { getDatabasePropertyType } from "../../../schema/property-catalog";
@@ -105,21 +91,14 @@ export function DatabaseChartSettingsSection({
 }) {
   const defaultAxisProperty =
     properties.find((property) =>
-      ["select", "status", "checkbox", "person"].includes(
-        property.property.type,
-      ),
+      ["select", "status", "checkbox", "person"].includes(property.property.type),
     ) ??
     properties.find((property) => property.property.type !== "number") ??
     null;
-  const axisPropertyId =
-    settings.groupByPropertyId ?? defaultAxisProperty?.property.id ?? "name";
-  const axisProperty = properties.find(
-    (property) => property.property.id === axisPropertyId,
-  );
+  const axisPropertyId = settings.groupByPropertyId ?? defaultAxisProperty?.property.id ?? "name";
+  const axisProperty = properties.find((property) => property.property.id === axisPropertyId);
   const measurePropertyId = settings.measurePropertyId ?? "count";
-  const measureProperty = properties.find(
-    (property) => property.property.id === measurePropertyId,
-  );
+  const measureProperty = properties.find((property) => property.property.id === measurePropertyId);
   const splitProperty = properties.find(
     (property) => property.property.id === settings.splitByPropertyId,
   );
@@ -135,28 +114,19 @@ export function DatabaseChartSettingsSection({
     measureProperty?.property.name ?? "Task count",
   );
   const sortLabel =
-    sortOptions.find((option) => option.value === sort)?.label ??
-    sortOptions.at(-1)?.label;
+    sortOptions.find((option) => option.value === sort)?.label ?? sortOptions.at(-1)?.label;
   const axisGroups = getChartAxisGroups(axisProperty);
   const hiddenGroupNames = settings.hiddenGroupNames ?? [];
   const referenceLines = settings.referenceLines ?? [];
-  const supportsCartesianControls = ["bar", "horizontal-bar", "line"].includes(
-    settings.type,
-  );
-  const selectedColorToken =
-    settings.color === "auto" ? null : getColorToken(settings.color);
+  const supportsCartesianControls = ["bar", "horizontal-bar", "line"].includes(settings.type);
+  const selectedColorToken = settings.color === "auto" ? null : getColorToken(settings.color);
   const colorLabel = selectedColorToken?.name ?? "Auto";
   const colorSwatch = selectedColorToken
     ? (getPaletteColor(selectedColorToken.value) ?? "var(--zb-color-action-background-selected)")
     : "linear-gradient(90deg, var(--zb-color-palette-text-blue), var(--zb-color-palette-text-purple), var(--zb-color-palette-text-pink), var(--zb-color-palette-text-orange))";
-  const updateReferenceLine = (
-    id: string,
-    patch: Partial<DatabaseChartReferenceLine>,
-  ) =>
+  const updateReferenceLine = (id: string, patch: Partial<DatabaseChartReferenceLine>) =>
     onChange({
-      referenceLines: referenceLines.map((line) =>
-        line.id === id ? { ...line, ...patch } : line,
-      ),
+      referenceLines: referenceLines.map((line) => (line.id === id ? { ...line, ...patch } : line)),
     });
 
   return (
@@ -172,7 +142,8 @@ export function DatabaseChartSettingsSection({
             aria-pressed={settings.type === option.value}
             className={cn(
               "flex h-7 items-center justify-center rounded-md border text-content-secondary transition-colors hover:bg-action-neutral-hover hover:text-content-primary",
-              settings.type === option.value && "border-action-selected-border text-action-selected-text",
+              settings.type === option.value &&
+                "border-action-selected-border text-action-selected-text",
             )}
             key={option.value}
             onClick={(event) => {
@@ -209,14 +180,10 @@ export function DatabaseChartSettingsSection({
           >
             <NameColumnGlyph />
             <span>{titlePropertyLabel}</span>
-            {axisPropertyId === "name" ? (
-              <Check className="ml-auto text-content-primary" />
-            ) : null}
+            {axisPropertyId === "name" ? <Check className="ml-auto text-content-primary" /> : null}
           </DropDrawerItem>
           {properties.map((property) => {
-            const PropertyIcon = getDatabasePropertyType(
-              property.property.type,
-            ).icon;
+            const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
             const selected = property.property.id === axisPropertyId;
 
             return (
@@ -231,9 +198,7 @@ export function DatabaseChartSettingsSection({
               >
                 <PropertyIcon />
                 <span>{property.property.name}</span>
-                {selected ? (
-                  <Check className="ml-auto text-content-primary" />
-                ) : null}
+                {selected ? <Check className="ml-auto text-content-primary" /> : null}
               </DropDrawerItem>
             );
           })}
@@ -241,22 +206,13 @@ export function DatabaseChartSettingsSection({
       </DropDrawerSub>
       <DropDrawerSub title="Sort by">
         <DropDrawerSubTrigger>
-          <ViewSettingsRow
-            icon={<ArrowDownUp />}
-            label="Sort by"
-            right={sortLabel}
-          />
+          <ViewSettingsRow icon={<ArrowDownUp />} label="Sort by" right={sortLabel} />
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72">
           {sortOptions.map((option) => (
-            <DropDrawerItem
-              key={option.value}
-              onSelect={() => onChange({ sort: option.value })}
-            >
+            <DropDrawerItem key={option.value} onSelect={() => onChange({ sort: option.value })}>
               <span>{option.label}</span>
-              {sort === option.value ? (
-                <Check className="ml-auto text-content-primary" />
-              ) : null}
+              {sort === option.value ? <Check className="ml-auto text-content-primary" /> : null}
             </DropDrawerItem>
           ))}
           {axisGroups.length > 0 ? (
@@ -277,9 +233,7 @@ export function DatabaseChartSettingsSection({
                   }}
                   type="button"
                 >
-                  {hiddenGroupNames.length === axisGroups.length
-                    ? "Show all"
-                    : "Hide all"}
+                  {hiddenGroupNames.length === axisGroups.length ? "Show all" : "Hide all"}
                 </button>
               </div>
               {axisGroups.map((group) => {
@@ -292,9 +246,7 @@ export function DatabaseChartSettingsSection({
                       event.preventDefault();
                       onChange({
                         hiddenGroupNames: hidden
-                          ? hiddenGroupNames.filter(
-                              (name) => name !== group.name,
-                            )
+                          ? hiddenGroupNames.filter((name) => name !== group.name)
                           : [...hiddenGroupNames, group.name],
                       });
                     }}
@@ -303,16 +255,11 @@ export function DatabaseChartSettingsSection({
                       className="size-2.5 rounded-full"
                       style={{
                         backgroundColor:
-                          getPaletteColor(group.color) ??
-                          "var(--zb-color-content-text-secondary)",
+                          getPaletteColor(group.color) ?? "var(--zb-color-content-text-secondary)",
                       }}
                     />
                     <span>{group.name}</span>
-                    {hidden ? (
-                      <EyeOff className="ml-auto" />
-                    ) : (
-                      <Eye className="ml-auto" />
-                    )}
+                    {hidden ? <EyeOff className="ml-auto" /> : <Eye className="ml-auto" />}
                   </DropDrawerItem>
                 );
               })}
@@ -349,9 +296,7 @@ export function DatabaseChartSettingsSection({
           />
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-72">
-          <DropDrawerItem
-            onSelect={() => onChange({ measurePropertyId: "count" })}
-          >
+          <DropDrawerItem onSelect={() => onChange({ measurePropertyId: "count" })}>
             <ChartLine />
             <span>Task count</span>
             {measurePropertyId === "count" ? (
@@ -359,23 +304,17 @@ export function DatabaseChartSettingsSection({
             ) : null}
           </DropDrawerItem>
           {properties.map((property) => {
-            const PropertyIcon = getDatabasePropertyType(
-              property.property.type,
-            ).icon;
+            const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
             const selected = property.property.id === measurePropertyId;
 
             return (
               <DropDrawerItem
                 key={property.id}
-                onSelect={() =>
-                  onChange({ measurePropertyId: property.property.id })
-                }
+                onSelect={() => onChange({ measurePropertyId: property.property.id })}
               >
                 <PropertyIcon />
                 <span>{property.property.name}</span>
-                {selected ? (
-                  <Check className="ml-auto text-content-primary" />
-                ) : null}
+                {selected ? <Check className="ml-auto text-content-primary" /> : null}
               </DropDrawerItem>
             );
           })}
@@ -384,11 +323,7 @@ export function DatabaseChartSettingsSection({
 
       <DropDrawerSub title="Group by">
         <DropDrawerSubTrigger>
-          <ViewSettingsRow
-            icon={<Rows3 />}
-            label="Group by"
-            right={splitPropertyLabel}
-          />
+          <ViewSettingsRow icon={<Rows3 />} label="Group by" right={splitPropertyLabel} />
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="max-h-80 w-72 overflow-y-auto">
           <DropDrawerItem
@@ -406,11 +341,8 @@ export function DatabaseChartSettingsSection({
             ) : null}
           </DropDrawerItem>
           {properties.map((property) => {
-            const PropertyIcon = getDatabasePropertyType(
-              property.property.type,
-            ).icon;
-            const selected =
-              property.property.id === settings.splitByPropertyId;
+            const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
+            const selected = property.property.id === settings.splitByPropertyId;
 
             if (isChartDateProperty(property)) {
               return (
@@ -418,9 +350,7 @@ export function DatabaseChartSettingsSection({
                   <DropDrawerSubTrigger>
                     <PropertyIcon />
                     <span>{property.property.name}</span>
-                    {selected ? (
-                      <Check className="ml-auto text-content-primary" />
-                    ) : null}
+                    {selected ? <Check className="ml-auto text-content-primary" /> : null}
                   </DropDrawerSubTrigger>
                   <DropDrawerSubContent className="w-56">
                     {chartDateIntervalOptions.map((option) => (
@@ -456,9 +386,7 @@ export function DatabaseChartSettingsSection({
               >
                 <PropertyIcon />
                 <span>{property.property.name}</span>
-                {selected ? (
-                  <Check className="ml-auto text-content-primary" />
-                ) : null}
+                {selected ? <Check className="ml-auto text-content-primary" /> : null}
               </DropDrawerItem>
             );
           })}
@@ -518,19 +446,14 @@ export function DatabaseChartSettingsSection({
                 <MoreHorizontal />
                 <span>Reference line</span>
                 <span className="ml-auto text-content-secondary">
-                  {referenceLines.length === 1
-                    ? "1 line"
-                    : `${referenceLines.length} lines`}
+                  {referenceLines.length === 1 ? "1 line" : `${referenceLines.length} lines`}
                 </span>
                 <ChevronDown className="transition-transform group-data-[state=open]:rotate-180" />
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mx-2 space-y-2 rounded-lg border bg-surface-subtle p-2">
               {referenceLines.map((line) => (
-                <div
-                  className="space-y-2 rounded-md bg-surface-subtle p-2"
-                  key={line.id}
-                >
+                <div className="space-y-2 rounded-md bg-surface-subtle p-2" key={line.id}>
                   <div className="flex items-end gap-2">
                     <label className="grid flex-1 gap-1 text-xs font-medium text-content-secondary">
                       Value
@@ -552,9 +475,7 @@ export function DatabaseChartSettingsSection({
                       onClick={(event) => {
                         event.preventDefault();
                         onChange({
-                          referenceLines: referenceLines.filter(
-                            (item) => item.id !== line.id,
-                          ),
+                          referenceLines: referenceLines.filter((item) => item.id !== line.id),
                         });
                       }}
                       size="icon-sm"
@@ -635,10 +556,7 @@ export function DatabaseChartSettingsSection({
                 onClick={(event) => {
                   event.preventDefault();
                   onChange({
-                    referenceLines: [
-                      ...referenceLines,
-                      createDatabaseChartReferenceLine(),
-                    ],
+                    referenceLines: [...referenceLines, createDatabaseChartReferenceLine()],
                   });
                 }}
                 size="sm"
@@ -658,22 +576,13 @@ export function DatabaseChartSettingsSection({
       </DropDrawerLabel>
       <DropDrawerSub title="Color">
         <DropDrawerSubTrigger>
-          <ViewSettingsRow
-            icon={<Palette />}
-            label="Color"
-            right={colorLabel}
-          />
+          <ViewSettingsRow icon={<Palette />} label="Color" right={colorLabel} />
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-64">
           <DropDrawerItem onSelect={() => onChange({ color: "auto" })}>
-            <span
-              className="size-3 rounded-sm border"
-              style={{ background: colorSwatch }}
-            />
+            <span className="size-3 rounded-sm border" style={{ background: colorSwatch }} />
             <span>Auto</span>
-            {settings.color === "auto" ? (
-              <Check className="ml-auto text-content-primary" />
-            ) : null}
+            {settings.color === "auto" ? <Check className="ml-auto text-content-primary" /> : null}
           </DropDrawerItem>
           {cyclingColorTokens.map((color) => (
             <DropDrawerItem
@@ -685,9 +594,7 @@ export function DatabaseChartSettingsSection({
                 })
               }
             >
-              <span
-                className={cn("size-3 rounded-sm border", color.swatchClass)}
-              />
+              <span className={cn("size-3 rounded-sm border", color.swatchClass)} />
               <span>{color.name}</span>
               {settings.color === color.value ? (
                 <Check className="ml-auto text-content-primary" />

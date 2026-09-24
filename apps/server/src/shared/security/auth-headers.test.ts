@@ -19,9 +19,7 @@ describe("getAuthHeaders", () => {
       new Headers({ authorization: "Bearer signed.session" }),
     );
 
-    expect(headers.get("cookie")).toBe(
-      "__Secure-zilobase.session_token=signed.session",
-    );
+    expect(headers.get("cookie")).toBe("__Secure-zilobase.session_token=signed.session");
   });
 
   test("keeps explicit cookies ahead of bearer sessions", async () => {
@@ -56,8 +54,7 @@ describe("getAuthHeaders", () => {
 
   test("ignores malformed WebSocket session protocols", async () => {
     const headers = new Headers({
-      "sec-websocket-protocol":
-        `${SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX}%%%`,
+      "sec-websocket-protocol": `${SESSION_AUTH_WEBSOCKET_PROTOCOL_PREFIX}%%%`,
     });
 
     expect(readWebSocketSessionToken(headers)).toBeNull();

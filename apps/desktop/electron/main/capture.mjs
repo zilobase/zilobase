@@ -11,8 +11,14 @@ const events = new Map([
   ["meeting-capture-transcript", "desktop:capture:transcript"],
 ]);
 const defaultState = {
-  activeSources: [], meetingId: null, phase: "idle", elapsedMs: 0,
-  sampleRate: 24_000, checkpointPath: null, error: null, warnings: [],
+  activeSources: [],
+  meetingId: null,
+  phase: "idle",
+  elapsedMs: 0,
+  sampleRate: 24_000,
+  checkpointPath: null,
+  error: null,
+  warnings: [],
 };
 let child = null;
 let serial = 0;
@@ -38,7 +44,8 @@ function rejectPending() {
 function startProcess(emit) {
   if (child && !child.killed) return child;
   const binary = binaryPath();
-  if (!existsSync(binary)) throw desktopError("capture_unavailable", "The audio capture helper is unavailable.");
+  if (!existsSync(binary))
+    throw desktopError("capture_unavailable", "The audio capture helper is unavailable.");
   const worker = spawn(binary, ["--capture-service", app.getPath("userData")], {
     stdio: ["pipe", "pipe", "ignore"],
   });
@@ -57,7 +64,12 @@ function startProcess(emit) {
       const line = buffered.slice(0, end);
       buffered = buffered.slice(end + 1);
       let message;
-      try { message = JSON.parse(line); } catch { worker.kill(); return; }
+      try {
+        message = JSON.parse(line);
+      } catch {
+        worker.kill();
+        return;
+      }
       if (typeof message.event === "string" && events.has(message.event)) {
         if (message.event === "meeting-capture-state") lastState = message.payload;
         emit(events.get(message.event), message.payload);
@@ -66,8 +78,14 @@ function startProcess(emit) {
         requests.delete(message.id);
         clearTimeout(request.timer);
         if (message.ok) request.resolve(message.value);
-        else request.reject(desktopError("capture_failed", "Meeting capture could not complete: " +
-          (typeof message.error === "string" ? message.error.slice(0, 300) : "unknown error")));
+        else
+          request.reject(
+            desktopError(
+              "capture_failed",
+              "Meeting capture could not complete: " +
+                (typeof message.error === "string" ? message.error.slice(0, 300) : "unknown error"),
+            ),
+          );
       }
     }
   });
@@ -87,7 +105,8 @@ function send(action, payload, emit, timeoutMs = 30_000) {
   const worker = startProcess(emit);
   const id = ++serial;
   const line = JSON.stringify({ id, action, payload });
-  if (line.length > 16_384) throw desktopError("invalid_argument", "The capture request is too large.");
+  if (line.length > 16_384)
+    throw desktopError("invalid_argument", "The capture request is too large.");
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       requests.delete(id);
@@ -107,12 +126,21 @@ function send(action, payload, emit, timeoutMs = 30_000) {
 
 function validateTransport(urlValue, ticket) {
   let url;
-  try { url = new URL(urlValue); }
-  catch { throw desktopError("invalid_argument", "The meeting audio URL is invalid."); }
+  try {
+    url = new URL(urlValue);
+  } catch {
+    throw desktopError("invalid_argument", "The meeting audio URL is invalid.");
+  }
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
-  if ((url.protocol !== "wss:" && !(url.protocol === "ws:" && loopback)) ||
-      url.username || url.password || url.hash || url.href.length > 4096 ||
-      typeof ticket !== "string" || !/^[A-Za-z0-9._~-]{1,2048}$/.test(ticket)) {
+  if (
+    (url.protocol !== "wss:" && !(url.protocol === "ws:" && loopback)) ||
+    url.username ||
+    url.password ||
+    url.hash ||
+    url.href.length > 4096 ||
+    typeof ticket !== "string" ||
+    !/^[A-Za-z0-9._~-]{1,2048}$/.test(ticket)
+  ) {
     throw desktopError("invalid_argument", "The meeting audio transport is invalid.");
   }
 }
@@ -127,18 +155,29 @@ export function registerCaptureHandlers(handle, emit) {
   handle("desktop:capture:list-devices", call("list-devices", 10_000));
   handle("desktop:capture:permissions", call("permissions", 10_000));
   handle("desktop:capture:start", async (config) => {
-    if (!config || typeof config !== "object") throw desktopError("invalid_argument", "The meeting capture configuration is invalid.");
-    if (typeof config.meetingId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(config.meetingId) ||
-        (config.captureMicrophone != null && typeof config.captureMicrophone !== "boolean") ||
-        (config.captureSystemAudio != null && typeof config.captureSystemAudio !== "boolean")) {
+    if (!config || typeof config !== "object")
+      throw desktopError("invalid_argument", "The meeting capture configuration is invalid.");
+    if (
+      typeof config.meetingId !== "string" ||
+      !/^[A-Za-z0-9_-]{1,128}$/.test(config.meetingId) ||
+      (config.captureMicrophone != null && typeof config.captureMicrophone !== "boolean") ||
+      (config.captureSystemAudio != null && typeof config.captureSystemAudio !== "boolean")
+    ) {
       throw desktopError("invalid_argument", "The meeting capture configuration is invalid.");
     }
     if (config.audioWebsocketUrl != null || config.audioTicket != null) {
       validateTransport(config.audioWebsocketUrl, config.audioTicket);
     }
-    if (process.platform === "darwin" && (config.captureMicrophone !== false || config.captureSystemAudio === true)) {
+    if (
+      process.platform === "darwin" &&
+      (config.captureMicrophone !== false || config.captureSystemAudio === true)
+    ) {
       const granted = await systemPreferences.askForMediaAccess("microphone");
-      if (!granted) throw desktopError("microphone_access_denied", "Allow microphone access in macOS Settings to record meeting audio.");
+      if (!granted)
+        throw desktopError(
+          "microphone_access_denied",
+          "Allow microphone access in macOS Settings to record meeting audio.",
+        );
     }
     const state = await send("start", config, emit, 15_000);
     lastState = state;

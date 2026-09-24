@@ -34,8 +34,7 @@ vi.mock("../../../../infrastructure/database", () => {
       innerJoin: () => q,
       where: () => q,
       limit: () => q,
-      then: (resolve: (value: unknown) => unknown) =>
-        resolve(state.rows.shift() ?? []),
+      then: (resolve: (value: unknown) => unknown) => resolve(state.rows.shift() ?? []),
     };
     return q;
   }
@@ -47,8 +46,7 @@ vi.mock("../../../../infrastructure/database", () => {
         return { where: async () => undefined };
       },
     }),
-    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> =>
-      callback(db),
+    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> => callback(db),
   };
   return { db };
 });
@@ -89,19 +87,13 @@ const success = {
 let action: typeof aiAgentPendingAction.$inferSelect;
 
 async function fixture(agent = false) {
-  const encrypted = await encryptMcpSecret(
-    env,
-    JSON.stringify({ owner: "fixture" }),
-    {
-      authenticatedByUserId: "user",
-      connectionId: "connection",
-      profileId: agent
-        ? "agent:workspace:agent"
-        : "personal:workspace:user",
-      purpose: "approval:action",
-      workspaceId: "workspace",
-    },
-  );
+  const encrypted = await encryptMcpSecret(env, JSON.stringify({ owner: "fixture" }), {
+    authenticatedByUserId: "user",
+    connectionId: "connection",
+    profileId: agent ? "agent:workspace:agent" : "personal:workspace:user",
+    purpose: "approval:action",
+    workspaceId: "workspace",
+  });
   return {
     id: "action",
     agentRunId: agent ? "run" : null,
@@ -141,11 +133,7 @@ beforeEach(async () => {
 
 describe("approved MCP execution", () => {
   it("executes exactly the integrity-checked personal tool arguments", async () => {
-    state.rows = [
-      [{ userId: "user", workspaceId: "workspace" }],
-      [context],
-      [{ id: "receipt" }],
-    ];
+    state.rows = [[{ userId: "user", workspaceId: "workspace" }], [context], [{ id: "receipt" }]];
     expect(await execute()).toEqual(success);
     expect(state.execute).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -179,23 +167,19 @@ describe("approved MCP execution", () => {
     await expect(execute()).rejects.toThrow("chat context");
     expect(state.discover).not.toHaveBeenCalled();
   });
-  it.each([
-    { enabled: false },
-    { available: false },
-    { schemaHash: "changed" },
-  ])("rejects a changed tool: %j", async (snapshot) => {
-    state.rows = [
-      [{ userId: "user", workspaceId: "workspace" }],
-      [{ ...context, snapshot: { ...context.snapshot, ...snapshot } }],
-    ];
-    await expect(execute()).rejects.toThrow("changed");
-    expect(state.execute).not.toHaveBeenCalled();
-  });
+  it.each([{ enabled: false }, { available: false }, { schemaHash: "changed" }])(
+    "rejects a changed tool: %j",
+    async (snapshot) => {
+      state.rows = [
+        [{ userId: "user", workspaceId: "workspace" }],
+        [{ ...context, snapshot: { ...context.snapshot, ...snapshot } }],
+      ];
+      await expect(execute()).rejects.toThrow("changed");
+      expect(state.execute).not.toHaveBeenCalled();
+    },
+  );
   it("rejects an inactive credential owner", async () => {
-    state.rows = [
-      [{ userId: "user", workspaceId: "workspace" }],
-      [context],
-    ];
+    state.rows = [[{ userId: "user", workspaceId: "workspace" }], [context]];
     state.member.mockResolvedValueOnce(null);
     await expect(execute()).rejects.toThrow("no longer active");
   });
@@ -213,20 +197,13 @@ describe("approved MCP execution", () => {
     await expect(execute()).rejects.toThrow("writes are disabled");
   });
   it("rejects changed encrypted arguments or their hash", async () => {
-    state.rows = [
-      [{ userId: "user", workspaceId: "workspace" }],
-      [context],
-    ];
+    state.rows = [[{ userId: "user", workspaceId: "workspace" }], [context]];
     action.inputHash = "forged";
     await expect(execute()).rejects.toThrow("integrity");
     expect(state.execute).not.toHaveBeenCalled();
   });
   it("records ambiguous write outcomes without declaring success", async () => {
-    state.rows = [
-      [{ userId: "user", workspaceId: "workspace" }],
-      [context],
-      [],
-    ];
+    state.rows = [[{ userId: "user", workspaceId: "workspace" }], [context], []];
     state.execute.mockResolvedValueOnce({
       ok: false,
       status: "failed",
@@ -277,9 +254,7 @@ describe("approved MCP execution", () => {
       result: success,
       status: "succeeded",
     });
-    expect(
-      state.writes.some((write) => Object.hasOwn(write as object, "output")),
-    ).toBe(false);
+    expect(state.writes.some((write) => Object.hasOwn(write as object, "output"))).toBe(false);
   });
   it("will not execute an agent approval without its exact saved checkpoint", async () => {
     action = await fixture(true);

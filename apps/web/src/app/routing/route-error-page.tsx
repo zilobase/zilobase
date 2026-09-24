@@ -23,17 +23,11 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
     isDesktop: isDesktopApp() || Boolean(selectedServer),
     selectedServer,
   });
-  const [otherProfiles, setOtherProfiles] = useState<DesktopServerProfile[]>(
-    [],
-  );
+  const [otherProfiles, setOtherProfiles] = useState<DesktopServerProfile[]>([]);
 
   useEffect(() => {
     captureProductException(error, { error_boundary: "router.error" });
-    recordDesktopDiagnostic(
-      "router.error",
-      describeDesktopError(error),
-      "error",
-    );
+    recordDesktopDiagnostic("router.error", describeDesktopError(error), "error");
   }, [error]);
 
   useEffect(() => {
@@ -42,9 +36,7 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
     void listDesktopServerProfiles()
       .then((result) => {
         if (!disposed) {
-          setOtherProfiles(
-            result.profiles.filter((profile) => !profile.active),
-          );
+          setOtherProfiles(result.profiles.filter((profile) => !profile.active));
         }
       })
       .catch(() => {
@@ -60,9 +52,7 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
       <div className="flex max-w-sm flex-col items-center gap-4 text-center">
         <div>
           <h1 className="text-lg font-semibold">{copy.title}</h1>
-          <p className="mt-1 text-sm text-content-secondary">
-            {copy.description}
-          </p>
+          <p className="mt-1 text-sm text-content-secondary">{copy.description}</p>
         </div>
         <div className="flex w-full flex-col items-stretch gap-3">
           <Button onClick={() => window.location.reload()}>Try again</Button>
@@ -72,9 +62,7 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
               onClick={() => {
                 void executeDesktopServerSwitch({
                   hasCredentials: profile.hasCredentials,
-                  path: profile.hasCredentials
-                    ? (profile.lastPath ?? "/recents")
-                    : "/login",
+                  path: profile.hasCredentials ? (profile.lastPath ?? "/recents") : "/login",
                   server: profile.server,
                   workspaceId: profile.lastActiveWorkspaceId,
                 });
@@ -85,10 +73,7 @@ export default function RouteErrorPage({ error }: ErrorComponentProps) {
             </Button>
           ))}
           {copy.showChangeServer ? (
-            <Button
-              onClick={() => void navigate({ to: "/connect" })}
-              variant="outline"
-            >
+            <Button onClick={() => void navigate({ to: "/connect" })} variant="outline">
               Change server
             </Button>
           ) : null}

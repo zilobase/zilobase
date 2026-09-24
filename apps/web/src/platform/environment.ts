@@ -1,1 +1,1 @@
-export { isDesktopApp, isElectronDesktop } from "./desktop/native"
+export { isDesktopApp, isElectronDesktop } from "./desktop/native";

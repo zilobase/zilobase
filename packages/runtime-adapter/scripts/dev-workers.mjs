@@ -1,15 +1,7 @@
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
-import {
-  lstat,
-  mkdir,
-  mkdtemp,
-  readlink,
-  symlink,
-  unlink,
-  writeFile,
-} from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readlink, symlink, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { config as loadEnv } from "@dotenvx/dotenvx";
@@ -38,14 +30,17 @@ const stackEnv = {
 };
 const temporaryDir = await mkdtemp(path.join(os.tmpdir(), "zilobase-dev-workers-"));
 const workerStackEnvFile = path.join(temporaryDir, "worker-stack.env");
-const writeWorkerEnvFile = (file, names) => writeFile(
-  file,
-  names.flatMap((name) => {
-    const value = stackEnv[name]?.trim();
-    return value ? [`${name}=${quoteDotEnv(value)}`] : [];
-  }).join("\n"),
-  { mode: 0o600 },
-);
+const writeWorkerEnvFile = (file, names) =>
+  writeFile(
+    file,
+    names
+      .flatMap((name) => {
+        const value = stackEnv[name]?.trim();
+        return value ? [`${name}=${quoteDotEnv(value)}`] : [];
+      })
+      .join("\n"),
+    { mode: 0o600 },
+  );
 await writeWorkerEnvFile(workerStackEnvFile, [
   ...new Set([
     ...requiredRuntimeSecretNames({ mailEnabled: true, calendarEnabled: true }),
@@ -54,32 +49,21 @@ await writeWorkerEnvFile(workerStackEnvFile, [
 ]);
 stackEnv.ZILOBASE_WRANGLER_ENV_FILE = workerStackEnvFile;
 process.once("exit", cleanupTemporaryEnv);
-const appDir = path.resolve(
-  adapterDir,
-  stackEnv.ZILOBASE_APP_DIR ?? "../zilobase",
-);
-const wrangler = path.join(
-  adapterDir,
-  "node_modules",
-  "wrangler",
-  "bin",
-  "wrangler.js",
-);
+const appDir = path.resolve(adapterDir, stackEnv.ZILOBASE_APP_DIR ?? "../zilobase");
+const wrangler = path.join(adapterDir, "node_modules", "wrangler", "bin", "wrangler.js");
 await alignLocalPackage(appDir, "server", "apps/server");
 await alignLocalPackage(appDir, "features", "packages/features");
 console.info("Applying local database migrations...");
-await runCommand(
-  "npm",
-  ["run", "db:migrate", "--workspace", "@zilobase/server"],
-  { cwd: appDir, env: stackEnv },
-);
+await runCommand("npm", ["run", "db:migrate", "--workspace", "@zilobase/server"], {
+  cwd: appDir,
+  env: stackEnv,
+});
 if (stackEnv.ZILOBASE_DEMO_ENABLED?.trim().toLowerCase() === "true") {
   console.info("Seeding the local demo workspace...");
-  await runCommand(
-    "npm",
-    ["run", "db:seed:demo", "--workspace", "@zilobase/server"],
-    { cwd: appDir, env: stackEnv },
-  );
+  await runCommand("npm", ["run", "db:seed:demo", "--workspace", "@zilobase/server"], {
+    cwd: appDir,
+    env: stackEnv,
+  });
 }
 console.info("Starting the local API and background Workers...");
 const children = [
@@ -156,10 +140,7 @@ async function alignLocalPackage(appDir, packageName, relativeSource) {
       );
     }
 
-    const currentTarget = path.resolve(
-      packageDir,
-      await readlink(packageLink),
-    );
+    const currentTarget = path.resolve(packageDir, await readlink(packageLink));
     if (currentTarget === sourceDir) return;
     await unlink(packageLink);
   }

@@ -1,17 +1,12 @@
-import { useParams } from "@tanstack/react-router"
+import { useParams } from "@tanstack/react-router";
 
-import { FallbackErrorBoundary } from "@/features/desktop/diagnostics/fallback-error-boundary"
-import { PageWorkspaceGate } from "@/features/workspaces"
-import {
-  PageSidePaneLayout,
-  usePageSidePane,
-} from "@/features/pages/pane/page-side-pane";
-import {
-  useOpenEmbeddedPage,
-} from "@/features/pages/pane/use-open-embedded-page";
-import { useTitleDraft } from "@/features/pages/hooks/index"
-import { PageMetadata as PageMetadataHeader } from "@/features/databases"
-import { MeetingView } from "@/features/editor/extensions/meeting"
+import { FallbackErrorBoundary } from "@/features/desktop/diagnostics/fallback-error-boundary";
+import { PageWorkspaceGate } from "@/features/workspaces";
+import { PageSidePaneLayout, usePageSidePane } from "@/features/pages/pane/page-side-pane";
+import { useOpenEmbeddedPage } from "@/features/pages/pane/use-open-embedded-page";
+import { useTitleDraft } from "@/features/pages/hooks/index";
+import { PageMetadata as PageMetadataHeader } from "@/features/databases";
+import { MeetingView } from "@/features/editor/extensions/meeting";
 import { PageEditorPane } from "@/features/pages/pane/page-editor-pane";
 import { useMeeting, useUpdateMeeting } from "@zilobase/features/meetings/react";
 import {
@@ -26,19 +21,19 @@ import {
 import { usePage, usePageAccessLevel, useUpdatePage } from "@zilobase/features/pages/react";
 import { useUserSettings } from "@zilobase/features/user-settings/react";
 import { useSession } from "@zilobase/features/auth/react";
-import { LoaderCircle } from "@/shared/components/icons"
-import type { OpenPageOptions } from "@/features/pages"
+import { LoaderCircle } from "@/shared/components/icons";
+import type { OpenPageOptions } from "@/features/pages";
 
 export default function MeetingPage() {
-  const { meetingId } = useParams({ from: "/m/$meetingId" })
-  const { data: session } = useSession()
+  const { meetingId } = useParams({ from: "/m/$meetingId" });
+  const { data: session } = useSession();
 
   if (!session?.user) {
     return (
       <main className="flex min-h-svh items-center justify-center px-4 text-sm text-content-secondary">
         Sign in to open this meeting.
       </main>
-    )
+    );
   }
 
   return (
@@ -53,31 +48,27 @@ export default function MeetingPage() {
     >
       <AuthenticatedMeetingPage />
     </FallbackErrorBoundary>
-  )
+  );
 }
 
 function AuthenticatedMeetingPage() {
-  const { meetingId } = useParams({ from: "/m/$meetingId" })
-  const { data, isLoading } = useMeeting(meetingId)
-  const notesPageId = data?.meeting.notesPageId ?? null
-  const { data: notesPage } = usePage(notesPageId)
-  const {
-    renderedSidePanePageId,
-    sidePaneAnimatedOpen,
-    sidePaneContentReady,
-    sidePaneDatabaseId,
-  } = usePageSidePane()
+  const { meetingId } = useParams({ from: "/m/$meetingId" });
+  const { data, isLoading } = useMeeting(meetingId);
+  const notesPageId = data?.meeting.notesPageId ?? null;
+  const { data: notesPage } = usePage(notesPageId);
+  const { renderedSidePanePageId, sidePaneAnimatedOpen, sidePaneContentReady, sidePaneDatabaseId } =
+    usePageSidePane();
   const { openPage } = useOpenEmbeddedPage({
     contextPageId: notesPageId,
     page: notesPage,
-  })
+  });
 
   if (isLoading) {
     return (
       <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center">
         <LoaderCircle className="size-5 animate-spin text-content-secondary" />
       </main>
-    )
+    );
   }
 
   if (!data?.meeting) {
@@ -85,18 +76,14 @@ function AuthenticatedMeetingPage() {
       <main className="flex min-h-[calc(100svh-3rem)] items-center justify-center px-4 text-sm text-content-secondary">
         Meeting not found.
       </main>
-    )
+    );
   }
 
   return (
     <PageSidePaneLayout
       className="animate-in fade-in-0 duration-300"
       main={
-        <MeetingMainPane
-          meetingId={meetingId}
-          notesPageId={notesPageId}
-          onOpenPage={openPage}
-        />
+        <MeetingMainPane meetingId={meetingId} notesPageId={notesPageId} onOpenPage={openPage} />
       }
       sidePane={
         sidePaneContentReady && renderedSidePanePageId ? (
@@ -112,7 +99,7 @@ function AuthenticatedMeetingPage() {
       sidePaneOpen={sidePaneAnimatedOpen}
       sidePaneVisible={renderedSidePanePageId !== null}
     />
-  )
+  );
 }
 
 function MeetingMainPane({
@@ -120,51 +107,45 @@ function MeetingMainPane({
   notesPageId,
   onOpenPage,
 }: {
-  meetingId: string
-  notesPageId: string | null
-  onOpenPage: (pageId: string, options?: OpenPageOptions) => void
+  meetingId: string;
+  notesPageId: string | null;
+  onOpenPage: (pageId: string, options?: OpenPageOptions) => void;
 }) {
-  const { data } = useMeeting(meetingId)
-  const meeting = data?.meeting
-  const metadataPageId = notesPageId ?? meeting?.pageId ?? null
-  const { data: metadataPage } = usePage(metadataPageId)
-  const { data: hostPage } = usePage(meeting?.pageId)
-  const { data: notesAccessLevel } = usePageAccessLevel(notesPageId)
-  const { data: hostAccessLevel } = usePageAccessLevel(meeting?.pageId)
-  const { data: userSettings } = useUserSettings()
-  const updateMeeting = useUpdateMeeting(meetingId)
-  const updatePage = useUpdatePage()
-  const accessLevel = notesAccessLevel ?? hostAccessLevel
+  const { data } = useMeeting(meetingId);
+  const meeting = data?.meeting;
+  const metadataPageId = notesPageId ?? meeting?.pageId ?? null;
+  const { data: metadataPage } = usePage(metadataPageId);
+  const { data: hostPage } = usePage(meeting?.pageId);
+  const { data: notesAccessLevel } = usePageAccessLevel(notesPageId);
+  const { data: hostAccessLevel } = usePageAccessLevel(meeting?.pageId);
+  const { data: userSettings } = useUserSettings();
+  const updateMeeting = useUpdateMeeting(meetingId);
+  const updatePage = useUpdatePage();
+  const accessLevel = notesAccessLevel ?? hostAccessLevel;
   const editable =
-    !isMeetingLocked(metadataPage) &&
-    (accessLevel === "edit" || accessLevel === "full")
-  const fullWidth = resolvePageFullWidth(
-    metadataPage,
-    userSettings?.pageFullWidth,
-  )
-  const metadata = (metadataPage?.metadata ?? {}) as PageMetadata
-  const cover = metadataPage ? (getPageCover(metadataPage) ?? "") : ""
-  const emoji = metadataPage ? (getPageEmoji(metadataPage) ?? "") : ""
-  const iconPosition = metadataPage
-    ? getPageIconPosition(metadataPage)
-    : "top"
+    !isMeetingLocked(metadataPage) && (accessLevel === "edit" || accessLevel === "full");
+  const fullWidth = resolvePageFullWidth(metadataPage, userSettings?.pageFullWidth);
+  const metadata = (metadataPage?.metadata ?? {}) as PageMetadata;
+  const cover = metadataPage ? (getPageCover(metadataPage) ?? "") : "";
+  const emoji = metadataPage ? (getPageEmoji(metadataPage) ?? "") : "";
+  const iconPosition = metadataPage ? getPageIconPosition(metadataPage) : "top";
   const { setTitle, title } = useTitleDraft({
     enabled: editable,
     onSave: async (nextTitle) => {
-      if (!meeting) return
-      await updateMeeting.mutateAsync({ title: nextTitle })
+      if (!meeting) return;
+      await updateMeeting.mutateAsync({ title: nextTitle });
     },
     sourceId: meeting?.id ?? null,
     sourceTitle: meeting?.title ?? "Meeting",
-  })
+  });
 
   const updateMetadata = (patch: Partial<PageMetadata>) => {
-    if (!editable || !metadataPageId) return
+    if (!editable || !metadataPageId) return;
     updatePage.mutate({
       id: metadataPageId,
       metadata: { ...metadata, ...patch },
-    })
-  }
+    });
+  };
 
   const content = meeting ? (
     <section className="animate-in fade-in-0 duration-300">
@@ -207,9 +188,11 @@ function MeetingMainPane({
     <section className="flex min-h-[calc(100svh-3rem)] items-center justify-center">
       <LoaderCircle className="size-5 animate-spin text-content-secondary" />
     </section>
-  )
+  );
 
-  return notesPageId
-    ? <PageWorkspaceGate pageId={notesPageId}>{content}</PageWorkspaceGate>
-    : content
+  return notesPageId ? (
+    <PageWorkspaceGate pageId={notesPageId}>{content}</PageWorkspaceGate>
+  ) : (
+    content
+  );
 }

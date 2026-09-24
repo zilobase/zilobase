@@ -1,8 +1,6 @@
 export type RuntimeKind = "node" | "worker";
 
-export function resolveRuntimeKind(
-  env: Record<string, unknown>,
-): RuntimeKind {
+export function resolveRuntimeKind(env: Record<string, unknown>): RuntimeKind {
   const configured = env.ZILOBASE_RUNTIME_KIND;
   if (configured === undefined || configured === "" || configured === "node") {
     return "node";

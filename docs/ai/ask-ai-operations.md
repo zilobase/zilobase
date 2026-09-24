@@ -37,26 +37,26 @@ the workspace admin role on every request.
 
 ## Defaults and overrides
 
-| Variable | Default | Enforced range |
-| --- | ---: | ---: |
-| `AI_AGENT_MAX_CONCURRENT_TURNS_PER_USER` | 2 | 1–10 |
-| `AI_AGENT_MAX_CONCURRENT_TURNS_PER_WORKSPACE` | 24 | 1–500 |
-| `AI_AGENT_MAX_TURNS_PER_USER_PER_DAY` | 200 | 1–10,000 |
-| `AI_AGENT_MAX_TOKENS_PER_USER_PER_DAY` | 500,000 | 10,000–10,000,000 |
-| `AI_AGENT_MAX_UPLOAD_BYTES_PER_USER_PER_DAY` | 262,144,000 | 1 MB–2 GB |
-| `AI_AGENT_MAX_ARTIFACTS_PER_USER_PER_DAY` | 50 | 1–1,000 |
-| `AI_AGENT_MAX_ARTIFACT_BYTES_PER_USER_PER_DAY` | 262,144,000 | 1 MB–2 GB |
-| `AI_AGENT_MAX_FILES_PER_TURN` | 5 | 1–5 |
-| `AI_AGENT_MAX_INPUT_MESSAGES` | 500 | 10–500 |
-| `AI_AGENT_MAX_INPUT_CHARACTERS` | 250,000 | 10,000–1,000,000 |
-| `AI_AGENT_MAX_STEPS` | 15 | 1–15 |
-| `AI_AGENT_MAX_OUTPUT_TOKENS` | 8,000 | 256–8,000 |
-| `AI_AGENT_MAX_PROVIDER_RETRIES` | 2 | 0–5 |
-| `AI_AGENT_TURN_TIMEOUT_MS` | 180,000 | 30,000–600,000 |
-| `AI_AGENT_STREAM_STEP_TIMEOUT_MS` | 60,000 | 10,000–180,000 |
-| `AI_AGENT_STREAM_CHUNK_TIMEOUT_MS` | 30,000 | 5,000–120,000 |
-| `AI_AGENT_AUDIT_RETENTION_DAYS` | 90 | 7–365 |
-| `AI_AGENT_CLEANUP_BATCH_SIZE` | 100 | 10–1,000 |
+| Variable                                       |     Default |    Enforced range |
+| ---------------------------------------------- | ----------: | ----------------: |
+| `AI_AGENT_MAX_CONCURRENT_TURNS_PER_USER`       |           2 |              1–10 |
+| `AI_AGENT_MAX_CONCURRENT_TURNS_PER_WORKSPACE`  |          24 |             1–500 |
+| `AI_AGENT_MAX_TURNS_PER_USER_PER_DAY`          |         200 |          1–10,000 |
+| `AI_AGENT_MAX_TOKENS_PER_USER_PER_DAY`         |     500,000 | 10,000–10,000,000 |
+| `AI_AGENT_MAX_UPLOAD_BYTES_PER_USER_PER_DAY`   | 262,144,000 |         1 MB–2 GB |
+| `AI_AGENT_MAX_ARTIFACTS_PER_USER_PER_DAY`      |          50 |           1–1,000 |
+| `AI_AGENT_MAX_ARTIFACT_BYTES_PER_USER_PER_DAY` | 262,144,000 |         1 MB–2 GB |
+| `AI_AGENT_MAX_FILES_PER_TURN`                  |           5 |               1–5 |
+| `AI_AGENT_MAX_INPUT_MESSAGES`                  |         500 |            10–500 |
+| `AI_AGENT_MAX_INPUT_CHARACTERS`                |     250,000 |  10,000–1,000,000 |
+| `AI_AGENT_MAX_STEPS`                           |          15 |              1–15 |
+| `AI_AGENT_MAX_OUTPUT_TOKENS`                   |       8,000 |         256–8,000 |
+| `AI_AGENT_MAX_PROVIDER_RETRIES`                |           2 |               0–5 |
+| `AI_AGENT_TURN_TIMEOUT_MS`                     |     180,000 |    30,000–600,000 |
+| `AI_AGENT_STREAM_STEP_TIMEOUT_MS`              |      60,000 |    10,000–180,000 |
+| `AI_AGENT_STREAM_CHUNK_TIMEOUT_MS`             |      30,000 |     5,000–120,000 |
+| `AI_AGENT_AUDIT_RETENTION_DAYS`                |          90 |             7–365 |
+| `AI_AGENT_CLEANUP_BATCH_SIZE`                  |         100 |          10–1,000 |
 
 Invalid and out-of-range values fall back to, or are clamped within, these safe
 bounds. Limits are read server-side. Ask AI has no tool for changing them.

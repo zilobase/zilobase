@@ -62,7 +62,9 @@ test("edition discovery adds only the edition and declared capabilities", async 
       editionExtension: {
         id: "test-edition",
         capabilities: ["custom-auth", "audit"],
-        async createAuthPlugins() { return []; },
+        async createAuthPlugins() {
+          return [];
+        },
         async beforeMembershipGrant() {},
         async recordSecurityEvent() {},
         registerRoutes() {},

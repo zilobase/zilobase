@@ -18,9 +18,7 @@ export type ChatbotProps = {
   isSidebar?: boolean;
   onDraftDirtyChange?: (dirty: boolean) => void;
   onInitialSubmissionConsumed?: () => void;
-  onInitialSubmissionPrepared?: (
-    submission: PendingInitialChatSubmission,
-  ) => void;
+  onInitialSubmissionPrepared?: (submission: PendingInitialChatSubmission) => void;
   onThreadCreated?: (threadId: string) => void;
   pendingInitialSubmission?: PendingInitialChatSubmission | null;
   threadId: string | null;

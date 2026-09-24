@@ -6,30 +6,30 @@ import {
   useState,
   type CSSProperties,
   type RefObject,
-} from "react"
+} from "react";
 
-import { getDatabaseHorizontalWheelScrollLeft } from "./database-wheel-scroll"
+import { getDatabaseHorizontalWheelScrollLeft } from "./database-wheel-scroll";
 
 type InlineDatabaseScrollLayout = {
-  contentWidth: number
-  offset: number
-  trailingOffset: number
-  viewWidth: number
-  viewportWidth: number
-}
+  contentWidth: number;
+  offset: number;
+  trailingOffset: number;
+  viewWidth: number;
+  viewportWidth: number;
+};
 
 type UseInlineDatabaseScrollOptions = {
-  contentRef?: RefObject<HTMLElement | null>
-  enabled?: boolean
-  getContentWidth: () => number
-  measureKey?: unknown
-  scrollRef?: RefObject<HTMLElement | null>
-  wrapperRef: RefObject<HTMLElement | null>
-}
+  contentRef?: RefObject<HTMLElement | null>;
+  enabled?: boolean;
+  getContentWidth: () => number;
+  measureKey?: unknown;
+  scrollRef?: RefObject<HTMLElement | null>;
+  wrapperRef: RefObject<HTMLElement | null>;
+};
 
 function isSameLayout(
   currentLayout: InlineDatabaseScrollLayout | null,
-  nextLayout: InlineDatabaseScrollLayout
+  nextLayout: InlineDatabaseScrollLayout,
 ) {
   return (
     currentLayout &&
@@ -38,7 +38,7 @@ function isSameLayout(
     Math.abs(currentLayout.trailingOffset - nextLayout.trailingOffset) < 0.5 &&
     Math.abs(currentLayout.viewWidth - nextLayout.viewWidth) < 0.5 &&
     Math.abs(currentLayout.viewportWidth - nextLayout.viewportWidth) < 0.5
-  )
+  );
 }
 
 export function useInlineDatabaseScroll({
@@ -49,110 +49,96 @@ export function useInlineDatabaseScroll({
   scrollRef,
   wrapperRef,
 }: UseInlineDatabaseScrollOptions) {
-  const [layout, setLayout] = useState<InlineDatabaseScrollLayout | null>(null)
+  const [layout, setLayout] = useState<InlineDatabaseScrollLayout | null>(null);
   const measureLayout = useCallback(() => {
-    const wrapperElement = wrapperRef.current
+    const wrapperElement = wrapperRef.current;
     const narrowPageContent = wrapperElement?.closest<HTMLElement>(
-      '[data-editor-page-content="narrow"]'
-    )
-    const editorSurface = wrapperElement?.closest<HTMLElement>(
-      "[data-editor-surface]"
-    )
-    const layoutModule = wrapperElement?.closest<HTMLElement>(
-      "[data-layout-module]"
-    )
+      '[data-editor-page-content="narrow"]',
+    );
+    const editorSurface = wrapperElement?.closest<HTMLElement>("[data-editor-surface]");
+    const layoutModule = wrapperElement?.closest<HTMLElement>("[data-layout-module]");
 
-    if (
-      !enabled ||
-      !wrapperElement ||
-      !narrowPageContent ||
-      !editorSurface ||
-      layoutModule
-    ) {
-      setLayout((currentLayout) =>
-        currentLayout === null ? currentLayout : null
-      )
-      return
+    if (!enabled || !wrapperElement || !narrowPageContent || !editorSurface || layoutModule) {
+      setLayout((currentLayout) => (currentLayout === null ? currentLayout : null));
+      return;
     }
 
-    const wrapperRect = wrapperElement.getBoundingClientRect()
-    const surfaceRect = editorSurface.getBoundingClientRect()
-    const offset = Math.max(0, wrapperRect.left - surfaceRect.left)
-    const trailingOffset = Math.max(0, surfaceRect.right - wrapperRect.right)
-    const viewportWidth = Math.max(wrapperRect.width, surfaceRect.width)
-    const contentWidthValue = getContentWidth()
-    const viewWidth = Math.max(wrapperRect.width, contentWidthValue)
-    const contentWidth = offset + viewWidth + trailingOffset
+    const wrapperRect = wrapperElement.getBoundingClientRect();
+    const surfaceRect = editorSurface.getBoundingClientRect();
+    const offset = Math.max(0, wrapperRect.left - surfaceRect.left);
+    const trailingOffset = Math.max(0, surfaceRect.right - wrapperRect.right);
+    const viewportWidth = Math.max(wrapperRect.width, surfaceRect.width);
+    const contentWidthValue = getContentWidth();
+    const viewWidth = Math.max(wrapperRect.width, contentWidthValue);
+    const contentWidth = offset + viewWidth + trailingOffset;
     const nextLayout = {
       contentWidth,
       offset,
       trailingOffset,
       viewWidth,
       viewportWidth,
-    }
+    };
 
     setLayout((currentLayout) =>
-      isSameLayout(currentLayout, nextLayout) ? currentLayout : nextLayout
-    )
-  }, [enabled, getContentWidth, wrapperRef])
+      isSameLayout(currentLayout, nextLayout) ? currentLayout : nextLayout,
+    );
+  }, [enabled, getContentWidth, wrapperRef]);
 
   useLayoutEffect(() => {
-    measureLayout()
+    measureLayout();
 
-    const wrapperElement = wrapperRef.current
-    const contentElement = contentRef?.current
+    const wrapperElement = wrapperRef.current;
+    const contentElement = contentRef?.current;
     const narrowPageContent = wrapperElement?.closest<HTMLElement>(
-      '[data-editor-page-content="narrow"]'
-    )
-    const editorSurface = wrapperElement?.closest<HTMLElement>(
-      "[data-editor-surface]"
-    )
+      '[data-editor-page-content="narrow"]',
+    );
+    const editorSurface = wrapperElement?.closest<HTMLElement>("[data-editor-surface]");
 
     if (typeof ResizeObserver === "undefined" || !wrapperElement) {
-      window.addEventListener("resize", measureLayout)
+      window.addEventListener("resize", measureLayout);
 
-      return () => window.removeEventListener("resize", measureLayout)
+      return () => window.removeEventListener("resize", measureLayout);
     }
 
-    const resizeObserver = new ResizeObserver(measureLayout)
+    const resizeObserver = new ResizeObserver(measureLayout);
 
-    resizeObserver.observe(wrapperElement)
+    resizeObserver.observe(wrapperElement);
 
     if (contentElement) {
-      resizeObserver.observe(contentElement)
+      resizeObserver.observe(contentElement);
     }
 
     if (narrowPageContent) {
-      resizeObserver.observe(narrowPageContent)
+      resizeObserver.observe(narrowPageContent);
     }
 
     if (editorSurface) {
-      resizeObserver.observe(editorSurface)
+      resizeObserver.observe(editorSurface);
     }
 
-    window.addEventListener("resize", measureLayout)
+    window.addEventListener("resize", measureLayout);
 
     return () => {
-      resizeObserver.disconnect()
-      window.removeEventListener("resize", measureLayout)
-    }
-  }, [contentRef, measureKey, measureLayout, wrapperRef])
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", measureLayout);
+    };
+  }, [contentRef, measureKey, measureLayout, wrapperRef]);
 
   useEffect(() => {
-    const scrollElement = scrollRef?.current
+    const scrollElement = scrollRef?.current;
 
     if (!enabled || !scrollElement) {
-      return
+      return;
     }
 
     const onWheel = (event: WheelEvent) => {
-      handleInlineDatabaseScrollWheel(event, scrollElement)
-    }
+      handleInlineDatabaseScrollWheel(event, scrollElement);
+    };
 
-    scrollElement.addEventListener("wheel", onWheel, { passive: false })
+    scrollElement.addEventListener("wheel", onWheel, { passive: false });
 
-    return () => scrollElement.removeEventListener("wheel", onWheel)
-  }, [enabled, measureKey, scrollRef])
+    return () => scrollElement.removeEventListener("wheel", onWheel);
+  }, [enabled, measureKey, scrollRef]);
 
   const style = useMemo(
     () =>
@@ -165,35 +151,29 @@ export function useInlineDatabaseScroll({
             "--database-inline-scroll-viewport-width": `${layout.viewportWidth}px`,
           } as CSSProperties)
         : undefined,
-    [layout]
-  )
+    [layout],
+  );
 
   return {
     isInlineScrollEnabled: layout !== null,
     layout,
     measureLayout,
     style,
-  }
+  };
 }
 
-function handleInlineDatabaseScrollWheel(
-  event: WheelEvent,
-  scrollElement: HTMLElement
-) {
-  const nextScroll = getDatabaseHorizontalWheelScrollLeft(
-    event,
-    scrollElement
-  )
+function handleInlineDatabaseScrollWheel(event: WheelEvent, scrollElement: HTMLElement) {
+  const nextScroll = getDatabaseHorizontalWheelScrollLeft(event, scrollElement);
 
   if (!nextScroll?.shouldConsume) {
-    return false
+    return false;
   }
 
-  scrollElement.scrollLeft = nextScroll.scrollLeft
+  scrollElement.scrollLeft = nextScroll.scrollLeft;
 
   if (event.cancelable) {
-    event.preventDefault()
+    event.preventDefault();
   }
 
-  return true
+  return true;
 }

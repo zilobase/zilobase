@@ -1,50 +1,44 @@
-import * as React from "react"
-import { useNavigate } from "@tanstack/react-router"
-import { CameraIcon, LogOutIcon, Trash2Icon } from "@/shared/components/icons"
-import { toast } from "sonner"
+import * as React from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { CameraIcon, LogOutIcon, Trash2Icon } from "@/shared/components/icons";
+import { toast } from "sonner";
 
-import { SettingsHeader } from "../components/settings-header"
-import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar"
-import { Button } from "@/shared/ui/button"
+import { SettingsHeader } from "../components/settings-header";
+import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
+import { Button } from "@/shared/ui/button";
 
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-} from "@/shared/ui/field"
-import { Input } from "@/shared/ui/input"
-import { Spinner } from "@/shared/ui/spinner"
-import { getApiErrorMessage } from "@/platform/network/api"
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { Spinner } from "@/shared/ui/spinner";
+import { getApiErrorMessage } from "@/platform/network/api";
 import {
   getUserImageUrl,
   removeProfileImage,
   uploadProfileImage,
-} from "@/platform/network/image-upload"
-import { clearAllIndexedData } from "@/platform/storage/indexed-data-cleanup"
-import { useQueryClient } from "@tanstack/react-query"
+} from "@/platform/network/image-upload";
+import { clearAllIndexedData } from "@/platform/storage/indexed-data-cleanup";
+import { useQueryClient } from "@tanstack/react-query";
 import { sessionQueryKey, type SessionResponse } from "@zilobase/features/auth";
 import { useSession, useSignOut, useUpdateUserProfile } from "@zilobase/features/auth/react";
 
 export default function ProfileSettingsPage() {
-  const queryClient = useQueryClient()
-  const navigate = useNavigate()
-  const { data: sessionData } = useSession()
-  const signOut = useSignOut()
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { data: sessionData } = useSession();
+  const signOut = useSignOut();
 
   const finishSignOut = async () => {
     signOut.mutate(undefined, {
       onSuccess: async () => {
-        await clearAllIndexedData().catch(() => undefined)
-        queryClient.clear()
-        void navigate({ to: "/login", replace: true })
+        await clearAllIndexedData().catch(() => undefined);
+        queryClient.clear();
+        void navigate({ to: "/login", replace: true });
       },
       onError: (error) => {
-        toast.error(getApiErrorMessage(error))
+        toast.error(getApiErrorMessage(error));
       },
-    })
-  }
+    });
+  };
 
   return (
     <main className="flex min-h-full flex-1 flex-col gap-6 px-4 py-8">
@@ -74,7 +68,7 @@ export default function ProfileSettingsPage() {
         </Button>
       </div>
     </main>
-  )
+  );
 }
 
 function ProfileDetailsCard({
@@ -83,99 +77,99 @@ function ProfileDetailsCard({
   initialName,
   isReady,
 }: {
-  initialEmail: string
-  initialImage: string | null
-  initialName: string
-  isReady: boolean
+  initialEmail: string;
+  initialImage: string | null;
+  initialName: string;
+  isReady: boolean;
 }) {
-  const queryClient = useQueryClient()
-  const updateUserProfile = useUpdateUserProfile()
-  const imageInputRef = React.useRef<HTMLInputElement | null>(null)
-  const [name, setName] = React.useState(initialName)
-  const [email, setEmail] = React.useState(initialEmail)
-  const [profileImage, setProfileImage] = React.useState<string | null>(initialImage)
-  const [imageAction, setImageAction] = React.useState<"remove" | "upload" | null>(null)
-  const [error, setError] = React.useState("")
+  const queryClient = useQueryClient();
+  const updateUserProfile = useUpdateUserProfile();
+  const imageInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [name, setName] = React.useState(initialName);
+  const [email, setEmail] = React.useState(initialEmail);
+  const [profileImage, setProfileImage] = React.useState<string | null>(initialImage);
+  const [imageAction, setImageAction] = React.useState<"remove" | "upload" | null>(null);
+  const [error, setError] = React.useState("");
 
   React.useEffect(() => {
-    setName(initialName)
-    setEmail(initialEmail)
-    setProfileImage(initialImage)
-  }, [initialEmail, initialImage, initialName])
+    setName(initialName);
+    setEmail(initialEmail);
+    setProfileImage(initialImage);
+  }, [initialEmail, initialImage, initialName]);
 
   const updateSessionImage = (image: string | null) => {
     queryClient.setQueryData<SessionResponse>(sessionQueryKey, (current) => {
       if (!current?.user) {
-        return current
+        return current;
       }
 
       return {
         ...current,
         user: { ...current.user, image },
-      }
-    })
-  }
+      };
+    });
+  };
 
   const selectProfileImage = async (file: File | undefined) => {
     if (!file) {
-      return
+      return;
     }
 
-    const previousImage = profileImage
-    const previewUrl = URL.createObjectURL(file)
-    setProfileImage(previewUrl)
-    setImageAction("upload")
+    const previousImage = profileImage;
+    const previewUrl = URL.createObjectURL(file);
+    setProfileImage(previewUrl);
+    setImageAction("upload");
 
     try {
-      const result = await uploadProfileImage(file)
-      setProfileImage(result.image)
-      updateSessionImage(result.image)
-      toast.success("Profile picture updated.")
+      const result = await uploadProfileImage(file);
+      setProfileImage(result.image);
+      updateSessionImage(result.image);
+      toast.success("Profile picture updated.");
     } catch (uploadError) {
-      setProfileImage(previousImage)
-      toast.error(getApiErrorMessage(uploadError))
+      setProfileImage(previousImage);
+      toast.error(getApiErrorMessage(uploadError));
     } finally {
-      URL.revokeObjectURL(previewUrl)
-      setImageAction(null)
+      URL.revokeObjectURL(previewUrl);
+      setImageAction(null);
     }
-  }
+  };
 
   const deleteProfileImage = async () => {
-    setImageAction("remove")
+    setImageAction("remove");
 
     try {
-      await removeProfileImage()
-      setProfileImage(null)
-      updateSessionImage(null)
-      toast.success("Profile picture removed.")
+      await removeProfileImage();
+      setProfileImage(null);
+      updateSessionImage(null);
+      toast.success("Profile picture removed.");
     } catch (removeError) {
-      toast.error(getApiErrorMessage(removeError))
+      toast.error(getApiErrorMessage(removeError));
     } finally {
-      setImageAction(null)
+      setImageAction(null);
     }
-  }
+  };
 
   const hasChanges =
     name.trim() !== initialName.trim() ||
-    email.trim().toLowerCase() !== initialEmail.trim().toLowerCase()
+    email.trim().toLowerCase() !== initialEmail.trim().toLowerCase();
 
   const saveProfile = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+    event.preventDefault();
 
-    const trimmedName = name.trim()
-    const trimmedEmail = email.trim().toLowerCase()
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
 
     if (!trimmedName) {
-      setError("Name is required.")
-      return
+      setError("Name is required.");
+      return;
     }
 
     if (!isValidEmail(trimmedEmail)) {
-      setError("Enter a valid email address.")
-      return
+      setError("Enter a valid email address.");
+      return;
     }
 
-    setError("")
+    setError("");
     updateUserProfile.mutate(
       {
         email: trimmedEmail,
@@ -183,22 +177,20 @@ function ProfileDetailsCard({
       },
       {
         onSuccess: () => {
-          toast.success("Profile updated.")
+          toast.success("Profile updated.");
         },
         onError: (mutationError) => {
-          setError(getApiErrorMessage(mutationError))
+          setError(getApiErrorMessage(mutationError));
         },
       },
-    )
-  }
+    );
+  };
 
   return (
     <section className="grid gap-3">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
-          <h3 className="font-heading text-base leading-snug font-medium">
-            Personal details
-          </h3>
+          <h3 className="font-heading text-base leading-snug font-medium">Personal details</h3>
           <p className="text-sm text-content-secondary">
             Update the photo, name and email tied to your account.
           </p>
@@ -213,11 +205,7 @@ function ProfileDetailsCard({
           Save changes
         </Button>
       </div>
-      <form
-        className="grid gap-4"
-        id="profile-details-form"
-        onSubmit={saveProfile}
-      >
+      <form className="grid gap-4" id="profile-details-form" onSubmit={saveProfile}>
         <div className="flex items-center gap-4">
           <Avatar className="size-16">
             {profileImage ? (
@@ -226,10 +214,7 @@ function ProfileDetailsCard({
                 src={getUserImageUrl(profileImage)}
               />
             ) : null}
-            <AvatarFallback
-              className="text-base"
-              gradientSeed={name || initialEmail}
-            >
+            <AvatarFallback className="text-base" gradientSeed={name || initialEmail}>
               {getInitials(name || initialEmail)}
             </AvatarFallback>
           </Avatar>
@@ -239,8 +224,8 @@ function ProfileDetailsCard({
               className="hidden"
               disabled={!isReady || imageAction !== null}
               onChange={(event) => {
-                void selectProfileImage(event.target.files?.[0])
-                event.target.value = ""
+                void selectProfileImage(event.target.files?.[0]);
+                event.target.value = "";
               }}
               ref={imageInputRef}
               type="file"
@@ -282,9 +267,9 @@ function ProfileDetailsCard({
               disabled={!isReady || updateUserProfile.isPending}
               id="profile-name"
               onChange={(event) => {
-                setName(event.target.value)
+                setName(event.target.value);
                 if (error) {
-                  setError("")
+                  setError("");
                 }
               }}
               placeholder="Your name"
@@ -299,9 +284,9 @@ function ProfileDetailsCard({
               disabled={!isReady || updateUserProfile.isPending}
               id="profile-email"
               onChange={(event) => {
-                setEmail(event.target.value)
+                setEmail(event.target.value);
                 if (error) {
-                  setError("")
+                  setError("");
                 }
               }}
               placeholder="you@example.com"
@@ -316,18 +301,20 @@ function ProfileDetailsCard({
         </FieldGroup>
       </form>
     </section>
-  )
+  );
 }
 
 function isValidEmail(value: string) {
-  return /\S+@\S+\.\S+/.test(value)
+  return /\S+@\S+\.\S+/.test(value);
 }
 
 function getInitials(value: string) {
-  return value
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "?"
+  return (
+    value
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "?"
+  );
 }

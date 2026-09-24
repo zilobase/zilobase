@@ -1,5 +1,5 @@
-import type { ComponentType, ReactNode } from "react"
-import type { MailModifyRequest } from "@zilobase/features/mail"
+import type { ComponentType, ReactNode } from "react";
+import type { MailModifyRequest } from "@zilobase/features/mail";
 
 import {
   ArchiveIcon,
@@ -9,17 +9,17 @@ import {
   StarIcon,
   TriangleAlertIcon,
   WifiOffIcon,
-} from "@/shared/components/icons"
-import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
+} from "@/shared/components/icons";
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
 
-import { MailActionButton } from "../messages/mail-actions"
+import { MailActionButton } from "../messages/mail-actions";
 
 type MailIndexProgress = {
-  indexedThreadCount: number
-  resultSizeEstimate?: number | null
-  status: string
-}
+  indexedThreadCount: number;
+  resultSizeEstimate?: number | null;
+  status: string;
+};
 
 export function MailboxTopbar({
   activeViewIcon: ActiveViewIcon,
@@ -40,34 +40,40 @@ export function MailboxTopbar({
   syncing,
   viewSettings,
 }: {
-  activeViewIcon: ComponentType<{ className?: string }>
-  activeViewLabel: string
-  batchCount: number
-  connectionNotice?: string
-  filterToolbar?: ReactNode
-  indexProgress?: MailIndexProgress
-  labelMenu: ReactNode
-  mutating: boolean
-  onBatchModify: (modification: MailModifyRequest) => Promise<void>
-  onClearBatch: () => void
-  onCompose: () => void
-  onQueryChange: (query: string) => void
-  onRefresh: () => void
-  online: boolean
-  query: string
-  syncing: boolean
-  viewSettings: ReactNode
+  activeViewIcon: ComponentType<{ className?: string }>;
+  activeViewLabel: string;
+  batchCount: number;
+  connectionNotice?: string;
+  filterToolbar?: ReactNode;
+  indexProgress?: MailIndexProgress;
+  labelMenu: ReactNode;
+  mutating: boolean;
+  onBatchModify: (modification: MailModifyRequest) => Promise<void>;
+  onClearBatch: () => void;
+  onCompose: () => void;
+  onQueryChange: (query: string) => void;
+  onRefresh: () => void;
+  online: boolean;
+  query: string;
+  syncing: boolean;
+  viewSettings: ReactNode;
 }) {
   return (
     <>
       <div className="flex min-w-0 items-center justify-between gap-3 max-sm:flex-wrap">
         <div className="flex shrink-0 items-center gap-2">
           <ActiveViewIcon className="size-5 shrink-0 text-action-link" />
-          <h1 className="text-xl font-semibold leading-7 tracking-normal text-content-primary">{activeViewLabel}</h1>
-          {!online ? <WifiOffIcon className="size-4 text-content-secondary" aria-label="Offline" /> : null}
+          <h1 className="text-xl font-semibold leading-7 tracking-normal text-content-primary">
+            {activeViewLabel}
+          </h1>
+          {!online ? (
+            <WifiOffIcon className="size-4 text-content-secondary" aria-label="Offline" />
+          ) : null}
         </div>
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1 max-sm:basis-full">
-          <Button disabled={!online} onClick={onCompose} size="sm" type="button">Compose</Button>
+          <Button disabled={!online} onClick={onCompose} size="sm" type="button">
+            Compose
+          </Button>
           <div className="relative min-w-0 flex-1 sm:max-w-72">
             <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-content-secondary" />
             <Input
@@ -97,13 +103,20 @@ export function MailboxTopbar({
       {filterToolbar}
 
       {connectionNotice ? (
-        <div className="mt-3 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary" role="status">
+        <div
+          className="mt-3 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary"
+          role="status"
+        >
           {connectionNotice}
         </div>
       ) : null}
 
       {indexProgress && indexProgress.status !== "ready" ? (
-        <div aria-live="polite" className="mt-3 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary" role="status">
+        <div
+          aria-live="polite"
+          className="mt-3 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary"
+          role="status"
+        >
           {indexProgress.status === "error"
             ? "Mail indexing paused. It will retry automatically."
             : `Indexing full mailbox… ${indexProgress.indexedThreadCount}${indexProgress.resultSizeEstimate ? ` of about ${indexProgress.resultSizeEstimate}` : ""} threads`}
@@ -112,14 +125,44 @@ export function MailboxTopbar({
 
       {batchCount ? (
         <div className="mt-3 flex items-center gap-1 rounded-md border border-stroke-default bg-surface-raised px-2 py-1">
-          <span className="mr-2 text-xs font-medium text-content-secondary">{batchCount} selected</span>
-          <MailActionButton disabled={!online || mutating} icon={<MailIcon />} label="Mark selected read" onClick={() => onBatchModify({ removeLabelIds: ["UNREAD"] })} />
-          <MailActionButton disabled={!online || mutating} icon={<StarIcon />} label="Star selected" onClick={() => onBatchModify({ addLabelIds: ["STARRED"] })} />
-          <MailActionButton disabled={!online || mutating} icon={<ArchiveIcon />} label="Archive selected" onClick={() => onBatchModify({ removeLabelIds: ["INBOX"] })} />
-          <MailActionButton disabled={!online || mutating} icon={<TriangleAlertIcon />} label="Move selected to spam" onClick={() => onBatchModify({ addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] })} />
-          <Button className="ml-auto" onClick={onClearBatch} size="sm" type="button" variant="ghost">Clear</Button>
+          <span className="mr-2 text-xs font-medium text-content-secondary">
+            {batchCount} selected
+          </span>
+          <MailActionButton
+            disabled={!online || mutating}
+            icon={<MailIcon />}
+            label="Mark selected read"
+            onClick={() => onBatchModify({ removeLabelIds: ["UNREAD"] })}
+          />
+          <MailActionButton
+            disabled={!online || mutating}
+            icon={<StarIcon />}
+            label="Star selected"
+            onClick={() => onBatchModify({ addLabelIds: ["STARRED"] })}
+          />
+          <MailActionButton
+            disabled={!online || mutating}
+            icon={<ArchiveIcon />}
+            label="Archive selected"
+            onClick={() => onBatchModify({ removeLabelIds: ["INBOX"] })}
+          />
+          <MailActionButton
+            disabled={!online || mutating}
+            icon={<TriangleAlertIcon />}
+            label="Move selected to spam"
+            onClick={() => onBatchModify({ addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] })}
+          />
+          <Button
+            className="ml-auto"
+            onClick={onClearBatch}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            Clear
+          </Button>
         </div>
       ) : null}
     </>
-  )
+  );
 }

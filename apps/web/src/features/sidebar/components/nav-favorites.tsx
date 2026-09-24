@@ -1,26 +1,22 @@
-"use client"
+"use client";
 
-import { useLocation } from "@tanstack/react-router"
+import { useLocation } from "@tanstack/react-router";
 import {
   ArrowUpRightIcon,
   ChevronRightIcon,
   LinkIcon,
   MoreHorizontalIcon,
   StarOffIcon,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/shared/ui/collapsible"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import {
   DropDrawer,
   DropDrawerContent,
   DropDrawerItem,
   DropDrawerSeparator,
   DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
+} from "@/shared/ui/dropdrawer";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -28,7 +24,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/shared/ui/sidebar"
+} from "@/shared/ui/sidebar";
 import {
   getActiveDatabaseId,
   getActiveDatabaseViewId,
@@ -36,14 +32,14 @@ import {
   getActivePageId,
   SidebarNavList,
   type SidebarNavItem,
-} from "./sidebar-nav-list"
-import { SidebarNavItemAction } from "@/shared/ui/sidebar-nav-item-action"
-import { useOpenInNewTab } from "@/features/desktop/components/index"
-import { getSidebarExpansionStorageKey } from "../model/sidebar-expansion-state"
-import { getConfiguredSidebarItems } from "../model/sidebar-section-items"
-import { SidebarLibraryLink } from "./sidebar-library-link"
-import { useSidebarSectionOpen } from "../model/sidebar-section-open-state"
-import type { SidebarSectionLimit, SidebarSectionSort } from "@zilobase/features/user-settings"
+} from "./sidebar-nav-list";
+import { SidebarNavItemAction } from "@/shared/ui/sidebar-nav-item-action";
+import { useOpenInNewTab } from "@/features/desktop/components/index";
+import { getSidebarExpansionStorageKey } from "../model/sidebar-expansion-state";
+import { getConfiguredSidebarItems } from "../model/sidebar-section-items";
+import { SidebarLibraryLink } from "./sidebar-library-link";
+import { useSidebarSectionOpen } from "../model/sidebar-section-open-state";
+import type { SidebarSectionLimit, SidebarSectionSort } from "@zilobase/features/user-settings";
 
 export function NavFavorites({
   favorites,
@@ -54,24 +50,23 @@ export function NavFavorites({
   sort,
   workspaceId,
 }: {
-  favorites: SidebarNavItem[]
-  limit: SidebarSectionLimit
-  onRemoveDatabaseFavorite: (databaseId: string) => void
-  onRemoveFavorite: (pageId: string) => void
-  sectionStorageKey?: string
-  sort: SidebarSectionSort
-  workspaceId: string | null
+  favorites: SidebarNavItem[];
+  limit: SidebarSectionLimit;
+  onRemoveDatabaseFavorite: (databaseId: string) => void;
+  onRemoveFavorite: (pageId: string) => void;
+  sectionStorageKey?: string;
+  sort: SidebarSectionSort;
+  workspaceId: string | null;
 }) {
-  const [open, setOpen] = useSidebarSectionOpen(sectionStorageKey ?? `zilobase:sidebar-section:favorites:${workspaceId ?? "default"}`)
-  const location = useLocation()
-  const activePageId = getActivePageId(location.pathname)
-  const activeDatabaseId = getActiveDatabaseId(location.pathname)
-  const activeDatabaseViewId = getActiveDatabaseViewId(location.search)
-  const activeMeetingId = getActiveMeetingId(
-    location.pathname,
-    location.search,
-  )
-  const displayedFavorites = getConfiguredSidebarItems(favorites, "favorites", { limit, sort })
+  const [open, setOpen] = useSidebarSectionOpen(
+    sectionStorageKey ?? `zilobase:sidebar-section:favorites:${workspaceId ?? "default"}`,
+  );
+  const location = useLocation();
+  const activePageId = getActivePageId(location.pathname);
+  const activeDatabaseId = getActiveDatabaseId(location.pathname);
+  const activeDatabaseViewId = getActiveDatabaseViewId(location.search);
+  const activeMeetingId = getActiveMeetingId(location.pathname, location.search);
+  const displayedFavorites = getConfiguredSidebarItems(favorites, "favorites", { limit, sort });
 
   return (
     <Collapsible asChild onOpenChange={setOpen} open={open}>
@@ -82,20 +77,13 @@ export function NavFavorites({
               asChild
               className="pr-16 group-hover/section-header:bg-action-neutral-hover group-hover/section-header:text-action-on-neutral group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:bg-action-neutral-hover group-has-[>[data-sidebar=group-action][aria-expanded=true]]/section-header:text-action-on-neutral"
             >
-              <button
-                className="group/section-label w-full cursor-pointer"
-                type="button"
-              >
+              <button className="group/section-label w-full cursor-pointer" type="button">
                 <span>Favorites</span>
                 <ChevronRightIcon className="ml-1 size-3 transition-transform group-data-[state=open]/section-label:rotate-90" />
               </button>
             </SidebarGroupLabel>
           </CollapsibleTrigger>
-          <SidebarLibraryLink
-            className="right-2"
-            label="Favorites"
-            sectionId="favorites"
-          />
+          <SidebarLibraryLink className="right-2" label="Favorites" sectionId="favorites" />
         </div>
         <CollapsibleContent className="pb-4 pt-0.5">
           <SidebarMenu aria-label="Favorite pages">
@@ -114,10 +102,7 @@ export function NavFavorites({
                   />
                 )
               }
-              storageKey={getSidebarExpansionStorageKey(
-                workspaceId,
-                "favorites",
-              )}
+              storageKey={getSidebarExpansionStorageKey(workspaceId, "favorites")}
             />
             {displayedFavorites.length === 0 ? (
               <SidebarMenuItem>
@@ -130,7 +115,7 @@ export function NavFavorites({
         </CollapsibleContent>
       </SidebarGroup>
     </Collapsible>
-  )
+  );
 }
 
 function FavoriteItemMenu({
@@ -138,26 +123,24 @@ function FavoriteItemMenu({
   onRemoveDatabaseFavorite,
   onRemoveFavorite,
 }: {
-  item: SidebarNavItem
-  onRemoveDatabaseFavorite: (databaseId: string) => void
-  onRemoveFavorite: (pageId: string) => void
+  item: SidebarNavItem;
+  onRemoveDatabaseFavorite: (databaseId: string) => void;
+  onRemoveFavorite: (pageId: string) => void;
 }) {
-  const { isMobile } = useSidebar()
-  const openInNewTab = useOpenInNewTab()
+  const { isMobile } = useSidebar();
+  const openInNewTab = useOpenInNewTab();
   const linkPath =
-    item.isDatabase && item.databaseId
-      ? `/d/${item.databaseId}`
-      : `/p/${item.pageId}`
+    item.isDatabase && item.databaseId ? `/d/${item.databaseId}` : `/p/${item.pageId}`;
   const removeFavorite = () => {
     if (item.isDatabase && item.databaseId) {
-      onRemoveDatabaseFavorite(item.databaseId)
-      return
+      onRemoveDatabaseFavorite(item.databaseId);
+      return;
     }
 
     if (item.pageId) {
-      onRemoveFavorite(item.pageId)
+      onRemoveFavorite(item.pageId);
     }
-  }
+  };
 
   return (
     <DropDrawer>
@@ -183,9 +166,7 @@ function FavoriteItemMenu({
         ) : null}
         <DropDrawerItem
           onSelect={() => {
-            void navigator.clipboard?.writeText(
-              `${window.location.origin}${linkPath}`,
-            )
+            void navigator.clipboard?.writeText(`${window.location.origin}${linkPath}`);
           }}
         >
           <LinkIcon className="text-content-secondary" />
@@ -196,7 +177,7 @@ function FavoriteItemMenu({
             openInNewTab({
               href: linkPath,
               title: item.name.trim() || "Untitled",
-            })
+            });
           }}
         >
           <ArrowUpRightIcon className="text-content-secondary" />
@@ -204,5 +185,5 @@ function FavoriteItemMenu({
         </DropDrawerItem>
       </DropDrawerContent>
     </DropDrawer>
-  )
+  );
 }

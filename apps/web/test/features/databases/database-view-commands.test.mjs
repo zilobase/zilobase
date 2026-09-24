@@ -182,12 +182,7 @@ export function register({ assert, loadModule, test }) {
     const showFilterPillValues = [];
     const filterPickerOpenValues = [];
     const properties = [
-      createProperty(
-        "database-property-status",
-        "property-status",
-        "Status",
-        "status",
-      ),
+      createProperty("database-property-status", "property-status", "Status", "status"),
     ];
     const commands = getDatabaseViewCommands({
       notify: { error: () => {}, success: () => {} },
@@ -254,12 +249,7 @@ export function register({ assert, loadModule, test }) {
     );
     const updateDatabaseView = createMutation();
     const properties = [
-      createProperty(
-        "database-property-status",
-        "property-status",
-        "Status",
-        "status",
-      ),
+      createProperty("database-property-status", "property-status", "Status", "status"),
     ];
     const commands = getDatabaseViewCommands({
       notify: { error: () => {}, success: () => {} },
@@ -848,10 +838,7 @@ export function register({ assert, loadModule, test }) {
       activeView: {
         config: {
           groupPropertyId: "property-status",
-          hiddenPropertyIds: [
-            "database-property-status",
-            "database-property-notes",
-          ],
+          hiddenPropertyIds: ["database-property-status", "database-property-notes"],
         },
         id: "view-1",
         name: "Board",
@@ -885,10 +872,7 @@ export function register({ assert, loadModule, test }) {
       [
         {
           groupPropertyId: "property-owner",
-          hiddenPropertyIds: [
-            "database-property-notes",
-            "database-property-owner",
-          ],
+          hiddenPropertyIds: ["database-property-notes", "database-property-owner"],
         },
         {
           groupPropertyId: "property-owner",
@@ -1032,31 +1016,11 @@ export function register({ assert, loadModule, test }) {
     );
     const addDatabaseView = createMutation();
     const properties = [
-      createProperty(
-        "database-property-status",
-        "property-status",
-        "Status",
-        "status",
-      ),
-      createProperty(
-        "database-property-owner",
-        "property-owner",
-        "Owner",
-        "person",
-      ),
-      createProperty(
-        "database-property-priority",
-        "property-priority",
-        "Priority",
-        "number",
-      ),
+      createProperty("database-property-status", "property-status", "Status", "status"),
+      createProperty("database-property-owner", "property-owner", "Owner", "person"),
+      createProperty("database-property-priority", "property-priority", "Priority", "number"),
       createProperty("database-property-date", "property-date", "Date", "date"),
-      createProperty(
-        "database-property-notes",
-        "property-notes",
-        "Notes",
-        "text",
-      ),
+      createProperty("database-property-notes", "property-notes", "Notes", "text"),
     ];
     const commands = getDatabaseViewCommands({
       notify: { error: () => {}, success: () => {} },
@@ -1083,10 +1047,7 @@ export function register({ assert, loadModule, test }) {
 
     assert.deepEqual(addDatabaseView.calls[0][0].config, {
       groupPropertyId: "property-status",
-      hiddenPropertyIds: [
-        "database-property-status",
-        "database-property-notes",
-      ],
+      hiddenPropertyIds: ["database-property-status", "database-property-notes"],
     });
   });
 
@@ -1146,12 +1107,7 @@ export function register({ assert, loadModule, test }) {
     );
     const updateDatabaseView = createMutation();
     const properties = [
-      createProperty(
-        "database-property-1",
-        "property-status",
-        "Status",
-        "status",
-      ),
+      createProperty("database-property-1", "property-status", "Status", "status"),
     ];
     const commands = getDatabaseViewCommands({
       notify: { error: () => {}, success: () => {} },
@@ -1225,10 +1181,7 @@ export function register({ assert, loadModule, test }) {
         config: {
           emoji: "pin",
           groupPropertyId: "property-status",
-          hiddenPropertyIds: [
-            "database-property-status",
-            "database-property-notes",
-          ],
+          hiddenPropertyIds: ["database-property-status", "database-property-notes"],
         },
         id: "view-1",
         name: "Board",
@@ -1426,12 +1379,7 @@ export function register({ assert, loadModule, test }) {
 
     commands.addTimelineView();
     addProperty.calls[0][1].onSuccess(
-      createProperty(
-        "database-property-date",
-        "property-date",
-        "Date",
-        "date",
-      ),
+      createProperty("database-property-date", "property-date", "Date", "date"),
     );
     addDatabaseView.calls[0][1].onSuccess({
       config: { datePropertyId: "property-date" },

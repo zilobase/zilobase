@@ -9,10 +9,7 @@ import {
   usePageEditorRegistryVersion,
 } from "@/features/editor/runtime/page-editor-registry";
 
-const EMBED_DATABASE_IN_PAGE_TOOLS = new Set([
-  "buildDatabaseFromBlueprint",
-  "embedDatabaseInPage",
-]);
+const EMBED_DATABASE_IN_PAGE_TOOLS = new Set(["buildDatabaseFromBlueprint", "embedDatabaseInPage"]);
 
 type UseDatabaseEmbedAutoApplyOptions = {
   enabled?: boolean;
@@ -35,8 +32,7 @@ function readEmbedShowTitle(input: unknown, output: unknown) {
   if (output && typeof output === "object" && !Array.isArray(output)) {
     const data = (output as { data?: unknown }).data;
     if (data && typeof data === "object" && !Array.isArray(data)) {
-      const showTitle = (data as { showInlineDatabaseTitle?: unknown })
-        .showInlineDatabaseTitle;
+      const showTitle = (data as { showInlineDatabaseTitle?: unknown }).showInlineDatabaseTitle;
       if (typeof showTitle === "boolean") return showTitle;
     }
   }
@@ -84,17 +80,16 @@ export function useDatabaseEmbedAutoApply({
 
       try {
         const currentContent = handle.getContentJson();
-        const { content, alreadyEmbedded, titleUpdated } =
-          insertDatabaseBlockInContent(currentContent, {
+        const { content, alreadyEmbedded, titleUpdated } = insertDatabaseBlockInContent(
+          currentContent,
+          {
             afterHeading: readEmbedAfterHeading(part.input),
             databaseId,
             showTitle: readEmbedShowTitle(part.input, part.output),
-          });
+          },
+        );
 
-        if (
-          (!alreadyEmbedded || titleUpdated) &&
-          !handle.setContentJson(content)
-        ) {
+        if ((!alreadyEmbedded || titleUpdated) && !handle.setContentJson(content)) {
           return;
         }
 

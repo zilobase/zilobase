@@ -20,10 +20,7 @@ test("recognizes PostgreSQL and nested pool availability failures", () => {
   assert.equal(isDatabaseUnavailableError(poolError), true);
   assert.equal(getDatabaseErrorCode(postgresError), "53300");
   assert.equal(DATABASE_UNAVAILABLE_CODE, "DATABASE_UNAVAILABLE");
-  assert.equal(
-    DATABASE_UNAVAILABLE_MESSAGE,
-    "The database is temporarily unavailable.",
-  );
+  assert.equal(DATABASE_UNAVAILABLE_MESSAGE, "The database is temporarily unavailable.");
 
   const refused = Object.assign(new Error("connect ECONNREFUSED"), {
     code: "ECONNREFUSED",

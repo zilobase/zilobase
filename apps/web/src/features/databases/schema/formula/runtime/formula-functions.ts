@@ -1,1 +1,1 @@
-export * from "@zilobase/features/databases/formula"
+export * from "@zilobase/features/databases/formula";

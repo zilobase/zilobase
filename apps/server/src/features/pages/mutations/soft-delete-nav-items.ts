@@ -83,9 +83,7 @@ async function softDeleteRecords({
           deletedById: userId,
           updatedAt: now,
         })
-        .where(
-          and(inArray(database.id, databaseIds), isNull(database.deletedAt)),
-        );
+        .where(and(inArray(database.id, databaseIds), isNull(database.deletedAt)));
 
       await tx
         .update(databaseRow)
@@ -133,15 +131,12 @@ export async function softDeletePageTree({
       pageId: database.pageId,
     })
     .from(database)
-    .where(
-      and(eq(database.workspaceId, workspaceId), isNull(database.deletedAt)),
-    );
+    .where(and(eq(database.workspaceId, workspaceId), isNull(database.deletedAt)));
 
   const { databaseIds, pageIds } = collectNestedDatabaseTree(
     graph,
-    databaseRecords.filter(
-      (record): record is typeof record & { pageId: string } =>
-        Boolean(record.pageId),
+    databaseRecords.filter((record): record is typeof record & { pageId: string } =>
+      Boolean(record.pageId),
     ),
     graph.getPrimaryNestedPageIds(rootPageId),
   );
@@ -178,14 +173,11 @@ export async function softDeleteDatabaseTree({
       pageId: database.pageId,
     })
     .from(database)
-    .where(
-      and(eq(database.workspaceId, workspaceId), isNull(database.deletedAt)),
-    );
+    .where(and(eq(database.workspaceId, workspaceId), isNull(database.deletedAt)));
   const { databaseIds, pageIds } = collectNestedDatabaseTree(
     graph,
-    databaseRecords.filter(
-      (record): record is typeof record & { pageId: string } =>
-        Boolean(record.pageId),
+    databaseRecords.filter((record): record is typeof record & { pageId: string } =>
+      Boolean(record.pageId),
     ),
     graph.getPrimaryNestedDatabasePageIds(databaseId),
     [databaseId],

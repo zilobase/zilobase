@@ -1,16 +1,16 @@
-import * as React from "react"
-import { isDesktopApp } from "@/features/desktop/index"
-import { useTheme } from "next-themes"
+import * as React from "react";
+import { isDesktopApp } from "@/features/desktop/index";
+import { useTheme } from "next-themes";
 import {
   BugIcon,
   CheckIcon,
   DownloadIcon,
   FolderOpenIcon,
   ServerIcon,
-} from "@/shared/components/icons"
-import { toast } from "sonner"
+} from "@/shared/components/icons";
+import { toast } from "sonner";
 
-import { SettingsHeader } from "../components/settings-header"
+import { SettingsHeader } from "../components/settings-header";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,8 +20,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
-import { Button } from "@/shared/ui/button"
+} from "@/shared/ui/alert-dialog";
+import { Button } from "@/shared/ui/button";
 import {
   Select,
   SelectContent,
@@ -30,43 +30,43 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/shared/ui/select"
-import { Separator } from "@/shared/ui/separator"
-import { Slider } from "@/shared/ui/slider"
-import { Spinner } from "@/shared/ui/spinner"
-import { getApiErrorMessage } from "@/platform/network/api"
+} from "@/shared/ui/select";
+import { Separator } from "@/shared/ui/separator";
+import { Slider } from "@/shared/ui/slider";
+import { Spinner } from "@/shared/ui/spinner";
+import { getApiErrorMessage } from "@/platform/network/api";
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
-} from "@/features/desktop/diagnostics/index"
+} from "@/features/desktop/diagnostics/index";
 import {
   exportDesktopDiagnostics,
   openDesktopDiagnosticsFolder,
-} from "@/features/desktop/diagnostics/index"
-import { clearIndexedDataForServer } from "@/platform/storage/indexed-data-cleanup"
-import { DesktopConnectServerDialog } from "@/features/desktop/components/index"
-import { clearDesktopPersistKeys } from "@/features/desktop/persistence/index"
+} from "@/features/desktop/diagnostics/index";
+import { clearIndexedDataForServer } from "@/platform/storage/indexed-data-cleanup";
+import { DesktopConnectServerDialog } from "@/features/desktop/components/index";
+import { clearDesktopPersistKeys } from "@/features/desktop/persistence/index";
 import {
   getSelectedDesktopServer,
   listDesktopServerProfiles,
   removeDesktopServerProfile,
   type DesktopServerProfile,
-} from "@/features/desktop/server/index"
-import { executeDesktopServerSwitch } from "@/features/desktop/server/index"
-import { useQueryClient } from "@tanstack/react-query"
-import { useAppStore } from "@/features/desktop/state/app-store"
+} from "@/features/desktop/server/index";
+import { executeDesktopServerSwitch } from "@/features/desktop/server/index";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAppStore } from "@/features/desktop/state/app-store";
 import {
   appearanceModes,
   themeFamilies,
   type AppearanceModeId,
   type ThemeFamilyId,
-} from "@/shared/lib/themes"
-import { useThemeFamily } from "@/shared/providers/theme-family-provider"
+} from "@/shared/lib/themes";
+import { useThemeFamily } from "@/shared/providers/theme-family-provider";
 import {
   getDesktopTranslucency,
   MAX_DESKTOP_TRANSLUCENCY,
   setDesktopTranslucency,
-} from "@/features/desktop/window/index"
+} from "@/features/desktop/window/index";
 
 export default function PreferencesSettingsPage() {
   return (
@@ -88,49 +88,47 @@ export default function PreferencesSettingsPage() {
         ) : null}
       </div>
     </main>
-  )
+  );
 }
 function DesktopServerSection() {
-  const queryClient = useQueryClient()
-  const [connectOpen, setConnectOpen] = React.useState(false)
-  const [profiles, setProfiles] = React.useState<DesktopServerProfile[]>([])
-  const [removing, setRemoving] = React.useState<DesktopServerProfile | null>(
-    null,
-  )
-  const [pending, setPending] = React.useState(false)
-  const current = getSelectedDesktopServer()
+  const queryClient = useQueryClient();
+  const [connectOpen, setConnectOpen] = React.useState(false);
+  const [profiles, setProfiles] = React.useState<DesktopServerProfile[]>([]);
+  const [removing, setRemoving] = React.useState<DesktopServerProfile | null>(null);
+  const [pending, setPending] = React.useState(false);
+  const current = getSelectedDesktopServer();
 
   const refreshProfiles = React.useCallback(async () => {
-    setProfiles((await listDesktopServerProfiles()).profiles)
-  }, [])
+    setProfiles((await listDesktopServerProfiles()).profiles);
+  }, []);
 
   React.useEffect(() => {
-    void refreshProfiles().catch(() => setProfiles([]))
-  }, [refreshProfiles])
+    void refreshProfiles().catch(() => setProfiles([]));
+  }, [refreshProfiles]);
 
   const removeProfile = async (profile: DesktopServerProfile) => {
-    setPending(true)
+    setPending(true);
     try {
-      await clearIndexedDataForServer(profile.server)
-      clearDesktopPersistKeys(profile.server.instanceId)
+      await clearIndexedDataForServer(profile.server);
+      clearDesktopPersistKeys(profile.server.instanceId);
       await removeDesktopServerProfile({
         apiOrigin: profile.server.apiOrigin,
         instanceId: profile.server.instanceId,
-      })
+      });
       if (profile.active) {
-        queryClient.clear()
-        useAppStore.getState().resetAccountState()
-        window.location.replace("/login")
-        return
+        queryClient.clear();
+        useAppStore.getState().resetAccountState();
+        window.location.replace("/login");
+        return;
       }
-      setRemoving(null)
-      await refreshProfiles()
+      setRemoving(null);
+      await refreshProfiles();
     } catch (error) {
-      toast.error(getApiErrorMessage(error))
+      toast.error(getApiErrorMessage(error));
     } finally {
-      setPending(false)
+      setPending(false);
     }
-  }
+  };
 
   return (
     <section className="grid gap-4">
@@ -140,9 +138,8 @@ function DesktopServerSection() {
           Desktop servers
         </h3>
         <p className="max-w-2xl text-sm text-content-secondary">
-          Switch between saved servers without signing out of the others.
-          Removing a server from this device deletes only that instance&apos;s
-          credentials, cached data, and tabs.
+          Switch between saved servers without signing out of the others. Removing a server from
+          this device deletes only that instance&apos;s credentials, cached data, and tabs.
         </p>
       </div>
       <div className="grid gap-2">
@@ -181,12 +178,10 @@ function DesktopServerSection() {
                   onClick={() => {
                     void executeDesktopServerSwitch({
                       hasCredentials: profile.hasCredentials,
-                      path: profile.hasCredentials
-                        ? (profile.lastPath ?? "/recents")
-                        : "/login",
+                      path: profile.hasCredentials ? (profile.lastPath ?? "/recents") : "/login",
                       server: profile.server,
                       workspaceId: profile.lastActiveWorkspaceId,
-                    })
+                    });
                   }}
                   size="sm"
                   type="button"
@@ -195,12 +190,7 @@ function DesktopServerSection() {
                   Switch
                 </Button>
               )}
-              <Button
-                onClick={() => setRemoving(profile)}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
+              <Button onClick={() => setRemoving(profile)} size="sm" type="button" variant="ghost">
                 Remove from this device
               </Button>
             </div>
@@ -208,19 +198,11 @@ function DesktopServerSection() {
         ))}
       </div>
       <div>
-        <Button
-          onClick={() => setConnectOpen(true)}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
+        <Button onClick={() => setConnectOpen(true)} size="sm" type="button" variant="outline">
           Connect another server
         </Button>
       </div>
-      <DesktopConnectServerDialog
-        onOpenChange={setConnectOpen}
-        open={connectOpen}
-      />
+      <DesktopConnectServerDialog onOpenChange={setConnectOpen} open={connectOpen} />
       <AlertDialog
         onOpenChange={(open) => !pending && !open && setRemoving(null)}
         open={Boolean(removing)}
@@ -231,8 +213,8 @@ function DesktopServerSection() {
               Remove {removing?.server.displayName} from this device?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This signs out of that instance and deletes only its local
-              credentials, cache, and tabs. Other saved servers stay on this device.
+              This signs out of that instance and deletes only its local credentials, cache, and
+              tabs. Other saved servers stay on this device.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -240,8 +222,8 @@ function DesktopServerSection() {
             <AlertDialogAction
               disabled={pending || !removing}
               onClick={(event) => {
-                event.preventDefault()
-                if (removing) void removeProfile(removing)
+                event.preventDefault();
+                if (removing) void removeProfile(removing);
               }}
             >
               {pending ? <Spinner /> : null}
@@ -251,46 +233,42 @@ function DesktopServerSection() {
         </AlertDialogContent>
       </AlertDialog>
     </section>
-  )
+  );
 }
 
 function DiagnosticsSection() {
-  const [busyAction, setBusyAction] = React.useState<"export" | "open" | null>(null)
+  const [busyAction, setBusyAction] = React.useState<"export" | "open" | null>(null);
 
   const openLogs = async () => {
-    setBusyAction("open")
+    setBusyAction("open");
     try {
-      await openDesktopDiagnosticsFolder()
+      await openDesktopDiagnosticsFolder();
     } catch (error) {
       recordDesktopDiagnostic(
         "diagnostics.log_folder_opened",
         describeDesktopError(error),
         "error",
-      )
-      toast.error("Could not open the diagnostics folder.")
+      );
+      toast.error("Could not open the diagnostics folder.");
     } finally {
-      setBusyAction(null)
+      setBusyAction(null);
     }
-  }
+  };
 
   const exportDiagnostics = async () => {
-    setBusyAction("export")
+    setBusyAction("export");
     try {
-      const archivePath = await exportDesktopDiagnostics()
+      const archivePath = await exportDesktopDiagnostics();
       toast.success("Diagnostics archive created.", {
         description: archivePath,
-      })
+      });
     } catch (error) {
-      recordDesktopDiagnostic(
-        "diagnostics.export",
-        describeDesktopError(error),
-        "error",
-      )
-      toast.error("Could not export diagnostics.")
+      recordDesktopDiagnostic("diagnostics.export", describeDesktopError(error), "error");
+      toast.error("Could not export diagnostics.");
     } finally {
-      setBusyAction(null)
+      setBusyAction(null);
     }
-  }
+  };
 
   return (
     <section className="grid gap-4">
@@ -301,9 +279,9 @@ function DiagnosticsSection() {
             Desktop diagnostics
           </h3>
           <p className="max-w-2xl text-sm text-content-secondary">
-            View local startup logs or create an archive to share when the desktop
-            app does not start correctly. Authentication tokens, keyring values,
-            account details, and document content are excluded.
+            View local startup logs or create an archive to share when the desktop app does not
+            start correctly. Authentication tokens, keyring values, account details, and document
+            content are excluded.
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -328,44 +306,36 @@ function DiagnosticsSection() {
         </div>
       </div>
       <p className="text-xs text-content-secondary">
-        If the window is blank, run <code>zilobase-client --diagnostics</code> in
-        a terminal. The archive is written to the current directory.
+        If the window is blank, run <code>zilobase-client --diagnostics</code> in a terminal. The
+        archive is written to the current directory.
       </p>
     </section>
-  )
+  );
 }
 
 function AppearanceSection() {
-  const { theme = "system", setTheme } = useTheme()
-  const { themeFamily, setThemeFamily } = useThemeFamily()
-  const [translucency, setTranslucency] = React.useState(
-    getDesktopTranslucency,
-  )
+  const { theme = "system", setTheme } = useTheme();
+  const { themeFamily, setThemeFamily } = useThemeFamily();
+  const [translucency, setTranslucency] = React.useState(getDesktopTranslucency);
 
   const updateTranslucency = (values: number[]) => {
-    const value = values[0] ?? 0
-    setTranslucency(value)
+    const value = values[0] ?? 0;
+    setTranslucency(value);
     void setDesktopTranslucency(value).catch(() => {
-      toast.error("Zilobase could not update window translucency.")
-    })
-  }
+      toast.error("Zilobase could not update window translucency.");
+    });
+  };
 
   return (
     <section className="grid gap-3">
       <div className="space-y-1">
         <h3 className="font-heading text-base font-medium">Appearance</h3>
-        <p className="text-sm text-content-secondary">
-          Choose how Zilobase looks on this device.
-        </p>
+        <p className="text-sm text-content-secondary">Choose how Zilobase looks on this device.</p>
       </div>
       <div className="grid gap-4">
-        <div
-          aria-label="Appearance mode"
-          className="flex flex-wrap items-start gap-2"
-          role="group"
-        >
+        <div aria-label="Appearance mode" className="flex flex-wrap items-start gap-2" role="group">
           {appearanceModes.map((option) => {
-            const selected = theme === option.value
+            const selected = theme === option.value;
 
             return (
               <button
@@ -375,17 +345,13 @@ function AppearanceSection() {
                 onClick={() => setTheme(option.value as AppearanceModeId)}
                 type="button"
               >
-                <ThemePreview
-                  mode={option.value}
-                  selected={selected}
-                  themeFamily={themeFamily}
-                />
+                <ThemePreview mode={option.value} selected={selected} themeFamily={themeFamily} />
                 <span className="flex items-center justify-between px-0.5">
                   {option.label}
                   {selected ? <CheckIcon className="size-4 text-action-selected-text" /> : null}
                 </span>
               </button>
-            )
+            );
           })}
         </div>
 
@@ -420,9 +386,7 @@ function AppearanceSection() {
               >
                 Translucency
               </label>
-              <span className="text-xs tabular-nums text-content-secondary">
-                {translucency}%
-              </span>
+              <span className="text-xs tabular-nums text-content-secondary">{translucency}%</span>
             </div>
             <Slider
               aria-label="Desktop app translucency"
@@ -433,14 +397,13 @@ function AppearanceSection() {
               value={[translucency]}
             />
             <p className="text-xs text-content-secondary">
-              Let a little of the desktop show through the entire Zilobase
-              window.
+              Let a little of the desktop show through the entire Zilobase window.
             </p>
           </div>
         ) : null}
       </div>
     </section>
-  )
+  );
 }
 
 function ThemePreview({
@@ -448,9 +411,9 @@ function ThemePreview({
   selected,
   themeFamily,
 }: {
-  mode: AppearanceModeId
-  selected: boolean
-  themeFamily: ThemeFamilyId
+  mode: AppearanceModeId;
+  selected: boolean;
+  themeFamily: ThemeFamilyId;
 }) {
   return (
     <div
@@ -485,7 +448,7 @@ function ThemePreview({
         />
       )}
     </div>
-  )
+  );
 }
 
 function ThemePreviewPane({
@@ -494,10 +457,10 @@ function ThemePreviewPane({
   scheme,
   themeFamily,
 }: {
-  className: string
-  sceneClassName: string
-  scheme: Exclude<AppearanceModeId, "system">
-  themeFamily: ThemeFamilyId
+  className: string;
+  sceneClassName: string;
+  scheme: Exclude<AppearanceModeId, "system">;
+  themeFamily: ThemeFamilyId;
 }) {
   return (
     <div
@@ -518,5 +481,5 @@ function ThemePreviewPane({
         </div>
       </div>
     </div>
-  )
+  );
 }

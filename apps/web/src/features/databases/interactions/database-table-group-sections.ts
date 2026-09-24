@@ -1,102 +1,96 @@
 import { defaultStatusOptions } from "../schema/model/property-defaults";
-import { getRawDatabaseGroupValue } from "./database-group-values"
-import type { DatabasePropertyListItem } from "../views/kanban/model/database-kanban-config"
+import { getRawDatabaseGroupValue } from "./database-group-values";
+import type { DatabasePropertyListItem } from "../views/kanban/model/database-kanban-config";
 
 export type DatabaseTableGroupSection<T> = {
-  color?: string
-  groupValue: string
-  id: string
-  isEmpty: boolean
-  name: string
-  rows: T[]
-}
+  color?: string;
+  groupValue: string;
+  id: string;
+  isEmpty: boolean;
+  name: string;
+  rows: T[];
+};
 
 function getConfiguredPropertyOptions(config: unknown) {
   if (!config || typeof config !== "object" || !("options" in config)) {
-    return []
+    return [];
   }
 
-  const options = (config as { options?: unknown }).options
+  const options = (config as { options?: unknown }).options;
 
   return Array.isArray(options)
     ? options.filter(
         (
-          option
+          option,
         ): option is {
-          color?: string
-          id: string
-          name: string
+          color?: string;
+          id: string;
+          name: string;
         } =>
           Boolean(option) &&
           typeof option === "object" &&
           typeof (option as { id?: unknown }).id === "string" &&
-          typeof (option as { name?: unknown }).name === "string"
+          typeof (option as { name?: unknown }).name === "string",
       )
-    : []
+    : [];
 }
 
 function getRowGroupValue<T extends { page: { name?: string }; pageId: string }>(
   row: T,
   groupProperty: DatabasePropertyListItem,
-  propertyValuesByKey: Record<string, string | string[]>
+  propertyValuesByKey: Record<string, string | string[]>,
 ) {
   if (groupProperty.id === "name") {
-    return row.page.name?.trim() ?? ""
+    return row.page.name?.trim() ?? "";
   }
 
-  const key = `${row.pageId}:${groupProperty.property.id}`
-  const value = propertyValuesByKey[key] ?? ""
+  const key = `${row.pageId}:${groupProperty.property.id}`;
+  const value = propertyValuesByKey[key] ?? "";
 
-  return getRawDatabaseGroupValue(value)
+  return getRawDatabaseGroupValue(value);
 }
 
-export function getDatabaseTableGroupSections<T extends {
-  page: { name?: string }
-  pageId: string
-}>({
+export function getDatabaseTableGroupSections<
+  T extends {
+    page: { name?: string };
+    pageId: string;
+  },
+>({
   groupProperty,
   personOptionsById,
   propertyValuesByKey,
   rows,
 }: {
-  groupProperty: DatabasePropertyListItem | null
-  personOptionsById: Map<string, string>
-  propertyValuesByKey: Record<string, string | string[]>
-  rows: T[]
+  groupProperty: DatabasePropertyListItem | null;
+  personOptionsById: Map<string, string>;
+  propertyValuesByKey: Record<string, string | string[]>;
+  rows: T[];
 }) {
   if (!groupProperty) {
-    return []
+    return [];
   }
 
-  const propertyType = groupProperty.property.type
-  const propertyOptions = getConfiguredPropertyOptions(
-    groupProperty.property.config
-  )
+  const propertyType = groupProperty.property.type;
+  const propertyOptions = getConfiguredPropertyOptions(groupProperty.property.config);
   const configuredOptions =
     propertyType === "status" && propertyOptions.length === 0
       ? defaultStatusOptions
-      : propertyOptions
-  const configuredOptionsByName = new Map(
-    configuredOptions.map((option) => [option.name, option])
-  )
-  const configuredOptionsById = new Map(
-    configuredOptions.map((option) => [option.id, option])
-  )
-  const sectionsById = new Map<string, DatabaseTableGroupSection<T>>()
+      : propertyOptions;
+  const configuredOptionsByName = new Map(configuredOptions.map((option) => [option.name, option]));
+  const configuredOptionsById = new Map(configuredOptions.map((option) => [option.id, option]));
+  const sectionsById = new Map<string, DatabaseTableGroupSection<T>>();
 
-  const ensureSection = (
-    section: Omit<DatabaseTableGroupSection<T>, "rows">
-  ) => {
-    const existingSection = sectionsById.get(section.id)
+  const ensureSection = (section: Omit<DatabaseTableGroupSection<T>, "rows">) => {
+    const existingSection = sectionsById.get(section.id);
 
     if (existingSection) {
-      return existingSection
+      return existingSection;
     }
 
-    const nextSection = { ...section, rows: [] as T[] }
-    sectionsById.set(section.id, nextSection)
-    return nextSection
-  }
+    const nextSection = { ...section, rows: [] as T[] };
+    sectionsById.set(section.id, nextSection);
+    return nextSection;
+  };
 
   if (configuredOptions.length > 0) {
     configuredOptions.forEach((option) => {
@@ -106,16 +100,12 @@ export function getDatabaseTableGroupSections<T extends {
         id: option.id,
         isEmpty: false,
         name: option.name,
-      })
-    })
+      });
+    });
   }
 
   rows.forEach((row) => {
-    const rawGroupValue = getRowGroupValue(
-      row,
-      groupProperty,
-      propertyValuesByKey
-    )
+    const rawGroupValue = getRowGroupValue(row, groupProperty, propertyValuesByKey);
 
     if (!rawGroupValue) {
       ensureSection({
@@ -124,19 +114,18 @@ export function getDatabaseTableGroupSections<T extends {
         id: "empty",
         isEmpty: true,
         name: "Empty",
-      }).rows.push(row)
-      return
+      }).rows.push(row);
+      return;
     }
 
     const configuredOption =
-      configuredOptionsByName.get(rawGroupValue) ??
-      configuredOptionsById.get(rawGroupValue)
-    const groupId = configuredOption?.id ?? rawGroupValue
+      configuredOptionsByName.get(rawGroupValue) ?? configuredOptionsById.get(rawGroupValue);
+    const groupId = configuredOption?.id ?? rawGroupValue;
     const groupName =
       configuredOption?.name ??
       (propertyType === "person"
-        ? personOptionsById.get(rawGroupValue) ?? rawGroupValue
-        : rawGroupValue)
+        ? (personOptionsById.get(rawGroupValue) ?? rawGroupValue)
+        : rawGroupValue);
 
     ensureSection({
       color: configuredOption?.color,
@@ -144,8 +133,8 @@ export function getDatabaseTableGroupSections<T extends {
       id: groupId,
       isEmpty: false,
       name: groupName,
-    }).rows.push(row)
-  })
+    }).rows.push(row);
+  });
 
-  return Array.from(sectionsById.values())
+  return Array.from(sectionsById.values());
 }

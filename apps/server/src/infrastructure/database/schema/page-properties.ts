@@ -17,10 +17,7 @@ export const pageProperty = pgTable(
     ...softDeleteColumns(),
   },
   (table) => [
-    index("page_property_workspace_deleted_idx").on(
-      table.workspaceId,
-      table.deletedAt,
-    ),
+    index("page_property_workspace_deleted_idx").on(table.workspaceId, table.deletedAt),
     index("page_property_deleted_at_idx").on(table.deletedAt),
   ],
 );
@@ -40,9 +37,6 @@ export const pagePropertyValue = pgTable(
   },
   (table) => [
     index("page_property_value_property_id_idx").on(table.propertyId),
-    uniqueIndex("page_property_value_unique").on(
-      table.pageId,
-      table.propertyId,
-    ),
+    uniqueIndex("page_property_value_unique").on(table.pageId, table.propertyId),
   ],
 );

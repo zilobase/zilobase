@@ -1,20 +1,12 @@
 export function readString(value: unknown) {
-  return typeof value === "string" && value.trim().length > 0
-    ? value.trim()
-    : undefined;
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
 export function readPositiveInteger(value: unknown) {
   const numberValue =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number(value)
-        : NaN;
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
 
-  return Number.isSafeInteger(numberValue) && numberValue > 0
-    ? numberValue
-    : undefined;
+  return Number.isSafeInteger(numberValue) && numberValue > 0 ? numberValue : undefined;
 }
 
 export function normalizeContentType(value: string | undefined) {

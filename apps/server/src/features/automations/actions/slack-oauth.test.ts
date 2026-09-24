@@ -52,9 +52,7 @@ beforeEach(() => {
   state.order = [];
 });
 async function attempt() {
-  const url = new URL(
-    await beginSlackOauth(env, { userId: "user", workspaceId: "workspace" }),
-  );
+  const url = new URL(await beginSlackOauth(env, { userId: "user", workspaceId: "workspace" }));
   state.rows.push([state.writes[0]]);
   return { code: "code", state: url.searchParams.get("state")! };
 }
@@ -81,11 +79,7 @@ test("Slack OAuth consumes attempts before exchange and encrypts tokens under th
   assert.deepEqual(state.order, ["consume", "exchange", "persist"]);
   const saved = state.writes[1];
   assert.equal(saved.accessTokenCiphertext === "token", false);
-  assert.deepEqual(saved.scopes, [
-    "channels:read",
-    "chat:write",
-    "groups:read",
-  ]);
+  assert.deepEqual(saved.scopes, ["channels:read", "chat:write", "groups:read"]);
   assert.equal(
     await decryptAutomationSecret(
       env,
@@ -106,10 +100,9 @@ test("Slack OAuth consumes attempts before exchange and encrypts tokens under th
 });
 test("Slack OAuth rejects expired or consumed attempts before contacting the provider", async () => {
   const fetcher = vi.fn<typeof fetch>();
-  await assert.rejects(
-    completeSlackOauth(env, { code: "code", state: "state" }, fetcher),
-    { code: "SLACK_OAUTH_EXPIRED" },
-  );
+  await assert.rejects(completeSlackOauth(env, { code: "code", state: "state" }, fetcher), {
+    code: "SLACK_OAUTH_EXPIRED",
+  });
   const input = await attempt();
   state.consumed = false;
   await assert.rejects(completeSlackOauth(env, input, fetcher), {

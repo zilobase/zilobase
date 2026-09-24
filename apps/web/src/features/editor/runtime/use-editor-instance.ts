@@ -1,18 +1,7 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MutableRefObject,
-  type RefObject,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import { useEditor } from "@tiptap/react";
 import type { Content, Editor, Extensions } from "@tiptap/core";
-import {
-  Selection,
-  TextSelection,
-  type EditorState,
-} from "@tiptap/pm/state";
+import { Selection, TextSelection, type EditorState } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { toast } from "sonner";
 import type { DatabaseBlockEditorRuntime } from "@/features/databases";
@@ -71,10 +60,7 @@ type UseEditorInstanceOptions = {
   editorTabIndex?: number;
   initialContent: Content | undefined;
   onContentChange?: (content: unknown) => void;
-  onCrossEditorDatabaseDrop?: (input: {
-    payload: BlockDragPayload;
-    pos: number;
-  }) => boolean;
+  onCrossEditorDatabaseDrop?: (input: { payload: BlockDragPayload; pos: number }) => boolean;
   onEditorReady?: (editor: Editor | null) => void;
   onEmbedPage?: (pageId: string) => void | Promise<void>;
   onOpenPage?: (pageId: string, options?: OpenPageOptions) => void;
@@ -93,11 +79,7 @@ function isCaretAtDocumentStart(state: EditorState) {
   );
 }
 
-function isClickAboveFirstNonTextBlock(
-  view: EditorView,
-  pos: number,
-  event: MouseEvent,
-) {
+function isClickAboveFirstNonTextBlock(view: EditorView, pos: number, event: MouseEvent) {
   const firstNode = view.state.doc.firstChild;
 
   if (pos !== 0 || !firstNode || firstNode.isTextblock) return false;
@@ -105,8 +87,7 @@ function isClickAboveFirstNonTextBlock(
   const firstNodeDom = view.nodeDOM(0);
 
   return (
-    firstNodeDom instanceof HTMLElement &&
-    event.clientY < firstNodeDom.getBoundingClientRect().top
+    firstNodeDom instanceof HTMLElement && event.clientY < firstNodeDom.getBoundingClientRect().top
   );
 }
 
@@ -131,9 +112,7 @@ export const useEditorInstance = ({
   setPasteChoice,
   pageId,
 }: UseEditorInstanceOptions) => {
-  const [blockDropLine, setBlockDropLine] = useState<BlockDropLine | null>(
-    null,
-  );
+  const [blockDropLine, setBlockDropLine] = useState<BlockDropLine | null>(null);
   const editorRef = useRef<Editor | null>(null);
   const editorHistoryDepthsRef = useRef<EditorHistoryDepths>({
     redo: 0,
@@ -141,19 +120,15 @@ export const useEditorInstance = ({
   });
 
   const onContentChangeRef = useLatestRef(onContentChange);
-  const onCrossEditorDatabaseDropRef = useLatestRef(
-    onCrossEditorDatabaseDrop,
-  );
+  const onCrossEditorDatabaseDropRef = useLatestRef(onCrossEditorDatabaseDrop);
   const onEmbedPageRef = useLatestRef(onEmbedPage);
   const onMoveToTitleRef = useLatestRef(onMoveToTitle);
   const editableRef = useLatestRef(editable);
   const dropPageOnDatabaseRef = useLatestRef(dropPageOnDatabase);
   const pageIdRef = useLatestRef(pageId);
   const handleProviderLinkPasteRef = useLatestRef(
-    (
-      view: Parameters<typeof handleProviderLinkPaste>[0],
-      event: ClipboardEvent,
-    ) => handleProviderLinkPaste(view, event, editable, setPasteChoice),
+    (view: Parameters<typeof handleProviderLinkPaste>[0], event: ClipboardEvent) =>
+      handleProviderLinkPaste(view, event, editable, setPasteChoice),
   );
   const handleTypedLinkChoiceRef = useLatestRef(
     (view: Parameters<typeof handleTypedLinkChoice>[0], event: KeyboardEvent) =>
@@ -168,9 +143,7 @@ export const useEditorInstance = ({
           (onCrossEditorDatabaseDropRef.current?.({ payload, pos }) ?? false),
         dropPageOnDatabase: (event) => dropPageOnDatabaseRef.current(event),
         getView: () =>
-          editorRef.current && !editorRef.current.isDestroyed
-            ? editorRef.current.view
-            : null,
+          editorRef.current && !editorRef.current.isDestroyed ? editorRef.current.view : null,
         insertDraggedPage: (view, event) =>
           insertDraggedDatabasePage(
             view,
@@ -178,7 +151,8 @@ export const useEditorInstance = ({
             (embeddedPageId) => onEmbedPageRef.current?.(embeddedPageId),
             pageIdRef.current,
             () => toast.error("You can't embed a page inside itself."),
-            (error) => toast.error(error instanceof Error ? error.message : "Could not embed page."),
+            (error) =>
+              toast.error(error instanceof Error ? error.message : "Could not embed page."),
           ),
         isDraggingPage: isDraggingPageToEditor,
         isOverDatabaseDrop: (event) => Boolean(getDropDatabaseElement(event)),
@@ -216,10 +190,8 @@ export const useEditorInstance = ({
           ...transition,
           label: "Edit page",
           owner: currentEditor,
-          redo: () =>
-            !currentEditor.isDestroyed && currentEditor.commands.redo(),
-          undo: () =>
-            !currentEditor.isDestroyed && currentEditor.commands.undo(),
+          redo: () => !currentEditor.isDestroyed && currentEditor.commands.redo(),
+          undo: () => !currentEditor.isDestroyed && currentEditor.commands.undo(),
         });
       },
       onUpdate: ({ editor: currentEditor }) => {
@@ -229,9 +201,7 @@ export const useEditorInstance = ({
         attributes: {
           class: "tiptap-editor",
           "aria-label": "Document editor",
-          ...(editorTabIndex === undefined
-            ? {}
-            : { tabindex: String(editorTabIndex) }),
+          ...(editorTabIndex === undefined ? {} : { tabindex: String(editorTabIndex) }),
         },
         handleDrop: dragDrop.handleDrop,
         handleClick: (view, pos, event) => {
@@ -246,20 +216,13 @@ export const useEditorInstance = ({
         handleDOMEvents: {
           ...dragDrop.domEvents,
           beforeinput: (view, event) =>
-            editableRef.current &&
-            handleBlockSelectionBeforeInput(view, event),
+            editableRef.current && handleBlockSelectionBeforeInput(view, event),
           keydown: (view, event) => {
-            if (
-              editableRef.current &&
-              handleBlockSelectionKeyDown(view, event)
-            ) {
+            if (editableRef.current && handleBlockSelectionKeyDown(view, event)) {
               return true;
             }
 
-            if (
-              editableRef.current &&
-              handleProtectedStructuralBlockDeleteKey(view, event)
-            ) {
+            if (editableRef.current && handleProtectedStructuralBlockDeleteKey(view, event)) {
               return true;
             }
 
@@ -284,22 +247,14 @@ export const useEditorInstance = ({
             (handleBlockSelectionClipboardMutation(view, event) ||
               handleProtectedStructuralBlockClipboardMutation(view, event)),
           keyup: (view, event) =>
-            event.key === " "
-              ? handleTypedLinkChoiceRef.current(view, event)
-              : false,
+            event.key === " " ? handleTypedLinkChoiceRef.current(view, event) : false,
         },
         handlePaste: (view, event) => {
-          if (
-            editableRef.current &&
-            handleBlockSelectionClipboardMutation(view, event)
-          ) {
+          if (editableRef.current && handleBlockSelectionClipboardMutation(view, event)) {
             return true;
           }
 
-          if (
-            editableRef.current &&
-            handleProtectedStructuralBlockClipboardMutation(view, event)
-          ) {
+          if (editableRef.current && handleProtectedStructuralBlockClipboardMutation(view, event)) {
             return true;
           }
 
@@ -346,14 +301,7 @@ export const useEditorInstance = ({
       onOpenPage,
       pageId,
     });
-  }, [
-    databaseEditorRuntime,
-    editor,
-    editable,
-    editorRuntimeRef,
-    onOpenPage,
-    pageId,
-  ]);
+  }, [databaseEditorRuntime, editor, editable, editorRuntimeRef, onOpenPage, pageId]);
 
   useEffect(() => {
     if (!editor) return;

@@ -63,8 +63,7 @@ vi.mock("../../../infrastructure/database", () => {
         where: () => {
           if (!state.rejectUpdate) Object.assign(state.meeting, value);
           const query = {
-            returning: async () =>
-              state.rejectUpdate ? [] : [structuredClone(state.meeting)],
+            returning: async () => (state.rejectUpdate ? [] : [structuredClone(state.meeting)]),
             then: (resolve: (value: unknown) => unknown) => resolve([]),
           };
           return query;
@@ -77,16 +76,10 @@ vi.mock("../../../infrastructure/database", () => {
         const apply = () => {
           if (getTableName(table) === "meeting_collaboration_document") {
             if (state.failDocument) throw new Error("Document storage failed");
-            state.documents.push(
-              structuredClone(value as Record<string, unknown>),
-            );
+            state.documents.push(structuredClone(value as Record<string, unknown>));
           } else {
             for (const row of Array.isArray(value) ? value : [value]) {
-              if (
-                state.segments.some(
-                  (existing) => existing.providerItemId === row.providerItemId,
-                )
-              )
+              if (state.segments.some((existing) => existing.providerItemId === row.providerItemId))
                 continue;
               state.segments.push(structuredClone(row));
               inserted.push(row);
@@ -158,14 +151,14 @@ beforeEach(() => {
 describe("meeting recorder coordination", () => {
   it("requires access and recent consent before a runtime claim", async () => {
     state.allowed = false;
-    await expect(
-      claimMeetingRecorder({ ...actor, env: {} }),
-    ).rejects.toMatchObject({ status: 403 });
+    await expect(claimMeetingRecorder({ ...actor, env: {} })).rejects.toMatchObject({
+      status: 403,
+    });
     state.allowed = true;
     state.consent = false;
-    await expect(
-      claimMeetingRecorder({ ...actor, env: {} }),
-    ).rejects.toMatchObject({ status: 409 });
+    await expect(claimMeetingRecorder({ ...actor, env: {} })).rejects.toMatchObject({
+      status: 409,
+    });
     expect(state.claim).not.toHaveBeenCalled();
   });
   it("returns the runtime lease bound to the authenticated meeting scope", async () => {
@@ -204,23 +197,19 @@ describe("meeting recorder coordination", () => {
     });
   });
   it("maps runtime lease conflicts to 409 and preserves unrelated provider errors", async () => {
-    state.claim.mockRejectedValueOnce(
-      new Error("Another collaborator is recording"),
-    );
-    await expect(
-      claimMeetingRecorder({ ...actor, env: {} }),
-    ).rejects.toMatchObject({ status: 409 });
+    state.claim.mockRejectedValueOnce(new Error("Another collaborator is recording"));
+    await expect(claimMeetingRecorder({ ...actor, env: {} })).rejects.toMatchObject({
+      status: 409,
+    });
     const failure = new Error("Runtime unavailable");
     state.claim.mockRejectedValueOnce(failure);
-    await expect(claimMeetingRecorder({ ...actor, env: {} })).rejects.toBe(
-      failure,
-    );
+    await expect(claimMeetingRecorder({ ...actor, env: {} })).rejects.toBe(failure);
   });
   it("treats repeated stop after archival as complete without another runtime action", async () => {
     state.meeting.status = "completed";
-    expect(
-      (await transitionMeeting({ ...actor, action: "stop", env: {} })).status,
-    ).toBe("completed");
+    expect((await transitionMeeting({ ...actor, action: "stop", env: {} })).status).toBe(
+      "completed",
+    );
     expect(state.transition).not.toHaveBeenCalled();
   });
   it("rejects lifecycle commands from a replacement lease", async () => {

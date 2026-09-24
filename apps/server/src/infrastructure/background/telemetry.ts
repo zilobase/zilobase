@@ -1,9 +1,4 @@
-import {
-  context,
-  propagation,
-  SpanStatusCode,
-  trace,
-} from "@opentelemetry/api";
+import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api";
 
 import type { BackgroundLane, BackgroundTaskKind } from "./contracts";
 import { backgroundTaskLane, getBackgroundCellId, type BackgroundTaskV1 } from "./contracts";
@@ -22,10 +17,7 @@ const counters = new Map<string, number>();
 const histogramSums = new Map<string, { count: number; sum: number }>();
 const tracer = trace.getTracer("zilobase.background", "1");
 
-export function recordRecoveredBackgroundLease(
-  env: RuntimeEnv,
-  kind: BackgroundTaskKind,
-) {
+export function recordRecoveredBackgroundLease(env: RuntimeEnv, kind: BackgroundTaskKind) {
   recordBackgroundCounter("recovered_lease", backgroundAttributes(env, kind, "recovered"));
 }
 
@@ -92,7 +84,14 @@ export function runBackgroundTaskSpan<T>(
 }
 
 export function recordBackgroundCounter(
-  name: "enqueue" | "claim" | "completion" | "retry" | "terminal_failure" | "recovered_lease" | "dispatch_failure",
+  name:
+    | "enqueue"
+    | "claim"
+    | "completion"
+    | "retry"
+    | "terminal_failure"
+    | "recovered_lease"
+    | "dispatch_failure",
   attributes: BackgroundTelemetryAttributes,
   value = 1,
 ) {
@@ -101,7 +100,11 @@ export function recordBackgroundCounter(
 }
 
 export function recordBackgroundHistogram(
-  name: "queue_delay_ms" | "execution_duration_ms" | "provider_duration_ms" | "time_beyond_available_at_ms",
+  name:
+    | "queue_delay_ms"
+    | "execution_duration_ms"
+    | "provider_duration_ms"
+    | "time_beyond_available_at_ms",
   value: number,
   attributes: BackgroundTelemetryAttributes,
 ) {
@@ -143,10 +146,13 @@ function splitMetricKey(key: string): [string, string] {
   const [rawName = "zilobase_background_unknown", rawLabels = ""] = key.split("\u0001");
   const name = rawName.replaceAll(".", "_");
   const labels = rawLabels
-    ? `{${rawLabels.split("\u0000").map((entry) => {
-      const [label, ...rest] = entry.split("=");
-      return `${label}="${rest.join("=").replace(/[\\"\n]/g, "_")}"`;
-    }).join(",")}}`
+    ? `{${rawLabels
+        .split("\u0000")
+        .map((entry) => {
+          const [label, ...rest] = entry.split("=");
+          return `${label}="${rest.join("=").replace(/[\\"\n]/g, "_")}"`;
+        })
+        .join(",")}}`
     : "";
   return [name, labels];
 }

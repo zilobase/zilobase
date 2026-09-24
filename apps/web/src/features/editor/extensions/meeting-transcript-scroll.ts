@@ -1,32 +1,31 @@
 export function isNearScrollEnd(origin: HTMLElement, threshold = 96) {
-  const scrollContainer = findScrollContainer(origin)
+  const scrollContainer = findScrollContainer(origin);
 
   if (scrollContainer) {
-    return scrollContainer.scrollHeight
-      - scrollContainer.scrollTop
-      - scrollContainer.clientHeight <= threshold
+    return (
+      scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight <=
+      threshold
+    );
   }
 
-  const scrollingElement = document.scrollingElement
-  if (!scrollingElement) return true
-  return scrollingElement.scrollHeight
-    - window.scrollY
-    - window.innerHeight <= threshold
+  const scrollingElement = document.scrollingElement;
+  if (!scrollingElement) return true;
+  return scrollingElement.scrollHeight - window.scrollY - window.innerHeight <= threshold;
 }
 
 function findScrollContainer(origin: HTMLElement) {
-  let element = origin.parentElement
+  let element = origin.parentElement;
 
   while (element) {
-    const overflowY = window.getComputedStyle(element).overflowY
+    const overflowY = window.getComputedStyle(element).overflowY;
     if (
-      (overflowY === "auto" || overflowY === "scroll")
-      && element.scrollHeight > element.clientHeight
+      (overflowY === "auto" || overflowY === "scroll") &&
+      element.scrollHeight > element.clientHeight
     ) {
-      return element
+      return element;
     }
-    element = element.parentElement
+    element = element.parentElement;
   }
 
-  return null
+  return null;
 }

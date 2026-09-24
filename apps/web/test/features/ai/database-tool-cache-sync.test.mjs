@@ -30,19 +30,16 @@ export function register({ assert, appPath, test }) {
               { filter: /^(react|@tanstack\/react-query|cache-test-state)$/ },
               (args) => ({ path: args.path, namespace: "cache-test" }),
             );
-            build.onLoad(
-              { filter: /.*/, namespace: "cache-test" },
-              ({ path }) => ({
-                contents:
-                  path === "cache-test-state"
-                    ? "export const state = { ref: { current: new Set() } };"
-                    : path === "react"
-                      ? `export * from ${JSON.stringify(require.resolve("react"))}; import { state } from "cache-test-state"; export const useEffect = run => run(); export const useRef = () => state.ref;`
-                      : `export * from ${JSON.stringify(require.resolve("@tanstack/react-query"))}; import { state } from "cache-test-state"; export const useQueryClient = () => state.client;`,
-                loader: "ts",
-                resolveDir: appPath("/"),
-              }),
-            );
+            build.onLoad({ filter: /.*/, namespace: "cache-test" }, ({ path }) => ({
+              contents:
+                path === "cache-test-state"
+                  ? "export const state = { ref: { current: new Set() } };"
+                  : path === "react"
+                    ? `export * from ${JSON.stringify(require.resolve("react"))}; import { state } from "cache-test-state"; export const useEffect = run => run(); export const useRef = () => state.ref;`
+                    : `export * from ${JSON.stringify(require.resolve("@tanstack/react-query"))}; import { state } from "cache-test-state"; export const useQueryClient = () => state.client;`,
+              loader: "ts",
+              resolveDir: appPath("/"),
+            }));
           },
         },
       ],
@@ -67,14 +64,7 @@ export function register({ assert, appPath, test }) {
       parts,
     });
     const calls = [];
-    const databaseKey = [
-      "db",
-      "session",
-      "database",
-      "bootstrap",
-      null,
-      false,
-    ];
+    const databaseKey = ["db", "session", "database", "bootstrap", null, false];
     client.setQueryData(databaseKey, { loaded: true });
     const invalidate = client.invalidateQueries.bind(client);
     client.invalidateQueries = (options) => {
@@ -115,8 +105,7 @@ export function register({ assert, appPath, test }) {
     assert.equal(calls.length, 3);
     assert.equal(client.getQueryState(keys[0]).isInvalidated, false);
     run([message([part("second", output)])]);
-    for (const key of keys)
-      assert.equal(client.getQueryState(key).isInvalidated, true);
+    for (const key of keys) assert.equal(client.getQueryState(key).isInvalidated, true);
     // A synchronous subscriber may replay messages during invalidation.
     client.invalidateQueries = (options) => {
       run([message([part("reentrant", output)])]);

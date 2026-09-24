@@ -52,10 +52,7 @@ export function requireOAuthScope(c: Context<AppBindings>, scope: string) {
     return null;
   }
 
-  c.header(
-    "WWW-Authenticate",
-    `Bearer error="insufficient_scope", scope="${scope}"`,
-  );
+  c.header("WWW-Authenticate", `Bearer error="insufficient_scope", scope="${scope}"`);
   return c.json(
     {
       error: "insufficient_scope",
@@ -71,11 +68,16 @@ export function rejectUnsupportedOAuthRoute(c: Context<AppBindings>) {
   const path = c.req.path.replace(/\/$/, "");
   if (
     /^\/(pages|databases)(\/|$)/.test(path) ||
-    (path === "/clips" || path === "/clips/duplicates") ||
+    path === "/clips" ||
+    path === "/clips/duplicates" ||
     path === "/search" ||
     /^\/workspaces(?:\/[^/]+)?$/.test(path)
-  ) return null;
-  return c.json({ error: "insufficient_scope", error_description: "This API does not accept OAuth tokens." }, 403);
+  )
+    return null;
+  return c.json(
+    { error: "insufficient_scope", error_description: "This API does not accept OAuth tokens." },
+    403,
+  );
 }
 
 export function oauthScopeMiddleware(scopeFor: (c: Context<AppBindings>) => string) {
@@ -89,10 +91,7 @@ export function oauthScopeMiddleware(scopeFor: (c: Context<AppBindings>) => stri
   });
 }
 
-export function scopeForReadWrite(
-  readScope: string,
-  writeScope: string,
-) {
+export function scopeForReadWrite(readScope: string, writeScope: string) {
   return (c: Context<AppBindings>) =>
     c.req.method === "GET" || c.req.method === "HEAD" ? readScope : writeScope;
 }
@@ -179,10 +178,7 @@ export async function resolveOAuthBearer(options: {
     };
   }
 
-  if (
-    options.requestedWorkspaceId &&
-    options.requestedWorkspaceId !== workspaceId
-  ) {
+  if (options.requestedWorkspaceId && options.requestedWorkspaceId !== workspaceId) {
     return {
       body: {
         error: "Forbidden",
@@ -204,11 +200,7 @@ export async function resolveOAuthBearer(options: {
     }
   }
 
-  const [user] = await db
-    .select()
-    .from(userTable)
-    .where(eq(userTable.id, userId))
-    .limit(1);
+  const [user] = await db.select().from(userTable).where(eq(userTable.id, userId)).limit(1);
 
   if (!user) {
     return { body: { error: "Unauthorized" }, status: 401 };

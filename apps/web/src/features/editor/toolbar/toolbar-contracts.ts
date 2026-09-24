@@ -1,6 +1,6 @@
-import type { Editor } from "@tiptap/react"
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
-import type { Icon } from "@/shared/components/icons"
+import type { Editor } from "@tiptap/react";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { Icon } from "@/shared/components/icons";
 
 export type ToolbarAction =
   | "toggleBold"
@@ -17,33 +17,30 @@ export type ToolbarAction =
   | "setDetails"
   | "setHorizontalRule"
   | "insertTable"
-  | "setTextAlign"
+  | "setTextAlign";
 
 export type ToolbarAttrs = {
-  level?: 1 | 2 | 3
-  align?: "left" | "center" | "right"
-}
+  level?: 1 | 2 | 3;
+  align?: "left" | "center" | "right";
+};
 
 export type ToolbarItem = {
-  label: string
-  icon: Icon
-  isActive: () => string | Record<string, unknown>
-  action: ToolbarAction
-  attrs?: ToolbarAttrs
-}
+  label: string;
+  icon: Icon;
+  isActive: () => string | Record<string, unknown>;
+  action: ToolbarAction;
+  attrs?: ToolbarAttrs;
+};
 
-export type { ColorToken } from "@/shared/lib/color-tokens"
+export type { ColorToken } from "@/shared/lib/color-tokens";
 
 export type DragHandleTarget = {
-  node: ProseMirrorNode
-  pos: number
-}
+  node: ProseMirrorNode;
+  pos: number;
+};
 
-export type RunToolbarCommand = (
-  action: ToolbarAction,
-  attrs?: ToolbarAttrs
-) => void
+export type RunToolbarCommand = (action: ToolbarAction, attrs?: ToolbarAttrs) => void;
 
 export type EditorControlProps = {
-  editor: Editor | null
-}
+  editor: Editor | null;
+};

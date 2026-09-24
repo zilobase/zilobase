@@ -17,28 +17,35 @@ const PONG = JSON.stringify({ type: "mail.pong" });
 
 export class MailNotificationRoom extends DurableObject<WorkerEnvBindings> {
   private readonly host: WorkerRoomHost<SocketAttachment>;
-  private readonly room: ReturnType<typeof createNotificationRoom<MailRealtimeTicketClaims, MailNotificationEvent>>;
+  private readonly room: ReturnType<
+    typeof createNotificationRoom<MailRealtimeTicketClaims, MailNotificationEvent>
+  >;
 
   constructor(ctx: DurableObjectState, env: WorkerEnvBindings) {
     super(ctx, env);
     ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair(PING, PONG));
     this.host = createWorkerRoomHost(ctx);
-    this.room = createNotificationRoom("mail", {
-      host: this.host,
-      telemetry: createWorkerTelemetry({ env }),
-    }, {
-      encode: (event) => JSON.stringify({
-        connectionId: event.connectionId,
-        revision: event.revision,
-        type: "mail.invalidate",
-      }),
-      errorReason: "Mail realtime WebSocket error",
-      expiredReason: "Mail realtime ticket expired",
-      matches: (claims, event) => claims.connectionId === event.connectionId,
-      ping: PING,
-      pong: PONG,
-      validate: isValidNotification,
-    });
+    this.room = createNotificationRoom(
+      "mail",
+      {
+        host: this.host,
+        telemetry: createWorkerTelemetry({ env }),
+      },
+      {
+        encode: (event) =>
+          JSON.stringify({
+            connectionId: event.connectionId,
+            revision: event.revision,
+            type: "mail.invalidate",
+          }),
+        errorReason: "Mail realtime WebSocket error",
+        expiredReason: "Mail realtime ticket expired",
+        matches: (claims, event) => claims.connectionId === event.connectionId,
+        ping: PING,
+        pong: PONG,
+        validate: isValidNotification,
+      },
+    );
     void this.room.controller.start();
   }
 
@@ -89,6 +96,9 @@ export class MailNotificationRoom extends DurableObject<WorkerEnvBindings> {
 function isValidNotification(event: unknown): event is MailNotificationEvent {
   if (!event || typeof event !== "object") return false;
   const value = event as Record<string, unknown>;
-  return typeof value.connectionId === "string" && Number.isSafeInteger(value.revision) &&
-    (value.revision as number) >= 0;
+  return (
+    typeof value.connectionId === "string" &&
+    Number.isSafeInteger(value.revision) &&
+    (value.revision as number) >= 0
+  );
 }

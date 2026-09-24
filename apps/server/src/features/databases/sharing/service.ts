@@ -2,7 +2,12 @@ import { and, asc, eq } from "drizzle-orm";
 
 import { normalizeAccessLevel } from "../../access";
 import { db } from "../../../infrastructure/database";
-import { aiAgentProfile, databaseAccess, member, team } from "../../../infrastructure/database/schema";
+import {
+  aiAgentProfile,
+  databaseAccess,
+  member,
+  team,
+} from "../../../infrastructure/database/schema";
 import { activeMembershipCondition } from "../../memberships";
 import { requireDatabaseAccess } from "../access/database-access";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
@@ -18,11 +23,7 @@ export async function listDatabaseAccessRulesService(input: {
   databaseId: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseAccess(
-    input.databaseId,
-    input.userId,
-    "full",
-  );
+  const existing = await requireDatabaseAccess(input.databaseId, input.userId, "full");
   const access = await db
     .select()
     .from(databaseAccess)
@@ -38,11 +39,7 @@ export async function upsertDatabaseAccessRuleService(input: {
   env?: RuntimeEnv;
   userId: string;
 }) {
-  const existing = await requireDatabaseAccess(
-    input.databaseId,
-    input.userId,
-    "full",
-  );
+  const existing = await requireDatabaseAccess(input.databaseId, input.userId, "full");
 
   if (!input.body || typeof input.body !== "object") {
     throw new ServiceMutationError("A JSON body is required", 400);
@@ -61,10 +58,7 @@ export async function upsertDatabaseAccessRuleService(input: {
     targetType !== "team" &&
     targetType !== "agent"
   ) {
-    throw new ServiceMutationError(
-      "targetType must be public, user, team, or agent",
-      400,
-    );
+    throw new ServiceMutationError("targetType must be public, user, team, or agent", 400);
   }
 
   if (typeof targetId !== "string" || !targetId) {
@@ -72,40 +66,32 @@ export async function upsertDatabaseAccessRuleService(input: {
   }
 
   if (!normalizedAccessLevel || normalizedAccessLevel === "comment") {
-    throw new ServiceMutationError(
-      "accessLevel must be view, edit, or full",
-      400,
-    );
+    throw new ServiceMutationError("accessLevel must be view, edit, or full", 400);
   }
 
   if (targetType === "agent" && normalizedAccessLevel === "full") {
     throw new ServiceMutationError("agent access must be view or edit", 400);
   }
 
-  if (
-    targetType === "public" &&
-    (targetId !== "*" || normalizedAccessLevel !== "view")
-  ) {
+  if (targetType === "public" && (targetId !== "*" || normalizedAccessLevel !== "view")) {
     throw new ServiceMutationError("public access must be view for *", 400);
   }
 
   if (targetType === "public") {
     const teamspacePolicy = await getDatabaseTeamspaceSecurityPolicy(existing.id);
     if (teamspacePolicy && !teamspacePolicy.publicSharingEnabled) {
-      throw new ServiceMutationError(
-        "Public sharing is disabled for this teamspace.",
-        403,
-      );
+      throw new ServiceMutationError("Public sharing is disabled for this teamspace.", 403);
     }
   }
 
-  const agentRole = targetType === "agent"
-    ? await getAgentProfileRole({
-        profileId: targetId,
-        userId: input.userId,
-        workspaceId: existing.workspaceId,
-      })
-    : null;
+  const agentRole =
+    targetType === "agent"
+      ? await getAgentProfileRole({
+          profileId: targetId,
+          userId: input.userId,
+          workspaceId: existing.workspaceId,
+        })
+      : null;
   const [target] =
     targetType === "public"
       ? [{ id: "*" }]
@@ -123,15 +109,10 @@ export async function upsertDatabaseAccessRuleService(input: {
             .limit(1)
         : targetType === "team"
           ? await db
-            .select({ id: team.id })
-            .from(team)
-            .where(
-              and(
-                eq(team.organizationId, existing.workspaceId),
-                eq(team.id, targetId),
-              ),
-            )
-            .limit(1)
+              .select({ id: team.id })
+              .from(team)
+              .where(and(eq(team.organizationId, existing.workspaceId), eq(team.id, targetId)))
+              .limit(1)
           : agentRole
             ? await db
                 .select({ id: aiAgentProfile.id })
@@ -162,11 +143,7 @@ export async function upsertDatabaseAccessRuleService(input: {
         databaseId: existing.id,
       })
       .onConflictDoUpdate({
-        target: [
-          databaseAccess.databaseId,
-          databaseAccess.targetType,
-          databaseAccess.targetId,
-        ],
+        target: [databaseAccess.databaseId, databaseAccess.targetType, databaseAccess.targetId],
         set: { accessLevel: normalizedAccessLevel, updatedAt: new Date() },
       })
       .returning();
@@ -185,11 +162,7 @@ export async function deletePublicDatabaseAccessService(input: {
   env?: RuntimeEnv;
   userId: string;
 }) {
-  const existing = await requireDatabaseAccess(
-    input.databaseId,
-    input.userId,
-    "full",
-  );
+  const existing = await requireDatabaseAccess(input.databaseId, input.userId, "full");
 
   const navigationEvent = await db.transaction(async (tx) => {
     await tx
@@ -214,21 +187,12 @@ export async function deleteDatabaseAccessRuleService(input: {
   ruleId: string;
   userId: string;
 }) {
-  const existing = await requireDatabaseAccess(
-    input.databaseId,
-    input.userId,
-    "full",
-  );
+  const existing = await requireDatabaseAccess(input.databaseId, input.userId, "full");
 
   const navigationEvent = await db.transaction(async (tx) => {
     await tx
       .delete(databaseAccess)
-      .where(
-        and(
-          eq(databaseAccess.id, input.ruleId),
-          eq(databaseAccess.databaseId, existing.id),
-        ),
-      );
+      .where(and(eq(databaseAccess.id, input.ruleId), eq(databaseAccess.databaseId, existing.id)));
     return enqueueNavigationInvalidation(tx, existing.workspaceId);
   });
   await publishCommittedNavigationInvalidation(navigationEvent, input.env);

@@ -1,10 +1,10 @@
-import { atom, useAtom, useSetAtom } from "jotai"
-import { createContext, useContext } from "react"
+import { atom, useAtom, useSetAtom } from "jotai";
+import { createContext, useContext } from "react";
 
-import type { GanttContextProps } from "./gantt-types"
+import type { GanttContextProps } from "./gantt-types";
 
-const draggingAtom = atom(false)
-const scrollXAtom = atom(0)
+const draggingAtom = atom(false);
+const scrollXAtom = atom(0);
 
 export const GanttContext = createContext<GanttContextProps>({
   columnWidth: 50,
@@ -18,24 +18,24 @@ export const GanttContext = createContext<GanttContextProps>({
   timelineData: [],
   timelineWidth: 0,
   zoom: 100,
-})
+});
 
 export function useGanttContext(): GanttContextProps {
-  return useContext(GanttContext)
+  return useContext(GanttContext);
 }
 
 export function useGanttDragging() {
-  return useAtom(draggingAtom)
+  return useAtom(draggingAtom);
 }
 
 export function useGanttScrollX() {
-  return useAtom(scrollXAtom)
+  return useAtom(scrollXAtom);
 }
 
 export function useSetGanttDragging() {
-  return useSetAtom(draggingAtom)
+  return useSetAtom(draggingAtom);
 }
 
 export function useSetGanttScrollX() {
-  return useSetAtom(scrollXAtom)
+  return useSetAtom(scrollXAtom);
 }

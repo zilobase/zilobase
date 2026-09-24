@@ -1,75 +1,62 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { ArrowLeftIcon, RotateCcwIcon } from "@/shared/components/icons"
-import { Link, useNavigate } from "@tanstack/react-router"
+import * as React from "react";
+import { ArrowLeftIcon, RotateCcwIcon } from "@/shared/components/icons";
+import { Link, useNavigate } from "@tanstack/react-router";
 
-import { Button } from "@/shared/ui/button"
-import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-} from "@/shared/ui/field"
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSeparator,
-  InputOTPSlot,
-} from "@/shared/ui/input-otp"
-import { cn } from "@/shared/lib/utils"
-import { getApiErrorMessage } from "@/platform/network/api"
+import { Button } from "@/shared/ui/button";
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo";
+import { Field, FieldDescription, FieldError, FieldGroup } from "@/shared/ui/field";
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from "@/shared/ui/input-otp";
+import { cn } from "@/shared/lib/utils";
+import { getApiErrorMessage } from "@/platform/network/api";
 import {
   useRequestEmailVerificationOtp,
   useRequestSignInOtp,
   useSignInWithOtp,
   useVerifyEmailOtp,
 } from "@zilobase/features/auth/react";
-import { useAuthFlowStore } from "../state/auth-flow-store"
+import { useAuthFlowStore } from "../state/auth-flow-store";
 
-export function OtpForm({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
-  const navigate = useNavigate()
-  const [code, setCode] = React.useState("")
-  const [resendCount, setResendCount] = React.useState(0)
-  const { clearAuthFlow, email, purpose, returnTo } = useAuthFlowStore()
-  const signInWithOtp = useSignInWithOtp()
-  const verifyEmailOtp = useVerifyEmailOtp()
-  const requestSignInOtp = useRequestSignInOtp()
-  const requestEmailVerificationOtp = useRequestEmailVerificationOtp()
-  const isVerifying = signInWithOtp.isPending || verifyEmailOtp.isPending
-  const isResending = requestSignInOtp.isPending || requestEmailVerificationOtp.isPending
-  const verificationError = signInWithOtp.error ?? verifyEmailOtp.error
-  const resendError = requestSignInOtp.error ?? requestEmailVerificationOtp.error
+export function OtpForm({ className, ...props }: React.ComponentProps<"div">) {
+  const navigate = useNavigate();
+  const [code, setCode] = React.useState("");
+  const [resendCount, setResendCount] = React.useState(0);
+  const { clearAuthFlow, email, purpose, returnTo } = useAuthFlowStore();
+  const signInWithOtp = useSignInWithOtp();
+  const verifyEmailOtp = useVerifyEmailOtp();
+  const requestSignInOtp = useRequestSignInOtp();
+  const requestEmailVerificationOtp = useRequestEmailVerificationOtp();
+  const isVerifying = signInWithOtp.isPending || verifyEmailOtp.isPending;
+  const isResending = requestSignInOtp.isPending || requestEmailVerificationOtp.isPending;
+  const verificationError = signInWithOtp.error ?? verifyEmailOtp.error;
+  const resendError = requestSignInOtp.error ?? requestEmailVerificationOtp.error;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
 
     if (!email || !purpose) {
-      return
+      return;
     }
 
     try {
       if (purpose === "sign-in") {
-        await signInWithOtp.mutateAsync({ email, otp: code })
-        clearAuthFlow()
+        await signInWithOtp.mutateAsync({ email, otp: code });
+        clearAuthFlow();
         if (returnTo) {
-          window.location.assign(returnTo)
+          window.location.assign(returnTo);
         } else {
-          void navigate({ to: "/recents" })
+          void navigate({ to: "/recents" });
         }
-        return
+        return;
       }
 
-      await verifyEmailOtp.mutateAsync({ email, otp: code })
-      clearAuthFlow()
+      await verifyEmailOtp.mutateAsync({ email, otp: code });
+      clearAuthFlow();
       if (returnTo) {
-        window.location.assign(returnTo)
+        window.location.assign(returnTo);
       } else {
-        void navigate({ to: "/onboarding" })
+        void navigate({ to: "/onboarding" });
       }
     } catch {
       // React Query owns the visible error state.
@@ -78,17 +65,17 @@ export function OtpForm({
 
   async function handleResend() {
     if (!email || !purpose) {
-      return
+      return;
     }
 
-    setCode("")
+    setCode("");
     try {
       if (purpose === "sign-in") {
-        await requestSignInOtp.mutateAsync(email)
+        await requestSignInOtp.mutateAsync(email);
       } else {
-        await requestEmailVerificationOtp.mutateAsync(email)
+        await requestEmailVerificationOtp.mutateAsync(email);
       }
-      setResendCount((currentCount) => currentCount + 1)
+      setResendCount((currentCount) => currentCount + 1);
     } catch {
       // React Query owns the visible error state.
     }
@@ -99,10 +86,7 @@ export function OtpForm({
       <form onSubmit={handleSubmit}>
         <FieldGroup>
           <div className="flex flex-col items-center gap-2 text-center">
-            <a
-              href="#"
-              className="flex flex-col items-center gap-2 font-medium"
-            >
+            <a href="#" className="flex flex-col items-center gap-2 font-medium">
               <ZilobaseLogo className="h-8 w-auto" />
               <span className="sr-only">Zilobase</span>
             </a>
@@ -137,16 +121,11 @@ export function OtpForm({
           </Field>
 
           {(verificationError || resendError) && (
-            <FieldError>
-              {getApiErrorMessage(verificationError ?? resendError)}
-            </FieldError>
+            <FieldError>{getApiErrorMessage(verificationError ?? resendError)}</FieldError>
           )}
 
           <Field>
-            <Button
-              type="submit"
-              disabled={!email || !purpose || code.length !== 6 || isVerifying}
-            >
+            <Button type="submit" disabled={!email || !purpose || code.length !== 6 || isVerifying}>
               {isVerifying ? "Checking code..." : "Continue"}
             </Button>
           </Field>
@@ -163,9 +142,7 @@ export function OtpForm({
               {isResending ? "Sending..." : "Resend code"}
             </Button>
             <FieldDescription className="text-center">
-              {resendCount > 0
-                ? "A fresh code is on the way."
-                : "Did not receive a code?"}
+              {resendCount > 0 ? "A fresh code is on the way." : "Did not receive a code?"}
             </FieldDescription>
           </Field>
 
@@ -180,5 +157,5 @@ export function OtpForm({
         </FieldGroup>
       </form>
     </div>
-  )
+  );
 }

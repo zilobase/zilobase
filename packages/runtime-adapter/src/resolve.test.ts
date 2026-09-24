@@ -8,15 +8,15 @@ import { resolveRuntimeKind } from "./resolve";
 test("resolveRuntimeKind selects only an explicitly configured worker runtime", () => {
   assert.equal(resolveRuntimeKind({ ZILOBASE_RUNTIME_KIND: "worker" }), "worker");
   assert.equal(resolveRuntimeKind({ HYPERDRIVE: { connectionString: "postgres://x" } }), "node");
-  assert.throws(
-    () => resolveRuntimeKind({ ZILOBASE_RUNTIME_KIND: "edge" }),
-    /node.*worker/,
-  );
+  assert.throws(() => resolveRuntimeKind({ ZILOBASE_RUNTIME_KIND: "edge" }), /node.*worker/);
 });
 
 test("resolveRuntimeKind defaults to node", () => {
   assert.equal(resolveRuntimeKind({}), "node");
-  assert.equal(resolveRuntimeKind({ DATABASE_URL: "postgres://x", ZILOBASE_RUNTIME_KIND: "node" }), "node");
+  assert.equal(
+    resolveRuntimeKind({ DATABASE_URL: "postgres://x", ZILOBASE_RUNTIME_KIND: "node" }),
+    "node",
+  );
 });
 
 test("dispatcher lazily loads one runtime side via dynamic import only", async () => {

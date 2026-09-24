@@ -1,14 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import type { MouseEvent, PointerEvent } from "react"
-import type { Editor } from "@tiptap/react"
-import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model"
-import {
-  Copy,
-  Eraser,
-  MoreHorizontal,
-  SidebarSimpleIcon,
-  Trash2,
-} from "@/shared/components/icons"
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { MouseEvent, PointerEvent } from "react";
+import type { Editor } from "@tiptap/react";
+import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { Copy, Eraser, MoreHorizontal, SidebarSimpleIcon, Trash2 } from "@/shared/components/icons";
 import {
   columnHandleGap,
   columnHandleHeight,
@@ -19,27 +13,27 @@ import {
   type ColumnAxisRect,
   type ColumnBlockRect,
   type ColumnDragState,
-} from "../drag-drop/column-drag"
+} from "../drag-drop/column-drag";
 
 type ColumnMenuState = {
-  index: number
-  left: number
-  top: number
-}
+  index: number;
+  left: number;
+  top: number;
+};
 
-const minColumnWidth = 12
-const columnMenuOffset = 8
+const minColumnWidth = 12;
+const columnMenuOffset = 8;
 
 function createColumnBlockRect(
   node: ProseMirrorNode,
   pos: number,
   dom: HTMLElement,
 ): ColumnBlockRect {
-  const rect = dom.getBoundingClientRect()
+  const rect = dom.getBoundingClientRect();
   const columns = Array.from(
     dom.querySelectorAll<HTMLElement>(':scope > [data-type="column"]'),
     (column, index) => {
-      const columnRect = column.getBoundingClientRect()
+      const columnRect = column.getBoundingClientRect();
 
       return {
         height: columnRect.height,
@@ -47,9 +41,9 @@ function createColumnBlockRect(
         left: columnRect.left,
         top: columnRect.top,
         width: columnRect.width,
-      }
+      };
     },
-  )
+  );
 
   return {
     columns,
@@ -59,158 +53,148 @@ function createColumnBlockRect(
     pos,
     top: rect.top,
     width: rect.width,
-  }
+  };
 }
 
 function getColumnWidths(node: ProseMirrorNode) {
-  const widths = node.attrs.widths
-  const count = node.childCount
+  const widths = node.attrs.widths;
+  const count = node.childCount;
 
   if (
     Array.isArray(widths) &&
     widths.length === count &&
     widths.every((width) => typeof width === "number" && Number.isFinite(width))
   ) {
-    return widths as number[]
+    return widths as number[];
   }
 
-  return Array.from({ length: count }, () => 100 / count)
+  return Array.from({ length: count }, () => 100 / count);
 }
 
 function findColumnBlockByDOM(editor: Editor, dom: HTMLElement) {
-  let match: ColumnBlockRect | null = null
+  let match: ColumnBlockRect | null = null;
 
   editor.state.doc.descendants((node, pos) => {
     if (node.type.name !== "columnBlock") {
-      return
+      return;
     }
 
     if (editor.view.nodeDOM(pos) === dom) {
-      match = createColumnBlockRect(node, pos, dom)
-      return false
+      match = createColumnBlockRect(node, pos, dom);
+      return false;
     }
-  })
+  });
 
-  return match
+  return match;
 }
 
 function findColumnBlockByPos(editor: Editor, pos: number) {
-  const node = editor.state.doc.nodeAt(pos)
-  const dom = editor.view.nodeDOM(pos)
+  const node = editor.state.doc.nodeAt(pos);
+  const dom = editor.view.nodeDOM(pos);
 
   if (node?.type.name !== "columnBlock" || !(dom instanceof HTMLElement)) {
-    return null
+    return null;
   }
 
   return {
     dom,
     rect: createColumnBlockRect(node, pos, dom),
-  }
+  };
 }
 
-function findHoveredColumnBlock(
-  editor: Editor,
-  target: EventTarget | null,
-) {
+function findHoveredColumnBlock(editor: Editor, target: EventTarget | null) {
   if (!(target instanceof Element)) {
-    return null
+    return null;
   }
 
-  const dom = target.closest<HTMLElement>('[data-type="columnBlock"]')
+  const dom = target.closest<HTMLElement>('[data-type="columnBlock"]');
 
   if (!dom || !editor.view.dom.contains(dom)) {
-    return null
+    return null;
   }
 
-  const columnDom = target.closest<HTMLElement>('[data-type="column"]')
-  const columns = Array.from(
-    dom.querySelectorAll<HTMLElement>(':scope > [data-type="column"]'),
-  )
-  const columnIndex =
-    columnDom && dom.contains(columnDom) ? columns.indexOf(columnDom) : null
+  const columnDom = target.closest<HTMLElement>('[data-type="column"]');
+  const columns = Array.from(dom.querySelectorAll<HTMLElement>(':scope > [data-type="column"]'));
+  const columnIndex = columnDom && dom.contains(columnDom) ? columns.indexOf(columnDom) : null;
 
   return {
     columnIndex: columnIndex === -1 ? null : columnIndex,
     dom,
     rect: findColumnBlockByDOM(editor, dom),
-  }
+  };
 }
 
 function isColumnControlElement(target: EventTarget | null) {
   return (
     target instanceof Element &&
-    Boolean(
-      target.closest(
-        ".column-reorder-control, .column-resize-control, .column-actions-menu",
-      ),
-    )
-  )
+    Boolean(target.closest(".column-reorder-control, .column-resize-control, .column-actions-menu"))
+  );
 }
 
 function getColumnControlIndex(target: EventTarget | null) {
   if (!(target instanceof Element)) {
-    return null
+    return null;
   }
 
-  const control = target.closest<HTMLElement>("[data-column-control-index]")
-  const rawIndex = control?.dataset.columnControlIndex
+  const control = target.closest<HTMLElement>("[data-column-control-index]");
+  const rawIndex = control?.dataset.columnControlIndex;
 
   if (!rawIndex) {
-    return null
+    return null;
   }
 
-  const index = Number.parseInt(rawIndex, 10)
+  const index = Number.parseInt(rawIndex, 10);
 
-  return Number.isInteger(index) ? index : null
+  return Number.isInteger(index) ? index : null;
 }
 
 function getChildNodes(node: ProseMirrorNode) {
-  const children: ProseMirrorNode[] = []
+  const children: ProseMirrorNode[] = [];
 
-  node.forEach((child) => children.push(child))
+  node.forEach((child) => children.push(child));
 
-  return children
+  return children;
 }
 
 function getColumnContentNodes(editor: Editor, column: ProseMirrorNode) {
-  const nodes: ProseMirrorNode[] = []
+  const nodes: ProseMirrorNode[] = [];
 
-  column.content.forEach((node) => nodes.push(node))
+  column.content.forEach((node) => nodes.push(node));
 
   if (nodes.length > 0) {
-    return nodes
+    return nodes;
   }
 
-  const paragraph = editor.state.schema.nodes.paragraph
+  const paragraph = editor.state.schema.nodes.paragraph;
 
-  return paragraph ? [paragraph.create()] : []
+  return paragraph ? [paragraph.create()] : [];
 }
 
 function normalizeWidths(widths: number[]) {
-  const total = widths.reduce((sum, width) => sum + width, 0)
+  const total = widths.reduce((sum, width) => sum + width, 0);
 
   if (!Number.isFinite(total) || total <= 0) {
-    return Array.from({ length: widths.length }, () => 100 / widths.length)
+    return Array.from({ length: widths.length }, () => 100 / widths.length);
   }
 
-  return widths.map((width) => (width / total) * 100)
+  return widths.map((width) => (width / total) * 100);
 }
 
 function createEmptyColumn(editor: Editor, columnType: ProseMirrorNode["type"]) {
-  const paragraph = editor.state.schema.nodes.paragraph
-  const content = paragraph ? Fragment.from(paragraph.create()) : undefined
+  const paragraph = editor.state.schema.nodes.paragraph;
+  const content = paragraph ? Fragment.from(paragraph.create()) : undefined;
 
-  return columnType.create(null, content)
+  return columnType.create(null, content);
 }
 
 function insertWidth(widths: number[], index: number, width?: number) {
-  const normalizedWidths = normalizeWidths(widths)
-  const nextWidth = width ?? 100 / (normalizedWidths.length + 1)
-  const scale = (100 - nextWidth) / 100
-  const nextWidths = normalizedWidths.map((item) => item * scale)
+  const normalizedWidths = normalizeWidths(widths);
+  const nextWidth = width ?? 100 / (normalizedWidths.length + 1);
+  const scale = (100 - nextWidth) / 100;
+  const nextWidths = normalizedWidths.map((item) => item * scale);
 
-  nextWidths.splice(index, 0, nextWidth)
-  return normalizeWidths(nextWidths)
+  nextWidths.splice(index, 0, nextWidth);
+  return normalizeWidths(nextWidths);
 }
 
 function updateColumnBlock(
@@ -226,14 +210,12 @@ function updateColumnBlock(
     },
     Fragment.fromArray(children),
     rect.node.marks,
-  )
+  );
 
   editor.view.dispatch(
-    editor.state.tr
-      .replaceWith(rect.pos, rect.pos + rect.node.nodeSize, nextNode)
-      .scrollIntoView(),
-  )
-  editor.view.focus()
+    editor.state.tr.replaceWith(rect.pos, rect.pos + rect.node.nodeSize, nextNode).scrollIntoView(),
+  );
+  editor.view.focus();
 }
 
 function replaceColumnBlockWithContent(
@@ -243,14 +225,10 @@ function replaceColumnBlockWithContent(
 ) {
   editor.view.dispatch(
     editor.state.tr
-      .replaceWith(
-        rect.pos,
-        rect.pos + rect.node.nodeSize,
-        Fragment.fromArray(content),
-      )
+      .replaceWith(rect.pos, rect.pos + rect.node.nodeSize, Fragment.fromArray(content))
       .scrollIntoView(),
-  )
-  editor.view.focus()
+  );
+  editor.view.focus();
 }
 
 function moveColumnToMainContent(
@@ -259,20 +237,18 @@ function moveColumnToMainContent(
   from: number,
   dropPosition: "before" | "after",
 ) {
-  const children = getChildNodes(rect.node)
-  const sourceColumn = children[from]
+  const children = getChildNodes(rect.node);
+  const sourceColumn = children[from];
 
   if (!sourceColumn) {
-    return
+    return;
   }
 
-  const sourceContent = getColumnContentNodes(editor, sourceColumn)
-  const remainingColumns = children.filter((_, index) => index !== from)
-  const remainingWidths = getColumnWidths(rect.node).filter(
-    (_, index) => index !== from,
-  )
-  const tr = editor.state.tr
-  const blockEnd = rect.pos + rect.node.nodeSize
+  const sourceContent = getColumnContentNodes(editor, sourceColumn);
+  const remainingColumns = children.filter((_, index) => index !== from);
+  const remainingWidths = getColumnWidths(rect.node).filter((_, index) => index !== from);
+  const tr = editor.state.tr;
+  const blockEnd = rect.pos + rect.node.nodeSize;
 
   if (remainingColumns.length >= 2) {
     const nextNode = rect.node.type.create(
@@ -282,174 +258,164 @@ function moveColumnToMainContent(
       },
       Fragment.fromArray(remainingColumns),
       rect.node.marks,
-    )
+    );
 
-    tr.replaceWith(rect.pos, blockEnd, nextNode)
+    tr.replaceWith(rect.pos, blockEnd, nextNode);
 
-    const insertPos =
-      dropPosition === "before" ? rect.pos : rect.pos + nextNode.nodeSize
+    const insertPos = dropPosition === "before" ? rect.pos : rect.pos + nextNode.nodeSize;
 
-    tr.insert(insertPos, Fragment.fromArray(sourceContent))
+    tr.insert(insertPos, Fragment.fromArray(sourceContent));
   } else {
     const remainingContent = remainingColumns.flatMap((column) =>
       getColumnContentNodes(editor, column),
-    )
+    );
     const replacementContent =
       dropPosition === "before"
         ? [...sourceContent, ...remainingContent]
-        : [...remainingContent, ...sourceContent]
+        : [...remainingContent, ...sourceContent];
 
-    tr.replaceWith(rect.pos, blockEnd, Fragment.fromArray(replacementContent))
+    tr.replaceWith(rect.pos, blockEnd, Fragment.fromArray(replacementContent));
   }
 
-  editor.view.dispatch(tr.scrollIntoView())
-  editor.view.focus()
+  editor.view.dispatch(tr.scrollIntoView());
+  editor.view.focus();
 }
 
 function insertColumn(editor: Editor, rect: ColumnBlockRect, index: number) {
-  const children = getChildNodes(rect.node)
-  const anchorColumn = children[Math.min(index, children.length - 1)]
+  const children = getChildNodes(rect.node);
+  const anchorColumn = children[Math.min(index, children.length - 1)];
 
   if (!anchorColumn) {
-    return
+    return;
   }
 
-  children.splice(index, 0, createEmptyColumn(editor, anchorColumn.type))
-  updateColumnBlock(
-    editor,
-    rect,
-    children,
-    insertWidth(getColumnWidths(rect.node), index),
-  )
+  children.splice(index, 0, createEmptyColumn(editor, anchorColumn.type));
+  updateColumnBlock(editor, rect, children, insertWidth(getColumnWidths(rect.node), index));
 }
 
 function duplicateColumn(editor: Editor, rect: ColumnBlockRect, index: number) {
-  const children = getChildNodes(rect.node)
-  const sourceColumn = children[index]
+  const children = getChildNodes(rect.node);
+  const sourceColumn = children[index];
 
   if (!sourceColumn) {
-    return
+    return;
   }
 
-  const insertIndex = index + 1
+  const insertIndex = index + 1;
 
-  children.splice(insertIndex, 0, sourceColumn.copy(sourceColumn.content))
+  children.splice(insertIndex, 0, sourceColumn.copy(sourceColumn.content));
   updateColumnBlock(
     editor,
     rect,
     children,
     insertWidth(getColumnWidths(rect.node), insertIndex, getColumnWidths(rect.node)[index]),
-  )
+  );
 }
 
 function clearColumnContents(editor: Editor, rect: ColumnBlockRect, index: number) {
-  const children = getChildNodes(rect.node)
-  const sourceColumn = children[index]
+  const children = getChildNodes(rect.node);
+  const sourceColumn = children[index];
 
   if (!sourceColumn) {
-    return
+    return;
   }
 
-  children[index] = createEmptyColumn(editor, sourceColumn.type)
-  updateColumnBlock(editor, rect, children, getColumnWidths(rect.node))
+  children[index] = createEmptyColumn(editor, sourceColumn.type);
+  updateColumnBlock(editor, rect, children, getColumnWidths(rect.node));
 }
 
 function deleteColumn(editor: Editor, rect: ColumnBlockRect, index: number) {
-  const children = getChildNodes(rect.node)
-  const remainingColumns = children.filter((_, childIndex) => childIndex !== index)
+  const children = getChildNodes(rect.node);
+  const remainingColumns = children.filter((_, childIndex) => childIndex !== index);
 
   if (remainingColumns.length >= 2) {
     updateColumnBlock(
       editor,
       rect,
       remainingColumns,
-      normalizeWidths(
-        getColumnWidths(rect.node).filter((_, widthIndex) => widthIndex !== index),
-      ),
-    )
-    return
+      normalizeWidths(getColumnWidths(rect.node).filter((_, widthIndex) => widthIndex !== index)),
+    );
+    return;
   }
 
   const remainingContent = remainingColumns.flatMap((column) =>
     getColumnContentNodes(editor, column),
-  )
+  );
 
-  replaceColumnBlockWithContent(editor, rect, remainingContent)
+  replaceColumnBlockWithContent(editor, rect, remainingContent);
 }
 
 export function ColumnControls({ editor }: { editor: Editor | null }) {
-  const [rect, setRect] = useState<ColumnBlockRect | null>(null)
-  const [dragPreview, setDragPreview] = useState<ColumnDragState | null>(null)
-  const [hoveredColumnIndex, setHoveredColumnIndex] = useState<number | null>(
-    null,
-  )
-  const [menu, setMenu] = useState<ColumnMenuState | null>(null)
-  const dragState = useRef<ColumnDragState | null>(null)
-  const hoveredColumnBlockRef = useRef<HTMLElement | null>(null)
-  const menuRef = useRef<ColumnMenuState | null>(null)
-  const rectRef = useRef<ColumnBlockRect | null>(null)
+  const [rect, setRect] = useState<ColumnBlockRect | null>(null);
+  const [dragPreview, setDragPreview] = useState<ColumnDragState | null>(null);
+  const [hoveredColumnIndex, setHoveredColumnIndex] = useState<number | null>(null);
+  const [menu, setMenu] = useState<ColumnMenuState | null>(null);
+  const dragState = useRef<ColumnDragState | null>(null);
+  const hoveredColumnBlockRef = useRef<HTMLElement | null>(null);
+  const menuRef = useRef<ColumnMenuState | null>(null);
+  const rectRef = useRef<ColumnBlockRect | null>(null);
   const pointerState = useRef<{
-    moved: boolean
-    x: number
-    y: number
-  } | null>(null)
+    moved: boolean;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const updateRect = useCallback(() => {
     if (!editor) {
-      setRect(null)
-      setHoveredColumnIndex(null)
-      return
+      setRect(null);
+      setHoveredColumnIndex(null);
+      return;
     }
 
     const hoveredColumnBlock = hoveredColumnBlockRef.current
       ? findColumnBlockByDOM(editor, hoveredColumnBlockRef.current)
-      : null
+      : null;
     const fallbackColumnBlock =
       !hoveredColumnBlock && rectRef.current
         ? findColumnBlockByPos(editor, rectRef.current.pos)
-        : null
-    const nextRect = hoveredColumnBlock ?? fallbackColumnBlock?.rect ?? null
+        : null;
+    const nextRect = hoveredColumnBlock ?? fallbackColumnBlock?.rect ?? null;
 
     if (fallbackColumnBlock) {
-      hoveredColumnBlockRef.current = fallbackColumnBlock.dom
+      hoveredColumnBlockRef.current = fallbackColumnBlock.dom;
     }
 
-    setRect(nextRect)
+    setRect(nextRect);
     if (!nextRect) {
-      setHoveredColumnIndex(null)
-      return
+      setHoveredColumnIndex(null);
+      return;
     }
 
     setHoveredColumnIndex((index) =>
       index === null ? null : Math.min(index, nextRect.columns.length - 1),
-    )
-  }, [editor])
+    );
+  }, [editor]);
 
   useEffect(() => {
-    menuRef.current = menu
-  }, [menu])
+    menuRef.current = menu;
+  }, [menu]);
 
   useEffect(() => {
-    rectRef.current = rect
-  }, [rect])
+    rectRef.current = rect;
+  }, [rect]);
 
   useEffect(() => {
     if (!editor) {
-      setRect(null)
-      return
+      setRect(null);
+      return;
     }
 
     const activeEditor = editor;
-    let updateFrame: number | null = null
-    let pointerFrame: number | null = null
-    let latestPointerEvent: globalThis.PointerEvent | null = null
+    let updateFrame: number | null = null;
+    let pointerFrame: number | null = null;
+    let latestPointerEvent: globalThis.PointerEvent | null = null;
     const updateOnNextFrame = () => {
-      if (updateFrame !== null) return
+      if (updateFrame !== null) return;
       updateFrame = window.requestAnimationFrame(() => {
-        updateFrame = null
-        updateRect()
-      })
-    }
+        updateFrame = null;
+        updateRect();
+      });
+    };
     function applyPointerHover(event: globalThis.PointerEvent) {
       if (dragState.current || pointerState.current || menuRef.current) {
         return;
@@ -460,8 +426,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
 
       if (currentRect) {
         const index =
-          controlIndex ??
-          getColumnIndexAtPoint(currentRect, event.clientX, event.clientY);
+          controlIndex ?? getColumnIndexAtPoint(currentRect, event.clientX, event.clientY);
         if (index !== null) {
           setRect(currentRect);
           setHoveredColumnIndex(index);
@@ -473,10 +438,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
         return;
       }
 
-      const hoveredColumnBlock = findHoveredColumnBlock(
-        activeEditor,
-        event.target,
-      );
+      const hoveredColumnBlock = findHoveredColumnBlock(activeEditor, event.target);
 
       if (hoveredColumnBlock) {
         hoveredColumnBlockRef.current = hoveredColumnBlock.dom;
@@ -501,259 +463,229 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
       });
     };
 
-    updateRect()
-    editor.on("selectionUpdate", updateOnNextFrame)
-    editor.on("transaction", updateOnNextFrame)
-    window.addEventListener("pointermove", updateHoveredColumnBlock, true)
-    window.addEventListener("resize", updateRect)
-    window.addEventListener("scroll", updateRect, true)
+    updateRect();
+    editor.on("selectionUpdate", updateOnNextFrame);
+    editor.on("transaction", updateOnNextFrame);
+    window.addEventListener("pointermove", updateHoveredColumnBlock, true);
+    window.addEventListener("resize", updateRect);
+    window.addEventListener("scroll", updateRect, true);
 
     return () => {
       if (updateFrame !== null) {
-        window.cancelAnimationFrame(updateFrame)
+        window.cancelAnimationFrame(updateFrame);
       }
       if (pointerFrame !== null) {
-        window.cancelAnimationFrame(pointerFrame)
+        window.cancelAnimationFrame(pointerFrame);
       }
-      editor.off("selectionUpdate", updateOnNextFrame)
-      editor.off("transaction", updateOnNextFrame)
-      window.removeEventListener("pointermove", updateHoveredColumnBlock, true)
-      window.removeEventListener("resize", updateRect)
-      window.removeEventListener("scroll", updateRect, true)
-    }
-  }, [editor, updateRect])
+      editor.off("selectionUpdate", updateOnNextFrame);
+      editor.off("transaction", updateOnNextFrame);
+      window.removeEventListener("pointermove", updateHoveredColumnBlock, true);
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("scroll", updateRect, true);
+    };
+  }, [editor, updateRect]);
 
   useEffect(() => {
     if (!menu) {
-      return
+      return;
     }
 
-    const close = () => setMenu(null)
+    const close = () => setMenu(null);
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        close()
+        close();
       }
-    }
+    };
 
-    document.addEventListener("mousedown", close)
-    document.addEventListener("keydown", handleKeyDown)
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.removeEventListener("mousedown", close)
-      document.removeEventListener("keydown", handleKeyDown)
-    }
-  }, [menu])
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [menu]);
 
   if (!editor || !rect || rect.columns.length < 2) {
-    return null
+    return null;
   }
 
   const setDrag = (nextDrag: ColumnDragState | null) => {
-    dragState.current = nextDrag
-    setDragPreview(nextDrag)
-  }
+    dragState.current = nextDrag;
+    setDragPreview(nextDrag);
+  };
 
   const finishDrag = () => {
-    const currentDrag = dragState.current
+    const currentDrag = dragState.current;
 
-    setDrag(null)
+    setDrag(null);
 
     if (!currentDrag) {
-      return
+      return;
     }
 
     if (currentDrag.dropPosition) {
-      moveColumnToMainContent(
-        editor,
-        rect,
-        currentDrag.from,
-        currentDrag.dropPosition,
-      )
-      requestAnimationFrame(updateRect)
-      return
+      moveColumnToMainContent(editor, rect, currentDrag.from, currentDrag.dropPosition);
+      requestAnimationFrame(updateRect);
+      return;
     }
 
     if (currentDrag.from === currentDrag.target) {
-      return
+      return;
     }
 
-    const children = getChildNodes(rect.node)
-    const nextHoveredIndex = Math.min(
-      currentDrag.target,
-      rect.columns.length - 1,
-    )
+    const children = getChildNodes(rect.node);
+    const nextHoveredIndex = Math.min(currentDrag.target, rect.columns.length - 1);
 
     updateColumnBlock(
       editor,
       rect,
       reorderColumnItems(children, currentDrag.from, currentDrag.target),
-      reorderColumnItems(
-        getColumnWidths(rect.node),
-        currentDrag.from,
-        currentDrag.target,
-      ),
-    )
-    setHoveredColumnIndex(nextHoveredIndex)
+      reorderColumnItems(getColumnWidths(rect.node), currentDrag.from, currentDrag.target),
+    );
+    setHoveredColumnIndex(nextHoveredIndex);
     requestAnimationFrame(() => {
-      const nextColumnBlock = findColumnBlockByPos(editor, rect.pos)
+      const nextColumnBlock = findColumnBlockByPos(editor, rect.pos);
 
       if (!nextColumnBlock) {
-        updateRect()
-        return
+        updateRect();
+        return;
       }
 
-      hoveredColumnBlockRef.current = nextColumnBlock.dom
-      setRect(nextColumnBlock.rect)
-    })
-  }
+      hoveredColumnBlockRef.current = nextColumnBlock.dom;
+      setRect(nextColumnBlock.rect);
+    });
+  };
 
   const runColumnCommand = (command: () => void) => {
-    command()
-    setMenu(null)
-    requestAnimationFrame(updateRect)
-  }
+    command();
+    setMenu(null);
+    requestAnimationFrame(updateRect);
+  };
 
-  const startDrag = (
-    from: number,
-    event: PointerEvent<HTMLButtonElement>,
-  ) => {
-    event.preventDefault()
-    event.stopPropagation()
-    event.currentTarget.setPointerCapture(event.pointerId)
+  const startDrag = (from: number, event: PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
     pointerState.current = {
       moved: false,
       x: event.clientX,
       y: event.clientY,
-    }
-    setDrag({ from, target: from })
-    setMenu(null)
-  }
+    };
+    setDrag({ from, target: from });
+    setMenu(null);
+  };
 
   const updateDragTarget = (event: PointerEvent<HTMLButtonElement>) => {
-    const currentDrag = dragState.current
-    if (!currentDrag) return
+    const currentDrag = dragState.current;
+    if (!currentDrag) return;
 
-    const pointer = pointerState.current
+    const pointer = pointerState.current;
     if (
       pointer &&
-      (Math.abs(event.clientX - pointer.x) > 4 ||
-        Math.abs(event.clientY - pointer.y) > 4)
+      (Math.abs(event.clientX - pointer.x) > 4 || Math.abs(event.clientY - pointer.y) > 4)
     ) {
-      pointer.moved = true
+      pointer.moved = true;
     }
 
-    const dropPosition = getColumnExtractionDropPosition(
-      rect,
-      event.clientX,
-      event.clientY,
-    )
+    const dropPosition = getColumnExtractionDropPosition(rect, event.clientX, event.clientY);
     if (dropPosition) {
       if (currentDrag.dropPosition !== dropPosition) {
-        setDrag({ ...currentDrag, dropPosition })
+        setDrag({ ...currentDrag, dropPosition });
       }
-      return
+      return;
     }
 
-    const target = getColumnDragTargetIndex(rect, event.clientX)
-    if (
-      target !== currentDrag.target ||
-      currentDrag.dropPosition !== undefined
-    ) {
-      setDrag({ ...currentDrag, dropPosition: undefined, target })
+    const target = getColumnDragTargetIndex(rect, event.clientX);
+    if (target !== currentDrag.target || currentDrag.dropPosition !== undefined) {
+      setDrag({ ...currentDrag, dropPosition: undefined, target });
     }
-  }
+  };
 
   const finishPointerDrag = () => {
-    finishDrag()
+    finishDrag();
     window.setTimeout(() => {
-      pointerState.current = null
-    }, 0)
-  }
+      pointerState.current = null;
+    }, 0);
+  };
 
   const cancelPointerDrag = () => {
-    setDrag(null)
-    pointerState.current = null
-  }
+    setDrag(null);
+    pointerState.current = null;
+  };
 
-  const openColumnMenu = (
-    column: ColumnAxisRect,
-    event: MouseEvent<HTMLButtonElement>,
-  ) => {
-    event.preventDefault()
-    event.stopPropagation()
+  const openColumnMenu = (column: ColumnAxisRect, event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
 
     if (pointerState.current?.moved) {
-      pointerState.current = null
-      return
+      pointerState.current = null;
+      return;
     }
 
-    pointerState.current = null
+    pointerState.current = null;
     setMenu({
       index: column.index,
       left: column.left,
       top: rect.top - columnHandleHeight - columnHandleGap + columnHandleHeight + columnMenuOffset,
-    })
-  }
+    });
+  };
 
-  const startResize = (
-    index: number,
-    event: PointerEvent<HTMLDivElement>,
-  ) => {
-    event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
+  const startResize = (index: number, event: PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
 
-    const startX = event.clientX
-    const startWidths = getColumnWidths(rect.node)
-    const pairTotal = startWidths[index] + startWidths[index + 1]
+    const startX = event.clientX;
+    const startWidths = getColumnWidths(rect.node);
+    const pairTotal = startWidths[index] + startWidths[index + 1];
 
     const removeListeners = () => {
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-      window.removeEventListener("pointercancel", handlePointerUp)
-    }
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+    };
 
     const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
-      const delta = ((moveEvent.clientX - startX) / rect.width) * 100
+      const delta = ((moveEvent.clientX - startX) / rect.width) * 100;
       const leftWidth = Math.max(
         minColumnWidth,
         Math.min(pairTotal - minColumnWidth, startWidths[index] + delta),
-      )
-      const rightWidth = pairTotal - leftWidth
-      const nextWidths = [...startWidths]
+      );
+      const rightWidth = pairTotal - leftWidth;
+      const nextWidths = [...startWidths];
 
-      nextWidths[index] = leftWidth
-      nextWidths[index + 1] = rightWidth
+      nextWidths[index] = leftWidth;
+      nextWidths[index + 1] = rightWidth;
 
-      const children: ProseMirrorNode[] = []
-      rect.node.forEach((child) => children.push(child))
-      updateColumnBlock(editor, rect, children, nextWidths)
-    }
+      const children: ProseMirrorNode[] = [];
+      rect.node.forEach((child) => children.push(child));
+      updateColumnBlock(editor, rect, children, nextWidths);
+    };
 
     const handlePointerUp = () => {
-      removeListeners()
-      requestAnimationFrame(updateRect)
-    }
+      removeListeners();
+      requestAnimationFrame(updateRect);
+    };
 
-    window.addEventListener("pointermove", handlePointerMove)
-    window.addEventListener("pointerup", handlePointerUp)
-    window.addEventListener("pointercancel", handlePointerUp)
-  }
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
+  };
 
-  const dragTarget = dragPreview ? rect.columns[dragPreview.target] : null
+  const dragTarget = dragPreview ? rect.columns[dragPreview.target] : null;
   const extractionDropTop =
     dragPreview?.dropPosition === "before"
       ? rect.top
       : dragPreview?.dropPosition === "after"
         ? rect.top + rect.height
-        : null
+        : null;
   const dropLinePosition =
     dragPreview && !dragPreview.dropPosition && dragTarget
       ? dragPreview.target > dragPreview.from
         ? dragTarget.left + dragTarget.width
         : dragTarget.left
-      : null
-  const visibleColumnIndex =
-    dragPreview?.from ?? menu?.index ?? hoveredColumnIndex
+      : null;
+  const visibleColumnIndex = dragPreview?.from ?? menu?.index ?? hoveredColumnIndex;
   const resizeHandleColumns =
     visibleColumnIndex === null
       ? []
@@ -761,9 +693,8 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
           .slice(0, -1)
           .filter(
             (column) =>
-              column.index === visibleColumnIndex ||
-              column.index + 1 === visibleColumnIndex,
-          )
+              column.index === visibleColumnIndex || column.index + 1 === visibleColumnIndex,
+          );
 
   return (
     <>
@@ -794,31 +725,29 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
       {rect.columns
         .filter((column) => column.index === visibleColumnIndex)
         .map((column) => (
-        <button
-          aria-label="Open column actions"
-          className="column-reorder-control"
-          data-column-control-index={column.index}
-          data-dragging={
-            dragPreview?.from === column.index ? "true" : undefined
-          }
-          key={column.index}
-          onClick={(event) => openColumnMenu(column, event)}
-          onPointerCancel={cancelPointerDrag}
-          onPointerDown={(event) => startDrag(column.index, event)}
-          onPointerMove={updateDragTarget}
-          onPointerUp={finishPointerDrag}
-          style={{
-            height: columnHandleHeight,
-            left: column.left,
-            top: rect.top - columnHandleHeight - columnHandleGap,
-            width: column.width,
-          }}
-          title="Column actions"
-          type="button"
-        >
-          <MoreHorizontal />
-        </button>
-      ))}
+          <button
+            aria-label="Open column actions"
+            className="column-reorder-control"
+            data-column-control-index={column.index}
+            data-dragging={dragPreview?.from === column.index ? "true" : undefined}
+            key={column.index}
+            onClick={(event) => openColumnMenu(column, event)}
+            onPointerCancel={cancelPointerDrag}
+            onPointerDown={(event) => startDrag(column.index, event)}
+            onPointerMove={updateDragTarget}
+            onPointerUp={finishPointerDrag}
+            style={{
+              height: columnHandleHeight,
+              left: column.left,
+              top: rect.top - columnHandleHeight - columnHandleGap,
+              width: column.width,
+            }}
+            title="Column actions"
+            type="button"
+          >
+            <MoreHorizontal />
+          </button>
+        ))}
       {menu ? (
         <div
           className="column-actions-menu"
@@ -829,14 +758,10 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
             top: menu.top,
           }}
         >
-          <div className="px-1.5 py-1 text-xs font-medium text-content-secondary">
-            Column
-          </div>
+          <div className="px-1.5 py-1 text-xs font-medium text-content-secondary">Column</div>
           <button
             className="column-actions-menu-item"
-            onClick={() =>
-              runColumnCommand(() => insertColumn(editor, rect, menu.index))
-            }
+            onClick={() => runColumnCommand(() => insertColumn(editor, rect, menu.index))}
             type="button"
           >
             <SidebarSimpleIcon />
@@ -844,9 +769,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
           </button>
           <button
             className="column-actions-menu-item"
-            onClick={() =>
-              runColumnCommand(() => insertColumn(editor, rect, menu.index + 1))
-            }
+            onClick={() => runColumnCommand(() => insertColumn(editor, rect, menu.index + 1))}
             type="button"
           >
             <SidebarSimpleIcon mirrored />
@@ -854,9 +777,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
           </button>
           <button
             className="column-actions-menu-item"
-            onClick={() =>
-              runColumnCommand(() => duplicateColumn(editor, rect, menu.index))
-            }
+            onClick={() => runColumnCommand(() => duplicateColumn(editor, rect, menu.index))}
             type="button"
           >
             <Copy />
@@ -864,9 +785,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
           </button>
           <button
             className="column-actions-menu-item"
-            onClick={() =>
-              runColumnCommand(() => clearColumnContents(editor, rect, menu.index))
-            }
+            onClick={() => runColumnCommand(() => clearColumnContents(editor, rect, menu.index))}
             type="button"
           >
             <Eraser />
@@ -875,9 +794,7 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
           <div className="-mx-1 my-1 h-px bg-stroke-default" />
           <button
             className="column-actions-menu-item text-action-danger-text hover:bg-feedback-error-subtle focus-visible:bg-feedback-error-subtle"
-            onClick={() =>
-              runColumnCommand(() => deleteColumn(editor, rect, menu.index))
-            }
+            onClick={() => runColumnCommand(() => deleteColumn(editor, rect, menu.index))}
             type="button"
           >
             <Trash2 />
@@ -902,5 +819,5 @@ export function ColumnControls({ editor }: { editor: Editor | null }) {
         />
       ))}
     </>
-  )
+  );
 }

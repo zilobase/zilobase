@@ -22,11 +22,7 @@ type PersistedApprovalStatus =
   | "failed"
   | "expired";
 
-type ApprovalStatus =
-  | PersistedApprovalStatus
-  | "loading"
-  | "approving"
-  | "unavailable";
+type ApprovalStatus = PersistedApprovalStatus | "loading" | "approving" | "unavailable";
 
 export function AgentActionReviews({
   message,
@@ -124,9 +120,7 @@ function AgentActionReview({
   return (
     <div className="not-prose mb-3 rounded-lg border bg-surface-muted p-3">
       <div className="text-sm font-medium">Review: {approval.title}</div>
-      <div className="mt-1 text-xs text-content-secondary">
-        {statusDescription}
-      </div>
+      <div className="mt-1 text-xs text-content-secondary">{statusDescription}</div>
       {status === "pending" && !expired ? (
         <div className="mt-3 flex gap-2">
           <Button onClick={() => void act("approve")} size="sm" type="button">
@@ -158,11 +152,11 @@ function getApprovalStatusDescription(status: ApprovalStatus, expired: boolean) 
 
 function readPersistedApprovalStatus(value: unknown): PersistedApprovalStatus | null {
   return value === "pending" ||
-      value === "executing" ||
-      value === "rejected" ||
-      value === "succeeded" ||
-      value === "failed" ||
-      value === "expired"
+    value === "executing" ||
+    value === "rejected" ||
+    value === "succeeded" ||
+    value === "failed" ||
+    value === "expired"
     ? value
     : null;
 }
@@ -170,16 +164,20 @@ function readPersistedApprovalStatus(value: unknown): PersistedApprovalStatus | 
 function readApproval(output: unknown): Approval | null {
   if (!output || typeof output !== "object" || Array.isArray(output)) return null;
   const envelope = output as { data?: unknown; status?: unknown };
-  if (envelope.status !== "approval_required" || !envelope.data || typeof envelope.data !== "object") {
+  if (
+    envelope.status !== "approval_required" ||
+    !envelope.data ||
+    typeof envelope.data !== "object"
+  ) {
     return null;
   }
   const approval = (envelope.data as { approval?: unknown }).approval;
   if (!approval || typeof approval !== "object" || Array.isArray(approval)) return null;
   const value = approval as Record<string, unknown>;
   return typeof value.actionId === "string" &&
-      typeof value.expiresAt === "string" &&
-      typeof value.title === "string" &&
-      typeof value.toolName === "string"
-    ? value as Approval
+    typeof value.expiresAt === "string" &&
+    typeof value.title === "string" &&
+    typeof value.toolName === "string"
+    ? (value as Approval)
     : null;
 }

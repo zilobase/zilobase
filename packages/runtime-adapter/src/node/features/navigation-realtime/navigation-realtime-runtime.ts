@@ -18,13 +18,18 @@ export function attachNodeNavigationRealtimeRuntime(
   env: RuntimeEnv,
   options: { realtimeBus: NodeRealtimeBus },
 ) {
-  const runtime = attachNodeNotificationRuntime<NavigationRealtimeTicketClaims, NavigationRealtimeInvalidateEvent>(server, options.realtimeBus, {
+  const runtime = attachNodeNotificationRuntime<
+    NavigationRealtimeTicketClaims,
+    NavigationRealtimeInvalidateEvent
+  >(server, options.realtimeBus, {
     async authenticate(request) {
       const workspaceId = new URL(request.url).searchParams.get("workspace");
       const token = readTicket(request.headers);
-      if (!workspaceId || !token) throw new Response("Missing navigation realtime ticket", { status: 401 });
+      if (!workspaceId || !token)
+        throw new Response("Missing navigation realtime ticket", { status: 401 });
       const claims = await verifyNavigationRealtimeTicket(token, env);
-      if (claims.workspaceId !== workspaceId) throw new Response("Invalid navigation realtime ticket", { status: 403 });
+      if (claims.workspaceId !== workspaceId)
+        throw new Response("Invalid navigation realtime ticket", { status: 403 });
       return claims;
     },
     channel: navigationRealtimeChannel,
@@ -43,28 +48,38 @@ export function attachNodeNavigationRealtimeRuntime(
       isEvent(value) && value.workspaceId === roomId,
     path: "/navigation-realtime",
     protocol: NAVIGATION_REALTIME_PROTOCOL,
-    ready: (claims) => JSON.stringify({
-      protocolVersion: 1,
-      sessionId: claims.sessionId,
-      type: "navigation.ready",
-      workspaceId: claims.workspaceId,
-    }),
+    ready: (claims) =>
+      JSON.stringify({
+        protocolVersion: 1,
+        sessionId: claims.sessionId,
+        type: "navigation.ready",
+        workspaceId: claims.workspaceId,
+      }),
     roomId: (claims) => claims.workspaceId,
   });
   return { destroy: runtime.destroy, publish: runtime.publish };
 }
 
 function readTicket(headers: Headers) {
-  const protocols = (headers.get("sec-websocket-protocol") ?? "").split(",").map((value) => value.trim());
+  const protocols = (headers.get("sec-websocket-protocol") ?? "")
+    .split(",")
+    .map((value) => value.trim());
   if (!protocols.includes(NAVIGATION_REALTIME_PROTOCOL)) return null;
-  return protocols.find((value) => value.startsWith(NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX))
-    ?.slice(NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX.length) ?? null;
+  return (
+    protocols
+      .find((value) => value.startsWith(NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX))
+      ?.slice(NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX.length) ?? null
+  );
 }
 
 function isEvent(value: unknown): value is NavigationRealtimeInvalidateEvent {
   if (!value || typeof value !== "object") return false;
   const event = value as Record<string, unknown>;
-  return event.type === "navigation.invalidate" && event.protocolVersion === 1 &&
-    typeof event.workspaceId === "string" && typeof event.eventId === "string" &&
-    typeof event.committedAt === "string";
+  return (
+    event.type === "navigation.invalidate" &&
+    event.protocolVersion === 1 &&
+    typeof event.workspaceId === "string" &&
+    typeof event.eventId === "string" &&
+    typeof event.committedAt === "string"
+  );
 }

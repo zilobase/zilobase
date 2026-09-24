@@ -6,13 +6,7 @@ export type AgentProgressStep = {
 };
 
 export type AgentProgressSnapshot = {
-  currentPhase:
-    | "planning"
-    | "container"
-    | "schema"
-    | "views"
-    | "rows"
-    | "finalizing";
+  currentPhase: "planning" | "container" | "schema" | "views" | "rows" | "finalizing";
   rowProgress?: {
     completed: number;
     total: number;

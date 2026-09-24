@@ -2,14 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { QueryClient } from "@tanstack/react-query";
 
-import {
-  databaseBootstrapQueryKey,
-  databaseWindowQueryKey,
-} from "../databases/queries/keys";
-import {
-  invalidateDeletedItems,
-  invalidateRestoredItems,
-} from "./item-action-cache";
+import { databaseBootstrapQueryKey, databaseWindowQueryKey } from "../databases/queries/keys";
+import { invalidateDeletedItems, invalidateRestoredItems } from "./item-action-cache";
 
 test("deleting a database refreshes trash-aware reads and evicts active-only reads", async () => {
   const queryClient = new QueryClient();
@@ -61,12 +55,7 @@ test("restoring a database invalidates active and trash-aware database reads", a
   });
 
   try {
-    for (const key of [
-      activeBootstrap,
-      deletedBootstrap,
-      deletedWindow,
-      otherBootstrap,
-    ]) {
+    for (const key of [activeBootstrap, deletedBootstrap, deletedWindow, otherBootstrap]) {
       queryClient.setQueryData(key, { cached: true });
     }
 

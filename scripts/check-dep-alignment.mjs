@@ -18,11 +18,15 @@ const ZOD_V4 = "4.";
 const ZOD_V3 = "3.";
 
 function specVersion(spec) {
-  return String(spec).replace(/^[\^~>=<\s]+/, "").trim();
+  return String(spec)
+    .replace(/^[\^~>=<\s]+/, "")
+    .trim();
 }
 
 function parseVersion(spec) {
-  const parts = specVersion(spec).split(".").map((part) => parseInt(part, 10));
+  const parts = specVersion(spec)
+    .split(".")
+    .map((part) => parseInt(part, 10));
   return [parts[0] || 0, parts[1] || 0, parts[2] || 0];
 }
 
@@ -105,7 +109,9 @@ if (process.argv.includes("--check-all")) {
       if (!entry.isDirectory()) continue;
       const label = `${dir}/${entry.name}/package.json`;
       try {
-        const sub = JSON.parse(await readFile(path.join(root, dir, entry.name, "package.json"), "utf8"));
+        const sub = JSON.parse(
+          await readFile(path.join(root, dir, entry.name, "package.json"), "utf8"),
+        );
         const subErrors = [];
         checkManifest(sub, label, {}, subErrors);
         // Workspaces inherit engines from the root; only warn on dep drift.

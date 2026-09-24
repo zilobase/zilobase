@@ -129,15 +129,12 @@ const forbiddenCapabilities: AgentCapability[] = [
   },
 ];
 
-export function resolveAgentCapabilityPolicy(input: {
-  canEditAttachedPages: boolean;
-}) {
+export function resolveAgentCapabilityPolicy(input: { canEditAttachedPages: boolean }) {
   const nativeMutationCapabilities: AgentCapability[] = [
     {
       id: "artifact.create",
       status: "available",
-      summary:
-        "Create expiring downloadable artifacts in supported document and data formats.",
+      summary: "Create expiring downloadable artifacts in supported document and data formats.",
       toolNames: toolNamesFor("artifact.create"),
     },
     {
@@ -152,8 +149,7 @@ export function resolveAgentCapabilityPolicy(input: {
     {
       id: "page-database.configure",
       status: "available",
-      summary:
-        "Create supported pages and configure pages/databases after item-level edit checks.",
+      summary: "Create supported pages and configure pages/databases after item-level edit checks.",
       toolNames: toolNamesFor("page-database.configure"),
     },
   ];
@@ -175,22 +171,19 @@ export function resolveAgentCapabilityPolicy(input: {
 }
 
 function toolNamesFor(capability: string) {
-  return AGENT_TOOL_DESCRIPTORS
-    .filter((descriptor) => descriptor.capability === capability)
-    .map((descriptor) => descriptor.name);
+  return AGENT_TOOL_DESCRIPTORS.filter((descriptor) => descriptor.capability === capability).map(
+    (descriptor) => descriptor.name,
+  );
 }
 
 export function buildAgentPolicyInstruction(policy: AgentCapabilityPolicy) {
-  const restricted = policy.capabilities.filter(
-    (capability) => capability.status !== "available",
-  );
+  const restricted = policy.capabilities.filter((capability) => capability.status !== "available");
 
   return [
     "## Capability boundaries",
     "Only claim that an action or read succeeded after a tool returns success. Never invent tool access.",
     ...restricted.map(
-      (capability) =>
-        `- ${capability.id} (${capability.status}): ${capability.summary}`,
+      (capability) => `- ${capability.id} (${capability.status}): ${capability.summary}`,
     ),
   ].join("\n");
 }

@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import {
-  aiAgentTrigger,
-  automationSecret,
-} from "../../../infrastructure/database/schema";
+import { aiAgentTrigger, automationSecret } from "../../../infrastructure/database/schema";
 const schedule = vi.hoisted(() => ({
   calls: [] as unknown[],
   next: new Date("2030-01-02"),
@@ -142,9 +139,7 @@ test("trigger materialization recomputes changed or resumed schedules and clears
     },
   ]) {
     schedule.calls = [];
-    const fixture = transaction([
-      { id: "scheduled", kind: "schedule", ...scenario.existing },
-    ]);
+    const fixture = transaction([{ id: "scheduled", kind: "schedule", ...scenario.existing }]);
     await synchronizeMaterializedTriggers(
       fixture.tx,
       "profile",
@@ -160,10 +155,7 @@ test("trigger materialization recomputes changed or resumed schedules and clears
       ] as Desired,
       new Date("2029-01-01"),
     );
-    assert.equal(
-      fixture.updates[0].nextRunAt,
-      scenario.recompute ? schedule.next : null,
-    );
+    assert.equal(fixture.updates[0].nextRunAt, scenario.recompute ? schedule.next : null);
     assert.equal(schedule.calls.length, scenario.recompute ? 1 : 0);
   }
 });

@@ -1,14 +1,10 @@
-import { Loader2, Plus } from "@/shared/components/icons"
-import { useEffect, useRef, useState } from "react"
+import { Loader2, Plus } from "@/shared/components/icons";
+import { useEffect, useRef, useState } from "react";
 
-import {
-  DropDrawer,
-  DropDrawerContent,
-  DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
+import { DropDrawer, DropDrawerContent, DropDrawerTrigger } from "@/shared/ui/dropdrawer";
 
-import { databasePropertyTypes } from "../property-catalog"
-import { PropertyTypePicker } from "../shared/property-type-picker"
+import { databasePropertyTypes } from "../property-catalog";
+import { PropertyTypePicker } from "../shared/property-type-picker";
 
 export function AddDatabasePropertyMenu({
   disabled,
@@ -18,42 +14,42 @@ export function AddDatabasePropertyMenu({
   open,
   triggerLabel = "Add property",
 }: {
-  disabled: boolean
-  isPending: boolean
-  onAdd: (type: string, label: string) => void
-  onOpenChange?: (open: boolean) => void
-  open?: boolean
-  triggerLabel?: string
+  disabled: boolean;
+  isPending: boolean;
+  onAdd: (type: string, label: string) => void;
+  onOpenChange?: (open: boolean) => void;
+  open?: boolean;
+  triggerLabel?: string;
 }) {
-  const [internalOpen, setInternalOpen] = useState(false)
-  const [propertyTitle, setPropertyTitle] = useState("")
-  const titleInputRef = useRef<HTMLInputElement | null>(null)
-  const actualOpen = open ?? internalOpen
+  const [internalOpen, setInternalOpen] = useState(false);
+  const [propertyTitle, setPropertyTitle] = useState("");
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const actualOpen = open ?? internalOpen;
   const handleOpenChange = (nextOpen: boolean) => {
-    setInternalOpen(nextOpen)
-    onOpenChange?.(nextOpen)
+    setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
 
     if (!nextOpen) {
-      setPropertyTitle("")
+      setPropertyTitle("");
     }
-  }
+  };
   const handleAdd = (type: string, label: string) => {
-    onAdd(type, propertyTitle.trim() || label)
-    setPropertyTitle("")
-  }
+    onAdd(type, propertyTitle.trim() || label);
+    setPropertyTitle("");
+  };
 
   useEffect(() => {
     if (!actualOpen) {
-      return
+      return;
     }
 
     const frame = window.requestAnimationFrame(() => {
-      titleInputRef.current?.focus()
-      titleInputRef.current?.select()
-    })
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    });
 
-    return () => window.cancelAnimationFrame(frame)
-  }, [actualOpen])
+    return () => window.cancelAnimationFrame(frame);
+  }, [actualOpen]);
 
   return (
     <DropDrawer open={actualOpen} onOpenChange={handleOpenChange}>
@@ -79,11 +75,7 @@ export function AddDatabasePropertyMenu({
             />
           </div>
         ) : (
-          <button
-            className="database-add-property"
-            disabled={disabled}
-            type="button"
-          >
+          <button className="database-add-property" disabled={disabled} type="button">
             {isPending ? <Loader2 className="animate-spin" /> : <Plus />}
             <span>{triggerLabel}</span>
           </button>
@@ -97,5 +89,5 @@ export function AddDatabasePropertyMenu({
         <PropertyTypePicker onSelect={handleAdd} types={databasePropertyTypes} />
       </DropDrawerContent>
     </DropDrawer>
-  )
+  );
 }

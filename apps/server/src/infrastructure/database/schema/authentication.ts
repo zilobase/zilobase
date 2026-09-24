@@ -42,9 +42,7 @@ export const desktopAuthorizationCode = pgTable(
     activeWorkspaceId: text("active_workspace_id"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     consumedAt: timestamp("consumed_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("desktop_authorization_code_user_id_idx").on(table.userId),
@@ -71,9 +69,7 @@ export const account = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [
-    index("account_user_provider_idx").on(table.userId, table.providerId),
-  ],
+  (table) => [index("account_user_provider_idx").on(table.userId, table.providerId)],
 );
 
 export const verification = pgTable(
@@ -86,9 +82,7 @@ export const verification = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (table) => [
-    index("verification_identifier_idx").on(table.identifier),
-  ],
+  (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
 
 export const apikey = pgTable(

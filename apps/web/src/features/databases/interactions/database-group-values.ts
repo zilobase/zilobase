@@ -1,7 +1,7 @@
-import type { DatabasePropertyValue } from "../schema/property-values"
+import type { DatabasePropertyValue } from "../schema/property-values";
 
 export function getRawDatabaseGroupValue(value: DatabasePropertyValue) {
-  return Array.isArray(value) ? (value[0] ?? "") : value
+  return Array.isArray(value) ? (value[0] ?? "") : value;
 }
 
 export function getDatabaseGroupMoveValue({
@@ -10,36 +10,32 @@ export function getDatabaseGroupMoveValue({
   sourceGroupValue,
   targetGroupValue,
 }: {
-  currentValue: DatabasePropertyValue
-  propertyType: string
-  sourceGroupValue: string
-  targetGroupValue: string
+  currentValue: DatabasePropertyValue;
+  propertyType: string;
+  sourceGroupValue: string;
+  targetGroupValue: string;
 }): DatabasePropertyValue {
   if (sourceGroupValue === targetGroupValue) {
-    return currentValue
+    return currentValue;
   }
 
   if (propertyType !== "multi_select") {
-    return targetGroupValue
+    return targetGroupValue;
   }
 
   if (!targetGroupValue) {
-    return []
+    return [];
   }
 
   const currentValues = Array.isArray(currentValue)
     ? currentValue
     : currentValue
       ? [currentValue]
-      : []
+      : [];
   const nextValues =
     sourceGroupValue && currentValues.includes(sourceGroupValue)
-      ? currentValues.map((value) =>
-          value === sourceGroupValue ? targetGroupValue : value
-        )
-      : [...currentValues, targetGroupValue]
+      ? currentValues.map((value) => (value === sourceGroupValue ? targetGroupValue : value))
+      : [...currentValues, targetGroupValue];
 
-  return nextValues.filter(
-    (value, index, values) => values.indexOf(value) === index
-  )
+  return nextValues.filter((value, index, values) => values.indexOf(value) === index);
 }

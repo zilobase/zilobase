@@ -27,19 +27,16 @@ async function createWebsocketRequest(databaseId = "database-1") {
     { COLLABORATION_SECRET: secret },
   );
 
-  return new Request(
-    `https://api.zilobase.com/database-collaboration?database=${databaseId}`,
-    {
-      headers: {
-        "cf-connecting-ip": "203.0.113.10",
-        "Sec-WebSocket-Protocol": [
-          DATABASE_REALTIME_PROTOCOL,
-          `${DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket.token}`,
-        ].join(", "),
-        Upgrade: "websocket",
-      },
+  return new Request(`https://api.zilobase.com/database-collaboration?database=${databaseId}`, {
+    headers: {
+      "cf-connecting-ip": "203.0.113.10",
+      "Sec-WebSocket-Protocol": [
+        DATABASE_REALTIME_PROTOCOL,
+        `${DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket.token}`,
+      ].join(", "),
+      Upgrade: "websocket",
     },
-  );
+  });
 }
 
 function createRouteEnv(rateLimitSuccess = true) {
@@ -61,30 +58,27 @@ describe("database realtime upgrade security", () => {
     const { env, getByName, limit } = createRouteEnv();
     const request = await createWebsocketRequest();
 
-    expect((await routeDatabaseRealtimeRequest(
-      new Request(request, { method: "POST" }),
-      env,
-    )).status).toBe(405);
-    expect((await routeDatabaseRealtimeRequest(
-      new Request(request.url),
-      env,
-    )).status).toBe(426);
-    expect((await routeDatabaseRealtimeRequest(
-      new Request("https://api.zilobase.com/database-collaboration", {
-        headers: { Upgrade: "websocket" },
-      }),
-      env,
-    )).status).toBe(400);
+    expect(
+      (await routeDatabaseRealtimeRequest(new Request(request, { method: "POST" }), env)).status,
+    ).toBe(405);
+    expect((await routeDatabaseRealtimeRequest(new Request(request.url), env)).status).toBe(426);
+    expect(
+      (
+        await routeDatabaseRealtimeRequest(
+          new Request("https://api.zilobase.com/database-collaboration", {
+            headers: { Upgrade: "websocket" },
+          }),
+          env,
+        )
+      ).status,
+    ).toBe(400);
     expect(getByName).not.toHaveBeenCalled();
     expect(limit).not.toHaveBeenCalled();
   });
 
   it("rate limits upgrades by connecting address", async () => {
     const { env, getByName, limit } = createRouteEnv(false);
-    const response = await routeDatabaseRealtimeRequest(
-      await createWebsocketRequest(),
-      env,
-    );
+    const response = await routeDatabaseRealtimeRequest(await createWebsocketRequest(), env);
 
     expect(response.status).toBe(429);
     expect(limit).toHaveBeenCalledWith({
@@ -95,18 +89,13 @@ describe("database realtime upgrade security", () => {
 
   it("routes an upgrade to the room for signed-ticket authentication", async () => {
     const { env, getByName, roomFetch } = createRouteEnv();
-    const response = await routeDatabaseRealtimeRequest(
-      await createWebsocketRequest(),
-      env,
-    );
+    const response = await routeDatabaseRealtimeRequest(await createWebsocketRequest(), env);
 
     expect(response.status).toBe(200);
     expect(getByName).toHaveBeenCalledWith("database-1");
     expect(roomFetch).toHaveBeenCalledOnce();
     expect(
-      roomFetch.mock.calls[0]?.[0].headers.get(
-        "x-zilobase-database-realtime-claims",
-      ),
+      roomFetch.mock.calls[0]?.[0].headers.get("x-zilobase-database-realtime-claims"),
     ).toBeTruthy();
   });
 
@@ -120,28 +109,18 @@ describe("database realtime upgrade security", () => {
     const mismatchedUrl = new URL(mismatched.url);
     mismatchedUrl.searchParams.set("database", "database-1");
 
+    expect((await routeDatabaseRealtimeRequest(missing, env)).status).toBe(401);
     expect(
-      (await routeDatabaseRealtimeRequest(missing, env)).status,
-    ).toBe(401);
-    expect(
-      (await routeDatabaseRealtimeRequest(
-        new Request(mismatchedUrl, mismatched),
-        env,
-      )).status,
+      (await routeDatabaseRealtimeRequest(new Request(mismatchedUrl, mismatched), env)).status,
     ).toBe(401);
     expect(getByName).not.toHaveBeenCalled();
   });
 
   it("rate limits an authenticated user before allocating a room", async () => {
     const { env, getByName, limit } = createRouteEnv();
-    limit
-      .mockResolvedValueOnce({ success: true })
-      .mockResolvedValueOnce({ success: false });
+    limit.mockResolvedValueOnce({ success: true }).mockResolvedValueOnce({ success: false });
 
-    const response = await routeDatabaseRealtimeRequest(
-      await createWebsocketRequest(),
-      env,
-    );
+    const response = await routeDatabaseRealtimeRequest(await createWebsocketRequest(), env);
 
     expect(response.status).toBe(429);
     expect(getByName).not.toHaveBeenCalled();
@@ -154,14 +133,16 @@ describe("database realtime upgrade security", () => {
     const headers = new Headers();
     headers.set(
       "x-zilobase-database-realtime-claims",
-      encodeURIComponent(JSON.stringify({
-        canEdit: true,
-        databaseId: "database-1",
-        exp: Date.now() + 60_000,
-        sessionId: "session-1",
-        user: { id: "user-1" },
-        workspaceId: "workspace-1",
-      })),
+      encodeURIComponent(
+        JSON.stringify({
+          canEdit: true,
+          databaseId: "database-1",
+          exp: Date.now() + 60_000,
+          sessionId: "session-1",
+          user: { id: "user-1" },
+          workspaceId: "workspace-1",
+        }),
+      ),
     );
     expect(readDatabaseRealtimeClaims(headers)?.databaseId).toBe("database-1");
 

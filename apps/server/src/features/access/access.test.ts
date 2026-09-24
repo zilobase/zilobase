@@ -19,14 +19,22 @@ vi.mock("../../infrastructure/database", () => ({
       mocks.selectCalls += 1;
       const rows = mocks.selectResults.shift() ?? [];
       const builder = {
-        from() { return builder; },
-        innerJoin() { return builder; },
+        from() {
+          return builder;
+        },
+        innerJoin() {
+          return builder;
+        },
         where(condition: SQL | undefined) {
           if (condition) mocks.predicates.push(new PgDialect().sqlToQuery(condition));
           return builder;
         },
-        orderBy() { return builder; },
-        async limit() { return rows; },
+        orderBy() {
+          return builder;
+        },
+        async limit() {
+          return rows;
+        },
         then(resolve: (value: unknown[]) => unknown) {
           return Promise.resolve(rows).then(resolve);
         },
@@ -103,11 +111,7 @@ test("teamspace access resolves member overrides, owners, and archives", async (
     [{ accessLevelOverride: "comment", role: "member" }],
   );
   assert.equal(
-    await getEffectiveTeamspaceAccessInWorkspace(
-      "teamspace-1",
-      "workspace-1",
-      "user-1",
-    ),
+    await getEffectiveTeamspaceAccessInWorkspace("teamspace-1", "workspace-1", "user-1"),
     "comment",
   );
 
@@ -118,21 +122,13 @@ test("teamspace access resolves member overrides, owners, and archives", async (
     [{ accessLevelOverride: null, role: "owner" }],
   );
   assert.equal(
-    await getEffectiveTeamspaceAccessInWorkspace(
-      "teamspace-1",
-      "workspace-1",
-      "user-1",
-    ),
+    await getEffectiveTeamspaceAccessInWorkspace("teamspace-1", "workspace-1", "user-1"),
     "full",
   );
 
   mocks.selectResults.push([]);
   assert.equal(
-    await getEffectiveTeamspaceAccessInWorkspace(
-      "teamspace-1",
-      "workspace-1",
-      "user-1",
-    ),
+    await getEffectiveTeamspaceAccessInWorkspace("teamspace-1", "workspace-1", "user-1"),
     "none",
   );
 
@@ -142,42 +138,22 @@ test("teamspace access resolves member overrides, owners, and archives", async (
     [{ archivedAt: new Date(), memberAccessLevel: "edit" }],
   );
   assert.equal(
-    await getEffectiveTeamspaceAccessInWorkspace(
-      "teamspace-1",
-      "workspace-1",
-      "user-1",
-    ),
+    await getEffectiveTeamspaceAccessInWorkspace("teamspace-1", "workspace-1", "user-1"),
     "none",
   );
 });
 
 test("public access wrappers preserve membership and rank decisions", async () => {
   mocks.selectResults.push([{ id: "membership-1" }]);
-  assert.equal(
-    await isWorkspaceMember("workspace-1", "user-1"),
-    true,
-  );
+  assert.equal(await isWorkspaceMember("workspace-1", "user-1"), true);
 
   mocks.hasOwnedRootAccess.mockReturnValue(true);
   mocks.selectResults.push([{ id: "membership-1" }], []);
-  assert.equal(
-    await canAccessPageInWorkspace(
-      "page-1",
-      "workspace-1",
-      "user-1",
-      "edit",
-    ),
-    true,
-  );
+  assert.equal(await canAccessPageInWorkspace("page-1", "workspace-1", "user-1", "edit"), true);
 
   mocks.selectResults.push([]);
   assert.equal(
-    await canAccessDatabaseInWorkspace(
-      "missing",
-      "workspace-1",
-      "user-1",
-      "view",
-    ),
+    await canAccessDatabaseInWorkspace("missing", "workspace-1", "user-1", "view"),
     false,
   );
 });
@@ -185,14 +161,7 @@ test("public access wrappers preserve membership and rank decisions", async () =
 test("page access stops when workspace membership is missing", async () => {
   mocks.selectResults.push([], []);
 
-  assert.equal(
-    await getEffectivePageAccessInWorkspace(
-      "page-1",
-      "workspace-1",
-      "user-1",
-    ),
-    "none",
-  );
+  assert.equal(await getEffectivePageAccessInWorkspace("page-1", "workspace-1", "user-1"), "none");
   assert.equal(mocks.selectCalls, 2);
 });
 
@@ -203,60 +172,28 @@ test("page guests receive only explicit inherited user access", async () => {
     [{ accessLevel: "view" }, { accessLevel: "edit" }],
   );
 
-  assert.equal(
-    await getEffectivePageAccessInWorkspace(
-      "page-1",
-      "workspace-1",
-      "user-1",
-    ),
-    "edit",
-  );
+  assert.equal(await getEffectivePageAccessInWorkspace("page-1", "workspace-1", "user-1"), "edit");
   assert.equal(mocks.selectCalls, 3);
 
   mocks.selectCalls = 0;
   mocks.predicates.length = 0;
   mocks.selectResults.push([], [{ id: "guest-1" }], []);
-  assert.equal(
-    await getEffectivePageAccessInWorkspace(
-      "page-1",
-      "workspace-1",
-      "user-1",
-    ),
-    "none",
-  );
+  assert.equal(await getEffectivePageAccessInWorkspace("page-1", "workspace-1", "user-1"), "none");
   assert.equal(mocks.selectCalls, 3);
 });
 
 test("teamspace guest ceilings override existing explicit page rules", async () => {
   mocks.teamspaceId = "teamspace-1";
   mocks.pageSecurityPolicy.mockResolvedValue({ guestsEnabled: false });
-  mocks.selectResults.push(
-    [],
-    [{ id: "guest-1" }],
-    [{ accessLevel: "edit" }],
-  );
+  mocks.selectResults.push([], [{ id: "guest-1" }], [{ accessLevel: "edit" }]);
 
-  assert.equal(
-    await getEffectivePageAccessInWorkspace(
-      "page-1",
-      "workspace-1",
-      "guest-1",
-    ),
-    "none",
-  );
+  assert.equal(await getEffectivePageAccessInWorkspace("page-1", "workspace-1", "guest-1"), "none");
 });
 
 test("page access resolves ownership and the strongest shared rule", async () => {
   mocks.hasOwnedRootAccess.mockReturnValue(true);
   mocks.selectResults.push([{ id: "membership-1" }], [], []);
-  assert.equal(
-    await getEffectivePageAccessInWorkspace(
-      "page-1",
-      "workspace-1",
-      "user-1",
-    ),
-    "full",
-  );
+  assert.equal(await getEffectivePageAccessInWorkspace("page-1", "workspace-1", "user-1"), "full");
   assert.equal(mocks.selectCalls, 3);
 
   mocks.hasOwnedRootAccess.mockReturnValue(false);
@@ -268,14 +205,7 @@ test("page access resolves ownership and the strongest shared rule", async () =>
     [],
     [{ accessLevel: "view" }, { accessLevel: "edit" }],
   );
-  assert.equal(
-    await getEffectivePageAccessInWorkspace(
-      "page-1",
-      "workspace-1",
-      "user-1",
-    ),
-    "edit",
-  );
+  assert.equal(await getEffectivePageAccessInWorkspace("page-1", "workspace-1", "user-1"), "edit");
   assert.equal(mocks.selectCalls, 4);
 });
 
@@ -290,46 +220,25 @@ test("standalone page fallback reuses verified membership and team IDs", async (
     [{ accessLevel: "edit" }],
   );
 
-  assert.equal(
-    await getEffectivePageAccessInWorkspace(
-      "page-1",
-      "workspace-1",
-      "user-1",
-    ),
-    "edit",
-  );
+  assert.equal(await getEffectivePageAccessInWorkspace("page-1", "workspace-1", "user-1"), "edit");
   assert.equal(mocks.selectCalls, 7);
   assert.equal(mocks.selectResults.length, 0);
 });
 
 test("direct standalone database access verifies membership", async () => {
-  mocks.selectResults.push(
-    [{ createdById: "user-2", pageId: null }],
-    [],
-  );
+  mocks.selectResults.push([{ createdById: "user-2", pageId: null }], []);
 
   assert.equal(
-    await getEffectiveDatabaseAccessInWorkspace(
-      "database-1",
-      "workspace-1",
-      "user-1",
-    ),
+    await getEffectiveDatabaseAccessInWorkspace("database-1", "workspace-1", "user-1"),
     "none",
   );
   assert.equal(mocks.selectCalls, 2);
 
   mocks.selectCalls = 0;
   mocks.predicates.length = 0;
-  mocks.selectResults.push(
-    [{ createdById: "user-1", pageId: null }],
-    [{ id: "membership-1" }],
-  );
+  mocks.selectResults.push([{ createdById: "user-1", pageId: null }], [{ id: "membership-1" }]);
   assert.equal(
-    await getEffectiveDatabaseAccessInWorkspace(
-      "database-1",
-      "workspace-1",
-      "user-1",
-    ),
+    await getEffectiveDatabaseAccessInWorkspace("database-1", "workspace-1", "user-1"),
     "full",
   );
   assert.equal(mocks.selectCalls, 2);
@@ -344,11 +253,7 @@ test("direct standalone database access resolves team rules", async () => {
   );
 
   assert.equal(
-    await getEffectiveDatabaseAccessInWorkspace(
-      "database-1",
-      "workspace-1",
-      "user-1",
-    ),
+    await getEffectiveDatabaseAccessInWorkspace("database-1", "workspace-1", "user-1"),
     "edit",
   );
   assert.equal(mocks.selectCalls, 4);
@@ -357,11 +262,7 @@ test("direct standalone database access resolves team rules", async () => {
   mocks.predicates.length = 0;
   mocks.selectResults.push([]);
   assert.equal(
-    await getEffectiveDatabaseAccessInWorkspace(
-      "missing",
-      "workspace-1",
-      "user-1",
-    ),
+    await getEffectiveDatabaseAccessInWorkspace("missing", "workspace-1", "user-1"),
     "none",
   );
   assert.equal(mocks.selectCalls, 1);
@@ -442,7 +343,6 @@ test("record-based database access preserves required-level checks", async () =>
   assert.equal(mocks.selectCalls, 1);
 });
 
-
 test("live agent access uses only its scoped grants even when a user owns the page", async () => {
   mocks.hasOwnedRootAccess.mockReturnValue(true);
   mocks.selectResults.push([{ id: "page-1" }], []);
@@ -455,7 +355,10 @@ test("live agent access uses only its scoped grants even when a user owns the pa
 });
 
 test("live agent grants normalize unknown levels and select the strongest valid level", async () => {
-  mocks.selectResults.push([{ id: "page-1" }], [{ accessLevel: "view" }, { accessLevel: "owner" }, { accessLevel: "edit" }]);
+  mocks.selectResults.push(
+    [{ id: "page-1" }],
+    [{ accessLevel: "view" }, { accessLevel: "owner" }, { accessLevel: "edit" }],
+  );
   assert.equal(await getEffectivePageAccessForAgent("page-1", "workspace-1", "agent-1"), "edit");
 });
 
@@ -476,13 +379,25 @@ test("page snapshots restrict immutable roots, resource kind and required privil
 
 test("inline database snapshots inherit the containing page grant, not standalone database grants", async () => {
   mocks.selectResults.push([{ pageId: "page-1" }], [{ id: "page-1" }]);
-  assert.equal(await canAgentSnapshotAccessDatabase("database-1", "workspace-1", [
-    { resourceType: "database", resourceId: "database-1", accessLevel: "full" },
-  ], "view"), false);
+  assert.equal(
+    await canAgentSnapshotAccessDatabase(
+      "database-1",
+      "workspace-1",
+      [{ resourceType: "database", resourceId: "database-1", accessLevel: "full" }],
+      "view",
+    ),
+    false,
+  );
   mocks.selectResults.push([{ pageId: "page-1" }], [{ id: "page-1" }]);
-  assert.equal(await canAgentSnapshotAccessDatabase("database-1", "workspace-1", [
-    { resourceType: "page", resourceId: "page-1", accessLevel: "comment" },
-  ], "comment"), true);
+  assert.equal(
+    await canAgentSnapshotAccessDatabase(
+      "database-1",
+      "workspace-1",
+      [{ resourceType: "page", resourceId: "page-1", accessLevel: "comment" }],
+      "comment",
+    ),
+    true,
+  );
 });
 
 test("teamspace publication policy prevents grant and standalone fallback lookups", async () => {

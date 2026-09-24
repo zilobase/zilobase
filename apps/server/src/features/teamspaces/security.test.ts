@@ -18,10 +18,7 @@ vi.mock("../../infrastructure/database", () => ({
   },
 }));
 
-import {
-  getDatabaseTeamspaceSecurityPolicy,
-  getPageTeamspaceSecurityPolicy,
-} from "./security";
+import { getDatabaseTeamspaceSecurityPolicy, getPageTeamspaceSecurityPolicy } from "./security";
 
 beforeEach(() => {
   mocks.rows = [];
@@ -37,9 +34,6 @@ test("teamspace security policies resolve page and database ceilings", async () 
   mocks.rows.push([policy], [policy], []);
 
   assert.deepEqual(await getPageTeamspaceSecurityPolicy("page-1"), policy);
-  assert.deepEqual(
-    await getDatabaseTeamspaceSecurityPolicy("database-1"),
-    policy,
-  );
+  assert.deepEqual(await getDatabaseTeamspaceSecurityPolicy("database-1"), policy);
   assert.equal(await getPageTeamspaceSecurityPolicy("private-page"), null);
 });

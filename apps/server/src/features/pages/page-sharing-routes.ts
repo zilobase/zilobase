@@ -3,7 +3,14 @@ import { authorizePageRoute } from "./page-route-access";
 import { and, asc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 
-import { canAccessDatabaseInWorkspace, canAccessPageInWorkspace, getEffectivePageAccessForUsers, getMembership, hasAccess, normalizeAccessLevel } from "../access";
+import {
+  canAccessDatabaseInWorkspace,
+  canAccessPageInWorkspace,
+  getEffectivePageAccessForUsers,
+  getMembership,
+  hasAccess,
+  normalizeAccessLevel,
+} from "../access";
 import { rejectMismatchedPinnedWorkspace } from "../auth/oauth-access";
 import { db } from "../../infrastructure/database";
 import {
@@ -75,12 +82,7 @@ pageVisitRoutes.post("/item-visits", async (c) => {
         )
       : itemKind === "page"
         ? await canAccessPageInWorkspace(itemId, workspaceId, user.id, "view")
-        : await canAccessDatabaseInWorkspace(
-            itemId,
-            workspaceId,
-            user.id,
-            "view",
-          );
+        : await canAccessDatabaseInWorkspace(itemId, workspaceId, user.id, "view");
 
   if (!canView) {
     return c.json({ error: "Forbidden" }, 403);
@@ -177,12 +179,7 @@ pageSharingRoutes.get("/:id/access-targets", async (c) => {
       })
       .from(member)
       .innerJoin(userTable, eq(member.userId, userTable.id))
-      .where(
-        and(
-          eq(member.organizationId, record.workspaceId),
-          activeMembershipCondition(),
-        ),
-      )
+      .where(and(eq(member.organizationId, record.workspaceId), activeMembershipCondition()))
       .orderBy(asc(userTable.name), asc(userTable.email)),
     db
       .select({
@@ -232,10 +229,7 @@ pageSharingRoutes.put("/:id/access", async (c) => {
   const normalizedAccessLevel = normalizeAccessLevel(accessLevel);
 
   if (!isPageAccessTarget(targetType)) {
-    return c.json(
-      { error: "targetType must be public, user, team, or agent" },
-      400,
-    );
+    return c.json({ error: "targetType must be public, user, team, or agent" }, 400);
   }
 
   if (typeof targetId !== "string" || targetId.length === 0) {
@@ -243,26 +237,17 @@ pageSharingRoutes.put("/:id/access", async (c) => {
   }
 
   if (!normalizedAccessLevel) {
-    return c.json(
-      { error: "accessLevel must be view, comment, edit, or full" },
-      400,
-    );
+    return c.json({ error: "accessLevel must be view, comment, edit, or full" }, 400);
   }
 
   if (targetType === "agent" && normalizedAccessLevel === "full") {
-    return c.json(
-      { error: "agent access must be view, comment, or edit" },
-      400,
-    );
+    return c.json({ error: "agent access must be view, comment, or edit" }, 400);
   }
 
   if (targetType === "public") {
     const teamspacePolicy = await getPageTeamspaceSecurityPolicy(record.id);
     if (teamspacePolicy && !teamspacePolicy.publicSharingEnabled) {
-      return c.json(
-        { error: "Public sharing is disabled for this teamspace." },
-        403,
-      );
+      return c.json({ error: "Public sharing is disabled for this teamspace." }, 403);
     }
     if (targetId !== "*") {
       return c.json({ error: "public targetId must be *" }, 400);
@@ -300,9 +285,7 @@ pageSharingRoutes.put("/:id/access", async (c) => {
     [target] = await db
       .select({ id: team.id })
       .from(team)
-      .where(
-        and(eq(team.organizationId, record.workspaceId), eq(team.id, targetId)),
-      )
+      .where(and(eq(team.organizationId, record.workspaceId), eq(team.id, targetId)))
       .limit(1);
   } else {
     const [memberTargets, guestTargets] = await Promise.all([
@@ -355,10 +338,7 @@ pageSharingRoutes.put("/:id/access", async (c) => {
       })
       .returning();
     return {
-      navigationEvent: await enqueueNavigationInvalidation(
-        tx,
-        record.workspaceId,
-      ),
+      navigationEvent: await enqueueNavigationInvalidation(tx, record.workspaceId),
       rule,
     };
   });
@@ -367,13 +347,8 @@ pageSharingRoutes.put("/:id/access", async (c) => {
   return c.json({ access: rule });
 });
 
-function isPageAccessTarget(
-  value: unknown,
-): value is "public" | "user" | "team" | "agent" {
-  return (
-    typeof value === "string" &&
-    ["public", "user", "team", "agent"].includes(value)
-  );
+function isPageAccessTarget(value: unknown): value is "public" | "user" | "team" | "agent" {
+  return typeof value === "string" && ["public", "user", "team", "agent"].includes(value);
 }
 
 pageSharingRoutes.delete("/:id/access/public", async (c) => {
@@ -393,10 +368,7 @@ pageSharingRoutes.delete("/:id/access/public", async (c) => {
       )
       .returning();
     return {
-      navigationEvent: await enqueueNavigationInvalidation(
-        tx,
-        record.workspaceId,
-      ),
+      navigationEvent: await enqueueNavigationInvalidation(tx, record.workspaceId),
       rule,
     };
   });
@@ -413,18 +385,10 @@ pageSharingRoutes.delete("/:id/access/:ruleId", async (c) => {
   const { navigationEvent, rule } = await db.transaction(async (tx) => {
     const [rule] = await tx
       .delete(pageAccess)
-      .where(
-        and(
-          eq(pageAccess.id, c.req.param("ruleId")),
-          eq(pageAccess.pageId, record.id),
-        ),
-      )
+      .where(and(eq(pageAccess.id, c.req.param("ruleId")), eq(pageAccess.pageId, record.id)))
       .returning();
     return {
-      navigationEvent: await enqueueNavigationInvalidation(
-        tx,
-        record.workspaceId,
-      ),
+      navigationEvent: await enqueueNavigationInvalidation(tx, record.workspaceId),
       rule,
     };
   });

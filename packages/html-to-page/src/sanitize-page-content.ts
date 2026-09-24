@@ -1,9 +1,5 @@
-import {
-  isAllowedEmbedSrc,
-  isAllowedHttpUrl,
-  isAllowedImageUrl,
-} from "./safe-url"
-import type { PageDocument, PageDocumentNode } from "./types"
+import { isAllowedEmbedSrc, isAllowedHttpUrl, isAllowedImageUrl } from "./safe-url";
+import type { PageDocument, PageDocumentNode } from "./types";
 
 const allowedNodeTypes = new Set([
   "doc",
@@ -27,27 +23,27 @@ const allowedNodeTypes = new Set([
   "embedBlock",
   "bookmarkBlock",
   "text",
-])
+]);
 
 export function sanitizePageContent(document: PageDocument): PageDocument {
-  const content = document.content.flatMap((node) => sanitizeNode(node))
+  const content = document.content.flatMap((node) => sanitizeNode(node));
   return {
     type: "doc",
     content: content.length > 0 ? content : [{ type: "paragraph" }],
-  }
+  };
 }
 
 function sanitizeNode(node: PageDocumentNode): PageDocumentNode[] {
   if (node.type === "text") {
-    return node.text ? [{ ...node, marks: sanitizeMarks(node.marks) }] : []
+    return node.text ? [{ ...node, marks: sanitizeMarks(node.marks) }] : [];
   }
 
   if (!node.type || !allowedNodeTypes.has(node.type)) {
-    return node.content?.flatMap((child) => sanitizeNode(child)) ?? []
+    return node.content?.flatMap((child) => sanitizeNode(child)) ?? [];
   }
 
-  const media = sanitizeMediaNode(node)
-  if (media) return media
+  const media = sanitizeMediaNode(node);
+  if (media) return media;
 
   return [
     {
@@ -55,38 +51,38 @@ function sanitizeNode(node: PageDocumentNode): PageDocumentNode[] {
       marks: sanitizeMarks(node.marks),
       content: node.content?.flatMap((child) => sanitizeNode(child)),
     },
-  ]
+  ];
 }
 
 function sanitizeMediaNode(node: PageDocumentNode): PageDocumentNode[] | null {
   if (node.type === "imageBlock") {
-    const src = stringAttr(node.attrs, "src")
-    if (!isAllowedImageUrl(src)) return []
-    return [node]
+    const src = stringAttr(node.attrs, "src");
+    if (!isAllowedImageUrl(src)) return [];
+    return [node];
   }
 
   if (node.type === "videoBlock") {
-    const src = stringAttr(node.attrs, "src")
-    if (!isAllowedHttpUrl(src)) return []
-    return [node]
+    const src = stringAttr(node.attrs, "src");
+    if (!isAllowedHttpUrl(src)) return [];
+    return [node];
   }
 
   if (node.type === "embedBlock") {
-    const src = stringAttr(node.attrs, "src")
-    if (!isAllowedEmbedSrc(src)) return []
-    return [node]
+    const src = stringAttr(node.attrs, "src");
+    if (!isAllowedEmbedSrc(src)) return [];
+    return [node];
   }
 
   if (node.type === "bookmarkBlock") {
-    return sanitizeBookmarkNode(node)
+    return sanitizeBookmarkNode(node);
   }
 
-  return null
+  return null;
 }
 
 function sanitizeBookmarkNode(node: PageDocumentNode): PageDocumentNode[] {
-  const href = stringAttr(node.attrs, "href")
-  if (!isAllowedHttpUrl(href)) return []
+  const href = stringAttr(node.attrs, "href");
+  if (!isAllowedHttpUrl(href)) return [];
   return [
     {
       ...node,
@@ -97,27 +93,24 @@ function sanitizeBookmarkNode(node: PageDocumentNode): PageDocumentNode[] {
         image: optionalAllowedUrl(node.attrs?.image, isAllowedImageUrl),
       },
     },
-  ]
+  ];
 }
 
 function sanitizeMarks(marks: PageDocumentNode["marks"]) {
-  if (!marks?.length) return marks
+  if (!marks?.length) return marks;
   return marks.flatMap((mark) => {
-    if (mark.type !== "link") return [mark]
-    const href = stringAttr(mark.attrs, "href")
-    if (!isAllowedHttpUrl(href)) return []
-    return [{ ...mark, attrs: { ...mark.attrs, href } }]
-  })
+    if (mark.type !== "link") return [mark];
+    const href = stringAttr(mark.attrs, "href");
+    if (!isAllowedHttpUrl(href)) return [];
+    return [{ ...mark, attrs: { ...mark.attrs, href } }];
+  });
 }
 
 function stringAttr(attrs: Record<string, unknown> | undefined, key: string) {
-  const value = attrs?.[key]
-  return typeof value === "string" ? value : null
+  const value = attrs?.[key];
+  return typeof value === "string" ? value : null;
 }
 
-function optionalAllowedUrl(
-  value: unknown,
-  allow: (value: string | null | undefined) => boolean,
-) {
-  return typeof value === "string" && allow(value) ? value : null
+function optionalAllowedUrl(value: unknown, allow: (value: string | null | undefined) => boolean) {
+  return typeof value === "string" && allow(value) ? value : null;
 }

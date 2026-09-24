@@ -35,16 +35,11 @@ vi.mock("@zilobase/server/adapter-api", () => ({
   touchAiChatThreadActivity: vi.fn(async () => undefined),
 }));
 
-import {
-  mergeCanonicalChatMessages,
-} from "@zilobase/features/ai-chat/agent-room";
+import { mergeCanonicalChatMessages } from "@zilobase/features/ai-chat/agent-room";
 import { ChatAgent } from "../../src/worker/features/chat/chat-agent";
 
 function createAgent() {
-  return new ChatAgent(
-    {} as DurableObjectState,
-    {} as ConstructorParameters<typeof ChatAgent>[1],
-  );
+  return new ChatAgent({} as DurableObjectState, {} as ConstructorParameters<typeof ChatAgent>[1]);
 }
 
 describe("ChatAgent hibernation-safe thread identity", () => {
@@ -79,34 +74,34 @@ describe("ChatAgent hibernation-safe thread identity", () => {
       order.push("hosted");
     });
 
-    await agent.persistMessages([
-      { id: "message-1", parts: [], role: "user" },
-    ] as never[]);
+    await agent.persistMessages([{ id: "message-1", parts: [], role: "user" }] as never[]);
 
     expect(order).toEqual(["canonical", "hosted"]);
   });
 
   it("hydrates canonical history before assigning sequences to a new message", async () => {
     const agent = createAgent();
-    const history = [{
-      id: "message-1",
-      parts: [{ type: "text", text: "Earlier question" }],
-      role: "user",
-    }] as never[];
-    const incoming = [{
-      id: "message-2",
-      parts: [{ type: "text", text: "New question" }],
-      role: "user",
-    }] as never[];
+    const history = [
+      {
+        id: "message-1",
+        parts: [{ type: "text", text: "Earlier question" }],
+        role: "user",
+      },
+    ] as never[];
+    const incoming = [
+      {
+        id: "message-2",
+        parts: [{ type: "text", text: "New question" }],
+        role: "user",
+      },
+    ] as never[];
     mocks.loadMessages.mockResolvedValueOnce(history);
 
     await agent.persistMessages(incoming);
 
-    expect(mocks.syncMessages).toHaveBeenCalledWith(
-      THREAD_ID,
-      [...history, ...incoming],
-      { deleteStaleRows: false },
-    );
+    expect(mocks.syncMessages).toHaveBeenCalledWith(THREAD_ID, [...history, ...incoming], {
+      deleteStaleRows: false,
+    });
   });
 
   it("derives ownership from the durable instance instead of client fields", async () => {
@@ -121,13 +116,15 @@ describe("ChatAgent hibernation-safe thread identity", () => {
     });
 
     expect(response?.status).toBe(200);
-    expect(mocks.runAiChatTurn).toHaveBeenCalledWith(expect.objectContaining({
-      requestBody: expect.objectContaining({
-        threadId: THREAD_ID,
-        userId: "user-1",
-        workspaceId: "workspace-1",
+    expect(mocks.runAiChatTurn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestBody: expect.objectContaining({
+          threadId: THREAD_ID,
+          userId: "user-1",
+          workspaceId: "workspace-1",
+        }),
       }),
-    }));
+    );
   });
 
   it("enables recoverable streams across disconnects and object eviction", () => {

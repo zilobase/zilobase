@@ -1,35 +1,29 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import assert from "node:assert/strict";
+import test from "node:test";
 
-import type { ZilobaseAuthClient } from "../shared/context"
-import {
-  workspaceInvitationsQueryOptions,
-  workspacesQueryOptions,
-} from "./queries"
+import type { ZilobaseAuthClient } from "../shared/context";
+import { workspaceInvitationsQueryOptions, workspacesQueryOptions } from "./queries";
 
 test("workspace auth queries forward TanStack cancellation", async () => {
-  const controller = new AbortController()
-  const receivedSignals: Array<AbortSignal | undefined> = []
+  const controller = new AbortController();
+  const receivedSignals: Array<AbortSignal | undefined> = [];
   const auth = {
-    listWorkspaceInvitations: async (
-      _workspaceId: string,
-      signal?: AbortSignal,
-    ) => {
-      receivedSignals.push(signal)
-      return []
+    listWorkspaceInvitations: async (_workspaceId: string, signal?: AbortSignal) => {
+      receivedSignals.push(signal);
+      return [];
     },
     listWorkspaces: async (signal?: AbortSignal) => {
-      receivedSignals.push(signal)
-      return []
+      receivedSignals.push(signal);
+      return [];
     },
-  } as unknown as ZilobaseAuthClient
+  } as unknown as ZilobaseAuthClient;
 
   await workspacesQueryOptions(auth).queryFn?.({
     signal: controller.signal,
-  } as never)
+  } as never);
   await workspaceInvitationsQueryOptions(auth, "workspace-1").queryFn?.({
     signal: controller.signal,
-  } as never)
+  } as never);
 
-  assert.deepEqual(receivedSignals, [controller.signal, controller.signal])
-})
+  assert.deepEqual(receivedSignals, [controller.signal, controller.signal]);
+});

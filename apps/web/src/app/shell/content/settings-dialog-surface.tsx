@@ -1,15 +1,15 @@
-import { SettingsDialog } from "@/features/settings/components/settings-dialog"
-import type { SettingsSection } from "@/features/settings/components/settings-sidebar"
-import { SettingsSectionContent } from "./settings-section-content"
+import { SettingsDialog } from "@/features/settings/components/settings-dialog";
+import type { SettingsSection } from "@/features/settings/components/settings-sidebar";
+import { SettingsSectionContent } from "./settings-section-content";
 
 export function SettingsDialogSurface({
   activeSection,
   onOpenChange,
   onSectionChange,
 }: {
-  activeSection: SettingsSection
-  onOpenChange: (open: boolean) => void
-  onSectionChange: (section: SettingsSection) => void
+  activeSection: SettingsSection;
+  onOpenChange: (open: boolean) => void;
+  onSectionChange: (section: SettingsSection) => void;
 }) {
   return (
     <SettingsDialog
@@ -20,5 +20,5 @@ export function SettingsDialogSurface({
     >
       <SettingsSectionContent section={activeSection} />
     </SettingsDialog>
-  )
+  );
 }

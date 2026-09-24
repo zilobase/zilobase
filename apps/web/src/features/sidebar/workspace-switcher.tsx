@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { isDesktopApp } from "@/features/desktop/index"
+import * as React from "react";
+import { isDesktopApp } from "@/features/desktop/index";
 
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/ui/dialog"
+} from "@/shared/ui/dialog";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -20,15 +20,11 @@ import {
   DropDrawerSeparator,
   DropDrawerShortcut,
   DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/shared/ui/sidebar"
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/ui/field"
-import { Input } from "@/shared/ui/input"
-import { useNavigate } from "@tanstack/react-router"
+} from "@/shared/ui/dropdrawer";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/shared/ui/sidebar";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/shared/ui/field";
+import { Input } from "@/shared/ui/input";
+import { useNavigate } from "@tanstack/react-router";
 import { useSession } from "@zilobase/features/auth/react";
 import {
   useCreateWorkspace,
@@ -36,15 +32,15 @@ import {
   useWorkspaces,
   useSetActiveWorkspace,
 } from "@zilobase/features/workspaces/react";
-import { getApiErrorMessage } from "@/platform/network/api"
-import { DesktopConnectServerDialog } from "@/features/desktop/components/index"
+import { getApiErrorMessage } from "@/platform/network/api";
+import { DesktopConnectServerDialog } from "@/features/desktop/components/index";
 import {
   getSelectedDesktopServer,
   listDesktopServerProfiles,
   updateDesktopServerProfileSnapshot,
   type DesktopServerProfile,
-} from "@/features/desktop/server/index"
-import { executeDesktopServerSwitch } from "@/features/desktop/server/index"
+} from "@/features/desktop/server/index";
+import { executeDesktopServerSwitch } from "@/features/desktop/server/index";
 import {
   Building2Icon,
   CheckIcon,
@@ -52,26 +48,21 @@ import {
   PlusIcon,
   ServerIcon,
   Settings2Icon,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 
 export function WorkspaceSwitcher({
   onOpenSettings,
   settingsOpen = false,
 }: {
-  onOpenSettings?: () => void
-  settingsOpen?: boolean
+  onOpenSettings?: () => void;
+  settingsOpen?: boolean;
 }) {
-  const { data: sessionData } = useSession()
-  const isWorkspacePinned = sessionData?.workspacePinned !== false
-  const isDesktop = isDesktopApp()
+  const { data: sessionData } = useSession();
+  const isWorkspacePinned = sessionData?.workspacePinned !== false;
+  const isDesktop = isDesktopApp();
 
   if (isWorkspacePinned && !isDesktop) {
-    return (
-      <SingleWorkspaceLabel
-        onOpenSettings={onOpenSettings}
-        settingsOpen={settingsOpen}
-      />
-    )
+    return <SingleWorkspaceLabel onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} />;
   }
 
   return (
@@ -80,32 +71,28 @@ export function WorkspaceSwitcher({
       sessionData={sessionData}
       settingsOpen={settingsOpen}
     />
-  )
+  );
 }
 
 function SingleWorkspaceLabel({
   onOpenSettings,
   settingsOpen,
 }: {
-  onOpenSettings?: () => void
-  settingsOpen: boolean
+  onOpenSettings?: () => void;
+  settingsOpen: boolean;
 }) {
-  const { data: rawWorkspaces = [], isError, isLoading } = useWorkspaces()
-  const workspaces = rawWorkspaces.filter(Boolean)
-  const activeWorkspaceId = useActiveWorkspaceId()
+  const { data: rawWorkspaces = [], isError, isLoading } = useWorkspaces();
+  const workspaces = rawWorkspaces.filter(Boolean);
+  const activeWorkspaceId = useActiveWorkspaceId();
   const activeWorkspace =
-    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
-    workspaces[0]
+    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0];
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropDrawer>
           <DropDrawerTrigger asChild>
-            <SidebarMenuButton
-              className="h-7 w-full max-w-full px-1.5"
-              disabled={isLoading}
-            >
+            <SidebarMenuButton className="h-7 w-full max-w-full px-1.5" disabled={isLoading}>
               <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-action-selected text-action-on-selected">
                 {activeWorkspace ? (
                   <span className="text-[10px] font-semibold">
@@ -125,21 +112,13 @@ function SingleWorkspaceLabel({
               <ChevronDownIcon className="opacity-50" />
             </SidebarMenuButton>
           </DropDrawerTrigger>
-          <DropDrawerContent
-            align="start"
-            className="w-64 rounded-lg"
-            side="bottom"
-            sideOffset={4}
-          >
-            <WorkspaceSettingsItem
-              onOpenSettings={onOpenSettings}
-              settingsOpen={settingsOpen}
-            />
+          <DropDrawerContent align="start" className="w-64 rounded-lg" side="bottom" sideOffset={4}>
+            <WorkspaceSettingsItem onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} />
           </DropDrawerContent>
         </DropDrawer>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }
 
 function MultiWorkspaceSwitcher({
@@ -147,45 +126,44 @@ function MultiWorkspaceSwitcher({
   sessionData,
   settingsOpen,
 }: {
-  onOpenSettings?: () => void
-  sessionData: ReturnType<typeof useSession>["data"]
-  settingsOpen: boolean
+  onOpenSettings?: () => void;
+  sessionData: ReturnType<typeof useSession>["data"];
+  settingsOpen: boolean;
 }) {
-  const navigate = useNavigate()
-  const isDesktop = isDesktopApp()
-  const isWorkspacePinned = sessionData?.workspacePinned !== false
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false)
-  const [isConnectDialogOpen, setIsConnectDialogOpen] = React.useState(false)
-  const [profiles, setProfiles] = React.useState<DesktopServerProfile[]>([])
-  const { data: rawWorkspaces = [], isError, isLoading } = useWorkspaces()
-  const workspaces = rawWorkspaces.filter(Boolean)
-  const createWorkspace = useCreateWorkspace()
-  const setActiveWorkspace = useSetActiveWorkspace()
-  const activeWorkspaceId = useActiveWorkspaceId()
+  const navigate = useNavigate();
+  const isDesktop = isDesktopApp();
+  const isWorkspacePinned = sessionData?.workspacePinned !== false;
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+  const [isConnectDialogOpen, setIsConnectDialogOpen] = React.useState(false);
+  const [profiles, setProfiles] = React.useState<DesktopServerProfile[]>([]);
+  const { data: rawWorkspaces = [], isError, isLoading } = useWorkspaces();
+  const workspaces = rawWorkspaces.filter(Boolean);
+  const createWorkspace = useCreateWorkspace();
+  const setActiveWorkspace = useSetActiveWorkspace();
+  const activeWorkspaceId = useActiveWorkspaceId();
   const activeWorkspace =
-    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
-    workspaces[0]
-  const currentServer = getSelectedDesktopServer()
-  const otherProfiles = profiles.filter((profile) => !profile.active)
-  const showServerCaption = isDesktop && profiles.length > 1
+    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0];
+  const currentServer = getSelectedDesktopServer();
+  const otherProfiles = profiles.filter((profile) => !profile.active);
+  const showServerCaption = isDesktop && profiles.length > 1;
 
   React.useEffect(() => {
-    if (!isDesktop) return
-    let disposed = false
+    if (!isDesktop) return;
+    let disposed = false;
     void listDesktopServerProfiles()
       .then((result) => {
-        if (!disposed) setProfiles(result.profiles)
+        if (!disposed) setProfiles(result.profiles);
       })
       .catch(() => {
-        if (!disposed) setProfiles([])
-      })
+        if (!disposed) setProfiles([]);
+      });
     return () => {
-      disposed = true
-    }
-  }, [isDesktop])
+      disposed = true;
+    };
+  }, [isDesktop]);
 
   React.useEffect(() => {
-    if (!isDesktop || isError || isLoading) return
+    if (!isDesktop || isError || isLoading) return;
     const handle = window.setTimeout(() => {
       void updateDesktopServerProfileSnapshot({
         lastActiveWorkspaceId: activeWorkspace?.id ?? null,
@@ -194,23 +172,23 @@ function MultiWorkspaceSwitcher({
           id: workspace.id,
           name: workspace.name,
         })),
-      }).catch(() => undefined)
-    }, 400)
-    return () => window.clearTimeout(handle)
-  }, [activeWorkspace?.id, isDesktop, isError, isLoading, workspaces])
+      }).catch(() => undefined);
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [activeWorkspace?.id, isDesktop, isError, isLoading, workspaces]);
 
   async function handleCreateWorkspace(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
 
-    const form = event.currentTarget
-    const formData = new FormData(form)
-    const workspaceName = String(formData.get("workspaceName") ?? "").trim()
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const workspaceName = String(formData.get("workspaceName") ?? "").trim();
 
     try {
-      await createWorkspace.mutateAsync(workspaceName)
-      form.reset()
-      setIsCreateDialogOpen(false)
-      void navigate({ to: "/recents" })
+      await createWorkspace.mutateAsync(workspaceName);
+      form.reset();
+      setIsCreateDialogOpen(false);
+      void navigate({ to: "/recents" });
     } catch {
       // React Query owns the visible error state.
     }
@@ -222,10 +200,7 @@ function MultiWorkspaceSwitcher({
         <SidebarMenuItem>
           <DropDrawer>
             <DropDrawerTrigger asChild>
-              <SidebarMenuButton
-                className="h-7 w-full max-w-full px-1.5 py-0"
-                disabled={isLoading}
-              >
+              <SidebarMenuButton className="h-7 w-full max-w-full px-1.5 py-0" disabled={isLoading}>
                 <div className="flex aspect-square size-5 items-center justify-center rounded-md bg-action-selected text-action-on-selected">
                   {activeWorkspace ? (
                     <span className="text-[10px] font-semibold">
@@ -271,13 +246,10 @@ function MultiWorkspaceSwitcher({
                 <DropDrawerItem
                   key={workspace.id}
                   onClick={() => {
-                    void navigate({ to: "/recents" })
-                    setActiveWorkspace.mutate(workspace.id)
+                    void navigate({ to: "/recents" });
+                    setActiveWorkspace.mutate(workspace.id);
                   }}
-                  disabled={
-                    workspace.id === activeWorkspace?.id ||
-                    setActiveWorkspace.isPending
-                  }
+                  disabled={workspace.id === activeWorkspace?.id || setActiveWorkspace.isPending}
                   className="gap-2 p-2"
                 >
                   <div className="flex size-6 items-center justify-center rounded-xs border">
@@ -303,9 +275,7 @@ function MultiWorkspaceSwitcher({
                     <div className="flex size-6 items-center justify-center rounded-md border bg-surface-canvas">
                       <PlusIcon className="size-4" />
                     </div>
-                    <div className="font-medium text-content-secondary">
-                      Add workspace
-                    </div>
+                    <div className="font-medium text-content-secondary">Add workspace</div>
                   </DropDrawerItem>
                 </>
               )}
@@ -321,7 +291,7 @@ function MultiWorkspaceSwitcher({
                             : "/login",
                           server: profile.server,
                           workspaceId,
-                        })
+                        });
                       }}
                       profile={profile}
                     />
@@ -337,17 +307,12 @@ function MultiWorkspaceSwitcher({
                     <div className="flex size-6 items-center justify-center rounded-md border bg-surface-canvas">
                       <ServerIcon className="size-4" />
                     </div>
-                    <div className="font-medium text-content-secondary">
-                      Connect another server
-                    </div>
+                    <div className="font-medium text-content-secondary">Connect another server</div>
                   </DropDrawerItem>
                 </>
               ) : null}
               <DropDrawerSeparator />
-              <WorkspaceSettingsItem
-                onOpenSettings={onOpenSettings}
-                settingsOpen={settingsOpen}
-              />
+              <WorkspaceSettingsItem onOpenSettings={onOpenSettings} settingsOpen={settingsOpen} />
             </DropDrawerContent>
           </DropDrawer>
         </SidebarMenuItem>
@@ -355,8 +320,8 @@ function MultiWorkspaceSwitcher({
       <Dialog
         open={isCreateDialogOpen}
         onOpenChange={(open) => {
-          setIsCreateDialogOpen(open)
-          createWorkspace.reset()
+          setIsCreateDialogOpen(open);
+          createWorkspace.reset();
         }}
       >
         <DialogContent>
@@ -369,9 +334,7 @@ function MultiWorkspaceSwitcher({
             </DialogHeader>
             <FieldGroup className="py-4">
               <Field>
-                <FieldLabel htmlFor="new-workspace-name">
-                  Workspace name
-                </FieldLabel>
+                <FieldLabel htmlFor="new-workspace-name">Workspace name</FieldLabel>
                 <Input
                   id="new-workspace-name"
                   name="workspaceName"
@@ -382,9 +345,7 @@ function MultiWorkspaceSwitcher({
                 />
               </Field>
               {createWorkspace.isError && (
-                <FieldError>
-                  {getApiErrorMessage(createWorkspace.error)}
-                </FieldError>
+                <FieldError>{getApiErrorMessage(createWorkspace.error)}</FieldError>
               )}
             </FieldGroup>
             <DialogFooter>
@@ -410,29 +371,24 @@ function MultiWorkspaceSwitcher({
         />
       ) : null}
     </>
-  )
+  );
 }
 
 function OtherServerSection({
   onSwitch,
   profile,
 }: {
-  onSwitch: (workspaceId?: string | null) => void
-  profile: DesktopServerProfile
+  onSwitch: (workspaceId?: string | null) => void;
+  profile: DesktopServerProfile;
 }) {
-  const label = serverSectionLabel(
-    profile.server.displayName,
-    profile.server.apiOrigin,
-  )
-  const workspaces = profile.workspaces
-  const signInHint = !profile.hasCredentials
+  const label = serverSectionLabel(profile.server.displayName, profile.server.apiOrigin);
+  const workspaces = profile.workspaces;
+  const signInHint = !profile.hasCredentials;
 
   return (
     <>
       <DropDrawerSeparator />
-      <DropDrawerLabel className="text-xs text-content-secondary">
-        {label}
-      </DropDrawerLabel>
+      <DropDrawerLabel className="text-xs text-content-secondary">{label}</DropDrawerLabel>
       {workspaces.length > 0 ? (
         workspaces.map((workspace) => (
           <DropDrawerItem
@@ -441,9 +397,7 @@ function OtherServerSection({
             onClick={() => onSwitch(workspace.id)}
           >
             <div className="flex size-6 items-center justify-center rounded-xs border">
-              <span className="text-xs font-medium">
-                {getWorkspaceInitials(workspace.name)}
-              </span>
+              <span className="text-xs font-medium">{getWorkspaceInitials(workspace.name)}</span>
             </div>
             <span className="min-w-0 flex-1 truncate">{workspace.name}</span>
             {signInHint ? (
@@ -462,15 +416,15 @@ function OtherServerSection({
         </DropDrawerItem>
       )}
     </>
-  )
+  );
 }
 
 function WorkspaceSettingsItem({
   onOpenSettings,
   settingsOpen,
 }: {
-  onOpenSettings?: () => void
-  settingsOpen: boolean
+  onOpenSettings?: () => void;
+  settingsOpen: boolean;
 }) {
   return (
     <DropDrawerItem
@@ -480,7 +434,7 @@ function WorkspaceSettingsItem({
       <Settings2Icon />
       <span>Settings</span>
     </DropDrawerItem>
-  )
+  );
 }
 
 function readTriggerLabel({
@@ -488,24 +442,24 @@ function readTriggerLabel({
   isError,
   isLoading,
 }: {
-  activeWorkspaceName?: string
-  isError: boolean
-  isLoading: boolean
+  activeWorkspaceName?: string;
+  isError: boolean;
+  isLoading: boolean;
 }) {
   if (isLoading) {
-    return "Loading..."
+    return "Loading...";
   }
 
   if (isError) {
-    return "Unable to load"
+    return "Unable to load";
   }
 
-  return activeWorkspaceName ?? "No workspaces"
+  return activeWorkspaceName ?? "No workspaces";
 }
 
 function serverSectionLabel(displayName?: string, apiOrigin?: string) {
-  if (displayName?.trim()) return displayName
-  return apiOrigin ?? "Server"
+  if (displayName?.trim()) return displayName;
+  return apiOrigin ?? "Server";
 }
 
 function getWorkspaceInitials(name: string) {
@@ -515,7 +469,7 @@ function getWorkspaceInitials(name: string) {
     .slice(0, 2)
     .map((part) => part[0])
     .join("")
-    .toUpperCase()
+    .toUpperCase();
 
-  return initials || "N"
+  return initials || "N";
 }

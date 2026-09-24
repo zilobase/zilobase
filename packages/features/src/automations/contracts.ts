@@ -1,6 +1,6 @@
-import { z } from "zod"
+import { z } from "zod";
 
-export const DATABASE_AUTOMATION_DEFINITION_VERSION = 1 as const
+export const DATABASE_AUTOMATION_DEFINITION_VERSION = 1 as const;
 
 export const DATABASE_AUTOMATION_LIMITS = {
   actions: 50,
@@ -10,13 +10,13 @@ export const DATABASE_AUTOMATION_LIMITS = {
   triggerClauses: 20,
   variablesPerAction: 25,
   webhookActions: 5,
-} as const
+} as const;
 
-const stableIdSchema = z.string().trim().min(1).max(200)
-const shortTextSchema = z.string().trim().min(1).max(200)
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
-const localTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-const timestampSchema = z.string().datetime({ offset: true })
+const stableIdSchema = z.string().trim().min(1).max(200);
+const shortTextSchema = z.string().trim().min(1).max(200);
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const localTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const timestampSchema = z.string().datetime({ offset: true });
 
 export type AutomationJsonValue =
   | null
@@ -24,30 +24,22 @@ export type AutomationJsonValue =
   | number
   | string
   | AutomationJsonValue[]
-  | { [key: string]: AutomationJsonValue }
+  | { [key: string]: AutomationJsonValue };
 
-export const automationJsonValueSchema: z.ZodType<AutomationJsonValue> = z.lazy(
-  () =>
-    z.union([
-      z.null(),
-      z.boolean(),
-      z.number().finite(),
-      z.string(),
-      z.array(automationJsonValueSchema),
-      z.record(z.string(), automationJsonValueSchema),
-    ]),
-)
+export const automationJsonValueSchema: z.ZodType<AutomationJsonValue> = z.lazy(() =>
+  z.union([
+    z.null(),
+    z.boolean(),
+    z.number().finite(),
+    z.string(),
+    z.array(automationJsonValueSchema),
+    z.record(z.string(), automationJsonValueSchema),
+  ]),
+);
 
-export const databaseAutomationStatuses = [
-  "active",
-  "paused",
-  "error",
-  "deleted",
-] as const
-export const databaseAutomationStatusSchema = z.enum(databaseAutomationStatuses)
-export type DatabaseAutomationStatus = z.infer<
-  typeof databaseAutomationStatusSchema
->
+export const databaseAutomationStatuses = ["active", "paused", "error", "deleted"] as const;
+export const databaseAutomationStatusSchema = z.enum(databaseAutomationStatuses);
+export type DatabaseAutomationStatus = z.infer<typeof databaseAutomationStatusSchema>;
 
 export const databaseAutomationRunStatuses = [
   "queued",
@@ -56,13 +48,9 @@ export const databaseAutomationRunStatuses = [
   "failed",
   "skipped",
   "cancelled",
-] as const
-export const databaseAutomationRunStatusSchema = z.enum(
-  databaseAutomationRunStatuses,
-)
-export type DatabaseAutomationRunStatus = z.infer<
-  typeof databaseAutomationRunStatusSchema
->
+] as const;
+export const databaseAutomationRunStatusSchema = z.enum(databaseAutomationRunStatuses);
+export type DatabaseAutomationRunStatus = z.infer<typeof databaseAutomationRunStatusSchema>;
 
 export const databaseAutomationStepStatuses = [
   "queued",
@@ -70,13 +58,9 @@ export const databaseAutomationStepStatuses = [
   "succeeded",
   "failed",
   "skipped",
-] as const
-export const databaseAutomationStepStatusSchema = z.enum(
-  databaseAutomationStepStatuses,
-)
-export type DatabaseAutomationStepStatus = z.infer<
-  typeof databaseAutomationStepStatusSchema
->
+] as const;
+export const databaseAutomationStepStatusSchema = z.enum(databaseAutomationStepStatuses);
+export type DatabaseAutomationStepStatus = z.infer<typeof databaseAutomationStepStatusSchema>;
 
 export const databaseAutomationDeliveryStatuses = [
   "pending",
@@ -84,13 +68,11 @@ export const databaseAutomationDeliveryStatuses = [
   "retrying",
   "succeeded",
   "failed",
-] as const
-export const databaseAutomationDeliveryStatusSchema = z.enum(
-  databaseAutomationDeliveryStatuses,
-)
+] as const;
+export const databaseAutomationDeliveryStatusSchema = z.enum(databaseAutomationDeliveryStatuses);
 export type DatabaseAutomationDeliveryStatus = z.infer<
   typeof databaseAutomationDeliveryStatusSchema
->
+>;
 
 export const databaseMutationOrigins = [
   "user",
@@ -102,9 +84,9 @@ export const databaseMutationOrigins = [
   "ai",
   "automation",
   "system",
-] as const
-export const databaseMutationOriginSchema = z.enum(databaseMutationOrigins)
-export type DatabaseMutationOrigin = z.infer<typeof databaseMutationOriginSchema>
+] as const;
+export const databaseMutationOriginSchema = z.enum(databaseMutationOrigins);
+export type DatabaseMutationOrigin = z.infer<typeof databaseMutationOriginSchema>;
 
 export const databaseAutomationMutationFactSchema = z
   .object({
@@ -126,10 +108,8 @@ export const databaseAutomationMutationFactSchema = z
     rowRemoved: z.boolean().optional(),
     rowId: stableIdSchema,
   })
-  .strict()
-export type DatabaseAutomationMutationFact = z.infer<
-  typeof databaseAutomationMutationFactSchema
->
+  .strict();
+export type DatabaseAutomationMutationFact = z.infer<typeof databaseAutomationMutationFactSchema>;
 
 export const databaseAutomationTriggerOperators = [
   "was_edited",
@@ -153,13 +133,11 @@ export const databaseAutomationTriggerOperators = [
   "is_relative_to_today",
   "is_checked",
   "is_unchecked",
-] as const
-export const databaseAutomationTriggerOperatorSchema = z.enum(
-  databaseAutomationTriggerOperators,
-)
+] as const;
+export const databaseAutomationTriggerOperatorSchema = z.enum(databaseAutomationTriggerOperators);
 export type DatabaseAutomationTriggerOperator = z.infer<
   typeof databaseAutomationTriggerOperatorSchema
->
+>;
 
 export const automationEntityReferenceSchema = z
   .object({
@@ -167,7 +145,7 @@ export const automationEntityReferenceSchema = z
     id: stableIdSchema,
     type: z.literal("entity"),
   })
-  .strict()
+  .strict();
 
 export const automationEntityListReferenceSchema = z
   .object({
@@ -175,7 +153,7 @@ export const automationEntityListReferenceSchema = z
     ids: z.array(stableIdSchema).min(1).max(100),
     type: z.literal("entity_list"),
   })
-  .strict()
+  .strict();
 
 export const automationDateOperandSchema = z
   .object({
@@ -183,7 +161,7 @@ export const automationDateOperandSchema = z
     type: z.literal("date"),
     value: z.string().datetime({ offset: true }),
   })
-  .strict()
+  .strict();
 
 export const automationDateRangeOperandSchema = z
   .object({
@@ -191,7 +169,7 @@ export const automationDateRangeOperandSchema = z
     start: z.string().datetime({ offset: true }),
     type: z.literal("date_range"),
   })
-  .strict()
+  .strict();
 
 export const automationRelativeDateOperandSchema = z
   .object({
@@ -200,7 +178,7 @@ export const automationRelativeDateOperandSchema = z
     type: z.literal("relative_date"),
     unit: z.enum(["day", "week", "month", "year"]),
   })
-  .strict()
+  .strict();
 
 export const automationTriggerOperandSchema = z.union([
   z.null(),
@@ -212,34 +190,29 @@ export const automationTriggerOperandSchema = z.union([
   automationDateOperandSchema,
   automationDateRangeOperandSchema,
   automationRelativeDateOperandSchema,
-])
-export type AutomationTriggerOperand = z.infer<
-  typeof automationTriggerOperandSchema
->
+]);
+export type AutomationTriggerOperand = z.infer<typeof automationTriggerOperandSchema>;
 
-export const databaseAutomationEventTriggerClauseSchema = z.discriminatedUnion(
-  "type",
-  [
-    z
-      .object({
-        id: stableIdSchema,
-        type: z.literal("page_added"),
-      })
-      .strict(),
-    z
-      .object({
-        id: stableIdSchema,
-        operand: automationTriggerOperandSchema.optional(),
-        operator: databaseAutomationTriggerOperatorSchema,
-        propertyId: stableIdSchema,
-        type: z.literal("property_edited"),
-      })
-      .strict(),
-  ],
-)
+export const databaseAutomationEventTriggerClauseSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      id: stableIdSchema,
+      type: z.literal("page_added"),
+    })
+    .strict(),
+  z
+    .object({
+      id: stableIdSchema,
+      operand: automationTriggerOperandSchema.optional(),
+      operator: databaseAutomationTriggerOperatorSchema,
+      propertyId: stableIdSchema,
+      type: z.literal("property_edited"),
+    })
+    .strict(),
+]);
 export type DatabaseAutomationEventTriggerClause = z.infer<
   typeof databaseAutomationEventTriggerClauseSchema
->
+>;
 
 export const databaseAutomationEventTriggerSchema = z
   .object({
@@ -250,7 +223,7 @@ export const databaseAutomationEventTriggerSchema = z
     kind: z.literal("event"),
     match: z.enum(["any", "all"]),
   })
-  .strict()
+  .strict();
 
 export const databaseAutomationScheduleSchema = z
   .object({
@@ -271,21 +244,21 @@ export const databaseAutomationScheduleSchema = z
         code: "custom",
         message: "End date must not be before start date",
         path: ["endDate"],
-      })
+      });
     }
     if (schedule.frequency === "weekly" && !schedule.weekdays) {
       context.addIssue({
         code: "custom",
         message: "Weekly schedules require at least one weekday",
         path: ["weekdays"],
-      })
+      });
     }
     if (schedule.frequency === "monthly" && schedule.dayOfMonth === undefined) {
       context.addIssue({
         code: "custom",
         message: "Monthly schedules require a day of month",
         path: ["dayOfMonth"],
-      })
+      });
     }
     if (schedule.frequency === "yearly") {
       if (schedule.dayOfMonth === undefined) {
@@ -293,35 +266,31 @@ export const databaseAutomationScheduleSchema = z
           code: "custom",
           message: "Yearly schedules require a day of month",
           path: ["dayOfMonth"],
-        })
+        });
       }
       if (!schedule.months) {
         context.addIssue({
           code: "custom",
           message: "Yearly schedules require at least one month",
           path: ["months"],
-        })
+        });
       }
     }
-  })
-export type DatabaseAutomationSchedule = z.infer<
-  typeof databaseAutomationScheduleSchema
->
+  });
+export type DatabaseAutomationSchedule = z.infer<typeof databaseAutomationScheduleSchema>;
 
 export const databaseAutomationScheduleTriggerSchema = z
   .object({
     kind: z.literal("schedule"),
     schedule: databaseAutomationScheduleSchema,
   })
-  .strict()
+  .strict();
 
 export const databaseAutomationTriggerSchema = z.discriminatedUnion("kind", [
   databaseAutomationEventTriggerSchema,
   databaseAutomationScheduleTriggerSchema,
-])
-export type DatabaseAutomationTrigger = z.infer<
-  typeof databaseAutomationTriggerSchema
->
+]);
+export type DatabaseAutomationTrigger = z.infer<typeof databaseAutomationTriggerSchema>;
 
 export const databaseAutomationScopeSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("data_source") }).strict(),
@@ -331,10 +300,8 @@ export const databaseAutomationScopeSchema = z.discriminatedUnion("type", [
       viewId: stableIdSchema,
     })
     .strict(),
-])
-export type DatabaseAutomationScope = z.infer<
-  typeof databaseAutomationScopeSchema
->
+]);
+export type DatabaseAutomationScope = z.infer<typeof databaseAutomationScopeSchema>;
 
 export const automationReferenceSchema = z.discriminatedUnion("reference", [
   z.object({ reference: z.literal("trigger_page"), type: z.literal("reference") }).strict(),
@@ -393,8 +360,8 @@ export const automationReferenceSchema = z.discriminatedUnion("reference", [
       type: z.literal("reference"),
     })
     .strict(),
-])
-export type AutomationReference = z.infer<typeof automationReferenceSchema>
+]);
+export type AutomationReference = z.infer<typeof automationReferenceSchema>;
 
 export const automationValueExpressionSchema = z.discriminatedUnion("type", [
   z
@@ -410,10 +377,8 @@ export const automationValueExpressionSchema = z.discriminatedUnion("type", [
     })
     .strict(),
   automationReferenceSchema,
-])
-export type AutomationValueExpression = z.infer<
-  typeof automationValueExpressionSchema
->
+]);
+export type AutomationValueExpression = z.infer<typeof automationValueExpressionSchema>;
 
 export const automationRichTextExpressionSchema = z
   .object({
@@ -427,26 +392,49 @@ export const automationRichTextExpressionSchema = z
       .min(1)
       .max(1_000),
   })
-  .strict()
-export type AutomationRichTextExpression = z.infer<
-  typeof automationRichTextExpressionSchema
->
+  .strict();
+export type AutomationRichTextExpression = z.infer<typeof automationRichTextExpressionSchema>;
 
-export const slackAutomationRichTextExpressionSchema = z.object({
-  parts: z.array(z.discriminatedUnion("type", [
-    z.object({
-      bold: z.boolean().optional(),
-      italic: z.boolean().optional(),
-      text: z.string().max(20_000),
-      type: z.literal("text"),
-    }).strict(),
-    z.object({ type: z.literal("value"), value: automationValueExpressionSchema }).strict(),
-    z.object({ id: stableIdSchema, kind: z.enum(["channel", "user"]), type: z.literal("slack_mention") }).strict(),
-    z.object({ kind: z.enum(["channel", "here"]), type: z.literal("slack_broadcast") }).strict(),
-    z.object({ label: shortTextSchema, type: z.literal("link"), url: z.string().url().max(2_048) }).strict(),
-  ])).min(1).max(1_000),
-}).strict()
-export type SlackAutomationRichTextExpression = z.infer<typeof slackAutomationRichTextExpressionSchema>
+export const slackAutomationRichTextExpressionSchema = z
+  .object({
+    parts: z
+      .array(
+        z.discriminatedUnion("type", [
+          z
+            .object({
+              bold: z.boolean().optional(),
+              italic: z.boolean().optional(),
+              text: z.string().max(20_000),
+              type: z.literal("text"),
+            })
+            .strict(),
+          z.object({ type: z.literal("value"), value: automationValueExpressionSchema }).strict(),
+          z
+            .object({
+              id: stableIdSchema,
+              kind: z.enum(["channel", "user"]),
+              type: z.literal("slack_mention"),
+            })
+            .strict(),
+          z
+            .object({ kind: z.enum(["channel", "here"]), type: z.literal("slack_broadcast") })
+            .strict(),
+          z
+            .object({
+              label: shortTextSchema,
+              type: z.literal("link"),
+              url: z.string().url().max(2_048),
+            })
+            .strict(),
+        ]),
+      )
+      .min(1)
+      .max(1_000),
+  })
+  .strict();
+export type SlackAutomationRichTextExpression = z.infer<
+  typeof slackAutomationRichTextExpressionSchema
+>;
 
 export const automationPropertyOperationSchema = z
   .object({
@@ -461,32 +449,30 @@ export const automationPropertyOperationSchema = z
         code: "custom",
         message: "Clear operations cannot contain a value",
         path: ["value"],
-      })
+      });
     }
     if (operation.mode !== "clear" && operation.value === undefined) {
       context.addIssue({
         code: "custom",
         message: `${operation.mode} operations require a value`,
         path: ["value"],
-      })
+      });
     }
-  })
-export type AutomationPropertyOperation = z.infer<
-  typeof automationPropertyOperationSchema
->
+  });
+export type AutomationPropertyOperation = z.infer<typeof automationPropertyOperationSchema>;
 
 export type AutomationFilterDefinition = {
-  match: "all" | "any"
-  conditions: Array<AutomationFilterCondition | AutomationFilterDefinition>
-}
+  match: "all" | "any";
+  conditions: Array<AutomationFilterCondition | AutomationFilterDefinition>;
+};
 
 export type AutomationFilterCondition = {
-  id: string
-  operand?: AutomationTriggerOperand
-  operator: DatabaseAutomationTriggerOperator
-  propertyId: string
-  type: "condition"
-}
+  id: string;
+  operand?: AutomationTriggerOperand;
+  operator: DatabaseAutomationTriggerOperator;
+  propertyId: string;
+  type: "condition";
+};
 
 export const automationFilterConditionSchema: z.ZodType<AutomationFilterCondition> = z
   .object({
@@ -496,20 +482,19 @@ export const automationFilterConditionSchema: z.ZodType<AutomationFilterConditio
     propertyId: stableIdSchema,
     type: z.literal("condition"),
   })
-  .strict()
+  .strict();
 
-export const automationFilterDefinitionSchema: z.ZodType<AutomationFilterDefinition> = z.lazy(
-  () =>
-    z
-      .object({
-        conditions: z
-          .array(z.union([automationFilterConditionSchema, automationFilterDefinitionSchema]))
-          .min(1)
-          .max(100),
-        match: z.enum(["all", "any"]),
-      })
-      .strict(),
-)
+export const automationFilterDefinitionSchema: z.ZodType<AutomationFilterDefinition> = z.lazy(() =>
+  z
+    .object({
+      conditions: z
+        .array(z.union([automationFilterConditionSchema, automationFilterDefinitionSchema]))
+        .min(1)
+        .max(100),
+      match: z.enum(["all", "any"]),
+    })
+    .strict(),
+);
 
 export const automationEditPagesTargetSchema = z.discriminatedUnion("type", [
   z
@@ -531,26 +516,19 @@ export const automationEditPagesTargetSchema = z.discriminatedUnion("type", [
       type: z.literal("filtered_data_source"),
     })
     .strict(),
-])
-export type AutomationEditPagesTarget = z.infer<
-  typeof automationEditPagesTargetSchema
->
+]);
+export type AutomationEditPagesTarget = z.infer<typeof automationEditPagesTargetSchema>;
 
-export const automationNotificationRecipientSchema = z.discriminatedUnion(
-  "type",
-  [
-    z.object({ type: z.literal("trigger_person") }).strict(),
-    z.object({ type: z.literal("page_creator") }).strict(),
-    z.object({ type: z.literal("selected_user"), userId: stableIdSchema }).strict(),
-    z.object({ propertyId: stableIdSchema, type: z.literal("person_property") }).strict(),
-    z.object({ type: z.literal("variable"), variableName: shortTextSchema }).strict(),
-  ],
-)
-export type AutomationNotificationRecipient = z.infer<
-  typeof automationNotificationRecipientSchema
->
+export const automationNotificationRecipientSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("trigger_person") }).strict(),
+  z.object({ type: z.literal("page_creator") }).strict(),
+  z.object({ type: z.literal("selected_user"), userId: stableIdSchema }).strict(),
+  z.object({ propertyId: stableIdSchema, type: z.literal("person_property") }).strict(),
+  z.object({ type: z.literal("variable"), variableName: shortTextSchema }).strict(),
+]);
+export type AutomationNotificationRecipient = z.infer<typeof automationNotificationRecipientSchema>;
 
-const actionIdShape = { id: stableIdSchema }
+const actionIdShape = { id: stableIdSchema };
 
 export const databaseAutomationActionSchema = z.discriminatedUnion("type", [
   z
@@ -656,10 +634,8 @@ export const databaseAutomationActionSchema = z.discriminatedUnion("type", [
       type: z.literal("send_slack"),
     })
     .strict(),
-])
-export type DatabaseAutomationAction = z.infer<
-  typeof databaseAutomationActionSchema
->
+]);
+export type DatabaseAutomationAction = z.infer<typeof databaseAutomationActionSchema>;
 
 const scheduledForbiddenReferences = new Set([
   "page_creator",
@@ -667,24 +643,21 @@ const scheduledForbiddenReferences = new Set([
   "trigger_page",
   "trigger_person",
   "trigger_property",
-])
+]);
 
 function visitValues(value: unknown, visitor: (value: unknown) => void) {
-  visitor(value)
+  visitor(value);
   if (Array.isArray(value)) {
-    for (const item of value) visitValues(item, visitor)
-    return
+    for (const item of value) visitValues(item, visitor);
+    return;
   }
-  if (!value || typeof value !== "object") return
-  for (const item of Object.values(value)) visitValues(item, visitor)
+  if (!value || typeof value !== "object") return;
+  for (const item of Object.values(value)) visitValues(item, visitor);
 }
 
 export const databaseAutomationDefinitionV1Schema = z
   .object({
-    actions: z
-      .array(databaseAutomationActionSchema)
-      .min(1)
-      .max(DATABASE_AUTOMATION_LIMITS.actions),
+    actions: z.array(databaseAutomationActionSchema).min(1).max(DATABASE_AUTOMATION_LIMITS.actions),
     definitionVersion: z.literal(DATABASE_AUTOMATION_DEFINITION_VERSION),
     scope: databaseAutomationScopeSchema,
     timezone: shortTextSchema,
@@ -692,9 +665,9 @@ export const databaseAutomationDefinitionV1Schema = z
   })
   .strict()
   .superRefine((definition, context) => {
-    const actionIds = new Set<string>()
-    const variableNames = new Set<string>()
-    let webhookCount = 0
+    const actionIds = new Set<string>();
+    const variableNames = new Set<string>();
+    let webhookCount = 0;
 
     definition.actions.forEach((action, actionIndex) => {
       if (actionIds.has(action.id)) {
@@ -702,11 +675,11 @@ export const databaseAutomationDefinitionV1Schema = z
           code: "custom",
           message: "Action IDs must be unique",
           path: ["actions", actionIndex, "id"],
-        })
+        });
       }
-      actionIds.add(action.id)
+      actionIds.add(action.id);
 
-      if (action.type === "send_webhook") webhookCount += 1
+      if (action.type === "send_webhook") webhookCount += 1;
       if (action.type === "define_variables") {
         action.variables.forEach((variable, variableIndex) => {
           if (variableNames.has(variable.name)) {
@@ -714,34 +687,34 @@ export const databaseAutomationDefinitionV1Schema = z
               code: "custom",
               message: "Variable names must be unique",
               path: ["actions", actionIndex, "variables", variableIndex, "name"],
-            })
+            });
           }
-          variableNames.add(variable.name)
-        })
+          variableNames.add(variable.name);
+        });
       }
-    })
+    });
 
     if (webhookCount > DATABASE_AUTOMATION_LIMITS.webhookActions) {
       context.addIssue({
         code: "custom",
         message: `Automations support at most ${DATABASE_AUTOMATION_LIMITS.webhookActions} webhook actions`,
         path: ["actions"],
-      })
+      });
     }
 
     if (definition.trigger.kind === "event") {
-      const clauseIds = new Set<string>()
+      const clauseIds = new Set<string>();
       definition.trigger.clauses.forEach((clause, clauseIndex) => {
         if (clauseIds.has(clause.id)) {
           context.addIssue({
             code: "custom",
             message: "Trigger clause IDs must be unique",
             path: ["trigger", "clauses", clauseIndex, "id"],
-          })
+          });
         }
-        clauseIds.add(clause.id)
-      })
-      return
+        clauseIds.add(clause.id);
+      });
+      return;
     }
 
     definition.actions.forEach((action, actionIndex) => {
@@ -750,18 +723,19 @@ export const databaseAutomationDefinitionV1Schema = z
           code: "custom",
           message: "Scheduled automations cannot edit a trigger page",
           path: ["actions", actionIndex],
-        })
+        });
       }
       if (action.type === "send_notification") {
         action.recipients.forEach((recipient) => {
           if (["page_creator", "person_property", "trigger_person"].includes(recipient.type)) {
             context.addIssue({
               code: "custom",
-              message: "Scheduled notifications cannot use trigger-page or trigger-person recipients",
+              message:
+                "Scheduled notifications cannot use trigger-page or trigger-person recipients",
               path: ["actions", actionIndex, "recipients"],
-            })
+            });
           }
-        })
+        });
       }
       visitValues(action, (value) => {
         if (
@@ -774,22 +748,17 @@ export const databaseAutomationDefinitionV1Schema = z
             code: "custom",
             message: "Scheduled automations cannot use trigger-page or trigger-person references",
             path: ["actions", actionIndex],
-          })
+          });
         }
-      })
-    })
-  })
-export type DatabaseAutomationDefinitionV1 = z.infer<
-  typeof databaseAutomationDefinitionV1Schema
->
+      });
+    });
+  });
+export type DatabaseAutomationDefinitionV1 = z.infer<typeof databaseAutomationDefinitionV1Schema>;
 
-export const databaseAutomationDefinitionSchema = z.discriminatedUnion(
-  "definitionVersion",
-  [databaseAutomationDefinitionV1Schema],
-)
-export type DatabaseAutomationDefinition = z.infer<
-  typeof databaseAutomationDefinitionSchema
->
+export const databaseAutomationDefinitionSchema = z.discriminatedUnion("definitionVersion", [
+  databaseAutomationDefinitionV1Schema,
+]);
+export type DatabaseAutomationDefinition = z.infer<typeof databaseAutomationDefinitionSchema>;
 
 export const databaseAutomationDependencyTypeSchema = z.enum([
   "data_source",
@@ -802,10 +771,10 @@ export const databaseAutomationDependencyTypeSchema = z.enum([
   "gmail_connection",
   "slack_connection",
   "secret",
-])
+]);
 export type DatabaseAutomationDependencyType = z.infer<
   typeof databaseAutomationDependencyTypeSchema
->
+>;
 
 export const databaseAutomationDependencySchema = z
   .object({
@@ -813,10 +782,8 @@ export const databaseAutomationDependencySchema = z
     dependencyType: databaseAutomationDependencyTypeSchema,
     usage: shortTextSchema,
   })
-  .strict()
-export type DatabaseAutomationDependency = z.infer<
-  typeof databaseAutomationDependencySchema
->
+  .strict();
+export type DatabaseAutomationDependency = z.infer<typeof databaseAutomationDependencySchema>;
 
 export const databaseAutomationValidationErrorSchema = z
   .object({
@@ -824,10 +791,10 @@ export const databaseAutomationValidationErrorSchema = z
     message: z.string().trim().min(1).max(2_000),
     path: z.array(z.union([z.string(), z.number().int()])),
   })
-  .strict()
+  .strict();
 export type DatabaseAutomationValidationError = z.infer<
   typeof databaseAutomationValidationErrorSchema
->
+>;
 
 export const databaseAutomationValidationResultSchema = z
   .object({
@@ -835,10 +802,10 @@ export const databaseAutomationValidationResultSchema = z
     valid: z.boolean(),
     warnings: z.array(databaseAutomationValidationErrorSchema),
   })
-  .strict()
+  .strict();
 export type DatabaseAutomationValidationResult = z.infer<
   typeof databaseAutomationValidationResultSchema
->
+>;
 
 export const databaseAutomationSummarySchema = z
   .object({
@@ -857,10 +824,8 @@ export const databaseAutomationSummarySchema = z
     version: z.number().int().positive(),
     workspaceId: stableIdSchema,
   })
-  .strict()
-export type DatabaseAutomationSummary = z.infer<
-  typeof databaseAutomationSummarySchema
->
+  .strict();
+export type DatabaseAutomationSummary = z.infer<typeof databaseAutomationSummarySchema>;
 
 export const databaseAutomationDetailSchema = databaseAutomationSummarySchema
   .extend({
@@ -873,10 +838,8 @@ export const databaseAutomationDetailSchema = databaseAutomationSummarySchema
     erroredAt: timestampSchema.nullable(),
     ownerUserId: stableIdSchema.nullable(),
   })
-  .strict()
-export type DatabaseAutomationDetail = z.infer<
-  typeof databaseAutomationDetailSchema
->
+  .strict();
+export type DatabaseAutomationDetail = z.infer<typeof databaseAutomationDetailSchema>;
 
 export const databaseAutomationRevisionSchema = z
   .object({
@@ -889,10 +852,8 @@ export const databaseAutomationRevisionSchema = z
     id: stableIdSchema,
     version: z.number().int().positive(),
   })
-  .strict()
-export type DatabaseAutomationRevision = z.infer<
-  typeof databaseAutomationRevisionSchema
->
+  .strict();
+export type DatabaseAutomationRevision = z.infer<typeof databaseAutomationRevisionSchema>;
 
 export const databaseAutomationStepRunSchema = z
   .object({
@@ -908,10 +869,8 @@ export const databaseAutomationStepRunSchema = z
     startedAt: timestampSchema.nullable(),
     status: databaseAutomationStepStatusSchema,
   })
-  .strict()
-export type DatabaseAutomationStepRun = z.infer<
-  typeof databaseAutomationStepRunSchema
->
+  .strict();
+export type DatabaseAutomationStepRun = z.infer<typeof databaseAutomationStepRunSchema>;
 
 export const databaseAutomationRunSchema = z
   .object({
@@ -932,10 +891,8 @@ export const databaseAutomationRunSchema = z
     triggerRowId: stableIdSchema.nullable(),
     triggerTime: timestampSchema,
   })
-  .strict()
-export type DatabaseAutomationRun = z.infer<
-  typeof databaseAutomationRunSchema
->
+  .strict();
+export type DatabaseAutomationRun = z.infer<typeof databaseAutomationRunSchema>;
 
 export const databaseAutomationDeliverySchema = z
   .object({
@@ -952,141 +909,177 @@ export const databaseAutomationDeliverySchema = z
     runId: stableIdSchema,
     status: databaseAutomationDeliveryStatusSchema,
   })
-  .strict()
-export type DatabaseAutomationDelivery = z.infer<
-  typeof databaseAutomationDeliverySchema
->
+  .strict();
+export type DatabaseAutomationDelivery = z.infer<typeof databaseAutomationDeliverySchema>;
 
 export const databaseAutomationCatalogSchema = z
   .object({
     actions: z.array(
-      z.object({ available: z.boolean(), reason: z.string().nullable(), type: z.enum([
-        "define_variables",
-        "edit_trigger_page",
-        "add_page",
-        "edit_pages",
-        "send_notification",
-        "send_gmail",
-        "send_webhook",
-        "send_slack",
-      ]) }).strict(),
+      z
+        .object({
+          available: z.boolean(),
+          reason: z.string().nullable(),
+          type: z.enum([
+            "define_variables",
+            "edit_trigger_page",
+            "add_page",
+            "edit_pages",
+            "send_notification",
+            "send_gmail",
+            "send_webhook",
+            "send_slack",
+          ]),
+        })
+        .strict(),
     ),
     canManage: z.boolean(),
     dataSourceId: stableIdSchema,
     dataSources: z.array(
-      z.object({
-        id: stableIdSchema,
-        name: shortTextSchema,
-        properties: z.array(
-          z.object({
-            id: stableIdSchema,
-            icon: z.string().optional(),
-            name: shortTextSchema,
-            options: z.array(
-              z.object({
-                color: z.string().optional(),
+      z
+        .object({
+          id: stableIdSchema,
+          name: shortTextSchema,
+          properties: z.array(
+            z
+              .object({
                 id: stableIdSchema,
+                icon: z.string().optional(),
                 name: shortTextSchema,
-              }).strict(),
-            ),
-            operators: z.array(databaseAutomationTriggerOperatorSchema),
-            relatedDataSourceId: stableIdSchema.optional(),
-            type: shortTextSchema,
-            writable: z.boolean(),
-          }).strict(),
-        ),
-      }).strict(),
+                options: z.array(
+                  z
+                    .object({
+                      color: z.string().optional(),
+                      id: stableIdSchema,
+                      name: shortTextSchema,
+                    })
+                    .strict(),
+                ),
+                operators: z.array(databaseAutomationTriggerOperatorSchema),
+                relatedDataSourceId: stableIdSchema.optional(),
+                type: shortTextSchema,
+                writable: z.boolean(),
+              })
+              .strict(),
+          ),
+        })
+        .strict(),
     ),
     gmailConnections: z.array(
-      z.object({
-        email: z.string().email(),
-        id: stableIdSchema,
-        status: z.enum(["connected", "reconnect_required"]),
-      }).strict(),
+      z
+        .object({
+          email: z.string().email(),
+          id: stableIdSchema,
+          status: z.enum(["connected", "reconnect_required"]),
+        })
+        .strict(),
     ),
     slackConnections: z.array(
-      z.object({
-        id: stableIdSchema,
-        status: z.enum(["connected", "revoked"]),
-        teamId: stableIdSchema,
-        teamName: shortTextSchema,
-      }).strict(),
+      z
+        .object({
+          id: stableIdSchema,
+          status: z.enum(["connected", "revoked"]),
+          teamId: stableIdSchema,
+          teamName: shortTextSchema,
+        })
+        .strict(),
     ),
     manageUnavailableReason: z.string().nullable(),
     properties: z.array(
-      z.object({
-        id: stableIdSchema,
-        icon: z.string().optional(),
-        name: shortTextSchema,
-        options: z.array(
-          z.object({
-            color: z.string().optional(),
-            id: stableIdSchema,
-            name: shortTextSchema,
-          }).strict(),
-        ),
-        operators: z.array(databaseAutomationTriggerOperatorSchema),
-        relatedDataSourceId: stableIdSchema.optional(),
-        type: shortTextSchema,
-        writable: z.boolean(),
-      }).strict(),
+      z
+        .object({
+          id: stableIdSchema,
+          icon: z.string().optional(),
+          name: shortTextSchema,
+          options: z.array(
+            z
+              .object({
+                color: z.string().optional(),
+                id: stableIdSchema,
+                name: shortTextSchema,
+              })
+              .strict(),
+          ),
+          operators: z.array(databaseAutomationTriggerOperatorSchema),
+          relatedDataSourceId: stableIdSchema.optional(),
+          type: shortTextSchema,
+          writable: z.boolean(),
+        })
+        .strict(),
     ),
-    users: z.array(
-      z.object({ id: stableIdSchema, name: shortTextSchema }).strict(),
-    ),
+    users: z.array(z.object({ id: stableIdSchema, name: shortTextSchema }).strict()),
     views: z.array(
       z.object({ id: stableIdSchema, name: shortTextSchema, type: shortTextSchema }).strict(),
     ),
   })
-  .strict()
-export type DatabaseAutomationCatalog = z.infer<
-  typeof databaseAutomationCatalogSchema
->
+  .strict();
+export type DatabaseAutomationCatalog = z.infer<typeof databaseAutomationCatalogSchema>;
 
-export const slackAutomationChannelSchema = z.object({
-  id: stableIdSchema,
-  isPrivate: z.boolean(),
-  name: shortTextSchema,
-}).strict()
-export type SlackAutomationChannel = z.infer<typeof slackAutomationChannelSchema>
+export const slackAutomationChannelSchema = z
+  .object({
+    id: stableIdSchema,
+    isPrivate: z.boolean(),
+    name: shortTextSchema,
+  })
+  .strict();
+export type SlackAutomationChannel = z.infer<typeof slackAutomationChannelSchema>;
 
 export const databaseAutomationActionTypeSchema = z.enum([
-  "define_variables", "edit_trigger_page", "add_page", "edit_pages",
-  "send_notification", "send_gmail", "send_webhook", "send_slack",
-])
+  "define_variables",
+  "edit_trigger_page",
+  "add_page",
+  "edit_pages",
+  "send_notification",
+  "send_gmail",
+  "send_webhook",
+  "send_slack",
+]);
 
-export const databaseAutomationAuditExportSchema = z.object({
-  automations: z.array(z.object({
-    actionTypes: z.array(databaseAutomationActionTypeSchema),
-    createdAt: z.string().datetime(),
-    deletedAt: z.string().datetime().nullable(),
-    definitionHash: z.string().regex(/^[a-f0-9]{64}$/),
-    dependencyCounts: z.record(z.string(), z.number().int().nonnegative()),
+export const databaseAutomationAuditExportSchema = z
+  .object({
+    automations: z.array(
+      z
+        .object({
+          actionTypes: z.array(databaseAutomationActionTypeSchema),
+          createdAt: z.string().datetime(),
+          deletedAt: z.string().datetime().nullable(),
+          definitionHash: z.string().regex(/^[a-f0-9]{64}$/),
+          dependencyCounts: z.record(z.string(), z.number().int().nonnegative()),
+          id: stableIdSchema,
+          name: shortTextSchema,
+          ownerPresent: z.boolean(),
+          runCounts: z.record(z.string(), z.number().int().nonnegative()),
+          status: databaseAutomationStatusSchema,
+          updatedAt: z.string().datetime(),
+          version: z.number().int().positive(),
+        })
+        .strict(),
+    ),
+    dataSourceId: stableIdSchema,
+    generatedAt: z.string().datetime(),
+  })
+  .strict();
+export type DatabaseAutomationAuditExport = z.infer<typeof databaseAutomationAuditExportSchema>;
+
+export const createDatabaseAutomationSecretRequestSchema = z
+  .object({
+    dataSourceId: stableIdSchema,
+    purpose: z.literal("webhook_header"),
+    value: z.string().min(1).max(16_384),
+  })
+  .strict();
+export type CreateDatabaseAutomationSecretRequest = z.infer<
+  typeof createDatabaseAutomationSecretRequestSchema
+>;
+
+export const databaseAutomationSecretReferenceSchema = z
+  .object({
     id: stableIdSchema,
-    name: shortTextSchema,
-    ownerPresent: z.boolean(),
-    runCounts: z.record(z.string(), z.number().int().nonnegative()),
-    status: databaseAutomationStatusSchema,
-    updatedAt: z.string().datetime(),
-    version: z.number().int().positive(),
-  }).strict()),
-  dataSourceId: stableIdSchema,
-  generatedAt: z.string().datetime(),
-}).strict()
-export type DatabaseAutomationAuditExport = z.infer<typeof databaseAutomationAuditExportSchema>
-
-export const createDatabaseAutomationSecretRequestSchema = z.object({
-  dataSourceId: stableIdSchema,
-  purpose: z.literal("webhook_header"),
-  value: z.string().min(1).max(16_384),
-}).strict()
-export type CreateDatabaseAutomationSecretRequest = z.infer<typeof createDatabaseAutomationSecretRequestSchema>
-
-export const databaseAutomationSecretReferenceSchema = z.object({
-  id: stableIdSchema,
-  purpose: z.literal("webhook_header"),
-}).strict()
-export type DatabaseAutomationSecretReference = z.infer<typeof databaseAutomationSecretReferenceSchema>
+    purpose: z.literal("webhook_header"),
+  })
+  .strict();
+export type DatabaseAutomationSecretReference = z.infer<
+  typeof databaseAutomationSecretReferenceSchema
+>;
 
 export const createDatabaseAutomationRequestSchema = z
   .object({
@@ -1095,27 +1088,23 @@ export const createDatabaseAutomationRequestSchema = z
     idempotencyKey: stableIdSchema,
     name: shortTextSchema,
   })
-  .strict()
-export type CreateDatabaseAutomationRequest = z.infer<
-  typeof createDatabaseAutomationRequestSchema
->
+  .strict();
+export type CreateDatabaseAutomationRequest = z.infer<typeof createDatabaseAutomationRequestSchema>;
 
 export const updateDatabaseAutomationRequestSchema = z
   .object({
     definition: databaseAutomationDefinitionSchema,
     name: shortTextSchema,
   })
-  .strict()
-export type UpdateDatabaseAutomationRequest = z.infer<
-  typeof updateDatabaseAutomationRequestSchema
->
+  .strict();
+export type UpdateDatabaseAutomationRequest = z.infer<typeof updateDatabaseAutomationRequestSchema>;
 
 export const validateDatabaseAutomationRequestSchema = z
   .object({
     dataSourceId: stableIdSchema,
     definition: databaseAutomationDefinitionSchema,
   })
-  .strict()
+  .strict();
 export type ValidateDatabaseAutomationRequest = z.infer<
   typeof validateDatabaseAutomationRequestSchema
->
+>;

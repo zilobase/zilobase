@@ -1,31 +1,31 @@
 import type { UIMessage } from "ai";
 
 export type AiChatThread = {
-  id: string
-  title: string
-  pinned: boolean
-  pinnedAt: string | null
-  createdAt: string
-  updatedAt: string
-  lastActivityAt: string
-}
+  id: string;
+  title: string;
+  pinned: boolean;
+  pinnedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  lastActivityAt: string;
+};
 
 export type AiChatFeedback = {
-  messageId: string
-  rating: -1 | 1
-  reason: string | null
-}
+  messageId: string;
+  rating: -1 | 1;
+  reason: string | null;
+};
 
 export type AiChatThreadsResponse = {
-  threads: AiChatThread[]
-}
+  threads: AiChatThread[];
+};
 
 export type AiChatThreadResponse = {
-  thread: AiChatThread
-}
+  thread: AiChatThread;
+};
 
 export type AiChatThreadMessagesResponse = {
-  feedback: AiChatFeedback[]
-  messages: UIMessage[]
-  thread: AiChatThread
-}
+  feedback: AiChatFeedback[];
+  messages: UIMessage[];
+  thread: AiChatThread;
+};

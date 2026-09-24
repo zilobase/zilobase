@@ -25,11 +25,8 @@ vi.mock("../../../infrastructure/database", () => ({
             where: () => ({
               for: async () => (state.run.id ? [state.run] : []),
               limit: async () =>
-                state.actions
-                  .filter((action) => action.status === "pending")
-                  .slice(0, 1),
-              then: (resolve: (value: unknown) => unknown) =>
-                resolve(state.actions),
+                state.actions.filter((action) => action.status === "pending").slice(0, 1),
+              then: (resolve: (value: unknown) => unknown) => resolve(state.actions),
             }),
           }),
         }),
@@ -100,34 +97,28 @@ beforeEach(() => {
 
 describe("durable model checkpoints", () => {
   it("encrypts model arguments and binds the ciphertext to one run", async () => {
-    expect(await saveAgentRunCheckpoint(env, run, "worker", checkpoint)).toBe(
-      false,
-    );
+    expect(await saveAgentRunCheckpoint(env, run, "worker", checkpoint)).toBe(false);
     expect(JSON.stringify(state.run.output)).not.toContain("argument");
     const stored = { ...run, output: state.run.output };
     expect(await readAgentRunCheckpoint(env, stored)).toEqual(checkpoint);
-    await expect(
-      readAgentRunCheckpoint(env, { ...stored, id: "other" }),
-    ).rejects.toThrow();
+    await expect(readAgentRunCheckpoint(env, { ...stored, id: "other" })).rejects.toThrow();
     await expect(
       readAgentRunCheckpoint(env, { ...stored, workspaceId: "other" }),
     ).rejects.toThrow();
   });
   it("pauses only after saving a complete model step", async () => {
     state.actions = [{ status: "pending", toolCallId: "first" }];
-    expect(await saveAgentRunCheckpoint(env, run, "worker", checkpoint)).toBe(
-      true,
-    );
+    expect(await saveAgentRunCheckpoint(env, run, "worker", checkpoint)).toBe(true);
     expect(state.run.status).toBe("waiting_approval");
-    expect(
-      await readAgentRunCheckpoint(env, { ...run, output: state.run.output }),
-    ).toEqual(checkpoint);
+    expect(await readAgentRunCheckpoint(env, { ...run, output: state.run.output })).toEqual(
+      checkpoint,
+    );
   });
   it("rejects a checkpoint after ownership was lost", async () => {
     state.run = {};
-    await expect(
-      saveAgentRunCheckpoint(env, run, "worker", checkpoint),
-    ).rejects.toThrow("ownership");
+    await expect(saveAgentRunCheckpoint(env, run, "worker", checkpoint)).rejects.toThrow(
+      "ownership",
+    );
   });
   it("rejects oversized checkpoints before writing", async () => {
     await expect(
@@ -148,21 +139,13 @@ describe("durable model checkpoints", () => {
     ]);
     expect(JSON.stringify(updated.messages)).toContain("username");
     expect(JSON.stringify(checkpoint.messages)).not.toContain("username");
-    expect(checkpointToolCallIds(updated.messages)).toEqual([
-      "first",
-      "second",
-    ]);
+    expect(checkpointToolCallIds(updated.messages)).toEqual(["first", "second"]);
   });
-  it.each(["failed", "expired", "executing"])(
-    "does not resume %s approval",
-    (status) => {
-      expect(() =>
-        applyCheckpointApprovals(checkpoint, [
-          { toolCallId: "first", status, result: {} },
-        ]),
-      ).toThrow();
-    },
-  );
+  it.each(["failed", "expired", "executing"])("does not resume %s approval", (status) => {
+    expect(() =>
+      applyCheckpointApprovals(checkpoint, [{ toolCallId: "first", status, result: {} }]),
+    ).toThrow();
+  });
   it("waits for all approvals, then queues exactly once", async () => {
     await saveAgentRunCheckpoint(env, run, "worker", checkpoint);
     state.run.status = "waiting_approval";
@@ -181,15 +164,12 @@ describe("durable model checkpoints", () => {
     expect(await resumeAgentRunAfterApproval(env, run.id)).toBe(false);
     expect(state.dispatch).toHaveBeenCalledTimes(1);
   });
-  it.each(["cancelled", "failed", "succeeded"])(
-    "does not overwrite a %s run",
-    async (status) => {
-      state.run.status = status;
-      expect(await resumeAgentRunAfterApproval(env, run.id)).toBe(false);
-      expect(state.run.status).toBe(status);
-      expect(state.dispatch).not.toHaveBeenCalled();
-    },
-  );
+  it.each(["cancelled", "failed", "succeeded"])("does not overwrite a %s run", async (status) => {
+    state.run.status = status;
+    expect(await resumeAgentRunAfterApproval(env, run.id)).toBe(false);
+    expect(state.run.status).toBe(status);
+    expect(state.dispatch).not.toHaveBeenCalled();
+  });
   it("fails closed for waiting runs without a checkpoint", async () => {
     state.run.status = "waiting_approval";
     expect(await resumeAgentRunAfterApproval(env, run.id)).toBe(false);

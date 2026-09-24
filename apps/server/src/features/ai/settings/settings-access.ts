@@ -29,13 +29,7 @@ export function settingsConnectionCondition(a: SettingsActor) {
   return and(
     eq(aiMcpConnection.workspaceId, a.workspaceId),
     a.scope === "personal"
-      ? and(
-          eq(aiMcpConnection.scopeType, "personal"),
-          eq(aiMcpConnection.scopeUserId, a.userId),
-        )
-      : and(
-          eq(aiMcpConnection.scopeType, "agent"),
-          eq(aiMcpConnection.agentProfileId, a.scope),
-        ),
+      ? and(eq(aiMcpConnection.scopeType, "personal"), eq(aiMcpConnection.scopeUserId, a.userId))
+      : and(eq(aiMcpConnection.scopeType, "agent"), eq(aiMcpConnection.agentProfileId, a.scope)),
   );
 }

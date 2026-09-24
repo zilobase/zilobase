@@ -46,15 +46,12 @@ function tokenRequest(overrides: Record<string, string> = {}) {
 }
 
 test("desktop authorization accepts only authorization-code S256 loopback requests", () => {
-  assert.deepEqual(
-    parseDesktopAuthorizationRequest(authorizationParameters()),
-    {
-      clientId: DESKTOP_AUTH_CLIENT_ID,
-      codeChallenge: derivePkceChallenge(verifier),
-      redirectUri,
-      state: "s".repeat(43),
-    },
-  );
+  assert.deepEqual(parseDesktopAuthorizationRequest(authorizationParameters()), {
+    clientId: DESKTOP_AUTH_CLIENT_ID,
+    codeChallenge: derivePkceChallenge(verifier),
+    redirectUri,
+    state: "s".repeat(43),
+  });
 
   for (const invalidRedirect of [
     "https://127.0.0.1:43123/oauth/callback",
@@ -79,10 +76,7 @@ test("desktop authorization rejects duplicate, weak, and unsupported parameters"
     authorizationParameters({ response_type: "token" }),
     duplicate,
   ]) {
-    assert.throws(
-      () => parseDesktopAuthorizationRequest(parameters),
-      DesktopAuthorizationError,
-    );
+    assert.throws(() => parseDesktopAuthorizationRequest(parameters), DesktopAuthorizationError);
   }
 });
 
@@ -107,19 +101,14 @@ test("desktop token requests require the original client, callback, and verifier
     redirect_uri: redirectUri,
   });
   duplicate.append("code", "c".repeat(64));
-  assert.throws(
-    () => parseDesktopTokenRequest(duplicate),
-    DesktopAuthorizationError,
-  );
+  assert.throws(() => parseDesktopTokenRequest(duplicate), DesktopAuthorizationError);
 });
 
 test("authorization callbacks preserve state and identify the exact issuer", () => {
   const callback = new URL(
-    buildDesktopCallbackUrl(
-      { redirectUri, state: "s".repeat(43) },
-      "https://api.example.com",
-      { code },
-    ),
+    buildDesktopCallbackUrl({ redirectUri, state: "s".repeat(43) }, "https://api.example.com", {
+      code,
+    }),
   );
 
   assert.equal(callback.origin, "http://127.0.0.1:43123");
@@ -144,10 +133,7 @@ test("desktop consent tokens are short-lived and bound to the user and request",
     ),
     true,
   );
-  assert.equal(
-    verifyDesktopConsentToken(token, request, "user-2", secret, issuedAt),
-    false,
-  );
+  assert.equal(verifyDesktopConsentToken(token, request, "user-2", secret, issuedAt), false);
   assert.equal(
     verifyDesktopConsentToken(
       token,
@@ -168,10 +154,7 @@ test("desktop consent tokens are short-lived and bound to the user and request",
     ),
     false,
   );
-  assert.equal(
-    verifyDesktopConsentToken("malformed", request, "user-1", secret),
-    false,
-  );
+  assert.equal(verifyDesktopConsentToken("malformed", request, "user-1", secret), false);
 });
 
 test("authorization codes are hashed and consumed atomically once", async () => {
@@ -183,10 +166,7 @@ test("authorization codes are hashed and consumed atomically once", async () => 
   ]);
 
   assert.equal([first, second].filter(Boolean).length, 1);
-  assert.equal(
-    await consumeDesktopAuthorizationCode(request, repository),
-    null,
-  );
+  assert.equal(await consumeDesktopAuthorizationCode(request, repository), null);
   assert.notEqual(hashDesktopAuthorizationCode(code), code);
 });
 
@@ -207,10 +187,10 @@ test("wrong verifier and redirect URI do not consume an authorization code", asy
     ),
     null,
   );
-  assert.deepEqual(
-    await consumeDesktopAuthorizationCode(tokenRequest(), repository),
-    { activeWorkspaceId: "workspace-1", userId: "user-1" },
-  );
+  assert.deepEqual(await consumeDesktopAuthorizationCode(tokenRequest(), repository), {
+    activeWorkspaceId: "workspace-1",
+    userId: "user-1",
+  });
 });
 
 test("expired authorization codes cannot be consumed", async () => {

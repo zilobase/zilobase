@@ -36,13 +36,13 @@ Both browser and native clients use the `zilobase.meeting-audio.v2` protocol. A 
 
 The native recorder uses CPAL, based on the capture patterns in Meetily. See `THIRD_PARTY_NOTICES.md` for attribution. Current macOS releases use Core Audio process taps, Windows uses WASAPI output loopback, and Linux prefers PipeWire with PulseAudio/ALSA monitor inputs as fallbacks. Virtual inputs such as BlackHole remain supported. The web recorder uses `getUserMedia` for microphone audio and the browser's `getDisplayMedia` sharing chooser for tab/system audio; browsers that do not return a display-audio track continue microphone-only.
 
-| Client | Primary system-audio path | Fallback |
-| --- | --- | --- |
-| macOS desktop | Core Audio process tap on the selected output | BlackHole or another virtual input on unsupported macOS releases |
-| Windows desktop | WASAPI loopback on the selected output | Stereo Mix or a virtual input |
-| Linux desktop | PipeWire capture-sink stream | PulseAudio/ALSA monitor or virtual input |
-| Desktop web | Browser tab/system audio from the screen-share chooser | Microphone-only when the browser or selected share supplies no audio track |
-| Mobile web | Microphone capture | Microphone-only; mobile browsers do not provide dependable system-audio sharing |
+| Client          | Primary system-audio path                              | Fallback                                                                        |
+| --------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| macOS desktop   | Core Audio process tap on the selected output          | BlackHole or another virtual input on unsupported macOS releases                |
+| Windows desktop | WASAPI loopback on the selected output                 | Stereo Mix or a virtual input                                                   |
+| Linux desktop   | PipeWire capture-sink stream                           | PulseAudio/ALSA monitor or virtual input                                        |
+| Desktop web     | Browser tab/system audio from the screen-share chooser | Microphone-only when the browser or selected share supplies no audio track      |
+| Mobile web      | Microphone capture                                     | Microphone-only; mobile browsers do not provide dependable system-audio sharing |
 
 Microphone and system streams are resampled independently to 24 kHz mono and grouped into source-tagged 100 ms transport packets. They are mixed only for the local level meter and stereo recovery file, never for transcription. The browser drains each source's queued 20 ms frames independently after background-timer throttling, so a late callback from one device does not manufacture silence or shift the other source's transcript. This batching reduces edge WebSocket message invocations by about 80% without making captions feel delayed. Both clients enforce the three-hour product limit. Local recovery preserves the sources as separate WAV channels. Desktop recovery is stored in the application data directory; web recovery is best-effort IndexedDB storage and can be downloaded as WAV. Neither client stores shared video.
 
@@ -68,14 +68,14 @@ Raw audio is sent continuously to the provider and is not persisted by the serve
 
 Apply migrations `0039_meetings.sql`, `0040_meeting_recorder_lease.sql`, `0041_meeting_summary_state.sql`, `0042_meeting_notes_page.sql`, and `0043_meeting_transcript_sources.sql`, then configure:
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `MEETING_BLOCK_ENABLED` | Yes | Set to `true` only for the rollout cohort. |
-| `OPENAI_API_KEY` | Yes | Transcription and structured summary generation. |
-| `OPENAI_REALTIME_TRANSCRIPTION_MODEL` | No | Persistent live transcription model; defaults to `gpt-live-transcribe`. The OpenAI project must have model access. Capturing microphone and system audio together opens two provider sessions and bills both audio streams. |
-| `COLLABORATION_SECRET` | Recommended | Signs collaboration and audio tickets; falls back to `BETTER_AUTH_SECRET`. |
-| `MEETING_AUDIO_WEBSOCKET_URL` | No | Public audio WebSocket override. |
-| `MEETING_COLLABORATION_WEBSOCKET_URL` | No | Public meeting Yjs WebSocket override. |
+| Variable                              | Required    | Purpose                                                                                                                                                                                                                     |
+| ------------------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MEETING_BLOCK_ENABLED`               | Yes         | Set to `true` only for the rollout cohort.                                                                                                                                                                                  |
+| `OPENAI_API_KEY`                      | Yes         | Transcription and structured summary generation.                                                                                                                                                                            |
+| `OPENAI_REALTIME_TRANSCRIPTION_MODEL` | No          | Persistent live transcription model; defaults to `gpt-live-transcribe`. The OpenAI project must have model access. Capturing microphone and system audio together opens two provider sessions and bills both audio streams. |
+| `COLLABORATION_SECRET`                | Recommended | Signs collaboration and audio tickets; falls back to `BETTER_AUTH_SECRET`.                                                                                                                                                  |
+| `MEETING_AUDIO_WEBSOCKET_URL`         | No          | Public audio WebSocket override.                                                                                                                                                                                            |
+| `MEETING_COLLABORATION_WEBSOCKET_URL` | No          | Public meeting Yjs WebSocket override.                                                                                                                                                                                      |
 
 Keep `MEETING_BLOCK_ENABLED` false until the staged rollout begins.
 

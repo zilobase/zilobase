@@ -6,14 +6,14 @@ Copy these templates next to your worker entries and replace every
 
 ## Files
 
-| Template | Copy to | `main` points at |
-|---|---|---|
-| `wrangler.template.jsonc` | `wrangler.jsonc` | `worker.template.ts` |
+| Template                    | Copy to                     | `main` points at         |
+| --------------------------- | --------------------------- | ------------------------ |
+| `wrangler.template.jsonc`   | `wrangler.jsonc`            | `worker.template.ts`     |
 | `background.template.jsonc` | `background-wrangler.jsonc` | `background.template.ts` |
-| `web.template.jsonc` | `web-wrangler.jsonc` | `web.template.js` |
-| `worker.template.ts` | your worker entry | — |
-| `background.template.ts` | your background entry | — |
-| `web.template.js` | your web entry | — |
+| `web.template.jsonc`        | `web-wrangler.jsonc`        | `web.template.js`        |
+| `worker.template.ts`        | your worker entry           | —                        |
+| `background.template.ts`    | your background entry       | —                        |
+| `web.template.js`           | your web entry              | —                        |
 
 ## Provisioning guide
 

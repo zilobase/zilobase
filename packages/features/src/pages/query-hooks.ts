@@ -54,10 +54,7 @@ type PageQueryHookOptions = {
   refetchOnMount?: boolean;
 };
 
-export function usePage(
-  pageId: string | null | undefined,
-  options?: PageQueryHookOptions,
-) {
+export function usePage(pageId: string | null | undefined, options?: PageQueryHookOptions) {
   const { apiFetch } = useZilobaseFeatures();
 
   return useQuery({
@@ -125,9 +122,7 @@ export function usePageGuestRequests(pageId: string | null | undefined) {
   return useQuery(pageGuestRequestsQueryOptions(apiFetch, pageId));
 }
 
-export function usePageGuestInvitation(
-  invitationId: string | null | undefined,
-) {
+export function usePageGuestInvitation(invitationId: string | null | undefined) {
   const { apiFetch } = useZilobaseFeatures();
   return useQuery(pageGuestInvitationQueryOptions(apiFetch, invitationId));
 }

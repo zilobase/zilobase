@@ -18,17 +18,38 @@ test("release assembly merges both signed Mac architectures and validates refere
     const directory = path.join(input, name);
     await mkdir(directory, { recursive: true });
     for (const asset of assets) await writeFile(path.join(directory, asset), "candidate");
-    await writeFile(path.join(directory, feedName), stringify({
-      version, files: assets.map((url) => ({ url, sha512: "fixture", size: 9 })),
-      path: assets[0], sha512: "fixture",
-    }));
+    await writeFile(
+      path.join(directory, feedName),
+      stringify({
+        version,
+        files: assets.map((url) => ({ url, sha512: "fixture", size: 9 })),
+        path: assets[0],
+        sha512: "fixture",
+      }),
+    );
   }
   try {
-    await candidate("mac-x64", "latest-mac.yml", ["zilobase-client-x64-mac.zip", "zilobase-client-x64.dmg", "zilobase-client-x64.pkg"]);
-    await candidate("mac-arm64", "latest-mac.yml", ["zilobase-client-arm64-mac.zip", "zilobase-client-arm64.dmg", "zilobase-client-arm64.pkg"]);
+    await candidate("mac-x64", "latest-mac.yml", [
+      "zilobase-client-x64-mac.zip",
+      "zilobase-client-x64.dmg",
+      "zilobase-client-x64.pkg",
+    ]);
+    await candidate("mac-arm64", "latest-mac.yml", [
+      "zilobase-client-arm64-mac.zip",
+      "zilobase-client-arm64.dmg",
+      "zilobase-client-arm64.pkg",
+    ]);
     await candidate("windows-x64", "latest.yml", ["zilobase-client.exe", "zilobase-client.msi"]);
-    await candidate("linux-x64", "latest-linux.yml", ["zilobase-client-x64.AppImage", "zilobase-client-x64.deb", "zilobase-client-x64.rpm"]);
-    await candidate("linux-arm64", "latest-linux-arm64.yml", ["zilobase-client-arm64.AppImage", "zilobase-client-arm64.deb", "zilobase-client-arm64.rpm"]);
+    await candidate("linux-x64", "latest-linux.yml", [
+      "zilobase-client-x64.AppImage",
+      "zilobase-client-x64.deb",
+      "zilobase-client-x64.rpm",
+    ]);
+    await candidate("linux-arm64", "latest-linux-arm64.yml", [
+      "zilobase-client-arm64.AppImage",
+      "zilobase-client-arm64.deb",
+      "zilobase-client-arm64.rpm",
+    ]);
     await run(process.execPath, ["scripts/desktop/assemble-electron-release.mjs", input, output]);
     const macFeed = parse(await readFile(path.join(output, "latest-mac.yml"), "utf8"));
     assert.equal(macFeed.path, "zilobase-client-x64-mac.zip");

@@ -1,5 +1,5 @@
 import { ConnectorSetupCard } from "../../../settings/components/settings-connectors";
-"use client";
+("use client");
 
 import { toApiUrl } from "@/platform/network/api";
 import { useZilobaseFeatures } from "@zilobase/features";
@@ -38,13 +38,7 @@ import {
 import { resolveAgentToolPresentation } from "./agent-tool-presentation";
 import { Conversation, ConversationContent } from "./conversation";
 import { DatabaseToolStepsGroup } from "./database-tool-steps";
-import {
-  Message,
-  MessageAction,
-  MessageActions,
-  MessageContent,
-  MessageResponse,
-} from "./message";
+import { Message, MessageAction, MessageActions, MessageContent, MessageResponse } from "./message";
 import { PageEditCard } from "./page-edit-card";
 import { Shimmer } from "./shimmer";
 import type { ToolPart } from "./tool";
@@ -53,9 +47,10 @@ import { shouldShowPendingAssistant } from "../../model/chat-message-visibility"
 
 const PendingAssistantStatus = ({ status }: { status: ChatStatus }) => {
   const [phraseIndex, setPhraseIndex] = useState(0);
-  const phrase = status === "submitted"
-    ? "Preparing context"
-    : pendingPhrases[phraseIndex % pendingPhrases.length];
+  const phrase =
+    status === "submitted"
+      ? "Preparing context"
+      : pendingPhrases[phraseIndex % pendingPhrases.length];
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -70,15 +65,9 @@ const PendingAssistantStatus = ({ status }: { status: ChatStatus }) => {
   return (
     <Message from="assistant">
       <MessageContent>
-
         <div className="not-prose flex w-fit max-w-full items-center gap-2 text-content-secondary">
           <SparklesIcon aria-hidden="true" className="size-4 shrink-0" />
-          <Shimmer
-            as="span"
-            className="truncate font-medium text-sm"
-            duration={1.25}
-            spread={1.1}
-          >
+          <Shimmer as="span" className="truncate font-medium text-sm" duration={1.25} spread={1.1}>
             {phrase}
           </Shimmer>
         </div>
@@ -150,13 +139,26 @@ const PageEditToolPart = ({
   );
 };
 
-function McpToolResultCard({ output, toolCallId, workspaceId }: { output: unknown; toolCallId: string; workspaceId: string | null }) {
+function McpToolResultCard({
+  output,
+  toolCallId,
+  workspaceId,
+}: {
+  output: unknown;
+  toolCallId: string;
+  workspaceId: string | null;
+}) {
   const { dataset, jobId } = readMcpToolOutput(output);
   if (!dataset && !jobId) return null;
-  return <div className="not-prose mb-3 grid gap-3 rounded-lg border bg-surface-canvas p-3" key={toolCallId}>
-    {dataset && <McpDatasetPreview dataset={dataset} />}
-    {jobId && <McpImportProgress jobId={jobId} workspaceId={workspaceId} />}
-  </div>;
+  return (
+    <div
+      className="not-prose mb-3 grid gap-3 rounded-lg border bg-surface-canvas p-3"
+      key={toolCallId}
+    >
+      {dataset && <McpDatasetPreview dataset={dataset} />}
+      {jobId && <McpImportProgress jobId={jobId} workspaceId={workspaceId} />}
+    </div>
+  );
 }
 
 function readMcpToolOutput(output: unknown) {
@@ -169,47 +171,63 @@ function readMcpToolOutput(output: unknown) {
 
 function readDatasetPreview(dataset: Record<string, unknown>) {
   const sample = Array.isArray(dataset?.sample)
-    ? dataset.sample.filter((row): row is Record<string, unknown> => Boolean(asRecord(row))).slice(0, 20)
+    ? dataset.sample
+        .filter((row): row is Record<string, unknown> => Boolean(asRecord(row)))
+        .slice(0, 20)
     : [];
   const columns = Array.isArray(asRecord(dataset?.schema)?.columns)
-    ? (asRecord(dataset?.schema)!.columns as unknown[]).filter((column): column is string => typeof column === "string").slice(0, 30)
+    ? (asRecord(dataset?.schema)!.columns as unknown[])
+        .filter((column): column is string => typeof column === "string")
+        .slice(0, 30)
     : [];
   return { sample, columns };
 }
 
 function McpDatasetPreview({ dataset }: { dataset: Record<string, unknown> }) {
   const { sample, columns } = readDatasetPreview(dataset);
-  return (        <div className="grid gap-2">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="font-medium">Connector dataset preview</span>
-            <span className="text-content-secondary">{String(dataset.rowCount ?? 0)} rows</span>
-            {dataset.truncated === true && <span className="text-action-danger-text">Truncated</span>}
-          </div>
-          {sample.length > 0 && columns.length > 0 && (
-            <div className="max-h-72 overflow-auto rounded border">
-              <table className="w-full min-w-max text-left text-xs">
-                <thead className="sticky top-0 bg-surface-secondary">
-                  <tr>{columns.map((column) => <th className="px-2 py-1.5 font-medium" key={column}>{column}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {sample.map((row, rowIndex) => (
-                    <tr className="border-t" key={rowIndex}>
-                      {columns.map((column) => <td className="max-w-56 truncate px-2 py-1.5" key={column}>{displayPreviewCell(row[column])}</td>)}
-                    </tr>
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-medium">Connector dataset preview</span>
+        <span className="text-content-secondary">{String(dataset.rowCount ?? 0)} rows</span>
+        {dataset.truncated === true && <span className="text-action-danger-text">Truncated</span>}
+      </div>
+      {sample.length > 0 && columns.length > 0 && (
+        <div className="max-h-72 overflow-auto rounded border">
+          <table className="w-full min-w-max text-left text-xs">
+            <thead className="sticky top-0 bg-surface-secondary">
+              <tr>
+                {columns.map((column) => (
+                  <th className="px-2 py-1.5 font-medium" key={column}>
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sample.map((row, rowIndex) => (
+                <tr className="border-t" key={rowIndex}>
+                  {columns.map((column) => (
+                    <td className="max-w-56 truncate px-2 py-1.5" key={column}>
+                      {displayPreviewCell(row[column])}
+                    </td>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <p className="text-xs text-content-secondary">Preview up to 20 rows before asking Ask AI to create a one-time native database.</p>
-        </div>);
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="text-xs text-content-secondary">
+        Preview up to 20 rows before asking Ask AI to create a one-time native database.
+      </p>
+    </div>
+  );
 }
 
 function useMcpImportJob(jobId: string, workspaceId: string | null) {
   const { apiFetch } = useZilobaseFeatures();
-  const jobQuery = useQuery(
-    mcpImportJobQueryOptions(apiFetch, jobId, workspaceId),
-  );
+  const jobQuery = useQuery(mcpImportJobQueryOptions(apiFetch, jobId, workspaceId));
   return jobQuery;
 }
 
@@ -230,17 +248,13 @@ function mcpImportJobQueryOptions(
           status: string;
         };
       }>(`/api/ai/jobs/${encodeURIComponent(jobId)}`, {
-        headers: workspaceId
-          ? { "x-zilobase-workspace-id": workspaceId }
-          : {},
+        headers: workspaceId ? { "x-zilobase-workspace-id": workspaceId } : {},
         signal,
       }).then((result) => result.job),
     queryKey: ["workspaces", workspaceId ?? "none", "ai-job", jobId] as const,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status && ["succeeded", "failed", "cancelled"].includes(status)
-        ? false
-        : 1_500;
+      return status && ["succeeded", "failed", "cancelled"].includes(status) ? false : 1_500;
     },
   });
 }
@@ -249,31 +263,39 @@ function McpImportProgress({ jobId, workspaceId }: { jobId: string; workspaceId:
   const jobQuery = useMcpImportJob(jobId, workspaceId);
   const data = jobQuery.data ?? { status: "queued", progress: 0, error: null, output: null };
   const jobOutput = asRecord(data.output) ?? {};
-  return (        <div className="grid gap-2 text-sm">
-          <div className="flex items-center justify-between gap-3">
-            <span className="font-medium">Database import</span>
-            <span>{data.status} · {data.progress}%</span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded bg-surface-secondary">
-            <div className="h-full bg-action-primary transition-[width]" style={{ width: `${data.progress}%` }} />
-          </div>
-          {data.error && <p className="text-action-danger-text">{data.error}</p>}
-          {typeof jobOutput.databaseId === "string" && (
-            <Button asChild className="w-fit" size="sm">
-              <a href={`/d/${encodeURIComponent(jobOutput.databaseId)}`}>Open imported database</a>
-            </Button>
-          )}
-          {jobOutput.status === "partial" && (
-            <p className="text-action-danger-text">
-              Partial import: {String(jobOutput.completedRows ?? 0)} completed, {String(jobOutput.failedRows ?? 0)} failed.
-            </p>
-          )}
-        </div>);
+  return (
+    <div className="grid gap-2 text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-medium">Database import</span>
+        <span>
+          {data.status} · {data.progress}%
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded bg-surface-secondary">
+        <div
+          className="h-full bg-action-primary transition-[width]"
+          style={{ width: `${data.progress}%` }}
+        />
+      </div>
+      {data.error && <p className="text-action-danger-text">{data.error}</p>}
+      {typeof jobOutput.databaseId === "string" && (
+        <Button asChild className="w-fit" size="sm">
+          <a href={`/d/${encodeURIComponent(jobOutput.databaseId)}`}>Open imported database</a>
+        </Button>
+      )}
+      {jobOutput.status === "partial" && (
+        <p className="text-action-danger-text">
+          Partial import: {String(jobOutput.completedRows ?? 0)} completed,{" "}
+          {String(jobOutput.failedRows ?? 0)} failed.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : null;
 }
 
@@ -304,39 +326,45 @@ function collectMessageCitations(message: UIMessage) {
         : null;
 
     if (toolName === "createPage" && ids?.pageId) {
-      return [{
-        id: ids.pageId,
-        source: "page" as const,
-        title:
-          typeof input?.name === "string" && input.name.trim()
-            ? input.name.trim()
-            : "Created page",
-        url: `/p/${encodeURIComponent(ids.pageId)}`,
-      }];
+      return [
+        {
+          id: ids.pageId,
+          source: "page" as const,
+          title:
+            typeof input?.name === "string" && input.name.trim()
+              ? input.name.trim()
+              : "Created page",
+          url: `/p/${encodeURIComponent(ids.pageId)}`,
+        },
+      ];
     }
 
     if (toolName === "createDatabase" && ids?.databaseId) {
-      return [{
-        id: ids.databaseId,
-        source: "database" as const,
-        title:
-          typeof input?.name === "string" && input.name.trim()
-            ? input.name.trim()
-            : "Created database",
-        url: `/d/${encodeURIComponent(ids.databaseId)}`,
-      }];
+      return [
+        {
+          id: ids.databaseId,
+          source: "database" as const,
+          title:
+            typeof input?.name === "string" && input.name.trim()
+              ? input.name.trim()
+              : "Created database",
+          url: `/d/${encodeURIComponent(ids.databaseId)}`,
+        },
+      ];
     }
 
     if (toolName === "createDatabaseRow" && ids?.rowPageId) {
-      return [{
-        id: ids.rowPageId,
-        source: "page" as const,
-        title:
-          typeof input?.title === "string" && input.title.trim()
-            ? input.title.trim()
-            : "Created database page",
-        url: `/p/${encodeURIComponent(ids.rowPageId)}`,
-      }];
+      return [
+        {
+          id: ids.rowPageId,
+          source: "page" as const,
+          title:
+            typeof input?.title === "string" && input.title.trim()
+              ? input.title.trim()
+              : "Created database page",
+          url: `/p/${encodeURIComponent(ids.rowPageId)}`,
+        },
+      ];
     }
 
     return [];
@@ -459,11 +487,7 @@ const ChatMessage = ({
   onRetryIncompleteDatabase: (prompt: string) => void | Promise<void>;
   onTogglePageEditChanges: (toolCallId: string) => void;
   onUndoPageEdit: (toolCallId: string) => void | Promise<void>;
-  onSubmitFeedback: (
-    messageId: string,
-    rating: -1 | 1,
-    reason?: string,
-  ) => void | Promise<void>;
+  onSubmitFeedback: (messageId: string, rating: -1 | 1, reason?: string) => void | Promise<void>;
   snapshotByToolCallId: Map<string, PageEditSnapshotPart>;
   threadId: string | null;
   visibleDiffToolCallId: string | null;
@@ -476,9 +500,7 @@ const ChatMessage = ({
   const partGroups = buildMessagePartGroups(message.parts);
   const progressByToolCallId = new Map<string, AgentProgressSnapshot>(
     message.parts.flatMap((part) =>
-      isAgentProgressPart(part)
-        ? [[part.data.toolCallId, part.data] as const]
-        : [],
+      isAgentProgressPart(part) ? [[part.data.toolCallId, part.data] as const] : [],
     ),
   );
   const citations = collectMessageCitations(message);
@@ -488,12 +510,13 @@ const ChatMessage = ({
     return table ? [{ table, toolCallId: part.toolCallId }] : [];
   });
   const mcpResults = message.parts.flatMap((part) =>
-    isToolUIPart(part) && part.state === "output-available" &&
-      (getToolName(part).startsWith("mcp_") || getToolName(part) === "materializeConnectedDataAsDatabase")
+    isToolUIPart(part) &&
+    part.state === "output-available" &&
+    (getToolName(part).startsWith("mcp_") ||
+      getToolName(part) === "materializeConnectedDataAsDatabase")
       ? [{ output: part.output, toolCallId: part.toolCallId }]
       : [],
   );
-
 
   function renderPageEditPart(part: UIMessage["parts"][number], index: number) {
     if (isToolUIPart(part)) {
@@ -508,13 +531,9 @@ const ChatMessage = ({
               applyingToolCallIds.includes(part.toolCallId) &&
               !snapshotByToolCallId.has(part.toolCallId)
             }
-            isBaselineCurrent={
-              snapshot ? getPageEditBaselineCurrent(snapshot) : false
-            }
+            isBaselineCurrent={snapshot ? getPageEditBaselineCurrent(snapshot) : false}
             isDiffVisible={visibleDiffToolCallId === part.toolCallId}
-            isReviewAvailable={
-              snapshot ? getPageEditReviewAvailable(snapshot) : false
-            }
+            isReviewAvailable={snapshot ? getPageEditReviewAvailable(snapshot) : false}
             key={`${message.id}-${index}`}
             onApply={onApplyPageEdit}
             onDiscard={onDiscardPageEdit}
@@ -535,9 +554,26 @@ const ChatMessage = ({
     <Message from={message.role}>
       <MessageContent>
         {message.parts.flatMap((part, index) => {
-          const p = part as unknown as { type: string; data?: { provider?: string; scope?: string }; output?: { type?: string; provider?: string; scope?: string } };
-          const data = p.type === "data-connector-setup" ? p.data : p.output?.type === "connector-setup" ? p.output : null;
-          return data?.provider ? [<ConnectorSetupCard key={`connect-${index}`} provider={data.provider} scope={data.scope} />] : [];
+          const p = part as unknown as {
+            type: string;
+            data?: { provider?: string; scope?: string };
+            output?: { type?: string; provider?: string; scope?: string };
+          };
+          const data =
+            p.type === "data-connector-setup"
+              ? p.data
+              : p.output?.type === "connector-setup"
+                ? p.output
+                : null;
+          return data?.provider
+            ? [
+                <ConnectorSetupCard
+                  key={`connect-${index}`}
+                  provider={data.provider}
+                  scope={data.scope}
+                />,
+              ]
+            : [];
         })}
         {partGroups.map((group) => {
           if (group.type === "database-tools") {
@@ -571,11 +607,7 @@ const ChatMessage = ({
           const { index, part } = group;
 
           if (part.type === "text") {
-            return (
-              <MessageResponse key={`${message.id}-${index}`}>
-                {part.text}
-              </MessageResponse>
-            );
+            return <MessageResponse key={`${message.id}-${index}`}>{part.text}</MessageResponse>;
           }
 
           if (part.type === "reasoning") {
@@ -585,17 +617,14 @@ const ChatMessage = ({
           if (isAgentProgressPart(part)) {
             const hasMatchingToolPart = message.parts.some(
               (candidate) =>
-                isToolUIPart(candidate) &&
-                candidate.toolCallId === part.data.toolCallId,
+                isToolUIPart(candidate) && candidate.toolCallId === part.data.toolCallId,
             );
-            return hasMatchingToolPart
-              ? null
-              : (
-                  <AgentProgressOnlyTask
-                    key={`${message.id}-progress-${part.data.toolCallId}`}
-                    progress={part.data}
-                  />
-                );
+            return hasMatchingToolPart ? null : (
+              <AgentProgressOnlyTask
+                key={`${message.id}-progress-${part.data.toolCallId}`}
+                progress={part.data}
+              />
+            );
           }
 
           if (part.type === "file") {
@@ -627,22 +656,13 @@ const ChatMessage = ({
           />
         ))}
         {threadId && workspaceId ? (
-          <AgentActionReviews
-            message={message}
-            threadId={threadId}
-            workspaceId={workspaceId}
-          />
+          <AgentActionReviews message={message} threadId={threadId} workspaceId={workspaceId} />
         ) : null}
-        <AgentResourceBadges
-          citations={citations}
-          openInMainPage={isSidebar}
-        />
+        <AgentResourceBadges citations={citations} openInMainPage={isSidebar} />
         {message.role === "assistant" && showFeedback ? (
           <AssistantFeedback
             isPending={feedbackPending}
-            onSubmit={(rating, reason) =>
-              onSubmitFeedback(message.id, rating, reason)
-            }
+            onSubmit={(rating, reason) => onSubmitFeedback(message.id, rating, reason)}
             rating={feedbackRating}
           />
         ) : null}
@@ -704,33 +724,35 @@ export const ChatbotMessages = ({
     <Conversation className={isSidebar ? "min-h-0" : "flex-none overflow-visible"}>
       <ConversationContent
         className={hasMessages || isSidebar ? "px-0 pb-10 md:px-0" : "px-0 pb-0 md:px-0"}
-        scrollClassName={isSidebar ? undefined : "h-auto! overflow-visible! [scrollbar-gutter:auto]!"}
+        scrollClassName={
+          isSidebar ? undefined : "h-auto! overflow-visible! [scrollbar-gutter:auto]!"
+        }
       >
-        {hasMessages ? (
-          visibleMessages.map((message) => (
-            <ChatMessage
-              applyingToolCallIds={applyingToolCallIds}
-              feedbackPending={feedbackPendingMessageId === message.id}
-              feedbackRating={feedbackByMessageId.get(message.id)?.rating}
-              getPageEditBaselineCurrent={getPageEditBaselineCurrent}
-              getPageEditReviewAvailable={getPageEditReviewAvailable}
-              isSidebar={isSidebar}
-              key={message.id}
-              message={message}
-              onApplyPageEdit={onApplyPageEdit}
-              onDiscardPageEdit={onDiscardPageEdit}
-              onRetryIncompleteDatabase={onRetryIncompleteDatabase}
-              onSubmitFeedback={onSubmitFeedback}
-              onTogglePageEditChanges={onTogglePageEditChanges}
-              onUndoPageEdit={onUndoPageEdit}
-              showFeedback={feedbackReadyMessageIds.has(message.id)}
-              snapshotByToolCallId={snapshotByToolCallId}
-              threadId={threadId}
-              visibleDiffToolCallId={visibleDiffToolCallId}
-              workspaceId={workspaceId}
-            />
-          ))
-        ) : null}
+        {hasMessages
+          ? visibleMessages.map((message) => (
+              <ChatMessage
+                applyingToolCallIds={applyingToolCallIds}
+                feedbackPending={feedbackPendingMessageId === message.id}
+                feedbackRating={feedbackByMessageId.get(message.id)?.rating}
+                getPageEditBaselineCurrent={getPageEditBaselineCurrent}
+                getPageEditReviewAvailable={getPageEditReviewAvailable}
+                isSidebar={isSidebar}
+                key={message.id}
+                message={message}
+                onApplyPageEdit={onApplyPageEdit}
+                onDiscardPageEdit={onDiscardPageEdit}
+                onRetryIncompleteDatabase={onRetryIncompleteDatabase}
+                onSubmitFeedback={onSubmitFeedback}
+                onTogglePageEditChanges={onTogglePageEditChanges}
+                onUndoPageEdit={onUndoPageEdit}
+                showFeedback={feedbackReadyMessageIds.has(message.id)}
+                snapshotByToolCallId={snapshotByToolCallId}
+                threadId={threadId}
+                visibleDiffToolCallId={visibleDiffToolCallId}
+                workspaceId={workspaceId}
+              />
+            ))
+          : null}
         {debuggerContent}
         {shouldShowPendingAssistant(messages, status) ? (
           <PendingAssistantStatus status={status} />

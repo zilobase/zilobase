@@ -1,32 +1,29 @@
-import * as React from "react"
-import { ThemeProvider, useTheme } from "next-themes"
-import { QueryClientProvider } from "@tanstack/react-query"
+import * as React from "react";
+import { ThemeProvider, useTheme } from "next-themes";
+import { QueryClientProvider } from "@tanstack/react-query";
 
-import { Toaster } from "@/shared/ui/sonner"
-import { TooltipProvider } from "@/shared/ui/tooltip"
-import { PageEditorCommentsProvider } from "@/features/comments/index"
-import { PageEditorRegistryProvider } from "@/features/editor/runtime/page-editor-registry"
-import { PageCommentsRegistryProvider } from "@/features/comments/index"
-import { DesktopUpdater } from "@/features/desktop/components/index"
-import { WebFeaturesProvider } from "@/app/providers/features-provider"
-import { queryClient } from "@/app/query-client"
-import { ShortcutProvider } from "@/shared/shortcuts"
-import { getThemeColorScheme, selectableThemeIds } from "@/shared/lib/themes"
-import {
-  ThemeFamilyProvider,
-  useThemeFamily,
-} from "@/shared/providers/theme-family-provider"
-import { AppIconProvider } from "@/shared/components/app-icon-provider"
-import { DemoExperience, installDemoCache } from "@/features/demo"
+import { Toaster } from "@/shared/ui/sonner";
+import { TooltipProvider } from "@/shared/ui/tooltip";
+import { PageEditorCommentsProvider } from "@/features/comments/index";
+import { PageEditorRegistryProvider } from "@/features/editor/runtime/page-editor-registry";
+import { PageCommentsRegistryProvider } from "@/features/comments/index";
+import { DesktopUpdater } from "@/features/desktop/components/index";
+import { WebFeaturesProvider } from "@/app/providers/features-provider";
+import { queryClient } from "@/app/query-client";
+import { ShortcutProvider } from "@/shared/shortcuts";
+import { getThemeColorScheme, selectableThemeIds } from "@/shared/lib/themes";
+import { ThemeFamilyProvider, useThemeFamily } from "@/shared/providers/theme-family-provider";
+import { AppIconProvider } from "@/shared/components/app-icon-provider";
+import { DemoExperience, installDemoCache } from "@/features/demo";
 import { useNavigationRealtime } from "@zilobase/features/pages/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useSession } from "@zilobase/features/auth/react";
 import { DbProvider } from "@zilobase/features/databases/react";
 import { useZilobaseFeatures } from "@zilobase/features";
 
-import posthog from "@/shared/lib/posthog"
+import posthog from "@/shared/lib/posthog";
 
-installDemoCache(queryClient)
+installDemoCache(queryClient);
 
 export function AppProviders({ children }: React.PropsWithChildren) {
   return (
@@ -50,9 +47,7 @@ export function AppProviders({ children }: React.PropsWithChildren) {
                     <TooltipProvider>
                       <PageEditorRegistryProvider>
                         <PageCommentsRegistryProvider>
-                          <PageEditorCommentsProvider>
-                            {children}
-                          </PageEditorCommentsProvider>
+                          <PageEditorCommentsProvider>{children}</PageEditorCommentsProvider>
                         </PageCommentsRegistryProvider>
                       </PageEditorRegistryProvider>
                       <DesktopUpdater />
@@ -66,12 +61,12 @@ export function AppProviders({ children }: React.PropsWithChildren) {
         </WebFeaturesProvider>
       </QueryClientProvider>
     </AppIconProvider>
-  )
+  );
 }
 
 function SessionDatabaseProvider({ children }: React.PropsWithChildren) {
-  const { data: session } = useSession()
-  const { apiFetch } = useZilobaseFeatures()
+  const { data: session } = useSession();
+  const { apiFetch } = useZilobaseFeatures();
 
   return (
     <DbProvider
@@ -81,43 +76,40 @@ function SessionDatabaseProvider({ children }: React.PropsWithChildren) {
     >
       {children}
     </DbProvider>
-  )
+  );
 }
 
 function PostHogIdentitySync() {
-  const { data: session } = useSession()
-  const workspaceId = useActiveWorkspaceId()
-  const previousUserId = React.useRef<string | null | undefined>(undefined)
-  const user = session?.user
+  const { data: session } = useSession();
+  const workspaceId = useActiveWorkspaceId();
+  const previousUserId = React.useRef<string | null | undefined>(undefined);
+  const user = session?.user;
 
   React.useEffect(() => {
-    if (!posthog || session === undefined) return
+    if (!posthog || session === undefined) return;
 
     if (!user) {
-      resetSignedOutPostHogIdentity(posthog, previousUserId)
-      return
+      resetSignedOutPostHogIdentity(posthog, previousUserId);
+      return;
     }
 
-    syncSignedInPostHogIdentity(posthog, previousUserId, user.id)
-    syncPostHogWorkspace(posthog, workspaceId)
-  }, [session, user, workspaceId])
+    syncSignedInPostHogIdentity(posthog, previousUserId, user.id);
+    syncPostHogWorkspace(posthog, workspaceId);
+  }, [session, user, workspaceId]);
 
-  return null
+  return null;
 }
 
-type ConfiguredPostHog = NonNullable<typeof posthog>
+type ConfiguredPostHog = NonNullable<typeof posthog>;
 
 function resetSignedOutPostHogIdentity(
   client: ConfiguredPostHog,
   previousUserId: React.MutableRefObject<string | null | undefined>,
 ) {
-  if (
-    previousUserId.current &&
-    client.get_distinct_id() === previousUserId.current
-  ) {
-    client.reset()
+  if (previousUserId.current && client.get_distinct_id() === previousUserId.current) {
+    client.reset();
   }
-  previousUserId.current = null
+  previousUserId.current = null;
 }
 
 function syncSignedInPostHogIdentity(
@@ -126,42 +118,39 @@ function syncSignedInPostHogIdentity(
   userId: string,
 ) {
   if (previousUserId.current !== userId) {
-    if (previousUserId.current) client.reset()
-    client.identify(userId)
-    previousUserId.current = userId
-    return
+    if (previousUserId.current) client.reset();
+    client.identify(userId);
+    previousUserId.current = userId;
+    return;
   }
 
-  if (client.get_distinct_id() !== userId) client.identify(userId)
+  if (client.get_distinct_id() !== userId) client.identify(userId);
 }
 
-function syncPostHogWorkspace(
-  client: ConfiguredPostHog,
-  workspaceId: string | null | undefined,
-) {
-  if (workspaceId) client.group("workspace", workspaceId)
-  else client.resetGroups()
+function syncPostHogWorkspace(client: ConfiguredPostHog, workspaceId: string | null | undefined) {
+  if (workspaceId) client.group("workspace", workspaceId);
+  else client.resetGroups();
 }
 
 function NavigationRealtimeSync() {
-  useNavigationRealtime(useActiveWorkspaceId())
-  return null
+  useNavigationRealtime(useActiveWorkspaceId());
+  return null;
 }
 
 function ThemeDocumentSync() {
-  const { resolvedTheme } = useTheme()
-  const { themeFamily } = useThemeFamily()
+  const { resolvedTheme } = useTheme();
+  const { themeFamily } = useThemeFamily();
 
   React.useEffect(() => {
-    const colorScheme = getThemeColorScheme(resolvedTheme)
-    if (!colorScheme) return
+    const colorScheme = getThemeColorScheme(resolvedTheme);
+    if (!colorScheme) return;
 
-    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
 
-    document.documentElement.dataset.themeFamily = themeFamily
-    document.documentElement.style.colorScheme = colorScheme
-    meta?.setAttribute("content", getComputedStyle(document.body).backgroundColor)
-  }, [resolvedTheme, themeFamily])
+    document.documentElement.dataset.themeFamily = themeFamily;
+    document.documentElement.style.colorScheme = colorScheme;
+    meta?.setAttribute("content", getComputedStyle(document.body).backgroundColor);
+  }, [resolvedTheme, themeFamily]);
 
-  return null
+  return null;
 }

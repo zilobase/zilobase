@@ -23,16 +23,12 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
   if (!body || typeof body !== "object") return emptyAiChatRequestBody();
 
   const raw = body as Record<string, unknown>;
-  const rawModelValue = typeof raw.model === "string"
-    ? raw.model
-    : typeof raw.modelId === "string"
-      ? raw.modelId
-      : "";
+  const rawModelValue =
+    typeof raw.model === "string" ? raw.model : typeof raw.modelId === "string" ? raw.modelId : "";
   const pageContextMeta = readPageContextMeta(raw);
   const contextRefs = readContextRefs(raw.contextRefs);
-  const contextPrimaryPageId = contextRefs.find(
-    (ref) => ref.type === "page" && ref.role === "primary",
-  )?.id ?? null;
+  const contextPrimaryPageId =
+    contextRefs.find((ref) => ref.type === "page" && ref.role === "primary")?.id ?? null;
 
   return {
     allowedPageIds: readAllowedPageIds(raw, pageContextMeta, contextRefs),
@@ -46,12 +42,9 @@ export function coerceAiChatRequestBody(body: unknown): AiChatRequestBody {
     primaryPageId: contextPrimaryPageId ?? pageContextMeta.primaryId,
     threadId: readOptionalString(raw.threadId) ?? null,
     userClientMessageId:
-      readOptionalString(raw.userClientMessageId) ??
-      readOptionalString(raw.clientMessageId),
+      readOptionalString(raw.userClientMessageId) ?? readOptionalString(raw.clientMessageId),
     userId: readOptionalString(raw.userId) ?? null,
-    userMessageId:
-      readOptionalString(raw.userMessageId) ??
-      readOptionalString(raw.clientMessageId),
+    userMessageId: readOptionalString(raw.userMessageId) ?? readOptionalString(raw.clientMessageId),
     workspaceId: readOptionalString(raw.workspaceId) ?? null,
   };
 }
@@ -73,9 +66,13 @@ function emptyAiChatRequestBody(): AiChatRequestBody {
 
 function readStringIds(value: unknown) {
   return Array.isArray(value)
-    ? [...new Set(value.filter((item): item is string =>
-        typeof item === "string" && item.trim().length > 0,
-      ).map((item) => item.trim()))]
+    ? [
+        ...new Set(
+          value
+            .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+            .map((item) => item.trim()),
+        ),
+      ]
     : [];
 }
 
@@ -87,26 +84,28 @@ function readContextRefs(value: unknown): AgentContextRef[] {
   if (!Array.isArray(value)) return [];
 
   const seen = new Set<string>();
-  return value.flatMap((entry) => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
-    const candidate = entry as Record<string, unknown>;
-    const id = readOptionalString(candidate.id);
-    const role = candidate.role;
-    const type = candidate.type;
-    if (
-      !id ||
-      (role !== "primary" && role !== "attached") ||
-      (type !== "page" && type !== "database")
-    ) {
-      return [];
-    }
+  return value
+    .flatMap((entry) => {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return [];
+      const candidate = entry as Record<string, unknown>;
+      const id = readOptionalString(candidate.id);
+      const role = candidate.role;
+      const type = candidate.type;
+      if (
+        !id ||
+        (role !== "primary" && role !== "attached") ||
+        (type !== "page" && type !== "database")
+      ) {
+        return [];
+      }
 
-    const key = `${type}:${id}:${role}`;
-    if (seen.has(key)) return [];
-    seen.add(key);
+      const key = `${type}:${id}:${role}`;
+      if (seen.has(key)) return [];
+      seen.add(key);
 
-    return [{ id, role, type } as AgentContextRef];
-  }).slice(0, 20);
+      return [{ id, role, type } as AgentContextRef];
+    })
+    .slice(0, 20);
 }
 
 function readPageContext(body: Record<string, unknown>) {

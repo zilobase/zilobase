@@ -87,8 +87,7 @@ async function startFixture(
       authenticate,
       connectionLimit,
       limits: {
-        consume: (key, limit, windowMs) =>
-          realtimeBus.consumeLimit(key, limit, windowMs),
+        consume: (key, limit, windowMs) => realtimeBus.consumeLimit(key, limit, windowMs),
       },
     },
   );
@@ -116,9 +115,13 @@ function createTestRealtimeBus(): NodeRealtimeBus {
       counts.set(key, count);
       return count <= limit;
     },
-    isReady() { return true; },
+    isReady() {
+      return true;
+    },
     async publish() {},
-    async subscribe() { return async () => {}; },
+    async subscribe() {
+      return async () => {};
+    },
   };
 }
 
@@ -134,7 +137,7 @@ function listen(server: Server) {
 
 function closeServer(server: Server) {
   return new Promise<void>((resolve, reject) => {
-    server.close((error) => error ? reject(error) : resolve());
+    server.close((error) => (error ? reject(error) : resolve()));
   });
 }
 
@@ -143,9 +146,13 @@ function openWebSocket(url: string, protocols?: string[]) {
     const websocket = new WebSocket(url, protocols);
     websocket.binaryType = "arraybuffer";
     websocket.addEventListener("open", () => resolve(websocket), { once: true });
-    websocket.addEventListener("error", () => {
-      reject(new Error("WebSocket upgrade failed"));
-    }, { once: true });
+    websocket.addEventListener(
+      "error",
+      () => {
+        reject(new Error("WebSocket upgrade failed"));
+      },
+      { once: true },
+    );
   });
 }
 
@@ -172,16 +179,18 @@ function requestUpgradeStatus(value: string) {
       resolve(status);
     });
     socket.once("connect", () => {
-      socket.write([
-        `GET ${url.pathname}${url.search} HTTP/1.1`,
-        `Host: ${url.host}`,
-        "Connection: Upgrade",
-        "Upgrade: websocket",
-        "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
-        "Sec-WebSocket-Version: 13",
-        "",
-        "",
-      ].join("\r\n"));
+      socket.write(
+        [
+          `GET ${url.pathname}${url.search} HTTP/1.1`,
+          `Host: ${url.host}`,
+          "Connection: Upgrade",
+          "Upgrade: websocket",
+          "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
+          "Sec-WebSocket-Version: 13",
+          "",
+          "",
+        ].join("\r\n"),
+      );
     });
   });
 }

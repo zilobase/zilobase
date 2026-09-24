@@ -26,10 +26,7 @@ function app(authenticated = true) {
 }
 
 test("layout writes require a session and reject invalid scope or body", async () => {
-  assert.equal(
-    (await app(false).request("/page/page-1", { method: "PUT" })).status,
-    401,
-  );
+  assert.equal((await app(false).request("/page/page-1", { method: "PUT" })).status, 401);
 
   const invalidScope = await app().request("/folder/page-1", {
     body: JSON.stringify({ config: {} }),

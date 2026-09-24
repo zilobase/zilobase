@@ -1,7 +1,4 @@
-import type {
-  AgentCitation,
-  AgentToolResult,
-} from "@zilobase/features/ai-chat/agent-contract";
+import type { AgentCitation, AgentToolResult } from "@zilobase/features/ai-chat/agent-contract";
 import { resolvePageEditMarkdown } from "@zilobase/features/ai-chat/apply-page-content-patch";
 import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-markdown";
 import { and, eq, isNull } from "drizzle-orm";
@@ -35,12 +32,7 @@ export const workspacePageUpdateSchema = z.object({
   pageId: z.string().trim().min(1),
   replaceText: z.string().max(24_000).optional(),
   searchText: z.string().trim().max(24_000).optional(),
-  summary: z
-    .string()
-    .trim()
-    .min(1)
-    .max(240)
-    .default("Updated page content."),
+  summary: z.string().trim().min(1).max(240).default("Updated page content."),
 });
 
 type WorkspacePageUpdateInput = z.infer<typeof workspacePageUpdateSchema>;
@@ -50,16 +42,13 @@ type WorkspacePageUpdateResult = AgentToolResult<{
   previousUpdatedAt: string;
 }>;
 
-export function buildWorkspaceActionTools(
-  context: WorkspaceActionToolContext,
-): ToolSet {
+export function buildWorkspaceActionTools(context: WorkspaceActionToolContext): ToolSet {
   return {
     updateWorkspacePage: tool({
       description:
         "Durably update an accessible Zilobase page that is not open for editor review. Always call readWorkspacePage first and copy its contentHash and updatedAt into expectedContentHash and expectedUpdatedAt. Call this tool at most once per page in a turn: combine every requested change to that page into one update. For patch mode, put the exact complete existing section in searchText and its complete replacement in replaceText. Use afterMarkdown only with full mode when the user explicitly requests a whole-page rewrite. This tool rejects real content conflicts while tolerating timestamp-only background saves and returns an action receipt.",
       inputSchema: workspacePageUpdateSchema,
-      execute: (input, options) =>
-        executeWorkspacePageUpdate(context, input, options),
+      execute: (input, options) => executeWorkspacePageUpdate(context, input, options),
     }),
   };
 }
@@ -110,21 +99,18 @@ async function executeWorkspacePageUpdate(
         }
 
         const beforeMarkdown = prosemirrorToMarkdown(record.content);
-        if (!(await isPageContentVersionCurrent({
-          currentMarkdown: beforeMarkdown,
-          currentUpdatedAt: record.updatedAt.toISOString(),
-          expectedContentHash: input.expectedContentHash,
-          expectedUpdatedAt: input.expectedUpdatedAt,
-        }))) {
-          throw new Error(
-            "The page changed after it was read. Read it again before editing.",
-          );
+        if (
+          !(await isPageContentVersionCurrent({
+            currentMarkdown: beforeMarkdown,
+            currentUpdatedAt: record.updatedAt.toISOString(),
+            expectedContentHash: input.expectedContentHash,
+            expectedUpdatedAt: input.expectedUpdatedAt,
+          }))
+        ) {
+          throw new Error("The page changed after it was read. Read it again before editing.");
         }
 
-        const resolved = resolveWorkspacePageUpdateMarkdown(
-          beforeMarkdown,
-          input,
-        );
+        const resolved = resolveWorkspacePageUpdateMarkdown(beforeMarkdown, input);
 
         if (!resolved.success) {
           throw new Error(resolved.errorMessage);
@@ -182,10 +168,7 @@ export function resolveWorkspacePageUpdateMarkdown(
   });
 }
 
-function expandTaskSectionSearch(
-  beforeMarkdown: string,
-  searchText: string | undefined,
-) {
+function expandTaskSectionSearch(beforeMarkdown: string, searchText: string | undefined) {
   const anchor = searchText?.trim();
   if (!anchor || anchor.includes("\n") || !/^[-*+]\s+/.test(anchor)) {
     return searchText;
@@ -199,20 +182,18 @@ function expandTaskSectionSearch(
   while (headingIndex >= 0 && !/^#{1,6}\s+/.test(lines[headingIndex]!.trim())) {
     headingIndex -= 1;
   }
-  const heading = headingIndex >= 0
-    ? lines[headingIndex]!.trim().replace(/^#{1,6}\s+/, "")
-    : "";
+  const heading = headingIndex >= 0 ? lines[headingIndex]!.trim().replace(/^#{1,6}\s+/, "") : "";
   if (!/\b(?:checklist|tasks?|to[- ]?do)\b/i.test(heading)) {
     return searchText;
   }
 
   let sectionEnd = anchorIndex + 1;
-  while (
-    sectionEnd < lines.length &&
-    !/^#{1,6}\s+/.test(lines[sectionEnd]!.trim())
-  ) {
+  while (sectionEnd < lines.length && !/^#{1,6}\s+/.test(lines[sectionEnd]!.trim())) {
     sectionEnd += 1;
   }
 
-  return lines.slice(headingIndex + 1, sectionEnd).join("\n").trim();
+  return lines
+    .slice(headingIndex + 1, sectionEnd)
+    .join("\n")
+    .trim();
 }

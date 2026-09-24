@@ -1,9 +1,6 @@
 import { DESKTOP_PROTOCOL_VERSION, type DesktopServer } from "./contracts";
 export function isDesktopVersionCompatible(
-  discovery: Pick<
-    DesktopServer,
-    "minimumDesktopVersion" | "protocolVersion"
-  >,
+  discovery: Pick<DesktopServer, "minimumDesktopVersion" | "protocolVersion">,
   desktopVersion: string,
 ) {
   if (discovery.protocolVersion !== DESKTOP_PROTOCOL_VERSION) {
@@ -60,9 +57,7 @@ function parseSemanticVersion(value: string) {
       (identifier) =>
         !identifier ||
         !/^[0-9A-Za-z-]+$/.test(identifier) ||
-        (/^\d+$/.test(identifier) &&
-          identifier.length > 1 &&
-          identifier.startsWith("0")),
+        (/^\d+$/.test(identifier) && identifier.length > 1 && identifier.startsWith("0")),
     )
   ) {
     return null;

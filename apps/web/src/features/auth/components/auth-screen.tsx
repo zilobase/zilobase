@@ -1,8 +1,8 @@
-import type { ReactNode } from "react"
-import { Link } from "@tanstack/react-router"
+import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 
-import { FieldDescription } from "@/shared/ui/field"
-import { ZilobaseLogo } from "@/shared/components/zilobase-logo"
+import { FieldDescription } from "@/shared/ui/field";
+import { ZilobaseLogo } from "@/shared/components/zilobase-logo";
 
 export function AuthScreen({
   children,
@@ -12,12 +12,12 @@ export function AuthScreen({
   switchPrefix,
   title,
 }: {
-  children: ReactNode
-  switchLabel: string
-  switchPrefix: string
-  switchSearch?: { invitation?: string; returnTo?: string }
-  switchTo: "/login" | "/signup"
-  title: string
+  children: ReactNode;
+  switchLabel: string;
+  switchPrefix: string;
+  switchSearch?: { invitation?: string; returnTo?: string };
+  switchTo: "/login" | "/signup";
+  title: string;
 }) {
   return (
     <main className="flex min-h-svh items-center justify-center bg-surface-canvas p-6 md:p-10">
@@ -40,5 +40,5 @@ export function AuthScreen({
         {children}
       </div>
     </main>
-  )
+  );
 }

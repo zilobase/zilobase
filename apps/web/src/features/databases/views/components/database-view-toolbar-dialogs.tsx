@@ -1,4 +1,4 @@
-import { ArrowRight, FilePenLine, Table2 } from "@/shared/components/icons"
+import { ArrowRight, FilePenLine, Table2 } from "@/shared/components/icons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -8,16 +8,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
-import { Button } from "@/shared/ui/button"
+} from "@/shared/ui/alert-dialog";
+import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/shared/ui/dialog"
-import { DatabaseFormView } from "../form/components/database-form-view"
+} from "@/shared/ui/dialog";
+import { DatabaseFormView } from "../form/components/database-form-view";
 
 export function DatabaseViewToolbarDialogs({
   formDialogOpen,
@@ -31,23 +31,20 @@ export function DatabaseViewToolbarDialogs({
   onPendingDeleteOpenChange,
   pendingDeleteViewName,
 }: {
-  formDialogOpen: boolean
-  formPreviewOpen: boolean
-  formQuestionCount: number
-  isAddingDatabaseView: boolean
-  onCreateForm: (includeExistingProperties: boolean) => void
-  onDeleteView: () => void
-  onFormDialogOpenChange: (open: boolean) => void
-  onFormPreviewOpenChange: (open: boolean) => void
-  onPendingDeleteOpenChange: (open: boolean) => void
-  pendingDeleteViewName: string | null
+  formDialogOpen: boolean;
+  formPreviewOpen: boolean;
+  formQuestionCount: number;
+  isAddingDatabaseView: boolean;
+  onCreateForm: (includeExistingProperties: boolean) => void;
+  onDeleteView: () => void;
+  onFormDialogOpenChange: (open: boolean) => void;
+  onFormPreviewOpenChange: (open: boolean) => void;
+  onPendingDeleteOpenChange: (open: boolean) => void;
+  pendingDeleteViewName: string | null;
 }) {
   return (
     <>
-      <AlertDialog
-        onOpenChange={onPendingDeleteOpenChange}
-        open={pendingDeleteViewName !== null}
-      >
+      <AlertDialog onOpenChange={onPendingDeleteOpenChange} open={pendingDeleteViewName !== null}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this view?</AlertDialogTitle>
@@ -57,11 +54,7 @@ export function DatabaseViewToolbarDialogs({
           </AlertDialogHeader>
           <AlertDialogFooter className="sm:flex-col-reverse">
             <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="w-full"
-              onClick={onDeleteView}
-              variant="destructive"
-            >
+            <AlertDialogAction className="w-full" onClick={onDeleteView} variant="destructive">
               Delete view
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -94,8 +87,7 @@ export function DatabaseViewToolbarDialogs({
               onClick={() => onCreateForm(true)}
               type="button"
             >
-              Create {formQuestionCount}{" "}
-              {formQuestionCount === 1 ? "question" : "questions"}
+              Create {formQuestionCount} {formQuestionCount === 1 ? "question" : "questions"}
             </Button>
             <Button
               className="w-full text-content-secondary"
@@ -113,13 +105,11 @@ export function DatabaseViewToolbarDialogs({
         <DialogContent className="max-h-[90vh] overflow-y-auto p-0 sm:max-w-3xl">
           <DialogHeader className="sr-only">
             <DialogTitle>Form preview</DialogTitle>
-            <DialogDescription>
-              Preview how this form appears to respondents.
-            </DialogDescription>
+            <DialogDescription>Preview how this form appears to respondents.</DialogDescription>
           </DialogHeader>
           <DatabaseFormView preview />
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

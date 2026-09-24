@@ -46,12 +46,12 @@ DEB and RPM are manual installation formats.
 
 Configure these GitHub Actions secrets before a signed candidate or release:
 
-| Secret | Purpose |
-| --- | --- |
-| `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD` | Base64 Developer ID Application `.p12` and export password |
+| Secret                                                                | Purpose                                                          |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`                     | Base64 Developer ID Application `.p12` and export password       |
 | `APPLE_INSTALLER_CERTIFICATE`, `APPLE_INSTALLER_CERTIFICATE_PASSWORD` | Base64 Developer ID Installer `.p12` and export password for PKG |
-| `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` | Apple account, app-specific password and team for notarization |
-| `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD` | Authenticode `.pfx` and export password |
+| `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`                         | Apple account, app-specific password and team for notarization   |
+| `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD`                 | Authenticode `.pfx` and export password                          |
 
 `APPLE_CERTIFICATE` and `APPLE_INSTALLER_CERTIFICATE` must include their private
 keys. Encode a `.p12` with `openssl base64 -A -in certificate.p12 -out

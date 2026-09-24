@@ -13,9 +13,7 @@ export default function EditionRouteHost() {
   if (!route) {
     return (
       <main className="flex min-h-full items-center justify-center p-6">
-        <p className="text-sm text-content-secondary">
-          Edition page not found.
-        </p>
+        <p className="text-sm text-content-secondary">Edition page not found.</p>
       </main>
     );
   }

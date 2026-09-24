@@ -1,4 +1,4 @@
-import { pinnedResourceMiddleware } from  "../../auth/pinned-resource-middleware";
+import { pinnedResourceMiddleware } from "../../auth/pinned-resource-middleware";
 import { Hono, type Context } from "hono";
 
 import {
@@ -7,31 +7,30 @@ import {
   getMembership,
   getWorkspaceRealtimeAccessExpiration,
   isDatabasePublishedInWorkspace,
-} from   "../../access";
+} from "../../access";
 import {
   createDatabaseRealtimeTicket,
   DATABASE_REALTIME_AUTH_PROTOCOL_PREFIX,
   DATABASE_REALTIME_PROTOCOL,
   verifyDatabaseRealtimeTicket,
-} from   "../../../shared/security/database-realtime-ticket";
-import { getDatabaseRealtimeWebSocketUrl } from   "@zilobase/runtime-adapter/capabilities";
-import { getDatabaseRecord } from  "../access/database-access";
-import type { AppBindings } from   "../../../shared/types";
-import { readJsonBody } from   "../../../shared/http/request";
+} from "../../../shared/security/database-realtime-ticket";
+import { getDatabaseRealtimeWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
+import { getDatabaseRecord } from "../access/database-access";
+import type { AppBindings } from "../../../shared/types";
+import { readJsonBody } from "../../../shared/http/request";
 import {
   DatabaseWindowStaleError,
   MAX_DATABASE_RECORD_WINDOW_LIMIT,
   getDatabaseBootstrapService,
   getDatabaseExportService,
   getDatabaseRecordWindowService,
-} from  "../read/service";
-import {
-  DATABASE_MUTATION_FEED_LIMIT,
-  getDatabaseMutationFeed,
-} from  "../history/service";
+} from "../read/service";
+import { DATABASE_MUTATION_FEED_LIMIT, getDatabaseMutationFeed } from "../history/service";
 
 export const databaseReadRoutes = new Hono<AppBindings>();
-const resourceWorkspace = pinnedResourceMiddleware((id) => getDatabaseRecord(id, { includeDeleted: true }));
+const resourceWorkspace = pinnedResourceMiddleware((id) =>
+  getDatabaseRecord(id, { includeDeleted: true }),
+);
 
 async function readableDatabase(
   c: Context<AppBindings>,
@@ -54,14 +53,9 @@ async function readableDatabase(
       : false;
 
   if (!canView) {
-    const published = await isDatabasePublishedInWorkspace(
-      record.id,
-      record.workspaceId,
-    );
+    const published = await isDatabasePublishedInWorkspace(record.id, record.workspaceId);
     if (!published) {
-      return user
-        ? c.json({ error: "Forbidden" }, 403)
-        : c.json({ error: "Unauthorized" }, 401);
+      return user ? c.json({ error: "Forbidden" }, 403) : c.json({ error: "Unauthorized" }, 401);
     }
   }
 
@@ -72,9 +66,12 @@ async function readableDatabase(
     : null;
 
   return {
-    accessLevel: accessLevel === "none" || accessLevel === "comment"
-      ? accessLevel === "comment" ? "view" as const : null
-      : accessLevel,
+    accessLevel:
+      accessLevel === "none" || accessLevel === "comment"
+        ? accessLevel === "comment"
+          ? ("view" as const)
+          : null
+        : accessLevel,
     record,
     user,
   };
@@ -117,55 +114,54 @@ databaseReadRoutes.get("/:id/export", resourceWorkspace, async (c) => {
   return c.json(payload);
 });
 
-databaseReadRoutes.get(
-  "/:id/data-sources/:dataSourceId/records",
-  resourceWorkspace,
-  async (c) => {
-    const includeDeleted = c.req.query("includeDeleted") === "1";
-    const readable = await readableDatabase(c, c.req.param("id"), includeDeleted);
-    if (readable instanceof Response) return readable;
+databaseReadRoutes.get("/:id/data-sources/:dataSourceId/records", resourceWorkspace, async (c) => {
+  const includeDeleted = c.req.query("includeDeleted") === "1";
+  const readable = await readableDatabase(c, c.req.param("id"), includeDeleted);
+  if (readable instanceof Response) return readable;
 
-    const snapshot = c.req.query("snapshot") || undefined;
-    if (snapshot && snapshot.length > 2_048) {
-      return c.json({ error: "Invalid snapshot" }, 400);
-    }
-    const offset = integerQuery(c.req.query("offset"), 0);
-    const limit = integerQuery(c.req.query("limit"));
-    if (
-      offset === undefined || !Number.isSafeInteger(offset) || offset < 0 ||
-      (limit !== undefined &&
-        (!Number.isSafeInteger(limit) ||
-          limit < 1 ||
-          limit > MAX_DATABASE_RECORD_WINDOW_LIMIT))
-    ) {
-      return c.json({ error: "Invalid record window" }, 400);
-    }
+  const snapshot = c.req.query("snapshot") || undefined;
+  if (snapshot && snapshot.length > 2_048) {
+    return c.json({ error: "Invalid snapshot" }, 400);
+  }
+  const offset = integerQuery(c.req.query("offset"), 0);
+  const limit = integerQuery(c.req.query("limit"));
+  if (
+    offset === undefined ||
+    !Number.isSafeInteger(offset) ||
+    offset < 0 ||
+    (limit !== undefined &&
+      (!Number.isSafeInteger(limit) || limit < 1 || limit > MAX_DATABASE_RECORD_WINDOW_LIMIT))
+  ) {
+    return c.json({ error: "Invalid record window" }, 400);
+  }
 
-    try {
-      const window = await getDatabaseRecordWindowService({
-        databaseId: readable.record.id,
-        dataSourceId: c.req.param("dataSourceId"),
-        existingRecord: readable.record,
-        includeDeleted,
-        limit,
-        offset,
-        snapshot,
-        userId: readable.user?.id,
-        viewId: c.req.query("viewId") || undefined,
-      });
-      return c.json(window);
-    } catch (error) {
-      if (error instanceof DatabaseWindowStaleError) {
-        return c.json({
+  try {
+    const window = await getDatabaseRecordWindowService({
+      databaseId: readable.record.id,
+      dataSourceId: c.req.param("dataSourceId"),
+      existingRecord: readable.record,
+      includeDeleted,
+      limit,
+      offset,
+      snapshot,
+      userId: readable.user?.id,
+      viewId: c.req.query("viewId") || undefined,
+    });
+    return c.json(window);
+  } catch (error) {
+    if (error instanceof DatabaseWindowStaleError) {
+      return c.json(
+        {
           code: error.code,
           currentSnapshot: error.currentSnapshot,
           error: error.message,
-        }, 409);
-      }
-      throw error;
+        },
+        409,
+      );
     }
-  },
-);
+    throw error;
+  }
+});
 
 databaseReadRoutes.get("/:id/mutations", resourceWorkspace, async (c) => {
   const readable = await readableDatabase(c, c.req.param("id"), false);
@@ -173,19 +169,24 @@ databaseReadRoutes.get("/:id/mutations", resourceWorkspace, async (c) => {
   const afterVersion = integerQuery(c.req.query("afterVersion"));
   const limit = integerQuery(c.req.query("limit"), DATABASE_MUTATION_FEED_LIMIT);
   if (
-    afterVersion === undefined || !Number.isSafeInteger(afterVersion) || afterVersion < 0 ||
-    limit === undefined || !Number.isSafeInteger(limit) || limit < 1 ||
+    afterVersion === undefined ||
+    !Number.isSafeInteger(afterVersion) ||
+    afterVersion < 0 ||
+    limit === undefined ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
     limit > DATABASE_MUTATION_FEED_LIMIT
   ) {
     return c.json({ error: "Invalid mutation window" }, 400);
   }
-  return c.json(await getDatabaseMutationFeed({
-    afterVersion,
-    databaseId: readable.record.id,
-    limit,
-  }));
+  return c.json(
+    await getDatabaseMutationFeed({
+      afterVersion,
+      databaseId: readable.record.id,
+      limit,
+    }),
+  );
 });
-
 
 databaseReadRoutes.post("/:id/realtime-ticket", resourceWorkspace, async (c) => {
   const user = c.get("user") ?? null;
@@ -240,10 +241,7 @@ databaseReadRoutes.post("/:id/realtime-ticket", resourceWorkspace, async (c) => 
     },
     c.env,
     {
-      maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(
-        record.workspaceId,
-        user.id,
-      ),
+      maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(record.workspaceId, user.id),
     },
   );
   const websocketUrl = new URL(getDatabaseRealtimeWebSocketUrl(c.req.raw));
@@ -266,9 +264,6 @@ databaseReadRoutes.get("/:id/published", resourceWorkspace, async (c) => {
   if (!record) return c.json({ published: false }, 404);
 
   return c.json({
-    published: await isDatabasePublishedInWorkspace(
-      record.id,
-      record.workspaceId,
-    ),
+    published: await isDatabasePublishedInWorkspace(record.id, record.workspaceId),
   });
 });

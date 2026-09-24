@@ -76,17 +76,32 @@ export function register({ readSource, assert, loadModule, test }) {
     );
   });
   test("membership editing respects owner roles and workspace selection", async () => {
-    const { canEditWorkspaceMember } = await loadModule("/src/features/workspaces/members/model/member-access.ts");
-    const input = { actorRole: "admin", canManage: true, memberRole: "member", workspaceId: "workspace" };
+    const { canEditWorkspaceMember } = await loadModule(
+      "/src/features/workspaces/members/model/member-access.ts",
+    );
+    const input = {
+      actorRole: "admin",
+      canManage: true,
+      memberRole: "member",
+      workspaceId: "workspace",
+    };
     assert.equal(canEditWorkspaceMember(input), true);
     assert.equal(canEditWorkspaceMember({ ...input, memberRole: "owner" }), false);
-    assert.equal(canEditWorkspaceMember({ ...input, memberRole: "owner", actorRole: "owner" }), true);
+    assert.equal(
+      canEditWorkspaceMember({ ...input, memberRole: "owner", actorRole: "owner" }),
+      true,
+    );
     assert.equal(canEditWorkspaceMember({ ...input, canManage: false }), false);
     assert.equal(canEditWorkspaceMember({ ...input, workspaceId: null }), false);
   });
 
   test("temporary membership drafts preserve existing deadlines and clear permanent roles", async () => {
-    const { getRoleDraftExpiration, getRoleAccessExpiration, localDateTimeToIso, isValidInvitationEmail } = await loadModule("/src/features/workspaces/members/model/member-access.ts");
+    const {
+      getRoleDraftExpiration,
+      getRoleAccessExpiration,
+      localDateTimeToIso,
+      isValidInvitationEmail,
+    } = await loadModule("/src/features/workspaces/members/model/member-access.ts");
     const expiration = "2030-04-05T12:34";
     assert.equal(getRoleDraftExpiration("temporary", expiration), expiration);
     assert.equal(getRoleDraftExpiration("member", expiration), "");
@@ -96,5 +111,4 @@ export function register({ readSource, assert, loadModule, test }) {
     assert.equal(isValidInvitationEmail("member@example.test"), true);
     assert.equal(isValidInvitationEmail("not an email"), false);
   });
-
 }

@@ -6,16 +6,12 @@ export function settingsDraftVersionChanged(
 ) {
   return Boolean(
     current &&
-      (current.draftVersion !== incoming.draftVersion ||
-        current.version !== incoming.version),
+    (current.draftVersion !== incoming.draftVersion || current.version !== incoming.version),
   );
 }
 
 /** Parsing failures are handled by the storage lifecycle; valid local edits survive version conflicts. */
-export function recoverSettingsDraft(
-  incoming: AgentSettingsState,
-  serialized: string | null,
-) {
+export function recoverSettingsDraft(incoming: AgentSettingsState, serialized: string | null) {
   const local = JSON.parse(serialized ?? "null");
   if (!local?.patch || !Object.keys(local.patch).length) return null;
   return {
@@ -25,7 +21,6 @@ export function recoverSettingsDraft(
       definition: { ...incoming.definition, ...local.patch },
     },
     conflict:
-      local.baseVersion !== incoming.baseVersion ||
-      local.draftVersion !== incoming.draftVersion,
+      local.baseVersion !== incoming.baseVersion || local.draftVersion !== incoming.draftVersion,
   };
 }

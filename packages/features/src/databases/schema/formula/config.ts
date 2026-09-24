@@ -1,27 +1,25 @@
 type DatabaseFormulaConfig = {
-  formula?: string
-  [key: string]: unknown
-}
+  formula?: string;
+  [key: string]: unknown;
+};
 
 export function getFormulaExpression(config: unknown) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
-    return ""
+    return "";
   }
 
-  const formula = (config as DatabaseFormulaConfig).formula
+  const formula = (config as DatabaseFormulaConfig).formula;
 
-  return typeof formula === "string" ? formula : ""
+  return typeof formula === "string" ? formula : "";
 }
 
 export function getMergedFormulaConfig(config: unknown, formula: string) {
   return {
-    ...(config && typeof config === "object" && !Array.isArray(config)
-      ? config
-      : {}),
+    ...(config && typeof config === "object" && !Array.isArray(config) ? config : {}),
     formula,
-  }
+  };
 }
 
 export function escapeFormulaString(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }

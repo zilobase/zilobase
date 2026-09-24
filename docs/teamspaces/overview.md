@@ -19,11 +19,11 @@ The Team settings page uses URL-backed **Team** and **Guests** tabs. Workspace m
 
 ## Access model
 
-| Access mode | Workspace discovery | Self-join | Membership required for content |
-| --- | --- | --- | --- |
-| Open | Yes | Yes | Yes |
-| Closed | Yes | No | Yes |
-| Private | Principals and workspace owners only | No | Yes |
+| Access mode | Workspace discovery                  | Self-join | Membership required for content |
+| ----------- | ------------------------------------ | --------- | ------------------------------- |
+| Open        | Yes                                  | Yes       | Yes                             |
+| Closed      | Yes                                  | No        | Yes                             |
+| Private     | Principals and workspace owners only | No        | Yes                             |
 
 Teamspace owners receive full access. Members receive the teamspace baseline unless their direct user or sharing-group principal has an override. If several principals apply, the most permissive effective access is used. Page-specific rules may add access only within the teamspace security ceiling: disabling guests or public sharing blocks those routes even when an older page grant still exists.
 

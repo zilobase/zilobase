@@ -1,4 +1,10 @@
-import { SAMPLE_RATE, FRAME_SAMPLES, StreamingResampler, mixSources, floatToPcm } from "./browser-audio-processing";
+import {
+  SAMPLE_RATE,
+  FRAME_SAMPLES,
+  StreamingResampler,
+  mixSources,
+  floatToPcm,
+} from "./browser-audio-processing";
 import { BrowserMeetingTransport } from "./browser-meeting-transport";
 export { StreamingResampler, mixSources } from "./browser-audio-processing";
 export { BrowserMeetingTransport, trimQueuedMeetingAudioFrame } from "./browser-meeting-transport";
@@ -9,7 +15,7 @@ import {
   downloadBrowserMeetingRecovery,
   finishBrowserMeetingRecovery,
   listBrowserMeetingRecovery,
-} from "./browser-meeting-recovery"
+} from "./browser-meeting-recovery";
 import type {
   MeetingAudioDevice,
   MeetingCapturePrepareConfig,
@@ -17,57 +23,57 @@ import type {
   MeetingCaptureStartConfig,
   MeetingCaptureStatus,
   MeetingTranscriptDraft,
-} from "./types"
+} from "./types";
 
-const MAX_CAPTURE_MS = 3 * 60 * 60 * 1_000
-const RECOVERY_CHUNK_SAMPLES = SAMPLE_RATE * 5
+const MAX_CAPTURE_MS = 3 * 60 * 60 * 1_000;
+const RECOVERY_CHUNK_SAMPLES = SAMPLE_RATE * 5;
 
-const MAX_CAPTURE_CATCH_UP_FRAMES = 25
+const MAX_CAPTURE_CATCH_UP_FRAMES = 25;
 
-type Listener = () => void
+type Listener = () => void;
 
 type ActiveBrowserCapture = {
-  activeSources: MeetingCaptureSource[]
-  audioContext: AudioContext
-  audioNodes: AudioNode[]
-  captureStartedAt: number
-  chunkIndexes: Record<MeetingCaptureSource, number>
-  displayStream: MediaStream | null
-  microphoneStream: MediaStream | null
-  queues: Record<MeetingCaptureSource, SampleQueue>
-  recovery: Record<MeetingCaptureSource, number[]>
-  recoveryWrites: Promise<void>
-  resamplers: Record<MeetingCaptureSource, StreamingResampler>
-  timer: number
-  transport: BrowserMeetingTransport
-}
+  activeSources: MeetingCaptureSource[];
+  audioContext: AudioContext;
+  audioNodes: AudioNode[];
+  captureStartedAt: number;
+  chunkIndexes: Record<MeetingCaptureSource, number>;
+  displayStream: MediaStream | null;
+  microphoneStream: MediaStream | null;
+  queues: Record<MeetingCaptureSource, SampleQueue>;
+  recovery: Record<MeetingCaptureSource, number[]>;
+  recoveryWrites: Promise<void>;
+  resamplers: Record<MeetingCaptureSource, StreamingResampler>;
+  timer: number;
+  transport: BrowserMeetingTransport;
+};
 
 type PreparedBrowserCapture = {
-  audioContext: AudioContext
-  config: MeetingCapturePrepareConfig
-  displayStream: MediaStream | null
-  microphoneStream: MediaStream | null
-  warnings: string[]
-}
+  audioContext: AudioContext;
+  config: MeetingCapturePrepareConfig;
+  displayStream: MediaStream | null;
+  microphoneStream: MediaStream | null;
+  warnings: string[];
+};
 
 export class BrowserMeetingCapture {
-  private active: ActiveBrowserCapture | null = null
-  private readonly listeners = new Set<Listener>()
-  private preparationVersion = 0
-  private prepared: PreparedBrowserCapture | null = null
-  level = 0
-  liveTranscripts: MeetingTranscriptDraft[] | undefined = undefined
-  recovery = null as Awaited<ReturnType<typeof listBrowserMeetingRecovery>>[number] | null
-  status: MeetingCaptureStatus | null = null
+  private active: ActiveBrowserCapture | null = null;
+  private readonly listeners = new Set<Listener>();
+  private preparationVersion = 0;
+  private prepared: PreparedBrowserCapture | null = null;
+  level = 0;
+  liveTranscripts: MeetingTranscriptDraft[] | undefined = undefined;
+  recovery = null as Awaited<ReturnType<typeof listBrowserMeetingRecovery>>[number] | null;
+  status: MeetingCaptureStatus | null = null;
 
   subscribe(listener: Listener) {
-    this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
   async listDevices(): Promise<MeetingAudioDevice[]> {
-    if (!navigator.mediaDevices) return []
-    const devices = await navigator.mediaDevices.enumerateDevices().catch(() => [])
+    if (!navigator.mediaDevices) return [];
+    const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
     const microphones = devices
       .filter((device) => device.kind === "audioinput")
       .map((device, index): MeetingAudioDevice => ({
@@ -78,7 +84,7 @@ export class BrowserMeetingCapture {
         isSystemCaptureCandidate: false,
         kind: "microphone",
         name: device.label || `Microphone ${index + 1}`,
-      }))
+      }));
     if (supportsDisplayAudio()) {
       microphones.push({
         backend: "display-media",
@@ -88,75 +94,82 @@ export class BrowserMeetingCapture {
         isSystemCaptureCandidate: true,
         kind: "system",
         name: "Shared tab or system audio",
-      })
+      });
     }
-    return microphones
+    return microphones;
   }
 
   async loadRecovery(meetingId: string) {
-    this.recovery = (await listBrowserMeetingRecovery().catch(() => []))
-      .find((session) => session.meetingId === meetingId) ?? null
-    this.emit()
+    this.recovery =
+      (await listBrowserMeetingRecovery().catch(() => [])).find(
+        (session) => session.meetingId === meetingId,
+      ) ?? null;
+    this.emit();
   }
 
   async prepare(config: MeetingCapturePrepareConfig) {
-    if (this.active) throw new Error("Another meeting is already being captured in this tab.")
-    if (!navigator.mediaDevices) throw new Error("Audio capture is unavailable in this browser.")
-    this.disposePrepared()
-    const version = ++this.preparationVersion
-    const warnings: string[] = []
+    if (this.active) throw new Error("Another meeting is already being captured in this tab.");
+    if (!navigator.mediaDevices) throw new Error("Audio capture is unavailable in this browser.");
+    this.disposePrepared();
+    const version = ++this.preparationVersion;
+    const warnings: string[] = [];
 
     // Both permission APIs must be invoked before the first await so that
     // getDisplayMedia still has the consent button's transient user activation.
-    let displayPromise: Promise<MediaStream | null>
+    let displayPromise: Promise<MediaStream | null>;
     if (config.captureSystemAudio && supportsDisplayAudio()) {
-      displayPromise = navigator.mediaDevices.getDisplayMedia({
-        audio: true,
-        video: true,
-      }).catch(() => {
-        warnings.push("System audio was not shared; recording microphone only.")
-        return null
-      })
+      displayPromise = navigator.mediaDevices
+        .getDisplayMedia({
+          audio: true,
+          video: true,
+        })
+        .catch(() => {
+          warnings.push("System audio was not shared; recording microphone only.");
+          return null;
+        });
     } else {
       if (config.captureSystemAudio) {
-        warnings.push("System audio is unavailable in this browser; recording microphone only.")
+        warnings.push("System audio is unavailable in this browser; recording microphone only.");
       }
-      displayPromise = Promise.resolve(null)
+      displayPromise = Promise.resolve(null);
     }
     const microphonePromise = config.captureMicrophone
-      ? navigator.mediaDevices.getUserMedia({
-          audio: {
-            autoGainControl: true,
-            deviceId: config.microphoneDeviceId && config.microphoneDeviceId !== "default"
-              ? { exact: config.microphoneDeviceId }
-              : undefined,
-            echoCancellation: true,
-            noiseSuppression: true,
-          },
-        }).catch(() => {
-          warnings.push("Microphone access was unavailable; recording system audio only.")
-          return null
-        })
-      : Promise.resolve(null)
-    const audioContext = new AudioContext({ latencyHint: "interactive", sampleRate: SAMPLE_RATE })
-    const audioReady = audioContext.resume().catch(() => undefined)
+      ? navigator.mediaDevices
+          .getUserMedia({
+            audio: {
+              autoGainControl: true,
+              deviceId:
+                config.microphoneDeviceId && config.microphoneDeviceId !== "default"
+                  ? { exact: config.microphoneDeviceId }
+                  : undefined,
+              echoCancellation: true,
+              noiseSuppression: true,
+            },
+          })
+          .catch(() => {
+            warnings.push("Microphone access was unavailable; recording system audio only.");
+            return null;
+          })
+      : Promise.resolve(null);
+    const audioContext = new AudioContext({ latencyHint: "interactive", sampleRate: SAMPLE_RATE });
+    const audioReady = audioContext.resume().catch(() => undefined);
 
     const [displayStream, microphoneStream] = await Promise.all([
       displayPromise,
       microphonePromise,
       audioReady,
-    ])
+    ]);
     if (version !== this.preparationVersion) {
-      displayStream?.getTracks().forEach((track) => track.stop())
-      microphoneStream?.getTracks().forEach((track) => track.stop())
-      await audioContext.close().catch(() => undefined)
-      return
+      displayStream?.getTracks().forEach((track) => track.stop());
+      microphoneStream?.getTracks().forEach((track) => track.stop());
+      await audioContext.close().catch(() => undefined);
+      return;
     }
-    let usableDisplayStream = displayStream
+    let usableDisplayStream = displayStream;
     if (usableDisplayStream && usableDisplayStream.getAudioTracks().length === 0) {
-      usableDisplayStream.getTracks().forEach((track) => track.stop())
-      usableDisplayStream = null
-      warnings.push("The selected share did not include audio; recording microphone only.")
+      usableDisplayStream.getTracks().forEach((track) => track.stop());
+      usableDisplayStream = null;
+      warnings.push("The selected share did not include audio; recording microphone only.");
     }
     this.prepared = {
       audioContext,
@@ -164,17 +177,17 @@ export class BrowserMeetingCapture {
       displayStream: usableDisplayStream,
       microphoneStream,
       warnings,
-    }
+    };
   }
 
   async cancelPreparation() {
-    this.preparationVersion += 1
-    this.disposePrepared()
+    this.preparationVersion += 1;
+    this.disposePrepared();
   }
 
   async start(config: MeetingCaptureStartConfig) {
-    if (this.active) throw new Error("Another meeting is already being captured in this tab.")
-    if (!navigator.mediaDevices) throw new Error("Audio capture is unavailable in this browser.")
+    if (this.active) throw new Error("Another meeting is already being captured in this tab.");
+    if (!navigator.mediaDevices) throw new Error("Audio capture is unavailable in this browser.");
     this.setStatus({
       activeSources: [],
       checkpointPath: `indexeddb://zilobase-meeting-capture-v1/${config.meetingId}`,
@@ -184,66 +197,71 @@ export class BrowserMeetingCapture {
       phase: "starting",
       sampleRate: SAMPLE_RATE,
       warnings: [],
-    })
+    });
 
     if (!this.prepared || !preparationMatches(this.prepared.config, config)) {
-      await this.prepare(config)
+      await this.prepare(config);
     }
-    const prepared = this.prepared
-    this.prepared = null
-    if (!prepared) throw new Error("Audio permission setup was cancelled.")
-    const { audioContext, displayStream, microphoneStream, warnings } = prepared
+    const prepared = this.prepared;
+    this.prepared = null;
+    if (!prepared) throw new Error("Audio permission setup was cancelled.");
+    const { audioContext, displayStream, microphoneStream, warnings } = prepared;
 
-    const activeSources: MeetingCaptureSource[] = []
-    if (microphoneStream?.getAudioTracks().length) activeSources.push("microphone")
-    if (displayStream?.getAudioTracks().length) activeSources.push("system")
+    const activeSources: MeetingCaptureSource[] = [];
+    if (microphoneStream?.getAudioTracks().length) activeSources.push("microphone");
+    if (displayStream?.getAudioTracks().length) activeSources.push("system");
     if (activeSources.length === 0) {
-      displayStream?.getTracks().forEach((track) => track.stop())
-      microphoneStream?.getTracks().forEach((track) => track.stop())
-      await audioContext.close().catch(() => undefined)
-      throw new Error("Allow microphone or system-audio access to start recording.")
+      displayStream?.getTracks().forEach((track) => track.stop());
+      microphoneStream?.getTracks().forEach((track) => track.stop());
+      await audioContext.close().catch(() => undefined);
+      throw new Error("Allow microphone or system-audio access to start recording.");
     }
 
     try {
-      await audioContext.resume()
+      await audioContext.resume();
       const queues = {
         microphone: new SampleQueue(),
         system: new SampleQueue(),
-      }
+      };
       const resamplers = {
         microphone: new StreamingResampler(audioContext.sampleRate, SAMPLE_RATE),
         system: new StreamingResampler(audioContext.sampleRate, SAMPLE_RATE),
-      }
-      const audioNodes: AudioNode[] = []
-      const useAudioWorklet = Boolean(audioContext.audioWorklet)
-        && typeof AudioWorkletNode !== "undefined"
-        && await prepareAudioWorklet(audioContext).then(
+      };
+      const audioNodes: AudioNode[] = [];
+      const useAudioWorklet =
+        Boolean(audioContext.audioWorklet) &&
+        typeof AudioWorkletNode !== "undefined" &&
+        (await prepareAudioWorklet(audioContext).then(
           () => true,
           () => {
-            warnings.push("AudioWorklet was unavailable; using the browser compatibility path.")
-            return false
+            warnings.push("AudioWorklet was unavailable; using the browser compatibility path.");
+            return false;
           },
-        )
+        ));
       if (microphoneStream) {
-        audioNodes.push(...attachStream(
-          audioContext,
-          microphoneStream,
-          (samples) => queues.microphone.push(resamplers.microphone.process(samples)),
-          useAudioWorklet,
-        ))
+        audioNodes.push(
+          ...attachStream(
+            audioContext,
+            microphoneStream,
+            (samples) => queues.microphone.push(resamplers.microphone.process(samples)),
+            useAudioWorklet,
+          ),
+        );
       }
       if (displayStream) {
-        audioNodes.push(...attachStream(
-          audioContext,
-          displayStream,
-          (samples) => queues.system.push(resamplers.system.process(samples)),
-          useAudioWorklet,
-        ))
+        audioNodes.push(
+          ...attachStream(
+            audioContext,
+            displayStream,
+            (samples) => queues.system.push(resamplers.system.process(samples)),
+            useAudioWorklet,
+          ),
+        );
       }
 
       await beginBrowserMeetingRecovery(config.meetingId, activeSources).catch(() => {
-        warnings.push("Local recovery is unavailable; live transcription will continue.")
-      })
+        warnings.push("Local recovery is unavailable; live transcription will continue.");
+      });
       const transport = new BrowserMeetingTransport(
         config.audioWebsocketUrl,
         config.audioTicket,
@@ -251,19 +269,19 @@ export class BrowserMeetingCapture {
         undefined,
         (draft) => {
           if (!draft) {
-            this.liveTranscripts = []
+            this.liveTranscripts = [];
           } else {
             const next = (this.liveTranscripts ?? []).filter(
               (current) => current.source !== draft.source,
-            )
-            if (draft.text) next.push({ ...draft, meetingId: config.meetingId })
-            this.liveTranscripts = next
+            );
+            if (draft.text) next.push({ ...draft, meetingId: config.meetingId });
+            this.liveTranscripts = next;
           }
-          this.emit()
+          this.emit();
         },
         activeSources,
-      )
-      transport.start()
+      );
+      transport.start();
       const active: ActiveBrowserCapture = {
         activeSources,
         audioContext,
@@ -278,104 +296,105 @@ export class BrowserMeetingCapture {
         resamplers,
         timer: 0,
         transport,
-      }
-      active.timer = window.setInterval(() => this.processFrame(), 20)
-      this.active = active
+      };
+      active.timer = window.setInterval(() => this.processFrame(), 20);
+      this.active = active;
       microphoneStream?.getAudioTracks()[0]?.addEventListener("ended", () => {
-        this.sourceEnded("microphone")
-      })
+        this.sourceEnded("microphone");
+      });
       displayStream?.getAudioTracks()[0]?.addEventListener("ended", () => {
-        this.sourceEnded("system")
-      })
+        this.sourceEnded("system");
+      });
       this.setStatus({
         ...this.status!,
         activeSources,
         phase: "recording",
         warnings,
-      })
-      return this.status!
+      });
+      return this.status!;
     } catch (error) {
-      displayStream?.getTracks().forEach((track) => track.stop())
-      microphoneStream?.getTracks().forEach((track) => track.stop())
-      await audioContext.close().catch(() => undefined)
-      const message = error instanceof Error ? error.message : "Could not initialize audio capture."
-      this.setStatus({ ...this.status!, error: message, phase: "error" })
-      throw error
+      displayStream?.getTracks().forEach((track) => track.stop());
+      microphoneStream?.getTracks().forEach((track) => track.stop());
+      await audioContext.close().catch(() => undefined);
+      const message =
+        error instanceof Error ? error.message : "Could not initialize audio capture.";
+      this.setStatus({ ...this.status!, error: message, phase: "error" });
+      throw error;
     }
   }
 
   async pause() {
-    if (!this.active || !this.status) throw new Error("No meeting capture is active.")
-    await this.active.audioContext.suspend()
+    if (!this.active || !this.status) throw new Error("No meeting capture is active.");
+    await this.active.audioContext.suspend();
     try {
-      await this.active.transport.pause()
+      await this.active.transport.pause();
     } catch (error) {
-      await this.active.audioContext.resume().catch(() => undefined)
-      await this.active.transport.resume().catch(() => undefined)
-      throw error
+      await this.active.audioContext.resume().catch(() => undefined);
+      await this.active.transport.resume().catch(() => undefined);
+      throw error;
     }
-    this.setStatus({ ...this.status, phase: "paused" })
-    return this.status!
+    this.setStatus({ ...this.status, phase: "paused" });
+    return this.status!;
   }
 
   async resume() {
-    if (!this.active || !this.status) throw new Error("No meeting capture is active.")
-    this.active.captureStartedAt = performance.now()
-    await this.active.transport.resume()
+    if (!this.active || !this.status) throw new Error("No meeting capture is active.");
+    this.active.captureStartedAt = performance.now();
+    await this.active.transport.resume();
     try {
-      await this.active.audioContext.resume()
+      await this.active.audioContext.resume();
     } catch (error) {
-      await this.active.transport.pause().catch(() => undefined)
-      throw error
+      await this.active.transport.pause().catch(() => undefined);
+      throw error;
     }
-    this.setStatus({ ...this.status, phase: "recording" })
-    return this.status!
+    this.setStatus({ ...this.status, phase: "recording" });
+    return this.status!;
   }
 
   async stop() {
-    const active = this.active
-    if (!active || !this.status) throw new Error("No meeting capture is active.")
-    window.clearInterval(active.timer)
-    this.active = null
-    this.flushRecovery(active, "microphone", true)
-    this.flushRecovery(active, "system", true)
-    await active.recoveryWrites.catch(() => undefined)
-    const elapsedMs = this.status.elapsedMs
-    const meetingId = this.status.meetingId!
+    const active = this.active;
+    if (!active || !this.status) throw new Error("No meeting capture is active.");
+    window.clearInterval(active.timer);
+    this.active = null;
+    this.flushRecovery(active, "microphone", true);
+    this.flushRecovery(active, "system", true);
+    await active.recoveryWrites.catch(() => undefined);
+    const elapsedMs = this.status.elapsedMs;
+    const meetingId = this.status.meetingId!;
     try {
-      await active.transport.stop(elapsedMs)
+      await active.transport.stop(elapsedMs);
     } finally {
-      this.liveTranscripts = []
-      active.microphoneStream?.getTracks().forEach((track) => track.stop())
-      active.displayStream?.getTracks().forEach((track) => track.stop())
-      active.audioNodes.forEach((node) => node.disconnect())
-      await active.audioContext.close().catch(() => undefined)
-      await finishBrowserMeetingRecovery(meetingId, elapsedMs).catch(() => undefined)
-      this.setStatus({ ...this.status!, activeSources: [], phase: "stopped" })
-      await this.loadRecovery(meetingId)
+      this.liveTranscripts = [];
+      active.microphoneStream?.getTracks().forEach((track) => track.stop());
+      active.displayStream?.getTracks().forEach((track) => track.stop());
+      active.audioNodes.forEach((node) => node.disconnect());
+      await active.audioContext.close().catch(() => undefined);
+      await finishBrowserMeetingRecovery(meetingId, elapsedMs).catch(() => undefined);
+      this.setStatus({ ...this.status!, activeSources: [], phase: "stopped" });
+      await this.loadRecovery(meetingId);
     }
-    return this.status!
+    return this.status!;
   }
 
   async refreshTransport(audioWebsocketUrl: string, audioTicket: string) {
-    this.active?.transport.refresh(audioWebsocketUrl, audioTicket)
+    this.active?.transport.refresh(audioWebsocketUrl, audioTicket);
   }
 
   async deleteLocalFile(meetingId: string) {
-    await deleteBrowserMeetingRecovery(meetingId)
-    this.recovery = null
-    this.emit()
+    await deleteBrowserMeetingRecovery(meetingId);
+    this.recovery = null;
+    this.emit();
   }
 
   async openLocalFile(meetingId: string) {
-    await downloadBrowserMeetingRecovery(meetingId)
+    await downloadBrowserMeetingRecovery(meetingId);
   }
 
   private processFrame() {
-    const active = this.active
-    const status = this.status
-    if (!active || !status || status.phase !== "recording") return
-    if (performance.now() - active.captureStartedAt < 100) return
+    const active = this.active;
+    const status = this.status;
+    if (!active || !status || status.phase !== "recording") return;
+    if (performance.now() - active.captureStartedAt < 100) return;
     const sourceFrameCounts: Record<MeetingCaptureSource, number> = {
       microphone: active.activeSources.includes("microphone")
         ? Math.min(
@@ -389,128 +408,112 @@ export class BrowserMeetingCapture {
             Math.floor(active.queues.system.available / FRAME_SAMPLES),
           )
         : 0,
-    }
-    const frameCount = Math.max(
-      sourceFrameCounts.microphone,
-      sourceFrameCounts.system,
-    )
-    if (frameCount === 0) return
+    };
+    const frameCount = Math.max(sourceFrameCounts.microphone, sourceFrameCounts.system);
+    if (frameCount === 0) return;
 
-    let level = 0
+    let level = 0;
     for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
-      const microphone = frameIndex < sourceFrameCounts.microphone
-        ? active.queues.microphone.take(FRAME_SAMPLES)
-        : new Float32Array(FRAME_SAMPLES)
-      const system = frameIndex < sourceFrameCounts.system
-        ? active.queues.system.take(FRAME_SAMPLES)
-        : new Float32Array(FRAME_SAMPLES)
-      const mixed = mixSources(microphone, system, active.activeSources)
+      const microphone =
+        frameIndex < sourceFrameCounts.microphone
+          ? active.queues.microphone.take(FRAME_SAMPLES)
+          : new Float32Array(FRAME_SAMPLES);
+      const system =
+        frameIndex < sourceFrameCounts.system
+          ? active.queues.system.take(FRAME_SAMPLES)
+          : new Float32Array(FRAME_SAMPLES);
+      const mixed = mixSources(microphone, system, active.activeSources);
       if (frameIndex < sourceFrameCounts.microphone) {
-        active.transport.send(microphone, "microphone")
-        active.recovery.microphone.push(...floatToPcm(microphone))
-        this.flushRecovery(active, "microphone")
+        active.transport.send(microphone, "microphone");
+        active.recovery.microphone.push(...floatToPcm(microphone));
+        this.flushRecovery(active, "microphone");
       }
       if (frameIndex < sourceFrameCounts.system) {
-        active.transport.send(system, "system")
-        active.recovery.system.push(...floatToPcm(system))
-        this.flushRecovery(active, "system")
+        active.transport.send(system, "system");
+        active.recovery.system.push(...floatToPcm(system));
+        this.flushRecovery(active, "system");
       }
-      const peak = mixed.reduce(
-        (value, sample) => Math.max(value, Math.abs(sample)),
-        0,
-      )
+      const peak = mixed.reduce((value, sample) => Math.max(value, Math.abs(sample)), 0);
       const rms = Math.sqrt(
-        mixed.reduce((value, sample) => value + sample * sample, 0) /
-          mixed.length,
-      )
-      level = Math.max(level, Math.min(1, Math.max(peak, rms * 4)))
+        mixed.reduce((value, sample) => value + sample * sample, 0) / mixed.length,
+      );
+      level = Math.max(level, Math.min(1, Math.max(peak, rms * 4)));
     }
-    this.level = level
-    const elapsedMs = Math.min(
-      MAX_CAPTURE_MS,
-      status.elapsedMs + frameCount * 20,
-    )
-    this.status = { ...status, elapsedMs }
-    this.emit()
+    this.level = level;
+    const elapsedMs = Math.min(MAX_CAPTURE_MS, status.elapsedMs + frameCount * 20);
+    this.status = { ...status, elapsedMs };
+    this.emit();
     if (elapsedMs >= MAX_CAPTURE_MS) {
-      this.warn("The three-hour recording limit was reached; the meeting was stopped.")
+      this.warn("The three-hour recording limit was reached; the meeting was stopped.");
       void this.stop().catch((error) => {
-        this.warn(error instanceof Error
-          ? error.message
-          : "The meeting could not be finalized automatically.")
-      })
-    } else if (Math.max(
-      active.activeSources.includes("microphone")
-        ? active.queues.microphone.available
-        : 0,
-      active.activeSources.includes("system")
-        ? active.queues.system.available
-        : 0,
-    ) >= FRAME_SAMPLES) {
+        this.warn(
+          error instanceof Error
+            ? error.message
+            : "The meeting could not be finalized automatically.",
+        );
+      });
+    } else if (
+      Math.max(
+        active.activeSources.includes("microphone") ? active.queues.microphone.available : 0,
+        active.activeSources.includes("system") ? active.queues.system.available : 0,
+      ) >= FRAME_SAMPLES
+    ) {
       // Once a throttled interval gets one execution turn, microtasks can
       // drain the remaining bounded chunks without waiting for another
       // background-tab timer tick.
-      queueMicrotask(() => this.processFrame())
+      queueMicrotask(() => this.processFrame());
     }
   }
 
   private sourceEnded(source: MeetingCaptureSource) {
-    if (!this.active || !this.status) return
-    this.active.activeSources = this.active.activeSources.filter(
-      (current) => current !== source,
-    )
-    const label = source === "system" ? "System sharing" : "Microphone capture"
+    if (!this.active || !this.status) return;
+    this.active.activeSources = this.active.activeSources.filter((current) => current !== source);
+    const label = source === "system" ? "System sharing" : "Microphone capture";
     const continuation = this.active.activeSources.length
       ? "continuing with the remaining source."
-      : "no audio source remains. Stop this recording and reconnect a device."
-    this.warn(`${label} stopped; ${continuation}`)
+      : "no audio source remains. Stop this recording and reconnect a device.";
+    this.warn(`${label} stopped; ${continuation}`);
     this.setStatus({
       ...this.status,
       activeSources: this.active.activeSources,
-    })
+    });
   }
 
-  private flushRecovery(
-    active: ActiveBrowserCapture,
-    source: MeetingCaptureSource,
-    force = false,
-  ) {
-    const samples = active.recovery[source]
-    if (!force && samples.length < RECOVERY_CHUNK_SAMPLES) return
-    if (samples.length === 0) return
-    const count = force ? samples.length : RECOVERY_CHUNK_SAMPLES
-    const chunk = Int16Array.from(samples.splice(0, count))
-    const index = active.chunkIndexes[source]++
+  private flushRecovery(active: ActiveBrowserCapture, source: MeetingCaptureSource, force = false) {
+    const samples = active.recovery[source];
+    if (!force && samples.length < RECOVERY_CHUNK_SAMPLES) return;
+    if (samples.length === 0) return;
+    const count = force ? samples.length : RECOVERY_CHUNK_SAMPLES;
+    const chunk = Int16Array.from(samples.splice(0, count));
+    const index = active.chunkIndexes[source]++;
     active.recoveryWrites = active.recoveryWrites
-      .then(() => appendBrowserMeetingRecoveryChunk(
-        this.status!.meetingId!, source, index, chunk,
-      ))
-      .catch(() => this.warn("Local recovery ran out of storage; live transcription continues."))
+      .then(() => appendBrowserMeetingRecoveryChunk(this.status!.meetingId!, source, index, chunk))
+      .catch(() => this.warn("Local recovery ran out of storage; live transcription continues."));
   }
 
   private warn(message: string) {
-    if (!this.status || this.status.warnings?.includes(message)) return
+    if (!this.status || this.status.warnings?.includes(message)) return;
     this.status = {
       ...this.status,
       warnings: [...(this.status.warnings ?? []), message],
-    }
-    this.emit()
+    };
+    this.emit();
   }
 
   private setStatus(status: MeetingCaptureStatus) {
-    this.status = status
-    this.emit()
+    this.status = status;
+    this.emit();
   }
 
   private emit() {
-    this.listeners.forEach((listener) => listener())
+    this.listeners.forEach((listener) => listener());
   }
 
   private disposePrepared() {
-    void this.prepared?.audioContext.close().catch(() => undefined)
-    this.prepared?.displayStream?.getTracks().forEach((track) => track.stop())
-    this.prepared?.microphoneStream?.getTracks().forEach((track) => track.stop())
-    this.prepared = null
+    void this.prepared?.audioContext.close().catch(() => undefined);
+    this.prepared?.displayStream?.getTracks().forEach((track) => track.stop());
+    this.prepared?.microphoneStream?.getTracks().forEach((track) => track.stop());
+    this.prepared = null;
   }
 }
 
@@ -518,24 +521,26 @@ function preparationMatches(
   prepared: MeetingCapturePrepareConfig,
   requested: MeetingCapturePrepareConfig,
 ) {
-  return prepared.meetingId === requested.meetingId
-    && prepared.captureMicrophone === requested.captureMicrophone
-    && prepared.captureSystemAudio === requested.captureSystemAudio
-    && prepared.microphoneDeviceId === requested.microphoneDeviceId
-    && prepared.systemDeviceId === requested.systemDeviceId
+  return (
+    prepared.meetingId === requested.meetingId &&
+    prepared.captureMicrophone === requested.captureMicrophone &&
+    prepared.captureSystemAudio === requested.captureSystemAudio &&
+    prepared.microphoneDeviceId === requested.microphoneDeviceId &&
+    prepared.systemDeviceId === requested.systemDeviceId
+  );
 }
 
 function supportsDisplayAudio() {
-  return typeof (navigator.mediaDevices as Partial<MediaDevices>).getDisplayMedia === "function"
+  return typeof (navigator.mediaDevices as Partial<MediaDevices>).getDisplayMedia === "function";
 }
 
-const workletModules = new WeakMap<AudioContext, Promise<void>>()
+const workletModules = new WeakMap<AudioContext, Promise<void>>();
 
 function prepareAudioWorklet(context: AudioContext) {
   if (!context.audioWorklet || typeof AudioWorkletNode === "undefined") {
-    return Promise.resolve()
+    return Promise.resolve();
   }
-  let workletModule = workletModules.get(context)
+  let workletModule = workletModules.get(context);
   if (!workletModule) {
     const source = `
       class ZilobaseMeetingCaptureProcessor extends AudioWorkletProcessor {
@@ -549,12 +554,12 @@ function prepareAudioWorklet(context: AudioContext) {
         }
       }
       registerProcessor('zilobase-meeting-capture', ZilobaseMeetingCaptureProcessor)
-    `
-    const url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }))
-    workletModule = context.audioWorklet.addModule(url).finally(() => URL.revokeObjectURL(url))
-    workletModules.set(context, workletModule)
+    `;
+    const url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+    workletModule = context.audioWorklet.addModule(url).finally(() => URL.revokeObjectURL(url));
+    workletModules.set(context, workletModule);
   }
-  return workletModule
+  return workletModule;
 }
 
 function attachStream(
@@ -563,19 +568,19 @@ function attachStream(
   onSamples: (samples: Float32Array) => void,
   useAudioWorklet: boolean,
 ) {
-  const source = context.createMediaStreamSource(stream)
-  const sink = context.createGain()
-  sink.gain.value = 0
+  const source = context.createMediaStreamSource(stream);
+  const sink = context.createGain();
+  sink.gain.value = 0;
   if (useAudioWorklet) {
-    const capture = new AudioWorkletNode(context, "zilobase-meeting-capture")
-    capture.port.onmessage = (event) => onSamples(new Float32Array(event.data))
-    source.connect(capture).connect(sink).connect(context.destination)
-    return [source, capture, sink]
+    const capture = new AudioWorkletNode(context, "zilobase-meeting-capture");
+    capture.port.onmessage = (event) => onSamples(new Float32Array(event.data));
+    source.connect(capture).connect(sink).connect(context.destination);
+    return [source, capture, sink];
   }
-  const capture = context.createScriptProcessor(1_024, 1, 1)
-  capture.onaudioprocess = (event) => onSamples(event.inputBuffer.getChannelData(0).slice())
-  source.connect(capture).connect(sink).connect(context.destination)
-  return [source, capture, sink]
+  const capture = context.createScriptProcessor(1_024, 1, 1);
+  capture.onaudioprocess = (event) => onSamples(event.inputBuffer.getChannelData(0).slice());
+  source.connect(capture).connect(sink).connect(context.destination);
+  return [source, capture, sink];
 }
 
 class SampleQueue {

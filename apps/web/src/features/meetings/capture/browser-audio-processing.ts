@@ -20,10 +20,7 @@ export class StreamingResampler {
     while (this.position + 1 < this.input.length) {
       const lower = Math.floor(this.position);
       const fraction = this.position - lower;
-      output.push(
-        this.input[lower] +
-          (this.input[lower + 1] - this.input[lower]) * fraction,
-      );
+      output.push(this.input[lower] + (this.input[lower + 1] - this.input[lower]) * fraction);
       this.position += this.ratio;
     }
     const consumed = Math.floor(this.position);
@@ -55,9 +52,7 @@ export function mixSources(
 export function floatToPcm(samples: Float32Array) {
   const output = new Int16Array(samples.length);
   for (let index = 0; index < samples.length; index += 1) {
-    output[index] = Math.round(
-      Math.max(-1, Math.min(1, samples[index])) * 0x7fff,
-    );
+    output[index] = Math.round(Math.max(-1, Math.min(1, samples[index])) * 0x7fff);
   }
   return output;
 }

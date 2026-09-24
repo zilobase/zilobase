@@ -1,4 +1,4 @@
-import { useId, useMemo } from "react"
+import { useId, useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -18,7 +18,7 @@ import {
   ReferenceLine,
   XAxis,
   YAxis,
-} from "recharts"
+} from "recharts";
 
 import {
   ChartContainer,
@@ -27,14 +27,14 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from "@/shared/ui/chart"
-import { getPaletteColor } from "@/shared/lib/color-tokens"
-import { DatabaseRecordWindowControl } from "../../components/database-record-window-control"
-import { useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context"
+} from "@/shared/ui/chart";
+import { getPaletteColor } from "@/shared/lib/color-tokens";
+import { DatabaseRecordWindowControl } from "../../components/database-record-window-control";
+import { useDatabaseDataContext, useDatabaseUiContext } from "../../state/database-view-context";
 import {
   shouldSplitDatabaseChartSeries,
   type DatabaseChartReferenceLine,
-} from "../model/database-chart-config"
+} from "../model/database-chart-config";
 import {
   DEFAULT_CHART_COLOR,
   createChartData,
@@ -45,47 +45,33 @@ import {
   getColorVariant,
   type DatabaseChartDataItem,
   type DatabaseChartSeriesItem,
-} from "../model/database-chart-data"
+} from "../model/database-chart-data";
 
 export function DatabaseChartView() {
-  const {
-    filteredItems,
-    personOptions,
-    properties,
-    propertyValuesByKey,
-  } = useDatabaseDataContext()
-  const {
-    chartSettings,
-  } = useDatabaseUiContext()
-  const gradientId = useIdWithoutColons()
+  const { filteredItems, personOptions, properties, propertyValuesByKey } =
+    useDatabaseDataContext();
+  const { chartSettings } = useDatabaseUiContext();
+  const gradientId = useIdWithoutColons();
   const personNamesById = useMemo(
     () => new Map(personOptions.map((person) => [person.id, person.name])),
     [personOptions],
-  )
-  const axisProperty = getChartGroupProperty(
-    properties,
-    chartSettings.groupByPropertyId,
-  )
+  );
+  const axisProperty = getChartGroupProperty(properties, chartSettings.groupByPropertyId);
   const measureProperty =
     chartSettings.measurePropertyId === "count"
       ? null
-      : properties.find(
-          (property) =>
-            property.property.id === chartSettings.measurePropertyId,
-        ) ?? null
+      : (properties.find((property) => property.property.id === chartSettings.measurePropertyId) ??
+        null);
   const splitProperty =
-    chartSettings.splitByPropertyId &&
-    chartSettings.splitByPropertyId !== "name"
-      ? properties.find(
-          (property) =>
-            property.property.id === chartSettings.splitByPropertyId,
-        ) ?? null
-      : null
+    chartSettings.splitByPropertyId && chartSettings.splitByPropertyId !== "name"
+      ? (properties.find((property) => property.property.id === chartSettings.splitByPropertyId) ??
+        null)
+      : null;
   const shouldSplitSeries = shouldSplitDatabaseChartSeries({
     axisPropertyId: axisProperty?.property.id,
     splitPropertyId: splitProperty?.property.id,
     type: chartSettings.type,
-  })
+  });
   const chartData = useMemo(
     () =>
       createChartData({
@@ -112,7 +98,7 @@ export function DatabaseChartView() {
       properties,
       propertyValuesByKey,
     ],
-  )
+  );
   const splitChart = useMemo(
     () =>
       splitProperty && shouldSplitSeries
@@ -145,37 +131,34 @@ export function DatabaseChartView() {
       shouldSplitSeries,
       splitProperty,
     ],
-  )
-  const displayChartData = shouldSplitSeries ? splitChart.data : chartData
-  const chartSeries = splitChart.series
+  );
+  const displayChartData = shouldSplitSeries ? splitChart.data : chartData;
+  const chartSeries = splitChart.series;
   const outerPieSegments = useMemo(
     () =>
       chartSettings.type === "pie" && shouldSplitSeries
         ? createOuterPieSegments(splitChart.data, chartSeries)
         : [],
     [chartSeries, chartSettings.type, shouldSplitSeries, splitChart.data],
-  )
+  );
   if (displayChartData.length === 0) {
     return (
       <div className="flex min-h-52 items-center justify-center rounded-md border border-dashed text-sm text-content-secondary">
         No rows to chart
       </div>
-    )
+    );
   }
 
-  const metricLabel =
-    measureProperty?.property.name?.trim() || "Task count"
-  const allowMeasureDecimals = measureProperty?.property.type === "number"
+  const metricLabel = measureProperty?.property.name?.trim() || "Task count";
+  const allowMeasureDecimals = measureProperty?.property.type === "number";
   const selectedColor =
     chartSettings.color === "auto"
       ? null
-      : getPaletteColor(chartSettings.color) ?? DEFAULT_CHART_COLOR
+      : (getPaletteColor(chartSettings.color) ?? DEFAULT_CHART_COLOR);
   const getDisplayColor = (item: DatabaseChartDataItem, index = 0) =>
-    selectedColor ? getColorVariant(selectedColor, index) : item.color
-  const getSeriesDisplayColor = (
-    series: DatabaseChartSeriesItem,
-    index = 0,
-  ) => (selectedColor ? getColorVariant(selectedColor, index) : series.color)
+    selectedColor ? getColorVariant(selectedColor, index) : item.color;
+  const getSeriesDisplayColor = (series: DatabaseChartSeriesItem, index = 0) =>
+    selectedColor ? getColorVariant(selectedColor, index) : series.color;
   const chartConfig = Object.fromEntries([
     [
       "count",
@@ -191,14 +174,13 @@ export function DatabaseChartView() {
         label: series.label,
       },
     ]),
-  ]) satisfies ChartConfig
+  ]) satisfies ChartConfig;
   const numericDomain: [number | "auto", number | "auto"] = [
     chartSettings.rangeMin ?? "auto",
     chartSettings.rangeMax ?? "auto",
-  ]
+  ];
   const hasCustomRange =
-    chartSettings.rangeMin !== undefined ||
-    chartSettings.rangeMax !== undefined
+    chartSettings.rangeMin !== undefined || chartSettings.rangeMax !== undefined;
   const renderReferenceLines = (axis: "x" | "y") =>
     (chartSettings.referenceLines ?? []).map((line) => (
       <ReferenceLine
@@ -210,14 +192,13 @@ export function DatabaseChartView() {
         strokeWidth={1.5}
         {...(axis === "x" ? { x: line.value } : { y: line.value })}
       />
-    ))
+    ));
 
   if (chartSettings.type === "count") {
     const metricValue = filteredItems.reduce(
-      (total, row) =>
-        total + getChartMeasureValue(row, measureProperty, propertyValuesByKey),
+      (total, row) => total + getChartMeasureValue(row, measureProperty, propertyValuesByKey),
       0,
-    )
+    );
 
     return (
       <div className="flex min-h-[260px] w-full items-center justify-center py-4">
@@ -225,12 +206,10 @@ export function DatabaseChartView() {
           <div className="text-6xl font-semibold tabular-nums tracking-normal text-content-primary">
             {metricValue.toLocaleString()}
           </div>
-          <div className="mt-2 text-sm text-content-secondary">
-            {metricLabel}
-          </div>
+          <div className="mt-2 text-sm text-content-secondary">{metricLabel}</div>
         </div>
       </div>
-    )
+    );
   }
 
   const renderChart = () => {
@@ -258,10 +237,7 @@ export function DatabaseChartView() {
             type="category"
             width={96}
           />
-          <ChartTooltip
-            content={<ChartTooltipContent indicator="line" />}
-            cursor={false}
-          />
+          <ChartTooltip content={<ChartTooltipContent indicator="line" />} cursor={false} />
           {renderReferenceLines("x")}
           {shouldSplitSeries ? (
             chartSeries.map((series, index) => (
@@ -271,9 +247,7 @@ export function DatabaseChartView() {
                 key={series.key}
                 maxBarSize={34}
                 name={series.label}
-                radius={
-                  index === chartSeries.length - 1 ? [0, 4, 4, 0] : 0
-                }
+                radius={index === chartSeries.length - 1 ? [0, 4, 4, 0] : 0}
                 stackId="group"
               />
             ))
@@ -290,11 +264,9 @@ export function DatabaseChartView() {
               ))}
             </Bar>
           )}
-          {shouldSplitSeries ? (
-            <ChartLegend content={<ChartLegendContent />} />
-          ) : null}
+          {shouldSplitSeries ? <ChartLegend content={<ChartLegendContent />} /> : null}
         </BarChart>
-      )
+      );
     }
 
     if (chartSettings.type === "line") {
@@ -305,12 +277,7 @@ export function DatabaseChartView() {
           margin={{ bottom: 12, left: 0, right: 12, top: 12 }}
         >
           <CartesianGrid vertical={false} />
-          <XAxis
-            axisLine={false}
-            dataKey="name"
-            tickLine={false}
-            tickMargin={10}
-          />
+          <XAxis axisLine={false} dataKey="name" tickLine={false} tickMargin={10} />
           <YAxis
             allowDecimals={allowMeasureDecimals}
             axisLine={false}
@@ -319,10 +286,7 @@ export function DatabaseChartView() {
             tickMargin={10}
             width={34}
           />
-          <ChartTooltip
-            content={<ChartTooltipContent indicator="line" />}
-            cursor={false}
-          />
+          <ChartTooltip content={<ChartTooltipContent indicator="line" />} cursor={false} />
           {renderReferenceLines("y")}
           <defs>
             {(shouldSplitSeries
@@ -337,7 +301,7 @@ export function DatabaseChartView() {
             ).map((series, index) => {
               const seriesColor = shouldSplitSeries
                 ? getSeriesDisplayColor(series, index)
-                : series.color
+                : series.color;
 
               return (
                 <linearGradient
@@ -351,7 +315,7 @@ export function DatabaseChartView() {
                   <stop offset="5%" stopColor={seriesColor} stopOpacity={0.7} />
                   <stop offset="95%" stopColor={seriesColor} stopOpacity={0.08} />
                 </linearGradient>
-              )
+              );
             })}
           </defs>
           {shouldSplitSeries ? (
@@ -378,35 +342,20 @@ export function DatabaseChartView() {
               type="natural"
             />
           )}
-          {shouldSplitSeries ? (
-            <ChartLegend content={<ChartLegendContent />} />
-          ) : null}
+          {shouldSplitSeries ? <ChartLegend content={<ChartLegendContent />} /> : null}
         </AreaChart>
-      )
+      );
     }
 
     if (chartSettings.type === "pie") {
       return (
         <PieChart accessibilityLayer>
-          <ChartTooltip
-            content={<ChartTooltipContent hideLabel nameKey="name" />}
-            cursor={false}
-          />
-          <Pie
-            data={chartData}
-            dataKey="count"
-            nameKey="name"
-            outerRadius={82}
-            paddingAngle={2}
-          >
+          <ChartTooltip content={<ChartTooltipContent hideLabel nameKey="name" />} cursor={false} />
+          <Pie data={chartData} dataKey="count" nameKey="name" outerRadius={82} paddingAngle={2}>
             {chartData.map((item, index) => (
               <Cell fill={getDisplayColor(item, index)} key={item.name} />
             ))}
-            <LabelList
-              className="fill-content-primary text-xs"
-              dataKey="name"
-              stroke="none"
-            />
+            <LabelList className="fill-content-primary text-xs" dataKey="name" stroke="none" />
           </Pie>
           {outerPieSegments.length > 0 ? (
             <Pie
@@ -419,34 +368,27 @@ export function DatabaseChartView() {
             >
               {outerPieSegments.map((segment, index) => (
                 <Cell
-                  fill={
-                    selectedColor
-                      ? getColorVariant(selectedColor, index)
-                      : segment.color
-                  }
+                  fill={selectedColor ? getColorVariant(selectedColor, index) : segment.color}
                   key={`${segment.name}-${index}`}
                 />
               ))}
             </Pie>
           ) : null}
         </PieChart>
-      )
+      );
     }
 
     if (chartSettings.type === "radar") {
-      const radarColor = selectedColor ?? DEFAULT_CHART_COLOR
+      const radarColor = selectedColor ?? DEFAULT_CHART_COLOR;
 
       return (
         <RadarChart accessibilityLayer data={displayChartData}>
-          <ChartTooltip
-            content={<ChartTooltipContent indicator="line" />}
-            cursor={false}
-          />
+          <ChartTooltip content={<ChartTooltipContent indicator="line" />} cursor={false} />
           <PolarAngleAxis dataKey="name" tickLine={false} />
           <PolarGrid />
           {shouldSplitSeries ? (
             chartSeries.map((series, index) => {
-              const color = getSeriesDisplayColor(series, index)
+              const color = getSeriesDisplayColor(series, index);
 
               return (
                 <Radar
@@ -458,7 +400,7 @@ export function DatabaseChartView() {
                   stroke={color}
                   strokeWidth={2}
                 />
-              )
+              );
             })
           ) : (
             <Radar
@@ -470,18 +412,16 @@ export function DatabaseChartView() {
               strokeWidth={2}
             />
           )}
-          {shouldSplitSeries ? (
-            <ChartLegend content={<ChartLegendContent />} />
-          ) : null}
+          {shouldSplitSeries ? <ChartLegend content={<ChartLegendContent />} /> : null}
         </RadarChart>
-      )
+      );
     }
 
     if (chartSettings.type === "radial") {
       const radialChartData = chartData.map((item, index) => ({
         ...item,
         fill: getDisplayColor(item, index),
-      }))
+      }));
 
       return (
         <RadialBarChart
@@ -492,10 +432,7 @@ export function DatabaseChartView() {
           outerRadius={124}
           startAngle={-90}
         >
-          <ChartTooltip
-            content={<ChartTooltipContent hideLabel nameKey="name" />}
-            cursor={false}
-          />
+          <ChartTooltip content={<ChartTooltipContent hideLabel nameKey="name" />} cursor={false} />
           <RadialBar background dataKey="count" name={metricLabel}>
             <LabelList
               className="fill-data-label text-[11px] capitalize mix-blend-luminosity"
@@ -505,7 +442,7 @@ export function DatabaseChartView() {
             />
           </RadialBar>
         </RadialBarChart>
-      )
+      );
     }
 
     return (
@@ -515,12 +452,7 @@ export function DatabaseChartView() {
         margin={{ bottom: 12, left: 0, right: 12, top: 12 }}
       >
         <CartesianGrid vertical={false} />
-        <XAxis
-          axisLine={false}
-          dataKey="name"
-          tickLine={false}
-          tickMargin={10}
-        />
+        <XAxis axisLine={false} dataKey="name" tickLine={false} tickMargin={10} />
         <YAxis
           allowDecimals={allowMeasureDecimals}
           axisLine={false}
@@ -529,10 +461,7 @@ export function DatabaseChartView() {
           tickMargin={10}
           width={34}
         />
-        <ChartTooltip
-          content={<ChartTooltipContent indicator="line" />}
-          cursor={false}
-        />
+        <ChartTooltip content={<ChartTooltipContent indicator="line" />} cursor={false} />
         {renderReferenceLines("y")}
         {shouldSplitSeries ? (
           chartSeries.map((series, index) => (
@@ -559,12 +488,10 @@ export function DatabaseChartView() {
             ))}
           </Bar>
         )}
-        {shouldSplitSeries ? (
-          <ChartLegend content={<ChartLegendContent />} />
-        ) : null}
+        {shouldSplitSeries ? <ChartLegend content={<ChartLegendContent />} /> : null}
       </BarChart>
-    )
-  }
+    );
+  };
 
   return (
     <div className="database-chart-view w-full py-4">
@@ -577,19 +504,19 @@ export function DatabaseChartView() {
       </ChartContainer>
       <DatabaseRecordWindowControl />
     </div>
-  )
+  );
 }
 
 function getReferenceLineColor(line: DatabaseChartReferenceLine) {
   return line.color === "black"
     ? "var(--zb-color-content-text-primary)"
-    : getPaletteColor(line.color) ?? "var(--zb-color-content-text-primary)"
+    : (getPaletteColor(line.color) ?? "var(--zb-color-content-text-primary)");
 }
 
 function getReferenceLineDash(style: DatabaseChartReferenceLine["style"]) {
-  return style === "dashed" ? "6 4" : style === "dotted" ? "2 4" : undefined
+  return style === "dashed" ? "6 4" : style === "dotted" ? "2 4" : undefined;
 }
 
 function useIdWithoutColons() {
-  return useId().replace(/:/g, "")
+  return useId().replace(/:/g, "");
 }

@@ -18,5 +18,5 @@ export function GoogleIcon(props: React.ComponentProps<"svg">) {
         fill="#ea4335"
       />
     </svg>
-  )
+  );
 }

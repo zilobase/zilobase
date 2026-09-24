@@ -1,165 +1,155 @@
-import type { PagePropertyValueEntity } from "@zilobase/features/databases"
+import type { PagePropertyValueEntity } from "@zilobase/features/databases";
 
-export type DatabasePropertyValue = string | string[]
+export type DatabasePropertyValue = string | string[];
 
 export function toStringArray(value: DatabasePropertyValue): string[] {
-  return Array.isArray(value) ? value : value ? [value] : []
+  return Array.isArray(value) ? value : value ? [value] : [];
 }
 
 export function toTrimmedStringArray(value: DatabasePropertyValue): string[] {
-  return Array.isArray(value) ? value : value.trim() ? [value] : []
+  return Array.isArray(value) ? value : value.trim() ? [value] : [];
 }
 
 export function firstScalarValue(
   value: DatabasePropertyValue | string | null | undefined,
-  fallback = ""
+  fallback = "",
 ): string {
-  if (Array.isArray(value)) return value[0] ?? fallback
-  return value ?? fallback
+  if (Array.isArray(value)) return value[0] ?? fallback;
+  return value ?? fallback;
 }
 
 export function getPropertyValue(
   values: PagePropertyValueEntity[],
   pageId: string,
   propertyId: string,
-  propertyType = "text"
+  propertyType = "text",
 ): DatabasePropertyValue {
-  let value: unknown
+  let value: unknown;
 
   for (let index = values.length - 1; index >= 0; index -= 1) {
-    const item = values[index]
+    const item = values[index];
 
     if (item.pageId === pageId && item.propertyId === propertyId) {
-      value = item.value
-      break
+      value = item.value;
+      break;
     }
   }
 
-  return parsePropertyValue(value, propertyType)
+  return parsePropertyValue(value, propertyType);
 }
 
-export function parsePropertyValue(
-  value: unknown,
-  propertyType = "text"
-): DatabasePropertyValue {
+export function parsePropertyValue(value: unknown, propertyType = "text"): DatabasePropertyValue {
   if (typeof value === "string") {
-    return value
+    return value;
   }
 
   if (
     typeof value === "number" &&
-    (propertyType === "number" ||
-      propertyType === "phone" ||
-      propertyType === "text")
+    (propertyType === "number" || propertyType === "phone" || propertyType === "text")
   ) {
-    return Number.isFinite(value) ? String(value) : ""
+    return Number.isFinite(value) ? String(value) : "";
   }
 
   if (typeof value === "boolean" && propertyType === "checkbox") {
-    return value ? "true" : "false"
+    return value ? "true" : "false";
   }
 
   if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string")
+    return value.filter((item): item is string => typeof item === "string");
   }
 
   if (value && typeof value === "object" && "text" in value) {
-    const text = (value as { text?: unknown }).text
+    const text = (value as { text?: unknown }).text;
 
     if (typeof text === "string") {
-      return text
+      return text;
     }
 
     if (Array.isArray(text)) {
-      return text.filter((item): item is string => typeof item === "string")
+      return text.filter((item): item is string => typeof item === "string");
     }
   }
 
   if (value && typeof value === "object" && propertyType === "date") {
-    const date = (value as { date?: unknown; end?: unknown; start?: unknown })
-      .date
-    const end = (value as { date?: unknown; end?: unknown; start?: unknown }).end
-    const start = (value as { date?: unknown; end?: unknown; start?: unknown })
-      .start
+    const date = (value as { date?: unknown; end?: unknown; start?: unknown }).date;
+    const end = (value as { date?: unknown; end?: unknown; start?: unknown }).end;
+    const start = (value as { date?: unknown; end?: unknown; start?: unknown }).start;
 
     if (typeof date === "string") {
-      return date
+      return date;
     }
 
     if (typeof start === "string") {
-      return typeof end === "string" && end ? [start, end] : start
+      return typeof end === "string" && end ? [start, end] : start;
     }
   }
 
   if (value && typeof value === "object" && "options" in value) {
-    const options = (value as { options?: unknown }).options
+    const options = (value as { options?: unknown }).options;
 
     if (Array.isArray(options)) {
-      return options.filter((item): item is string => typeof item === "string")
+      return options.filter((item): item is string => typeof item === "string");
     }
   }
 
-  return ""
+  return "";
 }
 
-export function serializePropertyValue(
-  propertyType: string,
-  value: DatabasePropertyValue
-) {
+export function serializePropertyValue(propertyType: string, value: DatabasePropertyValue) {
   if (propertyType === "multi_select") {
-    return toStringArray(value)
+    return toStringArray(value);
   }
 
   if (propertyType === "person") {
-    return value
+    return value;
   }
 
   if (propertyType === "files") {
-    return Array.isArray(value) ? value : value.trim() ? value : null
+    return Array.isArray(value) ? value : value.trim() ? value : null;
   }
 
   if (propertyType === "relation") {
-    return Array.isArray(value) ? value : value.trim() || null
+    return Array.isArray(value) ? value : value.trim() || null;
   }
 
   if (propertyType === "number") {
-    const trimmedValue = firstScalarValue(value).trim()
+    const trimmedValue = firstScalarValue(value).trim();
 
     if (!trimmedValue) {
-      return null
+      return null;
     }
 
-    const numberValue = Number(trimmedValue)
+    const numberValue = Number(trimmedValue);
 
-    return Number.isFinite(numberValue) ? numberValue : null
+    return Number.isFinite(numberValue) ? numberValue : null;
   }
 
   if (propertyType === "phone") {
-    return firstScalarValue(value).trim()
+    return firstScalarValue(value).trim();
   }
 
   if (propertyType === "checkbox") {
-    const normalizedValue = firstScalarValue(value).trim().toLowerCase()
+    const normalizedValue = firstScalarValue(value).trim().toLowerCase();
 
-    return ["1", "checked", "true", "yes"].includes(normalizedValue)
+    return ["1", "checked", "true", "yes"].includes(normalizedValue);
   }
 
   if (propertyType === "select" || propertyType === "status") {
-    return firstScalarValue(value)
+    return firstScalarValue(value);
   }
 
   if (propertyType === "date") {
     if (Array.isArray(value)) {
-      const start = value[0]?.trim() ?? ""
-      const end = value[1]?.trim() ?? ""
+      const start = value[0]?.trim() ?? "";
+      const end = value[1]?.trim() ?? "";
 
-      return start && end ? { end, start } : start || null
+      return start && end ? { end, start } : start || null;
     }
 
-    const nextValue = value
+    const nextValue = value;
 
-    return nextValue.trim() || null
+    return nextValue.trim() || null;
   }
 
-  return Array.isArray(value) ? value.join(", ") : value
+  return Array.isArray(value) ? value.join(", ") : value;
 }

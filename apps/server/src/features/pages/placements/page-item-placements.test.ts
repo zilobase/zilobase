@@ -220,9 +220,7 @@ test("buildNavigationPlacements excludes placements attached to hidden databases
 });
 
 test("upsertPageItemPlacement writes stable defaults and conflict handling", async () => {
-  vi.spyOn(crypto, "randomUUID").mockReturnValue(
-    "00000000-0000-4000-8000-000000000001",
-  );
+  vi.spyOn(crypto, "randomUUID").mockReturnValue("00000000-0000-4000-8000-000000000001");
   let values: Record<string, unknown> | undefined;
   let conflictHandled = false;
   const tx = {

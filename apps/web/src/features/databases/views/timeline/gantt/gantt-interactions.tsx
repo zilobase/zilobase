@@ -1,67 +1,48 @@
-import {
-  addDays,
-  differenceInCalendarDays,
-  format,
-  formatDate,
-} from "date-fns"
-import { PlusIcon, TrashIcon } from "@/shared/components/icons"
-import type {
-  PointerEvent as ReactPointerEvent,
-  PointerEventHandler,
-  ReactNode,
-} from "react"
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { addDays, differenceInCalendarDays, format, formatDate } from "date-fns";
+import { PlusIcon, TrashIcon } from "@/shared/components/icons";
+import type { PointerEvent as ReactPointerEvent, PointerEventHandler, ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Card } from "@/shared/ui/card"
+import { Card } from "@/shared/ui/card";
 import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuTrigger,
-} from "@/shared/ui/context-menu"
-import { cn } from "@/shared/lib/utils"
+} from "@/shared/ui/context-menu";
+import { cn } from "@/shared/lib/utils";
 
-import {
-  useGanttContext,
-  useSetGanttDragging,
-} from "./gantt-context"
+import { useGanttContext, useSetGanttDragging } from "./gantt-context";
 import {
   dateToTimelineX,
   getTimelineItemWidth,
   getTimelineXFromElement,
   getTimelineXFromViewport,
   timelineXToDate,
-} from "./gantt-geometry"
-import type { GanttFeature, GanttMarkerProps } from "./gantt-types"
-import { useGanttGeometry } from "./use-gantt-geometry"
+} from "./gantt-geometry";
+import type { GanttFeature, GanttMarkerProps } from "./gantt-types";
+import { useGanttGeometry } from "./use-gantt-geometry";
 
-const DRAG_THRESHOLD_PX = 4
+const DRAG_THRESHOLD_PX = 4;
 
-type DragMode = "move" | "resize-end" | "resize-start"
+type DragMode = "move" | "resize-end" | "resize-start";
 
 type DragSession = {
-  didDrag: boolean
-  mode: DragMode
-  originClientX: number
-  originEnd: Date | null
-  originPointerDate: Date
-  originStart: Date
-  pointerId: number
-}
+  didDrag: boolean;
+  mode: DragMode;
+  originClientX: number;
+  originEnd: Date | null;
+  originPointerDate: Date;
+  originStart: Date;
+  pointerId: number;
+};
 
 export type GanttFeatureDragHelperProps = {
-  date: Date | null
-  direction: "left" | "right"
-  featureId: GanttFeature["id"]
-  onPointerDown?: PointerEventHandler<HTMLDivElement>
-}
+  date: Date | null;
+  direction: "left" | "right";
+  featureId: GanttFeature["id"];
+  onPointerDown?: PointerEventHandler<HTMLDivElement>;
+};
 
 export function GanttFeatureDragHelper({
   date,
@@ -92,17 +73,14 @@ export function GanttFeatureDragHelper({
         </div>
       ) : null}
     </div>
-  )
+  );
 }
 
 export type GanttFeatureItemCardProps = Pick<GanttFeature, "id"> & {
-  children?: ReactNode
-}
+  children?: ReactNode;
+};
 
-export function GanttFeatureItemCard({
-  children,
-  id,
-}: GanttFeatureItemCardProps) {
+export function GanttFeatureItemCard({ children, id }: GanttFeatureItemCardProps) {
   return (
     <Card
       className="h-full w-full rounded-md bg-surface-canvas p-2 text-xs shadow-sm"
@@ -112,15 +90,15 @@ export function GanttFeatureItemCard({
         {children}
       </div>
     </Card>
-  )
+  );
 }
 
 export type GanttFeatureItemProps = GanttFeature & {
-  children?: ReactNode
-  className?: string
-  onMove?: (id: string, startDate: Date, endDate: Date | null) => void
-  stacked?: boolean
-}
+  children?: ReactNode;
+  className?: string;
+  onMove?: (id: string, startDate: Date, endDate: Date | null) => void;
+  stacked?: boolean;
+};
 
 export function GanttFeatureItem({
   children,
@@ -129,47 +107,42 @@ export function GanttFeatureItem({
   stacked = false,
   ...feature
 }: GanttFeatureItemProps) {
-  const gantt = useGanttContext()
-  const geometry = useGanttGeometry()
-  const setDragging = useSetGanttDragging()
-  const sessionRef = useRef<DragSession | null>(null)
-  const suppressClickRef = useRef(false)
-  const [startAt, setStartAt] = useState(feature.startAt)
-  const [endAt, setEndAt] = useState<Date | null>(feature.endAt)
+  const gantt = useGanttContext();
+  const geometry = useGanttGeometry();
+  const setDragging = useSetGanttDragging();
+  const sessionRef = useRef<DragSession | null>(null);
+  const suppressClickRef = useRef(false);
+  const [startAt, setStartAt] = useState(feature.startAt);
+  const [endAt, setEndAt] = useState<Date | null>(feature.endAt);
 
-  useEffect(() => setStartAt(feature.startAt), [feature.startAt])
-  useEffect(() => setEndAt(feature.endAt), [feature.endAt])
+  useEffect(() => setStartAt(feature.startAt), [feature.startAt]);
+  useEffect(() => setEndAt(feature.endAt), [feature.endAt]);
 
-  const offset = geometry ? dateToTimelineX(startAt, geometry) : 0
-  const width = geometry
-    ? getTimelineItemWidth(startAt, endAt, geometry)
-    : 0
+  const offset = geometry ? dateToTimelineX(startAt, geometry) : 0;
+  const width = geometry ? getTimelineItemWidth(startAt, endAt, geometry) : 0;
 
   const pointerDate = useCallback(
     (clientX: number) => {
-      const scrollElement = gantt.ref?.current
-      if (!scrollElement || !geometry) return null
+      const scrollElement = gantt.ref?.current;
+      if (!scrollElement || !geometry) return null;
       return timelineXToDate(
         getTimelineXFromViewport(clientX, scrollElement, gantt.sidebarWidth),
         geometry,
-      )
+      );
     },
     [gantt.ref, gantt.sidebarWidth, geometry],
-  )
+  );
 
-  const beginDrag = (
-    mode: DragMode,
-    event: ReactPointerEvent<HTMLElement>,
-  ) => {
-    if (!onMove || event.button !== 0) return
-    const originPointerDate = pointerDate(event.clientX)
-    if (!originPointerDate) return
+  const beginDrag = (mode: DragMode, event: ReactPointerEvent<HTMLElement>) => {
+    if (!onMove || event.button !== 0) return;
+    const originPointerDate = pointerDate(event.clientX);
+    if (!originPointerDate) return;
 
     if (mode !== "move") {
-      event.preventDefault()
-      event.stopPropagation()
+      event.preventDefault();
+      event.stopPropagation();
     }
-    event.currentTarget.setPointerCapture(event.pointerId)
+    event.currentTarget.setPointerCapture(event.pointerId);
     sessionRef.current = {
       didDrag: false,
       mode,
@@ -178,80 +151,63 @@ export function GanttFeatureItem({
       originPointerDate,
       originStart: startAt,
       pointerId: event.pointerId,
-    }
-    setDragging(true)
-  }
+    };
+    setDragging(true);
+  };
 
   const handlePointerMove: PointerEventHandler<HTMLDivElement> = (event) => {
-    const session = sessionRef.current
-    if (!session || session.pointerId !== event.pointerId) return
-    const currentDate = pointerDate(event.clientX)
-    if (!currentDate) return
+    const session = sessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    const currentDate = pointerDate(event.clientX);
+    if (!currentDate) return;
 
-    session.didDrag ||=
-      Math.abs(event.clientX - session.originClientX) >= DRAG_THRESHOLD_PX
-    if (!session.didDrag) return
+    session.didDrag ||= Math.abs(event.clientX - session.originClientX) >= DRAG_THRESHOLD_PX;
+    if (!session.didDrag) return;
 
     if (session.mode === "move") {
-      const delta = differenceInCalendarDays(
-        currentDate,
-        session.originPointerDate,
-      )
-      setStartAt(addDays(session.originStart, delta))
-      setEndAt(
-        session.originEnd ? addDays(session.originEnd, delta) : null,
-      )
-      return
+      const delta = differenceInCalendarDays(currentDate, session.originPointerDate);
+      setStartAt(addDays(session.originStart, delta));
+      setEndAt(session.originEnd ? addDays(session.originEnd, delta) : null);
+      return;
     }
 
     if (session.mode === "resize-start") {
-      const latestEnd = session.originEnd ?? addDays(session.originStart, 1)
-      setStartAt(
-        currentDate < latestEnd ? currentDate : addDays(latestEnd, -1),
-      )
-      return
+      const latestEnd = session.originEnd ?? addDays(session.originStart, 1);
+      setStartAt(currentDate < latestEnd ? currentDate : addDays(latestEnd, -1));
+      return;
     }
 
-    setEndAt(
-      currentDate > session.originStart
-        ? currentDate
-        : addDays(session.originStart, 1),
-    )
-  }
+    setEndAt(currentDate > session.originStart ? currentDate : addDays(session.originStart, 1));
+  };
 
   const finishDrag: PointerEventHandler<HTMLDivElement> = (event) => {
-    const session = sessionRef.current
-    if (!session || session.pointerId !== event.pointerId) return
-    sessionRef.current = null
-    setDragging(false)
+    const session = sessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    sessionRef.current = null;
+    setDragging(false);
 
     if (session.didDrag) {
-      suppressClickRef.current = true
-      onMove?.(feature.id, startAt, endAt)
+      suppressClickRef.current = true;
+      onMove?.(feature.id, startAt, endAt);
     }
-  }
+  };
 
   const cancelDrag: PointerEventHandler<HTMLDivElement> = (event) => {
-    const session = sessionRef.current
-    if (!session || session.pointerId !== event.pointerId) return
-    sessionRef.current = null
-    setStartAt(session.originStart)
-    setEndAt(session.originEnd)
-    setDragging(false)
-  }
+    const session = sessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    sessionRef.current = null;
+    setStartAt(session.originStart);
+    setEndAt(session.originEnd);
+    setDragging(false);
+  };
 
   const resizeFrom =
-    (mode: "resize-end" | "resize-start") =>
-    (event: ReactPointerEvent<HTMLDivElement>) =>
-      beginDrag(mode, event)
+    (mode: "resize-end" | "resize-start") => (event: ReactPointerEvent<HTMLDivElement>) =>
+      beginDrag(mode, event);
 
   return (
     <div
-      className={cn(
-        "relative w-max min-w-full",
-        stacked ? "h-full" : "flex py-0.5",
-        className,
-      )}
+      className={cn("relative w-max min-w-full", stacked ? "h-full" : "flex py-0.5", className)}
       style={stacked ? undefined : { height: "var(--gantt-row-height)" }}
     >
       <div
@@ -261,10 +217,10 @@ export function GanttFeatureItem({
           onMove && "cursor-grab active:cursor-grabbing",
         )}
         onClickCapture={(event) => {
-          if (!suppressClickRef.current) return
-          suppressClickRef.current = false
-          event.preventDefault()
-          event.stopPropagation()
+          if (!suppressClickRef.current) return;
+          suppressClickRef.current = false;
+          event.preventDefault();
+          event.stopPropagation();
         }}
         onPointerCancel={cancelDrag}
         onPointerDown={(event) => beginDrag("move", event)}
@@ -285,9 +241,7 @@ export function GanttFeatureItem({
           />
         ) : null}
         <GanttFeatureItemCard id={feature.id}>
-          {children ?? (
-            <p className="flex-1 truncate text-xs">{feature.name}</p>
-          )}
+          {children ?? <p className="flex-1 truncate text-xs">{feature.name}</p>}
         </GanttFeatureItemCard>
         {onMove ? (
           <GanttFeatureDragHelper
@@ -299,48 +253,40 @@ export function GanttFeatureItem({
         ) : null}
       </div>
     </div>
-  )
+  );
 }
 
 export type GanttFeatureListGroupProps = {
-  children: ReactNode
-  className?: string
-}
+  children: ReactNode;
+  className?: string;
+};
 
-export function GanttFeatureListGroup({
-  children,
-  className,
-}: GanttFeatureListGroupProps) {
+export function GanttFeatureListGroup({ children, className }: GanttFeatureListGroupProps) {
   return (
     <div className={className} style={{ paddingTop: "var(--gantt-row-height)" }}>
       {children}
     </div>
-  )
+  );
 }
 
 export type GanttFeatureRowProps = {
-  children?: (feature: GanttFeature) => ReactNode
-  className?: string
-  features: GanttFeature[]
-  onMove?: (id: string, startAt: Date, endAt: Date | null) => void
-}
+  children?: (feature: GanttFeature) => ReactNode;
+  className?: string;
+  features: GanttFeature[];
+  onMove?: (id: string, startAt: Date, endAt: Date | null) => void;
+};
 
-export function GanttFeatureRow({
-  children,
-  className,
-  features,
-  onMove,
-}: GanttFeatureRowProps) {
-  const lanes: Date[] = []
+export function GanttFeatureRow({ children, className, features, onMove }: GanttFeatureRowProps) {
+  const lanes: Date[] = [];
   const positioned = [...features]
     .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
     .map((feature) => {
-      const lane = lanes.findIndex((endAt) => endAt <= feature.startAt)
-      const laneIndex = lane === -1 ? lanes.length : lane
-      lanes[laneIndex] = feature.endAt
-      return { feature, laneIndex }
-    })
-  const laneHeight = 36
+      const lane = lanes.findIndex((endAt) => endAt <= feature.startAt);
+      const laneIndex = lane === -1 ? lanes.length : lane;
+      lanes[laneIndex] = feature.endAt;
+      return { feature, laneIndex };
+    });
+  const laneHeight = 36;
 
   return (
     <div
@@ -362,20 +308,16 @@ export function GanttFeatureRow({
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export type GanttFeatureListProps = {
-  children: ReactNode
-  className?: string
-  stacked?: boolean
-}
+  children: ReactNode;
+  className?: string;
+  stacked?: boolean;
+};
 
-export function GanttFeatureList({
-  children,
-  className,
-  stacked = false,
-}: GanttFeatureListProps) {
+export function GanttFeatureList({ children, className, stacked = false }: GanttFeatureListProps) {
   return (
     <div
       className={cn(
@@ -388,7 +330,7 @@ export function GanttFeatureList({
     >
       {children}
     </div>
-  )
+  );
 }
 
 function TimelineMarker({
@@ -396,12 +338,12 @@ function TimelineMarker({
   className,
   date,
 }: {
-  children: ReactNode
-  className?: string
-  date: Date
+  children: ReactNode;
+  className?: string;
+  date: Date;
 }) {
-  const geometry = useGanttGeometry()
-  const left = geometry ? dateToTimelineX(date, geometry) : 0
+  const geometry = useGanttGeometry();
+  const left = geometry ? dateToTimelineX(date, geometry) : 0;
 
   return (
     <div
@@ -411,7 +353,7 @@ function TimelineMarker({
       {children}
       <div className={cn("h-full w-px bg-surface-card", className)} />
     </div>
-  )
+  );
 }
 
 export const GanttMarker = memo(function GanttMarker({
@@ -421,8 +363,8 @@ export const GanttMarker = memo(function GanttMarker({
   label,
   onRemove,
 }: GanttMarkerProps & {
-  className?: string
-  onRemove?: (id: string) => void
+  className?: string;
+  onRemove?: (id: string) => void;
 }) {
   return (
     <TimelineMarker className={className} date={date}>
@@ -453,37 +395,32 @@ export const GanttMarker = memo(function GanttMarker({
         </ContextMenuContent>
       </ContextMenu>
     </TimelineMarker>
-  )
-})
+  );
+});
 
 export type GanttCreateMarkerTriggerProps = {
-  className?: string
-  onCreateMarker: (date: Date) => void
-}
+  className?: string;
+  onCreateMarker: (date: Date) => void;
+};
 
 export function GanttCreateMarkerTrigger({
   className,
   onCreateMarker,
 }: GanttCreateMarkerTriggerProps) {
-  const geometry = useGanttGeometry()
-  const triggerRef = useRef<HTMLDivElement>(null)
-  const dateRef = useRef<Date | null>(null)
+  const geometry = useGanttGeometry();
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dateRef = useRef<Date | null>(null);
 
   const handlePointerMove: PointerEventHandler<HTMLDivElement> = (event) => {
-    if (!geometry) return
-    const timelineX = getTimelineXFromElement(
-      event.currentTarget,
-      event.clientX,
-    )
-    const date = timelineXToDate(timelineX, geometry)
-    dateRef.current = date
-    event.currentTarget.style.setProperty("--gantt-marker-left", `${timelineX}px`)
-    event.currentTarget.dataset.previewVisible = "true"
-    const label = event.currentTarget.querySelector<HTMLElement>(
-      "[data-gantt-marker-date]",
-    )
-    if (label) label.textContent = formatDate(date, "MMM dd, yyyy")
-  }
+    if (!geometry) return;
+    const timelineX = getTimelineXFromElement(event.currentTarget, event.clientX);
+    const date = timelineXToDate(timelineX, geometry);
+    dateRef.current = date;
+    event.currentTarget.style.setProperty("--gantt-marker-left", `${timelineX}px`);
+    event.currentTarget.dataset.previewVisible = "true";
+    const label = event.currentTarget.querySelector<HTMLElement>("[data-gantt-marker-date]");
+    if (label) label.textContent = formatDate(date, "MMM dd, yyyy");
+  };
 
   return (
     <div
@@ -493,7 +430,7 @@ export function GanttCreateMarkerTrigger({
       )}
       data-preview-visible="false"
       onPointerLeave={(event) => {
-        event.currentTarget.dataset.previewVisible = "false"
+        event.currentTarget.dataset.previewVisible = "false";
       }}
       onPointerMove={handlePointerMove}
       ref={triggerRef}
@@ -502,7 +439,7 @@ export function GanttCreateMarkerTrigger({
         <button
           className="pointer-events-auto z-50 inline-flex h-4 w-4 items-center justify-center rounded-full bg-surface-card"
           onClick={() => {
-            if (dateRef.current) onCreateMarker(dateRef.current)
+            if (dateRef.current) onCreateMarker(dateRef.current);
           }}
           type="button"
         >
@@ -514,31 +451,26 @@ export function GanttCreateMarkerTrigger({
         />
       </div>
     </div>
-  )
+  );
 }
 
 export type GanttTimelineProps = {
-  children: ReactNode
-  className?: string
-}
+  children: ReactNode;
+  className?: string;
+};
 
 export function GanttTimeline({ children, className }: GanttTimelineProps) {
   return (
-    <div
-      className={cn(
-        "relative flex h-full w-max flex-none overflow-clip",
-        className,
-      )}
-    >
+    <div className={cn("relative flex h-full w-max flex-none overflow-clip", className)}>
       {children}
     </div>
-  )
+  );
 }
 
-export type GanttTodayProps = { className?: string }
+export type GanttTodayProps = { className?: string };
 
 export function GanttToday({ className }: GanttTodayProps) {
-  const date = useMemo(() => new Date(), [])
+  const date = useMemo(() => new Date(), []);
 
   return (
     <TimelineMarker className={className} date={date}>
@@ -554,5 +486,5 @@ export function GanttToday({ className }: GanttTodayProps) {
         </span>
       </div>
     </TimelineMarker>
-  )
+  );
 }

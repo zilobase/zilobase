@@ -37,7 +37,6 @@ export function installMeetingCaptureRuntime(next: MeetingCaptureRuntime) {
 }
 
 export function getMeetingCaptureRuntime(): MeetingCaptureRuntime {
-  if (!runtime)
-    throw new Error("Meeting capture runtime has not been configured.");
+  if (!runtime) throw new Error("Meeting capture runtime has not been configured.");
   return runtime;
 }

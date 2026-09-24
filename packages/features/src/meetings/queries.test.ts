@@ -1,73 +1,60 @@
-import assert from "node:assert/strict"
-import test from "node:test"
+import assert from "node:assert/strict";
+import test from "node:test";
 
-import {
-  meetingKeys,
-  meetingQueryOptions,
-  workspaceMeetingsQueryOptions,
-} from "./queries"
-import type { ApiFetcher } from "../shared/api-fetcher"
+import { meetingKeys, meetingQueryOptions, workspaceMeetingsQueryOptions } from "./queries";
+import type { ApiFetcher } from "../shared/api-fetcher";
 
 test("meeting query keys are hierarchical and scoped by meeting", () => {
-  assert.deepEqual(meetingKeys.list("workspace-1"), [
-    "meetings",
-    "list",
-    "workspace-1",
-  ])
-  assert.deepEqual(meetingKeys.detail("meeting-1"), [
-    "meetings",
-    "detail",
-    "meeting-1",
-  ])
-  assert.notDeepEqual(
-    meetingKeys.detail("meeting-1"),
-    meetingKeys.detail("meeting-2"),
-  )
-})
+  assert.deepEqual(meetingKeys.list("workspace-1"), ["meetings", "list", "workspace-1"]);
+  assert.deepEqual(meetingKeys.detail("meeting-1"), ["meetings", "detail", "meeting-1"]);
+  assert.notDeepEqual(meetingKeys.detail("meeting-1"), meetingKeys.detail("meeting-2"));
+});
 
 test("meeting detail queries forward cancellation and use a bounded stale time", async () => {
-  const calls: unknown[] = []
+  const calls: unknown[] = [];
   const options = meetingQueryOptions(async (path, init) => {
-    calls.push({ init, path })
-    return { meeting: { id: "meeting-1" } } as never
-  }, "meeting-1")
-  const controller = new AbortController()
+    calls.push({ init, path });
+    return { meeting: { id: "meeting-1" } } as never;
+  }, "meeting-1");
+  const controller = new AbortController();
 
-  await options.queryFn?.({ signal: controller.signal } as never)
+  await options.queryFn?.({ signal: controller.signal } as never);
   assert.deepEqual(calls, [
     {
       init: { signal: controller.signal },
       path: "/meetings/meeting-1",
     },
-  ])
-  assert.equal(options.staleTime, 30_000)
-})
+  ]);
+  assert.equal(options.staleTime, 30_000);
+});
 
 test("meeting detail queries never poll for live state", () => {
-  const options = meetingQueryOptions(async () => ({
-    meeting: { id: "meeting-1" },
-  }) as never, "meeting-1")
-  assert.equal(options.refetchInterval, false)
-})
+  const options = meetingQueryOptions(
+    async () =>
+      ({
+        meeting: { id: "meeting-1" },
+      }) as never,
+    "meeting-1",
+  );
+  assert.equal(options.refetchInterval, false);
+});
 
 test("workspace meeting queries request the canonical response shape", async () => {
-  const calls: unknown[] = []
-  const apiFetch: ApiFetcher = async <T>(
-    path: string,
-    init?: RequestInit,
-  ) => {
-    calls.push({ init, path })
-    return { meetings: [] } as T
-  }
-  const options = workspaceMeetingsQueryOptions(apiFetch, "workspace-1")
-  const controller = new AbortController()
+  const calls: unknown[] = [];
+  const apiFetch: ApiFetcher = async <T>(path: string, init?: RequestInit) => {
+    calls.push({ init, path });
+    return { meetings: [] } as T;
+  };
+  const options = workspaceMeetingsQueryOptions(apiFetch, "workspace-1");
+  const controller = new AbortController();
 
-  assert.deepEqual(
-    await options.queryFn?.({ signal: controller.signal } as never),
-    { meetings: [] },
-  )
-  assert.deepEqual(calls, [{
-    init: { signal: controller.signal },
-    path: "/meetings?workspaceId=workspace-1",
-  }])
-})
+  assert.deepEqual(await options.queryFn?.({ signal: controller.signal } as never), {
+    meetings: [],
+  });
+  assert.deepEqual(calls, [
+    {
+      init: { signal: controller.signal },
+      path: "/meetings?workspaceId=workspace-1",
+    },
+  ]);
+});

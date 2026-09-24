@@ -6,8 +6,7 @@ import type { RuntimeEnv } from "../../../shared/config/config";
 const TICKET_TTL_MS = 15 * 60 * 1000;
 
 export const MEETING_AUDIO_PROTOCOL = "zilobase.meeting-audio.v2";
-export const MEETING_AUDIO_AUTH_PROTOCOL_PREFIX =
-  "zilobase.meeting-audio.auth.";
+export const MEETING_AUDIO_AUTH_PROTOCOL_PREFIX = "zilobase.meeting-audio.auth.";
 
 export type { MeetingAudioSource } from "../contracts/meeting-contracts";
 
@@ -26,10 +25,7 @@ export function meetingAudioSourceFromCode(code: number): MeetingAudioSource | n
   return null;
 }
 
-export function meetingTranscriptSequence(
-  source: MeetingAudioSource,
-  audioSequence: number,
-) {
+export function meetingTranscriptSequence(source: MeetingAudioSource, audioSequence: number) {
   return audioSequence * MEETING_AUDIO_SOURCES.length + meetingAudioSourceCode(source);
 }
 
@@ -57,10 +53,7 @@ export async function createMeetingAudioTicket(
   };
 }
 
-export async function verifyMeetingAudioTicket(
-  token: string,
-  env: RuntimeEnv,
-) {
+export async function verifyMeetingAudioTicket(token: string, env: RuntimeEnv) {
   const [encoded, signature, extra] = token.split(".");
   if (!encoded || !signature || extra) throw new Error("Invalid meeting audio ticket");
 
@@ -69,9 +62,7 @@ export async function verifyMeetingAudioTicket(
     throw new Error("Invalid meeting audio ticket");
   }
 
-  const claims = JSON.parse(
-    Buffer.from(encoded, "base64url").toString("utf8"),
-  ) as unknown;
+  const claims = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as unknown;
   if (!isClaims(claims) || claims.exp <= Date.now()) {
     throw new Error("Expired meeting audio ticket");
   }

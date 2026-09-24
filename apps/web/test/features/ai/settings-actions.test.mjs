@@ -1,7 +1,8 @@
 export function register({ assert, loadModule, test }) {
   test("settings actions distinguish read-only, draft errors, pending runs and in-flight mutations", async () => {
-    const { settingsActionsVisible, settingsActionAvailability } =
-      await loadModule("/src/features/ai/settings/model/draft-actions.ts");
+    const { settingsActionsVisible, settingsActionAvailability } = await loadModule(
+      "/src/features/ai/settings/model/draft-actions.ts",
+    );
     const draft = {
       state: { canEdit: true, pendingRun: null },
       dirty: false,
@@ -22,10 +23,10 @@ export function register({ assert, loadModule, test }) {
       { ...draft, state: { canEdit: true, pendingRun: {} } },
     ])
       assert.equal(settingsActionsVisible(variant, true), true);
-    assert.deepEqual(
-      settingsActionAvailability({ ...draft, error: "Conflict" }),
-      { discardDisabled: false, saveDisabled: true },
-    );
+    assert.deepEqual(settingsActionAvailability({ ...draft, error: "Conflict" }), {
+      discardDisabled: false,
+      saveDisabled: true,
+    });
     assert.deepEqual(
       settingsActionAvailability({
         ...draft,
@@ -43,27 +44,15 @@ export function register({ assert, loadModule, test }) {
         { discardDisabled: true, saveDisabled: true },
       );
     for (const state of [undefined, { canEdit: false }])
-      assert.equal(
-        settingsActionsVisible({ ...draft, dirty: true, state }, false),
-        false,
-      );
+      assert.equal(settingsActionsVisible({ ...draft, dirty: true, state }, false), false);
   });
   test("settings progress prioritizes AI editing, draft flush and loading", async () => {
     const { settingsProgressLabel } = await loadModule(
       "/src/features/ai/settings/model/draft-actions.ts",
     );
-    assert.equal(
-      settingsProgressLabel(true, true, false),
-      "AI is preparing your changes…",
-    );
-    assert.equal(
-      settingsProgressLabel(false, true, false),
-      "Preserving private draft…",
-    );
-    assert.equal(
-      settingsProgressLabel(false, false, false),
-      "Loading settings…",
-    );
+    assert.equal(settingsProgressLabel(true, true, false), "AI is preparing your changes…");
+    assert.equal(settingsProgressLabel(false, true, false), "Preserving private draft…");
+    assert.equal(settingsProgressLabel(false, false, false), "Loading settings…");
     assert.equal(settingsProgressLabel(false, false, true), "");
   });
   test("sharing controls distinguish editable state from unsaved changes", async () => {
@@ -84,10 +73,7 @@ export function register({ assert, loadModule, test }) {
       canEdit: true,
       actionsDisabled: false,
     });
-    assert.equal(
-      sharingActionAvailability({ ...draft, state: undefined }).canEdit,
-      false,
-    );
+    assert.equal(sharingActionAvailability({ ...draft, state: undefined }).canEdit, false);
     for (const key of ["publish", "discard"])
       assert.deepEqual(
         sharingActionAvailability({

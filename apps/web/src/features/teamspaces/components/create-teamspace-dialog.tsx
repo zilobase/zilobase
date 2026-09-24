@@ -17,13 +17,7 @@ import { Input } from "@/shared/ui/input";
 
 import { Label } from "@/shared/ui/label";
 
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 import { Spinner } from "@/shared/ui/spinner";
 
@@ -74,9 +68,7 @@ export function CreateTeamspaceDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>New teamspace</DialogTitle>
-          <DialogDescription>
-            Create a dedicated home for a team or project.
-          </DialogDescription>
+          <DialogDescription>Create a dedicated home for a team or project.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="grid gap-2">
@@ -99,9 +91,7 @@ export function CreateTeamspaceDialog({
           <div className="grid gap-2">
             <Label>Access</Label>
             <Select
-              onValueChange={(value) =>
-                setAccessMode(value as TeamspaceAccessMode)
-              }
+              onValueChange={(value) => setAccessMode(value as TeamspaceAccessMode)}
               value={accessMode}
             >
               <SelectTrigger aria-label="Teamspace access">
@@ -109,12 +99,8 @@ export function CreateTeamspaceDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="open">Open — anyone can join</SelectItem>
-                <SelectItem value="closed">
-                  Closed — members join by invite
-                </SelectItem>
-                <SelectItem value="private">
-                  Private — visible only to members
-                </SelectItem>
+                <SelectItem value="closed">Closed — members join by invite</SelectItem>
+                <SelectItem value="private">Private — visible only to members</SelectItem>
               </SelectContent>
             </Select>
           </div>

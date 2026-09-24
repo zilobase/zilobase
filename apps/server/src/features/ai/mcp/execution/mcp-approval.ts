@@ -44,35 +44,26 @@ export async function requestMcpActionApproval(input: {
 }): Promise<AgentToolResult> {
   const { threadId = null, agentRunId = null } = input;
   if (Boolean(input.threadId) === Boolean(input.agentRunId)) {
-    throw new Error(
-      "MCP approval must belong to exactly one Ask AI thread or Custom Agent run.",
-    );
+    throw new Error("MCP approval must belong to exactly one Ask AI thread or Custom Agent run.");
   }
-  if (
-    !isMcpScopeMatch(getMcpScopeFromConnection(input.connection), input.scope)
-  ) {
+  if (!isMcpScopeMatch(getMcpScopeFromConnection(input.connection), input.scope)) {
     throw new Error("MCP approval connection does not match its chat context.");
   }
   const id = crypto.randomUUID();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + APPROVAL_TTL_MS);
   const inputHash = await hashAgentToolInput(input.toolInput);
-  const encrypted = await encryptMcpSecret(
-    input.env,
-    JSON.stringify(input.toolInput),
-    {
-      authenticatedByUserId: input.connection.authenticatedByUserId,
-      connectionId: input.connection.id,
-      profileId: getMcpCredentialScopeId(input.connection),
-      purpose: `approval:${id}`,
-      workspaceId: input.workspaceId,
-    },
-  );
+  const encrypted = await encryptMcpSecret(input.env, JSON.stringify(input.toolInput), {
+    authenticatedByUserId: input.connection.authenticatedByUserId,
+    connectionId: input.connection.id,
+    profileId: getMcpCredentialScopeId(input.connection),
+    purpose: `approval:${id}`,
+    workspaceId: input.workspaceId,
+  });
   await db
     .insert(aiAgentPendingAction)
     .values({
-      agentProfileId:
-        input.scope.type === "agent" ? input.scope.agentProfileId : null,
+      agentProfileId: input.scope.type === "agent" ? input.scope.agentProfileId : null,
       connectionId: input.connection.id,
       createdAt: now,
       encryptedToolInput: `${encrypted.keyVersion}:${encrypted.ciphertext}`,
@@ -83,8 +74,7 @@ export async function requestMcpActionApproval(input: {
       id,
       inputHash,
       mcpScopeType: input.scope.type,
-      mcpScopeUserId:
-        input.scope.type === "personal" ? input.scope.userId : null,
+      mcpScopeUserId: input.scope.type === "personal" ? input.scope.userId : null,
       status: "pending",
       threadId,
       agentRunId,
@@ -162,8 +152,7 @@ export async function executeApprovedMcpAction(input: {
     userId: input.userId,
     workspaceId: input.workspaceId,
   });
-  if (action.agentRunId)
-    return executeApprovedMcpRunAction(input, action, scope);
+  if (action.agentRunId) return executeApprovedMcpRunAction(input, action, scope);
   if (!action.threadId) throw new Error("MCP approval context is invalid.");
   const [thread] = await db
     .select({
@@ -182,11 +171,7 @@ export async function executeApprovedMcpAction(input: {
     throw new Error("MCP approval does not match its chat context.");
   }
   const context = await loadApprovedMcpTool(input, action, scope);
-  const toolInput = await decryptApprovedToolInput(
-    input,
-    action,
-    context.connection,
-  );
+  const toolInput = await decryptApprovedToolInput(input, action, context.connection);
   const [toolExecution] = await db
     .select({ id: aiAgentToolExecution.id })
     .from(aiAgentToolExecution)
@@ -225,9 +210,7 @@ export async function executeApprovedMcpAction(input: {
     .set({
       approvalActorUserId: input.userId,
       completedAt: new Date(),
-      errorCode: succeeded
-        ? null
-        : (result.error?.code ?? "mcp_approved_action_failed"),
+      errorCode: succeeded ? null : (result.error?.code ?? "mcp_approved_action_failed"),
       outcomeUnknown,
       status: succeeded ? "succeeded" : "failed",
       updatedAt: new Date(),
@@ -270,8 +253,7 @@ async function executeApprovedMcpRunAction(
       ),
     )
     .limit(1);
-  if (!run)
-    throw new Error("Custom Agent run is no longer waiting for this approval.");
+  if (!run) throw new Error("Custom Agent run is no longer waiting for this approval.");
   const checkpoint = await readAgentRunCheckpoint(input.env, run);
   if (!checkpoint.toolCallIds.includes(action.toolCallId))
     throw new Error("Approval has no saved model checkpoint.");
@@ -285,11 +267,7 @@ async function executeApprovedMcpRunAction(
     })
   )
     throw new Error("MCP tool is not part of this run's captured permissions.");
-  const toolInput = await decryptApprovedToolInput(
-    input,
-    action,
-    context.connection,
-  );
+  const toolInput = await decryptApprovedToolInput(input, action, context.connection);
   const [toolExecution] = await db
     .select({ id: aiAgentToolExecution.id })
     .from(aiAgentToolExecution)
@@ -325,9 +303,7 @@ async function executeApprovedMcpRunAction(
       .set({
         approvalActorUserId: input.userId,
         completedAt,
-        errorCode: succeeded
-          ? null
-          : (result.error?.code ?? "mcp_approved_action_failed"),
+        errorCode: succeeded ? null : (result.error?.code ?? "mcp_approved_action_failed"),
         outcomeUnknown: result.error?.code === "mcp_write_outcome_unknown",
         status: succeeded ? "succeeded" : "failed",
         updatedAt: completedAt,
@@ -348,21 +324,14 @@ async function executeApprovedMcpRunAction(
         updatedAt: completedAt,
       })
       .where(
-        and(
-          eq(aiAgentPendingAction.id, action.id),
-          eq(aiAgentPendingAction.status, "executing"),
-        ),
+        and(eq(aiAgentPendingAction.id, action.id), eq(aiAgentPendingAction.status, "executing")),
       );
   });
   return result;
 }
 
-export function isMcpPendingAction(
-  action: typeof aiAgentPendingAction.$inferSelect,
-) {
-  return Boolean(
-    action.connectionId && action.externalToolName && action.mcpScopeType,
-  );
+export function isMcpPendingAction(action: typeof aiAgentPendingAction.$inferSelect) {
+  return Boolean(action.connectionId && action.externalToolName && action.mcpScopeType);
 }
 
 export function dynamicMcpToolName(
@@ -410,11 +379,7 @@ type ApprovalPayload = typeof aiAgentPendingAction.$inferSelect & {
   encryptedToolInputAuthTag: string;
 };
 
-async function loadApprovedMcpTool(
-  input: ApprovalInput,
-  action: ApprovalPayload,
-  scope: McpScope,
-) {
+async function loadApprovedMcpTool(input: ApprovalInput, action: ApprovalPayload, scope: McpScope) {
   await discoverConnectionTools({
     connectionId: action.connectionId,
     env: input.env,
@@ -450,16 +415,9 @@ async function loadApprovedMcpTool(
     !context.snapshot.available ||
     context.snapshot.schemaHash !== action.toolSchemaHash
   ) {
-    throw new Error(
-      "MCP tool or connection changed after approval was requested.",
-    );
+    throw new Error("MCP tool or connection changed after approval was requested.");
   }
-  if (
-    !(await getMembership(
-      input.workspaceId,
-      context.connection.authenticatedByUserId,
-    ))
-  ) {
+  if (!(await getMembership(input.workspaceId, context.connection.authenticatedByUserId))) {
     throw new Error("MCP connection authenticator is no longer active.");
   }
   const policy = await getWorkspaceMcpPolicy(input.workspaceId);
@@ -477,9 +435,7 @@ async function decryptApprovedToolInput(
   action: ApprovalPayload,
   connection: typeof aiMcpConnection.$inferSelect,
 ) {
-  const [keyVersion, ciphertext] = splitEncryptedPayload(
-    action.encryptedToolInput,
-  );
+  const [keyVersion, ciphertext] = splitEncryptedPayload(action.encryptedToolInput);
   const plaintext = await decryptMcpSecret(
     input.env,
     {

@@ -9,25 +9,25 @@
       { "name": "CALENDAR_NOTIFICATION_ROOM", "class_name": "CalendarNotificationRoom" },
       {
         "name": "DATABASE_COLLABORATION",
-        "class_name": "DatabaseCollaborationRoom"
+        "class_name": "DatabaseCollaborationRoom",
       },
       {
         "name": "PAGE_COLLABORATION",
-        "class_name": "PageCollaborationRoom"
+        "class_name": "PageCollaborationRoom",
       },
       {
         "name": "MEETING_COLLABORATION",
-        "class_name": "MeetingCollaborationRoom"
+        "class_name": "MeetingCollaborationRoom",
       },
       {
         "name": "MAIL_NOTIFICATION_ROOM",
-        "class_name": "MailNotificationRoom"
+        "class_name": "MailNotificationRoom",
       },
       {
         "name": "NAVIGATION_NOTIFICATION_ROOM",
-        "class_name": "NavigationNotificationRoom"
-      }
-    ]
+        "class_name": "NavigationNotificationRoom",
+      },
+    ],
   },
   "migrations": [
     {
@@ -38,8 +38,8 @@
         "MailNotificationRoom",
         "MeetingCollaborationRoom",
         "NavigationNotificationRoom",
-        "PageCollaborationRoom"
-      ]
-    }
-  ]
+        "PageCollaborationRoom",
+      ],
+    },
+  ],
 }

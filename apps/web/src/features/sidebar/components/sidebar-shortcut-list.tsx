@@ -1,7 +1,13 @@
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { mailViewIds, type MailView, type SidebarShortcut } from "@zilobase/features/user-settings";
 
-import { SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/shared/ui/sidebar";
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/shared/ui/sidebar";
 import { SidebarShortcutIcon } from "./sidebar-layout-icons";
 import { getShortcutLabel, isShortcutActive } from "../model/sidebar-layout-model";
 
@@ -34,36 +40,27 @@ export function SidebarShortcutList({
           {shortcuts.map((shortcut) => {
             const target = shortcut.target;
             const page =
-              target.type === "page"
-                ? pages.find((entry) => entry.id === target.pageId)
-                : null;
+              target.type === "page" ? pages.find((entry) => entry.id === target.pageId) : null;
             const database =
               target.type === "database"
                 ? databases.find((entry) => entry.id === target.databaseId)
                 : null;
-            if (
-              (target.type === "page" && !page) ||
-              (target.type === "database" && !database)
-            ) {
+            if ((target.type === "page" && !page) || (target.type === "database" && !database)) {
               return null;
             }
 
             const label =
-              shortcut.label ||
-              page?.name ||
-              database?.name ||
-              getShortcutLabel(shortcut);
+              shortcut.label || page?.name || database?.name || getShortcutLabel(shortcut);
             const activate = () => {
               if (target.type === "action") {
                 if (target.action === "composeMail") {
                   const requestedView = location.search.view;
                   const view = mailViewIds.includes(requestedView as MailView)
-                    ? requestedView as MailView
+                    ? (requestedView as MailView)
                     : "inbox";
                   void navigate({ search: { compose: true, view }, to: "/mail" });
                 } else if (target.action === "createPage") void onCreatePage();
-                else if (target.action === "createDatabase")
-                  void onCreateDatabase();
+                else if (target.action === "createDatabase") void onCreateDatabase();
                 else void onCreateChat();
               } else if (target.type === "page") {
                 void navigate({ params: { pageId: target.pageId }, to: "/p/$pageId" });
@@ -85,10 +82,7 @@ export function SidebarShortcutList({
                 onOpenSettings?.();
               } else {
                 void navigate({
-                  to:
-                    target.route === "ai"
-                      ? "/ai"
-                      : "/tasks",
+                  to: target.route === "ai" ? "/ai" : "/tasks",
                 });
               }
             };

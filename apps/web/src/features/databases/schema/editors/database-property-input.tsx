@@ -1,18 +1,7 @@
-import {
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type ReactNode,
-  type FormEvent,
-} from "react"
+import { useId, useLayoutEffect, useRef, useState, type ReactNode, type FormEvent } from "react";
 
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
-import { getColorToken } from "@/shared/lib/color-tokens"
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { getColorToken } from "@/shared/lib/color-tokens";
 
 import {
   getNumberDecimalPlaces,
@@ -21,7 +10,7 @@ import {
   getNumberDisplayShowNumber,
   getNumberDisplayStyle,
   getNumberFormat,
-} from "../../views/model/database-view-config"
+} from "../../views/model/database-view-config";
 
 function DatabaseInputCell({
   editable = true,
@@ -37,45 +26,44 @@ function DatabaseInputCell({
   type,
   value,
 }: {
-  editable?: boolean
-  emptyLabel?: string
-  label: string
-  onActivate?: (element: HTMLTextAreaElement) => void
-  onChange: (value: string) => void
-  onCancel?: () => void
-  onCommit: () => void
-  onDeactivate?: () => void
-  onInput?: (event: FormEvent<HTMLTextAreaElement>) => void
-  propertyConfig?: unknown
-  type: string
-  value: string
+  editable?: boolean;
+  emptyLabel?: string;
+  label: string;
+  onActivate?: (element: HTMLTextAreaElement) => void;
+  onChange: (value: string) => void;
+  onCancel?: () => void;
+  onCommit: () => void;
+  onDeactivate?: () => void;
+  onInput?: (event: FormEvent<HTMLTextAreaElement>) => void;
+  propertyConfig?: unknown;
+  type: string;
+  value: string;
 }) {
-  const errorId = useId()
-  const [isOpen, setIsOpen] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-  const skipNextBlurCommitRef = useRef(false)
-  const isNumberCell = type === "number"
-  const hasNumberError =
-    isNumberCell && value.trim() !== "" && !isValidNumber(value)
-  const errorMessage = hasNumberError ? "Enter a valid number" : null
-  const actionHref = getActionHref(type, value)
-  const actionLinkProps = getActionLinkProps(type)
-  const displayValue = getDisplayValue(type, value, propertyConfig)
+  const errorId = useId();
+  const [isOpen, setIsOpen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const skipNextBlurCommitRef = useRef(false);
+  const isNumberCell = type === "number";
+  const hasNumberError = isNumberCell && value.trim() !== "" && !isValidNumber(value);
+  const errorMessage = hasNumberError ? "Enter a valid number" : null;
+  const actionHref = getActionHref(type, value);
+  const actionLinkProps = getActionLinkProps(type);
+  const displayValue = getDisplayValue(type, value, propertyConfig);
   const displayContent = value.trim() ? (
     displayValue
   ) : emptyLabel ? (
     <span className="text-content-secondary">{emptyLabel}</span>
-  ) : null
+  ) : null;
 
   useLayoutEffect(() => {
-    const element = textareaRef.current
+    const element = textareaRef.current;
 
     if (!element || !isOpen) {
-      return
+      return;
     }
 
-    resizeTextarea(element)
-  }, [isOpen, value])
+    resizeTextarea(element);
+  }, [isOpen, value]);
 
   if (!editable) {
     return actionHref ? (
@@ -88,51 +76,45 @@ function DatabaseInputCell({
         {displayContent}
       </a>
     ) : (
-      <span className="database-input-cell-trigger">
-        {displayContent}
-      </span>
-    )
+      <span className="database-input-cell-trigger">{displayContent}</span>
+    );
   }
 
   const resizeTextarea = (element: HTMLTextAreaElement) => {
-    element.style.height = "auto"
-    element.style.height = `${element.scrollHeight}px`
-  }
+    element.style.height = "auto";
+    element.style.height = `${element.scrollHeight}px`;
+  };
 
   const resetTextareaView = (element: HTMLTextAreaElement) => {
-    resizeTextarea(element)
-    element.scrollTop = 0
-    element.scrollLeft = 0
-  }
+    resizeTextarea(element);
+    element.scrollTop = 0;
+    element.scrollLeft = 0;
+  };
 
   const commitAndClose = () => {
-    onCommit()
-    onDeactivate()
-    setIsOpen(false)
-  }
+    onCommit();
+    onDeactivate();
+    setIsOpen(false);
+  };
 
   return (
     <Popover
       open={isOpen}
       onOpenChange={(open) => {
         if (open) {
-          setIsOpen(true)
-          return
+          setIsOpen(true);
+          return;
         }
 
         if (onCancel) {
-          onCancel()
-          onDeactivate()
-          setIsOpen(false)
-        } else commitAndClose()
+          onCancel();
+          onDeactivate();
+          setIsOpen(false);
+        } else commitAndClose();
       }}
     >
       <PopoverTrigger asChild>
-        <button
-          aria-label={`${label} value`}
-          className="database-input-cell-trigger"
-          type="button"
-        >
+        <button aria-label={`${label} value`} className="database-input-cell-trigger" type="button">
           {actionHref ? (
             <a
               className="database-input-cell-link"
@@ -152,19 +134,19 @@ function DatabaseInputCell({
         className="database-input-cell-popover w-72 p-0"
         onCloseAutoFocus={(event) => event.preventDefault()}
         onOpenAutoFocus={(event) => {
-          event.preventDefault()
+          event.preventDefault();
           requestAnimationFrame(() => {
-            const element = textareaRef.current
+            const element = textareaRef.current;
 
             if (!element) {
-              return
+              return;
             }
 
-            element.focus()
-            element.setSelectionRange(element.value.length, element.value.length)
-            resizeTextarea(element)
-            onActivate(element)
-          })
+            element.focus();
+            element.setSelectionRange(element.value.length, element.value.length);
+            resizeTextarea(element);
+            onActivate(element);
+          });
         }}
         sideOffset={0}
       >
@@ -177,36 +159,34 @@ function DatabaseInputCell({
             data-database-cell-input
             onBlur={() => {
               if (skipNextBlurCommitRef.current) {
-                skipNextBlurCommitRef.current = false
+                skipNextBlurCommitRef.current = false;
               }
             }}
-            onChange={(event) =>
-              onChange(stripActionScheme(type, event.target.value))
-            }
+            onChange={(event) => onChange(stripActionScheme(type, event.target.value))}
             onFocus={(event) => onActivate(event.currentTarget)}
             onInput={(event) => {
-              onInput(event)
-              resizeTextarea(event.currentTarget)
+              onInput(event);
+              resizeTextarea(event.currentTarget);
             }}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 if (onCancel) {
-                  event.preventDefault()
-                  onCancel()
-                  onDeactivate()
-                  setIsOpen(false)
-                } else commitAndClose()
-                return
+                  event.preventDefault();
+                  onCancel();
+                  onDeactivate();
+                  setIsOpen(false);
+                } else commitAndClose();
+                return;
               }
 
               if (event.key !== "Enter" || event.shiftKey) {
-                return
+                return;
               }
 
-              event.preventDefault()
-              resetTextareaView(event.currentTarget)
-              commitAndClose()
-              skipNextBlurCommitRef.current = true
+              event.preventDefault();
+              resetTextareaView(event.currentTarget);
+              commitAndClose();
+              skipNextBlurCommitRef.current = true;
             }}
             ref={textareaRef}
             rows={1}
@@ -221,122 +201,118 @@ function DatabaseInputCell({
         </div>
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
-export { DatabaseInputCell as DatabasePropertyInput }
+export { DatabaseInputCell as DatabasePropertyInput };
 
 function isValidNumber(value: string) {
-  return /^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(value.trim())
+  return /^[-+]?(?:\d+\.?\d*|\.\d+)$/.test(value.trim());
 }
 
 function getActionHref(type: string, value: string) {
-  const displayValue = stripActionScheme(type, value).trim()
+  const displayValue = stripActionScheme(type, value).trim();
 
   if (!displayValue) {
-    return null
+    return null;
   }
 
   if (type === "email") {
-    return `mailto:${displayValue}`
+    return `mailto:${displayValue}`;
   }
 
   if (type === "phone") {
-    return `tel:${displayValue}`
+    return `tel:${displayValue}`;
   }
 
   if (type === "url") {
-    return getUrlHref(displayValue)
+    return getUrlHref(displayValue);
   }
 
-  return null
+  return null;
 }
 
 function getUrlHref(value: string) {
-  const hasProtocol = /^[a-z][a-z0-9+.-]*:/i.test(value)
-  const href = hasProtocol ? value : `https://${value}`
+  const hasProtocol = /^[a-z][a-z0-9+.-]*:/i.test(value);
+  const href = hasProtocol ? value : `https://${value}`;
 
   try {
-    const url = new URL(href)
+    const url = new URL(href);
 
-    return url.protocol === "http:" || url.protocol === "https:"
-      ? url.href
-      : null
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
   } catch {
-    return null
+    return null;
   }
 }
 
 function getActionLinkProps(type: string) {
   if (type !== "url") {
-    return {}
+    return {};
   }
 
   return {
     rel: "noreferrer",
     target: "_blank",
-  }
+  };
 }
 
 function getDisplayValue(type: string, value: string, config: unknown) {
-  const displayValue = stripActionScheme(type, value)
+  const displayValue = stripActionScheme(type, value);
 
   if (type === "number") {
-    return getNumberDisplayValue(displayValue, config)
+    return getNumberDisplayValue(displayValue, config);
   }
 
   if (type !== "url" || getShowFullUrl(config)) {
-    return displayValue
+    return displayValue;
   }
 
-  const href = getUrlHref(displayValue.trim())
+  const href = getUrlHref(displayValue.trim());
 
   if (!href) {
-    return displayValue
+    return displayValue;
   }
 
-  const url = new URL(href)
-  const pathname = url.pathname === "/" ? "" : url.pathname.replace(/\/$/, "")
+  const url = new URL(href);
+  const pathname = url.pathname === "/" ? "" : url.pathname.replace(/\/$/, "");
 
-  return `${url.hostname}${pathname}`
+  return `${url.hostname}${pathname}`;
 }
 
 export function getNumberDisplayValue(value: string, config: unknown): ReactNode {
-  const trimmedValue = value.trim()
+  const trimmedValue = value.trim();
 
   if (!trimmedValue) {
-    return ""
+    return "";
   }
 
   if (!isValidNumber(trimmedValue)) {
-    return value
+    return value;
   }
 
-  const numberValue = Number(trimmedValue)
+  const numberValue = Number(trimmedValue);
 
   if (!Number.isFinite(numberValue)) {
-    return value
+    return value;
   }
 
-  const formattedValue = formatNumberValue(trimmedValue, numberValue, config)
-  const displayStyle = getNumberDisplayStyle(config)
+  const formattedValue = formatNumberValue(trimmedValue, numberValue, config);
+  const displayStyle = getNumberDisplayStyle(config);
 
   if (displayStyle === "number") {
-    return formattedValue
+    return formattedValue;
   }
 
-  const divideBy = getNumberDisplayDivideBy(config)
-  const ratio = Math.max(0, Math.min(1, divideBy === 0 ? 0 : numberValue / divideBy))
-  const showNumber = getNumberDisplayShowNumber(config)
-  const colorToken = getColorToken(getNumberDisplayColor(config))
+  const divideBy = getNumberDisplayDivideBy(config);
+  const ratio = Math.max(0, Math.min(1, divideBy === 0 ? 0 : numberValue / divideBy));
+  const showNumber = getNumberDisplayShowNumber(config);
+  const colorToken = getColorToken(getNumberDisplayColor(config));
 
   if (displayStyle === "bar") {
     return (
       <span className="flex w-full min-w-0 items-center justify-between gap-3">
         {showNumber ? (
-          <span className="min-w-0 flex-1 truncate tabular-nums">
-            {formattedValue}
-          </span>
+          <span className="min-w-0 flex-1 truncate tabular-nums">{formattedValue}</span>
         ) : (
           <span className="flex-1" />
         )}
@@ -347,11 +323,11 @@ export function getNumberDisplayValue(value: string, config: unknown): ReactNode
           />
         </span>
       </span>
-    )
+    );
   }
 
-  const circumference = 2 * Math.PI * 8
-  const strokeDashoffset = circumference * (1 - ratio)
+  const circumference = 2 * Math.PI * 8;
+  const strokeDashoffset = circumference * (1 - ratio);
 
   return (
     <span className="flex w-full min-w-0 items-center justify-between gap-3">
@@ -386,40 +362,40 @@ export function getNumberDisplayValue(value: string, config: unknown): ReactNode
         </svg>
       </span>
     </span>
-  )
+  );
 }
 
 function formatNumberValue(value: string, numberValue: number, config: unknown) {
-  const numberFormat = getNumberFormat(config).trim().toLowerCase()
-  const decimalPlaces = getNumberDecimalPlaces(config)
+  const numberFormat = getNumberFormat(config).trim().toLowerCase();
+  const decimalPlaces = getNumberDecimalPlaces(config);
   const options: Intl.NumberFormatOptions = {
     useGrouping: numberFormat !== "number",
-  }
-  const currencyCode = getNumberCurrencyCode(numberFormat)
+  };
+  const currencyCode = getNumberCurrencyCode(numberFormat);
 
   if (decimalPlaces !== "default") {
-    options.minimumFractionDigits = decimalPlaces
-    options.maximumFractionDigits = decimalPlaces
+    options.minimumFractionDigits = decimalPlaces;
+    options.maximumFractionDigits = decimalPlaces;
   }
 
   if (numberFormat === "number" && decimalPlaces === "default") {
-    return value
+    return value;
   }
 
   if (numberFormat === "percent") {
-    options.style = "percent"
+    options.style = "percent";
   } else if (currencyCode) {
-    options.currency = currencyCode
-    options.style = "currency"
+    options.currency = currencyCode;
+    options.style = "currency";
   }
 
-  return new Intl.NumberFormat(undefined, options).format(numberValue)
+  return new Intl.NumberFormat(undefined, options).format(numberValue);
 }
 
 function getNumberCurrencyCode(format: string) {
-  const normalizedFormat = format.toUpperCase()
+  const normalizedFormat = format.toUpperCase();
 
-  return /^[A-Z]{3}$/.test(normalizedFormat) ? normalizedFormat : null
+  return /^[A-Z]{3}$/.test(normalizedFormat) ? normalizedFormat : null;
 }
 
 function getShowFullUrl(config: unknown) {
@@ -428,17 +404,17 @@ function getShowFullUrl(config: unknown) {
     typeof config === "object" &&
     "showFullUrl" in config &&
     (config as { showFullUrl?: unknown }).showFullUrl === true
-  )
+  );
 }
 
 function stripActionScheme(type: string, value: string) {
   if (type === "email") {
-    return value.replace(/^mailto:/i, "")
+    return value.replace(/^mailto:/i, "");
   }
 
   if (type === "phone") {
-    return value.replace(/^tel:/i, "")
+    return value.replace(/^tel:/i, "");
   }
 
-  return value
+  return value;
 }

@@ -1,7 +1,17 @@
 import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../../../infrastructure/database";
-import { databaseAutomation, databaseAutomationRevision } from "../../../infrastructure/database/schema";
-import { requireManagementContext, assertProtectedDefinitionOwner, getAutomationWithRevision, toSummary, toDetail, notFound } from "./definition-context";
+import {
+  databaseAutomation,
+  databaseAutomationRevision,
+} from "../../../infrastructure/database/schema";
+import {
+  requireManagementContext,
+  assertProtectedDefinitionOwner,
+  getAutomationWithRevision,
+  toSummary,
+  toDetail,
+  notFound,
+} from "./definition-context";
 
 export async function listDatabaseAutomations(input: {
   databaseId: string;
@@ -24,7 +34,9 @@ export async function listDatabaseAutomations(input: {
     )
     .orderBy(desc(databaseAutomation.updatedAt), asc(databaseAutomation.id));
 
-  return { automations: records.map(({ automation, revision }) => toSummary(automation, revision)) };
+  return {
+    automations: records.map(({ automation, revision }) => toSummary(automation, revision)),
+  };
 }
 
 export async function getDatabaseAutomation(input: {

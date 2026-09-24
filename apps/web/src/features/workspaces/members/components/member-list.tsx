@@ -1,19 +1,9 @@
 import { useMemberAccess } from "../commands/use-member-access";
 
-import {
-  CalendarClockIcon,
-  Trash2Icon,
-  UsersIcon,
-} from "@/shared/components/icons";
+import { CalendarClockIcon, Trash2Icon, UsersIcon } from "@/shared/components/icons";
 
 import { Button } from "@/shared/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/shared/ui/empty";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
 
 import { Input } from "@/shared/ui/input";
 import {
@@ -25,20 +15,11 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/shared/ui/item";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
 import { Spinner } from "@/shared/ui/spinner";
 
-import type {
-  WorkspaceMember,
-  WorkspaceRole,
-} from "@zilobase/features/workspaces";
+import type { WorkspaceMember, WorkspaceRole } from "@zilobase/features/workspaces";
 
 import {
   getMaximumTemporaryExpiration,
@@ -76,9 +57,7 @@ export function MemberList({
             <UsersIcon />
           </EmptyMedia>
           <EmptyTitle>No members yet</EmptyTitle>
-          <EmptyDescription>
-            Invited teammates appear here after they join.
-          </EmptyDescription>
+          <EmptyDescription>Invited teammates appear here after they join.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
@@ -126,14 +105,10 @@ function MemberRow({
         {getInitials(member.name || member.email)}
       </ItemMedia>
       <ItemContent className="min-w-0">
-        <ItemTitle className="truncate">
-          {member.name || member.email}
-        </ItemTitle>
+        <ItemTitle className="truncate">{member.name || member.email}</ItemTitle>
         <ItemDescription className="truncate">
           {member.email}
-          {member.accessExpiresAt
-            ? ` · Expires ${formatDate(member.accessExpiresAt)}`
-            : ""}
+          {member.accessExpiresAt ? ` · Expires ${formatDate(member.accessExpiresAt)}` : ""}
         </ItemDescription>
       </ItemContent>
       <ItemActions>
@@ -148,12 +123,7 @@ function MemberRow({
           <div className="flex items-center gap-2">
             <RoleBadge role={member.role} />
             {actorCanEdit ? (
-              <Button
-                onClick={() => setEditing(true)}
-                size="sm"
-                type="button"
-                variant="ghost"
-              >
+              <Button onClick={() => setEditing(true)} size="sm" type="button" variant="ghost">
                 Manage
               </Button>
             ) : null}
@@ -188,18 +158,12 @@ function MemberAccessEditor({
   } = controls;
   return (
     <div className="flex max-w-sm flex-wrap items-center justify-end gap-2">
-      <Select
-        disabled={updatePending}
-        onValueChange={changeRole}
-        value={draftRole}
-      >
+      <Select disabled={updatePending} onValueChange={changeRole} value={draftRole}>
         <SelectTrigger className="w-32">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {actorRole === "owner" ? (
-            <SelectItem value="owner">Owner</SelectItem>
-          ) : null}
+          {actorRole === "owner" ? <SelectItem value="owner">Owner</SelectItem> : null}
           <SelectItem value="admin">Admin</SelectItem>
           <SelectItem value="member">Member</SelectItem>
           <SelectItem value="temporary">Temporary</SelectItem>
@@ -217,9 +181,7 @@ function MemberAccessEditor({
         />
       ) : null}
       <Button
-        disabled={
-          updatePending || (draftRole === "temporary" && !draftExpiration)
-        }
+        disabled={updatePending || (draftRole === "temporary" && !draftExpiration)}
         onClick={save}
         size="sm"
         type="button"

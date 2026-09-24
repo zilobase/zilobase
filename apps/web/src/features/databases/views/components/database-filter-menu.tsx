@@ -1,9 +1,12 @@
-import type { DatabaseActiveFilter, DatabaseFilterUpdatePatch } from "../model/filter-sort-contracts";
-import { Filter, Plus, X } from "@/shared/components/icons"
-import { Reorder } from "framer-motion"
-import { useState, type ReactNode } from "react"
+import type {
+  DatabaseActiveFilter,
+  DatabaseFilterUpdatePatch,
+} from "../model/filter-sort-contracts";
+import { Filter, Plus, X } from "@/shared/components/icons";
+import { Reorder } from "framer-motion";
+import { useState, type ReactNode } from "react";
 
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/shared/ui/button";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -11,12 +14,8 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
+} from "@/shared/ui/dropdrawer";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 
 import { DatabaseConditionEditor } from "./database-condition-editor";
 
@@ -24,17 +23,17 @@ import { DatabaseSearchableMenuItems } from "./database-searchable-menu-items";
 import { type DatabaseSearchableMenuOption } from "../menu-option-contracts";
 
 type DatabaseFilterMenuProps = {
-  activeDatabaseFilters: DatabaseActiveFilter[]
-  addableFilterFieldOptions: DatabaseSearchableMenuOption[]
-  canAddDatabaseFilter: boolean
-  filterFieldOptions: DatabaseSearchableMenuOption[]
-  filterValueOptionsByField: Record<string, DatabaseSearchableMenuOption[]>
-  onClearDatabaseFilter: () => void
-  onCreateDatabaseFilter: (field: string) => void
-  onRemoveDatabaseFilter: (index: number) => void
-  onReorderDatabaseFilters: (filterIds: string[]) => void
-  onUpdateDatabaseFilter: (index: number, patch: DatabaseFilterUpdatePatch) => void
-}
+  activeDatabaseFilters: DatabaseActiveFilter[];
+  addableFilterFieldOptions: DatabaseSearchableMenuOption[];
+  canAddDatabaseFilter: boolean;
+  filterFieldOptions: DatabaseSearchableMenuOption[];
+  filterValueOptionsByField: Record<string, DatabaseSearchableMenuOption[]>;
+  onClearDatabaseFilter: () => void;
+  onCreateDatabaseFilter: (field: string) => void;
+  onRemoveDatabaseFilter: (index: number) => void;
+  onReorderDatabaseFilters: (filterIds: string[]) => void;
+  onUpdateDatabaseFilter: (index: number, patch: DatabaseFilterUpdatePatch) => void;
+};
 
 function DatabaseFilterMenuContent({
   activeDatabaseFilters,
@@ -49,8 +48,8 @@ function DatabaseFilterMenuContent({
   onUpdateDatabaseFilter,
   showTitle = true,
 }: DatabaseFilterMenuProps & { showTitle?: boolean }) {
-  const [addFilterPickerOpen, setAddFilterPickerOpen] = useState(false)
-  const [draggingFilterId, setDraggingFilterId] = useState<string | null>(null)
+  const [addFilterPickerOpen, setAddFilterPickerOpen] = useState(false);
+  const [draggingFilterId, setDraggingFilterId] = useState<string | null>(null);
 
   return (
     <div className="w-80 max-w-[calc(100vw-2rem)] p-1">
@@ -75,10 +74,9 @@ function DatabaseFilterMenuContent({
                 option.value === filter.propertyId ||
                 !activeDatabaseFilters.some(
                   (activeFilter, activeIndex) =>
-                    activeIndex !== index &&
-                    activeFilter.propertyId === option.value
-                )
-            )
+                    activeIndex !== index && activeFilter.propertyId === option.value,
+                ),
+            );
 
             return (
               <DatabaseConditionEditor
@@ -98,7 +96,7 @@ function DatabaseFilterMenuContent({
                 onRemove={() => onRemoveDatabaseFilter(index)}
                 onUpdate={(patch) => onUpdateDatabaseFilter(index, patch)}
               />
-            )
+            );
           })}
         </Reorder.Group>
       ) : null}
@@ -111,10 +109,7 @@ function DatabaseFilterMenuContent({
       ) : null}
       <div className="mt-2 space-y-1 px-1">
         {canAddDatabaseFilter ? (
-          <DropDrawer
-            open={addFilterPickerOpen}
-            onOpenChange={setAddFilterPickerOpen}
-          >
+          <DropDrawer open={addFilterPickerOpen} onOpenChange={setAddFilterPickerOpen}>
             <DropDrawerTrigger asChild>
               <Button
                 className="w-full justify-start gap-2 text-xs"
@@ -122,9 +117,7 @@ function DatabaseFilterMenuContent({
                 variant="secondary"
               >
                 <Plus className="size-4" />
-                <span>
-                  {activeDatabaseFilters.length > 0 ? "Add another" : "New filter"}
-                </span>
+                <span>{activeDatabaseFilters.length > 0 ? "Add another" : "New filter"}</span>
               </Button>
             </DropDrawerTrigger>
             <DropDrawerContent
@@ -138,8 +131,8 @@ function DatabaseFilterMenuContent({
                 inputIcon={<Filter className="size-4" />}
                 inputPlaceholder="Filter by..."
                 onSelect={(field) => {
-                  onCreateDatabaseFilter(field)
-                  setAddFilterPickerOpen(false)
+                  onCreateDatabaseFilter(field);
+                  setAddFilterPickerOpen(false);
                 }}
                 open={addFilterPickerOpen}
                 options={addableFilterFieldOptions}
@@ -159,7 +152,7 @@ function DatabaseFilterMenuContent({
         </Button>
       </div>
     </div>
-  )
+  );
 }
 
 export function DatabaseFilterPopover({
@@ -175,15 +168,12 @@ export function DatabaseFilterPopover({
   onReorderDatabaseFilters,
   onUpdateDatabaseFilter,
 }: DatabaseFilterMenuProps & {
-  children: ReactNode
+  children: ReactNode;
 }) {
   return (
     <Popover>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-80 max-w-[calc(100vw-2rem)] gap-0 p-1"
-      >
+      <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] gap-0 p-1">
         <DatabaseFilterMenuContent
           activeDatabaseFilters={activeDatabaseFilters}
           addableFilterFieldOptions={addableFilterFieldOptions}
@@ -198,7 +188,7 @@ export function DatabaseFilterPopover({
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 
 export function DatabaseFilterSubmenu({
@@ -216,9 +206,9 @@ export function DatabaseFilterSubmenu({
   displayMode = "nested",
   title = "Filter",
 }: DatabaseFilterMenuProps & {
-  children: ReactNode
-  displayMode?: "inline" | "nested"
-  title?: string
+  children: ReactNode;
+  displayMode?: "inline" | "nested";
+  title?: string;
 }) {
   return (
     <DropDrawerSub displayMode={displayMode} title={title}>
@@ -239,5 +229,5 @@ export function DatabaseFilterSubmenu({
         />
       </DropDrawerSubContent>
     </DropDrawerSub>
-  )
+  );
 }

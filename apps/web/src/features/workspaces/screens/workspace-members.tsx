@@ -1,35 +1,17 @@
 import { MemberList } from "../members/components/member-list";
-import {
-  InviteMemberSection,
-  InvitationList,
-} from "../members/components/member-invitations";
-import {
-  GuestList,
-  GuestPolicySection,
-} from "../guests/components/workspace-guests";
+import { InviteMemberSection, InvitationList } from "../members/components/member-invitations";
+import { GuestList, GuestPolicySection } from "../guests/components/workspace-guests";
 import { RegistrationSettingsSection } from "../settings/registration-settings";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { UsersIcon } from "@/shared/components/icons";
 
 import { SettingsHeader } from "@/features/settings";
 
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/shared/ui/empty";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/shared/ui/empty";
 
 import { Separator } from "@/shared/ui/separator";
 
-import {
-  Tabs,
-  TabsBadge,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/shared/ui/app-tabs";
+import { Tabs, TabsBadge, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 import { useSession } from "@zilobase/features/auth/react";
 import {
   useActiveWorkspaceId,
@@ -64,23 +46,23 @@ export default function TeamSettingsPage() {
   const currentRole = normalizeWorkspaceRole(currentMembership?.role);
   const canManageMembers = currentRole === "owner" || currentRole === "admin";
   const isWorkspaceOwner = currentRole === "owner";
-  const { data: guests, isLoading: isLoadingGuests } = useWorkspaceGuests(
-    activeWorkspaceId,
-    { enabled: canManageMembers },
-  );
+  const { data: guests, isLoading: isLoadingGuests } = useWorkspaceGuests(activeWorkspaceId, {
+    enabled: canManageMembers,
+  });
   const { data: guestPolicy } = useWorkspaceGuestPolicy(activeWorkspaceId, {
     enabled: isWorkspaceOwner,
   });
-  const { data: guestRequests, isLoading: isLoadingGuestRequests } =
-    useWorkspaceGuestRequests(activeWorkspaceId, {
+  const { data: guestRequests, isLoading: isLoadingGuestRequests } = useWorkspaceGuestRequests(
+    activeWorkspaceId,
+    {
       enabled: isWorkspaceOwner,
-    });
+    },
+  );
   const isInstanceOwner = Boolean(
     sessionData?.workspacePinned &&
-      accessTargets?.members.some(
-        (member) =>
-          member.id === sessionData.user?.id && member.role === "owner",
-      ),
+    accessTargets?.members.some(
+      (member) => member.id === sessionData.user?.id && member.role === "owner",
+    ),
   );
   const pendingInvitations = (invitations ?? []).filter(
     (invitation) => invitation.status === "pending",
@@ -97,10 +79,7 @@ export default function TeamSettingsPage() {
 
   return (
     <main className="flex flex-1 flex-col gap-6 px-4 py-8">
-      <SettingsHeader
-        title="Team"
-        description="Invite collaborators and manage team access."
-      />
+      <SettingsHeader title="Team" description="Invite collaborators and manage team access." />
 
       <Tabs
         className="mx-auto w-full max-w-3xl"
@@ -114,11 +93,7 @@ export default function TeamSettingsPage() {
         }}
         value={tab}
       >
-        <TabsList
-          aria-label="Team settings sections"
-          overflow="scroll"
-          width="full"
-        >
+        <TabsList aria-label="Team settings sections" overflow="scroll" width="full">
           <TabsTrigger value="team" width="content">
             Team
             <TabsBadge>{tabCounts.team}</TabsBadge>
@@ -137,17 +112,13 @@ export default function TeamSettingsPage() {
             </>
           ) : null}
 
-          {canManageMembers ? (
-            <InviteMemberSection workspaceId={activeWorkspaceId} />
-          ) : null}
+          {canManageMembers ? <InviteMemberSection workspaceId={activeWorkspaceId} /> : null}
 
           {canManageMembers || isInstanceOwner ? <Separator /> : null}
 
           <section className="grid gap-3">
             <div className="space-y-1">
-              <h3 className="font-heading text-base leading-snug font-medium">
-                Members
-              </h3>
+              <h3 className="font-heading text-base leading-snug font-medium">Members</h3>
               <p className="text-sm text-content-secondary">
                 People with access to this workspace.
               </p>
@@ -169,14 +140,9 @@ export default function TeamSettingsPage() {
               <h3 className="font-heading text-base leading-snug font-medium">
                 Pending invitations
               </h3>
-              <p className="text-sm text-content-secondary">
-                Invitations waiting to be accepted.
-              </p>
+              <p className="text-sm text-content-secondary">Invitations waiting to be accepted.</p>
             </div>
-            <InvitationList
-              invitations={pendingInvitations}
-              isLoading={isLoadingInvitations}
-            />
+            <InvitationList invitations={pendingInvitations} isLoading={isLoadingInvitations} />
           </section>
         </TabsContent>
 
@@ -196,12 +162,10 @@ export default function TeamSettingsPage() {
               ) : null}
               <section className="grid gap-3">
                 <div className="space-y-1">
-                  <h3 className="font-heading text-base leading-snug font-medium">
-                    Page guests
-                  </h3>
+                  <h3 className="font-heading text-base leading-snug font-medium">Page guests</h3>
                   <p className="text-sm text-content-secondary">
-                    External people invited to individual pages. Guests do not
-                    receive workspace membership.
+                    External people invited to individual pages. Guests do not receive workspace
+                    membership.
                   </p>
                 </div>
                 <GuestList
@@ -221,8 +185,8 @@ export default function TeamSettingsPage() {
                 </EmptyMedia>
                 <EmptyTitle>Guest administration is restricted</EmptyTitle>
                 <EmptyDescription>
-                  Workspace owners and admins can review page guests. Ask an
-                  owner to change guest access or invitation policy.
+                  Workspace owners and admins can review page guests. Ask an owner to change guest
+                  access or invitation policy.
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>

@@ -19,10 +19,7 @@ test("navigation realtime rejects missing and mismatched workspace tickets", asy
     await assert.rejects(waitForOpen(missing), /WebSocket/);
     missing.close();
 
-    const mismatched = new WebSocket(
-      fixture.url,
-      protocols(await createTicket("workspace-2")),
-    );
+    const mismatched = new WebSocket(fixture.url, protocols(await createTicket("workspace-2")));
     await assert.rejects(waitForOpen(mismatched), /WebSocket/);
     mismatched.close();
   } finally {
@@ -38,7 +35,10 @@ test("navigation realtime broadcasts generic invalidations only within a workspa
 
   try {
     await Promise.all([workspaceOne.opened, workspaceTwo.opened]);
-    await Promise.all([workspaceOne.next("navigation.ready"), workspaceTwo.next("navigation.ready")]);
+    await Promise.all([
+      workspaceOne.next("navigation.ready"),
+      workspaceTwo.next("navigation.ready"),
+    ]);
     const event = {
       committedAt: "2026-09-01T00:00:00.000Z",
       eventId: "event-1",
@@ -78,10 +78,16 @@ function createTestRealtimeBus(): NodeRealtimeBus {
   return {
     async close() {},
     async connect() {},
-    async consumeLimit() { return true; },
-    isReady() { return true; },
+    async consumeLimit() {
+      return true;
+    },
+    isReady() {
+      return true;
+    },
     async publish() {},
-    async subscribe() { return async () => {}; },
+    async subscribe() {
+      return async () => {};
+    },
   };
 }
 
@@ -107,7 +113,9 @@ class NavigationClient {
     });
   }
 
-  close() { this.websocket.close(); }
+  close() {
+    this.websocket.close();
+  }
 
   next(type: string, timeout = 1_000) {
     const existing = this.messages.findIndex((message) => message.type === type);
@@ -123,23 +131,21 @@ class NavigationClient {
 }
 
 function createTicket(workspaceId: string) {
-  return createNavigationRealtimeTicket(
-    { userId: "user-1", workspaceId },
-    env,
-  ).then(({ token }) => token);
+  return createNavigationRealtimeTicket({ userId: "user-1", workspaceId }, env).then(
+    ({ token }) => token,
+  );
 }
 
 function protocols(ticket: string) {
-  return [
-    NAVIGATION_REALTIME_PROTOCOL,
-    `${NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket}`,
-  ];
+  return [NAVIGATION_REALTIME_PROTOCOL, `${NAVIGATION_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket}`];
 }
 
 function waitForOpen(socket: WebSocket) {
   return new Promise<void>((resolve, reject) => {
     socket.addEventListener("open", () => resolve(), { once: true });
-    socket.addEventListener("error", () => reject(new Error("WebSocket upgrade failed")), { once: true });
+    socket.addEventListener("error", () => reject(new Error("WebSocket upgrade failed")), {
+      once: true,
+    });
   });
 }
 
@@ -149,6 +155,6 @@ function listen(server: Server) {
 
 function closeServer(server: Server) {
   return new Promise<void>((resolve, reject) => {
-    server.close((error) => error ? reject(error) : resolve());
+    server.close((error) => (error ? reject(error) : resolve()));
   });
 }

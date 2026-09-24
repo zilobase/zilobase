@@ -7,11 +7,7 @@ import {
   DropDrawerSeparator,
   DropDrawerTrigger,
 } from "@/shared/ui/dropdrawer";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/shared/ui/sidebar";
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/shared/ui/sidebar";
 import { SidebarNavItemAction } from "@/shared/ui/sidebar-nav-item-action";
 import { Input } from "@/shared/ui/input";
 import { cn } from "@/shared/lib/utils";
@@ -62,9 +58,7 @@ function getDateLabel(dateStr: string): string {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffDays = Math.floor(
-    (today.getTime() - day.getTime()) / (1000 * 60 * 60 * 24),
-  );
+  const diffDays = Math.floor((today.getTime() - day.getTime()) / (1000 * 60 * 60 * 24));
 
   if (diffDays === 0) {
     return "Today";
@@ -136,9 +130,7 @@ function AiChatThreadMoreMenu({
             ) : (
               <PinIcon className="text-content-secondary" />
             )}
-            <span>
-              {thread.pinned ? "Unpin conversation" : "Pin conversation"}
-            </span>
+            <span>{thread.pinned ? "Unpin conversation" : "Pin conversation"}</span>
           </DropDrawerItem>
         ) : null}
         <DropDrawerItem
@@ -177,17 +169,12 @@ export function AiChatHistoryList({
 }) {
   const [search, setSearch] = useState("");
   const isMobile = useIsMobile();
-  const {
-    threads,
-    threadsQuery,
-    handleArchiveThread,
-    handleDeleteThread,
-    handleSetPinned,
-  } = useAiChatThreadActions({
-    activeThreadId,
-    onSelectThread,
-    search,
-  });
+  const { threads, threadsQuery, handleArchiveThread, handleDeleteThread, handleSetPinned } =
+    useAiChatThreadActions({
+      activeThreadId,
+      onSelectThread,
+      search,
+    });
   const groupedThreads = useMemo(
     () => groupThreadsByDate(limit ? threads.slice(0, limit) : threads),
     [limit, threads],
@@ -240,9 +227,7 @@ export function AiChatHistoryList({
                       title={`${thread.title} · ${formatRelativeTime(thread.lastActivityAt)}`}
                       type="button"
                     >
-                      <span className="min-w-0 flex-1 truncate">
-                        {thread.title}
-                      </span>
+                      <span className="min-w-0 flex-1 truncate">{thread.title}</span>
                       <span className="ml-auto shrink-0 text-[10px] opacity-60 transition-opacity group-focus-within/nav-row:opacity-0 group-hover/nav-row:opacity-0">
                         {formatRelativeTime(thread.lastActivityAt)}
                       </span>

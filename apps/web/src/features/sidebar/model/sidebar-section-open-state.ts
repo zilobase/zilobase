@@ -1,28 +1,31 @@
-import * as React from "react"
+import * as React from "react";
 
 export function useSidebarSectionOpen(storageKey: string) {
-  const [open, setOpenState] = React.useState(() => readSidebarSectionOpen(storageKey))
+  const [open, setOpenState] = React.useState(() => readSidebarSectionOpen(storageKey));
 
   React.useEffect(() => {
-    setOpenState(readSidebarSectionOpen(storageKey))
-  }, [storageKey])
+    setOpenState(readSidebarSectionOpen(storageKey));
+  }, [storageKey]);
 
-  const setOpen = React.useCallback((nextOpen: boolean) => {
-    setOpenState(nextOpen)
-    try {
-      window.localStorage.setItem(storageKey, nextOpen ? "open" : "closed")
-    } catch {
-      // The section still remains interactive when storage is unavailable.
-    }
-  }, [storageKey])
+  const setOpen = React.useCallback(
+    (nextOpen: boolean) => {
+      setOpenState(nextOpen);
+      try {
+        window.localStorage.setItem(storageKey, nextOpen ? "open" : "closed");
+      } catch {
+        // The section still remains interactive when storage is unavailable.
+      }
+    },
+    [storageKey],
+  );
 
-  return [open, setOpen] as const
+  return [open, setOpen] as const;
 }
 
 function readSidebarSectionOpen(storageKey: string) {
   try {
-    return window.localStorage.getItem(storageKey) !== "closed"
+    return window.localStorage.getItem(storageKey) !== "closed";
   } catch {
-    return true
+    return true;
   }
 }

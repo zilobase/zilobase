@@ -1,23 +1,23 @@
-import { DatabaseIcon, UserIcon, WandSparklesIcon, XIcon } from "@/shared/components/icons"
+import { DatabaseIcon, UserIcon, WandSparklesIcon, XIcon } from "@/shared/components/icons";
 
-import { PageIconDisplay, PageIcon } from "@/features/pages/index"
-import type { ContextAttachment } from "@zilobase/page-context"
+import { PageIconDisplay, PageIcon } from "@/features/pages/index";
+import type { ContextAttachment } from "@zilobase/page-context";
 
 function AttachmentIcon({ attachment }: { attachment: ContextAttachment }) {
   if (attachment.emoji) {
-    return <PageIconDisplay size="sm" value={attachment.emoji} />
+    return <PageIconDisplay size="sm" value={attachment.emoji} />;
   }
 
   if (attachment.type === "database") {
-    return <DatabaseIcon className="size-3.5 shrink-0" />
+    return <DatabaseIcon className="size-3.5 shrink-0" />;
   }
 
   if (attachment.type === "person") {
-    return <UserIcon className="size-3.5 shrink-0" />
+    return <UserIcon className="size-3.5 shrink-0" />;
   }
 
   if (attachment.mode === "skill") {
-    return <WandSparklesIcon className="size-3.5 shrink-0" />
+    return <WandSparklesIcon className="size-3.5 shrink-0" />;
   }
 
   return (
@@ -27,15 +27,15 @@ function AttachmentIcon({ attachment }: { attachment: ContextAttachment }) {
         metadata: { emoji: attachment.emoji },
       }}
     />
-  )
+  );
 }
 
 function AttachmentChip({
   attachment,
   onRemove,
 }: {
-  attachment: ContextAttachment
-  onRemove: () => void
+  attachment: ContextAttachment;
+  onRemove: () => void;
 }) {
   return (
     <span className="inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border bg-surface-canvas px-2 text-content-primary text-xs">
@@ -52,7 +52,7 @@ function AttachmentChip({
         <XIcon className="size-3" />
       </button>
     </span>
-  )
+  );
 }
 
 export function ContextAttachChips({
@@ -61,22 +61,19 @@ export function ContextAttachChips({
   primaryAttachment = null,
   onRemovePrimary,
 }: {
-  attachments: ContextAttachment[]
-  onRemove: (attachment: ContextAttachment) => void
-  primaryAttachment?: ContextAttachment | null
-  onRemovePrimary?: () => void
+  attachments: ContextAttachment[];
+  onRemove: (attachment: ContextAttachment) => void;
+  primaryAttachment?: ContextAttachment | null;
+  onRemovePrimary?: () => void;
 }) {
   if (!primaryAttachment && attachments.length === 0) {
-    return null
+    return null;
   }
 
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2 p-2">
       {primaryAttachment ? (
-        <AttachmentChip
-          attachment={primaryAttachment}
-          onRemove={() => onRemovePrimary?.()}
-        />
+        <AttachmentChip attachment={primaryAttachment} onRemove={() => onRemovePrimary?.()} />
       ) : null}
       {attachments.map((attachment) => (
         <AttachmentChip
@@ -86,5 +83,5 @@ export function ContextAttachChips({
         />
       ))}
     </div>
-  )
+  );
 }

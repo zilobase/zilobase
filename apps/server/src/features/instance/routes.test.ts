@@ -32,8 +32,7 @@ vi.mock("./registration", () => ({
   BootstrapStateConflictError: mocks.BootstrapStateConflictError,
   InvalidBootstrapTokenError: mocks.InvalidBootstrapTokenError,
   bootstrapSelfHostedInstance: mocks.bootstrap,
-  canManageInstanceSettings: (role: string | null | undefined) =>
-    role === "owner",
+  canManageInstanceSettings: (role: string | null | undefined) => role === "owner",
   getInstanceAdministrationSettings: mocks.readSettings,
   updateInstanceAdministrationSettings: mocks.updateSettings,
 }));
@@ -58,11 +57,13 @@ beforeEach(() => {
   });
 });
 
-function appFor(options: {
-  authMethod?: "apiKey" | "session" | null;
-  hosted?: boolean;
-  user?: { id: string } | null;
-} = {}) {
+function appFor(
+  options: {
+    authMethod?: "apiKey" | "session" | null;
+    hosted?: boolean;
+    user?: { id: string } | null;
+  } = {},
+) {
   const app = new Hono<AppBindings>();
   app.use("*", async (c, next) => {
     c.set("authMethod", options.authMethod ?? "session");
@@ -71,10 +72,7 @@ function appFor(options: {
     c.set("requestId", "request-1");
     c.set("serverTimings", []);
     c.set("session", null);
-    c.set(
-      "user",
-      (options.user === undefined ? { id: "user-1" } : options.user) as never,
-    );
+    c.set("user", (options.user === undefined ? { id: "user-1" } : options.user) as never);
     await next();
   });
   app.route("/", instanceRoutes);
@@ -119,12 +117,8 @@ test("bootstrap reads the secret from a header and never from the body", async (
 });
 
 test("instance settings require an owner browser session", async () => {
-  const anonymous = await appFor({ user: null }).request(
-    "/api/instance/settings",
-  );
-  const apiKey = await appFor({ authMethod: "apiKey" }).request(
-    "/api/instance/settings",
-  );
+  const anonymous = await appFor({ user: null }).request("/api/instance/settings");
+  const apiKey = await appFor({ authMethod: "apiKey" }).request("/api/instance/settings");
   mocks.membership.mockResolvedValueOnce({ role: "admin" });
   const admin = await appFor().request("/api/instance/settings");
 
@@ -143,7 +137,8 @@ test("the owner can read and update registration mode", async () => {
 
   assert.equal(read.status, 200);
   assert.equal(
-    (await responseJson<{ settings: { registrationMode: string } }>(read)).settings.registrationMode,
+    (await responseJson<{ settings: { registrationMode: string } }>(read)).settings
+      .registrationMode,
     "invite-only",
   );
   assert.equal(update.status, 200);
@@ -153,37 +148,33 @@ test("the owner can read and update registration mode", async () => {
 });
 
 test("hosted runtime does not expose self-host administration", async () => {
+  assert.equal((await appFor({ hosted: true }).request("/api/instance/settings")).status, 404);
   assert.equal(
-    (await appFor({ hosted: true }).request("/api/instance/settings")).status,
-    404,
-  );
-  assert.equal(
-    (await appFor({ hosted: true, user: null }).request("/api/instance/bootstrap", {
-      body: "{}",
-      headers: { "content-type": "application/json" },
-      method: "POST",
-    })).status,
+    (
+      await appFor({ hosted: true, user: null }).request("/api/instance/bootstrap", {
+        body: "{}",
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      })
+    ).status,
     404,
   );
 });
 
 test("bootstrap and settings reject invalid payloads", async () => {
-  const invalidBootstrap = await appFor({ user: null }).request(
-    "/api/instance/bootstrap",
-    {
-      body: JSON.stringify({
-        email: "not-an-email",
-        name: "",
-        password: "short",
-        workspaceName: "",
-      }),
-      headers: {
-        authorization: "Bearer header-token",
-        "content-type": "application/json",
-      },
-      method: "POST",
+  const invalidBootstrap = await appFor({ user: null }).request("/api/instance/bootstrap", {
+    body: JSON.stringify({
+      email: "not-an-email",
+      name: "",
+      password: "short",
+      workspaceName: "",
+    }),
+    headers: {
+      authorization: "Bearer header-token",
+      "content-type": "application/json",
     },
-  );
+    method: "POST",
+  });
   assert.equal(invalidBootstrap.status, 400);
 
   const emptySettings = await appFor().request("/api/instance/settings", {

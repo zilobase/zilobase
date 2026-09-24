@@ -5,40 +5,38 @@
   // and replace every <PLACEHOLDER> before deploying.
   "main": "<WEB_ENTRY>",
   "compatibility_date": "2026-07-15",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "<WEB_DIST_DIR>",
     "binding": "ASSETS",
     "html_handling": "none",
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
   },
   "routes": [
     {
       "pattern": "<WEB_ROUTE_PATTERN>",
-      "custom_domain": true
-    }
+      "custom_domain": true,
+    },
   ],
   "services": [
     {
       "binding": "API_SERVICE",
-      "service": "zilobase-server"
-    }
+      "service": "zilobase-server",
+    },
   ],
   "observability": {
     "enabled": true,
     "logs": {
       "enabled": true,
       "head_sampling_rate": 1,
-      "invocation_logs": true
+      "invocation_logs": true,
     },
     "traces": {
       "enabled": true,
-      "head_sampling_rate": 0.1
-    }
+      "head_sampling_rate": 0.1,
+    },
   },
   "vars": {
-    "ZILOBASE_ENVIRONMENT": "production"
-  }
+    "ZILOBASE_ENVIRONMENT": "production",
+  },
 }

@@ -8,11 +8,7 @@ import {
   type HeadObjectCommandOutput,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import type {
-  ImageStorage,
-  RuntimeEnv,
-  StoredObjectMetadata,
-} from "@zilobase/runtime-ports";
+import type { ImageStorage, RuntimeEnv, StoredObjectMetadata } from "@zilobase/runtime-ports";
 
 type S3Config = {
   accessKeyId: string;
@@ -43,9 +39,10 @@ class S3ImageStorage implements ImageStorage {
       region: "auto",
     };
     this.client = new S3Client({ ...sharedConfig, endpoint: config.endpoint });
-    this.publicClient = config.publicEndpoint === config.endpoint
-      ? this.client
-      : new S3Client({ ...sharedConfig, endpoint: config.publicEndpoint });
+    this.publicClient =
+      config.publicEndpoint === config.endpoint
+        ? this.client
+        : new S3Client({ ...sharedConfig, endpoint: config.publicEndpoint });
   }
 
   async checkReady() {
@@ -75,11 +72,7 @@ class S3ImageStorage implements ImageStorage {
     };
   }
 
-  async createReadUrl(options: {
-    expiresInSeconds: number;
-    filename?: string;
-    objectKey: string;
-  }) {
+  async createReadUrl(options: { expiresInSeconds: number; filename?: string; objectKey: string }) {
     const command = new GetObjectCommand({
       Bucket: this.bucketName,
       Key: options.objectKey,
@@ -117,9 +110,9 @@ class S3ImageStorage implements ImageStorage {
 
   async head(objectKey: string) {
     try {
-      return toMetadata(await this.client.send(
-        new HeadObjectCommand({ Bucket: this.bucketName, Key: objectKey }),
-      ));
+      return toMetadata(
+        await this.client.send(new HeadObjectCommand({ Bucket: this.bucketName, Key: objectKey })),
+      );
     } catch (error) {
       if (isNotFoundError(error)) return null;
       throw error;
@@ -146,7 +139,9 @@ function getS3Config(env: RuntimeEnv): S3Config {
     ["S3_SECRET_ACCESS_KEY", secretAccessKey],
     ["S3_BUCKET_NAME", bucketName],
     ["S3_ENDPOINT", endpoint],
-  ].filter(([, value]) => !value).map(([name]) => name);
+  ]
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
   if (missing.length > 0) {
     throw new Error(`Missing S3 configuration: ${missing.join(", ")}`);
   }

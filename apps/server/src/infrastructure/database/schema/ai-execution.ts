@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { workspace } from "./workspaces";
 import { user } from "./authentication";
 import { aiChatThread, aiChatMessage } from "./ai-conversations";
@@ -20,10 +30,9 @@ export const aiAgentTurn = pgTable(
     threadId: text("thread_id")
       .notNull()
       .references(() => aiChatThread.id, { onDelete: "cascade" }),
-    agentProfileId: text("agent_profile_id").references(
-      () => aiAgentProfile.id,
-      { onDelete: "set null" },
-    ),
+    agentProfileId: text("agent_profile_id").references(() => aiAgentProfile.id, {
+      onDelete: "set null",
+    }),
     clientTurnId: text("client_turn_id"),
     userMessageId: text("user_message_id").references(() => aiChatMessage.id, {
       onDelete: "set null",
@@ -45,24 +54,10 @@ export const aiAgentTurn = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    index("ai_agent_turn_workspace_created_idx").on(
-      table.workspaceId,
-      table.createdAt,
-    ),
-    index("ai_agent_turn_user_created_idx").on(
-      table.workspaceId,
-      table.userId,
-      table.createdAt,
-    ),
-    index("ai_agent_turn_running_idx").on(
-      table.workspaceId,
-      table.status,
-      table.startedAt,
-    ),
-    uniqueIndex("ai_agent_turn_thread_client_unique").on(
-      table.threadId,
-      table.clientTurnId,
-    ),
+    index("ai_agent_turn_workspace_created_idx").on(table.workspaceId, table.createdAt),
+    index("ai_agent_turn_user_created_idx").on(table.workspaceId, table.userId, table.createdAt),
+    index("ai_agent_turn_running_idx").on(table.workspaceId, table.status, table.startedAt),
+    uniqueIndex("ai_agent_turn_thread_client_unique").on(table.threadId, table.clientTurnId),
     check(
       "ai_agent_turn_status_check",
       sql`${table.status} in ('running', 'succeeded', 'failed', 'cancelled', 'rejected')`,
@@ -93,10 +88,9 @@ export const aiAgentToolExecution = pgTable(
     externalToolName: text("external_tool_name"),
     actualEffect: text("actual_effect"),
     schemaHash: text("schema_hash"),
-    approvalActorUserId: text("approval_actor_user_id").references(
-      () => user.id,
-      { onDelete: "set null" },
-    ),
+    approvalActorUserId: text("approval_actor_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     outcomeUnknown: boolean("outcome_unknown").notNull().default(false),
     stepNumber: integer("step_number"),
     status: text("status").notNull().default("running"),
@@ -112,14 +106,8 @@ export const aiAgentToolExecution = pgTable(
     uniqueIndex("ai_agent_tool_execution_run_call_unique")
       .on(table.agentRunId, table.toolCallId)
       .where(sql`${table.agentRunId} is not null`),
-    index("ai_agent_tool_execution_turn_created_idx").on(
-      table.turnId,
-      table.createdAt,
-    ),
-    index("ai_agent_tool_execution_run_created_idx").on(
-      table.agentRunId,
-      table.createdAt,
-    ),
+    index("ai_agent_tool_execution_turn_created_idx").on(table.turnId, table.createdAt),
+    index("ai_agent_tool_execution_run_created_idx").on(table.agentRunId, table.createdAt),
     check(
       "ai_agent_tool_execution_context_check",
       sql`(${table.turnId} is not null)::int + (${table.agentRunId} is not null)::int = 1`,
@@ -188,10 +176,9 @@ export const aiAgentPendingAction = pgTable(
     toolName: text("tool_name").notNull(),
     toolVersion: integer("tool_version").notNull(),
     toolInput: jsonb("tool_input").notNull(),
-    agentProfileId: text("agent_profile_id").references(
-      () => aiAgentProfile.id,
-      { onDelete: "cascade" },
-    ),
+    agentProfileId: text("agent_profile_id").references(() => aiAgentProfile.id, {
+      onDelete: "cascade",
+    }),
     mcpScopeType: text("mcp_scope_type"),
     mcpScopeUserId: text("mcp_scope_user_id").references(() => user.id, {
       onDelete: "cascade",

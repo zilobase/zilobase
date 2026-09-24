@@ -11,10 +11,7 @@ import {
   hasAccess,
 } from "../access";
 import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
-import {
-  createCollaborationTicket,
-  documentNameForMeeting,
-} from "../collaboration/service";
+import { createCollaborationTicket, documentNameForMeeting } from "../collaboration/service";
 import { getMeetingCollaborationWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
 import { getMeetingAudioWebSocketUrl } from "@zilobase/runtime-adapter/capabilities";
 import { ServiceMutationError } from "../../shared/errors/service-mutation-error";
@@ -38,10 +35,9 @@ const strictJson = { onExcessProperty: "error" as const };
 
 const UuidString = Schema.String.pipe(
   Schema.check(
-    Schema.isPattern(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-      { message: "Invalid UUID" },
-    ),
+    Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i, {
+      message: "Invalid UUID",
+    }),
   ),
 );
 
@@ -54,27 +50,17 @@ const CreateMeetingInput = Schema.Struct({
 const UpdateMeetingInput = Schema.Struct({
   archiveLocalAudio: Schema.optionalKey(Schema.Boolean),
   autoPlayConsent: Schema.optionalKey(Schema.Boolean),
-  consentMessage: Schema.optionalKey(
-    Schema.String.pipe(Schema.check(Schema.isMaxLength(2_000))),
-  ),
+  consentMessage: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(2_000)))),
   customInstructions: Schema.optionalKey(
-    Schema.NullOr(
-      Schema.String.pipe(Schema.check(Schema.isMaxLength(8_000))),
-    ),
+    Schema.NullOr(Schema.String.pipe(Schema.check(Schema.isMaxLength(8_000)))),
   ),
   instructionsPreset: Schema.optionalKey(
-    Schema.String.pipe(
-      Schema.check(Schema.isMinLength(1), Schema.isMaxLength(80)),
-    ),
+    Schema.String.pipe(Schema.check(Schema.isMinLength(1), Schema.isMaxLength(80))),
   ),
   language: Schema.optionalKey(
-    Schema.String.pipe(
-      Schema.check(Schema.isMinLength(2), Schema.isMaxLength(35)),
-    ),
+    Schema.String.pipe(Schema.check(Schema.isMinLength(2), Schema.isMaxLength(35))),
   ),
-  title: Schema.optionalKey(
-    Schema.String.pipe(Schema.check(Schema.isMaxLength(200))),
-  ),
+  title: Schema.optionalKey(Schema.String.pipe(Schema.check(Schema.isMaxLength(200)))),
 });
 
 const LifecycleInput = Schema.Struct({
@@ -89,9 +75,7 @@ const RecorderLeaseInput = Schema.Struct({
 });
 
 const ConsentInput = Schema.Struct({
-  metadata: Schema.optionalKey(
-    Schema.Record(Schema.String, Schema.Unknown),
-  ),
+  metadata: Schema.optionalKey(Schema.Record(Schema.String, Schema.Unknown)),
   mode: Schema.Literals(["confirmed", "played"]),
 });
 
@@ -115,13 +99,7 @@ function serviceError(c: Context<AppBindings>, error: unknown) {
 
   return c.json(
     { error: error.message },
-    error.status === 403
-      ? 403
-      : error.status === 404
-        ? 404
-        : error.status === 409
-          ? 409
-          : 400,
+    error.status === 403 ? 403 : error.status === 404 ? 404 : error.status === 409 ? 409 : 400,
   );
 }
 
@@ -162,10 +140,7 @@ meetingRoutes.post("/", async (c) => {
   if (mismatch) return mismatch;
 
   try {
-    return c.json(
-      { meeting: await createMeeting({ ...parsed.data, userId: user.id }) },
-      201,
-    );
+    return c.json({ meeting: await createMeeting({ ...parsed.data, userId: user.id }) }, 201);
   } catch (error) {
     return serviceError(c, error);
   }
@@ -203,15 +178,10 @@ meetingRoutes.post("/:id/collaboration-ticket", async (c) => {
       },
       c.env,
       {
-        maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(
-          existing.workspaceId,
-          user.id,
-        ),
+        maxExpiresAt: await getWorkspaceRealtimeAccessExpiration(existing.workspaceId, user.id),
       },
     );
-    const websocketUrl = new URL(
-      getMeetingCollaborationWebSocketUrl(c.req.raw),
-    );
+    const websocketUrl = new URL(getMeetingCollaborationWebSocketUrl(c.req.raw));
     websocketUrl.searchParams.set("document", documentName);
 
     return c.json({
@@ -269,13 +239,16 @@ meetingRoutes.post("/:id/consent", async (c) => {
   const parsed = await parseJsonBody(c.req, ConsentInput);
   if (!parsed.ok) return c.json({ error: "Invalid consent event" }, 400);
   try {
-    return c.json({
-      consent: await recordMeetingConsent({
-        ...parsed.data,
-        meetingId: c.req.param("id"),
-        userId: user.id,
-      }),
-    }, 201);
+    return c.json(
+      {
+        consent: await recordMeetingConsent({
+          ...parsed.data,
+          meetingId: c.req.param("id"),
+          userId: user.id,
+        }),
+      },
+      201,
+    );
   } catch (error) {
     return serviceError(c, error);
   }
@@ -314,16 +287,19 @@ meetingRoutes.post("/:id/summary", async (c) => {
       userId: user.id,
       workspaceId: record.workspaceId,
     });
-    return c.json({
-      job: {
-        error: job.status === "failed" ? job.error : null,
-        id: job.id,
-        progress: job.progress,
-        status: job.status,
-        type: job.type,
+    return c.json(
+      {
+        job: {
+          error: job.status === "failed" ? job.error : null,
+          id: job.id,
+          progress: job.progress,
+          status: job.status,
+          type: job.type,
+        },
+        meeting: record,
       },
-      meeting: record,
-    }, 202);
+      202,
+    );
   } catch (error) {
     return serviceError(c, error);
   }

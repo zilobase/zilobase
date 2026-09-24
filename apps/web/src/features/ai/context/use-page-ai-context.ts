@@ -52,9 +52,7 @@ async function resolvePageForContext(
     return cached;
   }
 
-  return getPageFromDetail(
-    await ensurePageDetail(queryClient, apiFetch, pageId),
-  );
+  return getPageFromDetail(await ensurePageDetail(queryClient, apiFetch, pageId));
 }
 
 async function resolveDatabaseContext(
@@ -64,9 +62,7 @@ async function resolveDatabaseContext(
   contextCache: Map<string, DatabaseContextPayload>,
   dataSourceId?: string,
 ): Promise<DatabaseContextPayload | null> {
-  const cacheKey = dataSourceId
-    ? `${databaseId}:source:${dataSourceId}`
-    : databaseId;
+  const cacheKey = dataSourceId ? `${databaseId}:source:${dataSourceId}` : databaseId;
 
   if (contextCache.has(cacheKey)) {
     return contextCache.get(cacheKey) ?? null;
@@ -88,11 +84,7 @@ async function resolveDatabaseContext(
 
   try {
     const payload = await queryClient.fetchQuery(
-      databaseContextExportQueryOptions(
-        apiFetch,
-        databaseId,
-        dataSourceId,
-      ),
+      databaseContextExportQueryOptions(apiFetch, databaseId, dataSourceId),
     );
 
     if (!payload) {
@@ -145,12 +137,7 @@ async function resolvePageDatabases(
   const databases: PageDatabaseContext[] = [];
 
   for (const databaseId of databaseIds) {
-    const schema = await resolveDatabaseContext(
-      databaseId,
-      queryClient,
-      apiFetch,
-      contextCache,
-    );
+    const schema = await resolveDatabaseContext(databaseId, queryClient, apiFetch, contextCache);
 
     if (!schema) {
       continue;
@@ -202,12 +189,9 @@ export function usePageAiContext({
 
     if (primarySource?.type === "page") {
       const page = getPageFromDetail(
-        queryClient.getQueryData<PageDetail | null>(
-          pageQueryKey(primarySource.id),
-        ),
+        queryClient.getQueryData<PageDetail | null>(pageQueryKey(primarySource.id)),
       );
-      const content =
-        getEditorContent(primarySource.id) ?? page?.content ?? null;
+      const content = getEditorContent(primarySource.id) ?? page?.content ?? null;
 
       for (const databaseId of extractDatabaseIds(content)) {
         ids.add(databaseId);
@@ -255,26 +239,16 @@ export function usePageAiContext({
           getEditorContent,
         );
 
-        const content =
-          getEditorContent(primarySource.id) ?? page?.content ?? null;
+        const content = getEditorContent(primarySource.id) ?? page?.content ?? null;
 
         sections.push({
           kind: "page",
           role: "primary",
           id: primarySource.id,
           title: page?.name?.trim() || "Untitled",
-          path: buildPagePath(
-            pagesById,
-            primarySource.id,
-            navigation?.placements ?? [],
-          ),
+          path: buildPagePath(pagesById, primarySource.id, navigation?.placements ?? []),
           content,
-          databases: await resolvePageDatabases(
-            content,
-            queryClient,
-            apiFetch,
-            contextCache,
-          ),
+          databases: await resolvePageDatabases(content, queryClient, apiFetch, contextCache),
         });
       } else if (primarySource?.type === "database") {
         const schema = await resolveDatabaseContext(
@@ -384,11 +358,7 @@ export function usePageAiContext({
         return;
       }
 
-      setError(
-        buildError instanceof Error
-          ? buildError.message
-          : "Failed to build page context",
-      );
+      setError(buildError instanceof Error ? buildError.message : "Failed to build page context");
       setMarkdown("");
     } finally {
       if (buildId === buildIdRef.current) {
@@ -424,10 +394,7 @@ export function usePageAiContext({
 
       const queryKey = event.query.queryKey;
 
-      if (
-        queryKey[0] !== "database-context-export" ||
-        typeof queryKey[1] !== "string"
-      ) {
+      if (queryKey[0] !== "database-context-export" || typeof queryKey[1] !== "string") {
         return;
       }
 

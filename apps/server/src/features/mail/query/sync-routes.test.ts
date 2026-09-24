@@ -65,8 +65,7 @@ test("mail sync rejects unauthorized owners before validating requests and curso
     { knownThreadIds: [null] },
   ])
     assert.equal(
-      (await request({ connectionId: "connection", view: "inbox", ...patch }))
-        .status,
+      (await request({ connectionId: "connection", view: "inbox", ...patch })).status,
       400,
     );
   assert.deepEqual(state.inputs, []);

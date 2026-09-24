@@ -319,18 +319,18 @@ Run each scenario on Node web and desktop variants with two controlled accounts.
 Record results without OAuth codes, tokens
 or mail content.
 
-| Scenario | Required evidence |
-| --- | --- |
-| Connect and reconnect | Correct workspace/account, refresh works, revoked consent requests reconnection |
-| New send and receive | One Sent copy, recipient receives it, reply arrives automatically |
-| Threads | Reply and reply-all remain in the Gmail conversation; recipients and Bcc are correct |
-| Drafts | Close/reload/resume/edit/discard/send preserve text and attachments |
-| Forward and MIME | Attachments download correctly; HTML-only and non-UTF-8 mail remain readable |
-| Organization | Labels, read/star/archive/spam/trash, batch operations, views and properties persist |
-| Reminders/database sync | Due reminders appear; matching threads sync once without overwriting unmapped fields |
-| Recovery | Offline cached reading, expired cursor, reconnect, lost response and dropped push recover |
-| Push | Authenticated tunnel subscription delivers; wrong audience/identity is rejected; watch renews |
-| Isolation | Other workspace/member/server cannot access cached mail or provider operations |
+| Scenario                | Required evidence                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------------- |
+| Connect and reconnect   | Correct workspace/account, refresh works, revoked consent requests reconnection               |
+| New send and receive    | One Sent copy, recipient receives it, reply arrives automatically                             |
+| Threads                 | Reply and reply-all remain in the Gmail conversation; recipients and Bcc are correct          |
+| Drafts                  | Close/reload/resume/edit/discard/send preserve text and attachments                           |
+| Forward and MIME        | Attachments download correctly; HTML-only and non-UTF-8 mail remain readable                  |
+| Organization            | Labels, read/star/archive/spam/trash, batch operations, views and properties persist          |
+| Reminders/database sync | Due reminders appear; matching threads sync once without overwriting unmapped fields          |
+| Recovery                | Offline cached reading, expired cursor, reconnect, lost response and dropped push recover     |
+| Push                    | Authenticated tunnel subscription delivers; wrong audience/identity is rejected; watch renews |
+| Isolation               | Other workspace/member/server cannot access cached mail or provider operations                |
 
 Public rollout remains gated on this live matrix and applicable Google restricted
 scope verification. Automated fixtures establish implementation behavior, not

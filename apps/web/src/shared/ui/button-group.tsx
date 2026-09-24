@@ -1,9 +1,9 @@
-import { cva, type VariantProps } from "class-variance-authority"
-import { Slot } from "radix-ui"
+import { cva, type VariantProps } from "class-variance-authority";
+import { Slot } from "radix-ui";
 
-import { cn } from "@/shared/lib/utils"
-import { Button } from "@/shared/ui/button"
-import { Separator } from "@/shared/ui/separator"
+import { cn } from "@/shared/lib/utils";
+import { Button } from "@/shared/ui/button";
+import { Separator } from "@/shared/ui/separator";
 
 const buttonGroupVariants = cva(
   "group/button-group flex items-stretch *:focus-visible:relative *:focus-visible:z-10 has-[>[data-slot=button-group]]:gap-2 has-[select[aria-hidden=true]:last-child]:[&>[data-slot=select-trigger]:last-of-type]:rounded-r-md [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1",
@@ -55,8 +55,8 @@ const buttonGroupVariants = cva(
       variant: "connected",
       width: "fit",
     },
-  }
-)
+  },
+);
 
 function ButtonGroup({
   className,
@@ -73,13 +73,10 @@ function ButtonGroup({
       data-density={density}
       data-orientation={orientation}
       data-variant={variant}
-      className={cn(
-        buttonGroupVariants({ density, orientation, variant, width }),
-        className
-      )}
+      className={cn(buttonGroupVariants({ density, orientation, variant, width }), className)}
       {...props}
     />
-  )
+  );
 }
 
 const buttonGroupItemVariants = cva("", {
@@ -97,7 +94,7 @@ const buttonGroupItemVariants = cva("", {
     layout: "default",
     tone: "default",
   },
-})
+});
 
 function ButtonGroupItem({
   className,
@@ -105,8 +102,7 @@ function ButtonGroupItem({
   tone = "default",
   variant = "ghost",
   ...props
-}: React.ComponentProps<typeof Button> &
-  VariantProps<typeof buttonGroupItemVariants>) {
+}: React.ComponentProps<typeof Button> & VariantProps<typeof buttonGroupItemVariants>) {
   return (
     <Button
       className={cn(buttonGroupItemVariants({ layout, tone }), className)}
@@ -116,20 +112,17 @@ function ButtonGroupItem({
       variant={variant}
       {...props}
     />
-  )
+  );
 }
 
-function ButtonGroupSection({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function ButtonGroupSection({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       className={cn("relative flex min-w-0 items-stretch", className)}
       data-slot="button-group-section"
       {...props}
     />
-  )
+  );
 }
 
 const buttonGroupTextVariants = cva(
@@ -144,8 +137,8 @@ const buttonGroupTextVariants = cva(
     defaultVariants: {
       variant: "default",
     },
-  }
-)
+  },
+);
 
 function ButtonGroupText({
   className,
@@ -153,9 +146,9 @@ function ButtonGroupText({
   variant = "default",
   ...props
 }: React.ComponentProps<"div"> & {
-  asChild?: boolean
+  asChild?: boolean;
 } & VariantProps<typeof buttonGroupTextVariants>) {
-  const Comp = asChild ? Slot.Root : "div"
+  const Comp = asChild ? Slot.Root : "div";
 
   return (
     <Comp
@@ -164,7 +157,7 @@ function ButtonGroupText({
       data-variant={variant}
       {...props}
     />
-  )
+  );
 }
 
 function ButtonGroupSeparator({
@@ -178,11 +171,11 @@ function ButtonGroupSeparator({
       orientation={orientation}
       className={cn(
         "relative self-stretch bg-control-background data-horizontal:mx-px data-horizontal:w-auto data-vertical:my-px data-vertical:h-auto",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
 export {
@@ -194,4 +187,4 @@ export {
   buttonGroupItemVariants,
   buttonGroupTextVariants,
   buttonGroupVariants,
-}
+};

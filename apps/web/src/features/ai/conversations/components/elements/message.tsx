@@ -1,16 +1,8 @@
 "use client";
 
 import { Button } from "@/shared/ui/button";
-import {
-  ButtonGroup,
-  ButtonGroupText,
-} from "@/shared/ui/button-group";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/shared/ui/tooltip";
+import { ButtonGroup, ButtonGroupText } from "@/shared/ui/button-group";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
 import { cn } from "@/shared/lib/utils";
 import type { UIMessage } from "ai";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/shared/components/icons";
@@ -38,7 +30,7 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
     className={cn(
       "group flex w-full max-w-[95%] flex-col gap-2",
       from === "user" ? "is-user ml-auto justify-end" : "is-assistant",
-      className
+      className,
     )}
     {...props}
   />
@@ -46,17 +38,13 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
 
 export type MessageContentProps = HTMLAttributes<HTMLDivElement>;
 
-export const MessageContent = ({
-  children,
-  className,
-  ...props
-}: MessageContentProps) => (
+export const MessageContent = ({ children, className, ...props }: MessageContentProps) => (
   <div
     className={cn(
       "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
       "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-action-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-content-primary",
       "group-[.is-assistant]:w-full group-[.is-assistant]:max-w-full group-[.is-assistant]:text-content-primary",
-      className
+      className,
     )}
     {...props}
   >
@@ -66,11 +54,7 @@ export const MessageContent = ({
 
 type MessageActionsProps = ComponentProps<"div">;
 
-export const MessageActions = ({
-  className,
-  children,
-  ...props
-}: MessageActionsProps) => (
+export const MessageActions = ({ className, children, ...props }: MessageActionsProps) => (
   <div className={cn("flex items-center gap-1", className)} {...props}>
     {children}
   </div>
@@ -120,17 +104,13 @@ interface MessageBranchContextType {
   setTotalBranches: (branchCount: number) => void;
 }
 
-const MessageBranchContext = createContext<MessageBranchContextType | null>(
-  null
-);
+const MessageBranchContext = createContext<MessageBranchContextType | null>(null);
 
 const useMessageBranch = () => {
   const context = useContext(MessageBranchContext);
 
   if (!context) {
-    throw new Error(
-      "MessageBranch components must be used within MessageBranch"
-    );
+    throw new Error("MessageBranch components must be used within MessageBranch");
   }
 
   return context;
@@ -161,18 +141,16 @@ export const MessageBranch = ({
       setCurrentBranch(newBranch);
       onBranchChange?.(newBranch);
     },
-    [onBranchChange]
+    [onBranchChange],
   );
 
   const goToPrevious = useCallback(() => {
-    const newBranch =
-      currentBranch > 0 ? currentBranch - 1 : totalBranches - 1;
+    const newBranch = currentBranch > 0 ? currentBranch - 1 : totalBranches - 1;
     handleBranchChange(newBranch);
   }, [currentBranch, handleBranchChange, totalBranches]);
 
   const goToNext = useCallback(() => {
-    const newBranch =
-      currentBranch < totalBranches - 1 ? currentBranch + 1 : 0;
+    const newBranch = currentBranch < totalBranches - 1 ? currentBranch + 1 : 0;
     handleBranchChange(newBranch);
   }, [currentBranch, handleBranchChange, totalBranches]);
 
@@ -184,25 +162,19 @@ export const MessageBranch = ({
       setTotalBranches,
       totalBranches,
     }),
-    [currentBranch, goToNext, goToPrevious, totalBranches]
+    [currentBranch, goToNext, goToPrevious, totalBranches],
   );
 
   return (
     <MessageBranchContext.Provider value={contextValue}>
-      <div
-        className={cn("grid w-full gap-2 [&>div]:pb-0", className)}
-        {...props}
-      />
+      <div className={cn("grid w-full gap-2 [&>div]:pb-0", className)} {...props} />
     </MessageBranchContext.Provider>
   );
 };
 
 type MessageBranchContentProps = HTMLAttributes<HTMLDivElement>;
 
-export const MessageBranchContent = ({
-  children,
-  ...props
-}: MessageBranchContentProps) => {
+export const MessageBranchContent = ({ children, ...props }: MessageBranchContentProps) => {
   const { currentBranch, setTotalBranches } = useMessageBranch();
   const childrenArray = useMemo(() => Children.toArray(children), [children]);
 
@@ -214,7 +186,7 @@ export const MessageBranchContent = ({
     <div
       className={cn(
         "grid gap-2 overflow-hidden [&>div]:pb-0",
-        index === currentBranch ? "block" : "hidden"
+        index === currentBranch ? "block" : "hidden",
       )}
       key={isValidElement(branch) && branch.key != null ? branch.key : index}
       {...props}
@@ -226,10 +198,7 @@ export const MessageBranchContent = ({
 
 type MessageBranchSelectorProps = ComponentProps<typeof ButtonGroup>;
 
-export const MessageBranchSelector = ({
-  className,
-  ...props
-}: MessageBranchSelectorProps) => {
+export const MessageBranchSelector = ({ className, ...props }: MessageBranchSelectorProps) => {
   const { totalBranches } = useMessageBranch();
 
   // Don't render if there's only one branch
@@ -237,22 +206,12 @@ export const MessageBranchSelector = ({
     return null;
   }
 
-  return (
-    <ButtonGroup
-      className={className}
-      orientation="horizontal"
-      variant="plain"
-      {...props}
-    />
-  );
+  return <ButtonGroup className={className} orientation="horizontal" variant="plain" {...props} />;
 };
 
 type MessageBranchPreviousProps = ComponentProps<typeof Button>;
 
-export const MessageBranchPrevious = ({
-  children,
-  ...props
-}: MessageBranchPreviousProps) => {
+export const MessageBranchPrevious = ({ children, ...props }: MessageBranchPreviousProps) => {
   const { goToPrevious, totalBranches } = useMessageBranch();
 
   return (
@@ -272,10 +231,7 @@ export const MessageBranchPrevious = ({
 
 type MessageBranchNextProps = ComponentProps<typeof Button>;
 
-export const MessageBranchNext = ({
-  children,
-  ...props
-}: MessageBranchNextProps) => {
+export const MessageBranchNext = ({ children, ...props }: MessageBranchNextProps) => {
   const { goToNext, totalBranches } = useMessageBranch();
 
   return (
@@ -295,18 +251,11 @@ export const MessageBranchNext = ({
 
 type MessageBranchPageProps = HTMLAttributes<HTMLSpanElement>;
 
-export const MessageBranchPage = ({
-  className,
-  ...props
-}: MessageBranchPageProps) => {
+export const MessageBranchPage = ({ className, ...props }: MessageBranchPageProps) => {
   const { currentBranch, totalBranches } = useMessageBranch();
 
   return (
-    <ButtonGroupText
-      className={className}
-      variant="plain"
-      {...props}
-    >
+    <ButtonGroupText className={className} variant="plain" {...props}>
       {currentBranch + 1} of {totalBranches}
     </ButtonGroupText>
   );
@@ -323,36 +272,21 @@ const LazyMessageMarkdown = lazy(() => import("./message-markdown"));
 export const MessageResponse = memo(
   ({ className, ...props }: MessageResponseProps) => (
     <Suspense
-      fallback={(
-        <div className={cn("whitespace-pre-wrap", className)}>
-          {props.children}
-        </div>
-      )}
+      fallback={<div className={cn("whitespace-pre-wrap", className)}>{props.children}</div>}
     >
       <LazyMessageMarkdown className={className} {...props} />
     </Suspense>
   ),
   (prevProps, nextProps) =>
-    prevProps.children === nextProps.children &&
-    nextProps.isAnimating === prevProps.isAnimating
+    prevProps.children === nextProps.children && nextProps.isAnimating === prevProps.isAnimating,
 );
 
 MessageResponse.displayName = "MessageResponse";
 
 type MessageToolbarProps = ComponentProps<"div">;
 
-export const MessageToolbar = ({
-  className,
-  children,
-  ...props
-}: MessageToolbarProps) => (
-  <div
-    className={cn(
-      "mt-4 flex w-full items-center justify-between gap-4",
-      className
-    )}
-    {...props}
-  >
+export const MessageToolbar = ({ className, children, ...props }: MessageToolbarProps) => (
+  <div className={cn("mt-4 flex w-full items-center justify-between gap-4", className)} {...props}>
     {children}
   </div>
 );

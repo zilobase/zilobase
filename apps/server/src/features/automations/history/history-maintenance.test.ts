@@ -6,32 +6,50 @@ import { oldestAcross } from "./history-maintenance";
 
 describe("database automation operations", () => {
   it("normalizes database timestamp strings when measuring queued work", () => {
-    expect(oldestAcross([
-      { oldestAt: "2026-09-03T02:07:40.000Z" },
-      { oldestAt: new Date("2026-09-03T02:07:41.000Z") },
-    ])).toEqual(new Date("2026-09-03T02:07:40.000Z"));
+    expect(
+      oldestAcross([
+        { oldestAt: "2026-09-03T02:07:40.000Z" },
+        { oldestAt: new Date("2026-09-03T02:07:41.000Z") },
+      ]),
+    ).toEqual(new Date("2026-09-03T02:07:40.000Z"));
   });
 
   it("enforces ten concurrent runs per workspace while filling other workspace capacity", () => {
     const candidates = [
-      ...Array.from({ length: 12 }, (_, index) => ({ id: `a-${index}`, workspaceId: "workspace-a" })),
-      ...Array.from({ length: 6 }, (_, index) => ({ id: `b-${index}`, workspaceId: "workspace-b" })),
+      ...Array.from({ length: 12 }, (_, index) => ({
+        id: `a-${index}`,
+        workspaceId: "workspace-a",
+      })),
+      ...Array.from({ length: 6 }, (_, index) => ({
+        id: `b-${index}`,
+        workspaceId: "workspace-b",
+      })),
     ];
-    const selected = selectWorkspaceRunClaims(candidates, [
-      { count: 9, workspaceId: "workspace-a" },
-      { count: 3, workspaceId: "workspace-b" },
-    ], 10);
+    const selected = selectWorkspaceRunClaims(
+      candidates,
+      [
+        { count: 9, workspaceId: "workspace-a" },
+        { count: 3, workspaceId: "workspace-b" },
+      ],
+      10,
+    );
     expect(selected.filter((id) => id.startsWith("a-"))).toHaveLength(1);
     expect(selected.filter((id) => id.startsWith("b-"))).toHaveLength(6);
   });
 
   it("serializes workspace claims and recovers expired leases", async () => {
-    const source = (await Promise.all(["../execution/run-engine.ts", "../execution/run-claims.ts"].map(path => readFile(new URL(path, import.meta.url), "utf8")))).join("\n");
+    const source = (
+      await Promise.all(
+        ["../execution/run-engine.ts", "../execution/run-claims.ts"].map((path) =>
+          readFile(new URL(path, import.meta.url), "utf8"),
+        ),
+      )
+    ).join("\n");
     expect(source).toContain("pg_advisory_xact_lock");
     expect(source).toContain("gt(databaseAutomationRun.leaseExpiresAt, now)");
     expect(source).toContain("lte(databaseAutomationRun.leaseExpiresAt, now)");
     expect(source).toContain("WORKSPACE_RUN_LIMIT = 10");
-    expect(source).toContain('.limit(250)');
+    expect(source).toContain(".limit(250)");
     expect(source).toContain("if (claimed.deferred) throw new AutomationRunCapacityError()");
   });
 
@@ -39,9 +57,11 @@ describe("database automation operations", () => {
     const [operations, health, service] = await Promise.all([
       readFile(new URL("./history-maintenance.ts", import.meta.url), "utf8"),
       readFile(new URL("../../health/routes.ts", import.meta.url), "utf8"),
-      Promise.all(["../service.ts", "audit-export.ts"].map((name) =>
-        readFile(new URL(`./${name}`, import.meta.url), "utf8")
-      )).then((sources) => sources.join("\n")),
+      Promise.all(
+        ["../service.ts", "audit-export.ts"].map((name) =>
+          readFile(new URL(`./${name}`, import.meta.url), "utf8"),
+        ),
+      ).then((sources) => sources.join("\n")),
     ]);
     expect(operations).toContain("CLEANUP_BATCH = 1_000");
     expect(operations).toContain('["succeeded", "failed", "skipped", "cancelled"]');
@@ -56,9 +76,14 @@ describe("database automation operations", () => {
   });
 
   it("stops evaluation, schedule materialization, and run claims behind one kill switch", async () => {
-    const sources = await Promise.all(["../triggers/event-evaluator.ts", "../triggers/scheduler.ts", "../execution/run-engine.ts"].map((name) =>
-      readFile(new URL(`./${name}`, import.meta.url), "utf8")
-    ));
-    for (const source of sources) expect(source).toContain("isDatabaseAutomationExecutionEnabled(env)");
+    const sources = await Promise.all(
+      [
+        "../triggers/event-evaluator.ts",
+        "../triggers/scheduler.ts",
+        "../execution/run-engine.ts",
+      ].map((name) => readFile(new URL(`./${name}`, import.meta.url), "utf8")),
+    );
+    for (const source of sources)
+      expect(source).toContain("isDatabaseAutomationExecutionEnabled(env)");
   });
 });

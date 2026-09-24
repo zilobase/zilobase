@@ -23,10 +23,7 @@ test("meeting lifecycle only allows explicit transitions", () => {
 test("meeting duration is bounded to the three hour product limit", () => {
   assert.equal(clampMeetingDuration(-1), 0);
   assert.equal(clampMeetingDuration(1_234.6), 1_235);
-  assert.equal(
-    clampMeetingDuration(MEETING_MAX_DURATION_MS + 60_000),
-    MEETING_MAX_DURATION_MS,
-  );
+  assert.equal(clampMeetingDuration(MEETING_MAX_DURATION_MS + 60_000), MEETING_MAX_DURATION_MS);
   assert.equal(clampMeetingDuration(Number.NaN), 0);
 });
 

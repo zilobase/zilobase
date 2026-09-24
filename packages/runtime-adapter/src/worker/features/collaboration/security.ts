@@ -34,30 +34,30 @@ export async function routeCollaborationRequest(
   const authenticateMs = Math.round(performance.now() - authenticateStartedAt);
 
   if (!userId) {
-    console.info(JSON.stringify({
-      authenticateMs,
-      event: "collaboration_upgrade",
-      outcome: "unauthorized",
-      totalMs: Math.round(performance.now() - startedAt),
-    }));
+    console.info(
+      JSON.stringify({
+        authenticateMs,
+        event: "collaboration_upgrade",
+        outcome: "unauthorized",
+        totalMs: Math.round(performance.now() - startedAt),
+      }),
+    );
     return new Response("Unauthorized", { status: 401 });
   }
 
   const rateLimitStartedAt = performance.now();
-  const success = await limits.consume(
-    `collaboration-connect:${userId}`,
-    60,
-    60_000,
-  );
+  const success = await limits.consume(`collaboration-connect:${userId}`, 60, 60_000);
   const rateLimitMs = Math.round(performance.now() - rateLimitStartedAt);
 
   if (!success) {
-    console.warn(JSON.stringify({
-      event: "collaboration_connection_rate_limited",
-      authenticateMs,
-      rateLimitMs,
-      userId,
-    }));
+    console.warn(
+      JSON.stringify({
+        event: "collaboration_connection_rate_limited",
+        authenticateMs,
+        rateLimitMs,
+        userId,
+      }),
+    );
     return new Response("Too Many Requests", {
       headers: { "Retry-After": "60" },
       status: 429,
@@ -65,19 +65,19 @@ export async function routeCollaborationRequest(
   }
 
   const durableObjectStartedAt = performance.now();
-  const response = await env.PAGE_COLLABORATION
-    .getByName(documentName)
-    .fetch(request);
+  const response = await env.PAGE_COLLABORATION.getByName(documentName).fetch(request);
 
-  console.info(JSON.stringify({
-    authenticateMs,
-    durableObjectMs: Math.round(performance.now() - durableObjectStartedAt),
-    event: "collaboration_upgrade",
-    outcome: "accepted",
-    rateLimitMs,
-    status: response.status,
-    totalMs: Math.round(performance.now() - startedAt),
-  }));
+  console.info(
+    JSON.stringify({
+      authenticateMs,
+      durableObjectMs: Math.round(performance.now() - durableObjectStartedAt),
+      event: "collaboration_upgrade",
+      outcome: "accepted",
+      rateLimitMs,
+      status: response.status,
+      totalMs: Math.round(performance.now() - startedAt),
+    }),
+  );
 
   return response;
 }

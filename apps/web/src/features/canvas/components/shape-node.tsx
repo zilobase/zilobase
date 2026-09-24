@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef } from "react";
 import {
   Handle,
   NodeResizer,
@@ -6,11 +6,11 @@ import {
   Position,
   type NodeProps,
   useReactFlow,
-} from "@xyflow/react"
-import { BanIcon, RotateCwIcon, Trash2Icon } from "@/shared/components/icons"
-import type { MouseEvent as ReactMouseEvent } from "react"
+} from "@xyflow/react";
+import { BanIcon, RotateCwIcon, Trash2Icon } from "@/shared/components/icons";
+import type { MouseEvent as ReactMouseEvent } from "react";
 
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
 import {
   canvasShapeDimensions,
@@ -18,122 +18,114 @@ import {
   canvasStrokeStyleOptions,
   canvasStrokeWidthOptions,
   getCanvasColorOption,
-} from "../model/constants"
-import { ShapeSvg } from "./shape-svg"
+} from "../model/constants";
+import { ShapeSvg } from "./shape-svg";
 import type {
   CanvasNode,
   CanvasNodeColorId,
   CanvasShapeNode,
   CanvasStrokeStyle,
   CanvasStrokeWidth,
-} from "../model/types"
+} from "../model/types";
 
 const toolbarButtonClassName =
-  "flex h-8 w-8 items-center justify-center rounded-lg text-content-primary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral"
+  "flex h-8 w-8 items-center justify-center rounded-lg text-content-primary transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral";
 
-export function ShapeNode({
-  data,
-  height,
-  id,
-  selected,
-  width,
-}: NodeProps<CanvasShapeNode>) {
-  const { deleteElements, setNodes } = useReactFlow<CanvasNode>()
-  const colorOption = getCanvasColorOption(data.color)
-  const nodeRef = useRef<HTMLDivElement | null>(null)
+export function ShapeNode({ data, height, id, selected, width }: NodeProps<CanvasShapeNode>) {
+  const { deleteElements, setNodes } = useReactFlow<CanvasNode>();
+  const colorOption = getCanvasColorOption(data.color);
+  const nodeRef = useRef<HTMLDivElement | null>(null);
   const rotationSessionRef = useRef<{
-    centerX: number
-    centerY: number
-    startAngle: number
-    startRotation: number
-  } | null>(null)
+    centerX: number;
+    centerY: number;
+    startAngle: number;
+    startRotation: number;
+  } | null>(null);
 
-  const updateNode = useCallback((
-    nextState: Partial<{
-      color: CanvasNodeColorId
-      rotation: number
-      strokeStyle: CanvasStrokeStyle
-      strokeWidth: CanvasStrokeWidth
-    }>,
-  ) => {
-    setNodes((currentNodes) =>
-      currentNodes.map((node) =>
-        node.id === id && node.type === "shape"
-          ? {
-              ...node,
-              data: {
-                ...node.data,
-                ...nextState,
-              },
-            }
-          : node,
+  const updateNode = useCallback(
+    (
+      nextState: Partial<{
+        color: CanvasNodeColorId;
+        rotation: number;
+        strokeStyle: CanvasStrokeStyle;
+        strokeWidth: CanvasStrokeWidth;
+      }>,
+    ) => {
+      setNodes((currentNodes) =>
+        currentNodes.map((node) =>
+          node.id === id && node.type === "shape"
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  ...nextState,
+                },
+              }
+            : node,
         ),
-    )
-  }, [id, setNodes])
+      );
+    },
+    [id, setNodes],
+  );
 
   useEffect(() => {
     const onMouseMove = (event: MouseEvent) => {
-      const session = rotationSessionRef.current
+      const session = rotationSessionRef.current;
 
       if (!session) {
-        return
+        return;
       }
 
       const currentAngle = Math.atan2(
         event.clientY - session.centerY,
         event.clientX - session.centerX,
-      )
+      );
       const nextRotation =
-        session.startRotation +
-        ((currentAngle - session.startAngle) * 180) / Math.PI
+        session.startRotation + ((currentAngle - session.startAngle) * 180) / Math.PI;
 
-      updateNode({ rotation: normalizeRotation(nextRotation) })
-    }
+      updateNode({ rotation: normalizeRotation(nextRotation) });
+    };
 
     const onMouseUp = () => {
-      rotationSessionRef.current = null
-      document.body.style.cursor = ""
-    }
+      rotationSessionRef.current = null;
+      document.body.style.cursor = "";
+    };
 
-    window.addEventListener("mousemove", onMouseMove)
-    window.addEventListener("mouseup", onMouseUp)
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
 
     return () => {
-      window.removeEventListener("mousemove", onMouseMove)
-      window.removeEventListener("mouseup", onMouseUp)
-      document.body.style.cursor = ""
-    }
-  }, [updateNode])
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+    };
+  }, [updateNode]);
 
   const startRotating = (event: ReactMouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    event.stopPropagation()
+    event.preventDefault();
+    event.stopPropagation();
 
-    const rect = nodeRef.current?.getBoundingClientRect()
+    const rect = nodeRef.current?.getBoundingClientRect();
 
     if (!rect) {
-      return
+      return;
     }
 
-    const centerX = rect.left + rect.width / 2
-    const centerY = rect.top + rect.height / 2
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
 
     rotationSessionRef.current = {
       centerX,
       centerY,
       startAngle: Math.atan2(event.clientY - centerY, event.clientX - centerX),
       startRotation: data.rotation,
-    }
-    document.body.style.cursor = "grabbing"
-  }
+    };
+    document.body.style.cursor = "grabbing";
+  };
 
   return (
     <>
-      <NodeToolbar
-        isVisible={selected}
-        offset={40}
-        position={Position.Top}
-      >
+      <NodeToolbar isVisible={selected} offset={40} position={Position.Top}>
         <div className="flex items-center gap-1 rounded-2xl border border-stroke-default bg-effect-backdrop p-1.5 shadow-lg backdrop-blur">
           <button
             aria-label="Use default shape color"
@@ -277,31 +269,25 @@ export function ShapeNode({
         </div>
       </div>
     </>
-  )
+  );
 }
 
 function normalizeRotation(rotation: number) {
-  const normalized = rotation % 360
+  const normalized = rotation % 360;
 
-  return normalized < 0 ? normalized + 360 : normalized
+  return normalized < 0 ? normalized + 360 : normalized;
 }
 
-function StrokeStyleIcon({
-  style,
-}: {
-  style: CanvasStrokeStyle
-}) {
+function StrokeStyleIcon({ style }: { style: CanvasStrokeStyle }) {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 16 16">
       <path
         d="M2 8H14"
         stroke="currentColor"
-        strokeDasharray={
-          style === "dashed" ? "5 3" : style === "dotted" ? "0.8 3" : undefined
-        }
+        strokeDasharray={style === "dashed" ? "5 3" : style === "dotted" ? "0.8 3" : undefined}
         strokeLinecap={style === "solid" ? "square" : "round"}
         strokeWidth="1.75"
       />
     </svg>
-  )
+  );
 }

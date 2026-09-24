@@ -70,10 +70,7 @@ test("mail query validation preserves shared and query-specific restrictions", a
     { limit: 1.5 },
     { limit: "1" },
   ])
-    assert.equal(
-      (await request("/query", { routeId: "inbox", ...patch })).status,
-      400,
-    );
+    assert.equal((await request("/query", { routeId: "inbox", ...patch })).status, 400);
   assert.deepEqual(state.inputs, []);
 });
 test("mail query transport keeps omitted fields distinct from empty strings", async () => {
@@ -101,13 +98,9 @@ test("mail query transport keeps omitted fields distinct from empty strings", as
   assert.equal(state.inputs[1].groupKey, "");
   assert.equal(state.inputs[1].limit, 1);
   assert.equal(
-    (await request("/query/groups", { routeId: "inbox", cursor: 3, limit: 0 }))
-      .status,
+    (await request("/query/groups", { routeId: "inbox", cursor: 3, limit: 0 })).status,
     200,
   );
   assert.equal("limit" in state.inputs[2], false);
-  assert.equal(
-    (await request("/query", { routeId: "inbox", filter: [] })).status,
-    200,
-  );
+  assert.equal((await request("/query", { routeId: "inbox", filter: [] })).status, 200);
 });

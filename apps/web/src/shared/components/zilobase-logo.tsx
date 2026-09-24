@@ -1,4 +1,4 @@
-import { cn } from "@/shared/lib/utils"
+import { cn } from "@/shared/lib/utils";
 
 export function ZilobaseLogo({ className }: { className?: string }) {
   return (
@@ -16,5 +16,5 @@ export function ZilobaseLogo({ className }: { className?: string }) {
         src="/zilobase-dark.svg"
       />
     </>
-  )
+  );
 }

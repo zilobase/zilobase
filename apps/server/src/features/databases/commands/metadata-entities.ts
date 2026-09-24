@@ -1,12 +1,12 @@
-import { and, eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm";
 import {
   databaseHostEntitySchema,
   databasePropertyEntitySchema,
   databaseViewEntitySchema,
   dataSourceEntitySchema,
-} from "@zilobase/features/databases/contracts"
+} from "@zilobase/features/databases/contracts";
 
-import type { DatabaseCommandContext } from "./framework"
+import type { DatabaseCommandContext } from "./framework";
 import {
   dataSource,
   database,
@@ -14,18 +14,20 @@ import {
   databaseProperty,
   databaseView,
   pageProperty,
-} from "../../../infrastructure/database/schema"
-import { ServiceMutationError } from "../../../shared/errors/service-mutation-error"
+} from "../../../infrastructure/database/schema";
+import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
-type EntityReadContext = Pick<DatabaseCommandContext, "transaction">
+type EntityReadContext = Pick<DatabaseCommandContext, "transaction">;
 
-const timestamp = (value: Date | string) =>
-  value instanceof Date ? value.toISOString() : value
+const timestamp = (value: Date | string) => (value instanceof Date ? value.toISOString() : value);
 
 export async function getDatabaseHostEntity(context: EntityReadContext, databaseId: string) {
-  const [host] = await context.transaction.select().from(database)
-    .where(eq(database.id, databaseId)).limit(1)
-  if (!host) throw new ServiceMutationError("Database not found", 404)
+  const [host] = await context.transaction
+    .select()
+    .from(database)
+    .where(eq(database.id, databaseId))
+    .limit(1);
+  if (!host) throw new ServiceMutationError("Database not found", 404);
   return databaseHostEntitySchema.parse({
     accessLevel: null,
     config: host.config ?? null,
@@ -37,7 +39,7 @@ export async function getDatabaseHostEntity(context: EntityReadContext, database
     updatedAt: timestamp(host.updatedAt),
     version: host.version,
     workspaceId: host.workspaceId,
-  })
+  });
 }
 
 export async function getDataSourceEntity(
@@ -48,13 +50,16 @@ export async function getDataSourceEntity(
   const [record] = await context.transaction
     .select({ link: databaseDataSource, source: dataSource })
     .from(dataSource)
-    .leftJoin(databaseDataSource, and(
-      eq(databaseDataSource.databaseId, databaseId),
-      eq(databaseDataSource.dataSourceId, dataSource.id),
-    ))
+    .leftJoin(
+      databaseDataSource,
+      and(
+        eq(databaseDataSource.databaseId, databaseId),
+        eq(databaseDataSource.dataSourceId, dataSource.id),
+      ),
+    )
     .where(eq(dataSource.id, dataSourceId))
-    .limit(1)
-  if (!record) throw new ServiceMutationError("Data source not found", 404)
+    .limit(1);
+  if (!record) throw new ServiceMutationError("Data source not found", 404);
   return dataSourceEntitySchema.parse({
     config: record.source.config ?? null,
     configVersion: record.source.configVersion,
@@ -67,19 +72,22 @@ export async function getDataSourceEntity(
     updatedAt: timestamp(record.source.updatedAt),
     version: record.source.version,
     workspaceId: record.source.workspaceId,
-  })
+  });
 }
 
 export async function getDatabaseViewEntity(context: EntityReadContext, viewId: string) {
-  const [view] = await context.transaction.select().from(databaseView)
-    .where(eq(databaseView.id, viewId)).limit(1)
-  if (!view) throw new ServiceMutationError("Database view not found", 404)
+  const [view] = await context.transaction
+    .select()
+    .from(databaseView)
+    .where(eq(databaseView.id, viewId))
+    .limit(1);
+  if (!view) throw new ServiceMutationError("Database view not found", 404);
   return databaseViewEntitySchema.parse({
     ...view,
     config: view.config ?? null,
     createdAt: timestamp(view.createdAt),
     updatedAt: timestamp(view.updatedAt),
-  })
+  });
 }
 
 export async function getDatabasePropertyEntity(
@@ -91,8 +99,8 @@ export async function getDatabasePropertyEntity(
     .from(databaseProperty)
     .innerJoin(pageProperty, eq(pageProperty.id, databaseProperty.propertyId))
     .where(eq(databaseProperty.id, databasePropertyId))
-    .limit(1)
-  if (!record) throw new ServiceMutationError("Property not found", 404)
+    .limit(1);
+  if (!record) throw new ServiceMutationError("Property not found", 404);
   return databasePropertyEntitySchema.parse({
     createdAt: timestamp(record.column.createdAt),
     dataSourceId: record.column.dataSourceId,
@@ -111,5 +119,5 @@ export async function getDatabasePropertyEntity(
     updatedAt: timestamp(record.column.updatedAt),
     visible: record.column.visible,
     width: record.column.width ?? null,
-  })
+  });
 }

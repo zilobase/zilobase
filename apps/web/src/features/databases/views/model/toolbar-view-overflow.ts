@@ -24,8 +24,7 @@ export function getVisibleToolbarViewCount({
   let nextVisibleCount = Math.min(1, viewCount);
   for (let count = 1; count < viewCount; count += 1) {
     const indexes = Array.from({ length: count }, (_, index) => index);
-    if (activeIndex >= count && indexes.length > 0)
-      indexes[indexes.length - 1] = activeIndex;
+    if (activeIndex >= count && indexes.length > 0) indexes[indexes.length - 1] = activeIndex;
     if (tabsWidth(indexes) + overflowSpace + addViewSpace <= availableWidth)
       nextVisibleCount = count;
     else break;

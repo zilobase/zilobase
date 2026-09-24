@@ -46,13 +46,7 @@ test("mail view writes authorize before validating their optional fields", async
     state.allowed = false;
     assert.equal((await request(method, null)).status, 403);
     state.allowed = true;
-    for (const body of [
-      null,
-      { name: 7 },
-      { icon: 7 },
-      { config: null },
-      { config: false },
-    ])
+    for (const body of [null, { name: 7 }, { icon: 7 }, { config: null }, { config: false }])
       assert.equal((await request(method, body)).status, 400);
   }
   assert.equal((await request("POST", { templateId: "unknown" })).status, 400);
@@ -72,10 +66,7 @@ test("mail view writes preserve omitted values and explicit icon removal", async
     assert.equal(input.workspaceId, "workspace");
     assert.equal(input.userId, "user");
     if (method === "PATCH") assert.equal(input.viewId, "view");
-    assert.equal(
-      (await request(method, {})).status,
-      method === "POST" ? 201 : 200,
-    );
+    assert.equal((await request(method, {})).status, method === "POST" ? 201 : 200);
     assert.deepEqual(state.inputs.at(-1)!.value, {});
   }
 });

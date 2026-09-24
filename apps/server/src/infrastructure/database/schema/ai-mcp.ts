@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, jsonb, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  index,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { workspace } from "./workspaces";
 import { timestampColumns } from "./columns";
 import { user } from "./authentication";
@@ -12,9 +22,7 @@ export const aiWorkspaceMcpPolicy = pgTable(
       .primaryKey()
       .references(() => workspace.id, { onDelete: "cascade" }),
     customServersEnabled: boolean("custom_servers_enabled").notNull().default(false),
-    installationPolicy: text("installation_policy")
-      .notNull()
-      .default("approved_and_catalog"),
+    installationPolicy: text("installation_policy").notNull().default("approved_and_catalog"),
     externalWritesEnabled: boolean("external_writes_enabled").notNull().default(false),
     ...timestampColumns(),
   },
@@ -56,15 +64,14 @@ export const aiMcpConnection = pgTable(
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
     scopeType: text("scope_type").notNull().default("agent"),
-    agentProfileId: text("agent_profile_id")
-      .references(() => aiAgentProfile.id, { onDelete: "cascade" }),
-    scopeUserId: text("scope_user_id")
-      .references(() => user.id, { onDelete: "cascade" }),
+    agentProfileId: text("agent_profile_id").references(() => aiAgentProfile.id, {
+      onDelete: "cascade",
+    }),
+    scopeUserId: text("scope_user_id").references(() => user.id, { onDelete: "cascade" }),
     catalogId: text("catalog_id"),
-    approvedServerId: text("approved_server_id").references(
-      () => aiMcpApprovedServer.id,
-      { onDelete: "restrict" },
-    ),
+    approvedServerId: text("approved_server_id").references(() => aiMcpApprovedServer.id, {
+      onDelete: "restrict",
+    }),
     endpointUrl: text("endpoint_url").notNull(),
     serverLabel: text("server_label").notNull(),
     authMethod: text("auth_method").notNull(),
@@ -79,23 +86,14 @@ export const aiMcpConnection = pgTable(
     ...timestampColumns(),
   },
   (table) => [
-    uniqueIndex("ai_mcp_connection_profile_endpoint_unique").on(
-      table.agentProfileId,
-      table.endpointUrl,
-    ).where(sql`${table.scopeType} = 'agent'`),
-    uniqueIndex("ai_mcp_connection_personal_endpoint_unique").on(
-      table.workspaceId,
-      table.scopeUserId,
-      table.endpointUrl,
-    ).where(sql`${table.scopeType} = 'personal'`),
-    index("ai_mcp_connection_profile_state_idx").on(
-      table.agentProfileId,
-      table.state,
-    ),
-    check(
-      "ai_mcp_connection_auth_method_check",
-      sql`${table.authMethod} in ('oauth', 'headers')`,
-    ),
+    uniqueIndex("ai_mcp_connection_profile_endpoint_unique")
+      .on(table.agentProfileId, table.endpointUrl)
+      .where(sql`${table.scopeType} = 'agent'`),
+    uniqueIndex("ai_mcp_connection_personal_endpoint_unique")
+      .on(table.workspaceId, table.scopeUserId, table.endpointUrl)
+      .where(sql`${table.scopeType} = 'personal'`),
+    index("ai_mcp_connection_profile_state_idx").on(table.agentProfileId, table.state),
+    check("ai_mcp_connection_auth_method_check", sql`${table.authMethod} in ('oauth', 'headers')`),
     check(
       "ai_mcp_connection_state_check",
       sql`${table.state} in ('connecting', 'connected', 'degraded', 'reconnect_required', 'disabled')`,
@@ -139,9 +137,7 @@ export const aiMcpOauthAttempt = pgTable(
     consumedAt: timestamp("consumed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   },
-  (table) => [
-    index("ai_mcp_oauth_attempt_expiry_idx").on(table.expiresAt, table.consumedAt),
-  ],
+  (table) => [index("ai_mcp_oauth_attempt_expiry_idx").on(table.expiresAt, table.consumedAt)],
 );
 
 export const aiMcpClientRegistration = pgTable(
@@ -218,14 +214,13 @@ export const aiMcpActivity = pgTable(
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
     scopeType: text("scope_type").notNull().default("agent"),
-    agentProfileId: text("agent_profile_id")
-      .references(() => aiAgentProfile.id, { onDelete: "cascade" }),
-    scopeUserId: text("scope_user_id")
-      .references(() => user.id, { onDelete: "cascade" }),
-    connectionId: text("connection_id").references(
-      () => aiMcpConnection.id,
-      { onDelete: "set null" },
-    ),
+    agentProfileId: text("agent_profile_id").references(() => aiAgentProfile.id, {
+      onDelete: "cascade",
+    }),
+    scopeUserId: text("scope_user_id").references(() => user.id, { onDelete: "cascade" }),
+    connectionId: text("connection_id").references(() => aiMcpConnection.id, {
+      onDelete: "set null",
+    }),
     actorUserId: text("actor_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -237,10 +232,7 @@ export const aiMcpActivity = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   },
   (table) => [
-    index("ai_mcp_activity_profile_created_idx").on(
-      table.agentProfileId,
-      table.createdAt,
-    ),
+    index("ai_mcp_activity_profile_created_idx").on(table.agentProfileId, table.createdAt),
     index("ai_mcp_activity_personal_created_idx").on(
       table.workspaceId,
       table.scopeUserId,

@@ -52,10 +52,7 @@ export function register({ assert, loadModule, test }) {
       "/src/features/databases/views/chart/model/database-chart-config.ts",
     );
 
-    assert.equal(
-      getDatabaseChartSettings({ chart: { type: "radial" } }).type,
-      "radial",
-    );
+    assert.equal(getDatabaseChartSettings({ chart: { type: "radial" } }).type, "radial");
   });
 
   test("database chart config preserves radar charts", async () => {
@@ -63,10 +60,7 @@ export function register({ assert, loadModule, test }) {
       "/src/features/databases/views/chart/model/database-chart-config.ts",
     );
 
-    assert.equal(
-      getDatabaseChartSettings({ chart: { type: "radar" } }).type,
-      "radar",
-    );
+    assert.equal(getDatabaseChartSettings({ chart: { type: "radar" } }).type, "radar");
   });
 
   test("database charts do not split a series by its own axis", async () => {
@@ -215,11 +209,7 @@ export function register({ assert, loadModule, test }) {
         "page-c:points": "4",
         "page-c:status": "Done",
       },
-      rows: [
-        createRow("a", "First"),
-        createRow("b", "Second"),
-        createRow("c", "Third"),
-      ],
+      rows: [createRow("a", "First"), createRow("b", "Second"), createRow("c", "Third")],
       valueColors: {},
     });
 
@@ -257,11 +247,7 @@ export function register({ assert, loadModule, test }) {
         "page-c:quarter": "Q2",
         "page-c:status": "Done",
       },
-      rows: [
-        createRow("a", "First"),
-        createRow("b", "Second"),
-        createRow("c", "Third"),
-      ],
+      rows: [createRow("a", "First"), createRow("b", "Second"), createRow("c", "Third")],
       splitProperty: status,
       valueColors: {},
     });

@@ -73,35 +73,58 @@ const DEFAULT_ARTIFACT_RENDERERS = new ArtifactRendererRegistry(
     format,
     render(input) {
       switch (format) {
-    case "csv":
-      return textArtifact(toCsv(input.table ?? contentTable(input.content)), "text/csv; charset=utf-8", "csv");
-    case "json":
-      return textArtifact(toJson(input), "application/json", "json");
-    case "md":
-      return textArtifact(input.content ?? tableToMarkdown(input.table), "text/markdown; charset=utf-8", "md");
-    case "pdf":
-      return { bytes: createPdf(input.title, input.content ?? tableToPlainText(input.table)), contentType: "application/pdf", extension: "pdf" };
-    case "docx":
-      return { bytes: createDocx(input.title, input.content ?? tableToPlainText(input.table)), contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", extension: "docx" };
-    case "pptx":
-      return { bytes: createPptx(input.title, input.content ?? tableToPlainText(input.table)), contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", extension: "pptx" };
-    case "xlsx":
-      return { bytes: createXlsx(input.table ?? contentTable(input.content)), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", extension: "xlsx" };
-    case "zip":
-      return { bytes: createZip(input), contentType: "application/zip", extension: "zip" };
-    default:
-      format satisfies never;
-      throw new Error("Unsupported artifact format.");
+        case "csv":
+          return textArtifact(
+            toCsv(input.table ?? contentTable(input.content)),
+            "text/csv; charset=utf-8",
+            "csv",
+          );
+        case "json":
+          return textArtifact(toJson(input), "application/json", "json");
+        case "md":
+          return textArtifact(
+            input.content ?? tableToMarkdown(input.table),
+            "text/markdown; charset=utf-8",
+            "md",
+          );
+        case "pdf":
+          return {
+            bytes: createPdf(input.title, input.content ?? tableToPlainText(input.table)),
+            contentType: "application/pdf",
+            extension: "pdf",
+          };
+        case "docx":
+          return {
+            bytes: createDocx(input.title, input.content ?? tableToPlainText(input.table)),
+            contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            extension: "docx",
+          };
+        case "pptx":
+          return {
+            bytes: createPptx(input.title, input.content ?? tableToPlainText(input.table)),
+            contentType:
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            extension: "pptx",
+          };
+        case "xlsx":
+          return {
+            bytes: createXlsx(input.table ?? contentTable(input.content)),
+            contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            extension: "xlsx",
+          };
+        case "zip":
+          return { bytes: createZip(input), contentType: "application/zip", extension: "zip" };
+        default:
+          format satisfies never;
+          throw new Error("Unsupported artifact format.");
       }
-    }
+    },
   })),
 );
 
-function validateGeneratedArtifact(
-  format: AiArtifactFormat,
-  generated: GeneratedAiArtifact,
-) {
-  if (generated.bytes.byteLength === 0) throw new Error("Artifact renderer returned an empty file.");
+function validateGeneratedArtifact(format: AiArtifactFormat, generated: GeneratedAiArtifact) {
+  if (generated.bytes.byteLength === 0)
+    throw new Error("Artifact renderer returned an empty file.");
   if (format === "pdf" && new TextDecoder().decode(generated.bytes.slice(0, 5)) !== "%PDF-") {
     throw new Error("PDF renderer validation failed.");
   }
@@ -131,9 +154,11 @@ function csvCell(value: unknown) {
 function toJson(input: { content?: string; table?: AiArtifactTable; title: string }) {
   if (input.table) {
     return JSON.stringify(
-      input.table.rows.map((row) => Object.fromEntries(
-        input.table!.columns.map((column, index) => [column, row[index] ?? null]),
-      )),
+      input.table.rows.map((row) =>
+        Object.fromEntries(
+          input.table!.columns.map((column, index) => [column, row[index] ?? null]),
+        ),
+      ),
       null,
       2,
     );
@@ -169,7 +194,9 @@ function tableToMarkdown(table: AiArtifactTable | undefined) {
 }
 
 function markdownCell(value: unknown) {
-  return String(value ?? "").replaceAll("|", "\\|").replace(/\r?\n/g, " ");
+  return String(value ?? "")
+    .replaceAll("|", "\\|")
+    .replace(/\r?\n/g, " ");
 }
 
 function createZip(input: {
@@ -182,23 +209,28 @@ function createZip(input: {
     : [{ content: input.content ?? "", filename: "README.md" }];
   if (entries.length > 50) throw new Error("ZIP artifacts may contain at most 50 files.");
 
-  return zipSync(Object.fromEntries(entries.map((entry, index) => [
-    safeZipPath(entry.filename, index),
-    strToU8(entry.content),
-  ])));
+  return zipSync(
+    Object.fromEntries(
+      entries.map((entry, index) => [safeZipPath(entry.filename, index), strToU8(entry.content)]),
+    ),
+  );
 }
 
 function safeZipPath(value: string, index: number) {
-  const path = value.replaceAll("\\", "/").split("/").filter(
-    (part) => part && part !== "." && part !== "..",
-  ).join("/").replace(/[^\p{L}\p{N} ./_()\-]/gu, "_").slice(0, 180);
+  const path = value
+    .replaceAll("\\", "/")
+    .split("/")
+    .filter((part) => part && part !== "." && part !== "..")
+    .join("/")
+    .replace(/[^\p{L}\p{N} ./_()\-]/gu, "_")
+    .slice(0, 180);
   return path || `file-${index + 1}.txt`;
 }
 
 function createDocx(title: string, content: string) {
-  const paragraphs = [title, ...content.split(/\r?\n/)].map((line) =>
-    `<w:p><w:r><w:t xml:space="preserve">${xml(line)}</w:t></w:r></w:p>`
-  ).join("");
+  const paragraphs = [title, ...content.split(/\r?\n/)]
+    .map((line) => `<w:p><w:r><w:t xml:space="preserve">${xml(line)}</w:t></w:r></w:p>`)
+    .join("");
   return zipXml({
     "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`,
     "_rels/.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`,
@@ -207,14 +239,20 @@ function createDocx(title: string, content: string) {
 }
 
 function createXlsx(table: AiArtifactTable) {
-  const rows = [table.columns, ...table.rows].map((row, rowIndex) =>
-    `<row r="${rowIndex + 1}">${row.map((value, columnIndex) => {
-      const ref = `${columnName(columnIndex)}${rowIndex + 1}`;
-      if (typeof value === "number") return `<c r="${ref}"><v>${value}</v></c>`;
-      if (typeof value === "boolean") return `<c r="${ref}" t="b"><v>${value ? 1 : 0}</v></c>`;
-      return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xml(String(value ?? ""))}</t></is></c>`;
-    }).join("")}</row>`
-  ).join("");
+  const rows = [table.columns, ...table.rows]
+    .map(
+      (row, rowIndex) =>
+        `<row r="${rowIndex + 1}">${row
+          .map((value, columnIndex) => {
+            const ref = `${columnName(columnIndex)}${rowIndex + 1}`;
+            if (typeof value === "number") return `<c r="${ref}"><v>${value}</v></c>`;
+            if (typeof value === "boolean")
+              return `<c r="${ref}" t="b"><v>${value ? 1 : 0}</v></c>`;
+            return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xml(String(value ?? ""))}</t></is></c>`;
+          })
+          .join("")}</row>`,
+    )
+    .join("");
   return zipXml({
     "[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>`,
     "_rels/.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`,
@@ -232,9 +270,14 @@ function createPptx(title: string, content: string) {
   const slideIds: string[] = [];
   slides.forEach((slide, index) => {
     const number = index + 1;
-    slideEntries[`ppt/slides/slide${number}.xml`] = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/><p:sp><p:nvSpPr><p:cNvPr id="2" name="Text"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${xml(number === 1 ? `${title}\n${slide}` : slide)}</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>`;
-    overrides.push(`<Override PartName="/ppt/slides/slide${number}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`);
-    relationships.push(`<Relationship Id="rId${number}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${number}.xml"/>`);
+    slideEntries[`ppt/slides/slide${number}.xml`] =
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/><p:sp><p:nvSpPr><p:cNvPr id="2" name="Text"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>${xml(number === 1 ? `${title}\n${slide}` : slide)}</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>`;
+    overrides.push(
+      `<Override PartName="/ppt/slides/slide${number}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`,
+    );
+    relationships.push(
+      `<Relationship Id="rId${number}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${number}.xml"/>`,
+    );
     slideIds.push(`<p:sldId id="${255 + number}" r:id="rId${number}"/>`);
   });
   return zipXml({
@@ -248,11 +291,20 @@ function createPptx(title: string, content: string) {
 
 function createPdf(title: string, content: string) {
   const lines = [title, "", ...content.split(/\r?\n/)].slice(0, 80);
-  const stream = ["BT", "/F1 11 Tf", "48 760 Td", "14 TL", ...lines.flatMap((line, index) => [
-    index === 0 ? "/F1 16 Tf" : index === 1 ? "/F1 11 Tf" : "",
-    `(${pdfText(line.slice(0, 110))}) Tj`,
-    "T*",
-  ]).filter(Boolean), "ET"].join("\n");
+  const stream = [
+    "BT",
+    "/F1 11 Tf",
+    "48 760 Td",
+    "14 TL",
+    ...lines
+      .flatMap((line, index) => [
+        index === 0 ? "/F1 16 Tf" : index === 1 ? "/F1 11 Tf" : "",
+        `(${pdfText(line.slice(0, 110))}) Tj`,
+        "T*",
+      ])
+      .filter(Boolean),
+    "ET",
+  ].join("\n");
   const objects = [
     "<< /Type /Catalog /Pages 2 0 R >>",
     "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -268,13 +320,18 @@ function createPdf(title: string, content: string) {
   });
   const xref = strToU8(output).byteLength;
   output += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  output += offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("");
+  output += offsets
+    .slice(1)
+    .map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`)
+    .join("");
   output += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
   return strToU8(output);
 }
 
 function zipXml(entries: Record<string, string>) {
-  return zipSync(Object.fromEntries(Object.entries(entries).map(([name, value]) => [name, strToU8(value)])));
+  return zipSync(
+    Object.fromEntries(Object.entries(entries).map(([name, value]) => [name, strToU8(value)])),
+  );
 }
 
 function columnName(index: number) {
@@ -289,9 +346,18 @@ function columnName(index: number) {
 }
 
 function xml(value: string) {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
 }
 
 function pdfText(value: string) {
-  return value.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)").replace(/[^\x20-\x7e]/g, "?");
+  return value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("(", "\\(")
+    .replaceAll(")", "\\)")
+    .replace(/[^\x20-\x7e]/g, "?");
 }

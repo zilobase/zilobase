@@ -34,9 +34,7 @@ export function buildPageEditTools(allowedPageIds: string[]): ToolSet {
           console.warn(
             `proposePageContentUpdate rejected: pageId ${parsed.pageId} not in allowed set`,
           );
-          throw new Error(
-            "That page is not in the current page context for this chat.",
-          );
+          throw new Error("That page is not in the current page context for this chat.");
         }
 
         const result =
@@ -72,9 +70,7 @@ function validatePageEditInput(input: PageEditInput) {
     const searchText = input.searchText?.trim();
 
     if (!searchText) {
-      throw new Error(
-        "Patch edits require searchText copied from the current page content.",
-      );
+      throw new Error("Patch edits require searchText copied from the current page content.");
     }
 
     return {

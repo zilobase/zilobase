@@ -1,414 +1,567 @@
-import { readCachedMailThreads } from "../storage/mail-cache-query"
-import { useQueryClient } from "@tanstack/react-query"
-import { invalidateMailListQueries, mailKeys } from "@zilobase/features/mail"
-import { runMailSyncOnce } from "./sync-queue"
-import { synchronizeMailCache } from "./mail-cache-sync"
-import { isDefiniteMailMutationFailure, runMailThreadMutation, runMailMessageMutation } from "./mail-mutations"
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
-import { useLiveQuery } from "dexie-react-hooks"
-import type { MailFilterExpression, MailConnection, MailLabelRecord, MailLabelWriteRequest, MailMessageRecord, MailMessageMutationResponse, MailModifyRequest, MailThreadSummary, MailThreadMutationResponse, MailView } from "@zilobase/features/mail";
+import { readCachedMailThreads } from "../storage/mail-cache-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { invalidateMailListQueries, mailKeys } from "@zilobase/features/mail";
+import { runMailSyncOnce } from "./sync-queue";
+import { synchronizeMailCache } from "./mail-cache-sync";
+import {
+  isDefiniteMailMutationFailure,
+  runMailThreadMutation,
+  runMailMessageMutation,
+} from "./mail-mutations";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import type {
+  MailFilterExpression,
+  MailConnection,
+  MailLabelRecord,
+  MailLabelWriteRequest,
+  MailMessageRecord,
+  MailMessageMutationResponse,
+  MailModifyRequest,
+  MailThreadSummary,
+  MailThreadMutationResponse,
+  MailView,
+} from "@zilobase/features/mail";
 import {
   evaluateMailFilterExpression,
   mailApiBasePath,
   mailFilterRecordFromThreadSummary,
-} from "@zilobase/features/mail"
+} from "@zilobase/features/mail";
 
-import { ApiError, apiFetch, getApiRequestHeaders, toApiUrl } from "@/platform/network/api"
-import { desktopNetworkFetch } from "@/platform/network"
-import { describeDesktopError, recordDesktopDiagnostic } from "@/features/desktop/diagnostics/index"
-import { getConnectivityState, subscribeConnectivity } from "@/platform/network/connectivity"
-import { clearMailReconciliation, deleteMailLabelFromCache, deleteMailMessageFromCache, deleteMailThreadFromCache, mailThreadMatchesView, openMailDatabase, optimisticallyModifyThread, queueMailReconciliation, reconcileMailMessage, restoreMailMutation, upsertFullMailThread, type MailDatabase } from "../storage/mail-database";
-import { safeMailDownloadFilename } from "../messages/mail-attachment"
-import { loadMailThreadOnce } from "../messages/mail-thread-loader"
+import { ApiError, apiFetch, getApiRequestHeaders, toApiUrl } from "@/platform/network/api";
+import { desktopNetworkFetch } from "@/platform/network";
+import {
+  describeDesktopError,
+  recordDesktopDiagnostic,
+} from "@/features/desktop/diagnostics/index";
+import { getConnectivityState, subscribeConnectivity } from "@/platform/network/connectivity";
+import {
+  clearMailReconciliation,
+  deleteMailLabelFromCache,
+  deleteMailMessageFromCache,
+  deleteMailThreadFromCache,
+  mailThreadMatchesView,
+  openMailDatabase,
+  optimisticallyModifyThread,
+  queueMailReconciliation,
+  reconcileMailMessage,
+  restoreMailMutation,
+  upsertFullMailThread,
+  type MailDatabase,
+} from "../storage/mail-database";
+import { safeMailDownloadFilename } from "../messages/mail-attachment";
+import { loadMailThreadOnce } from "../messages/mail-thread-loader";
 
 export function useMailController(input: {
-  connection: MailConnection
-  filter?: MailFilterExpression | null
-  query: string
-  remoteSearch?: boolean
-  userId: string
-  view: MailView
+  connection: MailConnection;
+  filter?: MailFilterExpression | null;
+  query: string;
+  remoteSearch?: boolean;
+  userId: string;
+  view: MailView;
 }) {
-  const queryClient = useQueryClient()
-  const retryAt = useRef(0)
-  const revoked = useRef(false)
-  const latestScope = useRef("")
-  latestScope.current = input.remoteSearch === false
-    ? `${input.connection.bindingId}:${input.view}`
-    : `${input.connection.bindingId}:${input.view}:${input.query}`
-  const mailBasePath = mailApiBasePath(input.connection.workspaceId)
-  const [cacheLimit, setCacheLimit] = useState(50)
-  const [database, setDatabase] = useState<MailDatabase | null>(null)
-  const [syncing, setSyncing] = useState(false)
-  const [mutating, setMutating] = useState(false)
-  const [error, setError] = useState<unknown>(null)
-  const [searchResultIds, setSearchResultIds] = useState<string[] | null>(null)
-  const threadLoads = useRef(new Map<string, Promise<void>>())
+  const queryClient = useQueryClient();
+  const retryAt = useRef(0);
+  const revoked = useRef(false);
+  const latestScope = useRef("");
+  latestScope.current =
+    input.remoteSearch === false
+      ? `${input.connection.bindingId}:${input.view}`
+      : `${input.connection.bindingId}:${input.view}:${input.query}`;
+  const mailBasePath = mailApiBasePath(input.connection.workspaceId);
+  const [cacheLimit, setCacheLimit] = useState(50);
+  const [database, setDatabase] = useState<MailDatabase | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [mutating, setMutating] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [searchResultIds, setSearchResultIds] = useState<string[] | null>(null);
+  const threadLoads = useRef(new Map<string, Promise<void>>());
   const online = useSyncExternalStore(
     subscribeConnectivity,
     () => getConnectivityState() === "online",
     () => true,
-  )
+  );
 
   useEffect(() => {
-    if (!input.connection.connectionId || !input.connection.bindingId || !input.connection.workspaceId) return
-    setDatabase(null)
+    if (
+      !input.connection.connectionId ||
+      !input.connection.bindingId ||
+      !input.connection.workspaceId
+    )
+      return;
+    setDatabase(null);
     const identity = {
       apiOrigin: new URL(toApiUrl("/"), window.location.origin).origin,
       bindingId: input.connection.bindingId,
       connectionId: input.connection.connectionId,
       userId: input.userId,
       workspaceId: input.connection.workspaceId,
-    }
-    let active = true
-    void openMailDatabase(identity).then((next) => {
-      if (!active) return
-      setError(null)
-      setDatabase(next)
-    }).catch((cacheError) => {
-      if (!active) return
-      recordDesktopDiagnostic("mail.cache_failure", describeDesktopError(cacheError), "error")
-      setError(cacheError)
-    })
+    };
+    let active = true;
+    void openMailDatabase(identity)
+      .then((next) => {
+        if (!active) return;
+        setError(null);
+        setDatabase(next);
+      })
+      .catch((cacheError) => {
+        if (!active) return;
+        recordDesktopDiagnostic("mail.cache_failure", describeDesktopError(cacheError), "error");
+        setError(cacheError);
+      });
     return () => {
       // This cleanup only cancels this React consumer. Explicit lifecycle events
       // such as disconnect, logout, and server replacement own cache closure.
-      active = false
-    }
+      active = false;
+    };
   }, [
     input.connection.bindingId,
     input.connection.connectionId,
     input.connection.workspaceId,
     input.userId,
-  ])
+  ]);
 
   const cachedThreads = useLiveQuery(
-    () => database ? readCachedMailThreads(database, input.view, cacheLimit + 1, input.filter, input.query) : [],
+    () =>
+      database
+        ? readCachedMailThreads(database, input.view, cacheLimit + 1, input.filter, input.query)
+        : [],
     [database, input.view, input.filter, input.query, cacheLimit],
     [],
-  )
-  const syncState = useLiveQuery(
-    () => database?.syncState.get("primary"),
-    [database],
-    undefined,
-  )
+  );
+  const syncState = useLiveQuery(() => database?.syncState.get("primary"), [database], undefined);
   const labels = useLiveQuery(
-    () => database ? database.labels.orderBy("name").toArray() : [],
+    () => (database ? database.labels.orderBy("name").toArray() : []),
     [database],
     [],
-  )
+  );
 
-  const runSync = useCallback(async (options: { loadMore?: boolean; search?: string } = {}) => {
-    if (!database || !input.connection.connectionId || !online) return null
-    if (revoked.current || Date.now() < retryAt.current) return null
-    const scope = latestScope.current
-    setSyncing(true)
-    setError(null)
-    try {
-      const { response, isSearch } = await runMailSyncOnce(database.name, JSON.stringify([input.view, options]), async () => {
-        const result = await synchronizeMailCache({ database, mailBasePath, connectionId: input.connection.connectionId!, view: input.view }, apiFetch, options)
-        if (!result.isSearch) {
-          await apiFetch(`${mailBasePath}/index/advance`, { method: "POST" })
-          await invalidateMailListQueries(queryClient, { bindingId: input.connection.bindingId, workspaceId: input.connection.workspaceId })
+  const runSync = useCallback(
+    async (options: { loadMore?: boolean; search?: string } = {}) => {
+      if (!database || !input.connection.connectionId || !online) return null;
+      if (revoked.current || Date.now() < retryAt.current) return null;
+      const scope = latestScope.current;
+      setSyncing(true);
+      setError(null);
+      try {
+        const { response, isSearch } = await runMailSyncOnce(
+          database.name,
+          JSON.stringify([input.view, options]),
+          async () => {
+            const result = await synchronizeMailCache(
+              {
+                database,
+                mailBasePath,
+                connectionId: input.connection.connectionId!,
+                view: input.view,
+              },
+              apiFetch,
+              options,
+            );
+            if (!result.isSearch) {
+              await apiFetch(`${mailBasePath}/index/advance`, { method: "POST" });
+              await invalidateMailListQueries(queryClient, {
+                bindingId: input.connection.bindingId,
+                workspaceId: input.connection.workspaceId,
+              });
+            }
+            return result;
+          },
+        );
+        if (latestScope.current === scope)
+          setSearchResultIds(isSearch ? response.threads.map((thread) => thread.id) : null);
+        return response;
+      } catch (syncError) {
+        if (syncError instanceof ApiError) {
+          const body = syncError.body as { retryAfterMs?: number; code?: string } | null;
+          if (body?.retryAfterMs) retryAt.current = Date.now() + body.retryAfterMs;
+          if (body?.code === "authorization_revoked") {
+            revoked.current = true;
+            void queryClient.invalidateQueries({
+              queryKey: mailKeys.connection(input.connection.workspaceId),
+            });
+          }
         }
-        return result
-      })
-      if (latestScope.current === scope) setSearchResultIds(isSearch ? response.threads.map((thread) => thread.id) : null)
-      return response
-    } catch (syncError) {
-      if (syncError instanceof ApiError) {
-        const body = syncError.body as { retryAfterMs?: number; code?: string } | null
-        if (body?.retryAfterMs) retryAt.current = Date.now() + body.retryAfterMs
-        if (body?.code === "authorization_revoked") {
-          revoked.current = true
-          void queryClient.invalidateQueries({ queryKey: mailKeys.connection(input.connection.workspaceId) })
-        }
+        if (latestScope.current === scope) setError(syncError);
+        return null;
+      } finally {
+        if (latestScope.current === scope) setSyncing(false);
       }
-      if (latestScope.current === scope) setError(syncError)
-      return null
-    } finally {
-      if (latestScope.current === scope) setSyncing(false)
-    }
-  }, [database, input.connection.connectionId, input.connection.bindingId, input.connection.workspaceId, input.view, online, queryClient])
+    },
+    [
+      database,
+      input.connection.connectionId,
+      input.connection.bindingId,
+      input.connection.workspaceId,
+      input.view,
+      online,
+      queryClient,
+    ],
+  );
 
   useEffect(() => {
-    if (!database || !online) return
-    const timer = window.setTimeout(() => void runSync(), 0)
-    return () => window.clearTimeout(timer)
-  }, [database, input.view, online, runSync])
+    if (!database || !online) return;
+    const timer = window.setTimeout(() => void runSync(), 0);
+    return () => window.clearTimeout(timer);
+  }, [database, input.view, online, runSync]);
 
   useEffect(() => {
-    if (!database) return
-    const search = input.query.trim()
+    if (!database) return;
+    const search = input.query.trim();
     if (!search || !online || input.remoteSearch === false) {
-      setSearchResultIds(null)
-      return
+      setSearchResultIds(null);
+      return;
     }
-    const timer = window.setTimeout(() => void runSync({ search }), 350)
-    return () => window.clearTimeout(timer)
-  }, [database, input.query, input.remoteSearch, online, runSync])
+    const timer = window.setTimeout(() => void runSync({ search }), 350);
+    return () => window.clearTimeout(timer);
+  }, [database, input.query, input.remoteSearch, online, runSync]);
 
   const threads = useMemo(() => {
-    const visible = (cachedThreads ?? []).slice(0, cacheLimit).filter((thread) => input.filter
-      ? evaluateMailFilterExpression(mailFilterRecordFromThreadSummary(thread), input.filter)
-      : mailThreadMatchesView(thread, input.view))
+    const visible = (cachedThreads ?? [])
+      .slice(0, cacheLimit)
+      .filter((thread) =>
+        input.filter
+          ? evaluateMailFilterExpression(mailFilterRecordFromThreadSummary(thread), input.filter)
+          : mailThreadMatchesView(thread, input.view),
+      );
     if (searchResultIds) {
-      const order = new Map(searchResultIds.map((id, index) => [id, index]))
-      return visible.filter((thread) => order.has(thread.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
+      const order = new Map(searchResultIds.map((id, index) => [id, index]));
+      return visible
+        .filter((thread) => order.has(thread.id))
+        .sort((a, b) => order.get(a.id)! - order.get(b.id)!);
     }
-    const query = input.query.trim().toLowerCase()
-    if (!query) return visible
-    return visible.filter((thread) => [
-      thread.subject,
-      thread.snippet,
-      ...thread.participants.flatMap((participant) => [participant.name ?? "", participant.address]),
-    ].some((value) => value.toLowerCase().includes(query)))
-  }, [cachedThreads, cacheLimit, input.filter, input.query, input.view, searchResultIds])
+    const query = input.query.trim().toLowerCase();
+    if (!query) return visible;
+    return visible.filter((thread) =>
+      [
+        thread.subject,
+        thread.snippet,
+        ...thread.participants.flatMap((participant) => [
+          participant.name ?? "",
+          participant.address,
+        ]),
+      ].some((value) => value.toLowerCase().includes(query)),
+    );
+  }, [cachedThreads, cacheLimit, input.filter, input.query, input.view, searchResultIds]);
 
-  const loadThread = useCallback((threadId: string) => {
-    if (!database) return
-    const key = `${database.name}:${threadId}`
-    return loadMailThreadOnce(threadLoads.current, key, async () => {
-      const cached = await database.messages.where("threadId").equals(threadId).toArray()
-      if (!online || (cached.length > 0 && cached.every((message) => message.hasFullBody))) return
-      const response = await apiFetch<{ messages: MailMessageRecord[]; thread: MailThreadSummary }>(
-        `${mailBasePath}/threads/${encodeURIComponent(threadId)}`,
-      )
-      await upsertFullMailThread(database, response)
-    })
-  }, [database, online])
+  const loadThread = useCallback(
+    (threadId: string) => {
+      if (!database) return;
+      const key = `${database.name}:${threadId}`;
+      return loadMailThreadOnce(threadLoads.current, key, async () => {
+        const cached = await database.messages.where("threadId").equals(threadId).toArray();
+        if (!online || (cached.length > 0 && cached.every((message) => message.hasFullBody)))
+          return;
+        const response = await apiFetch<{
+          messages: MailMessageRecord[];
+          thread: MailThreadSummary;
+        }>(`${mailBasePath}/threads/${encodeURIComponent(threadId)}`);
+        await upsertFullMailThread(database, response);
+      });
+    },
+    [database, online],
+  );
 
-  const openThread = useCallback(async (threadId: string) => {
-    try {
-      await loadThread(threadId)
-    } catch (threadError) {
-      setError(threadError)
-    }
-  }, [loadThread])
+  const openThread = useCallback(
+    async (threadId: string) => {
+      try {
+        await loadThread(threadId);
+      } catch (threadError) {
+        setError(threadError);
+      }
+    },
+    [loadThread],
+  );
 
-  const prefetchThread = useCallback(async (threadId: string) => {
-    try {
-      await loadThread(threadId)
-    } catch {
-      // Intent prefetch is opportunistic; a foreground open retries and reports failures.
-    }
-  }, [loadThread])
+  const prefetchThread = useCallback(
+    async (threadId: string) => {
+      try {
+        await loadThread(threadId);
+      } catch {
+        // Intent prefetch is opportunistic; a foreground open retries and reports failures.
+      }
+    },
+    [loadThread],
+  );
 
-  const downloadAttachment = useCallback(async (messageId: string, attachmentId: string, filename: string) => {
-    if (!online) throw new Error("Reconnect to download attachments.")
-    const blob = await fetchAttachmentBlob(messageId, attachmentId)
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = safeMailDownloadFilename(filename)
-    anchor.click()
-    window.setTimeout(() => URL.revokeObjectURL(url), 0)
-  }, [online])
+  const downloadAttachment = useCallback(
+    async (messageId: string, attachmentId: string, filename: string) => {
+      if (!online) throw new Error("Reconnect to download attachments.");
+      const blob = await fetchAttachmentBlob(messageId, attachmentId);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = safeMailDownloadFilename(filename);
+      anchor.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    },
+    [online],
+  );
 
-  const loadInlineAttachment = useCallback(async (messageId: string, attachmentId: string) => {
-    if (!online) throw new Error("Reconnect to load inline images.")
-    return URL.createObjectURL(await fetchAttachmentBlob(messageId, attachmentId))
-  }, [online])
+  const loadInlineAttachment = useCallback(
+    async (messageId: string, attachmentId: string) => {
+      if (!online) throw new Error("Reconnect to load inline images.");
+      return URL.createObjectURL(await fetchAttachmentBlob(messageId, attachmentId));
+    },
+    [online],
+  );
 
   const fetchAttachmentBlob = async (messageId: string, attachmentId: string) => {
     const response = await desktopNetworkFetch(
-      toApiUrl(`${mailBasePath}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`),
+      toApiUrl(
+        `${mailBasePath}/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachmentId)}`,
+      ),
       { credentials: "include", headers: getApiRequestHeaders() },
-    )
-    if (!response.ok) throw new Error("The attachment could not be downloaded.")
-    return response.blob()
-  }
+    );
+    if (!response.ok) throw new Error("The attachment could not be downloaded.");
+    return response.blob();
+  };
 
-  const modifyThread = useCallback(async (threadId: string, modification: MailModifyRequest) => {
-    if (!database || !online) throw new Error("Reconnect to organize mail.")
-    setMutating(true)
-    try {
-      await runMailThreadMutation({
-        database, threadId, modification,
-        request: () => apiFetch<MailThreadMutationResponse>(
-          `${mailBasePath}/threads/${encodeURIComponent(threadId)}/modify`,
-          { body: JSON.stringify(modification), method: "POST" },
-        ),
-      })
-    } finally {
-      setMutating(false)
-      void runSync()
-    }
-  }, [database, online, runSync])
-
-  const batchModifyThreads = useCallback(async (threadIds: string[], modification: MailModifyRequest) => {
-    if (!database || !online) throw new Error("Reconnect to organize mail.")
-    if (!threadIds.length || threadIds.length > 50) throw new Error("Select between 1 and 50 Gmail threads.")
-    setMutating(true)
-    const snapshots = []
-    try {
-      for (const threadId of threadIds) {
-        snapshots.push(await optimisticallyModifyThread(database, threadId, modification))
+  const modifyThread = useCallback(
+    async (threadId: string, modification: MailModifyRequest) => {
+      if (!database || !online) throw new Error("Reconnect to organize mail.");
+      setMutating(true);
+      try {
+        await runMailThreadMutation({
+          database,
+          threadId,
+          modification,
+          request: () =>
+            apiFetch<MailThreadMutationResponse>(
+              `${mailBasePath}/threads/${encodeURIComponent(threadId)}/modify`,
+              { body: JSON.stringify(modification), method: "POST" },
+            ),
+        });
+      } finally {
+        setMutating(false);
+        void runSync();
       }
-      await apiFetch(`${mailBasePath}/threads/batch-modify`, {
-        body: JSON.stringify({ ...modification, ids: threadIds }),
-        method: "POST",
-      })
-      void runSync()
-    } catch (mutationError) {
-      if (isDefiniteMailMutationFailure(mutationError)) {
-        for (const snapshot of snapshots) await restoreMailMutation(database, snapshot)
+    },
+    [database, online, runSync],
+  );
+
+  const batchModifyThreads = useCallback(
+    async (threadIds: string[], modification: MailModifyRequest) => {
+      if (!database || !online) throw new Error("Reconnect to organize mail.");
+      if (!threadIds.length || threadIds.length > 50)
+        throw new Error("Select between 1 and 50 Gmail threads.");
+      setMutating(true);
+      const snapshots = [];
+      try {
+        for (const threadId of threadIds) {
+          snapshots.push(await optimisticallyModifyThread(database, threadId, modification));
+        }
+        await apiFetch(`${mailBasePath}/threads/batch-modify`, {
+          body: JSON.stringify({ ...modification, ids: threadIds }),
+          method: "POST",
+        });
+        void runSync();
+      } catch (mutationError) {
+        if (isDefiniteMailMutationFailure(mutationError)) {
+          for (const snapshot of snapshots) await restoreMailMutation(database, snapshot);
+        }
+        await queueMailReconciliation(database, { threadIds });
+        throw mutationError;
+      } finally {
+        setMutating(false);
+        void runSync();
       }
-      await queueMailReconciliation(database, { threadIds })
-      throw mutationError
-    } finally {
-      setMutating(false)
-      void runSync()
-    }
-  }, [database, online, runSync])
+    },
+    [database, online, runSync],
+  );
 
-  const actOnThread = useCallback(async (threadId: string, action: "restore" | "trash") => {
-    if (!database || !online) throw new Error("Reconnect to organize mail.")
-    const modification = action === "trash"
-      ? { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] }
-      : { removeLabelIds: ["TRASH"] }
-    setMutating(true)
-    try {
-      await runMailThreadMutation({
-        database, threadId, modification,
-        request: () => apiFetch<MailThreadMutationResponse>(
-          `${mailBasePath}/threads/${encodeURIComponent(threadId)}/action`,
-          { body: JSON.stringify({ action }), method: "POST" },
-        ),
-      })
-    } finally {
-      setMutating(false)
-      void runSync()
-    }
-  }, [database, online, runSync])
+  const actOnThread = useCallback(
+    async (threadId: string, action: "restore" | "trash") => {
+      if (!database || !online) throw new Error("Reconnect to organize mail.");
+      const modification =
+        action === "trash"
+          ? { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] }
+          : { removeLabelIds: ["TRASH"] };
+      setMutating(true);
+      try {
+        await runMailThreadMutation({
+          database,
+          threadId,
+          modification,
+          request: () =>
+            apiFetch<MailThreadMutationResponse>(
+              `${mailBasePath}/threads/${encodeURIComponent(threadId)}/action`,
+              { body: JSON.stringify({ action }), method: "POST" },
+            ),
+        });
+      } finally {
+        setMutating(false);
+        void runSync();
+      }
+    },
+    [database, online, runSync],
+  );
 
-  const modifyMessage = useCallback(async (messageId: string, modification: MailModifyRequest) => {
-    if (!database || !online) throw new Error("Reconnect to organize mail.")
-    setMutating(true)
-    try {
-      await runMailMessageMutation({
-        database, messageId, modification,
-        request: () => apiFetch<MailMessageMutationResponse>(
-          `${mailBasePath}/messages/${encodeURIComponent(messageId)}/modify`,
-          { body: JSON.stringify(modification), method: "POST" },
-        ),
-      })
-    } finally {
-      setMutating(false)
-      void runSync()
-    }
-  }, [database, online, runSync])
+  const modifyMessage = useCallback(
+    async (messageId: string, modification: MailModifyRequest) => {
+      if (!database || !online) throw new Error("Reconnect to organize mail.");
+      setMutating(true);
+      try {
+        await runMailMessageMutation({
+          database,
+          messageId,
+          modification,
+          request: () =>
+            apiFetch<MailMessageMutationResponse>(
+              `${mailBasePath}/messages/${encodeURIComponent(messageId)}/modify`,
+              { body: JSON.stringify(modification), method: "POST" },
+            ),
+        });
+      } finally {
+        setMutating(false);
+        void runSync();
+      }
+    },
+    [database, online, runSync],
+  );
 
-  const actOnMessage = useCallback(async (messageId: string, action: "restore" | "trash") => {
-    if (!database || !online) throw new Error("Reconnect to organize mail.")
-    const modification = action === "trash"
-      ? { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] }
-      : { removeLabelIds: ["TRASH"] }
-    setMutating(true)
-    try {
-      await runMailMessageMutation({
-        database, messageId, modification,
-        request: () => apiFetch<MailMessageMutationResponse>(
-          `${mailBasePath}/messages/${encodeURIComponent(messageId)}/action`,
-          { body: JSON.stringify({ action }), method: "POST" },
-        ),
-      })
-    } finally {
-      setMutating(false)
-      void runSync()
-    }
-  }, [database, online, runSync])
+  const actOnMessage = useCallback(
+    async (messageId: string, action: "restore" | "trash") => {
+      if (!database || !online) throw new Error("Reconnect to organize mail.");
+      const modification =
+        action === "trash"
+          ? { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] }
+          : { removeLabelIds: ["TRASH"] };
+      setMutating(true);
+      try {
+        await runMailMessageMutation({
+          database,
+          messageId,
+          modification,
+          request: () =>
+            apiFetch<MailMessageMutationResponse>(
+              `${mailBasePath}/messages/${encodeURIComponent(messageId)}/action`,
+              { body: JSON.stringify({ action }), method: "POST" },
+            ),
+        });
+      } finally {
+        setMutating(false);
+        void runSync();
+      }
+    },
+    [database, online, runSync],
+  );
 
-  const createLabel = useCallback(async (input: MailLabelWriteRequest) => {
-    if (!database || !online) throw new Error("Reconnect to manage Gmail labels.")
-    setMutating(true)
-    try {
-      const { label } = await apiFetch<{ label: MailLabelRecord }>(`${mailBasePath}/labels`, {
-        body: JSON.stringify(input),
-        method: "POST",
-      })
-      await database.labels.put(label)
-      return label
-    } finally {
-      setMutating(false)
-      void runSync()
-    }
-  }, [database, online, runSync])
+  const createLabel = useCallback(
+    async (input: MailLabelWriteRequest) => {
+      if (!database || !online) throw new Error("Reconnect to manage Gmail labels.");
+      setMutating(true);
+      try {
+        const { label } = await apiFetch<{ label: MailLabelRecord }>(`${mailBasePath}/labels`, {
+          body: JSON.stringify(input),
+          method: "POST",
+        });
+        await database.labels.put(label);
+        return label;
+      } finally {
+        setMutating(false);
+        void runSync();
+      }
+    },
+    [database, online, runSync],
+  );
 
-  const updateLabel = useCallback(async (label: MailLabelRecord, input: MailLabelWriteRequest) => {
-    if (!database || !online) throw new Error("Reconnect to manage Gmail labels.")
-    setMutating(true)
-    try {
-      await database.labels.put({ ...label, ...input })
-      const response = await apiFetch<{ label: MailLabelRecord }>(
-        `${mailBasePath}/labels/${encodeURIComponent(label.id)}`,
-        { body: JSON.stringify(input), method: "PATCH" },
-      )
-      await database.labels.put(response.label)
-      return response.label
-    } catch (mutationError) {
-      if (isDefiniteMailMutationFailure(mutationError)) await database.labels.put(label)
-      else void runSync()
-      throw mutationError
-    } finally {
-      setMutating(false)
-      void runSync()
-    }
-  }, [database, online, runSync])
+  const updateLabel = useCallback(
+    async (label: MailLabelRecord, input: MailLabelWriteRequest) => {
+      if (!database || !online) throw new Error("Reconnect to manage Gmail labels.");
+      setMutating(true);
+      try {
+        await database.labels.put({ ...label, ...input });
+        const response = await apiFetch<{ label: MailLabelRecord }>(
+          `${mailBasePath}/labels/${encodeURIComponent(label.id)}`,
+          { body: JSON.stringify(input), method: "PATCH" },
+        );
+        await database.labels.put(response.label);
+        return response.label;
+      } catch (mutationError) {
+        if (isDefiniteMailMutationFailure(mutationError)) await database.labels.put(label);
+        else void runSync();
+        throw mutationError;
+      } finally {
+        setMutating(false);
+        void runSync();
+      }
+    },
+    [database, online, runSync],
+  );
 
-  const deleteLabel = useCallback(async (labelId: string) => {
-    if (!database || !online) throw new Error("Reconnect to manage Gmail labels.")
-    setMutating(true)
-    try {
-      await apiFetch(`${mailBasePath}/labels/${encodeURIComponent(labelId)}`, { method: "DELETE" })
-      await deleteMailLabelFromCache(database, labelId)
-    } finally {
-      setMutating(false)
-      void runSync()
-    }
-  }, [database, online])
+  const deleteLabel = useCallback(
+    async (labelId: string) => {
+      if (!database || !online) throw new Error("Reconnect to manage Gmail labels.");
+      setMutating(true);
+      try {
+        await apiFetch(`${mailBasePath}/labels/${encodeURIComponent(labelId)}`, {
+          method: "DELETE",
+        });
+        await deleteMailLabelFromCache(database, labelId);
+      } finally {
+        setMutating(false);
+        void runSync();
+      }
+    },
+    [database, online],
+  );
 
   const reconcilePending = useCallback(async () => {
-    if (!database || !online) return
-    const state = await database.syncState.get("primary")
+    if (!database || !online) return;
+    const state = await database.syncState.get("primary");
     for (const threadId of state?.pendingThreadReconciliationIds ?? []) {
       try {
-        const response = await apiFetch<MailThreadMutationResponse>(`${mailBasePath}/threads/${encodeURIComponent(threadId)}`)
-        await upsertFullMailThread(database, response)
-        await clearMailReconciliation(database, { threadId })
+        const response = await apiFetch<MailThreadMutationResponse>(
+          `${mailBasePath}/threads/${encodeURIComponent(threadId)}`,
+        );
+        await upsertFullMailThread(database, response);
+        await clearMailReconciliation(database, { threadId });
       } catch (reconciliationError) {
         if (reconciliationError instanceof ApiError && reconciliationError.status === 404) {
-          await deleteMailThreadFromCache(database, threadId)
-          await clearMailReconciliation(database, { threadId })
-          continue
+          await deleteMailThreadFromCache(database, threadId);
+          await clearMailReconciliation(database, { threadId });
+          continue;
         }
-        return
+        return;
       }
     }
     for (const messageId of state?.pendingMessageReconciliationIds ?? []) {
       try {
-        const response = await apiFetch<MailMessageMutationResponse>(`${mailBasePath}/messages/${encodeURIComponent(messageId)}`)
-        await reconcileMailMessage(database, response.message)
-        await clearMailReconciliation(database, { messageId })
+        const response = await apiFetch<MailMessageMutationResponse>(
+          `${mailBasePath}/messages/${encodeURIComponent(messageId)}`,
+        );
+        await reconcileMailMessage(database, response.message);
+        await clearMailReconciliation(database, { messageId });
       } catch (reconciliationError) {
         if (reconciliationError instanceof ApiError && reconciliationError.status === 404) {
-          await deleteMailMessageFromCache(database, messageId)
-          await clearMailReconciliation(database, { messageId })
-          continue
+          await deleteMailMessageFromCache(database, messageId);
+          await clearMailReconciliation(database, { messageId });
+          continue;
         }
-        return
+        return;
       }
     }
-    if ((state?.pendingThreadReconciliationIds?.length ?? 0) + (state?.pendingMessageReconciliationIds?.length ?? 0) > 0) {
-      void runSync()
+    if (
+      (state?.pendingThreadReconciliationIds?.length ?? 0) +
+        (state?.pendingMessageReconciliationIds?.length ?? 0) >
+      0
+    ) {
+      void runSync();
     }
-  }, [database, online, runSync])
+  }, [database, online, runSync]);
 
   useEffect(() => {
-    if (!database || !online) return
-    const timer = window.setTimeout(() => void reconcilePending(), 0)
-    return () => window.clearTimeout(timer)
-  }, [database, online, reconcilePending, syncState?.pendingMessageReconciliationIds, syncState?.pendingThreadReconciliationIds])
+    if (!database || !online) return;
+    const timer = window.setTimeout(() => void reconcilePending(), 0);
+    return () => window.clearTimeout(timer);
+  }, [
+    database,
+    online,
+    reconcilePending,
+    syncState?.pendingMessageReconciliationIds,
+    syncState?.pendingThreadReconciliationIds,
+  ]);
 
   return {
     database,
@@ -419,7 +572,9 @@ export function useMailController(input: {
     deleteLabel,
     downloadAttachment,
     error,
-    hasMore: online ? Boolean(syncState?.pageTokens[input.view]) : (cachedThreads?.length ?? 0) > cacheLimit,
+    hasMore: online
+      ? Boolean(syncState?.pageTokens[input.view])
+      : (cachedThreads?.length ?? 0) > cacheLimit,
     labels: labels ?? [],
     loadInlineAttachment,
     modifyMessage,
@@ -429,9 +584,12 @@ export function useMailController(input: {
     openThread,
     prefetchThread,
     refresh: runSync,
-    loadMore: () => { setCacheLimit((limit) => limit + 50); return online ? runSync({ loadMore: true }) : Promise.resolve(null) },
+    loadMore: () => {
+      setCacheLimit((limit) => limit + 50);
+      return online ? runSync({ loadMore: true }) : Promise.resolve(null);
+    },
     syncing,
     threads,
     updateLabel,
-  }
+  };
 }

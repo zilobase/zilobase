@@ -1,16 +1,18 @@
 import { eq } from "drizzle-orm";
 
-import {
-  contentTypeForAiFileKind,
-  extractAiFile,
-} from "./ai-file-extraction";
+import { contentTypeForAiFileKind, extractAiFile } from "./ai-file-extraction";
 import { readAiStoredObject, sha256Hex } from "./ai-file-storage";
 import { db } from "../../../infrastructure/database";
 import { aiChatUpload } from "../../../infrastructure/database/schema";
 import { createImageStorage } from "../../../infrastructure/storage/image-storage";
 import { PermanentAiJobError, type AiJobHandler } from "../jobs/ai-jobs";
 
-export const extractAiUploadJob: AiJobHandler = async ({ assertLease, env, job, reportProgress }) => {
+export const extractAiUploadJob: AiJobHandler = async ({
+  assertLease,
+  env,
+  job,
+  reportProgress,
+}) => {
   const uploadId = readStringField(job.input, "uploadId");
   const [record] = await db
     .select()
@@ -27,20 +29,13 @@ export const extractAiUploadJob: AiJobHandler = async ({ assertLease, env, job, 
 
   const storage = createImageStorage(env);
   await assertLease();
-  const { bytes, metadata } = await readAiStoredObject(
-    storage,
-    record.objectKey,
-    record.byteSize,
-  );
+  const { bytes, metadata } = await readAiStoredObject(storage, record.objectKey, record.byteSize);
   await reportProgress(25);
   if (bytes.byteLength !== record.byteSize) {
     await rejectUpload(record.id, storage, record.objectKey);
     throw new PermanentAiJobError("Uploaded byte size does not match the reservation.");
   }
-  if (
-    metadata.contentType &&
-    normalizeContentType(metadata.contentType) !== record.contentType
-  ) {
+  if (metadata.contentType && normalizeContentType(metadata.contentType) !== record.contentType) {
     await rejectUpload(record.id, storage, record.objectKey);
     throw new PermanentAiJobError("Uploaded content type does not match the reservation.");
   }
@@ -68,20 +63,23 @@ export const extractAiUploadJob: AiJobHandler = async ({ assertLease, env, job, 
   await reportProgress(85);
   const now = new Date();
   await assertLease();
-  await db.update(aiChatUpload).set({
-    checksum: await sha256Hex(bytes),
-    contentType: contentTypeForAiFileKind(extraction.kind, record.contentType),
-    extractedText: extraction.text,
-    extraction: {
-      kind: extraction.kind,
-      mode: extraction.mode,
-      scanner: scan.scanner,
-      truncated: extraction.truncated,
-    },
-    status: "ready",
-    updatedAt: now,
-    uploadedAt: now,
-  }).where(eq(aiChatUpload.id, record.id));
+  await db
+    .update(aiChatUpload)
+    .set({
+      checksum: await sha256Hex(bytes),
+      contentType: contentTypeForAiFileKind(extraction.kind, record.contentType),
+      extractedText: extraction.text,
+      extraction: {
+        kind: extraction.kind,
+        mode: extraction.mode,
+        scanner: scan.scanner,
+        truncated: extraction.truncated,
+      },
+      status: "ready",
+      updatedAt: now,
+      uploadedAt: now,
+    })
+    .where(eq(aiChatUpload.id, record.id));
   return { uploadId: record.id, status: "ready" };
 };
 
@@ -91,10 +89,13 @@ async function rejectUpload(
   objectKey: string,
 ) {
   await storage.delete(objectKey).catch(() => undefined);
-  await db.update(aiChatUpload).set({
-    status: "rejected",
-    updatedAt: new Date(),
-  }).where(eq(aiChatUpload.id, id));
+  await db
+    .update(aiChatUpload)
+    .set({
+      status: "rejected",
+      updatedAt: new Date(),
+    })
+    .where(eq(aiChatUpload.id, id));
 }
 
 function readStringField(value: unknown, field: string) {

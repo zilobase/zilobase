@@ -1,34 +1,31 @@
 export type DatabaseViewScrollSnapshot = {
-  scrollElement: Element & { scrollTop: number }
-  scrollTop: number
-}
+  scrollElement: Element & { scrollTop: number };
+  scrollTop: number;
+};
 
-const verticalScrollOverflowValues = new Set(["auto", "overlay", "scroll"])
+const verticalScrollOverflowValues = new Set(["auto", "overlay", "scroll"]);
 
 export function isVerticalScrollContainer({
   clientHeight,
   overflowY,
   scrollHeight,
 }: {
-  clientHeight: number
-  overflowY: string
-  scrollHeight: number
+  clientHeight: number;
+  overflowY: string;
+  scrollHeight: number;
 }) {
-  return (
-    verticalScrollOverflowValues.has(overflowY) &&
-    scrollHeight > clientHeight
-  )
+  return verticalScrollOverflowValues.has(overflowY) && scrollHeight > clientHeight;
 }
 
 export function captureDatabaseViewScroll(
   anchor: HTMLElement | null,
 ): DatabaseViewScrollSnapshot | null {
   if (!anchor) {
-    return null
+    return null;
   }
 
-  const ownerWindow = anchor.ownerDocument.defaultView
-  let parent = anchor.parentElement
+  const ownerWindow = anchor.ownerDocument.defaultView;
+  let parent = anchor.parentElement;
 
   while (ownerWindow && parent) {
     if (
@@ -41,60 +38,56 @@ export function captureDatabaseViewScroll(
       return {
         scrollElement: parent,
         scrollTop: parent.scrollTop,
-      }
+      };
     }
 
-    parent = parent.parentElement
+    parent = parent.parentElement;
   }
 
-  const documentScrollElement = anchor.ownerDocument.scrollingElement
+  const documentScrollElement = anchor.ownerDocument.scrollingElement;
 
   return documentScrollElement
     ? {
         scrollElement: documentScrollElement,
         scrollTop: documentScrollElement.scrollTop,
       }
-    : null
+    : null;
 }
 
-export function restoreDatabaseViewScroll(
-  snapshot: DatabaseViewScrollSnapshot | null,
-) {
+export function restoreDatabaseViewScroll(snapshot: DatabaseViewScrollSnapshot | null) {
   if (snapshot) {
-    snapshot.scrollElement.scrollTop = snapshot.scrollTop
+    snapshot.scrollElement.scrollTop = snapshot.scrollTop;
   }
 }
 
-export function restoreDatabaseViewScrollAfterLayout(
-  snapshot: DatabaseViewScrollSnapshot | null,
-) {
-  restoreDatabaseViewScroll(snapshot)
+export function restoreDatabaseViewScrollAfterLayout(snapshot: DatabaseViewScrollSnapshot | null) {
+  restoreDatabaseViewScroll(snapshot);
 
   if (!snapshot) {
-    return undefined
+    return undefined;
   }
 
-  const ownerWindow = snapshot.scrollElement.ownerDocument.defaultView
+  const ownerWindow = snapshot.scrollElement.ownerDocument.defaultView;
 
   if (!ownerWindow) {
-    return undefined
+    return undefined;
   }
 
-  let secondFrame: number | undefined
+  let secondFrame: number | undefined;
   const firstFrame = ownerWindow.requestAnimationFrame(() => {
-    restoreDatabaseViewScroll(snapshot)
+    restoreDatabaseViewScroll(snapshot);
     secondFrame = ownerWindow.requestAnimationFrame(() => {
-      restoreDatabaseViewScroll(snapshot)
-    })
-  })
+      restoreDatabaseViewScroll(snapshot);
+    });
+  });
 
   return () => {
-    ownerWindow.cancelAnimationFrame(firstFrame)
+    ownerWindow.cancelAnimationFrame(firstFrame);
 
     if (secondFrame !== undefined) {
-      ownerWindow.cancelAnimationFrame(secondFrame)
+      ownerWindow.cancelAnimationFrame(secondFrame);
     }
-  }
+  };
 }
 
 export function shouldRenderVirtualizedDatabaseRows({
@@ -102,9 +95,9 @@ export function shouldRenderVirtualizedDatabaseRows({
   virtualRowCount,
   virtualizationEnabled,
 }: {
-  hasScrollElement: boolean
-  virtualRowCount: number
-  virtualizationEnabled: boolean
+  hasScrollElement: boolean;
+  virtualRowCount: number;
+  virtualizationEnabled: boolean;
 }) {
-  return virtualizationEnabled && hasScrollElement && virtualRowCount > 0
+  return virtualizationEnabled && hasScrollElement && virtualRowCount > 0;
 }

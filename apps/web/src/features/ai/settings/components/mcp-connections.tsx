@@ -1,11 +1,12 @@
-import { changeDraftToolPolicy, savedToolPolicy, canEditMcpToolPolicy, isConnectorDraftChanged } from "../model/mcp-tool-draft";
+import {
+  changeDraftToolPolicy,
+  savedToolPolicy,
+  canEditMcpToolPolicy,
+  isConnectorDraftChanged,
+} from "../model/mcp-tool-draft";
 import { flushSettingsDrafts } from "../use-settings-draft";
 import type { AgentSettingsDefinition } from "@zilobase/features/ai-chat";
-import {
-  ExternalLinkIcon,
-  RefreshCw,
-  Trash2Icon,
-} from "@/shared/components/icons";
+import { ExternalLinkIcon, RefreshCw, Trash2Icon } from "@/shared/components/icons";
 import { toast } from "sonner";
 
 import {
@@ -27,13 +28,7 @@ import { useSession } from "@zilobase/features/auth/react";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Switch } from "@/shared/ui/switch";
 
 export type ConnectorDraft = {
@@ -69,11 +64,7 @@ export function McpConnectionsPanel({
   const startOauth = useMcpConnectionMutation<
     { connectionId: string; returnTo: string },
     { authorizationUrl: string }
-  >(
-    scope,
-    (input) => `${basePath}/connections/${input.connectionId}/oauth/start`,
-    "POST",
-  );
+  >(scope, (input) => `${basePath}/connections/${input.connectionId}/oauth/start`, "POST");
   const connectOauth = async (server: ServerSelection) => {
     try {
       await flushSettingsDrafts();
@@ -83,10 +74,7 @@ export function McpConnectionsPanel({
       });
       const started = await startOauth.mutateAsync({
         connectionId: created.connection.id,
-        returnTo:
-          window.location.pathname +
-          window.location.search +
-          window.location.hash,
+        returnTo: window.location.pathname + window.location.search + window.location.hash,
       });
       window.location.assign(started.authorizationUrl);
     } catch (error) {
@@ -108,39 +96,25 @@ export function McpConnectionsPanel({
           <div className="grid gap-2 sm:grid-cols-3">
             {catalogQuery.data?.map((server) => {
               const connected =
-                connectionsQuery.data?.some(
-                  (connection) => connection.catalogId === server.id,
-                ) ?? false;
+                connectionsQuery.data?.some((connection) => connection.catalogId === server.id) ??
+                false;
               return (
-                <div
-                  className="grid content-between gap-3 rounded-md border p-3"
-                  key={server.id}
-                >
+                <div className="grid content-between gap-3 rounded-md border p-3" key={server.id}>
                   <div>
                     <div className="flex items-center gap-2 font-medium">
-                      <img
-                        alt=""
-                        className="size-6 rounded"
-                        src={server.icon}
-                      />
+                      <img alt="" className="size-6 rounded" src={server.icon} />
                       {server.label}
                     </div>
                     <p className="mt-1 text-xs text-content-secondary">
-                      {server.available
-                        ? "Remote MCP server"
-                        : server.availabilityReason}
+                      {server.available ? "Remote MCP server" : server.availabilityReason}
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <Button
                       disabled={
-                        connected ||
-                        !server.available ||
-                        !server.authMethods.includes("oauth")
+                        connected || !server.available || !server.authMethods.includes("oauth")
                       }
-                      onClick={() =>
-                        void connectOauth({ catalogId: server.id })
-                      }
+                      onClick={() => void connectOauth({ catalogId: server.id })}
                       size="sm"
                       type="button"
                     >
@@ -175,9 +149,7 @@ export function McpConnectionsPanel({
                     {server.endpointUrl}
                   </span>
                   <Button
-                    onClick={() =>
-                      void connectOauth({ approvedServerId: server.id })
-                    }
+                    onClick={() => void connectOauth({ approvedServerId: server.id })}
                     size="sm"
                     type="button"
                   >
@@ -224,18 +196,12 @@ function ConnectionCard({
   draft?: ConnectorDraft;
   scope: McpConnectionScopeRef;
 }) {
-  const selected = draft?.definition.connectors.find(
-    (item) => item.connectionId === connection.id,
-  );
-  const patchDraft = (
-    patch: Partial<AgentSettingsDefinition["connectors"][number]>,
-  ) => {
+  const selected = draft?.definition.connectors.find((item) => item.connectionId === connection.id);
+  const patchDraft = (patch: Partial<AgentSettingsDefinition["connectors"][number]>) => {
     if (!draft) return;
     draft.onChange({
       connectors: [
-        ...draft.definition.connectors.filter(
-          (item) => item.connectionId !== connection.id,
-        ),
+        ...draft.definition.connectors.filter((item) => item.connectionId !== connection.id),
         {
           connectionId: connection.id,
           alwaysAllowEnabled: false,
@@ -251,41 +217,23 @@ function ConnectionCard({
   const updateTools = useMcpConnectionMutation<
     { connectionId: string; policies: McpToolPolicyInput[] },
     { connection: McpConnectionSummary }
-  >(
-    scope,
-    (input) => `${basePath}/connections/${input.connectionId}/tools`,
-    "PUT",
-  );
+  >(scope, (input) => `${basePath}/connections/${input.connectionId}/tools`, "PUT");
   const refresh = useMcpConnectionMutation<
     { connectionId: string },
     { connection: McpConnectionSummary; discoveredTools: number }
-  >(
-    scope,
-    (input) => `${basePath}/connections/${input.connectionId}/refresh`,
-    "POST",
-  );
+  >(scope, (input) => `${basePath}/connections/${input.connectionId}/refresh`, "POST");
   const alwaysAllow = useMcpConnectionMutation<
     { connectionId: string; confirmed: boolean; enabled: boolean },
     { connection: McpConnectionSummary }
-  >(
-    scope,
-    (input) => `${basePath}/connections/${input.connectionId}/always-allow`,
-    "PUT",
-  );
-  const disconnect = useMcpConnectionMutation<
-    { connectionId: string },
-    { disconnected: boolean }
-  >(
+  >(scope, (input) => `${basePath}/connections/${input.connectionId}/always-allow`, "PUT");
+  const disconnect = useMcpConnectionMutation<{ connectionId: string }, { disconnected: boolean }>(
     scope,
     (input) => `${basePath}/connections/${input.connectionId}`,
     "DELETE",
   );
 
   const policiesEditable = canEditMcpToolPolicy(Boolean(draft), isAuthenticator, canDisconnect);
-  const saveTool = async (
-    tool: McpToolPolicy,
-    changes: Partial<McpToolPolicy>,
-  ) => {
+  const saveTool = async (tool: McpToolPolicy, changes: Partial<McpToolPolicy>) => {
     if (draft) {
       patchDraft({ tools: changeDraftToolPolicy(selected?.tools ?? [], tool, changes) });
       return;
@@ -301,7 +249,10 @@ function ConnectionCard({
   };
 
   return (
-    <div data-ai-changed={isConnectorDraftChanged(draft?.review, connection.id, selected)} className="grid gap-3 rounded-md border p-3">
+    <div
+      data-ai-changed={isConnectorDraftChanged(draft?.review, connection.id, selected)}
+      className="grid gap-3 rounded-md border p-3"
+    >
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{connection.serverLabel}</span>
         <Badge variant="outline">{connection.state.replaceAll("_", " ")}</Badge>
@@ -329,9 +280,7 @@ function ConnectionCard({
               aria-label="Disconnect server"
               onClick={() => {
                 if (
-                  window.confirm(
-                    "Disconnect this server? Existing imported databases will remain.",
-                  )
+                  window.confirm("Disconnect this server? Existing imported databases will remain.")
                 ) {
                   void disconnect.mutateAsync({ connectionId: connection.id });
                 }
@@ -357,9 +306,7 @@ function ConnectionCard({
           <Switch
             disabled={!canDisconnect}
             checked={
-              draft
-                ? (selected?.alwaysAllowEnabled ?? false)
-                : connection.alwaysAllowEnabled
+              draft ? (selected?.alwaysAllowEnabled ?? false) : connection.alwaysAllowEnabled
             }
             onCheckedChange={(enabled) => {
               if (draft) {
@@ -385,9 +332,7 @@ function ConnectionCard({
 
       <div className="grid gap-2">
         {connection.tools?.map((savedTool) => {
-          const staged = selected?.tools.find(
-            (item) => item.toolId === savedTool.id,
-          );
+          const staged = selected?.tools.find((item) => item.toolId === savedTool.id);
           const tool = draft
             ? {
                 ...savedTool,
@@ -399,25 +344,26 @@ function ConnectionCard({
           return (
             <div
               className="grid gap-2 rounded border p-2 sm:grid-cols-[minmax(0,1fr)_8rem_9rem] sm:items-center"
-              data-ai-changed={draft?.review?.fields.includes("connectors") && JSON.stringify(draft.review.before.connectors.find((item) => item.connectionId === connection.id)?.tools.find((item) => item.toolId === tool.id)) !== JSON.stringify(staged) || undefined}
+              data-ai-changed={
+                (draft?.review?.fields.includes("connectors") &&
+                  JSON.stringify(
+                    draft.review.before.connectors
+                      .find((item) => item.connectionId === connection.id)
+                      ?.tools.find((item) => item.toolId === tool.id),
+                  ) !== JSON.stringify(staged)) ||
+                undefined
+              }
               key={tool.id}
             >
               <label className="flex min-w-0 gap-2 text-sm">
                 <Checkbox
                   checked={tool.enabled}
                   className="hidden md:flex"
-                  disabled={
-                    !policiesEditable ||
-                    !tool.available
-                  }
-                  onCheckedChange={(checked) =>
-                    void saveTool(tool, { enabled: checked === true })
-                  }
+                  disabled={!policiesEditable || !tool.available}
+                  onCheckedChange={(checked) => void saveTool(tool, { enabled: checked === true })}
                 />
                 <span className="min-w-0">
-                  <span className="block truncate font-medium">
-                    {tool.externalName}
-                  </span>
+                  <span className="block truncate font-medium">{tool.externalName}</span>
                   <span className="block truncate text-xs text-content-secondary">
                     {tool.available ? tool.description : "Unavailable"}
                   </span>
@@ -427,8 +373,7 @@ function ConnectionCard({
                 disabled={!policiesEditable}
                 onValueChange={(classification) =>
                   void saveTool(tool, {
-                    classification:
-                      classification as McpToolPolicy["classification"],
+                    classification: classification as McpToolPolicy["classification"],
                   })
                 }
                 value={tool.classification}
@@ -446,8 +391,7 @@ function ConnectionCard({
                 disabled={!policiesEditable}
                 onValueChange={(executionMode) =>
                   void saveTool(tool, {
-                    executionMode:
-                      executionMode as McpToolPolicy["executionMode"],
+                    executionMode: executionMode as McpToolPolicy["executionMode"],
                   })
                 }
                 value={tool.executionMode}
@@ -468,20 +412,14 @@ function ConnectionCard({
   );
 }
 
-type McpToolPolicyInput = Pick<
-  McpToolPolicy,
-  "classification" | "enabled" | "executionMode"
-> & {
+type McpToolPolicyInput = Pick<McpToolPolicy, "classification" | "enabled" | "executionMode"> & {
   toolId: string;
 };
 
 type ServerSelection = { catalogId: string } | { approvedServerId: string };
 
 export function AgentMcpActivity({ agent }: { agent: AiAgentProfileDetail }) {
-  const activityQuery = useMcpActivity(
-    { type: "agent", agentProfileId: agent.id },
-    true,
-  );
+  const activityQuery = useMcpActivity({ type: "agent", agentProfileId: agent.id }, true);
   return <McpActivityList activity={activityQuery.data} />;
 }
 
@@ -506,17 +444,10 @@ function McpActivityList({
       </p>
       {activity?.length ? (
         activity.map((entry) => (
-          <div
-            className="flex flex-wrap items-center gap-2 border-b py-2 text-sm"
-            key={entry.id}
-          >
-            <span className="font-medium">
-              {entry.eventType.replaceAll("_", " ")}
-            </span>
+          <div className="flex flex-wrap items-center gap-2 border-b py-2 text-sm" key={entry.id}>
+            <span className="font-medium">{entry.eventType.replaceAll("_", " ")}</span>
             {entry.providerLabel && <span>{entry.providerLabel}</span>}
-            {entry.toolName && (
-              <code className="text-xs">{entry.toolName}</code>
-            )}
+            {entry.toolName && <code className="text-xs">{entry.toolName}</code>}
             <Badge className="ml-auto" variant="outline">
               {entry.outcome}
             </Badge>

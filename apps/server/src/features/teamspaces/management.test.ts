@@ -32,8 +32,7 @@ function createFakeDatabase() {
       orderBy: () => chain,
       returning: async () => rows,
       set: () => chain,
-      then: <T>(resolve: (value: Row[]) => T) =>
-        Promise.resolve(rows).then(resolve),
+      then: <T>(resolve: (value: Row[]) => T) => Promise.resolve(rows).then(resolve),
       values: () => chain,
       where: () => chain,
     };
@@ -43,8 +42,7 @@ function createFakeDatabase() {
     delete: () => builder(queues.delete.shift() ?? []),
     insert: () => builder(queues.insert.shift() ?? []),
     select: () => builder(queues.select.shift() ?? []),
-    transaction: async (run: (transaction: unknown) => unknown) =>
-      run(database),
+    transaction: async (run: (transaction: unknown) => unknown) => run(database),
     update: () => builder(queues.update.shift() ?? []),
   };
   return { database: database as unknown as Database, queues };
@@ -112,8 +110,7 @@ test("teamspace management covers settings, discovery, and membership flows", as
 
   queues.select.push([baseTeamspace], [], [ownerPrincipal]);
   assert.equal(
-    (await service.get({ teamspaceId: baseTeamspace.id, userId, workspaceId }))
-      .name,
+    (await service.get({ teamspaceId: baseTeamspace.id, userId, workspaceId })).name,
     "Engineering",
   );
 
@@ -132,10 +129,9 @@ test("teamspace management covers settings, discovery, and membership flows", as
 
   queues.select.push([baseTeamspace], [{ ...ownerPrincipal, role: "member" }]);
   queues.delete.push([]);
-  assert.deepEqual(
-    await service.leave({ teamspaceId: baseTeamspace.id, userId, workspaceId }),
-    { removed: true },
-  );
+  assert.deepEqual(await service.leave({ teamspaceId: baseTeamspace.id, userId, workspaceId }), {
+    removed: true,
+  });
 });
 
 test("teamspace management covers create, update, and principal operations", async () => {
@@ -166,12 +162,7 @@ test("teamspace management covers create, update, and principal operations", asy
     "Product Engineering",
   );
 
-  queues.select.push(
-    [baseTeamspace],
-    [],
-    [ownerPrincipal],
-    [{ id: "member-2" }],
-  );
+  queues.select.push([baseTeamspace], [], [ownerPrincipal], [{ id: "member-2" }]);
   queues.insert.push([
     {
       id: "principal-2",
@@ -194,12 +185,7 @@ test("teamspace management covers create, update, and principal operations", asy
     "user-2",
   );
 
-  queues.select.push(
-    [baseTeamspace],
-    [],
-    [ownerPrincipal],
-    [{ id: "team-2" }],
-  );
+  queues.select.push([baseTeamspace], [], [ownerPrincipal], [{ id: "team-2" }]);
   queues.insert.push([
     {
       id: "principal-team-2",
@@ -229,12 +215,7 @@ test("teamspace management covers create, update, and principal operations", asy
     principalId: "user-2",
     role: "member",
   };
-  queues.select.push(
-    [baseTeamspace],
-    [],
-    [ownerPrincipal],
-    [memberPrincipal],
-  );
+  queues.select.push([baseTeamspace], [], [ownerPrincipal], [memberPrincipal]);
   queues.update.push([{ ...memberPrincipal, role: "owner" }]);
   assert.equal(
     (
@@ -249,12 +230,7 @@ test("teamspace management covers create, update, and principal operations", asy
     "owner",
   );
 
-  queues.select.push(
-    [baseTeamspace],
-    [],
-    [ownerPrincipal],
-    [memberPrincipal],
-  );
+  queues.select.push([baseTeamspace], [], [ownerPrincipal], [memberPrincipal]);
   queues.delete.push([]);
   assert.deepEqual(
     await service.removePrincipal({
@@ -333,10 +309,7 @@ test("teamspace management covers lifecycle, recovery, links, and defaults", asy
     baseTeamspace.id,
   );
 
-  queues.select.push(
-    [{ id: baseTeamspace.id }],
-    [{ userId }, { userId: "user-2" }],
-  );
+  queues.select.push([{ id: baseTeamspace.id }], [{ userId }, { userId: "user-2" }]);
   queues.update.push([], []);
   queues.insert.push([], []);
   assert.deepEqual(

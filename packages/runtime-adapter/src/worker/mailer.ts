@@ -35,7 +35,14 @@ async function sendDevelopmentEmail(sinkUrl: string, message: OutboundEmailMessa
     return { Email: parsed.email, ...(parsed.name ? { Name: parsed.name } : {}) };
   };
   const response = await fetch(url, {
-    body: JSON.stringify({ From: address(message.from), HTML: message.html, Subject: message.subject, Tags: ["Cloudflare"], Text: message.text, To: [address(message.to)] }),
+    body: JSON.stringify({
+      From: address(message.from),
+      HTML: message.html,
+      Subject: message.subject,
+      Tags: ["Cloudflare"],
+      Text: message.text,
+      To: [address(message.to)],
+    }),
     headers: { "content-type": "application/json" },
     method: "POST",
   });

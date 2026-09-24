@@ -27,10 +27,7 @@ export async function resolveDataSourceCommandScope(
     };
   }
 
-  const sourceBootstrap = findDataSourceBootstrap(
-    queryClient,
-    databaseOrSourceId,
-  );
+  const sourceBootstrap = findDataSourceBootstrap(queryClient, databaseOrSourceId);
   if (sourceBootstrap) {
     return {
       dataSourceId: databaseOrSourceId,
@@ -49,9 +46,7 @@ export async function resolveDataSourceCommandScope(
   }
 
   const bootstrap = databaseBootstrapResponseSchema.parse(
-    await apiFetch(
-      `/databases/${encodeURIComponent(databaseOrSourceId)}/bootstrap`,
-    ),
+    await apiFetch(`/databases/${encodeURIComponent(databaseOrSourceId)}/bootstrap`),
   );
   const source = bootstrap.dataSources[0];
   if (!source) {
@@ -67,44 +62,36 @@ export function findDataSourceBootstrap(
   queryClient: QueryClient,
   dataSourceId: string,
 ): DatabaseBootstrapResponse | null {
-  return cachedBootstraps(queryClient).find((candidate) =>
-    candidate.dataSources.some(({ id }) => id === dataSourceId)
-  ) ?? null;
+  return (
+    cachedBootstraps(queryClient).find((candidate) =>
+      candidate.dataSources.some(({ id }) => id === dataSourceId),
+    ) ?? null
+  );
 }
 
 export function findLoadedDataSourceRecords(
   queryClient: QueryClient,
   dataSourceId: string,
 ): DatabaseRecordEntity[] {
-  for (
-    const [, candidate] of queryClient.getQueriesData({
-      queryKey: [databaseQueryRoot],
-    })
-  ) {
+  for (const [, candidate] of queryClient.getQueriesData({
+    queryKey: [databaseQueryRoot],
+  })) {
     const direct = databaseRecordWindowResponseSchema.safeParse(candidate);
     if (
       direct.success &&
-      direct.data.records.some((record) =>
-        record.dataSourceId === dataSourceId
-      )
+      direct.data.records.some((record) => record.dataSourceId === dataSourceId)
     ) {
       return direct.data.records;
     }
-    if (
-      !candidate || typeof candidate !== "object" || !("pages" in candidate)
-    ) {
+    if (!candidate || typeof candidate !== "object" || !("pages" in candidate)) {
       continue;
     }
     const pages = (candidate as { pages?: unknown }).pages;
     if (!Array.isArray(pages)) continue;
-    const latest = databaseRecordWindowResponseSchema.safeParse(
-      pages.at(-1),
-    );
+    const latest = databaseRecordWindowResponseSchema.safeParse(pages.at(-1));
     if (
       latest.success &&
-      latest.data.records.some((record) =>
-        record.dataSourceId === dataSourceId
-      )
+      latest.data.records.some((record) => record.dataSourceId === dataSourceId)
     ) {
       return latest.data.records;
     }
@@ -123,11 +110,9 @@ export async function resolveCellCommandScope(
   hostDatabaseId: string,
   rowId: string,
 ): Promise<DataSourceCommandScope> {
-  for (
-    const [, candidate] of queryClient.getQueriesData({
-      queryKey: [databaseQueryRoot],
-    })
-  ) {
+  for (const [, candidate] of queryClient.getQueriesData({
+    queryKey: [databaseQueryRoot],
+  })) {
     const windows = recordWindows(candidate);
     for (const window of windows) {
       const match = window.records.find((record) => record.id === rowId);
@@ -148,9 +133,7 @@ export async function resolveCellCommandScope(
   }
 
   const bootstrap = databaseBootstrapResponseSchema.parse(
-    await apiFetch(
-      `/databases/${encodeURIComponent(hostDatabaseId)}/bootstrap`,
-    ),
+    await apiFetch(`/databases/${encodeURIComponent(hostDatabaseId)}/bootstrap`),
   );
   const source = bootstrap.dataSources[0];
   if (!source) {
@@ -159,15 +142,11 @@ export async function resolveCellCommandScope(
   return { dataSourceId: source.id, hostDatabaseId: bootstrap.database.id };
 }
 
-function cachedBootstraps(
-  queryClient: QueryClient,
-): DatabaseBootstrapResponse[] {
-  return queryClient
-    .getQueriesData({ queryKey: [databaseQueryRoot] })
-    .flatMap(([, candidate]) => {
-      const parsed = databaseBootstrapResponseSchema.safeParse(candidate);
-      return parsed.success ? [parsed.data] : [];
-    });
+function cachedBootstraps(queryClient: QueryClient): DatabaseBootstrapResponse[] {
+  return queryClient.getQueriesData({ queryKey: [databaseQueryRoot] }).flatMap(([, candidate]) => {
+    const parsed = databaseBootstrapResponseSchema.safeParse(candidate);
+    return parsed.success ? [parsed.data] : [];
+  });
 }
 
 function recordWindows(value: unknown) {

@@ -13,8 +13,7 @@ const identity = {
 
 describe("private chat agent identity", () => {
   it("round trips ownership through the instance name", () => {
-    expect(parseChatAgentInstanceName(buildChatAgentInstanceName(identity)))
-      .toEqual(identity);
+    expect(parseChatAgentInstanceName(buildChatAgentInstanceName(identity))).toEqual(identity);
   });
 
   it("rejects malformed instance names", () => {

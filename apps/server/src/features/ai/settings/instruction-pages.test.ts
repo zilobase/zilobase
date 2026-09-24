@@ -6,10 +6,14 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("../../../infrastructure/database", () => {
   const db: any = {
-    select: () => ({ from: () => ({ where: () => {
-      const result = Promise.resolve(state.records.shift() ?? []);
-      return Object.assign(result, { for: () => result });
-    } }) }),
+    select: () => ({
+      from: () => ({
+        where: () => {
+          const result = Promise.resolve(state.records.shift() ?? []);
+          return Object.assign(result, { for: () => result });
+        },
+      }),
+    }),
   };
   return { db };
 });
@@ -91,14 +95,8 @@ describe("linked instruction pages", () => {
       instructionPageId: root,
     });
     expect(d.instructionTitle).toBe("Guide");
-    expect(d.instructionResources?.map((r) => r.resourceId)).toEqual([
-      root,
-      linked,
-      database,
-    ]);
-    expect(d.instructionResources?.every((r) => r.accessLevel === "view")).toBe(
-      true,
-    );
+    expect(d.instructionResources?.map((r) => r.resourceId)).toEqual([root, linked, database]);
+    expect(d.instructionResources?.every((r) => r.accessLevel === "view")).toBe(true);
   });
   it("never grants linked resources the configuring user cannot access", async () => {
     state.denied.add(database);

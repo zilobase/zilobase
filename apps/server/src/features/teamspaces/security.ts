@@ -20,13 +20,7 @@ export async function getPageTeamspaceSecurityPolicy(pageId: string) {
     })
     .from(page)
     .innerJoin(teamspace, eq(page.teamspaceId, teamspace.id))
-    .where(
-      and(
-        eq(page.id, pageId),
-        isNull(page.deletedAt),
-        isNull(teamspace.archivedAt),
-      ),
-    )
+    .where(and(eq(page.id, pageId), isNull(page.deletedAt), isNull(teamspace.archivedAt)))
     .limit(1);
   return (record as TeamspaceSecurityPolicy | undefined) ?? null;
 }
@@ -42,11 +36,7 @@ export async function getDatabaseTeamspaceSecurityPolicy(databaseId: string) {
     .from(database)
     .innerJoin(teamspace, eq(database.teamspaceId, teamspace.id))
     .where(
-      and(
-        eq(database.id, databaseId),
-        isNull(database.deletedAt),
-        isNull(teamspace.archivedAt),
-      ),
+      and(eq(database.id, databaseId), isNull(database.deletedAt), isNull(teamspace.archivedAt)),
     )
     .limit(1);
   return (record as TeamspaceSecurityPolicy | undefined) ?? null;

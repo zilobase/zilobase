@@ -1,79 +1,68 @@
-import { Node, mergeAttributes } from "@tiptap/core"
-import {
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-  type ReactNodeViewProps,
-} from "@tiptap/react"
-import { Bookmark, CircleX, Globe2, Loader2 } from "@/shared/components/icons"
-import { useState } from "react"
+import { Node, mergeAttributes } from "@tiptap/core";
+import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
+import { Bookmark, CircleX, Globe2, Loader2 } from "@/shared/components/icons";
+import { useState } from "react";
 
-import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
-import { apiFetch } from "@/platform/network/api"
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { apiFetch } from "@/platform/network/api";
 
 export type BookmarkMetadata = {
-  description: string | null
-  favicon: string | null
-  image: string | null
-  title: string
-}
+  description: string | null;
+  favicon: string | null;
+  image: string | null;
+  title: string;
+};
 
 function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
-  const [faviconFailed, setFaviconFailed] = useState(false)
-  const [open, setOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [url, setUrl] = useState(node.attrs.href ?? "")
-  const href = node.attrs.href as string | null
-  const title = (node.attrs.title as string | null) ?? "Web bookmark"
-  const description = node.attrs.description as string | null
-  const favicon = node.attrs.favicon as string | null
-  const host = href ? getUrlHost(href) : null
-  const image = node.attrs.image as string | null
+  const [faviconFailed, setFaviconFailed] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [url, setUrl] = useState(node.attrs.href ?? "");
+  const href = node.attrs.href as string | null;
+  const title = (node.attrs.title as string | null) ?? "Web bookmark";
+  const description = node.attrs.description as string | null;
+  const favicon = node.attrs.favicon as string | null;
+  const host = href ? getUrlHost(href) : null;
+  const image = node.attrs.image as string | null;
 
   const createBookmark = async () => {
-    const nextUrl = normalizeUrl(url)
+    const nextUrl = normalizeUrl(url);
 
     if (!nextUrl) {
-      return
+      return;
     }
 
-    const fallbackMetadata = getFallbackBookmarkMetadata(nextUrl)
+    const fallbackMetadata = getFallbackBookmarkMetadata(nextUrl);
 
     updateAttributes({
       ...fallbackMetadata,
       href: nextUrl,
-    })
-    setFaviconFailed(false)
-    setUrl(nextUrl)
-    setIsLoading(true)
+    });
+    setFaviconFailed(false);
+    setUrl(nextUrl);
+    setIsLoading(true);
 
     try {
-      const metadata = await fetchBookmarkMetadata(nextUrl)
+      const metadata = await fetchBookmarkMetadata(nextUrl);
 
       updateAttributes({
         ...fallbackMetadata,
         ...metadata,
         href: nextUrl,
-      })
-      setFaviconFailed(false)
-      setOpen(false)
+      });
+      setFaviconFailed(false);
+      setOpen(false);
     } catch {
-      setOpen(false)
+      setOpen(false);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <NodeViewWrapper
-      className="bookmark-block"
-      data-src={href ? "true" : "false"}
-    >
+    <NodeViewWrapper className="bookmark-block" data-src={href ? "true" : "false"}>
       <Popover onOpenChange={setOpen} open={open}>
         <PopoverTrigger asChild>
           <button
@@ -90,10 +79,10 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
           align="start"
           className="w-[min(24rem,calc(100vw-2rem))] gap-3 p-3"
           onMouseDown={(event) => {
-            event.stopPropagation()
+            event.stopPropagation();
           }}
           onPointerDown={(event) => {
-            event.stopPropagation()
+            event.stopPropagation();
           }}
           side="bottom"
           sideOffset={8}
@@ -106,8 +95,8 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
               onChange={(event) => setUrl(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
-                  event.preventDefault()
-                  void createBookmark()
+                  event.preventDefault();
+                  void createBookmark();
                 }
               }}
               placeholder="Paste bookmark URL..."
@@ -149,9 +138,7 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
           target="_blank"
         >
           <span className="flex min-w-0 flex-col justify-center gap-3 p-5">
-            <span className="min-w-0 truncate text-base font-semibold leading-snug">
-              {title}
-            </span>
+            <span className="min-w-0 truncate text-base font-semibold leading-snug">{title}</span>
             {description ? (
               <span className="line-clamp-2 text-sm leading-snug text-content-secondary">
                 {description}
@@ -181,67 +168,65 @@ function BookmarkBlockView({ node, updateAttributes }: ReactNodeViewProps) {
         </a>
       ) : null}
     </NodeViewWrapper>
-  )
+  );
 }
 
 function normalizeUrl(value: string) {
-  const trimmed = value.trim()
+  const trimmed = value.trim();
 
   if (!trimmed) {
-    return null
+    return null;
   }
 
   if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed
+    return trimmed;
   }
 
-  return `https://${trimmed}`
+  return `https://${trimmed}`;
 }
 
 function getUrlHost(value: string) {
   try {
-    return new URL(value).hostname.replace(/^www\./, "")
+    return new URL(value).hostname.replace(/^www\./, "");
   } catch {
-    return null
+    return null;
   }
 }
 
 function getUrlTitle(value: string) {
-  const host = getUrlHost(value)
+  const host = getUrlHost(value);
 
   if (!host) {
-    return value
+    return value;
   }
 
   return host
     .split(".")
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
+    .join(" ");
 }
 
 export function getFallbackBookmarkMetadata(value: string): BookmarkMetadata {
-  const host = getUrlHost(value)
+  const host = getUrlHost(value);
 
   return {
     description: host ?? null,
     favicon: getFallbackFavicon(value),
     image: null,
     title: getUrlTitle(value),
-  }
+  };
 }
 
 export async function fetchBookmarkMetadata(value: string) {
-  return apiFetch<BookmarkMetadata>(
-    `/metadata/bookmark?url=${encodeURIComponent(value)}`
-  )
+  return apiFetch<BookmarkMetadata>(`/metadata/bookmark?url=${encodeURIComponent(value)}`);
 }
 
 function getFallbackFavicon(value: string) {
   try {
-    return new URL("/favicon.ico", value).toString()
+    return new URL("/favicon.ico", value).toString();
   } catch {
-    return null
+    return null;
   }
 }
 
@@ -273,7 +258,7 @@ export const BookmarkBlock = Node.create({
       title: {
         default: null,
       },
-    }
+    };
   },
 
   parseHTML() {
@@ -284,17 +269,14 @@ export const BookmarkBlock = Node.create({
       {
         tag: 'a[data-type="bookmarkBlock"]',
       },
-    ]
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(HTMLAttributes, { "data-type": "bookmarkBlock" }),
-    ]
+    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "bookmarkBlock" })];
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(BookmarkBlockView)
+    return ReactNodeViewRenderer(BookmarkBlockView);
   },
-})
+});

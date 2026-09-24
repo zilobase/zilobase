@@ -59,9 +59,15 @@ vi.mock("../../../infrastructure/database", () => ({
     select() {
       mocks.select();
       const builder = {
-        from() { return builder; },
-        where() { return builder; },
-        async limit() { return mocks.selectResults.shift() ?? []; },
+        from() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        async limit() {
+          return mocks.selectResults.shift() ?? [];
+        },
       };
       return builder;
     },
@@ -69,11 +75,7 @@ vi.mock("../../../infrastructure/database", () => ({
   },
 }));
 
-import {
-  createDatabaseService,
-  deleteDatabaseService,
-  restoreDatabaseService,
-} from "./service";
+import { createDatabaseService, deleteDatabaseService, restoreDatabaseService } from "./service";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 
 beforeEach(() => {
@@ -129,8 +131,12 @@ function restoreTransactionRecorder(returningResults: unknown[][]) {
   const tx = {
     select() {
       const builder = {
-        from() { return builder; },
-        where() { return builder; },
+        from() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
       };
       return builder;
     },
@@ -139,8 +145,12 @@ function restoreTransactionRecorder(returningResults: unknown[][]) {
         set(value: unknown) {
           updates.push(value);
           const builder = {
-            where() { return builder; },
-            async returning() { return returningResults.shift() ?? []; },
+            where() {
+              return builder;
+            },
+            async returning() {
+              return returningResults.shift() ?? [];
+            },
           };
           return builder;
         },
@@ -229,11 +239,7 @@ test("createDatabaseService creates database, default view, and placement atomic
       workspaceId: "workspace-1",
     },
   ]);
-  assert.deepEqual(mocks.canAccessPage.mock.calls[0], [
-    "page-1",
-    "user-1",
-    "edit",
-  ]);
+  assert.deepEqual(mocks.canAccessPage.mock.calls[0], ["page-1", "user-1", "edit"]);
 });
 
 test("createDatabaseService applies the default name", async () => {
@@ -252,10 +258,7 @@ test("createDatabaseService applies the default name", async () => {
 
 test("createDatabaseService inherits its parent teamspace", async () => {
   const { inserts } = transactionRecorder();
-  mocks.selectResults = [
-    [{ id: "page-1", teamspaceId: "teamspace-1" }],
-    [],
-  ];
+  mocks.selectResults = [[{ id: "page-1", teamspaceId: "teamspace-1" }], []];
 
   await createDatabaseService({
     pageId: "page-1",
@@ -263,10 +266,7 @@ test("createDatabaseService inherits its parent teamspace", async () => {
     workspaceId: "workspace-1",
   });
 
-  assert.equal(
-    (inserts[0] as { teamspaceId?: string }).teamspaceId,
-    "teamspace-1",
-  );
+  assert.equal((inserts[0] as { teamspaceId?: string }).teamspaceId, "teamspace-1");
 });
 
 test("createDatabaseService distinguishes missing and forbidden pages", async () => {
@@ -277,8 +277,7 @@ test("createDatabaseService distinguishes missing and forbidden pages", async ()
       userId: "user-1",
       workspaceId: "workspace-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
 
   mocks.selectResults = [[{ id: "page-1" }]];
@@ -289,8 +288,7 @@ test("createDatabaseService distinguishes missing and forbidden pages", async ()
       userId: "user-1",
       workspaceId: "workspace-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 403,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 403,
   );
 });
 
@@ -309,10 +307,7 @@ test("createDatabaseService skips parent reads and placement for standalone data
 
   assert.equal(mocks.select.mock.calls.length, 0);
   assert.equal(mocks.placement.mock.calls.length, 0);
-  assert.deepEqual(mocks.getMembership.mock.calls[0], [
-    "workspace-1",
-    "user-1",
-  ]);
+  assert.deepEqual(mocks.getMembership.mock.calls[0], ["workspace-1", "user-1"]);
   assert.deepEqual(result, {
     databaseId: "00000000-0000-4000-8000-000000000001",
     dataSourceId: "00000000-0000-4000-8000-000000000002",
@@ -334,8 +329,7 @@ test("createDatabaseService rejects standalone creation outside the workspace", 
       userId: "user-1",
       workspaceId: "workspace-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 403,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 403,
   );
 
   assert.equal(mocks.transaction.mock.calls.length, 0);
@@ -352,8 +346,7 @@ test("createDatabaseService requires teamspace edit access for standalone databa
       userId: "user-1",
       workspaceId: "workspace-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 403,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 403,
   );
 
   assert.deepEqual(mocks.getTeamspaceAccess.mock.calls[0], [
@@ -446,8 +439,7 @@ test("deleteDatabaseService rejects missing and forbidden databases", async () =
       databaseId: "missing",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
 
   mocks.getRecord.mockResolvedValue({
@@ -460,8 +452,7 @@ test("deleteDatabaseService rejects missing and forbidden databases", async () =
       databaseId: "database-1",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 403,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 403,
   );
 
   assert.equal(mocks.softDelete.mock.calls.length, 0);
@@ -482,9 +473,12 @@ test("restoreDatabaseService returns an active database without writing", async 
     userId: "user-1",
   });
 
-  assert.deepEqual(mocks.getRecord.mock.calls[0], ["database-1", {
-    includeDeleted: true,
-  }]);
+  assert.deepEqual(mocks.getRecord.mock.calls[0], [
+    "database-1",
+    {
+      includeDeleted: true,
+    },
+  ]);
   assert.equal(mocks.transaction.mock.calls.length, 0);
   assert.deepEqual(result, {
     database: restoredDatabase,
@@ -559,8 +553,7 @@ test("restoreDatabaseService rejects missing or inaccessible databases", async (
       databaseId: "missing",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
 
   mocks.getRecord.mockResolvedValue({
@@ -574,8 +567,7 @@ test("restoreDatabaseService rejects missing or inaccessible databases", async (
       databaseId: "database-1",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 403,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 403,
   );
 
   assert.equal(mocks.transaction.mock.calls.length, 0);
@@ -597,8 +589,7 @@ test("restoreDatabaseService rejects a missing post-restore payload", async () =
       databaseId: "database-1",
       userId: "user-1",
     }),
-    (error: unknown) =>
-      error instanceof ServiceMutationError && error.status === 404,
+    (error: unknown) => error instanceof ServiceMutationError && error.status === 404,
   );
 
   assert.equal(updates.length, 2);

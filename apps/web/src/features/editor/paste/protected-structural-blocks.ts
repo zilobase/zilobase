@@ -1,54 +1,45 @@
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
-import type { EditorState } from "@tiptap/pm/state"
-import type { EditorView } from "@tiptap/pm/view"
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { EditorState } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 
-export const protectedStructuralBlockTypes = [
-  "databaseBlock",
-  "meetingBlock",
-] as const
+export const protectedStructuralBlockTypes = ["databaseBlock", "meetingBlock"] as const;
 
-export type ProtectedStructuralBlockType =
-  (typeof protectedStructuralBlockTypes)[number]
+export type ProtectedStructuralBlockType = (typeof protectedStructuralBlockTypes)[number];
 
 export type ProtectedStructuralBlockTarget = {
-  node: ProseMirrorNode
-  pos: number
-  type: ProtectedStructuralBlockType
-}
+  node: ProseMirrorNode;
+  pos: number;
+  type: ProtectedStructuralBlockType;
+};
 
 export function isProtectedStructuralBlockType(
   typeName: string,
 ): typeName is ProtectedStructuralBlockType {
-  return protectedStructuralBlockTypes.includes(
-    typeName as ProtectedStructuralBlockType,
-  )
+  return protectedStructuralBlockTypes.includes(typeName as ProtectedStructuralBlockType);
 }
 
 function targetForNode(node: ProseMirrorNode, pos: number) {
   return isProtectedStructuralBlockType(node.type.name)
     ? { node, pos, type: node.type.name }
-    : null
+    : null;
 }
 
 export function getProtectedStructuralBlockForDelete(
   state: EditorState,
 ): ProtectedStructuralBlockTarget | null {
-  const { selection } = state
-  const selectedNode = (selection as { node?: ProseMirrorNode }).node
+  const { selection } = state;
+  const selectedNode = (selection as { node?: ProseMirrorNode }).node;
 
   if (selectedNode) {
-    return targetForNode(selectedNode, selection.from)
+    return targetForNode(selectedNode, selection.from);
   }
 
   if (selection.empty && selection.$from.nodeBefore) {
-    const nodeBefore = selection.$from.nodeBefore
-    const target = targetForNode(
-      nodeBefore,
-      selection.from - nodeBefore.nodeSize,
-    )
+    const nodeBefore = selection.$from.nodeBefore;
+    const target = targetForNode(nodeBefore, selection.from - nodeBefore.nodeSize);
 
     if (target) {
-      return target
+      return target;
     }
   }
 
@@ -58,32 +49,32 @@ export function getProtectedStructuralBlockForDelete(
     selection.$from.parentOffset === 0 &&
     selection.$from.depth > 0
   ) {
-    const parentDepth = selection.$from.depth - 1
-    const siblingIndex = selection.$from.index(parentDepth)
+    const parentDepth = selection.$from.depth - 1;
+    const siblingIndex = selection.$from.index(parentDepth);
 
     if (siblingIndex > 0) {
-      const previousNode = selection.$from.node(parentDepth).child(siblingIndex - 1)
-      const currentNodePos = selection.$from.before(selection.$from.depth)
-      return targetForNode(previousNode, currentNodePos - previousNode.nodeSize)
+      const previousNode = selection.$from.node(parentDepth).child(siblingIndex - 1);
+      const currentNodePos = selection.$from.before(selection.$from.depth);
+      return targetForNode(previousNode, currentNodePos - previousNode.nodeSize);
     }
   }
 
-  let found: ProtectedStructuralBlockTarget | null = null
+  let found: ProtectedStructuralBlockTarget | null = null;
 
   if (!selection.empty) {
     state.doc.nodesBetween(selection.from, selection.to, (node, pos) => {
-      const target = targetForNode(node, pos)
+      const target = targetForNode(node, pos);
 
       if (target) {
-        found = target
-        return false
+        found = target;
+        return false;
       }
 
-      return found === null
-    })
+      return found === null;
+    });
   }
 
-  return found
+  return found;
 }
 
 export function focusProtectedStructuralBlockTitle(
@@ -96,48 +87,40 @@ export function focusProtectedStructuralBlockTitle(
         ...target.node.attrs,
         showTitle: true,
       }),
-    )
+    );
   }
 
   window.setTimeout(() => {
-    const nodeDom = view.nodeDOM(target.pos)
-    const root =
-      nodeDom instanceof HTMLElement
-        ? nodeDom
-        : nodeDom?.parentElement ?? null
-    const input = root?.querySelector<HTMLInputElement>(
-      "[data-structural-block-title]",
-    )
+    const nodeDom = view.nodeDOM(target.pos);
+    const root = nodeDom instanceof HTMLElement ? nodeDom : (nodeDom?.parentElement ?? null);
+    const input = root?.querySelector<HTMLInputElement>("[data-structural-block-title]");
 
-    input?.focus()
-    input?.setSelectionRange(input.value.length, input.value.length)
-  }, 0)
+    input?.focus();
+    input?.setSelectionRange(input.value.length, input.value.length);
+  }, 0);
 }
 
-export function handleProtectedStructuralBlockDeleteKey(
-  view: EditorView,
-  event: KeyboardEvent,
-) {
-  const isDeleteKey = event.key === "Backspace" || event.key === "Delete"
-  const hasCommandModifier = event.metaKey || event.ctrlKey || event.altKey
+export function handleProtectedStructuralBlockDeleteKey(view: EditorView, event: KeyboardEvent) {
+  const isDeleteKey = event.key === "Backspace" || event.key === "Delete";
+  const hasCommandModifier = event.metaKey || event.ctrlKey || event.altKey;
   const replacesSelection =
     !view.state.selection.empty &&
     !hasCommandModifier &&
-    (event.key === "Enter" || event.key.length === 1)
+    (event.key === "Enter" || event.key.length === 1);
 
   if (!isDeleteKey && !replacesSelection) {
-    return false
+    return false;
   }
 
-  const target = getProtectedStructuralBlockForDelete(view.state)
+  const target = getProtectedStructuralBlockForDelete(view.state);
 
   if (!target) {
-    return false
+    return false;
   }
 
-  event.preventDefault()
-  focusProtectedStructuralBlockTitle(view, target)
-  return true
+  event.preventDefault();
+  focusProtectedStructuralBlockTitle(view, target);
+  return true;
 }
 
 export function handleProtectedStructuralBlockClipboardMutation(
@@ -145,16 +128,16 @@ export function handleProtectedStructuralBlockClipboardMutation(
   event: ClipboardEvent,
 ) {
   if (view.state.selection.empty) {
-    return false
+    return false;
   }
 
-  const target = getProtectedStructuralBlockForDelete(view.state)
+  const target = getProtectedStructuralBlockForDelete(view.state);
 
   if (!target) {
-    return false
+    return false;
   }
 
-  event.preventDefault()
-  focusProtectedStructuralBlockTitle(view, target)
-  return true
+  event.preventDefault();
+  focusProtectedStructuralBlockTitle(view, target);
+  return true;
 }

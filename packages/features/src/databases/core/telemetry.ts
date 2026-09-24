@@ -1,19 +1,13 @@
-export type DatabaseMetricName =
-  | "acknowledgement_latency"
-  | "drag_to_paint"
-  | "reset"
-  | "rollback"
+export type DatabaseMetricName = "acknowledgement_latency" | "drag_to_paint" | "reset" | "rollback";
 
-export type DatabaseMetricReason =
-  | "command_failure"
-  | "manual"
+export type DatabaseMetricReason = "command_failure" | "manual";
 
 export type DatabaseMetric = {
-  event: `database.${DatabaseMetricName}`
-  outcome: "failure" | "success"
-  reason?: DatabaseMetricReason
-  value: number
-}
+  event: `database.${DatabaseMetricName}`;
+  outcome: "failure" | "success";
+  reason?: DatabaseMetricReason;
+  value: number;
+};
 
 export function databaseMetric(
   name: DatabaseMetricName,
@@ -21,13 +15,13 @@ export function databaseMetric(
   outcome: DatabaseMetric["outcome"] = "success",
   reason?: DatabaseMetricReason,
 ): DatabaseMetric | null {
-  if (!Number.isFinite(value) || value < 0) return null
+  if (!Number.isFinite(value) || value < 0) return null;
   return {
     event: `database.${name}`,
     outcome,
     ...(reason ? { reason } : {}),
     value: Math.round(value),
-  }
+  };
 }
 
 export function emitDatabaseMetric(
@@ -36,15 +30,13 @@ export function emitDatabaseMetric(
   outcome: DatabaseMetric["outcome"] = "success",
   reason?: DatabaseMetricReason,
 ) {
-  const metric = databaseMetric(name, value, outcome, reason)
-  if (
-    metric &&
-    typeof window !== "undefined" &&
-    typeof window.dispatchEvent === "function"
-  ) {
-    window.dispatchEvent(new CustomEvent("zilobase:database:metric", {
-      detail: metric,
-    }))
+  const metric = databaseMetric(name, value, outcome, reason);
+  if (metric && typeof window !== "undefined" && typeof window.dispatchEvent === "function") {
+    window.dispatchEvent(
+      new CustomEvent("zilobase:database:metric", {
+        detail: metric,
+      }),
+    );
   }
-  return metric
+  return metric;
 }

@@ -2,21 +2,13 @@ import type { AccessLevel } from "../access";
 
 const TEAMSPACE_ACCESS_MODES = ["open", "closed", "private"] as const;
 const TEAMSPACE_ROLES = ["owner", "member"] as const;
-const TEAMSPACE_INVITE_POLICIES = [
-  "owners",
-  "owners_and_members",
-] as const;
-const TEAMSPACE_CREATION_POLICIES = [
-  "workspace_owners",
-  "workspace_members",
-] as const;
+const TEAMSPACE_INVITE_POLICIES = ["owners", "owners_and_members"] as const;
+const TEAMSPACE_CREATION_POLICIES = ["workspace_owners", "workspace_members"] as const;
 
 export type TeamspaceAccessMode = (typeof TEAMSPACE_ACCESS_MODES)[number];
 export type TeamspaceRole = (typeof TEAMSPACE_ROLES)[number];
-export type TeamspaceInvitePolicy =
-  (typeof TEAMSPACE_INVITE_POLICIES)[number];
-export type TeamspaceCreationPolicy =
-  (typeof TEAMSPACE_CREATION_POLICIES)[number];
+export type TeamspaceInvitePolicy = (typeof TEAMSPACE_INVITE_POLICIES)[number];
+export type TeamspaceCreationPolicy = (typeof TEAMSPACE_CREATION_POLICIES)[number];
 
 export function canCreateTeamspace(input: {
   creationPolicy: TeamspaceCreationPolicy;
@@ -33,11 +25,7 @@ export function canDiscoverTeamspace(input: {
   isTeamspacePrincipal: boolean;
   isWorkspaceOwner: boolean;
 }) {
-  return (
-    input.isWorkspaceOwner ||
-    input.isTeamspacePrincipal ||
-    input.accessMode !== "private"
-  );
+  return input.isWorkspaceOwner || input.isTeamspacePrincipal || input.accessMode !== "private";
 }
 
 export function canJoinTeamspace(input: {
@@ -45,11 +33,7 @@ export function canJoinTeamspace(input: {
   archived: boolean;
   isActiveWorkspaceMember: boolean;
 }) {
-  return (
-    input.accessMode === "open" &&
-    !input.archived &&
-    input.isActiveWorkspaceMember
-  );
+  return input.accessMode === "open" && !input.archived && input.isActiveWorkspaceMember;
 }
 
 export function canManageTeamspace(input: {
@@ -64,10 +48,7 @@ export function canInviteTeamspaceMembers(input: {
   teamspaceRole: TeamspaceRole | null;
 }) {
   if (input.teamspaceRole === "owner") return true;
-  return (
-    input.teamspaceRole === "member" &&
-    input.invitePolicy === "owners_and_members"
-  );
+  return input.teamspaceRole === "member" && input.invitePolicy === "owners_and_members";
 }
 
 export function resolveTeamspaceBaselineAccess(input: {

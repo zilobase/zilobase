@@ -50,10 +50,7 @@ export async function refreshStoredMcpOAuthCredential(input: {
     approvedUrls: new Set(),
     allowAnyPublicHttps: true,
   });
-  const discovered = await discoverOAuthServerInfo(
-    input.connection.endpointUrl,
-    { fetchFn },
-  );
+  const discovered = await discoverOAuthServerInfo(input.connection.endpointUrl, { fetchFn });
   const metadata = discovered.authorizationServerMetadata;
   if (!metadata?.issuer || metadata.issuer !== input.credential.issuer) {
     throw new McpServiceError(
@@ -62,11 +59,7 @@ export async function refreshStoredMcpOAuthCredential(input: {
       409,
     );
   }
-  const registration = await loadClientRegistration(
-    input.connection,
-    metadata.issuer,
-    input.env,
-  );
+  const registration = await loadClientRegistration(input.connection, metadata.issuer, input.env);
   const tokens = await refreshAuthorization(discovered.authorizationServerUrl, {
     clientInformation: registration,
     fetchFn,
@@ -86,17 +79,13 @@ export async function refreshStoredMcpOAuthCredential(input: {
     scope: tokens.scope ?? input.credential.scope,
     tokenType: tokens.token_type,
   };
-  const encrypted = await encryptMcpSecret(
-    input.env,
-    JSON.stringify(credential),
-    {
-      authenticatedByUserId: input.connection.authenticatedByUserId,
-      connectionId: input.connection.id,
-      profileId: getMcpCredentialScopeId(input.connection),
-      purpose: "connection_auth",
-      workspaceId: input.connection.workspaceId,
-    },
-  );
+  const encrypted = await encryptMcpSecret(input.env, JSON.stringify(credential), {
+    authenticatedByUserId: input.connection.authenticatedByUserId,
+    connectionId: input.connection.id,
+    profileId: getMcpCredentialScopeId(input.connection),
+    purpose: "connection_auth",
+    workspaceId: input.connection.workspaceId,
+  });
   await db
     .update(aiMcpCredential)
     .set({
@@ -145,30 +134,16 @@ export async function revokeStoredMcpOAuthCredential(input: {
     approvedUrls: new Set(),
     allowAnyPublicHttps: true,
   });
-  const discovered = await discoverOAuthServerInfo(
-    input.connection.endpointUrl,
-    { fetchFn },
-  );
+  const discovered = await discoverOAuthServerInfo(input.connection.endpointUrl, { fetchFn });
   const metadata = discovered.authorizationServerMetadata;
   const revocationEndpoint = readRevocationEndpoint(metadata);
-  if (
-    !metadata?.issuer ||
-    metadata.issuer !== credential.issuer ||
-    !revocationEndpoint
-  )
-    return;
-  const registration = await loadClientRegistration(
-    input.connection,
-    metadata.issuer,
-    input.env,
-  );
+  if (!metadata?.issuer || metadata.issuer !== credential.issuer || !revocationEndpoint) return;
+  const registration = await loadClientRegistration(input.connection, metadata.issuer, input.env);
   await revokeTokens(fetchFn, revocationEndpoint, registration, credential);
 }
 
 function readRevocationEndpoint(
-  metadata: Awaited<
-    ReturnType<typeof discoverOAuthServerInfo>
-  >["authorizationServerMetadata"],
+  metadata: Awaited<ReturnType<typeof discoverOAuthServerInfo>>["authorizationServerMetadata"],
 ) {
   return metadata &&
     "revocation_endpoint" in metadata &&
@@ -184,9 +159,7 @@ export async function resolveClientInformation(input: {
   fetchFn: ReturnType<typeof createSecureMcpFetch>;
   issuer: string;
   metadata: NonNullable<
-    Awaited<
-      ReturnType<typeof discoverOAuthServerInfo>
-    >["authorizationServerMetadata"]
+    Awaited<ReturnType<typeof discoverOAuthServerInfo>>["authorizationServerMetadata"]
   >;
 }) {
   const [existing] = await db
@@ -199,15 +172,12 @@ export async function resolveClientInformation(input: {
       ),
     )
     .limit(1);
-  if (existing)
-    return loadClientRegistration(input.connection, input.issuer, input.env);
+  if (existing) return loadClientRegistration(input.connection, input.issuer, input.env);
 
   const clientInformation = await registerConfiguredClient(input);
 
   const clientSecret =
-    "client_secret" in clientInformation
-      ? clientInformation.client_secret
-      : undefined;
+    "client_secret" in clientInformation ? clientInformation.client_secret : undefined;
   const encryptedSecret = clientSecret
     ? await encryptMcpSecret(input.env, clientSecret, {
         authenticatedByUserId: input.connection.authenticatedByUserId,
@@ -294,15 +264,9 @@ async function registerConfiguredClient(
   if (configuredId) {
     clientInformation = {
       client_id: configuredId,
-      client_secret: getStringEnv(
-        input.env,
-        `MCP_${catalogPrefix}_CLIENT_SECRET`,
-      ),
+      client_secret: getStringEnv(input.env, `MCP_${catalogPrefix}_CLIENT_SECRET`),
     };
-  } else if (
-    metadataUrl &&
-    input.metadata.client_id_metadata_document_supported === true
-  ) {
+  } else if (metadataUrl && input.metadata.client_id_metadata_document_supported === true) {
     clientInformation = { client_id: metadataUrl };
   } else if (input.metadata.registration_endpoint) {
     clientInformation = await registerClient(input.issuer, {

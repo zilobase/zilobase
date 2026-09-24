@@ -8,7 +8,10 @@ import { enqueueAiJob, getOwnedAiJob } from "../jobs/ai-jobs";
 import { getStringEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
 import { aiChatArtifact, aiChatUpload } from "../../../infrastructure/database/schema";
-import { createImageStorage, resolveImageStorageMode } from "../../../infrastructure/storage/image-storage";
+import {
+  createImageStorage,
+  resolveImageStorageMode,
+} from "../../../infrastructure/storage/image-storage";
 import type { AppBindings } from "../../../shared/types";
 import { readJsonBody } from "../../../shared/http/request";
 import { requireActiveWorkspace } from "../../workspaces";
@@ -90,20 +93,21 @@ aiFileRoutes.post("/files/uploads", async (c) => {
     workspaceId: auth.workspaceId,
   });
 
-  const upload = storageMode === "s3"
-    ? await storage.createUploadUrl({
-        byteSize: parsed.data.byteSize,
-        contentType: normalizeContentType(parsed.data.contentType),
-        expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
-        objectKey,
-      })
-    : {
-        expiresAt: new Date(Date.now() + UPLOAD_URL_TTL_SECONDS * 1_000).toISOString(),
-        headers: { "Content-Type": normalizeContentType(parsed.data.contentType) },
-        method: "PUT" as const,
-        storageMode,
-        url: `/api/ai/files/${id}/body`,
-      };
+  const upload =
+    storageMode === "s3"
+      ? await storage.createUploadUrl({
+          byteSize: parsed.data.byteSize,
+          contentType: normalizeContentType(parsed.data.contentType),
+          expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
+          objectKey,
+        })
+      : {
+          expiresAt: new Date(Date.now() + UPLOAD_URL_TTL_SECONDS * 1_000).toISOString(),
+          headers: { "Content-Type": normalizeContentType(parsed.data.contentType) },
+          method: "PUT" as const,
+          storageMode,
+          url: `/api/ai/files/${id}/body`,
+        };
 
   return c.json({
     file: {
@@ -152,10 +156,13 @@ aiFileRoutes.post("/files/:fileId/complete", async (c) => {
     return c.json({ error: "Upload cannot be completed" }, 409);
   }
   if (record.status === "pending") {
-    await db.update(aiChatUpload).set({
-      status: "processing",
-      updatedAt: new Date(),
-    }).where(and(eq(aiChatUpload.id, record.id), eq(aiChatUpload.status, "pending")));
+    await db
+      .update(aiChatUpload)
+      .set({
+        status: "processing",
+        updatedAt: new Date(),
+      })
+      .where(and(eq(aiChatUpload.id, record.id), eq(aiChatUpload.status, "pending")));
   }
   const job = await enqueueAiJob({
     dedupeKey: record.id,
@@ -165,10 +172,13 @@ aiFileRoutes.post("/files/:fileId/complete", async (c) => {
     userId: auth.user.id,
     workspaceId: auth.workspaceId,
   });
-  return c.json({
-    file: { ...toFileResponse(record), status: "processing" },
-    job: toJobResponse(job),
-  }, 202);
+  return c.json(
+    {
+      file: { ...toFileResponse(record), status: "processing" },
+      job: toJobResponse(job),
+    },
+    202,
+  );
 });
 
 aiFileRoutes.get("/jobs/:jobId", async (c) => {
@@ -197,31 +207,32 @@ aiFileRoutes.get("/artifacts/:artifactId/download", async (c) => {
   const [record] = await db
     .select()
     .from(aiChatArtifact)
-    .where(and(
-      eq(aiChatArtifact.id, c.req.param("artifactId")),
-      eq(aiChatArtifact.workspaceId, auth.workspaceId),
-      eq(aiChatArtifact.userId, auth.user.id),
-      eq(aiChatArtifact.status, "ready"),
-      gt(aiChatArtifact.expiresAt, new Date()),
-    ))
+    .where(
+      and(
+        eq(aiChatArtifact.id, c.req.param("artifactId")),
+        eq(aiChatArtifact.workspaceId, auth.workspaceId),
+        eq(aiChatArtifact.userId, auth.user.id),
+        eq(aiChatArtifact.status, "ready"),
+        gt(aiChatArtifact.expiresAt, new Date()),
+      ),
+    )
     .limit(1);
   if (!record) return c.json({ error: "Artifact not found" }, 404);
   return downloadStoredFile(c.env, record);
 });
 
-async function readOwnedUpload(
-  id: string,
-  auth: { user: { id: string }; workspaceId: string },
-) {
+async function readOwnedUpload(id: string, auth: { user: { id: string }; workspaceId: string }) {
   const [record] = await db
     .select()
     .from(aiChatUpload)
-    .where(and(
-      eq(aiChatUpload.id, id),
-      eq(aiChatUpload.workspaceId, auth.workspaceId),
-      eq(aiChatUpload.userId, auth.user.id),
-      gt(aiChatUpload.expiresAt, new Date()),
-    ))
+    .where(
+      and(
+        eq(aiChatUpload.id, id),
+        eq(aiChatUpload.workspaceId, auth.workspaceId),
+        eq(aiChatUpload.userId, auth.user.id),
+        gt(aiChatUpload.expiresAt, new Date()),
+      ),
+    )
     .limit(1);
   return record ?? null;
 }
@@ -233,7 +244,8 @@ async function downloadStoredFile(
   const storage = createImageStorage(env);
   if (storage.mode === "s3") {
     const url = await storage.createReadUrl({
-      expiresInSeconds: Number(getStringEnv(env, "IMAGE_READ_URL_TTL_SECONDS")) || DOWNLOAD_URL_TTL_SECONDS,
+      expiresInSeconds:
+        Number(getStringEnv(env, "IMAGE_READ_URL_TTL_SECONDS")) || DOWNLOAD_URL_TTL_SECONDS,
       filename: record.filename,
       objectKey: record.objectKey,
     });

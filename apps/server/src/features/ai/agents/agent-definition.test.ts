@@ -32,7 +32,11 @@ describe("standalone Custom Agent definitions", () => {
 
   it("computes portable schedule occurrences", () => {
     const from = new Date("2026-09-05T00:00:00.000Z");
-    expect(computeNextAgentSchedule({ cadence: "daily" }, from).toISOString()).toBe("2026-09-06T00:00:00.000Z");
-    expect(computeNextAgentSchedule({ cadence: "custom", intervalMinutes: 60 }, from).toISOString()).toBe("2026-09-05T01:00:00.000Z");
+    expect(computeNextAgentSchedule({ cadence: "daily" }, from).toISOString()).toBe(
+      "2026-09-06T00:00:00.000Z",
+    );
+    expect(
+      computeNextAgentSchedule({ cadence: "custom", intervalMinutes: 60 }, from).toISOString(),
+    ).toBe("2026-09-05T01:00:00.000Z");
   });
 });

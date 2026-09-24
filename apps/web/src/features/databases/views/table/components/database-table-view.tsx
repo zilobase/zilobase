@@ -3,10 +3,10 @@ import {
   retainGroupRowDropTarget,
   propertyInsertPositions,
 } from "../model/database-table-model";
-import { useTableRowLayout } from "../controller/use-table-row-layout"
-import { useTableColumns } from "../controller/use-table-columns"
-import { useTableSelection } from "../controller/use-table-selection"
-import { createCellEditHistoryAction } from "../../../interactions/cell-edit-history"
+import { useTableRowLayout } from "../controller/use-table-row-layout";
+import { useTableColumns } from "../controller/use-table-columns";
+import { useTableSelection } from "../controller/use-table-selection";
+import { createCellEditHistoryAction } from "../../../interactions/cell-edit-history";
 import {
   Fragment,
   useCallback,
@@ -19,15 +19,10 @@ import {
   type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { createPortal } from "react-dom"
-import { Reorder } from "framer-motion"
-import {
-  ChevronDown,
-  ChevronRight,
-  Loader2,
-  Plus,
-} from "@/shared/components/icons"
-import { toast } from "sonner"
+import { createPortal } from "react-dom";
+import { Reorder } from "framer-motion";
+import { ChevronDown, ChevronRight, Loader2, Plus } from "@/shared/components/icons";
+import { toast } from "sonner";
 import { getDatabaseRowMoveAnchors, useMoveDatabaseRow } from "@zilobase/features/databases/react";
 import {
   AlertDialog,
@@ -38,34 +33,25 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/shared/ui/alert-dialog"
-import {
-  useOptionalPageSidePane,
-} from "@/features/pages/pane/page-side-pane";
-import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
-import { cn } from "@/shared/lib/utils"
-import { useUndoHistory } from "@/shared/shortcuts"
-import {
-  getColorTokenBadgeClassName,
-  getColorTokenDotClassName,
-} from "@/shared/lib/color-tokens"
+} from "@/shared/ui/alert-dialog";
+import { useOptionalPageSidePane } from "@/features/pages/pane/page-side-pane";
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
+import { cn } from "@/shared/lib/utils";
+import { useUndoHistory } from "@/shared/shortcuts";
+import { getColorTokenBadgeClassName, getColorTokenDotClassName } from "@/shared/lib/color-tokens";
 
-import { AddDatabasePropertyMenu } from "../../../schema/editors/add-database-property-menu"
-import { DatabaseCellContent } from "../../components/database-cell-content"
+import { AddDatabasePropertyMenu } from "../../../schema/editors/add-database-property-menu";
+import { DatabaseCellContent } from "../../components/database-cell-content";
 
-import {
-  setDatabasePageDragPayload,
-} from "../../../interactions/database-page-drop"
-import { DatabasePageLink } from "../../../interactions/database-page-link"
-import { DatabaseFormulaDialog } from "../../../schema/formula/view/database-formula-dialog"
+import { setDatabasePageDragPayload } from "../../../interactions/database-page-drop";
+import { DatabasePageLink } from "../../../interactions/database-page-link";
+import { DatabaseFormulaDialog } from "../../../schema/formula/view/database-formula-dialog";
 import {
   DatabaseNamePropertyMenu,
   DatabasePropertyMenu,
-} from "../../../schema/editors/database-property-menu"
-import { DatabasePropertyValue } from "../../../schema/editors/database-property-value"
-import {
-  getDatabasePropertyType,
-} from "../../../schema/property-catalog"
+} from "../../../schema/editors/database-property-menu";
+import { DatabasePropertyValue } from "../../../schema/editors/database-property-value";
+import { getDatabasePropertyType } from "../../../schema/property-catalog";
 import { serializePropertyValue } from "../../../schema/property-values";
 import {
   getDatabasePropertyIcon,
@@ -76,26 +62,26 @@ import {
   useDatabaseActionsContext,
   useDatabaseDataContext,
   useDatabaseUiContext,
-} from "../../state/database-view-context"
+} from "../../state/database-view-context";
 import {
   getDatabaseSubItemLineParentRowId,
   getDatabaseSubItemRelationChanges,
   getSubItemCreateRowsAfterRow,
-} from "../../model/database-sub-items"
-import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll"
-import { useInlineDatabaseScroll } from "../../../interactions/use-inline-database-scroll"
+} from "../../model/database-sub-items";
+import { useDatabaseRowsScroll } from "../../../interactions/use-database-rows-scroll";
+import { useInlineDatabaseScroll } from "../../../interactions/use-inline-database-scroll";
 import {
   areSerializedPropertyValuesEqual,
   databaseItemMatchesFilter,
-} from "../../../interactions/database-item-utils"
-import { getDatabaseGroupMoveValue } from "../../../interactions/database-group-values"
-import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections"
+} from "../../../interactions/database-item-utils";
+import { getDatabaseGroupMoveValue } from "../../../interactions/database-group-values";
+import { getDatabaseTableGroupSections } from "../../../interactions/database-table-group-sections";
 import {
   getDatabaseCellFillRowIds,
   isDatabasePropertyFillable,
   type DatabaseCellFillHistoryChange,
 } from "../../../interactions/database-cell-fill";
-import { getDatabaseRowDropTarget } from "../../../interactions/database-table-layout"
+import { getDatabaseRowDropTarget } from "../../../interactions/database-table-layout";
 import {
   claimDatabaseRowDropOwner,
   getAnchoredRowInsertPosition,
@@ -106,8 +92,8 @@ import {
   releaseDatabaseRowDropOwner,
   startDatabaseRowDrag,
   subscribeDatabaseRowDropOwner,
-} from "../../../interactions/database-row-drag"
-import { useDatabaseRowDragOverlay } from "../../../interactions/use-database-row-drag-overlay"
+} from "../../../interactions/database-row-drag";
+import { useDatabaseRowDragOverlay } from "../../../interactions/use-database-row-drag-overlay";
 import {
   canCreateRowInKanbanGroup,
   canUpdateKanbanGroupProperty,
@@ -138,19 +124,16 @@ import {
   getTableMinWidthStyle,
   useSyncedHorizontalScroll,
 } from "./database-table-shell";
-import {
-  CreateDatabaseRowButton,
-  DatabaseActiveTableCell,
-} from "./database-table-cell"
-import { DatabaseTableSelectionToolbar } from "./database-table-selection-toolbar"
+import { CreateDatabaseRowButton, DatabaseActiveTableCell } from "./database-table-cell";
+import { DatabaseTableSelectionToolbar } from "./database-table-selection-toolbar";
 import {
   DatabaseHeaderReorderItem,
   DatabaseRowDragControls,
   DatabaseRowDropLine,
-} from "./database-table-drag-controls"
+} from "./database-table-drag-controls";
 
 export function DatabaseTableView() {
-  const sidePane = useOptionalPageSidePane()
+  const sidePane = useOptionalPageSidePane();
   const {
     addDatabaseProperty,
     addDraggedPageRow,
@@ -166,7 +149,7 @@ export function DatabaseTableView() {
     updateDatabasePropertyConfig,
     updateNameColumnConfig,
     saveDatabasePropertyOrder,
-  } = useDatabaseActionsContext()
+  } = useDatabaseActionsContext();
   const {
     activeConditionalColors,
     activeDatabaseFilters,
@@ -191,33 +174,33 @@ export function DatabaseTableView() {
     subItemParentRowIdsByRowId,
     visibleProperties,
     workspaceId,
-  } = useDatabaseDataContext()
+  } = useDatabaseDataContext();
   const {
     headerMenusEnabled,
     layoutSettings,
     titlePropertyLabel: nameColumnLabel,
     showPageIconInTitle: nameColumnShowPageIcon,
     subItemsSettings,
-  } = useDatabaseUiContext()
-  const moveRow = useMoveDatabaseRow()
-  const reorderRows = useMoveDatabaseRow()
-  const undoHistory = useUndoHistory()
-  const loadedDatabaseId = requireDatabaseId(databaseId)
+  } = useDatabaseUiContext();
+  const moveRow = useMoveDatabaseRow();
+  const reorderRows = useMoveDatabaseRow();
+  const undoHistory = useUndoHistory();
+  const loadedDatabaseId = requireDatabaseId(databaseId);
 
-  const canEditStructure = editable && (canAddDatabaseProperties ?? true)
+  const canEditStructure = editable && (canAddDatabaseProperties ?? true);
 
-  const canUseHeaderMenus = headerMenusEnabled ?? editable
-  const nameColumnWrapContent = getNameColumnWrapContent(databaseConfig)
+  const canUseHeaderMenus = headerMenusEnabled ?? editable;
+  const nameColumnWrapContent = getNameColumnWrapContent(databaseConfig);
 
-  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
-  const [draggedRowId, setDraggedRowId] = useState<string | null>(null)
-  const [isExternalRowDragActive, setIsExternalRowDragActive] = useState(false)
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  const [draggedRowId, setDraggedRowId] = useState<string | null>(null);
+  const [isExternalRowDragActive, setIsExternalRowDragActive] = useState(false);
 
-  const [selectedCellKey, setSelectedCellKey] = useState<string | null>(null)
-  const [cellFillDrag, setCellFillDrag] = useState<CellFillDrag | null>(null)
-  const cellFillDragRef = useRef<CellFillDrag | null>(null)
-  const propertyValuesByKeyRef = useRef(propertyValuesByKey)
-  propertyValuesByKeyRef.current = propertyValuesByKey
+  const [selectedCellKey, setSelectedCellKey] = useState<string | null>(null);
+  const [cellFillDrag, setCellFillDrag] = useState<CellFillDrag | null>(null);
+  const cellFillDragRef = useRef<CellFillDrag | null>(null);
+  const propertyValuesByKeyRef = useRef(propertyValuesByKey);
+  propertyValuesByKeyRef.current = propertyValuesByKey;
   const {
     selectedRowIds,
     setSelectedRowIds,
@@ -232,44 +215,38 @@ export function DatabaseTableView() {
     propertyValuesByKeyRef,
     savePropertyValue,
     undoHistory,
-  })
+  });
 
-  const finishRowDragRef = useRef<() => void>(() => {})
-  const rowDragOverlay = useDatabaseRowDragOverlay(finishRowDragRef)
-  const [rowDropTarget, setRowDropTarget] =
-    useState<TableRowDropTarget | null>(null)
-  const rowDropTargetRef = useRef<TableRowDropTarget | null>(null)
-  const rowDragStartClientXRef = useRef<number | null>(null)
-  const [groupRowDropTarget, setGroupRowDropTarget] =
-    useState<GroupRowDropTarget | null>(null)
-  const groupRowDropTargetRef = useRef<GroupRowDropTarget | null>(null)
-  const isExternalRowDragActiveRef = useRef(false)
-  const rowDropOwner = useMemo(() => ({}), [])
+  const finishRowDragRef = useRef<() => void>(() => {});
+  const rowDragOverlay = useDatabaseRowDragOverlay(finishRowDragRef);
+  const [rowDropTarget, setRowDropTarget] = useState<TableRowDropTarget | null>(null);
+  const rowDropTargetRef = useRef<TableRowDropTarget | null>(null);
+  const rowDragStartClientXRef = useRef<number | null>(null);
+  const [groupRowDropTarget, setGroupRowDropTarget] = useState<GroupRowDropTarget | null>(null);
+  const groupRowDropTargetRef = useRef<GroupRowDropTarget | null>(null);
+  const isExternalRowDragActiveRef = useRef(false);
+  const rowDropOwner = useMemo(() => ({}), []);
 
   const [pendingSortedRowReorder, setPendingSortedRowReorder] =
-    useState<PendingSortedRowReorder | null>(null)
+    useState<PendingSortedRowReorder | null>(null);
 
-  const [collapsedGroups, setCollapsedGroups] = useState<
-    Record<string, boolean>
-  >({})
-  const [collapsedSubItemRowIds, setCollapsedSubItemRowIds] = useState<
-    Set<string>
-  >(() => new Set())
-  const [expandedEmptySubItemRowIds, setExpandedEmptySubItemRowIds] = useState<
-    Set<string>
-  >(() => new Set())
-  const stickyHeaderScrollRef = useRef<HTMLDivElement | null>(null)
-  const tableScrollRef = useRef<HTMLDivElement | null>(null)
-  const tableWrapRef = useRef<HTMLDivElement | null>(null)
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [collapsedSubItemRowIds, setCollapsedSubItemRowIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [expandedEmptySubItemRowIds, setExpandedEmptySubItemRowIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const stickyHeaderScrollRef = useRef<HTMLDivElement | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement | null>(null);
+  const tableWrapRef = useRef<HTMLDivElement | null>(null);
 
-  const isTableSorted = activeDatabaseSorts.length > 0
-  const isTableFiltered = activeDatabaseFilters.length > 0
-  const isTableGrouped = Boolean(groupProperty)
+  const isTableSorted = activeDatabaseSorts.length > 0;
+  const isTableFiltered = activeDatabaseFilters.length > 0;
+  const isTableGrouped = Boolean(groupProperty);
   const isSubItemsNested =
-    subItemsSettings.enabled &&
-    subItemsSettings.display === "nested" &&
-    !isTableGrouped
-  const renderedProperties = visibleProperties
+    subItemsSettings.enabled && subItemsSettings.display === "nested" && !isTableGrouped;
+  const renderedProperties = visibleProperties;
   const {
     columnWidths,
     pendingInsertProperty,
@@ -305,7 +282,7 @@ export function DatabaseTableView() {
     tableWrapRef,
     saveDatabasePropertyOrder,
     addDatabaseProperty,
-  })
+  });
 
   const tableMeasurementKey = useMemo(
     () =>
@@ -314,58 +291,51 @@ export function DatabaseTableView() {
         ...renderedProperties.map((property) =>
           getPropertyWrapContent(property.property.config)
             ? `${property.id}:wrap`
-            : `${property.id}:nowrap`
+            : `${property.id}:nowrap`,
         ),
       ].join("|"),
-    [nameColumnWrapContent, renderedProperties]
-  )
+    [nameColumnWrapContent, renderedProperties],
+  );
 
   const personOptionsById = useMemo(
     () => new Map(personOptions.map((option) => [option.id, option.name])),
-    [personOptions]
-  )
+    [personOptions],
+  );
 
-  const canReorderRows = editable
+  const canReorderRows = editable;
 
   const rowDragTitle = getRowDragTitle({
     canReorder: canReorderRows,
     isFiltered: isTableFiltered,
     isGrouped: isTableGrouped,
     isSorted: isTableSorted,
-  })
+  });
 
-  const {
-    isInlineScrollEnabled: isInlineTableScrollEnabled,
-    style: tableWrapStyle,
-  } = useInlineDatabaseScroll({
-    getContentWidth: getInlineTableContentWidth,
-    scrollRef: tableScrollRef,
-    wrapperRef: tableWrapRef,
-  })
+  const { isInlineScrollEnabled: isInlineTableScrollEnabled, style: tableWrapStyle } =
+    useInlineDatabaseScroll({
+      getContentWidth: getInlineTableContentWidth,
+      scrollRef: tableScrollRef,
+      wrapperRef: tableWrapRef,
+    });
   useSyncedHorizontalScroll(
     stickyHeaderScrollRef,
     tableScrollRef,
-    `${tableMinWidth}:${isTableGrouped ? "grouped" : "ungrouped"}`
-  )
+    `${tableMinWidth}:${isTableGrouped ? "grouped" : "ungrouped"}`,
+  );
   const { sentinelRef: rowsScrollSentinelRef } = useDatabaseRowsScroll({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  })
-  const {
-    rowLayout,
-    rowLayoutRef,
-    getRowLayoutElement,
-    measureRows,
-    scheduleMeasureRows,
-  } = useTableRowLayout({
-    tableWrapRef,
-    tableScrollRef,
-    isInlineTableScrollEnabled,
-  })
+  });
+  const { rowLayout, rowLayoutRef, getRowLayoutElement, measureRows, scheduleMeasureRows } =
+    useTableRowLayout({
+      tableWrapRef,
+      tableScrollRef,
+      isInlineTableScrollEnabled,
+    });
   const groupedSections = useMemo<GroupSection[]>(() => {
     if (!isTableGrouped) {
-      return []
+      return [];
     }
 
     return getDatabaseTableGroupSections({
@@ -373,18 +343,9 @@ export function DatabaseTableView() {
       personOptionsById,
       propertyValuesByKey,
       rows: sortedRows,
-    })
-  }, [
-    groupProperty,
-    isTableGrouped,
-    personOptionsById,
-    propertyValuesByKey,
-    sortedRows,
-  ])
-  const rowsById = useMemo(
-    () => new Map(rows.map((row) => [row.id, row])),
-    [rows]
-  )
+    });
+  }, [groupProperty, isTableGrouped, personOptionsById, propertyValuesByKey, sortedRows]);
+  const rowsById = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
 
   const nestedVisibleRows = useMemo(() => {
     return getVisibleNestedTableRows({
@@ -392,45 +353,39 @@ export function DatabaseTableView() {
       nested: isSubItemsNested,
       parentRowIdsByRowId: subItemParentRowIdsByRowId,
       rows: sortedRows,
-    })
-  }, [
-    collapsedSubItemRowIds,
-    isSubItemsNested,
-    sortedRows,
-    subItemParentRowIdsByRowId,
-  ])
+    });
+  }, [collapsedSubItemRowIds, isSubItemsNested, sortedRows, subItemParentRowIdsByRowId]);
   const visibleRows = useMemo(
     () =>
       isTableGrouped
         ? groupedSections.flatMap((section) =>
-            collapsedGroups[section.id] === true ? [] : section.rows
+            collapsedGroups[section.id] === true ? [] : section.rows,
           )
         : nestedVisibleRows,
-    [collapsedGroups, groupedSections, isTableGrouped, nestedVisibleRows]
-  )
+    [collapsedGroups, groupedSections, isTableGrouped, nestedVisibleRows],
+  );
   const expandedSubItemRowIds = useMemo(() => {
-    const expandedRowIds = new Set<string>()
+    const expandedRowIds = new Set<string>();
 
-    if (!isSubItemsNested) return expandedRowIds
+    if (!isSubItemsNested) return expandedRowIds;
 
     for (const row of visibleRows) {
-      const hasSubItems =
-        (subItemChildRowIdsByParentId[row.id]?.length ?? 0) > 0
+      const hasSubItems = (subItemChildRowIdsByParentId[row.id]?.length ?? 0) > 0;
       const isExpanded = hasSubItems
         ? !collapsedSubItemRowIds.has(row.id)
-        : expandedEmptySubItemRowIds.has(row.id)
+        : expandedEmptySubItemRowIds.has(row.id);
 
-      if (isExpanded) expandedRowIds.add(row.id)
+      if (isExpanded) expandedRowIds.add(row.id);
     }
 
-    return expandedRowIds
+    return expandedRowIds;
   }, [
     collapsedSubItemRowIds,
     expandedEmptySubItemRowIds,
     isSubItemsNested,
     subItemChildRowIdsByParentId,
     visibleRows,
-  ])
+  ]);
   const subItemCreateRowIdsByAfterRowId = useMemo(
     () =>
       getSubItemCreateRowsAfterRow({
@@ -438,16 +393,13 @@ export function DatabaseTableView() {
         parentRowIdsByRowId: subItemParentRowIdsByRowId,
         rows: visibleRows,
       }),
-    [expandedSubItemRowIds, subItemParentRowIdsByRowId, visibleRows]
-  )
+    [expandedSubItemRowIds, subItemParentRowIdsByRowId, visibleRows],
+  );
   const visibleRowIndexById = useMemo(
     () => new Map(visibleRows.map((row, index) => [row.id, index])),
-    [visibleRows]
-  )
-  const visibleRowIds = useMemo(
-    () => visibleRows.map((row) => row.id),
-    [visibleRows]
-  )
+    [visibleRows],
+  );
+  const visibleRowIds = useMemo(() => visibleRows.map((row) => row.id), [visibleRows]);
   const fillTargetRowIds = useMemo(
     () =>
       new Set(
@@ -455,29 +407,24 @@ export function DatabaseTableView() {
           ? getDatabaseCellFillRowIds(
               visibleRowIds,
               cellFillDrag.sourceRowId,
-              cellFillDrag.targetRowId
+              cellFillDrag.targetRowId,
             )
-          : []
+          : [],
       ),
-    [cellFillDrag, visibleRowIds]
-  )
+    [cellFillDrag, visibleRowIds],
+  );
   const groupSectionByRowId = useMemo(() => {
-    const sectionsByRowId = new Map<string, GroupSection>()
+    const sectionsByRowId = new Map<string, GroupSection>();
 
     groupedSections.forEach((section) => {
-      section.rows.forEach((row) => sectionsByRowId.set(row.id, section))
-    })
+      section.rows.forEach((row) => sectionsByRowId.set(row.id, section));
+    });
 
-    return sectionsByRowId
-  }, [groupedSections])
+    return sectionsByRowId;
+  }, [groupedSections]);
 
-  const getSubItemDropParentRowId = (
-    targetIndex: number,
-    preferPreviousRowAsParent = false
-  ) =>
-    isSubItemsNested &&
-    subItemsSettings.parentPropertyId &&
-    subItemsSettings.subItemPropertyId
+  const getSubItemDropParentRowId = (targetIndex: number, preferPreviousRowAsParent = false) =>
+    isSubItemsNested && subItemsSettings.parentPropertyId && subItemsSettings.subItemPropertyId
       ? getDatabaseSubItemLineParentRowId({
           childRowIdsByParentId: subItemChildRowIdsByParentId,
           collapsedRowIds: collapsedSubItemRowIds,
@@ -486,152 +433,134 @@ export function DatabaseTableView() {
           rows: visibleRows,
           targetIndex,
         })
-      : undefined
+      : undefined;
   const resolveRowDropTarget = (clientY: number, clientX: number) => {
-    const layoutElement = getRowLayoutElement()
+    const layoutElement = getRowLayoutElement();
 
     if (!layoutElement) {
-      return null
+      return null;
     }
 
-    const relativeY = clientY - layoutElement.getBoundingClientRect().top
-    const target = getDatabaseRowDropTarget(
-      rowLayoutRef.current.dropTops,
-      relativeY
-    )
+    const relativeY = clientY - layoutElement.getBoundingClientRect().top;
+    const target = getDatabaseRowDropTarget(rowLayoutRef.current.dropTops, relativeY);
 
-    if (!target) return null
+    if (!target) return null;
 
-    const previousRow = visibleRows[target.index - 1]
-    const dragStartClientX = rowDragStartClientXRef.current
+    const previousRow = visibleRows[target.index - 1];
+    const dragStartClientX = rowDragStartClientXRef.current;
     const preferPreviousRowAsParent = Boolean(
       draggedRowId &&
-        previousRow &&
-        previousRow.id !== draggedRowId &&
-        dragStartClientX !== null &&
-        clientX >= dragStartClientX + DATABASE_SUB_ITEM_DRAG_INDENT
-    )
+      previousRow &&
+      previousRow.id !== draggedRowId &&
+      dragStartClientX !== null &&
+      clientX >= dragStartClientX + DATABASE_SUB_ITEM_DRAG_INDENT,
+    );
     const subItemParentRowId = draggedRowId
-      ? getSubItemDropParentRowId(
-          target.index,
-          preferPreviousRowAsParent
-        )
-      : undefined
+      ? getSubItemDropParentRowId(target.index, preferPreviousRowAsParent)
+      : undefined;
 
     return {
       ...target,
       ...(subItemParentRowId !== undefined ? { subItemParentRowId } : {}),
-    }
-  }
+    };
+  };
   const updateRowDropTarget = (nextTarget: TableRowDropTarget | null) => {
-    rowDropTargetRef.current = nextTarget
-    setRowDropTarget((currentTarget) =>
-      retainTableRowDropTarget(currentTarget, nextTarget),
-    );
-  }
+    rowDropTargetRef.current = nextTarget;
+    setRowDropTarget((currentTarget) => retainTableRowDropTarget(currentTarget, nextTarget));
+  };
   const updateGroupRowDropTarget = (nextTarget: GroupRowDropTarget | null) => {
-    groupRowDropTargetRef.current = nextTarget
-    setGroupRowDropTarget((currentTarget) =>
-      retainGroupRowDropTarget(currentTarget, nextTarget),
-    );
-  }
+    groupRowDropTargetRef.current = nextTarget;
+    setGroupRowDropTarget((currentTarget) => retainGroupRowDropTarget(currentTarget, nextTarget));
+  };
   const getGroupRowDropTarget = (clientY: number): GroupRowDropTarget | null => {
-    const wrapperElement = tableWrapRef.current
+    const wrapperElement = tableWrapRef.current;
 
     if (!wrapperElement) {
-      return null
+      return null;
     }
 
     const groupElements = Array.from(
-      wrapperElement.querySelectorAll<HTMLElement>(
-        ".database-table-group[data-database-group-id]"
-      )
-    )
+      wrapperElement.querySelectorAll<HTMLElement>(".database-table-group[data-database-group-id]"),
+    );
     const groupElement =
       groupElements.find((element) => {
-        const rect = element.getBoundingClientRect()
+        const rect = element.getBoundingClientRect();
 
-        return clientY >= rect.top && clientY <= rect.bottom
+        return clientY >= rect.top && clientY <= rect.bottom;
       }) ??
       groupElements.reduce<HTMLElement | null>((closest, element) => {
-        if (!closest) return element
+        if (!closest) return element;
 
-        const rect = element.getBoundingClientRect()
-        const closestRect = closest.getBoundingClientRect()
-        const distance = Math.min(
-          Math.abs(clientY - rect.top),
-          Math.abs(clientY - rect.bottom)
-        )
+        const rect = element.getBoundingClientRect();
+        const closestRect = closest.getBoundingClientRect();
+        const distance = Math.min(Math.abs(clientY - rect.top), Math.abs(clientY - rect.bottom));
         const closestDistance = Math.min(
           Math.abs(clientY - closestRect.top),
-          Math.abs(clientY - closestRect.bottom)
-        )
+          Math.abs(clientY - closestRect.bottom),
+        );
 
-        return distance < closestDistance ? element : closest
-      }, null)
+        return distance < closestDistance ? element : closest;
+      }, null);
 
     if (!groupElement?.dataset.databaseGroupId) {
-      return null
+      return null;
     }
 
     const rowElements = Array.from(
-      groupElement.querySelectorAll<HTMLTableRowElement>(
-        "tbody tr[data-database-row-id]"
-      )
-    )
+      groupElement.querySelectorAll<HTMLTableRowElement>("tbody tr[data-database-row-id]"),
+    );
     const localTargetIndex = rowElements.findIndex((rowElement) => {
-      const rect = rowElement.getBoundingClientRect()
+      const rect = rowElement.getBoundingClientRect();
 
-      return clientY < rect.top + rect.height / 2
-    })
-    const resolvedTargetIndex =
-      localTargetIndex === -1 ? rowElements.length : localTargetIndex
-    const targetRow = rowElements[resolvedTargetIndex]
-    const previousRow = rowElements[resolvedTargetIndex - 1]
-    const groupRect = groupElement.getBoundingClientRect()
-    const layoutRect = getRowLayoutElement()?.getBoundingClientRect()
+      return clientY < rect.top + rect.height / 2;
+    });
+    const resolvedTargetIndex = localTargetIndex === -1 ? rowElements.length : localTargetIndex;
+    const targetRow = rowElements[resolvedTargetIndex];
+    const previousRow = rowElements[resolvedTargetIndex - 1];
+    const groupRect = groupElement.getBoundingClientRect();
+    const layoutRect = getRowLayoutElement()?.getBoundingClientRect();
 
     if (!layoutRect) {
-      return null
+      return null;
     }
 
     const top =
       (targetRow?.getBoundingClientRect().top ??
         previousRow?.getBoundingClientRect().bottom ??
-        groupRect.bottom) - layoutRect.top
+        groupRect.bottom) - layoutRect.top;
 
     return {
       localTargetIndex: resolvedTargetIndex,
       sectionId: groupElement.dataset.databaseGroupId,
       top,
-    }
-  }
+    };
+  };
   const getGroupSectionForRowId = (rowId: string) => {
     if (!isTableGrouped) {
-      return null
+      return null;
     }
 
-    return groupSectionByRowId.get(rowId) ?? null
-  }
+    return groupSectionByRowId.get(rowId) ?? null;
+  };
   const getDraggedRowGroupDropTarget = () => {
-    const activeGroupDropTarget = groupRowDropTargetRef.current
+    const activeGroupDropTarget = groupRowDropTargetRef.current;
 
     if (!draggedRowId || !activeGroupDropTarget || !isTableGrouped) {
-      return null
+      return null;
     }
 
-    const sourceSection = getGroupSectionForRowId(draggedRowId)
+    const sourceSection = getGroupSectionForRowId(draggedRowId);
 
     if (!sourceSection) {
-      return null
+      return null;
     }
 
     const targetSection = groupedSections.find(
-      (section) => section.id === activeGroupDropTarget.sectionId
-    )
+      (section) => section.id === activeGroupDropTarget.sectionId,
+    );
 
     if (!targetSection) {
-      return null
+      return null;
     }
 
     return {
@@ -639,23 +568,21 @@ export function DatabaseTableView() {
       localTargetIndex: activeGroupDropTarget.localTargetIndex,
       section: targetSection,
       sourceSection,
-    }
-  }
+    };
+  };
   const getDraggedRowMove = (): RowMove | null => {
     if (
       !draggedRowId ||
-      (isTableGrouped
-        ? groupRowDropTargetRef.current === null
-        : rowDropTargetRef.current === null)
+      (isTableGrouped ? groupRowDropTargetRef.current === null : rowDropTargetRef.current === null)
     ) {
-      return null
+      return null;
     }
 
     if (isTableGrouped) {
-      const groupTarget = getDraggedRowGroupDropTarget()
+      const groupTarget = getDraggedRowGroupDropTarget();
 
       if (!groupTarget) {
-        return null
+        return null;
       }
 
       if (!groupTarget.isCrossGroup) {
@@ -663,20 +590,20 @@ export function DatabaseTableView() {
           rows,
           groupTarget.section.rows,
           draggedRowId,
-          groupTarget.localTargetIndex
-        )
+          groupTarget.localTargetIndex,
+        );
 
-        return rowIds ? { rowId: draggedRowId, rowIds } : null
+        return rowIds ? { rowId: draggedRowId, rowIds } : null;
       }
 
       if (!groupProperty || !canUpdateKanbanGroupProperty(groupProperty)) {
-        return null
+        return null;
       }
 
-      const draggedRow = rowsById.get(draggedRowId)
+      const draggedRow = rowsById.get(draggedRowId);
 
       if (!draggedRow) {
-        return null
+        return null;
       }
 
       const rowIds =
@@ -684,74 +611,62 @@ export function DatabaseTableView() {
           rows,
           draggedRowId,
           groupTarget.section.rows,
-          groupTarget.localTargetIndex
-        ) ?? rows.map((row) => row.id)
-      const key = `${draggedRow.pageId}:${groupProperty.property.id}`
-      const currentValue = propertyValuesByKey[key] ?? ""
+          groupTarget.localTargetIndex,
+        ) ?? rows.map((row) => row.id);
+      const key = `${draggedRow.pageId}:${groupProperty.property.id}`;
+      const currentValue = propertyValuesByKey[key] ?? "";
       const nextValue = getDatabaseGroupMoveValue({
         currentValue,
         propertyType: groupProperty.property.type,
         sourceGroupValue: groupTarget.sourceSection.groupValue,
         targetGroupValue: groupTarget.section.groupValue,
-      })
+      });
 
       return {
         groupPropertyId: groupProperty.property.id,
-        groupValue: serializePropertyValue(
-          groupProperty.property.type,
-          nextValue
-        ),
+        groupValue: serializePropertyValue(groupProperty.property.type, nextValue),
         rowId: draggedRowId,
         rowIds,
-      }
+      };
     }
 
-    const targetIndex = rowDropTargetRef.current?.index ?? 0
-    const rowIds = getFilteredReorderedRowIds(
-      rows,
-      visibleRows,
-      draggedRowId,
-      targetIndex
-    )
-    const subItemParentRowId =
-      rowDropTargetRef.current?.subItemParentRowId
+    const targetIndex = rowDropTargetRef.current?.index ?? 0;
+    const rowIds = getFilteredReorderedRowIds(rows, visibleRows, draggedRowId, targetIndex);
+    const subItemParentRowId = rowDropTargetRef.current?.subItemParentRowId;
 
     return rowIds || subItemParentRowId !== undefined
       ? {
           rowId: draggedRowId,
           rowIds: rowIds ?? rows.map((row) => row.id),
-          ...(subItemParentRowId !== undefined
-            ? { subItemParentRowId }
-            : {}),
+          ...(subItemParentRowId !== undefined ? { subItemParentRowId } : {}),
         }
-      : null
-  }
+      : null;
+  };
   const applyRowMove = (nextMove: RowMove) => {
     if (!databaseId) {
-      return
+      return;
     }
     const notifyMoveError = (error: unknown) => {
-      toast.error(
-        error instanceof Error && error.message
-          ? error.message
-          : "Couldn't move row",
-      )
-    }
+      toast.error(error instanceof Error && error.message ? error.message : "Couldn't move row");
+    };
 
     if (nextMove.groupPropertyId) {
-      moveRow.mutate({
-        databaseId,
-        ...(hostDatabaseId ? { hostDatabaseId } : {}),
-        groupPropertyId: nextMove.groupPropertyId,
-        groupValue: nextMove.groupValue,
-        ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
-      }, { onError: notifyMoveError })
-      return
+      moveRow.mutate(
+        {
+          databaseId,
+          ...(hostDatabaseId ? { hostDatabaseId } : {}),
+          groupPropertyId: nextMove.groupPropertyId,
+          groupValue: nextMove.groupValue,
+          ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
+        },
+        { onError: notifyMoveError },
+      );
+      return;
     }
 
     if (nextMove.subItemParentRowId !== undefined) {
-      const parentPropertyId = subItemsSettings.parentPropertyId
-      const subItemPropertyId = subItemsSettings.subItemPropertyId
+      const parentPropertyId = subItemsSettings.parentPropertyId;
+      const subItemPropertyId = subItemsSettings.subItemPropertyId;
       const changes =
         parentPropertyId && subItemPropertyId
           ? getDatabaseSubItemRelationChanges({
@@ -762,11 +677,11 @@ export function DatabaseTableView() {
               subItemPropertyId,
               targetParentRowId: nextMove.subItemParentRowId,
             })
-          : []
+          : [];
 
       if (changes === null) {
-        toast.error("A page can't be moved below itself or one of its sub-items")
-        return
+        toast.error("A page can't be moved below itself or one of its sub-items");
+        return;
       }
 
       for (const change of changes) {
@@ -775,78 +690,80 @@ export function DatabaseTableView() {
           change.propertyId,
           "relation",
           change.currentValue,
-          change.nextValue
-        )
+          change.nextValue,
+        );
       }
 
       if (nextMove.subItemParentRowId) {
         setCollapsedSubItemRowIds((current) => {
-          const next = new Set(current)
-          next.delete(nextMove.subItemParentRowId!)
-          return next
-        })
+          const next = new Set(current);
+          next.delete(nextMove.subItemParentRowId!);
+          return next;
+        });
       }
     }
 
     if (nextMove.rowIds.some((rowId, index) => rowId !== rows[index]?.id)) {
-      reorderRows.mutate({
-        databaseId,
-        ...(hostDatabaseId ? { hostDatabaseId } : {}),
-        ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
-      }, { onError: notifyMoveError })
+      reorderRows.mutate(
+        {
+          databaseId,
+          ...(hostDatabaseId ? { hostDatabaseId } : {}),
+          ...getDatabaseRowMoveAnchors(nextMove.rowIds, nextMove.rowId),
+        },
+        { onError: notifyMoveError },
+      );
     }
-  }
+  };
   const confirmSortedRowReorder = () => {
     if (!databaseId || !pendingSortedRowReorder) {
-      setPendingSortedRowReorder(null)
-      return
+      setPendingSortedRowReorder(null);
+      return;
     }
 
-    const nextMove = pendingSortedRowReorder
+    const nextMove = pendingSortedRowReorder;
 
-    setPendingSortedRowReorder(null)
+    setPendingSortedRowReorder(null);
     void saveDatabaseSorts([])
       .then(() => {
-        applyRowMove(nextMove)
+        applyRowMove(nextMove);
       })
       .catch(() => {
-        toast.error("Couldn't clear sort")
-      })
-  }
+        toast.error("Couldn't clear sort");
+      });
+  };
   const clearRowDrag = () => {
-    finishDatabaseRowDrag()
-    rowDragOverlay.clear()
-    setDraggedRowId(null)
-    updateRowDropTarget(null)
-    updateGroupRowDropTarget(null)
-    rowDragStartClientXRef.current = null
-    isExternalRowDragActiveRef.current = false
-    setIsExternalRowDragActive(false)
-  }
-  finishRowDragRef.current = clearRowDrag
-  const rowDropLineTop =
-    (isTableGrouped ? !groupRowDropTarget : rowDropTarget === null)
-      ? null
-      : isTableGrouped
-        ? groupRowDropTarget?.top ?? null
-        : rowDropTarget?.lineTop ?? null
-  const rowDropParentRowId = rowDropTarget?.subItemParentRowId
+    finishDatabaseRowDrag();
+    rowDragOverlay.clear();
+    setDraggedRowId(null);
+    updateRowDropTarget(null);
+    updateGroupRowDropTarget(null);
+    rowDragStartClientXRef.current = null;
+    isExternalRowDragActiveRef.current = false;
+    setIsExternalRowDragActive(false);
+  };
+  finishRowDragRef.current = clearRowDrag;
+  const rowDropLineTop = (isTableGrouped ? !groupRowDropTarget : rowDropTarget === null)
+    ? null
+    : isTableGrouped
+      ? (groupRowDropTarget?.top ?? null)
+      : (rowDropTarget?.lineTop ?? null);
+  const rowDropParentRowId = rowDropTarget?.subItemParentRowId;
   const rowDropLineDepth = rowDropParentRowId
     ? (subItemDepthByRowId[rowDropParentRowId] ?? 0) + 1
-    : 0
+    : 0;
   const conditionalColorsByRowId = useMemo(() => {
     const colorsByRowId = new Map<
       string,
       { propertyColors: Record<string, string>; rowColor?: string }
-    >()
+    >();
 
     if (activeConditionalColors.length === 0) {
-      return colorsByRowId
+      return colorsByRowId;
     }
 
     for (const row of visibleRows) {
-      const propertyColors: Record<string, string> = {}
-      let rowColor: string | undefined
+      const propertyColors: Record<string, string> = {};
+      let rowColor: string | undefined;
 
       for (const setting of activeConditionalColors) {
         if (
@@ -858,161 +775,140 @@ export function DatabaseTableView() {
             propertyValuesByKey,
           })
         ) {
-          continue
+          continue;
         }
 
         if (setting.applyTo === "entire-row") {
-          rowColor ??= setting.color
+          rowColor ??= setting.color;
         } else {
-          propertyColors[setting.filter.propertyId] ??= setting.color
+          propertyColors[setting.filter.propertyId] ??= setting.color;
         }
       }
 
-      colorsByRowId.set(row.id, { propertyColors, rowColor })
+      colorsByRowId.set(row.id, { propertyColors, rowColor });
     }
 
-    return colorsByRowId
-  }, [
-    activeConditionalColors,
-    personOptionsById,
-    properties,
-    propertyValuesByKey,
-    visibleRows,
-  ])
+    return colorsByRowId;
+  }, [activeConditionalColors, personOptionsById, properties, propertyValuesByKey, visibleRows]);
 
   useEffect(() => {
     if (!selectedCellKey) {
-      return
+      return;
     }
 
-    const cellStillExists = visibleRows.some((row) =>
-      selectedCellKey.startsWith(`${row.pageId}:`)
-    )
+    const cellStillExists = visibleRows.some((row) => selectedCellKey.startsWith(`${row.pageId}:`));
 
     if (!cellStillExists) {
-      setSelectedCellKey(null)
+      setSelectedCellKey(null);
     }
-  }, [selectedCellKey, visibleRows])
+  }, [selectedCellKey, visibleRows]);
 
   useEffect(() => {
     const clearSelectionInAnotherTable = (event: PointerEvent) => {
       if (!(event.target instanceof Element)) {
-        return
+        return;
       }
 
-      const targetTable = event.target.closest(".database-table-wrap")
+      const targetTable = event.target.closest(".database-table-wrap");
 
       if (targetTable && targetTable !== tableWrapRef.current) {
-        setSelectedCellKey(null)
+        setSelectedCellKey(null);
       }
-    }
+    };
 
-    document.addEventListener("pointerdown", clearSelectionInAnotherTable, true)
+    document.addEventListener("pointerdown", clearSelectionInAnotherTable, true);
 
-    return () =>
-      document.removeEventListener(
-        "pointerdown",
-        clearSelectionInAnotherTable,
-        true
-      )
-  }, [])
+    return () => document.removeEventListener("pointerdown", clearSelectionInAnotherTable, true);
+  }, []);
 
   useEffect(() => {
     if (!draggedRowId && !isExternalRowDragActive) {
-      return
+      return;
     }
 
-    let dropCleanupTimer: number | null = null
+    let dropCleanupTimer: number | null = null;
     const clearDropVisuals = () => {
-      releaseDatabaseRowDropOwner(rowDropOwner)
-      updateRowDropTarget(null)
-      updateGroupRowDropTarget(null)
+      releaseDatabaseRowDropOwner(rowDropOwner);
+      updateRowDropTarget(null);
+      updateGroupRowDropTarget(null);
 
       if (!draggedRowId) {
-        isExternalRowDragActiveRef.current = false
-        setIsExternalRowDragActive(false)
+        isExternalRowDragActiveRef.current = false;
+        setIsExternalRowDragActive(false);
       }
-    }
+    };
     const clearWhenPointerLeavesTable = (event: DragEvent) => {
-      const tableElement = tableWrapRef.current
-      const pointerElement = document.elementFromPoint(
-        event.clientX,
-        event.clientY
-      )
+      const tableElement = tableWrapRef.current;
+      const pointerElement = document.elementFromPoint(event.clientX, event.clientY);
 
-      if (
-        tableElement &&
-        pointerElement &&
-        tableElement.contains(pointerElement)
-      ) {
-        return
+      if (tableElement && pointerElement && tableElement.contains(pointerElement)) {
+        return;
       }
 
-      clearDropVisuals()
-    }
+      clearDropVisuals();
+    };
     const clearAfterDrop = () => {
       if (dropCleanupTimer !== null) {
-        window.clearTimeout(dropCleanupTimer)
+        window.clearTimeout(dropCleanupTimer);
       }
 
-      dropCleanupTimer = window.setTimeout(clearDropVisuals, 0)
-    }
+      dropCleanupTimer = window.setTimeout(clearDropVisuals, 0);
+    };
 
-    window.addEventListener("dragover", clearWhenPointerLeavesTable, true)
-    window.addEventListener("dragend", clearDropVisuals, true)
-    window.addEventListener("drop", clearAfterDrop, true)
+    window.addEventListener("dragover", clearWhenPointerLeavesTable, true);
+    window.addEventListener("dragend", clearDropVisuals, true);
+    window.addEventListener("drop", clearAfterDrop, true);
 
     return () => {
-      window.removeEventListener("dragover", clearWhenPointerLeavesTable, true)
-      window.removeEventListener("dragend", clearDropVisuals, true)
-      window.removeEventListener("drop", clearAfterDrop, true)
+      window.removeEventListener("dragover", clearWhenPointerLeavesTable, true);
+      window.removeEventListener("dragend", clearDropVisuals, true);
+      window.removeEventListener("drop", clearAfterDrop, true);
 
       if (dropCleanupTimer !== null) {
-        window.clearTimeout(dropCleanupTimer)
+        window.clearTimeout(dropCleanupTimer);
       }
-    }
-  }, [draggedRowId, isExternalRowDragActive, rowDropOwner])
+    };
+  }, [draggedRowId, isExternalRowDragActive, rowDropOwner]);
 
   useEffect(
     () =>
       subscribeDatabaseRowDropOwner((owner) => {
         if (owner === rowDropOwner) {
-          return
+          return;
         }
 
         // Exactly one table owns row-drop feedback. When another database
         // claims the drag, synchronously release this table's previous line.
-        updateRowDropTarget(null)
-        updateGroupRowDropTarget(null)
+        updateRowDropTarget(null);
+        updateGroupRowDropTarget(null);
 
         if (!draggedRowId) {
-          isExternalRowDragActiveRef.current = false
-          setIsExternalRowDragActive(false)
+          isExternalRowDragActiveRef.current = false;
+          setIsExternalRowDragActive(false);
         }
       }),
-    [draggedRowId, rowDropOwner]
-  )
+    [draggedRowId, rowDropOwner],
+  );
 
-  const isCellFillDragging = cellFillDrag !== null
+  const isCellFillDragging = cellFillDrag !== null;
 
   useEffect(() => {
     if (!isCellFillDragging) {
-      return
+      return;
     }
 
     const clearCellFillDrag = () => {
-      cellFillDragRef.current = null
-      setCellFillDrag(null)
-      document.body.classList.remove("database-cell-fill-cursor")
-    }
+      cellFillDragRef.current = null;
+      setCellFillDrag(null);
+      document.body.classList.remove("database-cell-fill-cursor");
+    };
     const getTargetRowId = (event: globalThis.PointerEvent) =>
       document
         .elementFromPoint(event.clientX, event.clientY)
-        ?.closest<HTMLTableRowElement>("tr[data-database-row-id]")
-        ?.dataset.databaseRowId ?? null
+        ?.closest<HTMLTableRowElement>("tr[data-database-row-id]")?.dataset.databaseRowId ?? null;
     const handlePointerMove = (event: globalThis.PointerEvent) => {
-      const targetRowId = getTargetRowId(event)
-      const currentDrag = cellFillDragRef.current
+      const targetRowId = getTargetRowId(event);
+      const currentDrag = cellFillDragRef.current;
 
       if (
         !targetRowId ||
@@ -1020,109 +916,101 @@ export function DatabaseTableView() {
         !visibleRowIndexById.has(targetRowId) ||
         currentDrag.targetRowId === targetRowId
       ) {
-        return
+        return;
       }
 
-      event.preventDefault()
-      const nextDrag = { ...currentDrag, targetRowId }
+      event.preventDefault();
+      const nextDrag = { ...currentDrag, targetRowId };
 
-      cellFillDragRef.current = nextDrag
-      setCellFillDrag(nextDrag)
-    }
+      cellFillDragRef.current = nextDrag;
+      setCellFillDrag(nextDrag);
+    };
     const handlePointerUp = (event: globalThis.PointerEvent) => {
-      const currentDrag = cellFillDragRef.current
-      const pointerTargetRowId = getTargetRowId(event)
+      const currentDrag = cellFillDragRef.current;
+      const pointerTargetRowId = getTargetRowId(event);
 
       if (!currentDrag) {
-        clearCellFillDrag()
-        return
+        clearCellFillDrag();
+        return;
       }
 
       const targetRowId =
         pointerTargetRowId && visibleRowIndexById.has(pointerTargetRowId)
           ? pointerTargetRowId
-          : currentDrag.targetRowId
+          : currentDrag.targetRowId;
       const targetRowIds = getDatabaseCellFillRowIds(
         visibleRowIds,
         currentDrag.sourceRowId,
-        targetRowId
-      )
-      const historyChanges: DatabaseCellFillHistoryChange[] = []
+        targetRowId,
+      );
+      const historyChanges: DatabaseCellFillHistoryChange[] = [];
 
       undoHistory.runWithoutRecording(() => {
         for (const targetRowId of targetRowIds) {
-          const targetRow = rowsById.get(targetRowId)
+          const targetRow = rowsById.get(targetRowId);
 
           if (!targetRow) {
-            continue
+            continue;
           }
 
           const currentValue =
-            propertyValuesByKey[
-              `${targetRow.pageId}:${currentDrag.propertyId}`
-            ] ?? ""
+            propertyValuesByKey[`${targetRow.pageId}:${currentDrag.propertyId}`] ?? "";
           const nextValue = Array.isArray(currentDrag.sourceValue)
             ? [...currentDrag.sourceValue]
-            : currentDrag.sourceValue
+            : currentDrag.sourceValue;
 
-          if (
-            areSerializedPropertyValuesEqual(
-              currentDrag.propertyType,
-              currentValue,
-              nextValue
-            )
-          ) {
-            continue
+          if (areSerializedPropertyValuesEqual(currentDrag.propertyType, currentValue, nextValue)) {
+            continue;
           }
 
           historyChanges.push({
             nextValue: Array.isArray(nextValue) ? [...nextValue] : nextValue,
             pageId: targetRow.pageId,
-            previousValue: Array.isArray(currentValue)
-              ? [...currentValue]
-              : currentValue,
+            previousValue: Array.isArray(currentValue) ? [...currentValue] : currentValue,
             propertyId: currentDrag.propertyId,
             propertyType: currentDrag.propertyType,
             rowId: targetRow.id,
-          })
+          });
 
           savePropertyValue(
             targetRow.id,
             currentDrag.propertyId,
             currentDrag.propertyType,
             currentValue,
-            nextValue
-          )
+            nextValue,
+          );
         }
-      })
+      });
 
       if (historyChanges.length > 0) {
-        undoHistory.pushAction(createCellEditHistoryAction({
-          label: "Fill database cells",
-          changes: historyChanges,
-          readValues: () => propertyValuesByKeyRef.current,
-          savePropertyValue,
-          runWithoutRecording: undoHistory.runWithoutRecording,
-        }))
+        undoHistory.pushAction(
+          createCellEditHistoryAction({
+            label: "Fill database cells",
+            changes: historyChanges,
+            readValues: () => propertyValuesByKeyRef.current,
+            savePropertyValue,
+            runWithoutRecording: undoHistory.runWithoutRecording,
+          }),
+        );
       }
 
-      clearCellFillDrag()
-    }
-    const handlePointerCancel = () => clearCellFillDrag()
+      clearCellFillDrag();
+    };
+    const handlePointerCancel = () => clearCellFillDrag();
 
-    document.body.classList.add("database-cell-fill-cursor")
+    document.body.classList.add("database-cell-fill-cursor");
     window.addEventListener("pointermove", handlePointerMove, {
       passive: false,
-    })
-    window.addEventListener("pointerup", handlePointerUp)
-    window.addEventListener("pointercancel", handlePointerCancel)
+    });
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerCancel);
 
     return () => {
-      window.removeEventListener("pointermove", handlePointerMove)
-      window.removeEventListener("pointerup", handlePointerUp)
-      window.removeEventListener("pointercancel", handlePointerCancel)
-      document.body.classList.remove("database-cell-fill-cursor")
-    }
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerCancel);
+      document.body.classList.remove("database-cell-fill-cursor");
+    };
   }, [
     isCellFillDragging,
     propertyValuesByKey,
@@ -1131,10 +1019,10 @@ export function DatabaseTableView() {
     undoHistory,
     visibleRowIds,
     visibleRowIndexById,
-  ])
+  ]);
 
   useLayoutEffect(() => {
-    measureRows()
+    measureRows();
   }, [
     collapsedGroups,
     measureRows,
@@ -1142,18 +1030,18 @@ export function DatabaseTableView() {
     isExternalRowDragActive,
     draggedRowId,
     visibleRows,
-  ])
+  ]);
 
   const toggleGroupCollapsed = (groupId: string) => {
     setCollapsedGroups((current) => ({
       ...current,
       [groupId]: !current[groupId],
-    }))
-  }
+    }));
+  };
 
   const togglePropertyGrouping = (propertyId: string, isGrouped: boolean) => {
-    setViewGroupProperty(isGrouped ? null : propertyId)
-  }
+    setViewGroupProperty(isGrouped ? null : propertyId);
+  };
 
   const startCellFill = useCallback(
     (
@@ -1161,45 +1049,38 @@ export function DatabaseTableView() {
       propertyId: string,
       propertyType: string,
       sourceValue: string | string[],
-      event: ReactPointerEvent<HTMLButtonElement>
+      event: ReactPointerEvent<HTMLButtonElement>,
     ) => {
-      if (event.button !== 0) return
+      if (event.button !== 0) return;
 
-      event.preventDefault()
-      event.stopPropagation()
+      event.preventDefault();
+      event.stopPropagation();
 
       const nextDrag = {
         propertyId,
         propertyType,
         sourceRowId: row.id,
-        sourceValue: Array.isArray(sourceValue)
-          ? [...sourceValue]
-          : sourceValue,
+        sourceValue: Array.isArray(sourceValue) ? [...sourceValue] : sourceValue,
         targetRowId: row.id,
-      }
+      };
 
-      cellFillDragRef.current = nextDrag
-      setCellFillDrag(nextDrag)
+      cellFillDragRef.current = nextDrag;
+      setCellFillDrag(nextDrag);
     },
-    []
-  )
+    [],
+  );
 
-  const startRowDrag = (
-    row: TableRow,
-    event: ReactDragEvent<HTMLButtonElement>
-  ) => {
+  const startRowDrag = (row: TableRow, event: ReactDragEvent<HTMLButtonElement>) => {
     if (!canReorderRows) {
-      return
+      return;
     }
 
-    const measuredLayout = measureRows()
-    const rowElement = tableWrapRef.current?.querySelector(
-      `tr[data-database-row-id="${row.id}"]`
-    )
-    const rowRect = rowElement?.getBoundingClientRect()
+    const measuredLayout = measureRows();
+    const rowElement = tableWrapRef.current?.querySelector(`tr[data-database-row-id="${row.id}"]`);
+    const rowRect = rowElement?.getBoundingClientRect();
     const tableRect = tableWrapRef.current
       ?.querySelector(".database-table")
-      ?.getBoundingClientRect()
+      ?.getBoundingClientRect();
 
     if (rowRect && tableRect) {
       const nextOverlay = {
@@ -1210,60 +1091,50 @@ export function DatabaseTableView() {
         title: getRowTitle(row),
         top: rowRect.top,
         width: tableRect.width,
-      }
+      };
 
-      rowDragOverlay.start(nextOverlay)
+      rowDragOverlay.start(nextOverlay);
     }
 
-    startDatabaseRowDrag()
-    hideNativeDatabaseRowDragPreview(event.dataTransfer)
-    rowDragStartClientXRef.current = event.clientX
-    setDraggedRowId(row.id)
-    claimDatabaseRowDropOwner(rowDropOwner)
-    const sourceRowIndex = visibleRowIndexById.get(row.id) ?? 0
+    startDatabaseRowDrag();
+    hideNativeDatabaseRowDragPreview(event.dataTransfer);
+    rowDragStartClientXRef.current = event.clientX;
+    setDraggedRowId(row.id);
+    claimDatabaseRowDropOwner(rowDropOwner);
+    const sourceRowIndex = visibleRowIndexById.get(row.id) ?? 0;
     updateRowDropTarget({
       index: sourceRowIndex,
       lineTop: measuredLayout.dropTops[sourceRowIndex] ?? 0,
-    })
-    const sourceSection = groupSectionByRowId.get(row.id)
-    const sourceLocalIndex = sourceSection?.rows.findIndex(
-      (sourceRow) => sourceRow.id === row.id
-    )
+    });
+    const sourceSection = groupSectionByRowId.get(row.id);
+    const sourceLocalIndex = sourceSection?.rows.findIndex((sourceRow) => sourceRow.id === row.id);
 
     updateGroupRowDropTarget(
       sourceSection && sourceLocalIndex !== undefined
         ? {
             localTargetIndex: sourceLocalIndex,
             sectionId: sourceSection.id,
-            top:
-              measuredLayout.dropTops[
-                sourceRowIndex
-              ] ?? 0,
+            top: measuredLayout.dropTops[sourceRowIndex] ?? 0,
           }
-        : null
-    )
+        : null,
+    );
     setDatabasePageDragPayload(event.dataTransfer, {
       databaseId: loadedDatabaseId,
       pageId: row.pageId,
       rowId: row.id,
       title: getRowTitle(row),
-    })
-  }
+    });
+  };
 
   const renderInsertPropertyHeader = (insertKey: string, position: number) => (
-    <th
-      className="database-add-property-cell database-insert-property-cell"
-      key={insertKey}
-    >
+    <th className="database-add-property-cell database-insert-property-cell" key={insertKey}>
       <AddDatabasePropertyMenu
         disabled={false}
         isPending={false}
-        onAdd={(type, label) =>
-          addInsertedDatabaseProperty(type, label, position, insertKey)
-        }
+        onAdd={(type, label) => addInsertedDatabaseProperty(type, label, position, insertKey)}
         onOpenChange={(open) => {
           if (!open) {
-            clearPendingInsertProperty(insertKey)
+            clearPendingInsertProperty(insertKey);
           }
         }}
         open={pendingInsertPropertyKey === insertKey}
@@ -1275,7 +1146,7 @@ export function DatabaseTableView() {
         onPointerDown={(event) => startColumnResize(insertKey, event)}
       />
     </th>
-  )
+  );
 
   const renderInsertPropertyCell = useCallback(
     (insertKey: string) => (
@@ -1285,25 +1156,18 @@ export function DatabaseTableView() {
         key={insertKey}
       />
     ),
-    []
-  )
+    [],
+  );
   const renderTableHeader = (headerScope = "default") => (
     <thead>
-      <Reorder.Group
-        as="tr"
-        axis="x"
-        values={headerColumnIds}
-        onReorder={queueColumnHeaderOrder}
-      >
+      <Reorder.Group as="tr" axis="x" values={headerColumnIds} onReorder={queueColumnHeaderOrder}>
         {headerColumnIds.map((columnId) => {
-          const leftInsertKey = getInsertPropertyColumnKey(columnId, "left")
-          const rightInsertKey = getInsertPropertyColumnKey(columnId, "right")
-          const showLeftInsert = pendingInsertPropertyKey === leftInsertKey
-          const showRightInsert = pendingInsertPropertyKey === rightInsertKey
-          const property = propertiesById.get(columnId)
-          const dragTitle = canReorderColumns
-            ? "Drag to reorder column"
-            : undefined;
+          const leftInsertKey = getInsertPropertyColumnKey(columnId, "left");
+          const rightInsertKey = getInsertPropertyColumnKey(columnId, "right");
+          const showLeftInsert = pendingInsertPropertyKey === leftInsertKey;
+          const showRightInsert = pendingInsertPropertyKey === rightInsertKey;
+          const property = propertiesById.get(columnId);
+          const dragTitle = canReorderColumns ? "Drag to reorder column" : undefined;
           const insertPositions = propertyInsertPositions(
             pendingInsertProperty?.position,
             property?.position,
@@ -1316,35 +1180,21 @@ export function DatabaseTableView() {
                 config={databaseConfig}
                 databaseId={loadedDatabaseId}
                 isGrouped={groupProperty?.id === "name"}
-                onOpenChange={(open) =>
-                  handleEditingPropertyOpenChange(headerScope, "name", open)
-                }
-                onInsertProperty={(side) =>
-                  openInsertPropertyMenu("name", 0, side)
-                }
-                onToggleGroup={() =>
-                  togglePropertyGrouping("name", groupProperty?.id === "name")
-                }
-                open={
-                  editingPropertyKey ===
-                  getHeaderEditingKey(headerScope, "name")
-                }
+                onOpenChange={(open) => handleEditingPropertyOpenChange(headerScope, "name", open)}
+                onInsertProperty={(side) => openInsertPropertyMenu("name", 0, side)}
+                onToggleGroup={() => togglePropertyGrouping("name", groupProperty?.id === "name")}
+                open={editingPropertyKey === getHeaderEditingKey(headerScope, "name")}
                 schemaActionsEnabled={canEditStructure}
                 sortDirection={
-                  activeDatabaseSorts.find((sort) => sort.column === "name")
-                    ?.direction
+                  activeDatabaseSorts.find((sort) => sort.column === "name")?.direction
                 }
                 onSort={(direction) =>
                   void saveDatabaseSorts([
-                    ...activeDatabaseSorts.filter(
-                      (sort) => sort.column !== "name",
-                    ),
+                    ...activeDatabaseSorts.filter((sort) => sort.column !== "name"),
                     { column: "name", direction },
                   ])
                 }
-                onUpdateConfig={(config) =>
-                  void updateNameColumnConfig?.(config)
-                }
+                onUpdateConfig={(config) => void updateNameColumnConfig?.(config)}
                 triggerDragProps={{
                   onClick: (event) => {
                     if (suppressPropertyHeaderClickRef.current) {
@@ -1376,15 +1226,9 @@ export function DatabaseTableView() {
             startHeaderDrag: (event: ReactPointerEvent<HTMLElement>) => void,
           ) {
             if (!property) return null;
-            const propertyWrapContent = getPropertyWrapContent(
-              property.property.config,
-            );
-            const PropertyIcon = getDatabasePropertyType(
-              property.property.type,
-            ).icon;
-            const customPropertyIcon = getDatabasePropertyIcon(
-              property.property.config,
-            );
+            const propertyWrapContent = getPropertyWrapContent(property.property.config);
+            const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
+            const customPropertyIcon = getDatabasePropertyIcon(property.property.config);
             return canUseHeaderMenus ? (
               <DatabasePropertyMenu
                 config={property.property.config}
@@ -1394,11 +1238,7 @@ export function DatabaseTableView() {
                 isGrouped={groupProperty?.property.id === property.property.id}
                 name={property.property.name}
                 onOpenChange={(open) =>
-                  handleEditingPropertyOpenChange(
-                    headerScope,
-                    property.id,
-                    open,
-                  )
+                  handleEditingPropertyOpenChange(headerScope, property.id, open)
                 }
                 onInsertProperty={(side) =>
                   openInsertPropertyMenu(property.id, property.position, side)
@@ -1411,30 +1251,21 @@ export function DatabaseTableView() {
                     groupProperty?.property.id === property.property.id,
                   )
                 }
-                open={
-                  editingPropertyKey ===
-                  getHeaderEditingKey(headerScope, property.id)
-                }
+                open={editingPropertyKey === getHeaderEditingKey(headerScope, property.id)}
                 schemaActionsEnabled={canEditStructure}
                 sortDirection={
-                  activeDatabaseSorts.find(
-                    (sort) => sort.column === property.id,
-                  )?.direction
+                  activeDatabaseSorts.find((sort) => sort.column === property.id)?.direction
                 }
                 sourceDatabaseId={loadedDatabaseId}
                 sourceDatabaseName={databaseName}
                 sourcePropertyId={property.property.id}
                 onSort={(direction) =>
                   void saveDatabaseSorts([
-                    ...activeDatabaseSorts.filter(
-                      (sort) => sort.column !== property.id,
-                    ),
+                    ...activeDatabaseSorts.filter((sort) => sort.column !== property.id),
                     { column: property.id, direction },
                   ])
                 }
-                onUpdateConfig={(config) =>
-                  void updateDatabasePropertyConfig(property.id, config)
-                }
+                onUpdateConfig={(config) => void updateDatabasePropertyConfig(property.id, config)}
                 triggerDragProps={{
                   onClick: (event) => {
                     if (suppressPropertyHeaderClickRef.current) {
@@ -1444,11 +1275,7 @@ export function DatabaseTableView() {
                       return;
                     }
 
-                    handleEditingPropertyOpenChange(
-                      headerScope,
-                      property.id,
-                      true,
-                    );
+                    handleEditingPropertyOpenChange(headerScope, property.id, true);
                   },
                   onPointerDownCapture: startHeaderDrag,
                   title: dragTitle,
@@ -1478,10 +1305,7 @@ export function DatabaseTableView() {
           return (
             <Fragment key={columnId}>
               {showLeftInsert
-                ? renderInsertPropertyHeader(
-                    leftInsertKey,
-                    insertPositions.left,
-                  )
+                ? renderInsertPropertyHeader(leftInsertKey, insertPositions.left)
                 : null}
               <DatabaseHeaderReorderItem
                 canReorder={canReorderColumns}
@@ -1504,18 +1328,13 @@ export function DatabaseTableView() {
                     <span
                       aria-hidden="true"
                       className="database-column-resize-handle"
-                      onPointerDown={(event) =>
-                        startColumnResize(columnId, event)
-                      }
+                      onPointerDown={(event) => startColumnResize(columnId, event)}
                     />
                   </>
                 )}
               </DatabaseHeaderReorderItem>
               {showRightInsert
-                ? renderInsertPropertyHeader(
-                    rightInsertKey,
-                    insertPositions.right,
-                  )
+                ? renderInsertPropertyHeader(rightInsertKey, insertPositions.right)
                 : null}
             </Fragment>
           );
@@ -1530,306 +1349,258 @@ export function DatabaseTableView() {
             <span
               aria-hidden="true"
               className="database-column-resize-handle"
-              onPointerDown={(event) =>
-                startColumnResize(ADD_PROPERTY_COLUMN_ID, event)
-              }
+              onPointerDown={(event) => startColumnResize(ADD_PROPERTY_COLUMN_ID, event)}
             />
           </th>
         ) : null}
       </Reorder.Group>
     </thead>
-  )
+  );
 
   const renderTableRow = useCallback(
-    (
-      row: TableRow,
-      index: number,
-      measureElement: (node: Element | null) => void
-    ) => {
-        const conditionalColors = conditionalColorsByRowId.get(row.id) ?? {
-          propertyColors: {},
-          rowColor: undefined,
-        }
-        const nameCellKey = `${row.pageId}:name`
+    (row: TableRow, index: number, measureElement: (node: Element | null) => void) => {
+      const conditionalColors = conditionalColorsByRowId.get(row.id) ?? {
+        propertyColors: {},
+        rowColor: undefined,
+      };
+      const nameCellKey = `${row.pageId}:name`;
 
-        const childRowIds = subItemChildRowIdsByParentId[row.id] ?? []
-        const hasSubItems = childRowIds.length > 0
-        const subItemDepth = isSubItemsNested
-          ? subItemDepthByRowId[row.id] ?? 0
-          : 0
-        const subItemsExpanded = hasSubItems
-          ? !collapsedSubItemRowIds.has(row.id)
-          : expandedEmptySubItemRowIds.has(row.id)
-        const showSubItemToggle =
-          isSubItemsNested && (hasSubItems || editable)
-        const toggleSubItems = () => {
-          if (hasSubItems) {
-            setCollapsedSubItemRowIds((current) => {
-              const next = new Set(current)
+      const childRowIds = subItemChildRowIdsByParentId[row.id] ?? [];
+      const hasSubItems = childRowIds.length > 0;
+      const subItemDepth = isSubItemsNested ? (subItemDepthByRowId[row.id] ?? 0) : 0;
+      const subItemsExpanded = hasSubItems
+        ? !collapsedSubItemRowIds.has(row.id)
+        : expandedEmptySubItemRowIds.has(row.id);
+      const showSubItemToggle = isSubItemsNested && (hasSubItems || editable);
+      const toggleSubItems = () => {
+        if (hasSubItems) {
+          setCollapsedSubItemRowIds((current) => {
+            const next = new Set(current);
 
-              if (next.has(row.id)) next.delete(row.id)
-              else next.add(row.id)
+            if (next.has(row.id)) next.delete(row.id);
+            else next.add(row.id);
 
-              return next
-            })
-            return
-          }
-
-          setExpandedEmptySubItemRowIds((current) => {
-            const next = new Set(current)
-
-            if (next.has(row.id)) next.delete(row.id)
-            else next.add(row.id)
-
-            return next
-          })
+            return next;
+          });
+          return;
         }
 
-        const tableRow = (
-          <tr
-            className={getConditionalColorClassName(conditionalColors.rowColor)}
-            data-index={index}
-            data-database-row-id={row.id}
-            data-row-selected={
-              selectedRowIds.has(row.id) ? "true" : undefined
-            }
-            data-side-pane-open={
-              sidePane?.sidePanePageId === row.pageId ? "true" : undefined
-            }
-            key={row.id}
-            onMouseEnter={
-              editable
-                ? () => {
-                    setHoveredRowId(row.id)
-                  }
-                : undefined
-            }
-            ref={measureElement}
-          >
-            {renderedColumnIds.map((columnId) => {
-              const leftInsertKey = getInsertPropertyColumnKey(columnId, "left")
-              const rightInsertKey = getInsertPropertyColumnKey(
-                columnId,
-                "right"
-              )
-              const showLeftInsert = pendingInsertPropertyKey === leftInsertKey
-              const showRightInsert =
-                pendingInsertPropertyKey === rightInsertKey
-              const property = propertiesById.get(columnId)
+        setExpandedEmptySubItemRowIds((current) => {
+          const next = new Set(current);
 
-              function renderPropertyCell() {
-                if (!property) {
-                  return null;
+          if (next.has(row.id)) next.delete(row.id);
+          else next.add(row.id);
+
+          return next;
+        });
+      };
+
+      const tableRow = (
+        <tr
+          className={getConditionalColorClassName(conditionalColors.rowColor)}
+          data-index={index}
+          data-database-row-id={row.id}
+          data-row-selected={selectedRowIds.has(row.id) ? "true" : undefined}
+          data-side-pane-open={sidePane?.sidePanePageId === row.pageId ? "true" : undefined}
+          key={row.id}
+          onMouseEnter={
+            editable
+              ? () => {
+                  setHoveredRowId(row.id);
                 }
+              : undefined
+          }
+          ref={measureElement}
+        >
+          {renderedColumnIds.map((columnId) => {
+            const leftInsertKey = getInsertPropertyColumnKey(columnId, "left");
+            const rightInsertKey = getInsertPropertyColumnKey(columnId, "right");
+            const showLeftInsert = pendingInsertPropertyKey === leftInsertKey;
+            const showRightInsert = pendingInsertPropertyKey === rightInsertKey;
+            const property = propertiesById.get(columnId);
 
-                const pageProperty = property.property;
-                const key = `${row.pageId}:${pageProperty.id}`;
-                const persistedValue = propertyValuesByKey[key] ?? "";
-                const wrapContent = getPropertyWrapContent(pageProperty.config);
-
-                return (
-                  <Fragment key={property.id}>
-                    {showLeftInsert
-                      ? renderInsertPropertyCell(leftInsertKey)
-                      : null}
-                    <DatabaseActiveTableCell
-                      cellKey={key}
-                      isFillTarget={
-                        cellFillDrag?.propertyId === pageProperty.id &&
-                        fillTargetRowIds.has(row.id)
-                      }
-                      isSelected={selectedCellKey === key}
-                      onFillStart={
-                        editable &&
-                        isDatabasePropertyFillable(pageProperty.type)
-                          ? (event) =>
-                              startCellFill(
-                                row,
-                                pageProperty.id,
-                                pageProperty.type,
-                                persistedValue,
-                                event,
-                              )
-                          : undefined
-                      }
-                      onSelect={() => setSelectedCellKey(key)}
-                      presenceKey={`${row.id}:${pageProperty.id}`}
-                      className={cn(
-                        "database-value-cell",
-                        getConditionalColorClassName(
-                          conditionalColors.propertyColors[property.id],
-                        ),
-                      )}
-                      wrapContent={wrapContent}
-                    >
-                      {() => (
-                        <DatabaseCellContent wrapContent={wrapContent}>
-                          <DatabasePropertyValue
-                            editable={editable}
-                            properties={properties}
-                            propertyValuesByKey={propertyValuesByKey}
-                            onPropertyConfigChange={(
-                              databasePropertyId,
-                              config,
-                            ) =>
-                              updateDatabasePropertyConfig(
-                                databasePropertyId,
-                                config,
-                              )
-                            }
-                            onSaveValue={savePropertyValue}
-                            persistedValue={persistedValue}
-                            personOptions={personOptions}
-                            property={property}
-                            row={row}
-                            titlePropertyLabel={nameColumnLabel}
-                            wrapContent={wrapContent}
-                          />
-                        </DatabaseCellContent>
-                      )}
-                    </DatabaseActiveTableCell>
-                    {showRightInsert
-                      ? renderInsertPropertyCell(rightInsertKey)
-                      : null}
-                  </Fragment>
-                );
+            function renderPropertyCell() {
+              if (!property) {
+                return null;
               }
 
-              if (columnId === DATABASE_NAME_COLUMN_ID) {
-                return (
-                  <Fragment key={columnId}>
-                    {showLeftInsert
-                      ? renderInsertPropertyCell(leftInsertKey)
-                      : null}
-                    <DatabaseActiveTableCell
-                      cellKey={nameCellKey}
-                      isSelected={selectedCellKey === nameCellKey}
-                      onSelect={() => setSelectedCellKey(nameCellKey)}
-                      presenceKey={`${row.id}:name`}
-                      selectOnPointerDown
-                      className={cn(
-                        "database-page-cell",
-                        getConditionalColorClassName(
-                          conditionalColors.propertyColors.name
-                        )
-                      )}
-                      wrapContent={nameColumnWrapContent}
-                    >
-                      {(setActive) => (
-                        <div
-                          className={cn(
-                            "database-sub-item-name",
-                            showSubItemToggle &&
-                              "database-sub-item-name-has-toggle"
-                          )}
-                          data-sub-item-depth={subItemDepth}
-                          style={
-                            isSubItemsNested
-                              ? ({
-                                  "--database-sub-item-depth": subItemDepth,
-                                } as CSSProperties)
-                              : undefined
-                          }
-                        >
-                          {showSubItemToggle ? (
-                            <button
-                              aria-expanded={subItemsExpanded}
-                              aria-label={`${subItemsExpanded ? "Collapse" : "Expand"} sub-items for ${getRowTitle(row)}`}
-                              className="database-sub-item-toggle"
-                              onClick={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                                toggleSubItems()
-                              }}
-                              onPointerDown={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                              }}
-                              type="button"
-                            >
-                              {subItemsExpanded ? (
-                                <ChevronDown weight="fill" />
-                              ) : (
-                                <ChevronRight weight="fill" />
-                              )}
-                            </button>
-                          ) : null}
-                          <DatabaseCellContent
-                            wrapContent={nameColumnWrapContent}
-                          >
-                            <DatabasePageLink
-                              editable={editable}
-                              onActiveChange={setActive}
-                              onOpen={onOpenPage}
-                              pageId={row.pageId}
-                              pageSummary={row.page}
-                              showPageIcon={nameColumnShowPageIcon}
-                            />
-                          </DatabaseCellContent>
-                        </div>
-                      )}
-                    </DatabaseActiveTableCell>
-                    {showRightInsert
-                      ? renderInsertPropertyCell(rightInsertKey)
-                      : null}
-                  </Fragment>
-                )
-              }
+              const pageProperty = property.property;
+              const key = `${row.pageId}:${pageProperty.id}`;
+              const persistedValue = propertyValuesByKey[key] ?? "";
+              const wrapContent = getPropertyWrapContent(pageProperty.config);
 
-              return renderPropertyCell();
-            })}
-            {editable ? <td /> : null}
-          </tr>
-        )
-
-        const subItemCreateRowIds =
-          subItemCreateRowIdsByAfterRowId[row.id] ?? []
-
-        if (!editable || subItemCreateRowIds.length === 0) {
-          return tableRow
-        }
-
-        return (
-          <Fragment key={row.id}>
-            {tableRow}
-            {subItemCreateRowIds.map((parentRowId) => (
-              <tr
-                className="database-sub-item-create-row"
-                key={`create-sub-item:${parentRowId}`}
-              >
-                <td colSpan={columnKeys.length}>
-                  <button
-                    className="database-sub-item-create"
-                    disabled={
-                      !databaseId ||
-                      !subItemsSettings.parentPropertyId ||
-                      !subItemsSettings.subItemPropertyId
+              return (
+                <Fragment key={property.id}>
+                  {showLeftInsert ? renderInsertPropertyCell(leftInsertKey) : null}
+                  <DatabaseActiveTableCell
+                    cellKey={key}
+                    isFillTarget={
+                      cellFillDrag?.propertyId === pageProperty.id && fillTargetRowIds.has(row.id)
                     }
-                    onClick={() =>
-                      addDatabaseRow(undefined, undefined, parentRowId)
-                    }
-                    title={
-                      !subItemsSettings.parentPropertyId ||
-                      !subItemsSettings.subItemPropertyId
-                        ? "Setting up sub-items"
+                    isSelected={selectedCellKey === key}
+                    onFillStart={
+                      editable && isDatabasePropertyFillable(pageProperty.type)
+                        ? (event) =>
+                            startCellFill(
+                              row,
+                              pageProperty.id,
+                              pageProperty.type,
+                              persistedValue,
+                              event,
+                            )
                         : undefined
                     }
-                    style={
-                      {
-                        "--database-sub-item-depth":
-                          (subItemDepthByRowId[parentRowId] ?? 0) + 1,
-                      } as CSSProperties
-                    }
-                    type="button"
+                    onSelect={() => setSelectedCellKey(key)}
+                    presenceKey={`${row.id}:${pageProperty.id}`}
+                    className={cn(
+                      "database-value-cell",
+                      getConditionalColorClassName(conditionalColors.propertyColors[property.id]),
+                    )}
+                    wrapContent={wrapContent}
                   >
-                    <Plus />
-                    <span>New sub-item</span>
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </Fragment>
-        )
+                    {() => (
+                      <DatabaseCellContent wrapContent={wrapContent}>
+                        <DatabasePropertyValue
+                          editable={editable}
+                          properties={properties}
+                          propertyValuesByKey={propertyValuesByKey}
+                          onPropertyConfigChange={(databasePropertyId, config) =>
+                            updateDatabasePropertyConfig(databasePropertyId, config)
+                          }
+                          onSaveValue={savePropertyValue}
+                          persistedValue={persistedValue}
+                          personOptions={personOptions}
+                          property={property}
+                          row={row}
+                          titlePropertyLabel={nameColumnLabel}
+                          wrapContent={wrapContent}
+                        />
+                      </DatabaseCellContent>
+                    )}
+                  </DatabaseActiveTableCell>
+                  {showRightInsert ? renderInsertPropertyCell(rightInsertKey) : null}
+                </Fragment>
+              );
+            }
+
+            if (columnId === DATABASE_NAME_COLUMN_ID) {
+              return (
+                <Fragment key={columnId}>
+                  {showLeftInsert ? renderInsertPropertyCell(leftInsertKey) : null}
+                  <DatabaseActiveTableCell
+                    cellKey={nameCellKey}
+                    isSelected={selectedCellKey === nameCellKey}
+                    onSelect={() => setSelectedCellKey(nameCellKey)}
+                    presenceKey={`${row.id}:name`}
+                    selectOnPointerDown
+                    className={cn(
+                      "database-page-cell",
+                      getConditionalColorClassName(conditionalColors.propertyColors.name),
+                    )}
+                    wrapContent={nameColumnWrapContent}
+                  >
+                    {(setActive) => (
+                      <div
+                        className={cn(
+                          "database-sub-item-name",
+                          showSubItemToggle && "database-sub-item-name-has-toggle",
+                        )}
+                        data-sub-item-depth={subItemDepth}
+                        style={
+                          isSubItemsNested
+                            ? ({
+                                "--database-sub-item-depth": subItemDepth,
+                              } as CSSProperties)
+                            : undefined
+                        }
+                      >
+                        {showSubItemToggle ? (
+                          <button
+                            aria-expanded={subItemsExpanded}
+                            aria-label={`${subItemsExpanded ? "Collapse" : "Expand"} sub-items for ${getRowTitle(row)}`}
+                            className="database-sub-item-toggle"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              toggleSubItems();
+                            }}
+                            onPointerDown={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                            }}
+                            type="button"
+                          >
+                            {subItemsExpanded ? (
+                              <ChevronDown weight="fill" />
+                            ) : (
+                              <ChevronRight weight="fill" />
+                            )}
+                          </button>
+                        ) : null}
+                        <DatabaseCellContent wrapContent={nameColumnWrapContent}>
+                          <DatabasePageLink
+                            editable={editable}
+                            onActiveChange={setActive}
+                            onOpen={onOpenPage}
+                            pageId={row.pageId}
+                            pageSummary={row.page}
+                            showPageIcon={nameColumnShowPageIcon}
+                          />
+                        </DatabaseCellContent>
+                      </div>
+                    )}
+                  </DatabaseActiveTableCell>
+                  {showRightInsert ? renderInsertPropertyCell(rightInsertKey) : null}
+                </Fragment>
+              );
+            }
+
+            return renderPropertyCell();
+          })}
+          {editable ? <td /> : null}
+        </tr>
+      );
+
+      const subItemCreateRowIds = subItemCreateRowIdsByAfterRowId[row.id] ?? [];
+
+      if (!editable || subItemCreateRowIds.length === 0) {
+        return tableRow;
+      }
+
+      return (
+        <Fragment key={row.id}>
+          {tableRow}
+          {subItemCreateRowIds.map((parentRowId) => (
+            <tr className="database-sub-item-create-row" key={`create-sub-item:${parentRowId}`}>
+              <td colSpan={columnKeys.length}>
+                <button
+                  className="database-sub-item-create"
+                  disabled={
+                    !databaseId ||
+                    !subItemsSettings.parentPropertyId ||
+                    !subItemsSettings.subItemPropertyId
+                  }
+                  onClick={() => addDatabaseRow(undefined, undefined, parentRowId)}
+                  title={
+                    !subItemsSettings.parentPropertyId || !subItemsSettings.subItemPropertyId
+                      ? "Setting up sub-items"
+                      : undefined
+                  }
+                  style={
+                    {
+                      "--database-sub-item-depth": (subItemDepthByRowId[parentRowId] ?? 0) + 1,
+                    } as CSSProperties
+                  }
+                  type="button"
+                >
+                  <Plus />
+                  <span>New sub-item</span>
+                </button>
+              </td>
+            </tr>
+          ))}
+        </Fragment>
+      );
     },
     [
       addDatabaseRow,
@@ -1862,8 +1633,8 @@ export function DatabaseTableView() {
       subItemDepthByRowId,
       collapsedSubItemRowIds,
       updateDatabasePropertyConfig,
-    ]
-  )
+    ],
+  );
 
   return (
     <>
@@ -1882,82 +1653,69 @@ export function DatabaseTableView() {
       <div
         className="database-table-wrap database-inline-scroll-wrap"
         data-inline-scroll={isInlineTableScrollEnabled ? "true" : undefined}
-        data-vertical-lines={
-          layoutSettings.showVerticalLines ? "true" : "false"
-        }
+        data-vertical-lines={layoutSettings.showVerticalLines ? "true" : "false"}
         ref={tableWrapRef}
         style={tableWrapStyle}
         onMouseLeave={() => {
           if (!draggedRowId) {
-            setHoveredRowId(null)
+            setHoveredRowId(null);
           }
         }}
         onDragLeave={(event) => {
-          if (
-            !event.currentTarget.contains(
-              event.relatedTarget as globalThis.Node | null
-            )
-          ) {
-            releaseDatabaseRowDropOwner(rowDropOwner)
-            updateRowDropTarget(null)
-            updateGroupRowDropTarget(null)
-            isExternalRowDragActiveRef.current = false
-            setIsExternalRowDragActive(false)
+          if (!event.currentTarget.contains(event.relatedTarget as globalThis.Node | null)) {
+            releaseDatabaseRowDropOwner(rowDropOwner);
+            updateRowDropTarget(null);
+            updateGroupRowDropTarget(null);
+            isExternalRowDragActiveRef.current = false;
+            setIsExternalRowDragActive(false);
           }
         }}
         onDragOver={(event: ReactDragEvent<HTMLDivElement>) => {
-          const hasDragPayload =
-            editable && hasDatabasePageDragPayload(event.dataTransfer)
+          const hasDragPayload = editable && hasDatabasePageDragPayload(event.dataTransfer);
 
           if (!draggedRowId && !hasDragPayload) {
-            return
+            return;
           }
 
-          if (
-            !draggedRowId &&
-            hasDragPayload &&
-            !isExternalRowDragActiveRef.current
-          ) {
-            isExternalRowDragActiveRef.current = true
-            setIsExternalRowDragActive(true)
-            measureRows()
+          if (!draggedRowId && hasDragPayload && !isExternalRowDragActiveRef.current) {
+            isExternalRowDragActiveRef.current = true;
+            setIsExternalRowDragActive(true);
+            measureRows();
           }
 
-          event.preventDefault()
-          claimDatabaseRowDropOwner(rowDropOwner)
+          event.preventDefault();
+          claimDatabaseRowDropOwner(rowDropOwner);
           // Keep propagating so the editor clears its previous block drop line
           // and the source table can release its local drop indicator.
-          event.dataTransfer.dropEffect = "move"
+          event.dataTransfer.dropEffect = "move";
           if (isTableGrouped) {
-            updateGroupRowDropTarget(getGroupRowDropTarget(event.clientY))
+            updateGroupRowDropTarget(getGroupRowDropTarget(event.clientY));
           } else {
-            updateRowDropTarget(
-              resolveRowDropTarget(event.clientY, event.clientX)
-            )
+            updateRowDropTarget(resolveRowDropTarget(event.clientY, event.clientX));
           }
         }}
         onDrop={(event) => {
-          const dragPayload = getDatabasePageDragPayload(event.dataTransfer)
+          const dragPayload = getDatabasePageDragPayload(event.dataTransfer);
           const resolvedRowTarget = isTableGrouped
             ? null
-            : resolveRowDropTarget(event.clientY, event.clientX)
+            : resolveRowDropTarget(event.clientY, event.clientX);
 
           if (isTableGrouped) {
-            updateGroupRowDropTarget(getGroupRowDropTarget(event.clientY))
+            updateGroupRowDropTarget(getGroupRowDropTarget(event.clientY));
           } else {
-            updateRowDropTarget(resolvedRowTarget)
+            updateRowDropTarget(resolvedRowTarget);
           }
 
           const hasDropTarget = isTableGrouped
             ? groupRowDropTargetRef.current !== null
-            : resolvedRowTarget !== null
+            : resolvedRowTarget !== null;
 
           if ((!draggedRowId && !dragPayload) || !hasDropTarget) {
-            return
+            return;
           }
 
-          event.preventDefault()
-          event.stopPropagation()
+          event.preventDefault();
+          event.stopPropagation();
           function moveInternalRow() {
             const nextMove = getDraggedRowMove();
 
@@ -1970,9 +1728,7 @@ export function DatabaseTableView() {
             }
           }
           function insertExternalRow(
-            dragPayload: NonNullable<
-              ReturnType<typeof getDatabasePageDragPayload>
-            >,
+            dragPayload: NonNullable<ReturnType<typeof getDatabasePageDragPayload>>,
           ) {
             if (isTableGrouped) {
               const target = groupRowDropTargetRef.current;
@@ -1983,11 +1739,7 @@ export function DatabaseTableView() {
               if (target && section) {
                 addDraggedPageRow(
                   dragPayload,
-                  getAnchoredRowInsertPosition(
-                    rows,
-                    section.rows,
-                    target.localTargetIndex,
-                  ),
+                  getAnchoredRowInsertPosition(rows, section.rows, target.localTargetIndex),
                   section.groupValue,
                   groupProperty,
                 );
@@ -1995,11 +1747,7 @@ export function DatabaseTableView() {
             } else {
               addDraggedPageRow(
                 dragPayload,
-                getAnchoredRowInsertPosition(
-                  rows,
-                  visibleRows,
-                  resolvedRowTarget?.index ?? 0,
-                ),
+                getAnchoredRowInsertPosition(rows, visibleRows, resolvedRowTarget?.index ?? 0),
               );
             }
           }
@@ -2008,7 +1756,7 @@ export function DatabaseTableView() {
           } else if (dragPayload) {
             insertExternalRow(dragPayload);
           }
-          clearRowDrag()
+          clearRowDrag();
         }}
       >
         {!isInlineTableScrollEnabled ? (
@@ -2046,34 +1794,31 @@ export function DatabaseTableView() {
             </div>
           </div>
         ) : null}
-        <div
-          className="database-table-scroll database-inline-scroll"
-          ref={tableScrollRef}
-        >
+        <div className="database-table-scroll database-inline-scroll" ref={tableScrollRef}>
           <div className="database-table-scroll-content database-inline-scroll-content">
             {isInlineTableScrollEnabled ? (
-          <DatabaseRowDragControls
-            canReorderRows={canReorderRows}
-            draggedRowId={draggedRowId}
-            editable={editable}
-            hoveredRowId={hoveredRowId}
-            onDragEnd={clearRowDrag}
-            onDragStart={startRowDrag}
-            onHoveredRowChange={setHoveredRowId}
-            onSelectedRowChange={toggleSelectedRow}
-            rowDragTitle={rowDragTitle}
-            rowLayout={rowLayout}
-            rowsById={rowsById}
-            selectedRowIds={selectedRowIds}
-          />
-        ) : null}
+              <DatabaseRowDragControls
+                canReorderRows={canReorderRows}
+                draggedRowId={draggedRowId}
+                editable={editable}
+                hoveredRowId={hoveredRowId}
+                onDragEnd={clearRowDrag}
+                onDragStart={startRowDrag}
+                onHoveredRowChange={setHoveredRowId}
+                onSelectedRowChange={toggleSelectedRow}
+                rowDragTitle={rowDragTitle}
+                rowLayout={rowLayout}
+                rowsById={rowsById}
+                selectedRowIds={selectedRowIds}
+              />
+            ) : null}
             {isInlineTableScrollEnabled ? (
-          <DatabaseRowDropLine depth={rowDropLineDepth} top={rowDropLineTop} />
-        ) : null}
+              <DatabaseRowDropLine depth={rowDropLineDepth} top={rowDropLineTop} />
+            ) : null}
             {isTableGrouped ? (
               <div className="database-table-groups">
                 {groupedSections.map((section) => {
-                  const isCollapsed = collapsedGroups[section.id] === true
+                  const isCollapsed = collapsedGroups[section.id] === true;
 
                   function renderGroupRows() {
                     return (
@@ -2088,12 +1833,7 @@ export function DatabaseTableView() {
                             <CreateDatabaseRowButton
                               columnCount={columnKeys.length}
                               disabled={!databaseId}
-                              onClick={() =>
-                                addDatabaseRow(
-                                  section.groupValue,
-                                  groupProperty,
-                                )
-                              }
+                              onClick={() => addDatabaseRow(section.groupValue, groupProperty)}
                             />
                           ) : undefined
                         }
@@ -2102,9 +1842,7 @@ export function DatabaseTableView() {
                         renderRow={renderTableRow}
                         rows={section.rows}
                         tableMinWidth={tableMinWidth}
-                        virtualizationEnabled={
-                          !draggedRowId && !isExternalRowDragActive
-                        }
+                        virtualizationEnabled={!draggedRowId && !isExternalRowDragActive}
                       />
                     );
                   }
@@ -2114,9 +1852,7 @@ export function DatabaseTableView() {
                       className="database-table-group"
                       data-database-group-id={section.id}
                       data-drag-over={
-                        groupRowDropTarget?.sectionId === section.id
-                          ? "true"
-                          : undefined
+                        groupRowDropTarget?.sectionId === section.id ? "true" : undefined
                       }
                       key={section.id}
                     >
@@ -2131,18 +1867,14 @@ export function DatabaseTableView() {
                         ) : (
                           <ChevronDown className="size-4 shrink-0" />
                         )}
-                        <span
-                          className={getColorTokenBadgeClassName(section.color)}
-                        >
+                        <span className={getColorTokenBadgeClassName(section.color)}>
                           <span
                             aria-hidden="true"
                             className={getColorTokenDotClassName(section.color)}
                           />
                           {section.name}
                         </span>
-                        <span className="database-table-group-count">
-                          {section.rows.length}
-                        </span>
+                        <span className="database-table-group-count">{section.rows.length}</span>
                       </button>
                       {!isCollapsed ? <>{renderGroupRows()}</> : null}
                     </section>
@@ -2169,9 +1901,7 @@ export function DatabaseTableView() {
                 rows={visibleRows}
                 tableMinWidth={tableMinWidth}
                 virtualizationEnabled={
-                  !draggedRowId &&
-                  !isExternalRowDragActive &&
-                  !isSubItemsNested
+                  !draggedRowId && !isExternalRowDragActive && !isSubItemsNested
                 }
               />
             )}
@@ -2212,14 +1942,14 @@ export function DatabaseTableView() {
                 <span>{rowDragOverlay.overlay.title}</span>
               </span>
             </div>,
-            document.body
+            document.body,
           )
         : null}
       <DatabaseFormulaDialog
         databasePropertyId={formulaSetupPropertyId}
         onOpenChange={(open) => {
           if (!open) {
-            setFormulaSetupPropertyId(null)
+            setFormulaSetupPropertyId(null);
           }
         }}
         open={formulaSetupPropertyId !== null}
@@ -2228,7 +1958,7 @@ export function DatabaseTableView() {
         open={pendingSortedRowReorder !== null}
         onOpenChange={(open) => {
           if (!open) {
-            setPendingSortedRowReorder(null)
+            setPendingSortedRowReorder(null);
           }
         }}
       >
@@ -2236,18 +1966,16 @@ export function DatabaseTableView() {
           <AlertDialogHeader>
             <AlertDialogTitle>Clear sorting to reorder?</AlertDialogTitle>
             <AlertDialogDescription>
-              Row order is manual. To save this move, Zilobase needs to clear the
-              active sorting first.
+              Row order is manual. To save this move, Zilobase needs to clear the active sorting
+              first.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmSortedRowReorder}>
-              Clear sorting
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmSortedRowReorder}>Clear sorting</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
-  )
+  );
 }

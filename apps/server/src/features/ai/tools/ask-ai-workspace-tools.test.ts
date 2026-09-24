@@ -53,9 +53,8 @@ test("page comment extraction reads and orders current collaboration comments", 
   thread.set("messages", messages);
   threads.set("thread-1", thread);
 
-  assert.deepEqual(
-    extractPageCommentThreads(Y.encodeStateAsUpdate(document)),
-    [{
+  assert.deepEqual(extractPageCommentThreads(Y.encodeStateAsUpdate(document)), [
+    {
       comments: [
         {
           author: "Ada",
@@ -77,6 +76,6 @@ test("page comment extraction reads and orders current collaboration comments", 
       quote: "Selected text",
       resolvedAt: null,
       updatedAt: "2026-08-26T11:00:00.000Z",
-    }],
-  );
+    },
+  ]);
 });

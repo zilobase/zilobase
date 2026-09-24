@@ -12,7 +12,15 @@ const state = vi.hoisted(() => ({
 vi.mock("../../../infrastructure/database", () => {
   const query = (result: unknown[], kind?: string) => {
     const chain: Record<string, unknown> = {};
-    for (const method of ["from", "innerJoin", "where", "orderBy", "limit", "onConflictDoNothing", "onConflictDoUpdate"]) {
+    for (const method of [
+      "from",
+      "innerJoin",
+      "where",
+      "orderBy",
+      "limit",
+      "onConflictDoNothing",
+      "onConflictDoUpdate",
+    ]) {
       chain[method] = (...args: unknown[]) => {
         if (kind) state.mutations.push({ kind: `${kind}.${method}`, value: args });
         return chain;
@@ -45,18 +53,26 @@ vi.mock("../../databases/access/data-source-access", () => ({
   requireDataSourceEditAccess: vi.fn(async () => ({ workspaceId: "workspace-1" })),
 }));
 vi.mock("../../databases/core/commit", () => ({
-  commitDataSourceMutation: vi.fn(async (_input, callback: (tx: Record<string, unknown>) => unknown) => {
-    const { db } = await import("../../../infrastructure/database");
-    return callback(db as unknown as Record<string, unknown>);
-  }),
+  commitDataSourceMutation: vi.fn(
+    async (_input, callback: (tx: Record<string, unknown>) => unknown) => {
+      const { db } = await import("../../../infrastructure/database");
+      return callback(db as unknown as Record<string, unknown>);
+    },
+  ),
 }));
 vi.mock("../../databases/commands/record-entity", () => ({
   getDatabaseRecordEntity: vi.fn(async () => ({ id: "row-1" })),
 }));
-vi.mock("../../automations/triggers/event-capture", () => ({ lockDatabaseAutomationFactRows: vi.fn(async () => undefined) }));
+vi.mock("../../automations/triggers/event-capture", () => ({
+  lockDatabaseAutomationFactRows: vi.fn(async () => undefined),
+}));
 vi.mock("../../databases/schema/config", () => ({ validateCellValue: vi.fn() }));
-vi.mock("../../pages/placements", () => ({ upsertPageItemPlacement: vi.fn(async () => undefined) }));
-vi.mock("../../collaboration/service", () => ({ encodePageContentAsYjs: vi.fn(() => new Uint8Array()) }));
+vi.mock("../../pages/placements", () => ({
+  upsertPageItemPlacement: vi.fn(async () => undefined),
+}));
+vi.mock("../../collaboration/service", () => ({
+  encodePageContentAsYjs: vi.fn(() => new Uint8Array()),
+}));
 vi.mock("../../../infrastructure/storage/image-storage", () => ({ createImageStorage: vi.fn() }));
 vi.mock("../provider/gmail-gateway", () => ({
   createGmailGateway: vi.fn(async () => ({ getThread: vi.fn(async () => ({})) })),
@@ -96,17 +112,26 @@ test("database sync retry backoff grows exponentially and is bounded", () => {
 
 test("database sync enqueues eligible existing views idempotently", async () => {
   const indexed = indexedRow();
-  state.selectResults.push([indexed], [
-    { bindingId: "binding-1", config: syncConfig(), viewId: "view-1" },
-  ], [{ viewId: "view-1" }]);
+  state.selectResults.push(
+    [indexed],
+    [{ bindingId: "binding-1", config: syncConfig(), viewId: "view-1" }],
+    [{ viewId: "view-1" }],
+  );
   state.insertResults.push([]);
   await enqueueMailDatabaseSyncForThread("account-1", "thread-1");
   assert.ok(state.mutations.some(({ kind }) => kind === "insert.onConflictDoUpdate"));
 
-  state.selectResults.push([
-    { bindingId: "binding-1", config: syncConfig({ enabled: false }), viewId: "disabled" },
-    { bindingId: "binding-1", config: syncConfig({ activatedAt: new Date(indexed.internalDate + 1).toISOString() }), viewId: "new" },
-  ], []);
+  state.selectResults.push(
+    [
+      { bindingId: "binding-1", config: syncConfig({ enabled: false }), viewId: "disabled" },
+      {
+        bindingId: "binding-1",
+        config: syncConfig({ activatedAt: new Date(indexed.internalDate + 1).toISOString() }),
+        viewId: "new",
+      },
+    ],
+    [],
+  );
   assert.equal(await enqueueMailDatabaseSyncForIndexedThread(indexed), 0);
 
   state.selectResults.push([]);
@@ -114,11 +139,15 @@ test("database sync enqueues eligible existing views idempotently", async () => 
 });
 
 test("database sync status reports pending, paused, synced, and missing views", async () => {
-  state.selectResults.push([{ id: "view-1" }], [
-    { lastError: null, status: "pending" },
-    { lastError: "Destination removed", status: "paused" },
-    { lastError: null, status: "processing" },
-  ], [{ status: "active" }, { status: "active" }]);
+  state.selectResults.push(
+    [{ id: "view-1" }],
+    [
+      { lastError: null, status: "pending" },
+      { lastError: "Destination removed", status: "paused" },
+      { lastError: null, status: "processing" },
+    ],
+    [{ status: "active" }, { status: "active" }],
+  );
   assert.deepEqual(await getMailDatabaseSyncViewStatus("binding-1", "view-1"), {
     lastError: "Destination removed",
     paused: 1,
@@ -137,7 +166,13 @@ test("database sync completes a claimed job without recreating its destination r
   const claimed = outboxRow();
   state.selectResults.push(
     [claimed],
-    [{ account: { id: "account-1", status: "connected" }, binding: { userId: "user-1", workspaceId: "workspace-1" }, config: syncConfig() }],
+    [
+      {
+        account: { id: "account-1", status: "connected" },
+        binding: { userId: "user-1", workspaceId: "workspace-1" },
+        config: syncConfig(),
+      },
+    ],
     [{ id: "source-1" }],
     [indexedRow()],
     [syncRecord()],
@@ -156,7 +191,12 @@ test("database sync completes a claimed job without recreating its destination r
     retried: 0,
   });
   assert.equal(state.metric.mock.calls[0]?.[1].code, "complete");
-  assert.ok(state.mutations.some(({ kind, value }) => kind === "update.set" && (value as { status?: string }).status === "completed"));
+  assert.ok(
+    state.mutations.some(
+      ({ kind, value }) =>
+        kind === "update.set" && (value as { status?: string }).status === "completed",
+    ),
+  );
 });
 
 test("database sync maps system and custom values to destination property types", async () => {
@@ -187,7 +227,12 @@ test("database sync maps system and custom values to destination property types"
   ].map(([sourcePropertyId, destinationPropertyId, type]) => ({
     destination: {
       config: ["select", "multi_select", "status"].includes(type!)
-        ? { options: [{ id: "important", name: "Important" }, { id: "high", name: "High" }] }
+        ? {
+            options: [
+              { id: "important", name: "Important" },
+              { id: "high", name: "High" },
+            ],
+          }
         : {},
       id: destinationPropertyId,
       name: destinationPropertyId,
@@ -197,11 +242,13 @@ test("database sync maps system and custom values to destination property types"
   }));
   state.selectResults.push(
     [claimed],
-    [{
-      account: { id: "account-1", status: "connected" },
-      binding: { userId: "user-1", workspaceId: "workspace-1" },
-      config: syncConfig({ mappings: mappings.map(({ mapping }) => mapping) }),
-    }],
+    [
+      {
+        account: { id: "account-1", status: "connected" },
+        binding: { userId: "user-1", workspaceId: "workspace-1" },
+        config: syncConfig({ mappings: mappings.map(({ mapping }) => mapping) }),
+      },
+    ],
     [{ id: "source-1" }],
     [indexedRow()],
     [syncRecord()],
@@ -226,17 +273,33 @@ test("database sync maps system and custom values to destination property types"
   const insertedValues = state.mutations
     .filter(({ kind }) => kind === "insert.values")
     .map(({ value }) => value as { propertyId?: string; value?: unknown });
-  assert.equal(insertedValues.find(({ propertyId }) => propertyId === "priority-value")?.value, "Important");
-  assert.equal(insertedValues.find(({ propertyId }) => propertyId === "custom-value")?.value, "High");
+  assert.equal(
+    insertedValues.find(({ propertyId }) => propertyId === "priority-value")?.value,
+    "Important",
+  );
+  assert.equal(
+    insertedValues.find(({ propertyId }) => propertyId === "custom-value")?.value,
+    "High",
+  );
   assert.equal(insertedValues.find(({ propertyId }) => propertyId === "amount-value")?.value, 42);
-  assert.deepEqual(insertedValues.find(({ propertyId }) => propertyId === "people-value")?.value, ["user-1"]);
+  assert.deepEqual(insertedValues.find(({ propertyId }) => propertyId === "people-value")?.value, [
+    "user-1",
+  ]);
 });
 
 test("database sync retries transient failures and pauses permanent or exhausted jobs", async () => {
   const transient = outboxRow({ attempts: 1, id: "retry" });
-  state.selectResults.push([transient], [
-    { account: { id: "account-1", status: "disconnected" }, binding: { userId: "user-1", workspaceId: "workspace-1" }, config: syncConfig() },
-  ], [{ id: "source-1" }]);
+  state.selectResults.push(
+    [transient],
+    [
+      {
+        account: { id: "account-1", status: "disconnected" },
+        binding: { userId: "user-1", workspaceId: "workspace-1" },
+        config: syncConfig(),
+      },
+    ],
+    [{ id: "source-1" }],
+  );
   state.updateResults.push([transient], []);
   assert.deepEqual(await drainMailDatabaseSyncOutbox({}, { workerId: "worker-1" }), {
     completed: 0,
@@ -247,16 +310,27 @@ test("database sync retries transient failures and pauses permanent or exhausted
   const permanent = outboxRow({ id: "paused" });
   state.selectResults.push([permanent], []);
   state.updateResults.push([permanent], [{ id: permanent.id }], []);
-  assert.deepEqual(await drainMailDatabaseSyncOutbox({}, { bindingId: "binding-1", workerId: "worker-1" }), {
-    completed: 0,
-    paused: 1,
-    retried: 0,
-  });
+  assert.deepEqual(
+    await drainMailDatabaseSyncOutbox({}, { bindingId: "binding-1", workerId: "worker-1" }),
+    {
+      completed: 0,
+      paused: 1,
+      retried: 0,
+    },
+  );
 
   const exhausted = outboxRow({ attempts: 7, id: "exhausted" });
-  state.selectResults.push([exhausted], [
-    { account: { id: "account-1", status: "disconnected" }, binding: { userId: "user-1", workspaceId: "workspace-1" }, config: syncConfig() },
-  ], [{ id: "source-1" }]);
+  state.selectResults.push(
+    [exhausted],
+    [
+      {
+        account: { id: "account-1", status: "disconnected" },
+        binding: { userId: "user-1", workspaceId: "workspace-1" },
+        config: syncConfig(),
+      },
+    ],
+    [{ id: "source-1" }],
+  );
   state.updateResults.push([exhausted], [{ id: exhausted.id }], []);
   assert.deepEqual(await drainMailDatabaseSyncOutbox({}, { workerId: "worker-1" }), {
     completed: 0,

@@ -33,7 +33,7 @@ const NODE_BANNED = [
   "cloudflare",
   "chat_agent",
   "chatagent",
-  "from \"agents\"",
+  'from "agents"',
   "from 'agents'",
   "agents/",
   "@cloudflare/",
@@ -49,20 +49,20 @@ const WORKER_BANNED = [
   "ioredis",
   "aws-sdk",
   "drizzle-orm",
-  "from \"ws\"",
+  'from "ws"',
   "from 'ws'",
-  "from \"pg\"",
+  'from "pg"',
   "from 'pg'",
   "node:",
 ];
 
 const ROOT_BANNED = [
   "ioredis",
-  "\"ws\"",
+  '"ws"',
   "'ws'",
   "aws-sdk",
   "@hocuspocus",
-  "\"agents\"",
+  '"agents"',
   "'agents'",
   "@cloudflare/",
   "drizzle-orm",
@@ -94,7 +94,7 @@ async function sourceFiles(dir: URL): Promise<URL[]> {
   const files: URL[] = [];
   for (const entry of entries) {
     if (entry.isDirectory()) {
-      files.push(...await sourceFiles(new URL(`${entry.name}/`, dir)));
+      files.push(...(await sourceFiles(new URL(`${entry.name}/`, dir))));
     } else if (/\.(ts|js|mjs)$/.test(entry.name) && !entry.name.endsWith(".test.ts")) {
       files.push(new URL(entry.name, dir));
     }
@@ -107,7 +107,7 @@ async function allSourceFiles(dir: URL): Promise<URL[]> {
   const files: URL[] = [];
   for (const entry of entries) {
     if (entry.isDirectory()) {
-      files.push(...await allSourceFiles(new URL(`${entry.name}/`, dir)));
+      files.push(...(await allSourceFiles(new URL(`${entry.name}/`, dir))));
     } else if (/\.(ts|js|mjs)$/.test(entry.name)) {
       files.push(new URL(entry.name, dir));
     }
@@ -124,9 +124,7 @@ function importSpecifiers(content: string): string[] {
 }
 
 function stripComments(content: string) {
-  return content
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
+  return content.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 }
 
 async function expectNoTokens(files: URL[], tokens: string[], scope: string) {
@@ -163,8 +161,11 @@ describe("community boundary", () => {
     for (const file of files) {
       for (const spec of importSpecifiers(await readFile(file, "utf8"))) {
         if (WORKER_NODE_ALLOWLIST.includes(spec)) continue;
-        const hitsNode = spec.includes("/node/") || spec === "../node" ||
-          spec === "./node" || spec === "@zilobase/runtime-adapter/node" ||
+        const hitsNode =
+          spec.includes("/node/") ||
+          spec === "../node" ||
+          spec === "./node" ||
+          spec === "@zilobase/runtime-adapter/node" ||
           (/(^|\/)node$/.test(spec) && spec !== "crossws/adapters/node");
         expect(hitsNode, `worker: ${relativeTo(file)} imports node side via ${spec}`).toBe(false);
       }
@@ -181,7 +182,10 @@ describe("community boundary", () => {
     for (const file of roots) {
       for (const spec of importSpecifiers(await readFile(file, "utf8"))) {
         expect(
-          spec === "./node" || spec === "./worker" || spec.startsWith("./node/") || spec.startsWith("./worker/"),
+          spec === "./node" ||
+            spec === "./worker" ||
+            spec.startsWith("./node/") ||
+            spec.startsWith("./worker/"),
           `root: ${relativeTo(file)} statically imports a runtime side via ${spec}`,
         ).toBe(false);
       }
@@ -201,7 +205,9 @@ describe("community boundary", () => {
       for (const spec of importSpecifiers(await readFile(file, "utf8"))) {
         if (WORKER_NODE_ALLOWLIST.includes(spec)) continue;
         const hitsNode = spec.includes("/node/") || spec === "../node" || spec === "./node";
-        expect(hitsNode, `worker: ${relativeTo(file)} references the node side via ${spec}`).toBe(false);
+        expect(hitsNode, `worker: ${relativeTo(file)} references the node side via ${spec}`).toBe(
+          false,
+        );
       }
     }
   });

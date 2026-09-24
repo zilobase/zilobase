@@ -1,10 +1,6 @@
 import { Filter } from "@/shared/components/icons";
 import { Button } from "@/shared/ui/button";
-import {
-  DropDrawer,
-  DropDrawerContent,
-  DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer";
+import { DropDrawer, DropDrawerContent, DropDrawerTrigger } from "@/shared/ui/dropdrawer";
 import { DatabaseSearchableMenuItems } from "./database-searchable-menu-items";
 import {
   useDatabaseActionsContext,
@@ -13,13 +9,9 @@ import {
 } from "../state/database-view-context";
 
 export function DatabaseFilterControl() {
-  const {
-    createDatabaseFilter,
-    setFilterPickerOpen,
-    toggleFilterPillVisibility,
-  } = useDatabaseActionsContext();
-  const { activeDatabaseFilters, filterFieldOptions } =
-    useDatabaseDataContext();
+  const { createDatabaseFilter, setFilterPickerOpen, toggleFilterPillVisibility } =
+    useDatabaseActionsContext();
+  const { activeDatabaseFilters, filterFieldOptions } = useDatabaseDataContext();
   const { filterPickerOpen, showFilterPill } = useDatabaseUiContext();
   return activeDatabaseFilters.length === 0 ? (
     <DropDrawer open={filterPickerOpen} onOpenChange={setFilterPickerOpen}>
@@ -52,9 +44,7 @@ export function DatabaseFilterControl() {
   ) : (
     <Button
       aria-label={showFilterPill ? "Hide filter pill" : "Show filter pill"}
-      className={
-        showFilterPill ? "text-content-primary" : "text-content-secondary"
-      }
+      className={showFilterPill ? "text-content-primary" : "text-content-secondary"}
       onClick={toggleFilterPillVisibility}
       size="icon"
       type="button"

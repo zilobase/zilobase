@@ -1,9 +1,9 @@
-import { desktopBridge } from "@/platform/desktop/native"
+import { desktopBridge } from "@/platform/desktop/native";
 
 export function openDesktopDiagnosticsFolder() {
-  return desktopBridge().diagnostics.openFolder()
+  return desktopBridge().diagnostics.openFolder();
 }
 
 export function exportDesktopDiagnostics() {
-  return desktopBridge().diagnostics.export()
+  return desktopBridge().diagnostics.export();
 }

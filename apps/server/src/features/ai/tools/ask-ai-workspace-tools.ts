@@ -1,7 +1,4 @@
-import type {
-  AgentCitation,
-  AgentToolResult,
-} from "@zilobase/features/ai-chat/agent-contract";
+import type { AgentCitation, AgentToolResult } from "@zilobase/features/ai-chat/agent-contract";
 import { formatPropertyValueForContext } from "@zilobase/page-context/format-property-value";
 import { prosemirrorToMarkdown } from "@zilobase/page-context/prosemirror-to-markdown";
 import { and, eq, isNull } from "drizzle-orm";
@@ -9,10 +6,7 @@ import { tool, type ToolSet } from "ai";
 import * as Y from "yjs";
 import * as z from "zod";
 
-import {
-  canAccessDatabaseRecord,
-  canAccessPageInWorkspace,
-} from "../../access";
+import { canAccessDatabaseRecord, canAccessPageInWorkspace } from "../../access";
 import { db } from "../../../infrastructure/database";
 import { page, pageCollaborationDocument } from "../../../infrastructure/database/schema";
 import { searchWorkspaceItems } from "../../search/workspace-search";
@@ -68,9 +62,7 @@ export type PageCommentThread = {
   updatedAt: string;
 };
 
-export function buildWorkspaceReadTools(
-  context: WorkspaceReadToolContext,
-): ToolSet {
+export function buildWorkspaceReadTools(context: WorkspaceReadToolContext): ToolSet {
   return {
     searchWorkspace: tool({
       description:
@@ -94,27 +86,28 @@ export function buildWorkspaceReadTools(
             workspaceId: context.workspaceId,
           });
           const citations = results.map(toSearchCitation);
-          const detailedResults = await Promise.all(results.map(async (result) => {
-            const databaseDescriptor = result.type === "database"
-              ? await loadAgentDatabaseDescriptor({
-                  databaseId: result.id,
-                  userId: context.userId,
-                  workspaceId: context.workspaceId,
-                })
-              : null;
+          const detailedResults = await Promise.all(
+            results.map(async (result) => {
+              const databaseDescriptor =
+                result.type === "database"
+                  ? await loadAgentDatabaseDescriptor({
+                      databaseId: result.id,
+                      userId: context.userId,
+                      workspaceId: context.workspaceId,
+                    })
+                  : null;
 
-            return {
-              excerpt: result.excerpt,
-              id: result.id,
-              path: result.path,
-              title: result.title,
-              type: result.type,
-              updatedAt: result.updatedAt.toISOString(),
-              ...(databaseDescriptor
-                ? { database: databaseDescriptor }
-                : {}),
-            };
-          }));
+              return {
+                excerpt: result.excerpt,
+                id: result.id,
+                path: result.path,
+                title: result.title,
+                type: result.type,
+                updatedAt: result.updatedAt.toISOString(),
+                ...(databaseDescriptor ? { database: databaseDescriptor } : {}),
+              };
+            }),
+          );
 
           return succeeded(
             results.length === 1
@@ -171,12 +164,9 @@ export function buildWorkspaceReadTools(
             throw new Error("Database not found or not accessible.");
           }
 
-          const payload = await getDatabaseExportPayload(
-            record.id,
-            context.userId,
-            record,
-            { dataSourceId: input.dataSourceId },
-          );
+          const payload = await getDatabaseExportPayload(record.id, context.userId, record, {
+            dataSourceId: input.dataSourceId,
+          });
 
           if (payload?.activeDataSource?.id !== input.dataSourceId) {
             throw new Error(
@@ -262,18 +252,8 @@ export function buildWorkspaceReadTools(
   };
 }
 
-async function readAccessiblePage(
-  context: WorkspaceReadToolContext,
-  pageId: string,
-) {
-  if (
-    !(await canAccessPageInWorkspace(
-      pageId,
-      context.workspaceId,
-      context.userId,
-      "view",
-    ))
-  ) {
+async function readAccessiblePage(context: WorkspaceReadToolContext, pageId: string) {
+  if (!(await canAccessPageInWorkspace(pageId, context.workspaceId, context.userId, "view"))) {
     throw new Error("Page not found or not accessible.");
   }
 
@@ -286,11 +266,7 @@ async function readAccessiblePage(
     })
     .from(page)
     .where(
-      and(
-        eq(page.id, pageId),
-        eq(page.workspaceId, context.workspaceId),
-        isNull(page.deletedAt),
-      ),
+      and(eq(page.id, pageId), eq(page.workspaceId, context.workspaceId), isNull(page.deletedAt)),
     )
     .limit(1);
 
@@ -301,11 +277,7 @@ async function readAccessiblePage(
   return record;
 }
 
-function succeeded<T>(
-  summary: string,
-  data: T,
-  citations: AgentCitation[],
-): AgentToolResult<T> {
+function succeeded<T>(summary: string, data: T, citations: AgentCitation[]): AgentToolResult<T> {
   return {
     citations: dedupeCitations(citations),
     data,
@@ -368,10 +340,7 @@ export function buildDatabaseTable(
     })),
   ];
   const valuesByCell = new Map(
-    payload.values.map((value) => [
-      `${value.pageId}:${value.propertyId}`,
-      value.value,
-    ]),
+    payload.values.map((value) => [`${value.pageId}:${value.propertyId}`, value.value]),
   );
   const normalizedQuery = options.query?.trim().toLowerCase() ?? "";
   const rows = payload.rows.flatMap((row) => {
@@ -388,9 +357,7 @@ export function buildDatabaseTable(
 
     if (
       normalizedQuery &&
-      !Object.values(cells).some((value) =>
-        value.toLowerCase().includes(normalizedQuery),
-      )
+      !Object.values(cells).some((value) => value.toLowerCase().includes(normalizedQuery))
     ) {
       return [];
     }
@@ -416,36 +383,31 @@ export function extractPageCommentThreads(state: Uint8Array) {
       }
 
       const messagesValue = value.get("messages");
-      const comments = messagesValue instanceof Y.Map
-        ? [...messagesValue.entries()]
-            .flatMap(([messageId, message]) =>
-              message instanceof Y.Map
-                ? [readCommentMessage(messageId, message)]
-                : [],
-            )
-            .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-        : [];
+      const comments =
+        messagesValue instanceof Y.Map
+          ? [...messagesValue.entries()]
+              .flatMap(([messageId, message]) =>
+                message instanceof Y.Map ? [readCommentMessage(messageId, message)] : [],
+              )
+              .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+          : [];
       const rawKind = value.get("kind");
 
-      return [{
-        comments,
-        id: threadId,
-        kind:
-          rawKind === "block" || rawKind === "inline" ? rawKind : "page",
-        quote: readNullableString(value.get("quote")),
-        resolvedAt: readNullableString(value.get("resolvedAt")),
-        updatedAt:
-          readString(value.get("updatedAt")) ||
-          readString(value.get("createdAt")),
-      } satisfies PageCommentThread];
+      return [
+        {
+          comments,
+          id: threadId,
+          kind: rawKind === "block" || rawKind === "inline" ? rawKind : "page",
+          quote: readNullableString(value.get("quote")),
+          resolvedAt: readNullableString(value.get("resolvedAt")),
+          updatedAt: readString(value.get("updatedAt")) || readString(value.get("createdAt")),
+        } satisfies PageCommentThread,
+      ];
     })
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
-function readCommentMessage(
-  id: string,
-  message: Y.Map<unknown>,
-): PageComment {
+function readCommentMessage(id: string, message: Y.Map<unknown>): PageComment {
   const author = readAuthor(message.get("author"));
 
   return {

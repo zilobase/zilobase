@@ -4,22 +4,22 @@ export function register({ assert, readSource, test }) {
       readSource("/src/features/databases/views/state/database-view-context.tsx"),
       readSource("/src/features/databases/views/chart/components/database-chart-view.tsx"),
       readSource("/src/features/databases/schema/configuration/index.tsx"),
-    ])
+    ]);
 
-    assert.match(context, /const DatabaseDataContext = createContext/)
-    assert.match(context, /const DatabaseUiContext = createContext/)
-    assert.match(context, /const DatabaseActionsContext = createContext/)
-    assert.match(context, /const DatabaseRealtimeContext = createContext/)
-    assert.match(context, /useStableContextSlice\(undoableValue, databaseDataKeys\)/)
-    assert.match(context, /previous\.current!\[key\] !== value\[key\]/)
-    assert.doesNotMatch(context, /const DatabaseViewContext = createContext/)
-    assert.doesNotMatch(context, /function useDatabaseViewContext/)
+    assert.match(context, /const DatabaseDataContext = createContext/);
+    assert.match(context, /const DatabaseUiContext = createContext/);
+    assert.match(context, /const DatabaseActionsContext = createContext/);
+    assert.match(context, /const DatabaseRealtimeContext = createContext/);
+    assert.match(context, /useStableContextSlice\(undoableValue, databaseDataKeys\)/);
+    assert.match(context, /previous\.current!\[key\] !== value\[key\]/);
+    assert.doesNotMatch(context, /const DatabaseViewContext = createContext/);
+    assert.doesNotMatch(context, /function useDatabaseViewContext/);
 
-    assert.match(chart, /useDatabaseDataContext/)
-    assert.match(chart, /useDatabaseUiContext/)
-    assert.doesNotMatch(chart, /useDatabaseActionsContext/)
-    assert.match(propertySettings, /useDatabaseActionsContext/)
-    assert.doesNotMatch(propertySettings, /useDatabaseDataContext/)
-    assert.doesNotMatch(propertySettings, /useDatabaseUiContext/)
-  })
+    assert.match(chart, /useDatabaseDataContext/);
+    assert.match(chart, /useDatabaseUiContext/);
+    assert.doesNotMatch(chart, /useDatabaseActionsContext/);
+    assert.match(propertySettings, /useDatabaseActionsContext/);
+    assert.doesNotMatch(propertySettings, /useDatabaseDataContext/);
+    assert.doesNotMatch(propertySettings, /useDatabaseUiContext/);
+  });
 }

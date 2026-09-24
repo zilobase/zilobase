@@ -56,9 +56,7 @@ function getSnapshotForKey(key: string): DatabaseEntityCommandState {
   return next;
 }
 
-export function getPendingState(
-  target: DatabaseCommandTarget,
-): DatabaseEntityCommandState {
+export function getPendingState(target: DatabaseCommandTarget): DatabaseEntityCommandState {
   return getSnapshotForKey(pendingKeyForTarget(target));
 }
 
@@ -115,10 +113,7 @@ export function beginPending(targets: DatabaseCommandTarget[]): void {
 }
 
 /** Decrement pending; on error store last error, on success keep cleared error. */
-export function endPending(
-  targets: DatabaseCommandTarget[],
-  error?: Error | null,
-): void {
+export function endPending(targets: DatabaseCommandTarget[], error?: Error | null): void {
   for (const target of targets) {
     const key = pendingKeyForTarget(target);
     const current = states.get(key) ?? { error: null, pendingCount: 0 };
@@ -130,10 +125,7 @@ export function endPending(
   }
 }
 
-export function reportPendingError(
-  targets: DatabaseCommandTarget[],
-  error: Error,
-): void {
+export function reportPendingError(targets: DatabaseCommandTarget[], error: Error): void {
   for (const target of targets) {
     const key = pendingKeyForTarget(target);
     const current = states.get(key) ?? { error: null, pendingCount: 0 };
@@ -147,14 +139,12 @@ export function targetsForCommand(input: {
   databaseId: string;
   command: { type: string } & Record<string, unknown>;
 }): DatabaseCommandTarget[] {
-  const targets: DatabaseCommandTarget[] = [
-    {},
-    { hostDatabaseId: input.databaseId },
-  ];
+  const targets: DatabaseCommandTarget[] = [{}, { hostDatabaseId: input.databaseId }];
   const { command, dataSourceId } = input;
   if (!dataSourceId) {
     if (
-      command.type.startsWith("view.") && "viewId" in command &&
+      command.type.startsWith("view.") &&
+      "viewId" in command &&
       typeof command.viewId === "string"
     ) {
       targets.push({
@@ -162,10 +152,7 @@ export function targetsForCommand(input: {
         viewId: command.viewId,
       });
     }
-    if (
-      command.type === "dataSource.link" ||
-      command.type === "dataSource.unlink"
-    ) {
+    if (command.type === "dataSource.link" || command.type === "dataSource.unlink") {
       const sourceId = (command as { dataSourceId?: unknown }).dataSourceId;
       if (typeof sourceId === "string") targets.push({ dataSourceId: sourceId });
     }
@@ -199,18 +186,9 @@ export function useDatabaseEntityCommandState(
         rowId: target.rowId,
         viewId: target.viewId,
       }),
-    [
-      target.dataSourceId,
-      target.hostDatabaseId,
-      target.propertyId,
-      target.rowId,
-      target.viewId,
-    ],
+    [target.dataSourceId, target.hostDatabaseId, target.propertyId, target.rowId, target.viewId],
   );
-  const subscribe = useMemo(
-    () => (listener: () => void) => subscribeToKey(key, listener),
-    [key],
-  );
+  const subscribe = useMemo(() => (listener: () => void) => subscribeToKey(key, listener), [key]);
   const getSnapshot = useMemo(() => () => getSnapshotForKey(key), [key]);
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

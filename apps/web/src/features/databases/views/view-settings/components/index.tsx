@@ -26,17 +26,10 @@ import {
 import { Input } from "@/shared/ui/input";
 import { IconEmojiPicker } from "@/shared/ui/icon-emoji-picker";
 import { PageIconDisplay } from "@/features/pages/index";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 
 import { getDatabasePropertyType } from "../../../schema/property-catalog";
-import {
-  getDatabaseViewIcon,
-  getPropertyHiddenForView,
-} from "../../model/database-view-config";
+import { getDatabaseViewIcon, getPropertyHiddenForView } from "../../model/database-view-config";
 import { DatabaseViewToolbarButton } from "../../components/database-view-toolbar-button";
 import { DatabaseFilterSubmenu } from "../../components/database-filter-menu";
 import { DatabaseSortSubmenu } from "../../components/database-sort-menu";
@@ -128,8 +121,7 @@ export function DatabaseViewSettingsMenu({
 
     onOpenChange?.(nextOpen);
   };
-  const { Icon: ViewTypeIcon } =
-    getDatabaseViewTypePresentation(activeViewType);
+  const { Icon: ViewTypeIcon } = getDatabaseViewTypePresentation(activeViewType);
   const viewIcon = getDatabaseViewIcon(viewConfig);
   const activeGroupProperty = groupProperties.find(
     (property) => property.property.id === groupPropertyId,
@@ -140,9 +132,7 @@ export function DatabaseViewSettingsMenu({
   const settingsContent = (
     <>
       <div className="flex items-center px-2 py-1.5">
-        <div className="text-sm font-semibold text-content-primary">
-          View settings
-        </div>
+        <div className="text-sm font-semibold text-content-primary">View settings</div>
       </div>
       <div className="flex items-center gap-1.5 p-1.5">
         <Popover open={iconPickerOpen} onOpenChange={setIconPickerOpen}>
@@ -256,9 +246,7 @@ export function DatabaseViewSettingsMenu({
             <Eye className="ml-auto text-content-secondary" />
           </DropDrawerItem>
           {properties.map((property) => {
-            const PropertyIcon = getDatabasePropertyType(
-              property.property.type,
-            ).icon;
+            const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
             const visible = !getPropertyHiddenForView(
               property.id,
               property.property.config,
@@ -303,11 +291,7 @@ export function DatabaseViewSettingsMenu({
         <ViewSettingsRow
           icon={<Filter />}
           label="Filter"
-          right={
-            activeDatabaseFilters.length > 0
-              ? activeDatabaseFilters.length
-              : undefined
-          }
+          right={activeDatabaseFilters.length > 0 ? activeDatabaseFilters.length : undefined}
         />
       </DatabaseFilterSubmenu>
       <DatabaseSortSubmenu
@@ -325,11 +309,7 @@ export function DatabaseViewSettingsMenu({
         <ViewSettingsRow
           icon={<ArrowDownUp />}
           label="Sort"
-          right={
-            activeDatabaseSorts.length > 0
-              ? activeDatabaseSorts.length
-              : undefined
-          }
+          right={activeDatabaseSorts.length > 0 ? activeDatabaseSorts.length : undefined}
         />
       </DatabaseSortSubmenu>
       <DropDrawerSub displayMode="inline" title="Group">
@@ -344,15 +324,11 @@ export function DatabaseViewSettingsMenu({
           <DropDrawerItem onSelect={() => onSetViewGroupProperty(null)}>
             <IntersectSquareIcon />
             <span>No grouping</span>
-            {groupPropertyId === null ? (
-              <Check className="ml-auto text-content-primary" />
-            ) : null}
+            {groupPropertyId === null ? <Check className="ml-auto text-content-primary" /> : null}
           </DropDrawerItem>
           {groupProperties.length > 0 ? (
             groupProperties.map((property) => {
-              const PropertyIcon = getDatabasePropertyType(
-                property.property.type,
-              ).icon;
+              const PropertyIcon = getDatabasePropertyType(property.property.type).icon;
               const isSelected = property.property.id === groupPropertyId;
 
               return (
@@ -362,16 +338,12 @@ export function DatabaseViewSettingsMenu({
                 >
                   <PropertyIcon />
                   <span>{property.property.name}</span>
-                  {isSelected ? (
-                    <Check className="ml-auto text-content-primary" />
-                  ) : null}
+                  {isSelected ? <Check className="ml-auto text-content-primary" /> : null}
                 </DropDrawerItem>
               );
             })
           ) : (
-            <DropDrawerItem disabled>
-              No groupable properties yet
-            </DropDrawerItem>
+            <DropDrawerItem disabled>No groupable properties yet</DropDrawerItem>
           )}
         </DropDrawerSubContent>
       </DropDrawerSub>
@@ -380,11 +352,7 @@ export function DatabaseViewSettingsMenu({
           <ViewSettingsRow
             icon={<Palette />}
             label="Conditional color"
-            right={
-              activeConditionalColors.length > 0
-                ? activeConditionalColors.length
-                : undefined
-            }
+            right={activeConditionalColors.length > 0 ? activeConditionalColors.length : undefined}
           />
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-80">
@@ -435,20 +403,13 @@ export function DatabaseViewSettingsMenu({
   );
 
   const trigger = (
-    <DatabaseViewToolbarButton
-      aria-label="Open view settings"
-      aria-expanded={open}
-    >
+    <DatabaseViewToolbarButton aria-label="Open view settings" aria-expanded={open}>
       <SlidersHorizontalIcon />
     </DatabaseViewToolbarButton>
   );
 
   return (
-    <DropDrawer
-      defaultSubDisplayMode="inline"
-      open={open}
-      onOpenChange={handleOpenChange}
-    >
+    <DropDrawer defaultSubDisplayMode="inline" open={open} onOpenChange={handleOpenChange}>
       <DropDrawerTrigger asChild>{trigger}</DropDrawerTrigger>
       <DropDrawerContent
         align="start"

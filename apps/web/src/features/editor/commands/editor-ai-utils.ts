@@ -1,28 +1,28 @@
-import type { Editor, JSONContent } from "@tiptap/core"
+import type { Editor, JSONContent } from "@tiptap/core";
 import {
   isStructuralBlockMarkerLine,
   preprocessStructuralBlockMarkdown,
   restoreStructuralBlocksInMarkdownContent,
-} from "@zilobase/page-context"
+} from "@zilobase/page-context";
 
 export type GeneratedRange = {
-  from: number
-  to: number
-}
+  from: number;
+  to: number;
+};
 
 export function getFullDocumentPreviewRange(editor: Editor): GeneratedRange {
-  const doc = editor.state.doc
+  const doc = editor.state.doc;
 
   if (doc.childCount === 0) {
-    return { from: 0, to: 0 }
+    return { from: 0, to: 0 };
   }
 
-  return { from: 0, to: doc.content.size }
+  return { from: 0, to: doc.content.size };
 }
 
 type ParseMarkdownContentOptions = {
-  unwrapPlainFencedBlock?: boolean
-}
+  unwrapPlainFencedBlock?: boolean;
+};
 
 export function parseMarkdownContent(
   editor: Editor,
@@ -31,163 +31,150 @@ export function parseMarkdownContent(
 ) {
   const normalizedMarkdown = options?.unwrapPlainFencedBlock
     ? normalizeSelectionReplacementMarkdown(markdown)
-    : markdown
-  const trimmedMarkdown = normalizeUnsupportedMarkdown(normalizedMarkdown).trim()
+    : markdown;
+  const trimmedMarkdown = normalizeUnsupportedMarkdown(normalizedMarkdown).trim();
 
   if (!trimmedMarkdown) {
-    return null
+    return null;
   }
 
-  const markdownForParse = preprocessStructuralBlockMarkdown(trimmedMarkdown)
+  const markdownForParse = preprocessStructuralBlockMarkdown(trimmedMarkdown);
 
   try {
-    const doc = editor.markdown?.parse(markdownForParse)
+    const doc = editor.markdown?.parse(markdownForParse);
     const content =
       doc?.content && doc.content.length > 0
-        ? restoreStructuralBlocksInMarkdownContent(
-            sanitizeMarkdownContent(doc.content),
-          )
-        : restoreStructuralBlocksInMarkdownContent(
-            splitStructuralMarkdownLines(trimmedMarkdown),
-          )
+        ? restoreStructuralBlocksInMarkdownContent(sanitizeMarkdownContent(doc.content))
+        : restoreStructuralBlocksInMarkdownContent(splitStructuralMarkdownLines(trimmedMarkdown));
     const size = editor.schema.nodeFromJSON({
       type: "doc",
       content,
-    }).content.size
+    }).content.size;
 
-    return { content, size }
+    return { content, size };
   } catch {
-    const content = splitStructuralMarkdownLines(trimmedMarkdown)
-    const size = editor.schema.nodeFromJSON({ type: "doc", content }).content.size
+    const content = splitStructuralMarkdownLines(trimmedMarkdown);
+    const size = editor.schema.nodeFromJSON({ type: "doc", content }).content.size;
 
-    return { content, size }
+    return { content, size };
   }
 }
 
 export async function readStreamError(response: Response) {
-  const text = await response.text()
+  const text = await response.text();
 
   if (!text) {
-    return "AI generation failed. Try again."
+    return "AI generation failed. Try again.";
   }
 
   try {
-    const body = JSON.parse(text) as { error?: string; message?: string }
+    const body = JSON.parse(text) as { error?: string; message?: string };
 
-    return body.message ?? body.error ?? text
+    return body.message ?? body.error ?? text;
   } catch {
-    return text
+    return text;
   }
 }
 
 export function nextPaint() {
   return new Promise<void>((resolve) => {
-    requestAnimationFrame(() => resolve())
-  })
+    requestAnimationFrame(() => resolve());
+  });
 }
 
 export function normalizeSelectionReplacementMarkdown(markdown: string) {
-  return unwrapPlainFencedBlock(markdown)
+  return unwrapPlainFencedBlock(markdown);
 }
 
 function splitStructuralMarkdownLines(markdown: string): JSONContent[] {
-  const lines = markdown.split("\n")
-  const blocks: JSONContent[] = []
-  let paragraphLines: string[] = []
+  const lines = markdown.split("\n");
+  const blocks: JSONContent[] = [];
+  let paragraphLines: string[] = [];
 
   const flushParagraph = () => {
     if (paragraphLines.length === 0) {
-      return
+      return;
     }
 
     blocks.push({
       type: "paragraph",
       content: [{ type: "text", text: paragraphLines.join("\n") }],
-    })
-    paragraphLines = []
-  }
+    });
+    paragraphLines = [];
+  };
 
   for (const line of lines) {
-    const trimmed = line.trim()
-    const isStructuralMarker = isStructuralBlockMarkerLine(trimmed)
+    const trimmed = line.trim();
+    const isStructuralMarker = isStructuralBlockMarkerLine(trimmed);
 
     if (isStructuralMarker) {
-      flushParagraph()
+      flushParagraph();
       blocks.push({
         type: "paragraph",
         content: [{ type: "text", text: trimmed }],
-      })
-      continue
+      });
+      continue;
     }
 
     if (!trimmed) {
-      flushParagraph()
-      continue
+      flushParagraph();
+      continue;
     }
 
-    paragraphLines.push(line)
+    paragraphLines.push(line);
   }
 
-  flushParagraph()
+  flushParagraph();
 
-  return restoreStructuralBlocksInMarkdownContent(blocks)
+  return restoreStructuralBlocksInMarkdownContent(blocks);
 }
 
 function sanitizeMarkdownContent(content: JSONContent[]) {
-  return content.map(sanitizeMarkdownNode).filter(Boolean) as JSONContent[]
+  return content.map(sanitizeMarkdownNode).filter(Boolean) as JSONContent[];
 }
 
 function sanitizeMarkdownNode(node: JSONContent): JSONContent | null {
   if (!node.type) {
-    return null
+    return null;
   }
 
-  const content = Array.isArray(node.content)
-    ? sanitizeMarkdownContent(node.content)
-    : undefined
+  const content = Array.isArray(node.content) ? sanitizeMarkdownContent(node.content) : undefined;
 
   if (node.type === "listItem" || node.type === "taskItem") {
     return {
       ...node,
       content: normalizeListItemContent(content),
-    }
+    };
   }
 
   if (node.type === "blockquote") {
     return {
       ...node,
       content: normalizeRequiredBlockContent(content),
-    }
+    };
   }
 
-  if (
-    node.type === "bulletList" ||
-    node.type === "orderedList" ||
-    node.type === "taskList"
-  ) {
+  if (node.type === "bulletList" || node.type === "orderedList" || node.type === "taskList") {
     return {
       ...node,
       content: normalizeListContent(node.type, content),
-    }
+    };
   }
 
   if (content) {
-    return { ...node, content }
+    return { ...node, content };
   }
 
-  return node
+  return node;
 }
 
 function normalizeRequiredBlockContent(content: JSONContent[] | undefined) {
-  return content && content.length > 0 ? content : [{ type: "paragraph" }]
+  return content && content.length > 0 ? content : [{ type: "paragraph" }];
 }
 
-function normalizeListContent(
-  listType: string,
-  content: JSONContent[] | undefined,
-) {
+function normalizeListContent(listType: string, content: JSONContent[] | undefined) {
   if (content && content.length > 0) {
-    return content
+    return content;
   }
 
   return [
@@ -196,31 +183,31 @@ function normalizeListContent(
       ...(listType === "taskList" ? { attrs: { checked: false } } : {}),
       content: [{ type: "paragraph" }],
     },
-  ]
+  ];
 }
 
 function normalizeListItemContent(content: JSONContent[] | undefined) {
   if (!content || content.length === 0) {
-    return [{ type: "paragraph" }]
+    return [{ type: "paragraph" }];
   }
 
-  const firstNode = content[0]
+  const firstNode = content[0];
 
   if (firstNode?.type === "paragraph") {
-    return content
+    return content;
   }
 
-  const leadingInlineNodes: JSONContent[] = []
-  let firstBlockIndex = 0
+  const leadingInlineNodes: JSONContent[] = [];
+  let firstBlockIndex = 0;
 
   for (const child of content) {
     if (child.type === "text" || child.marks) {
-      leadingInlineNodes.push(child)
-      firstBlockIndex += 1
-      continue
+      leadingInlineNodes.push(child);
+      firstBlockIndex += 1;
+      continue;
     }
 
-    break
+    break;
   }
 
   return [
@@ -229,22 +216,22 @@ function normalizeListItemContent(content: JSONContent[] | undefined) {
       ...(leadingInlineNodes.length ? { content: leadingInlineNodes } : {}),
     },
     ...content.slice(firstBlockIndex),
-  ]
+  ];
 }
 
 function normalizeUnsupportedMarkdown(markdown: string) {
-  return normalizeFootnotes(markdown)
+  return normalizeFootnotes(markdown);
 }
 
 function unwrapPlainFencedBlock(markdown: string) {
-  const trimmed = markdown.trim()
-  const match = /^```([^\n`]*)\n([\s\S]*?)\n```$/.exec(trimmed)
+  const trimmed = markdown.trim();
+  const match = /^```([^\n`]*)\n([\s\S]*?)\n```$/.exec(trimmed);
 
   if (!match) {
-    return markdown
+    return markdown;
   }
 
-  const language = match[1].trim().toLowerCase()
+  const language = match[1].trim().toLowerCase();
 
   if (
     language &&
@@ -254,18 +241,18 @@ function unwrapPlainFencedBlock(markdown: string) {
     language !== "plain" &&
     language !== "plaintext"
   ) {
-    return markdown
+    return markdown;
   }
 
-  return match[2].trim()
+  return match[2].trim();
 }
 
 function normalizeFootnotes(markdown: string) {
-  const footnotes = new Map<string, string>()
+  const footnotes = new Map<string, string>();
   const withoutDefinitions = markdown.replace(
     /^[ \t]*\[\^([^\]]+)\]:[ \t]*(.*)(?:\n(?!(?:[ \t]*\[\^[^\]]+\]:|[ \t]*$)).*)*/gm,
     (definition) => {
-      const match = /^[ \t]*\[\^([^\]]+)\]:[ \t]*(.*)$/m.exec(definition)
+      const match = /^[ \t]*\[\^([^\]]+)\]:[ \t]*(.*)$/m.exec(definition);
 
       if (match) {
         footnotes.set(
@@ -274,22 +261,20 @@ function normalizeFootnotes(markdown: string) {
             .replace(/^[ \t]*\[\^[^\]]+\]:[ \t]*/m, "")
             .replace(/\n[ \t]+/g, " ")
             .trim(),
-        )
+        );
       }
 
-      return ""
+      return "";
     },
-  )
+  );
 
   const withoutRefs = withoutDefinitions.replace(/\[\^([^\]]+)\]/g, (_ref, id) =>
     footnotes.has(id) ? `[${id}]` : "",
-  )
-  const unusedFootnotes = Array.from(footnotes.entries()).filter(
-    ([, value]) => value.length > 0,
-  )
+  );
+  const unusedFootnotes = Array.from(footnotes.entries()).filter(([, value]) => value.length > 0);
 
   if (unusedFootnotes.length === 0) {
-    return withoutRefs
+    return withoutRefs;
   }
 
   return [
@@ -297,5 +282,5 @@ function normalizeFootnotes(markdown: string) {
     "",
     "### Notes",
     ...unusedFootnotes.map(([id, value]) => `${id}. ${value}`),
-  ].join("\n")
+  ].join("\n");
 }

@@ -11,10 +11,15 @@ export async function appendRunEvent(
   return db.transaction(async (tx) => {
     // All writers lock the parent before allocating the next sequence. A
     // transaction alone does not serialize concurrent max(sequence) reads.
-    await tx.select({ id: aiAgentRun.id }).from(aiAgentRun)
-      .where(eq(aiAgentRun.id, runId)).for("update");
-    const [next] = await tx.select({ sequence: sql<number>`coalesce(max(${aiAgentRunEvent.sequence}), 0) + 1` })
-      .from(aiAgentRunEvent).where(eq(aiAgentRunEvent.runId, runId));
+    await tx
+      .select({ id: aiAgentRun.id })
+      .from(aiAgentRun)
+      .where(eq(aiAgentRun.id, runId))
+      .for("update");
+    const [next] = await tx
+      .select({ sequence: sql<number>`coalesce(max(${aiAgentRunEvent.sequence}), 0) + 1` })
+      .from(aiAgentRunEvent)
+      .where(eq(aiAgentRunEvent.runId, runId));
     await tx.insert(aiAgentRunEvent).values({
       createdAt: new Date(),
       id: crypto.randomUUID(),
@@ -35,7 +40,11 @@ export function serializeRun(row: typeof aiAgentRun.$inferSelect, includeDiagnos
     createdAt: row.createdAt.toISOString(),
     durationMs: row.durationMs,
     errorCode: row.errorCode,
-    errorSummary: includeDiagnostics ? row.errorSummary : row.errorCode ? "Run could not complete." : null,
+    errorSummary: includeDiagnostics
+      ? row.errorSummary
+      : row.errorCode
+        ? "Run could not complete."
+        : null,
     id: row.id,
     initiatedByUserId: row.initiatedByUserId,
     outputSummary: row.outputSummary,

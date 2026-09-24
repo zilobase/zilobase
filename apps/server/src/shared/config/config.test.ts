@@ -26,7 +26,11 @@ test("automation webhooks and self-hosted HTTP domains are explicit", () => {
   assert.equal(isAutomationWebhooksEnabled({}), false);
   assert.equal(isAutomationWebhooksEnabled({ AUTOMATION_WEBHOOKS_ENABLED: "TRUE" }), true);
   assert.deepEqual(
-    [...getAutomationWebhookHttpDomains({ AUTOMATION_WEBHOOK_HTTP_DOMAINS: " hooks.example.test,local.example.test " })],
+    [
+      ...getAutomationWebhookHttpDomains({
+        AUTOMATION_WEBHOOK_HTTP_DOMAINS: " hooks.example.test,local.example.test ",
+      }),
+    ],
     ["hooks.example.test", "local.example.test"],
   );
 });
@@ -38,12 +42,18 @@ test("automation Slack is disabled unless explicitly enabled", () => {
 
 test("automation execution kill switch and retention defaults are operator-owned", () => {
   assert.equal(isDatabaseAutomationExecutionEnabled({}), true);
-  assert.equal(isDatabaseAutomationExecutionEnabled({ DATABASE_AUTOMATIONS_EXECUTION_DISABLED: "TRUE" }), false);
+  assert.equal(
+    isDatabaseAutomationExecutionEnabled({ DATABASE_AUTOMATIONS_EXECUTION_DISABLED: "TRUE" }),
+    false,
+  );
   assert.deepEqual(getDatabaseAutomationRetention({}), { runSummaryDays: 30, stepDetailDays: 7 });
-  assert.deepEqual(getDatabaseAutomationRetention({
-    DATABASE_AUTOMATION_RUN_RETENTION_DAYS: "999",
-    DATABASE_AUTOMATION_STEP_RETENTION_DAYS: "0",
-  }), { runSummaryDays: 365, stepDetailDays: 1 });
+  assert.deepEqual(
+    getDatabaseAutomationRetention({
+      DATABASE_AUTOMATION_RUN_RETENTION_DAYS: "999",
+      DATABASE_AUTOMATION_STEP_RETENTION_DAYS: "0",
+    }),
+    { runSummaryDays: 365, stepDetailDays: 1 },
+  );
 });
 
 test("public request URLs prefer the local Host over a rewritten production origin", () => {
@@ -58,10 +68,9 @@ test("public request URLs prefer the local Host over a rewritten production orig
   );
   assert.equal(
     resolvePublicRequestUrl(
-      new Request(
-        "https://api.zilobase.com/desktop/authorize?client_id=zilobase-desktop",
-        { headers: { host: "api.zilobase.com" } },
-      ),
+      new Request("https://api.zilobase.com/desktop/authorize?client_id=zilobase-desktop", {
+        headers: { host: "api.zilobase.com" },
+      }),
       {
         BETTER_AUTH_URL: "http://localhost:3000",
         ZILOBASE_ADAPTER_PORT: "3000",
@@ -86,10 +95,9 @@ test("public request URLs prefer the local Host over a rewritten production orig
   );
   assert.equal(
     resolvePublicRequestUrl(
-      new Request(
-        "https://api.zilobase.com/desktop/authorize?client_id=zilobase-desktop",
-        { headers: { host: "api.zilobase.com" } },
-      ),
+      new Request("https://api.zilobase.com/desktop/authorize?client_id=zilobase-desktop", {
+        headers: { host: "api.zilobase.com" },
+      }),
       {
         BETTER_AUTH_URL: "https://api.zilobase.com",
         ZILOBASE_ADAPTER_PORT: "3000",
@@ -104,10 +112,7 @@ test("client origins are normalized, selected, and required", () => {
     CLIENT_URL: " https://app.example.com, ,https://admin.example.com ",
   };
 
-  assert.deepEqual(getClientOrigins(env), [
-    "https://app.example.com",
-    "https://admin.example.com",
-  ]);
+  assert.deepEqual(getClientOrigins(env), ["https://app.example.com", "https://admin.example.com"]);
   assert.equal(getPrimaryClientOrigin(env), "https://app.example.com");
   assert.throws(() => getClientOrigins({}), /CLIENT_URL is required/);
   assert.throws(
@@ -124,10 +129,7 @@ test("canonical public origins are normalized and reject unsafe URL components",
 
   assert.equal(getCanonicalApiOrigin(env), "https://api.example.com");
   assert.equal(getCanonicalWebOrigin(env), "https://app.example.com");
-  assert.equal(
-    getCanonicalHttpOrigin("http://127.0.0.1:8787/"),
-    "http://127.0.0.1:8787",
-  );
+  assert.equal(getCanonicalHttpOrigin("http://127.0.0.1:8787/"), "http://127.0.0.1:8787");
 
   for (const origin of [
     "http://example.com",
@@ -162,14 +164,8 @@ test("clipper extension origins are allowed when configured", () => {
     CLIPPER_EXTENSION_ORIGINS: "chrome-extension://abcdefghijklmnop",
   };
 
-  assert.equal(
-    isAllowedClientOrigin(env, "chrome-extension://abcdefghijklmnop"),
-    true,
-  );
-  assert.equal(
-    isAllowedClientOrigin(env, "chrome-extension://attacker"),
-    false,
-  );
+  assert.equal(isAllowedClientOrigin(env, "chrome-extension://abcdefghijklmnop"), true);
+  assert.equal(isAllowedClientOrigin(env, "chrome-extension://attacker"), false);
 });
 
 test("trusted origins add development clients only for local requests", () => {
@@ -208,12 +204,7 @@ test("local host classification covers loopback and private IPv4 ranges", () => 
     assert.equal(isLocalDevelopmentHost(hostname), true, hostname);
   }
 
-  for (const hostname of [
-    "example.com",
-    "172.15.0.1",
-    "172.32.0.1",
-    "192.167.1.1",
-  ]) {
+  for (const hostname of ["example.com", "172.15.0.1", "172.32.0.1", "192.167.1.1"]) {
     assert.equal(isLocalDevelopmentHost(hostname), false, hostname);
   }
 
@@ -231,4 +222,3 @@ test("string environment helpers reject empty and non-string values", () => {
   assert.equal(getRequiredStringEnv({ VALUE: "configured" }, "VALUE"), "configured");
   assert.throws(() => getRequiredStringEnv({}, "VALUE"), /VALUE is required/);
 });
-

@@ -1,12 +1,13 @@
 import { versionedPackageFiles } from "./versioned-packages.mjs";
-import { readFileSync, writeFileSync } from "node:fs"
+import { readFileSync, writeFileSync } from "node:fs";
 
-const version = process.argv[2]
-const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
+const version = process.argv[2];
+const semver =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
 if (!version || !semver.test(version)) {
-  console.error("Usage: npm run version:set -- 0.2.0")
-  process.exit(1)
+  console.error("Usage: npm run version:set -- 0.2.0");
+  process.exit(1);
 }
 
 for (const file of versionedPackageFiles) {
@@ -15,33 +16,31 @@ for (const file of versionedPackageFiles) {
   writeFileSync(file, `${JSON.stringify(json, null, 2)}\n`);
 }
 
-for (const file of [
-  "apps/desktop/electron/sidecar/Cargo.toml",
-]) {
+for (const file of ["apps/desktop/electron/sidecar/Cargo.toml"]) {
   const text = readFileSync(file, "utf8").replace(/version = ".*?"|"version": ".*?"/, (match) =>
     match.startsWith('"') ? `"version": "${version}"` : `version = "${version}"`,
-  )
-  writeFileSync(file, text)
+  );
+  writeFileSync(file, text);
 }
 
-const serverVersionFile = "apps/server/src/shared/version.ts"
+const serverVersionFile = "apps/server/src/shared/version.ts";
 const serverVersion = readFileSync(serverVersionFile, "utf8").replace(
   /export const SERVER_VERSION = ".*?";/,
   `export const SERVER_VERSION = "${version}";`,
-)
-writeFileSync(serverVersionFile, serverVersion)
+);
+writeFileSync(serverVersionFile, serverVersion);
 
-const sidecarLockFile = "apps/desktop/electron/sidecar/Cargo.lock"
+const sidecarLockFile = "apps/desktop/electron/sidecar/Cargo.lock";
 const sidecarLock = readFileSync(sidecarLockFile, "utf8").replace(
   /(\[\[package\]\]\nname = "zilobase-desktop-sidecar"\nversion = ")[^"]+("\n)/,
   `$1${version}$2`,
-)
-writeFileSync(sidecarLockFile, sidecarLock)
+);
+writeFileSync(sidecarLockFile, sidecarLock);
 
-const lock = JSON.parse(readFileSync("package-lock.json", "utf8"))
-lock.version = version
-lock.packages[""].version = version
-lock.packages["apps/web"].version = version
-lock.packages["apps/server"].version = version
-lock.packages["apps/desktop"].version = version
-writeFileSync("package-lock.json", `${JSON.stringify(lock, null, 2)}\n`)
+const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
+lock.version = version;
+lock.packages[""].version = version;
+lock.packages["apps/web"].version = version;
+lock.packages["apps/server"].version = version;
+lock.packages["apps/desktop"].version = version;
+writeFileSync("package-lock.json", `${JSON.stringify(lock, null, 2)}\n`);

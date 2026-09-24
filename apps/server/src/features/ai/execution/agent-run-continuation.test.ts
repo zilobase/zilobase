@@ -4,10 +4,7 @@ import { processAgentRun } from "./agent-run-service";
 
 const state = vi.hoisted(() => ({
   run: {} as Record<string, unknown>,
-  checkpoint: { messages: [], steps: 0, toolCallIds: [] } as Record<
-    string,
-    unknown
-  >,
+  checkpoint: { messages: [], steps: 0, toolCallIds: [] } as Record<string, unknown>,
   writes: [] as { toolCallId: string }[],
   ambiguous: false,
   missingProfile: false,
@@ -58,25 +55,16 @@ vi.mock("./agent-run-checkpoint", async (original) => ({
   saveAgentRunCheckpoint: state.saves,
 }));
 vi.mock("../../../infrastructure/database", () => {
-  const rows = (
-    table: Parameters<typeof getTableName>[0],
-    selection?: Record<string, unknown>,
-  ) => {
+  const rows = (table: Parameters<typeof getTableName>[0], selection?: Record<string, unknown>) => {
     switch (getTableName(table)) {
       case "ai_agent_run":
         return [state.run];
       case "ai_agent_revision":
         return [{ compiledDefinition: { instructions: "Saved instructions" } }];
       case "ai_agent_profile":
-        return state.missingProfile
-          ? []
-          : [{ name: "Agent", ownerUserId: "owner" }];
+        return state.missingProfile ? [] : [{ name: "Agent", ownerUserId: "owner" }];
       case "ai_agent_tool_execution":
-        return selection?.toolCallId
-          ? state.writes
-          : state.ambiguous
-            ? [{ id: "receipt" }]
-            : [];
+        return selection?.toolCallId ? state.writes : state.ambiguous ? [{ id: "receipt" }] : [];
       default:
         return [];
     }
@@ -87,10 +75,8 @@ vi.mock("../../../infrastructure/database", () => {
         where: () => {
           const query = {
             limit: () => query,
-            for: async () =>
-              state.run.status === "queued" ? rows(table, selection) : [],
-            then: (resolve: (value: unknown) => unknown) =>
-              resolve(rows(table, selection)),
+            for: async () => (state.run.status === "queued" ? rows(table, selection) : []),
+            then: (resolve: (value: unknown) => unknown) => resolve(rows(table, selection)),
           };
           return query;
         },
@@ -99,8 +85,7 @@ vi.mock("../../../infrastructure/database", () => {
     update: (table: Parameters<typeof getTableName>[0]) => ({
       set: (value: Record<string, unknown>) => ({
         where: () => {
-          if (getTableName(table) === "ai_agent_run")
-            Object.assign(state.run, value);
+          if (getTableName(table) === "ai_agent_run") Object.assign(state.run, value);
           return {
             returning: async () => [state.run],
             then: (resolve: (value: unknown) => unknown) => resolve([]),
@@ -108,8 +93,7 @@ vi.mock("../../../infrastructure/database", () => {
         },
       }),
     }),
-    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> =>
-      callback(database),
+    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> => callback(database),
   };
   return { db: database };
 });
@@ -286,9 +270,7 @@ describe("agent model continuation", () => {
     expect((await processAgentRun(env, work)).outcome).toBe("completed");
     expect(state.run.status).toBe("waiting_approval");
     expect(state.run.leaseOwner).toBeNull();
-    expect(state.events.mock.calls.some((call) => call[1] === "output")).toBe(
-      false,
-    );
+    expect(state.events.mock.calls.some((call) => call[1] === "output")).toBe(false);
   });
   it("fails safely when the saved revision is unavailable", async () => {
     state.missingProfile = true;

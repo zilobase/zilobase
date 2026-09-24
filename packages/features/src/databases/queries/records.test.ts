@@ -2,9 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { QueryClient } from "@tanstack/react-query";
 
-import {
-  databaseWindowQueryKey,
-} from "./keys";
+import { databaseWindowQueryKey } from "./keys";
 import {
   fetchRecordWindow,
   isWindowStaleError,
@@ -36,18 +34,15 @@ const scope = {
 };
 
 test("window key uses host root with source/query segments", () => {
-  assert.deepEqual(
-    databaseWindowQueryKey("session-1", scope),
-    [
-      "db",
-      "session-1",
-      "database-1",
-      "window",
-      "data-source-1",
-      "q1",
-      false,
-    ],
-  );
+  assert.deepEqual(databaseWindowQueryKey("session-1", scope), [
+    "db",
+    "session-1",
+    "database-1",
+    "window",
+    "data-source-1",
+    "q1",
+    false,
+  ]);
 });
 
 test("window key splits by query hash, not by view", () => {
@@ -104,10 +99,12 @@ test("WINDOW_STALE retries once without snapshot then throws", async () => {
   const failing = (async () => {
     throw { code: "WINDOW_STALE", status: 409 };
   }) as unknown as import("../../shared/api-fetcher").ApiFetcher;
-  await assert.rejects(() => fetchRecordWindow(failing, scope, {
-    limit: 50,
-    snapshot: "stale",
-  }));
+  await assert.rejects(() =>
+    fetchRecordWindow(failing, scope, {
+      limit: 50,
+      snapshot: "stale",
+    }),
+  );
 });
 
 test("prefer-newest guard ignores stale incoming window", async () => {
@@ -117,7 +114,10 @@ test("prefer-newest guard ignores stale incoming window", async () => {
     const cached = windowResponse({ databaseVersion: 10, totalCount: 7 });
     queryClient.setQueryData(key, { pages: [cached], pageParams: [{ limit: 50 }] });
     const apiFetch = (async () =>
-      windowResponse({ databaseVersion: 8, totalCount: 1 })) as unknown as import("../../shared/api-fetcher").ApiFetcher;
+      windowResponse({
+        databaseVersion: 8,
+        totalCount: 1,
+      })) as unknown as import("../../shared/api-fetcher").ApiFetcher;
     const data = await fetchRecordWindow(
       apiFetch,
       scope,
@@ -148,7 +148,8 @@ test("placeholder keeps the previous window within one data source", () => {
   );
 });
 
-test("placeholder drops rows from another data source", () => {  const previousData = {
+test("placeholder drops rows from another data source", () => {
+  const previousData = {
     pageParams: [{ limit: 50, snapshot: undefined }],
     pages: [windowResponse({ totalCount: 3 })],
   };
@@ -161,10 +162,7 @@ test("placeholder drops rows from another data source", () => {  const previousD
     selectSameSourcePlaceholder(previousData, otherSourceKey, "data-source-1"),
     undefined,
   );
-  assert.equal(
-    selectSameSourcePlaceholder(previousData, undefined, "data-source-1"),
-    undefined,
-  );
+  assert.equal(selectSameSourcePlaceholder(previousData, undefined, "data-source-1"), undefined);
 });
 
 test("prefetch warms an uncached window and skips a cached one", async () => {
@@ -175,25 +173,13 @@ test("prefetch warms an uncached window and skips a cached one", async () => {
       calls += 1;
       return windowResponse({ totalCount: 4 });
     }) as unknown as import("../../shared/api-fetcher").ApiFetcher;
-    await prefetchDatabaseWindow(
-      queryClient,
-      apiFetch,
-      "session-1",
-      scope,
-      50,
-    );
+    await prefetchDatabaseWindow(queryClient, apiFetch, "session-1", scope, 50);
     assert.equal(calls, 1);
-    const cached = queryClient.getQueryData(
-      databaseWindowQueryKey("session-1", scope),
-    ) as { pages: DatabaseRecordWindowResponse[] };
+    const cached = queryClient.getQueryData(databaseWindowQueryKey("session-1", scope)) as {
+      pages: DatabaseRecordWindowResponse[];
+    };
     assert.equal(cached.pages[0]?.totalCount, 4);
-    await prefetchDatabaseWindow(
-      queryClient,
-      apiFetch,
-      "session-1",
-      scope,
-      50,
-    );
+    await prefetchDatabaseWindow(queryClient, apiFetch, "session-1", scope, 50);
     assert.equal(calls, 1);
   } finally {
     queryClient.clear();

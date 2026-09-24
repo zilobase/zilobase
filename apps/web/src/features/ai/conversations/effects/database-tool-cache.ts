@@ -1,9 +1,6 @@
 import { getToolName, isToolUIPart, type UIMessage } from "ai";
 import type { QueryClient } from "@tanstack/react-query";
-import {
-  isDatabaseConfigToolName,
-  readDatabaseConfigToolIds,
-} from "@zilobase/features/ai-chat";
+import { isDatabaseConfigToolName, readDatabaseConfigToolIds } from "@zilobase/features/ai-chat";
 import { databaseQueryRoot } from "@zilobase/features/databases";
 import { pageQueryKey } from "@zilobase/features/pages";
 
@@ -20,12 +17,7 @@ function collectInvalidationTargets(ids: Record<string, string>) {
       databaseIds.add(value);
     }
 
-    if (
-      key === "pageId" ||
-      key === "hostPageId" ||
-      key === "rowPageId" ||
-      key.endsWith("PageId")
-    ) {
+    if (key === "pageId" || key === "hostPageId" || key === "rowPageId" || key.endsWith("PageId")) {
       pageIds.add(value);
     }
   }
@@ -50,8 +42,7 @@ function invalidateToolResult(
   for (const databaseId of databaseIds) {
     void queryClient.invalidateQueries({
       predicate: (query) =>
-        query.queryKey[0] === databaseQueryRoot &&
-        query.queryKey.includes(databaseId),
+        query.queryKey[0] === databaseQueryRoot && query.queryKey.includes(databaseId),
     });
   }
   for (const pageId of pageIds) {

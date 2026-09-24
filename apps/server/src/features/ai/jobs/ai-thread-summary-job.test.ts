@@ -35,11 +35,7 @@ vi.mock("../providers/ai-provider", () => ({
   },
 }));
 vi.mock("../../../infrastructure/background/telemetry", () => ({
-  measureBackgroundProvider: async (
-    _env: unknown,
-    _name: string,
-    run: () => unknown,
-  ) => run(),
+  measureBackgroundProvider: async (_env: unknown, _name: string, run: () => unknown) => run(),
 }));
 vi.mock("ai", () => ({
   generateText: async (input: { prompt: string }) => {
@@ -107,14 +103,7 @@ test("thread compaction includes only text and summarized tool outcomes and chec
     /ASSISTANT: Fact Tool tool-search: completed: Found page Tool tool-write: success: Saved page/,
   );
   assert.doesNotMatch(state.prompt, /Ignored|tool-empty|tool-false/);
-  assert.deepEqual(state.calls, [
-    "progress",
-    "lease",
-    "model",
-    "generate",
-    "lease",
-    "persist",
-  ]);
+  assert.deepEqual(state.calls, ["progress", "lease", "model", "generate", "lease", "persist"]);
   assert.equal(state.persisted?.summary, "summary");
 });
 test("thread compaction avoids provider work for already-covered or empty segments", async () => {

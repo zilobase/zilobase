@@ -71,25 +71,16 @@ export function SubItemsSettingsSection({
   };
 
   return (
-    <DropDrawerSub
-      displayMode="inline"
-      id="database-sub-items-settings"
-      title="Sub-items"
-    >
+    <DropDrawerSub displayMode="inline" id="database-sub-items-settings" title="Sub-items">
       <DropDrawerSubTrigger>
         <ListTree />
         <span>Sub-items</span>
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-72 overflow-hidden">
         {draftSettings.enabled ? (
-          <EnabledSubItemsSettings
-            onSettingsChange={updateSettings}
-            settings={draftSettings}
-          />
+          <EnabledSubItemsSettings onSettingsChange={updateSettings} settings={draftSettings} />
         ) : (
-          <EnableSubItemsSettings
-            onEnable={() => updateSettings({ enabled: true })}
-          />
+          <EnableSubItemsSettings onEnable={() => updateSettings({ enabled: true })} />
         )}
       </DropDrawerSubContent>
     </DropDrawerSub>
@@ -99,9 +90,7 @@ export function SubItemsSettingsSection({
 function EnableSubItemsSettings({ onEnable }: { onEnable: () => void }) {
   return (
     <div className="grid gap-3 p-2">
-      <div className="text-xs text-content-secondary">
-        Break down items in toggles
-      </div>
+      <div className="text-xs text-content-secondary">Break down items in toggles</div>
       <SubItemsPreview />
       <DropDrawerItem
         className="justify-center bg-action-primary font-medium text-action-on-primary focus:bg-action-primary-hover focus:text-action-on-primary"
@@ -156,9 +145,7 @@ function EnabledSubItemsSettings({
           <span>Advanced settings</span>
         </DropDrawerSubTrigger>
         <DropDrawerSubContent className="w-80">
-          <DropDrawerLabel>
-            Choose which relation represents the sub-items.
-          </DropDrawerLabel>
+          <DropDrawerLabel>Choose which relation represents the sub-items.</DropDrawerLabel>
           {propertyOptions.map((option) => (
             <DropDrawerItem
               key={option.value}
@@ -166,9 +153,7 @@ function EnabledSubItemsSettings({
             >
               <ArrowDownRight />
               <span>{option.label}</span>
-              {settings.property === option.value ? (
-                <Check className="ml-auto" />
-              ) : null}
+              {settings.property === option.value ? <Check className="ml-auto" /> : null}
             </DropDrawerItem>
           ))}
         </DropDrawerSubContent>
@@ -207,10 +192,7 @@ function SettingsSelect<Value extends string>({
       </DropDrawerSubTrigger>
       <DropDrawerSubContent>
         {options.map((option) => (
-          <DropDrawerItem
-            key={option.value}
-            onSelect={() => onSelect(option.value)}
-          >
+          <DropDrawerItem key={option.value} onSelect={() => onSelect(option.value)}>
             <span>{option.label}</span>
             {selected === option.value ? <Check className="ml-auto" /> : null}
           </DropDrawerItem>

@@ -12,14 +12,8 @@ import { requireDataSourceEditAccess } from "../access/data-source-access";
 import { commitDataSourceMutation } from "../core/commit";
 import { getDatabasePropertyEntity } from "../commands/metadata-entities";
 import { getDatabaseRecordEntity } from "../commands/record-entity";
-import {
-  formatDatePropertyValueAsText,
-  normalizePropertyConfig,
-} from "./config";
-import {
-  normalizeDatabasePropertyType,
-  shouldClearValuesForPropertyTypeChange,
-} from "./types";
+import { formatDatePropertyValueAsText, normalizePropertyConfig } from "./config";
+import { normalizeDatabasePropertyType, shouldClearValuesForPropertyTypeChange } from "./types";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import { invalidateDatabaseAutomationDependencies } from "../../automations/service";
 import type { Database } from "../../../infrastructure/database";
@@ -35,10 +29,7 @@ export async function createDatabasePropertyService(input: {
   newDatabasePropertyId?: string;
   newPagePropertyId?: string;
 }) {
-  const existing = await requireDataSourceEditAccess(
-    input.databaseId,
-    input.userId,
-  );
+  const existing = await requireDataSourceEditAccess(input.databaseId, input.userId);
   const name = input.name?.trim() || "Property";
   const type = normalizeDatabasePropertyType(input.type) ?? "";
 
@@ -52,19 +43,12 @@ export async function createDatabasePropertyService(input: {
     .select({ id: databaseProperty.id, position: databaseProperty.position })
     .from(databaseProperty)
     .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
-    .where(
-      and(
-        eq(databaseProperty.dataSourceId, existing.id),
-        isNull(pageProperty.deletedAt),
-      ),
-    );
+    .where(and(eq(databaseProperty.dataSourceId, existing.id), isNull(pageProperty.deletedAt)));
 
   const pagePropertyId = input.newPagePropertyId ?? crypto.randomUUID();
   const databasePropertyId = input.newDatabasePropertyId ?? crypto.randomUUID();
   const targetPosition =
-    input.position === undefined
-      ? columns.length
-      : Math.min(input.position, columns.length);
+    input.position === undefined ? columns.length : Math.min(input.position, columns.length);
 
   const commit = await commitDataSourceMutation(
     {
@@ -106,7 +90,8 @@ export async function createDatabasePropertyService(input: {
         updatedAt: now,
       });
 
-      const ids = await tx.select({ id: databaseProperty.id })
+      const ids = await tx
+        .select({ id: databaseProperty.id })
         .from(databaseProperty)
         .where(eq(databaseProperty.dataSourceId, existing.id))
         .orderBy(asc(databaseProperty.position), asc(databaseProperty.id));
@@ -140,10 +125,7 @@ export async function updateDatabasePropertyService(input: {
   type?: string;
   userId: string;
 }) {
-  const existing = await requireDataSourceEditAccess(
-    input.databaseId,
-    input.userId,
-  );
+  const existing = await requireDataSourceEditAccess(input.databaseId, input.userId);
 
   const [column] = await db
     .select()
@@ -181,13 +163,8 @@ export async function updateDatabasePropertyService(input: {
   const propertyValues: Partial<typeof pageProperty.$inferInsert> = {
     updatedAt: new Date(),
   };
-  const effectiveType = normalizeDatabasePropertyType(
-    input.type ?? pagePropertyRecord.type,
-  );
-  const previousType = normalizeDatabasePropertyType(
-    pagePropertyRecord.type,
-    "",
-  );
+  const effectiveType = normalizeDatabasePropertyType(input.type ?? pagePropertyRecord.type);
+  const previousType = normalizeDatabasePropertyType(pagePropertyRecord.type, "");
 
   if (!effectiveType) {
     throw new ServiceMutationError("Unsupported property type", 400);
@@ -202,46 +179,35 @@ export async function updateDatabasePropertyService(input: {
   }
 
   if (input.config !== undefined) {
-    const config = input.mergeConfig &&
-        pagePropertyRecord.config &&
-        typeof pagePropertyRecord.config === "object" &&
-        !Array.isArray(pagePropertyRecord.config) &&
-        input.config &&
-        typeof input.config === "object" &&
-        !Array.isArray(input.config)
-      ? {
-          ...(pagePropertyRecord.config as Record<string, unknown>),
-          ...(input.config as Record<string, unknown>),
-        }
-      : input.config;
-    propertyValues.config = normalizePropertyConfig(
-      effectiveType,
-      config,
-    );
+    const config =
+      input.mergeConfig &&
+      pagePropertyRecord.config &&
+      typeof pagePropertyRecord.config === "object" &&
+      !Array.isArray(pagePropertyRecord.config) &&
+      input.config &&
+      typeof input.config === "object" &&
+      !Array.isArray(input.config)
+        ? {
+            ...(pagePropertyRecord.config as Record<string, unknown>),
+            ...(input.config as Record<string, unknown>),
+          }
+        : input.config;
+    propertyValues.config = normalizePropertyConfig(effectiveType, config);
   } else if (effectiveType === "status" && input.type !== undefined) {
-    propertyValues.config = normalizePropertyConfig(
-      "status",
-      pagePropertyRecord.config,
-    );
+    propertyValues.config = normalizePropertyConfig("status", pagePropertyRecord.config);
   }
 
   const removedAutomationOptions =
     input.config !== undefined &&
     effectiveType === previousType &&
     ["select", "status", "multi_select"].includes(effectiveType)
-      ? removedPropertyOptions(
-          pagePropertyRecord.config,
-          propertyValues.config,
-        )
+      ? removedPropertyOptions(pagePropertyRecord.config, propertyValues.config)
       : [];
   const optionValueChanges =
     input.config !== undefined &&
     effectiveType === previousType &&
     ["select", "status", "multi_select"].includes(effectiveType)
-      ? changedPropertyOptions(
-          pagePropertyRecord.config,
-          propertyValues.config,
-        )
+      ? changedPropertyOptions(pagePropertyRecord.config, propertyValues.config)
       : [];
 
   if (input.position !== undefined) {
@@ -270,12 +236,11 @@ export async function updateDatabasePropertyService(input: {
         effectiveType !== previousType &&
         shouldClearValuesForPropertyTypeChange(previousType, effectiveType),
       );
-      const shouldConvertDateToText =
-        previousType === "date" && effectiveType === "text";
+      const shouldConvertDateToText = previousType === "date" && effectiveType === "text";
       const changedValues = shouldClearValues
-        // automation-origin: system. Property-type migration writes invalidate
-        // dependencies but are not user row-property edit triggers.
-        ? await tx
+        ? // automation-origin: system. Property-type migration writes invalidate
+          // dependencies but are not user row-property edit triggers.
+          await tx
             .update(pagePropertyValue)
             .set({ value: null, updatedAt: new Date() })
             .where(eq(pagePropertyValue.propertyId, column.propertyId))
@@ -336,33 +301,28 @@ export async function updateDatabasePropertyService(input: {
                   if (JSON.stringify(nextValue) === JSON.stringify(propertyValue.value)) {
                     return [];
                   }
-                  return [tx
-                    .update(pagePropertyValue)
-                    .set({ value: nextValue, updatedAt: new Date() })
-                    .where(eq(pagePropertyValue.id, propertyValue.id))
-                    .returning({
-                      createdAt: pagePropertyValue.createdAt,
-                      id: pagePropertyValue.id,
-                      pageId: pagePropertyValue.pageId,
-                      propertyId: pagePropertyValue.propertyId,
-                      updatedAt: pagePropertyValue.updatedAt,
-                      value: pagePropertyValue.value,
-                    })
-                    .then(([updatedValue]) => updatedValue)];
+                  return [
+                    tx
+                      .update(pagePropertyValue)
+                      .set({ value: nextValue, updatedAt: new Date() })
+                      .where(eq(pagePropertyValue.id, propertyValue.id))
+                      .returning({
+                        createdAt: pagePropertyValue.createdAt,
+                        id: pagePropertyValue.id,
+                        pageId: pagePropertyValue.pageId,
+                        propertyId: pagePropertyValue.propertyId,
+                        updatedAt: pagePropertyValue.updatedAt,
+                        value: pagePropertyValue.value,
+                      })
+                      .then(([updatedValue]) => updatedValue),
+                  ];
                 }),
               )
-          : [];
+            : [];
 
-      await tx
-        .update(databaseProperty)
-        .set(columnValues)
-        .where(eq(databaseProperty.id, column.id));
+      await tx.update(databaseProperty).set(columnValues).where(eq(databaseProperty.id, column.id));
 
-      if (
-        input.name !== undefined ||
-        input.type !== undefined ||
-        input.config !== undefined
-      ) {
+      if (input.name !== undefined || input.type !== undefined || input.config !== undefined) {
         await tx
           .update(pageProperty)
           .set(propertyValues)
@@ -392,7 +352,8 @@ export async function updateDatabasePropertyService(input: {
         });
       }
 
-      const propertyIds = await tx.select({ id: databaseProperty.id })
+      const propertyIds = await tx
+        .select({ id: databaseProperty.id })
         .from(databaseProperty)
         .where(eq(databaseProperty.dataSourceId, existing.id))
         .orderBy(asc(databaseProperty.position), asc(databaseProperty.id));
@@ -400,12 +361,14 @@ export async function updateDatabasePropertyService(input: {
       for (const item of propertyIds) {
         properties.push(await getDatabasePropertyEntity({ transaction: tx }, item.id));
       }
-      const pageIds = [...new Set(changedValues.flatMap((value) => value ? [value.pageId] : []))];
+      const pageIds = [...new Set(changedValues.flatMap((value) => (value ? [value.pageId] : [])))];
       const changedRows = pageIds.length
-        ? await tx.select({ id: databaseRow.id }).from(databaseRow).where(and(
-            eq(databaseRow.dataSourceId, existing.id),
-            inArray(databaseRow.pageId, pageIds),
-          ))
+        ? await tx
+            .select({ id: databaseRow.id })
+            .from(databaseRow)
+            .where(
+              and(eq(databaseRow.dataSourceId, existing.id), inArray(databaseRow.pageId, pageIds)),
+            )
         : [];
       const records = [];
       for (const row of changedRows) {
@@ -447,18 +410,26 @@ function migrateOptionValue(
   const replacements = new Map(changes.map(({ oldName, newName }) => [oldName, newName]));
   if (propertyType === "multi_select") {
     if (!Array.isArray(value)) return value;
-    return [...new Set(value.flatMap((item) => {
-      if (typeof item !== "string" || !replacements.has(item)) return [item];
-      const replacement = replacements.get(item);
-      return replacement === null || replacement === undefined ? [] : [replacement];
-    }))];
+    return [
+      ...new Set(
+        value.flatMap((item) => {
+          if (typeof item !== "string" || !replacements.has(item)) return [item];
+          const replacement = replacements.get(item);
+          return replacement === null || replacement === undefined ? [] : [replacement];
+        }),
+      ),
+    ];
   }
   if (typeof value !== "string" || !replacements.has(value)) return value;
   return replacements.get(value) ?? null;
 }
 
 function propertyOptions(config: unknown): Array<{ id: string; name: string }> {
-  if (!config || typeof config !== "object" || !Array.isArray((config as { options?: unknown }).options)) {
+  if (
+    !config ||
+    typeof config !== "object" ||
+    !Array.isArray((config as { options?: unknown }).options)
+  ) {
     return [];
   }
   return (config as { options: unknown[] }).options.flatMap((option) => {

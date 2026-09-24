@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowDownToLine,
   ArrowUpRight,
@@ -42,7 +35,7 @@ import {
   useLinkDatabaseDataSource,
   useUpdateDataSource,
 } from "@zilobase/features/databases/react";
-import { useDatabaseMetadata } from "../../access/use-database-metadata"
+import { useDatabaseMetadata } from "../../access/use-database-metadata";
 import { usePageNavigation } from "@zilobase/features/pages/react";
 
 import {
@@ -142,8 +135,8 @@ function parseCsv(text: string) {
   if (record.some((value) => value.length > 0)) records.push(record);
 
   return {
-    headers: (records[0] ?? []).map((value, index) =>
-      value.trim() || (index === 0 ? "Name" : `Column ${index + 1}`),
+    headers: (records[0] ?? []).map(
+      (value, index) => value.trim() || (index === 0 ? "Name" : `Column ${index + 1}`),
     ),
     rows: records.slice(1),
   };
@@ -185,11 +178,7 @@ function createHeadingNode(text: string, level: number): ContentNode {
 function getSampleHeadingEmoji(text: string, level: number) {
   const normalized = text.toLowerCase();
 
-  if (
-    /checklist|next steps|action items|follow-up|send checklist/.test(
-      normalized,
-    )
-  ) {
+  if (/checklist|next steps|action items|follow-up|send checklist/.test(normalized)) {
     return "✅";
   }
 
@@ -276,18 +265,14 @@ export function createSampleRowContent(markdown: string) {
       const items: ContentNode[] = [];
 
       while (index < lines.length) {
-        const nextTask = /^-\s+\[( |x|X)\]\s+(.+)$/.exec(
-          (lines[index] ?? "").trim(),
-        );
+        const nextTask = /^-\s+\[( |x|X)\]\s+(.+)$/.exec((lines[index] ?? "").trim());
 
         if (!nextTask) {
           index -= 1;
           break;
         }
 
-        items.push(
-          createTaskItemNode(nextTask[2], nextTask[1].toLowerCase() === "x"),
-        );
+        items.push(createTaskItemNode(nextTask[2], nextTask[1].toLowerCase() === "x"));
         index += 1;
       }
 
@@ -301,10 +286,7 @@ export function createSampleRowContent(markdown: string) {
       while (index < lines.length) {
         const nextLine = (lines[index] ?? "").trim();
 
-        if (
-          !nextLine.startsWith("- ") ||
-          /^-\s+\[( |x|X)\]\s+/.test(nextLine)
-        ) {
+        if (!nextLine.startsWith("- ") || /^-\s+\[( |x|X)\]\s+/.test(nextLine)) {
           index -= 1;
           break;
         }
@@ -328,9 +310,7 @@ export function createSampleRowContent(markdown: string) {
 
 function getPageMetadataWithEmoji(metadata: unknown, emoji: string) {
   return {
-    ...(metadata && typeof metadata === "object" && !Array.isArray(metadata)
-      ? metadata
-      : {}),
+    ...(metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {}),
     emoji,
   };
 }
@@ -424,9 +404,7 @@ export function DatabaseSetupCard({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMoreTemplates, setShowMoreTemplates] = useState(false);
   const [linkSearch, setLinkSearch] = useState("");
-  const [selectedLinkDatabaseId, setSelectedLinkDatabaseId] = useState<
-    string | null
-  >(null);
+  const [selectedLinkDatabaseId, setSelectedLinkDatabaseId] = useState<string | null>(null);
   const [creatingLinkView, setCreatingLinkView] = useState(false);
   const [linkViewName, setLinkViewName] = useState("");
 
@@ -440,12 +418,9 @@ export function DatabaseSetupCard({
   const updateDatabase = useUpdateDataSource();
   const linkDatabaseDataSource = useLinkDatabaseDataSource();
   const { data: databasePayload } = useDatabaseMetadata(databaseId);
-  const { data: navigation, isLoading: isLoadingPages } = usePageNavigation(
-    workspaceId,
-    {
-      enabled: view === "link",
-    },
-  );
+  const { data: navigation, isLoading: isLoadingPages } = usePageNavigation(workspaceId, {
+    enabled: view === "link",
+  });
   const { data: selectedLinkDatabasePayload, isLoading: isLoadingLinkViews } =
     useDatabaseMetadata(selectedLinkDatabaseId);
   const dismissSetup = useCallback(async () => {
@@ -455,12 +430,9 @@ export function DatabaseSetupCard({
       !getDatabaseSetupDismissed(databasePayload.activeDataSource.config)
     ) {
       await updateDatabase.mutateAsync({
-        config: getMergedDatabaseConfig(
-          databasePayload.activeDataSource.config,
-          {
+        config: getMergedDatabaseConfig(databasePayload.activeDataSource.config, {
           setupDismissed: true,
-          },
-        ),
+        }),
         databaseId: databasePayload.activeDataSource.id,
       });
     }
@@ -470,9 +442,7 @@ export function DatabaseSetupCard({
 
   const linkableDatabases = useMemo(() => {
     const excludedIds = new Set([databaseId, ...excludedDatabaseIds]);
-    const pagesById = new Map(
-      (navigation?.pages ?? []).map((page) => [page.id, page]),
-    );
+    const pagesById = new Map((navigation?.pages ?? []).map((page) => [page.id, page]));
 
     return (navigation?.databases ?? [])
       .filter((database) => !excludedIds.has(database.id))
@@ -489,13 +459,9 @@ export function DatabaseSetupCard({
       linkableDatabases.map(({ database, pageName }) => ({
         description: pageName,
         disabled: isSubmitting,
-        icon:
-          getDatabaseIconNode(database) ?? (
-            <PageIconDisplay
-              size="sm"
-              value={DEFAULT_DATABASE_ITEM_ICON}
-            />
-          ),
+        icon: getDatabaseIconNode(database) ?? (
+          <PageIconDisplay size="sm" value={DEFAULT_DATABASE_ITEM_ICON} />
+        ),
         label: database.name || "Untitled database",
         searchText: `${database.name} ${pageName}`.trim(),
         value: database.id,
@@ -504,12 +470,7 @@ export function DatabaseSetupCard({
   );
 
   const finishSetup = useCallback(
-    async ({
-      csvImport,
-      databaseName,
-      sourceView,
-      templateId,
-    }: DatabaseSetupSelection) => {
+    async ({ csvImport, databaseName, sourceView, templateId }: DatabaseSetupSelection) => {
       setIsSubmitting(true);
 
       try {
@@ -582,13 +543,10 @@ export function DatabaseSetupCard({
               databaseId: string;
               name?: string;
             } = {
-              config: getMergedDatabaseConfig(
-                activeDataSource.config,
-                {
-                  emoji: template.emoji,
-                  setupDismissed: true,
-                },
-              ),
+              config: getMergedDatabaseConfig(activeDataSource.config, {
+                emoji: template.emoji,
+                setupDismissed: true,
+              }),
               databaseId: activeDataSource.id,
             };
 
@@ -598,13 +556,8 @@ export function DatabaseSetupCard({
 
             const propertyTypesByName = new Map(
               (databasePayload?.properties ?? [])
-                .filter(
-                  (property) => property.dataSourceId === activeDataSource.id,
-                )
-                .map((property) => [
-                  property.property.name.toLowerCase(),
-                  property.property.type,
-                ]),
+                .filter((property) => property.dataSourceId === activeDataSource.id)
+                .map((property) => [property.property.name.toLowerCase(), property.property.type]),
             );
 
             for (const property of template.properties) {
@@ -624,30 +577,23 @@ export function DatabaseSetupCard({
                 content: createSampleRowContent(sampleRow.content),
                 metadata: getPageMetadataWithEmoji(null, sampleRow.emoji),
                 title: sampleRow.title,
-                values: Object.entries(sampleRow.values ?? {}).flatMap(
-                  ([propertyName, value]) => {
-                    const propertyType = propertyTypesByName.get(
-                      propertyName.toLowerCase(),
-                    );
+                values: Object.entries(sampleRow.values ?? {}).flatMap(([propertyName, value]) => {
+                  const propertyType = propertyTypesByName.get(propertyName.toLowerCase());
 
-                    return propertyType
-                      ? [
-                          {
-                            propertyName,
-                            value: serializePropertyValue(propertyType, value),
-                          },
-                        ]
-                      : [];
-                  },
-                ),
+                  return propertyType
+                    ? [
+                        {
+                          propertyName,
+                          value: serializePropertyValue(propertyType, value),
+                        },
+                      ]
+                    : [];
+                }),
               })),
             });
             setupDismissedPersisted = true;
           }
-        } else if (
-          databaseName &&
-          databaseName !== activeDataSource.name
-        ) {
+        } else if (databaseName && databaseName !== activeDataSource.name) {
           await updateDatabase.mutateAsync({
             databaseId: activeDataSource.id,
             name: databaseName,
@@ -667,8 +613,7 @@ export function DatabaseSetupCard({
         }
         onComplete();
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Database setup failed.";
+        const message = error instanceof Error ? error.message : "Database setup failed.";
 
         toast.error("Couldn't update database", { description: message });
       } finally {
@@ -697,9 +642,7 @@ export function DatabaseSetupCard({
 
       const templateId = inferDatabaseSetupTemplateId(nextPrompt);
       const databaseName =
-        nextPrompt.length > 48
-          ? `${nextPrompt.slice(0, 45).trim()}...`
-          : nextPrompt;
+        nextPrompt.length > 48 ? `${nextPrompt.slice(0, 45).trim()}...` : nextPrompt;
 
       await finishSetup({
         databaseName,
@@ -719,12 +662,7 @@ export function DatabaseSetupCard({
   const renderTemplateButton = (template: DatabaseSetupTemplate) => (
     <SetupOptionButton
       disabled={isSubmitting}
-      icon={
-        <TemplateIcon
-          colorId={template.colorId}
-          icon={getTemplateGlyph(template)}
-        />
-      }
+      icon={<TemplateIcon colorId={template.colorId} icon={getTemplateGlyph(template)} />}
       key={template.id}
       onClick={() =>
         void finishSetup({
@@ -805,9 +743,7 @@ export function DatabaseSetupCard({
         <SetupSectionLabel>Suggested</SetupSectionLabel>
         <div className="database-setup-suggested-list">
           {databaseSetupSuggestedTemplates.map(renderTemplateButton)}
-          {showMoreTemplates
-            ? databaseSetupMoreTemplates.map(renderTemplateButton)
-            : null}
+          {showMoreTemplates ? databaseSetupMoreTemplates.map(renderTemplateButton) : null}
           <SetupOptionButton
             disabled={isSubmitting}
             icon={
@@ -846,18 +782,15 @@ export function DatabaseSetupCard({
 
   const renderLinkPicker = () => {
     if (selectedLinkDatabaseId) {
-      const sourceDataSourceId =
-        selectedLinkDatabasePayload?.activeDataSource?.id;
+      const sourceDataSourceId = selectedLinkDatabasePayload?.activeDataSource?.id;
       const views =
         selectedLinkDatabasePayload?.views.filter(
-          (viewItem) =>
-            !sourceDataSourceId || viewItem.dataSourceId === sourceDataSourceId,
+          (viewItem) => !sourceDataSourceId || viewItem.dataSourceId === sourceDataSourceId,
         ) ?? [];
       const databaseName =
         selectedLinkDatabasePayload?.database.name ??
-        linkableDatabases.find(
-          (item) => item.database.id === selectedLinkDatabaseId,
-        )?.database.name ??
+        linkableDatabases.find((item) => item.database.id === selectedLinkDatabaseId)?.database
+          .name ??
         "Untitled database";
 
       if (creatingLinkView && sourceDataSourceId) {
@@ -887,8 +820,7 @@ export function DatabaseSetupCard({
                 void handleLinkView({
                   dataSourceId: sourceDataSourceId,
                   dataSourceName:
-                    selectedLinkDatabasePayload.activeDataSource?.name ||
-                    databaseName,
+                    selectedLinkDatabasePayload.activeDataSource?.name || databaseName,
                   parentDatabaseId: selectedLinkDatabaseId,
                   viewId: `new-${type}`,
                   viewName: linkViewName.trim() || label,
@@ -924,9 +856,7 @@ export function DatabaseSetupCard({
             >
               Create a new view
             </SetupOptionButton>
-            <div className="px-2 pt-3 text-content-secondary text-xs">
-              Views on {databaseName}
-            </div>
+            <div className="px-2 pt-3 text-content-secondary text-xs">Views on {databaseName}</div>
             {isLoadingLinkViews ? (
               <div className="flex items-center justify-center gap-2 px-2 py-8 text-content-secondary text-sm">
                 <Loader2 className="size-4 animate-spin" />
@@ -938,9 +868,7 @@ export function DatabaseSetupCard({
               </div>
             ) : (
               views.map((viewItem) => {
-                const { Icon: ViewIcon } = getDatabaseViewTypePresentation(
-                  viewItem.type,
-                );
+                const { Icon: ViewIcon } = getDatabaseViewTypePresentation(viewItem.type);
 
                 return (
                   <SetupOptionButton
@@ -1027,8 +955,7 @@ export function DatabaseSetupCard({
                   return;
                 }
 
-                const name =
-                  file.name.replace(/\.csv$/i, "").trim() || "Imported data";
+                const name = file.name.replace(/\.csv$/i, "").trim() || "Imported data";
                 void finishSetup({
                   csvImport: { ...csv, name },
                   databaseName: name,

@@ -27,8 +27,7 @@ export function PropertySettingSubmenu<TValue extends string | number>({
   options: PropertySettingOption<TValue>[];
   selectedValue: TValue;
 }) {
-  const selectedOption =
-    options.find((option) => option.value === selectedValue) ?? options[0];
+  const selectedOption = options.find((option) => option.value === selectedValue) ?? options[0];
 
   return (
     <DropDrawerSub title={label}>
@@ -48,9 +47,7 @@ export function PropertySettingSubmenu<TValue extends string | number>({
           >
             {option.icon ?? null}
             <span>{option.label}</span>
-            {option.value === selectedValue ? (
-              <Check className="ml-auto" />
-            ) : null}
+            {option.value === selectedValue ? <Check className="ml-auto" /> : null}
           </DropDrawerItem>
         ))}
       </DropDrawerSubContent>

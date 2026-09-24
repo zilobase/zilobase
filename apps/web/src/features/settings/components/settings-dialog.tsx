@@ -1,12 +1,7 @@
-import type { ReactNode } from "react"
+import type { ReactNode } from "react";
 
-import { SettingsSidebar, type SettingsSection } from "./settings-sidebar"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/shared/ui/dialog"
+import { SettingsSidebar, type SettingsSection } from "./settings-sidebar";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/shared/ui/dialog";
 
 export function SettingsDialog({
   activeSection,
@@ -15,11 +10,11 @@ export function SettingsDialog({
   onSectionChange,
   open,
 }: {
-  activeSection: SettingsSection
-  children: ReactNode
-  onOpenChange: (open: boolean) => void
-  onSectionChange: (section: SettingsSection) => void
-  open: boolean
+  activeSection: SettingsSection;
+  children: ReactNode;
+  onOpenChange: (open: boolean) => void;
+  onSectionChange: (section: SettingsSection) => void;
+  open: boolean;
 }) {
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -33,14 +28,11 @@ export function SettingsDialog({
         <DialogDescription className="sr-only">
           Manage your account and workspace settings.
         </DialogDescription>
-        <SettingsSidebar
-          activeSection={activeSection}
-          onSectionChange={onSectionChange}
-        />
+        <SettingsSidebar activeSection={activeSection} onSectionChange={onSectionChange} />
         <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto bg-surface-canvas">
           {children}
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

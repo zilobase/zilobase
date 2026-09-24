@@ -1,23 +1,23 @@
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
-import type { EditorView } from "@tiptap/pm/view"
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { EditorView } from "@tiptap/pm/view";
 
-import type { BlockDropLine } from "../core/types"
-import type { DragHandleTarget } from "../toolbar/toolbar-contracts"
+import type { BlockDropLine } from "../core/types";
+import type { DragHandleTarget } from "../toolbar/toolbar-contracts";
 
 type BlockDropTarget = {
-  line: BlockDropLine
-  pos: number
-}
+  line: BlockDropLine;
+  pos: number;
+};
 
 type Point = {
-  x: number
-  y: number
-}
+  x: number;
+  y: number;
+};
 
 type HorizontalAnchor = {
-  left: number
-  right: number
-}
+  left: number;
+  right: number;
+};
 
 const BLOCK_SELECTOR = [
   "li",
@@ -42,7 +42,7 @@ const BLOCK_SELECTOR = [
   ".node-meetingBlock",
   ".page-block",
   ".editor-details",
-].join(",")
+].join(",");
 
 const STRUCTURAL_NODE_TYPES = new Set([
   "blockquote",
@@ -56,91 +56,73 @@ const STRUCTURAL_NODE_TYPES = new Set([
   "tableHeader",
   "column",
   "columnBlock",
-])
+]);
 
-const DATABASE_BLOCK_SELECTOR = ".database-block, .node-databaseBlock"
-const MEETING_BLOCK_SELECTOR = ".meeting-block, .node-meetingBlock"
-const DIALOG_CONTENT_SELECTOR = '[data-slot="dialog-content"]'
-const SIDE_PANE_PANEL_SELECTOR = "[data-page-side-pane-panel]"
-const BLOCK_CONTROL_SELECTOR = ".drag-handle, .block-comment-handle"
-const DRAG_HANDLE_WIDTH = 64
-const LIST_DRAG_HANDLE_MARKER_GAP = 16
-const MIN_COORD_INSET = 4
+const DATABASE_BLOCK_SELECTOR = ".database-block, .node-databaseBlock";
+const MEETING_BLOCK_SELECTOR = ".meeting-block, .node-meetingBlock";
+const DIALOG_CONTENT_SELECTOR = '[data-slot="dialog-content"]';
+const SIDE_PANE_PANEL_SELECTOR = "[data-page-side-pane-panel]";
+const BLOCK_CONTROL_SELECTOR = ".drag-handle, .block-comment-handle";
+const DRAG_HANDLE_WIDTH = 64;
+const LIST_DRAG_HANDLE_MARKER_GAP = 16;
+const MIN_COORD_INSET = 4;
 
-const isListItemType = (typeName?: string) =>
-  typeName === "listItem" || typeName === "taskItem"
+const isListItemType = (typeName?: string) => typeName === "listItem" || typeName === "taskItem";
 
 const numberStyle = (
   element: HTMLElement,
   property: "paddingLeft" | "paddingRight" | "paddingTop",
-) => Number.parseFloat(window.getComputedStyle(element)[property]) || 0
+) => Number.parseFloat(window.getComputedStyle(element)[property]) || 0;
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(Math.max(value, min), max)
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 function dragHandleBoundRect(view: EditorView) {
-  const meetingShell = view.dom.closest(".meeting-block-shell")
-  const meetingHost = meetingShell?.parentElement
+  const meetingShell = view.dom.closest(".meeting-block-shell");
+  const meetingHost = meetingShell?.parentElement;
   if (meetingHost instanceof HTMLElement) {
-    return meetingHost.getBoundingClientRect()
+    return meetingHost.getBoundingClientRect();
   }
 
-  const parentEditor = view.dom.parentElement?.closest(".tiptap-editor")
+  const parentEditor = view.dom.parentElement?.closest(".tiptap-editor");
   if (parentEditor instanceof HTMLElement) {
-    return parentEditor.getBoundingClientRect()
+    return parentEditor.getBoundingClientRect();
   }
 
-  return view.dom.getBoundingClientRect()
+  return view.dom.getBoundingClientRect();
 }
 
 function fixedContainerOffset(element: HTMLElement) {
-  const container = element.closest(
-    `${DIALOG_CONTENT_SELECTOR}, ${SIDE_PANE_PANEL_SELECTOR}`,
-  )
-  if (!(container instanceof HTMLElement)) return { left: 0, top: 0 }
+  const container = element.closest(`${DIALOG_CONTENT_SELECTOR}, ${SIDE_PANE_PANEL_SELECTOR}`);
+  if (!(container instanceof HTMLElement)) return { left: 0, top: 0 };
 
-  const rect = container.getBoundingClientRect()
-  return { left: rect.left, top: rect.top }
+  const rect = container.getBoundingClientRect();
+  return { left: rect.left, top: rect.top };
 }
 
-function dropLineAt(
-  view: EditorView,
-  pos: number,
-  anchor?: HorizontalAnchor,
-): BlockDropLine {
-  const editorRect = view.dom.getBoundingClientRect()
-  const offset = fixedContainerOffset(view.dom)
-  const left =
-    anchor?.left ?? editorRect.left + numberStyle(view.dom, "paddingLeft")
-  const right =
-    anchor?.right ?? editorRect.right - numberStyle(view.dom, "paddingRight")
+function dropLineAt(view: EditorView, pos: number, anchor?: HorizontalAnchor): BlockDropLine {
+  const editorRect = view.dom.getBoundingClientRect();
+  const offset = fixedContainerOffset(view.dom);
+  const left = anchor?.left ?? editorRect.left + numberStyle(view.dom, "paddingLeft");
+  const right = anchor?.right ?? editorRect.right - numberStyle(view.dom, "paddingRight");
 
   return {
     left: left - offset.left,
     right: right - offset.left,
     top: view.coordsAtPos(pos).top - offset.top,
-  }
+  };
 }
 
 function clampedEditorCoords(view: EditorView, point: Point) {
-  const rect = view.dom.getBoundingClientRect()
+  const rect = view.dom.getBoundingClientRect();
 
   return view.posAtCoords({
-    left: clamp(
-      point.x,
-      rect.left + MIN_COORD_INSET,
-      rect.right - MIN_COORD_INSET,
-    ),
-    top: clamp(
-      point.y,
-      rect.top + MIN_COORD_INSET,
-      rect.bottom - MIN_COORD_INSET,
-    ),
-  })
+    left: clamp(point.x, rect.left + MIN_COORD_INSET, rect.right - MIN_COORD_INSET),
+    top: clamp(point.y, rect.top + MIN_COORD_INSET, rect.bottom - MIN_COORD_INSET),
+  });
 }
 
 function elementsFromPoint(view: EditorView, point: Point) {
-  return view.root.elementsFromPoint(point.x, point.y)
+  return view.root.elementsFromPoint(point.x, point.y);
 }
 
 function isSelectableBlock(
@@ -148,140 +130,121 @@ function isSelectableBlock(
   parent: ProseMirrorNode | null,
   indexInParent: number,
 ) {
-  if (node.isInline || node.isText) return false
-  if (STRUCTURAL_NODE_TYPES.has(node.type.name)) return false
-  if (isListItemType(parent?.type.name) && indexInParent === 0) return false
-  return true
+  if (node.isInline || node.isText) return false;
+  if (STRUCTURAL_NODE_TYPES.has(node.type.name)) return false;
+  if (isListItemType(parent?.type.name) && indexInParent === 0) return false;
+  return true;
 }
 
-function firstSelectableChild(
-  node: ProseMirrorNode,
-  pos: number,
-): DragHandleTarget | null {
-  let match: DragHandleTarget | null = null
+function firstSelectableChild(node: ProseMirrorNode, pos: number): DragHandleTarget | null {
+  let match: DragHandleTarget | null = null;
 
   node.forEach((child, offset) => {
-    if (match || child.isInline || child.isText) return
+    if (match || child.isInline || child.isText) return;
 
-    const childPos = pos + offset + 1
+    const childPos = pos + offset + 1;
     match = STRUCTURAL_NODE_TYPES.has(child.type.name)
       ? firstSelectableChild(child, childPos)
-      : { node: child, pos: childPos }
-  })
+      : { node: child, pos: childPos };
+  });
 
-  return match
+  return match;
 }
 
 function blockFromPos(view: EditorView, pos: number): DragHandleTarget | null {
-  const doc = view.state.doc
-  const resolvedPos = doc.resolve(clamp(pos, 0, doc.content.size))
+  const doc = view.state.doc;
+  const resolvedPos = doc.resolve(clamp(pos, 0, doc.content.size));
 
   for (let depth = resolvedPos.depth; depth > 0; depth -= 1) {
-    const node = resolvedPos.node(depth)
-    if (
-      isSelectableBlock(
-        node,
-        resolvedPos.node(depth - 1),
-        resolvedPos.index(depth - 1),
-      )
-    ) {
-      return { node, pos: resolvedPos.before(depth) }
+    const node = resolvedPos.node(depth);
+    if (isSelectableBlock(node, resolvedPos.node(depth - 1), resolvedPos.index(depth - 1))) {
+      return { node, pos: resolvedPos.before(depth) };
     }
   }
 
-  const topNode = doc.nodeAt(pos)
-  if (!topNode) return null
-  if (isSelectableBlock(topNode, null, 0)) return { node: topNode, pos }
-  return firstSelectableChild(topNode, pos)
+  const topNode = doc.nodeAt(pos);
+  if (!topNode) return null;
+  if (isSelectableBlock(topNode, null, 0)) return { node: topNode, pos };
+  return firstSelectableChild(topNode, pos);
 }
 
-function nodeViewBlockFromDOM(
-  view: EditorView,
-  element: HTMLElement,
-): DragHandleTarget | null {
-  const meeting = element.closest<HTMLElement>(MEETING_BLOCK_SELECTOR)
-  const database = element.closest<HTMLElement>(DATABASE_BLOCK_SELECTOR)
-  const host = meeting ?? database
-  if (!host || !view.dom.contains(host)) return null
+function nodeViewBlockFromDOM(view: EditorView, element: HTMLElement): DragHandleTarget | null {
+  const meeting = element.closest<HTMLElement>(MEETING_BLOCK_SELECTOR);
+  const database = element.closest<HTMLElement>(DATABASE_BLOCK_SELECTOR);
+  const host = meeting ?? database;
+  if (!host || !view.dom.contains(host)) return null;
 
-  const typeName = meeting ? "meetingBlock" : "databaseBlock"
-  let match: DragHandleTarget | null = null
+  const typeName = meeting ? "meetingBlock" : "databaseBlock";
+  let match: DragHandleTarget | null = null;
   view.state.doc.descendants((node, pos) => {
-    if (node.type.name !== typeName) return
-    const dom = view.nodeDOM(pos)
-    if (!(dom instanceof HTMLElement)) return
+    if (node.type.name !== typeName) return;
+    const dom = view.nodeDOM(pos);
+    if (!(dom instanceof HTMLElement)) return;
     if (dom === host || dom.contains(host) || host.contains(dom)) {
-      match = { node, pos }
-      return false
+      match = { node, pos };
+      return false;
     }
-  })
-  return match
+  });
+  return match;
 }
 
-function blockFromDOM(
-  view: EditorView,
-  element: HTMLElement,
-): DragHandleTarget | null {
-  const nodeViewBlock = nodeViewBlockFromDOM(view, element)
-  if (nodeViewBlock) return nodeViewBlock
+function blockFromDOM(view: EditorView, element: HTMLElement): DragHandleTarget | null {
+  const nodeViewBlock = nodeViewBlockFromDOM(view, element);
+  if (nodeViewBlock) return nodeViewBlock;
 
-  const rect = element.getBoundingClientRect()
+  const rect = element.getBoundingClientRect();
   const coords = view.posAtCoords({
     left: rect.left + Math.min(50, Math.max(1, rect.width / 2)),
     top: rect.top + 1,
-  })
-  if (!coords || coords.inside < 0) return null
+  });
+  if (!coords || coords.inside < 0) return null;
 
   if (element.matches("table")) {
-    const tablePos = Math.max(0, coords.inside - 2)
-    const table = view.state.doc.nodeAt(tablePos)
-    return table ? { node: table, pos: tablePos } : null
+    const tablePos = Math.max(0, coords.inside - 2);
+    const table = view.state.doc.nodeAt(tablePos);
+    return table ? { node: table, pos: tablePos } : null;
   }
 
   if (element.matches("blockquote")) {
     const inside = view.posAtCoords({
       left: rect.left + 1,
       top: rect.top + 1,
-    })?.inside
-    if (inside != null && inside >= 0) return blockFromPos(view, inside)
+    })?.inside;
+    if (inside != null && inside >= 0) return blockFromPos(view, inside);
   }
 
-  return blockFromPos(view, coords.inside)
+  return blockFromPos(view, coords.inside);
 }
 
 function blockElementAtPoint(view: EditorView, elements: Element[]) {
   for (const element of elements) {
     if (!(element instanceof HTMLElement) || !view.dom.contains(element)) {
-      continue
+      continue;
     }
     const hostBlock = element.closest<HTMLElement>(
       `${DATABASE_BLOCK_SELECTOR}, ${MEETING_BLOCK_SELECTOR}`,
-    )
-    if (
-      hostBlock &&
-      view.dom.contains(hostBlock) &&
-      hostBlock !== view.dom
-    ) {
-      return hostBlock
+    );
+    if (hostBlock && view.dom.contains(hostBlock) && hostBlock !== view.dom) {
+      return hostBlock;
     }
-    if (element.matches("table")) return element
-    if (element.closest("table")) continue
-    if (element.matches(BLOCK_SELECTOR)) return element
+    if (element.matches("table")) return element;
+    if (element.closest("table")) continue;
+    if (element.matches(BLOCK_SELECTOR)) return element;
   }
 
-  return null
+  return null;
 }
 
 function dropLineAnchor(element: HTMLElement): HorizontalAnchor | null {
-  const blockquote = element.closest("blockquote")
-  if (blockquote) return blockquote.getBoundingClientRect()
+  const blockquote = element.closest("blockquote");
+  if (blockquote) return blockquote.getBoundingClientRect();
 
-  const list = element.closest("li")?.parentElement?.closest<HTMLElement>("ul, ol")
+  const list = element.closest("li")?.parentElement?.closest<HTMLElement>("ul, ol");
   if (list && list.dataset.type !== "taskList") {
-    return list.getBoundingClientRect()
+    return list.getBoundingClientRect();
   }
 
-  return null
+  return null;
 }
 
 export function resolveBlockInsertPos(
@@ -291,9 +254,7 @@ export function resolveBlockInsertPos(
   blockHeight: number,
   clientY: number,
 ) {
-  return clientY < blockTop + blockHeight / 2
-    ? blockPos
-    : blockPos + blockSize
+  return clientY < blockTop + blockHeight / 2 ? blockPos : blockPos + blockSize;
 }
 
 function nodeAtDOM(
@@ -301,86 +262,86 @@ function nodeAtDOM(
   element: HTMLElement,
   typeName: string,
 ): { node: ProseMirrorNode; pos: number } | null {
-  let match: { node: ProseMirrorNode; pos: number } | null = null
+  let match: { node: ProseMirrorNode; pos: number } | null = null;
 
   view.state.doc.descendants((node, pos) => {
-    if (node.type.name !== typeName || view.nodeDOM(pos) !== element) return
-    match = { node, pos }
-    return false
-  })
+    if (node.type.name !== typeName || view.nodeDOM(pos) !== element) return;
+    match = { node, pos };
+    return false;
+  });
 
-  return match
+  return match;
 }
 
 function columnDropTarget(view: EditorView, point: Point): BlockDropTarget | null {
   for (const element of elementsFromPoint(view, point)) {
-    if (!(element instanceof HTMLElement)) continue
+    if (!(element instanceof HTMLElement)) continue;
 
-    const column = element.closest<HTMLElement>(".column[data-type='column']")
-    if (!column || !view.dom.contains(column)) continue
+    const column = element.closest<HTMLElement>(".column[data-type='column']");
+    if (!column || !view.dom.contains(column)) continue;
 
-    const match = nodeAtDOM(view, column, "column")
-    if (!match) continue
+    const match = nodeAtDOM(view, column, "column");
+    if (!match) continue;
 
-    let insertPos = match.pos + 1 + match.node.content.size
-    let found = false
+    let insertPos = match.pos + 1 + match.node.content.size;
+    let found = false;
     match.node.forEach((_child, offset) => {
-      if (found) return
+      if (found) return;
 
-      const childPos = match.pos + offset + 1
-      const childDom = view.nodeDOM(childPos)
-      if (!(childDom instanceof HTMLElement)) return
+      const childPos = match.pos + offset + 1;
+      const childDom = view.nodeDOM(childPos);
+      if (!(childDom instanceof HTMLElement)) return;
 
-      const childRect = childDom.getBoundingClientRect()
+      const childRect = childDom.getBoundingClientRect();
       if (point.y < (childRect.top + childRect.bottom) / 2) {
-        insertPos = childPos
-        found = true
+        insertPos = childPos;
+        found = true;
       }
-    })
+    });
 
-    const rect = column.getBoundingClientRect()
+    const rect = column.getBoundingClientRect();
     const anchor = {
       left: rect.left + numberStyle(column, "paddingLeft"),
       right: rect.right - numberStyle(column, "paddingRight"),
-    }
+    };
 
-    return { line: dropLineAt(view, insertPos, anchor), pos: insertPos }
+    return { line: dropLineAt(view, insertPos, anchor), pos: insertPos };
   }
 
-  return null
+  return null;
 }
 
 function blockDropTarget(view: EditorView, point: Point): BlockDropTarget | null {
-  const coords = clampedEditorCoords(view, point)
-  if (!coords) return null
+  const coords = clampedEditorCoords(view, point);
+  if (!coords) return null;
 
-  const target = blockFromPos(view, coords.pos)
+  const target = blockFromPos(view, coords.pos);
   if (!target) {
-    const endPos = view.state.doc.content.size
-    return { line: dropLineAt(view, endPos), pos: endPos }
+    const endPos = view.state.doc.content.size;
+    return { line: dropLineAt(view, endPos), pos: endPos };
   }
 
-  const dom = view.nodeDOM(target.pos)
-  if (!(dom instanceof HTMLElement)) return null
+  const dom = view.nodeDOM(target.pos);
+  if (!(dom instanceof HTMLElement)) return null;
 
-  const rect = dom.getBoundingClientRect()
+  const rect = dom.getBoundingClientRect();
   const pos = resolveBlockInsertPos(
     target.pos,
     target.node.nodeSize,
     rect.top,
     rect.height,
     point.y,
-  )
+  );
 
-  return { line: dropLineAt(view, pos, dropLineAnchor(dom) ?? rect), pos }
+  return { line: dropLineAt(view, pos, dropLineAnchor(dom) ?? rect), pos };
 }
 
 export function getEditorInsertDropTarget(
   view: EditorView,
   event: Pick<DragEvent, "clientX" | "clientY">,
 ) {
-  const point = { x: event.clientX, y: event.clientY }
-  return columnDropTarget(view, point) ?? blockDropTarget(view, point)
+  const point = { x: event.clientX, y: event.clientY };
+  return columnDropTarget(view, point) ?? blockDropTarget(view, point);
 }
 
 export function resolveBlockDragTargetFromPoint({
@@ -389,48 +350,40 @@ export function resolveBlockDragTargetFromPoint({
   currentTarget,
   view,
 }: {
-  clientX: number
-  clientY: number
-  currentTarget?: DragHandleTarget | null
-  view: EditorView
+  clientX: number;
+  clientY: number;
+  currentTarget?: DragHandleTarget | null;
+  view: EditorView;
 }) {
-  const point = { x: clientX, y: clientY }
-  const elements = elementsFromPoint(view, point)
+  const point = { x: clientX, y: clientY };
+  const elements = elementsFromPoint(view, point);
 
   if (
     elements.some(
       (element) =>
-        element instanceof HTMLElement &&
-        Boolean(element.closest(BLOCK_CONTROL_SELECTOR)),
+        element instanceof HTMLElement && Boolean(element.closest(BLOCK_CONTROL_SELECTOR)),
     )
   ) {
-    return currentTarget ?? null
+    return currentTarget ?? null;
   }
 
-  if (
-    !elements.some(
-      (element) => element instanceof HTMLElement && view.dom.contains(element),
-    )
-  ) {
-    return null
+  if (!elements.some((element) => element instanceof HTMLElement && view.dom.contains(element))) {
+    return null;
   }
 
-  const element = blockElementAtPoint(view, elements)
-  return element ? blockFromDOM(view, element) : null
+  const element = blockElementAtPoint(view, elements);
+  return element ? blockFromDOM(view, element) : null;
 }
 
-export function getBlockDragHandleRect(
-  view: EditorView,
-  target: DragHandleTarget,
-) {
-  const nodeDom = view.nodeDOM(target.pos)
-  if (!(nodeDom instanceof HTMLElement)) return null
+export function getBlockDragHandleRect(view: EditorView, target: DragHandleTarget) {
+  const nodeDom = view.nodeDOM(target.pos);
+  if (!(nodeDom instanceof HTMLElement)) return null;
 
-  const editorRect = dragHandleBoundRect(view)
-  let anchor = nodeDom
-  let handleOffset = DRAG_HANDLE_WIDTH
-  let topInsetElement = nodeDom
-  let top = nodeDom.getBoundingClientRect().top
+  const editorRect = dragHandleBoundRect(view);
+  let anchor = nodeDom;
+  let handleOffset = DRAG_HANDLE_WIDTH;
+  let topInsetElement = nodeDom;
+  let top = nodeDom.getBoundingClientRect().top;
 
   if (
     target.node.type.name === "listItem" &&
@@ -439,60 +392,50 @@ export function getBlockDragHandleRect(
     nodeDom.parentElement.matches("ul, ol") &&
     nodeDom.parentElement.dataset.type !== "taskList"
   ) {
-    anchor = nodeDom.parentElement
-    handleOffset += LIST_DRAG_HANDLE_MARKER_GAP
+    anchor = nodeDom.parentElement;
+    handleOffset += LIST_DRAG_HANDLE_MARKER_GAP;
   }
 
-  if (
-    target.node.type.name === "databaseBlock" ||
-    target.node.type.name === "meetingBlock"
-  ) {
+  if (target.node.type.name === "databaseBlock" || target.node.type.name === "meetingBlock") {
     const block =
       nodeDom.closest<HTMLElement>(
-        target.node.type.name === "meetingBlock"
-          ? MEETING_BLOCK_SELECTOR
-          : DATABASE_BLOCK_SELECTOR,
-      ) ?? nodeDom
-    const toolbar = block.querySelector<HTMLElement>(".database-toolbar")
-    const verticalToolbar = toolbar?.firstElementChild
+        target.node.type.name === "meetingBlock" ? MEETING_BLOCK_SELECTOR : DATABASE_BLOCK_SELECTOR,
+      ) ?? nodeDom;
+    const toolbar = block.querySelector<HTMLElement>(".database-toolbar");
+    const verticalToolbar = toolbar?.firstElementChild;
     if (verticalToolbar instanceof HTMLElement) {
-      top = verticalToolbar.getBoundingClientRect().top
+      top = verticalToolbar.getBoundingClientRect().top;
     }
 
-    anchor =
-      block.querySelector<HTMLElement>(".database-toolbar-section") ?? block
-    topInsetElement = anchor
+    anchor = block.querySelector<HTMLElement>(".database-toolbar-section") ?? block;
+    topInsetElement = anchor;
   }
 
-  const anchorRect = anchor.getBoundingClientRect()
-  const offset = fixedContainerOffset(view.dom)
-  const left = anchorRect.left + numberStyle(anchor, "paddingLeft")
+  const anchorRect = anchor.getBoundingClientRect();
+  const offset = fixedContainerOffset(view.dom);
+  const left = anchorRect.left + numberStyle(anchor, "paddingLeft");
 
   return {
-    left:
-      Math.max(editorRect.left + MIN_COORD_INSET, left - handleOffset) -
-      offset.left,
+    left: Math.max(editorRect.left + MIN_COORD_INSET, left - handleOffset) - offset.left,
     top: top + numberStyle(topInsetElement, "paddingTop") - offset.top,
-  }
+  };
 }
 
-export function getBlockCommentHandleRect(
-  view: EditorView,
-  target: DragHandleTarget,
-) {
-  const nodeDom = view.nodeDOM(target.pos)
-  if (!(nodeDom instanceof HTMLElement)) return null
+export function getBlockCommentHandleRect(view: EditorView, target: DragHandleTarget) {
+  const nodeDom = view.nodeDOM(target.pos);
+  if (!(nodeDom instanceof HTMLElement)) return null;
 
-  const editorRect = view.dom.getBoundingClientRect()
-  const nodeRect = nodeDom.getBoundingClientRect()
-  const offset = fixedContainerOffset(view.dom)
-  const right = nodeRect.right - numberStyle(nodeDom, "paddingRight")
-  const viewportRight = view.root instanceof Document
-    ? view.root.documentElement.clientWidth
-    : view.root.host.getBoundingClientRect().right
+  const editorRect = view.dom.getBoundingClientRect();
+  const nodeRect = nodeDom.getBoundingClientRect();
+  const offset = fixedContainerOffset(view.dom);
+  const right = nodeRect.right - numberStyle(nodeDom, "paddingRight");
+  const viewportRight =
+    view.root instanceof Document
+      ? view.root.documentElement.clientWidth
+      : view.root.host.getBoundingClientRect().right;
 
   return {
     left: Math.min(viewportRight - 36, Math.max(editorRect.left, right + 8)) - offset.left,
     top: nodeRect.top + numberStyle(nodeDom, "paddingTop") - offset.top,
-  }
+  };
 }

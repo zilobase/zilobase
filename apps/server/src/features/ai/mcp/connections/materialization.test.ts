@@ -33,10 +33,12 @@ describe("MCP materialization input", () => {
 
   it("requires an owned source reference and an inline parent", () => {
     expect(() => mcpMaterializationInputSchema.parse(base)).toThrow();
-    expect(() => mcpMaterializationInputSchema.parse({
-      ...base,
-      datasetIds: [crypto.randomUUID()],
-      placement: "inline",
-    })).toThrow();
+    expect(() =>
+      mcpMaterializationInputSchema.parse({
+        ...base,
+        datasetIds: [crypto.randomUUID()],
+        placement: "inline",
+      }),
+    ).toThrow();
   });
 });

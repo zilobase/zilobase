@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react"
-import { ArrowDown, ArrowUp } from "@/shared/components/icons"
+import { useEffect, useState } from "react";
+import { ArrowDown, ArrowUp } from "@/shared/components/icons";
 
-import { Button } from "@/shared/ui/button"
-import { ButtonGroup } from "@/shared/ui/button-group"
+import { Button } from "@/shared/ui/button";
+import { ButtonGroup } from "@/shared/ui/button-group";
 
 type MobileActionBarProps = {
-  canMoveDown: boolean
-  canMoveUp: boolean
-  onMoveDown: () => void
-  onMoveUp: () => void
-}
+  canMoveDown: boolean;
+  canMoveUp: boolean;
+  onMoveDown: () => void;
+  onMoveUp: () => void;
+};
 
 export function MobileActionBar({
   canMoveDown,
@@ -17,36 +17,33 @@ export function MobileActionBar({
   onMoveDown,
   onMoveUp,
 }: MobileActionBarProps) {
-  const [bottom, setBottom] = useState(12)
+  const [bottom, setBottom] = useState(12);
 
   useEffect(() => {
     const updateBottom = () => {
-      const viewport = window.visualViewport
+      const viewport = window.visualViewport;
 
       if (!viewport) {
-        setBottom(12)
-        return
+        setBottom(12);
+        return;
       }
 
-      const keyboardHeight = Math.max(
-        0,
-        window.innerHeight - viewport.height - viewport.offsetTop
-      )
+      const keyboardHeight = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
 
-      setBottom(keyboardHeight + 12)
-    }
+      setBottom(keyboardHeight + 12);
+    };
 
-    updateBottom()
-    window.visualViewport?.addEventListener("resize", updateBottom)
-    window.visualViewport?.addEventListener("scroll", updateBottom)
-    window.addEventListener("resize", updateBottom)
+    updateBottom();
+    window.visualViewport?.addEventListener("resize", updateBottom);
+    window.visualViewport?.addEventListener("scroll", updateBottom);
+    window.addEventListener("resize", updateBottom);
 
     return () => {
-      window.visualViewport?.removeEventListener("resize", updateBottom)
-      window.visualViewport?.removeEventListener("scroll", updateBottom)
-      window.removeEventListener("resize", updateBottom)
-    }
-  }, [])
+      window.visualViewport?.removeEventListener("resize", updateBottom);
+      window.visualViewport?.removeEventListener("scroll", updateBottom);
+      window.removeEventListener("resize", updateBottom);
+    };
+  }, []);
 
   return (
     <ButtonGroup
@@ -64,9 +61,9 @@ export function MobileActionBar({
         aria-label="Move block up"
         disabled={!canMoveUp}
         onClick={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          onMoveUp()
+          event.preventDefault();
+          event.stopPropagation();
+          onMoveUp();
         }}
         size="icon-xs"
         type="button"
@@ -78,9 +75,9 @@ export function MobileActionBar({
         aria-label="Move block down"
         disabled={!canMoveDown}
         onClick={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          onMoveDown()
+          event.preventDefault();
+          event.stopPropagation();
+          onMoveDown();
         }}
         size="icon-xs"
         type="button"
@@ -89,5 +86,5 @@ export function MobileActionBar({
         <ArrowDown />
       </Button>
     </ButtonGroup>
-  )
+  );
 }

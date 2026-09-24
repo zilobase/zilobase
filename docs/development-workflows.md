@@ -27,17 +27,17 @@ single command for a complete multi-repository checkout.
 
 The Node profile uses these defaults:
 
-| Service | Address |
-| --- | --- |
-| Web | `http://localhost:1420` |
-| API | `http://localhost:3000` |
-| API health | `http://localhost:3001` |
-| Node inspector | `127.0.0.1:9229` |
-| PostgreSQL | `127.0.0.1:15432` |
-| Object storage | `http://127.0.0.1:19100` |
-| Mailpit | `http://127.0.0.1:18025` |
-| Valkey | `redis://127.0.0.1:16379` |
-| Development hub | `http://127.0.0.1:1418` |
+| Service         | Address                   |
+| --------------- | ------------------------- |
+| Web             | `http://localhost:1420`   |
+| API             | `http://localhost:3000`   |
+| API health      | `http://localhost:3001`   |
+| Node inspector  | `127.0.0.1:9229`          |
+| PostgreSQL      | `127.0.0.1:15432`         |
+| Object storage  | `http://127.0.0.1:19100`  |
+| Mailpit         | `http://127.0.0.1:18025`  |
+| Valkey          | `redis://127.0.0.1:16379` |
+| Development hub | `http://127.0.0.1:1418`   |
 
 The supervisor prefixes child-process output and shuts down the remaining
 processes if a required child exits. Press Ctrl-C once for an orderly shutdown.
@@ -112,15 +112,15 @@ The down command removes only the named Community development cluster.
 Before submitting a core change, run the checks proportional to its scope.
 The main entry points are:
 
-| Command | Purpose |
-| --- | --- |
-| `npm run test:tooling` | Development and repository tooling tests |
-| `npm run typecheck` | Workspace type checking |
-| `npm run test:packages` | Shared-package tests |
-| `npm run test:web` | Web tests |
-| `npm run test:server` | Server tests |
-| `npm run test:selfhost` | Packaged self-hosting smoke test |
-| `npm run verify:core` | Complete public core verification |
+| Command                 | Purpose                                  |
+| ----------------------- | ---------------------------------------- |
+| `npm run test:tooling`  | Development and repository tooling tests |
+| `npm run typecheck`     | Workspace type checking                  |
+| `npm run test:packages` | Shared-package tests                     |
+| `npm run test:web`      | Web tests                                |
+| `npm run test:server`   | Server tests                             |
+| `npm run test:selfhost` | Packaged self-hosting smoke test         |
+| `npm run verify:core`   | Complete public core verification        |
 
 Generic extension contracts must remain implementation-neutral. Tests for
 those contracts should use synthetic fixtures and must not name or configure

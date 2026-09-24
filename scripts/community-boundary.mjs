@@ -38,11 +38,13 @@ export function findRestrictedRuntimeReferences(file, content) {
   if (isVendoredReferenceTree(normalizedFile)) return [];
 
   if (!isBoundaryPolicyFile(normalizedFile)) {
-    const privateFeatureTerms = [...content.matchAll(privateFeatureTermPattern)]
-      .map((match) => match[0].toUpperCase());
+    const privateFeatureTerms = [...content.matchAll(privateFeatureTermPattern)].map((match) =>
+      match[0].toUpperCase(),
+    );
     if (privateFeatureTerms.length > 0) {
-      return [...new Set(privateFeatureTerms)]
-        .map((term) => `private feature implementation term: ${term}`);
+      return [...new Set(privateFeatureTerms)].map(
+        (term) => `private feature implementation term: ${term}`,
+      );
     }
   }
 
@@ -50,13 +52,10 @@ export function findRestrictedRuntimeReferences(file, content) {
   if (
     pathPattern &&
     !isBoundaryImplementation(normalizedFile) &&
-    (
-      pathPattern.test(normalizedFile) ||
-      (
-        (deployablePathPattern.test(normalizedFile) || operationalPathPattern.test(normalizedFile)) &&
-        pathPattern.test(content)
-      )
-    )
+    (pathPattern.test(normalizedFile) ||
+      ((deployablePathPattern.test(normalizedFile) ||
+        operationalPathPattern.test(normalizedFile)) &&
+        pathPattern.test(content)))
   ) {
     return ["restricted runtime marker"];
   }

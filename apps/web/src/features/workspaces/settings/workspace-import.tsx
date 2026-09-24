@@ -11,16 +11,15 @@ export function WorkspaceImportSection({
 }: {
   workspaceId: string | null | undefined;
 }) {
-  const { handleImportFile, inputRef, isImporting, openImportPicker } =
-    useNotionImport({ workspaceId });
+  const { handleImportFile, inputRef, isImporting, openImportPicker } = useNotionImport({
+    workspaceId,
+  });
 
   return (
     <section className="grid gap-3">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h3 className="font-heading text-base leading-snug font-medium">
-            Import
-          </h3>
+          <h3 className="font-heading text-base leading-snug font-medium">Import</h3>
           <p className="text-sm text-content-secondary">
             Bring pages into this workspace from a Notion HTML zip export.
           </p>

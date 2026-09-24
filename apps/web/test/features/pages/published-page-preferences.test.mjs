@@ -1,47 +1,45 @@
 function withWindow(value, run) {
-  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window")
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, "window");
 
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value,
-  })
+  });
 
   try {
-    return run()
+    return run();
   } finally {
     if (descriptor) {
-      Object.defineProperty(globalThis, "window", descriptor)
+      Object.defineProperty(globalThis, "window", descriptor);
     } else {
-      delete globalThis.window
+      delete globalThis.window;
     }
   }
 }
 
 export function register({ assert, loadModule, test }) {
   test("published page mode defaults safely when storage is blocked", async () => {
-    const {
-      readPublishedEmbeddedItemsOpenAs,
-      writePublishedEmbeddedItemsOpenAs,
-    } = await loadModule("/src/features/pages/publication/published-page-preferences.ts")
+    const { readPublishedEmbeddedItemsOpenAs, writePublishedEmbeddedItemsOpenAs } =
+      await loadModule("/src/features/pages/publication/published-page-preferences.ts");
     const blockedStorage = {
       getItem() {
-        throw new Error("blocked")
+        throw new Error("blocked");
       },
       setItem() {
-        throw new Error("blocked")
+        throw new Error("blocked");
       },
-    }
+    };
 
     withWindow({ localStorage: blockedStorage }, () => {
-      assert.equal(readPublishedEmbeddedItemsOpenAs(), "sidepanel")
-      assert.doesNotThrow(() => writePublishedEmbeddedItemsOpenAs("dialog"))
-    })
-  })
+      assert.equal(readPublishedEmbeddedItemsOpenAs(), "sidepanel");
+      assert.doesNotThrow(() => writePublishedEmbeddedItemsOpenAs("dialog"));
+    });
+  });
 
   test("published page mode restores a stored dialog preference", async () => {
     const { readPublishedEmbeddedItemsOpenAs } = await loadModule(
-      "/src/features/pages/publication/published-page-preferences.ts"
-    )
+      "/src/features/pages/publication/published-page-preferences.ts",
+    );
 
     withWindow(
       {
@@ -50,8 +48,8 @@ export function register({ assert, loadModule, test }) {
         },
       },
       () => {
-        assert.equal(readPublishedEmbeddedItemsOpenAs(), "dialog")
-      }
-    )
-  })
+        assert.equal(readPublishedEmbeddedItemsOpenAs(), "dialog");
+      },
+    );
+  });
 }

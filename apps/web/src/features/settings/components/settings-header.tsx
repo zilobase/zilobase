@@ -1,7 +1,7 @@
 type SettingsHeaderProps = {
-  title: string
-  description: string
-}
+  title: string;
+  description: string;
+};
 
 export function SettingsHeader({ title, description }: SettingsHeaderProps) {
   return (
@@ -9,5 +9,5 @@ export function SettingsHeader({ title, description }: SettingsHeaderProps) {
       <h1 className="text-xl font-semibold tracking-normal">{title}</h1>
       <p className="text-sm text-content-secondary">{description}</p>
     </div>
-  )
+  );
 }

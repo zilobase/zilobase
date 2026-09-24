@@ -1,25 +1,19 @@
-import { BubbleMenu } from "@tiptap/react/menus"
-import { AllSelection, NodeSelection } from "@tiptap/pm/state"
-import { useEffect } from "react"
+import { BubbleMenu } from "@tiptap/react/menus";
+import { AllSelection, NodeSelection } from "@tiptap/pm/state";
+import { useEffect } from "react";
 
-import {
-  ButtonGroup,
-  ButtonGroupSeparator,
-} from "@/shared/ui/button-group"
+import { ButtonGroup, ButtonGroupSeparator } from "@/shared/ui/button-group";
 
-import { blockSelectionPluginKey } from "../extensions/block-selection"
+import { blockSelectionPluginKey } from "../extensions/block-selection";
 
-import { ColorMenu } from "../toolbar/color-menu"
-import { SelectionAiMenu } from "./selection-ai-menu"
-import { toolbarGroups } from "../toolbar/toolbar-data"
-import { ToolbarButton } from "../toolbar/toolbar-button"
-import type { SelectionAiDiffPreview } from "../core/types"
-import type {
-  EditorControlProps,
-  RunToolbarCommand,
-} from "../toolbar/toolbar-contracts"
+import { ColorMenu } from "../toolbar/color-menu";
+import { SelectionAiMenu } from "./selection-ai-menu";
+import { toolbarGroups } from "../toolbar/toolbar-data";
+import { ToolbarButton } from "../toolbar/toolbar-button";
+import type { SelectionAiDiffPreview } from "../core/types";
+import type { EditorControlProps, RunToolbarCommand } from "../toolbar/toolbar-contracts";
 
-const SELECTION_BUBBLE_MENU_PLUGIN_KEY = "selectionBubbleMenu"
+const SELECTION_BUBBLE_MENU_PLUGIN_KEY = "selectionBubbleMenu";
 
 export function SelectionBubbleMenu({
   editor,
@@ -27,69 +21,66 @@ export function SelectionBubbleMenu({
   workspaceId,
   runCommand,
 }: EditorControlProps & {
-  onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void
-  workspaceId?: string | null
-  runCommand: RunToolbarCommand
+  onSelectionAiPreviewChange: (preview: SelectionAiDiffPreview | null) => void;
+  workspaceId?: string | null;
+  runCommand: RunToolbarCommand;
 }) {
   useEffect(() => {
     if (!editor) {
-      return
+      return;
     }
 
-    let frame: number | null = null
+    let frame: number | null = null;
 
     const updatePosition = () => {
       if (frame !== null) {
-        return
+        return;
       }
 
       frame = window.requestAnimationFrame(() => {
-        frame = null
+        frame = null;
 
         if (editor.isDestroyed) {
-          return
+          return;
         }
 
         editor.view.dispatch(
-          editor.state.tr.setMeta(
-            SELECTION_BUBBLE_MENU_PLUGIN_KEY,
-            "updatePosition",
-          ),
-        )
-      })
-    }
+          editor.state.tr.setMeta(SELECTION_BUBBLE_MENU_PLUGIN_KEY, "updatePosition"),
+        );
+      });
+    };
 
     // The editor can move while page/side-pane width transitions settle without
     // causing a window resize. Keep the selection anchor live through reflow.
-    const resizeObserver = new ResizeObserver(updatePosition)
-    let layoutElement: HTMLElement | null = editor.view.dom
+    const resizeObserver = new ResizeObserver(updatePosition);
+    let layoutElement: HTMLElement | null = editor.view.dom;
 
     while (layoutElement && layoutElement !== document.body) {
-      resizeObserver.observe(layoutElement)
-      layoutElement = layoutElement.parentElement
+      resizeObserver.observe(layoutElement);
+      layoutElement = layoutElement.parentElement;
     }
 
-    editor.on("selectionUpdate", updatePosition)
-    window.addEventListener("scroll", updatePosition, true)
-    window.visualViewport?.addEventListener("scroll", updatePosition)
-    window.visualViewport?.addEventListener("resize", updatePosition)
-    updatePosition()
+    editor.on("selectionUpdate", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    window.visualViewport?.addEventListener("scroll", updatePosition);
+    window.visualViewport?.addEventListener("resize", updatePosition);
+    updatePosition();
 
     return () => {
       if (frame !== null) {
-        window.cancelAnimationFrame(frame)
+        window.cancelAnimationFrame(frame);
       }
 
-      resizeObserver.disconnect()
-      editor.off("selectionUpdate", updatePosition)
-      window.removeEventListener("scroll", updatePosition, true)
-      window.visualViewport?.removeEventListener("scroll", updatePosition)
-      window.visualViewport?.removeEventListener("resize", updatePosition)
-    }
-  }, [editor])
+      resizeObserver.disconnect();
+      editor.off("selectionUpdate", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.visualViewport?.removeEventListener("scroll", updatePosition);
+      window.visualViewport?.removeEventListener("resize", updatePosition);
+    };
+  }, [editor]);
 
   if (!editor) {
-    return null
+    return null;
   }
 
   return (
@@ -105,9 +96,8 @@ export function SelectionBubbleMenu({
         strategy: "fixed",
       }}
       shouldShow={({ editor, state, from, to }) => {
-        const { selection } = state
-        const blockSelectionMode =
-          blockSelectionPluginKey.getState(state)?.mode ?? "none"
+        const { selection } = state;
+        const blockSelectionMode = blockSelectionPluginKey.getState(state)?.mode ?? "none";
 
         return (
           editor.isEditable &&
@@ -117,14 +107,10 @@ export function SelectionBubbleMenu({
           !(selection instanceof NodeSelection) &&
           !selection.empty &&
           state.doc.textBetween(from, to).trim().length > 0
-        )
+        );
       }}
     >
-      <ButtonGroup
-        aria-label="Text selection actions"
-        role="toolbar"
-        variant="floating"
-      >
+      <ButtonGroup aria-label="Text selection actions" role="toolbar" variant="floating">
         {toolbarGroups[0].map((item) => (
           <ToolbarButton
             editor={editor}
@@ -154,5 +140,5 @@ export function SelectionBubbleMenu({
         ))}
       </ButtonGroup>
     </BubbleMenu>
-  )
+  );
 }

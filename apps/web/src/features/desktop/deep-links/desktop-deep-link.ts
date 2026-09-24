@@ -37,11 +37,7 @@ export function buildDesktopDeepLink(
 ) {
   const normalizedPath = normalizeAppPath(path);
   const serverUrl = normalizeServerOrigin(server.apiOrigin);
-  if (
-    !normalizedPath ||
-    !serverUrl ||
-    !INSTANCE_ID_PATTERN.test(server.instanceId)
-  ) {
+  if (!normalizedPath || !serverUrl || !INSTANCE_ID_PATTERN.test(server.instanceId)) {
     throw new Error("The desktop link target is invalid.");
   }
 
@@ -75,9 +71,7 @@ export function parseDesktopDeepLink(value: string): DesktopDeepLink | null {
     }
 
     if (url.hostname === "open") {
-      if (
-        !hasExactParameters(url.searchParams, ["instance", "path", "server"])
-      ) {
+      if (!hasExactParameters(url.searchParams, ["instance", "path", "server"])) {
         return null;
       }
       const instanceId = url.searchParams.get("instance") ?? "";
@@ -124,8 +118,7 @@ export function resolveDesktopDeepLinkAction(
 function hasExactParameters(parameters: URLSearchParams, expected: string[]) {
   const keys = [...parameters.keys()];
   return (
-    keys.length === expected.length &&
-    expected.every((key) => parameters.getAll(key).length === 1)
+    keys.length === expected.length && expected.every((key) => parameters.getAll(key).length === 1)
   );
 }
 
@@ -155,11 +148,7 @@ function normalizeServerOrigin(value: string | null) {
 
 function isLoopbackHostname(hostname: string) {
   const normalized = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  return (
-    normalized === "localhost" ||
-    normalized === "127.0.0.1" ||
-    normalized === "::1"
-  );
+  return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1";
 }
 
 function normalizeAppPath(path: string | null) {

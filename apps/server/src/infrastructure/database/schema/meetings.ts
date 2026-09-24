@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { workspace } from "./workspaces";
 import { page } from "./pages";
 import { user } from "./authentication";
@@ -34,9 +44,7 @@ export const meeting = pgTable(
     calendarEventId: text("calendar_event_id"),
     calendarSnapshot: jsonb("calendar_snapshot"),
     transcriptRevision: integer("transcript_revision").notNull().default(0),
-    summarySourceSegmentCount: integer("summary_source_segment_count")
-      .notNull()
-      .default(0),
+    summarySourceSegmentCount: integer("summary_source_segment_count").notNull().default(0),
     summaryGeneratedAt: timestamp("summary_generated_at", { withTimezone: true }),
     recorderId: text("recorder_id").references(() => user.id, {
       onDelete: "set null",
@@ -79,9 +87,7 @@ export const meetingCollaborationDocument = pgTable(
     state: bytea("state").notNull(),
     ...timestampColumns(),
   },
-  (table) => [
-    index("meeting_collaboration_document_updated_idx").on(table.updatedAt),
-  ],
+  (table) => [index("meeting_collaboration_document_updated_idx").on(table.updatedAt)],
 );
 
 export const meetingTranscriptSegment = pgTable(
@@ -98,9 +104,7 @@ export const meetingTranscriptSegment = pgTable(
     endMs: integer("end_ms").notNull(),
     speaker: text("speaker"),
     providerItemId: text("provider_item_id"),
-    source: text("source")
-      .$type<"microphone" | "system">()
-      .notNull(),
+    source: text("source").$type<"microphone" | "system">().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .$defaultFn(() => new Date())
       .notNull(),
@@ -115,18 +119,12 @@ export const meetingTranscriptSegment = pgTable(
       table.meetingId,
       table.providerItemId,
     ),
-    index("meeting_transcript_revision_idx").on(
-      table.meetingId,
-      table.revision,
-    ),
+    index("meeting_transcript_revision_idx").on(table.meetingId, table.revision),
     check(
       "meeting_transcript_offsets_check",
       sql`${table.startMs} >= 0 and ${table.endMs} >= ${table.startMs}`,
     ),
-    check(
-      "meeting_transcript_source_check",
-      sql`${table.source} in ('microphone', 'system')`,
-    ),
+    check("meeting_transcript_source_check", sql`${table.source} in ('microphone', 'system')`),
   ],
 );
 

@@ -29,10 +29,7 @@ export function useTeamspaceManagement({
   const remove = useRemoveTeamspacePrincipal();
   const lifecycle = useTeamspaceLifecycle();
   const inviteLink = useUpdateTeamspaceInviteLink();
-  const { data: principals = [] } = useTeamspacePrincipals(
-    workspaceId,
-    teamspace?.id,
-  );
+  const { data: principals = [] } = useTeamspacePrincipals(workspaceId, teamspace?.id);
   const { data: targets } = useWorkspaceAccessTargets(workspaceId);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -47,9 +44,7 @@ export function useTeamspaceManagement({
   }, [teamspace]);
 
   const candidates = useMemo(() => {
-    const memberIds = new Set(
-      principals.map((principal) => principal.principalId),
-    );
+    const memberIds = new Set(principals.map((principal) => principal.principalId));
     return [
       ...(targets?.members ?? [])
         .filter((member) => !memberIds.has(member.id))
@@ -87,10 +82,7 @@ export function useTeamspaceManagement({
   };
   const addCandidate = () => {
     if (!teamspace || !workspaceId) return;
-    const [principalType, principalId] = candidateId.split(":") as [
-      "user" | "team",
-      string,
-    ];
+    const [principalType, principalId] = candidateId.split(":") as ["user" | "team", string];
     add.mutate(
       {
         principalType,
@@ -106,10 +98,7 @@ export function useTeamspaceManagement({
     );
   };
   const changePrincipal = (
-    patch: Omit<
-      Parameters<typeof updatePrincipal.mutate>[0],
-      "teamspaceId" | "workspaceId"
-    >,
+    patch: Omit<Parameters<typeof updatePrincipal.mutate>[0], "teamspaceId" | "workspaceId">,
   ) => {
     if (!teamspace || !workspaceId) return;
     updatePrincipal.mutate(

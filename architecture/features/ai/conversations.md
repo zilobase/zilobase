@@ -30,9 +30,7 @@ Existing feature tests protect source ownership, scroll/composer structure, cach
 
 [AI overview](README.md).
 
-
 [Thread selection](../../../apps/web/src/features/ai/conversations/model/thread-selection.ts) retains valid active IDs and chooses pinned/first fallback IDs only for hosted demos; initialization and URL updates remain in the thread-state hook. [Citation navigation](../../../apps/web/src/features/ai/conversations/components/elements/agent-citation-navigation.ts) recognizes local targets and unmodified primary clicks; badges retain pane/main-route dispatch. Behavioral tests preserve modifier-key browser behavior and demo selection order.
-
 
 Custom-agent streaming and persisted settings notifications pass through the [event adapter](../../../apps/web/src/features/ai/conversations/adapters/custom-agent-events.ts). It preserves complete LF-delimited events, UTF-8 chunk decoding, settings/error event order and mount-time/message-status deduplication. The conversation screen retains fetch abort ownership, draft restoration on failures and refetch ordering. [Controlled stream tests](../../../apps/web/test/features/ai/custom-agent-events.test.mjs) include incomplete final events and transport errors.
 

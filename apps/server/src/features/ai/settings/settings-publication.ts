@@ -5,7 +5,11 @@ import { eq } from "drizzle-orm";
 import { settingsDefinitionSchema } from "@zilobase/features/ai-chat/settings-contract";
 
 import { db } from "../../../infrastructure/database";
-import { aiSettings, aiSettingsDraft, aiSettingsVersion } from "../../../infrastructure/database/schema";
+import {
+  aiSettings,
+  aiSettingsDraft,
+  aiSettingsVersion,
+} from "../../../infrastructure/database/schema";
 
 import { type SettingsActor, authorizeSettings } from "./settings-access";
 import { getSettingsRecord } from "./settings-record";
@@ -31,15 +35,10 @@ export async function publishSettings(
       (draft?.draftVersion ?? 0) !== input.draftVersion
     )
       throw settingsConflict();
-    let d = settingsDefinitionSchema.parse(
-      draft?.definition ?? saved!.definition,
-    );
+    let d = settingsDefinitionSchema.parse(draft?.definition ?? saved!.definition);
     d = await hydrateInstructionPage(a, d);
     await validateSettingsDefinition(a, d);
-    const changed = !sameSettings(
-      settingsDefinitionSchema.parse(saved!.definition),
-      d,
-    );
+    const changed = !sameSettings(settingsDefinitionSchema.parse(saved!.definition), d);
     pendingRun = draft?.pendingRun ?? null;
     if (changed) {
       const version = saved!.version + 1;
@@ -56,8 +55,7 @@ export async function publishSettings(
         createdByUserId: a.userId,
       });
     }
-    if (draft)
-      await tx.delete(aiSettingsDraft).where(eq(aiSettingsDraft.id, draft.id));
+    if (draft) await tx.delete(aiSettingsDraft).where(eq(aiSettingsDraft.id, draft.id));
   });
   return { ...(await readSettings(a)), pendingRun };
 }

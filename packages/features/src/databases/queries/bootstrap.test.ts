@@ -2,10 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { QueryClient } from "@tanstack/react-query";
 
-import {
-  databaseBootstrapQueryKey,
-  sessionIdForQueries,
-} from "./keys";
+import { databaseBootstrapQueryKey, sessionIdForQueries } from "./keys";
 import { databaseBootstrapQueryOptions } from "./bootstrap";
 import { databaseBootstrapResponseSchema } from "../core/entities";
 
@@ -28,10 +25,14 @@ const bootstrap = {
 };
 
 test("bootstrap key includes session/host/view/deleted", () => {
-  assert.deepEqual(
-    databaseBootstrapQueryKey("session-1", { databaseId: "database-1" }),
-    ["db", "session-1", "database-1", "bootstrap", null, false],
-  );
+  assert.deepEqual(databaseBootstrapQueryKey("session-1", { databaseId: "database-1" }), [
+    "db",
+    "session-1",
+    "database-1",
+    "bootstrap",
+    null,
+    false,
+  ]);
   assert.deepEqual(
     databaseBootstrapQueryKey("public", {
       databaseId: "database-1",
@@ -50,19 +51,15 @@ test("bootstrap fetch parses and validates", async () => {
     seen.push(path);
     return bootstrap;
   }) as unknown as import("../../shared/api-fetcher").ApiFetcher;
-  const options = databaseBootstrapQueryOptions(
-    apiFetch,
-    "session-1",
-    { databaseId: "database-1", viewId: "view-1" },
-  );
+  const options = databaseBootstrapQueryOptions(apiFetch, "session-1", {
+    databaseId: "database-1",
+    viewId: "view-1",
+  });
   const data = await options.queryFn!({
     signal: new AbortController().signal,
   } as never);
   assert.deepEqual(data, databaseBootstrapResponseSchema.parse(bootstrap));
-  assert.equal(
-    seen[0],
-    "/databases/database-1/bootstrap?viewId=view-1",
-  );
+  assert.equal(seen[0], "/databases/database-1/bootstrap?viewId=view-1");
 });
 
 test("bootstrap prefer-newest guard keeps newer cached version", async () => {
@@ -77,12 +74,7 @@ test("bootstrap prefer-newest guard keeps newer cached version", async () => {
     };
     const apiFetch = (async () =>
       stale) as unknown as import("../../shared/api-fetcher").ApiFetcher;
-    const options = databaseBootstrapQueryOptions(
-      apiFetch,
-      "session-1",
-      scope,
-      queryClient,
-    );
+    const options = databaseBootstrapQueryOptions(apiFetch, "session-1", scope, queryClient);
     const data = await options.queryFn!({
       signal: new AbortController().signal,
     } as never);

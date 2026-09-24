@@ -1,11 +1,8 @@
 import type { DatabaseSearchableMenuOption } from "../menu-option-contracts";
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react"
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import {
-  DropDrawerItem,
-  DropDrawerSeparator,
-} from "@/shared/ui/dropdrawer"
-import { Input } from "@/shared/ui/input"
+import { DropDrawerItem, DropDrawerSeparator } from "@/shared/ui/dropdrawer";
+import { Input } from "@/shared/ui/input";
 
 export function DatabaseSearchableMenuItems({
   emptyMessage = "No options found.",
@@ -18,49 +15,47 @@ export function DatabaseSearchableMenuItems({
   pinSearch = false,
   renderOption,
 }: {
-  emptyMessage?: string
-  inputAriaLabel: string
-  inputIcon?: ReactNode
-  inputPlaceholder: string
-  onSelect?: (value: string) => void
-  open?: boolean
-  options: DatabaseSearchableMenuOption[]
-  pinSearch?: boolean
-  renderOption?: (option: DatabaseSearchableMenuOption) => ReactNode
+  emptyMessage?: string;
+  inputAriaLabel: string;
+  inputIcon?: ReactNode;
+  inputPlaceholder: string;
+  onSelect?: (value: string) => void;
+  open?: boolean;
+  options: DatabaseSearchableMenuOption[];
+  pinSearch?: boolean;
+  renderOption?: (option: DatabaseSearchableMenuOption) => ReactNode;
 }) {
-  const [query, setQuery] = useState("")
+  const [query, setQuery] = useState("");
   const filteredOptions = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
+    const normalizedQuery = query.trim().toLowerCase();
 
     if (!normalizedQuery) {
-      return options
+      return options;
     }
 
     return options.filter((option) => {
-      const searchText = (option.searchText ?? option.label).toLowerCase()
+      const searchText = (option.searchText ?? option.label).toLowerCase();
 
-      return searchText.includes(normalizedQuery)
-    })
-  }, [options, query])
+      return searchText.includes(normalizedQuery);
+    });
+  }, [options, query]);
 
   useEffect(() => {
     if (open === false) {
-      setQuery("")
+      setQuery("");
     }
-  }, [open])
+  }, [open]);
 
   const handleSelect = (value: string) => {
-    setQuery("")
-    onSelect?.(value)
-  }
+    setQuery("");
+    onSelect?.(value);
+  };
 
   const search = (
     <>
       <div className="flex items-center gap-1.5 px-1.5 py-1">
         {inputIcon ? (
-          <span className="size-4 shrink-0 text-content-secondary">
-            {inputIcon}
-          </span>
+          <span className="size-4 shrink-0 text-content-secondary">{inputIcon}</span>
         ) : null}
         <Input
           aria-label={inputAriaLabel}
@@ -72,7 +67,7 @@ export function DatabaseSearchableMenuItems({
       </div>
       <DropDrawerSeparator />
     </>
-  )
+  );
   const results =
     filteredOptions.length > 0 ? (
       filteredOptions.map((option) => (
@@ -89,17 +84,15 @@ export function DatabaseSearchableMenuItems({
       ))
     ) : (
       <DropDrawerItem disabled>{emptyMessage}</DropDrawerItem>
-    )
+    );
 
   if (pinSearch) {
     return (
       <div className="flex h-[min(32rem,calc(100vh-5rem))] max-h-full min-h-0 flex-col overflow-hidden">
         <div className="shrink-0 bg-surface-overlay">{search}</div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {results}
-        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{results}</div>
       </div>
-    )
+    );
   }
 
   return (
@@ -107,5 +100,5 @@ export function DatabaseSearchableMenuItems({
       {search}
       {results}
     </>
-  )
+  );
 }

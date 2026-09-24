@@ -4,8 +4,7 @@ import { Button } from "@/shared/ui/button";
 import { ArrowDownIcon } from "@/shared/components/icons";
 import { useCallback, useEffect, useState } from "react";
 
-export const AI_SCROLL_SHELL_SELECTOR =
-  "[data-ai-scroll-shell], [data-page-scroll-viewport]";
+export const AI_SCROLL_SHELL_SELECTOR = "[data-ai-scroll-shell], [data-page-scroll-viewport]";
 
 export const ChatbotScrollButton = ({
   targetRef,
@@ -15,9 +14,7 @@ export const ChatbotScrollButton = ({
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const scrollShell = targetRef.current?.closest(
-      AI_SCROLL_SHELL_SELECTOR,
-    ) as HTMLElement | null;
+    const scrollShell = targetRef.current?.closest(AI_SCROLL_SHELL_SELECTOR) as HTMLElement | null;
 
     if (!scrollShell) {
       return;
@@ -25,9 +22,7 @@ export const ChatbotScrollButton = ({
 
     const updateVisibility = () => {
       const distanceFromBottom =
-        scrollShell.scrollHeight -
-        scrollShell.scrollTop -
-        scrollShell.clientHeight;
+        scrollShell.scrollHeight - scrollShell.scrollTop - scrollShell.clientHeight;
 
       setIsVisible(distanceFromBottom > 160);
     };
@@ -43,9 +38,7 @@ export const ChatbotScrollButton = ({
   }, [targetRef]);
 
   const handleClick = useCallback(() => {
-    const scrollShell = targetRef.current?.closest(
-      AI_SCROLL_SHELL_SELECTOR,
-    ) as HTMLElement | null;
+    const scrollShell = targetRef.current?.closest(AI_SCROLL_SHELL_SELECTOR) as HTMLElement | null;
 
     scrollShell?.scrollTo({
       behavior: "smooth",

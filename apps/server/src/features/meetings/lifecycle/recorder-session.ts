@@ -2,17 +2,11 @@ import { and, desc, eq, gt, inArray, isNull, lt, or } from "drizzle-orm";
 
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
-import {
-  meeting,
-  meetingConsentEvent,
-} from "../../../infrastructure/database/schema";
+import { meeting, meetingConsentEvent } from "../../../infrastructure/database/schema";
 
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
-import {
-  clampMeetingDuration,
-  isMeetingRecordingActive,
-} from "./meeting-state";
+import { clampMeetingDuration, isMeetingRecordingActive } from "./meeting-state";
 import type { MeetingStatus } from "../contracts/meeting-types";
 import { getMeetingForUser } from "./meeting-access";
 import { runRecorderRuntimeMutation } from "./recorder-runtime";
@@ -28,15 +22,9 @@ export async function claimMeetingRecorder(input: {
   recorderName?: string;
   userId: string;
 }) {
-  const existing = await getMeetingForUser(
-    input.meetingId,
-    input.userId,
-    "edit",
-  );
+  const existing = await getMeetingForUser(input.meetingId, input.userId, "edit");
   const now = new Date();
-  const runtime = input.env
-    ? getRuntimePorts().meetings
-    : undefined;
+  const runtime = input.env ? getRuntimePorts().meetings : undefined;
 
   // A serverful process can disappear before its audio socket sends stop. The
   // database lease is the durable recovery boundary: when the next recorder
@@ -66,10 +54,7 @@ export async function claimMeetingRecorder(input: {
         and(
           eq(meeting.id, existing.id),
           inArray(meeting.status, ["recording", "paused"]),
-          or(
-            isNull(meeting.recorderLeaseExpiresAt),
-            lt(meeting.recorderLeaseExpiresAt, now),
-          ),
+          or(isNull(meeting.recorderLeaseExpiresAt), lt(meeting.recorderLeaseExpiresAt, now)),
         ),
       )
       .returning({ id: meeting.id });
@@ -87,19 +72,13 @@ export async function claimMeetingRecorder(input: {
       and(
         eq(meetingConsentEvent.meetingId, existing.id),
         eq(meetingConsentEvent.userId, input.userId),
-        gt(
-          meetingConsentEvent.acknowledgedAt,
-          new Date(now.getTime() - 10 * 60 * 1_000),
-        ),
+        gt(meetingConsentEvent.acknowledgedAt, new Date(now.getTime() - 10 * 60 * 1_000)),
       ),
     )
     .orderBy(desc(meetingConsentEvent.acknowledgedAt))
     .limit(1);
   if (!consent) {
-    throw new ServiceMutationError(
-      "Confirm that participants were notified before recording",
-      409,
-    );
+    throw new ServiceMutationError("Confirm that participants were notified before recording", 409);
   }
   if (runtime) {
     const claimed = await runRecorderRuntimeMutation(() =>
@@ -135,19 +114,13 @@ export async function claimMeetingRecorder(input: {
     .where(
       and(
         eq(meeting.id, existing.id),
-        or(
-          isNull(meeting.recorderLeaseExpiresAt),
-          lt(meeting.recorderLeaseExpiresAt, now),
-        ),
+        or(isNull(meeting.recorderLeaseExpiresAt), lt(meeting.recorderLeaseExpiresAt, now)),
       ),
     )
     .returning();
 
   if (!claimed) {
-    throw new ServiceMutationError(
-      "Another collaborator is already recording this meeting",
-      409,
-    );
+    throw new ServiceMutationError("Another collaborator is already recording this meeting", 409);
   }
 
   return { leaseExpiresAt, leaseId, meeting: claimed };
@@ -159,11 +132,7 @@ export async function recordMeetingConsent(input: {
   mode: "confirmed" | "played";
   userId: string;
 }) {
-  const existing = await getMeetingForUser(
-    input.meetingId,
-    input.userId,
-    "edit",
-  );
+  const existing = await getMeetingForUser(input.meetingId, input.userId, "edit");
   const [event] = await db
     .insert(meetingConsentEvent)
     .values({
@@ -210,15 +179,9 @@ export async function releaseMeetingRecorder(input: {
   meetingId: string;
   userId: string;
 }) {
-  const runtime = input.env
-    ? getRuntimePorts().meetings
-    : undefined;
+  const runtime = input.env ? getRuntimePorts().meetings : undefined;
   if (runtime) {
-    const existing = await getMeetingForUser(
-      input.meetingId,
-      input.userId,
-      "edit",
-    );
+    const existing = await getMeetingForUser(input.meetingId, input.userId, "edit");
     await runRecorderRuntimeMutation(() =>
       runtime.release({
         leaseId: input.leaseId,
@@ -250,8 +213,7 @@ export async function releaseMeetingRecorder(input: {
     )
     .returning();
 
-  if (!released)
-    throw new ServiceMutationError("Recorder lease not found", 409);
+  if (!released) throw new ServiceMutationError("Recorder lease not found", 409);
   return released;
 }
 

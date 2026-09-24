@@ -5,10 +5,7 @@ import { resultForDueRow } from "../../../infrastructure/background/task-result"
 import { db } from "../../../infrastructure/database";
 import { navigationRealtimeOutbox } from "../../../infrastructure/database/schema";
 
-export async function processNavigationRealtimeTask(
-  env: RuntimeEnv,
-  resourceId: string,
-) {
+export async function processNavigationRealtimeTask(env: RuntimeEnv, resourceId: string) {
   await drainNavigationRealtimeOutbox(env, { limit: 1, outboxId: resourceId });
   return resultForDueRow(
     async () =>

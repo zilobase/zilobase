@@ -19,10 +19,7 @@ test("hosted demo identity is disabled unless explicitly enabled and marked", ()
     false,
   );
   assert.equal(
-    isHostedDemoRequest(
-      { ZILOBASE_DEMO_ENABLED: "true" } as AppBindings["Bindings"],
-      marked,
-    ),
+    isHostedDemoRequest({ ZILOBASE_DEMO_ENABLED: "true" } as AppBindings["Bindings"], marked),
     true,
   );
 });
@@ -54,10 +51,7 @@ test("hosted demo write guard returns the stable read-only contract", async () =
       error: "Changes are disabled in the hosted demo.",
     });
   }
-  assert.equal(
-    (await app.request("/api/auth/callback/provider")).status,
-    403,
-  );
+  assert.equal((await app.request("/api/auth/callback/provider")).status, 403);
 });
 
 test("hosted demo fixture uses deterministic fictional content", () => {

@@ -28,29 +28,24 @@ export function register({ readSource, assert, loadModule, test }) {
       "/src/features/desktop/server/desktop-server-replacement-core.ts",
     );
     const order = [];
-    await executeDesktopServerReplacement(
-      prepared,
-      currentServer,
-      "/p/page-1",
-      {
-        beforeLocalCleanup: async () => order.push("unmount"),
-        beginNetworkShutdown: () => order.push("stop-network"),
-        cancelQueries: async () => order.push("cancel-queries"),
-        clearIndexedData: async () => order.push("clear-indexeddb"),
-        clearStores: async () => order.push("clear-stores"),
-        commitCandidate: async (candidateId) => {
-          assert.equal(candidateId, "candidate-1");
-          order.push("commit");
-          return { changed: true, server: prepared.server };
-        },
-        forgetCredentials: () => order.push("forget-memory"),
-        reload: (path) => order.push(`reload:${path}`),
-        revokeOldSession: async (server) => {
-          assert.equal(server.apiOrigin, "https://old.example.com");
-          order.push("revoke");
-        },
+    await executeDesktopServerReplacement(prepared, currentServer, "/p/page-1", {
+      beforeLocalCleanup: async () => order.push("unmount"),
+      beginNetworkShutdown: () => order.push("stop-network"),
+      cancelQueries: async () => order.push("cancel-queries"),
+      clearIndexedData: async () => order.push("clear-indexeddb"),
+      clearStores: async () => order.push("clear-stores"),
+      commitCandidate: async (candidateId) => {
+        assert.equal(candidateId, "candidate-1");
+        order.push("commit");
+        return { changed: true, server: prepared.server };
       },
-    );
+      forgetCredentials: () => order.push("forget-memory"),
+      reload: (path) => order.push(`reload:${path}`),
+      revokeOldSession: async (server) => {
+        assert.equal(server.apiOrigin, "https://old.example.com");
+        order.push("revoke");
+      },
+    });
 
     assert.deepEqual(order, [
       "revoke",
@@ -122,10 +117,9 @@ export function register({ readSource, assert, loadModule, test }) {
       const oldRequest = desktopNetworkFetch("https://old.example.com/health");
       beginDesktopServerNetworkShutdown();
       await assert.rejects(oldRequest, { name: "AbortError" });
-      await assert.rejects(
-        desktopNetworkFetch("https://old.example.com/ready"),
-        { name: "AbortError" },
-      );
+      await assert.rejects(desktopNetworkFetch("https://old.example.com/ready"), {
+        name: "AbortError",
+      });
       assert.equal(calls, 1);
     } finally {
       resetDesktopServerNetworkForTests();
@@ -135,8 +129,12 @@ export function register({ readSource, assert, loadModule, test }) {
 
   test("replacement clears every server-scoped store and supports both deep-link launch modes", async () => {
     const replacement = await readSource("/src/app/runtime/desktop-server-replacement.ts");
-    const controller = await readSource("/src/app/runtime/desktop-server-replacement-controller.tsx");
-    const handler = await readSource("/src/features/desktop/components/desktop-deep-link-handler.tsx");
+    const controller = await readSource(
+      "/src/app/runtime/desktop-server-replacement-controller.tsx",
+    );
+    const handler = await readSource(
+      "/src/features/desktop/components/desktop-deep-link-handler.tsx",
+    );
 
     assert.match(replacement, /queryClient\.clear\(\)/);
     assert.match(replacement, /resetAccountState\(\)/);

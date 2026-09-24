@@ -7,14 +7,29 @@ import { MCP_LIMITS } from "../connections/config";
 const MAX_MCP_REQUEST_BYTES = 1024 * 1024;
 
 const BLOCKED_CUSTOM_HEADERS = new Set([
-  "connection", "content-length", "cookie", "forwarded", "host", "keep-alive",
-  "proxy-authenticate", "proxy-authorization", "te", "trailer",
-  "transfer-encoding", "upgrade", "via", "x-forwarded-for", "x-forwarded-host",
+  "connection",
+  "content-length",
+  "cookie",
+  "forwarded",
+  "host",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+  "via",
+  "x-forwarded-for",
+  "x-forwarded-host",
   "x-forwarded-proto",
 ]);
 
 export class McpEgressError extends Error {
-  constructor(readonly code: string, message: string) {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
     super(message);
     this.name = "McpEgressError";
   }
@@ -75,7 +90,10 @@ export function createSecureMcpFetch(input: {
 
     for (let redirectCount = 0; redirectCount <= 3; redirectCount += 1) {
       if (!input.allowAnyPublicHttps && !approved.has(currentUrl)) {
-        throw new McpEgressError("mcp_endpoint_not_approved", "MCP request target is not workspace-approved.");
+        throw new McpEgressError(
+          "mcp_endpoint_not_approved",
+          "MCP request target is not workspace-approved.",
+        );
       }
       const response = await transport({
         body,
@@ -98,10 +116,16 @@ export function createSecureMcpFetch(input: {
       const previousOrigin = new URL(currentUrl).origin;
       const nextUrl = normalizeMcpEndpoint(new URL(location, currentUrl).toString());
       if (new URL(nextUrl).origin !== previousOrigin) {
-        throw new McpEgressError("mcp_redirect_rejected", "Cross-origin MCP redirects are not allowed.");
+        throw new McpEgressError(
+          "mcp_redirect_rejected",
+          "Cross-origin MCP redirects are not allowed.",
+        );
       }
       currentUrl = nextUrl;
-      if (response.status === 303 || ((response.status === 301 || response.status === 302) && method === "POST")) {
+      if (
+        response.status === 303 ||
+        ((response.status === 301 || response.status === 302) && method === "POST")
+      ) {
         method = "GET";
         body = null;
         headers.delete("content-type");
@@ -146,16 +170,20 @@ function boundMcpResponse(response: Response) {
   }
   if (!response.body) return response;
   let total = 0;
-  const body = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
-    transform(chunk, controller) {
-      total += chunk.byteLength;
-      if (total > MCP_LIMITS.maxResponseBytes) {
-        controller.error(new McpEgressError("mcp_response_too_large", "MCP response exceeded 5 MiB."));
-        return;
-      }
-      controller.enqueue(chunk);
-    },
-  }));
+  const body = response.body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        total += chunk.byteLength;
+        if (total > MCP_LIMITS.maxResponseBytes) {
+          controller.error(
+            new McpEgressError("mcp_response_too_large", "MCP response exceeded 5 MiB."),
+          );
+          return;
+        }
+        controller.enqueue(chunk);
+      },
+    }),
+  );
   return new Response(body, {
     headers: response.headers,
     status: response.status,
@@ -165,7 +193,11 @@ function boundMcpResponse(response: Response) {
 
 function isBlockedHostname(hostname: string) {
   const canonical = hostname.replace(/\.$/, "");
-  return !canonical.includes(".") && !canonical.includes(":") ||
-    canonical === "localhost" || canonical.endsWith(".localhost") ||
-    canonical.endsWith(".local") || canonical.endsWith(".internal");
+  return (
+    (!canonical.includes(".") && !canonical.includes(":")) ||
+    canonical === "localhost" ||
+    canonical.endsWith(".localhost") ||
+    canonical.endsWith(".local") ||
+    canonical.endsWith(".internal")
+  );
 }

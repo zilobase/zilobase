@@ -1,9 +1,6 @@
-import type { ReactNode } from "react"
+import type { ReactNode } from "react";
 
-import {
-  DatabaseViewProvider,
-  type DatabaseViewProviderValue,
-} from "@/features/databases"
+import { DatabaseViewProvider, type DatabaseViewProviderValue } from "@/features/databases";
 
 type UnsupportedTaskDatabaseAction =
   | "addChartView"
@@ -30,21 +27,18 @@ type UnsupportedTaskDatabaseAction =
   | "setDraftViewTitle"
   | "setViewDateProperty"
   | "setViewType"
-  | "setupTimelineDateProperty"
+  | "setupTimelineDateProperty";
 
-type TaskDatabaseListValue = Omit<
-  DatabaseViewProviderValue,
-  UnsupportedTaskDatabaseAction
->
+type TaskDatabaseListValue = Omit<DatabaseViewProviderValue, UnsupportedTaskDatabaseAction>;
 
-const ignoreUnsupportedAction = () => {}
+const ignoreUnsupportedAction = () => {};
 
 export function TaskDatabaseListAdapter({
   children,
   value,
 }: {
-  children: ReactNode
-  value: TaskDatabaseListValue
+  children: ReactNode;
+  value: TaskDatabaseListValue;
 }) {
   return (
     <DatabaseViewProvider
@@ -79,5 +73,5 @@ export function TaskDatabaseListAdapter({
     >
       {children}
     </DatabaseViewProvider>
-  )
+  );
 }

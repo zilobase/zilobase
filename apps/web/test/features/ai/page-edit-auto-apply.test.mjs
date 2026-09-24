@@ -38,21 +38,18 @@ export function register({ assert, appPath, test }) {
               },
               (args) => ({ path: args.path, namespace: "auto-edit" }),
             );
-            build.onLoad(
-              { filter: /.*/, namespace: "auto-edit" },
-              ({ path }) => ({
-                contents:
-                  path === "auto-edit-test"
-                    ? "export const state = {};"
-                    : path === "react"
-                      ? `export * from ${JSON.stringify(require.resolve("react"))}; import { state } from "auto-edit-test"; export const useRef = () => state.processed; export const useEffect = run => run(); export const useState = () => [state.applying, update => { state.applying = update(state.applying); }];`
-                      : path.includes("use-page-edit-applier")
-                        ? 'import { state } from "auto-edit-test"; export const usePageEditApplier = () => ({ resolvePageEdit: input => { state.calls.push(input); return state.result; } });'
-                        : 'export const usePageEditorRegistry = () => ({ getEditorHandle: () => ({ getContentJson: () => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Current" }] }] }) }) });',
-                loader: "ts",
-                resolveDir: appPath("/"),
-              }),
-            );
+            build.onLoad({ filter: /.*/, namespace: "auto-edit" }, ({ path }) => ({
+              contents:
+                path === "auto-edit-test"
+                  ? "export const state = {};"
+                  : path === "react"
+                    ? `export * from ${JSON.stringify(require.resolve("react"))}; import { state } from "auto-edit-test"; export const useRef = () => state.processed; export const useEffect = run => run(); export const useState = () => [state.applying, update => { state.applying = update(state.applying); }];`
+                    : path.includes("use-page-edit-applier")
+                      ? 'import { state } from "auto-edit-test"; export const usePageEditApplier = () => ({ resolvePageEdit: input => { state.calls.push(input); return state.result; } });'
+                      : 'export const usePageEditorRegistry = () => ({ getEditorHandle: () => ({ getContentJson: () => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Current" }] }] }) }) });',
+              loader: "ts",
+              resolveDir: appPath("/"),
+            }));
           },
         },
       ],

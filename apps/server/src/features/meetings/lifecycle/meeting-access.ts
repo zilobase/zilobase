@@ -22,14 +22,7 @@ export async function getMeetingForUser(
     throw new ServiceMutationError("Meeting not found", 404);
   }
 
-  if (
-    !(await canAccessPageInWorkspace(
-      record.pageId,
-      record.workspaceId,
-      userId,
-      required,
-    ))
-  ) {
+  if (!(await canAccessPageInWorkspace(record.pageId, record.workspaceId, userId, required))) {
     throw new ServiceMutationError("Forbidden", 403);
   }
 

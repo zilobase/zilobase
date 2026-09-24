@@ -2,7 +2,13 @@ import { calendarRoutes, calendarProviderRoutes } from "../features/calendar/rou
 import { aiSettingsRoutes } from "../features/ai/settings/routes";
 import type { Hono } from "hono";
 
-import { aiAgentProfileRoutes, aiAgentWebhookRoutes, aiMcpRoutes, aiRoutes, aiThreadRoutes } from "../features/ai/routes";
+import {
+  aiAgentProfileRoutes,
+  aiAgentWebhookRoutes,
+  aiMcpRoutes,
+  aiRoutes,
+  aiThreadRoutes,
+} from "../features/ai/routes";
 import { apiKeyRoutes } from "../features/api-keys/routes";
 import { clipRoutes } from "../features/clips";
 import { authRoutes } from "../features/auth/routes";

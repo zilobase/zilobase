@@ -2,7 +2,15 @@ import { allInstructionResources } from "./instruction-pages";
 import { and, eq, inArray } from "drizzle-orm";
 import { type AgentSettingsDefinition } from "@zilobase/features/ai-chat/settings-contract";
 
-import { aiAgentProfile, aiAgentRevision, aiAgentProfileAccess, aiMcpConnection, aiMcpToolSnapshot, pageAccess, databaseAccess } from "../../../infrastructure/database/schema";
+import {
+  aiAgentProfile,
+  aiAgentRevision,
+  aiAgentProfileAccess,
+  aiMcpConnection,
+  aiMcpToolSnapshot,
+  pageAccess,
+  databaseAccess,
+} from "../../../infrastructure/database/schema";
 
 import { synchronizeMaterializedTriggers } from "../agents/agent-revision-service";
 import { hashAgentDefinition } from "../agents/agent-definition";
@@ -69,16 +77,8 @@ export async function materializeSettings(
         updatedAt: now,
       })
       .where(eq(aiAgentProfile.id, a.scope));
-    await synchronizeMaterializedTriggers(
-      tx,
-      a.scope,
-      revisionId,
-      d.triggers,
-      now,
-    );
-    await tx
-      .delete(aiAgentProfileAccess)
-      .where(eq(aiAgentProfileAccess.profileId, a.scope));
+    await synchronizeMaterializedTriggers(tx, a.scope, revisionId, d.triggers, now);
+    await tx.delete(aiAgentProfileAccess).where(eq(aiAgentProfileAccess.profileId, a.scope));
     if (d.grants.length)
       await tx.insert(aiAgentProfileAccess).values(
         d.grants.map((g) => ({
@@ -116,10 +116,7 @@ export async function materializeSettings(
       };
       if (r.resourceType === "page")
         await tx.insert(pageAccess).values({ ...common, pageId: r.resourceId });
-      else
-        await tx
-          .insert(databaseAccess)
-          .values({ ...common, databaseId: r.resourceId });
+      else await tx.insert(databaseAccess).values({ ...common, databaseId: r.resourceId });
     }
   }
   const connections = await tx

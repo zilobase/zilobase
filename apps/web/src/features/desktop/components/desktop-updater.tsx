@@ -1,42 +1,42 @@
-import { desktopBridge, isDesktopApp } from "@/platform/desktop/native"
-import { useEffect } from "react"
-import { toast } from "sonner"
+import { desktopBridge, isDesktopApp } from "@/platform/desktop/native";
+import { useEffect } from "react";
+import { toast } from "sonner";
 import {
   describeDesktopError,
   recordDesktopDiagnostic,
-} from "../../../platform/diagnostics/desktop-diagnostics"
+} from "../../../platform/diagnostics/desktop-diagnostics";
 
-let updateCheckStarted = false
+let updateCheckStarted = false;
 
 export function DesktopUpdater() {
   useEffect(() => {
-    if (!isDesktopApp() || updateCheckStarted) return
+    if (!isDesktopApp() || updateCheckStarted) return;
 
-    updateCheckStarted = true
-    void checkForUpdate()
-  }, [])
+    updateCheckStarted = true;
+    void checkForUpdate();
+  }, []);
 
-  return null
+  return null;
 }
 
 async function checkForUpdate() {
-  const startedAt = performance.now()
-  recordDesktopDiagnostic("updater.check", { status: "started" })
+  const startedAt = performance.now();
+  recordDesktopDiagnostic("updater.check", { status: "started" });
   try {
-    const update = await desktopBridge().update.check()
+    const update = await desktopBridge().update.check();
 
     if (!update) {
       recordDesktopDiagnostic("updater.check", {
         duration_ms: performance.now() - startedAt,
         status: "success",
-      })
-      return
+      });
+      return;
     }
 
     recordDesktopDiagnostic("updater.check", {
       duration_ms: performance.now() - startedAt,
       status: "success",
-    })
+    });
 
     toast.info(`Zilobase ${update.version} is available`, {
       action: {
@@ -45,7 +45,7 @@ async function checkForUpdate() {
       },
       description: update.body || "Install the latest version and reopen Zilobase.",
       duration: Infinity,
-    })
+    });
   } catch (error) {
     recordDesktopDiagnostic(
       "updater.check",
@@ -54,25 +54,25 @@ async function checkForUpdate() {
         duration_ms: performance.now() - startedAt,
       },
       "error",
-    )
-    console.error("Could not check for a Zilobase update", error)
+    );
+    console.error("Could not check for a Zilobase update", error);
   }
 }
 
 async function installUpdate() {
-  const toastId = toast.loading("Downloading Zilobase update…")
-  const startedAt = performance.now()
-  recordDesktopDiagnostic("updater.install", { status: "started" })
+  const toastId = toast.loading("Downloading Zilobase update…");
+  const startedAt = performance.now();
+  recordDesktopDiagnostic("updater.install", { status: "started" });
 
   try {
-    await desktopBridge().update.download()
+    await desktopBridge().update.download();
     recordDesktopDiagnostic("updater.install", {
       duration_ms: performance.now() - startedAt,
       status: "success",
-    })
-    toast.loading("Restarting Zilobase…", { id: toastId })
+    });
+    toast.loading("Restarting Zilobase…", { id: toastId });
 
-    await desktopBridge().update.installRestart()
+    await desktopBridge().update.installRestart();
   } catch (error) {
     recordDesktopDiagnostic(
       "updater.install",
@@ -81,11 +81,11 @@ async function installUpdate() {
         duration_ms: performance.now() - startedAt,
       },
       "error",
-    )
-    console.error("Could not install the Zilobase update", error)
+    );
+    console.error("Could not install the Zilobase update", error);
     toast.error("Could not install the update.", {
       description: "Please try again later.",
       id: toastId,
-    })
+    });
   }
 }

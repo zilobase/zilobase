@@ -1,8 +1,6 @@
 import { desktopNetworkFetch } from "@/platform/network/index";
 
-export async function convertBlobUrlToDataUrl(
-  url: string,
-): Promise<string | null> {
+export async function convertBlobUrlToDataUrl(url: string): Promise<string | null> {
   try {
     const response = await desktopNetworkFetch(url);
     const blob = await response.blob();
@@ -22,10 +20,7 @@ export async function convertBlobUrlToDataUrl(
 }
 
 export async function captureScreenshot(): Promise<File | null> {
-  if (
-    typeof navigator === "undefined" ||
-    !navigator.mediaDevices?.getDisplayMedia
-  ) {
+  if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
     return null;
   }
 

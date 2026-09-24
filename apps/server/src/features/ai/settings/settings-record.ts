@@ -19,9 +19,7 @@ import {
   settingsScopeKey,
 } from "./settings-access";
 
-async function newPersonalDefinition(
-  actor: SettingsActor,
-): Promise<AgentSettingsDefinition> {
+async function newPersonalDefinition(actor: SettingsActor): Promise<AgentSettingsDefinition> {
   const definition = emptySettingsDefinition();
   const connections = await db
     .select()

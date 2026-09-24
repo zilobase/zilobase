@@ -1,7 +1,4 @@
-import type {
-  DesktopServer,
-  PreparedDesktopServer,
-} from "../../../platform/server/desktop-server";
+import type { DesktopServer, PreparedDesktopServer } from "../../../platform/server/desktop-server";
 
 export type DesktopServerReplacementRequest = {
   expectedInstanceId?: string;
@@ -28,13 +25,8 @@ export function assertPreparedServerMatchesRequest(
   prepared: PreparedDesktopServer,
   request: DesktopServerReplacementRequest,
 ) {
-  if (
-    request.expectedInstanceId &&
-    prepared.server.instanceId !== request.expectedInstanceId
-  ) {
-    throw new Error(
-      "This link identifies a different Zilobase instance than the server returned.",
-    );
+  if (request.expectedInstanceId && prepared.server.instanceId !== request.expectedInstanceId) {
+    throw new Error("This link identifies a different Zilobase instance than the server returned.");
   }
 }
 

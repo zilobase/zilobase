@@ -1,9 +1,9 @@
 import {
   databaseMutationEventV2Schema,
   type DatabaseMutationEventV2,
-} from "@zilobase/features/databases/contracts"
+} from "@zilobase/features/databases/contracts";
 
-import { databaseMutationEvent } from "../../../infrastructure/database/schema"
+import { databaseMutationEvent } from "../../../infrastructure/database/schema";
 
 export function databaseMutationEventFromJournalRow(
   row: typeof databaseMutationEvent.$inferSelect,
@@ -21,5 +21,5 @@ export function databaseMutationEventFromJournalRow(
     ...(row.requiresReset ? { requiresReset: true as const } : {}),
     type: "database.mutation",
     version: row.version,
-  })
+  });
 }

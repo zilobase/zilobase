@@ -11,7 +11,10 @@ vi.mock("nodemailer", () => ({
 }));
 
 import { sendEmail } from "./email";
-import { runWithRuntimePorts, type OutboundEmailMessage } from "@zilobase/runtime-adapter/capabilities";
+import {
+  runWithRuntimePorts,
+  type OutboundEmailMessage,
+} from "@zilobase/runtime-adapter/capabilities";
 import { createNodeMailer } from "@zilobase/runtime-adapter/node";
 
 const message = {
@@ -37,15 +40,21 @@ test("node mailer reports email locally when SMTP is not configured", async () =
 
 test("validates SMTP configuration before connecting", async () => {
   await assert.rejects(
-    Promise.resolve().then(() => createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_PORT: "invalid" })),
+    Promise.resolve().then(() =>
+      createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_PORT: "invalid" }),
+    ),
     /SMTP_PORT must be an integer/,
   );
   await assert.rejects(
-    Promise.resolve().then(() => createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_USER: "user" })),
+    Promise.resolve().then(() =>
+      createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_USER: "user" }),
+    ),
     /SMTP_USER and SMTP_PASSWORD must be configured together/,
   );
   await assert.rejects(
-    Promise.resolve().then(() => createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_SECURE: "maybe" })),
+    Promise.resolve().then(() =>
+      createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_SECURE: "maybe" }),
+    ),
     /SMTP_SECURE must be either true or false/,
   );
 });
@@ -53,13 +62,18 @@ test("validates SMTP configuration before connecting", async () => {
 test("delegates email delivery to the runtime mailer port", async () => {
   let delivered: OutboundEmailMessage | undefined;
 
-  await runWithRuntimePorts({
-    mailer: { async send(outbound) {
-      delivered = outbound;
-    } },
-  }, async () => {
-    await sendEmail({ EMAIL_FROM: "Zilobase <hello@zilobase.com>" }, message);
-  });
+  await runWithRuntimePorts(
+    {
+      mailer: {
+        async send(outbound) {
+          delivered = outbound;
+        },
+      },
+    },
+    async () => {
+      await sendEmail({ EMAIL_FROM: "Zilobase <hello@zilobase.com>" }, message);
+    },
+  );
 
   assert.deepEqual(delivered, {
     from: "Zilobase <hello@zilobase.com>",
@@ -74,21 +88,19 @@ test("SMTP delivery applies authentication, TLS, ports, and HTML escaping", asyn
   mail.createTransport.mockClear();
   mail.sendMail.mockClear();
 
-  await createNodeMailer(
-    {
-      SMTP_HOST: " smtp.example.com ",
-      SMTP_PASSWORD: "password",
-      SMTP_PORT: "465",
-      SMTP_SECURE: "false",
-      SMTP_USER: " user ",
-    },
-    ).send({
-      ...message,
-      from: "Zilobase",
-      html: "<p>&lt;&amp;&gt;&quot;&#039;<br>next</p>",
-      ...message,
-      text: "<&>\"'\nnext",
-    });
+  await createNodeMailer({
+    SMTP_HOST: " smtp.example.com ",
+    SMTP_PASSWORD: "password",
+    SMTP_PORT: "465",
+    SMTP_SECURE: "false",
+    SMTP_USER: " user ",
+  }).send({
+    ...message,
+    from: "Zilobase",
+    html: "<p>&lt;&amp;&gt;&quot;&#039;<br>next</p>",
+    ...message,
+    text: "<&>\"'\nnext",
+  });
 
   assert.deepEqual(mail.createTransport.mock.calls[0]?.[0], {
     auth: { pass: "password", user: "user" },
@@ -99,25 +111,30 @@ test("SMTP delivery applies authentication, TLS, ports, and HTML escaping", asyn
     secure: false,
     socketTimeout: 300_000,
   });
-  assert.equal(
-    mail.sendMail.mock.calls[0]?.[0].html,
-    "<p>&lt;&amp;&gt;&quot;&#039;<br>next</p>",
-  );
+  assert.equal(mail.sendMail.mock.calls[0]?.[0].html, "<p>&lt;&amp;&gt;&quot;&#039;<br>next</p>");
 
-  await createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_SECURE: "true" })
-    .send({ ...message, from: "Zilobase", html: "<p>Thanks</p>" });
+  await createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_SECURE: "true" }).send({
+    ...message,
+    from: "Zilobase",
+    html: "<p>Thanks</p>",
+  });
   assert.equal(mail.createTransport.mock.calls[1]?.[0].secure, true);
   assert.equal(mail.createTransport.mock.calls[1]?.[0].auth, undefined);
 
-  await createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_PORT: "465" })
-    .send({ ...message, from: "Zilobase", html: "<p>Thanks</p>" });
+  await createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_PORT: "465" }).send({
+    ...message,
+    from: "Zilobase",
+    html: "<p>Thanks</p>",
+  });
   assert.equal(mail.createTransport.mock.calls[2]?.[0].secure, true);
 });
 
 test("SMTP ports reject out-of-range integers", async () => {
   for (const port of ["0", "65536", "1.5"]) {
     await assert.rejects(
-      Promise.resolve().then(() => createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_PORT: port })),
+      Promise.resolve().then(() =>
+        createNodeMailer({ SMTP_HOST: "smtp.example.com", SMTP_PORT: port }),
+      ),
       /SMTP_PORT must be an integer between 1 and 65535/,
     );
   }

@@ -1,13 +1,39 @@
 import { and, asc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { getAuthenticatedUser as requireUser } from "../../shared/http/auth";
-import { canAccessDatabaseInWorkspace, getAccessiblePageIds, getEffectivePageAccessInWorkspace, getMembership, getWorkspacePrincipalKind, hasAccess, isPagePublishedInWorkspace, type AccessLevel } from "../access";
+import {
+  canAccessDatabaseInWorkspace,
+  getAccessiblePageIds,
+  getEffectivePageAccessInWorkspace,
+  getMembership,
+  getWorkspacePrincipalKind,
+  hasAccess,
+  isPagePublishedInWorkspace,
+  type AccessLevel,
+} from "../access";
 import { rejectMismatchedPinnedWorkspace } from "../auth/oauth-access";
 import { db } from "../../infrastructure/database";
-import { database, dataSource, databaseDataSource, databaseRow, databaseView, favorite, itemVisit, user as userTable, page, pageAccess, pageItemPlacement, pageSettings } from "../../infrastructure/database/schema";
+import {
+  database,
+  dataSource,
+  databaseDataSource,
+  databaseRow,
+  databaseView,
+  favorite,
+  itemVisit,
+  user as userTable,
+  page,
+  pageAccess,
+  pageItemPlacement,
+  pageSettings,
+} from "../../infrastructure/database/schema";
 import type { AppBindings } from "../../shared/types";
 import { buildNavigationPlacements } from "./placements/page-item-placements";
-import { parseZilobaseAiModes, readZilobaseAiMode, toZilobaseAiPageSummary } from "./page-ai-metadata";
+import {
+  parseZilobaseAiModes,
+  readZilobaseAiMode,
+  toZilobaseAiPageSummary,
+} from "./page-ai-metadata";
 import { enforceActiveWorkspace, getPage, getPageIncludingDeleted } from "./page-route-support";
 
 export const pageBrowseRoutes = new Hono<AppBindings>();
@@ -68,9 +94,7 @@ pageBrowseRoutes.get("/", async (c) => {
       ),
   ]);
   let accessibleRecords =
-    deletedFilter === "only"
-      ? records
-      : records.filter((record) => accessibleIds.has(record.id));
+    deletedFilter === "only" ? records : records.filter((record) => accessibleIds.has(record.id));
 
   if (zilobaseAiModes) {
     accessibleRecords = accessibleRecords
@@ -79,10 +103,7 @@ pageBrowseRoutes.get("/", async (c) => {
 
         return Boolean(mode && zilobaseAiModes.includes(mode));
       })
-      .sort(
-        (first, second) =>
-          second.updatedAt.getTime() - first.updatedAt.getTime(),
-      );
+      .sort((first, second) => second.updatedAt.getTime() - first.updatedAt.getTime());
   }
 
   if (isSummary) {
@@ -91,58 +112,43 @@ pageBrowseRoutes.get("/", async (c) => {
     });
   }
 
-  const [
-    sharedPageRows,
-    favoriteRows,
-    visitRows,
-    databaseRecords,
-    placementRecords,
-  ] = await Promise.all([
-    db
-      .select({ pageId: pageAccess.pageId })
-      .from(pageAccess)
-      .where(eq(pageAccess.workspaceId, workspaceId)),
-    db
-      .select({
-        databaseId: favorite.databaseId,
-        pageId: favorite.pageId,
-      })
-      .from(favorite)
-      .where(eq(favorite.userId, user.id)),
-    db
-      .select({
-        itemId: itemVisit.itemId,
-        itemKind: itemVisit.itemKind,
-        lastVisitedAt: itemVisit.lastVisitedAt,
-      })
-      .from(itemVisit)
-      .where(
-        and(
-          eq(itemVisit.workspaceId, workspaceId),
-          eq(itemVisit.userId, user.id),
+  const [sharedPageRows, favoriteRows, visitRows, databaseRecords, placementRecords] =
+    await Promise.all([
+      db
+        .select({ pageId: pageAccess.pageId })
+        .from(pageAccess)
+        .where(eq(pageAccess.workspaceId, workspaceId)),
+      db
+        .select({
+          databaseId: favorite.databaseId,
+          pageId: favorite.pageId,
+        })
+        .from(favorite)
+        .where(eq(favorite.userId, user.id)),
+      db
+        .select({
+          itemId: itemVisit.itemId,
+          itemKind: itemVisit.itemKind,
+          lastVisitedAt: itemVisit.lastVisitedAt,
+        })
+        .from(itemVisit)
+        .where(and(eq(itemVisit.workspaceId, workspaceId), eq(itemVisit.userId, user.id))),
+      db
+        .select()
+        .from(database)
+        .where(
+          and(
+            eq(database.workspaceId, workspaceId),
+            deletedFilter === "only" ? isNotNull(database.deletedAt) : isNull(database.deletedAt),
+          ),
         ),
-      ),
-    db
-      .select()
-      .from(database)
-      .where(
-        and(
-          eq(database.workspaceId, workspaceId),
-          deletedFilter === "only"
-            ? isNotNull(database.deletedAt)
-            : isNull(database.deletedAt),
+      db
+        .select()
+        .from(pageItemPlacement)
+        .where(
+          and(eq(pageItemPlacement.workspaceId, workspaceId), isNull(pageItemPlacement.deletedAt)),
         ),
-      ),
-    db
-      .select()
-      .from(pageItemPlacement)
-      .where(
-        and(
-          eq(pageItemPlacement.workspaceId, workspaceId),
-          isNull(pageItemPlacement.deletedAt),
-        ),
-      ),
-  ]);
+    ]);
 
   const standaloneDatabaseRecords = (
     await Promise.all(
@@ -153,26 +159,17 @@ pageBrowseRoutes.get("/", async (c) => {
           visible:
             deletedFilter === "only"
               ? Boolean(record.deletedAt)
-              : await canAccessDatabaseInWorkspace(
-                  record.id,
-                  record.workspaceId,
-                  user.id,
-                  "view",
-                ),
+              : await canAccessDatabaseInWorkspace(record.id, record.workspaceId, user.id, "view"),
         })),
     )
   ).filter(({ visible }) => visible);
-  const standaloneDatabaseIds = new Set(
-    standaloneDatabaseRecords.map(({ record }) => record.id),
-  );
+  const standaloneDatabaseIds = new Set(standaloneDatabaseRecords.map(({ record }) => record.id));
   const navigationDatabaseRecords = databaseRecords.filter(
     (record) => Boolean(record.pageId) || standaloneDatabaseIds.has(record.id),
   );
 
   if (deletedFilter === "only") {
-    const accessibleRecordIds = new Set(
-      accessibleRecords.map((record) => record.id),
-    );
+    const accessibleRecordIds = new Set(accessibleRecords.map((record) => record.id));
     const missingDatabaseHostPageIds = [
       ...new Set(
         navigationDatabaseRecords
@@ -202,10 +199,7 @@ pageBrowseRoutes.get("/", async (c) => {
         })
         .from(page)
         .where(
-          and(
-            eq(page.workspaceId, workspaceId),
-            inArray(page.id, missingDatabaseHostPageIds),
-          ),
+          and(eq(page.workspaceId, workspaceId), inArray(page.id, missingDatabaseHostPageIds)),
         );
 
       accessibleRecords = [...accessibleRecords, ...databaseHostPages];
@@ -214,9 +208,7 @@ pageBrowseRoutes.get("/", async (c) => {
 
   const sharedPageIds = new Set(sharedPageRows.map((row) => row.pageId));
   const favoritePageIds = new Set(
-    favoriteRows
-      .map((row) => row.pageId)
-      .filter((pageId): pageId is string => Boolean(pageId)),
+    favoriteRows.map((row) => row.pageId).filter((pageId): pageId is string => Boolean(pageId)),
   );
   const favoriteDatabaseIds = new Set(
     favoriteRows
@@ -224,19 +216,12 @@ pageBrowseRoutes.get("/", async (c) => {
       .filter((databaseId): databaseId is string => Boolean(databaseId)),
   );
   const visitsByKey = new Map(
-    visitRows.map((visit) => [
-      `${visit.itemKind}:${visit.itemId}`,
-      visit.lastVisitedAt,
-    ]),
+    visitRows.map((visit) => [`${visit.itemKind}:${visit.itemId}`, visit.lastVisitedAt]),
   );
 
-  const accessibleRecordIds = new Set(
-    accessibleRecords.map((record) => record.id),
-  );
+  const accessibleRecordIds = new Set(accessibleRecords.map((record) => record.id));
   const activeDatabases = navigationDatabaseRecords.filter((record) =>
-    record.pageId
-      ? accessibleRecordIds.has(record.pageId)
-      : standaloneDatabaseIds.has(record.id),
+    record.pageId ? accessibleRecordIds.has(record.pageId) : standaloneDatabaseIds.has(record.id),
   );
   const activeDatabaseIds = new Set(activeDatabases.map((record) => record.id));
   const databaseRowPages =
@@ -300,10 +285,7 @@ pageBrowseRoutes.get("/", async (c) => {
   const creatorIds = [
     ...new Set(
       [
-        ...accessibleRecords.flatMap((record) => [
-          record.createdById,
-          record.deletedById,
-        ]),
+        ...accessibleRecords.flatMap((record) => [record.createdById, record.deletedById]),
         ...activeDatabases.map((record) => record.deletedById),
         ...activeDatabases.map((record) => record.createdById),
       ].filter((createdById): createdById is string => Boolean(createdById)),
@@ -346,10 +328,7 @@ pageBrowseRoutes.get("/", async (c) => {
             position: databaseDataSource.position,
           })
           .from(databaseDataSource)
-          .innerJoin(
-            dataSource,
-            eq(databaseDataSource.dataSourceId, dataSource.id),
-          )
+          .innerJoin(dataSource, eq(databaseDataSource.dataSourceId, dataSource.id))
           .where(
             and(
               inArray(databaseDataSource.databaseId, [...activeDatabaseIds]),
@@ -359,15 +338,11 @@ pageBrowseRoutes.get("/", async (c) => {
           .orderBy(asc(databaseDataSource.position))
       : Promise.resolve([]),
   ]);
-  const creatorsById = new Map(
-    creatorRows.map((creator) => [creator.id, creator]),
-  );
+  const creatorsById = new Map(creatorRows.map((creator) => [creator.id, creator]));
   const createdByByPageId = new Map(
     accessibleRecords.map((record) => [
       record.id,
-      record.createdById
-        ? (creatorsById.get(record.createdById) ?? null)
-        : null,
+      record.createdById ? (creatorsById.get(record.createdById) ?? null) : null,
     ]),
   );
 
@@ -379,10 +354,7 @@ pageBrowseRoutes.get("/", async (c) => {
       view,
     ]);
   }
-  const primarySourceByDatabaseId = new Map<
-    string,
-    (typeof databaseSourceLinks)[number]
-  >();
+  const primarySourceByDatabaseId = new Map<string, (typeof databaseSourceLinks)[number]>();
 
   for (const sourceLink of databaseSourceLinks) {
     const current = primarySourceByDatabaseId.get(sourceLink.databaseId);
@@ -410,16 +382,11 @@ pageBrowseRoutes.get("/", async (c) => {
 
     databasePayloads.push({
       ...record,
-      createdBy: record.createdById
-        ? (creatorsById.get(record.createdById) ?? null)
-        : null,
-      deletedBy: record.deletedById
-        ? (creatorsById.get(record.deletedById) ?? null)
-        : null,
+      createdBy: record.createdById ? (creatorsById.get(record.createdById) ?? null) : null,
+      deletedBy: record.deletedById ? (creatorsById.get(record.deletedById) ?? null) : null,
       isFavorite: favoriteDatabaseIds.has(record.id),
       lastVisitedAt: visitsByKey.get(`database:${record.id}`) ?? null,
-      dataSourceConfig:
-        primarySourceByDatabaseId.get(record.id)?.config ?? null,
+      dataSourceConfig: primarySourceByDatabaseId.get(record.id)?.config ?? null,
       views,
     });
   }
@@ -433,19 +400,14 @@ pageBrowseRoutes.get("/", async (c) => {
     placements,
     pages: accessibleRecords.map((record) => ({
       ...record,
-      createdBy: record.createdById
-        ? (creatorsById.get(record.createdById) ?? null)
-        : null,
-      deletedBy: record.deletedById
-        ? (creatorsById.get(record.deletedById) ?? null)
-        : null,
+      createdBy: record.createdById ? (creatorsById.get(record.createdById) ?? null) : null,
+      deletedBy: record.deletedById ? (creatorsById.get(record.deletedById) ?? null) : null,
       isFavorite: favoritePageIds.has(record.id),
       isShared: sharedPageIds.has(record.id),
       lastVisitedAt: visitsByKey.get(`page:${record.id}`) ?? null,
     })),
   });
 });
-
 
 pageBrowseDetailRoutes.get("/:id", async (c) => {
   const user = requireUser(c);
@@ -460,22 +422,13 @@ pageBrowseDetailRoutes.get("/:id", async (c) => {
   let usesPublishedFallback = false;
 
   if (record.deletedAt && user) {
-    accessLevel = (await getMembership(record.workspaceId, user.id))
-      ? "full"
-      : "none";
+    accessLevel = (await getMembership(record.workspaceId, user.id)) ? "full" : "none";
   } else if (user) {
-    accessLevel = await getEffectivePageAccessInWorkspace(
-      record.id,
-      record.workspaceId,
-      user.id,
-    );
+    accessLevel = await getEffectivePageAccessInWorkspace(record.id, record.workspaceId, user.id);
   }
 
   if (!hasAccess(accessLevel, "view")) {
-    const published = await isPagePublishedInWorkspace(
-      record.id,
-      record.workspaceId,
-    );
+    const published = await isPagePublishedInWorkspace(record.id, record.workspaceId);
 
     if (!published) {
       if (!user) {
@@ -489,34 +442,20 @@ pageBrowseDetailRoutes.get("/:id", async (c) => {
   }
 
   if (user && hasAccess(accessLevel, "view")) {
-    const pageOrgMismatch = await enforceActiveWorkspace(
-      c,
-      record.workspaceId,
-      user.id,
-    );
+    const pageOrgMismatch = await enforceActiveWorkspace(c, record.workspaceId, user.id);
 
     if (pageOrgMismatch) {
       return pageOrgMismatch;
     }
   }
 
-  const [
-    favoriteRecords,
-    parentPlacements,
-    ownerSettingsRecords,
-    databaseMemberships,
-  ] =
+  const [favoriteRecords, parentPlacements, ownerSettingsRecords, databaseMemberships] =
     await Promise.all([
       user
         ? db
             .select({ id: favorite.id })
             .from(favorite)
-            .where(
-              and(
-                eq(favorite.userId, user.id),
-                eq(favorite.pageId, record.id),
-              ),
-            )
+            .where(and(eq(favorite.userId, user.id), eq(favorite.pageId, record.id)))
             .limit(1)
         : Promise.resolve([]),
       db
@@ -561,12 +500,7 @@ pageBrowseDetailRoutes.get("/:id", async (c) => {
     ? (
         await Promise.all(
           databaseMemberships.map(async ({ databaseId }) =>
-            (await canAccessDatabaseInWorkspace(
-              databaseId,
-              record.workspaceId,
-              user.id,
-              "view",
-            ))
+            (await canAccessDatabaseInWorkspace(databaseId, record.workspaceId, user.id, "view"))
               ? databaseId
               : null,
           ),

@@ -38,8 +38,7 @@ test("auth transactions expose the exact Drizzle transaction to extensions", asy
       return callback(activeTransaction);
     },
   };
-  const authDatabase = createAuthTransactionDatabase(database as never) as
-    typeof database;
+  const authDatabase = createAuthTransactionDatabase(database as never) as typeof database;
 
   await authDatabase.transaction(async () => {
     assert.equal(getCurrentExtensionTransactionDatabase(), activeTransaction);
@@ -56,14 +55,15 @@ test("concurrent auth transactions retain independent database context", async (
       return callback({ marker });
     },
   }));
-  const seen = await Promise.all(databases.map(async (database) => {
-    const authDatabase = createAuthTransactionDatabase(database as never) as
-      typeof database;
-    return authDatabase.transaction(async () => {
-      await Promise.resolve();
-      return (getCurrentExtensionTransactionDatabase() as unknown as { marker: string }).marker;
-    });
-  }));
+  const seen = await Promise.all(
+    databases.map(async (database) => {
+      const authDatabase = createAuthTransactionDatabase(database as never) as typeof database;
+      return authDatabase.transaction(async () => {
+        await Promise.resolve();
+        return (getCurrentExtensionTransactionDatabase() as unknown as { marker: string }).marker;
+      });
+    }),
+  );
 
   assert.deepEqual(seen, ["first", "second"]);
 });
@@ -80,10 +80,7 @@ test("nested database execution reuses the active context", async () => {
 
 test("standalone database execution closes after success and failure", async () => {
   const successful = fakeStandaloneClient();
-  assert.equal(
-    await runWithDbClient(successful.databaseClient as never, async () => "ok"),
-    "ok",
-  );
+  assert.equal(await runWithDbClient(successful.databaseClient as never, async () => "ok"), "ok");
   assert.deepEqual(successful.calls, { connect: 1, end: 1 });
 
   const failing = fakeStandaloneClient();
@@ -106,9 +103,7 @@ test("delayed work does not reuse a database context after its scope closes", as
   let delayed!: Promise<string>;
 
   await runWithDbClient(first.databaseClient as never, async () => {
-    delayed = gate.then(() =>
-      runWithDbClient(second.databaseClient as never, async () => "fresh"),
-    );
+    delayed = gate.then(() => runWithDbClient(second.databaseClient as never, async () => "fresh"));
   });
 
   assert.deepEqual(first.calls, { connect: 1, end: 1 });
@@ -145,28 +140,31 @@ test("pooled execution does not acquire a redundant connection", async () => {
     lifecycle: "pooled",
   };
 
-  const result = await runWithDbClient(
-    databaseClient as never,
-    async () => "pooled",
-  );
+  const result = await runWithDbClient(databaseClient as never, async () => "pooled");
 
   assert.equal(result, "pooled");
   assert.equal(connects, 0);
 });
 
-
 test("streaming database work survives the parent request scope closing", async () => {
-  const connect = vi.spyOn(Client.prototype, "connect").mockImplementation(async () => undefined as never);
+  const connect = vi
+    .spyOn(Client.prototype, "connect")
+    .mockImplementation(async () => undefined as never);
   const end = vi.spyOn(Client.prototype, "end").mockImplementation(async () => undefined as never);
   let release!: () => void;
-  const gate = new Promise<void>(resolve => { release = resolve; });
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
   let stream!: Promise<boolean>;
   try {
     await runWithDb({} as never, async () => {
-      stream = runWithIndependentDbEnv({ DATABASE_URL: "postgres://test:test@localhost:5432/test" }, async () => {
-        await gate;
-        return typeof db.select === "function";
-      });
+      stream = runWithIndependentDbEnv(
+        { DATABASE_URL: "postgres://test:test@localhost:5432/test" },
+        async () => {
+          await gate;
+          return typeof db.select === "function";
+        },
+      );
     });
     release();
     assert.equal(await stream, true);
@@ -176,12 +174,13 @@ test("streaming database work survives the parent request scope closing", async 
   }
 });
 
-
 test("standalone connection errors do not escape as uncaught events", () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   try {
     const { client } = createDbClientForUrl("postgres://localhost/test");
-    assert.doesNotThrow(() => client.emit("error", new Error("Connection terminated unexpectedly")));
+    assert.doesNotThrow(() =>
+      client.emit("error", new Error("Connection terminated unexpectedly")),
+    );
     assert.equal(warn.mock.calls.length, 1);
   } finally {
     warn.mockRestore();

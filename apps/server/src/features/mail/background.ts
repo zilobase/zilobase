@@ -5,7 +5,11 @@ import type { RuntimeEnv } from "../../shared/config/config";
 import type { BackgroundTaskResult } from "../../infrastructure/background/contracts";
 import { resultForDueRow } from "../../infrastructure/background/task-result";
 import { db } from "../../infrastructure/database";
-import { gmailAccount, mailIndexState, mailDatabaseSyncOutbox } from "../../infrastructure/database/schema";
+import {
+  gmailAccount,
+  mailIndexState,
+  mailDatabaseSyncOutbox,
+} from "../../infrastructure/database/schema";
 
 export async function processMailIndexTask(
   env: RuntimeEnv,

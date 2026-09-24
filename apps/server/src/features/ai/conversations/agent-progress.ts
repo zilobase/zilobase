@@ -17,16 +17,8 @@ export type AgentProgressPublisher = {
   attach(writer: UIMessageStreamWriter<ZilobaseChatMessage>): void;
   effect(effect: AgentLiveEffectInput): void;
   failRunningTools(detail: string): void;
-  finishTool(input: {
-    detail?: string;
-    failed?: boolean;
-    toolCallId: string;
-  }): void;
-  setRowProgress(input: {
-    completed: number;
-    toolCallId: string;
-    total: number;
-  }): void;
+  finishTool(input: { detail?: string; failed?: boolean; toolCallId: string }): void;
+  setRowProgress(input: { completed: number; toolCallId: string; total: number }): void;
   startStep(input: {
     detail?: string;
     key: string;
@@ -34,17 +26,8 @@ export type AgentProgressPublisher = {
     phase: AgentProgressSnapshot["currentPhase"];
     toolCallId: string;
   }): void;
-  startTool(input: {
-    title: string;
-    toolCallId: string;
-    toolName: string;
-  }): void;
-  finishStep(input: {
-    detail?: string;
-    failed?: boolean;
-    key: string;
-    toolCallId: string;
-  }): void;
+  startTool(input: { title: string; toolCallId: string; toolName: string }): void;
+  finishStep(input: { detail?: string; failed?: boolean; key: string; toolCallId: string }): void;
 };
 
 export function createAgentProgressPublisher(options?: {
@@ -57,9 +40,7 @@ export function createAgentProgressPublisher(options?: {
   let debugSequence = 0;
   let firstProgressPublished = false;
 
-  const debug = (
-    event: Omit<AgentDebugEvent, "eventId" | "sequence" | "serverAt">,
-  ) => {
+  const debug = (event: Omit<AgentDebugEvent, "eventId" | "sequence" | "serverAt">) => {
     if (!options?.debug) return;
     writer?.write({
       data: {
@@ -146,9 +127,7 @@ export function createAgentProgressPublisher(options?: {
           currentPhase: "finalizing",
           status: "failed",
           steps: current.steps.map((step) =>
-            step.status === "running"
-              ? { ...step, detail, status: "failed" as const }
-              : step
+            step.status === "running" ? { ...step, detail, status: "failed" as const } : step,
           ),
         }));
       }
@@ -187,9 +166,9 @@ export function createAgentProgressPublisher(options?: {
             ? {
                 ...step,
                 ...(detail ? { detail } : {}),
-                status: failed ? "failed" as const : "completed" as const,
+                status: failed ? ("failed" as const) : ("completed" as const),
               }
-            : step
+            : step,
         );
         return {
           ...current,
@@ -257,25 +236,27 @@ export function createAgentProgressPublisher(options?: {
         toolName,
       });
       const existing = snapshots.get(toolCallId);
-      publish(existing
-        ? {
-            ...existing,
-            sequence: ++sequence,
-            title,
-            toolName,
-            updatedAt: now,
-          }
-        : {
-            currentPhase: "planning",
-            sequence: ++sequence,
-            startedAt: now,
-            status: "running",
-            steps: [],
-            title,
-            toolCallId,
-            toolName,
-            updatedAt: now,
-          });
+      publish(
+        existing
+          ? {
+              ...existing,
+              sequence: ++sequence,
+              title,
+              toolName,
+              updatedAt: now,
+            }
+          : {
+              currentPhase: "planning",
+              sequence: ++sequence,
+              startedAt: now,
+              status: "running",
+              steps: [],
+              title,
+              toolCallId,
+              toolName,
+              updatedAt: now,
+            },
+      );
     },
   };
 }

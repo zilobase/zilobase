@@ -1,4 +1,4 @@
-import { parseDatabaseDateValue } from "./database-date-value"
+import { parseDatabaseDateValue } from "./database-date-value";
 
 export type DateFormatValue =
   | "full"
@@ -6,7 +6,7 @@ export type DateFormatValue =
   | "month_day_year"
   | "day_month_year"
   | "year_month_day"
-  | "relative"
+  | "relative";
 
 export const dateFormatOptions = [
   {
@@ -34,11 +34,11 @@ export const dateFormatOptions = [
     value: "relative",
   },
 ] satisfies {
-  label: string
-  value: DateFormatValue
-}[]
+  label: string;
+  value: DateFormatValue;
+}[];
 
-export type TimeFormatValue = "hidden" | "12_hour" | "24_hour"
+export type TimeFormatValue = "hidden" | "12_hour" | "24_hour";
 
 export const timeFormatOptions = [
   {
@@ -54,83 +54,76 @@ export const timeFormatOptions = [
     value: "24_hour",
   },
 ] satisfies {
-  label: string
-  value: TimeFormatValue
-}[]
+  label: string;
+  value: TimeFormatValue;
+}[];
 
 export type DatabaseDatePropertyConfig = {
-  dateFormat?: DateFormatValue
-  timeFormat?: TimeFormatValue
-}
+  dateFormat?: DateFormatValue;
+  timeFormat?: TimeFormatValue;
+};
 
 export function getDateFormatConfig(config: unknown): DateFormatValue {
   if (!config || typeof config !== "object" || !("dateFormat" in config)) {
-    return "full"
+    return "full";
   }
 
-  const dateFormat = (config as DatabaseDatePropertyConfig).dateFormat
+  const dateFormat = (config as DatabaseDatePropertyConfig).dateFormat;
 
-  return isDateFormatValue(dateFormat) ? dateFormat : "full"
+  return isDateFormatValue(dateFormat) ? dateFormat : "full";
 }
 
 export function getDateFormatLabel(value: DateFormatValue) {
   return (
-    dateFormatOptions.find((option) => option.value === value)?.label ??
-    dateFormatOptions[0].label
-  )
+    dateFormatOptions.find((option) => option.value === value)?.label ?? dateFormatOptions[0].label
+  );
 }
 
 export function getTimeFormatConfig(config: unknown): TimeFormatValue {
   if (!config || typeof config !== "object" || !("timeFormat" in config)) {
-    return "hidden"
+    return "hidden";
   }
 
-  const timeFormat = (config as DatabaseDatePropertyConfig).timeFormat
+  const timeFormat = (config as DatabaseDatePropertyConfig).timeFormat;
 
-  return isTimeFormatValue(timeFormat) ? timeFormat : "hidden"
+  return isTimeFormatValue(timeFormat) ? timeFormat : "hidden";
 }
 
 export function getTimeFormatLabel(value: TimeFormatValue) {
   return (
-    timeFormatOptions.find((option) => option.value === value)?.label ??
-    timeFormatOptions[0].label
-  )
+    timeFormatOptions.find((option) => option.value === value)?.label ?? timeFormatOptions[0].label
+  );
 }
 
-export function formatDatabaseDateValue(
-  value: string | string[],
-  config: unknown
-) {
+export function formatDatabaseDateValue(value: string | string[], config: unknown) {
   return formatDatabaseDateValueWithFormats(
     value,
     getDateFormatConfig(config),
-    getTimeFormatConfig(config)
-  )
+    getTimeFormatConfig(config),
+  );
 }
 
 export function formatDatabaseDateValueWithFormats(
   value: string | string[],
   dateFormat: DateFormatValue,
-  timeFormat: TimeFormatValue
+  timeFormat: TimeFormatValue,
 ) {
-  const [startValue, endValue] = Array.isArray(value) ? value : [value, undefined]
-  const startDate = startValue ? parseDatabaseDateValue(startValue) : undefined
-  const endDate = endValue ? parseDatabaseDateValue(endValue) : undefined
-  const startTime = startValue ? getTimeFromValue(startValue) : ""
-  const endTime = endValue ? getTimeFromValue(endValue) : ""
+  const [startValue, endValue] = Array.isArray(value) ? value : [value, undefined];
+  const startDate = startValue ? parseDatabaseDateValue(startValue) : undefined;
+  const endDate = endValue ? parseDatabaseDateValue(endValue) : undefined;
+  const startTime = startValue ? getTimeFromValue(startValue) : "";
+  const endTime = endValue ? getTimeFromValue(endValue) : "";
 
   if (startDate && endDate) {
     return `${formatDate(startDate, dateFormat, timeFormat, startTime)} - ${formatDate(
       endDate,
       dateFormat,
       timeFormat,
-      endTime
-    )}`
+      endTime,
+    )}`;
   }
 
-  return startDate
-    ? formatDate(startDate, dateFormat, timeFormat, startTime)
-    : ""
+  return startDate ? formatDate(startDate, dateFormat, timeFormat, startTime) : "";
 }
 
 function isDateFormatValue(value: unknown): value is DateFormatValue {
@@ -141,27 +134,27 @@ function isDateFormatValue(value: unknown): value is DateFormatValue {
     value === "day_month_year" ||
     value === "year_month_day" ||
     value === "relative"
-  )
+  );
 }
 
 function isTimeFormatValue(value: unknown): value is TimeFormatValue {
-  return value === "hidden" || value === "12_hour" || value === "24_hour"
+  return value === "hidden" || value === "12_hour" || value === "24_hour";
 }
 
 function getTimeFromValue(value: string) {
-  return value.match(/T(\d{2}:\d{2})/)?.[1] ?? ""
+  return value.match(/T(\d{2}:\d{2})/)?.[1] ?? "";
 }
 
 function formatDate(
   date: Date,
   dateFormat: DateFormatValue,
   timeFormat: TimeFormatValue,
-  timeValue: string
+  timeValue: string,
 ) {
-  const dateValue = formatDateOnly(date, dateFormat)
-  const formattedTimeValue = formatTime(timeValue, timeFormat)
+  const dateValue = formatDateOnly(date, dateFormat);
+  const formattedTimeValue = formatTime(timeValue, timeFormat);
 
-  return formattedTimeValue ? `${dateValue} ${formattedTimeValue}` : dateValue
+  return formattedTimeValue ? `${dateValue} ${formattedTimeValue}` : dateValue;
 }
 
 function formatDateOnly(date: Date, dateFormat: DateFormatValue) {
@@ -169,102 +162,82 @@ function formatDateOnly(date: Date, dateFormat: DateFormatValue) {
     return new Intl.DateTimeFormat(undefined, {
       day: "numeric",
       month: "short",
-    }).format(date)
+    }).format(date);
   }
 
   if (dateFormat === "month_day_year") {
-    return formatNumericDate(date, [
-      date.getMonth() + 1,
-      date.getDate(),
-      date.getFullYear(),
-    ])
+    return formatNumericDate(date, [date.getMonth() + 1, date.getDate(), date.getFullYear()]);
   }
 
   if (dateFormat === "day_month_year") {
-    return formatNumericDate(date, [
-      date.getDate(),
-      date.getMonth() + 1,
-      date.getFullYear(),
-    ])
+    return formatNumericDate(date, [date.getDate(), date.getMonth() + 1, date.getFullYear()]);
   }
 
   if (dateFormat === "year_month_day") {
-    return formatNumericDate(date, [
-      date.getFullYear(),
-      date.getMonth() + 1,
-      date.getDate(),
-    ])
+    return formatNumericDate(date, [date.getFullYear(), date.getMonth() + 1, date.getDate()]);
   }
 
   if (dateFormat === "relative") {
-    return formatRelativeDate(date)
+    return formatRelativeDate(date);
   }
 
   return new Intl.DateTimeFormat(undefined, {
     day: "numeric",
     month: "short",
     year: "numeric",
-  }).format(date)
+  }).format(date);
 }
 
 function formatTime(value: string, timeFormat: TimeFormatValue) {
   if (timeFormat === "hidden" || !value) {
-    return ""
+    return "";
   }
 
-  const [hoursValue, minutesValue] = value.split(":")
-  const date = new Date()
-  const hours = Number(hoursValue)
-  const minutes = Number(minutesValue)
+  const [hoursValue, minutesValue] = value.split(":");
+  const date = new Date();
+  const hours = Number(hoursValue);
+  const minutes = Number(minutesValue);
 
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-    return ""
+    return "";
   }
 
-  date.setHours(hours, minutes, 0, 0)
+  date.setHours(hours, minutes, 0, 0);
 
   return new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     hour12: timeFormat === "12_hour",
     minute: "2-digit",
-  }).format(date)
+  }).format(date);
 }
 
 function formatNumericDate(date: Date, parts: number[]) {
   return parts
     .map((part, index) =>
-      index === 0 && part === date.getFullYear()
-        ? String(part)
-        : String(part).padStart(2, "0")
+      index === 0 && part === date.getFullYear() ? String(part) : String(part).padStart(2, "0"),
     )
-    .join("/")
+    .join("/");
 }
 
 function formatRelativeDate(date: Date) {
-  const today = new Date()
-  const todayStart = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
-  )
-  const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  const dayDiff = Math.round(
-    (dateStart.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24)
-  )
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dayDiff = Math.round((dateStart.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
 
   if (dayDiff === 0) {
-    return "Today"
+    return "Today";
   }
 
   if (dayDiff === -1) {
-    return "Yesterday"
+    return "Yesterday";
   }
 
   if (dayDiff === 1) {
-    return "Tomorrow"
+    return "Tomorrow";
   }
 
   return new Intl.RelativeTimeFormat(undefined, {
     numeric: "auto",
-  }).format(dayDiff, "day")
+  }).format(dayDiff, "day");
 }

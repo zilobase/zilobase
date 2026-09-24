@@ -126,13 +126,8 @@ async function importCredentialKey(env: RuntimeEnv) {
 }
 
 function toArrayBuffer(bytes: Uint8Array) {
-  return bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
 }
-
-
 
 function bytesToBase64(bytes: Uint8Array) {
   let binary = "";

@@ -7,10 +7,7 @@ import { meeting } from "../../../infrastructure/database/schema";
 import { ServiceMutationError } from "../../../shared/errors/service-mutation-error";
 import { getRuntimePorts } from "@zilobase/runtime-adapter/capabilities";
 import { clampMeetingDuration, getNextMeetingStatus } from "./meeting-state";
-import type {
-  MeetingLifecycleAction,
-  MeetingStatus,
-} from "../contracts/meeting-types";
+import type { MeetingLifecycleAction, MeetingStatus } from "../contracts/meeting-types";
 import { getMeetingForUser } from "./meeting-access";
 import { runRecorderRuntimeMutation } from "./recorder-runtime";
 
@@ -22,24 +19,15 @@ export async function transitionMeeting(input: {
   meetingId: string;
   userId: string;
 }) {
-  const existing = await getMeetingForUser(
-    input.meetingId,
-    input.userId,
-    "edit",
-  );
+  const existing = await getMeetingForUser(input.meetingId, input.userId, "edit");
 
   // The audio WebSocket owns the durable stop/flush. A lifecycle request can
   // race just behind that transaction, so stopping an archived meeting is safe.
-  if (
-    input.action === "stop" &&
-    ["processing", "completed"].includes(existing.status)
-  ) {
+  if (input.action === "stop" && ["processing", "completed"].includes(existing.status)) {
     return existing;
   }
 
-  const runtime = input.env
-    ? getRuntimePorts().meetings
-    : undefined;
+  const runtime = input.env ? getRuntimePorts().meetings : undefined;
   if (runtime && input.action === "start") {
     try {
       getNextMeetingStatus(existing.status as MeetingStatus, input.action);
@@ -49,9 +37,7 @@ export async function transitionMeeting(input: {
   }
   if (
     runtime &&
-    (input.action === "start" ||
-      input.action === "pause" ||
-      input.action === "resume")
+    (input.action === "start" || input.action === "pause" || input.action === "resume")
   ) {
     if (!input.leaseId) {
       throw new ServiceMutationError(
@@ -75,9 +61,7 @@ export async function transitionMeeting(input: {
       recorderLeaseExpiresAt: new Date(state.expiresAt),
       recorderLeaseId: state.leaseId,
       status:
-        state.status === "claimed" || state.status === "finishing"
-          ? existing.status
-          : state.status,
+        state.status === "claimed" || state.status === "finishing" ? existing.status : state.status,
     };
   }
 

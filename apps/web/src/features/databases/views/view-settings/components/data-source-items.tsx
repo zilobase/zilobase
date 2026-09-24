@@ -13,11 +13,7 @@ import type { DatabaseViewType } from "../model/view-type-options";
 import { ViewTypeOptionGrid } from "./view-type-option-grid";
 
 export function DataSourceSectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="px-2 py-1 text-xs font-medium text-content-secondary">
-      {children}
-    </div>
-  );
+  return <div className="px-2 py-1 text-xs font-medium text-content-secondary">{children}</div>;
 }
 
 export function DataSourceAddGlyph() {
@@ -46,19 +42,13 @@ export function DataSourceMenuItem({
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {icon ?? <Database className="text-content-secondary" />}
           <span className="truncate">{item.name}</span>
-          <span className="ml-auto shrink-0 text-content-secondary">
-            {viewLabel}
-          </span>
+          <span className="ml-auto shrink-0 text-content-secondary">{viewLabel}</span>
           <MoreHorizontal className="text-content-secondary" />
         </div>
       </DropDrawerSubTrigger>
       <DropDrawerSubContent className="w-56">
         {onAddView ? (
-          <DropDrawerSub
-            onOpenChange={setAddViewOpen}
-            open={addViewOpen}
-            title="Add view"
-          >
+          <DropDrawerSub onOpenChange={setAddViewOpen} open={addViewOpen} title="Add view">
             <DropDrawerSubTrigger>
               <Plus />
               <span>Add view</span>
@@ -98,10 +88,7 @@ export function LinkedDataSourceMenuItem({
   const viewLabel = `${item.viewCount} view${item.viewCount === 1 ? "" : "s"}`;
 
   return (
-    <DropDrawerItem
-      disabled={!onUnlink}
-      onSelect={() => onUnlink?.(item.id)}
-    >
+    <DropDrawerItem disabled={!onUnlink} onSelect={() => onUnlink?.(item.id)}>
       {icon ?? <Database className="text-content-secondary" />}
       <span className="min-w-0 flex-1 truncate">{item.name}</span>
       <span className="shrink-0 text-content-secondary">{viewLabel}</span>

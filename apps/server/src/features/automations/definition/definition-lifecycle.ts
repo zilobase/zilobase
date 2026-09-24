@@ -1,15 +1,46 @@
 import { createHash } from "node:crypto";
 import { and, count, eq, isNull } from "drizzle-orm";
-import { DATABASE_AUTOMATION_LIMITS, type CreateDatabaseAutomationRequest, type CreateDatabaseAutomationSecretRequest, type UpdateDatabaseAutomationRequest } from "@zilobase/features/automations";
+import {
+  DATABASE_AUTOMATION_LIMITS,
+  type CreateDatabaseAutomationRequest,
+  type CreateDatabaseAutomationSecretRequest,
+  type UpdateDatabaseAutomationRequest,
+} from "@zilobase/features/automations";
 import { db } from "../../../infrastructure/database";
-import { databaseAutomation, databaseAutomationRevision, dataSource, automationSecret } from "../../../infrastructure/database/schema";
+import {
+  databaseAutomation,
+  databaseAutomationRevision,
+  dataSource,
+  automationSecret,
+} from "../../../infrastructure/database/schema";
 import type { ZilobaseEditionExtension } from "../../../shared/types";
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { compileDatabaseAutomationDefinition } from "../compilation/compiler";
 import { encryptAutomationSecret } from "../actions/secret-crypto";
 import { getDatabaseAutomation } from "./definition-read";
 import { validateDatabaseAutomation } from "./definition-validation";
-import { DatabaseAutomationError, requireManagementContext, loadCompilationContext, getLifecycleAutomation, containsProtectedConnectorAction, definitionForDuplicate, protectedLifecycleResponse, protectedConfigurationError, getAutomationWithRevision, findIdempotentAutomation, insertDependencies, assertValidCompilation, nextScheduleRunAt, toDetail, notFound, audit, isIdempotencyConflict, type AutomationRecord, type Executor, type RevisionRecord } from "./definition-context";
+import {
+  DatabaseAutomationError,
+  requireManagementContext,
+  loadCompilationContext,
+  getLifecycleAutomation,
+  containsProtectedConnectorAction,
+  definitionForDuplicate,
+  protectedLifecycleResponse,
+  protectedConfigurationError,
+  getAutomationWithRevision,
+  findIdempotentAutomation,
+  insertDependencies,
+  assertValidCompilation,
+  nextScheduleRunAt,
+  toDetail,
+  notFound,
+  audit,
+  isIdempotencyConflict,
+  type AutomationRecord,
+  type Executor,
+  type RevisionRecord,
+} from "./definition-context";
 
 export async function createDatabaseAutomation(input: {
   allowHttpWebhookDomains?: Set<string>;
@@ -39,101 +70,69 @@ export async function createDatabaseAutomation(input: {
     userId: input.userId,
   });
   const compilation = compileDatabaseAutomationDefinition(input.body.definition, context);
-  assertValidCompilation(compilation.validation, compilation.compiledDefinition, compilation.definitionHash);
+  assertValidCompilation(
+    compilation.validation,
+    compilation.compiledDefinition,
+    compilation.definitionHash,
+  );
 
-  const createInTransaction = () => db.transaction(async (tx) => {
-    await tx
-      .select({ id: dataSource.id })
-      .from(dataSource)
-      .where(eq(dataSource.id, input.body.dataSourceId))
-      .for("update");
-    const existing = await findIdempotentAutomation(
-      tx as Executor,
-      input.userId,
-      input.body.dataSourceId,
-      input.body.idempotencyKey,
-    );
-    if (existing) return { created: false, ...existing };
+  const createInTransaction = () =>
+    db.transaction(async (tx) => {
+      await tx
+        .select({ id: dataSource.id })
+        .from(dataSource)
+        .where(eq(dataSource.id, input.body.dataSourceId))
+        .for("update");
+      const existing = await findIdempotentAutomation(
+        tx as Executor,
+        input.userId,
+        input.body.dataSourceId,
+        input.body.idempotencyKey,
+      );
+      if (existing) return { created: false, ...existing };
 
-    const initialStatus = input.initialStatus ?? "active";
-    if (initialStatus === "active") {
-      const [{ activeCount }] = await tx
-        .select({ activeCount: count() })
-        .from(databaseAutomation)
-        .where(
-          and(
-            eq(databaseAutomation.dataSourceId, input.body.dataSourceId),
-            eq(databaseAutomation.status, "active"),
-            isNull(databaseAutomation.deletedAt),
-          ),
-        );
-      if ((activeCount ?? 0) >= DATABASE_AUTOMATION_LIMITS.activePerDataSource) {
-        throw new DatabaseAutomationError(
-          "This data source has reached its active automation limit",
-          409,
-          "AUTOMATION_ACTIVE_LIMIT",
-        );
+      const initialStatus = input.initialStatus ?? "active";
+      if (initialStatus === "active") {
+        const [{ activeCount }] = await tx
+          .select({ activeCount: count() })
+          .from(databaseAutomation)
+          .where(
+            and(
+              eq(databaseAutomation.dataSourceId, input.body.dataSourceId),
+              eq(databaseAutomation.status, "active"),
+              isNull(databaseAutomation.deletedAt),
+            ),
+          );
+        if ((activeCount ?? 0) >= DATABASE_AUTOMATION_LIMITS.activePerDataSource) {
+          throw new DatabaseAutomationError(
+            "This data source has reached its active automation limit",
+            409,
+            "AUTOMATION_ACTIVE_LIMIT",
+          );
+        }
       }
-    }
 
-    const now = new Date();
-    const automationId = crypto.randomUUID();
-    const revisionId = crypto.randomUUID();
-    const nextRunAt = initialStatus === "active"
-      ? nextScheduleRunAt(compilation.definition!, now)
-      : null;
-    await tx.insert(databaseAutomation).values({
-      createIdempotencyKey: input.body.idempotencyKey,
-      createdAt: now,
-      createdById: input.userId,
-      currentRevisionId: revisionId,
-      dataSourceId: input.body.dataSourceId,
-      duplicatedFromId: input.duplicatedFromId,
-      id: automationId,
-      name: input.body.name,
-      nextRunAt,
-      ownerUserId: input.userId,
-      status: initialStatus,
-      updatedAt: now,
-      workspaceId: management.source.workspaceId,
-    });
-    await tx.insert(databaseAutomationRevision).values({
-      automationId,
-      compiledDefinition: compilation.compiledDefinition!,
-      createdAt: now,
-      createdById: input.userId,
-      definition: compilation.definition!,
-      definitionHash: compilation.definitionHash!,
-      definitionVersion: compilation.definition!.definitionVersion,
-      id: revisionId,
-      version: 1,
-    });
-    await insertDependencies(tx as Executor, automationId, revisionId, compilation.compiledDefinition!.dependencies);
-    return {
-      automation: {
-        id: automationId,
-        workspaceId: management.source.workspaceId,
-        dataSourceId: input.body.dataSourceId,
-        createdById: input.userId,
-        ownerUserId: input.userId,
-        name: input.body.name,
-        status: initialStatus,
-        currentRevisionId: revisionId,
+      const now = new Date();
+      const automationId = crypto.randomUUID();
+      const revisionId = crypto.randomUUID();
+      const nextRunAt =
+        initialStatus === "active" ? nextScheduleRunAt(compilation.definition!, now) : null;
+      await tx.insert(databaseAutomation).values({
         createIdempotencyKey: input.body.idempotencyKey,
-        duplicatedFromId: input.duplicatedFromId ?? null,
-        nextRunAt,
-        lastRunAt: null,
-        lastRunStatus: null,
-        errorCode: null,
-        errorSummary: null,
-        errorActionId: null,
-        erroredAt: null,
-        deletedAt: null,
         createdAt: now,
+        createdById: input.userId,
+        currentRevisionId: revisionId,
+        dataSourceId: input.body.dataSourceId,
+        duplicatedFromId: input.duplicatedFromId,
+        id: automationId,
+        name: input.body.name,
+        nextRunAt,
+        ownerUserId: input.userId,
+        status: initialStatus,
         updatedAt: now,
-      } satisfies AutomationRecord,
-      created: true,
-      revision: {
+        workspaceId: management.source.workspaceId,
+      });
+      await tx.insert(databaseAutomationRevision).values({
         automationId,
         compiledDefinition: compilation.compiledDefinition!,
         createdAt: now,
@@ -143,9 +142,50 @@ export async function createDatabaseAutomation(input: {
         definitionVersion: compilation.definition!.definitionVersion,
         id: revisionId,
         version: 1,
-      } satisfies RevisionRecord,
-    };
-  });
+      });
+      await insertDependencies(
+        tx as Executor,
+        automationId,
+        revisionId,
+        compilation.compiledDefinition!.dependencies,
+      );
+      return {
+        automation: {
+          id: automationId,
+          workspaceId: management.source.workspaceId,
+          dataSourceId: input.body.dataSourceId,
+          createdById: input.userId,
+          ownerUserId: input.userId,
+          name: input.body.name,
+          status: initialStatus,
+          currentRevisionId: revisionId,
+          createIdempotencyKey: input.body.idempotencyKey,
+          duplicatedFromId: input.duplicatedFromId ?? null,
+          nextRunAt,
+          lastRunAt: null,
+          lastRunStatus: null,
+          errorCode: null,
+          errorSummary: null,
+          errorActionId: null,
+          erroredAt: null,
+          deletedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        } satisfies AutomationRecord,
+        created: true,
+        revision: {
+          automationId,
+          compiledDefinition: compilation.compiledDefinition!,
+          createdAt: now,
+          createdById: input.userId,
+          definition: compilation.definition!,
+          definitionHash: compilation.definitionHash!,
+          definitionVersion: compilation.definition!.definitionVersion,
+          id: revisionId,
+          version: 1,
+        } satisfies RevisionRecord,
+      };
+    });
   let result: Awaited<ReturnType<typeof createInTransaction>>;
   try {
     result = await createInTransaction();
@@ -162,9 +202,15 @@ export async function createDatabaseAutomation(input: {
   }
 
   if (result.created && !input.duplicatedFromId) {
-    await audit(input.editionExtension, "database_automation.created", input.userId, result.automation, {
-      revision: result.revision.version,
-    });
+    await audit(
+      input.editionExtension,
+      "database_automation.created",
+      input.userId,
+      result.automation,
+      {
+        revision: result.revision.version,
+      },
+    );
   }
   return { automation: toDetail(result.automation, result.revision), created: result.created };
 }
@@ -199,9 +245,19 @@ export async function updateDatabaseAutomation(input: {
     userId: input.userId,
   });
   const compilation = compileDatabaseAutomationDefinition(input.body.definition, context);
-  assertValidCompilation(compilation.validation, compilation.compiledDefinition, compilation.definitionHash);
-  const transfersProtectedOwnership = containsProtectedConnectorAction(input.body.definition) && existing.automation.ownerUserId !== input.userId;
-  if (containsProtectedConnectorAction(existing.revision.definition) && existing.automation.ownerUserId !== input.userId && !transfersProtectedOwnership) {
+  assertValidCompilation(
+    compilation.validation,
+    compilation.compiledDefinition,
+    compilation.definitionHash,
+  );
+  const transfersProtectedOwnership =
+    containsProtectedConnectorAction(input.body.definition) &&
+    existing.automation.ownerUserId !== input.userId;
+  if (
+    containsProtectedConnectorAction(existing.revision.definition) &&
+    existing.automation.ownerUserId !== input.userId &&
+    !transfersProtectedOwnership
+  ) {
     throw protectedConfigurationError();
   }
 
@@ -229,10 +285,16 @@ export async function updateDatabaseAutomation(input: {
       id: revisionId,
       version,
     });
-    await insertDependencies(tx as Executor, current.automation.id, revisionId, compilation.compiledDefinition!.dependencies);
-    const nextRunAt = current.automation.status === "active"
-      ? nextScheduleRunAt(compilation.definition!, now)
-      : null;
+    await insertDependencies(
+      tx as Executor,
+      current.automation.id,
+      revisionId,
+      compilation.compiledDefinition!.dependencies,
+    );
+    const nextRunAt =
+      current.automation.status === "active"
+        ? nextScheduleRunAt(compilation.definition!, now)
+        : null;
     const [automation] = await tx
       .update(databaseAutomation)
       .set({
@@ -259,9 +321,15 @@ export async function updateDatabaseAutomation(input: {
       } satisfies RevisionRecord,
     };
   });
-  await audit(input.editionExtension, "database_automation.updated", input.userId, result.automation, {
-    revision: result.revision.version,
-  });
+  await audit(
+    input.editionExtension,
+    "database_automation.updated",
+    input.userId,
+    result.automation,
+    {
+      revision: result.revision.version,
+    },
+  );
   return toDetail(result.automation, result.revision);
 }
 
@@ -289,12 +357,13 @@ export async function setDatabaseAutomationPaused(input: {
       webhooksEnabled: input.webhooksEnabled,
       userId: input.userId,
     });
-    if (!validation.valid) throw new DatabaseAutomationError(
-      "The automation must be repaired before it can resume",
-      409,
-      "AUTOMATION_REPAIR_REQUIRED",
-      validation,
-    );
+    if (!validation.valid)
+      throw new DatabaseAutomationError(
+        "The automation must be repaired before it can resume",
+        409,
+        "AUTOMATION_REPAIR_REQUIRED",
+        validation,
+      );
   }
   const now = new Date();
   const [automation] = await db
@@ -359,9 +428,15 @@ export async function duplicateDatabaseAutomation(input: {
   });
   const detail = await getAutomationWithRevision(created.automation.id);
   if (created.created) {
-    await audit(input.editionExtension, "database_automation.duplicated", input.userId, detail!.automation, {
-      sourceAutomationId: source.id,
-    });
+    await audit(
+      input.editionExtension,
+      "database_automation.duplicated",
+      input.userId,
+      detail!.automation,
+      {
+        sourceAutomationId: source.id,
+      },
+    );
   }
   return { automation: toDetail(detail!.automation, detail!.revision), created: created.created };
 }
@@ -402,7 +477,11 @@ export async function createDatabaseAutomationSecret(input: {
   webhooksEnabled: boolean;
 }) {
   if (!input.webhooksEnabled) {
-    throw new DatabaseAutomationError("Webhook automations are disabled", 403, "AUTOMATION_WEBHOOKS_DISABLED");
+    throw new DatabaseAutomationError(
+      "Webhook automations are disabled",
+      403,
+      "AUTOMATION_WEBHOOKS_DISABLED",
+    );
   }
   const management = await requireManagementContext({
     databaseId: input.databaseId,

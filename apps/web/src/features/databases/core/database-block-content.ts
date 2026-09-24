@@ -9,5 +9,5 @@ export function createDatabaseSetupBlockContent(databaseId: string) {
       },
     },
     { type: "paragraph" },
-  ]
+  ];
 }

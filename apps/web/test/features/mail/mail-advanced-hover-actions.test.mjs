@@ -1,4 +1,4 @@
-import { readMailFeatureSource } from "./mail-feature-source.mjs"
+import { readMailFeatureSource } from "./mail-feature-source.mjs";
 
 export function register({ assert, readSource, readWorkspace, test }) {
   test("advanced hover actions connect reminders, commands, labels, reply, and unsubscribe", async () => {
@@ -7,24 +7,26 @@ export function register({ assert, readSource, readWorkspace, test }) {
       readSource("/src/features/mail/messages/mail-row-action-dialog.tsx"),
       readWorkspace("/packages/features/src/mail/hooks.ts"),
       readWorkspace("/apps/server/src/features/mail/query/routes.ts"),
-    ])
-    assert.match(dialog, /Mail commands/)
-    assert.match(dialog, /Apply a label/)
-    assert.match(page, /replySeed\(latest, connection\.email!/)
-    assert.match(page, /mailReminders\.schedule/)
-    assert.match(page, /window\.confirm/)
-    assert.match(page, /noopener,noreferrer/)
-    assert.match(reminders, /reminders\/advance/)
-    assert.match(reminders, /window\.setTimeout/)
-    assert.match(routes, /inspectOrExecuteUnsubscribe/)
-  })
+    ]);
+    assert.match(dialog, /Mail commands/);
+    assert.match(dialog, /Apply a label/);
+    assert.match(page, /replySeed\(latest, connection\.email!/);
+    assert.match(page, /mailReminders\.schedule/);
+    assert.match(page, /window\.confirm/);
+    assert.match(page, /noopener,noreferrer/);
+    assert.match(reminders, /reminders\/advance/);
+    assert.match(reminders, /window\.setTimeout/);
+    assert.match(routes, /inspectOrExecuteUnsubscribe/);
+  });
 
   test("unsubscribe validation checks DNS, redirects, credentials, and private networks", async () => {
-    const source = await readWorkspace("/apps/server/src/features/mail/compose/safe-unsubscribe.ts")
-    assert.match(source, /dns\.google\/resolve/)
-    assert.match(source, /redirect: "manual"/)
-    assert.match(source, /MAX_REDIRECTS/)
-    assert.match(source, /url\.username \|\| url\.password/)
-    for (const address of ["127", "169", "172", "192", "::1"]) assert.ok(source.includes(address))
-  })
+    const source = await readWorkspace(
+      "/apps/server/src/features/mail/compose/safe-unsubscribe.ts",
+    );
+    assert.match(source, /dns\.google\/resolve/);
+    assert.match(source, /redirect: "manual"/);
+    assert.match(source, /MAX_REDIRECTS/);
+    assert.match(source, /url\.username \|\| url\.password/);
+    for (const address of ["127", "169", "172", "192", "::1"]) assert.ok(source.includes(address));
+  });
 }

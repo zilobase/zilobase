@@ -25,32 +25,20 @@
     background-color: var(--zb-color-selection-background-row);
   }
 
-  .tiptap-editor
-    .database-table
-    tbody
-    tr[data-side-pane-open="true"]
-    > td {
+  .tiptap-editor .database-table tbody tr[data-side-pane-open="true"] > td {
     box-shadow:
       inset 0 2px var(--database-selection-color, var(--zb-color-action-border-selected)),
       inset 0 -2px var(--database-selection-color, var(--zb-color-action-border-selected));
   }
 
-  .tiptap-editor
-    .database-table
-    tbody
-    tr[data-side-pane-open="true"]
-    > td:first-child {
+  .tiptap-editor .database-table tbody tr[data-side-pane-open="true"] > td:first-child {
     box-shadow:
       inset 2px 0 var(--database-selection-color, var(--zb-color-action-border-selected)),
       inset 0 2px var(--database-selection-color, var(--zb-color-action-border-selected)),
       inset 0 -2px var(--database-selection-color, var(--zb-color-action-border-selected));
   }
 
-  .tiptap-editor
-    .database-table
-    tbody
-    tr[data-side-pane-open="true"]
-    > td:last-child {
+  .tiptap-editor .database-table tbody tr[data-side-pane-open="true"] > td:last-child {
     box-shadow:
       inset -2px 0 var(--database-selection-color, var(--zb-color-action-border-selected)),
       inset 0 2px var(--database-selection-color, var(--zb-color-action-border-selected)),
@@ -96,13 +84,11 @@
     tbody
     td:is(.database-page-cell, .database-value-cell)[data-selected="true"] {
     @apply z-30;
-    box-shadow: inset 0 0 0 2px var(--database-selection-color, var(--zb-color-action-border-selected));
+    box-shadow: inset 0 0 0 2px
+      var(--database-selection-color, var(--zb-color-action-border-selected));
   }
 
-  .tiptap-editor
-    .database-table
-    tbody
-    td.database-value-cell[data-fill-target="true"] {
+  .tiptap-editor .database-table tbody td.database-value-cell[data-fill-target="true"] {
     @apply bg-selection-row;
     box-shadow:
       inset 2px 0 var(--database-selection-color, var(--zb-color-action-border-selected)),
@@ -263,10 +249,22 @@
     @apply relative min-w-0 overflow-hidden;
   }
 
-  .tiptap-editor .database-table th.database-reorderable-header[data-column-reorderable="true"] .database-name-menu-trigger,
-  .tiptap-editor .database-table th.database-reorderable-header[data-column-reorderable="true"] .database-name-header-content,
-  .tiptap-editor .database-table th.database-reorderable-header[data-column-reorderable="true"] .database-property-menu-trigger,
-  .tiptap-editor .database-table th.database-reorderable-header[data-column-reorderable="true"] .database-property-header-label {
+  .tiptap-editor
+    .database-table
+    th.database-reorderable-header[data-column-reorderable="true"]
+    .database-name-menu-trigger,
+  .tiptap-editor
+    .database-table
+    th.database-reorderable-header[data-column-reorderable="true"]
+    .database-name-header-content,
+  .tiptap-editor
+    .database-table
+    th.database-reorderable-header[data-column-reorderable="true"]
+    .database-property-menu-trigger,
+  .tiptap-editor
+    .database-table
+    th.database-reorderable-header[data-column-reorderable="true"]
+    .database-property-header-label {
     cursor: grab;
     touch-action: none;
   }
@@ -448,9 +446,7 @@
   }
 
   .database-sub-item-name-has-toggle {
-    padding-left: calc(
-      var(--database-sub-item-depth, 0) * 1.25rem + 1.5rem
-    );
+    padding-left: calc(var(--database-sub-item-depth, 0) * 1.25rem + 1.5rem);
   }
 
   .database-sub-item-name > .database-cell-content {
@@ -564,8 +560,7 @@
 
   .database-table-wrap[data-inline-scroll="true"] .database-row-drop-line {
     left: calc(
-      var(--database-inline-scroll-offset, 0px) +
-        var(--database-row-drop-depth, 0) * 1.25rem
+      var(--database-inline-scroll-offset, 0px) + var(--database-row-drop-depth, 0) * 1.25rem
     );
     right: auto;
     width: var(--database-inline-scroll-view-width, 100%);
@@ -635,9 +630,9 @@
   }
 
   [data-editor-surface]:has(
-    .database-table-wrap
-      .database-row-controls:is([data-visible="true"], :focus-within)
-  ) .drag-handle,
+      .database-table-wrap .database-row-controls:is([data-visible="true"], :focus-within)
+    )
+    .drag-handle,
   body:has(.tiptap-editor .database-table th:hover) .drag-handle,
   body:has(.database-row-drag-rail:hover) .drag-handle,
   body:has(.database-row-drag-handle:focus-visible) .drag-handle,
@@ -663,5 +658,4 @@
     cursor: crosshair !important;
     user-select: none !important;
   }
-
 }

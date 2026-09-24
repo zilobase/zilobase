@@ -47,10 +47,7 @@ vi.mock("../../databases/access/data-source-access", () => ({
 vi.mock("../../databases/core/commit", async () => {
   const { db } = await import("../../../infrastructure/database");
   return {
-    commitDataSourceMutation: async (
-      input: unknown,
-      run: (tx: unknown) => unknown,
-    ) => {
+    commitDataSourceMutation: async (input: unknown, run: (tx: unknown) => unknown) => {
       state.commitInput = input;
       state.prepared = await run(db);
       return { id: "commit" };
@@ -61,9 +58,12 @@ vi.mock("../../databases/commands/record-entity", () => ({
   getDatabaseRecordEntity: async () => ({
     id: "row",
     page: {
-      name: (state.writes.find((value) =>
-        value && typeof value === "object" && "name" in value
-      ) as { name?: string } | undefined)?.name ?? "Before",
+      name:
+        (
+          state.writes.find((value) => value && typeof value === "object" && "name" in value) as
+            | { name?: string }
+            | undefined
+        )?.name ?? "Before",
     },
     valuesByPropertyId: { amount: { value: 3 } },
   }),
@@ -124,10 +124,7 @@ test("automation row operations retain first-before and final-after facts inside
   ]);
   assert.equal(prepared().automationFacts[0].automationRunId, "run");
   assert.equal(prepared().changes.records[0].page?.name, "After");
-  assert.equal(
-    prepared().changes.records[0].valuesByPropertyId.amount?.value,
-    3,
-  );
+  assert.equal(prepared().changes.records[0].valuesByPropertyId.amount?.value, 3);
   assert.deepEqual((state.commitInput as { areas: string[] }).areas, ["records"]);
 });
 test("automation row operations reject unavailable properties and rows before writes", async () => {
@@ -159,10 +156,7 @@ test("automation row operations reject unavailable properties and rows before wr
   assert.deepEqual(state.writes, []);
 });
 test("title-only automation writes preserve the Untitled default and record changes", async () => {
-  state.rows.push(
-    [{ id: "row", pageId: "page" }],
-    [{ id: "page", name: "Before" }],
-  );
+  state.rows.push([{ id: "row", pageId: "page" }], [{ id: "page", name: "Before" }]);
   const result = await applyDatabaseAutomationRowOperations({
     ...input,
     operations: [{ propertyId: "name", mode: "set", value: "  " }],

@@ -8,11 +8,7 @@ import {
 } from "@zilobase/features/ai-chat/settings-contract";
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { resolveWorkspaceAiModel } from "../providers/ai-provider";
-import {
-  readSettings,
-  updateSettingsDraft,
-  type SettingsActor,
-} from "./settings-service";
+import { readSettings, updateSettingsDraft, type SettingsActor } from "./settings-service";
 
 const modelProposalSchema = z.object({
   tab: settingsTabSchema,
@@ -38,16 +34,8 @@ export async function proposeSettings(
   abortSignal?: AbortSignal,
   modelId?: string,
 ) {
-  const [current, available] = await Promise.all([
-    readSettings(a),
-    settingsEditContext(a),
-  ]);
-  const model = await resolveWorkspaceAiModel(
-    a.workspaceId,
-    modelId ?? "auto",
-    env,
-    "chat",
-  );
+  const [current, available] = await Promise.all([readSettings(a), settingsEditContext(a)]);
+  const model = await resolveWorkspaceAiModel(a.workspaceId, modelId ?? "auto", env, "chat");
   const result = await generateText({
     model: model.model,
     providerOptions: model.providerOptions,
@@ -64,13 +52,17 @@ export async function proposeSettings(
   });
   const proposal = parseProposal(result.output);
   if (Object.keys(proposal.patch).length)
-    await updateSettingsDraft(a, {
-      patch: proposal.patch,
-      origin: "ai",
-      baseVersion: current.baseVersion,
-      draftVersion: current.draftVersion,
-      ...(pendingRun ? { pendingRun } : {}),
-    }, env);
+    await updateSettingsDraft(
+      a,
+      {
+        patch: proposal.patch,
+        origin: "ai",
+        baseVersion: current.baseVersion,
+        draftVersion: current.draftVersion,
+        ...(pendingRun ? { pendingRun } : {}),
+      },
+      env,
+    );
   return { ...proposal, scope: a.scope, status: "ready" as const };
 }
 export function buildSettingsTools(
@@ -86,15 +78,8 @@ export function buildSettingsTools(
         baseVersion: z.number().int().positive(),
         draftVersion: z.number().int().nonnegative(),
       }),
-      onInputStart: () =>
-        emit({ scope: a.scope, tab: "instructions", status: "editing" }),
-      execute: async ({
-        patchJson,
-        tab,
-        summary,
-        baseVersion,
-        draftVersion,
-      }) => {
+      onInputStart: () => emit({ scope: a.scope, tab: "instructions", status: "editing" }),
+      execute: async ({ patchJson, tab, summary, baseVersion, draftVersion }) => {
         const { patch } = parseProposal({ patchJson, tab, summary });
         emit({ scope: a.scope, tab, status: "editing" });
         try {

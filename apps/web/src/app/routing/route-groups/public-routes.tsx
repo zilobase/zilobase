@@ -23,10 +23,9 @@ const indexRoute = createRoute({
 
     const workspaces = await getWorkspaces();
     if (isHostedDemoRuntime()) {
-      const { startPath } = await apiFetch<{ startPath: string }>(
-        "/demo/bootstrap",
-        { method: "GET" },
-      );
+      const { startPath } = await apiFetch<{ startPath: string }>("/demo/bootstrap", {
+        method: "GET",
+      });
       throw redirect({ href: startPath });
     }
     if (workspaces.length === 0) throw redirect({ to: "/onboarding" });
@@ -87,10 +86,7 @@ const signupRoute = createRoute({
 
     if (search.returnTo) {
       throw redirect({
-        href: getAuthReturnPath(
-          "/recents",
-          `?returnTo=${encodeURIComponent(search.returnTo)}`,
-        ),
+        href: getAuthReturnPath("/recents", `?returnTo=${encodeURIComponent(search.returnTo)}`),
       });
     }
 
@@ -156,16 +152,12 @@ export const publicRoutes = [
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/accept-invitation",
-    component: lazyRouteComponent(
-      () => import("@/features/workspaces/screens/accept-invitation"),
-    ),
+    component: lazyRouteComponent(() => import("@/features/workspaces/screens/accept-invitation")),
   }),
   createRoute({
     getParentRoute: () => rootRoute,
     path: "/accept-page-invitation",
-    component: lazyRouteComponent(
-      () => import("@/features/pages/screens/accept-page-invitation"),
-    ),
+    component: lazyRouteComponent(() => import("@/features/pages/screens/accept-page-invitation")),
   }),
   createRoute({
     getParentRoute: () => rootRoute,

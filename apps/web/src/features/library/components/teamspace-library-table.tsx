@@ -13,10 +13,7 @@ import { DatabasePageLink } from "@/features/databases";
 
 import { PageIconDisplay } from "@/features/pages/index";
 
-import {
-  type Teamspace,
-  type TeamspaceAccessMode,
-} from "@zilobase/features/teamspaces";
+import { type Teamspace, type TeamspaceAccessMode } from "@zilobase/features/teamspaces";
 
 import {
   buildTeamspaceLibraryRows,
@@ -45,15 +42,13 @@ export function TeamspacesLibraryTable({
 }) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const tableWrapRef = useRef<HTMLDivElement | null>(null);
-  const { columnWidths, startColumnResize, tableMinWidth } =
-    useResizableTableColumns({
-      columnKeys: teamspaceColumnKeys,
-      getDefaultWidth: (columnKey) =>
-        teamspaceColumns.find((column) => column.id === columnKey)?.width ??
-        140,
-      minWidth: 96,
-      tableWrapRef,
-    });
+  const { columnWidths, startColumnResize, tableMinWidth } = useResizableTableColumns({
+    columnKeys: teamspaceColumnKeys,
+    getDefaultWidth: (columnKey) =>
+      teamspaceColumns.find((column) => column.id === columnKey)?.width ?? 140,
+    minWidth: 96,
+    tableWrapRef,
+  });
 
   if (teamspaces.length === 0) {
     return (
@@ -92,20 +87,14 @@ export function TeamspacesLibraryTable({
           <tr>
             {teamspaceColumns.map((column) => (
               <th
-                className={
-                  column.id === "name" ? "database-name-header" : undefined
-                }
+                className={column.id === "name" ? "database-name-header" : undefined}
                 key={column.id}
               >
-                <div className="database-name-header-content">
-                  {column.label}
-                </div>
+                <div className="database-name-header-content">{column.label}</div>
                 <span
                   aria-hidden="true"
                   className="database-column-resize-handle"
-                  onPointerDown={(event) =>
-                    startColumnResize(column.id, event)
-                  }
+                  onPointerDown={(event) => startColumnResize(column.id, event)}
                 />
               </th>
             ))}
@@ -140,9 +129,7 @@ export function TeamspacesLibraryTable({
                       ) : (
                         <Layers3Icon className="size-4 shrink-0 text-content-secondary" />
                       )}
-                      <span className="truncate font-semibold">
-                        {teamspace.name}
-                      </span>
+                      <span className="truncate font-semibold">{teamspace.name}</span>
                     </button>
                   </td>
                   <td className="truncate text-content-secondary">
@@ -166,10 +153,7 @@ export function TeamspacesLibraryTable({
                   <Fragment>
                     {teamspaceRows.length > 0 ? (
                       teamspaceRows.map(({ depth, row }) => (
-                        <tr
-                          aria-label={`${teamspace.name} contents`}
-                          key={row.id}
-                        >
+                        <tr aria-label={`${teamspace.name} contents`} key={row.id}>
                           <td className="database-page-cell">
                             <div
                               className="database-cell-content"
@@ -188,9 +172,7 @@ export function TeamspacesLibraryTable({
                             </div>
                           </td>
                           <td className="text-content-secondary">—</td>
-                          <td className="text-content-secondary">
-                            {getHomepageRowType(row)}
-                          </td>
+                          <td className="text-content-secondary">{getHomepageRowType(row)}</td>
                           <td />
                           <td />
                         </tr>
@@ -213,14 +195,8 @@ export function TeamspacesLibraryTable({
   );
 }
 
-function TeamspaceAccessIcon({
-  accessMode,
-}: {
-  accessMode: TeamspaceAccessMode;
-}) {
-  if (accessMode === "open")
-    return <Globe2Icon className="size-4 text-content-secondary" />;
-  if (accessMode === "private")
-    return <LockIcon className="size-4 text-content-secondary" />;
+function TeamspaceAccessIcon({ accessMode }: { accessMode: TeamspaceAccessMode }) {
+  if (accessMode === "open") return <Globe2Icon className="size-4 text-content-secondary" />;
+  if (accessMode === "private") return <LockIcon className="size-4 text-content-secondary" />;
   return <UsersIcon className="size-4 text-content-secondary" />;
 }

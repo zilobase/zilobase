@@ -14,27 +14,16 @@ export function register({ assert, loadModule, test }) {
       "data-drop-before": undefined,
     });
     const internal = { ...idle, draggedRowId: "row" };
-    assert.equal(
-      listRowDragAttributes("row", 1, 3, internal)["data-dragging"],
-      "true",
-    );
-    assert.equal(
-      listRowDragAttributes("row", 1, 3, internal)["data-drop-before"],
-      "true",
-    );
+    assert.equal(listRowDragAttributes("row", 1, 3, internal)["data-dragging"], "true");
+    assert.equal(listRowDragAttributes("row", 1, 3, internal)["data-drop-before"], "true");
     const external = {
       ...idle,
       isExternalDragActive: true,
       dropTargetIndex: 3,
     };
+    assert.equal(listRowDragAttributes("row", 2, 3, external)["data-drop-after"], "true");
     assert.equal(
-      listRowDragAttributes("row", 2, 3, external)["data-drop-after"],
-      "true",
-    );
-    assert.equal(
-      listRowDragAttributes("row", 1, 3, { ...external, dropTargetIndex: 2 })[
-        "data-drop-after"
-      ],
+      listRowDragAttributes("row", 1, 3, { ...external, dropTargetIndex: 2 })["data-drop-after"],
       undefined,
     );
     assert.equal(listRowCompletionLabel("", false), "Mark task as done");

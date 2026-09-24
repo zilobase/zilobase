@@ -35,11 +35,22 @@ vi.mock("../infrastructure/database", () => ({
     select() {
       const rows = mocks.selectResults.shift() ?? [];
       const builder = {
-        from() { return builder; },
-        innerJoin() { return builder; },
-        where(query: SQL) { mocks.whereQueries.push(query); return builder; },
-        orderBy() { return builder; },
-        async limit() { return rows; },
+        from() {
+          return builder;
+        },
+        innerJoin() {
+          return builder;
+        },
+        where(query: SQL) {
+          mocks.whereQueries.push(query);
+          return builder;
+        },
+        orderBy() {
+          return builder;
+        },
+        async limit() {
+          return rows;
+        },
         then(resolve: (value: unknown[]) => unknown) {
           return Promise.resolve(rows).then(resolve);
         },
@@ -49,10 +60,18 @@ vi.mock("../infrastructure/database", () => ({
     insert() {
       const rows = mocks.insertResults.shift() ?? [];
       const builder = {
-        values() { return builder; },
-        onConflictDoNothing() { return builder; },
-        onConflictDoUpdate() { return builder; },
-        async returning() { return rows; },
+        values() {
+          return builder;
+        },
+        onConflictDoNothing() {
+          return builder;
+        },
+        onConflictDoUpdate() {
+          return builder;
+        },
+        async returning() {
+          return rows;
+        },
       };
       return builder;
     },
@@ -89,7 +108,7 @@ function appFor(
 ) {
   const app = new Hono<AppBindings>();
   app.use("*", async (c, next) => {
-    c.set("user", options.authenticated === false ? null : user as never);
+    c.set("user", options.authenticated === false ? null : (user as never));
     c.set("session", null);
     c.set("authMethod", options.authMethod ?? "session");
     c.set("apiKey", null);
@@ -115,15 +134,18 @@ test("session route returns an explicit anonymous response", async () => {
 test("session route reports password capability and timing", async () => {
   mocks.selectResults.push([{ id: "credential-account" }]);
   const response = await appFor(sessionRoutes).request("/");
-  const body = await responseJson<{ user: { hasPassword: boolean }; workspacePinned: boolean }>(response);
+  const body = await responseJson<{ user: { hasPassword: boolean }; workspacePinned: boolean }>(
+    response,
+  );
   assert.equal(response.status, 200);
   assert.equal(body.user.hasPassword, true);
   assert.equal(body.workspacePinned, false);
 });
 
 test("workspace routes enforce authentication and validated admin updates", async () => {
-  const unauthorized = await appFor(workspaceRoutes, { authenticated: false })
-    .request("/workspace-1/access-targets");
+  const unauthorized = await appFor(workspaceRoutes, { authenticated: false }).request(
+    "/workspace-1/access-targets",
+  );
   assert.equal(unauthorized.status, 401);
 
   const invalid = await appFor(workspaceRoutes).request("/workspace-1", {
@@ -140,11 +162,14 @@ test("workspace routes enforce authentication and validated admin updates", asyn
   });
   assert.equal(invalidInvite.status, 400);
 
-  const invalidMemberUpdate = await appFor(workspaceRoutes).request("/workspace-1/members/member-1", {
-    body: JSON.stringify({ role: "superadmin" }),
-    headers: { "content-type": "application/json" },
-    method: "PATCH",
-  });
+  const invalidMemberUpdate = await appFor(workspaceRoutes).request(
+    "/workspace-1/members/member-1",
+    {
+      body: JSON.stringify({ role: "superadmin" }),
+      headers: { "content-type": "application/json" },
+      method: "PATCH",
+    },
+  );
   assert.equal(invalidMemberUpdate.status, 400);
 });
 
@@ -185,12 +210,22 @@ test("workspace deletion requires ownership and an exact name confirmation", asy
 
 test("workspace access targets return scoped members and teams", async () => {
   mocks.selectResults.push(
-    [{ email: "user@example.com", id: "user-1", memberId: "member-1", name: "User", role: "owner" }],
+    [
+      {
+        email: "user@example.com",
+        id: "user-1",
+        memberId: "member-1",
+        name: "User",
+        role: "owner",
+      },
+    ],
     [{ id: "team-1", name: "Engineering" }],
   );
-  const response = await appFor(workspaceRoutes)
-    .request("/workspace-1/access-targets");
-  const body = await responseJson<{ members: Array<{ memberId: string }>; teams: Array<{ id: string }> }>(response);
+  const response = await appFor(workspaceRoutes).request("/workspace-1/access-targets");
+  const body = await responseJson<{
+    members: Array<{ memberId: string }>;
+    teams: Array<{ id: string }>;
+  }>(response);
   assert.equal(response.status, 200);
   assert.equal(body.members[0].memberId, "member-1");
   assert.equal(body.teams[0].id, "team-1");
@@ -253,15 +288,17 @@ test("profile image uploads validate file type and size", async () => {
 });
 
 test("user settings route returns existing normalized preferences", async () => {
-  mocks.selectResults.push([{
-    embeddedItemsOpenAs: "dialog",
-    pageFullWidth: true,
-    sidebarConfig: {
-      hiddenItems: ["calendar", "unknown"],
-      libraryView: "shared",
-      sectionOrder: ["shared", "private"],
+  mocks.selectResults.push([
+    {
+      embeddedItemsOpenAs: "dialog",
+      pageFullWidth: true,
+      sidebarConfig: {
+        hiddenItems: ["calendar", "unknown"],
+        libraryView: "shared",
+        sectionOrder: ["shared", "private"],
+      },
     },
-  }]);
+  ]);
   const response = await appFor(pageSettingsRoutes).request("/");
   assert.deepEqual(await response.json(), {
     settings: {
@@ -286,11 +323,13 @@ const defaultUserSettingsPayload = {
 
 test("user settings route creates default preferences when none exist", async () => {
   mocks.selectResults.push([]);
-  mocks.insertResults.push([{
-    embeddedItemsOpenAs: "sidepanel",
-    pageFullWidth: false,
-    sidebarConfig: {},
-  }]);
+  mocks.insertResults.push([
+    {
+      embeddedItemsOpenAs: "sidepanel",
+      pageFullWidth: false,
+      sidebarConfig: {},
+    },
+  ]);
   const response = await appFor(pageSettingsRoutes).request("/");
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), defaultUserSettingsPayload);
@@ -299,19 +338,22 @@ test("user settings route creates default preferences when none exist", async ()
 test("user settings route recovers when a concurrent create wins", async () => {
   mocks.selectResults.push([]);
   mocks.insertResults.push([]);
-  mocks.selectResults.push([{
-    embeddedItemsOpenAs: "sidepanel",
-    pageFullWidth: false,
-    sidebarConfig: {},
-  }]);
+  mocks.selectResults.push([
+    {
+      embeddedItemsOpenAs: "sidepanel",
+      pageFullWidth: false,
+      sidebarConfig: {},
+    },
+  ]);
   const response = await appFor(pageSettingsRoutes).request("/");
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), defaultUserSettingsPayload);
 });
 
 test("API key routes require sessions and validate create input", async () => {
-  const apiKeyAuth = await appFor(apiKeyRoutes, { authMethod: "apiKey" })
-    .request("/?workspaceId=workspace-1");
+  const apiKeyAuth = await appFor(apiKeyRoutes, { authMethod: "apiKey" }).request(
+    "/?workspaceId=workspace-1",
+  );
   assert.equal(apiKeyAuth.status, 403);
 
   const invalid = await appFor(apiKeyRoutes).request("/", {
@@ -378,13 +420,14 @@ test("API key list filters records to the requested workspace", async () => {
       updatedAt: now,
     },
   ]);
-  const response = await appFor(apiKeyRoutes)
-    .request("/?workspaceId=workspace-1");
+  const response = await appFor(apiKeyRoutes).request("/?workspaceId=workspace-1");
   const body = await responseJson<{ keys: Array<{ id: string }> }>(response);
   assert.equal(response.status, 200);
-  assert.deepEqual(body.keys.map((key) => key.id), ["key-1"]);
+  assert.deepEqual(
+    body.keys.map((key) => key.id),
+    ["key-1"],
+  );
 });
-
 
 test("workspace discovery keeps OAuth reads within the grant and checks membership", async () => {
   const app = new Hono<AppBindings>();
@@ -410,5 +453,7 @@ test("workspace discovery keeps OAuth reads within the grant and checks membersh
   assert.equal((await app.request("/workspaces/workspace-1")).status, 403);
   mocks.membership.mockResolvedValue({ role: "member" });
   mocks.selectResults.push([record]);
-  assert.deepEqual(await (await app.request("/workspaces/workspace-1")).json(), { workspace: record });
+  assert.deepEqual(await (await app.request("/workspaces/workspace-1")).json(), {
+    workspace: record,
+  });
 });

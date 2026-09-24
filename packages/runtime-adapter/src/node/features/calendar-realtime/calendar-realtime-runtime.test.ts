@@ -1,42 +1,42 @@
-import assert from "node:assert/strict"
-import { createServer, type Server } from "node:http"
-import { createConnection } from "node:net"
-import { test } from "vitest"
+import assert from "node:assert/strict";
+import { createServer, type Server } from "node:http";
+import { createConnection } from "node:net";
+import { test } from "vitest";
 
 import {
   createCalendarRealtimeTicket,
   CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX,
   CALENDAR_REALTIME_PROTOCOL,
-} from "@zilobase/server/node-adapter-api"
-import type { NodeRealtimeBus } from "../../realtime-bus"
-import { attachNodeCalendarRealtimeRuntime } from "./calendar-realtime-runtime"
+} from "@zilobase/server/node-adapter-api";
+import type { NodeRealtimeBus } from "../../realtime-bus";
+import { attachNodeCalendarRealtimeRuntime } from "./calendar-realtime-runtime";
 
 const env = {
   COLLABORATION_SECRET: "calendar-realtime-test-secret",
-}
+};
 
 test("calendar realtime rejects missing tickets and tickets for another connection", async () => {
-  const fixture = await startFixture()
-  const ticket = await createTicket("connection-2")
+  const fixture = await startFixture();
+  const ticket = await createTicket("connection-2");
 
   try {
-    assert.equal(await requestUpgradeStatus(fixture.url), 401)
-    const client = new WebSocket(fixture.url, protocols(ticket))
-    await assert.rejects(waitForOpen(client), /WebSocket/)
-    client.close()
+    assert.equal(await requestUpgradeStatus(fixture.url), 401);
+    const client = new WebSocket(fixture.url, protocols(ticket));
+    await assert.rejects(waitForOpen(client), /WebSocket/);
+    client.close();
   } finally {
-    await fixture.close()
+    await fixture.close();
   }
-})
+});
 
 test("calendar realtime broadcasts only connection ID and revision locally", async () => {
-  const fixture = await startFixture()
-  const first = new CalendarRealtimeClient(fixture.url, await createTicket("connection-1"))
-  const second = new CalendarRealtimeClient(fixture.url, await createTicket("connection-1"))
+  const fixture = await startFixture();
+  const first = new CalendarRealtimeClient(fixture.url, await createTicket("connection-1"));
+  const second = new CalendarRealtimeClient(fixture.url, await createTicket("connection-1"));
 
   try {
-    await Promise.all([first.opened, second.opened])
-    await Promise.all([first.next("calendar.ready"), second.next("calendar.ready")])
+    await Promise.all([first.opened, second.opened]);
+    await Promise.all([first.next("calendar.ready"), second.next("calendar.ready")]);
     await fixture.runtime.publishNotification({
       bindingId: "binding-1",
       accountId: "connection-1",
@@ -45,11 +45,11 @@ test("calendar realtime broadcasts only connection ID and revision locally", asy
       revision: 7,
       userId: "user-1",
       workspaceId: "workspace-1",
-    })
+    });
     const [one, two] = await Promise.all([
       first.next("calendar.invalidate"),
       second.next("calendar.invalidate"),
-    ])
+    ]);
     assert.deepEqual(one, {
       bindingId: "binding-1",
       calendarId: "primary",
@@ -57,24 +57,24 @@ test("calendar realtime broadcasts only connection ID and revision locally", asy
       revision: 7,
       type: "calendar.invalidate",
       workspaceId: "workspace-1",
-    })
-    assert.deepEqual(two, one)
+    });
+    assert.deepEqual(two, one);
   } finally {
-    first.close()
-    second.close()
-    await fixture.close()
+    first.close();
+    second.close();
+    await fixture.close();
   }
-})
+});
 
 test("calendar realtime fans out through the multi-node realtime bus", async () => {
-  const broker = new TestRealtimeBroker()
-  const publisher = await startFixture(broker.createBus())
-  const subscriber = await startFixture(broker.createBus())
-  const client = new CalendarRealtimeClient(subscriber.url, await createTicket("connection-1"))
+  const broker = new TestRealtimeBroker();
+  const publisher = await startFixture(broker.createBus());
+  const subscriber = await startFixture(broker.createBus());
+  const client = new CalendarRealtimeClient(subscriber.url, await createTicket("connection-1"));
 
   try {
-    await client.opened
-    await client.next("calendar.ready")
+    await client.opened;
+    await client.next("calendar.ready");
     await publisher.runtime.publishNotification({
       bindingId: "binding-1",
       accountId: "connection-1",
@@ -83,145 +83,168 @@ test("calendar realtime fans out through the multi-node realtime bus", async () 
       revision: 9,
       userId: "user-1",
       workspaceId: "workspace-1",
-    })
-    assert.equal((await client.next("calendar.invalidate")).revision, 9)
+    });
+    assert.equal((await client.next("calendar.invalidate")).revision, 9);
   } finally {
-    client.close()
-    await Promise.all([publisher.close(), subscriber.close()])
+    client.close();
+    await Promise.all([publisher.close(), subscriber.close()]);
   }
-})
+});
 
-async function startFixture(
-  realtimeBus: NodeRealtimeBus = new TestRealtimeBroker().createBus(),
-) {
-  const server = createServer((_request, response) => response.end())
-  const runtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus })
-  await listen(server)
-  const address = server.address()
-  assert(address && typeof address === "object")
+async function startFixture(realtimeBus: NodeRealtimeBus = new TestRealtimeBroker().createBus()) {
+  const server = createServer((_request, response) => response.end());
+  const runtime = attachNodeCalendarRealtimeRuntime(server, env, { realtimeBus });
+  await listen(server);
+  const address = server.address();
+  assert(address && typeof address === "object");
   return {
     close: async () => {
-      await runtime.destroy()
-      await closeServer(server)
+      await runtime.destroy();
+      await closeServer(server);
     },
     runtime,
     url: `ws://127.0.0.1:${address.port}/calendar-realtime?binding=binding-1`,
-  }
+  };
 }
 
 class TestRealtimeBroker {
-  private readonly channels = new Map<string, Set<{ handler: (payload: unknown) => void; instance: symbol }>>()
+  private readonly channels = new Map<
+    string,
+    Set<{ handler: (payload: unknown) => void; instance: symbol }>
+  >();
 
   createBus(): NodeRealtimeBus {
-    const instance = Symbol("calendar-realtime-instance")
+    const instance = Symbol("calendar-realtime-instance");
     return {
       async close() {},
       async connect() {},
-      async consumeLimit() { return true },
-      isReady() { return true },
+      async consumeLimit() {
+        return true;
+      },
+      isReady() {
+        return true;
+      },
       publish: async (channel, payload) => {
         this.channels.get(channel)?.forEach((subscription) => {
-          if (subscription.instance !== instance) subscription.handler(payload)
-        })
+          if (subscription.instance !== instance) subscription.handler(payload);
+        });
       },
       subscribe: async (channel, handler) => {
-        const subscription = { handler, instance }
-        const subscriptions = this.channels.get(channel) ?? new Set()
-        subscriptions.add(subscription)
-        this.channels.set(channel, subscriptions)
+        const subscription = { handler, instance };
+        const subscriptions = this.channels.get(channel) ?? new Set();
+        subscriptions.add(subscription);
+        this.channels.set(channel, subscriptions);
         return async () => {
-          subscriptions.delete(subscription)
-          if (subscriptions.size === 0) this.channels.delete(channel)
-        }
+          subscriptions.delete(subscription);
+          if (subscriptions.size === 0) this.channels.delete(channel);
+        };
       },
-    }
+    };
   }
 }
 
 class CalendarRealtimeClient {
-  readonly websocket: WebSocket
-  readonly opened: Promise<void>
-  private readonly messages: Array<Record<string, unknown>> = []
-  private readonly waiters = new Set<{ resolve: (message: Record<string, unknown>) => void; type: string }>()
+  readonly websocket: WebSocket;
+  readonly opened: Promise<void>;
+  private readonly messages: Array<Record<string, unknown>> = [];
+  private readonly waiters = new Set<{
+    resolve: (message: Record<string, unknown>) => void;
+    type: string;
+  }>();
 
   constructor(url: string, ticket: string) {
-    this.websocket = new WebSocket(url, protocols(ticket))
-    this.opened = waitForOpen(this.websocket)
+    this.websocket = new WebSocket(url, protocols(ticket));
+    this.opened = waitForOpen(this.websocket);
     this.websocket.addEventListener("message", (event) => {
-      const message = JSON.parse(String(event.data)) as Record<string, unknown>
-      const waiter = [...this.waiters].find(({ type }) => type === message.type)
+      const message = JSON.parse(String(event.data)) as Record<string, unknown>;
+      const waiter = [...this.waiters].find(({ type }) => type === message.type);
       if (waiter) {
-        this.waiters.delete(waiter)
-        waiter.resolve(message)
-      } else this.messages.push(message)
-    })
+        this.waiters.delete(waiter);
+        waiter.resolve(message);
+      } else this.messages.push(message);
+    });
   }
 
-  close() { this.websocket.close() }
+  close() {
+    this.websocket.close();
+  }
 
   next(type: string, timeout = 1_000) {
-    const existing = this.messages.findIndex((message) => message.type === type)
-    if (existing >= 0) return Promise.resolve(this.messages.splice(existing, 1)[0]!)
+    const existing = this.messages.findIndex((message) => message.type === type);
+    if (existing >= 0) return Promise.resolve(this.messages.splice(existing, 1)[0]!);
     return new Promise<Record<string, unknown>>((resolve, reject) => {
-      const waiter = { resolve, type }
-      this.waiters.add(waiter)
+      const waiter = { resolve, type };
+      this.waiters.add(waiter);
       setTimeout(() => {
-        if (this.waiters.delete(waiter)) reject(new Error(`Timed out waiting for ${type}`))
-      }, timeout)
-    })
+        if (this.waiters.delete(waiter)) reject(new Error(`Timed out waiting for ${type}`));
+      }, timeout);
+    });
   }
 }
 
 function createTicket(accountId: string) {
-  return createCalendarRealtimeTicket({
-    bindingId: accountId === "connection-1" ? "binding-1" : "binding-2",
-    accountId,
-    userId: "user-1",
-    workspaceId: "workspace-1",
-  }, env).then((result) => result.ticket)
+  return createCalendarRealtimeTicket(
+    {
+      bindingId: accountId === "connection-1" ? "binding-1" : "binding-2",
+      accountId,
+      userId: "user-1",
+      workspaceId: "workspace-1",
+    },
+    env,
+  ).then((result) => result.ticket);
 }
 
 function protocols(ticket: string) {
-  return [CALENDAR_REALTIME_PROTOCOL, `${CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket}`]
+  return [CALENDAR_REALTIME_PROTOCOL, `${CALENDAR_REALTIME_AUTH_PROTOCOL_PREFIX}${ticket}`];
 }
 
 function waitForOpen(socket: WebSocket) {
   return new Promise<void>((resolve, reject) => {
-    socket.addEventListener("open", () => resolve(), { once: true })
-    socket.addEventListener("error", () => reject(new Error("WebSocket upgrade failed")), { once: true })
-  })
+    socket.addEventListener("open", () => resolve(), { once: true });
+    socket.addEventListener("error", () => reject(new Error("WebSocket upgrade failed")), {
+      once: true,
+    });
+  });
 }
 
 function listen(server: Server) {
-  return new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
+  return new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
 }
 
 function closeServer(server: Server) {
-  return new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
+  return new Promise<void>((resolve, reject) =>
+    server.close((error) => (error ? reject(error) : resolve())),
+  );
 }
 
 function requestUpgradeStatus(url: string) {
-  const target = new URL(url)
+  const target = new URL(url);
   return new Promise<number>((resolve, reject) => {
-    const socket = createConnection(Number(target.port), target.hostname)
-    let response = ""
-    socket.setEncoding("utf8")
-    socket.once("error", reject)
-    socket.on("data", (chunk) => { response += chunk })
+    const socket = createConnection(Number(target.port), target.hostname);
+    let response = "";
+    socket.setEncoding("utf8");
+    socket.once("error", reject);
+    socket.on("data", (chunk) => {
+      response += chunk;
+    });
     socket.once("end", () => {
-      const status = Number(response.match(/^HTTP\/1\.1 (\d{3})/)?.[1])
-      if (Number.isInteger(status)) resolve(status)
-      else reject(new Error(`Invalid upgrade response: ${response}`))
-    })
-    socket.once("connect", () => socket.write([
-      `GET ${target.pathname}${target.search} HTTP/1.1`,
-      `Host: ${target.host}`,
-      "Connection: Upgrade",
-      "Upgrade: websocket",
-      "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
-      "Sec-WebSocket-Version: 13",
-      "",
-      "",
-    ].join("\r\n")))
-  })
+      const status = Number(response.match(/^HTTP\/1\.1 (\d{3})/)?.[1]);
+      if (Number.isInteger(status)) resolve(status);
+      else reject(new Error(`Invalid upgrade response: ${response}`));
+    });
+    socket.once("connect", () =>
+      socket.write(
+        [
+          `GET ${target.pathname}${target.search} HTTP/1.1`,
+          `Host: ${target.host}`,
+          "Connection: Upgrade",
+          "Upgrade: websocket",
+          "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==",
+          "Sec-WebSocket-Version: 13",
+          "",
+          "",
+        ].join("\r\n"),
+      ),
+    );
+  });
 }

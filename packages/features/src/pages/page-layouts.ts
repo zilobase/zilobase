@@ -1,81 +1,78 @@
-export type PageLayoutScope = "workspace" | "database" | "page"
+export type PageLayoutScope = "workspace" | "database" | "page";
 
-export type PageLayoutStructure = "simple" | "tabbed"
+export type PageLayoutStructure = "simple" | "tabbed";
 
-export type PageLayoutRegion = "main" | "panel"
+export type PageLayoutRegion = "main" | "panel";
 
-export type PageLayoutPropertyDisplay =
-  | "always"
-  | "hide_when_empty"
-  | "hidden"
+export type PageLayoutPropertyDisplay = "always" | "hide_when_empty" | "hidden";
 
 export type PageLayoutModuleType =
   | "heading"
   | "property_group"
   | "property"
   | "discussions"
-  | "content"
+  | "content";
 
 export type PageLayoutModule = {
-  id: string
-  type: PageLayoutModuleType
-  region: PageLayoutRegion
-  propertyId?: string
-}
+  id: string;
+  type: PageLayoutModuleType;
+  region: PageLayoutRegion;
+  propertyId?: string;
+};
 
 export type PageLayoutLinkedTab = {
-  id: string
-  databaseId: string
-  databaseName: string
-  viewId: string
-  viewName: string
-  viewType: string
-}
+  id: string;
+  databaseId: string;
+  databaseName: string;
+  viewId: string;
+  viewName: string;
+  viewType: string;
+};
 
 export type PageLayoutPropertySettings = {
-  display: PageLayoutPropertyDisplay
-  section?: string
-}
+  display: PageLayoutPropertyDisplay;
+  section?: string;
+};
 
 export type PageLayoutConfig = {
-  version: 1
-  structure: PageLayoutStructure
-  modules: PageLayoutModule[]
-  linkedTabs: PageLayoutLinkedTab[]
-  pinnedPropertyIds: string[]
-  propertyOrder: string[]
-  propertySettings: Record<string, PageLayoutPropertySettings>
-  propertyIcons: boolean
-  discussionsVisible: boolean
-  fullWidth?: boolean
-}
+  version: 1;
+  structure: PageLayoutStructure;
+  modules: PageLayoutModule[];
+  linkedTabs: PageLayoutLinkedTab[];
+  pinnedPropertyIds: string[];
+  propertyOrder: string[];
+  propertySettings: Record<string, PageLayoutPropertySettings>;
+  propertyIcons: boolean;
+  discussionsVisible: boolean;
+  fullWidth?: boolean;
+};
 
 export type ResolvedPageLayout = {
-  config: PageLayoutConfig
-  databaseId: string | null
-  pageId: string | null
-  sources: Partial<Record<"generic" | "schema", PageLayoutScope>>
-  workspaceId: string
-}
+  config: PageLayoutConfig;
+  databaseId: string | null;
+  pageId: string | null;
+  sources: Partial<Record<"generic" | "schema", PageLayoutScope>>;
+  workspaceId: string;
+};
 
 export type PageLayoutTarget = {
-  databaseId?: string | null
-  pageId?: string | null
-}
+  databaseId?: string | null;
+  pageId?: string | null;
+};
 
 export type PageLayoutModuleDestination = {
-  beforeModuleId?: string
-  region: PageLayoutRegion
-}
+  beforeModuleId?: string;
+  region: PageLayoutRegion;
+};
 
-export const PAGE_LAYOUT_CONTENT_TAB_ID = "content"
+export const PAGE_LAYOUT_CONTENT_TAB_ID = "content";
 
 export function canMovePageLayoutModuleToRegion(
   module: PageLayoutModule,
   region: PageLayoutRegion,
 ) {
-  if (region === "main") return true
-  return module.type === "property" || module.type === "property_group"
+  if (region === "main") return true;
+  return module.type === "property" || module.type === "property_group";
 }
 
 function stabilizePageLayoutModules(modules: PageLayoutModule[]) {
@@ -83,34 +80,28 @@ function stabilizePageLayoutModules(modules: PageLayoutModule[]) {
     canMovePageLayoutModuleToRegion(module, module.region)
       ? module
       : { ...module, region: "main" as const },
-  )
-  const heading = placedModules.find((module) => module.type === "heading")
-  const propertyGroup = placedModules.find(
-    (module) => module.type === "property_group",
-  )
+  );
+  const heading = placedModules.find((module) => module.type === "heading");
+  const propertyGroup = placedModules.find((module) => module.type === "property_group");
   const stabilized = placedModules.filter(
     (module) =>
       (module.type !== "heading" || module.id === heading?.id) &&
       (module.type !== "property_group" || module.id === propertyGroup?.id),
-  )
+  );
 
   if (heading) {
-    const headingIndex = stabilized.findIndex(
-      (module) => module.id === heading.id,
-    )
-    stabilized.splice(headingIndex, 1)
-    stabilized.unshift({ ...heading, region: "main" })
+    const headingIndex = stabilized.findIndex((module) => module.id === heading.id);
+    stabilized.splice(headingIndex, 1);
+    stabilized.unshift({ ...heading, region: "main" });
   }
 
   if (propertyGroup?.region === "main") {
-    const propertyGroupIndex = stabilized.findIndex(
-      (module) => module.id === propertyGroup.id,
-    )
-    stabilized.splice(propertyGroupIndex, 1)
-    stabilized.splice(heading ? 1 : 0, 0, propertyGroup)
+    const propertyGroupIndex = stabilized.findIndex((module) => module.id === propertyGroup.id);
+    stabilized.splice(propertyGroupIndex, 1);
+    stabilized.splice(heading ? 1 : 0, 0, propertyGroup);
   }
 
-  return stabilized
+  return stabilized;
 }
 
 export function movePageLayoutModule(
@@ -118,7 +109,7 @@ export function movePageLayoutModule(
   moduleId: string,
   destination: PageLayoutModuleDestination,
 ): PageLayoutConfig {
-  const module = config.modules.find((item) => item.id === moduleId)
+  const module = config.modules.find((item) => item.id === moduleId);
 
   if (
     !module ||
@@ -126,41 +117,36 @@ export function movePageLayoutModule(
     !canMovePageLayoutModuleToRegion(module, destination.region) ||
     destination.beforeModuleId === moduleId
   ) {
-    return config
+    return config;
   }
 
-  const modules = config.modules.filter((item) => item.id !== moduleId)
-  const movedModule = { ...module, region: destination.region }
+  const modules = config.modules.filter((item) => item.id !== moduleId);
+  const movedModule = { ...module, region: destination.region };
   const beforeIndex = destination.beforeModuleId
     ? modules.findIndex((item) => item.id === destination.beforeModuleId)
-    : -1
+    : -1;
 
   if (beforeIndex >= 0) {
-    modules.splice(beforeIndex, 0, movedModule)
+    modules.splice(beforeIndex, 0, movedModule);
   } else {
-    let lastRegionIndex = -1
+    let lastRegionIndex = -1;
     for (let index = modules.length - 1; index >= 0; index -= 1) {
       if (modules[index]?.region === destination.region) {
-        lastRegionIndex = index
-        break
+        lastRegionIndex = index;
+        break;
       }
     }
-    modules.splice(
-      lastRegionIndex < 0 ? modules.length : lastRegionIndex + 1,
-      0,
-      movedModule,
-    )
+    modules.splice(lastRegionIndex < 0 ? modules.length : lastRegionIndex + 1, 0, movedModule);
   }
 
-  const stabilizedModules = stabilizePageLayoutModules(modules)
+  const stabilizedModules = stabilizePageLayoutModules(modules);
 
   const unchanged = config.modules.every(
     (item, index) =>
-      item.id === stabilizedModules[index]?.id &&
-      item.region === stabilizedModules[index]?.region,
-  )
+      item.id === stabilizedModules[index]?.id && item.region === stabilizedModules[index]?.region,
+  );
 
-  return unchanged ? config : { ...config, modules: stabilizedModules }
+  return unchanged ? config : { ...config, modules: stabilizedModules };
 }
 
 export function createDefaultPageLayout(
@@ -184,7 +170,7 @@ export function createDefaultPageLayout(
     propertyIcons: true,
     discussionsVisible: true,
     ...(options.fullWidth === undefined ? {} : { fullWidth: options.fullWidth }),
-  }
+  };
 }
 
 const moduleTypes = new Set<PageLayoutModuleType>([
@@ -193,26 +179,22 @@ const moduleTypes = new Set<PageLayoutModuleType>([
   "property",
   "discussions",
   "content",
-])
+]);
 
-const displayModes = new Set<PageLayoutPropertyDisplay>([
-  "always",
-  "hide_when_empty",
-  "hidden",
-])
+const displayModes = new Set<PageLayoutPropertyDisplay>(["always", "hide_when_empty", "hidden"]);
 
 export function normalizePageLayoutConfig(
   value: unknown,
   options: { database?: boolean } = {},
 ): PageLayoutConfig {
-  const fallback = createDefaultPageLayout(options)
+  const fallback = createDefaultPageLayout(options);
 
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return fallback
+    return fallback;
   }
 
-  const input = value as Partial<PageLayoutConfig>
-  const seenIds = new Set<string>()
+  const input = value as Partial<PageLayoutConfig>;
+  const seenIds = new Set<string>();
   const modules = Array.isArray(input.modules)
     ? input.modules.flatMap((module) => {
         if (
@@ -224,40 +206,48 @@ export function normalizePageLayoutConfig(
           (module.region !== "main" && module.region !== "panel") ||
           (module.type === "property" && typeof module.propertyId !== "string")
         ) {
-          return []
+          return [];
         }
 
-        seenIds.add(module.id)
-        return [{
-          id: module.id,
-          type: module.type,
-          region: module.region,
-          ...(module.propertyId ? { propertyId: module.propertyId } : {}),
-        }]
+        seenIds.add(module.id);
+        return [
+          {
+            id: module.id,
+            type: module.type,
+            region: module.region,
+            ...(module.propertyId ? { propertyId: module.propertyId } : {}),
+          },
+        ];
       })
-    : []
+    : [];
 
   for (const required of fallback.modules.filter(
-    (module) => module.type === "heading" || module.type === "content" || module.type === "property_group",
+    (module) =>
+      module.type === "heading" || module.type === "content" || module.type === "property_group",
   )) {
     if (!modules.some((module) => module.type === required.type)) {
-      modules.push(required)
+      modules.push(required);
     }
   }
 
-  const normalizedModules = stabilizePageLayoutModules(modules)
+  const normalizedModules = stabilizePageLayoutModules(modules);
 
   const propertySettings = Object.fromEntries(
     Object.entries(input.propertySettings ?? {}).flatMap(([propertyId, setting]) => {
-      if (!setting || !displayModes.has(setting.display)) return []
-      return [[propertyId, {
-        display: setting.display,
-        ...(typeof setting.section === "string" && setting.section.trim()
-          ? { section: setting.section.trim() }
-          : {}),
-      }]]
+      if (!setting || !displayModes.has(setting.display)) return [];
+      return [
+        [
+          propertyId,
+          {
+            display: setting.display,
+            ...(typeof setting.section === "string" && setting.section.trim()
+              ? { section: setting.section.trim() }
+              : {}),
+          },
+        ],
+      ];
     }),
-  )
+  );
 
   return {
     version: 1,
@@ -269,14 +259,17 @@ export function normalizePageLayoutConfig(
           typeof tab.id === "string" &&
           typeof tab.databaseId === "string" &&
           typeof tab.viewId === "string"
-            ? [{
-                id: tab.id,
-                databaseId: tab.databaseId,
-                databaseName: typeof tab.databaseName === "string" ? tab.databaseName : "Untitled database",
-                viewId: tab.viewId,
-                viewName: typeof tab.viewName === "string" ? tab.viewName : "Untitled view",
-                viewType: typeof tab.viewType === "string" ? tab.viewType : "table",
-              }]
+            ? [
+                {
+                  id: tab.id,
+                  databaseId: tab.databaseId,
+                  databaseName:
+                    typeof tab.databaseName === "string" ? tab.databaseName : "Untitled database",
+                  viewId: tab.viewId,
+                  viewName: typeof tab.viewName === "string" ? tab.viewName : "Untitled view",
+                  viewType: typeof tab.viewType === "string" ? tab.viewType : "table",
+                },
+              ]
             : [],
         )
       : [],
@@ -290,7 +283,7 @@ export function normalizePageLayoutConfig(
     propertyIcons: input.propertyIcons !== false,
     discussionsVisible: input.discussionsVisible !== false,
     ...(typeof input.fullWidth === "boolean" ? { fullWidth: input.fullWidth } : {}),
-  }
+  };
 }
 
 export function toWorkspacePageLayout(config: PageLayoutConfig): PageLayoutConfig {
@@ -303,5 +296,5 @@ export function toWorkspacePageLayout(config: PageLayoutConfig): PageLayoutConfi
     modules: config.modules.filter(
       (module) => module.type !== "property" && module.type !== "property_group",
     ),
-  })
+  });
 }

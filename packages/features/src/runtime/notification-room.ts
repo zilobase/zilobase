@@ -1,9 +1,4 @@
-import type {
-  RoomHost,
-  RoomMessage,
-  RoomPeer,
-  Telemetry,
-} from "@zilobase/runtime-ports";
+import type { RoomHost, RoomMessage, RoomPeer, Telemetry } from "@zilobase/runtime-ports";
 import { createRoomController } from "./room-kernel";
 
 export type ExpiringRoomAttachment<Claims extends { exp: number }> = {
@@ -80,8 +75,6 @@ function handleMessage<Claims extends { exp: number }, Event>(
   else host.close(peer, 1003, "Unsupported realtime message");
 }
 
-function isExpired<Claims extends { exp: number }>(
-  peer: RoomPeer<ExpiringRoomAttachment<Claims>>,
-) {
+function isExpired<Claims extends { exp: number }>(peer: RoomPeer<ExpiringRoomAttachment<Claims>>) {
   return (peer.getAttachment()?.claims.exp ?? 0) <= Date.now();
 }

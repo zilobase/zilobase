@@ -20,11 +20,12 @@ const { stdout } = await execFileAsync(
 
 for (const file of stdout.toString("utf8").split("\0")) {
   if (
-    !file
-    || file === "scripts/community-boundary.test.mjs"
-    || path.basename(file) === "package-lock.json"
-    || isVendoredReferenceTree(file)
-  ) continue;
+    !file ||
+    file === "scripts/community-boundary.test.mjs" ||
+    path.basename(file) === "package-lock.json" ||
+    isVendoredReferenceTree(file)
+  )
+    continue;
 
   let content;
   try {

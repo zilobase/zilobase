@@ -19,11 +19,13 @@ const meetingSummaryJob: AiJobHandler = async ({ assertLease, env, job, reportPr
   await assertLease();
   let result;
   try {
-    result = await measureBackgroundProvider(env, "ai.job", () => generateMeetingSummary({
-      env,
-      meetingId,
-      userId,
-    }));
+    result = await measureBackgroundProvider(env, "ai.job", () =>
+      generateMeetingSummary({
+        env,
+        meetingId,
+        userId,
+      }),
+    );
   } catch (error) {
     if (error instanceof ServiceMutationError) {
       throw new PermanentAiJobError(error.message);

@@ -1,19 +1,32 @@
-import { getPageRecord, loadStandaloneDatabaseForPage, loadActivePageInWorkspace, loadActiveDatabaseContainer } from "./resource-access-records";
-import { strongestExplicitAccess, principalGrantTargets, snapshotRootAccess, teamspacePrincipalAccess, type AgentPermissionSnapshotGrant } from "./access-decisions";
 import {
-  and,
-  eq,
-  inArray,
-  isNull,
-} from "drizzle-orm";
+  getPageRecord,
+  loadStandaloneDatabaseForPage,
+  loadActivePageInWorkspace,
+  loadActiveDatabaseContainer,
+} from "./resource-access-records";
+import {
+  strongestExplicitAccess,
+  principalGrantTargets,
+  snapshotRootAccess,
+  teamspacePrincipalAccess,
+  type AgentPermissionSnapshotGrant,
+} from "./access-decisions";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../../infrastructure/database";
-import { database, databaseAccess, member, page, pageAccess, teamMember, teamspace, teamspacePrincipal, workspaceGuest } from "../../infrastructure/database/schema";
+import {
+  database,
+  databaseAccess,
+  member,
+  page,
+  pageAccess,
+  teamMember,
+  teamspace,
+  teamspacePrincipal,
+  workspaceGuest,
+} from "../../infrastructure/database/schema";
 import { loadWorkspacePageGraph } from "../pages/graph";
 import { activeMembershipCondition } from "../memberships";
-import {
-  getDatabaseTeamspaceSecurityPolicy,
-  getPageTeamspaceSecurityPolicy,
-} from "../teamspaces";
+import { getDatabaseTeamspaceSecurityPolicy, getPageTeamspaceSecurityPolicy } from "../teamspaces";
 import {
   accessRank,
   hasAccess,
@@ -23,10 +36,7 @@ import {
 } from "./access-level";
 import { getMembership, getWorkspaceGuest } from "./principal-access";
 
-async function getEffectivePageAccess(
-  pageId: string,
-  userId: string,
-): Promise<AccessLevel> {
+async function getEffectivePageAccess(pageId: string, userId: string): Promise<AccessLevel> {
   const [context] = await db
     .select({
       workspaceId: page.workspaceId,
@@ -62,12 +72,7 @@ export async function getEffectivePageAccessInWorkspace(
     db
       .select({ id: workspaceGuest.id })
       .from(workspaceGuest)
-      .where(
-        and(
-          eq(workspaceGuest.workspaceId, workspaceId),
-          eq(workspaceGuest.userId, userId),
-        ),
-      )
+      .where(and(eq(workspaceGuest.workspaceId, workspaceId), eq(workspaceGuest.userId, userId)))
       .limit(1),
     loadWorkspacePageGraph(workspaceId),
   ]);
@@ -96,7 +101,10 @@ export async function getEffectivePageAccessInWorkspace(
     return "full";
   }
 
-  const { targetTypes, targetIds } = principalGrantTargets(userId, teamRows.map((row) => row.teamId));
+  const { targetTypes, targetIds } = principalGrantTargets(
+    userId,
+    teamRows.map((row) => row.teamId),
+  );
 
   const rules =
     ancestorIds.length > 0
@@ -116,10 +124,7 @@ export async function getEffectivePageAccessInWorkspace(
   const pageLevel = strongestExplicitAccess(rules);
 
   if (!isMember) {
-    if (
-      pageTeamspaceId &&
-      !(await getPageTeamspaceSecurityPolicy(pageId))?.guestsEnabled
-    ) {
+    if (pageTeamspaceId && !(await getPageTeamspaceSecurityPolicy(pageId))?.guestsEnabled) {
       return "none";
     }
     return pageLevel;
@@ -172,14 +177,17 @@ export async function getEffectivePageAccessForAgent(
 
   const ancestorIds = graph.getAncestorIds(pageId);
   if (ancestorIds.length === 0) return "none";
-  const rules = await db.select({ accessLevel: pageAccess.accessLevel })
+  const rules = await db
+    .select({ accessLevel: pageAccess.accessLevel })
     .from(pageAccess)
-    .where(and(
-      eq(pageAccess.workspaceId, workspaceId),
-      inArray(pageAccess.pageId, ancestorIds),
-      eq(pageAccess.targetType, "agent"),
-      eq(pageAccess.targetId, agentId),
-    ));
+    .where(
+      and(
+        eq(pageAccess.workspaceId, workspaceId),
+        inArray(pageAccess.pageId, ancestorIds),
+        eq(pageAccess.targetType, "agent"),
+        eq(pageAccess.targetId, agentId),
+      ),
+    );
   return strongestExplicitAccess(rules);
 }
 
@@ -189,10 +197,7 @@ export async function canAgentAccessPage(
   agentId: string,
   required: Exclude<AccessLevel, "none">,
 ) {
-  return hasAccess(
-    await getEffectivePageAccessForAgent(pageId, workspaceId, agentId),
-    required,
-  );
+  return hasAccess(await getEffectivePageAccessForAgent(pageId, workspaceId, agentId), required);
 }
 
 /** Resolves only the immutable resource roots captured when an agent run was
@@ -266,10 +271,7 @@ export async function isPagePublishedInWorkspace(
   const standaloneDatabaseRow = await loadStandaloneDatabaseForPage(pageId, workspaceId);
 
   return standaloneDatabaseRow
-    ? isDatabasePublishedInWorkspace(
-        standaloneDatabaseRow.databaseId,
-        workspaceId,
-      )
+    ? isDatabasePublishedInWorkspace(standaloneDatabaseRow.databaseId, workspaceId)
     : false;
 }
 
@@ -287,10 +289,7 @@ export async function canAccessPageInWorkspace(
   userId: string,
   required: Exclude<AccessLevel, "none">,
 ) {
-  return hasAccess(
-    await getEffectivePageAccessInWorkspace(pageId, workspaceId, userId),
-    required,
-  );
+  return hasAccess(await getEffectivePageAccessInWorkspace(pageId, workspaceId, userId), required);
 }
 
 export async function getEffectiveDatabaseAccessInWorkspace(
@@ -298,11 +297,7 @@ export async function getEffectiveDatabaseAccessInWorkspace(
   workspaceId: string,
   userId: string,
 ): Promise<AccessLevel> {
-  return resolveEffectiveDatabaseAccessInWorkspace(
-    databaseId,
-    workspaceId,
-    userId,
-  );
+  return resolveEffectiveDatabaseAccessInWorkspace(databaseId, workspaceId, userId);
 }
 
 /** Standalone agents only receive explicit database grants. Inline databases
@@ -317,14 +312,17 @@ export async function getEffectiveDatabaseAccessForAgent(
   if (record.pageId) {
     return getEffectivePageAccessForAgent(record.pageId, workspaceId, agentId);
   }
-  const rules = await db.select({ accessLevel: databaseAccess.accessLevel })
+  const rules = await db
+    .select({ accessLevel: databaseAccess.accessLevel })
     .from(databaseAccess)
-    .where(and(
-      eq(databaseAccess.workspaceId, workspaceId),
-      eq(databaseAccess.databaseId, databaseId),
-      eq(databaseAccess.targetType, "agent"),
-      eq(databaseAccess.targetId, agentId),
-    ));
+    .where(
+      and(
+        eq(databaseAccess.workspaceId, workspaceId),
+        eq(databaseAccess.databaseId, databaseId),
+        eq(databaseAccess.targetType, "agent"),
+        eq(databaseAccess.targetId, agentId),
+      ),
+    );
   return strongestExplicitAccess(rules);
 }
 
@@ -416,16 +414,9 @@ async function resolveEffectiveDatabaseAccessForRecord(
   if (record.deletedAt) return "none";
 
   if (record.pageId) {
-    return getEffectivePageAccessInWorkspace(
-      record.pageId,
-      record.workspaceId,
-      userId,
-    );
+    return getEffectivePageAccessInWorkspace(record.pageId, record.workspaceId, userId);
   }
-  if (
-    !context?.membershipVerified &&
-    !(await getMembership(record.workspaceId, userId))
-  ) {
+  if (!context?.membershipVerified && !(await getMembership(record.workspaceId, userId))) {
     return "none";
   }
   if (!record.teamspaceId && record.createdById === userId) return "full";
@@ -454,12 +445,7 @@ async function resolveEffectiveDatabaseAccessForRecord(
   if (record.teamspaceId) {
     return maxAccess(
       explicitLevel,
-      await resolveTeamspaceAccess(
-        record.teamspaceId,
-        record.workspaceId,
-        userId,
-        teamIds,
-      ),
+      await resolveTeamspaceAccess(record.teamspaceId, record.workspaceId, userId, teamIds),
     );
   }
 
@@ -483,10 +469,7 @@ export async function canAccessDatabaseRecord(
   userId: string,
   required: Exclude<AccessLevel, "none">,
 ) {
-  return hasAccess(
-    await getEffectiveDatabaseAccessForRecord(record, userId),
-    required,
-  );
+  return hasAccess(await getEffectiveDatabaseAccessForRecord(record, userId), required);
 }
 
 export async function isDatabasePublishedInWorkspace(
@@ -548,9 +531,7 @@ export async function getAccessiblePageIds(
         teamspaceId: page.teamspaceId,
       })
       .from(page)
-      .where(
-        and(eq(page.workspaceId, workspaceId), isNull(page.deletedAt)),
-      ),
+      .where(and(eq(page.workspaceId, workspaceId), isNull(page.deletedAt))),
     isMember
       ? db
           .select({ teamId: teamMember.teamId })
@@ -558,7 +539,10 @@ export async function getAccessiblePageIds(
           .where(eq(teamMember.userId, userId))
       : Promise.resolve([]),
   ]);
-  const { targetTypes, targetIds } = principalGrantTargets(userId, teamRows.map((row) => row.teamId));
+  const { targetTypes, targetIds } = principalGrantTargets(
+    userId,
+    teamRows.map((row) => row.teamId),
+  );
 
   const rules =
     targetIds.length > 0
@@ -576,11 +560,7 @@ export async function getAccessiblePageIds(
   const accessible = new Set<string>();
   const sharedRoots = new Set(rules.map((rule) => rule.pageId));
   const teamspaceIds = [
-    ...new Set(
-      pages
-        .map((item) => item.teamspaceId)
-        .filter((id): id is string => Boolean(id)),
-    ),
+    ...new Set(pages.map((item) => item.teamspaceId).filter((id): id is string => Boolean(id))),
   ];
   const teamspaceAccess = new Map<string, AccessLevel>();
 
@@ -607,9 +587,7 @@ export async function getAccessiblePageIds(
       (isMember &&
         item.teamspaceId &&
         hasAccess(teamspaceAccess.get(item.teamspaceId) ?? "none", "view")) ||
-      (isMember &&
-        !item.teamspaceId &&
-        graph.hasOwnedRootAccess(ancestors, userId)) ||
+      (isMember && !item.teamspaceId && graph.hasOwnedRootAccess(ancestors, userId)) ||
       ancestors.some((id) => sharedRoots.has(id))
     ) {
       accessible.add(item.id);
@@ -647,12 +625,7 @@ async function resolveTeamspaceAccess(
       memberAccessLevel: teamspace.memberAccessLevel,
     })
     .from(teamspace)
-    .where(
-      and(
-        eq(teamspace.id, teamspaceId),
-        eq(teamspace.workspaceId, workspaceId),
-      ),
-    )
+    .where(and(eq(teamspace.id, teamspaceId), eq(teamspace.workspaceId, workspaceId)))
     .limit(1);
   if (!record || record.archivedAt) return "none";
 
@@ -701,11 +674,7 @@ export async function getEffectivePageAccessForUsers(
       uniqueUserIds.map(async (targetUserId) => {
         accessByUserId.set(
           targetUserId,
-          await getEffectivePageAccessInWorkspace(
-            pageId,
-            workspaceId,
-            targetUserId,
-          ),
+          await getEffectivePageAccessInWorkspace(pageId, workspaceId, targetUserId),
         );
       }),
     );
@@ -720,10 +689,7 @@ export async function getEffectivePageAccessForUsers(
   const teamIdsByUserId = new Map<string, string[]>();
 
   for (const row of teamRows) {
-    teamIdsByUserId.set(row.userId, [
-      ...(teamIdsByUserId.get(row.userId) ?? []),
-      row.teamId,
-    ]);
+    teamIdsByUserId.set(row.userId, [...(teamIdsByUserId.get(row.userId) ?? []), row.teamId]);
   }
 
   const teamIds = [...new Set(teamRows.map((row) => row.teamId))];

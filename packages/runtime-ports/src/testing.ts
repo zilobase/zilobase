@@ -22,9 +22,15 @@ export class FakeRoomState implements RoomState {
   private alarm: number | null = null;
   private readonly values = new Map<string, unknown>();
 
-  async get<T>(key: string) { return this.values.get(key) as T | undefined; }
-  async put<T>(key: string, value: T) { this.values.set(key, value); }
-  async delete(key: string) { return this.values.delete(key); }
+  async get<T>(key: string) {
+    return this.values.get(key) as T | undefined;
+  }
+  async put<T>(key: string, value: T) {
+    this.values.set(key, value);
+  }
+  async delete(key: string) {
+    return this.values.delete(key);
+  }
   async list<T>(options: { prefix?: string } = {}) {
     return new Map(
       [...this.values.entries()]
@@ -32,23 +38,41 @@ export class FakeRoomState implements RoomState {
         .map(([key, value]) => [key, value as T]),
     );
   }
-  async getAlarm() { return this.alarm; }
-  async setAlarm(timestamp: number | null) { this.alarm = timestamp; }
+  async getAlarm() {
+    return this.alarm;
+  }
+  async setAlarm(timestamp: number | null) {
+    this.alarm = timestamp;
+  }
 }
 
 export class FakeRoomHost<Attachment = unknown> implements RoomHost<Attachment> {
-  private readonly closeListeners = new Set<Listener<[RoomPeer<Attachment>, { code: number; reason: string; wasClean: boolean }]>>();
+  private readonly closeListeners = new Set<
+    Listener<[RoomPeer<Attachment>, { code: number; reason: string; wasClean: boolean }]>
+  >();
   private readonly errorListeners = new Set<Listener<[RoomPeer<Attachment>, unknown]>>();
   private readonly messageListeners = new Set<Listener<[RoomPeer<Attachment>, RoomMessage]>>();
   private readonly roomPeers = new Set<RoomPeer<Attachment>>();
   readonly sent: Array<{ payload: RoomMessage; peerId: string }> = [];
   readonly closed: Array<{ code: number; peerId: string; reason: string }> = [];
 
-  onMessage(handler: Listener<[RoomPeer<Attachment>, RoomMessage]>) { return subscribe(this.messageListeners, handler); }
-  onClose(handler: Listener<[RoomPeer<Attachment>, { code: number; reason: string; wasClean: boolean }]>) { return subscribe(this.closeListeners, handler); }
-  onError(handler: Listener<[RoomPeer<Attachment>, unknown]>) { return subscribe(this.errorListeners, handler); }
-  peers() { return [...this.roomPeers]; }
-  send(peer: RoomPeer<Attachment>, payload: RoomMessage) { this.sent.push({ payload, peerId: peer.id }); }
+  onMessage(handler: Listener<[RoomPeer<Attachment>, RoomMessage]>) {
+    return subscribe(this.messageListeners, handler);
+  }
+  onClose(
+    handler: Listener<[RoomPeer<Attachment>, { code: number; reason: string; wasClean: boolean }]>,
+  ) {
+    return subscribe(this.closeListeners, handler);
+  }
+  onError(handler: Listener<[RoomPeer<Attachment>, unknown]>) {
+    return subscribe(this.errorListeners, handler);
+  }
+  peers() {
+    return [...this.roomPeers];
+  }
+  send(peer: RoomPeer<Attachment>, payload: RoomMessage) {
+    this.sent.push({ payload, peerId: peer.id });
+  }
   broadcast(payload: RoomMessage, options: { except?: RoomPeer<Attachment> } = {}) {
     for (const peer of this.roomPeers) if (peer !== options.except) this.send(peer, payload);
   }
@@ -62,7 +86,9 @@ export class FakeRoomHost<Attachment = unknown> implements RoomHost<Attachment> 
       id,
       request,
       getAttachment: () => attachment,
-      setAttachment: (value) => { attachment = value; },
+      setAttachment: (value) => {
+        attachment = value;
+      },
     };
     this.roomPeers.add(peer);
     return peer;
@@ -96,24 +122,35 @@ export class FakeScheduler implements Scheduler {
   readonly deferred: Promise<unknown>[] = [];
   after(_milliseconds: number, operation: () => void | Promise<void>): Unsubscribe {
     let cancelled = false;
-    queueMicrotask(() => { if (!cancelled) void operation(); });
-    return () => { cancelled = true; };
+    queueMicrotask(() => {
+      if (!cancelled) void operation();
+    });
+    return () => {
+      cancelled = true;
+    };
   }
-  async setAlarm(timestamp: number | null) { this.alarms.push(timestamp); }
-  waitUntil(promise: Promise<unknown>) { this.deferred.push(promise); }
+  async setAlarm(timestamp: number | null) {
+    this.alarms.push(timestamp);
+  }
+  waitUntil(promise: Promise<unknown>) {
+    this.deferred.push(promise);
+  }
 }
 
-export function createFakePorts<Database = unknown>(options: {
-  database?: Database;
-  env?: RuntimeEnv;
-} = {}): Ports<Database> & RoomPorts<unknown, Database> & {
-  dispatched: BackgroundTask[];
-  drained: BackgroundLane[];
-  fanout: FakeFanoutBus;
-  host: FakeRoomHost;
-  scheduler: FakeScheduler;
-  state: FakeRoomState;
-} {
+export function createFakePorts<Database = unknown>(
+  options: {
+    database?: Database;
+    env?: RuntimeEnv;
+  } = {},
+): Ports<Database> &
+  RoomPorts<unknown, Database> & {
+    dispatched: BackgroundTask[];
+    drained: BackgroundLane[];
+    fanout: FakeFanoutBus;
+    host: FakeRoomHost;
+    scheduler: FakeScheduler;
+    state: FakeRoomState;
+  } {
   const env = options.env ?? {};
   const database = options.database as Database;
   const dispatched: BackgroundTask[] = [];
@@ -126,7 +163,9 @@ export function createFakePorts<Database = unknown>(options: {
     run: async (_env, operation) => operation(database),
     runIndependent: async (_env, operation) => operation(database),
   };
-  const unavailable = (name: string) => async () => { throw new Error(`Fake ${name} is not configured`); };
+  const unavailable = (name: string) => async () => {
+    throw new Error(`Fake ${name} is not configured`);
+  };
   const blobs = {
     mode: "binding",
     checkReady: async () => undefined,
@@ -154,7 +193,7 @@ export function createFakePorts<Database = unknown>(options: {
     dispatched,
     drained,
     env: {
-      get: (key) => typeof env[key] === "string" ? env[key] as string : undefined,
+      get: (key) => (typeof env[key] === "string" ? (env[key] as string) : undefined),
       require(key) {
         const value = this.get(key);
         if (!value) throw new Error(`${key} is required`);
@@ -164,15 +203,24 @@ export function createFakePorts<Database = unknown>(options: {
     fanout,
     http: {
       serve: async () => undefined,
-      fetch: async (api, request, runtimeEnv, execution) => api.fetch(request, runtimeEnv, execution),
+      fetch: async (api, request, runtimeEnv, execution) =>
+        api.fetch(request, runtimeEnv, execution),
       close: async () => undefined,
     },
     host,
     jobs: {
-      dispatch: async (tasks) => { dispatched.push(...tasks); },
-      drain: async (lane) => { drained.push(lane); },
+      dispatch: async (tasks) => {
+        dispatched.push(...tasks);
+      },
+      drain: async (lane) => {
+        drained.push(lane);
+      },
     },
-    lifecycle: { migrate: async () => undefined, start: async () => undefined, close: async () => undefined },
+    lifecycle: {
+      migrate: async () => undefined,
+      start: async () => undefined,
+      close: async () => undefined,
+    },
     limits: { consume: async () => true },
     mailer: { send: async () => undefined },
     meetings,
@@ -205,7 +253,12 @@ export function createFakePorts<Database = unknown>(options: {
   };
 }
 
-function subscribe<T extends unknown[]>(listeners: Set<Listener<T>>, handler: Listener<T>): Unsubscribe {
+function subscribe<T extends unknown[]>(
+  listeners: Set<Listener<T>>,
+  handler: Listener<T>,
+): Unsubscribe {
   listeners.add(handler);
-  return () => { listeners.delete(handler); };
+  return () => {
+    listeners.delete(handler);
+  };
 }

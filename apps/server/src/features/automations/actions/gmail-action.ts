@@ -1,17 +1,36 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { type AutomationValueExpression, type DatabaseAutomationAction } from "@zilobase/features/automations";
+import {
+  type AutomationValueExpression,
+  type DatabaseAutomationAction,
+} from "@zilobase/features/automations";
 import { type RuntimeEnv } from "../../../shared/config/config";
 import { db } from "../../../infrastructure/database";
-import { databaseAutomationDelivery, gmailAccount, gmailWorkspaceConnection, member, user } from "../../../infrastructure/database/schema";
+import {
+  databaseAutomationDelivery,
+  gmailAccount,
+  gmailWorkspaceConnection,
+  member,
+  user,
+} from "../../../infrastructure/database/schema";
 import { invalidateDatabaseAutomationDependencies } from "../service";
-import { createGmailGateway, clearGmailAccessTokenCache, GmailApiError } from "../../mail/provider/gmail-gateway";
+import {
+  createGmailGateway,
+  clearGmailAccessTokenCache,
+  GmailApiError,
+} from "../../mail/provider/gmail-gateway";
 import { sendGmailComposition } from "../../mail/compose/mail-compose";
 import { parseMailComposeRequest } from "../../mail/compose/mail-mime";
 import { withMailUserConcurrency } from "../../mail/user-concurrency";
 import { AutomationActionError, RetryableAutomationActionError } from "../execution/action-error";
 import { type ExecutionContext } from "../execution/execution-context";
-import { resolveRichText, scalarString, userIds, resolveExpression, requireOwner } from "./action-values";
+import {
+  resolveRichText,
+  scalarString,
+  userIds,
+  resolveExpression,
+  requireOwner,
+} from "./action-values";
 import { measureBackgroundProvider } from "../../../infrastructure/background/telemetry";
 export async function executeGmailAction(
   context: ExecutionContext,
@@ -51,42 +70,66 @@ export async function executeGmailAction(
   ]);
   const recipients = deduplicateMailAddresses(to, cc, bcc);
   if (!recipients.to.length && !recipients.cc.length && !recipients.bcc.length) {
-    throw new AutomationActionError("Gmail action has no valid recipient", "AUTOMATION_GMAIL_NO_RECIPIENTS");
+    throw new AutomationActionError(
+      "Gmail action has no valid recipient",
+      "AUTOMATION_GMAIL_NO_RECIPIENTS",
+    );
   }
-  const subject = resolveRichText(context, action.subject, { label: "Gmail subject", maxLength: 998 });
-  const bodyText = resolveRichText(context, action.message, { label: "Gmail message", maxLength: 5_000_000 });
-  const senderName = action.displayName ? scalarString(resolveExpression(context, action.displayName))?.trim() : undefined;
-  const replyToValue = action.replyTo ? scalarString(resolveExpression(context, action.replyTo))?.trim() : undefined;
+  const subject = resolveRichText(context, action.subject, {
+    label: "Gmail subject",
+    maxLength: 998,
+  });
+  const bodyText = resolveRichText(context, action.message, {
+    label: "Gmail message",
+    maxLength: 5_000_000,
+  });
+  const senderName = action.displayName
+    ? scalarString(resolveExpression(context, action.displayName))?.trim()
+    : undefined;
+  const replyToValue = action.replyTo
+    ? scalarString(resolveExpression(context, action.replyTo))?.trim()
+    : undefined;
   const operationHash = createHash("sha256").update(`${context.run.id}:${action.id}`).digest("hex");
   const deliveryId = `gmail_${operationHash}`;
   const destinationHash = createHash("sha256")
-    .update([...recipients.to, ...recipients.cc, ...recipients.bcc].map(({ address }) => address).sort().join("\n"))
+    .update(
+      [...recipients.to, ...recipients.cc, ...recipients.bcc]
+        .map(({ address }) => address)
+        .sort()
+        .join("\n"),
+    )
     .digest("hex");
-  const compose = parseMailComposeRequest({
-    attachments: [],
-    bcc: recipients.bcc,
-    bodyText,
-    cc: recipients.cc,
-    clientOperationId: operationHash,
-    ...(replyToValue ? { replyTo: { address: replyToValue, name: null } } : {}),
-    ...(senderName ? { senderName } : {}),
-    subject,
-    to: recipients.to,
-  }, { requireRecipient: true });
+  const compose = parseMailComposeRequest(
+    {
+      attachments: [],
+      bcc: recipients.bcc,
+      bodyText,
+      cc: recipients.cc,
+      clientOperationId: operationHash,
+      ...(replyToValue ? { replyTo: { address: replyToValue, name: null } } : {}),
+      ...(senderName ? { senderName } : {}),
+      subject,
+      to: recipients.to,
+    },
+    { requireRecipient: true },
+  );
 
   const now = new Date();
-  await db.insert(databaseAutomationDelivery).values({
-    actionId: action.id,
-    attempts: 0,
-    createdAt: now,
-    deliveryId,
-    destinationHash,
-    id: crypto.randomUUID(),
-    kind: "gmail",
-    runId: context.run.id,
-    status: "pending",
-    updatedAt: now,
-  }).onConflictDoNothing();
+  await db
+    .insert(databaseAutomationDelivery)
+    .values({
+      actionId: action.id,
+      attempts: 0,
+      createdAt: now,
+      deliveryId,
+      destinationHash,
+      id: crypto.randomUUID(),
+      kind: "gmail",
+      runId: context.run.id,
+      status: "pending",
+      updatedAt: now,
+    })
+    .onConflictDoNothing();
   const [receipt] = await db
     .select()
     .from(databaseAutomationDelivery)
@@ -105,15 +148,24 @@ export async function executeGmailAction(
   const attempt = (receipt?.attempts ?? 0) + 1;
   await db
     .update(databaseAutomationDelivery)
-    .set({ attempts: sql`${databaseAutomationDelivery.attempts} + 1`, status: "sending", updatedAt: new Date() })
+    .set({
+      attempts: sql`${databaseAutomationDelivery.attempts} + 1`,
+      status: "sending",
+      updatedAt: new Date(),
+    })
     .where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
 
   try {
     const result = await measureBackgroundProvider(env, "automation.run", () =>
       withMailUserConcurrency(ownerUserId, async () => {
         const gateway = await createGmailGateway(env, owned.connection);
-        return sendGmailComposition({ compose, connection: owned.connection, gateway, userId: ownerUserId });
-      })
+        return sendGmailComposition({
+          compose,
+          connection: owned.connection,
+          gateway,
+          userId: ownerUserId,
+        });
+      }),
     );
     await db
       .update(databaseAutomationDelivery)
@@ -142,24 +194,29 @@ export async function executeGmailAction(
     }
     if (error instanceof GmailApiError && error.retryable && attempt < 3) {
       const delay = Math.min(
-        error.retryAfterMs ?? (error.code === "quota_exceeded" ? 60_000 : 1_000 * 2 ** (attempt - 1)),
+        error.retryAfterMs ??
+          (error.code === "quota_exceeded" ? 60_000 : 1_000 * 2 ** (attempt - 1)),
         15 * 60_000,
       );
       const nextAttemptAt = new Date(Date.now() + delay);
-      await db.update(databaseAutomationDelivery).set({
-        errorCode: code,
-        errorSummary: error.message.slice(0, 2_000),
-        nextAttemptAt,
-        status: "retrying",
-        updatedAt: new Date(),
-      }).where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
+      await db
+        .update(databaseAutomationDelivery)
+        .set({
+          errorCode: code,
+          errorSummary: error.message.slice(0, 2_000),
+          nextAttemptAt,
+          status: "retrying",
+          updatedAt: new Date(),
+        })
+        .where(eq(databaseAutomationDelivery.deliveryId, deliveryId));
       throw new RetryableAutomationActionError(error.message, code, nextAttemptAt);
     }
     await db
       .update(databaseAutomationDelivery)
       .set({
         errorCode: code,
-        errorSummary: error instanceof Error ? error.message.slice(0, 2_000) : "Gmail delivery failed",
+        errorSummary:
+          error instanceof Error ? error.message.slice(0, 2_000) : "Gmail delivery failed",
         status: "failed",
         updatedAt: new Date(),
       })
@@ -173,12 +230,13 @@ export async function executeGmailAction(
   }
 }
 
-
 async function resolveMailAddresses(
   context: ExecutionContext,
   expressions: AutomationValueExpression[],
 ) {
-  const values = expressions.flatMap((expression) => flattenAddressValues(resolveExpression(context, expression)));
+  const values = expressions.flatMap((expression) =>
+    flattenAddressValues(resolveExpression(context, expression)),
+  );
   const userIds = values.filter((value) => !looksLikeEmail(value));
   const users = userIds.length
     ? await db
@@ -196,22 +254,26 @@ async function resolveMailAddresses(
   return values.flatMap((value) => {
     if (looksLikeEmail(value)) return [{ address: value.trim().toLowerCase(), name: null }];
     const selected = usersById.get(value);
-    return selected?.email ? [{ address: selected.email.trim().toLowerCase(), name: selected.name || null }] : [];
+    return selected?.email
+      ? [{ address: selected.email.trim().toLowerCase(), name: selected.name || null }]
+      : [];
   });
 }
-
 
 function flattenAddressValues(value: unknown): string[] {
   if (Array.isArray(value)) return value.flatMap(flattenAddressValues);
   const scalar = scalarString(value);
-  return scalar ? scalar.split(",").map((item) => item.trim()).filter(Boolean) : [];
+  return scalar
+    ? scalar
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
 }
-
 
 function looksLikeEmail(value: string) {
   return value.includes("@") && !/[\r\n\0]/.test(value);
 }
-
 
 function deduplicateMailAddresses(
   to: Array<{ address: string; name: string | null }>,
@@ -219,11 +281,12 @@ function deduplicateMailAddresses(
   bcc: Array<{ address: string; name: string | null }>,
 ) {
   const seen = new Set<string>();
-  const unique = (addresses: Array<{ address: string; name: string | null }>) => addresses.filter(({ address }) => {
-    const key = address.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const unique = (addresses: Array<{ address: string; name: string | null }>) =>
+    addresses.filter(({ address }) => {
+      const key = address.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   return { to: unique(to), cc: unique(cc), bcc: unique(bcc) };
 }

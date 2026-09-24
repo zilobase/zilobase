@@ -4,8 +4,7 @@ import { createRequire } from "node:module";
 export function register({ assert, appPath, test }) {
   test("navigation item commands preserve page/database mutations, locks and duplicate ordering", async () => {
     const modules = {
-      "@tanstack/react-router":
-        "export const useNavigate = () => runtime.navigate;",
+      "@tanstack/react-router": "export const useNavigate = () => runtime.navigate;",
       sonner:
         'export const toast = { error: value => runtime.calls.push(["error",value]), success: value => runtime.calls.push(["success",value]) };',
       "@/features/pages/layout":
@@ -59,17 +58,13 @@ export function register({ assert, appPath, test }) {
                 ? { path: args.path, namespace: "navigation-test" }
                 : undefined,
             );
-            build.onLoad(
-              { filter: /.*/, namespace: "navigation-test" },
-              ({ path }) => ({
-                contents:
-                  path === "navigation-test-runtime"
-                    ? "export const runtime = {};"
-                    : 'import { runtime } from "navigation-test-runtime";' +
-                      modules[path],
-                loader: "ts",
-              }),
-            );
+            build.onLoad({ filter: /.*/, namespace: "navigation-test" }, ({ path }) => ({
+              contents:
+                path === "navigation-test-runtime"
+                  ? "export const runtime = {};"
+                  : 'import { runtime } from "navigation-test-runtime";' + modules[path],
+              loader: "ts",
+            }));
           },
         },
       ],

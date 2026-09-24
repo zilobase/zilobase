@@ -1,34 +1,34 @@
 export function extractDatabaseIds(content: unknown): string[] {
-  const ids = new Set<string>()
-  walkContent(content, ids)
-  return [...ids]
+  const ids = new Set<string>();
+  walkContent(content, ids);
+  return [...ids];
 }
 
 function walkContent(node: unknown, ids: Set<string>) {
   if (!node || typeof node !== "object") {
-    return
+    return;
   }
 
   if (Array.isArray(node)) {
     for (const item of node) {
-      walkContent(item, ids)
+      walkContent(item, ids);
     }
-    return
+    return;
   }
 
   const record = node as {
-    attrs?: { databaseId?: unknown }
-    content?: unknown
-    type?: unknown
-  }
+    attrs?: { databaseId?: unknown };
+    content?: unknown;
+    type?: unknown;
+  };
 
   if (
     record.type === "databaseBlock" &&
     typeof record.attrs?.databaseId === "string" &&
     record.attrs.databaseId.length > 0
   ) {
-    ids.add(record.attrs.databaseId)
+    ids.add(record.attrs.databaseId);
   }
 
-  walkContent(record.content, ids)
+  walkContent(record.content, ids);
 }

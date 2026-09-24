@@ -28,7 +28,6 @@ The explicit `settings-service.ts` interface is the server entry point. [Access]
 
 The [settings service tests](../../../apps/server/src/features/ai/settings/settings-service.test.ts) exercise canonical initialization, missing-agent invariants, private drafts, stale versions, duplicate instruction creation, AI review/discard, publication idempotency and rollback. Additional cases cover revoked resource grants, connector authenticator restrictions and invalid custom schedules. Draft review derivation and personal-scope validation remain private rules in draft operations. Browser draft flushing and its queue preserve flush-before-action ordering.
 
-
 ## Browser state and presentation
 
 The [draft hook](../../../apps/web/src/features/ai/settings/use-settings-draft.ts) owns the flush queue, storage, cross-tab invalidation and mutation ordering. [Recovery](../../../apps/web/src/features/ai/settings/model/draft-recovery.ts) merges local patches with the incoming snapshot and identifies version conflicts; parsing/storage failures stay in the hook's existing recovery handler. [Summary rules](../../../apps/web/src/features/ai/settings/model/draft-summary.ts) derive changed fields, tabs and dirty state, including pending AI review.

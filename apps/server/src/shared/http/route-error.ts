@@ -15,18 +15,10 @@ type HttpRouteError = Error & {
 export function isHttpRouteError(error: unknown): error is HttpRouteError {
   if (!(error instanceof Error) || !("status" in error)) return false;
   const status = (error as { status: unknown }).status;
-  return (
-    typeof status === "number" &&
-    Number.isInteger(status) &&
-    status >= 400 &&
-    status < 600
-  );
+  return typeof status === "number" && Number.isInteger(status) && status >= 400 && status < 600;
 }
 
-export function httpRouteErrorResponse(
-  c: Context<AppBindings>,
-  error: unknown,
-) {
+export function httpRouteErrorResponse(c: Context<AppBindings>, error: unknown) {
   if (error instanceof HTTPException) {
     return applyContextHeaders(c, error.getResponse());
   }
@@ -62,8 +54,7 @@ export function httpRouteErrorResponse(
 export function attachHttpRouteErrorHandler(app: Hono<AppBindings>) {
   app.onError(
     (error, c) =>
-      httpRouteErrorResponse(c, error) ??
-      c.json({ error: "Internal server error" }, 500),
+      httpRouteErrorResponse(c, error) ?? c.json({ error: "Internal server error" }, 500),
   );
   return app;
 }

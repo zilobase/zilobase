@@ -33,11 +33,10 @@ const CalendarPreferencesBase = Schema.Struct({
   timeZoneColumns: Schema.Array(TimeZoneColumn).pipe(
     Schema.check(Schema.isMinLength(1), Schema.isMaxLength(4)),
     Schema.check(
-      Schema.makeFilter(
-        (columns) =>
-          new Set(columns.map((column) => column.zone)).size === columns.length
-            ? undefined
-            : "Time zones must be unique",
+      Schema.makeFilter((columns) =>
+        new Set(columns.map((column) => column.zone)).size === columns.length
+          ? undefined
+          : "Time zones must be unique",
       ),
     ),
   ),
@@ -55,23 +54,22 @@ const CalendarPreferencesBase = Schema.Struct({
   calendarOrder: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
     Schema.check(Schema.isMaxLength(500)),
   ),
-  collapsedAccountIds: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
-    Schema.check(Schema.isMaxLength(500)),
-  ),
+  collapsedAccountIds: Schema.Array(
+    Schema.String.pipe(Schema.check(Schema.isMaxLength(1024))),
+  ).pipe(Schema.check(Schema.isMaxLength(500))),
   calendarColors: Schema.Record(
     Schema.String.pipe(Schema.check(Schema.isMaxLength(1024))),
     Schema.Literals(["red", "orange", "yellow", "green", "blue", "purple", "gray"]),
   ).pipe(
     Schema.check(
-      Schema.makeFilter(
-        (value) =>
-          Object.keys(value).length <= 500 ? undefined : "Too many calendar colors",
+      Schema.makeFilter((value) =>
+        Object.keys(value).length <= 500 ? undefined : "Too many calendar colors",
       ),
     ),
   ),
-  removedCalendarKeys: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
-    Schema.check(Schema.isMaxLength(500)),
-  ),
+  removedCalendarKeys: Schema.Array(
+    Schema.String.pipe(Schema.check(Schema.isMaxLength(1024))),
+  ).pipe(Schema.check(Schema.isMaxLength(500))),
   view: Schema.Literals(["day", "week", "month"]),
   hiddenCalendarKeys: Schema.Array(Schema.String.pipe(Schema.check(Schema.isMaxLength(1024)))).pipe(
     Schema.check(Schema.isMaxLength(500)),
@@ -92,7 +90,10 @@ export const calendarPreferencesSchema = {
   ...CalendarPreferencesBase,
   parse: (input: unknown): CalendarPreferences => {
     const raw = Schema.decodeUnknownSync(CalendarPreferencesBase)(input);
-    const columns: CalendarTimeZoneColumn[] = raw.timeZoneColumns.map((c) => ({ zone: c.zone, label: c.label }));
+    const columns: CalendarTimeZoneColumn[] = raw.timeZoneColumns.map((c) => ({
+      zone: c.zone,
+      label: c.label,
+    }));
     return {
       ...raw,
       timeZoneColumns: columns,
@@ -105,7 +106,9 @@ export const calendarPreferencesSchema = {
       calendarColors: { ...raw.calendarColors },
     };
   },
-  safeParse: (input: unknown): { success: true; data: CalendarPreferences } | { success: false; error: unknown } => {
+  safeParse: (
+    input: unknown,
+  ): { success: true; data: CalendarPreferences } | { success: false; error: unknown } => {
     try {
       return { success: true, data: calendarPreferencesSchema.parse(input) };
     } catch (error) {
@@ -114,12 +117,26 @@ export const calendarPreferencesSchema = {
   },
 };
 export const calendarPreferenceRoutes = new Hono<AppBindings>();
-calendarPreferenceRoutes.get("/preferences", async c => {
-  const [row] = await db.select().from(calendarPreference).where(and(eq(calendarPreference.userId, c.get("user")!.id), eq(calendarPreference.workspaceId, c.req.param("workspaceId")!)));
+calendarPreferenceRoutes.get("/preferences", async (c) => {
+  const [row] = await db
+    .select()
+    .from(calendarPreference)
+    .where(
+      and(
+        eq(calendarPreference.userId, c.get("user")!.id),
+        eq(calendarPreference.workspaceId, c.req.param("workspaceId")!),
+      ),
+    );
   return c.json(calendarPreferencesSchema.parse(row ? row.data : defaultCalendarPreferences()));
 });
-calendarPreferenceRoutes.put("/preferences", async c => {
+calendarPreferenceRoutes.put("/preferences", async (c) => {
   const data = calendarPreferencesSchema.parse(await c.req.json());
-  await db.insert(calendarPreference).values({ userId: c.get("user")!.id, workspaceId: c.req.param("workspaceId")!, data }).onConflictDoUpdate({ target: [calendarPreference.userId, calendarPreference.workspaceId], set: { data } });
+  await db
+    .insert(calendarPreference)
+    .values({ userId: c.get("user")!.id, workspaceId: c.req.param("workspaceId")!, data })
+    .onConflictDoUpdate({
+      target: [calendarPreference.userId, calendarPreference.workspaceId],
+      set: { data },
+    });
   return c.json(data);
 });

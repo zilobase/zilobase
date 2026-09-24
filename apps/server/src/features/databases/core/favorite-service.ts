@@ -9,11 +9,7 @@ export async function updateDatabaseFavoriteService(input: {
   favorite: boolean;
   userId: string;
 }) {
-  const existing = await requireDatabaseAccess(
-    input.databaseId,
-    input.userId,
-    "view",
-  );
+  const existing = await requireDatabaseAccess(input.databaseId, input.userId, "view");
 
   if (input.favorite) {
     await db
@@ -29,12 +25,7 @@ export async function updateDatabaseFavoriteService(input: {
   } else {
     await db
       .delete(favorite)
-      .where(
-        and(
-          eq(favorite.userId, input.userId),
-          eq(favorite.databaseId, existing.id),
-        ),
-      );
+      .where(and(eq(favorite.userId, input.userId), eq(favorite.databaseId, existing.id)));
   }
 
   return {

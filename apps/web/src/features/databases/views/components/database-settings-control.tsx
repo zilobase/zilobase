@@ -11,10 +11,7 @@ import {
   useDatabaseUiContext,
 } from "../state/database-view-context";
 import { DatabaseViewSettingsMenu } from "../view-settings/components";
-import {
-  getNameColumnWrapContent,
-  getPropertyWrapContent,
-} from "../model/database-view-config";
+import { getNameColumnWrapContent, getPropertyWrapContent } from "../model/database-view-config";
 
 export function DatabaseSettingsControl({
   open,
@@ -92,9 +89,7 @@ export function DatabaseSettingsControl({
   } = useDatabaseUiContext();
   const allContentWrapped =
     getNameColumnWrapContent(databaseConfig) &&
-    properties.every((property) =>
-      getPropertyWrapContent(property.property.config),
-    );
+    properties.every((property) => getPropertyWrapContent(property.property.config));
   const setAllContentWrapped = async (wrapContent: boolean) => {
     updateDatabaseLayoutSettings({ wrapAllContent: false });
     await updateNameColumnConfig?.({ wrapContent });
@@ -153,13 +148,9 @@ export function DatabaseSettingsControl({
       onSetViewDateProperty={setViewDateProperty}
       onSetViewGroupProperty={setViewGroupProperty}
       onSetViewType={setViewType}
-      onSetAllContentWrapped={(wrapContent) =>
-        void setAllContentWrapped(wrapContent)
-      }
+      onSetAllContentWrapped={(wrapContent) => void setAllContentWrapped(wrapContent)}
       onShowTitleChange={onShowTitleChange}
-      onShowPageIconChange={(showPageIcon) =>
-        updateNameColumnConfig?.({ showPageIcon })
-      }
+      onShowPageIconChange={(showPageIcon) => updateNameColumnConfig?.({ showPageIcon })}
       onTogglePropertyTitles={togglePropertyTitles}
       onTogglePropertyVisibility={togglePropertyVisibility}
       onUpdateDatabaseFilter={updateDatabaseFilter}
@@ -194,8 +185,7 @@ function useSettingsSource() {
     dataSources: configuredDataSources,
     hostViews,
   } = useDatabaseDataContext();
-  const { activeView, activeViewTabId, viewTabs, draftDatabaseTitle } =
-    useDatabaseUiContext();
+  const { activeView, activeViewTabId, viewTabs, draftDatabaseTitle } = useDatabaseUiContext();
   const activeViewTab = viewTabs.find((view) => view.id === activeViewTabId);
   const sourceHost = {
     hostDatabaseId,
@@ -205,22 +195,13 @@ function useSettingsSource() {
     databaseWorkspaceId,
     workspaceId,
   };
-  const hostDisplayTitle = getToolbarSourceTitle(
-    sourceHost,
-    activeViewTab,
-    draftDatabaseTitle,
-  );
+  const hostDisplayTitle = getToolbarSourceTitle(sourceHost, activeViewTab, draftDatabaseTitle);
   return {
     ...getToolbarActiveView(activeViewTab, activeView, hostDisplayTitle),
     databaseId: databaseId ?? undefined,
     dataSources:
       configuredDataSources ??
-      getToolbarFallbackSources(
-        hostDatabaseId,
-        activeViewTab,
-        hostDisplayTitle,
-        hostViews.length,
-      ),
+      getToolbarFallbackSources(hostDatabaseId, activeViewTab, hostDisplayTitle, hostViews.length),
     workspaceId: getToolbarSourceIdentity(sourceHost).workspaceId,
     hostDatabaseId: hostDatabaseId ?? undefined,
   };

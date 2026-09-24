@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import {
-  findTeamspaceIntegrityIssues,
-  type TeamspaceIntegritySnapshot,
-} from "./integrity";
+import { findTeamspaceIntegrityIssues, type TeamspaceIntegritySnapshot } from "./integrity";
 
 test("teamspace integrity checker reports unsafe domain drift", () => {
   const snapshot: TeamspaceIntegritySnapshot = {
@@ -47,7 +44,9 @@ test("teamspace integrity checker reports unsafe domain drift", () => {
   };
 
   assert.deepEqual(
-    findTeamspaceIntegrityIssues(snapshot).map((issue) => issue.code).sort(),
+    findTeamspaceIntegrityIssues(snapshot)
+      .map((issue) => issue.code)
+      .sort(),
     [
       "archived_default",
       "invalid_principal",

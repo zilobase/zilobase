@@ -12,7 +12,9 @@ vi.mock("@zilobase/server/node-adapter-api", () => ({
   advancePendingMailIndexes: vi.fn(),
   boundedErrorCode: () => "Error",
   createDbClientForUrl: mocks.client,
-  db: { select: () => ({ from: () => Object.assign(Promise.resolve([]), { where: async () => [] }) }) },
+  db: {
+    select: () => ({ from: () => Object.assign(Promise.resolve([]), { where: async () => [] }) }),
+  },
   drainAgentRuns: vi.fn(),
   drainDatabaseAutomationEventWindows: vi.fn(),
   drainDatabaseAutomationRuns: vi.fn(),
@@ -60,7 +62,9 @@ afterEach(() => {
 });
 
 it("survives a maintenance connection timeout at startup and retries", async () => {
-  mocks.maintenance.mockRejectedValueOnce(new Error("Connection terminated due to connection timeout"));
+  mocks.maintenance.mockRejectedValueOnce(
+    new Error("Connection terminated due to connection timeout"),
+  );
   const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv, ports);
   try {
     await expect(coordinator.start()).resolves.toBeUndefined();
@@ -73,7 +77,8 @@ it("survives a maintenance connection timeout at startup and retries", async () 
 });
 
 it("handles a periodic maintenance rejection without an unhandled promise and recovers", async () => {
-  mocks.maintenance.mockResolvedValueOnce(undefined)
+  mocks.maintenance
+    .mockResolvedValueOnce(undefined)
     .mockRejectedValueOnce(new Error("Connection terminated due to connection timeout"));
   const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv, ports);
   try {
@@ -91,15 +96,15 @@ it("identifies a failed database realtime drainer without logging payload values
   const coordinator = createNodeBackgroundCoordinator({} as RuntimeEnv, ports);
   try {
     await coordinator.start();
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(
-      '"event":"background.node_lane_operation"',
-    ));
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining(
-      '"operation":"database_realtime"',
-    ));
-    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining(
-      "cell value must stay private",
-    ));
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('"event":"background.node_lane_operation"'),
+    );
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('"operation":"database_realtime"'),
+    );
+    expect(console.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("cell value must stay private"),
+    );
   } finally {
     await coordinator.stop();
   }

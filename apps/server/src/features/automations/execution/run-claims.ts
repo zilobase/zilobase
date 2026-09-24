@@ -16,8 +16,7 @@ export function selectWorkspaceRunClaims(
     if (!available.has(workspaceId)) {
       available.set(
         workspaceId,
-        WORKSPACE_RUN_LIMIT -
-          (running.find((row) => row.workspaceId === workspaceId)?.count ?? 0),
+        WORKSPACE_RUN_LIMIT - (running.find((row) => row.workspaceId === workspaceId)?.count ?? 0),
       );
     }
   }
@@ -31,15 +30,9 @@ export function selectWorkspaceRunClaims(
   return selected;
 }
 
-export async function claimAutomationRuns(
-  workerId: string,
-  limit: number,
-  runId?: string,
-) {
+export async function claimAutomationRuns(workerId: string, limit: number, runId?: string) {
   return await db.transaction(async (tx) => {
-    const clock = await tx.execute(
-      sql<{ now: Date }>`select current_timestamp as now`,
-    );
+    const clock = await tx.execute(sql<{ now: Date }>`select current_timestamp as now`);
     const now = new Date(clock.rows[0]!.now as Date | string);
     const rows = await tx
       .select({
@@ -72,9 +65,7 @@ export async function claimAutomationRuns(
         deferred: false,
       };
     }
-    const workspaceIds = [
-      ...new Set(rows.map(({ workspaceId }) => workspaceId)),
-    ].sort();
+    const workspaceIds = [...new Set(rows.map(({ workspaceId }) => workspaceId))].sort();
     for (const workspaceId of workspaceIds) {
       await tx.execute(
         sql`select pg_advisory_xact_lock(hashtext(${`database-automation:${workspaceId}`}))`,
@@ -115,8 +106,7 @@ export async function claimAutomationRuns(
       .returning({ id: databaseAutomationRun.id });
     const claims = claimedRows.map((claim) => ({
       ...claim,
-      recoveredLease:
-        rows.find((row) => row.id === claim.id)?.status === "running",
+      recoveredLease: rows.find((row) => row.id === claim.id)?.status === "running",
     }));
     return { claims, deferred: false };
   });

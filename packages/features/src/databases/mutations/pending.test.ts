@@ -1,12 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  beginPending,
-  clearPendingStateForTests,
-  endPending,
-  getPendingState,
-} from "./pending";
+import { beginPending, clearPendingStateForTests, endPending, getPendingState } from "./pending";
 
 test("per-target pendingCount tracks independently", () => {
   clearPendingStateForTests();

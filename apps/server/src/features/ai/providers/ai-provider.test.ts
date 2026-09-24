@@ -16,9 +16,15 @@ vi.mock("../../../infrastructure/database", () => ({
   db: {
     select() {
       const builder = {
-        from() { return builder; },
-        where() { return builder; },
-        async limit() { return mocks.workspaceConfig; },
+        from() {
+          return builder;
+        },
+        where() {
+          return builder;
+        },
+        async limit() {
+          return mocks.workspaceConfig;
+        },
       };
       return builder;
     },
@@ -61,20 +67,14 @@ test("resolveOpenAiChatModel accepts provider-prefixed model identifiers", () =>
 });
 
 test("resolveWorkspaceAiModel delegates selected and default models", async () => {
-  const selected = await resolveWorkspaceAiModel(
-    "workspace-1",
-    "openai:gpt-4o",
-    { OPENAI_API_KEY: "key" },
-  );
+  const selected = await resolveWorkspaceAiModel("workspace-1", "openai:gpt-4o", {
+    OPENAI_API_KEY: "key",
+  });
   assert.equal(selected.catalog.id, "gpt-4o");
   assert.deepEqual(selected.model, { modelId: "gpt-4o" });
   assert.equal(selected.credentialSource, "managed");
 
-  const automatic = await resolveWorkspaceAiModel(
-    "workspace-1",
-    "auto",
-    { OPENAI_API_KEY: "key" },
-  );
+  const automatic = await resolveWorkspaceAiModel("workspace-1", "auto", { OPENAI_API_KEY: "key" });
   assert.equal(automatic.catalog.id, DEFAULT_OPENAI_CHAT_MODEL);
   assert.deepEqual(automatic.model, { modelId: DEFAULT_OPENAI_CHAT_MODEL });
   assert.deepEqual(automatic.providerOptions, {
@@ -83,17 +83,15 @@ test("resolveWorkspaceAiModel delegates selected and default models", async () =
 });
 
 test("automatic selection respects a workspace's explicitly enabled models", async () => {
-  mocks.workspaceConfig = [{
-    baseUrl: null,
-    enabled: true,
-    modelIds: ["gpt-4o"],
-  }];
+  mocks.workspaceConfig = [
+    {
+      baseUrl: null,
+      enabled: true,
+      modelIds: ["gpt-4o"],
+    },
+  ];
 
-  const model = await resolveWorkspaceAiModel(
-    "workspace-1",
-    "auto",
-    { OPENAI_API_KEY: "key" },
-  );
+  const model = await resolveWorkspaceAiModel("workspace-1", "auto", { OPENAI_API_KEY: "key" });
 
   assert.equal(model.catalog.id, "gpt-4o");
   assert.deepEqual(model.model, { modelId: "gpt-4o" });
@@ -116,13 +114,9 @@ test("automatic selection uses the fast tier for meeting summaries", async () =>
 
 test("resolveWorkspaceAiModel rejects models outside the server catalog", async () => {
   await assert.rejects(
-    () => resolveWorkspaceAiModel(
-      "workspace-1",
-      "openai:gpt-5-unlisted",
-      { OPENAI_API_KEY: "key" },
-    ),
-    (error: unknown) =>
-      error instanceof AiProviderConfigError && error.status === 400,
+    () =>
+      resolveWorkspaceAiModel("workspace-1", "openai:gpt-5-unlisted", { OPENAI_API_KEY: "key" }),
+    (error: unknown) => error instanceof AiProviderConfigError && error.status === 400,
   );
 });
 

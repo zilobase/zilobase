@@ -1,9 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
-import {
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-  type ReactNodeViewProps,
-} from "@tiptap/react";
+import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
 import { LinkIcon, Loader2, Plus } from "@/shared/components/icons";
 import {
   useCallback,
@@ -16,11 +12,7 @@ import {
 } from "react";
 
 import { Button } from "@/shared/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { getPageEmoji, type Page } from "@zilobase/features/pages";
 import { usePages } from "@zilobase/features/pages/react";
 import { useZilobaseFeatures } from "@zilobase/features";
@@ -30,9 +22,7 @@ import {
 } from "@zilobase/features/databases";
 import { colorWithAlpha, getPaletteColor } from "@/shared/lib/color-tokens";
 import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
-import {
-  setDatabasePageDragPayload,
-} from "@/features/databases";
+import { setDatabasePageDragPayload } from "@/features/databases";
 
 export type CreatedPage = {
   id: string;
@@ -59,25 +49,23 @@ function findCachedDatabaseRowPage(
   for (const [, data] of queryClient.getQueriesData({
     queryKey: [databaseQueryRoot],
   })) {
-    const windows =
-      databaseRecordWindowResponseSchema.safeParse(data).success
-        ? [data]
-        : data && typeof data === "object" && "pages" in data &&
-            Array.isArray((data as { pages?: unknown }).pages)
-          ? (data as { pages: unknown[] }).pages
-          : [];
+    const windows = databaseRecordWindowResponseSchema.safeParse(data).success
+      ? [data]
+      : data &&
+          typeof data === "object" &&
+          "pages" in data &&
+          Array.isArray((data as { pages?: unknown }).pages)
+        ? (data as { pages: unknown[] }).pages
+        : [];
     for (const window of windows) {
       const parsed = databaseRecordWindowResponseSchema.safeParse(window);
       if (!parsed.success) continue;
-      const recordIndex = parsed.data.records.findIndex(
-        (candidate) => candidate.pageId === pageId,
-      );
+      const recordIndex = parsed.data.records.findIndex((candidate) => candidate.pageId === pageId);
       if (recordIndex !== -1) {
         // Return the object owned by React Query rather than the copy created by
         // Zod. useSyncExternalStore requires an unchanged store to return the
         // same snapshot reference across reads.
-        return (window as typeof parsed.data).records[recordIndex]
-          .page as PageSummary;
+        return (window as typeof parsed.data).records[recordIndex].page as PageSummary;
       }
     }
   }
@@ -101,18 +89,10 @@ function useCachedDatabaseRowPage(pageId: string | null) {
     [pageId, queryClient],
   );
 
-  return useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    () => null,
-  );
+  return useSyncExternalStore(subscribe, getSnapshot, () => null);
 }
 
-function PageBlockView({
-  extension,
-  node,
-  updateAttributes,
-}: ReactNodeViewProps) {
+function PageBlockView({ extension, node, updateAttributes }: ReactNodeViewProps) {
   const [isCreating, setIsCreating] = useState(false);
   const pageId = node.attrs.pageId as string | null;
   const shouldOpenPicker = Boolean(node.attrs.openPicker);
@@ -130,9 +110,7 @@ function PageBlockView({
   const page = navPage ?? rowPage ?? undefined;
   const title = page?.name.trim() || "Untitled";
   const emoji = page ? getPageEmoji(page) : null;
-  const linkablePages = pages.filter(
-    (page) => page.id !== options.currentPageId,
-  );
+  const linkablePages = pages.filter((page) => page.id !== options.currentPageId);
   const optionCount = linkablePages.length + (options.onCreatePage ? 1 : 0);
   const cardStyle = {
     ...(backgroundColor
@@ -313,9 +291,7 @@ function PageBlockView({
             side="bottom"
             sideOffset={6}
           >
-            <div className="px-2 py-1 text-xs font-medium text-content-secondary">
-              Pages
-            </div>
+            <div className="px-2 py-1 text-xs font-medium text-content-secondary">Pages</div>
             <div className="grid gap-1">
               {linkablePages.length > 0 ? (
                 linkablePages.map((page, index) => {
@@ -335,16 +311,18 @@ function PageBlockView({
                       type="button"
                     >
                       <span className="flex size-5 shrink-0 items-center justify-center text-content-secondary [&_svg]:size-4">
-                        {pageEmoji ? <PageIconDisplay size="sm" value={pageEmoji} /> : <DefaultPageIcon />}
+                        {pageEmoji ? (
+                          <PageIconDisplay size="sm" value={pageEmoji} />
+                        ) : (
+                          <DefaultPageIcon />
+                        )}
                       </span>
                       <span className="min-w-0 truncate">{pageTitle}</span>
                     </button>
                   );
                 })
               ) : (
-                <div className="px-2 py-2 text-xs text-content-secondary">
-                  No other pages yet.
-                </div>
+                <div className="px-2 py-2 text-xs text-content-secondary">No other pages yet.</div>
               )}
             </div>
             {options.onCreatePage ? (
@@ -352,9 +330,7 @@ function PageBlockView({
                 <div className="my-1 h-px bg-stroke-default" />
                 <Button
                   className="mt-1 flex h-7 w-full justify-start gap-2 px-2 text-xs data-[selected=true]:bg-action-neutral-hover data-[selected=true]:text-action-on-neutral [&_svg]:size-4"
-                  data-selected={
-                    selectedIndex === linkablePages.length ? true : undefined
-                  }
+                  data-selected={selectedIndex === linkablePages.length ? true : undefined}
                   disabled={isCreating}
                   onClick={createPage}
                   onMouseEnter={() => setSelectedIndex(linkablePages.length)}
@@ -365,9 +341,7 @@ function PageBlockView({
                   variant="ghost"
                 >
                   {isCreating ? <Loader2 className="animate-spin" /> : <Plus />}
-                  <span>
-                    {isCreating ? "Creating page..." : "Create nested page"}
-                  </span>
+                  <span>{isCreating ? "Creating page..." : "Create nested page"}</span>
                 </Button>
               </>
             ) : null}
@@ -411,17 +385,13 @@ export const PageBlock = Node.create<PageBlockOptions>({
         default: null,
         parseHTML: (element) => element.getAttribute("data-text-color"),
         renderHTML: (attributes) =>
-          attributes.textColor
-            ? { "data-text-color": attributes.textColor }
-            : {},
+          attributes.textColor ? { "data-text-color": attributes.textColor } : {},
       },
       backgroundColor: {
         default: null,
         parseHTML: (element) => element.getAttribute("data-background-color"),
         renderHTML: (attributes) =>
-          attributes.backgroundColor
-            ? { "data-background-color": attributes.backgroundColor }
-            : {},
+          attributes.backgroundColor ? { "data-background-color": attributes.backgroundColor } : {},
       },
       openPicker: {
         default: false,
@@ -439,10 +409,7 @@ export const PageBlock = Node.create<PageBlockOptions>({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(HTMLAttributes, { "data-type": "pageBlock" }),
-    ];
+    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "pageBlock" })];
   },
 
   addNodeView() {

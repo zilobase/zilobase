@@ -3,47 +3,53 @@ export function register({ readSource, assert, loadModule, test }) {
     const [headerSource, viewportSource] = await Promise.all([
       readSource("/src/features/pages/pane/page-pane-header.tsx"),
       readSource("/src/features/pages/pane/page-side-pane.tsx"),
-    ])
+    ]);
 
-    assert.doesNotMatch(headerSource, /bordered|border-b/)
-    assert.doesNotMatch(viewportSource, /top-0[^\n]*bg-gradient-to-b|bg-gradient-to-b[^\n]*top-0/)
-  })
+    assert.doesNotMatch(headerSource, /bordered|border-b/);
+    assert.doesNotMatch(viewportSource, /top-0[^\n]*bg-gradient-to-b|bg-gradient-to-b[^\n]*top-0/);
+  });
 
   test("breadcrumb links and current pages align icons with labels", async () => {
     const [primitiveSource, headerSource] = await Promise.all([
       readSource("/src/shared/ui/breadcrumb.tsx"),
       readSource("/src/features/pages/pane/page-pane-header.tsx"),
-    ])
+    ]);
 
-    assert.match(primitiveSource, /inline-flex items-center transition-colors/)
-    assert.match(primitiveSource, /inline-flex items-center font-medium text-content-primary/)
-    assert.match(primitiveSource, /inline-flex items-center justify-center self-stretch leading-none/)
-    assert.match(headerSource, /self-center! data-\[orientation=vertical\]:h-4/)
-    assert.doesNotMatch(headerSource, /BreadcrumbPage className="line-clamp-1 gap-1\.5"/)
-    assert.match(headerSource, /BreadcrumbPage className="gap-1\.5"[\s\S]*span className="line-clamp-1"/)
-  })
+    assert.match(primitiveSource, /inline-flex items-center transition-colors/);
+    assert.match(primitiveSource, /inline-flex items-center font-medium text-content-primary/);
+    assert.match(
+      primitiveSource,
+      /inline-flex items-center justify-center self-stretch leading-none/,
+    );
+    assert.match(headerSource, /self-center! data-\[orientation=vertical\]:h-4/);
+    assert.doesNotMatch(headerSource, /BreadcrumbPage className="line-clamp-1 gap-1\.5"/);
+    assert.match(
+      headerSource,
+      /BreadcrumbPage className="gap-1\.5"[\s\S]*span className="line-clamp-1"/,
+    );
+  });
 
   test("Library breadcrumbs reflect the active view label and icon", async () => {
-    const source = await readSource("/src/features/pages/pane/page-pane-header.tsx")
+    const source = await readSource("/src/features/pages/pane/page-pane-header.tsx");
 
-    assert.match(source, /libraryViewIds\.includes\(requestedView/)
-    assert.match(source, /libraryViewIcons\[libraryView\]/)
-    assert.match(source, /libraryViewLabels\[libraryView\]/)
-  })
+    assert.match(source, /libraryViewIds\.includes\(requestedView/);
+    assert.match(source, /libraryViewIcons\[libraryView\]/);
+    assert.match(source, /libraryViewLabels\[libraryView\]/);
+  });
 
   test("breadcrumbs follow page, database, and database-row ancestry", async () => {
     const { buildCanonicalBreadcrumbTrail } = await loadModule(
       "/src/features/pages/navigation/breadcrumb-navigation.ts",
-    )
+    );
     const pages = [
       page("meeting", "Meeting", { isShared: false }),
       page("release", "Publish release notes"),
-    ]
-    const databases = [database("tasks", "Tasks Tracker", "meeting")]
+    ];
+    const databases = [database("tasks", "Tasks Tracker", "meeting")];
     const placements = [
       placement("database", "tasks", "page", "meeting", "primary"),
       placement("page", "release", "database", "tasks", "database_row"),
-    ]
+    ];
 
     assert.deepEqual(
       buildCanonicalBreadcrumbTrail(
@@ -53,19 +59,19 @@ export function register({ readSource, assert, loadModule, test }) {
         placements,
       ).map((item) => `${item.kind}:${item.id}`),
       ["page:meeting", "database:tasks", "page:release"],
-    )
-  })
+    );
+  });
 
   test("linked databases resolve breadcrumbs from their original placement", async () => {
     const { buildCanonicalBreadcrumbTrail } = await loadModule(
       "/src/features/pages/navigation/breadcrumb-navigation.ts",
-    )
-    const pages = [page("original", "Original"), page("link-host", "Link host")]
-    const databases = [database("tasks", "Tasks", "original")]
+    );
+    const pages = [page("original", "Original"), page("link-host", "Link host")];
+    const databases = [database("tasks", "Tasks", "original")];
     const placements = [
       placement("database", "tasks", "page", "link-host", "linked"),
       placement("database", "tasks", "page", "original", "primary"),
-    ]
+    ];
 
     assert.deepEqual(
       buildCanonicalBreadcrumbTrail(
@@ -75,32 +81,60 @@ export function register({ readSource, assert, loadModule, test }) {
         placements,
       ).map((item) => `${item.kind}:${item.id}`),
       ["page:original", "database:tasks"],
-    )
-  })
+    );
+  });
 
   test("breadcrumb roots distinguish private, shared, and named teamspaces", async () => {
     const { getBreadcrumbNavigationSection } = await loadModule(
       "/src/features/pages/navigation/breadcrumb-navigation.ts",
-    )
-    const trail = (value) => [{ id: value.id, kind: "page", page: value }]
+    );
+    const trail = (value) => [{ id: value.id, kind: "page", page: value }];
 
-    assert.equal(getBreadcrumbNavigationSection(trail(page("private", "Private")), new Map()).kind, "private")
-    assert.equal(getBreadcrumbNavigationSection(trail(page("shared", "Shared", { isShared: true })), new Map()).kind, "shared")
+    assert.equal(
+      getBreadcrumbNavigationSection(trail(page("private", "Private")), new Map()).kind,
+      "private",
+    );
+    assert.equal(
+      getBreadcrumbNavigationSection(trail(page("shared", "Shared", { isShared: true })), new Map())
+        .kind,
+      "shared",
+    );
     assert.deepEqual(
-      getBreadcrumbNavigationSection(trail(page("team", "Team", { teamspaceId: "product" })), new Map([["product", "Product"]])),
+      getBreadcrumbNavigationSection(
+        trail(page("team", "Team", { teamspaceId: "product" })),
+        new Map([["product", "Product"]]),
+      ),
       { kind: "teamspace", label: "Product", teamspaceId: "product" },
-    )
-  })
+    );
+  });
 }
 
 function page(id, name, extra = {}) {
-  return { createdAt: "", id, name, type: "page", updatedAt: "", url: `/p/${id}`, workspaceId: "workspace", ...extra }
+  return {
+    createdAt: "",
+    id,
+    name,
+    type: "page",
+    updatedAt: "",
+    url: `/p/${id}`,
+    workspaceId: "workspace",
+    ...extra,
+  };
 }
 
 function database(id, name, pageId = null) {
-  return { createdAt: "", id, name, pageId, updatedAt: "", views: [], workspaceId: "workspace" }
+  return { createdAt: "", id, name, pageId, updatedAt: "", views: [], workspaceId: "workspace" };
 }
 
 function placement(itemKind, itemId, parentKind, parentId, placementKind) {
-  return { id: `${parentId}:${itemId}:${placementKind}`, itemId, itemKind, parentId, parentKind, placementKind, position: 0, workspaceId: "workspace" }
+  return {
+    id: `${parentId}:${itemId}:${placementKind}`,
+    itemId,
+    itemKind,
+    parentId,
+    parentKind,
+    placementKind,
+    position: 0,
+    workspaceId: "workspace",
+  };
 }

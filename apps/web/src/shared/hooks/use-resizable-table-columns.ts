@@ -15,18 +15,11 @@ export function useResizableTableColumns({
   const getColumnWidth = (columnKey: string) =>
     columnWidths[columnKey] ?? getDefaultWidth(columnKey);
   const tableMinWidth = useMemo(
-    () =>
-      columnKeys.reduce(
-        (width, columnKey) => width + getColumnWidth(columnKey),
-        0,
-      ),
+    () => columnKeys.reduce((width, columnKey) => width + getColumnWidth(columnKey), 0),
     [columnKeys, columnWidths],
   );
 
-  const startColumnResize = (
-    columnKey: string,
-    event: PointerEvent<HTMLElement>,
-  ) => {
+  const startColumnResize = (columnKey: string, event: PointerEvent<HTMLElement>) => {
     event.preventDefault();
     event.stopPropagation();
 
@@ -39,22 +32,18 @@ export function useResizableTableColumns({
       animationFrame = null;
       const wrapper = tableWrapRef.current;
 
-      wrapper
-        ?.querySelectorAll<HTMLTableColElement>("col[data-column-id]")
-        .forEach((column) => {
-          if (column.dataset.columnId === columnKey) {
-            column.style.width = `${nextWidth}px`;
-          }
-        });
+      wrapper?.querySelectorAll<HTMLTableColElement>("col[data-column-id]").forEach((column) => {
+        if (column.dataset.columnId === columnKey) {
+          column.style.width = `${nextWidth}px`;
+        }
+      });
 
-      wrapper
-        ?.querySelectorAll<HTMLElement>(".database-table")
-        .forEach((table) => {
-          table.style.setProperty(
-            "--database-table-min-width",
-            `${tableMinWidth + nextWidth - startWidth}px`,
-          );
-        });
+      wrapper?.querySelectorAll<HTMLElement>(".database-table").forEach((table) => {
+        table.style.setProperty(
+          "--database-table-min-width",
+          `${tableMinWidth + nextWidth - startWidth}px`,
+        );
+      });
     };
 
     const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {

@@ -69,9 +69,7 @@ type SubmenuNavigationState = {
 const useDropDrawerContext = () => {
   const context = React.useContext(DropDrawerContext);
   if (!context) {
-    throw new Error(
-      "DropDrawer components cannot be rendered outside the DropDrawer Context",
-    );
+    throw new Error("DropDrawer components cannot be rendered outside the DropDrawer Context");
   }
   return context;
 };
@@ -81,10 +79,7 @@ function DropDrawer({
   defaultSubDisplayMode = "nested",
   inline = false,
   ...props
-}: (
-  | React.ComponentProps<typeof Drawer>
-  | React.ComponentProps<typeof DropdownMenu>
-) & {
+}: (React.ComponentProps<typeof Drawer> | React.ComponentProps<typeof DropdownMenu>) & {
   defaultSubDisplayMode?: "inline" | "nested";
   inline?: boolean;
 }) {
@@ -122,9 +117,7 @@ function DropDrawerTrigger({
   className,
   children,
   ...props
-}:
-  | React.ComponentProps<typeof DrawerTrigger>
-  | React.ComponentProps<typeof DropdownMenuTrigger>) {
+}: React.ComponentProps<typeof DrawerTrigger> | React.ComponentProps<typeof DropdownMenuTrigger>) {
   const { inline, isMobile } = useDropDrawerContext();
 
   if (inline) {
@@ -134,11 +127,7 @@ function DropDrawerTrigger({
   const TriggerComponent = isMobile ? DrawerTrigger : DropdownMenuTrigger;
 
   return (
-    <TriggerComponent
-      data-slot="drop-drawer-trigger"
-      className={className}
-      {...props}
-    >
+    <TriggerComponent data-slot="drop-drawer-trigger" className={className} {...props}>
       {children}
     </TriggerComponent>
   );
@@ -148,9 +137,7 @@ function MobileDropDrawerContent({
   className,
   children,
   ...props
-}:
-  | React.ComponentProps<typeof DrawerContent>
-  | React.ComponentProps<typeof DropdownMenuContent>) {
+}: React.ComponentProps<typeof DrawerContent> | React.ComponentProps<typeof DropdownMenuContent>) {
   const {
     align: _align,
     side: _side,
@@ -161,25 +148,19 @@ function MobileDropDrawerContent({
     ...drawerContentProps
   } = props as React.ComponentProps<typeof DropdownMenuContent> &
     React.ComponentProps<typeof DrawerContent>;
-  const [submenuNavigation, setSubmenuNavigation] =
-    React.useState<SubmenuNavigationState>({
-      direction: "forward",
-      stack: [],
-    });
+  const [submenuNavigation, setSubmenuNavigation] = React.useState<SubmenuNavigationState>({
+    direction: "forward",
+    stack: [],
+  });
   const activeSubmenuEntry = submenuNavigation.stack.at(-1);
   const activeSubmenu = activeSubmenuEntry?.id ?? null;
   const submenuTitle = activeSubmenuEntry?.title ?? null;
   const animationDirection = submenuNavigation.direction;
 
   // Create a ref to store submenu content by ID
-  const submenuContentRef = React.useRef<Map<string, React.ReactNode>>(
-    new Map(),
-  );
+  const submenuContentRef = React.useRef<Map<string, React.ReactNode>>(new Map());
   const activeSubmenuRef = React.useRef(activeSubmenu);
-  const [, rerenderActiveSubmenu] = React.useReducer(
-    (version) => version + 1,
-    0,
-  );
+  const [, rerenderActiveSubmenu] = React.useReducer((version) => version + 1, 0);
   activeSubmenuRef.current = activeSubmenu;
 
   // Function to navigate to a submenu
@@ -206,16 +187,13 @@ function MobileDropDrawerContent({
   }, []);
 
   // Function to register submenu content
-  const registerSubmenuContent = React.useCallback(
-    (id: string, content: React.ReactNode) => {
-      const currentContent = submenuContentRef.current.get(id);
-      if (currentContent === content) return;
+  const registerSubmenuContent = React.useCallback((id: string, content: React.ReactNode) => {
+    const currentContent = submenuContentRef.current.get(id);
+    if (currentContent === content) return;
 
-      submenuContentRef.current.set(id, content);
-      if (activeSubmenuRef.current === id) rerenderActiveSubmenu();
-    },
-    [],
-  );
+    submenuContentRef.current.set(id, content);
+    if (activeSubmenuRef.current === id) rerenderActiveSubmenu();
+  }, []);
   const submenuContextValue = React.useMemo(
     () => ({ navigateToSubmenu, registerSubmenuContent }),
     [navigateToSubmenu, registerSubmenuContent],
@@ -225,10 +203,7 @@ function MobileDropDrawerContent({
     <SubmenuContext.Provider value={submenuContextValue}>
       <DrawerContent
         data-slot="drop-drawer-content"
-        className={cn(
-          "max-h-[85vh] bg-surface-overlay px-1 pb-2 text-content-primary",
-          className,
-        )}
+        className={cn("max-h-[85vh] bg-surface-overlay px-1 pb-2 text-content-primary", className)}
         {...drawerContentProps}
       >
         {activeSubmenu ? (
@@ -262,11 +237,7 @@ function MobileDropDrawerContent({
             </DrawerHeader>
             <div className="relative max-h-[70vh] flex-1 overflow-y-auto">
               {/* Use AnimatePresence to handle exit animations */}
-              <AnimatePresence
-                initial={false}
-                mode="wait"
-                custom={animationDirection}
-              >
+              <AnimatePresence initial={false} mode="wait" custom={animationDirection}>
                 <motion.div
                   key={activeSubmenu || "main"}
                   custom={animationDirection}
@@ -278,8 +249,7 @@ function MobileDropDrawerContent({
                   className="h-full w-full space-y-0.5 px-1 pb-2"
                 >
                   <SubmenuPanelContext.Provider value>
-                    {activeSubmenuEntry?.content ??
-                      submenuContentRef.current.get(activeSubmenu)}
+                    {activeSubmenuEntry?.content ?? submenuContentRef.current.get(activeSubmenu)}
                   </SubmenuPanelContext.Provider>
                 </motion.div>
               </AnimatePresence>
@@ -291,11 +261,7 @@ function MobileDropDrawerContent({
               <DrawerTitle>Menu</DrawerTitle>
             </DrawerHeader>
             <div className="max-h-[70vh] overflow-y-auto">
-              <AnimatePresence
-                initial={false}
-                mode="wait"
-                custom={animationDirection}
-              >
+              <AnimatePresence initial={false} mode="wait" custom={animationDirection}>
                 <motion.div
                   key="main-menu"
                   custom={animationDirection}
@@ -317,23 +283,14 @@ function MobileDropDrawerContent({
   );
 }
 
-function InlineDropDrawerContent({
-  className,
-  children,
-}: React.ComponentProps<"div">) {
-  const [submenuNavigation, setSubmenuNavigation] =
-    React.useState<SubmenuNavigationState>({
-      direction: "forward",
-      stack: [],
-    });
+function InlineDropDrawerContent({ className, children }: React.ComponentProps<"div">) {
+  const [submenuNavigation, setSubmenuNavigation] = React.useState<SubmenuNavigationState>({
+    direction: "forward",
+    stack: [],
+  });
   const activeSubmenu = submenuNavigation.stack.at(-1)?.id ?? null;
-  const submenuContentRef = React.useRef<Map<string, React.ReactNode>>(
-    new Map(),
-  );
-  const [, rerenderActiveSubmenu] = React.useReducer(
-    (version) => version + 1,
-    0,
-  );
+  const submenuContentRef = React.useRef<Map<string, React.ReactNode>>(new Map());
+  const [, rerenderActiveSubmenu] = React.useReducer((version) => version + 1, 0);
 
   const navigateToSubmenu = React.useCallback(
     (id: string, title: string, content?: React.ReactNode) => {
@@ -353,15 +310,12 @@ function InlineDropDrawerContent({
       stack: currentNavigation.stack.slice(0, -1),
     }));
   }, []);
-  const registerSubmenuContent = React.useCallback(
-    (id: string, content: React.ReactNode) => {
-      if (submenuContentRef.current.get(id) === content) return;
+  const registerSubmenuContent = React.useCallback((id: string, content: React.ReactNode) => {
+    if (submenuContentRef.current.get(id) === content) return;
 
-      submenuContentRef.current.set(id, content);
-      rerenderActiveSubmenu();
-    },
-    [],
-  );
+    submenuContentRef.current.set(id, content);
+    rerenderActiveSubmenu();
+  }, []);
   const submenuContextValue = React.useMemo(
     () => ({ navigateToSubmenu, registerSubmenuContent }),
     [navigateToSubmenu, registerSubmenuContent],
@@ -374,9 +328,7 @@ function InlineDropDrawerContent({
         data-slot="drop-drawer-content"
       >
         <motion.div
-          animate={
-            activeSubmenu ? { opacity: 0, x: "-100%" } : { opacity: 1, x: 0 }
-          }
+          animate={activeSubmenu ? { opacity: 0, x: "-100%" } : { opacity: 1, x: 0 }}
           aria-hidden={activeSubmenu ? true : undefined}
           className={cn(
             "absolute inset-0 h-full overflow-y-auto p-1",
@@ -394,9 +346,7 @@ function InlineDropDrawerContent({
 
             return (
               <motion.div
-                animate={
-                  isActive ? { opacity: 1, x: 0 } : { opacity: 0, x: "-100%" }
-                }
+                animate={isActive ? { opacity: 1, x: 0 } : { opacity: 0, x: "-100%" }}
                 aria-hidden={isActive ? undefined : true}
                 className={cn(
                   "absolute inset-0 flex h-full min-h-0 flex-col",
@@ -419,9 +369,7 @@ function InlineDropDrawerContent({
                   >
                     <ChevronLeftIcon className="size-4" />
                   </Button>
-                  <div className="truncate text-sm font-medium">
-                    {entry.title || "Submenu"}
-                  </div>
+                  <div className="truncate text-sm font-medium">{entry.title || "Submenu"}</div>
                 </div>
                 <SubmenuPanelContext.Provider value>
                   <div className="min-h-0 flex-1 overflow-y-auto p-1">
@@ -441,17 +389,11 @@ function DropDrawerContent({
   className,
   children,
   ...props
-}:
-  | React.ComponentProps<typeof DrawerContent>
-  | React.ComponentProps<typeof DropdownMenuContent>) {
+}: React.ComponentProps<typeof DrawerContent> | React.ComponentProps<typeof DropdownMenuContent>) {
   const { inline, isMobile } = useDropDrawerContext();
 
   if (inline) {
-    return (
-      <InlineDropDrawerContent className={className}>
-        {children}
-      </InlineDropDrawerContent>
-    );
+    return <InlineDropDrawerContent className={className}>{children}</InlineDropDrawerContent>;
   }
 
   if (isMobile) {
@@ -469,10 +411,7 @@ function DropDrawerContent({
       collisionPadding={8}
       sideOffset={4}
       sticky="always"
-      className={cn(
-        menuViewportClassName,
-        className,
-      )}
+      className={cn(menuViewportClassName, className)}
       {...props}
     >
       {children}
@@ -518,9 +457,9 @@ function DropDrawerItem({
           menuItemVariants({ size: resolvedSize, variant }),
           "justify-between text-content-primary hover:bg-action-neutral-hover active:bg-action-neutral-pressed [&_svg]:size-4 [&_svg]:text-content-secondary",
           inset && "pl-8",
-          variant === "destructive" && "hover:bg-feedback-error-subtle hover:text-action-danger-text",
-          disabled &&
-            "pointer-events-none text-content-secondary opacity-60 hover:bg-transparent",
+          variant === "destructive" &&
+            "hover:bg-feedback-error-subtle hover:text-action-danger-text",
+          disabled && "pointer-events-none text-content-secondary opacity-60 hover:bg-transparent",
           className,
         )}
         onClick={handleClick}
@@ -581,11 +520,7 @@ function DropDrawerSeparator({
 
   // For desktop, use the standard dropdown separator
   return (
-    <DropdownMenuSeparator
-      data-slot="drop-drawer-separator"
-      className={className}
-      {...props}
-    />
+    <DropdownMenuSeparator data-slot="drop-drawer-separator" className={className} {...props} />
   );
 }
 
@@ -599,22 +534,14 @@ function DropDrawerShortcut({
     return null;
   }
 
-  return (
-    <DropdownMenuShortcut
-      data-slot="drop-drawer-shortcut"
-      className={className}
-      {...props}
-    />
-  );
+  return <DropdownMenuShortcut data-slot="drop-drawer-shortcut" className={className} {...props} />;
 }
 
 function DropDrawerLabel({
   className,
   children,
   ...props
-}:
-  | React.ComponentProps<typeof DropdownMenuLabel>
-  | React.ComponentProps<typeof DrawerTitle>) {
+}: React.ComponentProps<typeof DropdownMenuLabel> | React.ComponentProps<typeof DrawerTitle>) {
   const { inline, isMobile } = useDropDrawerContext();
 
   if (isMobile) {
@@ -622,10 +549,7 @@ function DropDrawerLabel({
       <DrawerHeader className="p-0">
         <DrawerTitle
           data-slot="drop-drawer-label"
-          className={cn(
-            "px-2 py-1.5 text-xs font-medium text-content-secondary",
-            className,
-          )}
+          className={cn("px-2 py-1.5 text-xs font-medium text-content-secondary", className)}
           {...props}
         >
           {children}
@@ -637,10 +561,7 @@ function DropDrawerLabel({
   if (inline) {
     return (
       <div
-        className={cn(
-          "px-2 py-1.5 text-xs font-medium text-content-secondary",
-          className,
-        )}
+        className={cn("px-2 py-1.5 text-xs font-medium text-content-secondary", className)}
         data-slot="drop-drawer-label"
         {...props}
       >
@@ -650,11 +571,7 @@ function DropDrawerLabel({
   }
 
   return (
-    <DropdownMenuLabel
-      data-slot="drop-drawer-label"
-      className={className}
-      {...props}
-    >
+    <DropdownMenuLabel data-slot="drop-drawer-label" className={className} {...props}>
       {children}
     </DropdownMenuLabel>
   );
@@ -669,11 +586,7 @@ function DropDrawerFooter({
 
   if (isMobile) {
     return (
-      <DrawerFooter
-        data-slot="drop-drawer-footer"
-        className={cn("p-2", className)}
-        {...props}
-      >
+      <DrawerFooter data-slot="drop-drawer-footer" className={cn("p-2", className)} {...props}>
         {children}
       </DrawerFooter>
     );
@@ -681,11 +594,7 @@ function DropDrawerFooter({
 
   if (inline) {
     return (
-      <div
-        className={cn("p-2", className)}
-        data-slot="drop-drawer-footer"
-        {...props}
-      >
+      <div className={cn("p-2", className)} data-slot="drop-drawer-footer" {...props}>
         {children}
       </div>
     );
@@ -693,11 +602,7 @@ function DropDrawerFooter({
 
   // No direct equivalent in DropdownMenu, so we'll just render a div
   return (
-    <div
-      data-slot="drop-drawer-footer"
-      className={cn("p-2", className)}
-      {...props}
-    >
+    <div data-slot="drop-drawer-footer" className={cn("p-2", className)} {...props}>
       {children}
     </div>
   );
@@ -720,8 +625,7 @@ function DropDrawerGroup({
 
     // Filter out any existing separators
     const filteredChildren = childArray.filter(
-      (child) =>
-        React.isValidElement(child) && child.type !== DropDrawerSeparator,
+      (child) => React.isValidElement(child) && child.type !== DropDrawerSeparator,
     );
 
     // Add separators between items
@@ -729,11 +633,7 @@ function DropDrawerGroup({
       if (index === filteredChildren.length - 1) return [child];
       return [
         child,
-        <div
-          key={`separator-${index}`}
-          className="bg-stroke-default h-px"
-          aria-hidden="true"
-        />,
+        <div key={`separator-${index}`} className="bg-stroke-default h-px" aria-hidden="true" />,
       ];
     });
   }, [children, isMobile]);
@@ -768,11 +668,7 @@ function DropDrawerGroup({
 
 // Context for managing submenu state on mobile
 interface SubmenuContextType {
-  navigateToSubmenu: (
-    id: string,
-    title: string,
-    content?: React.ReactNode,
-  ) => void;
+  navigateToSubmenu: (id: string, title: string, content?: React.ReactNode) => void;
   registerSubmenuContent: (id: string, content: React.ReactNode) => void;
 }
 
@@ -784,9 +680,7 @@ type SubmenuDefinition = {
   title: string;
 };
 
-const SubmenuDefinitionContext = React.createContext<SubmenuDefinition | null>(
-  null,
-);
+const SubmenuDefinitionContext = React.createContext<SubmenuDefinition | null>(null);
 
 // Submenu components
 function DropDrawerSub({
@@ -834,11 +728,7 @@ function DropDrawerSub({
   if (isMobile || inline) {
     return (
       <SubmenuDefinitionContext.Provider value={submenuDefinition}>
-        <div
-          data-slot="drop-drawer-sub"
-          data-submenu-id={submenuId}
-          id={submenuId}
-        >
+        <div data-slot="drop-drawer-sub" data-submenu-id={submenuId} id={submenuId}>
           {children}
         </div>
       </SubmenuDefinitionContext.Provider>
@@ -879,8 +769,7 @@ function DropDrawerSubTrigger({
     const { onClick, ...restProps } = props;
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
       onClick?.(e);
-      if (e.defaultPrevented || !submenuDefinition || !submenuNavigation)
-        return;
+      if (e.defaultPrevented || !submenuDefinition || !submenuNavigation) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -944,10 +833,7 @@ function DropDrawerSubContent({
     <DropdownMenuSubContent
       data-slot="drop-drawer-sub-content"
       sideOffset={sideOffset}
-      className={cn(
-        menuViewportClassName,
-        className,
-      )}
+      className={cn(menuViewportClassName, className)}
       {...props}
     >
       {children}
@@ -970,6 +856,10 @@ export {
   DropDrawerTrigger,
 };
 
-function keepDrawerItemOpen(inline: boolean, closeOnSelect: boolean | undefined, isInSubmenu: boolean) {
+function keepDrawerItemOpen(
+  inline: boolean,
+  closeOnSelect: boolean | undefined,
+  isInSubmenu: boolean,
+) {
   return inline || !(closeOnSelect ?? !isInSubmenu);
 }

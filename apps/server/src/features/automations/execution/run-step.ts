@@ -129,8 +129,7 @@ async function startStep(runId: string, actionId: string, actionIndex: number) {
     .from(databaseAutomationStepRun)
     .where(eq(databaseAutomationStepRun.idempotencyKey, idempotencyKey))
     .limit(1);
-  if (!existing)
-    throw new AutomationActionError("Action receipt was unavailable");
+  if (!existing) throw new AutomationActionError("Action receipt was unavailable");
   if (existing.status === "succeeded") return existing;
   const [claimed] = await db
     .update(databaseAutomationStepRun)

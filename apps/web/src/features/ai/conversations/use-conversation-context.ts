@@ -1,13 +1,7 @@
 import { canApplyConversationEdits } from "./model/conversation-draft";
 import { useMemo } from "react";
-import type {
-  ContextAttachment,
-  ContextSourceRef,
-} from "@zilobase/page-context";
-import {
-  usePageNavigation,
-  usePageAccessLevel,
-} from "@zilobase/features/pages/react";
+import type { ContextAttachment, ContextSourceRef } from "@zilobase/page-context";
+import { usePageNavigation, usePageAccessLevel } from "@zilobase/features/pages/react";
 import { useDatabaseMetadata } from "@/features/databases/access/use-database-metadata";
 import { buildPrimaryAttachment } from "./components/elements/context-attach-menu";
 import { usePageAiContext } from "../context/use-page-ai-context";
@@ -43,12 +37,9 @@ export function useConversationContext({
     enabled: isSidebar && Boolean(workspaceId),
   });
   const pages = navigation?.pages ?? [];
-  const { data: pageAccessLevel } = usePageAccessLevel(
-    isSidebar ? pageId : null,
-    {
-      refetchOnMount: false,
-    },
-  );
+  const { data: pageAccessLevel } = usePageAccessLevel(isSidebar ? pageId : null, {
+    refetchOnMount: false,
+  });
   const { data: databasePayload } = useDatabaseMetadata(databaseId);
   const primaryAttachment = useMemo(() => {
     if (!effectivePrimarySource) {
@@ -110,11 +101,7 @@ export function useConversationContext({
     return [...ids];
   }, [attachments, effectivePrimarySource]);
 
-  const canApplyPageEdits = canApplyConversationEdits(
-    isSidebar,
-    pageId,
-    pageAccessLevel,
-  );
+  const canApplyPageEdits = canApplyConversationEdits(isSidebar, pageId, pageAccessLevel);
 
   return {
     primarySource,

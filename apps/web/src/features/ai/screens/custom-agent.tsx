@@ -1,6 +1,9 @@
 import { agentMetadata } from "../settings/model/agent-metadata";
 import { sharingActionAvailability } from "../settings/model/draft-actions";
-import { readCustomAgentEvents, replayCustomAgentSettingsEvents } from "../conversations/adapters/custom-agent-events";
+import {
+  readCustomAgentEvents,
+  replayCustomAgentSettingsEvents,
+} from "../conversations/adapters/custom-agent-events";
 import { SettingsDraftActions } from "../settings/components/settings-draft-actions";
 import { useSession } from "@zilobase/features/auth/react";
 import { PageMetadata } from "@/features/databases";
@@ -23,9 +26,7 @@ import {
   useStartCustomAgentRun,
   useWorkspaceAiModels,
 } from "@zilobase/features/ai-chat/react";
-import {
-  PageSidePaneLayout,
-} from "@/features/pages/pane/page-side-pane";
+import { PageSidePaneLayout } from "@/features/pages/pane/page-side-pane";
 import { AgentSharePopover } from "../settings/components/agent-sharing";
 import { AgentSettingsPage } from "../settings/components/agent-settings-page";
 import { AgentChatLayout } from "../conversations/components/agent-chat-layout";
@@ -58,16 +59,11 @@ export default function CustomAgentPage() {
 
 function CustomAgentWorkspace({ agentId }: { agentId: string }) {
   const draft = useSettingsDraft(agentId);
-  const [shareAnchor, setShareAnchor] = React.useState<HTMLElement | null>(
-    null,
-  );
+  const [shareAnchor, setShareAnchor] = React.useState<HTMLElement | null>(null);
   React.useEffect(() => {
     const listener = (event: Event) => {
-      const detail = (
-        event as CustomEvent<{ agentId: string; anchor: HTMLElement }>
-      ).detail;
-      if (detail.agentId === agentId)
-        setShareAnchor((current) => (current ? null : detail.anchor));
+      const detail = (event as CustomEvent<{ agentId: string; anchor: HTMLElement }>).detail;
+      if (detail.agentId === agentId) setShareAnchor((current) => (current ? null : detail.anchor));
     };
     window.addEventListener("agent-share", listener);
     return () => window.removeEventListener("agent-share", listener);
@@ -91,9 +87,7 @@ function CustomAgentWorkspace({ agentId }: { agentId: string }) {
         next.delete("panel");
         next.delete("settingsTab");
       }
-      router.history.replace(
-        `${pathname}${next.size ? `?${next}` : ""}${hash}`,
-      );
+      router.history.replace(`${pathname}${next.size ? `?${next}` : ""}${hash}`);
     },
     [searchStr, pathname, hash, router],
   );
@@ -123,7 +117,9 @@ function CustomAgentWorkspace({ agentId }: { agentId: string }) {
         main={
           <main
             data-agent-chat-page
-            data-ai-review-name={draft.reviewOpen && draft.state?.review?.fields.includes("name") || undefined}
+            data-ai-review-name={
+              (draft.reviewOpen && draft.state?.review?.fields.includes("name")) || undefined
+            }
             className="flex h-full min-h-0 flex-col bg-surface-canvas"
           >
             <AgentChat
@@ -136,9 +132,7 @@ function CustomAgentWorkspace({ agentId }: { agentId: string }) {
                     titlePlaceholder="Untitled agent"
                     descriptionPlaceholder="Describe what this agent does…"
                     descriptionInitiallyHidden
-                    contentClassName={
-                      userSettings.pageFullWidth ? "" : "mx-auto max-w-[900px]"
-                    }
+                    contentClassName={userSettings.pageFullWidth ? "" : "mx-auto max-w-[900px]"}
                     cover={metadata.cover}
                     icon={metadata.icon}
                     iconPosition={metadata.iconPosition}
@@ -146,16 +140,10 @@ function CustomAgentWorkspace({ agentId }: { agentId: string }) {
                     description={metadata.description}
                     editable={canEdit}
                     onTitleChange={(name) => draft.patch({ name })}
-                    onDescriptionChange={(description) =>
-                      draft.patch({ description })
-                    }
+                    onDescriptionChange={(description) => draft.patch({ description })}
                     onIconChange={(icon) => draft.patch({ icon: icon || null })}
-                    onCoverChange={(cover) =>
-                      draft.patch({ cover: cover || null })
-                    }
-                    onIconPositionChange={(iconPosition) =>
-                      draft.patch({ iconPosition })
-                    }
+                    onCoverChange={(cover) => draft.patch({ cover: cover || null })}
+                    onIconPositionChange={(iconPosition) => draft.patch({ iconPosition })}
                     enableComments={false}
                     workspaceId={workspaceId}
                   />
@@ -248,7 +236,12 @@ function AgentChat({
     [conversation.data],
   );
   React.useEffect(() => {
-    replayCustomAgentSettingsEvents(conversation.data?.messages ?? [], mountedAt.current, seen.current, emitSettingsEvent);
+    replayCustomAgentSettingsEvents(
+      conversation.data?.messages ?? [],
+      mountedAt.current,
+      seen.current,
+      emitSettingsEvent,
+    );
   }, [conversation.data]);
   const send = async ({ text: value }: { text: string }) => {
     if (!value.trim() || sending) return;
@@ -258,9 +251,7 @@ function AgentChat({
       setSending(true);
       abort.current = new AbortController();
       const response = await desktopNetworkFetch(
-        toApiUrl(
-          `/api/ai/agents/${encodeURIComponent(agentId)}/conversation/messages/stream`,
-        ),
+        toApiUrl(`/api/ai/agents/${encodeURIComponent(agentId)}/conversation/messages/stream`),
         {
           method: "POST",
           credentials: "include",
@@ -276,8 +267,7 @@ function AgentChat({
           }),
         },
       );
-      if (!response.ok || !response.body)
-        throw new Error("Could not send message.");
+      if (!response.ok || !response.body) throw new Error("Could not send message.");
       await readCustomAgentEvents(response.body, emitSettingsEvent);
       await conversation.refetch();
     } catch (e) {
@@ -292,18 +282,12 @@ function AgentChat({
   };
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div
-        ref={root}
-        data-ai-scroll-shell
-        className="min-h-0 flex-1 overflow-y-auto"
-      >
+      <div ref={root} data-ai-scroll-shell className="min-h-0 flex-1 overflow-y-auto">
         {header}
         <AgentChatLayout>
           {messages.length === 0 && (
             <div className="my-auto py-12 text-center">
-              <h2 className="font-heading text-xl font-medium">
-                Build this agent through chat
-              </h2>
+              <h2 className="font-heading text-xl font-medium">Build this agent through chat</h2>
               <p className="mt-2 text-sm text-content-secondary">
                 Ask this agent to work or change its settings.
               </p>

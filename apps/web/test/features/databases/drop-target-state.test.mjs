@@ -1,9 +1,8 @@
 export function register({ assert, loadModule, test }) {
   test("table drag targets retain identity only when placement and parent are unchanged", async () => {
-    const { retainTableRowDropTarget, retainGroupRowDropTarget } =
-      await loadModule(
-        "/src/features/databases/views/table/model/database-table-model.ts",
-      );
+    const { retainTableRowDropTarget, retainGroupRowDropTarget } = await loadModule(
+      "/src/features/databases/views/table/model/database-table-model.ts",
+    );
     for (const [retain, current, changes] of [
       [
         retainTableRowDropTarget,

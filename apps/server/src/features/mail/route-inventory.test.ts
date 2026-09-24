@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it } from "vitest";
 
-import { mailProviderRoutes, mailRoutes } from "./routes"
+import { mailProviderRoutes, mailRoutes } from "./routes";
 
 const inventory = (routes: typeof mailRoutes) =>
-  routes.routes.map(({ method, path }) => `${method} ${path}`)
+  routes.routes.map(({ method, path }) => `${method} ${path}`);
 
 describe("mail route composition", () => {
   it("preserves workspace route order and middleware", () => {
@@ -56,14 +56,14 @@ describe("mail route composition", () => {
       "POST /drafts/:draftId/send",
       "POST /send",
       "POST /realtime-ticket",
-    ])
-  })
+    ]);
+  });
 
   it("preserves public provider callbacks and middleware", () => {
     expect(inventory(mailProviderRoutes)).toEqual([
       "ALL /*",
       "GET /oauth/google/callback",
       "POST /google/pubsub",
-    ])
-  })
-})
+    ]);
+  });
+});

@@ -116,7 +116,8 @@ const TASKS = [
     priority: "High",
     status: "In progress",
     title: "Finalize launch story",
-    markdown: "# Finalize launch story\n\nAlign the homepage narrative with the launch brief and confirm the proof points shown in the demo.",
+    markdown:
+      "# Finalize launch story\n\nAlign the homepage narrative with the launch brief and confirm the proof points shown in the demo.",
   },
   {
     dueDate: "2026-09-05",
@@ -125,7 +126,8 @@ const TASKS = [
     priority: "High",
     status: "Not started",
     title: "QA mobile demo handoff",
-    markdown: "# QA mobile demo handoff\n\nVerify the landing card opens the full-screen demo and that no iframe is loaded at the mobile breakpoint.",
+    markdown:
+      "# QA mobile demo handoff\n\nVerify the landing card opens the full-screen demo and that no iframe is loaded at the mobile breakpoint.",
   },
   {
     dueDate: "2026-09-07",
@@ -134,7 +136,8 @@ const TASKS = [
     priority: "Medium",
     status: "Not started",
     title: "Publish self-host guide",
-    markdown: "# Publish self-host guide\n\nReview installation steps, deployment prerequisites, and links from the landing-page secondary action.",
+    markdown:
+      "# Publish self-host guide\n\nReview installation steps, deployment prerequisites, and links from the landing-page secondary action.",
   },
   {
     dueDate: "2026-08-30",
@@ -143,7 +146,8 @@ const TASKS = [
     priority: "Medium",
     status: "Done",
     title: "Seed connected launch workspace",
-    markdown: "# Seed connected launch workspace\n\nCreate the welcome page, supporting notes, tracker views, task rows, and a pinned AI summary using fictional data only.",
+    markdown:
+      "# Seed connected launch workspace\n\nCreate the welcome page, supporting notes, tracker views, task rows, and a pinned AI summary using fictional data only.",
   },
 ] as const;
 
@@ -174,10 +178,7 @@ const PRIORITY_OPTIONS = [
 
 export function getHostedDemoSeedDefinition() {
   return {
-    citationUrls: [
-      `/p/${DEMO_IDS.pageLaunchBrief}`,
-      `/d/${DEMO_IDS.database}`,
-    ],
+    citationUrls: [`/p/${DEMO_IDS.pageLaunchBrief}`, `/d/${DEMO_IDS.database}`],
     email: "explorer@demo.zilobase.invalid",
     pageIds: PAGE_DEFINITIONS.map((record) => record.id),
     propertyTypes: ["status", "date", "person", "select"],
@@ -349,9 +350,12 @@ export async function seedHostedDemo(databaseClient: Database) {
         name: task.title,
       })),
     ];
-    await transaction
-      .delete(pageCollaborationDocument)
-      .where(inArray(pageCollaborationDocument.pageId, pages.map(({ id }) => id)));
+    await transaction.delete(pageCollaborationDocument).where(
+      inArray(
+        pageCollaborationDocument.pageId,
+        pages.map(({ id }) => id),
+      ),
+    );
 
     for (const definition of pages) {
       const content = markdownToPageContent(definition.markdown);
@@ -684,7 +688,9 @@ export async function seedHostedDemo(databaseClient: Database) {
     const aiMessages = [
       {
         id: DEMO_IDS.aiUserMessage,
-        parts: [{ text: "Summarize launch readiness and call out the next decision.", type: "text" }],
+        parts: [
+          { text: "Summarize launch readiness and call out the next decision.", type: "text" },
+        ],
         role: "user",
         sequence: 0,
       },
@@ -758,35 +764,53 @@ export async function seedHostedDemo(databaseClient: Database) {
 }
 
 export async function assertHostedDemoSeed(databaseClient: Database) {
-  const [demoUser, demoWorkspace, seededPages, seededViews, seededDocuments, credentials, keys, providers] =
-    await Promise.all([
-      databaseClient.select().from(user).where(eq(user.id, DEMO_IDS.user)).limit(1),
-      databaseClient.select().from(workspace).where(eq(workspace.id, DEMO_IDS.workspace)).limit(1),
-      databaseClient
-        .select({ content: page.content, id: page.id })
-        .from(page)
-        .where(inArray(page.id, [
+  const [
+    demoUser,
+    demoWorkspace,
+    seededPages,
+    seededViews,
+    seededDocuments,
+    credentials,
+    keys,
+    providers,
+  ] = await Promise.all([
+    databaseClient.select().from(user).where(eq(user.id, DEMO_IDS.user)).limit(1),
+    databaseClient.select().from(workspace).where(eq(workspace.id, DEMO_IDS.workspace)).limit(1),
+    databaseClient
+      .select({ content: page.content, id: page.id })
+      .from(page)
+      .where(
+        inArray(page.id, [
           ...PAGE_DEFINITIONS.map((record) => record.id),
           ...TASKS.map((record) => record.pageId),
-        ])),
-      databaseClient
-        .select({ id: databaseView.id })
-        .from(databaseView)
-        .where(inArray(databaseView.id, Object.values(VIEW_IDS))),
-      databaseClient
-        .select({ pageId: pageCollaborationDocument.pageId })
-        .from(pageCollaborationDocument)
-        .where(inArray(pageCollaborationDocument.pageId, [
+        ]),
+      ),
+    databaseClient
+      .select({ id: databaseView.id })
+      .from(databaseView)
+      .where(inArray(databaseView.id, Object.values(VIEW_IDS))),
+    databaseClient
+      .select({ pageId: pageCollaborationDocument.pageId })
+      .from(pageCollaborationDocument)
+      .where(
+        inArray(pageCollaborationDocument.pageId, [
           ...PAGE_DEFINITIONS.map((record) => record.id),
           ...TASKS.map((record) => record.pageId),
-        ])),
-      databaseClient.select({ id: account.id }).from(account).where(eq(account.userId, DEMO_IDS.user)),
-      databaseClient.select({ id: apikey.id }).from(apikey).where(eq(apikey.referenceId, DEMO_IDS.user)),
-      databaseClient
-        .select({ id: workspaceAiProviderConfig.id })
-        .from(workspaceAiProviderConfig)
-        .where(eq(workspaceAiProviderConfig.workspaceId, DEMO_IDS.workspace)),
-    ]);
+        ]),
+      ),
+    databaseClient
+      .select({ id: account.id })
+      .from(account)
+      .where(eq(account.userId, DEMO_IDS.user)),
+    databaseClient
+      .select({ id: apikey.id })
+      .from(apikey)
+      .where(eq(apikey.referenceId, DEMO_IDS.user)),
+    databaseClient
+      .select({ id: workspaceAiProviderConfig.id })
+      .from(workspaceAiProviderConfig)
+      .where(eq(workspaceAiProviderConfig.workspaceId, DEMO_IDS.workspace)),
+  ]);
 
   if (!demoUser[0] || !demoUser[0].email.endsWith(".invalid")) {
     throw new Error("Hosted demo seed must use a fictional .invalid identity.");
@@ -840,7 +864,7 @@ export async function assertHostedDemoSeed(databaseClient: Database) {
   if (
     taskProperties.length !== Object.keys(PROPERTY_IDS).length ||
     !["status", "date", "person", "select"].every((type) =>
-      taskProperties.some((property) => property.type === type)
+      taskProperties.some((property) => property.type === type),
     )
   ) {
     throw new Error("Hosted demo task schema is incomplete.");

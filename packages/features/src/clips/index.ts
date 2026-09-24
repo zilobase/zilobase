@@ -9,4 +9,4 @@ export {
   type ClipPropertyValue,
   type CreateClipRequest,
   type CreateClipResponse,
-} from "./contracts"
+} from "./contracts";

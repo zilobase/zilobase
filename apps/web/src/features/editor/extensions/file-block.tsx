@@ -1,66 +1,54 @@
-import { Node, mergeAttributes } from "@tiptap/core"
-import {
-  NodeViewWrapper,
-  ReactNodeViewRenderer,
-  type ReactNodeViewProps,
-} from "@tiptap/react"
-import { File as FileIcon, Link } from "@/shared/components/icons"
-import { useRef, useState } from "react"
+import { Node, mergeAttributes } from "@tiptap/core";
+import { NodeViewWrapper, ReactNodeViewRenderer, type ReactNodeViewProps } from "@tiptap/react";
+import { File as FileIcon, Link } from "@/shared/components/icons";
+import { useRef, useState } from "react";
 
-import { Button } from "@/shared/ui/button"
-import { Input } from "@/shared/ui/input"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
+import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 
 function FileBlockView({ node, updateAttributes }: ReactNodeViewProps) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [open, setOpen] = useState(false)
-  const [linkUrl, setLinkUrl] = useState(node.attrs.href ?? "")
-  const href = node.attrs.href as string | null
-  const title = (node.attrs.title as string | null) ?? "File"
-  const size = node.attrs.size as string | null
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [linkUrl, setLinkUrl] = useState(node.attrs.href ?? "");
+  const href = node.attrs.href as string | null;
+  const title = (node.attrs.title as string | null) ?? "File";
+  const size = node.attrs.size as string | null;
 
-  const setFileHref = (
-    nextHref: string,
-    nextTitle = nextHref,
-    nextSize: string | null = null
-  ) => {
+  const setFileHref = (nextHref: string, nextTitle = nextHref, nextSize: string | null = null) => {
     updateAttributes({
       href: nextHref,
       size: nextSize,
       title: nextTitle,
-    })
-    setLinkUrl(nextHref)
-    setOpen(false)
-  }
+    });
+    setLinkUrl(nextHref);
+    setOpen(false);
+  };
 
   const readFile = (file: File | undefined) => {
     if (!file) {
-      return
+      return;
     }
 
-    const reader = new FileReader()
+    const reader = new FileReader();
 
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setFileHref(reader.result, file.name, formatFileSize(file.size))
+        setFileHref(reader.result, file.name, formatFileSize(file.size));
       }
-    }
+    };
 
-    reader.readAsDataURL(file)
-  }
+    reader.readAsDataURL(file);
+  };
 
   const submitLink = () => {
-    const nextUrl = linkUrl.trim()
+    const nextUrl = linkUrl.trim();
 
     if (nextUrl) {
-      setFileHref(nextUrl)
+      setFileHref(nextUrl);
     }
-  }
+  };
 
   return (
     <NodeViewWrapper className="file-block" data-src={href ? "true" : "false"}>
@@ -80,10 +68,10 @@ function FileBlockView({ node, updateAttributes }: ReactNodeViewProps) {
           align="start"
           className="w-[min(24rem,calc(100vw-2rem))] gap-0 p-0"
           onMouseDown={(event) => {
-            event.stopPropagation()
+            event.stopPropagation();
           }}
           onPointerDown={(event) => {
-            event.stopPropagation()
+            event.stopPropagation();
           }}
           side="bottom"
           sideOffset={8}
@@ -116,8 +104,8 @@ function FileBlockView({ node, updateAttributes }: ReactNodeViewProps) {
                   onChange={(event) => setLinkUrl(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
-                      event.preventDefault()
-                      submitLink()
+                      event.preventDefault();
+                      submitLink();
                     }
                   }}
                   placeholder="Paste file URL..."
@@ -142,31 +130,25 @@ function FileBlockView({ node, updateAttributes }: ReactNodeViewProps) {
         >
           <FileIcon />
           <span className="min-w-0 flex-1">
-            <span className="block truncate font-medium">
-              {title}
-            </span>
-            {size ? (
-              <span className="block text-xs text-content-secondary">
-                {size}
-              </span>
-            ) : null}
+            <span className="block truncate font-medium">{title}</span>
+            {size ? <span className="block text-xs text-content-secondary">{size}</span> : null}
           </span>
         </a>
       ) : null}
     </NodeViewWrapper>
-  )
+  );
 }
 
 function formatFileSize(size: number) {
   if (size < 1024) {
-    return `${size} B`
+    return `${size} B`;
   }
 
   if (size < 1024 * 1024) {
-    return `${Math.round(size / 102.4) / 10} KB`
+    return `${Math.round(size / 102.4) / 10} KB`;
   }
 
-  return `${Math.round(size / 1024 / 102.4) / 10} MB`
+  return `${Math.round(size / 1024 / 102.4) / 10} MB`;
 }
 
 export const FileBlock = Node.create({
@@ -184,10 +166,8 @@ export const FileBlock = Node.create({
     return {
       href: {
         default: null,
-        parseHTML: (element) =>
-          element.getAttribute("data-href") ?? element.getAttribute("href"),
-        renderHTML: (attributes) =>
-          attributes.href ? { "data-href": attributes.href } : {},
+        parseHTML: (element) => element.getAttribute("data-href") ?? element.getAttribute("href"),
+        renderHTML: (attributes) => (attributes.href ? { "data-href": attributes.href } : {}),
       },
       size: {
         default: null,
@@ -195,10 +175,9 @@ export const FileBlock = Node.create({
       title: {
         default: null,
         parseHTML: (element) => element.getAttribute("data-title"),
-        renderHTML: (attributes) =>
-          attributes.title ? { "data-title": attributes.title } : {},
+        renderHTML: (attributes) => (attributes.title ? { "data-title": attributes.title } : {}),
       },
-    }
+    };
   },
 
   parseHTML() {
@@ -209,17 +188,14 @@ export const FileBlock = Node.create({
       {
         tag: 'a[data-type="fileBlock"]',
       },
-    ]
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      "div",
-      mergeAttributes(HTMLAttributes, { "data-type": "fileBlock" }),
-    ]
+    return ["div", mergeAttributes(HTMLAttributes, { "data-type": "fileBlock" })];
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(FileBlockView)
+    return ReactNodeViewRenderer(FileBlockView);
   },
-})
+});

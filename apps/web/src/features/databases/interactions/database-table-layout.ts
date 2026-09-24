@@ -1,32 +1,29 @@
-export function getDatabaseRowDropTargetIndex(
-  dropTops: number[],
-  pointerTop: number
-) {
+export function getDatabaseRowDropTargetIndex(dropTops: number[], pointerTop: number) {
   if (dropTops.length < 2) {
-    return 0
+    return 0;
   }
 
-  let low = 0
-  let high = dropTops.length - 1
+  let low = 0;
+  let high = dropTops.length - 1;
 
   while (low < high) {
-    const index = Math.floor((low + high) / 2)
-    const midpoint = (dropTops[index] + dropTops[index + 1]) / 2
+    const index = Math.floor((low + high) / 2);
+    const midpoint = (dropTops[index] + dropTops[index + 1]) / 2;
 
     if (pointerTop < midpoint) {
-      high = index
+      high = index;
     } else {
-      low = index + 1
+      low = index + 1;
     }
   }
 
-  return low
+  return low;
 }
 
 export type DatabaseRowDropTarget = {
-  index: number
-  lineTop: number
-}
+  index: number;
+  lineTop: number;
+};
 
 /**
  * Resolves both the insertion position and its visual line from the same row
@@ -35,15 +32,15 @@ export type DatabaseRowDropTarget = {
  */
 export function getDatabaseRowDropTarget(
   dropTops: number[],
-  pointerTop: number
+  pointerTop: number,
 ): DatabaseRowDropTarget | null {
   if (dropTops.length === 0) {
-    return null
+    return null;
   }
 
-  const index = getDatabaseRowDropTargetIndex(dropTops, pointerTop)
+  const index = getDatabaseRowDropTargetIndex(dropTops, pointerTop);
   return {
     index,
     lineTop: dropTops[index] ?? dropTops[dropTops.length - 1],
-  }
+  };
 }

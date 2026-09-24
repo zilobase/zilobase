@@ -5,9 +5,7 @@ import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 
 const pendingEmbeds = new PluginKey<DecorationSet>("pendingPageEmbeds");
 
-type PendingEmbedAction =
-  | { add: { id: object; pos: number; title: string } }
-  | { remove: object };
+type PendingEmbedAction = { add: { id: object; pos: number; title: string } } | { remove: object };
 
 export function createPendingPageEmbedPlugin() {
   return new Plugin<DecorationSet>({
@@ -19,23 +17,30 @@ export function createPendingPageEmbedPlugin() {
         const action = tr.getMeta(pendingEmbeds) as PendingEmbedAction | undefined;
         if (action && "add" in action) {
           const { id, pos, title } = action.add;
-          next = next.add(tr.doc, [Decoration.widget(pos, () => {
-            const card = document.createElement("div");
-            card.className = "page-block flex h-10 w-full items-center gap-2 rounded-md bg-surface-subtle px-3 text-sm text-content-primary";
-            card.textContent = title || "Untitled";
-            card.contentEditable = "false";
-            card.setAttribute("role", "status");
-            card.setAttribute("aria-label", `Adding ${title || "page"}`);
-            card.setAttribute("aria-busy", "true");
-            return card;
-          }, { id, side: -1 })]);
+          next = next.add(tr.doc, [
+            Decoration.widget(
+              pos,
+              () => {
+                const card = document.createElement("div");
+                card.className =
+                  "page-block flex h-10 w-full items-center gap-2 rounded-md bg-surface-subtle px-3 text-sm text-content-primary";
+                card.textContent = title || "Untitled";
+                card.contentEditable = "false";
+                card.setAttribute("role", "status");
+                card.setAttribute("aria-label", `Adding ${title || "page"}`);
+                card.setAttribute("aria-busy", "true");
+                return card;
+              },
+              { id, side: -1 },
+            ),
+          ]);
         } else if (action && "remove" in action) {
-          next = next.remove(next.find(undefined, undefined, spec => spec.id === action.remove));
+          next = next.remove(next.find(undefined, undefined, (spec) => spec.id === action.remove));
         }
         return next;
       },
     },
-    props: { decorations: state => pendingEmbeds.getState(state) },
+    props: { decorations: (state) => pendingEmbeds.getState(state) },
   });
 }
 
@@ -54,13 +59,18 @@ export function insertPendingPageEmbed(
   onError: (error: unknown) => void,
 ) {
   const id = {};
-  view.dispatch(view.state.tr.setMeta(pendingEmbeds, { add: { id, pos, title } })
-    .setMeta("addToHistory", false));
+  view.dispatch(
+    view.state.tr
+      .setMeta(pendingEmbeds, { add: { id, pos, title } })
+      .setMeta("addToHistory", false),
+  );
   view.focus();
 
   const finish = (error?: { cause: unknown }) => {
     if (view.isDestroyed) return;
-    const pending = pendingEmbeds.getState(view.state)?.find(undefined, undefined, spec => spec.id === id)[0];
+    const pending = pendingEmbeds
+      .getState(view.state)
+      ?.find(undefined, undefined, (spec) => spec.id === id)[0];
     const tr = view.state.tr.setMeta(pendingEmbeds, { remove: id });
     if (!error && pending && view.editable) {
       const node = view.state.schema.nodes.pageBlock.create({ pageId });
@@ -75,5 +85,10 @@ export function insertPendingPageEmbed(
   };
 
   // Also catch synchronous callbacks; never leave a stranded preview.
-  void Promise.resolve().then(embed).then(() => finish(), error => finish({ cause: error }));
+  void Promise.resolve()
+    .then(embed)
+    .then(
+      () => finish(),
+      (error) => finish({ cause: error }),
+    );
 }

@@ -61,9 +61,7 @@ export class FileExtractorRegistry {
     const extractor = this.extractors.get(kind);
     if (!extractor) throw new Error(`No file extractor is registered for ${kind}.`);
     const extracted = extractor.extract(bytes);
-    const normalized = extracted.text === null
-      ? null
-      : normalizeExtractedText(extracted.text);
+    const normalized = extracted.text === null ? null : normalizeExtractedText(extracted.text);
     const truncated = (normalized?.length ?? 0) > AI_FILE_MAX_EXTRACTED_CHARS;
     return {
       ...extracted,
@@ -156,21 +154,16 @@ export function detectAiFileKind(input: {
   if (extension === "csv" || contentType === "text/csv") return "csv";
   if (extension === "json" || contentType === "application/json") return "json";
   if (extension === "md" || extension === "markdown") return "markdown";
-  if (
-    extension === "txt" ||
-    contentType === "text/plain" ||
-    contentType?.startsWith("text/")
-  ) {
+  if (extension === "txt" || contentType === "text/plain" || contentType?.startsWith("text/")) {
     return "text";
   }
 
-  throw new Error("Unsupported file type. Use PDF, CSV, XLSX, DOCX, PPTX, text, Markdown, JSON, ZIP, or a supported image.");
+  throw new Error(
+    "Unsupported file type. Use PDF, CSV, XLSX, DOCX, PPTX, text, Markdown, JSON, ZIP, or a supported image.",
+  );
 }
 
-export function contentTypeForAiFileKind(
-  kind: AiFileKind,
-  declaredContentType: string,
-) {
+export function contentTypeForAiFileKind(kind: AiFileKind, declaredContentType: string) {
   const contentTypes: Partial<Record<AiFileKind, string>> = {
     csv: "text/csv",
     docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -219,17 +212,16 @@ function extractXlsx(bytes: Uint8Array) {
   return sheetNames
     .map((name, index) => {
       const xml = decodeUtf8(entries[name]!);
-      const rows = [...xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)].map(
-        (row) => [...(row[1] ?? "").matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/g)]
+      const rows = [...xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)].map((row) =>
+        [...(row[1] ?? "").matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/g)]
           .map((cell) => {
             const attrs = cell[1] ?? "";
             const body = cell[2] ?? "";
-            const value = body.match(/<v>([\s\S]*?)<\/v>/)?.[1]
-              ?? body.match(/<t[^>]*>([\s\S]*?)<\/t>/)?.[1]
-              ?? "";
-            return /\bt="s"/.test(attrs)
-              ? sharedStrings[Number(value)] ?? ""
-              : decodeXml(value);
+            const value =
+              body.match(/<v>([\s\S]*?)<\/v>/)?.[1] ??
+              body.match(/<t[^>]*>([\s\S]*?)<\/t>/)?.[1] ??
+              "";
+            return /\bt="s"/.test(attrs) ? (sharedStrings[Number(value)] ?? "") : decodeXml(value);
           })
           .join("\t"),
       );
@@ -252,11 +244,8 @@ function extractZip(bytes: Uint8Array) {
     }
 
     const raw = decodeUtf8(entry);
-    const content = extension === "csv"
-      ? csvToReadableText(raw)
-      : extension === "json"
-        ? formatJson(raw)
-        : raw;
+    const content =
+      extension === "csv" ? csvToReadableText(raw) : extension === "json" ? formatJson(raw) : raw;
     sections.push(`## ${sanitizeArchivePath(name)}\n${content}`);
   }
 
@@ -394,11 +383,12 @@ function isZip(bytes: Uint8Array) {
 
 function isKnownImage(bytes: Uint8Array, contentType: string | undefined) {
   return (
-    startsWithBytes(bytes, [0x89, 0x50, 0x4e, 0x47]) ||
-    startsWithBytes(bytes, [0xff, 0xd8, 0xff]) ||
-    startsWithAscii(bytes, "GIF8") ||
-    (startsWithAscii(bytes.subarray(8), "WEBP") && startsWithAscii(bytes, "RIFF"))
-  ) && Boolean(contentType?.startsWith("image/") || !contentType);
+    (startsWithBytes(bytes, [0x89, 0x50, 0x4e, 0x47]) ||
+      startsWithBytes(bytes, [0xff, 0xd8, 0xff]) ||
+      startsWithAscii(bytes, "GIF8") ||
+      (startsWithAscii(bytes.subarray(8), "WEBP") && startsWithAscii(bytes, "RIFF"))) &&
+    Boolean(contentType?.startsWith("image/") || !contentType)
+  );
 }
 
 function startsWithAscii(bytes: Uint8Array, value: string) {
@@ -415,11 +405,12 @@ function readUint16(bytes: Uint8Array, offset: number) {
 
 function readUint32(bytes: Uint8Array, offset: number) {
   return (
-    (bytes[offset] ?? 0) |
-    ((bytes[offset + 1] ?? 0) << 8) |
-    ((bytes[offset + 2] ?? 0) << 16) |
-    ((bytes[offset + 3] ?? 0) << 24)
-  ) >>> 0;
+    ((bytes[offset] ?? 0) |
+      ((bytes[offset + 1] ?? 0) << 8) |
+      ((bytes[offset + 2] ?? 0) << 16) |
+      ((bytes[offset + 3] ?? 0) << 24)) >>>
+    0
+  );
 }
 
 function naturalCompare(left: string, right: string) {
@@ -427,7 +418,9 @@ function naturalCompare(left: string, right: string) {
 }
 
 function sanitizeArchivePath(value: string) {
-  return value.replaceAll("\\", "/").split("/").filter(
-    (part) => part && part !== "." && part !== "..",
-  ).join("/");
+  return value
+    .replaceAll("\\", "/")
+    .split("/")
+    .filter((part) => part && part !== "." && part !== "..")
+    .join("/");
 }

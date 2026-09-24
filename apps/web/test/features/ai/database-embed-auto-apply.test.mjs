@@ -25,24 +25,20 @@ export function register({ assert, appPath, test }) {
           setup(build) {
             build.onResolve(
               {
-                filter:
-                  /^(react|embed-test|@\/features\/editor\/runtime\/page-editor-registry)$/,
+                filter: /^(react|embed-test|@\/features\/editor\/runtime\/page-editor-registry)$/,
               },
               (args) => ({ path: args.path, namespace: "embed-test" }),
             );
-            build.onLoad(
-              { filter: /.*/, namespace: "embed-test" },
-              ({ path }) => ({
-                contents:
-                  path === "embed-test"
-                    ? "export const state={ref:{current:new Set()},editor:null};"
-                    : path === "react"
-                      ? `export * from ${JSON.stringify(require.resolve("react"))};import {state} from "embed-test";export const useEffect=run=>run();export const useRef=()=>state.ref;`
-                      : 'import {state} from "embed-test";export const usePageEditorRegistry=()=>({getEditorHandle:()=>state.editor});export const usePageEditorRegistryVersion=()=>0;',
-                loader: "ts",
-                resolveDir: appPath("/"),
-              }),
-            );
+            build.onLoad({ filter: /.*/, namespace: "embed-test" }, ({ path }) => ({
+              contents:
+                path === "embed-test"
+                  ? "export const state={ref:{current:new Set()},editor:null};"
+                  : path === "react"
+                    ? `export * from ${JSON.stringify(require.resolve("react"))};import {state} from "embed-test";export const useEffect=run=>run();export const useRef=()=>state.ref;`
+                    : 'import {state} from "embed-test";export const usePageEditorRegistry=()=>({getEditorHandle:()=>state.editor});export const usePageEditorRegistryVersion=()=>0;',
+              loader: "ts",
+              resolveDir: appPath("/"),
+            }));
           },
         },
       ],
@@ -108,10 +104,7 @@ export function register({ assert, appPath, test }) {
     assert.equal(writes, 2);
     assert.equal(state.ref.current.has("embed"), true);
     const block = content.content.find((node) => node.type === "databaseBlock");
-    assert.equal(
-      block.attrs.databaseId,
-      "11111111-1111-1111-1111-111111111111",
-    );
+    assert.equal(block.attrs.databaseId, "11111111-1111-1111-1111-111111111111");
     assert.equal(block.attrs.showTitle, false);
     run(request);
     assert.equal(writes, 2);
@@ -132,8 +125,7 @@ export function register({ assert, appPath, test }) {
     );
     assert.equal(writes, 3);
     assert.equal(
-      content.content.find((node) => node.type === "databaseBlock").attrs
-        .showTitle,
+      content.content.find((node) => node.type === "databaseBlock").attrs.showTitle,
       true,
     );
     run(

@@ -23,7 +23,15 @@ describe("MCP secure egress", () => {
   });
 
   it("rejects local and reserved literal destinations", () => {
-    for (const hostname of ["localhost", "localhost.", "intranet", "service.internal", "service.internal.", "127.0.0.1", "[::1]"]) {
+    for (const hostname of [
+      "localhost",
+      "localhost.",
+      "intranet",
+      "service.internal",
+      "service.internal.",
+      "127.0.0.1",
+      "[::1]",
+    ]) {
       expect(() => normalizeMcpEndpoint(`https://${hostname}/mcp`)).toThrow(McpEgressError);
     }
   });
@@ -32,10 +40,11 @@ describe("MCP secure egress", () => {
     const cancel = vi.fn();
     const fetchFn = createSecureMcpFetch({
       approvedUrls: new Set(["https://mcp.example.com/start"]),
-      transport: async () => new Response(new ReadableStream({ cancel }), {
-        status: 302,
-        headers: { location: "https://unapproved.example.com/" },
-      }),
+      transport: async () =>
+        new Response(new ReadableStream({ cancel }), {
+          status: 302,
+          headers: { location: "https://unapproved.example.com/" },
+        }),
     });
     await expect(fetchFn("https://mcp.example.com/start")).rejects.toThrow(McpEgressError);
     expect(cancel).toHaveBeenCalledOnce();
@@ -59,10 +68,7 @@ describe("MCP secure egress", () => {
   it("follows approved same-origin redirects without delegating redirect handling", async () => {
     const requests: Array<{ body: string | null; method: string; url: string }> = [];
     const fetchFn = createSecureMcpFetch({
-      approvedUrls: new Set([
-        "https://mcp.example.com/start",
-        "https://mcp.example.com/final",
-      ]),
+      approvedUrls: new Set(["https://mcp.example.com/start", "https://mcp.example.com/final"]),
       transport: async (request) => {
         requests.push({ body: request.body, method: request.method, url: request.url });
         return request.url.endsWith("/start")
@@ -71,33 +77,40 @@ describe("MCP secure egress", () => {
       },
     });
 
-    await expect(fetchFn("https://mcp.example.com/start", {
-      body: "{\"query\":\"safe\"}",
-      headers: { authorization: "Bearer secret", "content-type": "application/json" },
-      method: "POST",
-    })).resolves.toMatchObject({ status: 200 });
+    await expect(
+      fetchFn("https://mcp.example.com/start", {
+        body: '{"query":"safe"}',
+        headers: { authorization: "Bearer secret", "content-type": "application/json" },
+        method: "POST",
+      }),
+    ).resolves.toMatchObject({ status: 200 });
     expect(requests).toEqual([
-      { body: "{\"query\":\"safe\"}", method: "POST", url: "https://mcp.example.com/start" },
+      { body: '{"query":"safe"}', method: "POST", url: "https://mcp.example.com/start" },
       { body: null, method: "GET", url: "https://mcp.example.com/final" },
     ]);
   });
 
   it("rejects cross-origin redirects before credentials or bodies can be replayed", async () => {
-    const transport = vi.fn(async () => new Response(null, {
-      headers: { location: "https://attacker.example/mcp" },
-      status: 307,
-    }));
+    const transport = vi.fn(
+      async () =>
+        new Response(null, {
+          headers: { location: "https://attacker.example/mcp" },
+          status: 307,
+        }),
+    );
     const fetchFn = createSecureMcpFetch({
       allowAnyPublicHttps: true,
       approvedUrls: new Set(),
       transport,
     });
 
-    await expect(fetchFn("https://mcp.example.com/start", {
-      body: "oauth_secret=redacted",
-      headers: { authorization: "Bearer redacted" },
-      method: "POST",
-    })).rejects.toMatchObject({ code: "mcp_redirect_rejected" });
+    await expect(
+      fetchFn("https://mcp.example.com/start", {
+        body: "oauth_secret=redacted",
+        headers: { authorization: "Bearer redacted" },
+        method: "POST",
+      }),
+    ).rejects.toMatchObject({ code: "mcp_redirect_rejected" });
     expect(transport).toHaveBeenCalledTimes(1);
   });
 
@@ -118,14 +131,16 @@ describe("MCP secure egress", () => {
       },
     });
 
-    await expect(fetchFn("https://mcp.example.com/0", {
-      body: "{\"query\":\"safe\"}",
-      method: "POST",
-    })).rejects.toMatchObject({ code: "mcp_redirect_rejected" });
+    await expect(
+      fetchFn("https://mcp.example.com/0", {
+        body: '{"query":"safe"}',
+        method: "POST",
+      }),
+    ).rejects.toMatchObject({ code: "mcp_redirect_rejected" });
     expect(requests).toHaveLength(4);
-    expect(requests.every((request) =>
-      request.body === "{\"query\":\"safe\"}" && request.method === "POST"
-    )).toBe(true);
+    expect(
+      requests.every((request) => request.body === '{"query":"safe"}' && request.method === "POST"),
+    ).toBe(true);
   });
 
   it("rejects unapproved redirect targets and oversized request and response bodies", async () => {
@@ -141,10 +156,12 @@ describe("MCP secure egress", () => {
       approvedUrls: new Set(["https://mcp.example.com/rpc"]),
       transport: async () => new Response(new Uint8Array(5 * 1024 * 1024 + 1)),
     });
-    await expect(fetchFn("https://mcp.example.com/rpc", {
-      body: "x".repeat(1024 * 1024 + 1),
-      method: "POST",
-    })).rejects.toMatchObject({ code: "mcp_request_too_large" });
+    await expect(
+      fetchFn("https://mcp.example.com/rpc", {
+        body: "x".repeat(1024 * 1024 + 1),
+        method: "POST",
+      }),
+    ).rejects.toMatchObject({ code: "mcp_request_too_large" });
 
     const response = await fetchFn("https://mcp.example.com/rpc");
     await expect(response.arrayBuffer()).rejects.toMatchObject({ code: "mcp_response_too_large" });

@@ -1,7 +1,7 @@
 @reference "../../../shared/styles/global.css";
 
 @layer components {
-.tiptap-editor {
+  .tiptap-editor {
     @apply min-h-[520px] px-5 pt-4 pb-5 text-base leading-7 text-content-primary outline-none sm:px-8 md:px-20 md:pt-4 md:pb-6 lg:px-24;
   }
 
@@ -61,7 +61,8 @@
   }
 
   /* Keep top-level content blocks on the same horizontal content line. */
-  .tiptap-editor > :is(
+  .tiptap-editor
+    > :is(
       p,
       h1,
       h2,
@@ -81,7 +82,8 @@
   }
 
   /* Spacing hierarchy via padding inside each block (included in selection). */
-  .tiptap-editor > :is(
+  .tiptap-editor
+    > :is(
       p,
       h1,
       h2,
@@ -124,12 +126,7 @@
     @apply pt-2;
   }
 
-  .tiptap-editor > * + :is(
-      pre,
-      .code-block-shiki,
-      .editor-details,
-      .tableWrapper
-    ) {
+  .tiptap-editor > * + :is(pre, .code-block-shiki, .editor-details, .tableWrapper) {
     @apply pt-2;
   }
 
@@ -141,7 +138,9 @@
     @apply pt-4;
   }
 
-  .tiptap-editor > * + :is(
+  .tiptap-editor
+    > *
+    + :is(
       .image-block,
       .video-block,
       .embed-block,
@@ -211,7 +210,8 @@
   }
 
   /* One translucent layer over every selected block; content keeps its styling. */
-  .tiptap-editor :where(
+  .tiptap-editor
+    :where(
       .editor-block-selection,
       .tableWrapper:has(> table.editor-block-selection),
       .node-databaseBlock.editor-block-selection:has(
@@ -232,7 +232,8 @@
     position: relative;
   }
 
-  .tiptap-editor :where(
+  .tiptap-editor
+    :where(
       .editor-block-selection:not(table),
       .tableWrapper:has(> table.editor-block-selection),
       .node-databaseBlock.editor-block-selection:has(
@@ -266,7 +267,8 @@
   }
 
   /* Select-all block geometry: full-width blocks with gaps between them. */
-  .tiptap-editor :is(
+  .tiptap-editor
+    :is(
       p,
       h1,
       h2,
@@ -293,36 +295,25 @@
   }
 
   .tiptap-editor
-    :is(
-      p,
-      h1,
-      h2,
-      h3,
-      h4,
-      h5,
-      h6,
-      blockquote,
-      .editor-details
-    ).editor-block-selection {
+    :is(p, h1, h2, h3, h4, h5, h6, blockquote, .editor-details).editor-block-selection {
     @apply px-3;
   }
 
-  .tiptap-editor
-    :is(ul, ol):not([data-type="taskList"])
-    > li.editor-block-selection::after {
+  .tiptap-editor :is(ul, ol):not([data-type="taskList"]) > li.editor-block-selection::after {
     left: -1.5rem;
   }
 
   .tiptap-editor
-    > * + :is(ul, ol):not([data-type="taskList"])
+    > *
+    + :is(ul, ol):not([data-type="taskList"])
     > li.editor-block-selection:first-child::after {
     top: -0.25rem;
   }
 
   .tiptap-editor
-    > * + ul[data-type="taskList"]
+    > *
+    + ul[data-type="taskList"]
     > :is(li, .node-taskItem).editor-block-selection:first-child::after {
     top: -0.25rem;
   }
-
 }

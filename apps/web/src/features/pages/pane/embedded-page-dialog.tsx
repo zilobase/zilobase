@@ -1,56 +1,42 @@
-import type { ReactNode } from "react"
-import { XIcon } from "@/shared/components/icons"
+import type { ReactNode } from "react";
+import { XIcon } from "@/shared/components/icons";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-} from "@/shared/ui/dialog"
-import { Button } from "@/shared/ui/button"
-import {
-  PageScrollViewport,
-  usePageSidePane,
-} from "./page-side-pane"
-import { PageWorkspaceGate } from "@/features/workspaces"
-import { PagePaneHeader } from "./page-pane-header"
-import { useOptionalPageLayoutSidebar } from "../layout/page-layout-sidebar"
-import type { OpenPageOptions } from "@/features/pages"
+import { Dialog, DialogContent, DialogDescription } from "@/shared/ui/dialog";
+import { Button } from "@/shared/ui/button";
+import { PageScrollViewport, usePageSidePane } from "./page-side-pane";
+import { PageWorkspaceGate } from "@/features/workspaces";
+import { PagePaneHeader } from "./page-pane-header";
+import { useOptionalPageLayoutSidebar } from "../layout/page-layout-sidebar";
+import type { OpenPageOptions } from "@/features/pages";
 
 export function EmbeddedPageDialog({
   onOpenPage,
   pageRenderer: PageRenderer,
 }: {
-  onOpenPage: (pageId: string, options?: OpenPageOptions) => void
+  onOpenPage: (pageId: string, options?: OpenPageOptions) => void;
   pageRenderer: (props: {
-    databaseId?: string | null
-    layoutPanelMode?: "auto" | "overlay"
-    onOpenPage: (pageId: string, options?: OpenPageOptions) => void
-    pageId: string
-  }) => ReactNode
+    databaseId?: string | null;
+    layoutPanelMode?: "auto" | "overlay";
+    onOpenPage: (pageId: string, options?: OpenPageOptions) => void;
+    pageId: string;
+  }) => ReactNode;
 }) {
-  const {
-    closeEmbeddedPageDialog,
-    dialogDatabaseId,
-    dialogPageId,
-  } = usePageSidePane()
-  const pageLayoutSidebar = useOptionalPageLayoutSidebar()
-  const hasLayoutSidebar =
-    pageLayoutSidebar?.hasOverlaySidebar(dialogPageId) ?? false
+  const { closeEmbeddedPageDialog, dialogDatabaseId, dialogPageId } = usePageSidePane();
+  const pageLayoutSidebar = useOptionalPageLayoutSidebar();
+  const hasLayoutSidebar = pageLayoutSidebar?.hasOverlaySidebar(dialogPageId) ?? false;
   const closeDialog = () => {
     if (pageLayoutSidebar?.overlayPageId === dialogPageId) {
-      pageLayoutSidebar.closeOverlay()
+      pageLayoutSidebar.closeOverlay();
     }
-    closeEmbeddedPageDialog()
-  }
-  const dialogPathname = dialogPageId
-    ? `/p/${encodeURIComponent(dialogPageId)}`
-    : "/recents"
+    closeEmbeddedPageDialog();
+  };
+  const dialogPathname = dialogPageId ? `/p/${encodeURIComponent(dialogPageId)}` : "/recents";
 
   return (
     <Dialog
       onOpenChange={(open) => {
         if (!open) {
-          closeDialog()
+          closeDialog();
         }
       }}
       open={dialogPageId !== null}
@@ -62,9 +48,7 @@ export function EmbeddedPageDialog({
         showCloseButton={false}
         unstyledContent
       >
-        <DialogDescription className="sr-only">
-          Page preview
-        </DialogDescription>
+        <DialogDescription className="sr-only">Page preview</DialogDescription>
         <div
           aria-hidden
           className="mx-auto mt-3 h-1 w-[100px] shrink-0 rounded-full bg-surface-muted sm:hidden"
@@ -92,10 +76,7 @@ export function EmbeddedPageDialog({
           showBreadcrumb={false}
           showPaneControls
         />
-        <PageScrollViewport
-          className="min-h-0 flex-1"
-          edgeFadeClassName="hidden"
-        >
+        <PageScrollViewport className="min-h-0 flex-1" edgeFadeClassName="hidden">
           {dialogPageId ? (
             <PageWorkspaceGate pageId={dialogPageId}>
               <PageRenderer
@@ -110,5 +91,5 @@ export function EmbeddedPageDialog({
         </PageScrollViewport>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

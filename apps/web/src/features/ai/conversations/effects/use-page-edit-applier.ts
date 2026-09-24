@@ -1,96 +1,91 @@
-import { useCallback } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry"
+import { usePageEditorRegistry } from "@/features/editor/runtime/page-editor-registry";
 
-import { useZilobaseFeatures } from "@zilobase/features"
-import { pageQueryKey, type PageDetail } from "@zilobase/features/pages"
+import { useZilobaseFeatures } from "@zilobase/features";
+import { pageQueryKey, type PageDetail } from "@zilobase/features/pages";
 import {
   logPageEdit,
   resolvePageEditMarkdown,
   warnPageEdit,
   type ProposePageContentUpdateOutput,
-} from "@zilobase/features/ai-chat"
-import { prosemirrorToMarkdown } from "@zilobase/page-context"
+} from "@zilobase/features/ai-chat";
+import { prosemirrorToMarkdown } from "@zilobase/page-context";
 
 type ResolvePageEditInput = Pick<
   ProposePageContentUpdateOutput,
-  | "afterMarkdown"
-  | "editMode"
-  | "replaceText"
-  | "searchText"
-  | "pageId"
+  "afterMarkdown" | "editMode" | "replaceText" | "searchText" | "pageId"
 > & {
-  contextPageMarkdown?: string | null
-}
+  contextPageMarkdown?: string | null;
+};
 
 type ResolvePageEditResult =
   | {
-      afterMarkdown: string
-      beforeContentJson: unknown
-      beforeMarkdown: string
-      success: true
+      afterMarkdown: string;
+      beforeContentJson: unknown;
+      beforeMarkdown: string;
+      success: true;
     }
   | {
-      errorMessage: string
-      success: false
-    }
+      errorMessage: string;
+      success: false;
+    };
 
 type CommitPageEditResult =
   | { success: true }
   | {
-      errorMessage: string
-      success: false
-    }
+      errorMessage: string;
+      success: false;
+    };
 
 export function usePageEditApplier() {
-  const { getEditorHandle } = usePageEditorRegistry()
-  const { apiFetch } = useZilobaseFeatures()
-  const queryClient = useQueryClient()
+  const { getEditorHandle } = usePageEditorRegistry();
+  const { apiFetch } = useZilobaseFeatures();
+  const queryClient = useQueryClient();
 
   const resolvePageEdit = useCallback(
     (input: ResolvePageEditInput): ResolvePageEditResult => {
       logPageEdit("resolvePageEdit:start", {
         editMode: input.editMode,
         pageId: input.pageId,
-      })
+      });
 
-      const handle = getEditorHandle(input.pageId)
+      const handle = getEditorHandle(input.pageId);
 
       if (!handle) {
         warnPageEdit("resolvePageEdit:no-editor-handle", {
           pageId: input.pageId,
-        })
+        });
         return {
-          errorMessage:
-            "Open the target page in the editor before applying this change.",
+          errorMessage: "Open the target page in the editor before applying this change.",
           success: false,
-        }
+        };
       }
 
       if (!handle.isEditable()) {
         warnPageEdit("resolvePageEdit:not-editable", {
           pageId: input.pageId,
-        })
+        });
         return {
           errorMessage: "You do not have permission to edit this page.",
           success: false,
-        }
+        };
       }
 
-      const beforeContentJson = handle.getContentJson()
+      const beforeContentJson = handle.getContentJson();
 
       if (beforeContentJson == null) {
         warnPageEdit("resolvePageEdit:empty-content", {
           pageId: input.pageId,
-        })
+        });
         return {
           errorMessage: "The page editor is not ready yet.",
           success: false,
-        }
+        };
       }
 
-      const beforeMarkdown = prosemirrorToMarkdown(beforeContentJson)
+      const beforeMarkdown = prosemirrorToMarkdown(beforeContentJson);
       const resolved = resolvePageEditMarkdown({
         afterMarkdown: input.afterMarkdown,
         beforeMarkdown,
@@ -98,7 +93,7 @@ export function usePageEditApplier() {
         editMode: input.editMode,
         replaceText: input.replaceText,
         searchText: input.searchText,
-      })
+      });
 
       if (!resolved.success) {
         warnPageEdit("resolvePageEdit:resolve-failed", {
@@ -108,11 +103,11 @@ export function usePageEditApplier() {
           errorMessage: resolved.errorMessage,
           searchPreview: input.searchText?.slice(0, 160) ?? "",
           pageId: input.pageId,
-        })
+        });
         return {
           errorMessage: resolved.errorMessage,
           success: false,
-        }
+        };
       }
 
       logPageEdit("resolvePageEdit:success", {
@@ -121,78 +116,69 @@ export function usePageEditApplier() {
         editMode: input.editMode,
         patchSource: "patchSource" in resolved ? resolved.patchSource : "full",
         pageId: input.pageId,
-      })
+      });
 
       return {
         afterMarkdown: resolved.afterMarkdown,
         beforeContentJson,
         beforeMarkdown,
         success: true,
-      }
+      };
     },
     [getEditorHandle],
-  )
+  );
 
   const commitPageEdit = useCallback(
-    (input: {
-      afterMarkdown: string
-      pageId: string
-    }): CommitPageEditResult => {
-      const handle = getEditorHandle(input.pageId)
+    (input: { afterMarkdown: string; pageId: string }): CommitPageEditResult => {
+      const handle = getEditorHandle(input.pageId);
 
       if (!handle?.isEditable()) {
         return {
           errorMessage: "You do not have permission to edit this page.",
           success: false,
-        }
+        };
       }
 
       if (!handle.setContentFromMarkdown(input.afterMarkdown)) {
         return {
           errorMessage: "The AI update could not be parsed into page content.",
           success: false,
-        }
+        };
       }
 
       logPageEdit("commitPageEdit:success", {
         pageId: input.pageId,
-      })
+      });
 
-      return { success: true }
+      return { success: true };
     },
     [getEditorHandle],
-  )
+  );
 
   const undoPageEdit = useCallback(
-    async (input: {
-      beforeContentJson: unknown
-      pageId: string
-    }) => {
-      const handle = getEditorHandle(input.pageId)
+    async (input: { beforeContentJson: unknown; pageId: string }) => {
+      const handle = getEditorHandle(input.pageId);
 
       if (handle?.isEditable()) {
         if (!handle.setContentJson(input.beforeContentJson)) {
           return {
             errorMessage: "The page editor could not restore the previous version.",
             success: false as const,
-          }
+          };
         }
 
-        return { success: true as const }
+        return { success: true as const };
       }
 
       const workspaceId = readWorkspaceIdFromPageDetail(
-        queryClient.getQueryData<PageDetail | null>(
-          pageQueryKey(input.pageId),
-        ),
-      )
+        queryClient.getQueryData<PageDetail | null>(pageQueryKey(input.pageId)),
+      );
 
       if (!workspaceId) {
         return {
-          errorMessage:
-            "Open the page or reload it before undoing this change.",
+          errorMessage: "Open the page or reload it before undoing this change.",
           success: false as const,
-        }
+        };
       }
 
       await apiFetch(`/api/pages/${encodeURIComponent(input.pageId)}`, {
@@ -202,20 +188,20 @@ export function usePageEditApplier() {
           "x-zilobase-workspace-id": workspaceId,
         },
         method: "PATCH",
-      })
+      });
 
-      return { success: true as const }
+      return { success: true as const };
     },
     [apiFetch, getEditorHandle, queryClient],
-  )
+  );
 
   return {
     commitPageEdit,
     resolvePageEdit,
     undoPageEdit,
-  }
+  };
 }
 
 function readWorkspaceIdFromPageDetail(detail: PageDetail | null | undefined) {
-  return detail?.page?.workspaceId ?? null
+  return detail?.page?.workspaceId ?? null;
 }

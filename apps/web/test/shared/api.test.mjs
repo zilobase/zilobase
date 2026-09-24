@@ -1,30 +1,22 @@
 export function register({ assert, loadModule, test }) {
   test("desktop builds use the hosted API", async () => {
-    const { resolveApiBaseUrl } = await loadModule("/src/platform/network/api.ts")
+    const { resolveApiBaseUrl } = await loadModule("/src/platform/network/api.ts");
 
     assert.equal(
       resolveApiBaseUrl(new URL("zilo-desktop://app/login")),
       "https://api.zilobase.com",
-    )
-  })
+    );
+  });
 
   test("hosted demo requests stay on the isolated web origin", async () => {
-    const { resolveApiBaseUrl } = await loadModule(
-      "/src/platform/network/api.ts",
-    )
+    const { resolveApiBaseUrl } = await loadModule("/src/platform/network/api.ts");
 
-    assert.equal(
-      resolveApiBaseUrl(new URL("http://demo.localhost:1420/p/start")),
-      "",
-    )
-    assert.equal(
-      resolveApiBaseUrl(new URL("https://demo.zilobase.com/p/start")),
-      "",
-    )
-  })
+    assert.equal(resolveApiBaseUrl(new URL("http://demo.localhost:1420/p/start")), "");
+    assert.equal(resolveApiBaseUrl(new URL("https://demo.zilobase.com/p/start")), "");
+  });
 
   test("desktop requests resolve against the selected runtime server", async () => {
-    const { resolveApiBaseUrl } = await loadModule("/src/platform/network/api.ts")
+    const { resolveApiBaseUrl } = await loadModule("/src/platform/network/api.ts");
     const server = {
       apiOrigin: "http://127.0.0.1:8787",
       displayName: "Local Zilobase",
@@ -34,32 +26,30 @@ export function register({ assert, loadModule, test }) {
       protocolVersion: 1,
       serverVersion: "0.0.30",
       webOrigin: "http://127.0.0.1:8787",
-    }
+    };
 
     assert.equal(
       resolveApiBaseUrl(new URL("zilo-desktop://app/login"), server),
       "http://127.0.0.1:8787",
-    )
+    );
     assert.equal(
       resolveApiBaseUrl(new URL("http://localhost:1420/login"), server),
       "http://127.0.0.1:8787",
       "Desktop dev must not fall back to the compile-time Vite API",
-    )
-  })
+    );
+  });
 
   test("request cancellation is not treated as a connectivity failure", async () => {
-    const { isRequestAbort } = await loadModule("/src/platform/network/api.ts")
+    const { isRequestAbort } = await loadModule("/src/platform/network/api.ts");
 
-    assert.equal(isRequestAbort(new DOMException("Canceled", "AbortError")), true)
-    assert.equal(isRequestAbort({ name: "AbortError" }), true)
-    assert.equal(isRequestAbort(new TypeError("Failed to fetch")), false)
-  })
+    assert.equal(isRequestAbort(new DOMException("Canceled", "AbortError")), true);
+    assert.equal(isRequestAbort({ name: "AbortError" }), true);
+    assert.equal(isRequestAbort(new TypeError("Failed to fetch")), false);
+  });
 
   test("API requests can fail with a bounded network timeout", async () => {
-    const { apiFetch, NetworkUnavailableError } = await loadModule(
-      "/src/platform/network/api.ts",
-    )
-    const originalFetch = globalThis.fetch
+    const { apiFetch, NetworkUnavailableError } = await loadModule("/src/platform/network/api.ts");
+    const originalFetch = globalThis.fetch;
 
     globalThis.fetch = (_url, init) =>
       new Promise((_resolve, reject) => {
@@ -67,8 +57,8 @@ export function register({ assert, loadModule, test }) {
           "abort",
           () => reject(new DOMException("Aborted", "AbortError")),
           { once: true },
-        )
-      })
+        );
+      });
 
     try {
       await assert.rejects(
@@ -76,9 +66,9 @@ export function register({ assert, loadModule, test }) {
         (error) =>
           error instanceof NetworkUnavailableError &&
           error.message === "Zilobase did not respond in time.",
-      )
+      );
     } finally {
-      globalThis.fetch = originalFetch
+      globalThis.fetch = originalFetch;
     }
-  })
+  });
 }

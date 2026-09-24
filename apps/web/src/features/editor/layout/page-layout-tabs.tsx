@@ -8,44 +8,36 @@ import {
   List,
   Table2,
   Trash2,
-} from "@/shared/components/icons"
+} from "@/shared/components/icons";
 
-import { Button } from "@/shared/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
-import { LinkedDataSourcePicker } from "@/features/databases"
-import type {
-  PageLayoutConfig,
-  PageLayoutLinkedTab,
-} from "@zilobase/features/pages"
+import { Button } from "@/shared/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
+import { LinkedDataSourcePicker } from "@/features/databases";
+import type { PageLayoutConfig, PageLayoutLinkedTab } from "@zilobase/features/pages";
 
 type PageLayoutTabsProps = {
-  config: PageLayoutConfig
-  onChange?: (config: PageLayoutConfig) => void
-  onValueChange: (tabId: string) => void
-  value: string
-}
+  config: PageLayoutConfig;
+  onChange?: (config: PageLayoutConfig) => void;
+  onValueChange: (tabId: string) => void;
+  value: string;
+};
 
-export function PageLayoutTabs({
-  config,
-  onChange,
-  onValueChange,
-  value,
-}: PageLayoutTabsProps) {
+export function PageLayoutTabs({ config, onChange, onValueChange, value }: PageLayoutTabsProps) {
   const addLinkedTab = (tab: PageLayoutLinkedTab) => {
     if (onChange && !config.linkedTabs.some((item) => item.id === tab.id)) {
-      onChange({ ...config, linkedTabs: [...config.linkedTabs, tab] })
+      onChange({ ...config, linkedTabs: [...config.linkedTabs, tab] });
     }
-    onValueChange(tab.id)
-  }
+    onValueChange(tab.id);
+  };
 
   const removeActiveTab = () => {
-    if (!onChange || value === "content") return
+    if (!onChange || value === "content") return;
     onChange({
       ...config,
       linkedTabs: config.linkedTabs.filter((tab) => tab.id !== value),
-    })
-    onValueChange("content")
-  }
+    });
+    onValueChange("content");
+  };
 
   return (
     <div className="shrink-0 py-2">
@@ -68,19 +60,15 @@ export function PageLayoutTabs({
                         ? GalleryThumbnails
                         : tab.viewType === "list"
                           ? List
-                          : Table2
+                          : Table2;
 
               return (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  width="content"
-                >
+                <TabsTrigger key={tab.id} value={tab.id} width="content">
                   <ViewIcon />
                   <span className="truncate">{tab.viewName}</span>
                   <ArrowUpRight className="size-3 text-content-secondary" />
                 </TabsTrigger>
-              )
+              );
             })}
           </TabsList>
         </Tabs>
@@ -102,5 +90,5 @@ export function PageLayoutTabs({
         ) : null}
       </div>
     </div>
-  )
+  );
 }

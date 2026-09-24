@@ -4,8 +4,8 @@ import {
   IntersectSquareIcon,
   ListIcon,
   SlidersHorizontalIcon,
-} from "@/shared/components/icons"
-import { Button } from "@/shared/ui/button"
+} from "@/shared/components/icons";
+import { Button } from "@/shared/ui/button";
 import {
   DropDrawer,
   DropDrawerContent,
@@ -15,8 +15,8 @@ import {
   DropDrawerSubContent,
   DropDrawerSubTrigger,
   DropDrawerTrigger,
-} from "@/shared/ui/dropdrawer"
-import type { ReactNode } from "react"
+} from "@/shared/ui/dropdrawer";
+import type { ReactNode } from "react";
 
 const panels = [
   { icon: IntersectSquareIcon, label: "Group", title: "Group" },
@@ -35,14 +35,14 @@ export function MailViewSettingsMenu({
   propertiesEditor,
   visiblePropertyCount = 0,
 }: {
-  databaseEditor?: ReactNode
-  filterCount?: number
-  filterDirty?: boolean
-  filterEditor?: ReactNode
-  groupEditor?: ReactNode
-  hoverActionsEditor?: ReactNode
-  propertiesEditor?: ReactNode
-  visiblePropertyCount?: number
+  databaseEditor?: ReactNode;
+  filterCount?: number;
+  filterDirty?: boolean;
+  filterEditor?: ReactNode;
+  groupEditor?: ReactNode;
+  hoverActionsEditor?: ReactNode;
+  propertiesEditor?: ReactNode;
+  visiblePropertyCount?: number;
 }) {
   const panelEditors = {
     Group: groupEditor,
@@ -68,9 +68,7 @@ export function MailViewSettingsMenu({
         className="w-72 max-h-none overflow-visible"
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
-        <div className="px-2 py-1.5 text-sm font-semibold text-content-primary">
-          Edit view
-        </div>
+        <div className="px-2 py-1.5 text-sm font-semibold text-content-primary">Edit view</div>
         {panels.map(({ icon: Icon, label, title }) => (
           <DropDrawerSub displayMode="inline" key={label} title={title}>
             <DropDrawerSubTrigger>
@@ -85,9 +83,7 @@ export function MailViewSettingsMenu({
               {label === "Filter" && filterCount > 0 ? (
                 <span
                   className={
-                    filterDirty
-                      ? "text-content-secondary"
-                      : "ml-auto text-content-secondary"
+                    filterDirty ? "text-content-secondary" : "ml-auto text-content-secondary"
                   }
                 >
                   {filterCount}
@@ -99,9 +95,7 @@ export function MailViewSettingsMenu({
                 </span>
               ) : null}
             </DropDrawerSubTrigger>
-            <DropDrawerSubContent
-              className={label === "Filter" ? "w-80" : "w-72"}
-            >
+            <DropDrawerSubContent className={label === "Filter" ? "w-80" : "w-72"}>
               {panelEditors[label] || (
                 <DropDrawerItem disabled>
                   This panel is enabled in its organization pass.
@@ -118,9 +112,7 @@ export function MailViewSettingsMenu({
           </DropDrawerSubTrigger>
           <DropDrawerSubContent className="w-72">
             {hoverActionsEditor ?? (
-              <DropDrawerItem disabled>
-                Hover actions are unavailable for this view.
-              </DropDrawerItem>
+              <DropDrawerItem disabled>Hover actions are unavailable for this view.</DropDrawerItem>
             )}
           </DropDrawerSubContent>
         </DropDrawerSub>

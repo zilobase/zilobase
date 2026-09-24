@@ -1,3 +1,3 @@
 export type OpenPageOptions = {
-  databaseId?: string | null
-}
+  databaseId?: string | null;
+};

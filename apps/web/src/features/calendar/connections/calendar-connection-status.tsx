@@ -1,8 +1,8 @@
-import { useEffect, useId } from "react"
-import { useNavigate, useSearch } from "@tanstack/react-router"
-import { useQueryClient } from "@tanstack/react-query"
+import { useEffect, useId } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/shared/ui/button"
+import { Button } from "@/shared/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,46 +10,33 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/shared/ui/dialog"
-import { Label } from "@/shared/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select"
+} from "@/shared/ui/dialog";
+import { Label } from "@/shared/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 
-import { calendarSelectionKey } from "./calendar-selection"
-import {
-  calendarSourcesQueryKey,
-  useCalendarAccounts,
-} from "./use-calendar-accounts"
-import { useCalendarCatalog } from "./use-calendar-catalog"
-import { useCalendarPreferences } from "../preferences/use-calendar-preferences"
-import { requestCalendarNotificationPermission } from "../reminders/notification-delivery"
+import { calendarSelectionKey } from "./calendar-selection";
+import { calendarSourcesQueryKey, useCalendarAccounts } from "./use-calendar-accounts";
+import { useCalendarCatalog } from "./use-calendar-catalog";
+import { useCalendarPreferences } from "../preferences/use-calendar-preferences";
+import { requestCalendarNotificationPermission } from "../reminders/notification-delivery";
 
-export function CalendarConnectionStatus({
-  workspaceId,
-}: {
-  workspaceId: string
-}) {
-  const search = useSearch({ from: "/app/calendar" })
-  const navigate = useNavigate()
-  const client = useQueryClient()
-  const { accounts, connect } = useCalendarAccounts(workspaceId)
-  const preferences = useCalendarPreferences(workspaceId)
+export function CalendarConnectionStatus({ workspaceId }: { workspaceId: string }) {
+  const search = useSearch({ from: "/app/calendar" });
+  const navigate = useNavigate();
+  const client = useQueryClient();
+  const { accounts, connect } = useCalendarAccounts(workspaceId);
+  const preferences = useCalendarPreferences(workspaceId);
   const catalog = useCalendarCatalog(
-    search.connection === "success" ? accounts.data?.connections ?? [] : [],
-  )
+    search.connection === "success" ? (accounts.data?.connections ?? []) : [],
+  );
 
   useEffect(() => {
     if (search.connection) {
-      void client.invalidateQueries({ queryKey: calendarSourcesQueryKey })
+      void client.invalidateQueries({ queryKey: calendarSourcesQueryKey });
     }
-  }, [search.connection, client])
+  }, [search.connection, client]);
 
-  if (!search.connection) return null
+  if (!search.connection) return null;
 
   const dismiss = () =>
     void navigate({
@@ -60,25 +47,20 @@ export function CalendarConnectionStatus({
         workspace: undefined,
       },
       replace: true,
-    })
-  const connected = search.connection === "success"
+    });
+  const connected = search.connection === "success";
 
   return (
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) dismiss()
+        if (!open) dismiss();
       }}
     >
-      <DialogContent
-        aria-label="Calendar connection result"
-        className="sm:max-w-md"
-      >
+      <DialogContent aria-label="Calendar connection result" className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {connected
-              ? "Google Calendar connected"
-              : "Calendar connection cancelled"}
+            {connected ? "Google Calendar connected" : "Calendar connection cancelled"}
           </DialogTitle>
           <DialogDescription>
             {connected
@@ -112,7 +94,7 @@ export function CalendarConnectionStatus({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 function ConnectedCalendarSetup({
@@ -120,11 +102,11 @@ function ConnectedCalendarSetup({
   preferences,
   value,
 }: {
-  catalog: ReturnType<typeof useCalendarCatalog>
-  preferences: ReturnType<typeof useCalendarPreferences>
-  value: ReturnType<typeof useCalendarPreferences>["query"]["data"]
+  catalog: ReturnType<typeof useCalendarCatalog>;
+  preferences: ReturnType<typeof useCalendarPreferences>;
+  value: ReturnType<typeof useCalendarPreferences>["query"]["data"];
 }) {
-  const selectId = useId()
+  const selectId = useId();
 
   return (
     <div className="grid gap-4">
@@ -145,32 +127,27 @@ function ConnectedCalendarSetup({
               {catalog.calendars
                 .filter((calendar) => calendar.permissions.write)
                 .map((calendar) => {
-                  const key = calendarSelectionKey(
-                    calendar.bindingId,
-                    calendar.id,
-                  )
+                  const key = calendarSelectionKey(calendar.bindingId, calendar.id);
 
                   return (
                     <SelectItem key={key} value={key}>
                       {calendar.name}
                     </SelectItem>
-                  )
+                  );
                 })}
             </SelectContent>
           </Select>
         </div>
       ) : (
-        <p className="text-content-secondary">
-          Loading calendar preferences…
-        </p>
+        <p className="text-content-secondary">Loading calendar preferences…</p>
       )}
 
       {value && !value.remindersEnabled ? (
         <Button
           disabled={preferences.pending}
           onClick={() => {
-            preferences.save.mutate({ ...value, remindersEnabled: true })
-            void requestCalendarNotificationPermission().catch(() => {})
+            preferences.save.mutate({ ...value, remindersEnabled: true });
+            void requestCalendarNotificationPermission().catch(() => {});
           }}
           type="button"
           variant="outline"
@@ -180,9 +157,8 @@ function ConnectedCalendarSetup({
       ) : null}
 
       <p className="text-content-secondary">
-        You can change these choices in Calendar settings. System notifications
-        are optional.
+        You can change these choices in Calendar settings. System notifications are optional.
       </p>
     </div>
-  )
+  );
 }

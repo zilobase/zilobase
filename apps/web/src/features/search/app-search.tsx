@@ -1,14 +1,11 @@
-import { combineSearchResults, getSearchResultDestination, type SearchResult } from "./search-results";
 import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react"
-import { useNavigate } from "@tanstack/react-router"
-import { BotIcon, DatabaseIcon } from "@/shared/components/icons"
+  combineSearchResults,
+  getSearchResultDestination,
+  type SearchResult,
+} from "./search-results";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { BotIcon, DatabaseIcon } from "@/shared/components/icons";
 
 import {
   Command,
@@ -19,46 +16,44 @@ import {
   CommandItem,
   CommandList,
   CommandShortcut,
-} from "@/shared/ui/command"
+} from "@/shared/ui/command";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import { useAppSearchResults } from "@zilobase/features/search/react";
-import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
-import { useAppShortcut } from "@/shared/shortcuts"
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
+import { useAppShortcut } from "@/shared/shortcuts";
 import { useAiAgentProfiles } from "@zilobase/features/ai-chat/react";
 
-
 type AppSearchContextValue = {
-  openSearch: () => void
-}
+  openSearch: () => void;
+};
 
-const AppSearchContext = createContext<AppSearchContextValue | null>(null)
+const AppSearchContext = createContext<AppSearchContextValue | null>(null);
 
 export function AppSearchProvider({ children }: { children: ReactNode }) {
-  const navigate = useNavigate()
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState("")
-  const debouncedQuery = useDebouncedValue(query, 250)
-  const workspaceId = useActiveWorkspaceId()
-  const { data: results = [], isFetching } = useAppSearchResults(
-    workspaceId,
-    debouncedQuery,
-    open,
-  )
-  const agents = useAiAgentProfiles({ enabled: open })
-  const combinedResults = useMemo(() => combineSearchResults(agents.data ?? [], results, debouncedQuery), [agents.data, debouncedQuery, results]);
-  const contextValue = useMemo(() => ({ openSearch: () => setOpen(true) }), [])
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const debouncedQuery = useDebouncedValue(query, 250);
+  const workspaceId = useActiveWorkspaceId();
+  const { data: results = [], isFetching } = useAppSearchResults(workspaceId, debouncedQuery, open);
+  const agents = useAiAgentProfiles({ enabled: open });
+  const combinedResults = useMemo(
+    () => combineSearchResults(agents.data ?? [], results, debouncedQuery),
+    [agents.data, debouncedQuery, results],
+  );
+  const contextValue = useMemo(() => ({ openSearch: () => setOpen(true) }), []);
 
   useAppShortcut(
     "openSearch",
     () => {
-      setOpen((current) => !current)
-      return true
+      setOpen((current) => !current);
+      return true;
     },
-    { allowInEditable: true }
-  )
+    { allowInEditable: true },
+  );
 
   const openResult = (result: SearchResult) => {
-    setOpen(false)
+    setOpen(false);
 
     void navigate(getSearchResultDestination(result));
   };
@@ -82,9 +77,7 @@ export function AppSearchProvider({ children }: { children: ReactNode }) {
           />
           <CommandList className="max-h-[28rem]">
             {isFetching && combinedResults.length === 0 ? (
-              <div className="py-6 text-center text-sm text-content-secondary">
-                Searching...
-              </div>
+              <div className="py-6 text-center text-sm text-content-secondary">Searching...</div>
             ) : combinedResults.length === 0 ? (
               <CommandEmpty>No results found.</CommandEmpty>
             ) : (
@@ -98,12 +91,14 @@ export function AppSearchProvider({ children }: { children: ReactNode }) {
                     <ResultIcon result={result} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{result.title}</div>
-                      <div className="truncate text-xs text-content-secondary">
-                        {result.path}
-                      </div>
+                      <div className="truncate text-xs text-content-secondary">{result.path}</div>
                     </div>
                     <CommandShortcut className="ml-3 shrink-0 rounded-sm bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium uppercase leading-4 tracking-normal text-content-secondary">
-                      {result.type === "database" ? "Database" : result.type === "agent" ? "Agent" : "Page"}
+                      {result.type === "database"
+                        ? "Database"
+                        : result.type === "agent"
+                          ? "Agent"
+                          : "Page"}
                     </CommandShortcut>
                   </CommandItem>
                 ))}
@@ -113,36 +108,36 @@ export function AppSearchProvider({ children }: { children: ReactNode }) {
         </Command>
       </CommandDialog>
     </AppSearchContext.Provider>
-  )
+  );
 }
 
 export function useAppSearch() {
-  const context = useContext(AppSearchContext)
+  const context = useContext(AppSearchContext);
 
   if (!context) {
-    throw new Error("useAppSearch must be used inside AppSearchProvider")
+    throw new Error("useAppSearch must be used inside AppSearchProvider");
   }
 
-  return context
+  return context;
 }
 
 function useDebouncedValue<T>(value: T, delay: number) {
-  const [debouncedValue, setDebouncedValue] = useState(value)
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
+      setDebouncedValue(value);
+    }, delay);
 
-    return () => window.clearTimeout(timeoutId)
-  }, [delay, value])
+    return () => window.clearTimeout(timeoutId);
+  }, [delay, value]);
 
-  return debouncedValue
+  return debouncedValue;
 }
 
 function ResultIcon({ result }: { result: SearchResult }) {
   if (result.emoji) {
-    return <PageIconDisplay size="sm" value={result.emoji} />
+    return <PageIconDisplay size="sm" value={result.emoji} />;
   }
 
   return result.type === "agent" ? (
@@ -151,5 +146,5 @@ function ResultIcon({ result }: { result: SearchResult }) {
     <DatabaseIcon className="size-4 text-content-secondary" />
   ) : (
     <DefaultPageIcon className="text-content-secondary" />
-  )
+  );
 }

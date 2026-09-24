@@ -1,5 +1,16 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { workspace } from "./workspaces";
 import { aiAgentProfile, aiAgentRun } from "./ai-agents";
 import { user } from "./authentication";
@@ -17,10 +28,10 @@ export const aiMcpDataset = pgTable(
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
     scopeType: text("scope_type").notNull().default("agent"),
-    agentProfileId: text("agent_profile_id")
-      .references(() => aiAgentProfile.id, { onDelete: "cascade" }),
-    scopeUserId: text("scope_user_id")
-      .references(() => user.id, { onDelete: "cascade" }),
+    agentProfileId: text("agent_profile_id").references(() => aiAgentProfile.id, {
+      onDelete: "cascade",
+    }),
+    scopeUserId: text("scope_user_id").references(() => user.id, { onDelete: "cascade" }),
     connectionId: text("connection_id")
       .notNull()
       .references(() => aiMcpConnection.id, { onDelete: "cascade" }),
@@ -31,10 +42,9 @@ export const aiMcpDataset = pgTable(
       onDelete: "cascade",
     }),
     userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
-    toolExecutionId: text("tool_execution_id").references(
-      () => aiAgentToolExecution.id,
-      { onDelete: "set null" },
-    ),
+    toolExecutionId: text("tool_execution_id").references(() => aiAgentToolExecution.id, {
+      onDelete: "set null",
+    }),
     externalToolName: text("external_tool_name").notNull(),
     schema: jsonb("schema").notNull(),
     sample: jsonb("sample").notNull().default([]),
@@ -80,10 +90,7 @@ export const aiMcpDatasetChunk = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   },
   (table) => [
-    uniqueIndex("ai_mcp_dataset_chunk_dataset_index_unique").on(
-      table.datasetId,
-      table.chunkIndex,
-    ),
+    uniqueIndex("ai_mcp_dataset_chunk_dataset_index_unique").on(table.datasetId, table.chunkIndex),
   ],
 );
 
@@ -95,10 +102,10 @@ export const aiMcpMaterialization = pgTable(
       .notNull()
       .references(() => workspace.id, { onDelete: "cascade" }),
     scopeType: text("scope_type").notNull().default("agent"),
-    agentProfileId: text("agent_profile_id")
-      .references(() => aiAgentProfile.id, { onDelete: "cascade" }),
-    scopeUserId: text("scope_user_id")
-      .references(() => user.id, { onDelete: "cascade" }),
+    agentProfileId: text("agent_profile_id").references(() => aiAgentProfile.id, {
+      onDelete: "cascade",
+    }),
+    scopeUserId: text("scope_user_id").references(() => user.id, { onDelete: "cascade" }),
     threadId: text("thread_id").references(() => aiChatThread.id, {
       onDelete: "cascade",
     }),

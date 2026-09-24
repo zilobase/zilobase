@@ -27,7 +27,7 @@ vi.mock("../../access", () => ({
 vi.mock("../files/routes", () => ({ aiFileRoutes: new Hono() }));
 vi.mock("./chat-persistence", () => ({
   appendCanonicalUserMessage: async () => ({ id: "message" }),
-  getAiChatThreadForUser: async () => state.thread ? ({ id: "thread" }) : null,
+  getAiChatThreadForUser: async () => (state.thread ? { id: "thread" } : null),
   loadAiChatThreadMessages: async () => [],
 }));
 vi.mock("../actions/agent-operations", () => ({
@@ -41,8 +41,7 @@ vi.mock("./chat-service", () => ({
 }));
 vi.mock("../actions/agent-approvals", () => ({
   getOwnedPendingAgentAction: async () => state.action,
-  markPendingAgentActionExecuting: async () =>
-    state.executing ? state.action : null,
+  markPendingAgentActionExecuting: async () => (state.executing ? state.action : null),
   expirePendingAgentAction: async (id: string) => {
     state.expired.push(id);
   },
@@ -80,9 +79,7 @@ import { aiRoutes } from "./chat-routes";
 const app = new Hono<AppBindings>();
 app.use("*", async (c, next) => {
   if (state.authorized)
-    c.set("user", { id: "user" } as NonNullable<
-      AppBindings["Variables"]["user"]
-    >);
+    c.set("user", { id: "user" } as NonNullable<AppBindings["Variables"]["user"]>);
   await next();
 });
 app.route("/", aiRoutes);
@@ -142,10 +139,7 @@ test("canonical thread turns enforce membership, validation, ownership, and idem
   state.existingTurn = null;
   assert.equal((await request(path, body)).status, 200);
   assert.equal(state.turns.length, 1);
-  assert.equal(
-    (state.turns[0].requestBody as Record<string, unknown>).userId,
-    "user",
-  );
+  assert.equal((state.turns[0].requestBody as Record<string, unknown>).userId, "user");
 });
 test("approval routes preserve missing, replay, expiration and claim outcomes", async () => {
   const path = "/threads/thread/actions/action/approve";
@@ -184,11 +178,7 @@ test("approved connector outcomes are persisted after the claim, including failu
 });
 test("editor generation validates scope and streams skill marks through the selected model", async () => {
   assert.equal((await request("/editor", {})).status, 400);
-  assert.equal(
-    (await request("/editor", { prompt: "Write", skillPageId: "skill" }))
-      .status,
-    404,
-  );
+  assert.equal((await request("/editor", { prompt: "Write", skillPageId: "skill" })).status, 404);
   state.skill = {
     id: "skill",
     workspaceId: "workspace",
@@ -218,11 +208,7 @@ test("editor generation validates scope and streams skill marks through the sele
     },
   };
   state.access = false;
-  assert.equal(
-    (await request("/editor", { prompt: "Write", skillPageId: "skill" }))
-      .status,
-    403,
-  );
+  assert.equal((await request("/editor", { prompt: "Write", skillPageId: "skill" })).status, 403);
   state.access = true;
   const response = await request("/editor", {
     prompt: "Write",
@@ -236,10 +222,7 @@ test("editor generation validates scope and streams skill marks through the sele
     /\[`~~\*\*\*Advice\*\*\*~~`\]\(https:\/\/example.test\)/,
   );
   assert.match(String(state.prompts[0].prompt), /<selected_text>\nSelection/);
-  assert.equal(
-    await (await request("/editor", { prompt: "Write" })).text(),
-    "Generated",
-  );
+  assert.equal(await (await request("/editor", { prompt: "Write" })).text(), "Generated");
   state.error = Object.assign(new Error("Canceled"), { name: "AbortError" });
   assert.equal((await request("/editor", { prompt: "Write" })).status, 408);
 });

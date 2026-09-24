@@ -8,15 +8,25 @@ export function createNodeRoomState(
   let alarm: number | null = null;
   let cancelAlarm: Unsubscribe | null = null;
   return {
-    async get<T>(key: string) { return values.get(key) as T | undefined; },
-    async put(key, value) { values.set(key, value); },
-    async delete(key) { return values.delete(key); },
-    async list<T>(options?: { prefix?: string }) {
-      return new Map([...values]
-        .filter(([key]) => !options?.prefix || key.startsWith(options.prefix))
-        .map(([key, value]) => [key, value as T]));
+    async get<T>(key: string) {
+      return values.get(key) as T | undefined;
     },
-    async getAlarm() { return alarm; },
+    async put(key, value) {
+      values.set(key, value);
+    },
+    async delete(key) {
+      return values.delete(key);
+    },
+    async list<T>(options?: { prefix?: string }) {
+      return new Map(
+        [...values]
+          .filter(([key]) => !options?.prefix || key.startsWith(options.prefix))
+          .map(([key, value]) => [key, value as T]),
+      );
+    },
+    async getAlarm() {
+      return alarm;
+    },
     async setAlarm(timestamp) {
       cancelAlarm?.();
       cancelAlarm = null;

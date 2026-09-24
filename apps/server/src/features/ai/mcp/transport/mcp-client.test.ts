@@ -22,8 +22,7 @@ vi.mock("@modelcontextprotocol/client", async (original) => ({
     listTools = state.list;
   },
   StreamableHTTPClientTransport: class {},
-  isInputRequiredResult: (result: { inputRequired?: boolean }) =>
-    result.inputRequired === true,
+  isInputRequiredResult: (result: { inputRequired?: boolean }) => result.inputRequired === true,
 }));
 vi.mock("../../../access", () => ({ getMembership: state.member }));
 vi.mock("../connections/credential-crypto", () => ({ decryptMcpSecret: state.decrypt }));
@@ -41,8 +40,7 @@ vi.mock("../../../../infrastructure/database", () => {
       innerJoin: () => q,
       where: () => q,
       limit: () => q,
-      then: (resolve: (value: unknown) => unknown) =>
-        resolve(state.rows.shift() ?? []),
+      then: (resolve: (value: unknown) => unknown) => resolve(state.rows.shift() ?? []),
     };
     return q;
   }
@@ -59,8 +57,7 @@ vi.mock("../../../../infrastructure/database", () => {
         state.writes.push(value);
       },
     }),
-    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> =>
-      callback(db),
+    transaction: async (callback: (tx: unknown) => unknown): Promise<unknown> => callback(db),
   };
   return { db };
 });
@@ -128,12 +125,12 @@ describe("short-lived MCP client", () => {
     expect(state.close).toHaveBeenCalledOnce();
   });
   it("requires exactly one execution context", async () => {
-    expect(
-      await executeMcpTool({ ...input, threadId: undefined }),
-    ).toMatchObject({ error: { code: "mcp_context_invalid" } });
-    expect(await executeMcpTool({ ...input, agentRunId: "run" })).toMatchObject(
-      { error: { code: "mcp_context_invalid" } },
-    );
+    expect(await executeMcpTool({ ...input, threadId: undefined })).toMatchObject({
+      error: { code: "mcp_context_invalid" },
+    });
+    expect(await executeMcpTool({ ...input, agentRunId: "run" })).toMatchObject({
+      error: { code: "mcp_context_invalid" },
+    });
     expect(state.connect).not.toHaveBeenCalled();
   });
   it("honors the emergency switch before loading credentials", async () => {
@@ -146,9 +143,9 @@ describe("short-lived MCP client", () => {
     expect(state.decrypt).not.toHaveBeenCalled();
   });
   it("does not cross workspace or scope boundaries", async () => {
-    expect(
-      await executeMcpTool({ ...input, workspaceId: "other" }),
-    ).toMatchObject({ error: { code: "mcp_connection_forbidden" } });
+    expect(await executeMcpTool({ ...input, workspaceId: "other" })).toMatchObject({
+      error: { code: "mcp_connection_forbidden" },
+    });
     state.rows = [[{ connection, credential: {} }]];
     expect(
       await executeMcpTool({
@@ -160,10 +157,7 @@ describe("short-lived MCP client", () => {
   it.each([{ classification: "write" }, { executionMode: "always_ask" }])(
     "rejects a policy changed after selection: %j",
     async (change) => {
-      state.rows = [
-        [{ connection, credential: {} }],
-        [{ ...snapshot, ...change }],
-      ];
+      state.rows = [[{ connection, credential: {} }], [{ ...snapshot, ...change }]];
       expect(await executeMcpTool(input)).toMatchObject({
         error: { code: "mcp_policy_changed" },
       });
@@ -171,10 +165,7 @@ describe("short-lived MCP client", () => {
     },
   );
   it("rejects changed schemas and revoked execution access", async () => {
-    state.rows = [
-      [{ connection, credential: {} }],
-      [{ ...snapshot, schemaHash: "changed" }],
-    ];
+    state.rows = [[{ connection, credential: {} }], [{ ...snapshot, schemaHash: "changed" }]];
     expect(await executeMcpTool(input)).toMatchObject({
       error: { code: "mcp_tool_changed" },
     });
@@ -189,10 +180,7 @@ describe("short-lived MCP client", () => {
     expect((await executeMcpTool(input)).ok).toBe(true);
     expect(state.call).toHaveBeenCalledTimes(2);
     state.call.mockReset().mockRejectedValue(new TypeError("network"));
-    state.rows = [
-      [{ connection, credential: {} }],
-      [{ ...snapshot, classification: "write" }],
-    ];
+    state.rows = [[{ connection, credential: {} }], [{ ...snapshot, classification: "write" }]];
     expect(
       await executeMcpTool({
         ...input,
@@ -205,9 +193,7 @@ describe("short-lived MCP client", () => {
   });
   it("does not expose raw provider failures", async () => {
     state.call.mockRejectedValueOnce(new Error("sensitive provider payload"));
-    expect(JSON.stringify(await executeMcpTool(input))).not.toContain(
-      "sensitive",
-    );
+    expect(JSON.stringify(await executeMcpTool(input))).not.toContain("sensitive");
     expect(state.writes.at(-1)).toMatchObject({ state: "degraded" });
   });
   it("rejects interactive input and tolerates cleanup failure", async () => {
@@ -290,9 +276,7 @@ describe("short-lived MCP client", () => {
         { name: "unknown", inputSchema: { type: "object" } },
       ],
     });
-    expect(
-      await discoverConnectionTools({ connectionId: "connection", env: {} }),
-    ).toBe(2);
+    expect(await discoverConnectionTools({ connectionId: "connection", env: {} })).toBe(2);
     expect(state.writes[1]).toMatchObject({
       classification: "read",
       executionMode: "automatic",
@@ -320,9 +304,9 @@ describe("short-lived MCP client", () => {
     state.list.mockResolvedValueOnce({
       tools: Array(1001).fill({ name: "tool" }),
     });
-    await expect(
-      discoverConnectionTools({ connectionId: "connection", env: {} }),
-    ).rejects.toThrow("too many");
+    await expect(discoverConnectionTools({ connectionId: "connection", env: {} })).rejects.toThrow(
+      "too many",
+    );
     expect(state.close).toHaveBeenCalledOnce();
   });
 });

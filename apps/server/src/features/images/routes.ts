@@ -1,11 +1,14 @@
-import { readString, readPositiveInteger, normalizeContentType, sanitizeFilename, getImageObjectKey } from "./image-upload-input";
+import {
+  readString,
+  readPositiveInteger,
+  normalizeContentType,
+  sanitizeFilename,
+  getImageObjectKey,
+} from "./image-upload-input";
 import { and, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import type { Context } from "hono";
-import {
-  canAccessPageInWorkspace,
-  getPageRecord,
-} from "../access";
+import { canAccessPageInWorkspace, getPageRecord } from "../access";
 import { rejectMismatchedApiKeyWorkspace } from "../api-keys";
 import { getStringEnv } from "../../shared/config/config";
 import { db } from "../../infrastructure/database";
@@ -76,10 +79,7 @@ imageRoutes.post("/uploads", async (c) => {
   const maxBytes = getImageUploadMaxBytes(c);
 
   if (!byteSize || byteSize > maxBytes) {
-    return c.json(
-      { error: `byteSize must be between 1 and ${maxBytes}` },
-      400,
-    );
+    return c.json({ error: `byteSize must be between 1 and ${maxBytes}` }, 400);
   }
 
   const page = await getPageRecord(pageId);
@@ -152,9 +152,7 @@ imageRoutes.post("/uploads", async (c) => {
       status: "pending",
     }),
     upload: {
-      expiresAt: new Date(
-        Date.now() + getUploadUrlTtlSeconds(c) * 1000,
-      ).toISOString(),
+      expiresAt: new Date(Date.now() + getUploadUrlTtlSeconds(c) * 1000).toISOString(),
       headers: {
         "Content-Type": contentType,
       },
@@ -254,23 +252,14 @@ imageRoutes.post("/uploads/:assetId/complete", async (c) => {
   }
 
   if (object.byteSize !== undefined && object.byteSize > asset.byteSize) {
-    await db
-      .update(imageAsset)
-      .set({ status: "failed" })
-      .where(eq(imageAsset.id, asset.id));
+    await db.update(imageAsset).set({ status: "failed" }).where(eq(imageAsset.id, asset.id));
     await storage.delete(asset.objectKey).catch(() => undefined);
 
     return c.json({ error: "Uploaded image is larger than expected" }, 413);
   }
 
-  if (
-    object.contentType &&
-    normalizeContentType(object.contentType) !== asset.contentType
-  ) {
-    await db
-      .update(imageAsset)
-      .set({ status: "failed" })
-      .where(eq(imageAsset.id, asset.id));
+  if (object.contentType && normalizeContentType(object.contentType) !== asset.contentType) {
+    await db.update(imageAsset).set({ status: "failed" }).where(eq(imageAsset.id, asset.id));
 
     return c.json({ error: "Uploaded image content type does not match" }, 415);
   }
@@ -391,9 +380,11 @@ imageRoutes.delete("/:assetId", async (c) => {
     .update(imageAsset)
     .set({ deletedAt: new Date(), status: "deleted" })
     .where(eq(imageAsset.id, asset.id));
-  await createImageStorage(c.env).delete(asset.objectKey).catch((error) => {
-    console.error("Failed to delete image object", error);
-  });
+  await createImageStorage(c.env)
+    .delete(asset.objectKey)
+    .catch((error) => {
+      console.error("Failed to delete image object", error);
+    });
 
   return c.json({ ok: true });
 });
@@ -417,11 +408,7 @@ async function isWorkspaceDatabase(id: string, workspaceId: string) {
     .select({ id: database.id })
     .from(database)
     .where(
-      and(
-        eq(database.id, id),
-        eq(database.workspaceId, workspaceId),
-        isNull(database.deletedAt),
-      ),
+      and(eq(database.id, id), eq(database.workspaceId, workspaceId), isNull(database.deletedAt)),
     )
     .limit(1);
 
@@ -457,12 +444,7 @@ async function requirePageAccess(
     return c.json({ error: "Page not found" }, 404);
   }
 
-  if (!(await canAccessPageInWorkspace(
-    asset.pageId,
-    asset.workspaceId,
-    user.id,
-    required,
-  ))) {
+  if (!(await canAccessPageInWorkspace(asset.pageId, asset.workspaceId, user.id, required))) {
     return c.json({ error: "Forbidden" }, 403);
   }
 
@@ -470,19 +452,21 @@ async function requirePageAccess(
 }
 
 function getImageUploadMaxBytes(c: Context<AppBindings>) {
-  return readPositiveInteger(getStringEnv(c.env, "IMAGE_UPLOAD_MAX_BYTES")) ??
-    defaultMaxImageBytes;
+  return readPositiveInteger(getStringEnv(c.env, "IMAGE_UPLOAD_MAX_BYTES")) ?? defaultMaxImageBytes;
 }
 
 function getUploadUrlTtlSeconds(c: Context<AppBindings>) {
-  return readPositiveInteger(
-    getStringEnv(c.env, "IMAGE_UPLOAD_URL_TTL_SECONDS"),
-  ) ?? defaultUploadUrlTtlSeconds;
+  return (
+    readPositiveInteger(getStringEnv(c.env, "IMAGE_UPLOAD_URL_TTL_SECONDS")) ??
+    defaultUploadUrlTtlSeconds
+  );
 }
 
 function getReadUrlTtlSeconds(c: Context<AppBindings>) {
-  return readPositiveInteger(getStringEnv(c.env, "IMAGE_READ_URL_TTL_SECONDS")) ??
-    defaultReadUrlTtlSeconds;
+  return (
+    readPositiveInteger(getStringEnv(c.env, "IMAGE_READ_URL_TTL_SECONDS")) ??
+    defaultReadUrlTtlSeconds
+  );
 }
 
 function toImageAssetResponse(asset: {
@@ -501,13 +485,8 @@ function toImageAssetResponse(asset: {
   };
 }
 
-function getContentDisposition(
-  c: Context<AppBindings>,
-  filename: string,
-) {
-  const disposition = c.req.query("disposition") === "attachment"
-    ? "attachment"
-    : "inline";
+function getContentDisposition(c: Context<AppBindings>, filename: string) {
+  const disposition = c.req.query("disposition") === "attachment" ? "attachment" : "inline";
   const safeFilename = filename.replace(/["\\\r\n]/g, "_");
 
   return `${disposition}; filename="${safeFilename}"`;

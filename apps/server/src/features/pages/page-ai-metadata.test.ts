@@ -9,10 +9,7 @@ import {
 } from "./page-ai-metadata";
 
 test("AI page metadata accepts canonical modes and removes duplicates", () => {
-  assert.deepEqual(parseZilobaseAiModes("skill, instruction, skill"), [
-    "skill",
-    "instruction",
-  ]);
+  assert.deepEqual(parseZilobaseAiModes("skill, instruction, skill"), ["skill", "instruction"]);
   assert.equal(readZilobaseAiMode({ zilobaseai: "skill" }), "skill");
   assert.equal(readZilobaseAiMode({ zilobaseai: "chat" }), null);
   assert.equal(readPageEmoji({ emoji: "🧠" }), "🧠");

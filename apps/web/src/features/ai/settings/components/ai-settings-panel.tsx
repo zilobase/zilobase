@@ -11,11 +11,5 @@ export function AiSettingsPanel({
   onExpandPage?: (pageId: string) => void;
   showCloseButton?: boolean;
 }) {
-  return (
-    <AgentSettingsPage
-      draft={draft}
-      initialTab={initialTab}
-      onClose={onClose}
-    />
-  );
+  return <AgentSettingsPage draft={draft} initialTab={initialTab} onClose={onClose} />;
 }

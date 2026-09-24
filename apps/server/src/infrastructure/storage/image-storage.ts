@@ -1,8 +1,4 @@
-import type {
-  ImageStorage,
-  ImageStorageMode,
-  StoredObjectMetadata,
-} from "@zilobase/runtime-ports";
+import type { ImageStorage, ImageStorageMode, StoredObjectMetadata } from "@zilobase/runtime-ports";
 
 import type { RuntimeEnv } from "../../shared/config/config";
 import { requireRuntimePort } from "@zilobase/runtime-adapter/capabilities";

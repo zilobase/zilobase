@@ -17,10 +17,7 @@ import type {
   PageItemPlacement,
   PageNavigationPayload,
 } from "@zilobase/features/pages";
-import {
-  libraryViewIds,
-  type LibraryView,
-} from "@zilobase/features/user-settings/sidebar-config";
+import { libraryViewIds, type LibraryView } from "@zilobase/features/user-settings/sidebar-config";
 import { libraryViewLabels } from "@/features/sidebar/model/index";
 import { buildHomepageHierarchy } from "./homepage-hierarchy";
 
@@ -89,28 +86,21 @@ export function getHomepageRowType(row: HomepageRow) {
   return "Page";
 }
 
-export function buildTeamspaceLibraryRows(
-  rows: HomepageRow[],
-  teamspaceId: string,
-) {
+export function buildTeamspaceLibraryRows(rows: HomepageRow[], teamspaceId: string) {
   const matchingRows = rows.filter(
     (row) => row.teamspaceId === teamspaceId && row.itemKind !== "teamspace",
   );
   const matchingIds = new Set(matchingRows.map((row) => row.id));
   const childrenByParent = new Map<string | null, HomepageRow[]>();
   for (const row of matchingRows) {
-    const parentId =
-      row.parentRowId && matchingIds.has(row.parentRowId)
-        ? row.parentRowId
-        : null;
+    const parentId = row.parentRowId && matchingIds.has(row.parentRowId) ? row.parentRowId : null;
     const siblings = childrenByParent.get(parentId) ?? [];
     siblings.push(row);
     childrenByParent.set(parentId, siblings);
   }
   for (const siblings of childrenByParent.values())
     siblings.sort(
-      (left, right) =>
-        left.position - right.position || left.name.localeCompare(right.name),
+      (left, right) => left.position - right.position || left.name.localeCompare(right.name),
     );
   const result: Array<{ depth: number; row: HomepageRow }> = [];
   const visit = (parentId: string | null, depth: number) => {
@@ -149,48 +139,41 @@ export function buildHomepageViewData({
   const filteredRows = includeHomepageDescendants(
     rows,
     applyHomepageView(rows, activeViewId as HomepageView),
-  ).sort(
-    (left, right) =>
-      left.position - right.position || left.name.localeCompare(right.name),
-  );
-  const properties: DatabasePropertyEntity[] = propertyDefinitions.map(
-    (definition, index) => {
-      const propertyConfig = propertyConfigs[definition.id];
-      const config =
-        definition.id === "source"
-          ? {
-              ...(isRecord(propertyConfig) ? propertyConfig : {}),
-              pageSummaries: Object.fromEntries(
-                rows.flatMap((row) =>
-                  row.sourcePage ? [[row.sourcePage.id, row.sourcePage]] : [],
-                ),
-              ),
-            }
-          : definition.id === libraryParentPropertyId
-            ? { subItems: { role: "parent-item" } }
+  ).sort((left, right) => left.position - right.position || left.name.localeCompare(right.name));
+  const properties: DatabasePropertyEntity[] = propertyDefinitions.map((definition, index) => {
+    const propertyConfig = propertyConfigs[definition.id];
+    const config =
+      definition.id === "source"
+        ? {
+            ...(isRecord(propertyConfig) ? propertyConfig : {}),
+            pageSummaries: Object.fromEntries(
+              rows.flatMap((row) => (row.sourcePage ? [[row.sourcePage.id, row.sourcePage]] : [])),
+            ),
+          }
+        : definition.id === libraryParentPropertyId
+          ? { subItems: { role: "parent-item" } }
           : propertyConfig;
 
-      return {
+    return {
+      createdAt: "",
+      dataSourceId: homepageDataSourceId,
+      id: definition.id,
+      position: index,
+      property: {
+        config,
         createdAt: "",
-        dataSourceId: homepageDataSourceId,
         id: definition.id,
-        position: index,
-        property: {
-          config,
-          createdAt: "",
-          id: definition.id,
-          name: definition.name,
-          workspaceId: workspaceId ?? "homepage",
-          type: definition.type,
-          updatedAt: "",
-        },
-        propertyId: definition.id,
+        name: definition.name,
+        workspaceId: workspaceId ?? "homepage",
+        type: definition.type,
         updatedAt: "",
-        visible: true,
-        width: definition.width,
-      };
-    },
-  );
+      },
+      propertyId: definition.id,
+      updatedAt: "",
+      visible: true,
+      width: definition.width,
+    };
+  });
   const values: PagePropertyValueEntity[] = filteredRows.flatMap((row) =>
     propertyDefinitions.map((definition) => ({
       createdAt: row.createdAt,
@@ -199,17 +182,17 @@ export function buildHomepageViewData({
       updatedAt: row.updatedAt,
       value:
         definition.id === libraryParentPropertyId
-          ? row.parentRowId ?? ""
-          : row[definition.id] ?? "",
+          ? (row.parentRowId ?? "")
+          : (row[definition.id] ?? ""),
       pageId: row.id,
     })),
   );
 
-  const valuesByPageId = new Map<string, PagePropertyValueEntity[]>()
+  const valuesByPageId = new Map<string, PagePropertyValueEntity[]>();
   for (const value of values) {
-    const group = valuesByPageId.get(value.pageId) ?? []
-    group.push(value)
-    valuesByPageId.set(value.pageId, group)
+    const group = valuesByPageId.get(value.pageId) ?? [];
+    group.push(value);
+    valuesByPageId.set(value.pageId, group);
   }
   const records: DatabaseRecordEntity[] = filteredRows.map((row, index) => ({
     createdAt: row.createdAt,
@@ -229,12 +212,9 @@ export function buildHomepageViewData({
     parentRowId: row.parentRowId,
     updatedAt: row.updatedAt,
     valuesByPropertyId: Object.fromEntries(
-      (valuesByPageId.get(row.id) ?? []).map((value) => [
-        value.propertyId,
-        value,
-      ]),
+      (valuesByPageId.get(row.id) ?? []).map((value) => [value.propertyId, value]),
     ),
-  }))
+  }));
 
   const activeDataSource: DataSourceEntity = {
     config: databaseConfig,
@@ -248,7 +228,7 @@ export function buildHomepageViewData({
     updatedAt: "",
     version: 0,
     workspaceId: workspaceId ?? homepageDatabaseId,
-  }
+  };
 
   return {
     activeDataSource,
@@ -267,25 +247,23 @@ export function buildHomepageViewData({
       },
       dataSources: [activeDataSource],
       properties,
-      views: homepageViews.map(
-        (view, index): DatabaseViewEntity => ({
-          config: viewConfigs[view.id],
-          createdAt: "",
-          databaseId: homepageDatabaseId,
-          dataSourceId: homepageDataSourceId,
-          id: view.id,
-          name: view.label,
-          position: index,
-          type: "table",
-          updatedAt: "",
-        }),
-      ),
+      views: homepageViews.map((view, index): DatabaseViewEntity => ({
+        config: viewConfigs[view.id],
+        createdAt: "",
+        databaseId: homepageDatabaseId,
+        dataSourceId: homepageDataSourceId,
+        id: view.id,
+        name: view.label,
+        position: index,
+        type: "table",
+        updatedAt: "",
+      })),
     },
     dataSourceId: homepageDataSourceId,
     hasMore: false,
     records,
     totalCount: records.length,
-  }
+  };
 }
 
 export function buildHomepageRows(
@@ -310,8 +288,7 @@ export function buildHomepageRows(
   }));
   const showTrash = mode === "trash";
   const includePage = (page: Page) =>
-    page.type !== "meeting" &&
-    (showTrash ? Boolean(page.deletedAt) : !page.deletedAt);
+    page.type !== "meeting" && (showTrash ? Boolean(page.deletedAt) : !page.deletedAt);
   const includeDatabase = (database: PageDatabase, page: Page | null) =>
     showTrash
       ? Boolean(database.deletedAt ?? page?.deletedAt)
@@ -321,9 +298,7 @@ export function buildHomepageRows(
   );
   const hierarchy = buildHomepageHierarchy(placements);
   const parentKeys = new Set(
-    placements.map(
-      (placement) => `${placement.parentKind}:${placement.parentId}`,
-    ),
+    placements.map((placement) => `${placement.parentKind}:${placement.parentId}`),
   );
 
   const contentRows: HomepageRow[] = [
@@ -332,13 +307,7 @@ export function buildHomepageRows(
       .map((page) => {
         const sourcePage = parentKeys.has(`page:${page.id}`)
           ? null
-          : resolveSourcePage(
-              placements,
-              pagesById,
-              databasesById,
-              "page",
-              page.id,
-            );
+          : resolveSourcePage(placements, pagesById, databasesById, "page", page.id);
 
         return {
           ...getLibraryRowDates(page),
@@ -365,13 +334,8 @@ export function buildHomepageRows(
       .map(({ database, page }) => {
         const sourcePage = parentKeys.has(`database:${database.id}`)
           ? null
-          : (resolveSourcePage(
-              placements,
-              pagesById,
-              databasesById,
-              "database",
-              database.id,
-            ) ?? (page ? getPageSourcePage(page) : null));
+          : (resolveSourcePage(placements, pagesById, databasesById, "database", database.id) ??
+            (page ? getPageSourcePage(page) : null));
 
         return {
           ...getLibraryRowDates(database, page),
@@ -393,32 +357,30 @@ export function buildHomepageRows(
     ...(mode === "home"
       ? agents
           .filter((agent) => agent.status === "active")
-          .map(
-            (agent, index): HomepageRow => ({
-              createdAt: agent.updatedAt,
-              createdBy: "Workspace member",
-              deletedAt: "",
-              deletedBy: "",
-              iconKind: "page",
-              id: `agent:${agent.id}`,
-              isFavorite: false,
-              isShared: false,
-              itemKind: "agent",
-              lastVisitedAt: agent.lastVisitedAt ?? agent.updatedAt,
-              metadata: { emoji: "🤖" },
-              name: agent.name || "Untitled agent",
-              openAgentId: agent.id,
-              openDatabaseId: null,
-              openMeetingId: null,
-              openPageId: null,
-              parentRowId: null,
-              position: Number.MAX_SAFE_INTEGER - agents.length + index,
-              source: "",
-              sourcePage: null,
-              teamspaceId: null,
-              updatedAt: agent.updatedAt,
-            }),
-          )
+          .map((agent, index): HomepageRow => ({
+            createdAt: agent.updatedAt,
+            createdBy: "Workspace member",
+            deletedAt: "",
+            deletedBy: "",
+            iconKind: "page",
+            id: `agent:${agent.id}`,
+            isFavorite: false,
+            isShared: false,
+            itemKind: "agent",
+            lastVisitedAt: agent.lastVisitedAt ?? agent.updatedAt,
+            metadata: { emoji: "🤖" },
+            name: agent.name || "Untitled agent",
+            openAgentId: agent.id,
+            openDatabaseId: null,
+            openMeetingId: null,
+            openPageId: null,
+            parentRowId: null,
+            position: Number.MAX_SAFE_INTEGER - agents.length + index,
+            source: "",
+            sourcePage: null,
+            teamspaceId: null,
+            updatedAt: agent.updatedAt,
+          }))
       : []),
   ];
 
@@ -429,9 +391,7 @@ export function buildHomepageRows(
   const contentRowsById = new Map(contentRows.map((row) => [row.id, row]));
   const nestedContentRows = contentRows.map((row) => {
     if (!row.teamspaceId || !teamspaceIds.has(row.teamspaceId)) return row;
-    const parent = row.parentRowId
-      ? contentRowsById.get(row.parentRowId)
-      : null;
+    const parent = row.parentRowId ? contentRowsById.get(row.parentRowId) : null;
     return parent?.teamspaceId === row.teamspaceId
       ? row
       : { ...row, parentRowId: `teamspace:${row.teamspaceId}` };
@@ -439,34 +399,31 @@ export function buildHomepageRows(
 
   return [
     ...nestedContentRows,
-    ...activeTeamspaces.map(
-      (teamspace, index): HomepageRow => ({
-        createdAt: teamspace.createdAt,
-        createdBy: "",
-        deletedAt: "",
-        deletedBy: "",
-        iconKind: "page",
-        id: `teamspace:${teamspace.id}`,
-        isFavorite: false,
-        isShared: false,
-        itemKind: "teamspace",
-        teamspaceId: teamspace.id,
-        lastVisitedAt: null,
-        metadata: typeof teamspace.icon === "string" && teamspace.icon
-          ? { emoji: teamspace.icon }
-          : null,
-        name: teamspace.name,
-        openDatabaseId: null,
-        openAgentId: null,
-        openMeetingId: null,
-        openPageId: null,
-        parentRowId: null,
-        position: index,
-        source: "",
-        sourcePage: null,
-        updatedAt: teamspace.updatedAt,
-      }),
-    ),
+    ...activeTeamspaces.map((teamspace, index): HomepageRow => ({
+      createdAt: teamspace.createdAt,
+      createdBy: "",
+      deletedAt: "",
+      deletedBy: "",
+      iconKind: "page",
+      id: `teamspace:${teamspace.id}`,
+      isFavorite: false,
+      isShared: false,
+      itemKind: "teamspace",
+      teamspaceId: teamspace.id,
+      lastVisitedAt: null,
+      metadata:
+        typeof teamspace.icon === "string" && teamspace.icon ? { emoji: teamspace.icon } : null,
+      name: teamspace.name,
+      openDatabaseId: null,
+      openAgentId: null,
+      openMeetingId: null,
+      openPageId: null,
+      parentRowId: null,
+      position: index,
+      source: "",
+      sourcePage: null,
+      updatedAt: teamspace.updatedAt,
+    })),
   ];
 }
 
@@ -520,8 +477,7 @@ function resolveSourcePage(
     (candidate) =>
       candidate.itemKind === itemKind &&
       candidate.itemId === itemId &&
-      (candidate.placementKind === "primary" ||
-        candidate.placementKind === "database_row"),
+      (candidate.placementKind === "primary" || candidate.placementKind === "database_row"),
   );
 
   if (!placement) {
@@ -581,14 +537,10 @@ export function applyHomepageView(rows: HomepageRow[], view: HomepageView) {
           row.metadata?.zilobaseai === (view === "skills" ? "skill" : "instruction"),
       );
     case "shared":
-      return rows.filter(
-        (row) => row.itemKind !== "meeting" && row.isShared && !row.teamspaceId,
-      );
+      return rows.filter((row) => row.itemKind !== "meeting" && row.isShared && !row.teamspaceId);
     case "teamspaces": {
       const activeTeamspaceIds = new Set(
-        rows
-          .filter((row) => row.itemKind === "teamspace")
-          .map((row) => row.teamspaceId),
+        rows.filter((row) => row.itemKind === "teamspace").map((row) => row.teamspaceId),
       );
       return rows.filter(
         (row) =>
@@ -598,14 +550,9 @@ export function applyHomepageView(rows: HomepageRow[], view: HomepageView) {
       );
     }
     case "private":
-      return rows.filter(
-        (row) =>
-          row.itemKind !== "meeting" && !row.isShared && !row.teamspaceId,
-      );
+      return rows.filter((row) => row.itemKind !== "meeting" && !row.isShared && !row.teamspaceId);
     case "trash":
-      return rows.filter(
-        (row) => row.itemKind !== "meeting" && row.itemKind !== "teamspace",
-      );
+      return rows.filter((row) => row.itemKind !== "meeting" && row.itemKind !== "teamspace");
     case "recents":
     default:
       return rows.filter((row) => row.itemKind !== "meeting" && row.itemKind !== "teamspace");
@@ -638,9 +585,7 @@ export function includeHomepageDescendants(
   return rows.filter((row) => selectedIds.has(row.id));
 }
 
-function formatCreator(
-  creator: Page["createdBy"] | PageDatabase["createdBy"] | undefined,
-) {
+function formatCreator(creator: Page["createdBy"] | PageDatabase["createdBy"] | undefined) {
   return creator?.name?.trim() || creator?.email?.trim() || "Unknown";
 }
 

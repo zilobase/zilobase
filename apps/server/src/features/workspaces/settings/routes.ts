@@ -52,8 +52,8 @@ workspaceSettingsRoutes.get("/ai/models", async (c) => {
       ...providers.flatMap((config) => {
         const provider = getCatalogItem(config.providerId);
 
-        const managedCredentialAvailable = provider.id === "openai" &&
-          Boolean(getStringEnv(c.env, "OPENAI_API_KEY")?.trim());
+        const managedCredentialAvailable =
+          provider.id === "openai" && Boolean(getStringEnv(c.env, "OPENAI_API_KEY")?.trim());
         if (
           !config.enabled ||
           (provider.requiresApiKey && !config.apiKeyConfigured && !managedCredentialAvailable)
@@ -106,12 +106,17 @@ workspaceSettingsRoutes.put("/ai/providers/:providerId", async (c) => {
   const now = new Date();
   const existing = await getAiProviderConfig(auth.workspaceId, providerId);
   const requestedModelIds = Array.isArray(body.modelIds)
-    ? [...new Set(body.modelIds.filter((modelId) =>
-        provider.models.some((model) => model.id === modelId)
-      ))]
+    ? [
+        ...new Set(
+          body.modelIds.filter((modelId) => provider.models.some((model) => model.id === modelId)),
+        ),
+      ]
     : provider.models.map((model) => model.id);
   if (Array.isArray(body.modelIds) && requestedModelIds.length !== body.modelIds.length) {
-    return c.json({ message: "One or more requested AI models are not in the server catalog." }, 400);
+    return c.json(
+      { message: "One or more requested AI models are not in the server catalog." },
+      400,
+    );
   }
 
   let encrypted = existing
@@ -127,9 +132,10 @@ workspaceSettingsRoutes.put("/ai/providers/:providerId", async (c) => {
       encrypted = await encryptAiProviderCredential(c.env, body.apiKey);
     }
   } catch (error) {
-    const status = error instanceof Error && "status" in error
-      ? Number((error as { status: number }).status)
-      : 503;
+    const status =
+      error instanceof Error && "status" in error
+        ? Number((error as { status: number }).status)
+        : 503;
     return c.json(
       { message: error instanceof Error ? error.message : "Failed to encrypt AI credential." },
       status === 400 ? 400 : 503,

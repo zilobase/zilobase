@@ -1,28 +1,34 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useZilobaseFeatures } from "../shared/context"
-import { useActiveWorkspaceId } from "../workspaces/hooks"
+import { useZilobaseFeatures } from "../shared/context";
+import { useActiveWorkspaceId } from "../workspaces/hooks";
 import {
   aiChatThreadMessagesQueryKey,
   aiChatThreadsQueryKey,
   aiChatThreadsQueryOptions,
-} from "./queries"
-import type { AiChatThread, AiChatThreadResponse, AiChatThreadMessagesResponse, AiChatThreadsResponse, AiChatFeedback } from "./contracts"
+} from "./queries";
+import type {
+  AiChatThread,
+  AiChatThreadResponse,
+  AiChatThreadMessagesResponse,
+  AiChatThreadsResponse,
+  AiChatFeedback,
+} from "./contracts";
 
 export function useAiChatThreads(options?: { enabled?: boolean; search?: string }) {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
+  const { apiFetch } = useZilobaseFeatures();
+  const workspaceId = useActiveWorkspaceId();
 
   return useQuery({
     ...aiChatThreadsQueryOptions(apiFetch, workspaceId, options?.search),
     enabled: Boolean(workspaceId) && (options?.enabled ?? true),
-  })
+  });
 }
 
 export function useCreateAiChatThread() {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
-  const queryClient = useQueryClient()
+  const { apiFetch } = useZilobaseFeatures();
+  const workspaceId = useActiveWorkspaceId();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (input?: { title?: string }) =>
@@ -30,9 +36,7 @@ export function useCreateAiChatThread() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(workspaceId
-            ? { "x-zilobase-workspace-id": workspaceId }
-            : {}),
+          ...(workspaceId ? { "x-zilobase-workspace-id": workspaceId } : {}),
         },
         body: JSON.stringify(input ?? {}),
       }),
@@ -40,111 +44,89 @@ export function useCreateAiChatThread() {
       queryClient.invalidateQueries({
         queryKey: aiChatThreadsQueryKey(workspaceId),
       }),
-  })
+  });
 }
 
 export function useRenameAiChatThread() {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
-  const queryClient = useQueryClient()
+  const { apiFetch } = useZilobaseFeatures();
+  const workspaceId = useActiveWorkspaceId();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (input: { threadId: string; title: string }) =>
-      apiFetch<AiChatThreadResponse>(
-        `/api/ai/threads/${encodeURIComponent(input.threadId)}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            ...(workspaceId
-              ? { "x-zilobase-workspace-id": workspaceId }
-              : {}),
-          },
-          body: JSON.stringify({ title: input.title }),
+      apiFetch<AiChatThreadResponse>(`/api/ai/threads/${encodeURIComponent(input.threadId)}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(workspaceId ? { "x-zilobase-workspace-id": workspaceId } : {}),
         },
-      ),
+        body: JSON.stringify({ title: input.title }),
+      }),
     onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: aiChatThreadsQueryKey(workspaceId),
       }),
-  })
+  });
 }
 
 export function useArchiveAiChatThread() {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
-  const queryClient = useQueryClient()
+  const { apiFetch } = useZilobaseFeatures();
+  const workspaceId = useActiveWorkspaceId();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (threadId: string) =>
-      apiFetch<{ success: boolean }>(
-        `/api/ai/threads/${encodeURIComponent(threadId)}/archive`,
-        {
-          method: "POST",
-          headers: workspaceId
-            ? { "x-zilobase-workspace-id": workspaceId }
-            : undefined,
-        },
-      ),
+      apiFetch<{ success: boolean }>(`/api/ai/threads/${encodeURIComponent(threadId)}/archive`, {
+        method: "POST",
+        headers: workspaceId ? { "x-zilobase-workspace-id": workspaceId } : undefined,
+      }),
     onSuccess: (_result, threadId) => {
       queryClient.removeQueries({
         queryKey: aiChatThreadMessagesQueryKey(workspaceId, threadId),
-      })
+      });
       return queryClient.invalidateQueries({
         queryKey: aiChatThreadsQueryKey(workspaceId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function useSetAiChatThreadPinned() {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
-  const queryClient = useQueryClient()
+  const { apiFetch } = useZilobaseFeatures();
+  const workspaceId = useActiveWorkspaceId();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (input: { pinned: boolean; threadId: string }) =>
-      apiFetch<AiChatThreadResponse>(
-        `/api/ai/threads/${encodeURIComponent(input.threadId)}/pin`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(workspaceId
-              ? { "x-zilobase-workspace-id": workspaceId }
-              : {}),
-          },
-          body: JSON.stringify({ pinned: input.pinned }),
+      apiFetch<AiChatThreadResponse>(`/api/ai/threads/${encodeURIComponent(input.threadId)}/pin`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(workspaceId ? { "x-zilobase-workspace-id": workspaceId } : {}),
         },
-      ),
+        body: JSON.stringify({ pinned: input.pinned }),
+      }),
     onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: aiChatThreadsQueryKey(workspaceId),
       }),
-  })
+  });
 }
 
 export function useSubmitAiChatFeedback() {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
-  const queryClient = useQueryClient()
+  const { apiFetch } = useZilobaseFeatures();
+  const workspaceId = useActiveWorkspaceId();
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (input: {
-      messageId: string
-      rating: -1 | 1
-      reason?: string
-      threadId: string
-    }) =>
+    mutationFn: (input: { messageId: string; rating: -1 | 1; reason?: string; threadId: string }) =>
       apiFetch<{ feedback: AiChatFeedback }>(
         `/api/ai/threads/${encodeURIComponent(input.threadId)}/messages/${encodeURIComponent(input.messageId)}/feedback`,
         {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            ...(workspaceId
-              ? { "x-zilobase-workspace-id": workspaceId }
-              : {}),
+            ...(workspaceId ? { "x-zilobase-workspace-id": workspaceId } : {}),
           },
           body: JSON.stringify({ rating: input.rating, reason: input.reason }),
         },
@@ -152,47 +134,41 @@ export function useSubmitAiChatFeedback() {
     onSuccess: ({ feedback }, input) => {
       queryClient.setQueryData<AiChatThreadMessagesResponse>(
         aiChatThreadMessagesQueryKey(workspaceId, input.threadId),
-        (current) => current
-          ? {
-              ...current,
-              feedback: [
-                ...current.feedback.filter(
-                  (item) => item.messageId !== feedback.messageId,
-                ),
-                feedback,
-              ],
-            }
-          : current,
-      )
+        (current) =>
+          current
+            ? {
+                ...current,
+                feedback: [
+                  ...current.feedback.filter((item) => item.messageId !== feedback.messageId),
+                  feedback,
+                ],
+              }
+            : current,
+      );
     },
-  })
+  });
 }
 
 export function useDeleteAiChatThread() {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
-  const queryClient = useQueryClient()
+  const { apiFetch } = useZilobaseFeatures();
+  const workspaceId = useActiveWorkspaceId();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (threadId: string) =>
-      apiFetch<{ success: boolean }>(
-        `/api/ai/threads/${encodeURIComponent(threadId)}`,
-        {
-          method: "DELETE",
-          headers: workspaceId
-            ? { "x-zilobase-workspace-id": workspaceId }
-            : undefined,
-        },
-      ),
+      apiFetch<{ success: boolean }>(`/api/ai/threads/${encodeURIComponent(threadId)}`, {
+        method: "DELETE",
+        headers: workspaceId ? { "x-zilobase-workspace-id": workspaceId } : undefined,
+      }),
     onSuccess: (_result, threadId) => {
       queryClient.removeQueries({
         queryKey: aiChatThreadMessagesQueryKey(workspaceId, threadId),
-      })
+      });
       return queryClient.invalidateQueries({
         queryKey: aiChatThreadsQueryKey(workspaceId),
-      })
+      });
     },
-  })
+  });
 }
 
 export function upsertAiChatThreadInCache(
@@ -200,16 +176,10 @@ export function upsertAiChatThreadInCache(
   workspaceId: string | null | undefined,
   thread: AiChatThread,
 ) {
-  queryClient.setQueryData<AiChatThreadsResponse>(
-    aiChatThreadsQueryKey(workspaceId),
-    (current) => {
-      const threads = current?.threads ?? []
-      const nextThreads = [
-        thread,
-        ...threads.filter((item) => item.id !== thread.id),
-      ]
+  queryClient.setQueryData<AiChatThreadsResponse>(aiChatThreadsQueryKey(workspaceId), (current) => {
+    const threads = current?.threads ?? [];
+    const nextThreads = [thread, ...threads.filter((item) => item.id !== thread.id)];
 
-      return { threads: nextThreads }
-    },
-  )
+    return { threads: nextThreads };
+  });
 }

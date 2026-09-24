@@ -1,16 +1,10 @@
-import type {
-  AgentSettingsDefinition,
-  AiAgentProfileDetail,
-} from "@zilobase/features/ai-chat";
+import type { AgentSettingsDefinition, AiAgentProfileDetail } from "@zilobase/features/ai-chat";
 type Profile = Pick<
   AiAgentProfileDetail,
   "cover" | "icon" | "iconPosition" | "name" | "description"
 >;
 
-export function agentMetadata(
-  profile: Profile,
-  definition: AgentSettingsDefinition | undefined,
-) {
+export function agentMetadata(profile: Profile, definition: AgentSettingsDefinition | undefined) {
   const source = definition
     ? {
         ...definition,

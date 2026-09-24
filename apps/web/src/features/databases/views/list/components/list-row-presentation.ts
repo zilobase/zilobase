@@ -14,13 +14,10 @@ export function listRowDragAttributes(
   return {
     "data-dragging": drag.draggedRowId === rowId ? "true" : undefined,
     "data-drop-after":
-      active &&
-      drag.dropTargetIndex === rowIndex + 1 &&
-      rowIndex === rowCount - 1
+      active && drag.dropTargetIndex === rowIndex + 1 && rowIndex === rowCount - 1
         ? "true"
         : undefined,
-    "data-drop-before":
-      active && drag.dropTargetIndex === rowIndex ? "true" : undefined,
+    "data-drop-before": active && drag.dropTargetIndex === rowIndex ? "true" : undefined,
   } as const;
 }
 

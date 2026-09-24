@@ -31,16 +31,10 @@ export function register({ assert, appPath, test }) {
     ];
     const controlledExports =
       Object.entries(queryValues)
-        .map(
-          ([name, key]) =>
-            `export const ${name} = () => ({data:runtime.${key}});`,
-        )
+        .map(([name, key]) => `export const ${name} = () => ({data:runtime.${key}});`)
         .join("\n") +
       mutationNames
-        .map(
-          (name) =>
-            `export const use${name} = () => runtime.mutations.${name};`,
-        )
+        .map((name) => `export const use${name} = () => runtime.mutations.${name};`)
         .join("\n") +
       'export const useActiveWorkspaceId = () => "workspace";';
     const result = await build({
@@ -86,19 +80,16 @@ export function register({ assert, appPath, test }) {
               },
               (args) => ({ path: args.path, namespace: "sharing-test" }),
             );
-            build.onLoad(
-              { filter: /.*/, namespace: "sharing-test" },
-              ({ path }) => ({
-                contents:
-                  path === "sharing-test-runtime"
-                    ? "export const runtime = {};"
-                    : 'import {runtime} from "sharing-test-runtime";' +
-                      (path === "sonner"
-                        ? 'export const toast={success:value=>runtime.calls.push(["success",value]),error:value=>runtime.calls.push(["error",value])};'
-                        : controlledExports),
-                loader: "ts",
-              }),
-            );
+            build.onLoad({ filter: /.*/, namespace: "sharing-test" }, ({ path }) => ({
+              contents:
+                path === "sharing-test-runtime"
+                  ? "export const runtime = {};"
+                  : 'import {runtime} from "sharing-test-runtime";' +
+                    (path === "sonner"
+                      ? 'export const toast={success:value=>runtime.calls.push(["success",value]),error:value=>runtime.calls.push(["error",value])};'
+                      : controlledExports),
+              loader: "ts",
+            }));
           },
         },
       ],
@@ -156,24 +147,15 @@ export function register({ assert, appPath, test }) {
       sharing.shareableMembers.map((member) => member.id),
       ["member"],
     );
-    assert.equal(
-      sharing.targetByKey.get("user:guest").detail,
-      "guest@test · Guest",
-    );
+    assert.equal(sharing.targetByKey.get("user:guest").detail, "guest@test · Guest");
     assert.deepEqual(
       sharing.pendingGuestInvitations.map((invite) => invite.id),
       ["pending"],
     );
     sharing.deleteRule({ id: "rule", targetId: "guest" });
-    assert.deepEqual(calls.at(-1), [
-      "RevokePageGuest",
-      { pageId: "page", userId: "guest" },
-    ]);
+    assert.deepEqual(calls.at(-1), ["RevokePageGuest", { pageId: "page", userId: "guest" }]);
     sharing.deleteRule({ id: "rule", targetId: "member" });
-    assert.deepEqual(calls.at(-1), [
-      "DeletePageAccess",
-      { pageId: "page", ruleId: "rule" },
-    ]);
+    assert.deepEqual(calls.at(-1), ["DeletePageAccess", { pageId: "page", ruleId: "rule" }]);
     const db = capture(
       { databaseId: "db" },
       { database: { database: { accessLevel: "full" } } },
@@ -215,10 +197,7 @@ export function register({ assert, appPath, test }) {
       "InvitePageGuest",
       { accessLevel: "view", email: "guest@example.test", pageId: "page" },
     ]);
-    assert.deepEqual(calls.at(-1), [
-      "success",
-      "Guest invitation sent for owner approval.",
-    ]);
+    assert.deepEqual(calls.at(-1), ["success", "Guest invitation sent for owner approval."]);
     calls.length = 0;
     capture(undefined, { accessLevel: "view" }).togglePublished(true);
     assert.deepEqual(calls, []);

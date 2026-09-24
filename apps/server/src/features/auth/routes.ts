@@ -27,10 +27,7 @@ function rewriteWorkspaceAuthUrl(request: Request) {
     return null;
   }
 
-  url.pathname = url.pathname.replace(
-    "/api/auth/workspace/",
-    "/api/auth/organization/",
-  );
+  url.pathname = url.pathname.replace("/api/auth/workspace/", "/api/auth/organization/");
 
   const workspaceId = url.searchParams.get("workspaceId");
 
@@ -56,7 +53,10 @@ async function getWorkspaceAuthRequest(request: Request) {
     const contentType = headers.get("content-type") ?? "";
 
     if (contentType.includes("application/json")) {
-      const jsonBody = await request.clone().json().catch(() => null);
+      const jsonBody = await request
+        .clone()
+        .json()
+        .catch(() => null);
 
       if (jsonBody && typeof jsonBody === "object" && !Array.isArray(jsonBody)) {
         const nextBody = { ...jsonBody } as Record<string, unknown>;
@@ -96,7 +96,10 @@ async function toWorkspaceAuthResponse(response: Response, rewritten: boolean) {
     return response;
   }
 
-  const body = await response.clone().json().catch(() => null);
+  const body = await response
+    .clone()
+    .json()
+    .catch(() => null);
 
   if (body === null) {
     return response;
@@ -174,11 +177,13 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
   const { request, rewritten } = await getWorkspaceAuthRequest(c.req.raw);
 
   return runWithDbEnv(c.env, async () => {
-    if (await isBlockedSelfHostedWorkspaceCreate(
-      c.env,
-      request,
-      isCommunityRegistration(c.get("appPolicy")),
-    )) {
+    if (
+      await isBlockedSelfHostedWorkspaceCreate(
+        c.env,
+        request,
+        isCommunityRegistration(c.get("appPolicy")),
+      )
+    ) {
       return c.json(
         {
           error: "Self-hosted deployments can only have one workspace.",
@@ -213,11 +218,7 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
       .handler(request)
       .then((response) => toWorkspaceAuthResponse(response, rewritten));
 
-    return applySocialInvitationCookie(
-      response,
-      request,
-      invitation.invitationId,
-    );
+    return applySocialInvitationCookie(response, request, invitation.invitationId);
   });
 });
 
@@ -236,7 +237,10 @@ async function prepareSocialRegistration(
     return { allowed: true as const, invitationId: null };
   }
 
-  const body = await request.clone().json().catch(() => null);
+  const body = await request
+    .clone()
+    .json()
+    .catch(() => null);
   const invitationId =
     body &&
     typeof body === "object" &&

@@ -56,10 +56,7 @@ export function register({ assert, loadModule, test }) {
       "/src/features/ai/settings/model/mcp-tool-draft.ts",
     );
     const selected = { connectionId: "connection", tools: [] };
-    assert.equal(
-      isConnectorDraftChanged(undefined, "connection", selected),
-      undefined,
-    );
+    assert.equal(isConnectorDraftChanged(undefined, "connection", selected), undefined);
     const review = {
       fields: ["connectors"],
       before: { connectors: [selected] },
@@ -68,16 +65,9 @@ export function register({ assert, loadModule, test }) {
       isConnectorDraftChanged(review, "connection", structuredClone(selected)),
       undefined,
     );
+    assert.equal(isConnectorDraftChanged(review, "connection", undefined), true);
     assert.equal(
-      isConnectorDraftChanged(review, "connection", undefined),
-      true,
-    );
-    assert.equal(
-      isConnectorDraftChanged(
-        { ...review, fields: [] },
-        "connection",
-        undefined,
-      ),
+      isConnectorDraftChanged({ ...review, fields: [] }, "connection", undefined),
       undefined,
     );
   });

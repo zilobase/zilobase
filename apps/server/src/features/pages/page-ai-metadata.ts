@@ -2,24 +2,18 @@ const ZILOBASE_AI_MODES = new Set(["instruction", "skill"] as const);
 
 export type ZilobaseAiMode = "instruction" | "skill";
 
-export function parseZilobaseAiModes(
-  value: string | undefined,
-): ZilobaseAiMode[] | null {
+export function parseZilobaseAiModes(value: string | undefined): ZilobaseAiMode[] | null {
   if (!value) return null;
 
   const modes = value
     .split(",")
     .map((mode) => mode.trim())
-    .filter((mode): mode is ZilobaseAiMode =>
-      ZILOBASE_AI_MODES.has(mode as ZilobaseAiMode),
-    );
+    .filter((mode): mode is ZilobaseAiMode => ZILOBASE_AI_MODES.has(mode as ZilobaseAiMode));
 
   return modes.length > 0 ? [...new Set(modes)] : null;
 }
 
-export function readZilobaseAiMode(
-  metadata: unknown,
-): ZilobaseAiMode | null {
+export function readZilobaseAiMode(metadata: unknown): ZilobaseAiMode | null {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
     return null;
   }

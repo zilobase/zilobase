@@ -1,7 +1,4 @@
-import type {
-  DatabaseCommandAck,
-  DatabaseMutationEventV2,
-} from  "./entities"
+import type { DatabaseCommandAck, DatabaseMutationEventV2 } from "./entities";
 
 export const databaseMutationEventV2Fixture = {
   actorId: "fixture-user",
@@ -15,10 +12,10 @@ export const databaseMutationEventV2Fixture = {
   protocolVersion: 2,
   type: "database.mutation",
   version: 7,
-} as const satisfies DatabaseMutationEventV2
+} as const satisfies DatabaseMutationEventV2;
 
 export const databaseCommandAckV2Fixture = {
   commandId: databaseMutationEventV2Fixture.commandId,
   event: databaseMutationEventV2Fixture,
   result: { recordId: "fixture-row" },
-} as const satisfies DatabaseCommandAck<{ recordId: string }>
+} as const satisfies DatabaseCommandAck<{ recordId: string }>;

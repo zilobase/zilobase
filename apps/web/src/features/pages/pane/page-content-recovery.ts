@@ -45,11 +45,7 @@ export function recoverMissingPlacedDatabaseBlocks({
     return false;
   }
 
-  const missingDatabaseIds = getMissingPlacedDatabaseIds(
-    restored.content,
-    placements,
-    pageId,
-  );
+  const missingDatabaseIds = getMissingPlacedDatabaseIds(restored.content, placements, pageId);
 
   if (missingDatabaseIds.length === 0) {
     return false;

@@ -1,6 +1,6 @@
-import { Handle, Position, type NodeProps } from "@xyflow/react"
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 
-import type { CanvasAnchorNode } from "../model/types"
+import type { CanvasAnchorNode } from "../model/types";
 
 export function AnchorNode(_props: NodeProps<CanvasAnchorNode>) {
   return (
@@ -20,5 +20,5 @@ export function AnchorNode(_props: NodeProps<CanvasAnchorNode>) {
         type="source"
       />
     </div>
-  )
+  );
 }

@@ -14,48 +14,44 @@ import { activeMembershipCondition } from "../memberships";
 
 export const sessionRoutes = new Hono<AppBindings>();
 
-sessionRoutes.get("/", (c) => timed(c, "route_session_total", async () => {
-  const user = c.get("user");
-  const session = c.get("session");
+sessionRoutes.get("/", (c) =>
+  timed(c, "route_session_total", async () => {
+    const user = c.get("user");
+    const session = c.get("session");
 
-  if (!user) {
-    return c.json({ user: null, session: null }, 401);
-  }
+    if (!user) {
+      return c.json({ user: null, session: null }, 401);
+    }
 
-  const [selfHostedWorkspaceId, hasPassword] = await Promise.all([
-    timed(c, "route_session_pin", () =>
-      ensurePinnedWorkspaceMembership(
-        c.env,
-        user.id,
-        user.emailVerified,
-        session?.id,
-        c.get("editionExtension") ?? undefined,
-        isCommunityRegistration(c.get("appPolicy")),
+    const [selfHostedWorkspaceId, hasPassword] = await Promise.all([
+      timed(c, "route_session_pin", () =>
+        ensurePinnedWorkspaceMembership(
+          c.env,
+          user.id,
+          user.emailVerified,
+          session?.id,
+          c.get("editionExtension") ?? undefined,
+          isCommunityRegistration(c.get("appPolicy")),
+        ),
       ),
-    ),
-    timed(
-      c,
-      "route_session_has_password",
-      () => getUserHasPassword(user.id),
-    ),
-  ]);
-  const responseSession =
-    session &&
-    selfHostedWorkspaceId &&
-    session.activeWorkspaceId !== selfHostedWorkspaceId
-      ? { ...session, activeWorkspaceId: selfHostedWorkspaceId }
-      : session;
+      timed(c, "route_session_has_password", () => getUserHasPassword(user.id)),
+    ]);
+    const responseSession =
+      session && selfHostedWorkspaceId && session.activeWorkspaceId !== selfHostedWorkspaceId
+        ? { ...session, activeWorkspaceId: selfHostedWorkspaceId }
+        : session;
 
-  return c.json({
-    demoMode: c.get("authMethod") === "demo",
-    session: responseSession,
-    workspacePinned: c.get("appPolicy").workspaceSelection === "pinned",
-    user: {
-      ...user,
-      hasPassword,
-    },
-  });
-}));
+    return c.json({
+      demoMode: c.get("authMethod") === "demo",
+      session: responseSession,
+      workspacePinned: c.get("appPolicy").workspaceSelection === "pinned",
+      user: {
+        ...user,
+        hasPassword,
+      },
+    });
+  }),
+);
 
 async function ensurePinnedWorkspaceMembership(
   env: Record<string, unknown>,
@@ -98,10 +94,7 @@ async function ensurePinnedWorkspaceMembership(
       return null;
     }
 
-    await new MembershipService(
-      db,
-      editionExtension ?? undefined,
-    ).grantMembership({
+    await new MembershipService(db, editionExtension ?? undefined).grantMembership({
       role: "member",
       source: "open-registration",
       userId,
@@ -135,11 +128,7 @@ async function getUserHasPassword(userId: string) {
   return Boolean(credentialAccount);
 }
 
-async function timed<T>(
-  c: Context<AppBindings>,
-  name: string,
-  run: () => Promise<T>,
-) {
+async function timed<T>(c: Context<AppBindings>, name: string, run: () => Promise<T>) {
   const startedAt = performance.now();
 
   try {

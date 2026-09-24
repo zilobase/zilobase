@@ -5,14 +5,22 @@ import path from "node:path";
 import { activeServer, desktopError, loadConfig } from "./server.mjs";
 
 function profileKey(server) {
-  return createHash("sha256").update(server.issuer + "\0" + server.instanceId).digest("hex");
+  return createHash("sha256")
+    .update(server.issuer + "\0" + server.instanceId)
+    .digest("hex");
 }
 function secretPath(server) {
   return path.join(app.getPath("userData"), "credentials", profileKey(server) + ".json");
 }
 async function storageReady() {
-  if (process.platform === "linux" && ["basic_text", "unknown"].includes(safeStorage.getSelectedStorageBackend())) {
-    throw desktopError("no_storage_access", "An OS secret store is required to save desktop sessions.");
+  if (
+    process.platform === "linux" &&
+    ["basic_text", "unknown"].includes(safeStorage.getSelectedStorageBackend())
+  ) {
+    throw desktopError(
+      "no_storage_access",
+      "An OS secret store is required to save desktop sessions.",
+    );
   }
   if (!(await safeStorage.isAsyncEncryptionAvailable())) {
     throw desktopError("no_storage_access", "Secure credential storage is unavailable.");
@@ -20,12 +28,14 @@ async function storageReady() {
 }
 async function readValues(server) {
   let bytes;
-  try { bytes = await readFile(secretPath(server)); }
-  catch (error) {
+  try {
+    bytes = await readFile(secretPath(server));
+  } catch (error) {
     if (error.code === "ENOENT") return {};
     throw desktopError("platform_failure", "Desktop credentials could not be read.");
   }
-  if (bytes.length > 32_768) throw desktopError("platform_failure", "Desktop credentials are invalid.");
+  if (bytes.length > 32_768)
+    throw desktopError("platform_failure", "Desktop credentials are invalid.");
   try {
     await storageReady();
     const encrypted = JSON.parse(bytes.toString("utf8"));
@@ -50,7 +60,8 @@ async function writeValues(server, values) {
   await storageReady();
   const encrypted = {};
   for (const key of ["session", "session-owner"]) {
-    if (values[key]) encrypted[key] = (await safeStorage.encryptStringAsync(values[key])).toString("base64");
+    if (values[key])
+      encrypted[key] = (await safeStorage.encryptStringAsync(values[key])).toString("base64");
   }
   const file = secretPath(server);
   await mkdir(path.dirname(file), { recursive: true });
@@ -79,16 +90,26 @@ export const credentials = {
     await writeValues(server, values);
   },
   async delete(server) {
-    try { await unlink(secretPath(server)); }
-    catch (error) {
-      if (error.code !== "ENOENT") throw desktopError("credential_cleanup_failed", "Server credentials could not be removed.");
+    try {
+      await unlink(secretPath(server));
+    } catch (error) {
+      if (error.code !== "ENOENT")
+        throw desktopError("credential_cleanup_failed", "Server credentials could not be removed.");
     }
   },
 };
 
 export function registerCredentialHandlers(handle) {
-  handle("desktop:auth:get-token", async () => credentials.get(activeServer(await loadConfig()), "session"));
-  handle("desktop:auth:set-token", async ({ token }) => credentials.set(activeServer(await loadConfig()), "session", token));
-  handle("desktop:auth:get-owner", async () => credentials.get(activeServer(await loadConfig()), "session-owner"));
-  handle("desktop:auth:set-owner", async ({ owner }) => credentials.set(activeServer(await loadConfig()), "session-owner", owner));
+  handle("desktop:auth:get-token", async () =>
+    credentials.get(activeServer(await loadConfig()), "session"),
+  );
+  handle("desktop:auth:set-token", async ({ token }) =>
+    credentials.set(activeServer(await loadConfig()), "session", token),
+  );
+  handle("desktop:auth:get-owner", async () =>
+    credentials.get(activeServer(await loadConfig()), "session-owner"),
+  );
+  handle("desktop:auth:set-owner", async ({ owner }) =>
+    credentials.set(activeServer(await loadConfig()), "session-owner", owner),
+  );
 }

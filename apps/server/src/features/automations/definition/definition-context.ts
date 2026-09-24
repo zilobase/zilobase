@@ -1,14 +1,41 @@
 import { and, asc, eq, gt, inArray, isNull, or } from "drizzle-orm";
-import { databaseAutomationDefinitionSchema, getNextDatabaseAutomationOccurrence, type DatabaseAutomationDefinition, type DatabaseAutomationDependency, type DatabaseAutomationDetail, type DatabaseAutomationSummary, type DatabaseAutomationValidationResult } from "@zilobase/features/automations";
+import {
+  databaseAutomationDefinitionSchema,
+  getNextDatabaseAutomationOccurrence,
+  type DatabaseAutomationDefinition,
+  type DatabaseAutomationDependency,
+  type DatabaseAutomationDetail,
+  type DatabaseAutomationSummary,
+  type DatabaseAutomationValidationResult,
+} from "@zilobase/features/automations";
 import { canAccessDatabaseRecord, getMembership } from "../../access";
 import { db, type Database } from "../../../infrastructure/database";
-import { database, databaseAutomation, databaseAutomationDependency, databaseAutomationRevision, databaseDataSource, databaseProperty, databaseView, dataSource, automationSecret, gmailAccount, gmailWorkspaceConnection, pageProperty, slackConnection, member, user } from "../../../infrastructure/database/schema";
+import {
+  database,
+  databaseAutomation,
+  databaseAutomationDependency,
+  databaseAutomationRevision,
+  databaseDataSource,
+  databaseProperty,
+  databaseView,
+  dataSource,
+  automationSecret,
+  gmailAccount,
+  gmailWorkspaceConnection,
+  pageProperty,
+  slackConnection,
+  member,
+  user,
+} from "../../../infrastructure/database/schema";
 import type { ZilobaseEditionExtension } from "../../../shared/types";
 import { requireDataSourceAccess } from "../../databases/access/data-source-access";
 import { requireDatabaseAccess } from "../../databases/access/database-access";
-import { operatorsForPropertyType, type AutomationPropertyMetadata, type DatabaseAutomationCompilationContext } from "../compilation/compiler";
+import {
+  operatorsForPropertyType,
+  type AutomationPropertyMetadata,
+  type DatabaseAutomationCompilationContext,
+} from "../compilation/compiler";
 import { resolvePublicWebhookTarget } from "../actions/webhook-egress";
-
 
 export type Executor = Database;
 export type AutomationRecord = typeof databaseAutomation.$inferSelect;
@@ -75,10 +102,24 @@ export async function requireManagementContext(input: {
       .where(and(eq(database.id, source.parentDatabaseId), isNull(database.deletedAt)))
       .limit(1),
   ]);
-  if (!link[0]) throw new DatabaseAutomationError("Data source is not linked to this database", 404, "AUTOMATION_SOURCE_NOT_LINKED");
-  if (!parent[0]) throw new DatabaseAutomationError("Source database not found", 404, "AUTOMATION_SOURCE_NOT_FOUND");
+  if (!link[0])
+    throw new DatabaseAutomationError(
+      "Data source is not linked to this database",
+      404,
+      "AUTOMATION_SOURCE_NOT_LINKED",
+    );
+  if (!parent[0])
+    throw new DatabaseAutomationError(
+      "Source database not found",
+      404,
+      "AUTOMATION_SOURCE_NOT_FOUND",
+    );
   if (isDatabaseLocked(parent[0]) || isDatabaseLocked(source)) {
-    throw new DatabaseAutomationError("Unlock the source database before managing automations", 409, "AUTOMATION_SOURCE_LOCKED");
+    throw new DatabaseAutomationError(
+      "Unlock the source database before managing automations",
+      409,
+      "AUTOMATION_SOURCE_LOCKED",
+    );
   }
   return { membership, parent: parent[0], source };
 }
@@ -96,7 +137,8 @@ export async function loadCompilationContext(input: {
   const parsed = databaseAutomationDefinitionSchema.safeParse(input.definition);
   const targetIds = new Set([input.management.source.id]);
   const sourcePropertiesByDataSource = await loadProperties([input.management.source.id]);
-  const sourceProperties = sourcePropertiesByDataSource.get(input.management.source.id) ?? new Map();
+  const sourceProperties =
+    sourcePropertiesByDataSource.get(input.management.source.id) ?? new Map();
   if (parsed.success) {
     for (const action of parsed.data.actions) {
       if (action.type === "add_page") targetIds.add(action.dataSourceId);
@@ -104,17 +146,26 @@ export async function loadCompilationContext(input: {
         targetIds.add(action.target.dataSourceId);
       }
       if (action.type === "edit_pages" && action.target.type === "related_pages") {
-        const relatedDataSourceId = sourceProperties.get(action.target.propertyId)?.relatedDataSourceId;
+        const relatedDataSourceId = sourceProperties.get(
+          action.target.propertyId,
+        )?.relatedDataSourceId;
         if (relatedDataSourceId) targetIds.add(relatedDataSourceId);
       }
     }
   }
   const invalidWebhookActionIds = new Set<string>();
   if (parsed.success && input.webhooksEnabled !== false) {
-    await Promise.all(parsed.data.actions.flatMap((action) => action.type === "send_webhook"
-      ? [resolvePublicWebhookTarget(action.url, { allowHttpDomains: input.allowHttpWebhookDomains })
-          .catch(() => invalidWebhookActionIds.add(action.id))]
-      : []));
+    await Promise.all(
+      parsed.data.actions.flatMap((action) =>
+        action.type === "send_webhook"
+          ? [
+              resolvePublicWebhookTarget(action.url, {
+                allowHttpDomains: input.allowHttpWebhookDomains,
+              }).catch(() => invalidWebhookActionIds.add(action.id)),
+            ]
+          : [],
+      ),
+    );
   }
   for (const targetId of targetIds) {
     let target: Awaited<ReturnType<typeof requireDataSourceAccess>>;
@@ -130,24 +181,35 @@ export async function loadCompilationContext(input: {
     }
     if (target.workspaceId !== input.management.source.workspaceId) targetIds.delete(targetId);
   }
-  const [propertiesByDataSource, views, users, gmailConnections, secrets, slackConnections] = await Promise.all([
-    loadProperties([...targetIds]),
-    loadViews(input.databaseId, input.management.source.id),
-    loadWorkspaceUsers(input.management.source.workspaceId),
-    loadOwnedGmailConnections(input.management.source.workspaceId, input.userId),
-    loadOwnedAutomationSecrets(input.management.source.workspaceId, input.userId),
-    loadOwnedSlackConnections(input.management.source.workspaceId, input.userId),
-  ]);
+  const [propertiesByDataSource, views, users, gmailConnections, secrets, slackConnections] =
+    await Promise.all([
+      loadProperties([...targetIds]),
+      loadViews(input.databaseId, input.management.source.id),
+      loadWorkspaceUsers(input.management.source.workspaceId),
+      loadOwnedGmailConnections(input.management.source.workspaceId, input.userId),
+      loadOwnedAutomationSecrets(input.management.source.workspaceId, input.userId),
+      loadOwnedSlackConnections(input.management.source.workspaceId, input.userId),
+    ]);
   return {
     allowHttpWebhookDomains: input.allowHttpWebhookDomains,
-    capabilities: { gmail: input.gmailEnabled !== false, notifications: true, schedules: true, slack: input.slackEnabled !== false, webhooks: input.webhooksEnabled !== false },
+    capabilities: {
+      gmail: input.gmailEnabled !== false,
+      notifications: true,
+      schedules: true,
+      slack: input.slackEnabled !== false,
+      webhooks: input.webhooksEnabled !== false,
+    },
     dataSourceIds: targetIds,
-    gmailConnectionIds: new Set(gmailConnections.filter(({ status }) => status === "connected").map(({ id }) => id)),
+    gmailConnectionIds: new Set(
+      gmailConnections.filter(({ status }) => status === "connected").map(({ id }) => id),
+    ),
     invalidWebhookActionIds,
     parentDatabaseId: input.management.source.parentDatabaseId,
     propertiesByDataSource,
     secretIds: new Set(secrets.map(({ id }) => id)),
-    slackConnectionIds: new Set(slackConnections.filter(({ status }) => status === "connected").map(({ id }) => id)),
+    slackConnectionIds: new Set(
+      slackConnections.filter(({ status }) => status === "connected").map(({ id }) => id),
+    ),
     sourceDataSourceId: input.management.source.id,
     userIds: new Set(users.map(({ id }) => id)),
     views,
@@ -168,10 +230,7 @@ export async function loadProperties(dataSourceIds: string[]) {
     .from(databaseProperty)
     .innerJoin(pageProperty, eq(databaseProperty.propertyId, pageProperty.id))
     .where(
-      and(
-        inArray(databaseProperty.dataSourceId, dataSourceIds),
-        isNull(pageProperty.deletedAt),
-      ),
+      and(inArray(databaseProperty.dataSourceId, dataSourceIds), isNull(pageProperty.deletedAt)),
     )
     .orderBy(asc(databaseProperty.position));
   for (const record of records) {
@@ -185,7 +244,9 @@ export async function loadProperties(dataSourceIds: string[]) {
       options: getAutomationPropertyOptions(record.config),
       relatedDataSourceId: getRelatedDataSourceId(record.config),
       type: record.type,
-      writable: !["button", "created_time", "edited_time", "formula", "id", "rollup"].includes(record.type),
+      writable: !["button", "created_time", "edited_time", "formula", "id", "rollup"].includes(
+        record.type,
+      ),
     });
     result.set(record.dataSourceId, properties);
   }
@@ -205,10 +266,16 @@ export async function loadAutomationTargetCatalog(workspaceId: string, userId: s
       ),
     )
     .orderBy(asc(dataSource.name), asc(dataSource.id));
-  const accessible = (await Promise.all(records.map(async (record) => {
-    if (isDatabaseLocked(record.parent) || isDatabaseLocked(record.source)) return null;
-    return await canAccessDatabaseRecord(record.parent, userId, "edit") ? record.source : null;
-  }))).filter((source): source is typeof dataSource.$inferSelect => source !== null);
+  const accessible = (
+    await Promise.all(
+      records.map(async (record) => {
+        if (isDatabaseLocked(record.parent) || isDatabaseLocked(record.source)) return null;
+        return (await canAccessDatabaseRecord(record.parent, userId, "edit"))
+          ? record.source
+          : null;
+      }),
+    )
+  ).filter((source): source is typeof dataSource.$inferSelect => source !== null);
   const propertiesBySource = await loadProperties(accessible.map(({ id }) => id));
   return accessible.map((source) => ({
     id: source.id,
@@ -219,7 +286,9 @@ export async function loadAutomationTargetCatalog(workspaceId: string, userId: s
       name: property.name,
       options: property.options ?? [],
       operators: [...operatorsForPropertyType(property.type)],
-      ...(property.relatedDataSourceId ? { relatedDataSourceId: property.relatedDataSourceId } : {}),
+      ...(property.relatedDataSourceId
+        ? { relatedDataSourceId: property.relatedDataSourceId }
+        : {}),
       type: property.type,
       writable: property.writable,
     })),
@@ -227,7 +296,12 @@ export async function loadAutomationTargetCatalog(workspaceId: string, userId: s
 }
 
 function getAutomationPropertyOptions(config: unknown) {
-  if (!config || typeof config !== "object" || !Array.isArray((config as { options?: unknown }).options)) return [];
+  if (
+    !config ||
+    typeof config !== "object" ||
+    !Array.isArray((config as { options?: unknown }).options)
+  )
+    return [];
   return (config as { options: unknown[] }).options.flatMap((option) => {
     if (!option || typeof option !== "object") return [];
     const { color, id, name } = option as { color?: unknown; id?: unknown; name?: unknown };
@@ -260,11 +334,13 @@ export async function loadOwnedGmailConnections(workspaceId: string, userId: str
         eq(gmailWorkspaceConnection.userId, userId),
       ),
     )
-    .then((connections) => connections.flatMap((connection) =>
-      connection.status === "connected" || connection.status === "reconnect_required"
-        ? [{ ...connection, status: connection.status as "connected" | "reconnect_required" }]
-        : []
-    ));
+    .then((connections) =>
+      connections.flatMap((connection) =>
+        connection.status === "connected" || connection.status === "reconnect_required"
+          ? [{ ...connection, status: connection.status as "connected" | "reconnect_required" }]
+          : [],
+      ),
+    );
 }
 
 export async function loadOwnedAutomationSecrets(workspaceId: string, userId: string) {
@@ -281,15 +357,17 @@ export async function loadOwnedAutomationSecrets(workspaceId: string, userId: st
 }
 
 export async function loadOwnedSlackConnections(workspaceId: string, userId: string) {
-  return db.select({
-    id: slackConnection.id,
-    status: slackConnection.status,
-    teamId: slackConnection.teamId,
-    teamName: slackConnection.teamName,
-  }).from(slackConnection).where(and(
-    eq(slackConnection.workspaceId, workspaceId),
-    eq(slackConnection.ownerUserId, userId),
-  ));
+  return db
+    .select({
+      id: slackConnection.id,
+      status: slackConnection.status,
+      teamId: slackConnection.teamId,
+      teamName: slackConnection.teamName,
+    })
+    .from(slackConnection)
+    .where(
+      and(eq(slackConnection.workspaceId, workspaceId), eq(slackConnection.ownerUserId, userId)),
+    );
 }
 
 export async function getLifecycleAutomation(input: {
@@ -309,15 +387,22 @@ export async function getLifecycleAutomation(input: {
 
 export function containsProtectedConnectorAction(definition: unknown) {
   const parsed = databaseAutomationDefinitionSchema.safeParse(definition);
-  return parsed.success && parsed.data.actions.some((action) => action.type === "send_gmail" || action.type === "send_slack");
+  return (
+    parsed.success &&
+    parsed.data.actions.some(
+      (action) => action.type === "send_gmail" || action.type === "send_slack",
+    )
+  );
 }
 
-export function definitionForDuplicate(definition: DatabaseAutomationDefinition): DatabaseAutomationDefinition {
+export function definitionForDuplicate(
+  definition: DatabaseAutomationDefinition,
+): DatabaseAutomationDefinition {
   return {
     ...definition,
-    actions: definition.actions.map((action) => action.type === "send_webhook"
-      ? { ...action, headers: [] }
-      : action),
+    actions: definition.actions.map((action) =>
+      action.type === "send_webhook" ? { ...action, headers: [] } : action,
+    ),
   };
 }
 
@@ -358,18 +443,24 @@ export async function loadViews(databaseId: string, dataSourceId: string) {
       type: databaseView.type,
     })
     .from(databaseView)
-    .where(and(eq(databaseView.databaseId, databaseId), eq(databaseView.dataSourceId, dataSourceId)));
+    .where(
+      and(eq(databaseView.databaseId, databaseId), eq(databaseView.dataSourceId, dataSourceId)),
+    );
   return new Map(records.map((view) => [view.id, view]));
 }
 
 export async function loadWorkspaceUsers(workspaceId: string) {
   const now = new Date();
-  return db.select({ id: user.id, name: user.name }).from(member)
+  return db
+    .select({ id: user.id, name: user.name })
+    .from(member)
     .innerJoin(user, eq(user.id, member.userId))
-    .where(and(
-      eq(member.organizationId, workspaceId),
-      or(isNull(member.accessExpiresAt), gt(member.accessExpiresAt, now)),
-    ))
+    .where(
+      and(
+        eq(member.organizationId, workspaceId),
+        or(isNull(member.accessExpiresAt), gt(member.accessExpiresAt, now)),
+      ),
+    )
     .orderBy(asc(user.name), asc(user.id));
 }
 
@@ -381,7 +472,10 @@ export async function getAutomationWithRevision(
   let query = executor
     .select({ automation: databaseAutomation, revision: databaseAutomationRevision })
     .from(databaseAutomation)
-    .innerJoin(databaseAutomationRevision, eq(databaseAutomation.currentRevisionId, databaseAutomationRevision.id))
+    .innerJoin(
+      databaseAutomationRevision,
+      eq(databaseAutomation.currentRevisionId, databaseAutomationRevision.id),
+    )
     .where(eq(databaseAutomation.id, automationId))
     .limit(1);
   if (lock) query = query.for("update") as typeof query;
@@ -398,7 +492,10 @@ export async function findIdempotentAutomation(
   const [record] = await executor
     .select({ automation: databaseAutomation, revision: databaseAutomationRevision })
     .from(databaseAutomation)
-    .innerJoin(databaseAutomationRevision, eq(databaseAutomation.currentRevisionId, databaseAutomationRevision.id))
+    .innerJoin(
+      databaseAutomationRevision,
+      eq(databaseAutomation.currentRevisionId, databaseAutomationRevision.id),
+    )
     .where(
       and(
         eq(databaseAutomation.createdById, userId),
@@ -417,9 +514,9 @@ export async function insertDependencies(
   dependencies: DatabaseAutomationDependency[],
 ) {
   if (dependencies.length === 0) return;
-  await executor.insert(databaseAutomationDependency).values(
-    dependencies.map((dependency) => ({ automationId, revisionId, ...dependency })),
-  );
+  await executor
+    .insert(databaseAutomationDependency)
+    .values(dependencies.map((dependency) => ({ automationId, revisionId, ...dependency })));
 }
 
 export function assertValidCompilation(
@@ -437,7 +534,10 @@ export function assertValidCompilation(
   }
 }
 
-export function toSummary(automation: AutomationRecord, revision: RevisionRecord): DatabaseAutomationSummary {
+export function toSummary(
+  automation: AutomationRecord,
+  revision: RevisionRecord,
+): DatabaseAutomationSummary {
   const definition = databaseAutomationDefinitionSchema.parse(revision.definition);
   return {
     actionCount: definition.actions.length,
@@ -450,9 +550,10 @@ export function toSummary(automation: AutomationRecord, revision: RevisionRecord
     nextRunAt: automation.nextRunAt?.toISOString() ?? null,
     scopeSummary: definition.scope.type === "view" ? "Saved view" : "Entire data source",
     status: automation.status as DatabaseAutomationSummary["status"],
-    triggerSummary: definition.trigger.kind === "event"
-      ? `${definition.trigger.match === "all" ? "All" : "Any"} of ${definition.trigger.clauses.length} event trigger${definition.trigger.clauses.length === 1 ? "" : "s"}`
-      : `${definition.trigger.schedule.frequency} schedule`,
+    triggerSummary:
+      definition.trigger.kind === "event"
+        ? `${definition.trigger.match === "all" ? "All" : "Any"} of ${definition.trigger.clauses.length} event trigger${definition.trigger.clauses.length === 1 ? "" : "s"}`
+        : `${definition.trigger.schedule.frequency} schedule`,
     updatedAt: automation.updatedAt.toISOString(),
     version: revision.version,
     workspaceId: automation.workspaceId,
@@ -465,7 +566,10 @@ export function nextScheduleRunAt(definition: DatabaseAutomationDefinition, now:
     : null;
 }
 
-export function toDetail(automation: AutomationRecord, revision: RevisionRecord): DatabaseAutomationDetail {
+export function toDetail(
+  automation: AutomationRecord,
+  revision: RevisionRecord,
+): DatabaseAutomationDetail {
   return {
     ...toSummary(automation, revision),
     createdAt: automation.createdAt.toISOString(),
@@ -481,7 +585,7 @@ export function toDetail(automation: AutomationRecord, revision: RevisionRecord)
 
 function normalizeRunStatus(value: string | null) {
   return ["queued", "running", "succeeded", "failed", "skipped", "cancelled"].includes(value ?? "")
-    ? value as DatabaseAutomationSummary["lastRunStatus"]
+    ? (value as DatabaseAutomationSummary["lastRunStatus"])
     : null;
 }
 

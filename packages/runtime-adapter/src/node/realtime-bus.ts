@@ -22,10 +22,7 @@ export interface NodeRealtimeBus {
   consumeLimit(key: string, limit: number, windowMs: number): Promise<boolean>;
   isReady(): boolean;
   publish(channel: string, payload: unknown): Promise<void>;
-  subscribe(
-    channel: string,
-    handler: (payload: unknown) => void,
-  ): Promise<RealtimeSubscription>;
+  subscribe(channel: string, handler: (payload: unknown) => void): Promise<RealtimeSubscription>;
 }
 
 class RedisNodeRealtimeBus implements NodeRealtimeBus {
@@ -53,10 +50,13 @@ class RedisNodeRealtimeBus implements NodeRealtimeBus {
   }
 
   async publish(channel: string, payload: unknown) {
-    await this.command.publish(channel, JSON.stringify({
-      payload,
-      source: this.instanceId,
-    } satisfies RealtimeEnvelope));
+    await this.command.publish(
+      channel,
+      JSON.stringify({
+        payload,
+        source: this.instanceId,
+      } satisfies RealtimeEnvelope),
+    );
   }
 
   async subscribe(channel: string, handler: (payload: unknown) => void) {
@@ -93,10 +93,7 @@ class RedisNodeRealtimeBus implements NodeRealtimeBus {
 
   async close() {
     this.handlers.clear();
-    await Promise.allSettled([
-      closeRedisClient(this.command),
-      closeRedisClient(this.subscriber),
-    ]);
+    await Promise.allSettled([closeRedisClient(this.command), closeRedisClient(this.subscriber)]);
   }
 }
 
@@ -130,10 +127,7 @@ export function getRealtimeRedisUrl(env: RuntimeEnv): string {
   } catch {
     throw new Error("REALTIME_REDIS_URL must be a valid redis:// or rediss:// URL");
   }
-  if (
-    (url.protocol !== "redis:" && url.protocol !== "rediss:") ||
-    !url.hostname
-  ) {
+  if ((url.protocol !== "redis:" && url.protocol !== "rediss:") || !url.hostname) {
     throw new Error("REALTIME_REDIS_URL must be a valid redis:// or rediss:// URL");
   }
 
@@ -175,7 +169,7 @@ function parseEnvelope(raw: string): RealtimeEnvelope | null {
   try {
     const value = JSON.parse(raw) as Partial<RealtimeEnvelope>;
     return typeof value.source === "string" && "payload" in value
-      ? value as RealtimeEnvelope
+      ? (value as RealtimeEnvelope)
       : null;
   } catch {
     return null;
@@ -183,10 +177,14 @@ function parseEnvelope(raw: string): RealtimeEnvelope | null {
 }
 
 export function logRealtimeRedisError(error: Error) {
-  console.error(JSON.stringify({
-    error: error.message,
-    event: "realtime_redis_error",
-  }));
+  console.error(
+    JSON.stringify({
+      error: error.message,
+      event: "realtime_redis_error",
+    }),
+  );
 }
 
-export function calendarRealtimeChannel(bindingId: string) { return `calendar:${bindingId}` }
+export function calendarRealtimeChannel(bindingId: string) {
+  return `calendar:${bindingId}`;
+}

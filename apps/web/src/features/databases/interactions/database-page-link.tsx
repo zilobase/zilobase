@@ -1,35 +1,20 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-} from "react"
-import {
-  DatabaseIcon,
-  SidebarSimpleIcon,
-  SquareIcon,
-  X,
-} from "@/shared/components/icons"
-import { toast } from "sonner"
+import { useEffect, useRef, useState } from "react";
+import { DatabaseIcon, SidebarSimpleIcon, SquareIcon, X } from "@/shared/components/icons";
+import { toast } from "sonner";
 
-import {
-  useOptionalPageSidePane,
-} from "@/features/pages/pane/page-side-pane";
+import { useOptionalPageSidePane } from "@/features/pages/pane/page-side-pane";
 import { getPageEmoji, type PageMetadata } from "@zilobase/features/pages";
 import { useUpdatePage } from "@zilobase/features/pages/react";
-import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/shared/ui/popover"
-import { useOptionalUndoHistory } from "@/shared/shortcuts"
+import { DefaultPageIcon, PageIconDisplay } from "@/features/pages/index";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { useOptionalUndoHistory } from "@/shared/shortcuts";
 
 type DatabasePageSummary = {
-  iconKind?: "database" | "page"
-  id?: string
-  name?: string
-  metadata?: PageMetadata | null | unknown
-}
+  iconKind?: "database" | "page";
+  id?: string;
+  name?: string;
+  metadata?: PageMetadata | null | unknown;
+};
 
 export function DatabasePageLink({
   editable = false,
@@ -40,148 +25,142 @@ export function DatabasePageLink({
   pageSummary,
   showPageIcon = true,
 }: {
-  editable?: boolean
-  onActiveChange?: (active: boolean) => void
-  onOpen?: (pageId: string) => void
-  openMode?: "button" | "title"
-  pageId: string
-  pageSummary?: DatabasePageSummary | null
-  showPageIcon?: boolean
+  editable?: boolean;
+  onActiveChange?: (active: boolean) => void;
+  onOpen?: (pageId: string) => void;
+  openMode?: "button" | "title";
+  pageId: string;
+  pageSummary?: DatabasePageSummary | null;
+  showPageIcon?: boolean;
 }) {
-  const sidePane = useOptionalPageSidePane()
-  const updatePage = useUpdatePage()
-  const undoHistory = useOptionalUndoHistory()
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-  const titleEditFinishedRef = useRef(false)
-  const [draftTitle, setDraftTitle] = useState("")
-  const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const targetPageId = pageSummary?.id ?? pageId
+  const sidePane = useOptionalPageSidePane();
+  const updatePage = useUpdatePage();
+  const undoHistory = useOptionalUndoHistory();
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const titleEditFinishedRef = useRef(false);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const targetPageId = pageSummary?.id ?? pageId;
   const isOpen =
-    sidePane?.sidePanePageId === targetPageId ||
-    sidePane?.dialogPageId === targetPageId
-  const title = pageSummary?.name?.trim() || "Untitled"
+    sidePane?.sidePanePageId === targetPageId || sidePane?.dialogPageId === targetPageId;
+  const title = pageSummary?.name?.trim() || "Untitled";
   const emoji = pageSummary
     ? getPageEmoji({
         metadata: pageSummary.metadata as PageMetadata | null | undefined,
       })
-    : null
-  const icon =
-    emoji ? (
-      <PageIconDisplay size="sm" value={emoji} />
-    ) : pageSummary?.iconKind === "database" ? (
-      <DatabaseIcon />
-    ) : (
-      <DefaultPageIcon />
-    )
-  const actionLabel = isOpen ? "Close" : "Open"
-  const canEditTitle = editable && Boolean(pageSummary)
+    : null;
+  const icon = emoji ? (
+    <PageIconDisplay size="sm" value={emoji} />
+  ) : pageSummary?.iconKind === "database" ? (
+    <DatabaseIcon />
+  ) : (
+    <DefaultPageIcon />
+  );
+  const actionLabel = isOpen ? "Close" : "Open";
+  const canEditTitle = editable && Boolean(pageSummary);
 
   useEffect(() => {
     if (!isEditingTitle) {
-      setDraftTitle(pageSummary?.name ?? "")
+      setDraftTitle(pageSummary?.name ?? "");
     }
-  }, [isEditingTitle, pageSummary?.name])
+  }, [isEditingTitle, pageSummary?.name]);
 
   const handleClick = (event?: { stopPropagation: () => void }) => {
-    event?.stopPropagation()
+    event?.stopPropagation();
 
     if (isOpen) {
       if (sidePane?.dialogPageId === targetPageId) {
-        sidePane.closeEmbeddedPageDialog()
+        sidePane.closeEmbeddedPageDialog();
       } else {
-        sidePane?.closeSidePane()
+        sidePane?.closeSidePane();
       }
-      return
+      return;
     }
 
-    onOpen?.(pageId)
-  }
+    onOpen?.(pageId);
+  };
   const startTitleEdit = () => {
     if (!pageSummary || !canEditTitle) {
-      return
+      return;
     }
 
-    setDraftTitle(pageSummary.name ?? "")
-    titleEditFinishedRef.current = false
-    onActiveChange?.(true)
-    setIsEditingTitle(true)
-  }
+    setDraftTitle(pageSummary.name ?? "");
+    titleEditFinishedRef.current = false;
+    onActiveChange?.(true);
+    setIsEditingTitle(true);
+  };
   const cancelTitleEdit = () => {
-    titleEditFinishedRef.current = true
-    setDraftTitle(pageSummary?.name ?? "")
-    onActiveChange?.(false)
-    setIsEditingTitle(false)
-  }
+    titleEditFinishedRef.current = true;
+    setDraftTitle(pageSummary?.name ?? "");
+    onActiveChange?.(false);
+    setIsEditingTitle(false);
+  };
   const commitTitleEdit = () => {
     if (titleEditFinishedRef.current) {
-      return
+      return;
     }
 
-    titleEditFinishedRef.current = true
+    titleEditFinishedRef.current = true;
 
     if (!pageSummary) {
-      onActiveChange?.(false)
-      setIsEditingTitle(false)
-      return
+      onActiveChange?.(false);
+      setIsEditingTitle(false);
+      return;
     }
 
-    const nextTitle = draftTitle.trim()
+    const nextTitle = draftTitle.trim();
 
-    onActiveChange?.(false)
-    setIsEditingTitle(false)
+    onActiveChange?.(false);
+    setIsEditingTitle(false);
 
-    const currentTitle = pageSummary.name ?? ""
+    const currentTitle = pageSummary.name ?? "";
 
     if (nextTitle === currentTitle) {
-      setDraftTitle(currentTitle)
-      return
+      setDraftTitle(currentTitle);
+      return;
     }
 
     if (undoHistory?.shouldRecord()) {
       undoHistory.pushAction({
         label: "Rename database page",
         redo: () => {
-          updatePage.mutate({ id: pageId, name: nextTitle })
+          updatePage.mutate({ id: pageId, name: nextTitle });
         },
         undo: () => {
-          updatePage.mutate({ id: pageId, name: currentTitle })
+          updatePage.mutate({ id: pageId, name: currentTitle });
         },
-      })
+      });
     }
 
     updatePage.mutate(
       { id: pageId, name: nextTitle },
       {
         onError: () => {
-          setDraftTitle(currentTitle)
-          toast.error("Couldn't rename page")
+          setDraftTitle(currentTitle);
+          toast.error("Couldn't rename page");
         },
-      }
-    )
-  }
+      },
+    );
+  };
   const resizeTitleTextarea = (element: HTMLTextAreaElement) => {
-    element.style.height = "auto"
-    element.style.height = `${element.scrollHeight}px`
-  }
+    element.style.height = "auto";
+    element.style.height = `${element.scrollHeight}px`;
+  };
 
   return (
     <div className="database-page-link">
       <span className="database-page-main">
-        {showPageIcon ? (
-          <span className="database-page-icon">
-            {icon}
-          </span>
-        ) : null}
+        {showPageIcon ? <span className="database-page-icon">{icon}</span> : null}
         {canEditTitle ? (
           <Popover
             open={isEditingTitle}
             onOpenChange={(open) => {
               if (open) {
-                startTitleEdit()
-                return
+                startTitleEdit();
+                return;
               }
 
-              commitTitleEdit()
+              commitTitleEdit();
             }}
           >
             <PopoverTrigger asChild>
@@ -199,46 +178,38 @@ export function DatabasePageLink({
               className="database-input-cell-popover w-72 p-0"
               onCloseAutoFocus={(event) => event.preventDefault()}
               onOpenAutoFocus={(event) => {
-                event.preventDefault()
+                event.preventDefault();
                 requestAnimationFrame(() => {
-                  const element = textareaRef.current
+                  const element = textareaRef.current;
 
-                  if (!element) return
+                  if (!element) return;
 
-                  element.focus()
-                  element.setSelectionRange(
-                    element.value.length,
-                    element.value.length
-                  )
-                  resizeTitleTextarea(element)
-                })
+                  element.focus();
+                  element.setSelectionRange(element.value.length, element.value.length);
+                  resizeTitleTextarea(element);
+                });
               }}
               sideOffset={0}
             >
-              <div
-                className="database-input-cell-wrap"
-                data-popover-open="true"
-              >
+              <div className="database-input-cell-wrap" data-popover-open="true">
                 <textarea
                   aria-label="Page title"
                   className="database-input-cell"
                   data-database-cell-input
                   onChange={(event) => setDraftTitle(event.target.value)}
                   onFocus={() => onActiveChange?.(true)}
-                  onInput={(event) =>
-                    resizeTitleTextarea(event.currentTarget)
-                  }
+                  onInput={(event) => resizeTitleTextarea(event.currentTarget)}
                   onKeyDown={(event) => {
                     if (event.key === "Escape") {
-                      event.preventDefault()
-                      cancelTitleEdit()
-                      return
+                      event.preventDefault();
+                      cancelTitleEdit();
+                      return;
                     }
 
-                    if (event.key !== "Enter") return
+                    if (event.key !== "Enter") return;
 
-                    event.preventDefault()
-                    commitTitleEdit()
+                    event.preventDefault();
+                    commitTitleEdit();
                   }}
                   ref={textareaRef}
                   rows={1}
@@ -284,5 +255,5 @@ export function DatabasePageLink({
         </button>
       ) : null}
     </div>
-  )
+  );
 }

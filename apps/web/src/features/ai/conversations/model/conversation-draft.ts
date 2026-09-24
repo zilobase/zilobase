@@ -1,7 +1,4 @@
-import type {
-  ContextAttachment,
-  ContextSourceRef,
-} from "@zilobase/page-context";
+import type { ContextAttachment, ContextSourceRef } from "@zilobase/page-context";
 
 export function buildConversationRequest(input: {
   attachments: ContextAttachment[];
@@ -26,10 +23,7 @@ export function buildConversationRequest(input: {
           ]
         : []),
       ...input.attachments
-        .filter(
-          (attachment) =>
-            attachment.type === "page" || attachment.type === "database",
-        )
+        .filter((attachment) => attachment.type === "page" || attachment.type === "database")
         .map((attachment) => ({
           id: attachment.id,
           role: "attached" as const,
@@ -50,9 +44,7 @@ export function removeDraftMention(
   mention: { mentionStart: number; mentionQuery: string },
 ) {
   const before = text.slice(0, mention.mentionStart);
-  const after = text.slice(
-    mention.mentionStart + 1 + mention.mentionQuery.length,
-  );
+  const after = text.slice(mention.mentionStart + 1 + mention.mentionQuery.length);
   return { text: `${before}${after}`.trimStart(), cursor: before.length };
 }
 
@@ -73,7 +65,5 @@ export function canApplyConversationEdits(
   pageId: string | null,
   accessLevel: string | null | undefined,
 ) {
-  return Boolean(
-    isSidebar && pageId && (accessLevel === "edit" || accessLevel === "full"),
-  );
+  return Boolean(isSidebar && pageId && (accessLevel === "edit" || accessLevel === "full"));
 }

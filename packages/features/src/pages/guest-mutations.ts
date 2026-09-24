@@ -14,11 +14,7 @@ export function useInvitePageGuest() {
   const { apiFetch, queryClient } = useZilobaseFeatures();
 
   return useMutation({
-    mutationFn: (input: {
-      accessLevel: AccessLevel;
-      email: string;
-      pageId: string;
-    }) =>
+    mutationFn: (input: { accessLevel: AccessLevel; email: string; pageId: string }) =>
       apiFetch<{ invitation?: unknown; request?: unknown }>(
         `/pages/${encodeURIComponent(input.pageId)}/guest-invitations`,
         {

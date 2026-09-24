@@ -26,9 +26,11 @@ import {
 import { getMembership, isPrivilegedOrgRole } from "../../access";
 import type { AppBindings } from "../../../shared/types";
 
-const createThreadSchema = z.object({
-  title: z.string().trim().max(120).optional(),
-}).strict();
+const createThreadSchema = z
+  .object({
+    title: z.string().trim().max(120).optional(),
+  })
+  .strict();
 
 const renameThreadSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -127,11 +129,7 @@ aiThreadRoutes.get("/threads", async (c) => {
     return auth.response;
   }
 
-  const threads = await listAiChatThreads(
-    auth.workspaceId,
-    auth.user.id,
-    c.req.query("q"),
-  );
+  const threads = await listAiChatThreads(auth.workspaceId, auth.user.id, c.req.query("q"));
   return c.json({
     threads: threads.map(serializeThread),
   });
@@ -290,44 +288,39 @@ aiThreadRoutes.get("/threads/:threadId/messages", async (c) => {
   });
 });
 
-aiThreadRoutes.put(
-  "/threads/:threadId/messages/:messageId/feedback",
-  async (c) => {
-    const auth = await requireActiveWorkspace(c);
+aiThreadRoutes.put("/threads/:threadId/messages/:messageId/feedback", async (c) => {
+  const auth = await requireActiveWorkspace(c);
 
-    if ("response" in auth) {
-      return auth.response;
-    }
+  if ("response" in auth) {
+    return auth.response;
+  }
 
-    const body = await parseJson(c, feedbackSchema);
+  const body = await parseJson(c, feedbackSchema);
 
-    if (!body.success) {
-      return body.response;
-    }
+  if (!body.success) {
+    return body.response;
+  }
 
-    const feedback = await saveAiChatFeedback({
-      messageId: c.req.param("messageId"),
-      rating: body.data.rating,
-      reason: body.data.reason,
-      threadId: c.req.param("threadId"),
-      userId: auth.user.id,
-      workspaceId: auth.workspaceId,
-    });
+  const feedback = await saveAiChatFeedback({
+    messageId: c.req.param("messageId"),
+    rating: body.data.rating,
+    reason: body.data.reason,
+    threadId: c.req.param("threadId"),
+    userId: auth.user.id,
+    workspaceId: auth.workspaceId,
+  });
 
-    if (!feedback) {
-      return c.json({ error: "Assistant message not found" }, 404);
-    }
+  if (!feedback) {
+    return c.json({ error: "Assistant message not found" }, 404);
+  }
 
-    return c.json({ feedback });
-  },
-);
+  return c.json({ feedback });
+});
 
 async function requireActiveWorkspace(c: Context<AppBindings>) {
   const user = c.get("user");
   const session = c.get("session");
-  const workspaceId =
-    session?.activeWorkspaceId ??
-    c.req.header("x-zilobase-workspace-id")?.trim();
+  const workspaceId = session?.activeWorkspaceId ?? c.req.header("x-zilobase-workspace-id")?.trim();
 
   if (!user) {
     return { response: c.json({ error: "Unauthorized" }, 401) };
@@ -349,10 +342,7 @@ async function requireActiveWorkspace(c: Context<AppBindings>) {
 async function parseJson<T extends z.ZodType>(
   c: Context<AppBindings>,
   schema: T,
-): Promise<
-  | { success: true; data: z.infer<T> }
-  | { success: false; response: Response }
-> {
+): Promise<{ success: true; data: z.infer<T> } | { success: false; response: Response }> {
   let body: unknown;
 
   try {

@@ -4,14 +4,8 @@ import type { AgentCitation } from "@zilobase/features/ai-chat";
 import { useNavigate } from "@tanstack/react-router";
 
 import { toApiUrl } from "@/platform/network/api";
-import {
-  useOptionalPageSidePane,
-} from "@/features/pages/pane/page-side-pane";
-import {
-  DatabaseIcon,
-  ExternalLinkIcon,
-  FileTextIcon,
-} from "@/shared/components/icons";
+import { useOptionalPageSidePane } from "@/features/pages/pane/page-side-pane";
+import { DatabaseIcon, ExternalLinkIcon, FileTextIcon } from "@/shared/components/icons";
 import { getAgentCitationSidePaneTarget, canOpenCitationInApp } from "./agent-citation-navigation";
 
 export function AgentResourceBadges({
@@ -27,21 +21,17 @@ export function AgentResourceBadges({
   if (citations.length === 0) return null;
 
   return (
-    <div
-      aria-label="Pages, databases, and sources"
-      className="not-prose mt-3 flex flex-wrap gap-2"
-    >
+    <div aria-label="Pages, databases, and sources" className="not-prose mt-3 flex flex-wrap gap-2">
       {citations.map((citation) => {
         const external = citation.url.startsWith("https://");
-        const href = citation.url.startsWith("/api/")
-          ? toApiUrl(citation.url)
-          : citation.url;
+        const href = citation.url.startsWith("/api/") ? toApiUrl(citation.url) : citation.url;
         const sidePaneTarget = getAgentCitationSidePaneTarget(citation);
-        const ResourceIcon = citation.source === "database"
-          ? DatabaseIcon
-          : citation.source === "external"
-            ? ExternalLinkIcon
-            : FileTextIcon;
+        const ResourceIcon =
+          citation.source === "database"
+            ? DatabaseIcon
+            : citation.source === "external"
+              ? ExternalLinkIcon
+              : FileTextIcon;
 
         return (
           <a

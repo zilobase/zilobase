@@ -9,7 +9,6 @@ import { buildChatAgentInstanceName } from "@zilobase/features/ai-chat/agent-roo
 import { useAgent } from "agents/react";
 import type { UIMessage } from "ai";
 
-
 export function useAgentConversation(input: AgentConversationInput) {
   const ready = Boolean(input.threadId && input.userId && input.workspaceId);
   const agent = useAgent({
@@ -52,9 +51,7 @@ export function useAgentConversation(input: AgentConversationInput) {
 
   return {
     ...chat,
-    status: chat.isStreaming && chat.status === "ready"
-      ? "streaming" as const
-      : chat.status,
+    status: chat.isStreaming && chat.status === "ready" ? ("streaming" as const) : chat.status,
   };
 }
 

@@ -463,7 +463,6 @@ Zilobase uses one product version across the web, server, and desktop apps. Vers
 
 ### Fixed
 
-
 ## 0.0.21
 
 ### Added

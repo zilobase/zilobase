@@ -1,33 +1,33 @@
-import { generateJSON, type JSONContent } from "@tiptap/core"
+import { generateJSON, type JSONContent } from "@tiptap/core";
 
-import { clipperExtensions } from "./clipper-extensions"
-import { sanitizeHtml } from "./sanitize-html"
-import { sanitizePageContent } from "./sanitize-page-content"
-import type { PageDocument, PageDocumentNode } from "./types"
+import { clipperExtensions } from "./clipper-extensions";
+import { sanitizeHtml } from "./sanitize-html";
+import { sanitizePageContent } from "./sanitize-page-content";
+import type { PageDocument, PageDocumentNode } from "./types";
 
 export function htmlToPageContent(html: string): PageDocument {
-  const sanitized = sanitizeHtml(html)
-  const source = sanitized || "<p></p>"
+  const sanitized = sanitizeHtml(html);
+  const source = sanitized || "<p></p>";
 
   try {
-    const parsed = generateJSON(source, clipperExtensions) as PageDocument
-    const compacted = removeEmptyTopLevelParagraphs(parsed)
+    const parsed = generateJSON(source, clipperExtensions) as PageDocument;
+    const compacted = removeEmptyTopLevelParagraphs(parsed);
     if (!isEmptyDocument(compacted) && preservesExpectedMedia(source, compacted)) {
-      return sanitizePageContent(compacted)
+      return sanitizePageContent(compacted);
     }
   } catch {
     // Fall back to the walker below.
   }
 
-  return sanitizePageContent(removeEmptyTopLevelParagraphs(fallbackHtmlToContent(source)))
+  return sanitizePageContent(removeEmptyTopLevelParagraphs(fallbackHtmlToContent(source)));
 }
 
 function preservesExpectedMedia(source: string, content: PageDocument) {
-  const types = new Set(content.content.map((node) => node.type))
-  if (/<img\b/i.test(source) && !types.has("imageBlock")) return false
-  if (/<iframe\b/i.test(source) && !types.has("embedBlock")) return false
-  if (/<video\b/i.test(source) && !types.has("videoBlock")) return false
-  return true
+  const types = new Set(content.content.map((node) => node.type));
+  if (/<img\b/i.test(source) && !types.has("imageBlock")) return false;
+  if (/<iframe\b/i.test(source) && !types.has("embedBlock")) return false;
+  if (/<video\b/i.test(source) && !types.has("videoBlock")) return false;
+  return true;
 }
 
 function isEmptyDocument(content: PageDocument) {
@@ -36,59 +36,55 @@ function isEmptyDocument(content: PageDocument) {
     content.content.length === 1 &&
     content.content[0]?.type === "paragraph" &&
     !content.content[0].content
-  )
+  );
 }
 
 function removeEmptyTopLevelParagraphs(content: JSONContent): PageDocument {
   if (content.type !== "doc") {
-    return emptyDocument()
+    return emptyDocument();
   }
 
   const blocks =
-    content.content?.filter((block) => !isEmptyParagraph(block as PageDocumentNode)) ??
-    []
+    content.content?.filter((block) => !isEmptyParagraph(block as PageDocumentNode)) ?? [];
 
   return {
     type: "doc",
     content: (blocks.length > 0 ? blocks : [{ type: "paragraph" }]) as PageDocumentNode[],
-  }
+  };
 }
 
 function isEmptyParagraph(content: PageDocumentNode) {
-  return content.type === "paragraph" && !content.content
+  return content.type === "paragraph" && !content.content;
 }
 
 function fallbackHtmlToContent(html: string): PageDocument {
-  const document = new DOMParser().parseFromString(
-    `<main>${html}</main>`,
-    "text/html",
-  )
-  const root = document.querySelector("main") ?? document.body
-  const content = Array.from(root.childNodes).flatMap((node) => blockNodeToJson(node))
+  const document = new DOMParser().parseFromString(`<main>${html}</main>`, "text/html");
+  const root = document.querySelector("main") ?? document.body;
+  const content = Array.from(root.childNodes).flatMap((node) => blockNodeToJson(node));
 
   return {
     type: "doc",
     content: content.length > 0 ? content : [{ type: "paragraph" }],
-  }
+  };
 }
 
-const TEXT_NODE = 3
-const ELEMENT_NODE = 1
+const TEXT_NODE = 3;
+const ELEMENT_NODE = 1;
 
 function blockNodeToJson(node: Node): PageDocumentNode[] {
   if (node.nodeType === TEXT_NODE) {
-    const text = node.textContent?.trim()
-    return text ? [{ type: "paragraph", content: [{ type: "text", text }] }] : []
+    const text = node.textContent?.trim();
+    return text ? [{ type: "paragraph", content: [{ type: "text", text }] }] : [];
   }
 
   if (node.nodeType !== ELEMENT_NODE) {
-    return []
+    return [];
   }
 
-  const element = node as Element
-  const tagName = element.tagName.toLowerCase()
+  const element = node as Element;
+  const tagName = element.tagName.toLowerCase();
 
-  return simpleBlockElementToJson(element, tagName) ?? nestedBlockElementToJson(element, tagName)
+  return simpleBlockElementToJson(element, tagName) ?? nestedBlockElementToJson(element, tagName);
 }
 
 function simpleBlockElementToJson(element: Element, tagName: string): PageDocumentNode[] | null {
@@ -99,22 +95,20 @@ function simpleBlockElementToJson(element: Element, tagName: string): PageDocume
         attrs: { level: Number(tagName.slice(1)) },
         ...withInlineContent(element),
       },
-    ]
+    ];
   }
 
   if (tagName === "p") {
-    return [{ type: "paragraph", ...withInlineContent(element) }]
+    return [{ type: "paragraph", ...withInlineContent(element) }];
   }
 
   if (tagName === "blockquote") {
     return [
       {
         type: "blockquote",
-        content: childBlocks(element, [
-          { type: "paragraph", ...withInlineContent(element) },
-        ]),
+        content: childBlocks(element, [{ type: "paragraph", ...withInlineContent(element) }]),
       },
-    ]
+    ];
   }
 
   if (tagName === "pre") {
@@ -124,19 +118,19 @@ function simpleBlockElementToJson(element: Element, tagName: string): PageDocume
         attrs: { language: null },
         content: [{ type: "text", text: element.textContent ?? "" }],
       },
-    ]
+    ];
   }
 
   if (tagName === "hr") {
-    return [{ type: "horizontalRule" }]
+    return [{ type: "horizontalRule" }];
   }
 
-  return null
+  return null;
 }
 
 function mediaBlockElementToJson(element: Element, tagName: string): PageDocumentNode[] | null {
   if (tagName === "img") {
-    const src = element.getAttribute("src")
+    const src = element.getAttribute("src");
     return src
       ? [
           {
@@ -148,11 +142,11 @@ function mediaBlockElementToJson(element: Element, tagName: string): PageDocumen
             },
           },
         ]
-      : []
+      : [];
   }
 
   if (tagName === "iframe") {
-    const src = element.getAttribute("src")
+    const src = element.getAttribute("src");
     return src
       ? [
           {
@@ -164,27 +158,25 @@ function mediaBlockElementToJson(element: Element, tagName: string): PageDocumen
             },
           },
         ]
-      : []
+      : [];
   }
 
-  return null
+  return null;
 }
 
 function nestedBlockElementToJson(element: Element, tagName: string): PageDocumentNode[] {
-  const media = mediaBlockElementToJson(element, tagName)
-  if (media) return media
+  const media = mediaBlockElementToJson(element, tagName);
+  if (media) return media;
   if (tagName === "ul" || tagName === "ol") {
     return [
       {
         type: tagName === "ol" ? "orderedList" : "bulletList",
         content: Array.from(element.children).map((item) => ({
           type: "listItem",
-          content: childBlocks(item, [
-            { type: "paragraph", ...withInlineContent(item) },
-          ]),
+          content: childBlocks(item, [{ type: "paragraph", ...withInlineContent(item) }]),
         })),
       },
-    ]
+    ];
   }
 
   if (tagName === "table") {
@@ -199,65 +191,61 @@ function nestedBlockElementToJson(element: Element, tagName: string): PageDocume
           })),
         })),
       },
-    ]
+    ];
   }
 
-  return childBlocks(element)
+  return childBlocks(element);
 }
 
 function childBlocks(element: Element, fallback: PageDocumentNode[] = []) {
-  const blocks = Array.from(element.childNodes).flatMap((child) => blockNodeToJson(child))
-  return blocks.length > 0 ? blocks : fallback
+  const blocks = Array.from(element.childNodes).flatMap((child) => blockNodeToJson(child));
+  return blocks.length > 0 ? blocks : fallback;
 }
 
 function withInlineContent(element: Element): Pick<PageDocumentNode, "content"> {
-  const content = Array.from(element.childNodes).flatMap((child) =>
-    inlineNodeToJson(child),
-  )
-  return content.length > 0 ? { content } : {}
+  const content = Array.from(element.childNodes).flatMap((child) => inlineNodeToJson(child));
+  return content.length > 0 ? { content } : {};
 }
 
-function appendInlineMarks(element: Element, tagName: string, nextMarks: NonNullable<PageDocumentNode["marks"]>) {
+function appendInlineMarks(
+  element: Element,
+  tagName: string,
+  nextMarks: NonNullable<PageDocumentNode["marks"]>,
+) {
   if (tagName === "strong" || tagName === "b") {
-    nextMarks.push({ type: "bold" })
+    nextMarks.push({ type: "bold" });
   } else if (tagName === "em" || tagName === "i") {
-    nextMarks.push({ type: "italic" })
+    nextMarks.push({ type: "italic" });
   } else if (tagName === "code") {
-    nextMarks.push({ type: "code" })
+    nextMarks.push({ type: "code" });
   } else if (tagName === "a") {
     nextMarks.push({
       type: "link",
       attrs: { href: element.getAttribute("href") },
-    })
+    });
   }
-
 }
 
-function inlineNodeToJson(
-  node: Node,
-  marks: PageDocumentNode["marks"] = [],
-): PageDocumentNode[] {
+function inlineNodeToJson(node: Node, marks: PageDocumentNode["marks"] = []): PageDocumentNode[] {
   if (node.nodeType === TEXT_NODE) {
-    const text = node.textContent ?? ""
-    return text ? [{ type: "text", text, ...(marks.length ? { marks } : {}) }] : []
+    const text = node.textContent ?? "";
+    return text ? [{ type: "text", text, ...(marks.length ? { marks } : {}) }] : [];
   }
 
   if (node.nodeType !== ELEMENT_NODE) {
-    return []
+    return [];
   }
 
-  const element = node as Element
-  const tagName = element.tagName.toLowerCase()
-  const nextMarks = [...marks]
+  const element = node as Element;
+  const tagName = element.tagName.toLowerCase();
+  const nextMarks = [...marks];
 
-  appendInlineMarks(element, tagName, nextMarks)
-  if (tagName === "br") return [{ type: "hardBreak" }]
+  appendInlineMarks(element, tagName, nextMarks);
+  if (tagName === "br") return [{ type: "hardBreak" }];
 
-  return Array.from(element.childNodes).flatMap((child) =>
-    inlineNodeToJson(child, nextMarks),
-  )
+  return Array.from(element.childNodes).flatMap((child) => inlineNodeToJson(child, nextMarks));
 }
 
 function emptyDocument(): PageDocument {
-  return { type: "doc", content: [{ type: "paragraph" }] }
+  return { type: "doc", content: [{ type: "paragraph" }] };
 }

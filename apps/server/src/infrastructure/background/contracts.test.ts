@@ -40,14 +40,18 @@ describe("background task v1", () => {
   });
 
   it("propagates a validated active W3C trace context", async () => {
-    const task = await runWithBackgroundTraceContext({
-      traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-      tracestate: "vendor=value",
-    }, async () => createBackgroundTask({
-      env: { ZILOBASE_CELL_ID: "cell-a" },
-      kind: "automation.run",
-      resourceId: "run-1",
-    }));
+    const task = await runWithBackgroundTraceContext(
+      {
+        traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+        tracestate: "vendor=value",
+      },
+      async () =>
+        createBackgroundTask({
+          env: { ZILOBASE_CELL_ID: "cell-a" },
+          kind: "automation.run",
+          resourceId: "run-1",
+        }),
+    );
 
     expect(task.traceparent).toBe("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
     expect(task.tracestate).toBe("vendor=value");

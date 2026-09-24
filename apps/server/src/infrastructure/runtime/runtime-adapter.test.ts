@@ -41,7 +41,10 @@ test("runtime database configuration validates its fallback", () => {
 });
 
 test("runtime ports require an explicit scope", async () => {
-  const requestEnv = createRuntimeEnv({ DATABASE_URL: "postgres://request", ZILOBASE_EDITION: "hosted" });
+  const requestEnv = createRuntimeEnv({
+    DATABASE_URL: "postgres://request",
+    ZILOBASE_EDITION: "hosted",
+  });
   assert.throws(() => getRuntimePorts(), /Runtime ports context is required/);
   assert.equal(
     await runWithRuntimePorts({ env: requestEnv }, async () => {
@@ -61,9 +64,8 @@ test("parallel runtime port contexts remain isolated", async () => {
       await new Promise((resolve) => setTimeout(resolve, 5));
       return getDatabaseUrl({});
     }),
-    runWithRuntimePorts(
-      { env: createRuntimeEnv({ DATABASE_URL: "postgres://two" }) },
-      async () => getDatabaseUrl({}),
+    runWithRuntimePorts({ env: createRuntimeEnv({ DATABASE_URL: "postgres://two" }) }, async () =>
+      getDatabaseUrl({}),
     ),
   ]);
   assert.deepEqual(results, ["postgres://one", "postgres://two"]);

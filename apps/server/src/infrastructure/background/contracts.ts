@@ -113,7 +113,9 @@ export function parseBackgroundTask(
   }
   if (
     candidate.tracestate !== undefined &&
-    (typeof candidate.tracestate !== "string" || candidate.tracestate.length > 512 || /[^\x20-\x7e]/.test(candidate.tracestate))
+    (typeof candidate.tracestate !== "string" ||
+      candidate.tracestate.length > 512 ||
+      /[^\x20-\x7e]/.test(candidate.tracestate))
   ) {
     return { errorCode: "BACKGROUND_TASK_TRACE_INVALID", ok: false };
   }

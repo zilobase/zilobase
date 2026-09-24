@@ -9,7 +9,9 @@ import { _electron } from "playwright";
 
 const executablePath = process.env.ZILOBASE_DESKTOP_BINARY;
 assert.ok(executablePath, "ZILOBASE_DESKTOP_BINARY is required");
-const version = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8")).version;
+const version = JSON.parse(
+  await readFile(new URL("../package.json", import.meta.url), "utf8"),
+).version;
 const userData = await mkdtemp(path.join(os.tmpdir(), "zilobase-electron-oauth-"));
 const browserUrlFile = path.join(userData, "e2e-browser-authorization-url");
 const code = "E2E_OAUTH_CODE";
@@ -25,15 +27,22 @@ const server = createServer(async (request, response) => {
   try {
     if (request.method === "GET" && request.url === "/.well-known/zilobase") {
       response.setHeader("Content-Type", "application/json");
-      response.end(JSON.stringify({
-        instanceId, displayName: "Electron OAuth test", issuer: origin,
-        apiOrigin: origin, webOrigin: origin, protocolVersion: 1,
-        serverVersion: version, minimumDesktopVersion: version,
-        desktopAuthorization: {
-          authorizationEndpoint: origin + "/desktop/authorize",
-          tokenEndpoint: origin + "/api/auth/desktop/token",
-        },
-      }));
+      response.end(
+        JSON.stringify({
+          instanceId,
+          displayName: "Electron OAuth test",
+          issuer: origin,
+          apiOrigin: origin,
+          webOrigin: origin,
+          protocolVersion: 1,
+          serverVersion: version,
+          minimumDesktopVersion: version,
+          desktopAuthorization: {
+            authorizationEndpoint: origin + "/desktop/authorize",
+            tokenEndpoint: origin + "/api/auth/desktop/token",
+          },
+        }),
+      );
       return;
     }
     if (request.method === "POST" && request.url === "/api/auth/desktop/token") {
@@ -49,15 +58,22 @@ const server = createServer(async (request, response) => {
       assert.equal(body.get("grant_type"), "authorization_code");
       assert.equal(body.get("code"), code);
       assert.equal(body.get("redirect_uri"), authorizationUrl.searchParams.get("redirect_uri"));
-      assert.equal(createHash("sha256").update(body.get("code_verifier"), "ascii").digest("base64url"),
-        authorizationUrl.searchParams.get("code_challenge"));
+      assert.equal(
+        createHash("sha256").update(body.get("code_verifier"), "ascii").digest("base64url"),
+        authorizationUrl.searchParams.get("code_challenge"),
+      );
       exchanges++;
       response.setHeader("Content-Type", "application/json");
-      response.end(JSON.stringify({
-        access_token: token, token_type: "Bearer", issuer: origin,
-        instance_id: instanceId, user: { id: "e2e-oauth-user" },
-        expires_at: "2099-01-01T00:00:00.000Z",
-      }));
+      response.end(
+        JSON.stringify({
+          access_token: token,
+          token_type: "Bearer",
+          issuer: origin,
+          instance_id: instanceId,
+          user: { id: "e2e-oauth-user" },
+          expires_at: "2099-01-01T00:00:00.000Z",
+        }),
+      );
       return;
     }
     response.writeHead(404).end("Not found.");
@@ -76,21 +92,32 @@ try {
   desktop = await _electron.launch({
     executablePath,
     env: {
-      ...process.env, ZILOBASE_E2E_USER_DATA: userData,
+      ...process.env,
+      ZILOBASE_E2E_USER_DATA: userData,
       ZILOBASE_E2E_CAPTURE_BROWSER_URL: "1",
     },
     timeout: 30_000,
   });
   const page = await desktop.firstWindow();
   await page.waitForLoadState("domcontentloaded");
-  const candidate = await page.evaluate((serverUrl) => window.zilobaseDesktop.server.prepare(serverUrl), origin);
+  const candidate = await page.evaluate(
+    (serverUrl) => window.zilobaseDesktop.server.prepare(serverUrl),
+    origin,
+  );
   assert.equal(candidate.server.instanceId, instanceId);
-  await page.evaluate((candidateId) => window.zilobaseDesktop.server.commit(candidateId), candidate.candidateId);
+  await page.evaluate(
+    (candidateId) => window.zilobaseDesktop.server.commit(candidateId),
+    candidate.candidateId,
+  );
   await page.evaluate(() => {
     window.__electronOAuthResult = { phase: "pending" };
     void window.zilobaseDesktop.auth.startBrowser().then(
-      (value) => { window.__electronOAuthResult = { phase: "complete", value }; },
-      (error) => { window.__electronOAuthResult = { phase: "error", code: error.code }; },
+      (value) => {
+        window.__electronOAuthResult = { phase: "complete", value };
+      },
+      (error) => {
+        window.__electronOAuthResult = { phase: "error", code: error.code };
+      },
     );
   });
   authorizationUrl = new URL(await waitForFile(browserUrlFile));
@@ -117,9 +144,12 @@ try {
   const accepted = await fetch(callback, { redirect: "manual" });
   assert.equal(accepted.status, 303);
   assert.equal(accepted.headers.get("location"), origin + "/desktop/connected");
-  await page.waitForFunction(() => window.__electronOAuthResult?.phase !== "pending", null, { timeout: 15_000 });
+  await page.waitForFunction(() => window.__electronOAuthResult?.phase !== "pending", null, {
+    timeout: 15_000,
+  });
   assert.deepEqual(await page.evaluate(() => window.__electronOAuthResult), {
-    phase: "complete", value: { status: "success" },
+    phase: "complete",
+    value: { status: "success" },
   });
   assert.ifError(exchangeError);
   assert.equal(exchanges, 1);
@@ -130,20 +160,31 @@ try {
   await page.evaluate(() => {
     window.__electronOAuthResult = { phase: "pending" };
     void window.zilobaseDesktop.auth.startBrowser().then(
-      (value) => { window.__electronOAuthResult = { phase: "complete", value }; },
-      (error) => { window.__electronOAuthResult = { phase: "error", code: error.code }; },
+      (value) => {
+        window.__electronOAuthResult = { phase: "complete", value };
+      },
+      (error) => {
+        window.__electronOAuthResult = { phase: "error", code: error.code };
+      },
     );
   });
   await waitForFile(browserUrlFile);
   const secondAttempt = await page.evaluate(async () => {
-    try { await window.zilobaseDesktop.auth.startBrowser(); return { code: "unexpected_success" }; }
-    catch (error) { return { code: error.code, message: error.message }; }
+    try {
+      await window.zilobaseDesktop.auth.startBrowser();
+      return { code: "unexpected_success" };
+    } catch (error) {
+      return { code: error.code, message: error.message };
+    }
   });
   assert.equal(secondAttempt.code, "already_in_progress", JSON.stringify(secondAttempt));
   await page.evaluate(() => window.zilobaseDesktop.auth.cancelBrowser());
-  await page.waitForFunction(() => window.__electronOAuthResult?.phase !== "pending", null, { timeout: 10_000 });
+  await page.waitForFunction(() => window.__electronOAuthResult?.phase !== "pending", null, {
+    timeout: 10_000,
+  });
   assert.deepEqual(await page.evaluate(() => window.__electronOAuthResult), {
-    phase: "error", code: "cancelled",
+    phase: "error",
+    code: "cancelled",
   });
 
   const archivePath = await page.evaluate(() => window.zilobaseDesktop.diagnostics.export());
@@ -151,7 +192,9 @@ try {
     const entries = unzipSync(await readFile(archivePath));
     assert.ok(!Object.values(entries).some((entry) => Buffer.from(entry).includes(token)));
     assert.ok(!Object.values(entries).some((entry) => Buffer.from(entry).includes(code)));
-  } finally { await unlink(archivePath); }
+  } finally {
+    await unlink(archivePath);
+  }
   console.info("Packaged Electron OAuth loopback, PKCE exchange, and encrypted session passed.");
 } finally {
   if (desktop) await desktop.close().catch(() => undefined);
@@ -163,8 +206,11 @@ try {
 async function waitForFile(file) {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
-    try { return await readFile(file, "utf8"); }
-    catch (error) { if (error.code !== "ENOENT") throw error; }
+    try {
+      return await readFile(file, "utf8");
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   throw new Error("Electron did not create the browser authorization URL");

@@ -1,9 +1,6 @@
 import type { EditionExtensionOptions } from "./types";
 
-const appEditionExtensions = new WeakMap<
-  object,
-  EditionExtensionOptions["editionExtension"]
->();
+const appEditionExtensions = new WeakMap<object, EditionExtensionOptions["editionExtension"]>();
 
 export function registerAppEditionExtension(
   app: object,

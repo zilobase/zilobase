@@ -29,7 +29,10 @@ test("database-bound lock keys never contain PostgreSQL-invalid NUL bytes", () =
   ]);
 
   assert.equal(keys.length, 2);
-  assert.equal(keys.every((key) => !key.includes("\u0000")), true);
+  assert.equal(
+    keys.every((key) => !key.includes("\u0000")),
+    true,
+  );
 });
 
 const empty = (): DatabaseAutomationEventWindowState => ({

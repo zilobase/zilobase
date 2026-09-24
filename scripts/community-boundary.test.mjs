@@ -41,10 +41,7 @@ test("SSO and Enterprise names are reserved for public boundary policy", () => {
       "apps/server/src/private-feature.ts",
       "export const feature = 'enterprise SSO';",
     ),
-    [
-      "private feature implementation term: ENTERPRISE",
-      "private feature implementation term: SSO",
-    ],
+    ["private feature implementation term: ENTERPRISE", "private feature implementation term: SSO"],
   );
   assert.deepEqual(
     findRestrictedRuntimeReferences(
