@@ -55,6 +55,11 @@ with an Undo action. Closing the app during that window leaves a recoverable
 Gmail draft; Gmail delivery still uses the existing idempotent send receipt and
 RFC Message-ID recovery path after the hold expires.
 
+Conversation view expands the latest message and any still-unread messages,
+keeps older messages collapsed, and permits offline Reply/Reply all into local
+draft recovery. With focus outside an editor, `J`/`K` move between threads, `R`
+starts a reply and Escape closes the conversation.
+
 ## Persistence and invariants
 
 `mail_index_state` is the single account sync authority: desired/applied history IDs, bootstrap/backfill cursors, generation, lease, retry deadline, errors and committed revision live there. `gmail_account` stores credentials, connection health and watch timing only. `mail_message`, `mail_thread_index`, `mail_label` and `mail_draft` form the canonical mailbox read model. Draft versions reject stale writes from another Zilobase device.

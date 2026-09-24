@@ -208,13 +208,18 @@ export function ConversationBody({
   thread,
 }: ConversationProps) {
   const latestMessageId = messages.at(-1)?.id ?? null;
-  const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(() =>
-    latestMessageId ? new Set([latestMessageId]) : new Set(),
-  );
+  const initiallyExpanded = () =>
+    new Set([
+      ...messages
+        .filter((message) => message.labelIds.includes("UNREAD"))
+        .map((message) => message.id),
+      ...(latestMessageId ? [latestMessageId] : []),
+    ]);
+  const [expandedMessageIds, setExpandedMessageIds] = useState<Set<string>>(initiallyExpanded);
 
   useEffect(() => {
-    setExpandedMessageIds(latestMessageId ? new Set([latestMessageId]) : new Set());
-  }, [latestMessageId, thread.id]);
+    setExpandedMessageIds(initiallyExpanded());
+  }, [latestMessageId, messages, thread.id]);
 
   const toggleMessage = (messageId: string) => {
     setExpandedMessageIds((current) => {
@@ -343,7 +348,6 @@ function MailThreadMessage({
           />
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
-              disabled={!online}
               onClick={() => onCompose(replySeed(message, ownEmail))}
               size="sm"
               type="button"
@@ -352,7 +356,6 @@ function MailThreadMessage({
               Reply
             </Button>
             <Button
-              disabled={!online}
               onClick={() => onCompose(replySeed(message, ownEmail, true))}
               size="sm"
               type="button"

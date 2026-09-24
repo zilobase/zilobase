@@ -365,6 +365,25 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
     .join("|");
 
   useEffect(() => {
+    if (!selection || composerSeed) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input,textarea,[contenteditable=true],[role=dialog]")) return;
+      if (event.key === "Escape") setSelection(null);
+      else if (event.key.toLowerCase() === "j" && nextId) setSelection(nextId);
+      else if (event.key.toLowerCase() === "k" && previousId) setSelection(previousId);
+      else if (event.key.toLowerCase() === "r") {
+        const latest = selectedMessages.at(-1);
+        if (latest) void beginCompose(replySeed(latest, connection.email!));
+        else return;
+      } else return;
+      event.preventDefault();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [composerSeed, connection.email, nextId, previousId, selectedMessages, selection]);
+
+  useEffect(() => {
     if (!selection) return;
     void controller.openThread(selection);
   }, [controller.openThread, selection, selectedBodyRevision]);
