@@ -12,6 +12,7 @@ import {
   publishMailIndexUpdate,
 } from "../query/mail-index";
 import { recordMailMetric } from "../mail-metrics";
+import { createGmailGateway } from "../provider/gmail-gateway";
 
 const DEFAULT_RETRY_MS = 5_000;
 
@@ -125,6 +126,42 @@ export async function advancePendingMailSyncs(env: RuntimeEnv, limit = 5) {
   );
   const failed = results.filter((result) => result.status === "rejected").length;
   return { advanced: due.length, failed };
+}
+
+export async function pollMailSyncSafety(env: RuntimeEnv, limit = 25) {
+  const cutoff = new Date(Date.now() - 5 * 60_000);
+  const due = await db
+    .select({ account: gmailAccount, state: mailIndexState })
+    .from(mailIndexState)
+    .innerJoin(gmailAccount, eq(gmailAccount.id, mailIndexState.gmailAccountId))
+    .where(
+      and(
+        eq(gmailAccount.status, "connected"),
+        eq(mailIndexState.status, "ready"),
+        lte(mailIndexState.updatedAt, cutoff),
+      ),
+    )
+    .orderBy(asc(mailIndexState.updatedAt))
+    .limit(Math.max(1, Math.min(limit, 100)));
+  let scheduled = 0;
+  for (const row of due) {
+    const profile = await (
+      await createGmailGateway(env, row.account, { trafficClass: "background" })
+    ).getProfile();
+    await db
+      .update(mailIndexState)
+      .set({ updatedAt: new Date() })
+      .where(eq(mailIndexState.gmailAccountId, row.account.id));
+    if (!newerHistory(profile.historyId, row.state.appliedHistoryId ?? row.state.historyId))
+      continue;
+    await requestMailSync(env, {
+      gmailAccountId: row.account.id,
+      historyId: profile.historyId,
+      reason: "safety_poll",
+    });
+    scheduled += 1;
+  }
+  return { checked: due.length, scheduled };
 }
 
 export function newerHistory(

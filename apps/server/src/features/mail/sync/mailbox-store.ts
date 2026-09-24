@@ -13,8 +13,12 @@ import {
   mailMessage,
   mailThreadIndex,
 } from "../../../infrastructure/database/schema";
-import type { GmailPart, GmailThread } from "../provider/gmail-gateway";
-import { normalizeGmailLabels, normalizeGmailThread } from "../provider/mail-normalize";
+import type { GmailMessage, GmailPart, GmailThread } from "../provider/gmail-gateway";
+import {
+  normalizeGmailLabels,
+  normalizeGmailMessage,
+  normalizeGmailThread,
+} from "../provider/mail-normalize";
 
 export async function storeMailboxThread(
   gmailAccountId: string,
@@ -56,9 +60,47 @@ export async function storeMailboxThread(
 export async function storeMailboxMessage(
   gmailAccountId: string,
   generation: number,
-  thread: GmailThread,
+  message: GmailMessage,
 ) {
-  return storeMailboxThread(gmailAccountId, generation, thread, true);
+  const normalized = normalizeGmailMessage(message, true);
+  const record = mailMessageRecord(gmailAccountId, generation, normalized);
+  await db
+    .insert(mailMessage)
+    .values(record)
+    .onConflictDoUpdate({
+      set: messageUpdate(record),
+      target: [mailMessage.gmailAccountId, mailMessage.gmailMessageId],
+    });
+  await rebuildMailboxThread(gmailAccountId, normalized.threadId);
+  return normalized;
+}
+
+export async function mailboxMessageExists(gmailAccountId: string, gmailMessageId: string) {
+  const [stored] = await db
+    .select({ id: mailMessage.id })
+    .from(mailMessage)
+    .where(
+      and(
+        eq(mailMessage.gmailAccountId, gmailAccountId),
+        eq(mailMessage.gmailMessageId, gmailMessageId),
+      ),
+    )
+    .limit(1);
+  return Boolean(stored);
+}
+
+export async function mailboxThreadIsComplete(gmailAccountId: string, gmailThreadId: string) {
+  const [stored] = await db
+    .select({ hydrationStatus: mailThreadIndex.hydrationStatus })
+    .from(mailThreadIndex)
+    .where(
+      and(
+        eq(mailThreadIndex.gmailAccountId, gmailAccountId),
+        eq(mailThreadIndex.gmailThreadId, gmailThreadId),
+      ),
+    )
+    .limit(1);
+  return stored?.hydrationStatus === "complete";
 }
 
 export async function replaceMailboxLabels(
@@ -102,9 +144,15 @@ export async function applyMailboxLabelDelta(input: {
   const labels = new Set(stored.labelIds);
   for (const label of input.addLabelIds ?? []) labels.add(label);
   for (const label of input.removeLabelIds ?? []) labels.delete(label);
+  const nextLabels = [...labels];
+  if (
+    nextLabels.length === stored.labelIds.length &&
+    nextLabels.every((label) => stored.labelIds.includes(label))
+  )
+    return false;
   await db
     .update(mailMessage)
-    .set({ labelIds: [...labels], updatedAt: new Date() })
+    .set({ labelIds: nextLabels, updatedAt: new Date() })
     .where(
       and(
         eq(mailMessage.gmailAccountId, input.gmailAccountId),
@@ -302,10 +350,26 @@ async function rebuildMailboxThread(gmailAccountId: string, gmailThreadId: strin
   const normalized = messages.map(serializeMailboxMessage);
   const latest = normalized.at(-1)!;
   const labels = unique(normalized.flatMap((message) => message.labelIds));
+  const fromAddresses = uniqueAddresses(
+    normalized.flatMap((message) => (message.from ? [message.from] : [])),
+  );
+  const toAddresses = uniqueAddresses(normalized.flatMap((message) => message.to));
+  const ccAddresses = uniqueAddresses(normalized.flatMap((message) => message.cc));
+  const bccAddresses = uniqueAddresses(normalized.flatMap((message) => message.bcc));
+  const domains = unique(
+    [...fromAddresses, ...toAddresses, ...ccAddresses, ...bccAddresses].flatMap(({ address }) => {
+      const domain = address.split("@")[1];
+      return domain ? [domain] : [];
+    }),
+  );
   await db
     .update(mailThreadIndex)
     .set({
       attachmentCount: normalized.reduce((total, message) => total + message.attachmentCount, 0),
+      bccAddresses,
+      ccAddresses,
+      domains,
+      fromAddresses,
       hydrationStatus: normalized.every((message) => message.hasFullBody) ? "complete" : "partial",
       important: labels.includes("IMPORTANT"),
       internalDate: latest.internalDate,
@@ -321,6 +385,7 @@ async function rebuildMailboxThread(gmailAccountId: string, gmailThreadId: strin
       snippet: latest.snippet.slice(0, 500),
       starred: labels.includes("STARRED"),
       subject: latest.subject,
+      toAddresses,
       unread: labels.includes("UNREAD"),
       updatedAt: new Date(),
     })

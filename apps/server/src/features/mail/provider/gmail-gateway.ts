@@ -475,8 +475,11 @@ export class GmailGateway {
     );
   }
 
-  listHistory(input: { pageToken?: string; startHistoryId: string }) {
-    const params = new URLSearchParams({ startHistoryId: input.startHistoryId });
+  listHistory(input: { maxResults?: number; pageToken?: string; startHistoryId: string }) {
+    const params = new URLSearchParams({
+      maxResults: String(input.maxResults ?? 100),
+      startHistoryId: input.startHistoryId,
+    });
     if (input.pageToken) params.set("pageToken", input.pageToken);
     return this.json<{ history?: GmailHistory[]; historyId?: string; nextPageToken?: string }>(
       `/gmail/v1/users/me/history?${params}`,

@@ -50,7 +50,7 @@ test("index work is bounded, resumable, history-driven, and deletion-safe", asyn
 
   assert.match(source, /RECENT_INBOX_SIZE = 50/);
   assert.match(source, /BACKFILL_PAGE_SIZE = 25/);
-  assert.match(source, /MAX_HISTORY_PAGES_PER_ADVANCE = 5/);
+  assert.match(source, /maxResults: 100/);
   assert.match(source, /INDEX_LEASE_MS/);
   assert.match(source, /isNull\(mailIndexState\.leaseExpiresAt\)/);
   assert.match(source, /includeSpamTrash: true/);
@@ -60,6 +60,24 @@ test("index work is bounded, resumable, history-driven, and deletion-safe", asyn
   assert.match(source, /nextPageToken: page\.nextPageToken/);
   assert.match(source, /historyPageToken: pageToken/);
   assert.match(source, /ne\(mailThreadIndex\.generation, state\.generation\)/);
-  assert.match(source, /error\.status !== 404/);
-  assert.match(source, /delete\(mailThreadIndex\)/);
+  assert.match(source, /applyMailboxLabelDelta/);
+  assert.match(source, /gateway\.getMessage\(messageId, "full"\)/);
+  assert.match(source, /deleteMailboxMessage/);
+  assert.doesNotMatch(source, /getThread\(threadId, "metadata"\)/);
+});
+
+test("index retry delay uses bounded full jitter", async () => {
+  const { mailIndexRetryMs } = await import("./mail-index");
+  assert.equal(
+    mailIndexRetryMs(1, () => 0),
+    1_000,
+  );
+  assert.equal(
+    mailIndexRetryMs(1, () => 0.5),
+    2_500,
+  );
+  assert.equal(
+    mailIndexRetryMs(20, () => 1),
+    900_000,
+  );
 });

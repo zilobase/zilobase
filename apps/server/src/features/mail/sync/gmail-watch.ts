@@ -7,16 +7,18 @@ import { createGmailGateway, GmailApiError } from "../provider/gmail-gateway";
 import { recordMailMetric } from "../mail-metrics";
 import { requestMailSync } from "./mail-sync-coordinator";
 
-const RENEW_BEFORE_MS = 24 * 60 * 60 * 1_000;
+const RENEW_BEFORE_MS = 48 * 60 * 60 * 1_000;
+const RENEW_EVERY_MS = 24 * 60 * 60 * 1_000;
 const RENEW_LOCK_MS = 10 * 60 * 1_000;
 
 export async function initializeGmailWatch(
   env: RuntimeEnv,
   connection: typeof gmailAccount.$inferSelect,
+  trafficClass: "background" | "foreground" = "foreground",
 ) {
   const topicName = gmailPubsubTopic(env);
   if (!topicName) return null;
-  const gateway = await createGmailGateway(env, connection);
+  const gateway = await createGmailGateway(env, connection, { trafficClass });
   const result = await gateway.watch(topicName);
   if (!result.historyId || !result.expiration)
     throw new Error("Gmail returned an invalid watch response.");
@@ -46,6 +48,7 @@ export async function renewGmailWatches(env: RuntimeEnv, limit = 25) {
   if (!gmailPubsubTopic(env)) return { failed: 0, renewed: 0 };
   const now = new Date();
   const horizon = new Date(now.getTime() + RENEW_BEFORE_MS);
+  const renewalDue = new Date(now.getTime() - RENEW_EVERY_MS);
   const lockExpiry = new Date(now.getTime() - RENEW_LOCK_MS);
   const candidates = await db
     .select()
@@ -53,7 +56,12 @@ export async function renewGmailWatches(env: RuntimeEnv, limit = 25) {
     .where(
       and(
         eq(gmailAccount.status, "connected"),
-        or(isNull(gmailAccount.watchExpiresAt), lt(gmailAccount.watchExpiresAt, horizon)),
+        or(
+          isNull(gmailAccount.watchExpiresAt),
+          lt(gmailAccount.watchExpiresAt, horizon),
+          isNull(gmailAccount.lastWatchAt),
+          lt(gmailAccount.lastWatchAt, renewalDue),
+        ),
         or(isNull(gmailAccount.lastWatchAt), lt(gmailAccount.lastWatchAt, lockExpiry)),
       ),
     )
@@ -73,7 +81,7 @@ export async function renewGmailWatches(env: RuntimeEnv, limit = 25) {
       .returning({ id: gmailAccount.id });
     if (!claimed.length) continue;
     try {
-      await initializeGmailWatch(env, { ...candidate, lastWatchAt: now });
+      await initializeGmailWatch(env, { ...candidate, lastWatchAt: now }, "background");
       renewed += 1;
     } catch (error) {
       failed += 1;

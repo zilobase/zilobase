@@ -6,6 +6,7 @@ import {
   gmailAccount,
   gmailWorkspaceConnection,
   mailIndexState,
+  mailMessage,
   mailThreadIndex,
 } from "../../../infrastructure/database/schema";
 import type { RuntimeEnv } from "../../../shared/config/config";
@@ -19,9 +20,13 @@ import {
 import { enqueueMailDatabaseSyncForIndexedThread } from "../database-sync/mail-database-sync-worker";
 import {
   commitMailboxRevision,
-  deleteMailboxThread,
+  applyMailboxLabelDelta,
+  deleteMailboxMessage,
+  mailboxMessageExists,
+  mailboxThreadIsComplete,
   mailThreadIndexRecord,
   replaceMailboxLabels,
+  storeMailboxMessage,
   storeMailboxThread,
 } from "../sync/mailbox-store";
 import { publishMailNotification } from "@zilobase/runtime-adapter/capabilities";
@@ -29,7 +34,6 @@ import { recordRecoveredBackgroundLease } from "../../../infrastructure/backgrou
 
 const RECENT_INBOX_SIZE = 50;
 const BACKFILL_PAGE_SIZE = 25;
-const MAX_HISTORY_PAGES_PER_ADVANCE = 5;
 const INDEX_LEASE_MS = 2 * 60 * 1_000;
 const INDEX_RECORD_VERSION = 1;
 
@@ -127,6 +131,10 @@ export async function advanceMailIndex(
       }
       if (state.status === "backfilling" || state.status === "syncing")
         nextAdvanceAt = new Date(Date.now() + 5_000);
+      await db
+        .update(mailIndexState)
+        .set({ consecutiveFailures: 0, lastSuccessAt: new Date() })
+        .where(eq(mailIndexState.gmailAccountId, gmailAccountId));
       return serializeProgress(state);
     } catch (error) {
       if (error instanceof GmailApiError && error.code === "history_cursor_invalid") {
@@ -154,11 +162,14 @@ export async function advanceMailIndex(
       if (error instanceof GmailApiError && error.code === "quota_exceeded") {
         nextAdvanceAt = new Date(Date.now() + Math.max(60_000, error.retryAfterMs ?? 0));
       }
+      const failures = state.consecutiveFailures + 1;
+      nextAdvanceAt ??= new Date(Date.now() + mailIndexRetryMs(failures));
       const code = error instanceof GmailApiError ? error.code : "index_failed";
       const historyMode = state.status === "ready" || state.status === "syncing";
       const [failed] = await db
         .update(mailIndexState)
         .set({
+          consecutiveFailures: failures,
           lastErrorCode: code,
           status: historyMode ? "syncing" : "error",
           updatedAt: new Date(),
@@ -315,6 +326,14 @@ async function advanceBackfill(
         ne(mailThreadIndex.generation, state.generation),
       ),
     );
+  await db
+    .delete(mailMessage)
+    .where(
+      and(
+        eq(mailMessage.gmailAccountId, state.gmailAccountId),
+        ne(mailMessage.generation, state.generation),
+      ),
+    );
   const [actual] = await db
     .select({ value: count() })
     .from(mailThreadIndex)
@@ -341,7 +360,7 @@ async function advanceBackfill(
 
 async function advanceHistory(
   env: RuntimeEnv,
-  gateway: Pick<GmailGateway, "getThread" | "listHistory">,
+  gateway: Pick<GmailGateway, "getMessage" | "getThread" | "listHistory">,
   existing: typeof mailIndexState.$inferSelect,
 ) {
   if (!existing.historyId) {
@@ -353,22 +372,15 @@ async function advanceHistory(
     return reset ?? existing;
   }
   const startHistoryId = existing.historyStartId ?? existing.historyId;
-  let pageToken = existing.historyPageToken ?? undefined;
-  let cursor = existing.historyId;
-  for (let pageNumber = 0; pageNumber < MAX_HISTORY_PAGES_PER_ADVANCE; pageNumber += 1) {
-    const page = await gateway.listHistory({ pageToken, startHistoryId });
-    const touchedThreadIds = collectTouchedThreadIds(page.history ?? []);
-    await refreshTouchedThreads(
-      env,
-      gateway,
-      existing.gmailAccountId,
-      existing.generation,
-      touchedThreadIds,
-    );
-    cursor = page.historyId ?? cursor;
-    pageToken = page.nextPageToken;
-    if (!pageToken) break;
-  }
+  const page = await gateway.listHistory({
+    maxResults: 100,
+    pageToken: existing.historyPageToken ?? undefined,
+    startHistoryId,
+  });
+  const changed = await applyHistoryPage(env, gateway, existing, page.history ?? []);
+  if (changed) await commitMailboxRevision(existing.gmailAccountId);
+  const cursor = page.historyId ?? existing.historyId;
+  const pageToken = page.nextPageToken;
   const [updated] = await db
     .update(mailIndexState)
     .set(
@@ -395,22 +407,88 @@ async function advanceHistory(
   return updated;
 }
 
-async function refreshTouchedThreads(
+async function applyHistoryPage(
   env: RuntimeEnv,
-  gateway: Pick<GmailGateway, "getThread">,
-  gmailAccountId: string,
-  generation: number,
-  threadIds: Set<string>,
+  gateway: Pick<GmailGateway, "getMessage" | "getThread">,
+  state: typeof mailIndexState.$inferSelect,
+  history: GmailHistory[],
 ) {
-  for (const threadId of threadIds) {
-    try {
-      const thread = await gateway.getThread(threadId, "metadata");
-      await upsertIndexedThreads(env, gmailAccountId, generation, [thread]);
-    } catch (error) {
-      if (!(error instanceof GmailApiError) || error.status !== 404) throw error;
-      await deleteMailboxThread(gmailAccountId, threadId);
+  const additions = new Map<string, { messageId: string; threadId: string }>();
+  const deleted = new Set<string>();
+  const addedLabels = new Map<string, Set<string>>();
+  const removedLabels = new Map<string, Set<string>>();
+  for (const event of history) {
+    for (const entry of event.messagesAdded ?? []) {
+      if (entry.message?.id && entry.message.threadId)
+        additions.set(entry.message.id, {
+          messageId: entry.message.id,
+          threadId: entry.message.threadId,
+        });
+    }
+    for (const entry of event.messagesDeleted ?? []) {
+      if (entry.message?.id) deleted.add(entry.message.id);
+    }
+    for (const entry of event.labelsAdded ?? []) {
+      if (!entry.message?.id) continue;
+      const labels = addedLabels.get(entry.message.id) ?? new Set<string>();
+      for (const label of entry.labelIds ?? []) labels.add(label);
+      addedLabels.set(entry.message.id, labels);
+    }
+    for (const entry of event.labelsRemoved ?? []) {
+      if (!entry.message?.id) continue;
+      const labels = removedLabels.get(entry.message.id) ?? new Set<string>();
+      for (const label of entry.labelIds ?? []) labels.add(label);
+      removedLabels.set(entry.message.id, labels);
     }
   }
+
+  let changed = false;
+  const hydratedThreads = new Set<string>();
+  for (const { messageId, threadId } of additions.values()) {
+    if (await mailboxMessageExists(state.gmailAccountId, messageId)) continue;
+    try {
+      if (await mailboxThreadIsComplete(state.gmailAccountId, threadId)) {
+        await storeMailboxMessage(
+          state.gmailAccountId,
+          state.generation,
+          await gateway.getMessage(messageId, "full"),
+        );
+      } else {
+        const thread = await gateway.getThread(threadId, "full");
+        await upsertIndexedThreads(env, state.gmailAccountId, state.generation, [thread], true);
+        hydratedThreads.add(threadId);
+      }
+      changed = true;
+    } catch (error) {
+      if (!(error instanceof GmailApiError) || error.status !== 404) throw error;
+    }
+  }
+  for (const messageId of new Set([...addedLabels.keys(), ...removedLabels.keys()])) {
+    const applied = await applyMailboxLabelDelta({
+      addLabelIds: [...(addedLabels.get(messageId) ?? [])],
+      gmailAccountId: state.gmailAccountId,
+      gmailMessageId: messageId,
+      removeLabelIds: [...(removedLabels.get(messageId) ?? [])],
+    });
+    if (applied) changed = true;
+    if (applied || additions.has(messageId)) continue;
+    const eventMessage = history
+      .flatMap((event) => [...(event.labelsAdded ?? []), ...(event.labelsRemoved ?? [])])
+      .find((entry) => entry.message?.id === messageId)?.message;
+    if (!eventMessage?.threadId || hydratedThreads.has(eventMessage.threadId)) continue;
+    try {
+      const thread = await gateway.getThread(eventMessage.threadId, "full");
+      await upsertIndexedThreads(env, state.gmailAccountId, state.generation, [thread], true);
+      hydratedThreads.add(eventMessage.threadId);
+      changed = true;
+    } catch (error) {
+      if (!(error instanceof GmailApiError) || error.status !== 404) throw error;
+    }
+  }
+  for (const messageId of deleted) {
+    if (await deleteMailboxMessage(state.gmailAccountId, messageId)) changed = true;
+  }
+  return changed;
 }
 
 async function upsertIndexedThreads(
@@ -432,22 +510,12 @@ function newerHistory(candidate: string | null, applied: string | null) {
   return BigInt(candidate) > BigInt(applied);
 }
 
-export { mailThreadIndexRecord } from "../sync/mailbox-store";
-
-function collectTouchedThreadIds(history: GmailHistory[]) {
-  const ids = new Set<string>();
-  const add = (message: { threadId?: string } | undefined) => {
-    if (message?.threadId) ids.add(message.threadId);
-  };
-  for (const event of history) {
-    for (const message of event.messages ?? []) add(message);
-    for (const entry of event.messagesAdded ?? []) add(entry.message);
-    for (const entry of event.messagesDeleted ?? []) add(entry.message);
-    for (const entry of event.labelsAdded ?? []) add(entry.message);
-    for (const entry of event.labelsRemoved ?? []) add(entry.message);
-  }
-  return ids;
+export function mailIndexRetryMs(failures: number, random = Math.random) {
+  const ceiling = Math.min(15 * 60_000, 5_000 * 2 ** Math.max(0, failures - 1));
+  return Math.max(1_000, Math.floor(random() * ceiling));
 }
+
+export { mailThreadIndexRecord } from "../sync/mailbox-store";
 
 function serializeProgress(state: typeof mailIndexState.$inferSelect): MailIndexProgress {
   return {

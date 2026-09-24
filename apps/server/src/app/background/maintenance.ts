@@ -18,7 +18,10 @@ import { scanDueDatabaseAutomationSchedules } from "../../features/automations/t
 import { drainDatabaseRealtimeOutbox } from "../../features/databases/realtime/outbox";
 import { expireTemporaryMemberships } from "../../features/memberships";
 import { renewGmailWatches } from "../../features/mail/sync/gmail-watch";
-import { advancePendingMailSyncs } from "../../features/mail/sync/mail-sync-coordinator";
+import {
+  advancePendingMailSyncs,
+  pollMailSyncSafety,
+} from "../../features/mail/sync/mail-sync-coordinator";
 import { advanceDueMailReminders } from "../../features/mail/organization/mail-reminders";
 import { drainMailDatabaseSyncOutbox } from "../../features/mail/database-sync/mail-database-sync-worker";
 import { cleanupExpiredGmailSendOperations } from "../../features/mail/compose/mail-compose";
@@ -200,6 +203,7 @@ const MAINTENANCE_TASK_HANDLERS: Record<MaintenanceTaskKey, MaintenanceTaskHandl
   },
   "mail.index_recovery": async (env) => {
     await advancePendingMailSyncs(env);
+    await pollMailSyncSafety(env);
     await advanceDueMailReminders(env);
   },
   "gmail.watch_renewal": async (env) => {
