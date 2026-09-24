@@ -310,11 +310,31 @@ export async function loadMailboxMessage(gmailAccountId: string, gmailMessageId:
 }
 
 export async function loadMailboxLabels(gmailAccountId: string): Promise<MailLabelRecord[]> {
-  const labels = await db
-    .select()
-    .from(mailLabel)
-    .where(eq(mailLabel.gmailAccountId, gmailAccountId))
-    .orderBy(mailLabel.name);
+  const [labels, threads, drafts] = await Promise.all([
+    db
+      .select()
+      .from(mailLabel)
+      .where(eq(mailLabel.gmailAccountId, gmailAccountId))
+      .orderBy(mailLabel.name),
+    db
+      .select({ labelIds: mailThreadIndex.labelIds, unread: mailThreadIndex.unread })
+      .from(mailThreadIndex)
+      .where(eq(mailThreadIndex.gmailAccountId, gmailAccountId)),
+    db
+      .select({ id: mailDraft.id })
+      .from(mailDraft)
+      .where(eq(mailDraft.gmailAccountId, gmailAccountId)),
+  ]);
+  const totals = new Map<string, { total: number; unread: number }>();
+  for (const thread of threads) {
+    for (const labelId of thread.labelIds) {
+      const total = totals.get(labelId) ?? { total: 0, unread: 0 };
+      total.total += 1;
+      if (thread.unread) total.unread += 1;
+      totals.set(labelId, total);
+    }
+  }
+  totals.set("DRAFT", { total: drafts.length, unread: 0 });
   return labels.map((label) => ({
     color: label.color as MailLabelRecord["color"],
     id: label.gmailLabelId,
@@ -323,8 +343,8 @@ export async function loadMailboxLabels(gmailAccountId: string): Promise<MailLab
     messagesTotal: label.messagesTotal,
     messagesUnread: label.messagesUnread,
     name: label.name,
-    threadsTotal: label.threadsTotal,
-    threadsUnread: label.threadsUnread,
+    threadsTotal: totals.get(label.gmailLabelId)?.total ?? 0,
+    threadsUnread: totals.get(label.gmailLabelId)?.unread ?? 0,
     type: label.type as MailLabelRecord["type"],
   }));
 }
@@ -605,9 +625,7 @@ export async function loadMailboxChanges(
     deletedThreadIds: effectiveThreadIds.filter((id) => !existingThreads.has(id)),
     fromRevision: afterRevision,
     hasMore: rows.length > selected.length,
-    labels: selected.some((row) => row.labelsChanged)
-      ? await loadMailboxLabels(gmailAccountId)
-      : [],
+    labels: selected.length ? await loadMailboxLabels(gmailAccountId) : [],
     messages: messageRows.map(serializeMailboxMessage),
     resetRequired: false,
     threads: threadRows.map(serializeMailboxThread),

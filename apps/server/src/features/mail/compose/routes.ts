@@ -246,7 +246,7 @@ mailMessageRoutes.post("/threads/:threadId/action", async (c) => {
         ? await gateway.trashThread(threadId)
         : await gateway.untrashThread(threadId);
     await applyMailboxThreadLabelDelta({
-      addLabelIds: body.action === "trash" ? ["TRASH"] : ["INBOX"],
+      addLabelIds: body.action === "trash" ? ["TRASH"] : [],
       gmailAccountId: owned.connection.id,
       gmailThreadId: threadId,
       removeLabelIds: body.action === "trash" ? ["INBOX"] : ["TRASH"],
@@ -272,7 +272,7 @@ mailMessageRoutes.post("/messages/:messageId/action", async (c) => {
         ? await gateway.trashMessage(messageId)
         : await gateway.untrashMessage(messageId);
     await applyMailboxLabelDelta({
-      addLabelIds: body.action === "trash" ? ["TRASH"] : ["INBOX"],
+      addLabelIds: body.action === "trash" ? ["TRASH"] : [],
       gmailAccountId: owned.connection.id,
       gmailMessageId: messageId,
       removeLabelIds: body.action === "trash" ? ["INBOX"] : ["TRASH"],

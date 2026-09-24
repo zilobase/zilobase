@@ -304,6 +304,10 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
   const openMailboxThread = async (threadId: string) => {
     if (providerView !== "drafts" || !controller.online) {
       setSelection(threadId);
+      const thread = visibleThreads.find((candidate) => candidate.id === threadId);
+      if (providerView !== "drafts" && thread?.unread) {
+        void controller.modifyThread(threadId, { removeLabelIds: ["UNREAD"] }).catch(showMailError);
+      }
       return;
     }
     if (composerSeed) {
