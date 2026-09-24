@@ -80,6 +80,7 @@ export type MailConnection = {
   bindingId?: string | null
   connectionId: string | null
   email: string | null
+  lastErrorCode?: string | null
   mailboxReady: boolean
   mailboxRevision: number
   providerConfigured: boolean

@@ -104,6 +104,7 @@ test("mail connection status preserves auth, membership and disconnected default
     bindingId: null,
     connectionId: null,
     email: null,
+    lastErrorCode: null,
     mailboxReady: false,
     mailboxRevision: 0,
     providerConfigured: true,
