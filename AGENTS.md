@@ -30,6 +30,12 @@ For setup or operational changes, also update the affected contributor guide or
 runbook. Keep command definitions and enforcement thresholds in their existing
 configuration files; link to them instead of copying values into this file.
 
+## UI linting
+
+After UI changes, run `npm run lint` and fix all errors. Shared UI components
+own appearance through variants and props; feature code should not restyle their
+internals.
+
 ## Effect dependency
 
 Effect comes from the npm package (`effect` in `apps/server/package.json`).

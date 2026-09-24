@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "jsPlugins": ["@shadcn/lint"],
+  "settings": {
+    "shadcn": {
+      "ui": "@/shared/ui",
+      "note": "Use shared UI variants and props instead of restyling component internals."
+    }
+  }
+}

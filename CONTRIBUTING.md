@@ -162,6 +162,7 @@ npm run verify:architecture
 Run the repository verification commands from the workspace root:
 
 ```sh
+npm run lint                # Oxlint plus the registered @shadcn/lint plugin
 npm run verify:core         # TypeScript packages, web, and server
 npm run verify:desktop      # Rust formatting, clippy, and tests
 npm run verify:architecture # Architecture links and published exports
@@ -170,6 +171,10 @@ npm run verify:commit       # Fast staged-file checks used by the commit hook
 npm run verify:push         # Path-filtered GitHub pull-request checks
 npm run verify:push -- --dry-run
 ```
+
+The design-system plugin is configured in [`.oxlintrc.json`](.oxlintrc.json).
+Its policies belong there; shared UI appearance belongs in component variants
+and props rather than feature-level class overrides.
 
 `npm run setup` points Git at [`.githooks`](.githooks). `git commit` runs the
 cheap path-filtered jobs (community boundary, architecture links, and tooling

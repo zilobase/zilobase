@@ -20,6 +20,7 @@
   ],
   "scripts": {
     "dev": "node scripts/dev/workspace.mjs",
+    "lint": "oxlint apps/web/src",
     "preview": "node scripts/dev/cli.mjs preview",
     "setup": "node scripts/dev/cli.mjs setup",
     "setup:check": "node scripts/dev/cli.mjs setup-check",
@@ -86,13 +87,15 @@
     "@dotenvx/dotenvx": "1.75.1",
     "@tanstack/react-query": "5.101.4",
     "pg": "^8.22.0",
-    "react-dom": "19.2.3",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "sonner": "^2.0.8"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
+    "@shadcn/lint": "^0.2.0",
     "@vitest/coverage-v8": "^4.1.11",
+    "oxlint": "^1.85.0",
     "postcss": "^8.5.26",
     "typescript": "6.0.3",
     "webdriverio": "^9.30.1",
