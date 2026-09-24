@@ -21,7 +21,7 @@ Gmail watch / Pub/Sub / safety poll
   -> browser revision catch-up and local offline cache
 ```
 
-OAuth connection requests the first account job. A bootstrap stores labels and the 50 newest Inbox threads with full bodies, marks the mailbox usable, then backfills All Mail in pages of 25. Backfill skips threads already fully hydrated and yields between pages. Ongoing work drains `history.list`; label-only and deletion events are applied locally without refetching complete threads.
+OAuth establishes the Gmail watch before requesting bootstrap work. Bootstrap stores labels, the 100 newest Inbox threads, 25 newest Sent threads and up to 50 drafts with full bodies before marking the mailbox usable. Background indexing then stores metadata for at most 2,000 threads from the latest 90 days; it does not scan or hydrate the complete account. Older metadata is advanced explicitly, and a deduplicated `mail_hydration_request` lets the existing per-account worker load one requested full thread without putting Gmail reads on the HTTP request path. Ongoing work drains `history.list`; label-only and deletion events are applied locally without refetching complete threads, while draft-related history coalesces a provider draft reconciliation.
 
 The query, thread, message, label and unsubscribe routes read PostgreSQL. The
 `/changes` feed returns current projections and deletion tombstones for every
@@ -46,7 +46,7 @@ Gmail calls pass through the gateway quota guard. Account/user token buckets, me
 
 ## Failure and recovery
 
-- Invalid or expired history cursors start a new generation. The prior committed generation remains readable until the replacement bootstrap/backfill is ready.
+- Invalid or expired history cursors start a new generation. Prior committed mail remains readable while the bounded recent window is rebuilt; generation recovery never treats an incomplete scan as proof that old messages were deleted.
 - Worker crashes recover through the account lease and persisted page/history cursors.
 - Partial history pages commit mailbox changes before advancing the page cursor, so replay is safe.
 - Missed push delivery is repaired by the server safety profile poll; clients do not poll Gmail.

@@ -221,6 +221,12 @@ export function useMailController(input: {
           thread: MailThreadSummary;
         }>(`${mailBasePath}/threads/${encodeURIComponent(threadId)}`);
         await upsertFullMailThread(database, response);
+        if (!response.messages.every((message) => message.hasFullBody)) {
+          await apiFetch(`${mailBasePath}/threads/${encodeURIComponent(threadId)}/hydrate`, {
+            body: "{}",
+            method: "POST",
+          });
+        }
       });
     },
     [database, online],

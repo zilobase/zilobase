@@ -172,6 +172,34 @@ export const mailDraft = pgTable(
   ],
 );
 
+export const mailHydrationRequest = pgTable(
+  "mail_hydration_request",
+  {
+    id: text("id").primaryKey(),
+    gmailAccountId: text("gmail_account_id")
+      .notNull()
+      .references(() => gmailAccount.id, { onDelete: "cascade" }),
+    gmailThreadId: text("gmail_thread_id").notNull(),
+    status: text("status").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lastError: text("last_error"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    ...timestampColumns(),
+  },
+  (table) => [
+    uniqueIndex("mail_hydration_request_account_thread_unique").on(
+      table.gmailAccountId,
+      table.gmailThreadId,
+    ),
+    index("mail_hydration_request_ready_idx").on(table.status, table.nextAttemptAt),
+    check(
+      "mail_hydration_request_status_check",
+      sql`${table.status} in ('pending', 'processing', 'retry', 'completed')`,
+    ),
+  ],
+);
+
 export const mailThreadIndex = pgTable(
   "mail_thread_index",
   {

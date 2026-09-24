@@ -48,18 +48,24 @@ test("mail index records snippets and queryable metadata but omits bodies", () =
 test("index work is bounded, resumable, history-driven, and deletion-safe", async () => {
   const source = await readFile(new URL("./mailbox-sync-engine.ts", import.meta.url), "utf8");
 
-  assert.match(source, /RECENT_INBOX_SIZE = 50/);
-  assert.match(source, /BACKFILL_PAGE_SIZE = 25/);
+  assert.match(source, /RECENT_INBOX_SIZE = 100/);
+  assert.match(source, /RECENT_SENT_SIZE = 25/);
+  assert.match(source, /IMMEDIATE_DRAFT_SIZE = 50/);
+  assert.match(source, /BACKFILL_PAGE_SIZE = 100/);
+  assert.match(source, /RECENT_INDEX_LIMIT = 2_000/);
   assert.match(source, /maxResults: 100/);
   assert.match(source, /INDEX_LEASE_MS/);
   assert.match(source, /isNull\(mailIndexState\.leaseExpiresAt\)/);
   assert.match(source, /includeSpamTrash: true/);
   assert.match(source, /labelIds: \["INBOX"\]/);
+  assert.match(source, /labelIds: \["SENT"\]/);
   assert.match(source, /getThreads\(recentIds, "full"\)/);
-  assert.match(source, /hydrationStatus, "complete"/);
+  assert.match(source, /query: "newer_than:90d"/);
+  assert.match(source, /getThreads\(missingIds, "metadata"\)/);
+  assert.match(source, /mailHydrationRequest/);
   assert.match(source, /nextPageToken: page\.nextPageToken/);
   assert.match(source, /historyPageToken: pageToken/);
-  assert.match(source, /ne\(mailThreadIndex\.generation, state\.generation\)/);
+  assert.doesNotMatch(source, /ne\(mailThreadIndex\.generation, state\.generation\)/);
   assert.match(source, /applyMailboxLabelDelta/);
   assert.match(source, /gateway\.getMessage\(messageId, "full"\)/);
   assert.match(source, /deleteMailboxMessage/);

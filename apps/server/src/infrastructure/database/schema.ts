@@ -48,6 +48,7 @@ export {
   mailIndexState,
   mailMailboxChange,
   mailDraft,
+  mailHydrationRequest,
   mailThreadIndex,
   mailMessage,
   mailLabel,

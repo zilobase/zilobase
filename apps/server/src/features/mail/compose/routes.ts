@@ -23,6 +23,7 @@ import {
 } from "../sync/mailbox-store";
 import { requestMailSync } from "../sync/mail-sync-coordinator";
 import { publishMailIndexUpdate } from "../sync/mailbox-sync-engine";
+import { requestMailHydration } from "../sync/mailbox-sync-engine";
 import {
   requireOwnedConnection,
   runMailOperation,
@@ -46,6 +47,18 @@ mailMessageRoutes.get("/threads/:threadId", async (c) => {
   return record
     ? c.json({ messages: record.messages, thread: record.summary })
     : c.json({ message: "Mail thread not found." }, 404);
+});
+
+mailMessageRoutes.post("/threads/:threadId/hydrate", async (c) => {
+  const owned = await requireOwnedConnection(c);
+  if (owned instanceof Response) return owned;
+  const threadId = safeGmailId(c.req.param("threadId"));
+  if (!threadId) return c.json({ message: "A valid Gmail thread ID is required." }, 400);
+  const record = await loadMailboxThread(owned.connection.id, threadId);
+  if (!record) return c.json({ message: "Mail thread not found." }, 404);
+  if (!record.messages.every((message) => message.hasFullBody))
+    await requestMailHydration(c.env, owned.connection.id, threadId);
+  return c.json({ accepted: true }, 202);
 });
 
 mailMessageRoutes.get("/messages/:messageId", async (c) => {

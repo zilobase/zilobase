@@ -145,11 +145,7 @@ mailProviderCallbackRoutes.get("/oauth/google/callback", async (c) => {
         .limit(1);
       if (account) {
         await ensureMailIndexState(account.id);
-        await requestMailSync(c.env, {
-          gmailAccountId: account.id,
-          reason: "oauth_bootstrap",
-        });
-        await initializeGmailWatch(c.env, account).catch(async (error) => {
+        const watch = await initializeGmailWatch(c.env, account).catch(async (error) => {
           await db
             .update(gmailAccount)
             .set({
@@ -157,7 +153,13 @@ mailProviderCallbackRoutes.get("/oauth/google/callback", async (c) => {
               updatedAt: new Date(),
             })
             .where(eq(gmailAccount.id, account.id));
+          return null;
         });
+        if (!watch)
+          await requestMailSync(c.env, {
+            gmailAccountId: account.id,
+            reason: "oauth_bootstrap",
+          });
       }
       return completed;
     });
