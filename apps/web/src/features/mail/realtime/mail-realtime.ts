@@ -1,4 +1,3 @@
-import { mailPollDelay } from "../sync/sync-queue";
 import { useEffect } from "react";
 
 import { apiFetch } from "@/platform/network/api";
@@ -30,21 +29,17 @@ export function useMailRealtime(input: {
   bindingId: string;
   connectionId: string;
   enabled: boolean;
-  pushAvailable?: boolean;
   onSynchronize: () => Promise<unknown>;
   workspaceId: string;
 }) {
   useEffect(() => {
     if (!input.enabled) return;
     let socket: WebSocket | null = null;
-    let pollTimer: ReturnType<typeof setTimeout> | null = null;
-    let pollFailures = 0;
     let stopped = false;
     let reconnectAttempt = 0;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let ticketTimer: ReturnType<typeof setTimeout> | null = null;
-    let lastPushAt = 0;
     const channel =
       typeof BroadcastChannel === "undefined"
         ? null
@@ -62,33 +57,6 @@ export function useMailRealtime(input: {
         bindingId: input.bindingId,
         synchronize: input.onSynchronize,
       });
-
-    const healthyPush = () =>
-      Boolean(
-        input.pushAvailable &&
-        socket &&
-        socket.readyState === WebSocket.OPEN &&
-        lastPushAt > 0 &&
-        Date.now() - lastPushAt < 10 * 60_000,
-      );
-    const poll = async () => {
-      if (stopped) return;
-      if (navigator.onLine !== false) {
-        const hidden = document.visibilityState === "hidden";
-        const minInterval = hidden || healthyPush() ? 300_000 : 60_000;
-        try {
-          pollFailures = (await recover(minInterval)) ? 0 : pollFailures + 1;
-        } catch {
-          pollFailures += 1;
-        }
-      }
-      if (!stopped)
-        pollTimer = setTimeout(
-          () => void poll(),
-          mailPollDelay(healthyPush() || document.visibilityState === "hidden", pollFailures),
-        );
-    };
-    pollTimer = setTimeout(() => void poll(), mailPollDelay(false, 0));
 
     const stopSocketTimers = () => {
       if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -135,7 +103,6 @@ export function useMailRealtime(input: {
         nextSocket.addEventListener("message", (event) => {
           const message = parseMailRealtimeMessage(event.data, input.bindingId, input.workspaceId);
           if (!message) return;
-          lastPushAt = Date.now();
           channel?.postMessage(message);
           void synchronizeRevision(message.revision);
         });
@@ -175,7 +142,6 @@ export function useMailRealtime(input: {
 
     return () => {
       stopped = true;
-      if (pollTimer) clearTimeout(pollTimer);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       stopSocketTimers();
       channel?.close();
@@ -184,7 +150,7 @@ export function useMailRealtime(input: {
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("online", handleOnline);
     };
-  }, [input.bindingId, input.enabled, input.pushAvailable, input.onSynchronize, input.workspaceId]);
+  }, [input.bindingId, input.enabled, input.onSynchronize, input.workspaceId]);
 }
 
 function parseMailRealtimeMessage(

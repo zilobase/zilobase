@@ -15,10 +15,10 @@ export function register({ assert, readSource, readWorkspace, test }) {
     assert.doesNotMatch(page, /mailOrganization/);
   });
 
-  test("Mail advances bounded index work and reports progress", async () => {
+  test("Mail reports server-owned index progress without advancing it from the browser", async () => {
     const page = await readMailFeatureSource(readSource);
 
-    assert.match(page, /\/index\/advance/);
+    assert.doesNotMatch(page, /\/index\/advance/);
     assert.match(page, /Indexing full mailbox…/);
     assert.match(page, /indexProgress\.indexedThreadCount/);
     assert.match(page, /Mail indexing paused/);

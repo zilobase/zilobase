@@ -14,11 +14,11 @@ export function register({ assert, loadModule, test }) {
     );
   });
 
-  test("mail sync commits records and its cursor atomically", async () => {
+  test("mailbox snapshots commit records and their local revision atomically", async () => {
     const fake = await import("fake-indexeddb");
     globalThis.indexedDB = fake.indexedDB;
     globalThis.IDBKeyRange = fake.IDBKeyRange;
-    const { applyMailSyncResponse, destroyMailDatabase, openMailDatabase } = await loadModule(
+    const { applyMailboxSnapshot, destroyMailDatabase, openMailDatabase } = await loadModule(
       "/src/features/mail/storage/mail-database.ts",
     );
     const database = await openMailDatabase({
@@ -54,48 +54,38 @@ export function register({ assert, loadModule, test }) {
       threadId: "thread-1",
       to: [],
     };
-    await applyMailSyncResponse(
-      database,
-      {
-        deletedMessageIds: [],
-        deletedThreadIds: [],
-        historyId: "10",
-        labels: [],
-        mailboxRevision: 2,
-        messages: [message],
-        mode: "full",
-        nextPageToken: "next",
-        threads: [
-          {
-            attachmentCount: 0,
-            id: "thread-1",
-            internalDate: 100,
-            labelIds: ["INBOX"],
-            latestMessageId: "message-1",
-            messageCount: 1,
-            messageIds: ["message-1"],
-            participants: [],
-            snippet: "Preview",
-            starred: false,
-            subject: "Subject",
-            unread: true,
-          },
-        ],
-      },
-      "inbox",
-    );
+    await applyMailboxSnapshot(database, {
+      deletedMessageIds: [],
+      deletedThreadIds: [],
+      labels: [],
+      mailboxRevision: 2,
+      messages: [message],
+      threads: [
+        {
+          attachmentCount: 0,
+          id: "thread-1",
+          internalDate: 100,
+          labelIds: ["INBOX"],
+          latestMessageId: "message-1",
+          messageCount: 1,
+          messageIds: ["message-1"],
+          participants: [],
+          snippet: "Preview",
+          starred: false,
+          subject: "Subject",
+          unread: true,
+        },
+      ],
+    });
 
     assert.equal((await database.messages.get("message-1"))?.subject, "Subject");
     assert.deepEqual(await database.syncState.get("primary"), {
       bindingId: "binding-transaction",
       connectionId: "gmail-transaction",
-      historyId: "10",
       key: "primary",
       lastSyncedAt: (await database.syncState.get("primary")).lastSyncedAt,
-      loadedViews: { inbox: true },
       mailboxRevision: 2,
-      pageTokens: { inbox: "next" },
-      schemaVersion: 3,
+      schemaVersion: 4,
       userId: "user-1",
       workspaceId: "workspace-1",
     });
@@ -189,14 +179,14 @@ export function register({ assert, loadModule, test }) {
     await first.messages.put(mutationFixture().messages[0]);
     first.close();
     const rebuilt = await openMailDatabase(identity);
-    assert.equal((await rebuilt.syncState.get("primary")).schemaVersion, 3);
+    assert.equal((await rebuilt.syncState.get("primary")).schemaVersion, 4);
     assert.equal(await rebuilt.messages.count(), 0);
     await destroyMailDatabase(rebuilt.name);
   });
 
   test("mail optimistic label changes update message and thread state and can roll back", async () => {
     const {
-      applyMailSyncResponse,
+      applyMailboxSnapshot,
       destroyMailDatabase,
       openMailDatabase,
       optimisticallyModifyMessage,
@@ -210,7 +200,7 @@ export function register({ assert, loadModule, test }) {
       userId: "user-1",
       workspaceId: "workspace-1",
     });
-    await applyMailSyncResponse(database, mutationFixture(), "inbox");
+    await applyMailboxSnapshot(database, mutationFixture());
 
     const messageSnapshot = await optimisticallyModifyMessage(database, "message-1", {
       removeLabelIds: ["UNREAD"],
@@ -235,7 +225,7 @@ export function register({ assert, loadModule, test }) {
 
   test("deleting a custom label removes it from all cached records", async () => {
     const {
-      applyMailSyncResponse,
+      applyMailboxSnapshot,
       deleteMailLabelFromCache,
       destroyMailDatabase,
       openMailDatabase,
@@ -264,7 +254,7 @@ export function register({ assert, loadModule, test }) {
     ];
     fixture.messages.forEach((message) => message.labelIds.push("Label_1"));
     fixture.threads[0].labelIds.push("Label_1");
-    await applyMailSyncResponse(database, fixture, "inbox");
+    await applyMailboxSnapshot(database, fixture);
     await deleteMailLabelFromCache(database, "Label_1");
 
     assert.equal(await database.labels.get("Label_1"), undefined);

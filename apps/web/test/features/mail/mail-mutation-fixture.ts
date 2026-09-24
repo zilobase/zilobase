@@ -4,8 +4,7 @@ export {
   runMailMessageMutation,
 } from "../../../src/features/mail/sync/mail-mutations";
 export {
-  applyMailSyncResponse,
+  applyMailboxSnapshot,
   openMailDatabase,
   destroyMailDatabase,
 } from "../../../src/features/mail/storage/mail-database";
-export { synchronizeMailCache } from "../../../src/features/mail/sync/mail-cache-sync";

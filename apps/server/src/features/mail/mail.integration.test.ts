@@ -14,6 +14,8 @@ import { mailRoutes } from "./routes";
 import { sendGmailComposition } from "./compose/mail-compose";
 import { beginGmailOauth, completeGmailOauth } from "./provider/google-oauth";
 import { decryptMailSecret } from "./provider/security/mail-credentials";
+import { ensureMailIndexState } from "./query/mail-index";
+import { storeMailboxThread } from "./sync/mailbox-store";
 
 const provider = vi.hoisted(() => ({ gateway: null as unknown }));
 vi.mock("./provider/gmail-gateway", async (original) => ({
@@ -170,6 +172,10 @@ test.skipIf(!enabled)(
         });
       throw new Error(`Unexpected fixture route ${method} ${path}`);
     });
+    await runWithDb(database!, async () => {
+      await ensureMailIndexState(accountId);
+      await storeMailboxThread(accountId, 1, { id: "thread", messages: [message("sent")] }, true);
+    });
     const compose = composition();
     assert.equal((await request("/drafts", "POST", compose)).status, 201);
     assert.equal((await (await request("/drafts")).json()).drafts.length, 1);
@@ -182,16 +188,13 @@ test.skipIf(!enabled)(
     assert.equal(retry.status, 200);
     assert.equal((await retry.json()).reused, true);
     assert.equal(deliveries, 1);
-    const sync = await request("/sync", "POST", { connectionId: accountId, view: "sent" });
-    assert.equal(sync.status, 200);
-    assert.equal((await sync.json()).threads[0].id, "thread");
+    assert.equal((await request("/sync", "POST", { connectionId: accountId })).status, 404);
     const thread = await request("/threads/thread");
     assert.equal((await thread.json()).messages[0].bodyText, "Hello");
     assert.equal(
       (await request("/threads/thread/modify", "POST", { addLabelIds: ["STARRED"] })).status,
       200,
     );
-    assert.equal(await (await request("/messages/sent/attachments/file")).text(), "fixture bytes");
     assert.equal(
       (await request("/drafts/draft/send", "POST", { ...compose, bodyText: "different" })).status,
       409,

@@ -5,7 +5,6 @@ import {
   type MailBatchModifyRequest,
   type MailLabelWriteRequest,
   type MailModifyRequest,
-  type MailView,
 } from "@zilobase/features/mail/contracts";
 import { db } from "../../infrastructure/database";
 import {
@@ -189,25 +188,6 @@ export function parseCompose(c: Context<AppBindings>, value: unknown, requireRec
       400,
     );
   }
-}
-
-export function optionalCursor(value: unknown) {
-  return (
-    value === undefined || (typeof value === "string" && value.length > 0 && value.length <= 1024)
-  );
-}
-
-export function optionalQuery(value: unknown) {
-  return value === undefined || (typeof value === "string" && value.length <= 2048);
-}
-
-export function optionalIdList(value: unknown) {
-  return (
-    value === undefined ||
-    (Array.isArray(value) &&
-      value.length <= 5_000 &&
-      value.every((id) => typeof id === "string" && safeGmailId(id) !== null))
-  );
 }
 
 export function parseMailModifyRequest(value: unknown): MailModifyRequest | null {
@@ -416,21 +396,6 @@ const GMAIL_LABEL_COLORS = new Set([
   "#42d692",
   "#16a765",
 ]);
-
-export function isMailView(value: unknown): value is MailView {
-  return [
-    "all_mail",
-    "archive",
-    "bin",
-    "drafts",
-    "inbox",
-    "sent",
-    "spam",
-    "starred",
-    "trash",
-    "unread",
-  ].includes(value as string);
-}
 
 export function buildDesktopMailReturnUrl(input: { apiOrigin: string; instanceId: string }) {
   const deepLink = new URL("zilobase://open");

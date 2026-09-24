@@ -100,28 +100,6 @@ export type MailView =
   | "trash"
   | "unread";
 
-export type MailSyncRequest = {
-  connectionId: string;
-  historyId?: string;
-  knownMessageIds?: string[];
-  knownThreadIds?: string[];
-  pageToken?: string;
-  query?: string;
-  view: MailView;
-};
-
-export type MailSyncResponse = {
-  deletedMessageIds: string[];
-  deletedThreadIds: string[];
-  historyId: string;
-  labels: MailLabelRecord[];
-  mailboxRevision: number;
-  messages: MailMessageRecord[];
-  mode: "full" | "incremental" | "recovery";
-  nextPageToken: string | null;
-  threads: MailThreadSummary[];
-};
-
 export type MailModifyRequest = {
   addLabelIds?: string[];
   removeLabelIds?: string[];

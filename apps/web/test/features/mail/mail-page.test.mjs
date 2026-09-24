@@ -139,7 +139,8 @@ export function register({ assert, loadModule, readSource, test }) {
 
     assert.doesNotMatch(mailSource, /starterMailMessages|setMessages/);
     assert.match(controllerSource, /useLiveQuery/);
-    assert.match(controllerSource, /synchronizeMailCache/);
+    assert.match(controllerSource, /runMailRefreshOnce/);
+    assert.doesNotMatch(controllerSource, /\/sync|index\/advance/);
     assert.match(controllerSource, /upsertFullMailThread/);
     assert.match(controllerSource, /threadLoads[\s\S]*loadMailThreadOnce[\s\S]*prefetchThread/);
     assert.match(controllerSource, /URL\.createObjectURL[\s\S]*URL\.revokeObjectURL/);

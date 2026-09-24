@@ -4,7 +4,7 @@ import type { AppBindings } from "../../shared/types";
 import { mailConnectionRoutes, mailProviderCallbackRoutes } from "./connections/routes";
 import { mailMessageRoutes } from "./compose/routes";
 import { mailOrganizationRoutes, mailViewStatusRoutes } from "./organization/routes";
-import { mailQueryRoutes, mailSyncRoutes } from "./query/routes";
+import { mailQueryRoutes } from "./query/routes";
 import { mailRealtimeRoutes } from "./realtime/routes";
 import { workspaceIdFromContext } from "./route-support";
 
@@ -42,7 +42,6 @@ mailRoutes.route("/", mailConnectionRoutes);
 mailRoutes.route("/", mailViewStatusRoutes);
 mailRoutes.route("/", mailQueryRoutes);
 mailRoutes.route("/", mailOrganizationRoutes);
-mailRoutes.route("/", mailSyncRoutes);
 mailRoutes.route("/", mailMessageRoutes);
 mailRoutes.route("/", mailRealtimeRoutes);
 mailProviderRoutes.route("/", mailProviderCallbackRoutes);

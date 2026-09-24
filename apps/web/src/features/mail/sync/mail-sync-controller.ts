@@ -1,8 +1,7 @@
 import { readCachedMailThreads } from "../storage/mail-cache-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateMailListQueries, mailKeys } from "@zilobase/features/mail";
-import { runMailSyncOnce } from "./sync-queue";
-import { synchronizeMailCache } from "./mail-cache-sync";
+import { runMailRefreshOnce } from "./mail-refresh-queue";
 import {
   isDefiniteMailMutationFailure,
   runMailThreadMutation,
@@ -56,25 +55,18 @@ export function useMailController(input: {
   connection: MailConnection;
   filter?: MailFilterExpression | null;
   query: string;
-  remoteSearch?: boolean;
   userId: string;
   view: MailView;
 }) {
   const queryClient = useQueryClient();
   const retryAt = useRef(0);
   const revoked = useRef(false);
-  const latestScope = useRef("");
-  latestScope.current =
-    input.remoteSearch === false
-      ? `${input.connection.bindingId}:${input.view}`
-      : `${input.connection.bindingId}:${input.view}:${input.query}`;
   const mailBasePath = mailApiBasePath(input.connection.workspaceId);
   const [cacheLimit, setCacheLimit] = useState(50);
   const [database, setDatabase] = useState<MailDatabase | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [mutating, setMutating] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const [searchResultIds, setSearchResultIds] = useState<string[] | null>(null);
   const threadLoads = useRef(new Map<string, Promise<void>>());
   const online = useSyncExternalStore(
     subscribeConnectivity,
@@ -136,85 +128,67 @@ export function useMailController(input: {
     [],
   );
 
-  const runSync = useCallback(
-    async (options: { loadMore?: boolean; search?: string } = {}) => {
-      if (!database || !input.connection.connectionId || !online) return null;
-      if (revoked.current || Date.now() < retryAt.current) return null;
-      const scope = latestScope.current;
-      setSyncing(true);
-      setError(null);
-      try {
-        const { response, isSearch } = await runMailSyncOnce(
-          database.name,
-          JSON.stringify([input.view, options]),
-          async () => {
-            const result = await synchronizeMailCache(
-              {
-                database,
-                mailBasePath,
-                connectionId: input.connection.connectionId!,
-                view: input.view,
-              },
-              apiFetch,
-              options,
-            );
-            if (!result.isSearch) {
-              await apiFetch(`${mailBasePath}/index/advance`, { method: "POST" });
-              await invalidateMailListQueries(queryClient, {
-                bindingId: input.connection.bindingId,
-                workspaceId: input.connection.workspaceId,
-              });
-            }
-            return result;
-          },
+  const runSync = useCallback(async () => {
+    if (!database || !input.connection.connectionId || !online) return null;
+    if (revoked.current || Date.now() < retryAt.current) return null;
+    setSyncing(true);
+    setError(null);
+    try {
+      return await runMailRefreshOnce(database.name, async () => {
+        const { labels: nextLabels } = await apiFetch<{ labels: MailLabelRecord[] }>(
+          `${mailBasePath}/labels`,
         );
-        if (latestScope.current === scope)
-          setSearchResultIds(isSearch ? response.threads.map((thread) => thread.id) : null);
-        return response;
-      } catch (syncError) {
-        if (syncError instanceof ApiError) {
-          const body = syncError.body as { retryAfterMs?: number; code?: string } | null;
-          if (body?.retryAfterMs) retryAt.current = Date.now() + body.retryAfterMs;
-          if (body?.code === "authorization_revoked") {
-            revoked.current = true;
-            void queryClient.invalidateQueries({
-              queryKey: mailKeys.connection(input.connection.workspaceId),
+        await database.transaction("rw", database.labels, database.syncState, async () => {
+          await database.labels.clear();
+          if (nextLabels.length) await database.labels.bulkPut(nextLabels);
+          const state = await database.syncState.get("primary");
+          if (state)
+            await database.syncState.put({
+              ...state,
+              lastSyncedAt: Date.now(),
+              mailboxRevision: Math.max(
+                state.mailboxRevision,
+                input.connection.mailboxRevision ?? 0,
+              ),
             });
-          }
+        });
+        await invalidateMailListQueries(queryClient, {
+          bindingId: input.connection.bindingId,
+          workspaceId: input.connection.workspaceId,
+        });
+        return { labels: nextLabels };
+      });
+    } catch (syncError) {
+      if (syncError instanceof ApiError) {
+        const body = syncError.body as { retryAfterMs?: number; code?: string } | null;
+        if (body?.retryAfterMs) retryAt.current = Date.now() + body.retryAfterMs;
+        if (body?.code === "authorization_revoked") {
+          revoked.current = true;
+          void queryClient.invalidateQueries({
+            queryKey: mailKeys.connection(input.connection.workspaceId),
+          });
         }
-        if (latestScope.current === scope) setError(syncError);
-        return null;
-      } finally {
-        if (latestScope.current === scope) setSyncing(false);
       }
-    },
-    [
-      database,
-      input.connection.connectionId,
-      input.connection.bindingId,
-      input.connection.workspaceId,
-      input.view,
-      online,
-      queryClient,
-    ],
-  );
+      setError(syncError);
+      return null;
+    } finally {
+      setSyncing(false);
+    }
+  }, [
+    database,
+    input.connection.connectionId,
+    input.connection.bindingId,
+    input.connection.mailboxRevision,
+    input.connection.workspaceId,
+    online,
+    queryClient,
+  ]);
 
   useEffect(() => {
     if (!database || !online) return;
     const timer = window.setTimeout(() => void runSync(), 0);
     return () => window.clearTimeout(timer);
   }, [database, input.view, online, runSync]);
-
-  useEffect(() => {
-    if (!database) return;
-    const search = input.query.trim();
-    if (!search || !online || input.remoteSearch === false) {
-      setSearchResultIds(null);
-      return;
-    }
-    const timer = window.setTimeout(() => void runSync({ search }), 350);
-    return () => window.clearTimeout(timer);
-  }, [database, input.query, input.remoteSearch, online, runSync]);
 
   const threads = useMemo(() => {
     const visible = (cachedThreads ?? [])
@@ -224,12 +198,6 @@ export function useMailController(input: {
           ? evaluateMailFilterExpression(mailFilterRecordFromThreadSummary(thread), input.filter)
           : mailThreadMatchesView(thread, input.view),
       );
-    if (searchResultIds) {
-      const order = new Map(searchResultIds.map((id, index) => [id, index]));
-      return visible
-        .filter((thread) => order.has(thread.id))
-        .sort((a, b) => order.get(a.id)! - order.get(b.id)!);
-    }
     const query = input.query.trim().toLowerCase();
     if (!query) return visible;
     return visible.filter((thread) =>
@@ -242,7 +210,7 @@ export function useMailController(input: {
         ]),
       ].some((value) => value.toLowerCase().includes(query)),
     );
-  }, [cachedThreads, cacheLimit, input.filter, input.query, input.view, searchResultIds]);
+  }, [cachedThreads, cacheLimit, input.filter, input.query, input.view]);
 
   const loadThread = useCallback(
     (threadId: string) => {
@@ -572,9 +540,7 @@ export function useMailController(input: {
     deleteLabel,
     downloadAttachment,
     error,
-    hasMore: online
-      ? Boolean(syncState?.pageTokens[input.view])
-      : (cachedThreads?.length ?? 0) > cacheLimit,
+    hasMore: (cachedThreads?.length ?? 0) > cacheLimit,
     labels: labels ?? [],
     loadInlineAttachment,
     modifyMessage,
@@ -586,7 +552,7 @@ export function useMailController(input: {
     refresh: runSync,
     loadMore: () => {
       setCacheLimit((limit) => limit + 50);
-      return online ? runSync({ loadMore: true }) : Promise.resolve(null);
+      return Promise.resolve(null);
     },
     syncing,
     threads,

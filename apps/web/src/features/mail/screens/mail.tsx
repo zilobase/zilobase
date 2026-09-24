@@ -182,10 +182,6 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
     !mailFiltersEqual(effectiveFilter, activePersistedView.config.filter),
   );
   const indexProgress = persistedViewsQuery.data?.index;
-  const indexProgressKey = indexProgress
-    ? `${indexProgress.status}:${indexProgress.indexedThreadCount}`
-    : "none";
-  const refetchPersistedViews = persistedViewsQuery.refetch;
   const providerView = providerViewForOrganizationRoute(activePersistedView, activeSystemFolder);
   useEffect(() => {
     const timer = window.setTimeout(() => setIndexedSearch(query.trim()), 350);
@@ -241,37 +237,10 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
     navigate,
     persistedViewsQuery.isSuccess,
   ]);
-  useEffect(() => {
-    if (!indexProgress || indexProgress.status === "ready") return;
-    let cancelled = false;
-    let timer = 0;
-    const run = () => {
-      timer = window.setTimeout(
-        () => {
-          void apiFetch(`${mailApiBasePath(connection.workspaceId)}/index/advance`, {
-            method: "POST",
-          })
-            .catch(() => undefined)
-            .finally(() => {
-              if (cancelled) return;
-              void refetchPersistedViews();
-              if (indexProgress.status === "error") run();
-            });
-        },
-        indexProgress.status === "error" ? 30_000 : 500,
-      );
-    };
-    run();
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [connection.workspaceId, indexProgress, indexProgressKey, refetchPersistedViews]);
   const controller = useMailController({
     connection,
     filter: activePersistedView?.config.filter ?? null,
     query,
-    remoteSearch: false,
     userId,
     view: providerView,
   });
@@ -312,7 +281,6 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
     bindingId: connection.bindingId ?? connection.connectionId!,
     connectionId: connection.connectionId!,
     enabled: controller.online && Boolean(controller.database),
-    pushAvailable: connection.pushAvailable,
     onSynchronize: controller.refresh,
     workspaceId: connection.workspaceId!,
   });

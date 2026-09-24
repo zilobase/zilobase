@@ -3,12 +3,11 @@ import type {
   MailLabelRecord,
   MailMessageRecord,
   MailModifyRequest,
-  MailSyncResponse,
   MailThreadSummary,
   MailView,
 } from "@zilobase/features/mail";
 
-const MAIL_DATABASE_VERSION = 3;
+const MAIL_DATABASE_VERSION = 4;
 const openDatabases = new Map<string, MailDatabase>();
 const MAIL_LIFECYCLE_CHANNEL = "zilobase:mail-cache-lifecycle:v2";
 let lifecycleChannel: BroadcastChannel | null = null;
@@ -16,15 +15,11 @@ let lifecycleChannel: BroadcastChannel | null = null;
 export type MailSyncStateRecord = {
   bindingId: string;
   connectionId: string;
-  historyId: string | null;
   key: "primary";
   lastSyncedAt: number | null;
-  listedThreadIds?: Partial<Record<MailView, string[]>>;
-  loadedViews?: Partial<Record<MailView, boolean>>;
   mailboxRevision: number;
   pendingMessageReconciliationIds?: string[];
   pendingThreadReconciliationIds?: string[];
-  pageTokens: Partial<Record<MailView, string>>;
   schemaVersion: number;
   userId: string;
   workspaceId: string;
@@ -113,12 +108,9 @@ export async function openMailDatabase(
       await database.syncState.put({
         bindingId,
         connectionId: input.connectionId,
-        historyId: null,
         key: "primary",
         lastSyncedAt: null,
-        loadedViews: {},
         mailboxRevision: 0,
-        pageTokens: {},
         schemaVersion: MAIL_DATABASE_VERSION,
         userId: input.userId,
         workspaceId,
@@ -134,69 +126,16 @@ export async function openMailDatabase(
   }
 }
 
-async function resetRecoveryViews(database: MailDatabase, response: MailSyncResponse) {
-  const known = await database.threads.toCollection().primaryKeys();
-  const currentState = await database.syncState.get("primary");
-  const returned = new Set(response.threads.map((thread) => thread.id));
-  if (currentState)
-    await database.syncState.put({
-      ...currentState,
-      loadedViews: {},
-      pageTokens: {},
-      pendingThreadReconciliationIds: [
-        ...new Set([
-          ...(currentState.pendingThreadReconciliationIds ?? []),
-          ...known.filter((id) => !returned.has(String(id))).map(String),
-        ]),
-      ],
-    });
-}
-
-async function updateSyncCheckpoint(
+export async function applyMailboxSnapshot(
   database: MailDatabase,
-  response: MailSyncResponse,
-  view: MailView,
-  options: {
-    advanceHistory?: boolean;
-    listedThreadIds?: MailSyncStateRecord["listedThreadIds"];
-    markViewLoaded?: boolean;
+  response: {
+    deletedMessageIds?: string[];
+    deletedThreadIds?: string[];
+    labels?: MailLabelRecord[];
+    mailboxRevision?: number;
+    messages?: MailMessageRecord[];
+    threads?: MailThreadSummary[];
   },
-) {
-  const current = await database.syncState.get("primary");
-  if (!current) throw new Error("Mail cache identity is missing.");
-  await database.syncState.put({
-    ...current,
-    historyId:
-      options.advanceHistory === false
-        ? current.historyId
-        : newerMailHistoryId(current.historyId, response.historyId),
-    lastSyncedAt: Date.now(),
-    ...(options.listedThreadIds ? { listedThreadIds: options.listedThreadIds } : {}),
-    loadedViews:
-      options.markViewLoaded === false
-        ? current.loadedViews
-        : { ...current.loadedViews, [view]: true },
-    mailboxRevision: Math.max(current.mailboxRevision, response.mailboxRevision),
-    pageTokens:
-      options.markViewLoaded === false
-        ? current.pageTokens
-        : {
-            ...current.pageTokens,
-            [view]: response.nextPageToken ?? undefined,
-          },
-  });
-}
-
-export async function applyMailSyncResponse(
-  database: MailDatabase,
-  response: MailSyncResponse,
-  view: MailView,
-  options: {
-    advanceHistory?: boolean;
-    markViewLoaded?: boolean;
-    reconcileView?: boolean;
-    resetViewListing?: boolean;
-  } = {},
 ) {
   await database.transaction(
     "rw",
@@ -205,57 +144,24 @@ export async function applyMailSyncResponse(
     database.syncState,
     database.threads,
     async () => {
-      if (response.mode === "recovery") {
-        await resetRecoveryViews(database, response);
-      }
-      if (response.labels.length) await database.labels.bulkPut(response.labels);
-      if (response.messages.length) await mergeMessages(database, response.messages);
-      if (response.threads.length) await database.threads.bulkPut(response.threads);
-      if (response.deletedMessageIds.length) {
+      if (response.labels?.length) await database.labels.bulkPut(response.labels);
+      if (response.messages?.length) await mergeMessages(database, response.messages);
+      if (response.threads?.length) await database.threads.bulkPut(response.threads);
+      if (response.deletedMessageIds?.length) {
         await database.messages.bulkDelete(response.deletedMessageIds);
       }
-      if (response.deletedThreadIds.length) {
+      if (response.deletedThreadIds?.length) {
         await database.threads.bulkDelete(response.deletedThreadIds);
       }
-      const listedThreadIds =
-        options.reconcileView && response.mode !== "incremental"
-          ? await reconcileCachedView(database, response, view, options.resetViewListing === true)
-          : undefined;
-      await updateSyncCheckpoint(database, response, view, { ...options, listedThreadIds });
+      const state = await database.syncState.get("primary");
+      if (!state) throw new Error("Mail cache identity is missing.");
+      await database.syncState.put({
+        ...state,
+        lastSyncedAt: Date.now(),
+        mailboxRevision: Math.max(state.mailboxRevision, response.mailboxRevision ?? 0),
+      });
     },
   );
-}
-
-async function reconcileCachedView(
-  database: MailDatabase,
-  response: MailSyncResponse,
-  view: MailView,
-  resetViewListing: boolean,
-) {
-  const current = await database.syncState.get("primary");
-  if (!current) return undefined;
-  const listed = [
-    ...new Set([
-      ...(resetViewListing ? [] : (current.listedThreadIds?.[view] ?? [])),
-      ...response.threads.map((thread) => thread.id),
-    ]),
-  ];
-  const listedThreadIds = { ...current.listedThreadIds };
-  if (response.nextPageToken) listedThreadIds[view] = listed;
-  else {
-    const listedSet = new Set(listed);
-    const cached = await database.threads.toArray();
-    const remove = cached
-      .filter((thread) => mailThreadMatchesView(thread, view) && !listedSet.has(thread.id))
-      .map((thread) => thread.id);
-    if (remove.length) {
-      await database.threads.bulkDelete(remove);
-      const messageIds = await database.messages.where("threadId").anyOf(remove).primaryKeys();
-      if (messageIds.length) await database.messages.bulkDelete(messageIds);
-    }
-    delete listedThreadIds[view];
-  }
-  return listedThreadIds;
 }
 
 export function mailThreadMatchesView(thread: MailThreadSummary, view: MailView) {
@@ -605,13 +511,4 @@ function requireIdentifier(value: string, kind: string) {
 
 function uniqueLimited(values: string[]) {
   return [...new Set(values)].slice(-100);
-}
-
-function newerMailHistoryId(current: string | null, incoming: string) {
-  if (!current) return incoming;
-  try {
-    return BigInt(current) > BigInt(incoming) ? current : incoming;
-  } catch {
-    return incoming;
-  }
 }
