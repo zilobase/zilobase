@@ -203,7 +203,8 @@ export function register({ assert, loadModule, readSource, test }) {
     assert.doesNotMatch(mailSource, /disabled=\{!online \|\| mutating\}/);
     assert.match(controllerSource, /enqueueMailMutation/);
     assert.match(controllerSource, /drainMailMutationOutbox/);
-    assert.match(controllerSource, /optimisticallyModifyThread[\s\S]*restoreMailMutation/);
+    assert.match(controllerSource, /optimisticallyModifyThread[\s\S]*enqueueMailMutation/);
+    assert.match(controllerSource, /queueMailReconciliation|drainMailMutationOutbox/);
     assert.match(controllerSource, /isDefiniteMailMutationFailure/);
   });
 }

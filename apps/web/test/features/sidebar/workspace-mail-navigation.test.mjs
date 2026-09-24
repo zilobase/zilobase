@@ -10,7 +10,7 @@ export function register({ assert, readSource, test }) {
     assert.match(navigation, /<SidebarGroupLabel>Views<\/SidebarGroupLabel>/);
     assert.match(navigation, /<SidebarGroupLabel>Mail<\/SidebarGroupLabel>/);
     assert.match(navigation, /mailSystemFolderIds\.map/);
-    for (const label of ["All Mail", "Sent", "Drafts", "Spam", "Bin"]) {
+    for (const label of ["All Mail", "Sent", "Drafts", "Spam", "Trash"]) {
       assert.ok(navigation.includes(`label: "${label}"`), `missing ${label}`);
     }
     assert.match(navigation, /<span>Add view<\/span>/);

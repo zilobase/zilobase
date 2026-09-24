@@ -19,7 +19,7 @@ export function register({ assert, readSource, readWorkspace, test }) {
     const page = await readMailFeatureSource(readSource);
 
     assert.doesNotMatch(page, /\/index\/advance/);
-    assert.match(page, /Indexing full mailbox…/);
+    assert.match(page, /Indexing recent mail…/);
     assert.match(page, /indexProgress\.indexedThreadCount/);
     assert.match(page, /Mail indexing paused/);
   });
