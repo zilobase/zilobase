@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate, useSearch } from "@tanstack/react-router"
 import { useLiveQuery } from "dexie-react-hooks"
@@ -209,31 +209,49 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
     })
   }, [activePersistedView, activeSystemFolder, compose, inboxView, navigate, persistedViewsQuery.isSuccess])
   useEffect(() => {
-    if (
-      !indexProgress ||
-      indexProgress.status === "ready" ||
-      indexProgress.status === "error"
-    ) return
+    if (!indexProgress || indexProgress.status === "ready") return
     let cancelled = false
-    const timer = window.setTimeout(() => {
-      void apiFetch(`${mailApiBasePath(connection.workspaceId)}/index/advance`, {
-        method: "POST",
-      }).catch(() => undefined).finally(() => {
-        if (!cancelled) void refetchPersistedViews()
-      })
-    }, 500)
+    let timer = 0
+    const run = () => {
+      timer = window.setTimeout(() => {
+        void apiFetch(`${mailApiBasePath(connection.workspaceId)}/index/advance`, {
+          method: "POST",
+        }).catch(() => undefined).finally(() => {
+          if (cancelled) return
+          void refetchPersistedViews()
+          if (indexProgress.status === "error") run()
+        })
+      }, indexProgress.status === "error" ? 30_000 : 500)
+    }
+    run()
     return () => {
       cancelled = true
       window.clearTimeout(timer)
     }
-  }, [connection.workspaceId, indexProgressKey, refetchPersistedViews])
+  }, [connection.workspaceId, indexProgress, indexProgressKey, refetchPersistedViews])
   const controller = useMailController({
     connection,
     filter: activePersistedView?.config.filter ?? null,
-    query: "",
+    query,
+    remoteSearch: false,
     userId,
     view: providerView,
   })
+  const searchTruncated = indexedMailQuery.data?.pages.some((page) => page.searchTruncated) ?? false
+  const emptyCursor = indexedMailQuery.data?.pages.at(-1)?.threads.length === 0
+    ? indexedMailQuery.data.pages.at(-1)?.nextCursor
+    : null
+  const scannedEmptyCursors = useRef(new Set<string>())
+  const fetchNextIndexedPage = indexedMailQuery.fetchNextPage
+  const fetchingNextIndexedPage = indexedMailQuery.isFetchingNextPage
+  useEffect(() => {
+    scannedEmptyCursors.current.clear()
+  }, [indexedSearch, view])
+  useEffect(() => {
+    if (!emptyCursor || fetchingNextIndexedPage || scannedEmptyCursors.current.has(emptyCursor)) return
+    scannedEmptyCursors.current.add(emptyCursor)
+    void fetchNextIndexedPage()
+  }, [emptyCursor, fetchNextIndexedPage, fetchingNextIndexedPage])
   const visibleThreads = controller.online ? indexedThreads : controller.threads
   useEffect(() => {
     const database = controller.database
@@ -536,6 +554,9 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
                         activeViewIcon={ActiveViewIcon}
                         activeViewLabel={activeViewLabel}
                         batchCount={batchSelection.size}
+                        connectionNotice={connection.status === "connected" && connection.lastErrorCode
+                          ? "Gmail couldn't start mailbox notifications. New mail is checked about once a minute while Mail is open."
+                          : undefined}
                         filterToolbar={activePersistedView && effectiveFilter ? (
                           <MailFilterToolbar
                             dirty={filterDirty}
@@ -618,6 +639,7 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
                         )}
                       />
                       <MailboxThreadList
+                        accountEmail={connection.email}
                         batchSelection={batchSelection}
                         collapsedGroups={collapsedGroups}
                         customProperties={visibleCustomProperties}
@@ -641,6 +663,7 @@ function MailboxController({ connection, userId }: { connection: MailConnection;
                         online={controller.online}
                         propertyMembers={propertyMembers}
                         query={query}
+                        searchTruncated={searchTruncated}
                         selection={selection}
                       />
                     </div>

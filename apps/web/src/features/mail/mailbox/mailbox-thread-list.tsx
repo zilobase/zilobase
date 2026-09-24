@@ -16,6 +16,7 @@ import { MailThreadRow } from "../messages/mail-thread-row"
 import type { MailThreadGroup } from "../organization/mail-view-model"
 
 export function MailboxThreadList({
+  accountEmail,
   batchSelection,
   collapsedGroups,
   customProperties,
@@ -39,8 +40,10 @@ export function MailboxThreadList({
   online,
   propertyMembers,
   query,
+  searchTruncated,
   selection,
 }: {
+  accountEmail?: string | null
   batchSelection: Set<string>
   collapsedGroups: Set<string>
   customProperties: MailPropertyDefinition[]
@@ -64,6 +67,7 @@ export function MailboxThreadList({
   online: boolean
   propertyMembers: Parameters<typeof formatMailPropertyValue>[2]
   query: string
+  searchTruncated?: boolean
   selection: string | null
 }) {
   if (loading) return <MailboxLoading />
@@ -71,6 +75,7 @@ export function MailboxThreadList({
     return (
       <div>
         <MailEmptyState offline={!online} query={query} />
+        {searchTruncated ? <p className="px-2 pt-3 text-xs text-content-secondary">Showing the first matching messages. Narrow the search to see the rest.</p> : null}
         {hasNextPage ? <LoadMoreButton disabled={!online || fetchingNextPage} label={fetchingNextPage ? "Searching…" : "Continue searching"} onClick={onLoadMore} /> : null}
       </div>
     )
@@ -112,6 +117,7 @@ export function MailboxThreadList({
           {!collapsedGroups.has(key) ? <div className="border-t border-stroke-default">
             {threads.map((thread) => (
               <MailThreadRow
+                accountEmail={accountEmail}
                 batchSelected={batchSelection.has(thread.id)}
                 customProperties={customProperties}
                 customValues={customValuesByThread.get(thread.id) ?? {}}
@@ -140,6 +146,7 @@ export function MailboxThreadList({
           </div> : null}
         </section>
       ))}
+      {searchTruncated ? <p className="px-2 pt-3 text-xs text-content-secondary">Showing the first matching messages. Narrow the search to see the rest.</p> : null}
       {hasNextPage ? <LoadMoreButton disabled={!online || fetchingNextPage} label={fetchingNextPage ? "Loading…" : "Load more"} onClick={onLoadMore} /> : null}
     </div>
   )

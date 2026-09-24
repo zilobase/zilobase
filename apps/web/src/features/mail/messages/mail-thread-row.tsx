@@ -15,7 +15,8 @@ import { mailHoverActionCatalog, MailHoverActionIcon } from "./mail-hover-action
 import { formatMailPropertyValue } from "../organization/mail-properties-panel"
 import { formatThreadDate } from "../organization/mail-view-model"
 
-export function MailThreadRow({ batchSelected, customProperties = [], customValues = {}, groupDraggable = false, hoverActions, labels = [], mutating, onAction, onBatchToggle, onHoverAction, onModify, onOpen, onPrefetch, online, propertyMembers = [], selected, thread }: {
+export function MailThreadRow({ accountEmail, batchSelected, customProperties = [], customValues = {}, groupDraggable = false, hoverActions, labels = [], mutating, onAction, onBatchToggle, onHoverAction, onModify, onOpen, onPrefetch, online, propertyMembers = [], selected, thread }: {
+  accountEmail?: string | null
   batchSelected: boolean
   customProperties?: MailPropertyDefinition[]
   customValues?: Record<string, MailThreadPropertyValue["value"]>
@@ -34,7 +35,7 @@ export function MailThreadRow({ batchSelected, customProperties = [], customValu
   selected: boolean
   thread: MailThreadSummary
 }) {
-  const participant = thread.participants[0]
+  const participant = displayedParticipant(thread, accountEmail)
   return (
     <div
       className={`group/mail-row flex h-9 w-full items-center hover:bg-action-neutral-hover ${selected ? "bg-action-neutral-hover text-action-on-neutral" : ""}`}
@@ -87,6 +88,16 @@ export function MailThreadRow({ batchSelected, customProperties = [], customValu
       </div>
     </div>
   )
+}
+
+function displayedParticipant(thread: MailThreadSummary, accountEmail?: string | null) {
+  const ownAddress = accountEmail?.trim().toLowerCase()
+  const outbound = thread.labelIds.includes("SENT") || thread.labelIds.includes("DRAFT")
+  if (outbound && ownAddress) {
+    const recipient = thread.participants.find((person) => person.address.trim().toLowerCase() !== ownAddress)
+    if (recipient) return recipient
+  }
+  return thread.participants[0]
 }
 
 function hoverActionLabel(action: MailHoverAction, labels: MailLabelRecord[], thread: MailThreadSummary) {

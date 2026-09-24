@@ -25,6 +25,7 @@ export function MailboxTopbar({
   activeViewIcon: ActiveViewIcon,
   activeViewLabel,
   batchCount,
+  connectionNotice,
   filterToolbar,
   indexProgress,
   labelMenu,
@@ -42,6 +43,7 @@ export function MailboxTopbar({
   activeViewIcon: ComponentType<{ className?: string }>
   activeViewLabel: string
   batchCount: number
+  connectionNotice?: string
   filterToolbar?: ReactNode
   indexProgress?: MailIndexProgress
   labelMenu: ReactNode
@@ -93,6 +95,12 @@ export function MailboxTopbar({
       </div>
 
       {filterToolbar}
+
+      {connectionNotice ? (
+        <div className="mt-3 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary" role="status">
+          {connectionNotice}
+        </div>
+      ) : null}
 
       {indexProgress && indexProgress.status !== "ready" ? (
         <div aria-live="polite" className="mt-3 rounded-md border border-stroke-default bg-surface-raised px-3 py-2 text-xs text-content-secondary" role="status">
