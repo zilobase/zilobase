@@ -163,7 +163,10 @@ export function register({ assert, loadModule, readSource, test }) {
       mailSource.indexOf("function MailMessageActions"),
     );
     assert.doesNotMatch(conversationBody, /overflow-y-auto/);
-    assert.match(conversationBody, /latestMessageId[\s\S]*new Set\(\[latestMessageId\]\)/);
+    assert.match(
+      conversationBody,
+      /labelIds\.includes\("UNREAD"\)[\s\S]*latestMessageId[\s\S]*initiallyExpanded/,
+    );
     assert.match(conversationBody, /aria-expanded=\{expanded\}/);
     assert.match(conversationBody, /data-mail-message-expanded=\{expanded \? "true" : "false"\}/);
     assert.match(conversationBody, /expanded \? \([\s\S]*<MailMessageBody/);
