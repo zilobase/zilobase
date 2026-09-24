@@ -257,6 +257,7 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
   const frameRef = useRef<HTMLIFrameElement | null>(null)
   const { resolvedTheme } = useTheme()
   const { themeFamily } = useThemeFamily()
+  const [showRemoteImages, setShowRemoteImages] = useState(false)
   const [inlineImageUrls, setInlineImageUrls] = useState<Record<string, string>>({})
   const inlineAttachments = useMemo(
     () => message.attachments.filter((attachment) => attachment.inline && attachment.contentId),
@@ -266,8 +267,8 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
     .map((attachment) => `${attachment.attachmentId}:${attachment.contentId}`)
     .join("|")
   const renderedHtml = useMemo(
-    () => message.bodyHtml ? sanitizeMailHtml(message.bodyHtml, { inlineImageUrls, loadExternalImages: true }) : "",
-    [inlineImageUrls, message.bodyHtml],
+    () => message.bodyHtml ? sanitizeMailHtml(message.bodyHtml, { inlineImageUrls, loadExternalImages: showRemoteImages }) : "",
+    [inlineImageUrls, message.bodyHtml, showRemoteImages],
   )
   const applyFrameTheme = useCallback((frame: HTMLIFrameElement) => {
     const document = frame.contentDocument
@@ -310,8 +311,14 @@ function MailMessageBody({ message, onLoadInlineAttachment, online }: {
 
   if (!message.hasFullBody) return <p className="mt-4 text-sm text-content-secondary">Connect to load this message.</p>
   if (message.bodyHtml) {
+    const remoteImagesBlocked = renderedHtml.includes("data-zilobase-external-image")
     return (
       <div className="mt-4">
+        {remoteImagesBlocked ? (
+          <button className="mb-2 text-xs text-content-secondary underline" onClick={() => setShowRemoteImages(true)} type="button">
+            Show remote images
+          </button>
+        ) : null}
         <iframe
           className="block h-px w-full overflow-hidden border-0 bg-surface-canvas text-content-primary dark:bg-surface-navigation"
           onLoad={(event) => {
