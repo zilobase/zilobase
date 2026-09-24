@@ -995,7 +995,7 @@ export function buildDatabaseConfigTools(context: ToolContext): ToolSet {
 
     updateDatabaseProperty: tool({
       description:
-        "Update an existing database property. The optional icon is a curated glyph token only and never accepts a color. Changing a property to formula, rollup, or button is forbidden and is not accepted by this tool. Use to add or extend select/status/multi_select options before setDatabaseCellValue. Status options support color and group (To-do, In progress, Complete). Option colors are auto-filled when omitted.",
+        "Update an existing database property. The optional icon is a curated glyph token only and never accepts a color. Changing a property to formula, rollup, or button is forbidden and is not accepted by this tool. Use to add or extend select/status/multi_select options before setDatabaseCellValue. Status options support color and group (Backlog, To-do, In progress, Review, Complete). Option colors are auto-filled when omitted.",
       inputSchema: z.object({
         dataSourceId: z.string().trim().min(1),
         databasePropertyId: z.string().trim().min(1),

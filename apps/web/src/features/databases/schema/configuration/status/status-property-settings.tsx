@@ -9,10 +9,7 @@ import {
 
 import { defaultStatusOptions } from "../../model/property-defaults";
 import { getNextDatabaseOptionColor } from "../../property-catalog";
-import type {
-  DatabasePropertyConfig,
-  DatabaseSelectOption,
-} from "../../../views/model/database-view-config";
+import type { DatabasePropertyConfig } from "../../../views/model/database-view-config";
 import { OptionCreateInput } from "../shared/option-create-input";
 import { OptionEditorSubmenu } from "../shared/option-editor-submenu";
 import {
@@ -20,10 +17,13 @@ import {
   haveSameIds,
   reorderOptionsByIds,
 } from "../shared/option-order";
+import {
+  getStatusOptionGroup,
+  getStatusOptionGroups,
+} from "./status-property-settings-model";
+import type { StatusOption } from "./status-property-settings-model";
 
-export type StatusOption = DatabaseSelectOption & {
-  group?: string;
-};
+export type { StatusOption } from "./status-property-settings-model";
 
 export function StatusPropertySettings({
   defaultOptionId,
@@ -34,26 +34,7 @@ export function StatusPropertySettings({
   onUpdateConfig: (config: DatabasePropertyConfig) => void;
   options: StatusOption[];
 }) {
-  const groups = [
-    {
-      name: "To-do",
-      options: options.filter(
-        (option) => getStatusOptionGroup(option) === "To-do",
-      ),
-    },
-    {
-      name: "In progress",
-      options: options.filter(
-        (option) => getStatusOptionGroup(option) === "In progress",
-      ),
-    },
-    {
-      name: "Complete",
-      options: options.filter(
-        (option) => getStatusOptionGroup(option) === "Complete",
-      ),
-    },
-  ];
+  const groups = getStatusOptionGroups(options);
   const resolvedDefaultOptionId = defaultOptionId ?? options[0]?.id;
   const [creatingGroupName, setCreatingGroupName] = useState<string | null>(
     null,
@@ -272,16 +253,6 @@ export function getStatusOptions(config: unknown) {
   );
 
   return validOptions.length > 0 ? validOptions : defaultStatusOptions;
-}
-
-function getStatusOptionGroup(option: StatusOption) {
-  return (
-    option.group ??
-    defaultStatusOptions.find(
-      (defaultOption) => defaultOption.name === option.name,
-    )?.group ??
-    "To-do"
-  );
 }
 
 function reorderStatusGroupOptions(
