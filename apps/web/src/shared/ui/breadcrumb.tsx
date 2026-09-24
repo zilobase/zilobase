@@ -81,7 +81,10 @@ export function BreadcrumbSeparator({
   return (
     <li
       aria-hidden="true"
-      className={cn("opacity-80 [&>svg]:size-4", className)}
+      className={cn(
+        "inline-flex items-center justify-center self-stretch leading-none opacity-80 [&>svg]:size-4",
+        className,
+      )}
       data-slot="breadcrumb-separator"
       role="presentation"
       {...props}

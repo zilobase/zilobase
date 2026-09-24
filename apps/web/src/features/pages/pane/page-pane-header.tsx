@@ -160,7 +160,7 @@ export function MainPaneHeaderLeadingControl() {
       <SidebarTrigger className="shrink-0" />
       <Separator
         orientation="vertical"
-        className="data-[orientation=vertical]:h-4"
+        className="self-center! data-[orientation=vertical]:h-4"
       />
     </>
   );
@@ -344,7 +344,7 @@ function PagePaneControls({
         <div className="contents" data-page-side-pane-promoted-hide>
           <Separator
             orientation="vertical"
-            className="mx-1 data-[orientation=vertical]:h-4"
+            className="mx-1 self-center! data-[orientation=vertical]:h-4"
           />
           <Button
             aria-label="Open previous row"

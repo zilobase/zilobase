@@ -17,6 +17,8 @@ export function register({ readSource, assert, loadModule, test }) {
 
     assert.match(primitiveSource, /inline-flex items-center transition-colors/)
     assert.match(primitiveSource, /inline-flex items-center font-medium text-content-primary/)
+    assert.match(primitiveSource, /inline-flex items-center justify-center self-stretch leading-none/)
+    assert.match(headerSource, /self-center! data-\[orientation=vertical\]:h-4/)
     assert.doesNotMatch(headerSource, /BreadcrumbPage className="line-clamp-1 gap-1\.5"/)
     assert.match(headerSource, /BreadcrumbPage className="gap-1\.5"[\s\S]*span className="line-clamp-1"/)
   })
