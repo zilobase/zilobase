@@ -1,12 +1,17 @@
 import { sha256Hex } from "../../../shared/crypto/sha256";
 import { safeAgentReturnPath } from "../../ai/mcp/connections/oauth-return";
-import { and, eq, gt, isNull, sql } from "drizzle-orm"
+import { and, eq, gt, inArray, isNull, sql } from "drizzle-orm"
 
 import { db, runWithDbEnv } from "../../../infrastructure/database"
 import {
   gmailAccount,
   gmailOauthAttempt,
   gmailWorkspaceConnection,
+  mailDatabaseSyncOutbox,
+  mailDatabaseSyncRecord,
+  mailProperty,
+  mailReminder,
+  mailThreadPropertyValue,
 } from "../../../infrastructure/database/schema"
 import {
   getCanonicalApiOrigin,
@@ -251,6 +256,17 @@ async function completeGmailOauthWithDatabase(
       .where(eq(gmailAccount.id, account.id))
   }
 
+  const [previousBinding] = await tx
+    .select({
+      gmailAccountId: gmailWorkspaceConnection.gmailAccountId,
+      id: gmailWorkspaceConnection.id,
+    })
+    .from(gmailWorkspaceConnection)
+    .where(and(
+      eq(gmailWorkspaceConnection.workspaceId, attempt.workspaceId!),
+      eq(gmailWorkspaceConnection.userId, attempt.userId),
+    ))
+    .limit(1)
   await tx
     .insert(gmailWorkspaceConnection)
     .values({
@@ -268,6 +284,21 @@ async function completeGmailOauthWithDatabase(
       ],
       set: { gmailAccountId: account.id, updatedAt: now },
     })
+  if (previousBinding && previousBinding.gmailAccountId !== account.id) {
+    await tx.delete(mailReminder).where(eq(mailReminder.bindingId, previousBinding.id))
+    await tx.delete(mailDatabaseSyncOutbox).where(eq(mailDatabaseSyncOutbox.bindingId, previousBinding.id))
+    await tx.delete(mailDatabaseSyncRecord).where(eq(mailDatabaseSyncRecord.bindingId, previousBinding.id))
+    const properties = await tx
+      .select({ id: mailProperty.id })
+      .from(mailProperty)
+      .where(eq(mailProperty.bindingId, previousBinding.id))
+    if (properties.length) {
+      await tx.delete(mailThreadPropertyValue).where(inArray(
+        mailThreadPropertyValue.propertyId,
+        properties.map((property) => property.id),
+      ))
+    }
+  }
   return {
     clientKind: attempt.clientKind as OAuthClientKind,
     returnTo: safeAgentReturnPath(attempt.returnPath),
