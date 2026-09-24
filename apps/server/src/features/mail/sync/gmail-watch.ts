@@ -30,7 +30,6 @@ export async function initializeGmailWatch(
     .set({
       lastErrorCode: null,
       lastWatchAt: new Date(),
-      notificationHistoryId: connection.notificationHistoryId ?? result.historyId,
       updatedAt: new Date(),
       watchExpiresAt: expiration,
     })
@@ -39,7 +38,7 @@ export async function initializeGmailWatch(
   await requestMailSync(env, {
     gmailAccountId: connection.id,
     historyId: result.historyId,
-    reason: connection.notificationHistoryId ? "watch_renewal" : "oauth_bootstrap",
+    reason: connection.lastWatchAt ? "watch_renewal" : "oauth_bootstrap",
   });
   return { expiration, historyId: result.historyId };
 }

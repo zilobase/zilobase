@@ -20,7 +20,7 @@ import {
   upsertMailboxLabel,
 } from "../sync/mailbox-store";
 import { requestMailSync } from "../sync/mail-sync-coordinator";
-import { publishMailIndexUpdate } from "../query/mail-index";
+import { publishMailIndexUpdate } from "../sync/mailbox-sync-engine";
 import {
   requireOwnedConnection,
   runMailOperation,
@@ -335,15 +335,18 @@ mailMessageRoutes.post("/drafts/:draftId/send", async (c) => {
   if (compose.draftId && compose.draftId !== draftId)
     return c.json({ message: "The Gmail draft ID does not match." }, 400);
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
-    return c.json(
-      await sendGmailComposition({
-        compose,
-        connection: owned.connection,
-        draftId,
-        gateway,
-        userId: owned.userId,
-      }),
-    );
+    const sent = await sendGmailComposition({
+      compose,
+      connection: owned.connection,
+      draftId,
+      gateway,
+      userId: owned.userId,
+    });
+    await requestMailSync(c.env, {
+      gmailAccountId: owned.connection.id,
+      reason: "draft_sent",
+    });
+    return c.json(sent);
   });
 });
 
@@ -352,14 +355,17 @@ mailMessageRoutes.post("/send", async (c) => {
   if (owned instanceof Response) return owned;
   const compose = parseCompose(c, await readJsonBody(c.req), true);
   if (compose instanceof Response) return compose;
-  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
-    c.json(
-      await sendGmailComposition({
-        compose,
-        connection: owned.connection,
-        gateway,
-        userId: owned.userId,
-      }),
-    ),
-  );
+  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
+    const sent = await sendGmailComposition({
+      compose,
+      connection: owned.connection,
+      gateway,
+      userId: owned.userId,
+    });
+    await requestMailSync(c.env, {
+      gmailAccountId: owned.connection.id,
+      reason: "message_sent",
+    });
+    return c.json(sent);
+  });
 });

@@ -15,7 +15,7 @@ import {
   reorderMailViews,
   updateMailView,
 } from "./mail-views";
-import { getMailIndexProgress } from "../query/mail-index";
+import { getMailIndexProgress } from "../sync/mailbox-sync-engine";
 import {
   createMailProperty,
   deleteMailProperty,

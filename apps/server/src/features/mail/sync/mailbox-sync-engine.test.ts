@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "vitest";
 
-import { mailThreadIndexRecord } from "./mail-index";
+import { mailThreadIndexRecord } from "./mailbox-sync-engine";
 
 test("mail index records snippets and queryable metadata but omits bodies", () => {
   const row = mailThreadIndexRecord("account-1", 3, {
@@ -46,7 +46,7 @@ test("mail index records snippets and queryable metadata but omits bodies", () =
 });
 
 test("index work is bounded, resumable, history-driven, and deletion-safe", async () => {
-  const source = await readFile(new URL("./mail-index.ts", import.meta.url), "utf8");
+  const source = await readFile(new URL("./mailbox-sync-engine.ts", import.meta.url), "utf8");
 
   assert.match(source, /RECENT_INBOX_SIZE = 50/);
   assert.match(source, /BACKFILL_PAGE_SIZE = 25/);
@@ -67,7 +67,7 @@ test("index work is bounded, resumable, history-driven, and deletion-safe", asyn
 });
 
 test("index retry delay uses bounded full jitter", async () => {
-  const { mailIndexRetryMs } = await import("./mail-index");
+  const { mailIndexRetryMs } = await import("./mailbox-sync-engine");
   assert.equal(
     mailIndexRetryMs(1, () => 0),
     1_000,

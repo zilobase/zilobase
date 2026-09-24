@@ -60,7 +60,7 @@ export async function sendGmailComposition(input: {
     operation.gmailMessageId,
   );
   if (previous) {
-    return await completeSend(input.gateway, operation.id, previous.id!, true);
+    return await completeSend(operation.id, previous.id!, true);
   }
   if (!created && !(await claimRetry(operation))) {
     throw new GmailApiError(
@@ -80,12 +80,12 @@ export async function sendGmailComposition(input: {
       ? await input.gateway.sendDraft(input.draftId)
       : await input.gateway.sendMessage(mailResource(mime.raw, input.compose.threadId));
     const id = requireMessageId(sent);
-    return await completeSend(input.gateway, operation.id, id, false);
+    return await completeSend(operation.id, id, false);
   } catch (error) {
     if (deliveryStarted && isAmbiguousSendFailure(error)) {
       const recovered = await recoverSentMessage(input.gateway, operation.rfcMessageId);
       if (recovered) {
-        return await completeSend(input.gateway, operation.id, recovered.id!, true);
+        return await completeSend(operation.id, recovered.id!, true);
       }
       await markOperation(operation.id, "ambiguous");
     } else await markOperation(operation.id, "failed");
@@ -266,17 +266,10 @@ async function reserveSendOperation(
 }
 
 async function completeSend(
-  gateway: GmailGateway,
   operationId: string,
   messageId: string,
   reused: boolean,
 ): Promise<MailSendResponse> {
   await markOperationSent(operationId, messageId);
-  let message: MailMessageRecord | null = null;
-  try {
-    message = normalizeGmailMessage(await gateway.getMessage(messageId, "full"), true);
-  } catch {
-    /* Delivery is durable; clients can hydrate through ordinary synchronization. */
-  }
-  return { message, messageId, reused };
+  return { message: null, messageId, reused };
 }

@@ -10,7 +10,7 @@ import {
   advanceMailIndex,
   ensureMailIndexState,
   publishMailIndexUpdate,
-} from "../query/mail-index";
+} from "./mailbox-sync-engine";
 import { recordMailMetric } from "../mail-metrics";
 import { createGmailGateway } from "../provider/gmail-gateway";
 
@@ -22,7 +22,7 @@ export async function requestMailSync(
 ) {
   await ensureMailIndexState(input.gmailAccountId);
   const now = new Date();
-  await db
+  const requested = await db
     .update(mailIndexState)
     .set({
       desiredHistoryId: input.historyId
@@ -37,7 +37,19 @@ export async function requestMailSync(
       status: sql`case when ${mailIndexState.status} = 'ready' then 'syncing' else ${mailIndexState.status} end`,
       updatedAt: now,
     })
-    .where(eq(mailIndexState.gmailAccountId, input.gmailAccountId));
+    .where(
+      and(
+        eq(mailIndexState.gmailAccountId, input.gmailAccountId),
+        input.historyId
+          ? or(
+              isNull(mailIndexState.desiredHistoryId),
+              sql`${mailIndexState.desiredHistoryId}::numeric < ${input.historyId}::numeric`,
+            )
+          : sql`true`,
+      ),
+    )
+    .returning({ gmailAccountId: mailIndexState.gmailAccountId });
+  if (!requested.length) return false;
   await dispatchBackgroundTasks(env, [
     createBackgroundTask({
       env,
@@ -50,6 +62,7 @@ export async function requestMailSync(
     connectionId: input.gmailAccountId,
     outcome: "success",
   });
+  return true;
 }
 
 export async function processMailSyncTask(
@@ -91,18 +104,11 @@ export async function processMailSyncTask(
 
 export async function advancePendingMailSyncs(env: RuntimeEnv, limit = 5) {
   await db.execute(sql`
-    insert into mail_index_state (gmail_account_id, desired_history_id, created_at, updated_at)
-    select id, notification_history_id, current_timestamp, current_timestamp
+    insert into mail_index_state (gmail_account_id, created_at, updated_at)
+    select id, current_timestamp, current_timestamp
     from gmail_account
     where status = 'connected'
-    on conflict (gmail_account_id) do update
-      set desired_history_id = case
-        when excluded.desired_history_id is null then mail_index_state.desired_history_id
-        when mail_index_state.desired_history_id is null
-          or mail_index_state.desired_history_id::numeric < excluded.desired_history_id::numeric
-        then excluded.desired_history_id
-        else mail_index_state.desired_history_id
-      end
+    on conflict (gmail_account_id) do nothing
   `);
   const due = await db
     .select({ gmailAccountId: mailIndexState.gmailAccountId })

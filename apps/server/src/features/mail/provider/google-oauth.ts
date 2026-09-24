@@ -226,7 +226,6 @@ async function completeGmailOauthWithDatabase(
           refreshTokenIv: encrypted.iv,
           refreshTokenKeyVersion: encrypted.keyVersion,
           status: "connected",
-          notificationHistoryId: null,
           watchExpiresAt: null,
           lastWatchAt: null,
           lastErrorCode: null,

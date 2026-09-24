@@ -14,9 +14,12 @@ const packages = [
   "packages/runtime-ports",
   "packages/tiptap-comment-extension",
 ];
-const intentionalRuntimePortBreaks = new Set([
+const intentionalExportBreaks = new Set([
+  "advancePendingMailIndexes",
   "getConfiguredImageStorageMode",
   "getRuntimeAdapter",
+  "MailSyncRequest",
+  "MailSyncResponse",
   "runWithRuntimeAdapter",
   "ServerRuntimeAdapter",
   "setRuntimeAdapter",
@@ -151,8 +154,7 @@ export function compareExports(baseline, current) {
     for (const [name, shape] of Object.entries(symbols)) {
       const next = current[entry][name];
       if (!next) {
-        if (!intentionalRuntimePortBreaks.has(name))
-          errors.push(`Removed export: ${entry} ${name}`);
+        if (!intentionalExportBreaks.has(name)) errors.push(`Removed export: ${entry} ${name}`);
         continue;
       }
       if ((shape.value && !next.value) || (shape.type && !next.type))

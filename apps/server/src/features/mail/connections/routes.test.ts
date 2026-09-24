@@ -119,11 +119,12 @@ test("mail connection status preserves auth, membership and disconnected default
       account: {
         id: "account",
         email: "mail@example.test",
-        mailboxRevision: 7,
         status: "connected",
         watchExpiresAt: new Date("2030-01-01"),
       },
       binding: { id: "binding" },
+      committedRevision: 7,
+      recentReadyAt: new Date("2029-01-01"),
     },
   ];
   const result = await (await app().request("/connection")).json();

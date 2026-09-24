@@ -35,7 +35,11 @@ export async function getBackgroundOperationalSnapshot(env: RuntimeEnv) {
         from gmail_account a
         left join mail_index_state s on s.gmail_account_id = a.id
         where a.status = 'connected'
-          and (s.gmail_account_id is null or s.status <> 'ready' or a.notification_history_id is distinct from s.history_id)
+          and (
+            s.gmail_account_id is null
+            or s.status <> 'ready'
+            or s.desired_history_id is distinct from coalesce(s.applied_history_id, s.history_id)
+          )
     )
     select lane, count(*) filter (where due_at <= current_timestamp)::integer as ready_count,
       min(due_at) filter (where due_at <= current_timestamp) as oldest_due_at

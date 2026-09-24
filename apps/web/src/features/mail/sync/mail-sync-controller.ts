@@ -146,10 +146,6 @@ export function useMailController(input: {
             await database.syncState.put({
               ...state,
               lastSyncedAt: Date.now(),
-              mailboxRevision: Math.max(
-                state.mailboxRevision,
-                input.connection.mailboxRevision ?? 0,
-              ),
             });
         });
         await invalidateMailListQueries(queryClient, {
@@ -178,7 +174,6 @@ export function useMailController(input: {
     database,
     input.connection.connectionId,
     input.connection.bindingId,
-    input.connection.mailboxRevision,
     input.connection.workspaceId,
     online,
     queryClient,

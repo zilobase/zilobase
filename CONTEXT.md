@@ -78,6 +78,13 @@ A private connection between a user, workspace and Google Calendar account. Mult
 
 A provider-expanded event in a bounded date range. Recurring occurrences retain the series identifier and original start, even after being moved.
 
+### Mailbox projection
+
+The canonical PostgreSQL representation of a connected Gmail account's messages,
+threads and labels. Gmail asynchronously updates this projection through watch,
+Pub/Sub and history synchronization. Online clients query the projection; their
+IndexedDB mailbox is only an offline cache and optimistic mutation journal.
+
 ### Runtime adapter
 
 The community `@zilobase/runtime-adapter` package owning both runtimes (`./node` + `./worker` subpaths). Mechanism shared by every deployment; hosted policy is injected through factory seams.

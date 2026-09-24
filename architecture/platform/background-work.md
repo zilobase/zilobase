@@ -12,6 +12,8 @@ The Node coordinator catches maintenance and lane-timer recalculation failures d
 
 Feature implementations own leases, receipts, authorization and durable status. Dispatch success is not equivalent to feature completion. Retries preserve task identity and availableAt semantics; terminal outcomes differ from thrown execution errors.
 
+Mail uses one `mail.index` resource key per Gmail account. Pub/Sub/watch events only raise the desired history cursor; [the mail coordinator](../../apps/server/src/features/mail/sync/mail-sync-coordinator.ts) decides whether new work exists and [the sync engine](../../apps/server/src/features/mail/sync/mailbox-sync-engine.ts) holds the durable account lease. Bootstrap, backfill, history page tokens, quota cooldowns and the next attempt survive worker exit. The maintenance safety poll discovers missed Gmail notifications server-side; browser traffic never advances background mail work.
+
 For `realtime.database`, the committed journal event is canonical and the
 outbox contains only delivery state. HTTP acknowledgement does not wait for
 delivery. The feature handler drains the reference and returns retry while it

@@ -28,7 +28,8 @@ import {
 import { GmailPushError, processGmailPubsubRequest } from "../sync/gmail-pubsub";
 import { initializeGmailWatch } from "../sync/gmail-watch";
 import { recordMailMetric } from "../mail-metrics";
-import { ensureMailIndexState } from "../query/mail-index";
+import { ensureMailIndexState } from "../sync/mailbox-sync-engine";
+import { requestMailSync } from "../sync/mail-sync-coordinator";
 import {
   oauthError,
   workspaceIdFromContext,
@@ -68,8 +69,8 @@ mailConnectionRoutes.get("/connection", async (c) => {
     bindingId: result?.binding.id ?? null,
     connectionId: result?.account.id ?? null,
     email: result?.account.email ?? null,
-    mailboxReady: Boolean(result?.recentReadyAt ?? result),
-    mailboxRevision: result?.committedRevision ?? result?.account.mailboxRevision ?? 0,
+    mailboxReady: Boolean(result?.recentReadyAt),
+    mailboxRevision: result?.committedRevision ?? 0,
     lastErrorCode: result?.account.lastErrorCode ?? null,
     providerConfigured: gmailProviderConfigured(c.env),
     pushAvailable: Boolean(
@@ -144,6 +145,10 @@ mailProviderCallbackRoutes.get("/oauth/google/callback", async (c) => {
         .limit(1);
       if (account) {
         await ensureMailIndexState(account.id);
+        await requestMailSync(c.env, {
+          gmailAccountId: account.id,
+          reason: "oauth_bootstrap",
+        });
         await initializeGmailWatch(c.env, account).catch(async (error) => {
           await db
             .update(gmailAccount)

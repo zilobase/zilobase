@@ -29,7 +29,9 @@ vi.mock("../../../infrastructure/database", () => {
 vi.mock("../provider/gmail-gateway", () => ({
   createGmailGateway: vi.fn(async () => mocks.gateway),
 }));
-vi.mock("./mail-index", () => ({ getMailIndexProgress: vi.fn(async () => mocks.index) }));
+vi.mock("../sync/mailbox-sync-engine", () => ({
+  getMailIndexProgress: vi.fn(async () => mocks.index),
+}));
 
 import {
   decodeMailQueryCursor,

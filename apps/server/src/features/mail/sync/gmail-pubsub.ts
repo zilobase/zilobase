@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db, runWithDbEnv } from "../../../infrastructure/database";
 import { gmailAccount } from "../../../infrastructure/database/schema";
@@ -37,22 +37,14 @@ export async function processGmailPubsubRequest(
   const notification = parsePubsubEnvelope(text, config.subscription);
   return runWithDbEnv(env, async () => {
     const updated = await db
-      .update(gmailAccount)
-      .set({
-        notificationHistoryId: notification.historyId,
-        updatedAt: new Date(),
-      })
+      .select({ connectionId: gmailAccount.id, userId: gmailAccount.userId })
+      .from(gmailAccount)
       .where(
         and(
           eq(gmailAccount.email, notification.emailAddress),
           eq(gmailAccount.status, "connected"),
-          sql`(${gmailAccount.notificationHistoryId} is null or ${gmailAccount.notificationHistoryId}::numeric < ${notification.historyId}::numeric)`,
         ),
-      )
-      .returning({
-        connectionId: gmailAccount.id,
-        userId: gmailAccount.userId,
-      });
+      );
     for (const account of updated) {
       await requestMailSync(env, {
         gmailAccountId: account.connectionId,

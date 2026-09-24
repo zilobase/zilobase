@@ -1,4 +1,4 @@
-import { and, eq, lte, sql } from "drizzle-orm";
+import { and, eq, lte } from "drizzle-orm";
 import type { MailReminder } from "@zilobase/features/mail/organization";
 
 import { db } from "../../../infrastructure/database";
@@ -10,6 +10,8 @@ import {
 import { publishMailNotification } from "@zilobase/runtime-adapter/capabilities";
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { createGmailGateway } from "../provider/gmail-gateway";
+import { applyMailboxThreadLabelDelta, commitMailboxRevision } from "../sync/mailbox-store";
+import { requestMailSync } from "../sync/mail-sync-coordinator";
 
 type Gateway = Awaited<ReturnType<typeof createGmailGateway>>;
 
@@ -167,8 +169,21 @@ export async function advanceMailReminders(input: {
       ),
     );
   const fired: MailReminder[] = [];
+  let newestHistoryId: string | undefined;
   for (const reminder of due) {
-    await input.gateway.modifyThread(reminder.gmailThreadId, { addLabelIds: ["INBOX"] });
+    const result = await input.gateway.modifyThread(reminder.gmailThreadId, {
+      addLabelIds: ["INBOX"],
+    });
+    if (
+      result.historyId &&
+      (!newestHistoryId || BigInt(result.historyId) > BigInt(newestHistoryId))
+    )
+      newestHistoryId = result.historyId;
+    await applyMailboxThreadLabelDelta({
+      addLabelIds: ["INBOX"],
+      gmailAccountId: input.connectionId,
+      gmailThreadId: reminder.gmailThreadId,
+    });
     const now = new Date();
     const [updated] = await db
       .update(mailReminder)
@@ -178,19 +193,19 @@ export async function advanceMailReminders(input: {
     if (updated) fired.push(serializeReminder(updated));
   }
   if (fired.length) {
-    const [account] = await db
-      .update(gmailAccount)
-      .set({ mailboxRevision: sql`${gmailAccount.mailboxRevision} + 1`, updatedAt: new Date() })
-      .where(eq(gmailAccount.id, input.connectionId))
-      .returning({ revision: gmailAccount.mailboxRevision });
-    if (account)
-      await publishMailNotification({
-        bindingId: input.bindingId,
-        connectionId: input.connectionId,
-        revision: account.revision,
-        userId: input.userId,
-        workspaceId: input.workspaceId,
-      });
+    const revision = await commitMailboxRevision(input.connectionId);
+    await publishMailNotification({
+      bindingId: input.bindingId,
+      connectionId: input.connectionId,
+      revision,
+      userId: input.userId,
+      workspaceId: input.workspaceId,
+    });
+    await requestMailSync(input.env, {
+      gmailAccountId: input.connectionId,
+      historyId: newestHistoryId,
+      reason: "reminder_fired",
+    });
   }
   return { fired };
 }

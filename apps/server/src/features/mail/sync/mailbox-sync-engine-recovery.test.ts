@@ -48,7 +48,7 @@ vi.mock("../provider/gmail-gateway", async (original) => {
     },
   };
 });
-import { advanceMailIndex } from "./mail-index";
+import { advanceMailIndex } from "./mailbox-sync-engine";
 
 test("quota failure persists a cooldown while preserving the indexing cursor and releasing ownership", async () => {
   const before = Date.now();

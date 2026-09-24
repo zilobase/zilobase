@@ -1,56 +1,56 @@
 # Mail
 
-## Owning modules and interface
+## Ownership
 
-- [apps/server/src/features/mail](../../../apps/server/src/features/mail)
-- [apps/web/src/features/mail](../../../apps/web/src/features/mail)
-- [packages/features/src/mail](../../../packages/features/src/mail)
+- [Server mail feature](../../../apps/server/src/features/mail)
+- [Web mail feature](../../../apps/web/src/features/mail)
+- [Shared contracts and queries](../../../packages/features/src/mail)
 
-[Background task implementation](../../../apps/server/src/features/mail/background.ts) owns feature-specific drain/progress outcomes.
+The server owns the canonical mailbox projection. Gmail is an upstream provider, not a browser read store. [Mailbox persistence](../../../apps/server/src/features/mail/sync/mailbox-store.ts) is the only path that writes normalized messages, threads and labels. [The sync coordinator](../../../apps/server/src/features/mail/sync/mail-sync-coordinator.ts) coalesces account work, while [the mailbox sync engine](../../../apps/server/src/features/mail/sync/mailbox-sync-engine.ts) owns bootstrap, backfill, history application and cursor commits.
 
 ## Main flow
 
-Provider callbacks connect Gmail accounts. Workspace routes expose connection, query, organization, sync, message and realtime operations. Sync/index modules build queryable local state; database synchronization uses its own outbox worker. On the combined Node runtime, `/mail/oauth/google/callback` and `/mail/google/pubsub` are API paths and reach Hono rather than static web assets.
+```text
+Gmail watch / Pub/Sub / safety poll
+  -> per-account coordinator intent
+  -> background mail.index task
+  -> history.list from the committed account cursor
+  -> fetch only new or unknown message/thread content
+  -> transactional PostgreSQL mailbox projection
+  -> committed revision notification
+  -> browser query invalidation and local offline cache
+```
 
-## Authorization and persistence
+OAuth connection requests the first account job. A bootstrap stores labels and the 50 newest Inbox threads with full bodies, marks the mailbox usable, then backfills All Mail in pages of 25. Backfill skips threads already fully hydrated and yields between pages. Ongoing work drains `history.list`; label-only and deletion events are applied locally without refetching complete threads.
 
-Gmail accounts, bindings, index state and mail organization records are persisted. Feature rollout and workspace context gate routes; connection ownership and encrypted credentials remain server concerns.
+The query, thread, message, label and unsubscribe routes read PostgreSQL. Attachments, draft operations, message delivery and provider mutations remain explicit Gmail effects. The browser never submits Gmail history cursors or advances server work. Its Dexie database is an offline/read-through cache plus optimistic mutation journal.
 
-## Side effects, failures and recovery
+## Persistence and invariants
 
-Sending, watch renewal and provider synchronization are external effects. Preserve per-user concurrency, checkpoints, receipts, reconnect_required states and duplicate-event handling. Mail routes apply private/no-store and referrer/security headers even on failures. Gmail provider HTTP 403 failures remain request errors and do not mark accounts as disconnected: API configuration and policy failures do not establish credential revocation. HTTP 401 and refresh-token rejection still require reconnection. Google quota reasons in HTTP 403 and 429 responses (including multipart subresponses) become quota errors with a retry delay instead of authorization failures. Safe reads do not immediately replay quota failures. Metadata batches are limited to ten sequentially grouped requests. Index backfill advances twenty threads at a time, spaces successful advances by five seconds, and persists at least a sixty-second quota cooldown in its existing lease deadline with no owner token. Both HTTP-triggered and background advances honor that database deadline; quota failures preserve the backfill cursor.
+`mail_index_state` is the single account sync authority: desired/applied history IDs, bootstrap/backfill cursors, generation, lease, retry deadline, errors and committed revision live there. `gmail_account` stores credentials, connection health and watch timing only. `mail_message`, `mail_thread_index` and `mail_label` form the canonical mailbox read model.
 
-## Focused guides
+One expiring database lease permits one engine advance per account. Notification and queue duplication are safe: desired history is monotonic, equal/older notifications do not dispatch more work, resource IDs coalesce queued tasks, and message/thread upserts are idempotent. A mailbox revision is published only after local writes commit.
 
-- [Mail synchronization and delivery](sync-and-delivery.md)
+Gmail calls pass through the gateway quota guard. Account/user token buckets, method weights and full-jitter retry deadlines protect foreground and background traffic. HTTP 429 and quota-related 403 responses remain quota errors; only token rejection or HTTP 401 requires reconnection.
 
-## Verification and change points
+## Failure and recovery
 
-Start with [the existing tests or model](../../../apps/server/src/features/mail/sync/mail-sync.test.ts) and the adjacent tests in the owning modules. Exercise observable outcomes through the owning interface; a source assertion alone does not establish runtime behavior. Run the affected workspace scripts described in [testing and quality](../../setup/testing-and-quality.md).
-
-Update this guide when ownership, interfaces, authorization, persistence or cross-module flows change. [Architecture index](../../README.md).
+- Invalid or expired history cursors start a new generation. The prior committed generation remains readable until the replacement bootstrap/backfill is ready.
+- Worker crashes recover through the account lease and persisted page/history cursors.
+- Partial history pages commit mailbox changes before advancing the page cursor, so replay is safe.
+- Missed push delivery is repaired by the server safety profile poll; clients do not poll Gmail.
+- Watches renew daily or within 48 hours of expiry. Renewal also raises the desired history watermark.
+- Quota exhaustion persists a cooldown with full jitter and does not discard bootstrap, backfill or history position.
+- Ambiguous sends use durable operation receipts and an RFC message-ID lookup before any replay.
 
 ## Capability map
 
-The [server route composition](../../../apps/server/src/features/mail/routes.ts) retains middleware and route order. [Connection routes](../../../apps/server/src/features/mail/connections/routes.ts) bind accounts and handle OAuth callbacks; [provider modules](../../../apps/server/src/features/mail/provider) own Gmail transport, OAuth, message normalization and credential/token security. [Sync](../../../apps/server/src/features/mail/sync) owns history synchronization, watches and Pub/Sub delivery. [Query](../../../apps/server/src/features/mail/query) owns indexing and indexed queries, including the existing combined query/sync HTTP routes.
+[Provider](../../../apps/server/src/features/mail/provider) owns Gmail transport, OAuth, normalization, credentials and quota admission. [Sync](../../../apps/server/src/features/mail/sync) owns the coordinator, engine, mailbox persistence, watches and Pub/Sub. [Query](../../../apps/server/src/features/mail/query) owns database-only indexed and grouped queries. [Compose](../../../apps/server/src/features/mail/compose) owns MIME, drafts, delivery, safe unsubscribe and mutations. [Organization](../../../apps/server/src/features/mail/organization) owns views, properties and reminders. [Database sync](../../../apps/server/src/features/mail/database-sync) consumes the local mailbox through its own outbox.
 
-[Compose](../../../apps/server/src/features/mail/compose) owns MIME, delivery, safe unsubscribe and message operations. [Organization](../../../apps/server/src/features/mail/organization) owns persisted views, properties and reminders. [Database sync](../../../apps/server/src/features/mail/database-sync) owns configuration and outbox execution; [realtime](../../../apps/server/src/features/mail/realtime) owns tickets and its route. Shared transport parsing/ownership checks remain in `route-support.ts`; metrics and per-user concurrency remain small feature-level modules. Background dispatch still enters through `background.ts`.
+The [web controller](../../../apps/web/src/features/mail/sync/mail-sync-controller.ts) owns connectivity, optimistic recovery and local-cache refresh. [Realtime](../../../apps/web/src/features/mail/realtime) invalidates database queries from committed server revisions. [Storage](../../../apps/web/src/features/mail/storage) is device-scoped and never owns provider cursors.
 
-The browser [mail screen](../../../apps/web/src/features/mail/screens/mail.tsx) composes these capabilities. [Mailbox](../../../apps/web/src/features/mail/mailbox) renders list/chrome, [messages](../../../apps/web/src/features/mail/messages) owns thread loading, viewing and actions, and [compose](../../../apps/web/src/features/mail/compose) owns composer state/rendering. [Organization](../../../apps/web/src/features/mail/organization), [connections](../../../apps/web/src/features/mail/connections) and [database sync](../../../apps/web/src/features/mail/database-sync) contain their focused controls. [Storage](../../../apps/web/src/features/mail/storage), [sync](../../../apps/web/src/features/mail/sync) and [realtime](../../../apps/web/src/features/mail/realtime) retain distinct cache, connection and coordination lifetimes.
+## Verification
 
-Mail settings use the canonical settings page, section and row components. The
-workspace connection controller continues to own connect, reconnect and
-confirmed disconnect behavior; the shared settings components own its shell,
-heading and row presentation.
+Start with adjacent tests in `sync`, `query`, `compose`, `database-sync` and web mail tests. Route inventory tests enforce that browser-triggered `/sync` and `/index/advance` APIs do not return. Run the workspace typechecks, server mail tests, web tests, `npm run test:mail:deployment`, and `npm run verify:architecture` for architectural changes.
 
-Shared mail contracts/queries/React entrypoints remain in the existing package. Published [background adapter exports](../../../apps/server/src/public/adapter-api.ts) and [realtime exports](../../../apps/server/src/public/realtime-api.ts) point to the owning capabilities without changing exported names. Provider formats, cache names, HTTP paths and security headers remain unchanged. [Route inventory tests](../../../apps/server/src/features/mail/route-inventory.test.ts) exercise actual composed routes; adjacent tests move with their implementations, and web tests remain under the feature test root.
-
-Indexed and grouped query routes validate through [query input rules](../../../apps/server/src/features/mail/query/query-input.ts), after resolving the workspace mail binding. Grouped queries intentionally ignore pagination fields. Filter normalization remains inside the route error handler. [Route tests](../../../apps/server/src/features/mail/query/routes.test.ts) preserve authorization order, field limits, empty strings and omitted fields.
-
-The [view settings menu](../../../apps/web/src/features/mail/organization/mail-view-settings-menu.tsx) selects the Group, Filter, Properties and Database editors from an explicit map. [Render coverage](../../../apps/web/test/features/mail/view-settings-menu.test.mjs) checks editor selection, unavailable panels and filter/property indicators.
-
-[Property labels](../../../apps/web/src/features/mail/organization/property-label.ts) share custom-name/system-label fallback between search and rendered controls, preserving empty names. [Connection route tests](../../../apps/server/src/features/mail/connections/routes.test.ts) use controlled provider/database results to cover authorization, disconnected/connected status, cancellation and browser/native destinations.
-
-[Organization route tests](../../../apps/server/src/features/mail/organization/routes.test.ts) preserve authorization-before-validation and omitted versus explicitly removed values. [Sync route tests](../../../apps/server/src/features/mail/query/sync-routes.test.ts) preserve connection ownership, cursor validation, mailbox revision forwarding and recovery metrics through controlled synchronization.
-
-[Condition changes](../../../apps/web/src/features/mail/organization/filter-condition.ts) own property defaults, operator selection and checkbox/number/text coercion. The filter editor retains expression traversal and UI state. [Condition tests](../../../apps/web/test/features/mail/filter-condition.test.mjs) preserve empty IDs/values, category defaults and existing numeric conversion behavior.
+See [Mail synchronization and delivery](sync-and-delivery.md) and the [Gmail deployment guide](../../../docs/mail/gmail-deployment.md).

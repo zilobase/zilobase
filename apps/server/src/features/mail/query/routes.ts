@@ -7,7 +7,7 @@ import {
 } from "./query-input";
 import type { AppBindings } from "../../../shared/types";
 import { readJsonBody } from "../../../shared/http/request";
-import { getMailIndexProgress } from "./mail-index";
+import { getMailIndexProgress } from "../sync/mailbox-sync-engine";
 import { MailQueryError, queryIndexedMail, queryIndexedMailGroups } from "./mail-query";
 import {
   inspectOrExecuteUnsubscribeHeaders,

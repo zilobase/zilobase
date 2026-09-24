@@ -4,15 +4,15 @@ Zilobase connects one Gmail account per workspace member through a dedicated
 Google OAuth Web application client. The same Google identity can be connected
 to more than one workspace, but views, filters, groups, custom properties,
 hover actions, database sync, realtime rooms, and device caches remain private
-to each workspace binding. Gmail remains authoritative: PostgreSQL stores encrypted
-OAuth credentials and control metadata, while each device stores loaded mail in
-its own mail-only IndexedDB database. Attachment bytes are streamed and are not
-retained by either cache.
+to each workspace binding. Gmail remains the upstream authority. PostgreSQL stores
+encrypted OAuth credentials plus the canonical normalized mailbox projection;
+each device keeps a bounded mail-only IndexedDB cache for offline reading and
+optimistic recovery. Attachment bytes are streamed on demand and are not retained
+by either database.
 
 Mail is always included. Production Gmail requires all seven `GMAIL_*` variables documented below. A
 loopback development server may configure only the three OAuth variables and
-rely on synchronization after connect, focus, or reconnect instead of push
-notifications.
+rely on the server safety poll instead of push notifications.
 
 ## 1. Google Cloud project and APIs
 
@@ -183,16 +183,17 @@ http://127.0.0.1:3000/mail/oauth/google/callback
 
 Set only `GMAIL_GOOGLE_CLIENT_ID`, `GMAIL_GOOGLE_CLIENT_SECRET`, and
 `GMAIL_TOKEN_ENCRYPTION_KEY`, then leave every `GMAIL_PUBSUB_*` value empty. Connect,
-initial sync, incremental sync, search, mutations, drafts, and send still work.
-No watch is created. While Mail is visible and online, fallback synchronization
-checks for changes about once per minute; focus and reconnect also synchronize. Use a controlled HTTPS tunnel and a separate test
-subscription only when push delivery itself must be tested.
+initial sync, incremental sync, local search, mutations, drafts, and send still work.
+No watch is created. The server safety poll compares the Gmail profile cursor with
+the persisted applied cursor about every five minutes; browser focus and reconnect
+only refresh PostgreSQL-backed queries. Use a controlled HTTPS tunnel and a separate
+test subscription only when push delivery itself must be tested.
 
 ## 6. Operations and recovery
 
 Zilobase renews watches, advances full-mailbox indexes, and drains the database
 sync outbox from the Node maintenance loop. Alternate runtime adapters must invoke the exported
-`renewGmailWatches`, `advancePendingMailIndexes`, and
+`renewGmailWatches`, `advancePendingMailSyncs`, and
 `drainMailDatabaseSyncOutbox` operations at least once per minute. These
 operations are bounded and safe to overlap across replicas. Alert on these
 structured non-PII events:
@@ -205,12 +206,12 @@ structured non-PII events:
 - `mail.database_sync` retries or paused jobs
 - sustained `mail.socket_state` failures
 
-Gmail watches expire and must be renewed; a successful watch also sends an
-immediate notification. If authorization is revoked, Zilobase marks the
+Gmail watches expire and must be renewed; a successful watch raises the server's
+desired history watermark. If authorization is revoked, Zilobase marks the
 connection as requiring reconnection. The user should open Mail and use the existing Reconnect Gmail flow. Do not edit token
-rows manually. After a webhook outage, restoring the endpoint is sufficient:
-clients synchronize through `history.list` after socket recovery, focus, or
-reconnect.
+or cursor rows manually. After a webhook outage, restoring the endpoint is
+sufficient; the server safety poll also discovers a newer profile cursor and
+resumes `history.list` without client participation.
 
 To verify Pub/Sub configuration without mailbox content, inspect the subscription
 and topic policy:
@@ -231,7 +232,7 @@ Complete every item with a dedicated test mailbox before production rollout:
 - [ ] Connect different Google identities in two workspaces and confirm neither workspace can read the other's connection, views, properties, or mail.
 - [ ] Reuse one Google identity in two workspaces and confirm each workspace keeps independent views, filters, groups, properties, hover actions, and database-sync settings.
 - [ ] Connect from desktop and confirm the instance-bound return opens Mail.
-- [ ] Complete initial Inbox sync, load more, open a thread, and reload from cache.
+- [ ] Confirm the recent Inbox becomes usable before progressive All Mail backfill completes; load more, open a thread, and reload from cache.
 - [ ] Change the mailbox in Gmail and confirm authenticated push triggers incremental sync.
 - [ ] Create, update, reopen, and delete a Gmail draft.
 - [ ] Send a new message with To/Cc/Bcc and an attachment; verify one Sent copy.
@@ -305,13 +306,14 @@ screenshots are saved under ignored `.dev/mail-e2e-results/`. The visual compari
 loads the pre-change composer from Git commit `53498fbb^`, so retain that history
 in the test checkout. Interaction tests cover close-before-autosave, discard during
 creation, draft resume, save failure, uncertain send retry, definite rejection,
-and online/offline receive polling.
+and online/offline database refresh.
 
 Schema migration `0086_mail_send_identity` adds nullable composition fingerprints
 and draft associations to send receipts. Existing receipts remain recoverable;
 uncertain legacy operations are not automatically resent. A send response contains
-`messageId`; `message` can be null when delivery succeeded but message loading did
-not. Clients should reconcile through normal sync instead of offering a fresh send.
+`messageId`; `message` is null because successful delivery is not followed by a
+quota-consuming confirmation read. Background mailbox synchronization hydrates the
+sent message instead of offering a fresh send.
 
 ### Real-Google acceptance matrix
 

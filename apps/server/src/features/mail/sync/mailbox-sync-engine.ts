@@ -31,7 +31,7 @@ import {
   replaceMailboxLabels,
   storeMailboxMessage,
   storeMailboxThread,
-} from "../sync/mailbox-store";
+} from "./mailbox-store";
 import { publishMailNotification } from "@zilobase/runtime-adapter/capabilities";
 import { recordRecoveredBackgroundLease } from "../../../infrastructure/background/telemetry";
 
@@ -552,7 +552,7 @@ export function mailIndexRetryMs(failures: number, random = Math.random) {
   return Math.max(1_000, Math.floor(random() * ceiling));
 }
 
-export { mailThreadIndexRecord } from "../sync/mailbox-store";
+export { mailThreadIndexRecord } from "./mailbox-store";
 
 function serializeProgress(state: typeof mailIndexState.$inferSelect): MailIndexProgress {
   return {

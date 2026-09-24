@@ -114,6 +114,17 @@ test("mail thread index stores snippets without message bodies", async () => {
   assert.doesNotMatch(migration, /body_html|body_text/);
 });
 
+test("mail sync state cutover removes duplicate account cursors and revisions", async () => {
+  const migration = await readFile(
+    new URL("../../../drizzle/0101_mail_sync_state_cutover.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(migration, /INSERT INTO "mail_index_state"/);
+  assert.match(migration, /DROP COLUMN "notification_history_id"/);
+  assert.match(migration, /DROP COLUMN "mailbox_revision"/);
+});
+
 test("custom mail properties are binding-wide and thread values cascade with definitions", async () => {
   const migration = await readFile(
     new URL("../../../drizzle/0069_custom_mail_properties.sql", import.meta.url),

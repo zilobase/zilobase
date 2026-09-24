@@ -28,7 +28,7 @@ import {
   mailView,
 } from "../../../infrastructure/database/schema";
 import type { RuntimeEnv } from "../../../shared/config/config";
-import { getMailIndexProgress } from "./mail-index";
+import { getMailIndexProgress } from "../sync/mailbox-sync-engine";
 
 const QUERY_BATCH_SIZE = 200;
 const MAX_QUERY_BATCHES = 40;

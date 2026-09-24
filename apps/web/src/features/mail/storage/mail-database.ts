@@ -17,7 +17,6 @@ export type MailSyncStateRecord = {
   connectionId: string;
   key: "primary";
   lastSyncedAt: number | null;
-  mailboxRevision: number;
   pendingMessageReconciliationIds?: string[];
   pendingThreadReconciliationIds?: string[];
   schemaVersion: number;
@@ -110,7 +109,6 @@ export async function openMailDatabase(
         connectionId: input.connectionId,
         key: "primary",
         lastSyncedAt: null,
-        mailboxRevision: 0,
         schemaVersion: MAIL_DATABASE_VERSION,
         userId: input.userId,
         workspaceId,
@@ -132,7 +130,6 @@ export async function applyMailboxSnapshot(
     deletedMessageIds?: string[];
     deletedThreadIds?: string[];
     labels?: MailLabelRecord[];
-    mailboxRevision?: number;
     messages?: MailMessageRecord[];
     threads?: MailThreadSummary[];
   },
@@ -158,7 +155,6 @@ export async function applyMailboxSnapshot(
       await database.syncState.put({
         ...state,
         lastSyncedAt: Date.now(),
-        mailboxRevision: Math.max(state.mailboxRevision, response.mailboxRevision ?? 0),
       });
     },
   );

@@ -14,7 +14,7 @@ import { mailRoutes } from "./routes";
 import { sendGmailComposition } from "./compose/mail-compose";
 import { beginGmailOauth, completeGmailOauth } from "./provider/google-oauth";
 import { decryptMailSecret } from "./provider/security/mail-credentials";
-import { ensureMailIndexState } from "./query/mail-index";
+import { ensureMailIndexState } from "./sync/mailbox-sync-engine";
 import { storeMailboxThread } from "./sync/mailbox-store";
 
 const provider = vi.hoisted(() => ({ gateway: null as unknown }));
@@ -292,9 +292,12 @@ test.skipIf(!enabled)(
       /expired|already used/,
     );
     await database!
-      .update(schema.gmailAccount)
-      .set({ mailboxRevision: 42 })
-      .where(eq(schema.gmailAccount.id, saved.id));
+      .insert(schema.mailIndexState)
+      .values({ committedRevision: 42, gmailAccountId: saved.id })
+      .onConflictDoUpdate({
+        set: { committedRevision: 42 },
+        target: schema.mailIndexState.gmailAccountId,
+      });
     const reconnect = await runWithDb(database!, () =>
       beginGmailOauth(env, { clientKind: "web", userId, workspaceId }),
     );
@@ -305,9 +308,9 @@ test.skipIf(!enabled)(
     );
     const [reconnected] = await database!
       .select()
-      .from(schema.gmailAccount)
-      .where(eq(schema.gmailAccount.id, saved.id));
-    assert.equal(reconnected.mailboxRevision, 42);
+      .from(schema.mailIndexState)
+      .where(eq(schema.mailIndexState.gmailAccountId, saved.id));
+    assert.equal(reconnected.committedRevision, 42);
   },
   30_000,
 );

@@ -84,7 +84,6 @@ export function register({ assert, loadModule, test }) {
       connectionId: "gmail-transaction",
       key: "primary",
       lastSyncedAt: (await database.syncState.get("primary")).lastSyncedAt,
-      mailboxRevision: 2,
       schemaVersion: 4,
       userId: "user-1",
       workspaceId: "workspace-1",
