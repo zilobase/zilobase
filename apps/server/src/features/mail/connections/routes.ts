@@ -3,7 +3,11 @@ import { mcpOAuthReturnUrl } from "../../ai/mcp/connections/oauth-return";
 import { and, count, eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { db, runWithDbEnv } from "../../../infrastructure/database";
-import { gmailAccount, gmailWorkspaceConnection } from "../../../infrastructure/database/schema";
+import {
+  gmailAccount,
+  gmailWorkspaceConnection,
+  mailIndexState,
+} from "../../../infrastructure/database/schema";
 import { getCanonicalWebOrigin } from "../../../shared/config/config";
 import type { AppBindings } from "../../../shared/types";
 import { readJsonBody } from "../../../shared/http/request";
@@ -43,9 +47,15 @@ mailConnectionRoutes.get("/connection", async (c) => {
   const membership = await requireWorkspaceMember(c, workspaceId, user.id);
   if (membership instanceof Response) return membership;
   const [result] = await db
-    .select({ account: gmailAccount, binding: gmailWorkspaceConnection })
+    .select({
+      account: gmailAccount,
+      binding: gmailWorkspaceConnection,
+      committedRevision: mailIndexState.committedRevision,
+      recentReadyAt: mailIndexState.recentReadyAt,
+    })
     .from(gmailWorkspaceConnection)
     .innerJoin(gmailAccount, eq(gmailWorkspaceConnection.gmailAccountId, gmailAccount.id))
+    .leftJoin(mailIndexState, eq(mailIndexState.gmailAccountId, gmailAccount.id))
     .where(
       and(
         eq(gmailWorkspaceConnection.workspaceId, workspaceId),
@@ -58,8 +68,8 @@ mailConnectionRoutes.get("/connection", async (c) => {
     bindingId: result?.binding.id ?? null,
     connectionId: result?.account.id ?? null,
     email: result?.account.email ?? null,
-    mailboxReady: Boolean(result),
-    mailboxRevision: result?.account.mailboxRevision ?? 0,
+    mailboxReady: Boolean(result?.recentReadyAt ?? result),
+    mailboxRevision: result?.committedRevision ?? result?.account.mailboxRevision ?? 0,
     lastErrorCode: result?.account.lastErrorCode ?? null,
     providerConfigured: gmailProviderConfigured(c.env),
     pushAvailable: Boolean(

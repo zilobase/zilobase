@@ -95,38 +95,8 @@ test("indexed mail queries page, serialize, filter, and load custom values", asy
   assert.deepEqual(result.index, mocks.index);
 });
 
-test("indexed mail search intersects Gmail results and validates accounts and views", async () => {
-  mocks.gateway.getThreads.mockResolvedValueOnce([
-    {
-      id: "thread-3",
-      messages: [
-        {
-          id: "message-3",
-          internalDate: "100",
-          labelIds: ["INBOX"],
-          payload: {
-            headers: [
-              { name: "From", value: "Ada <ada@example.com>" },
-              { name: "Subject", value: "Later" },
-            ],
-          },
-          snippet: "Later",
-          threadId: "thread-3",
-        },
-      ],
-    },
-  ]);
-  mocks.gateway.listMessages
-    .mockResolvedValueOnce({ messages: [{ threadId: "thread-2" }], nextPageToken: "next" })
-    .mockResolvedValueOnce({ messages: [{ threadId: "thread-3" }] });
-  mocks.selectResults.push(
-    [{ id: "account-1" }],
-    [
-      threadRow({ gmailThreadId: "thread-1" }),
-      threadRow({ gmailThreadId: "thread-2", id: "index-2" }),
-    ],
-    [],
-  );
+test("indexed mail search reads only local searchable rows and validates views", async () => {
+  mocks.selectResults.push([threadRow({ gmailThreadId: "thread-2", id: "index-2" })], []);
   const result = await queryIndexedMail({
     bindingId: "binding-1",
     env: {},
@@ -136,21 +106,23 @@ test("indexed mail search intersects Gmail results and validates accounts and vi
   });
   assert.deepEqual(
     result.threads.map(({ thread }) => thread.id),
-    ["thread-2", "thread-3"],
+    ["thread-2"],
   );
   assert.equal(result.searchTruncated, false);
-  assert.equal(mocks.gateway.listMessages.mock.calls[0]?.[0].query, "quarterly report");
+  assert.equal(mocks.gateway.listMessages.mock.calls.length, 0);
 
-  mocks.selectResults.push([]);
-  await assert.rejects(
-    queryIndexedMail({
-      bindingId: "binding-1",
-      env: {},
-      gmailAccountId: "missing",
-      routeId: "all_mail",
-      search: "x",
-    }),
-    (error: unknown) => error instanceof MailQueryError && error.status === 404,
+  mocks.selectResults.push([], []);
+  assert.deepEqual(
+    (
+      await queryIndexedMail({
+        bindingId: "binding-1",
+        env: {},
+        gmailAccountId: "missing",
+        routeId: "all_mail",
+        search: "x",
+      })
+    ).threads,
+    [],
   );
 
   mocks.selectResults.push([]);

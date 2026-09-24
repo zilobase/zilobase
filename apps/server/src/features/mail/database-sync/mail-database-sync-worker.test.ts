@@ -77,8 +77,8 @@ vi.mock("../../../infrastructure/storage/image-storage", () => ({ createImageSto
 vi.mock("../provider/gmail-gateway", () => ({
   createGmailGateway: vi.fn(async () => ({ getThread: vi.fn(async () => ({})) })),
 }));
-vi.mock("../provider/mail-normalize", () => ({
-  normalizeGmailThread: vi.fn(() => ({
+vi.mock("../sync/mailbox-store", () => ({
+  loadMailboxThread: vi.fn(async () => ({
     messages: [{ attachments: [], bodyHtml: null, bodyText: "body" }],
     summary: { subject: "Quarterly report" },
   })),

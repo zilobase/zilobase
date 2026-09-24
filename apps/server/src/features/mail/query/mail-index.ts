@@ -17,7 +17,10 @@ import {
   type GmailHistory,
   type GmailThread,
 } from "../provider/gmail-gateway";
-import { enqueueMailDatabaseSyncForIndexedThread } from "../database-sync/mail-database-sync-worker";
+import {
+  enqueueMailDatabaseSyncForIndexedThread,
+  enqueueMailDatabaseSyncForThread,
+} from "../database-sync/mail-database-sync-worker";
 import {
   commitMailboxRevision,
   applyMailboxLabelDelta,
@@ -119,6 +122,30 @@ export async function advanceMailIndex(
   try {
     try {
       const gateway = await createGmailGateway(env, account, { trafficClass: "background" });
+      if (
+        state.status === "syncing" &&
+        !newerHistory(state.desiredHistoryId, state.appliedHistoryId ?? state.historyId)
+      ) {
+        const profile = await gateway.getProfile();
+        if (newerHistory(profile.historyId ?? null, state.appliedHistoryId ?? state.historyId)) {
+          const [discovered] = await db
+            .update(mailIndexState)
+            .set({ desiredHistoryId: profile.historyId, updatedAt: new Date() })
+            .where(eq(mailIndexState.gmailAccountId, gmailAccountId))
+            .returning();
+          if (discovered) state = discovered;
+        } else {
+          const [idle] = await db
+            .update(mailIndexState)
+            .set({
+              status: state.backfillCompleteAt ? "ready" : "backfilling",
+              updatedAt: new Date(),
+            })
+            .where(eq(mailIndexState.gmailAccountId, gmailAccountId))
+            .returning();
+          if (idle) state = idle;
+        }
+      }
       if (
         (state.status === "ready" ||
           state.status === "syncing" ||
@@ -417,6 +444,7 @@ async function applyHistoryPage(
   const deleted = new Set<string>();
   const addedLabels = new Map<string, Set<string>>();
   const removedLabels = new Map<string, Set<string>>();
+  const affectedThreads = new Set<string>();
   for (const event of history) {
     for (const entry of event.messagesAdded ?? []) {
       if (entry.message?.id && entry.message.threadId)
@@ -424,18 +452,22 @@ async function applyHistoryPage(
           messageId: entry.message.id,
           threadId: entry.message.threadId,
         });
+      if (entry.message?.threadId) affectedThreads.add(entry.message.threadId);
     }
     for (const entry of event.messagesDeleted ?? []) {
       if (entry.message?.id) deleted.add(entry.message.id);
+      if (entry.message?.threadId) affectedThreads.add(entry.message.threadId);
     }
     for (const entry of event.labelsAdded ?? []) {
       if (!entry.message?.id) continue;
+      if (entry.message.threadId) affectedThreads.add(entry.message.threadId);
       const labels = addedLabels.get(entry.message.id) ?? new Set<string>();
       for (const label of entry.labelIds ?? []) labels.add(label);
       addedLabels.set(entry.message.id, labels);
     }
     for (const entry of event.labelsRemoved ?? []) {
       if (!entry.message?.id) continue;
+      if (entry.message.threadId) affectedThreads.add(entry.message.threadId);
       const labels = removedLabels.get(entry.message.id) ?? new Set<string>();
       for (const label of entry.labelIds ?? []) labels.add(label);
       removedLabels.set(entry.message.id, labels);
@@ -487,6 +519,11 @@ async function applyHistoryPage(
   }
   for (const messageId of deleted) {
     if (await deleteMailboxMessage(state.gmailAccountId, messageId)) changed = true;
+  }
+  if (changed) {
+    for (const threadId of affectedThreads) {
+      await enqueueMailDatabaseSyncForThread(state.gmailAccountId, threadId, env);
+    }
   }
   return changed;
 }

@@ -680,6 +680,13 @@
       "when": 1790208000000,
       "tag": "0099_canonical_mailbox",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1790208000001,
+      "tag": "0100_mail_unsubscribe_headers",
+      "breakpoints": true
     }
   ]
 }

@@ -13,7 +13,11 @@ import { recordMailMetric } from "../mail-metrics";
 import { synchronizeMailbox } from "../sync/mail-sync";
 import { advanceMailIndex, getMailIndexProgress } from "./mail-index";
 import { MailQueryError, queryIndexedMail, queryIndexedMailGroups } from "./mail-query";
-import { inspectOrExecuteUnsubscribe, MailUnsubscribeError } from "../compose/safe-unsubscribe";
+import {
+  inspectOrExecuteUnsubscribeHeaders,
+  MailUnsubscribeError,
+} from "../compose/safe-unsubscribe";
+import { loadMailboxUnsubscribeHeaders } from "../sync/mailbox-store";
 import { drainMailDatabaseSyncOutbox } from "../database-sync/mail-database-sync-worker";
 import {
   requireOwnedConnection,
@@ -34,17 +38,15 @@ mailQueryRoutes.post("/threads/:threadId/unsubscribe", async (c) => {
   if (owned instanceof Response) return owned;
   const threadId = safeGmailId(c.req.param("threadId"));
   if (!threadId) return c.json({ message: "A valid Gmail thread ID is required." }, 400);
-  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
-    try {
-      return c.json(
-        await inspectOrExecuteUnsubscribe(await gateway.getThread(threadId, "metadata")),
-      );
-    } catch (error) {
-      if (error instanceof MailUnsubscribeError)
-        return c.json({ message: error.message }, error.status);
-      throw error;
-    }
-  });
+  try {
+    const headers = await loadMailboxUnsubscribeHeaders(owned.connection.id, threadId);
+    if (!headers) return c.json({ message: "Mail thread not found." }, 404);
+    return c.json(await inspectOrExecuteUnsubscribeHeaders(headers));
+  } catch (error) {
+    if (error instanceof MailUnsubscribeError)
+      return c.json({ message: error.message }, error.status);
+    throw error;
+  }
 });
 
 mailQueryRoutes.get("/index/status", async (c) => {

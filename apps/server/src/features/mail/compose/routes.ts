@@ -8,11 +8,19 @@ import {
   sendGmailComposition,
   updateGmailDraft,
 } from "./mail-compose";
+import { normalizeGmailLabels } from "../provider/mail-normalize";
 import {
-  normalizeGmailLabels,
-  normalizeGmailMessage,
-  normalizeGmailThread,
-} from "../provider/mail-normalize";
+  applyMailboxLabelDelta,
+  applyMailboxThreadLabelDelta,
+  commitMailboxRevision,
+  deleteMailboxLabel,
+  loadMailboxLabels,
+  loadMailboxMessage,
+  loadMailboxThread,
+  upsertMailboxLabel,
+} from "../sync/mailbox-store";
+import { requestMailSync } from "../sync/mail-sync-coordinator";
+import { publishMailIndexUpdate } from "../query/mail-index";
 import {
   requireOwnedConnection,
   runMailOperation,
@@ -32,10 +40,10 @@ mailMessageRoutes.get("/threads/:threadId", async (c) => {
   if (owned instanceof Response) return owned;
   const threadId = safeGmailId(c.req.param("threadId"));
   if (!threadId) return c.json({ message: "A valid Gmail thread ID is required." }, 400);
-  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
-    const record = normalizeGmailThread(await gateway.getThread(threadId, "full"), true);
-    return c.json({ messages: record.messages, thread: record.summary });
-  });
+  const record = await loadMailboxThread(owned.connection.id, threadId);
+  return record
+    ? c.json({ messages: record.messages, thread: record.summary })
+    : c.json({ message: "Mail thread not found." }, 404);
 });
 
 mailMessageRoutes.get("/messages/:messageId", async (c) => {
@@ -43,9 +51,8 @@ mailMessageRoutes.get("/messages/:messageId", async (c) => {
   if (owned instanceof Response) return owned;
   const messageId = safeGmailId(c.req.param("messageId"));
   if (!messageId) return c.json({ message: "A valid Gmail message ID is required." }, 400);
-  return runMailOperation(c, owned.userId, owned.connection, async (gateway) =>
-    c.json({ message: normalizeGmailMessage(await gateway.getMessage(messageId, "full"), true) }),
-  );
+  const message = await loadMailboxMessage(owned.connection.id, messageId);
+  return message ? c.json({ message }) : c.json({ message: "Mail message not found." }, 404);
 });
 
 mailMessageRoutes.get("/messages/:messageId/attachments/:attachmentId", async (c) => {
@@ -55,11 +62,14 @@ mailMessageRoutes.get("/messages/:messageId/attachments/:attachmentId", async (c
   const attachmentId = safeGmailId(c.req.param("attachmentId"));
   if (!messageId || !attachmentId)
     return c.json({ message: "A valid Gmail attachment is required." }, 400);
+  const message = await loadMailboxMessage(owned.connection.id, messageId);
+  if (!message?.attachments.some((attachment) => attachment.attachmentId === attachmentId))
+    return c.json({ message: "Mail attachment not found." }, 404);
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     const upstream = await gateway.getAttachment(messageId, attachmentId);
     return new Response(upstream.body, {
       headers: {
-        "cache-control": "private, no-store",
+        "cache-control": "private, max-age=86400",
         "content-disposition": "attachment",
         "content-type": upstream.headers.get("content-type") ?? "application/octet-stream",
         "referrer-policy": "no-referrer",
@@ -73,10 +83,7 @@ mailMessageRoutes.get("/messages/:messageId/attachments/:attachmentId", async (c
 mailMessageRoutes.get("/labels", async (c) => {
   const owned = await requireOwnedConnection(c);
   if (owned instanceof Response) return owned;
-  return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
-    const result = await gateway.listLabels();
-    return c.json({ labels: normalizeGmailLabels(result.labels ?? []) });
-  });
+  return c.json({ labels: await loadMailboxLabels(owned.connection.id) });
 });
 
 mailMessageRoutes.post("/labels", async (c) => {
@@ -87,6 +94,8 @@ mailMessageRoutes.post("/labels", async (c) => {
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     const label = normalizeGmailLabels([await gateway.createLabel(body)])[0];
     if (!label) throw new GmailApiError("Gmail returned an invalid label.", 502, "provider_error");
+    await upsertMailboxLabel(owned.connection.id, label);
+    await commitAndReconcile(c.env, owned.connection.id, "label_created");
     return c.json({ label });
   });
 });
@@ -100,6 +109,8 @@ mailMessageRoutes.patch("/labels/:labelId", async (c) => {
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     const label = normalizeGmailLabels([await gateway.updateLabel(labelId, body)])[0];
     if (!label) throw new GmailApiError("Gmail returned an invalid label.", 502, "provider_error");
+    await upsertMailboxLabel(owned.connection.id, label);
+    await commitAndReconcile(c.env, owned.connection.id, "label_updated");
     return c.json({ label });
   });
 });
@@ -111,6 +122,8 @@ mailMessageRoutes.delete("/labels/:labelId", async (c) => {
   if (!labelId) return c.json({ message: "A valid Gmail label is required." }, 400);
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     await gateway.deleteLabel(labelId);
+    await deleteMailboxLabel(owned.connection.id, labelId);
+    await commitAndReconcile(c.env, owned.connection.id, "label_deleted");
     return c.json({ deletedId: labelId });
   });
 });
@@ -122,6 +135,13 @@ mailMessageRoutes.post("/threads/batch-modify", async (c) => {
   if (!body) return c.json({ message: "A valid thread batch modification is required." }, 400);
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     await gateway.batchModifyThreads(body.ids, body);
+    for (const threadId of body.ids)
+      await applyMailboxThreadLabelDelta({
+        ...body,
+        gmailAccountId: owned.connection.id,
+        gmailThreadId: threadId,
+      });
+    await commitAndReconcile(c.env, owned.connection.id, "thread_batch_modified");
     return c.json({ acceptedIds: body.ids });
   });
 });
@@ -133,6 +153,13 @@ mailMessageRoutes.post("/messages/batch-modify", async (c) => {
   if (!body) return c.json({ message: "A valid message batch modification is required." }, 400);
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
     await gateway.batchModifyMessages(body.ids, body);
+    for (const messageId of body.ids)
+      await applyMailboxLabelDelta({
+        ...body,
+        gmailAccountId: owned.connection.id,
+        gmailMessageId: messageId,
+      });
+    await commitAndReconcile(c.env, owned.connection.id, "message_batch_modified");
     return c.json({ acceptedIds: body.ids });
   });
 });
@@ -145,8 +172,15 @@ mailMessageRoutes.post("/threads/:threadId/modify", async (c) => {
   if (!threadId || !body)
     return c.json({ message: "A valid thread modification is required." }, 400);
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
-    await gateway.modifyThread(threadId, body);
-    const record = normalizeGmailThread(await gateway.getThread(threadId, "metadata"), false);
+    const result = await gateway.modifyThread(threadId, body);
+    await applyMailboxThreadLabelDelta({
+      ...body,
+      gmailAccountId: owned.connection.id,
+      gmailThreadId: threadId,
+    });
+    await commitAndReconcile(c.env, owned.connection.id, "thread_modified", result.historyId);
+    const record = await loadMailboxThread(owned.connection.id, threadId);
+    if (!record) return c.json({ message: "Mail thread not found." }, 404);
     return c.json({ messages: record.messages, thread: record.summary });
   });
 });
@@ -159,10 +193,15 @@ mailMessageRoutes.post("/messages/:messageId/modify", async (c) => {
   if (!messageId || !body)
     return c.json({ message: "A valid message modification is required." }, 400);
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
-    await gateway.modifyMessage(messageId, body);
-    return c.json({
-      message: normalizeGmailMessage(await gateway.getMessage(messageId, "metadata"), false),
+    const result = await gateway.modifyMessage(messageId, body);
+    await applyMailboxLabelDelta({
+      ...body,
+      gmailAccountId: owned.connection.id,
+      gmailMessageId: messageId,
     });
+    await commitAndReconcile(c.env, owned.connection.id, "message_modified", result.historyId);
+    const message = await loadMailboxMessage(owned.connection.id, messageId);
+    return message ? c.json({ message }) : c.json({ message: "Mail message not found." }, 404);
   });
 });
 
@@ -173,9 +212,19 @@ mailMessageRoutes.post("/threads/:threadId/action", async (c) => {
   const body = parseMailActionRequest(await readJsonBody(c.req));
   if (!threadId || !body) return c.json({ message: "A valid thread action is required." }, 400);
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
-    if (body.action === "trash") await gateway.trashThread(threadId);
-    else await gateway.untrashThread(threadId);
-    const record = normalizeGmailThread(await gateway.getThread(threadId, "metadata"), false);
+    const result =
+      body.action === "trash"
+        ? await gateway.trashThread(threadId)
+        : await gateway.untrashThread(threadId);
+    await applyMailboxThreadLabelDelta({
+      addLabelIds: body.action === "trash" ? ["TRASH"] : ["INBOX"],
+      gmailAccountId: owned.connection.id,
+      gmailThreadId: threadId,
+      removeLabelIds: body.action === "trash" ? ["INBOX"] : ["TRASH"],
+    });
+    await commitAndReconcile(c.env, owned.connection.id, "thread_action", result.historyId);
+    const record = await loadMailboxThread(owned.connection.id, threadId);
+    if (!record) return c.json({ message: "Mail thread not found." }, 404);
     return c.json({ messages: record.messages, thread: record.summary });
   });
 });
@@ -187,13 +236,32 @@ mailMessageRoutes.post("/messages/:messageId/action", async (c) => {
   const body = parseMailActionRequest(await readJsonBody(c.req));
   if (!messageId || !body) return c.json({ message: "A valid message action is required." }, 400);
   return runMailOperation(c, owned.userId, owned.connection, async (gateway) => {
-    if (body.action === "trash") await gateway.trashMessage(messageId);
-    else await gateway.untrashMessage(messageId);
-    return c.json({
-      message: normalizeGmailMessage(await gateway.getMessage(messageId, "metadata"), false),
+    const result =
+      body.action === "trash"
+        ? await gateway.trashMessage(messageId)
+        : await gateway.untrashMessage(messageId);
+    await applyMailboxLabelDelta({
+      addLabelIds: body.action === "trash" ? ["TRASH"] : ["INBOX"],
+      gmailAccountId: owned.connection.id,
+      gmailMessageId: messageId,
+      removeLabelIds: body.action === "trash" ? ["INBOX"] : ["TRASH"],
     });
+    await commitAndReconcile(c.env, owned.connection.id, "message_action", result.historyId);
+    const message = await loadMailboxMessage(owned.connection.id, messageId);
+    return message ? c.json({ message }) : c.json({ message: "Mail message not found." }, 404);
   });
 });
+
+async function commitAndReconcile(
+  env: AppBindings["Bindings"],
+  gmailAccountId: string,
+  reason: string,
+  historyId?: string,
+) {
+  await commitMailboxRevision(gmailAccountId);
+  await publishMailIndexUpdate(env, gmailAccountId);
+  await requestMailSync(env, { gmailAccountId, historyId, reason });
+}
 
 mailMessageRoutes.get("/drafts", async (c) => {
   const owned = await requireOwnedConnection(c);

@@ -44,7 +44,7 @@ import {
 import { createImageStorage } from "../../../infrastructure/storage/image-storage";
 import type { RuntimeEnv } from "../../../shared/config/config";
 import { createGmailGateway, type GmailGateway } from "../provider/gmail-gateway";
-import { normalizeGmailThread } from "../provider/mail-normalize";
+import { loadMailboxThread } from "../sync/mailbox-store";
 import { recordMailMetric } from "../mail-metrics";
 import { createBackgroundTask } from "../../../infrastructure/background/contracts";
 import { dispatchBackgroundTasks } from "../../../infrastructure/background/dispatch";
@@ -392,11 +392,9 @@ async function processClaimedMailDatabaseSync(
     threadId: claimed.gmailThreadId,
     viewId: claimed.viewId,
   });
-  const gateway = await createGmailGateway(env, job.account, { trafficClass: "background" });
-  const normalized = normalizeGmailThread(
-    await gateway.getThread(claimed.gmailThreadId, "full"),
-    true,
-  );
+  const normalized = await loadMailboxThread(job.account.id, claimed.gmailThreadId);
+  if (!normalized)
+    throw new MailDatabaseSyncPausedError("The synchronized mail thread no longer exists.");
   await ensureSyncPage(
     env,
     record,
@@ -416,7 +414,7 @@ async function processClaimedMailDatabaseSync(
   )
     ? await copyMappedAttachments(
         env,
-        gateway,
+        await createGmailGateway(env, job.account, { trafficClass: "background" }),
         normalized.messages.flatMap((message) => message.attachments),
         record,
         databaseId,
@@ -849,7 +847,7 @@ async function loadCustomValues(bindingId: string, threadId: string) {
 function sourceValue(
   propertyId: string,
   indexed: IndexedRow,
-  normalized: ReturnType<typeof normalizeGmailThread>,
+  normalized: NonNullable<Awaited<ReturnType<typeof loadMailboxThread>>>,
   customValues: Record<string, unknown>,
   attachmentFiles: Array<{ id: string; name: string; url: string }>,
 ) {

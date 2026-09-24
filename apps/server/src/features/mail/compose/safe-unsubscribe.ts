@@ -26,12 +26,24 @@ export async function inspectOrExecuteUnsubscribe(
         : [],
     ),
   );
-  const candidates = parseUnsubscribeCandidates(headers.get("list-unsubscribe"));
+  return inspectOrExecuteUnsubscribeHeaders(
+    {
+      listUnsubscribe: headers.get("list-unsubscribe") ?? null,
+      listUnsubscribePost: headers.get("list-unsubscribe-post") ?? null,
+    },
+    fetcher,
+  );
+}
+
+export async function inspectOrExecuteUnsubscribeHeaders(
+  headers: { listUnsubscribe: string | null; listUnsubscribePost: string | null },
+  fetcher: typeof fetch = fetch,
+) {
+  const candidates = parseUnsubscribeCandidates(headers.listUnsubscribe ?? undefined);
   if (!candidates.length)
     throw new MailUnsubscribeError("This sender did not provide an unsubscribe address.", 404);
   const oneClick =
-    headers.get("list-unsubscribe-post")?.toLowerCase().includes("list-unsubscribe=one-click") ===
-    true;
+    headers.listUnsubscribePost?.toLowerCase().includes("list-unsubscribe=one-click") === true;
   const https = candidates.find((candidate) => candidate.protocol === "https:");
   if (oneClick && https) {
     await safeFetchWithRedirects(https, fetcher);

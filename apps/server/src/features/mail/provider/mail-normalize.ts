@@ -37,6 +37,8 @@ export function normalizeGmailMessage(
     inReplyTo: headers.get("in-reply-to") ?? null,
     internalDate: Number(message.internalDate ?? 0),
     labelIds: unique(message.labelIds ?? []),
+    listUnsubscribe: headers.get("list-unsubscribe") ?? null,
+    listUnsubscribePost: headers.get("list-unsubscribe-post") ?? null,
     messageIdHeader: headers.get("message-id") ?? null,
     references: (headers.get("references") ?? "").split(/\s+/).filter(Boolean),
     replyTo: parseMailAddresses(headers.get("reply-to"))[0] ?? null,

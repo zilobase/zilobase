@@ -33,6 +33,8 @@ export type MailMessageRecord = {
   inReplyTo: string | null;
   internalDate: number;
   labelIds: string[];
+  listUnsubscribe?: string | null;
+  listUnsubscribePost?: string | null;
   messageIdHeader: string | null;
   references: string[];
   replyTo: MailAddress | null;

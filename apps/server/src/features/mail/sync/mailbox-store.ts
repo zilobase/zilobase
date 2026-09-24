@@ -124,6 +124,42 @@ export async function replaceMailboxLabels(
   return normalized;
 }
 
+export async function upsertMailboxLabel(gmailAccountId: string, label: MailLabelRecord) {
+  const record = {
+    ...label,
+    gmailAccountId,
+    gmailLabelId: label.id,
+    id: `${gmailAccountId}:${label.id}`,
+    updatedAt: new Date(),
+  };
+  await db
+    .insert(mailLabel)
+    .values(record)
+    .onConflictDoUpdate({
+      set: {
+        color: record.color,
+        labelListVisibility: record.labelListVisibility,
+        messageListVisibility: record.messageListVisibility,
+        messagesTotal: record.messagesTotal,
+        messagesUnread: record.messagesUnread,
+        name: record.name,
+        threadsTotal: record.threadsTotal,
+        threadsUnread: record.threadsUnread,
+        type: record.type,
+        updatedAt: record.updatedAt,
+      },
+      target: [mailLabel.gmailAccountId, mailLabel.gmailLabelId],
+    });
+}
+
+export async function deleteMailboxLabel(gmailAccountId: string, gmailLabelId: string) {
+  await db
+    .delete(mailLabel)
+    .where(
+      and(eq(mailLabel.gmailAccountId, gmailAccountId), eq(mailLabel.gmailLabelId, gmailLabelId)),
+    );
+}
+
 export async function applyMailboxLabelDelta(input: {
   addLabelIds?: string[];
   gmailAccountId: string;
@@ -161,6 +197,34 @@ export async function applyMailboxLabelDelta(input: {
     );
   await rebuildMailboxThread(input.gmailAccountId, stored.threadId);
   return true;
+}
+
+export async function applyMailboxThreadLabelDelta(input: {
+  addLabelIds?: string[];
+  gmailAccountId: string;
+  gmailThreadId: string;
+  removeLabelIds?: string[];
+}) {
+  const messages = await db
+    .select({ id: mailMessage.gmailMessageId })
+    .from(mailMessage)
+    .where(
+      and(
+        eq(mailMessage.gmailAccountId, input.gmailAccountId),
+        eq(mailMessage.gmailThreadId, input.gmailThreadId),
+      ),
+    );
+  let changed = false;
+  for (const message of messages) {
+    changed =
+      (await applyMailboxLabelDelta({
+        addLabelIds: input.addLabelIds,
+        gmailAccountId: input.gmailAccountId,
+        gmailMessageId: message.id,
+        removeLabelIds: input.removeLabelIds,
+      })) || changed;
+  }
+  return changed;
 }
 
 export async function deleteMailboxMessage(gmailAccountId: string, gmailMessageId: string) {
@@ -259,6 +323,24 @@ export async function loadMailboxLabels(gmailAccountId: string): Promise<MailLab
     threadsUnread: label.threadsUnread,
     type: label.type as MailLabelRecord["type"],
   }));
+}
+
+export async function loadMailboxUnsubscribeHeaders(gmailAccountId: string, gmailThreadId: string) {
+  const [message] = await db
+    .select({
+      listUnsubscribe: mailMessage.listUnsubscribe,
+      listUnsubscribePost: mailMessage.listUnsubscribePost,
+    })
+    .from(mailMessage)
+    .where(
+      and(
+        eq(mailMessage.gmailAccountId, gmailAccountId),
+        eq(mailMessage.gmailThreadId, gmailThreadId),
+      ),
+    )
+    .orderBy(sql`${mailMessage.internalDate} desc`)
+    .limit(1);
+  return message ?? null;
 }
 
 export async function commitMailboxRevision(gmailAccountId: string) {
@@ -419,6 +501,8 @@ function mailMessageRecord(gmailAccountId: string, generation: number, message: 
     inReplyTo: message.inReplyTo,
     internalDate: message.internalDate,
     labelIds: message.labelIds,
+    listUnsubscribe: message.listUnsubscribe ?? null,
+    listUnsubscribePost: message.listUnsubscribePost ?? null,
     messageDate: message.date,
     messageIdHeader: message.messageIdHeader,
     references: message.references,
@@ -481,6 +565,8 @@ function serializeMailboxMessage(row: typeof mailMessage.$inferSelect): MailMess
     inReplyTo: row.inReplyTo,
     internalDate: row.internalDate,
     labelIds: row.labelIds,
+    listUnsubscribe: row.listUnsubscribe,
+    listUnsubscribePost: row.listUnsubscribePost,
     messageIdHeader: row.messageIdHeader,
     references: row.references,
     replyTo: address(row.replyToAddress),

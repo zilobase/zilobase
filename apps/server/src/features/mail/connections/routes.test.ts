@@ -22,6 +22,7 @@ vi.mock("../../../infrastructure/database", async (original) => ({
       const query = {
         from: () => query,
         innerJoin: () => query,
+        leftJoin: () => query,
         where: () => query,
         limit: async () => state.rows,
       };

@@ -200,6 +200,8 @@ export const mailMessage = pgTable(
     hasFullBody: boolean("has_full_body").notNull().default(false),
     messageIdHeader: text("message_id_header"),
     inReplyTo: text("in_reply_to"),
+    listUnsubscribe: text("list_unsubscribe"),
+    listUnsubscribePost: text("list_unsubscribe_post"),
     references: jsonb("references").$type<string[]>().notNull().default([]),
     sizeEstimate: integer("size_estimate").notNull().default(0),
     attachmentCount: integer("attachment_count").notNull().default(0),
