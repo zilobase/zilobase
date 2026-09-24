@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { infiniteQueryOptions, useInfiniteQuery } from "@tanstack/react-query";
 import { addCalendarDays, calendarApiBasePath, calendarEventKey, dayInstant, eventClock, eventInstant, type CalendarConnection, type CalendarEvent, type CalendarPreferences, type CalendarRecord } from "@zilobase/features/calendar";
 import { createCalendarSelectionMatcher, calendarSelectionKey } from "../connections/calendar-selection";
 import { apiFetch, getApiErrorMessage } from "@/platform/network/api";
@@ -7,6 +7,48 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 type Cursor = { source: number; token?: string };
+
+function calendarSearchQueryOptions(input: {
+  debounced: string;
+  enabled: boolean;
+  from: string;
+  sources: { calendar: CalendarRecord; connection: CalendarConnection }[];
+  timeZone: string;
+  until: string;
+  userId: string;
+}) {
+  return infiniteQueryOptions({
+    enabled: input.enabled,
+    initialPageParam: { source: 0 } as Cursor,
+    queryFn: ({ pageParam, signal }) =>
+      fetchSearchPage(
+        input.sources,
+        pageParam,
+        signal,
+        input.debounced,
+        input.from,
+        input.until,
+        input.timeZone,
+      ),
+    getNextPageParam: (page) => nextSearchPage(page, input.sources.length),
+    queryKey: [
+      "calendar",
+      "search",
+      input.userId,
+      input.sources.map(({ connection, calendar }) => [
+        connection.workspaceId,
+        connection.bindingId,
+        calendar.id,
+      ]),
+      input.debounced,
+      input.from,
+      input.until,
+      input.timeZone,
+    ] as const,
+    staleTime: 30_000,
+  });
+}
+
 export function CalendarSearchResults({ query, connections, calendars, preferences, cached, online, userId, onSelect }: { query: string; connections: CalendarConnection[]; calendars: CalendarRecord[]; preferences: CalendarPreferences; cached: CalendarEvent[]; online: boolean; userId: string; onSelect: (event: CalendarEvent) => void }) {
   const [debounced, setDebounced] = useState(""), [source, setSource] = useState("all"), [from, setFrom] = useState(""), [until, setUntil] = useState("");
   useEffect(() => { const timer = setTimeout(() => setDebounced(query.trim()), 350); return () => clearTimeout(timer); }, [query]);
@@ -14,14 +56,23 @@ export function CalendarSearchResults({ query, connections, calendars, preferenc
   const matcher = createCalendarSelectionMatcher(preferences);
   const sources = searchSources(readable, connections, source, matcher);
   const invalidRange = Boolean(from && until && until < from);
-  const results = useInfiniteQuery({
-    queryKey: ["calendar", "search", userId, sources.map(({ connection, calendar }) => [connection.workspaceId, connection.bindingId, calendar.id]), debounced, from, until, preferences.timeZone],
-    enabled: searchQueryEnabled(online, debounced, query, sources.length, invalidRange),
-    initialPageParam: { source: 0 } as Cursor,
-    queryFn: ({ pageParam, signal }) => fetchSearchPage(sources, pageParam, signal, debounced, from, until, preferences.timeZone),
-    getNextPageParam: page => nextSearchPage(page, sources.length),
-    staleTime: 30_000,
-  });
+  const results = useInfiniteQuery(
+    calendarSearchQueryOptions({
+      debounced,
+      enabled: searchQueryEnabled(
+        online,
+        debounced,
+        query,
+        sources.length,
+        invalidRange,
+      ),
+      from,
+      sources,
+      timeZone: preferences.timeZone,
+      until,
+      userId,
+    }),
+  );
   const loaded = searchLoadedEvents(online, query, debounced, results.data?.pages.flatMap(page => page.events) ?? [], cached);
   const events = uniqueSearchEvents(loaded.filter(event => matchesSearchEvent(event, sources, preferences, from, until)), preferences.timeZone);
   return <section aria-label="Calendar search results" className="min-h-0 flex-1 overflow-y-auto p-4">

@@ -1,4 +1,5 @@
 import {
+  infiniteQueryOptions,
   useInfiniteQuery,
   type InfiniteData,
   type QueryClient,
@@ -75,12 +76,14 @@ export async function fetchRecordWindow(
   window: RecordWindowPageParam,
   queryClient?: QueryClient,
   queryKey?: readonly unknown[],
+  signal?: AbortSignal,
 ): Promise<DatabaseRecordWindowResponse> {
   let incoming: DatabaseRecordWindowResponse;
   try {
     incoming = databaseRecordWindowResponseSchema.parse(
       await apiFetch<DatabaseRecordWindowResponse>(
         recordWindowPath(scope, window),
+        { signal },
       ),
     );
   } catch (error) {
@@ -89,6 +92,7 @@ export async function fetchRecordWindow(
     incoming = databaseRecordWindowResponseSchema.parse(
       await apiFetch<DatabaseRecordWindowResponse>(
         recordWindowPath(scope, { limit: window.limit, snapshot: undefined }),
+        { signal },
       ),
     );
   }
@@ -144,10 +148,21 @@ export function databaseWindowQueryOptions(
   queryClient?: QueryClient,
 ) {
   const queryKey = databaseWindowQueryKey(sessionId, scope);
-  return {
+  return infiniteQueryOptions({
     queryKey,
     staleTime: 30_000,
     initialPageParam: { limit: pageSize, snapshot: undefined },
+    queryFn: async (
+      { pageParam, signal },
+    ): Promise<DatabaseRecordWindowResponse> =>
+      fetchRecordWindow(
+        apiFetch,
+        scope,
+        pageParam,
+        queryClient,
+        queryKey,
+        signal,
+      ),
     getNextPageParam: (
       last: DatabaseRecordWindowResponse,
     ): RecordWindowPageParam | undefined =>
@@ -157,11 +172,7 @@ export function databaseWindowQueryOptions(
           snapshot: last.snapshot,
         }
         : undefined,
-    queryFn: async (
-      { pageParam }: { pageParam: RecordWindowPageParam },
-    ): Promise<DatabaseRecordWindowResponse> =>
-      fetchRecordWindow(apiFetch, scope, pageParam, queryClient, queryKey),
-  };
+  });
 }
 
 /**
@@ -220,13 +231,7 @@ export function useDatabaseRecords(
     ? databaseWindowQueryKey(sessionId, scope)
     : null;
 
-  const query = useInfiniteQuery<
-    DatabaseRecordWindowResponse,
-    Error,
-    InfiniteData<DatabaseRecordWindowResponse>,
-    ReturnType<typeof databaseWindowQueryKey>,
-    RecordWindowPageParam
-  >({
+  const options = infiniteQueryOptions({
     ...databaseWindowQueryOptions(
       apiFetch,
       sessionId,
@@ -257,6 +262,7 @@ export function useDatabaseRecords(
         : previousData,
     staleTime: 30_000,
   });
+  const query = useInfiniteQuery(options);
 
   if (!scope) {
     return {

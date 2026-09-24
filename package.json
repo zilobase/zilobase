@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "dev": "node scripts/dev/workspace.mjs",
-    "lint": "oxlint apps/web/src",
+    "lint": "oxlint apps/web/src packages/features/src",
     "preview": "node scripts/dev/cli.mjs preview",
     "setup": "node scripts/dev/cli.mjs setup",
     "setup:check": "node scripts/dev/cli.mjs setup-check",
@@ -94,6 +94,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@shadcn/lint": "^0.2.0",
+    "@tanstack/eslint-plugin-query": "^5.103.2",
     "@vitest/coverage-v8": "^4.1.11",
     "oxlint": "^1.85.0",
     "postcss": "^8.5.26",

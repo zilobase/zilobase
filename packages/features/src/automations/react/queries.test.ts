@@ -19,6 +19,10 @@ test("automation query keys are isolated from database payload caches", () => {
     databaseAutomationKeys.list("database-1", "source-1"),
     databaseAutomationKeys.list("database-1", "source-2"),
   )
+  assert.notDeepEqual(
+    databaseAutomationKeys.capability("database-1", "workspace-1"),
+    databaseAutomationKeys.capability("database-2", "workspace-1"),
+  )
 })
 
 test("automation queries address source-aware and capability APIs", async () => {

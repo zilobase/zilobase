@@ -147,7 +147,7 @@ export function useMailReminders(input: MailHookScope) {
     mutationFn: (reminderId: string) => apiFetch<{ success: true }>(`${basePath}/reminders/${encodeURIComponent(reminderId)}`, { method: "DELETE" }).then(() => reminderId),
     onSuccess: (reminderId) => queryClient.setQueryData<{ reminders: MailReminder[] }>(queryKey, (current) => ({ reminders: current?.reminders.filter((item) => item.id !== reminderId) ?? [] })),
   })
-  const advance = useMutation({
+  const { isPending: isAdvancing, mutate: advanceReminders } = useMutation({
     mutationFn: () => apiFetch<{ fired: MailReminder[] }>(`${basePath}/reminders/advance`, { body: "{}", method: "POST" }),
     onSuccess: () => { void query.refetch(); refreshMail() },
   })
@@ -157,10 +157,10 @@ export function useMailReminders(input: MailHookScope) {
   }, null) ?? null
   useEffect(() => {
     if (nextReminderAt === null) return
-    const timer = window.setTimeout(() => advance.mutate(), Math.max(0, Math.min(2_147_483_647, nextReminderAt - Date.now() + 250)))
+    const timer = window.setTimeout(() => advanceReminders(), Math.max(0, Math.min(2_147_483_647, nextReminderAt - Date.now() + 250)))
     return () => window.clearTimeout(timer)
-  }, [advance, nextReminderAt])
-  return { ...query, cancel: cancel.mutateAsync, schedule: schedule.mutateAsync, working: schedule.isPending || cancel.isPending || advance.isPending }
+  }, [advanceReminders, nextReminderAt])
+  return { ...query, cancel: cancel.mutateAsync, schedule: schedule.mutateAsync, working: schedule.isPending || cancel.isPending || isAdvancing }
 }
 
 export function useMailGroups(input: MailHookScope & {

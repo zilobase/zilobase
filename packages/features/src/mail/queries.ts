@@ -186,7 +186,6 @@ export const indexedMailViewQueryOptions = (
   },
 ) => infiniteQueryOptions({
   enabled: scope.enabled && Boolean(scope.bindingId && scope.workspaceId && scope.routeId),
-  getNextPageParam: (lastPage: MailViewQueryResponse) => lastPage.nextCursor ?? undefined,
   initialPageParam: null as string | null,
   queryFn: ({ pageParam, signal }) => apiFetch<MailViewQueryResponse>(
     `${mailApiBasePath(scope.workspaceId)}/query`,
@@ -203,6 +202,8 @@ export const indexedMailViewQueryOptions = (
       signal,
     },
   ),
+  getNextPageParam: (lastPage: MailViewQueryResponse) =>
+    lastPage.nextCursor ?? undefined,
   queryKey: mailKeys.indexedQuery(scope),
 })
 

@@ -1,6 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 
-import { useZilobaseFeatures } from "../shared/context"
+import { useZilobaseFeatures, type ApiFetcher } from "../shared/context"
 import { useActiveWorkspaceId } from "../workspaces/hooks"
 import { workspaceRequestOptions } from "../workspaces/queries"
 import type {
@@ -25,31 +30,158 @@ import type {
 export const aiAgentProfilesQueryKey = (workspaceId: string | null | undefined) =>
   ["workspaces", workspaceId ?? "none", "ai-agent-profiles"] as const
 
-export function useAiAgentProfiles(options?: { enabled?: boolean }) {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
-  return useQuery({
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
-    queryKey: aiAgentProfilesQueryKey(workspaceId),
+const aiAgentProfileQueryKey = (
+  workspaceId: string | null | undefined,
+  agentId: string | null,
+) => [...aiAgentProfilesQueryKey(workspaceId), agentId] as const
+
+const customAgentQueryKey = (
+  workspaceId: string | null | undefined,
+  agentId: string | null,
+  suffix: string,
+) => [...aiAgentProfileQueryKey(workspaceId, agentId), suffix] as const
+
+const customAgentRunQueryKey = (
+  workspaceId: string | null | undefined,
+  agentId: string | null,
+  runId: string | null,
+) => [...customAgentQueryKey(workspaceId, agentId, "runs"), runId] as const
+
+const mcpCatalogQueryKey = (workspaceId: string | null | undefined) =>
+  ["workspaces", workspaceId ?? "none", "mcp-catalog"] as const
+
+const approvedMcpServersQueryKey = (
+  workspaceId: string | null | undefined,
+) => ["workspaces", workspaceId ?? "none", "mcp-approved-servers"] as const
+
+const mcpWorkspacePolicyQueryKey = (
+  workspaceId: string | null | undefined,
+) => ["workspaces", workspaceId ?? "none", "mcp-policy"] as const
+
+function aiAgentProfilesQueryOptions(
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+  enabled: boolean,
+) {
+  return queryOptions({
+    enabled: Boolean(workspaceId) && enabled,
     queryFn: ({ signal }) => apiFetch<{ agents: AiAgentProfileSummary[] }>(
       "/api/ai/agents",
       workspaceRequestOptions(workspaceId, { signal }),
     ).then((result) => result.agents),
+    queryKey: aiAgentProfilesQueryKey(workspaceId),
     retry: false,
   })
+}
+
+function aiAgentProfileQueryOptions(
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+  agentId: string | null,
+) {
+  return queryOptions({
+    enabled: Boolean(workspaceId && agentId),
+    queryFn: ({ signal }) => apiFetch<{ agent: AiAgentProfileDetail }>(
+      `/api/ai/agents/${encodeURIComponent(agentId!)}`,
+      workspaceRequestOptions(workspaceId, { signal }),
+    ).then((result) => result.agent),
+    queryKey: aiAgentProfileQueryKey(workspaceId, agentId),
+  })
+}
+
+function customAgentRunQueryOptions(
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+  agentId: string | null,
+  runId: string | null,
+) {
+  return queryOptions({
+    enabled: Boolean(workspaceId && agentId && runId),
+    queryFn: ({ signal }) => apiFetch<{
+      events: CustomAgentRunEvent[]
+      run: CustomAgentRun
+    }>(
+      `/api/ai/agents/${encodeURIComponent(agentId!)}/runs/${encodeURIComponent(runId!)}`,
+      workspaceRequestOptions(workspaceId, { signal }),
+    ),
+    queryKey: customAgentRunQueryKey(workspaceId, agentId, runId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.run.status
+      return status && ["queued", "running", "waiting_approval"].includes(status)
+        ? 1_000
+        : false
+    },
+  })
+}
+
+function mcpCatalogQueryOptions(
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+  enabled: boolean,
+) {
+  return queryOptions({
+    enabled: Boolean(workspaceId) && enabled,
+    queryFn: ({ signal }) => apiFetch<{ catalog: McpServerCatalogEntry[] }>(
+      "/api/ai/mcp/catalog",
+      workspaceRequestOptions(workspaceId, { signal }),
+    ).then((result) => result.catalog),
+    queryKey: mcpCatalogQueryKey(workspaceId),
+    retry: false,
+  })
+}
+
+function approvedMcpServersQueryOptions(
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+  enabled: boolean,
+) {
+  return queryOptions({
+    enabled: Boolean(workspaceId) && enabled,
+    queryFn: ({ signal }) => apiFetch<{
+      approvedServers: McpApprovedServer[]
+    }>(
+      "/api/ai/mcp/approved-servers",
+      workspaceRequestOptions(workspaceId, { signal }),
+    ).then((result) => result.approvedServers),
+    queryKey: approvedMcpServersQueryKey(workspaceId),
+    retry: false,
+  })
+}
+
+function mcpWorkspacePolicyQueryOptions(
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+  enabled: boolean,
+) {
+  return queryOptions({
+    enabled: Boolean(workspaceId) && enabled,
+    queryFn: ({ signal }) => apiFetch<{
+      approvedServers: McpApprovedServer[]
+      policy: McpWorkspacePolicy
+    }>("/api/ai/mcp/policy", workspaceRequestOptions(workspaceId, { signal })),
+    queryKey: mcpWorkspacePolicyQueryKey(workspaceId),
+    retry: false,
+  })
+}
+
+export function useAiAgentProfiles(options?: { enabled?: boolean }) {
+  const { apiFetch } = useZilobaseFeatures()
+  const workspaceId = useActiveWorkspaceId()
+  return useQuery(
+    aiAgentProfilesQueryOptions(
+      apiFetch,
+      workspaceId,
+      options?.enabled ?? true,
+    ),
+  )
 }
 
 export function useAiAgentProfile(agentId: string | null) {
   const { apiFetch } = useZilobaseFeatures()
   const workspaceId = useActiveWorkspaceId()
-  return useQuery({
-    enabled: Boolean(workspaceId && agentId),
-    queryKey: [...aiAgentProfilesQueryKey(workspaceId), agentId],
-    queryFn: ({ signal }) => apiFetch<{ agent: AiAgentProfileDetail }>(
-      `/api/ai/agents/${encodeURIComponent(agentId!)}`,
-      workspaceRequestOptions(workspaceId, { signal }),
-    ).then((result) => result.agent),
-  })
+  return useQuery(
+    aiAgentProfileQueryOptions(apiFetch, workspaceId, agentId),
+  )
 }
 
 export function useCreateAiAgentProfile() {
@@ -116,18 +248,9 @@ export function useStartCustomAgentRun(agentId: string | null) {
 export function useCustomAgentRun(agentId: string | null, runId: string | null) {
   const { apiFetch } = useZilobaseFeatures()
   const workspaceId = useActiveWorkspaceId()
-  return useQuery({
-    enabled: Boolean(workspaceId && agentId && runId),
-    queryKey: [...aiAgentProfilesQueryKey(workspaceId), agentId, "runs", runId],
-    queryFn: ({ signal }) => apiFetch<{ run: CustomAgentRun; events: CustomAgentRunEvent[] }>(
-      `/api/ai/agents/${encodeURIComponent(agentId!)}/runs/${encodeURIComponent(runId!)}`,
-      workspaceRequestOptions(workspaceId, { signal }),
-    ),
-    refetchInterval: (query) => {
-      const status = query.state.data?.run.status
-      return status && ["queued", "running", "waiting_approval"].includes(status) ? 1_000 : false
-    },
-  })
+  return useQuery(
+    customAgentRunQueryOptions(apiFetch, workspaceId, agentId, runId),
+  )
 }
 
 export function useSubmitCustomAgentMessage(agentId: string | null) {
@@ -211,43 +334,33 @@ export function useRevertCustomAgentRevision(agentId: string | null) {
 export function useMcpCatalog(options?: { enabled?: boolean }) {
   const { apiFetch } = useZilobaseFeatures()
   const workspaceId = useActiveWorkspaceId()
-  return useQuery({
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
-    queryKey: ["workspaces", workspaceId ?? "none", "mcp-catalog"],
-    queryFn: ({ signal }) => apiFetch<{ catalog: McpServerCatalogEntry[] }>(
-      "/api/ai/mcp/catalog",
-      workspaceRequestOptions(workspaceId, { signal }),
-    ).then((result) => result.catalog),
-    retry: false,
-  })
+  return useQuery(
+    mcpCatalogQueryOptions(apiFetch, workspaceId, options?.enabled ?? true),
+  )
 }
 
 export function useApprovedMcpServers(options?: { enabled?: boolean }) {
   const { apiFetch } = useZilobaseFeatures()
   const workspaceId = useActiveWorkspaceId()
-  return useQuery({
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
-    queryKey: ["workspaces", workspaceId ?? "none", "mcp-approved-servers"],
-    queryFn: ({ signal }) => apiFetch<{ approvedServers: McpApprovedServer[] }>(
-      "/api/ai/mcp/approved-servers",
-      workspaceRequestOptions(workspaceId, { signal }),
-    ).then((result) => result.approvedServers),
-    retry: false,
-  })
+  return useQuery(
+    approvedMcpServersQueryOptions(
+      apiFetch,
+      workspaceId,
+      options?.enabled ?? true,
+    ),
+  )
 }
 
 export function useMcpWorkspacePolicy(options?: { enabled?: boolean }) {
   const { apiFetch } = useZilobaseFeatures()
   const workspaceId = useActiveWorkspaceId()
-  return useQuery({
-    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
-    queryKey: ["workspaces", workspaceId ?? "none", "mcp-policy"],
-    queryFn: ({ signal }) => apiFetch<{
-      approvedServers: McpApprovedServer[]
-      policy: McpWorkspacePolicy
-    }>("/api/ai/mcp/policy", workspaceRequestOptions(workspaceId, { signal })),
-    retry: false,
-  })
+  return useQuery(
+    mcpWorkspacePolicyQueryOptions(
+      apiFetch,
+      workspaceId,
+      options?.enabled ?? true,
+    ),
+  )
 }
 
 export function useMcpPolicyMutation<TInput extends object, TOutput>(
@@ -267,8 +380,12 @@ export function useMcpPolicyMutation<TInput extends object, TOutput>(
       method,
     }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["workspaces", workspaceId ?? "none", "mcp-policy"] })
-      void queryClient.invalidateQueries({ queryKey: ["workspaces", workspaceId ?? "none", "mcp-approved-servers"] })
+      void queryClient.invalidateQueries({
+        queryKey: mcpWorkspacePolicyQueryKey(workspaceId),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: approvedMcpServersQueryKey(workspaceId),
+      })
     },
   })
 }
@@ -285,30 +402,93 @@ function mcpScopeQueryKey(scope: McpConnectionScopeRef | null) {
     : ["personal"]
 }
 
-export function useMcpConnections(scope: McpConnectionScopeRef | null) {
-  const { apiFetch } = useZilobaseFeatures()
-  const workspaceId = useActiveWorkspaceId()
-  return useQuery({
+const mcpConnectionsQueryKey = (
+  workspaceId: string | null | undefined,
+  scope: McpConnectionScopeRef | null,
+) => [
+  "workspaces",
+  workspaceId ?? "none",
+  "mcp",
+  ...mcpScopeQueryKey(scope),
+  "connections",
+] as const
+
+const mcpActivityQueryKey = (
+  workspaceId: string | null | undefined,
+  scope: McpConnectionScopeRef | null,
+) => [
+  "workspaces",
+  workspaceId ?? "none",
+  "mcp",
+  ...mcpScopeQueryKey(scope),
+  "activity",
+] as const
+
+function mcpConnectionsQueryOptions(
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+  scope: McpConnectionScopeRef | null,
+) {
+  return queryOptions({
     enabled: Boolean(workspaceId && scope),
-    queryKey: ["workspaces", workspaceId ?? "none", "mcp", ...mcpScopeQueryKey(scope), "connections"],
-    queryFn: ({ signal }) => apiFetch<{ connections: McpConnectionSummary[] }>(
+    queryFn: ({ signal }) => apiFetch<{
+      connections: McpConnectionSummary[]
+    }>(
       `${mcpScopeApiPath(scope!)}/connections`,
       workspaceRequestOptions(workspaceId, { signal }),
     ).then((result) => result.connections),
+    queryKey: mcpConnectionsQueryKey(workspaceId, scope),
   })
+}
+
+function mcpActivityQueryOptions(
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+  scope: McpConnectionScopeRef | null,
+  enabled: boolean,
+) {
+  return queryOptions({
+    enabled: Boolean(workspaceId && scope && enabled),
+    queryFn: ({ signal }) => apiFetch<{ activity: McpActivityEntry[] }>(
+      `${mcpScopeApiPath(scope!)}/activity`,
+      workspaceRequestOptions(workspaceId, { signal }),
+    ).then((result) => result.activity),
+    queryKey: mcpActivityQueryKey(workspaceId, scope),
+  })
+}
+
+function customAgentQueryOptions<TOutput>(
+  apiFetch: ApiFetcher,
+  workspaceId: string | null | undefined,
+  agentId: string | null,
+  suffix: string,
+  refetchInterval?: number,
+) {
+  return queryOptions({
+    enabled: Boolean(workspaceId && agentId),
+    queryFn: ({ signal }) => apiFetch<TOutput>(
+      `/api/ai/agents/${encodeURIComponent(agentId!)}/${suffix}`,
+      workspaceRequestOptions(workspaceId, { signal }),
+    ),
+    queryKey: customAgentQueryKey(workspaceId, agentId, suffix),
+    refetchInterval,
+  })
+}
+
+export function useMcpConnections(scope: McpConnectionScopeRef | null) {
+  const { apiFetch } = useZilobaseFeatures()
+  const workspaceId = useActiveWorkspaceId()
+  return useQuery(
+    mcpConnectionsQueryOptions(apiFetch, workspaceId, scope),
+  )
 }
 
 export function useMcpActivity(scope: McpConnectionScopeRef | null, enabled: boolean) {
   const { apiFetch } = useZilobaseFeatures()
   const workspaceId = useActiveWorkspaceId()
-  return useQuery({
-    enabled: Boolean(workspaceId && scope && enabled),
-    queryKey: ["workspaces", workspaceId ?? "none", "mcp", ...mcpScopeQueryKey(scope), "activity"],
-    queryFn: ({ signal }) => apiFetch<{ activity: McpActivityEntry[] }>(
-      `${mcpScopeApiPath(scope!)}/activity`,
-      workspaceRequestOptions(workspaceId, { signal }),
-    ).then((result) => result.activity),
-  })
+  return useQuery(
+    mcpActivityQueryOptions(apiFetch, workspaceId, scope, enabled),
+  )
 }
 
 export function useMcpConnectionMutation<TInput extends object, TOutput>(
@@ -330,7 +510,7 @@ export function useMcpConnectionMutation<TInput extends object, TOutput>(
     }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
-        queryKey: ["workspaces", workspaceId ?? "none", "mcp", ...mcpScopeQueryKey(scope), "connections"],
+        queryKey: mcpConnectionsQueryKey(workspaceId, scope),
       })
       void queryClient.invalidateQueries({ queryKey: aiAgentProfilesQueryKey(workspaceId) })
     },
@@ -357,7 +537,7 @@ function useAgentMutation<TInput extends object, TOutput>(
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: aiAgentProfilesQueryKey(workspaceId) })
       if (agentId) void queryClient.invalidateQueries({
-        queryKey: [...aiAgentProfilesQueryKey(workspaceId), agentId],
+        queryKey: aiAgentProfileQueryKey(workspaceId, agentId),
       })
     },
   })
@@ -366,15 +546,15 @@ function useAgentMutation<TInput extends object, TOutput>(
 function useCustomAgentQuery<TOutput>(agentId: string | null, suffix: string, refetchInterval?: number) {
   const { apiFetch } = useZilobaseFeatures()
   const workspaceId = useActiveWorkspaceId()
-  return useQuery({
-    enabled: Boolean(workspaceId && agentId),
-    queryKey: [...aiAgentProfilesQueryKey(workspaceId), agentId, suffix],
-    queryFn: ({ signal }) => apiFetch<TOutput>(
-      `/api/ai/agents/${encodeURIComponent(agentId!)}/${suffix}`,
-      workspaceRequestOptions(workspaceId, { signal }),
+  return useQuery(
+    customAgentQueryOptions<TOutput>(
+      apiFetch,
+      workspaceId,
+      agentId,
+      suffix,
+      refetchInterval,
     ),
-    refetchInterval,
-  })
+  )
 }
 
 function useStandaloneAgentMutation<TInput extends object, TOutput>(
@@ -398,7 +578,9 @@ function useStandaloneAgentMutation<TInput extends object, TOutput>(
       })
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [...aiAgentProfilesQueryKey(workspaceId), agentId] })
+      void queryClient.invalidateQueries({
+        queryKey: aiAgentProfileQueryKey(workspaceId, agentId),
+      })
       void queryClient.invalidateQueries({ queryKey: aiAgentProfilesQueryKey(workspaceId) })
     },
   })

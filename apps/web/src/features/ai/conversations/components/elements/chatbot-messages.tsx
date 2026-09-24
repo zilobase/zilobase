@@ -25,7 +25,7 @@ import {
   type ProposePageContentUpdateOutput,
 } from "@zilobase/features/ai-chat";
 import { getToolName, isToolUIPart, type ChatStatus, type UIMessage } from "ai";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AgentActionReviews } from "./agent-action-review";
 import { AgentResourceBadges } from "./agent-resource-badges";
@@ -207,19 +207,35 @@ function McpDatasetPreview({ dataset }: { dataset: Record<string, unknown> }) {
 
 function useMcpImportJob(jobId: string, workspaceId: string | null) {
   const { apiFetch } = useZilobaseFeatures();
-  const jobQuery = useQuery({
+  const jobQuery = useQuery(
+    mcpImportJobQueryOptions(apiFetch, jobId, workspaceId),
+  );
+  return jobQuery;
+}
+
+function mcpImportJobQueryOptions(
+  apiFetch: ReturnType<typeof useZilobaseFeatures>["apiFetch"],
+  jobId: string,
+  workspaceId: string | null,
+) {
+  return queryOptions({
     enabled: Boolean(jobId && workspaceId),
-    queryKey: ["workspaces", workspaceId ?? "none", "ai-job", jobId],
-    queryFn: ({ signal }) => apiFetch<{ job: {
-      error: string | null;
-      id: string;
-      output: unknown;
-      progress: number;
-      status: string;
-    } }>(`/api/ai/jobs/${encodeURIComponent(jobId!)}`, {
-      signal,
-      headers: workspaceId ? { "x-zilobase-workspace-id": workspaceId } : {},
-    }).then((result) => result.job),
+    queryFn: ({ signal }) =>
+      apiFetch<{
+        job: {
+          error: string | null;
+          id: string;
+          output: unknown;
+          progress: number;
+          status: string;
+        };
+      }>(`/api/ai/jobs/${encodeURIComponent(jobId)}`, {
+        headers: workspaceId
+          ? { "x-zilobase-workspace-id": workspaceId }
+          : {},
+        signal,
+      }).then((result) => result.job),
+    queryKey: ["workspaces", workspaceId ?? "none", "ai-job", jobId] as const,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status && ["succeeded", "failed", "cancelled"].includes(status)
@@ -227,7 +243,6 @@ function useMcpImportJob(jobId: string, workspaceId: string | null) {
         : 1_500;
     },
   });
-  return jobQuery;
 }
 
 function McpImportProgress({ jobId, workspaceId }: { jobId: string; workspaceId: string | null }) {

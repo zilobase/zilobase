@@ -81,7 +81,7 @@ export function register({ assert, appPath, test }) {
                     'export const settingsDefinitionSchema={parse:value=>value};export const settingsFieldTab=()=>"instructions";';
                 else if (path.endsWith("use-settings-draft"))
                   code +=
-                    "export const isSettingsEditing=()=>false;export const useSettingsDraft=()=>runtime.draft;";
+                    "export const agentSettingsVersionsQueryOptions=()=>({});export const isSettingsEditing=()=>false;export const useSettingsDraft=()=>runtime.draft;";
                 else if (path.endsWith("page-editor-pane"))
                   code +=
                     'export function PageEditorPane(props){runtime.editors.push(props);return createElement("div",{"data-editor":props.pageId});}';

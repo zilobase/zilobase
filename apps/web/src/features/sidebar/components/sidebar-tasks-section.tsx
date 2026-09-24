@@ -1,7 +1,6 @@
 import { useQueries } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import { ChevronRightIcon, ListChecksIcon } from "@/shared/components/icons"
-import * as React from "react"
 
 import {
   Collapsible,
@@ -48,13 +47,14 @@ export function SidebarTasksSection({
         )
       : [],
   })
-  const rows = React.useMemo(() => {
-    const payloads = queries
-      .map((query) => query.data)
-      .filter((payload): payload is DatabaseExportPayload => Boolean(payload))
-      .filter((payload) => getTaskDatabaseSchema(payload).missing.length === 0)
-    return filterMyTaskRows(buildTaskRows(payloads), session?.user?.id ?? null).slice(0, limit)
-  }, [limit, queries, session?.user?.id])
+  const payloads = queries
+    .map((query) => query.data)
+    .filter((payload): payload is DatabaseExportPayload => Boolean(payload))
+    .filter((payload) => getTaskDatabaseSchema(payload).missing.length === 0)
+  const rows = filterMyTaskRows(
+    buildTaskRows(payloads),
+    session?.user?.id ?? null,
+  ).slice(0, limit)
 
   return (
     <Collapsible asChild onOpenChange={setOpen} open={open}>

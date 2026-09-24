@@ -21,7 +21,10 @@ import {
 } from "@/shared/ui/select"
 
 import { calendarSelectionKey } from "./calendar-selection"
-import { useCalendarAccounts } from "./use-calendar-accounts"
+import {
+  calendarSourcesQueryKey,
+  useCalendarAccounts,
+} from "./use-calendar-accounts"
 import { useCalendarCatalog } from "./use-calendar-catalog"
 import { useCalendarPreferences } from "../preferences/use-calendar-preferences"
 import { requestCalendarNotificationPermission } from "../reminders/notification-delivery"
@@ -42,7 +45,7 @@ export function CalendarConnectionStatus({
 
   useEffect(() => {
     if (search.connection) {
-      void client.invalidateQueries({ queryKey: ["calendar", "sources"] })
+      void client.invalidateQueries({ queryKey: calendarSourcesQueryKey })
     }
   }, [search.connection, client])
 

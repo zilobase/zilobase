@@ -29,7 +29,6 @@ import {
   type AiAgentProfileDetail,
   type AgentSettingsTab,
   type AgentSettingsEvent,
-  type AgentSettingsVersion,
   type AgentSettingsDefinition,
 } from "@zilobase/features/ai-chat";
 import { PageEditorPane } from "@/features/pages/pane/page-editor-pane";
@@ -39,6 +38,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
 import {
   useSettingsDraft,
   isSettingsEditing,
+  agentSettingsVersionsQueryOptions,
 } from "../use-settings-draft";
 import { SettingsConnectors } from "./settings-connectors";
 import { PersonalMcpActivity, AgentMcpActivity } from "./mcp-connections";
@@ -81,14 +81,13 @@ function ScopedAgentSettingsPage({
   }, [scope]);
   const navigate = useNavigate();
   const { apiFetch } = useZilobaseFeatures();
-  const versions = useQuery({
-    queryKey: [...draft.key, "versions"],
-    enabled: tab === "versions" && !!draft.state,
-    queryFn: () =>
-      apiFetch<{ versions: AgentSettingsVersion[] }>(`${draft.base}/versions`, {
-        headers: draft.headers,
-      }),
-  });
+  const versions = useQuery(
+    agentSettingsVersionsQueryOptions(
+      apiFetch,
+      draft,
+      tab === "versions" && Boolean(draft.state),
+    ),
+  );
   React.useEffect(() => setTab(normalizeSettingsTab(initialTab)), [initialTab]);
   const selectTab = (next: AgentSettingsTab) => {
     setTab(next);

@@ -55,7 +55,9 @@ test("bootstrap fetch parses and validates", async () => {
     "session-1",
     { databaseId: "database-1", viewId: "view-1" },
   );
-  const data = await options.queryFn();
+  const data = await options.queryFn!({
+    signal: new AbortController().signal,
+  } as never);
   assert.deepEqual(data, databaseBootstrapResponseSchema.parse(bootstrap));
   assert.equal(
     seen[0],
@@ -81,7 +83,9 @@ test("bootstrap prefer-newest guard keeps newer cached version", async () => {
       scope,
       queryClient,
     );
-    const data = await options.queryFn();
+    const data = await options.queryFn!({
+      signal: new AbortController().signal,
+    } as never);
     assert.equal(data.database.version, 3);
   } finally {
     queryClient.clear();

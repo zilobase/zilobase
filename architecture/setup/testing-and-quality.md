@@ -2,7 +2,7 @@
 
 The root scripts compose workspace checks. Server tests use Vitest, packages use their configured Node/tsx runners, web tests use a custom esbuild-backed runner, and Rust uses Cargo. Source-string assertions prove source structure only. `test:tooling`, included in `verify:core`, runs development-profile tests, [self-host cookie tests](../../scripts/selfhost/cookie-jar.test.mjs) and [version setter tests](../../scripts/release/set-version.test.mjs). These unit tests use controlled inputs and temporary files; self-host deployment, upgrade, and packaged desktop checks remain separate integration commands requiring their corresponding local environments.
 
-The root `lint` command runs Oxlint over the web source. [Oxlint configuration](../../.oxlintrc.json) registers `@shadcn/lint` and points component discovery at the web shared UI alias. Design-system rule policy stays in that configuration; the registration itself does not enable a new `@shadcn/lint` rule.
+The root `lint` command runs Oxlint over the web and shared feature-package sources. [Oxlint configuration](../../.oxlintrc.json) registers `@shadcn/lint` and the official `@tanstack/eslint-plugin-query`. It points component discovery at the web shared UI alias and enforces TanStack Query's strict query-key, option-factory, stable-dependency, property-order and query-function rules. Package unit-test files remain covered by their TypeScript and test runners rather than the application-oriented query lint rules.
 
 ## Ownership
 

@@ -10,7 +10,7 @@ import { getApiRequestHeaders, toApiUrl } from "@/platform/network/api";
 import { desktopNetworkFetch } from "@/platform/network";
 import * as React from "react";
 import { useParams, useRouter, useRouterState } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "@zilobase/features";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
 import {
@@ -185,6 +185,26 @@ function CustomAgentWorkspace({ agentId }: { agentId: string }) {
   );
 }
 const noop = () => {};
+
+function customAgentConversationQueryOptions(
+  apiFetch: ReturnType<typeof useZilobaseFeatures>["apiFetch"],
+  workspaceId: string | null | undefined,
+  agentId: string,
+) {
+  return queryOptions({
+    queryFn: ({ signal }) =>
+      apiFetch<{ messages: CustomAgentConversationMessage[] }>(
+        `/api/ai/agents/${encodeURIComponent(agentId)}/conversation`,
+        {
+          headers: { "x-zilobase-workspace-id": workspaceId ?? "" },
+          signal,
+        },
+      ),
+    queryKey: ["custom-agent-chat", workspaceId, agentId] as const,
+    refetchInterval: 1_000,
+  });
+}
+
 function AgentChat({
   agentId,
   header,
@@ -199,15 +219,9 @@ function AgentChat({
   const [sending, setSending] = React.useState(false);
   const abort = React.useRef<AbortController | null>(null);
   const run = useStartCustomAgentRun(agentId);
-  const conversation = useQuery({
-    queryKey: ["custom-agent-chat", workspaceId, agentId],
-    queryFn: () =>
-      apiFetch<{ messages: CustomAgentConversationMessage[] }>(
-        `/api/ai/agents/${encodeURIComponent(agentId)}/conversation`,
-        { headers: { "x-zilobase-workspace-id": workspaceId ?? "" } },
-      ),
-    refetchInterval: 1000,
-  });
+  const conversation = useQuery(
+    customAgentConversationQueryOptions(apiFetch, workspaceId, agentId),
+  );
   const [text, setText] = React.useState("");
   const [model, setModel] = React.useState("auto");
   const [selectorOpen, setSelectorOpen] = React.useState(false);

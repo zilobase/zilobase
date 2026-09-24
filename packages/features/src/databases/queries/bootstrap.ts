@@ -1,4 +1,4 @@
-import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
 
 import { useZilobaseFeatures, type ApiFetcher } from "../../shared/context";
 import { useDatabaseSessionId } from "./session";
@@ -36,13 +36,14 @@ export function databaseBootstrapQueryOptions(
   queryClient?: QueryClient,
 ) {
   const queryKey = databaseBootstrapQueryKey(sessionId, scope);
-  return {
+  return queryOptions({
     queryKey,
     staleTime: 30_000,
-    queryFn: async (): Promise<DatabaseBootstrapResponse> => {
+    queryFn: async ({ signal }): Promise<DatabaseBootstrapResponse> => {
       const incoming = databaseBootstrapResponseSchema.parse(
         await apiFetch<DatabaseBootstrapResponse>(
           databaseBootstrapPath(scope),
+          { signal },
         ),
       );
       // Prefer-newest guard: out-of-order GETs must not regress cache.
@@ -58,7 +59,7 @@ export function databaseBootstrapQueryOptions(
       }
       return incoming;
     },
-  };
+  });
 }
 
 export function useDatabaseBootstrap(

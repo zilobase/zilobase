@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import {
@@ -30,12 +35,16 @@ type InstanceSettingsResponse = {
   };
 };
 
+const instanceSettingsQueryOptions = () =>
+  queryOptions({
+    queryFn: ({ signal }) =>
+      apiFetch<InstanceSettingsResponse>("/api/instance/settings", { signal }),
+    queryKey: ["instance", "settings"] as const,
+  });
+
 export function RegistrationSettingsSection() {
   const queryClient = useQueryClient();
-  const settingsQuery = useQuery({
-    queryKey: ["instance", "settings"],
-    queryFn: () => apiFetch<InstanceSettingsResponse>("/api/instance/settings"),
-  });
+  const settingsQuery = useQuery(instanceSettingsQueryOptions());
   const updateSettings = useMutation({
     mutationFn: (registrationMode: RegistrationMode) =>
       apiFetch<InstanceSettingsResponse>("/api/instance/settings", {
@@ -44,7 +53,7 @@ export function RegistrationSettingsSection() {
         method: "PATCH",
       }),
     onSuccess: (response) => {
-      queryClient.setQueryData(["instance", "settings"], response);
+      queryClient.setQueryData(instanceSettingsQueryOptions().queryKey, response);
       toast.success("Registration settings updated.");
     },
     onError: (error) => {

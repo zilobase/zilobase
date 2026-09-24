@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { queryOptions, useMutation, useQuery } from "@tanstack/react-query"
 
 import { useZilobaseFeatures } from  "../../shared/context"
 import type {
@@ -148,12 +148,17 @@ export function useStartSlackAutomationOauth(databaseId: string, dataSourceId: s
 
 export function useSlackAutomationChannels(databaseId: string, dataSourceId: string, connectionId: string) {
   const { apiFetch } = useZilobaseFeatures()
-  return useQuery({
+  return useQuery(queryOptions({
     enabled: Boolean(databaseId && dataSourceId && connectionId),
-    queryFn: () => apiFetch<{ channels: SlackAutomationChannel[] }>(
+    queryFn: ({ signal }) => apiFetch<{ channels: SlackAutomationChannel[] }>(
       `/databases/${encoded(databaseId)}/automation-slack/connections/${encoded(connectionId)}/channels?dataSourceId=${encoded(dataSourceId)}`,
+      { signal },
     ),
-    queryKey: [...databaseAutomationKeys.all, "slack-channels", databaseId, dataSourceId, connectionId],
+    queryKey: databaseAutomationKeys.slackChannels(
+      databaseId,
+      dataSourceId,
+      connectionId,
+    ),
     staleTime: 60_000,
-  })
+  }))
 }

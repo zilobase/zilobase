@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { queryOptions, useMutation, useQuery } from "@tanstack/react-query"
 
 import { useZilobaseFeatures } from "../shared/context"
 import {
@@ -31,20 +31,29 @@ type SavePageLayoutInput = {
   scopeId: string
 }
 
-export function useResolvedPageLayout(target: PageLayoutTarget) {
-  const { apiFetch } = useZilobaseFeatures()
-
-  return useQuery({
-    queryKey: pageLayoutKeys.resolved(target),
+function resolvedPageLayoutQueryOptions(
+  apiFetch: ReturnType<typeof useZilobaseFeatures>["apiFetch"],
+  target: PageLayoutTarget,
+) {
+  return queryOptions({
     enabled: Boolean(target.pageId || target.databaseId),
     queryFn: ({ signal }) => {
       const params = new URLSearchParams()
       if (target.pageId) params.set("pageId", target.pageId)
       if (target.databaseId) params.set("databaseId", target.databaseId)
-      return apiFetch<ResolvedPageLayout>(`/page-layouts/resolve?${params}`, { signal })
+      return apiFetch<ResolvedPageLayout>(`/page-layouts/resolve?${params}`, {
+        signal,
+      })
     },
+    queryKey: pageLayoutKeys.resolved(target),
     staleTime: 30_000,
   })
+}
+
+export function useResolvedPageLayout(target: PageLayoutTarget) {
+  const { apiFetch } = useZilobaseFeatures()
+
+  return useQuery(resolvedPageLayoutQueryOptions(apiFetch, target))
 }
 
 export function useSavePageLayout() {

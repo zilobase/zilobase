@@ -1,7 +1,7 @@
 import { recoverSettingsDraft, settingsDraftVersionChanged } from "./model/draft-recovery";
 import * as React from "react";
 import { settingsDraftSummary } from "./model/draft-summary";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryOptions, useQuery, useMutation } from "@tanstack/react-query";
 import { useZilobaseFeatures } from "@zilobase/features";
 import { useSession } from "@zilobase/features/auth/react";
 import { useActiveWorkspaceId } from "@zilobase/features/workspaces/react";
@@ -9,9 +9,64 @@ import type {
   AgentSettingsDefinition,
   AgentSettingsState,
   AgentSettingsEvent,
+  AgentSettingsVersion,
 } from "@zilobase/features/ai-chat";
 
 const editingScopes = new Set<string>();
+const agentSettingsQueryKey = (
+  workspaceId: string | null | undefined,
+  userId: string | null | undefined,
+  scope: string,
+) => ["agent-settings", workspaceId, userId, scope] as const;
+
+const agentSettingsVersionsQueryKey = (key: readonly unknown[]) =>
+  [...key, "versions"] as const;
+
+function settingsDraftQueryOptions(
+  apiFetch: ReturnType<typeof useZilobaseFeatures>["apiFetch"],
+  workspaceId: string | null | undefined,
+  userId: string | null | undefined,
+  scope: string,
+) {
+  return queryOptions({
+    enabled: Boolean(workspaceId && userId),
+    queryFn: ({ signal }) =>
+      apiFetch<AgentSettingsState>(
+        `/api/ai/settings/${encodeURIComponent(scope)}/draft`,
+        {
+          headers: { "x-zilobase-workspace-id": workspaceId ?? "" },
+          signal,
+        },
+      ),
+    queryKey: agentSettingsQueryKey(workspaceId, userId, scope),
+    refetchInterval: 2_000,
+    staleTime: 0,
+  });
+}
+
+export function agentSettingsVersionsQueryOptions(
+  apiFetch: ReturnType<typeof useZilobaseFeatures>["apiFetch"],
+  draft: {
+    base: string;
+    headers: Record<string, string>;
+    key: readonly unknown[];
+    state: AgentSettingsState | undefined;
+  },
+  enabled: boolean,
+) {
+  const { base, headers, key } = draft;
+
+  return queryOptions({
+    enabled,
+    queryFn: ({ signal }) =>
+      apiFetch<{ versions: AgentSettingsVersion[] }>(
+        `${base}/versions`,
+        { headers, signal },
+      ),
+    queryKey: agentSettingsVersionsQueryKey(key),
+  });
+}
+
 export const isSettingsEditing = (scope: string) => editingScopes.has(scope);
 export function emitSettingsEvent(event: AgentSettingsEvent) {
   if (event.status === "editing") editingScopes.add(event.scope);
@@ -27,18 +82,13 @@ export function useSettingsDraft(scope: string) {
   const workspaceId = useActiveWorkspaceId();
   const { data: session } = useSession();
   const userId = session?.user?.id;
-  const key = ["agent-settings", workspaceId, userId, scope];
+  const key = agentSettingsQueryKey(workspaceId, userId, scope);
   const storageKey = JSON.stringify(key);
   const base = `/api/ai/settings/${encodeURIComponent(scope)}`;
   const headers = { "x-zilobase-workspace-id": workspaceId ?? "" };
-  const query = useQuery({
-    queryKey: key,
-    enabled: !!workspaceId && !!userId,
-    queryFn: ({ signal }) =>
-      apiFetch<AgentSettingsState>(`${base}/draft`, { signal, headers }),
-    staleTime: 0,
-    refetchInterval: 2000,
-  });
+  const query = useQuery(
+    settingsDraftQueryOptions(apiFetch, workspaceId, userId, scope),
+  );
   const [state, setState] = React.useState<AgentSettingsState>();
   const [reviewOpen, setReviewOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -235,7 +285,9 @@ export function useSettingsDraft(scope: string) {
       void queryClient.invalidateQueries({
         queryKey: ["workspaces", workspaceId],
       });
-      void queryClient.invalidateQueries({ queryKey: [...key, "versions"] });
+      void queryClient.invalidateQueries({
+        queryKey: agentSettingsVersionsQueryKey(key),
+      });
     },
     onError: (e) => setError(e.message),
   });
