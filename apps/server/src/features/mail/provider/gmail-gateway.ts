@@ -7,6 +7,12 @@ import { getRequiredStringEnv, type RuntimeEnv } from "../../../shared/config/co
 import { requestSignal } from "../../../shared/http/request";
 import { invalidateDatabaseAutomationDependencies } from "../../automations/service";
 import { decryptMailSecret } from "./security/mail-credentials";
+import {
+  createGmailQuotaGuard,
+  gmailQuotaUnits,
+  type GmailQuotaGuard,
+  type GmailTrafficClass,
+} from "./gmail-quota";
 
 const GMAIL_API_ORIGIN = "https://gmail.googleapis.com";
 const GMAIL_BATCH_URL = "https://gmail.googleapis.com/batch/gmail/v1";
@@ -94,6 +100,7 @@ export class GmailApiError extends Error {
 export async function createGmailGateway(
   env: RuntimeEnv,
   connection: GmailConnectionRow,
+  options: { trafficClass?: GmailTrafficClass } = {},
   fetcher: typeof fetch = fetch,
 ) {
   const credentialVersion = [
@@ -157,7 +164,11 @@ export async function createGmailGateway(
       }
     },
   );
-  return new GmailGateway(accessToken, fetcher);
+  return new GmailGateway(
+    accessToken,
+    fetcher,
+    createGmailQuotaGuard(connection.googleSubject, options.trafficClass ?? "foreground"),
+  );
 }
 
 export async function getCachedGmailAccessToken(
@@ -254,6 +265,7 @@ export class GmailGateway {
   constructor(
     private readonly accessToken: string,
     fetcher: typeof fetch = fetch,
+    private readonly quota?: GmailQuotaGuard,
   ) {
     this.fetcher = fetcher.bind(globalThis);
   }
@@ -514,6 +526,7 @@ export class GmailGateway {
     body: unknown,
     method: "DELETE" | "PATCH" | "POST" | "PUT" = "POST",
   ) {
+    await this.reserve(path, method);
     let response: Response;
     try {
       response = await this.fetcher(new URL(path, GMAIL_API_ORIGIN).toString(), {
@@ -529,18 +542,22 @@ export class GmailGateway {
     } catch (error) {
       throw normalizeGmailTransportError(error);
     }
-    if (!response.ok)
-      throw normalizeGmailError(
+    if (!response.ok) {
+      const error = normalizeGmailError(
         response.status,
         undefined,
         response.headers.get("retry-after"),
         await response.json().catch(() => null),
       );
+      await this.recordQuotaFailure(error);
+      throw error;
+    }
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   }
 
   private async request(path: string, operation?: "history") {
+    await this.reserve(path, "GET");
     let lastError: GmailApiError | null = null;
     for (let attempt = 0; attempt <= SAFE_READ_RETRIES; attempt += 1) {
       let response: Response;
@@ -551,7 +568,10 @@ export class GmailGateway {
         });
       } catch (error) {
         lastError = normalizeGmailTransportError(error);
-        if (attempt < SAFE_READ_RETRIES) continue;
+        if (attempt < SAFE_READ_RETRIES) {
+          await this.retryDelay(attempt);
+          continue;
+        }
         throw lastError;
       }
       if (response.ok) return response;
@@ -561,8 +581,10 @@ export class GmailGateway {
         response.headers.get("retry-after"),
         await response.json().catch(() => null),
       );
+      if (error.code === "quota_exceeded") await this.recordQuotaFailure(error);
       if (error.code === "quota_exceeded" || !error.retryable || attempt === SAFE_READ_RETRIES)
         throw error;
+      await this.retryDelay(attempt);
       lastError = error;
     }
     throw lastError ?? new GmailApiError("Gmail request failed.", 502, "provider_error");
@@ -570,6 +592,7 @@ export class GmailGateway {
 
   private async batchGetThreads(threadIds: string[], format: "full" | "metadata") {
     if (!threadIds.length) return [];
+    await this.quota?.reserve(gmailQuotaUnits("/batch/gmail/v1", "POST", threadIds.length));
     const boundary = `zilobase_${crypto.randomUUID().replaceAll("-", "")}`;
     const body = `${threadIds
       .map((threadId, index) => {
@@ -604,7 +627,10 @@ export class GmailGateway {
         });
       } catch (error) {
         lastError = normalizeGmailTransportError(error);
-        if (attempt < SAFE_READ_RETRIES) continue;
+        if (attempt < SAFE_READ_RETRIES) {
+          await this.retryDelay(attempt);
+          continue;
+        }
         throw lastError;
       }
       if (!response.ok) {
@@ -637,9 +663,30 @@ export class GmailGateway {
         !lastError.retryable ||
         attempt === SAFE_READ_RETRIES
       )
+        await this.recordQuotaFailure(lastError);
+      if (
+        lastError.code === "quota_exceeded" ||
+        !lastError.retryable ||
+        attempt === SAFE_READ_RETRIES
+      )
         throw lastError;
+      await this.retryDelay(attempt);
     }
     throw lastError ?? new GmailApiError("Gmail batch request failed.", 502, "provider_error");
+  }
+
+  private reserve(path: string, method: string) {
+    return this.quota?.reserve(gmailQuotaUnits(path, method)) ?? Promise.resolve();
+  }
+
+  private recordQuotaFailure(error: GmailApiError) {
+    return this.quota?.recordQuotaFailure(error) ?? Promise.resolve();
+  }
+
+  private retryDelay(attempt: number) {
+    if (!this.quota) return Promise.resolve();
+    const maximum = 1_000 * 2 ** attempt;
+    return new Promise<void>((resolve) => setTimeout(resolve, Math.floor(Math.random() * maximum)));
   }
 }
 

@@ -392,7 +392,7 @@ async function processClaimedMailDatabaseSync(
     threadId: claimed.gmailThreadId,
     viewId: claimed.viewId,
   });
-  const gateway = await createGmailGateway(env, job.account);
+  const gateway = await createGmailGateway(env, job.account, { trafficClass: "background" });
   const normalized = normalizeGmailThread(
     await gateway.getThread(claimed.gmailThreadId, "full"),
     true,

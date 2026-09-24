@@ -110,7 +110,7 @@ export async function advanceMailIndex(
   let nextAdvanceAt: Date | null = null;
   try {
     try {
-      const gateway = await createGmailGateway(env, account);
+      const gateway = await createGmailGateway(env, account, { trafficClass: "background" });
       if (state.status === "ready" || state.status === "syncing") {
         state = await advanceHistory(env, gateway, state);
       } else {

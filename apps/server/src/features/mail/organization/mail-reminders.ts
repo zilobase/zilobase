@@ -138,7 +138,7 @@ export async function advanceDueMailReminders(env: RuntimeEnv, limit = 25) {
         bindingId: row.bindingId,
         connectionId: row.account.id,
         env,
-        gateway: await createGmailGateway(env, row.account),
+        gateway: await createGmailGateway(env, row.account, { trafficClass: "background" }),
         userId: row.userId,
         workspaceId: row.workspaceId,
       });
