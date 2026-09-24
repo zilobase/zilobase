@@ -191,7 +191,8 @@ test subscription only when push delivery itself must be tested.
 
 ## 6. Operations and recovery
 
-Zilobase renews watches, advances full-mailbox indexes, and drains the database
+Zilobase renews watches, advances bounded recent-mail indexes and requested
+thread hydration, and drains the database
 sync outbox from the Node maintenance loop. Alternate runtime adapters must invoke the exported
 `renewGmailWatches`, `advancePendingMailSyncs`, and
 `drainMailDatabaseSyncOutbox` operations at least once per minute. These
@@ -232,15 +233,15 @@ Complete every item with a dedicated test mailbox before production rollout:
 - [ ] Connect different Google identities in two workspaces and confirm neither workspace can read the other's connection, views, properties, or mail.
 - [ ] Reuse one Google identity in two workspaces and confirm each workspace keeps independent views, filters, groups, properties, hover actions, and database-sync settings.
 - [ ] Connect from desktop and confirm the instance-bound return opens Mail.
-- [ ] Confirm the recent Inbox becomes usable before progressive All Mail backfill completes; load more, open a thread, and reload from cache.
+- [ ] Confirm recent Inbox and Sent mail plus drafts become usable before bounded metadata indexing completes; open a partial older thread and confirm it hydrates on demand.
 - [ ] Change the mailbox in Gmail and confirm authenticated push triggers incremental sync.
-- [ ] Create, update, reopen, and delete a Gmail draft.
-- [ ] Send a new message with To/Cc/Bcc and an attachment; verify one Sent copy.
+- [ ] Create, update, reopen, and delete a Gmail draft from two logged-in devices; confirm stale edits are rejected and unsaved offline edits recover locally.
+- [ ] Send a rich-text message with To/Cc/Bcc and an attachment; exercise Undo send and verify one Sent copy.
 - [ ] Reply, reply all, and forward; verify Gmail threading.
 - [ ] Mark read/unread, star, archive, trash/restore, spam, and batch-modify threads.
 - [ ] Create, rename, recolor, hide, and delete a custom label.
 - [ ] Download an attachment and confirm no attachment bytes remain in IndexedDB.
-- [ ] Go offline and confirm cached mail remains readable while every mutation is disabled.
+- [ ] Go offline and confirm cached mail remains readable; queue read, star, archive, label and trash changes, reload, reconnect, and confirm the durable outbox drains once.
 - [ ] Disconnect and confirm Google revocation is attempted and the mail IndexedDB is removed.
 - [ ] Reconnect, revoke access from the Google account, and confirm Zilobase requests reconnection.
 - [ ] Confirm watch renewal and realtime reconnect metrics contain no mailbox PII.
