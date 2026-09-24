@@ -1,6 +1,6 @@
 import { AutomationPickerTrigger } from "../automation-picker-controls";
 import { actionProperties, propertyActionLabel, actionValuesFromLiteral, actionLiteralFromValues } from "./property-action-model";
-import { AutomationPropertyIcon, automationMenuItemClassName, TriggerOptionRow } from "../automation-picker-controls";
+import { AutomationPropertyIcon, TriggerOptionRow } from "../automation-picker-controls";
 import { useState } from "react";
 import type { DatabaseAutomationCatalog } from "@zilobase/features/automations";
 
@@ -132,9 +132,9 @@ export function ActionPicker({ catalog, dataSourceId, label = "Add action", onSe
   return (
     <Popover modal open={open} onOpenChange={handleOpenChange}>
       <AutomationPickerTrigger kind="action" variant={variant}><span className="truncate">{label}</span></AutomationPickerTrigger>
-      <PopoverContent align="start" className="w-72 gap-0 p-0">
+      <PopoverContent align="start" padding="none" variant="menu">
         {step === "root" ? (
-          <Command>
+          <Command variant="menu">
             <CommandInput autoFocus placeholder="Search actions…" />
             <CommandList
               className="max-h-[min(20rem,calc(100dvh-10rem))] touch-pan-y overscroll-contain"
@@ -148,7 +148,6 @@ export function ActionPicker({ catalog, dataSourceId, label = "Add action", onSe
                     const availability = available.get(type);
                     return (
                       <CommandItem
-                        className={automationMenuItemClassName}
                         data-checked={selection?.action.type === type}
                         disabled={availability?.available === false}
                         key={type}
@@ -168,7 +167,6 @@ export function ActionPicker({ catalog, dataSourceId, label = "Add action", onSe
                   <CommandGroup heading="Edit property">
                     {actionProperties(catalog).map((property) => (
                       <CommandItem
-                        className={automationMenuItemClassName}
                         data-checked={selection?.action.type === "edit_trigger_page"
                           && selection.action.operations[0]?.propertyId === property.id}
                         key={property.id}
@@ -218,14 +216,13 @@ function ActionPropertyValueStep({ catalog, onChange, property, values }: {
     const selected = new Set(values);
     const multiple = property.type === "multi_select" || property.type === "person";
     return (
-      <Command>
+      <Command variant="menu">
         <CommandInput autoFocus placeholder={`Search ${property.name.toLowerCase()}…`} />
-        <CommandList className="max-h-[min(20rem,calc(100dvh-10rem))] touch-pan-y overscroll-contain p-1">
+        <CommandList className="max-h-[min(20rem,calc(100dvh-10rem))] touch-pan-y overscroll-contain">
           <CommandEmpty>No options found.</CommandEmpty>
           <CommandGroup>
             {options.map((option) => (
               <CommandItem
-                className={automationMenuItemClassName}
                 key={option.id}
                 onSelect={() => onChange(
                   multiple

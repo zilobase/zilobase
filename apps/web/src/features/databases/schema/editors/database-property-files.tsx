@@ -198,12 +198,12 @@ export function DatabasePropertyFiles({
         }}
         sideOffset={0}
       >
-        <Tabs className="gap-0" defaultValue="upload">
-          <TabsList className="w-full overflow-hidden rounded-none border-b p-0.5">
-            <TabsTrigger className="flex-1" value="upload">
+        <Tabs defaultValue="upload">
+          <TabsList className="mx-3 mt-3">
+            <TabsTrigger value="upload">
               Upload
             </TabsTrigger>
-            <TabsTrigger className="flex-1" value="link">
+            <TabsTrigger value="link">
               Link
             </TabsTrigger>
           </TabsList>

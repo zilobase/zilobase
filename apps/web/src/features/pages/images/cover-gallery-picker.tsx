@@ -87,7 +87,7 @@ export function CoverGalleryPicker({
         }}
         value={config.kind}
       >
-        <TabsList className="w-full">
+        <TabsList width="full">
           <TabsTrigger value="solid">Solid</TabsTrigger>
           <TabsTrigger value="gradient">Gradient</TabsTrigger>
           <TabsTrigger value="dither">Dither</TabsTrigger>
@@ -292,7 +292,7 @@ function GradientControls({
         />
       <Field className="gap-1.5">
         <FieldLabel>Type</FieldLabel>
-        <ButtonGroup className="w-full">
+        <ButtonGroup variant="connected" width="full">
           {(["linear", "radial"] as const).map((style) => (
             <Button
               aria-pressed={config.style === style}

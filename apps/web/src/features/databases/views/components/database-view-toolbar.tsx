@@ -432,7 +432,7 @@ export function DatabaseViewToolbar({
                 <MoreHorizontal />
               </DatabaseViewToolbarButton>
             </DropDrawerTrigger>
-            <DropDrawerContent align="start" className="w-64">
+            <DropDrawerContent align="start" width="lg">
               <DropDrawerItem
                 disabled={!databaseId}
                 onSelect={() =>
@@ -465,7 +465,7 @@ export function DatabaseViewToolbar({
                   <Smile />
                   <span>Edit icon</span>
                 </DropDrawerSubTrigger>
-                <DropDrawerSubContent className="w-auto overflow-hidden p-0">
+                <DropDrawerSubContent className="overflow-hidden" padding="none" width="auto">
                   {renderDatabaseEmojiPicker(() => setTitleActionsOpen(false))}
                 </DropDrawerSubContent>
               </DropDrawerSub>
@@ -506,7 +506,7 @@ export function DatabaseViewToolbar({
               }}
               value={activeViewTabId}
             >
-              <TabsList className="w-max min-w-0 justify-start">
+              <TabsList className="min-w-0" width="max">
                 {visibleViewTabs.map((view) => {
                   const isActiveView = view.id === activeViewTabId;
                   const ViewIcon =
@@ -675,7 +675,6 @@ export function DatabaseViewToolbar({
                           <TabsTrigger
                             aria-expanded={openViewMenuId === view.id}
                             aria-haspopup="menu"
-                            className="shrink-0 grow-0 gap-2 px-3"
                             onClick={handleViewClick}
                             onContextMenu={handleViewContextMenu}
                             onFocus={() => prefetchDatabaseView(view.id)}
@@ -683,6 +682,7 @@ export function DatabaseViewToolbar({
                             onMouseEnter={() => prefetchDatabaseView(view.id)}
                             onPointerDownCapture={handleViewPointerDownCapture}
                             value={view.id}
+                            width="content"
                           >
                             {view.icon ? (
                               <PageIconDisplay size="sm" value={view.icon} />
@@ -703,8 +703,8 @@ export function DatabaseViewToolbar({
                       </DropDrawerTrigger>
                       <DropDrawerContent
                         align="start"
-                        className="w-72"
                         onCloseAutoFocus={(event) => event.preventDefault()}
+                        width="default"
                       >
                         <DatabaseViewTabAppearance
                           view={view}
@@ -719,7 +719,7 @@ export function DatabaseViewToolbar({
                               label="Display as"
                             />
                           </DropDrawerSubTrigger>
-                          <DropDrawerSubContent className="w-56">
+                          <DropDrawerSubContent width="md">
                             {(
                               [
                                 "table",

@@ -28,7 +28,7 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
-import { menuViewportClassName } from "@/shared/ui/menu-styles";
+import { menuItemVariants, menuViewportClassName } from "@/shared/ui/menu-styles";
 
 const DropDrawerContext = React.createContext<{
   defaultSubDisplayMode: "inline" | "nested";
@@ -156,6 +156,8 @@ function MobileDropDrawerContent({
     side: _side,
     sideOffset: _sideOffset,
     onCloseAutoFocus: _onCloseAutoFocus,
+    width: _width,
+    padding: _padding,
     ...drawerContentProps
   } = props as React.ComponentProps<typeof DropdownMenuContent> &
     React.ComponentProps<typeof DrawerContent>;
@@ -486,6 +488,7 @@ function DropDrawerItem({
   onClick,
   icon,
   variant = "default",
+  size,
   inset,
   disabled,
   ...props
@@ -494,6 +497,7 @@ function DropDrawerItem({
 }) {
   const { inline, isMobile } = useDropDrawerContext();
   const isInSubmenu = React.useContext(SubmenuPanelContext);
+  const resolvedSize = size ?? (isMobile || inline ? "comfortable" : "default");
 
   if (isMobile || inline) {
     const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -507,13 +511,14 @@ function DropDrawerItem({
       <div
         data-slot="drop-drawer-item"
         data-variant={variant}
+        data-size={resolvedSize}
         data-inset={inset}
         data-disabled={disabled}
         className={cn(
-          "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-content-primary outline-hidden select-none hover:bg-action-neutral-hover active:bg-action-neutral-pressed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-content-secondary",
+          menuItemVariants({ size: resolvedSize, variant }),
+          "justify-between text-content-primary hover:bg-action-neutral-hover active:bg-action-neutral-pressed [&_svg]:size-4 [&_svg]:text-content-secondary",
           inset && "pl-8",
-          variant === "destructive" &&
-            "text-action-danger-text hover:bg-feedback-error-subtle hover:text-action-danger-text [&_svg]:text-action-danger-text",
+          variant === "destructive" && "hover:bg-feedback-error-subtle hover:text-action-danger-text",
           disabled &&
             "pointer-events-none text-content-secondary opacity-60 hover:bg-transparent",
           className,
@@ -542,6 +547,7 @@ function DropDrawerItem({
       onSelect={onSelect}
       onClick={onClick as React.MouseEventHandler<HTMLDivElement>}
       variant={variant}
+      size={resolvedSize}
       inset={inset}
       disabled={disabled}
       {...props}
@@ -858,13 +864,16 @@ function DropDrawerSubTrigger({
   className,
   inset,
   children,
+  size,
   ...props
 }: React.ComponentProps<typeof DropdownMenuSubTrigger> & {
   icon?: React.ReactNode;
+  size?: "default" | "comfortable";
 }) {
   const { inline, isMobile } = useDropDrawerContext();
   const submenuNavigation = React.useContext(SubmenuContext);
   const submenuDefinition = React.useContext(SubmenuDefinitionContext);
+  const resolvedSize = size ?? (isMobile || inline ? "comfortable" : "default");
 
   if (isMobile || inline) {
     const { onClick, ...restProps } = props;
@@ -887,8 +896,10 @@ function DropDrawerSubTrigger({
       <div
         data-slot="drop-drawer-sub-trigger"
         data-inset={inset}
+        data-size={resolvedSize}
         className={cn(
-          "my-0.5 flex min-h-9 cursor-pointer items-center justify-between gap-2 rounded-md px-2 py-2 text-[13px] text-content-primary outline-hidden select-none hover:bg-action-neutral-hover active:bg-action-neutral-pressed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-content-secondary",
+          menuItemVariants({ size: resolvedSize }),
+          "justify-between text-content-primary hover:bg-action-neutral-hover active:bg-action-neutral-pressed [&_svg]:size-4 [&_svg]:text-content-secondary",
           inset && "pl-8",
           className,
         )}
@@ -907,6 +918,7 @@ function DropDrawerSubTrigger({
       data-inset={inset}
       className={className}
       inset={inset}
+      size={resolvedSize}
       {...props}
     >
       {children}

@@ -37,6 +37,29 @@ The [manual checklist](../../docs/testing/dropdown-menus.md) maps consumers to
 application areas. Navigation behavior is covered by
 [dropdown tests](../../apps/web/test/shared/dropdown-navigation.test.mjs).
 
+## Shared button-group presentation
+
+[ButtonGroup](../../apps/web/src/shared/ui/button-group.tsx) owns connected,
+floating, plain and selection-toolbar geometry. Width and density are component
+props; grouped actions use `ButtonGroupItem`, nested action runs use
+`ButtonGroupSection`, and labels use the `ButtonGroupText` variants. Features may
+still position a group, but must not recreate its border, surface, radius,
+separator or joined-button behavior in feature CSS. The editor selection toolbar,
+mobile editor actions, database bulk-selection toolbar, calendar actions, cover
+controls and AI branch controls all consume this contract. Its variant coverage is
+in the [button-group tests](../../apps/web/test/shared/button-group.test.mjs).
+
+## Shared tab presentation
+
+[App tabs](../../apps/web/src/shared/ui/app-tabs.tsx) owns tab-list geometry,
+active and hover states, trigger sizing, overflow behavior and count badges. The
+Share dialog is the canonical default presentation. Consumers choose layout with
+`gap`, `width`, `align`, `overflow` and trigger `width` props; feature-level tab
+borders, square-corner overrides and duplicated badge classes are not supported.
+This keeps dialogs, sidebars, database views, editor pickers and settings screens
+on one visual contract. Coverage lives in the
+[tabs design-system tests](../../apps/web/test/shared/tabs-design-system.test.mjs).
+
 ## Calendar and the right dock
 
 [App layout](../../apps/web/src/app/shell/content/app-layout.tsx) installs the

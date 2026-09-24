@@ -128,11 +128,14 @@ function SidebarLayoutTab({ active, activeTabSettings, editing, onSelectTab, tab
       animate="animate"
       aria-current={active ? "page" : undefined}
       aria-label={tab.name}
-      className={getAppTabTriggerClassName(cn(
-        "min-w-8 grow-0 px-2 text-xs transition-[color,background-color,box-shadow]",
-        canDrag && "cursor-grab touch-none active:cursor-grabbing",
-        (sortable.isDragging || sortable.isOver) && "z-20 bg-action-neutral-hover",
-      ))}
+      className={getAppTabTriggerClassName(
+        cn(
+          "transition-[color,background-color,box-shadow]",
+          canDrag && "cursor-grab touch-none active:cursor-grabbing",
+          (sortable.isDragging || sortable.isOver) && "z-20 bg-action-neutral-hover",
+        ),
+        { size: "compact", width: "content" },
+      )}
       custom={active}
       initial={false}
       onClick={() => onSelectTab(tab.id)}

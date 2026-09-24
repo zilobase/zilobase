@@ -32,6 +32,7 @@ export function SlashCommandMenu({
 
   return (
     <Command
+      variant="menu"
       onValueChange={(value) => {
         const nextIndex = items.findIndex((item) => item.title === value)
 

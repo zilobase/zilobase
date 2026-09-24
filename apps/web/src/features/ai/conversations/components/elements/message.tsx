@@ -239,11 +239,9 @@ export const MessageBranchSelector = ({
 
   return (
     <ButtonGroup
-      className={cn(
-        "[&>*:not(:first-child)]:rounded-l-md [&>*:not(:last-child)]:rounded-r-md",
-        className
-      )}
+      className={className}
       orientation="horizontal"
+      variant="plain"
       {...props}
     />
   );
@@ -305,10 +303,8 @@ export const MessageBranchPage = ({
 
   return (
     <ButtonGroupText
-      className={cn(
-        "border-none bg-transparent text-content-secondary shadow-none",
-        className
-      )}
+      className={className}
+      variant="plain"
       {...props}
     >
       {currentBranch + 1} of {totalBranches}

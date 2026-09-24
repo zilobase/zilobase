@@ -336,7 +336,7 @@
   }
 
   .database-selection-toolbar {
-    @apply absolute flex min-w-0 items-center overflow-x-auto rounded-md border bg-surface-canvas shadow-lg;
+    @apply absolute;
     left: 0;
     top: 0;
     transform: translateY(calc(-100% - 0.5rem));
@@ -349,38 +349,14 @@
     z-index: 50;
   }
 
-  .database-selection-count,
-  .database-selection-property-action,
-  .database-selection-more {
-    @apply flex h-9 shrink-0 items-center gap-2 border-r px-3 text-sm transition-colors hover:bg-action-neutral-hover hover:text-action-on-neutral focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus-ring active:bg-action-neutral-pressed active:text-action-on-neutral disabled:cursor-not-allowed disabled:opacity-45;
-  }
-
-  .database-selection-count {
-    @apply font-medium text-action-selected-text;
-  }
-
-  .database-selection-property-group {
-    @apply relative flex min-w-0 items-center;
-  }
-
   .database-selection-menu-anchor {
     @apply pointer-events-none absolute size-px;
     bottom: 0;
     right: 0;
   }
 
-  .database-selection-property-action svg,
-  .database-selection-more svg,
   .database-selection-value-option svg {
     @apply size-4 shrink-0;
-  }
-
-  .database-selection-property-action span {
-    @apply max-w-36 truncate;
-  }
-
-  .database-selection-more {
-    @apply border-r-0 px-2.5;
   }
 
   .database-selection-value-option {

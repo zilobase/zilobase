@@ -1,8 +1,49 @@
 import * as React from "react"
 import { Popover as PopoverPrimitive } from "radix-ui"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/shared/lib/utils"
-import { menuSurfaceClassName, menuViewportClassName } from "@/shared/ui/menu-styles"
+import { menuSurfaceVariants, menuViewportClassName } from "@/shared/ui/menu-styles"
+
+const popoverContentVariants = cva(
+  "z-50 flex origin-(--radix-popover-content-transform-origin) flex-col rounded-lg bg-surface-overlay text-xs text-content-primary shadow-md ring-1 ring-stroke-default outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+  {
+    variants: {
+      width: {
+        default: "w-72",
+        sm: "w-44",
+        md: "w-56",
+        lg: "w-64",
+        xl: "w-80",
+        auto: "w-auto",
+        fit: "w-fit",
+      },
+      padding: {
+        none: "p-0",
+        menu: "p-1",
+        default: "p-2.5",
+        roomy: "p-3",
+        spacious: "p-4",
+      },
+      gap: {
+        none: "gap-0",
+        compact: "gap-1",
+        default: "gap-4",
+      },
+      variant: {
+        default: "",
+        menu: "text-[13px]",
+      },
+    },
+    defaultVariants: {
+      width: "default",
+      variant: "default",
+    },
+  },
+)
+
+const wideMenuViewportClassName =
+  "max-h-[min(36rem,calc(100vh-1rem),var(--radix-popover-content-available-height,100vh))] max-w-[calc(100vw-1rem)] overflow-x-hidden overflow-y-auto overscroll-contain"
 
 function Popover({
   ...props
@@ -21,10 +62,17 @@ function PopoverContent({
   align = "center",
   sideOffset = 4,
   variant = "default",
+  width = "default",
+  padding,
+  gap,
+  viewport = "menu",
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content> & {
-  variant?: "default" | "menu"
-}) {
+}: React.ComponentProps<typeof PopoverPrimitive.Content> &
+  VariantProps<typeof popoverContentVariants> & {
+    viewport?: "menu" | "wide"
+  }) {
+  const resolvedPadding = padding ?? (variant === "menu" ? "menu" : "default")
+  const resolvedGap = gap ?? (variant === "menu" ? "none" : "default")
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content
@@ -33,8 +81,16 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "z-50 flex w-72 origin-(--radix-popover-content-transform-origin) flex-col gap-4 rounded-lg bg-surface-overlay p-2.5 text-xs text-content-primary shadow-md ring-1 ring-stroke-default outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          variant === "menu" && [menuSurfaceClassName, menuViewportClassName, "gap-0 p-1 text-[13px]"],
+          popoverContentVariants({
+            gap: resolvedGap,
+            padding: resolvedPadding,
+            variant,
+            width,
+          }),
+          variant === "menu" && [
+            menuSurfaceVariants(),
+            viewport === "wide" ? wideMenuViewportClassName : menuViewportClassName,
+          ],
           className
         )}
         {...props}

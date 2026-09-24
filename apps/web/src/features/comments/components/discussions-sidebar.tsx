@@ -15,7 +15,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu"
-import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/app-tabs"
+import {
+  Tabs,
+  TabsBadge,
+  TabsList,
+  TabsTrigger,
+} from "@/shared/ui/app-tabs"
 import { usePageCommentController, usePageCommentsSnapshot } from "../context/page-comments-registry"
 import type { CommentThreadSnapshot } from "../model/yjs-comments"
 
@@ -121,7 +126,7 @@ export function DiscussionsSidebarPanel({
       </header>
 
       <Tabs
-        className="shrink-0 gap-0 border-b px-3"
+        className="shrink-0 px-3"
         onValueChange={(value) => {
           const nextStatus = value as DiscussionStatus
           setStatus(nextStatus)
@@ -131,24 +136,14 @@ export function DiscussionsSidebarPanel({
         }}
         value={status}
       >
-        <TabsList className="w-full justify-start gap-1">
-          <TabsTrigger
-            className="flex-none rounded-none px-1"
-            value="open"
-          >
+        <TabsList>
+          <TabsTrigger value="open">
             Open
-            <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] tabular-nums text-content-secondary">
-              {openCount}
-            </span>
+            <TabsBadge>{openCount}</TabsBadge>
           </TabsTrigger>
-          <TabsTrigger
-            className="flex-none rounded-none px-1"
-            value="resolved"
-          >
+          <TabsTrigger value="resolved">
             Resolved
-            <span className="rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] tabular-nums text-content-secondary">
-              {resolvedCount}
-            </span>
+            <TabsBadge>{resolvedCount}</TabsBadge>
           </TabsTrigger>
         </TabsList>
       </Tabs>

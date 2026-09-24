@@ -48,7 +48,7 @@ export function IconEmojiPicker({
   return (
     <div className={cn("flex w-72 flex-col", className)}>
       <Tabs onValueChange={setActiveTab} value={activeTab}>
-        <TabsList className="mx-2 mt-2 w-[calc(100%-1rem)]">
+        <TabsList className="mx-2 mt-2 w-[calc(100%-1rem)]" overflow="hidden">
           <TabsTrigger value="emoji">Emoji</TabsTrigger>
           <TabsTrigger value="icon">Icon</TabsTrigger>
           {allowUpload ? <TabsTrigger value="upload">Upload</TabsTrigger> : null}

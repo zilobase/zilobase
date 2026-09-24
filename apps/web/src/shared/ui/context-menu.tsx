@@ -3,9 +3,10 @@ import { ContextMenu as ContextMenuPrimitive } from "radix-ui"
 
 import { cn } from "@/shared/lib/utils"
 import {
-  menuSurfaceClassName,
+  menuSurfaceVariants,
+  menuContentVariants,
   menuViewportClassName,
-  menuItemClassName,
+  menuItemVariants,
   menuLabelClassName,
   menuSeparatorClassName,
 } from "@/shared/ui/menu-styles"
@@ -65,15 +66,19 @@ function ContextMenuRadioGroup({
 
 function ContextMenuContent({
   className,
+  width = "auto",
+  padding = "menu",
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
+  width?: "auto" | "sm" | "md" | "lg" | "default" | "xl" | "fit"
+  padding?: "none" | "menu" | "roomy" | "spacious"
 }) {
   return (
     <ContextMenuPrimitive.Portal>
       <ContextMenuPrimitive.Content
         data-slot="context-menu-content"
-        className={cn("z-50 max-h-(--radix-context-menu-content-available-height) min-w-32 origin-(--radix-context-menu-content-transform-origin) overflow-x-hidden overflow-y-auto p-1 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", menuSurfaceClassName, menuViewportClassName, className )}
+        className={cn("z-50 max-h-(--radix-context-menu-content-available-height) min-w-32 origin-(--radix-context-menu-content-transform-origin) overflow-x-hidden overflow-y-auto duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", menuContentVariants({ padding, width }), menuSurfaceVariants(), menuViewportClassName, className )}
         {...props}
       />
     </ContextMenuPrimitive.Portal>
@@ -84,10 +89,12 @@ function ContextMenuItem({
   className,
   inset,
   variant = "default",
+  size = "default",
   ...props
 }: React.ComponentProps<typeof ContextMenuPrimitive.Item> & {
   inset?: boolean
   variant?: "default" | "destructive"
+  size?: "default" | "comfortable"
 }) {
   return (
     <ContextMenuPrimitive.Item
@@ -95,8 +102,8 @@ function ContextMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        menuItemClassName,
-        "group/context-menu-item not-data-[variant=destructive]:focus:**:text-action-on-neutral data-inset:pl-7.5 data-[variant=destructive]:text-action-danger-text data-[variant=destructive]:focus:bg-feedback-error-subtle data-[variant=destructive]:focus:text-action-danger-text dark:data-[variant=destructive]:focus:bg-feedback-error-subtle data-[variant=destructive]:*:[svg]:text-action-danger-text",
+        menuItemVariants({ size, variant }),
+        "group/context-menu-item not-data-[variant=destructive]:focus:**:text-action-on-neutral data-inset:pl-7.5",
         className
       )}
       {...props}
@@ -117,7 +124,7 @@ function ContextMenuSubTrigger({
       data-slot="context-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        menuItemClassName,
+        menuItemVariants(),
         "not-data-[variant=destructive]:focus:**:text-action-on-neutral data-inset:pl-7.5 data-open:bg-action-neutral-hover data-open:text-action-on-neutral",
         className
       )}
@@ -131,13 +138,18 @@ function ContextMenuSubTrigger({
 
 function ContextMenuSubContent({
   className,
+  width = "auto",
+  padding = "menu",
   ...props
-}: React.ComponentProps<typeof ContextMenuPrimitive.SubContent>) {
+}: React.ComponentProps<typeof ContextMenuPrimitive.SubContent> & {
+  width?: "auto" | "sm" | "md" | "lg" | "default" | "xl" | "fit"
+  padding?: "none" | "menu" | "roomy" | "spacious"
+}) {
   return (
     <ContextMenuPrimitive.Portal>
       <ContextMenuPrimitive.SubContent
         data-slot="context-menu-sub-content"
-        className={cn("z-50 min-w-32 origin-(--radix-context-menu-content-transform-origin) overflow-hidden p-1 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", menuSurfaceClassName, menuViewportClassName, className )}
+        className={cn("z-50 min-w-32 origin-(--radix-context-menu-content-transform-origin) overflow-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", menuContentVariants({ padding, width }), menuSurfaceVariants(), menuViewportClassName, className )}
         {...props}
       />
     </ContextMenuPrimitive.Portal>
@@ -158,7 +170,7 @@ function ContextMenuCheckboxItem({
       data-slot="context-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        menuItemClassName,
+        menuItemVariants(),
         "pr-8 focus:**:text-action-on-neutral data-inset:pl-7.5",
         className
       )}
@@ -189,7 +201,7 @@ function ContextMenuRadioItem({
       data-slot="context-menu-radio-item"
       data-inset={inset}
       className={cn(
-        menuItemClassName,
+        menuItemVariants(),
         "pr-8 focus:**:text-action-on-neutral data-inset:pl-7.5",
         className
       )}

@@ -1,11 +1,16 @@
 import {
   useRef,
   useState,
-  type ButtonHTMLAttributes,
+  type ComponentProps,
   type ReactNode,
 } from "react"
 import { Check, Link2, List, Minus, MoreHorizontal, X } from "@/shared/components/icons"
 import { cn } from "@/shared/lib/utils"
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+  ButtonGroupSection,
+} from "@/shared/ui/button-group"
 import { Input } from "@/shared/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover"
 import {
@@ -35,21 +40,22 @@ function DatabaseSelectionPropertyTrigger({
   ...buttonProps
 }: {
   property: DatabasePropertyListItem
-} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "property">) {
+} & Omit<ComponentProps<typeof ButtonGroupItem>, "property">) {
   const PropertyIcon = getDatabasePropertyType(property.property.type).icon
 
   return (
-    <button
+    <ButtonGroupItem
       aria-label={`Edit ${property.property.name} for selected rows`}
-      className={cn("database-selection-property-action", className)}
+      className={cn("[&_span]:max-w-36 [&_span]:truncate", className)}
       disabled={disabled}
       title={disabled ? "This property can't be edited in bulk" : undefined}
       type="button"
+      variant="ghost"
       {...buttonProps}
     >
       <PropertyIcon />
       <span>{property.property.name}</span>
-    </button>
+    </ButtonGroupItem>
   )
 }
 
@@ -310,20 +316,21 @@ export function DatabaseTableSelectionToolbar({
   }
 
   return (
-    <div
+    <ButtonGroup
       aria-label="Selected row actions"
       className="database-selection-toolbar"
       role="toolbar"
+      variant="selection"
     >
-      <button
+      <ButtonGroupItem
         aria-label={`Clear selection of ${selectedCount} rows`}
-        className="database-selection-count"
         onClick={clearSelection}
+        tone="accent"
         type="button"
       >
         {selectedCount} selected
-      </button>
-      <div className="database-selection-property-group">
+      </ButtonGroupItem>
+      <ButtonGroupSection>
         {primary.map(renderAction)}
         <DropDrawer
           open={moreOpen}
@@ -333,13 +340,13 @@ export function DatabaseTableSelectionToolbar({
           }}
         >
           <DropDrawerTrigger asChild>
-            <button
+            <ButtonGroupItem
               aria-label="More selected row actions"
-              className="database-selection-more"
+              layout="icon"
               type="button"
             >
               <MoreHorizontal />
-            </button>
+            </ButtonGroupItem>
           </DropDrawerTrigger>
           <DropDrawerContent align="start" className="w-72">
             <div className="p-1">
@@ -413,7 +420,7 @@ export function DatabaseTableSelectionToolbar({
             value={menuSelectionValue.value}
           />
         ) : null}
-      </div>
-    </div>
+      </ButtonGroupSection>
+    </ButtonGroup>
   )
 }

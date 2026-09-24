@@ -501,12 +501,13 @@ export function MeetingView({
             }}
             value={activeTab}
           >
-            <TabsList className="min-w-0 w-full justify-start overflow-x-auto">
+            <TabsList overflow="scroll" width="full">
               {tabs.map((tab) => (
                 <TabsTrigger
-                  className="shrink-0 grow-0 gap-2 px-3 capitalize"
+                  className="capitalize"
                   key={tab}
                   value={tab}
+                  width="content"
                 >
                   {tab === "summary" ? (
                     <Sparkles className="size-4 shrink-0" />

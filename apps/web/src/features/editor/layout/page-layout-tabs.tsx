@@ -51,10 +51,8 @@ export function PageLayoutTabs({
     <div className="shrink-0 py-2">
       <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
         <Tabs className="min-w-0" onValueChange={onValueChange} value={value}>
-          <TabsList
-            className="min-w-0 justify-start overflow-x-auto"
-          >
-            <TabsTrigger className="shrink-0 grow-0 gap-2 px-3" value="content">
+          <TabsList overflow="scroll">
+            <TabsTrigger value="content" width="content">
               <FileText />
               <span>Content</span>
             </TabsTrigger>
@@ -74,9 +72,9 @@ export function PageLayoutTabs({
 
               return (
                 <TabsTrigger
-                  className="shrink-0 grow-0 gap-2 px-3"
                   key={tab.id}
                   value={tab.id}
+                  width="content"
                 >
                   <ViewIcon />
                   <span className="truncate">{tab.viewName}</span>

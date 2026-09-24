@@ -491,9 +491,12 @@ function ItemSharingTargets({
           </PopoverTrigger>
           <PopoverContent
             align="start"
-            className="w-[min(28rem,calc(100vw-3rem))] p-0"
+            className="w-[min(28rem,calc(100vw-3rem))]"
+            padding="none"
+            variant="menu"
+            viewport="wide"
           >
-            <Command>
+            <Command variant="menu">
               <CommandInput placeholder="Search by name or email..." />
               <CommandList>
                 <CommandEmpty>No members or agents found.</CommandEmpty>

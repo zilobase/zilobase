@@ -249,7 +249,7 @@ export function DatabaseViewSettingsMenu({
             right={visiblePropertyCount}
           />
         </DropDrawerSubTrigger>
-        <DropDrawerSubContent className="w-72">
+        <DropDrawerSubContent width="default">
           <DropDrawerItem disabled>
             <NameColumnGlyph />
             <span>{titlePropertyLabel}</span>
@@ -452,8 +452,8 @@ export function DatabaseViewSettingsMenu({
       <DropDrawerTrigger asChild>{trigger}</DropDrawerTrigger>
       <DropDrawerContent
         align="start"
-        className="w-72"
         onCloseAutoFocus={(event) => event.preventDefault()}
+        width="default"
       >
         {settingsContent}
       </DropDrawerContent>

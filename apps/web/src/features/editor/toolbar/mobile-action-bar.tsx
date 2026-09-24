@@ -50,11 +50,15 @@ export function MobileActionBar({
 
   return (
     <ButtonGroup
-      className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center rounded-md border bg-surface-overlay p-0.5 text-content-primary shadow-lg ring-1 ring-stroke-default md:hidden"
+      aria-label="Block movement actions"
+      className="fixed left-1/2 z-50 -translate-x-1/2 md:hidden"
       data-mobile-action-bar
+      density="compact"
+      role="toolbar"
       style={{
         bottom: `calc(${bottom}px + env(safe-area-inset-bottom))`,
       }}
+      variant="floating"
     >
       <Button
         aria-label="Move block up"

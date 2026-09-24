@@ -699,13 +699,13 @@ function BasicAutofillDialog({ propertyName }: { propertyName: string }) {
         </div>
 
         <section className="grid content-start gap-5">
-          <Tabs className="gap-4" defaultValue="basic">
-            <TabsList className="w-full">
-              <TabsTrigger className="flex-1" value="basic">
+          <Tabs defaultValue="basic" gap="comfortable">
+            <TabsList width="full">
+              <TabsTrigger value="basic">
                 <Sparkles />
                 Basic
               </TabsTrigger>
-              <TabsTrigger className="flex-1" disabled value="agent">
+              <TabsTrigger disabled value="agent">
                 Custom Agent
               </TabsTrigger>
             </TabsList>

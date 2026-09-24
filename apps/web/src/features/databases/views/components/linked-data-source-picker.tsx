@@ -1,5 +1,5 @@
 import { cn } from "@/shared/lib/utils"
-import { menuItemClassName } from "@/shared/ui/menu-styles"
+import { menuItemVariants } from "@/shared/ui/menu-styles"
 import { useMemo, useState } from "react"
 import {
   ArrowLeft,
@@ -104,7 +104,7 @@ export function LinkedDataSourcePicker({
       >
         {!showPicker ? (
           <button
-            className={cn(menuItemClassName, "w-full text-left hover:bg-action-neutral-hover")}
+            className={cn(menuItemVariants(), "w-full text-left hover:bg-action-neutral-hover")}
             onClick={() => setShowPicker(true)}
             type="button"
           >
@@ -116,7 +116,7 @@ export function LinkedDataSourcePicker({
             {selectedDatabase ? (
               <div className="border-b p-1">
                 <button
-                  className={cn(menuItemClassName, "w-full text-left hover:bg-action-neutral-hover")}
+                  className={cn(menuItemVariants(), "w-full text-left hover:bg-action-neutral-hover")}
                   onClick={() => { setDatabaseId(null); setSearch("") }}
                   type="button"
                 >

@@ -61,8 +61,6 @@ export function AutomationPropertyIcon({
   return <PropertyIcon className="size-4 shrink-0 text-content-secondary" />;
 }
 
-export const automationMenuItemClassName = "min-h-9 px-2 py-2 text-[13px]";
-
 export function AutomationPickerTrigger({
   kind,
   variant,

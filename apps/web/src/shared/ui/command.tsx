@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Command as CommandPrimitive } from "cmdk"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/shared/lib/utils"
 import {
@@ -14,20 +15,41 @@ import {
   InputGroupAddon,
 } from "@/shared/ui/input-group"
 import { SearchIcon, CheckIcon } from "@/shared/components/icons"
+import {
+  menuItemVariants,
+  menuSeparatorClassName,
+} from "@/shared/ui/menu-styles"
+
+const commandVariants = cva(
+  "flex size-full flex-col overflow-hidden bg-surface-overlay text-content-primary",
+  {
+    variants: {
+      variant: {
+        default: "rounded-xl p-1",
+        menu: "rounded-none bg-transparent p-1",
+      },
+    },
+    defaultVariants: { variant: "default" },
+  },
+)
+
+const CommandVariantContext = React.createContext<"default" | "menu">("default")
 
 function Command({
   className,
+  variant = "default",
   ...props
-}: React.ComponentProps<typeof CommandPrimitive>) {
+}: React.ComponentProps<typeof CommandPrimitive> &
+  VariantProps<typeof commandVariants>) {
   return (
-    <CommandPrimitive
-      data-slot="command"
-      className={cn(
-        "flex size-full flex-col overflow-hidden rounded-xl bg-surface-overlay p-1 text-content-primary",
-        className
-      )}
-      {...props}
-    />
+    <CommandVariantContext.Provider value={variant ?? "default"}>
+      <CommandPrimitive
+        data-slot="command"
+        data-variant={variant}
+        className={cn(commandVariants({ variant }), className)}
+        {...props}
+      />
+    </CommandVariantContext.Provider>
   )
 }
 
@@ -67,8 +89,12 @@ function CommandInput({
   className,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
+  const variant = React.useContext(CommandVariantContext)
   return (
-    <div data-slot="command-input-wrapper" className="p-1 pb-0">
+    <div
+      data-slot="command-input-wrapper"
+      className={variant === "menu" ? "p-0 pb-1" : "p-1 pb-0"}
+    >
       <InputGroup className="h-7! bg-control-background dark:bg-control-background">
         <CommandPrimitive.Input
           data-slot="command-input"
@@ -119,11 +145,14 @@ function CommandGroup({
   className,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Group>) {
+  const variant = React.useContext(CommandVariantContext)
   return (
     <CommandPrimitive.Group
       data-slot="command-group"
       className={cn(
-        "overflow-hidden p-1 text-content-primary **:[[cmdk-group-heading]]:px-2.5 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-content-secondary",
+        variant === "menu"
+          ? "overflow-hidden text-content-primary **:[[cmdk-group-heading]]:px-2 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:text-content-secondary"
+          : "overflow-hidden p-1 text-content-primary **:[[cmdk-group-heading]]:px-2.5 **:[[cmdk-group-heading]]:py-1.5 **:[[cmdk-group-heading]]:text-xs **:[[cmdk-group-heading]]:font-medium **:[[cmdk-group-heading]]:text-content-secondary",
         className
       )}
       {...props}
@@ -138,7 +167,7 @@ function CommandSeparator({
   return (
     <CommandPrimitive.Separator
       data-slot="command-separator"
-      className={cn("-mx-1 my-1 h-px bg-stroke-default", className)}
+      className={cn(menuSeparatorClassName, className)}
       {...props}
     />
   )
@@ -147,13 +176,23 @@ function CommandSeparator({
 function CommandItem({
   className,
   children,
+  size = "default",
+  variant: itemVariant = "default",
   ...props
-}: React.ComponentProps<typeof CommandPrimitive.Item>) {
+}: React.ComponentProps<typeof CommandPrimitive.Item> & {
+  size?: "default" | "comfortable"
+  variant?: "default" | "destructive"
+}) {
+  const commandVariant = React.useContext(CommandVariantContext)
   return (
     <CommandPrimitive.Item
       data-slot="command-item"
+      data-variant={itemVariant}
       className={cn(
-        "group/command-item relative flex min-h-7 cursor-default items-center gap-2 rounded-md px-2.5 py-1.5 text-xs/relaxed outline-hidden select-none in-data-[slot=dialog-content]:rounded-md data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-surface-muted data-selected:text-content-primary [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-selected:*:[svg]:text-content-primary",
+        commandVariant === "menu"
+          ? menuItemVariants({ size, variant: itemVariant })
+          : "relative flex min-h-7 cursor-default items-center gap-2 rounded-md px-2.5 py-1.5 text-xs/relaxed outline-hidden select-none in-data-[slot=dialog-content]:rounded-md data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-selected:bg-surface-muted data-selected:text-content-primary [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5 data-selected:*:[svg]:text-content-primary",
+        "group/command-item",
         className
       )}
       {...props}

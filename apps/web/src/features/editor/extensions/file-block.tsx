@@ -89,7 +89,7 @@ function FileBlockView({ node, updateAttributes }: ReactNodeViewProps) {
           sideOffset={8}
         >
           <Tabs defaultValue="upload">
-            <TabsList className="w-full justify-start rounded-none border-b px-2">
+            <TabsList className="mx-2 mt-2">
               <TabsTrigger value="upload">Upload</TabsTrigger>
               <TabsTrigger value="link">Link</TabsTrigger>
             </TabsList>

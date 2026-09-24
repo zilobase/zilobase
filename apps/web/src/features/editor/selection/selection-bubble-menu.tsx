@@ -120,7 +120,11 @@ export function SelectionBubbleMenu({
         )
       }}
     >
-      <ButtonGroup className="selection-toolbar">
+      <ButtonGroup
+        aria-label="Text selection actions"
+        role="toolbar"
+        variant="floating"
+      >
         {toolbarGroups[0].map((item) => (
           <ToolbarButton
             editor={editor}

@@ -231,10 +231,6 @@
     z-index: 70;
   }
 
-  .selection-toolbar {
-    @apply flex items-center gap-1 rounded-md border bg-surface-overlay p-1 text-content-primary shadow-lg;
-  }
-
   .selection-ai-menu {
     @apply w-80 gap-2 p-2;
   }

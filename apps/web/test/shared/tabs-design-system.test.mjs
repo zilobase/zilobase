@@ -34,4 +34,20 @@ export function register({ readSource, assert, test }) {
     assert.match(databaseStyles, /\.database-new-button\s*\{\s*@apply h-7/);
     assert.doesNotMatch(tabsSource, /TabsPrimitive\.Indicator|tab-indicator/);
   });
+
+  test("tab layout choices are shared props and discussions use the default surface", async () => {
+    const [tabsSource, discussionsSource] = await Promise.all([
+      readSource("/src/shared/ui/app-tabs.tsx"),
+      readSource("/src/features/comments/components/discussions-sidebar.tsx"),
+    ]);
+
+    assert.match(tabsSource, /const tabsVariants = cva/);
+    assert.match(tabsSource, /const tabsListVariants = cva/);
+    assert.match(tabsSource, /const tabsTriggerVariants = cva/);
+    assert.match(tabsSource, /function TabsBadge/);
+    assert.match(discussionsSource, /<TabsList>/);
+    assert.match(discussionsSource, /<TabsBadge>\{openCount\}<\/TabsBadge>/);
+    assert.doesNotMatch(discussionsSource, /<Tabs[^>]*border-b/);
+    assert.doesNotMatch(discussionsSource, /<TabsTrigger[^>]*rounded-none/);
+  });
 }

@@ -121,7 +121,12 @@ function ScopedAgentSettingsPage({
           <div className="min-w-0 max-w-full overflow-x-auto">
             <TabsList aria-label="Agent settings">
               {tabs.map((t) => (
-                <TabsTrigger key={t} value={t} className="grow-0 capitalize">
+                <TabsTrigger
+                  className="capitalize"
+                  key={t}
+                  value={t}
+                  width="content"
+                >
                   {t === "access" ? "Triggers & Access" : t}
                   {draft.changedTabs.includes(t) && (
                     <span

@@ -1,5 +1,5 @@
 import { cn } from "@/shared/lib/utils"
-import { menuItemClassName } from "@/shared/ui/menu-styles"
+import { menuItemVariants } from "@/shared/ui/menu-styles"
 import { Check, GripVertical } from "@/shared/components/icons"
 import { useState, type ReactNode } from "react"
 
@@ -290,7 +290,7 @@ export function DatabasePropertySelect({
 
           return (
             <button
-              className={cn(menuItemClassName, "w-full text-left hover:bg-action-neutral-hover")}
+              className={cn(menuItemVariants(), "w-full text-left hover:bg-action-neutral-hover")}
               data-selected={isSelected ? "true" : undefined}
               key={option.id}
               onClick={() => selectOption(optionValue)}
@@ -312,7 +312,7 @@ export function DatabasePropertySelect({
         })}
         {canCreateSelectOption ? (
           <button
-            className={cn(menuItemClassName, "w-full text-left hover:bg-action-neutral-hover disabled:pointer-events-none disabled:opacity-50")}
+            className={cn(menuItemVariants(), "w-full text-left hover:bg-action-neutral-hover disabled:pointer-events-none disabled:opacity-50")}
             disabled={isCreating}
             onClick={() => void createSelectOption()}
             type="button"

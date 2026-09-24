@@ -515,6 +515,7 @@ function CommentMentionMenu({
     <div className="absolute left-0 top-full z-50 mt-2 w-[min(20rem,calc(100vw-4rem))] overflow-hidden rounded-lg bg-surface-overlay text-content-primary shadow-md ring-1 ring-stroke-default">
       <Command
         shouldFilter={false}
+        variant="menu"
         value={selectedMember?.id ?? ""}
         onValueChange={(value) => {
           const nextIndex = members.findIndex((member) => member.id === value)
@@ -533,9 +534,7 @@ function CommentMentionMenu({
               return (
                 <CommandItem
                   aria-selected={index === selectedIndex}
-                  className={
-                    index === selectedIndex ? "bg-surface-muted text-content-primary" : ""
-                  }
+                  data-selected={index === selectedIndex ? true : undefined}
                   key={member.id}
                   onMouseDown={(event) => {
                     event.preventDefault()

@@ -12,7 +12,6 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { UsersIcon } from "@/shared/components/icons";
 
 import { SettingsHeader } from "@/features/settings";
-import { Badge } from "@/shared/ui/badge";
 
 import {
   Empty,
@@ -24,7 +23,13 @@ import {
 
 import { Separator } from "@/shared/ui/separator";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/app-tabs";
+import {
+  Tabs,
+  TabsBadge,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/shared/ui/app-tabs";
 import { useSession } from "@zilobase/features/auth/react";
 import {
   useActiveWorkspaceId,
@@ -98,7 +103,8 @@ export default function TeamSettingsPage() {
       />
 
       <Tabs
-        className="mx-auto w-full max-w-3xl gap-6"
+        className="mx-auto w-full max-w-3xl"
+        gap="spacious"
         onValueChange={(value) => {
           void navigate({
             replace: true,
@@ -110,15 +116,16 @@ export default function TeamSettingsPage() {
       >
         <TabsList
           aria-label="Team settings sections"
-          className="min-w-0 w-full justify-start overflow-x-auto"
+          overflow="scroll"
+          width="full"
         >
-          <TabsTrigger className="shrink-0 grow-0 gap-2 px-3" value="team">
+          <TabsTrigger value="team" width="content">
             Team
-            <Badge variant="outline">{tabCounts.team}</Badge>
+            <TabsBadge>{tabCounts.team}</TabsBadge>
           </TabsTrigger>
-          <TabsTrigger className="shrink-0 grow-0 gap-2 px-3" value="guests">
+          <TabsTrigger value="guests" width="content">
             Guests
-            <Badge variant="outline">{tabCounts.guests}</Badge>
+            <TabsBadge>{tabCounts.guests}</TabsBadge>
           </TabsTrigger>
         </TabsList>
 

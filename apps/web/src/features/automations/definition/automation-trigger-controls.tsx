@@ -1,6 +1,6 @@
 import { AutomationPickerTrigger } from "../automation-picker-controls";
 import { type TriggerPickerSelection, type TriggerDraft, humanize, isChoiceTriggerProperty, triggerConfigurationTitle, operandless, hasRequiredTriggerValues, nextTriggerOperands, triggerOperatorLabel } from "./automation-draft";
-import { automationMenuItemClassName, AutomationPropertyIcon, TriggerOptionRow } from "../automation-picker-controls";
+import { AutomationPropertyIcon, TriggerOptionRow } from "../automation-picker-controls";
 import { useState, type ReactNode } from "react";
 import type { DatabaseAutomationCatalog } from "@zilobase/features/automations";
 
@@ -196,7 +196,7 @@ export function TriggerPicker({ catalog, label, onSelect, selection, variant = "
   return (
     <Popover modal open={open} onOpenChange={handleOpenChange}>
       <AutomationPickerTrigger kind="trigger" variant={variant} icon={triggerPickerIcon(selection)}><span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">{label}</span></AutomationPickerTrigger>
-      <PopoverContent align="start" className="w-72 gap-0 p-0">
+      <PopoverContent align="start" padding="none" variant="menu">
         {step === "root" ? (
           <TriggerTypeMenu catalog={catalog} selection={selection} onSelect={choose} onProperty={openProperty} />
         ) : configuration && configuredProperty ? (
@@ -229,12 +229,11 @@ export function TriggerPicker({ catalog, label, onSelect, selection, variant = "
               ) : null}
             </div>
             {step === "operator" ? (
-              <Command>
-                <CommandList className="max-h-[min(20rem,calc(100dvh-10rem))] p-1">
+              <Command variant="menu">
+                <CommandList className="max-h-[min(20rem,calc(100dvh-10rem))]">
                   <CommandGroup heading="Run when">
                     {configuredProperty.operators.map((operator) => (
                       <CommandItem
-                        className={automationMenuItemClassName}
                         data-checked={configuration.operator === operator}
                         key={operator}
                         onSelect={() => {
@@ -381,7 +380,7 @@ function triggerPickerLabel(trigger: TriggerDraft, catalog?: DatabaseAutomationC
 
 function TriggerTypeMenu({ catalog, selection, onSelect, onProperty }: { catalog?: DatabaseAutomationCatalog; selection?: TriggerPickerSelection; onSelect: (selection: TriggerPickerSelection) => void; onProperty: (property: DatabaseAutomationCatalog["properties"][number]) => void }) {
   const selectedPropertyId = selection?.type === "property_edited" ? selection.propertyId : null;
-  return (<Command>
+  return (<Command variant="menu">
             <CommandInput autoFocus placeholder="Search triggers…" />
             <CommandList
               className="max-h-[min(20rem,calc(100dvh-10rem))] touch-pan-y overscroll-contain"
@@ -389,21 +388,20 @@ function TriggerTypeMenu({ catalog, selection, onSelect, onProperty }: { catalog
             >
               <CommandEmpty>No triggers found.</CommandEmpty>
               <CommandGroup heading="Event">
-                <CommandItem className={automationMenuItemClassName} data-checked={selection?.type === "page_added"} onSelect={() => onSelect({ type: "page_added" })} value="Page added">
+                <CommandItem data-checked={selection?.type === "page_added"} onSelect={() => onSelect({ type: "page_added" })} value="Page added">
                   <Plus />Page added
                 </CommandItem>
-                <CommandItem className={automationMenuItemClassName} data-checked={selection?.type === "schedule"} onSelect={() => onSelect({ type: "schedule" })} value="Every schedule">
+                <CommandItem data-checked={selection?.type === "schedule"} onSelect={() => onSelect({ type: "schedule" })} value="Every schedule">
                   <Clock />Every…
                 </CommandItem>
               </CommandGroup>
               <CommandSeparator />
               <CommandGroup heading="Property edited">
-                <CommandItem className={automationMenuItemClassName} data-checked={selectedPropertyId === "any"} onSelect={() => onSelect({ propertyId: "any", type: "property_edited" })} value="Any property edited">
+                <CommandItem data-checked={selectedPropertyId === "any"} onSelect={() => onSelect({ propertyId: "any", type: "property_edited" })} value="Any property edited">
                   <Pencil />Any property
                 </CommandItem>
                 {(catalog?.properties ?? []).map((property) => (
                   <CommandItem
-                    className={automationMenuItemClassName}
                     data-checked={selectedPropertyId === property.id}
                     key={property.id}
                     onSelect={() => onProperty(property)}

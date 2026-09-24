@@ -66,7 +66,7 @@ export function ManageTeamspaceDialog({
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue={initialTab}>
-          <TabsList className="w-full justify-start overflow-x-auto">
+          <TabsList overflow="scroll" width="full">
             <TabsTrigger disabled={!canManage} value="general">
               General
             </TabsTrigger>

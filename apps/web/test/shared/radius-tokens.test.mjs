@@ -31,11 +31,11 @@ export function register({ readSource, assert, test }) {
     assert.match(tabs, /rounded-md[^"\n]*data-active:bg-action-neutral-hover/)
     assert.doesNotMatch(tabs, /TabsPrimitive\.Indicator/)
     const styles = await readSource("/src/shared/ui/menu-styles.ts")
-    assert.match(styles, /menuSurfaceClassName[^]*?rounded-lg/)
-    assert.match(styles, /menuItemClassName[^]*?rounded-md/)
+    assert.match(styles, /menuSurfaceVariants[^]*?rounded-lg/)
+    assert.match(styles, /menuItemVariants[^]*?rounded-md/)
     for (const menu of [dropdown, contextMenu]) {
-      assert.match(menu, /menuSurfaceClassName/)
-      assert.match(menu, /data-slot="[^"]+-item"[\s\S]*?menuItemClassName/)
+      assert.match(menu, /menuSurfaceVariants/)
+      assert.match(menu, /data-slot="[^"]+-item"[\s\S]*?menuItemVariants/)
     }
   })
 

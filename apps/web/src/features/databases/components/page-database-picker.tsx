@@ -81,8 +81,9 @@ export function PageDatabasePicker<
 
   return (
     <Command
-      className={cn("min-h-0 rounded-none bg-transparent", className)}
+      className={cn("min-h-0", className)}
       shouldFilter={false}
+      variant="menu"
     >
       <div className="relative shrink-0">
         <CommandInput

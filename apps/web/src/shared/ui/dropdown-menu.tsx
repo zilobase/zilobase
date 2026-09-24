@@ -6,9 +6,10 @@ import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 import { Button } from "@/shared/ui/button"
 import { cn } from "@/shared/lib/utils"
 import {
-  menuSurfaceClassName,
+  menuSurfaceVariants,
+  menuContentVariants,
   menuViewportClassName,
-  menuItemClassName,
+  menuItemVariants,
   menuLabelClassName,
   menuSeparatorClassName,
 } from "@/shared/ui/menu-styles"
@@ -158,8 +159,13 @@ function DropdownMenuContent({
   align = "start",
   sideOffset = 4,
   collisionPadding = 8,
+  width = "default",
+  padding = "menu",
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Content> & {
+  width?: "auto" | "sm" | "md" | "lg" | "default" | "xl" | "fit"
+  padding?: "none" | "menu" | "roomy" | "spacious"
+}) {
   const inlineNavigation = React.useContext(InlineSubmenuNavigationContext)
   const activePanel = React.useSyncExternalStore(
     inlineNavigation?.subscribe ?? subscribeNoop,
@@ -187,9 +193,10 @@ function DropdownMenuContent({
         collisionPadding={collisionPadding}
         align={align}
         className={cn(
-          "z-50 max-h-(--radix-dropdown-menu-content-available-height) w-72 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto p-1 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-        menuSurfaceClassName,
-        menuViewportClassName,
+          "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          menuContentVariants({ padding, width }),
+          menuSurfaceVariants(),
+          menuViewportClassName,
           className,
           activePanel &&
             "flex w-max max-w-[min(20rem,calc(100vw-1rem))] flex-col overflow-hidden",
@@ -267,11 +274,13 @@ function DropdownMenuItem({
   inset,
   onSelect,
   variant = "default",
+  size = "default",
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
   closeOnSelect?: boolean
   inset?: boolean
   variant?: "default" | "destructive"
+  size?: "default" | "comfortable"
 }) {
   const isInlineSubmenuPanel = React.useContext(InlineSubmenuPanelContext)
   const shouldCloseOnSelect = closeOnSelect ?? !isInlineSubmenuPanel
@@ -282,8 +291,8 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        menuItemClassName,
-        "group/dropdown-menu-item not-data-[variant=destructive]:focus:**:text-action-on-neutral data-inset:pl-7.5 data-[variant=destructive]:text-action-danger-text data-[variant=destructive]:focus:bg-feedback-error-subtle data-[variant=destructive]:focus:text-action-danger-text dark:data-[variant=destructive]:focus:bg-feedback-error-subtle data-[variant=destructive]:*:[svg]:text-action-danger-text",
+        menuItemVariants({ size, variant }),
+        "group/dropdown-menu-item not-data-[variant=destructive]:focus:**:text-action-on-neutral data-inset:pl-7.5",
         className,
       )}
       {...props}
@@ -315,7 +324,7 @@ function DropdownMenuCheckboxItem({
       data-slot="dropdown-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        menuItemClassName,
+        menuItemVariants(),
         "pr-8 focus:**:text-action-on-neutral data-inset:pl-7.5",
         className,
       )}
@@ -369,7 +378,7 @@ function DropdownMenuRadioItem({
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
       className={cn(
-        menuItemClassName,
+        menuItemVariants(),
         "pr-8 focus:**:text-action-on-neutral data-inset:pl-7.5",
         className,
       )}
@@ -480,15 +489,17 @@ function DropdownMenuSubTrigger({
   className,
   inset,
   children,
+  size = "default",
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger> & {
   inset?: boolean
+  size?: "default" | "comfortable"
 }) {
   const submenu = React.useContext(DropdownMenuSubContext)
   const inlineNavigation = React.useContext(InlineSubmenuNavigationContext)
   const registrationOnly = React.useContext(InlineSubmenuRegistrationContext)
   const triggerClassName = cn(
-    menuItemClassName,
+    menuItemVariants({ size }),
         "not-data-[variant=destructive]:focus:**:text-action-on-neutral data-inset:pl-7.5 data-open:bg-action-neutral-hover data-open:text-action-on-neutral",
     className,
   )
@@ -539,8 +550,13 @@ function DropdownMenuSubContent({
   children,
   sideOffset = 4,
   collisionPadding = 8,
+  width = "auto",
+  padding = "menu",
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+}: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent> & {
+  width?: "auto" | "sm" | "md" | "lg" | "default" | "xl" | "fit"
+  padding?: "none" | "menu" | "roomy" | "spacious"
+}) {
   const submenu = React.useContext(DropdownMenuSubContext)
   const inlineNavigation = React.useContext(InlineSubmenuNavigationContext)
   const registerPanel = inlineNavigation?.registerPanel
@@ -566,8 +582,9 @@ function DropdownMenuSubContent({
         sideOffset={sideOffset}
         collisionPadding={collisionPadding}
         className={cn(
-          "z-50 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden p-1 duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          menuSurfaceClassName,
+          "z-50 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          menuContentVariants({ padding, width }),
+          menuSurfaceVariants(),
           menuViewportClassName,
           className,
         )}

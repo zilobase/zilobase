@@ -77,9 +77,10 @@ export function register({ assert, readSource, test }) {
   })
 
   test("automation manager uses the View settings dropdown pattern and opens the builder in a dialog", async () => {
-    const [manager, actions] = await Promise.all([
+    const [manager, actions, menuStyles] = await Promise.all([
       readAutomationManager(),
-      readNotionActions()
+      readNotionActions(),
+      readSource("/src/shared/ui/menu-styles.ts")
     ])
 
     assert.match(manager, /<DropDrawer[\s\S]*?defaultSubDisplayMode="inline"/)
@@ -135,8 +136,10 @@ export function register({ assert, readSource, test }) {
       /rounded-lg border border-stroke-default bg-surface-overlay/
     )
     assert.match(manager, /placeholder="Search triggers…"/)
-    assert.match(manager, /const automationMenuItemClassName = "min-h-9 px-2 py-2 text-\[13px\]"/)
-    assert.equal([...manager.matchAll(/<PopoverContent align="start" className="w-72 gap-0 p-0">/g)].length, 2)
+    assert.doesNotMatch(manager, /automationMenuItemClassName/)
+    assert.match(menuStyles, /default: "min-h-7 px-2 py-1 text-\[13px\]\/relaxed"/)
+    assert.equal([...manager.matchAll(/<PopoverContent align="start" padding="none" variant="menu">/g)].length, 2)
+    assert.equal([...manager.matchAll(/<Command variant="menu">/g)].length, 4)
     assert.match(manager, /className="order-last -rotate-90 text-content-secondary"/)
     assert.match(manager, /data-checked=\{selection\?\.action\.type === type\}/)
     assert.match(

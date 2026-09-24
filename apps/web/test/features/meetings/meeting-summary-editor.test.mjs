@@ -51,7 +51,7 @@ export function register({ readSource, assert, test }) {
     assert.match(meetingViewSource, /setActiveTab\("summary"\)/)
     assert.match(
       meetingViewSource,
-      /TabsTrigger[\s\S]*?className="shrink-0 grow-0 gap-2 px-3 capitalize"/,
+      /TabsTrigger[\s\S]*?className="capitalize"[\s\S]*?width="content"/,
     )
     assert.doesNotMatch(meetingViewSource, /useMeetingTranscript/)
     assert.doesNotMatch(meetingViewSource, /MeetingNotesEditor/)
