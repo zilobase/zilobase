@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  gateway: { listMessages: vi.fn() },
+  gateway: { getThreads: vi.fn(), listMessages: vi.fn() },
   index: {
     completedAt: null,
     indexedThreadCount: 3,
@@ -40,6 +40,8 @@ import {
 
 beforeEach(() => {
   mocks.selectResults.length = 0;
+  mocks.gateway.getThreads.mockReset();
+  mocks.gateway.getThreads.mockResolvedValue([]);
   mocks.gateway.listMessages.mockReset();
 });
 
@@ -76,6 +78,7 @@ test("indexed mail queries page, serialize, filter, and load custom values", asy
   });
   assert.equal(result.threads.length, 1);
   assert.equal(result.threads[0]?.thread.id, "thread-2");
+  assert.equal(result.threads[0]?.thread.snippet, "Preview");
   assert.deepEqual(result.threads[0]?.thread.participants, [
     { address: "sender@example.com", name: "Sender" },
     { address: "recipient@example.com", name: null },
@@ -86,6 +89,20 @@ test("indexed mail queries page, serialize, filter, and load custom values", asy
 });
 
 test("indexed mail search intersects Gmail results and validates accounts and views", async () => {
+  mocks.gateway.getThreads.mockResolvedValueOnce([{
+    id: "thread-3",
+    messages: [{
+      id: "message-3",
+      internalDate: "100",
+      labelIds: ["INBOX"],
+      payload: { headers: [
+        { name: "From", value: "Ada <ada@example.com>" },
+        { name: "Subject", value: "Later" },
+      ] },
+      snippet: "Later",
+      threadId: "thread-3",
+    }],
+  }]);
   mocks.gateway.listMessages
     .mockResolvedValueOnce({ messages: [{ threadId: "thread-2" }], nextPageToken: "next" })
     .mockResolvedValueOnce({ messages: [{ threadId: "thread-3" }] });
@@ -101,7 +118,7 @@ test("indexed mail search intersects Gmail results and validates accounts and vi
     routeId: "all_mail",
     search: " quarterly report ",
   });
-  assert.deepEqual(result.threads.map(({ thread }) => thread.id), ["thread-2"]);
+  assert.deepEqual(result.threads.map(({ thread }) => thread.id), ["thread-2", "thread-3"]);
   assert.equal(result.searchTruncated, false);
   assert.equal(mocks.gateway.listMessages.mock.calls[0]?.[0].query, "quarterly report");
 
@@ -191,6 +208,7 @@ function threadRow(overrides: Record<string, unknown> = {}) {
     messageCount: 1,
     messageIds: ["message-1"],
     starred: true,
+    snippet: "Preview",
     subject: "Quarterly report",
     toAddresses: [
       { address: "recipient@example.com", name: null },

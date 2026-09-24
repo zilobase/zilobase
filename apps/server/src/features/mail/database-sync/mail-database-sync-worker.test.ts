@@ -286,6 +286,7 @@ function indexedRow() {
     messageCount: 1,
     messageIds: ["message-1"],
     receivedAt: timestamp,
+    snippet: "Quarterly preview",
     starred: true,
     subject: "Quarterly report",
     toAddresses: [],

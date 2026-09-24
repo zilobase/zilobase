@@ -24,9 +24,10 @@ import { recordMailMetric } from "../mail-metrics"
 import { publishMailNotification } from "@zilobase/runtime-adapter/capabilities"
 import { recordRecoveredBackgroundLease } from "../../../infrastructure/background/telemetry"
 
-const BACKFILL_PAGE_SIZE = 20
+const BACKFILL_PAGE_SIZE = 50
 const MAX_HISTORY_PAGES_PER_ADVANCE = 5
 const INDEX_LEASE_MS = 2 * 60 * 1_000
+const INDEX_RECORD_VERSION = 1
 
 export async function ensureMailIndexState(gmailAccountId: string) {
   const now = new Date()
@@ -83,6 +84,25 @@ export async function advanceMailIndex(
   if (!claimed) return serializeProgress(state)
   if (state.leaseExpiresAt && state.leaseToken) recordRecoveredBackgroundLease(env, "mail.index")
   state = claimed
+  if ((state.recordVersion ?? 0) < INDEX_RECORD_VERSION && state.status === "ready") {
+    const [pending] = await db
+      .update(mailIndexState)
+      .set({
+        completedAt: null,
+        historyId: null,
+        historyPageToken: null,
+        historyStartId: null,
+        nextPageToken: null,
+        status: "pending",
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(mailIndexState.gmailAccountId, gmailAccountId),
+        eq(mailIndexState.leaseToken, leaseToken),
+      ))
+      .returning()
+    if (pending) state = pending
+  }
   let nextAdvanceAt: Date | null = null
   try {
     try {
@@ -96,6 +116,7 @@ export async function advanceMailIndex(
       return serializeProgress(state)
     } catch (error) {
       if (error instanceof GmailApiError && error.code === "history_cursor_invalid") {
+        await db.delete(mailThreadIndex).where(eq(mailThreadIndex.gmailAccountId, gmailAccountId))
         const [reset] = await db
           .update(mailIndexState)
           .set({
@@ -117,9 +138,14 @@ export async function advanceMailIndex(
         nextAdvanceAt = new Date(Date.now() + Math.max(60_000, error.retryAfterMs ?? 0))
       }
       const code = error instanceof GmailApiError ? error.code : "index_failed"
+      const historyMode = state.status === "ready" || state.status === "syncing"
       const [failed] = await db
         .update(mailIndexState)
-        .set({ lastErrorCode: code, status: "error", updatedAt: new Date() })
+        .set({
+          lastErrorCode: code,
+          status: historyMode ? "syncing" : "error",
+          updatedAt: new Date(),
+        })
         .where(eq(mailIndexState.gmailAccountId, gmailAccountId))
         .returning()
       if (error instanceof GmailApiError && error.code === "authorization_revoked") throw error
@@ -208,7 +234,7 @@ async function advanceBackfill(
   existing: typeof mailIndexState.$inferSelect,
 ) {
   let state = existing
-  if (state.status === "pending" || state.generation === 0) {
+  if (state.status === "pending" || state.generation === 0 || (state.recordVersion ?? 0) < INDEX_RECORD_VERSION) {
     const profile = await gateway.getProfile()
     const [started] = await db
       .update(mailIndexState)
@@ -219,6 +245,7 @@ async function advanceBackfill(
         indexedThreadCount: 0,
         lastErrorCode: null,
         nextPageToken: null,
+        recordVersion: INDEX_RECORD_VERSION,
         resultSizeEstimate: profile.threadsTotal ?? null,
         startedAt: new Date(),
         status: "backfilling",
@@ -279,6 +306,7 @@ async function advanceBackfill(
       indexedThreadCount: Number(actual?.value ?? indexedThreadCount),
       lastErrorCode: null,
       nextPageToken: null,
+      recordVersion: INDEX_RECORD_VERSION,
       status: "ready",
       updatedAt: new Date(),
     })
@@ -391,6 +419,7 @@ async function upsertIndexedThreads(
           messageCount: row.messageCount,
           messageIds: row.messageIds,
           receivedAt: row.receivedAt,
+          snippet: row.snippet,
           starred: row.starred,
           subject: row.subject,
           toAddresses: row.toAddresses,
@@ -439,6 +468,7 @@ export function mailThreadIndexRecord(
     messageCount: summary.messageCount,
     messageIds: summary.messageIds,
     receivedAt: new Date(summary.internalDate),
+    snippet: summary.snippet.slice(0, 500),
     starred: summary.starred,
     subject: summary.subject,
     toAddresses,

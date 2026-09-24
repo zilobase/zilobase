@@ -118,6 +118,17 @@ test("full-mailbox index stores queryable metadata without message content", asy
   assert.doesNotMatch(migration, /snippet|body_html|body_text|raw_message/)
 })
 
+test("mail thread index stores snippets without message bodies", async () => {
+  const migration = await readFile(
+    new URL("../../../drizzle/0098_mail_thread_snippet.sql", import.meta.url),
+    "utf8",
+  )
+
+  assert.match(migration, /ALTER TABLE "mail_thread_index" ADD COLUMN "snippet" text/)
+  assert.match(migration, /ALTER TABLE "mail_index_state" ADD COLUMN "record_version" integer/)
+  assert.doesNotMatch(migration, /body_html|body_text/)
+})
+
 test("custom mail properties are binding-wide and thread values cascade with definitions", async () => {
   const migration = await readFile(
     new URL("../../../drizzle/0069_custom_mail_properties.sql", import.meta.url),

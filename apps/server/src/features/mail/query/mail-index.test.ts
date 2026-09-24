@@ -4,7 +4,7 @@ import { test } from "vitest"
 
 import { mailThreadIndexRecord } from "./mail-index"
 
-test("mail index records queryable metadata but omit bodies and snippets", () => {
+test("mail index records snippets and queryable metadata but omits bodies", () => {
   const row = mailThreadIndexRecord("account-1", 3, {
     id: "thread-1",
     messages: [{
@@ -33,12 +33,12 @@ test("mail index records queryable metadata but omit bodies and snippets", () =>
   })
 
   assert.equal(row.subject, "Roadmap")
+  assert.equal(row.snippet, "private preview")
   assert.equal(row.unread, true)
   assert.equal(row.important, true)
   assert.equal(row.hasCalendarEvent, true)
   assert.equal(row.attachmentCount, 1)
   assert.deepEqual(row.domains, ["example.com", "zilobase.com"])
-  assert.equal("snippet" in row, false)
   assert.equal("bodyText" in row, false)
   assert.equal("bodyHtml" in row, false)
 })
@@ -46,7 +46,7 @@ test("mail index records queryable metadata but omit bodies and snippets", () =>
 test("index work is bounded, resumable, history-driven, and deletion-safe", async () => {
   const source = await readFile(new URL("./mail-index.ts", import.meta.url), "utf8")
 
-  assert.match(source, /BACKFILL_PAGE_SIZE = 20/)
+  assert.match(source, /BACKFILL_PAGE_SIZE = 50/)
   assert.match(source, /MAX_HISTORY_PAGES_PER_ADVANCE = 5/)
   assert.match(source, /INDEX_LEASE_MS/)
   assert.match(source, /isNull\(mailIndexState\.leaseExpiresAt\)/)

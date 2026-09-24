@@ -666,6 +666,13 @@
       "when": 1789632000001,
       "tag": "0095_remove_ai_compatibility",
       "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1789718400000,
+      "tag": "0098_mail_thread_snippet",
+      "breakpoints": true
     }
   ]
 }

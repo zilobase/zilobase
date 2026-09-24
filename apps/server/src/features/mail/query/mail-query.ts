@@ -26,11 +26,13 @@ import {
   mailView,
 } from "../../../infrastructure/database/schema"
 import type { RuntimeEnv } from "../../../shared/config/config"
-import { createGmailGateway } from "../provider/gmail-gateway"
+import { createGmailGateway, type GmailGateway } from "../provider/gmail-gateway"
+import { normalizeGmailThread } from "../provider/mail-normalize"
 import { getMailIndexProgress } from "./mail-index"
 
 const QUERY_BATCH_SIZE = 200
-const MAX_QUERY_BATCHES = 10
+const MAX_QUERY_BATCHES = 40
+const SEARCH_HYDRATION_LIMIT = 10
 const GMAIL_SEARCH_PAGE_SIZE = 500
 const MAX_GMAIL_SEARCH_PAGES = 10
 
@@ -63,9 +65,20 @@ export async function queryIndexedMail(input: {
     : routeFilter
   const index = await getMailIndexProgress(input.gmailAccountId)
   const search = input.search?.trim() ?? ""
-  const searchResult = search
-    ? await searchGmailThreadIds(input.env, input.gmailAccountId, search)
-    : null
+  if (search) {
+    return searchIndexedMail({
+      bindingId: input.bindingId,
+      cursor,
+      env: input.env,
+      filter,
+      gmailAccountId: input.gmailAccountId,
+      group: routeConfig?.group ?? null,
+      groupKey: input.groupKey,
+      index,
+      limit,
+      search,
+    })
+  }
   const threads: MailIndexedThread[] = []
   let nextCursor: string | null = null
 
@@ -96,8 +109,7 @@ export async function queryIndexedMail(input: {
       const indexed = serializeIndexedThread(row, customValues.get(row.gmailThreadId))
       if (
         evaluateMailFilterExpression(indexedFilterRecord(indexed), filter) &&
-        (!input.groupKey || groupKeys(indexed, routeConfig?.group ?? null).includes(input.groupKey)) &&
-        (!searchResult || searchResult.threadIds.has(indexed.thread.id))
+        (!input.groupKey || groupKeys(indexed, routeConfig?.group ?? null).includes(input.groupKey))
       ) {
         threads.push(indexed)
       }
@@ -114,7 +126,7 @@ export async function queryIndexedMail(input: {
   return {
     index,
     nextCursor,
-    searchTruncated: searchResult?.truncated ?? false,
+    searchTruncated: false,
     threads,
   }
 }
@@ -137,10 +149,14 @@ export async function queryIndexedMailGroups(input: {
   const searchResult = search
     ? await searchGmailThreadIds(input.env, input.gmailAccountId, search)
     : null
+  if (searchResult && searchResult.threadIds.size === 0) return { group: config.group, groups: [], index }
   const rows = await db
     .select()
     .from(mailThreadIndex)
-    .where(eq(mailThreadIndex.gmailAccountId, input.gmailAccountId))
+    .where(and(
+      eq(mailThreadIndex.gmailAccountId, input.gmailAccountId),
+      ...(searchResult ? [inArray(mailThreadIndex.gmailThreadId, [...searchResult.threadIds])] : []),
+    ))
     .orderBy(desc(mailThreadIndex.internalDate), desc(mailThreadIndex.id))
   const customValues = await loadCustomValues(input.bindingId, rows.map((row) => row.gmailThreadId))
   const counts = new Map<string, { count: number; label: string }>()
@@ -230,6 +246,116 @@ function mailboxFilter(folderId: MailSystemFolderId): MailFilterExpression {
   }
 }
 
+async function searchIndexedMail(input: {
+  bindingId: string
+  cursor: Cursor | null
+  env: RuntimeEnv
+  filter: MailFilterExpression
+  gmailAccountId: string
+  group: MailGroupConfig | null
+  groupKey?: string
+  index: MailViewQueryResponse["index"]
+  limit: number
+  search: string
+}): Promise<MailViewQueryResponse> {
+  const searchResult = await searchGmailThreadIds(input.env, input.gmailAccountId, input.search)
+  const ids = [...searchResult.threadIds]
+  if (!ids.length) {
+    return { index: input.index, nextCursor: null, searchTruncated: searchResult.truncated, threads: [] }
+  }
+  const rows = await db
+    .select()
+    .from(mailThreadIndex)
+    .where(and(
+      eq(mailThreadIndex.gmailAccountId, input.gmailAccountId),
+      inArray(mailThreadIndex.gmailThreadId, ids),
+    ))
+    .orderBy(desc(mailThreadIndex.internalDate), desc(mailThreadIndex.id))
+  const wanted = new Set(ids)
+  const indexedIds = new Set(rows.map((row) => row.gmailThreadId).filter((id) => wanted.has(id)))
+  const customValues = await loadCustomValues(input.bindingId, rows.map((row) => row.gmailThreadId))
+  const indexedMatches: MailIndexedThread[] = []
+  let lastIndexed: Cursor | null = null
+  let exhausted = true
+  for (const row of rows) {
+    if (!wanted.has(row.gmailThreadId) || !rowFollowsCursor(row, input.cursor)) continue
+    const indexed = serializeIndexedThread(row, customValues.get(row.gmailThreadId))
+    if (!mailThreadMatchesQuery(indexed, input.filter, input.group, input.groupKey)) continue
+    if (indexedMatches.length >= input.limit) {
+      exhausted = false
+      break
+    }
+    indexedMatches.push(indexed)
+    lastIndexed = { id: row.id, internalDate: row.internalDate }
+  }
+  const missingIds = ids.filter((id) => !indexedIds.has(id))
+  const hydrated = input.cursor ? [] : await hydrateMissingSearchThreads(
+    searchResult.gateway,
+    missingIds.slice(0, SEARCH_HYDRATION_LIMIT),
+    input.filter,
+    input.group,
+    input.groupKey,
+  )
+  const threads = [...hydrated, ...indexedMatches]
+    .sort((left, right) => right.thread.internalDate - left.thread.internalDate || right.thread.id.localeCompare(left.thread.id))
+  return {
+    index: input.index,
+    nextCursor: exhausted || !lastIndexed ? null : encodeMailQueryCursor(lastIndexed),
+    searchTruncated: searchResult.truncated || missingIds.length > SEARCH_HYDRATION_LIMIT,
+    threads,
+  }
+}
+
+function rowFollowsCursor(row: { id: string; internalDate: number }, cursor: Cursor | null) {
+  if (!cursor) return true
+  return row.internalDate < cursor.internalDate || (row.internalDate === cursor.internalDate && row.id < cursor.id)
+}
+
+function mailThreadMatchesQuery(
+  indexed: MailIndexedThread,
+  filter: MailFilterExpression,
+  group: MailGroupConfig | null,
+  groupKey?: string,
+) {
+  return evaluateMailFilterExpression(indexedFilterRecord(indexed), filter) &&
+    (!groupKey || groupKeys(indexed, group).includes(groupKey))
+}
+
+async function hydrateMissingSearchThreads(
+  gateway: Pick<GmailGateway, "getThreads">,
+  threadIds: string[],
+  filter: MailFilterExpression,
+  group: MailGroupConfig | null,
+  groupKey?: string,
+) {
+  if (!threadIds.length) return []
+  try {
+    const fetched = await gateway.getThreads(threadIds, "metadata")
+    return fetched.flatMap((thread) => {
+      const normalized = normalizeGmailThread(thread)
+      const indexed = indexedThreadFromNormalized(normalized)
+      return mailThreadMatchesQuery(indexed, filter, group, groupKey) ? [indexed] : []
+    })
+  } catch {
+    return []
+  }
+}
+
+function indexedThreadFromNormalized(normalized: ReturnType<typeof normalizeGmailThread>): MailIndexedThread {
+  const { messages, summary } = normalized
+  const from = uniqueAddresses(messages.flatMap((message) => message.from ? [message.from] : []))
+  return {
+    bcc: uniqueAddresses(messages.flatMap((message) => message.bcc)),
+    cc: uniqueAddresses(messages.flatMap((message) => message.cc)),
+    customValues: {},
+    from,
+    hasCalendarEvent: false,
+    important: summary.labelIds.includes("IMPORTANT"),
+    thread: summary,
+    to: uniqueAddresses(messages.flatMap((message) => message.to)),
+  }
+}
+
 async function searchGmailThreadIds(
   env: RuntimeEnv,
   gmailAccountId: string,
@@ -259,7 +385,7 @@ async function searchGmailThreadIds(
     if (!pageToken) break
     if (pageNumber === MAX_GMAIL_SEARCH_PAGES - 1) truncated = true
   }
-  return { threadIds, truncated }
+  return { gateway, threadIds, truncated }
 }
 
 function serializeIndexedThread(
@@ -279,7 +405,7 @@ function serializeIndexedThread(
     messageCount: row.messageCount,
     messageIds: row.messageIds,
     participants: uniqueAddresses([...from, ...to]),
-    snippet: "",
+    snippet: row.snippet,
     starred: row.starred,
     subject: row.subject,
     unread: row.unread,
