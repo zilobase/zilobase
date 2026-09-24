@@ -11,7 +11,9 @@ loopback Valkey port, so source development exercises the same mandatory bus
 topology as self-hosted deployments without a manual broker step.
 The workspace launcher also forwards that generated Redis URL to discovered
 development providers, so their Node runtimes use the same shared Valkey
-instance under the one-command workspace.
+instance under the one-command workspace. It starts a provider only when that
+provider's readiness URLs are idle. A leftover process that already answers
+those URLs is reported instead of being treated as the process just started.
 
 ## Ownership
 

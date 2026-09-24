@@ -126,7 +126,10 @@ export const pagesQueryOptions = (
     enabled: Boolean(workspaceId),
     refetchOnReconnect: "always",
     refetchOnWindowFocus: true,
-    queryFn: async ({ signal }) => {
+    // Router guards await this same query imperatively. Do not consume the
+    // observer-owned signal or a temporary React unsubscribe can cancel the
+    // promise that is still required by the router.
+    queryFn: async () => {
       if (!workspaceId) {
         return { databases: [], pages: [], placements: [] };
       }
@@ -145,7 +148,7 @@ export const pagesQueryOptions = (
           databases?: PageDatabase[];
           placements?: PageItemPlacement[];
           pages: Page[];
-        }>(`/pages?${params.toString()}`, { method: "GET", signal });
+        }>(`/pages?${params.toString()}`, { method: "GET" });
 
         return {
           databases: result.databases ?? [],
@@ -211,7 +214,9 @@ export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | u
     queryKey: pageQueryKey(pageId),
     enabled: Boolean(pageId),
     staleTime: 30_000,
-    queryFn: async ({ signal }): Promise<PageDetail | null> => {
+    // Public-share guards and page components can consume this request at the
+    // same time, so its lifetime cannot belong to the component observer.
+    queryFn: async (): Promise<PageDetail | null> => {
       if (!pageId) {
         throw new Error("pageId is required");
       }
@@ -222,7 +227,7 @@ export const pageQueryOptions = (apiFetch: ApiFetcher, pageId: string | null | u
           databaseIds?: string[];
           page: Page;
           viewerType?: PageDetail["viewerType"];
-        }>(`/pages/${pageId}`, { method: "GET", signal });
+        }>(`/pages/${pageId}`, { method: "GET" });
 
         return {
           accessLevel: result.accessLevel ?? null,

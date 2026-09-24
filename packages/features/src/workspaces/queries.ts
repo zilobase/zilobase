@@ -79,9 +79,12 @@ export const workspaceInvitationsQueryKey = (workspaceId: string | null | undefi
 export const workspacesQueryOptions = (auth: ZilobaseAuthClient) =>
   queryOptions({
     queryKey: workspacesQueryKey,
-    queryFn: async ({ signal }) => {
+    // Router guards await this same query imperatively. Do not consume the
+    // observer-owned signal or a temporary React unsubscribe can cancel the
+    // promise that is still required by the router.
+    queryFn: async () => {
       try {
-        const workspaces = await auth.listWorkspaces<Workspace | null>(signal);
+        const workspaces = await auth.listWorkspaces<Workspace | null>();
 
         return workspaces.filter(isWorkspace);
       } catch (error) {

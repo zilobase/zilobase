@@ -21,7 +21,10 @@ opt-in sibling repositories that contain `.zilobase-dev.json`, starts them in
 descriptor order, waits for their loopback readiness endpoints, and merges
 their provider-owned runtime details into the development hub. This keeps the
 public repository independent of optional implementations while preserving a
-single command for a complete multi-repository checkout.
+single command for a complete multi-repository checkout. Startup stops when a
+provider readiness URL is already responding, so a leftover supervisor cannot
+be mistaken for the new runtime. Stop that process, then run `npm run dev`
+again.
 
 ## Local services
 

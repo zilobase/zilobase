@@ -18,6 +18,7 @@ import {
 import { effectiveProfile } from "./local.mjs";
 import { assertPortsAvailable } from "./process.mjs";
 import {
+  assertDevelopmentProviderIdle,
   describeDevelopmentProvider,
   discoverDevelopmentProviders,
   startDevelopmentProvider,
@@ -88,6 +89,7 @@ export async function startDevelopmentWorkspace() {
 
     for (const provider of providers) {
       if (stopping) break;
+      await assertDevelopmentProviderIdle(provider);
       console.info(`Starting optional development provider: ${provider.id}...`);
       const child = startDevelopmentProvider(
         provider,
@@ -160,6 +162,7 @@ export async function startDevelopmentWorkspace() {
       console.warn(
         `${name} exited with ${result.signal ?? result.code}. Restarting (${attempts + 1}/3).`,
       );
+      await assertDevelopmentProviderIdle(provider);
       const index = children.indexOf(result.child);
       if (index >= 0) children.splice(index, 1);
       const replacement = startDevelopmentProvider(

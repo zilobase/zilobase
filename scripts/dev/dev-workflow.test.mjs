@@ -2,6 +2,7 @@ import { applyPublicDevelopmentOrigin } from "./public-origin.mjs";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -29,6 +30,7 @@ import {
 } from "./local.mjs";
 import { assertPortsAvailable, redact, stopChildren } from "./process.mjs";
 import {
+  assertDevelopmentProviderIdle,
   DEVELOPMENT_PROVIDER_FILE,
   discoverDevelopmentProviders,
   validateDevelopmentProvider,
@@ -130,6 +132,52 @@ test("workspace discovery loads ordered opt-in sibling providers", async () => {
     providers.map(({ id }) => id),
     ["earlier", "later"],
   );
+});
+
+test("an already responding provider readiness URL blocks startup", async () => {
+  const server = createHttpServer((request, response) => {
+    response.writeHead(request.url === "/ready" ? 200 : 404);
+    response.end();
+  });
+  const port = await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      resolve(typeof address === "object" && address ? address.port : 0);
+    });
+  });
+  try {
+    await assert.rejects(
+      assertDevelopmentProviderIdle({
+        id: "enterprise",
+        readiness: [`http://127.0.0.1:${port}/ready`],
+      }),
+      new RegExp(
+        `Development provider enterprise is already responding at http://127\\.0\\.0\\.1:${port}/ready`,
+      ),
+    );
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("an idle provider readiness URL does not block startup", async () => {
+  const server = createHttpServer((_request, response) => {
+    response.writeHead(503);
+    response.end();
+  });
+  const port = await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      resolve(typeof address === "object" && address ? address.port : 0);
+    });
+  });
+  await new Promise((resolve) => server.close(resolve));
+  await assertDevelopmentProviderIdle({
+    id: "enterprise",
+    readiness: [`http://127.0.0.1:${port}/ready`],
+  });
 });
 
 test("workspace providers may expose only loopback readiness URLs", () => {

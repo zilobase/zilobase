@@ -63,6 +63,18 @@ export function withSharedRealtimeRedis(environment, nodeEnvironment) {
   };
 }
 
+export async function assertDevelopmentProviderIdle(provider) {
+  const active = [];
+  for (const url of provider.readiness) {
+    if (await providerReadinessResponding(url)) active.push(url);
+  }
+  if (active.length) {
+    throw new Error(
+      `Development provider ${provider.id} is already responding at ${active.join(", ")}. Stop that leftover process before starting the workspace.`,
+    );
+  }
+}
+
 export async function waitForDevelopmentProvider(provider, child) {
   const ready = Promise.all(provider.readiness.map((url) => waitForProviderUrl(url, child)));
   const exited = new Promise((_, reject) => {
@@ -132,6 +144,15 @@ export async function stopDevelopmentChildren(children, signal = "SIGTERM") {
 
 function providerEnvironment(environment) {
   return { ...environment, ZILOBASE_CORE_DIR: coreDir };
+}
+
+async function providerReadinessResponding(url) {
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(1_000) });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 async function waitForProviderUrl(url, child) {
