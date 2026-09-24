@@ -17,7 +17,7 @@ import { ApiError, apiFetch, getApiRequestHeaders, toApiUrl } from "@/platform/n
 import { desktopNetworkFetch } from "@/platform/network"
 import { describeDesktopError, recordDesktopDiagnostic } from "@/features/desktop/diagnostics/index"
 import { getConnectivityState, subscribeConnectivity } from "@/platform/network/connectivity"
-import { clearMailReconciliation, deleteMailLabelFromCache, deleteMailMessageFromCache, deleteMailThreadFromCache, openMailDatabase, optimisticallyModifyThread, queueMailReconciliation, reconcileMailMessage, restoreMailMutation, upsertFullMailThread, type MailDatabase } from "../storage/mail-database";
+import { clearMailReconciliation, deleteMailLabelFromCache, deleteMailMessageFromCache, deleteMailThreadFromCache, mailThreadMatchesView, openMailDatabase, optimisticallyModifyThread, queueMailReconciliation, reconcileMailMessage, restoreMailMutation, upsertFullMailThread, type MailDatabase } from "../storage/mail-database";
 import { safeMailDownloadFilename } from "../messages/mail-attachment"
 import { loadMailThreadOnce } from "../messages/mail-thread-loader"
 
@@ -25,6 +25,7 @@ export function useMailController(input: {
   connection: MailConnection
   filter?: MailFilterExpression | null
   query: string
+  remoteSearch?: boolean
   userId: string
   view: MailView
 }) {
@@ -32,7 +33,9 @@ export function useMailController(input: {
   const retryAt = useRef(0)
   const revoked = useRef(false)
   const latestScope = useRef("")
-  latestScope.current = `${input.connection.bindingId}:${input.view}:${input.query}`
+  latestScope.current = input.remoteSearch === false
+    ? `${input.connection.bindingId}:${input.view}`
+    : `${input.connection.bindingId}:${input.view}:${input.query}`
   const mailBasePath = mailApiBasePath(input.connection.workspaceId)
   const [cacheLimit, setCacheLimit] = useState(50)
   const [database, setDatabase] = useState<MailDatabase | null>(null)
@@ -137,18 +140,18 @@ export function useMailController(input: {
   useEffect(() => {
     if (!database) return
     const search = input.query.trim()
-    if (!search || !online) {
+    if (!search || !online || input.remoteSearch === false) {
       setSearchResultIds(null)
       return
     }
     const timer = window.setTimeout(() => void runSync({ search }), 350)
     return () => window.clearTimeout(timer)
-  }, [database, input.query, online, runSync])
+  }, [database, input.query, input.remoteSearch, online, runSync])
 
   const threads = useMemo(() => {
     const visible = (cachedThreads ?? []).slice(0, cacheLimit).filter((thread) => input.filter
       ? evaluateMailFilterExpression(mailFilterRecordFromThreadSummary(thread), input.filter)
-      : threadMatchesView(thread, input.view))
+      : mailThreadMatchesView(thread, input.view))
     if (searchResultIds) {
       const order = new Map(searchResultIds.map((id, index) => [id, index]))
       return visible.filter((thread) => order.has(thread.id)).sort((a, b) => order.get(a.id)! - order.get(b.id)!)
@@ -430,21 +433,5 @@ export function useMailController(input: {
     syncing,
     threads,
     updateLabel,
-  }
-}
-
-
-function threadMatchesView(thread: MailThreadSummary, view: MailView) {
-  switch (view) {
-    case "all_mail": return !["SPAM", "TRASH"].some((label) => thread.labelIds.includes(label))
-    case "archive": return !["INBOX", "SENT", "DRAFT", "SPAM", "TRASH"].some((label) => thread.labelIds.includes(label))
-    case "bin": return thread.labelIds.includes("TRASH")
-    case "drafts": return thread.labelIds.includes("DRAFT")
-    case "inbox": return thread.labelIds.includes("INBOX")
-    case "sent": return thread.labelIds.includes("SENT")
-    case "spam": return thread.labelIds.includes("SPAM")
-    case "starred": return thread.starred
-    case "trash": return thread.labelIds.includes("TRASH")
-    case "unread": return thread.unread
   }
 }

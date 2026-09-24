@@ -44,6 +44,7 @@ export function useMailRealtime(input: {
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null
     let heartbeatTimer: ReturnType<typeof setInterval> | null = null
     let ticketTimer: ReturnType<typeof setTimeout> | null = null
+    let lastPushAt = 0
     const channel = typeof BroadcastChannel === "undefined"
       ? null
       : new BroadcastChannel(`zilobase:mail:${input.workspaceId}:${input.bindingId}`)
@@ -59,16 +60,24 @@ export function useMailRealtime(input: {
       synchronize: input.onSynchronize,
     })
 
-    const healthyPush = () => Boolean(input.pushAvailable && socket && socket.readyState === WebSocket.OPEN)
+    const healthyPush = () => Boolean(
+      input.pushAvailable &&
+      socket &&
+      socket.readyState === WebSocket.OPEN &&
+      lastPushAt > 0 &&
+      Date.now() - lastPushAt < 10 * 60_000
+    )
     const poll = async () => {
       if (stopped) return
-      if (document.visibilityState === "visible" && navigator.onLine !== false) {
-        try { pollFailures = await recover(input.pushAvailable ? 300_000 : 60_000) ? 0 : pollFailures + 1 }
+      if (navigator.onLine !== false) {
+        const hidden = document.visibilityState === "hidden"
+        const minInterval = hidden || healthyPush() ? 300_000 : 60_000
+        try { pollFailures = await recover(minInterval) ? 0 : pollFailures + 1 }
         catch { pollFailures += 1 }
       }
-      if (!stopped) pollTimer = setTimeout(() => void poll(), mailPollDelay(healthyPush(), pollFailures))
+      if (!stopped) pollTimer = setTimeout(() => void poll(), mailPollDelay(healthyPush() || document.visibilityState === "hidden", pollFailures))
     }
-    pollTimer = setTimeout(() => void poll(), mailPollDelay(Boolean(input.pushAvailable), 0))
+    pollTimer = setTimeout(() => void poll(), mailPollDelay(false, 0))
 
     const stopSocketTimers = () => {
       if (heartbeatTimer) clearInterval(heartbeatTimer)
@@ -118,6 +127,7 @@ export function useMailRealtime(input: {
             input.workspaceId,
           )
           if (!message) return
+          lastPushAt = Date.now()
           channel?.postMessage(message)
           void synchronizeRevision(message.revision)
         })

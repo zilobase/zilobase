@@ -19,6 +19,7 @@ export type MailSyncStateRecord = {
   historyId: string | null
   key: "primary"
   lastSyncedAt: number | null
+  listedThreadIds?: Partial<Record<MailView, string[]>>
   loadedViews?: Partial<Record<MailView, boolean>>
   mailboxRevision: number
   pendingMessageReconciliationIds?: string[]
@@ -138,7 +139,7 @@ async function updateSyncCheckpoint(
   database: MailDatabase,
   response: MailSyncResponse,
   view: MailView,
-  options: { markViewLoaded?: boolean; advanceHistory?: boolean },
+  options: { advanceHistory?: boolean; listedThreadIds?: MailSyncStateRecord["listedThreadIds"]; markViewLoaded?: boolean },
 ) {
   const current = await database.syncState.get("primary")
   if (!current) throw new Error("Mail cache identity is missing.")
@@ -146,6 +147,7 @@ async function updateSyncCheckpoint(
     ...current,
     historyId: options.advanceHistory === false ? current.historyId : newerMailHistoryId(current.historyId, response.historyId),
     lastSyncedAt: Date.now(),
+    ...(options.listedThreadIds ? { listedThreadIds: options.listedThreadIds } : {}),
     loadedViews: options.markViewLoaded === false
       ? current.loadedViews
       : { ...current.loadedViews, [view]: true },
@@ -161,7 +163,7 @@ export async function applyMailSyncResponse(
   database: MailDatabase,
   response: MailSyncResponse,
   view: MailView,
-  options: { markViewLoaded?: boolean; advanceHistory?: boolean } = {},
+  options: { advanceHistory?: boolean; markViewLoaded?: boolean; reconcileView?: boolean; resetViewListing?: boolean } = {},
 ) {
   await database.transaction(
     "rw",
@@ -182,10 +184,57 @@ export async function applyMailSyncResponse(
       if (response.deletedThreadIds.length) {
         await database.threads.bulkDelete(response.deletedThreadIds)
       }
-
-      await updateSyncCheckpoint(database, response, view, options)
+      const listedThreadIds = options.reconcileView && response.mode !== "incremental"
+        ? await reconcileCachedView(database, response, view, options.resetViewListing === true)
+        : undefined
+      await updateSyncCheckpoint(database, response, view, { ...options, listedThreadIds })
     },
   )
+}
+
+async function reconcileCachedView(
+  database: MailDatabase,
+  response: MailSyncResponse,
+  view: MailView,
+  resetViewListing: boolean,
+) {
+  const current = await database.syncState.get("primary")
+  if (!current) return undefined
+  const listed = [...new Set([
+    ...(resetViewListing ? [] : current.listedThreadIds?.[view] ?? []),
+    ...response.threads.map((thread) => thread.id),
+  ])]
+  const listedThreadIds = { ...current.listedThreadIds }
+  if (response.nextPageToken) listedThreadIds[view] = listed
+  else {
+    const listedSet = new Set(listed)
+    const cached = await database.threads.toArray()
+    const remove = cached
+      .filter((thread) => mailThreadMatchesView(thread, view) && !listedSet.has(thread.id))
+      .map((thread) => thread.id)
+    if (remove.length) {
+      await database.threads.bulkDelete(remove)
+      const messageIds = await database.messages.where("threadId").anyOf(remove).primaryKeys()
+      if (messageIds.length) await database.messages.bulkDelete(messageIds)
+    }
+    delete listedThreadIds[view]
+  }
+  return listedThreadIds
+}
+
+export function mailThreadMatchesView(thread: MailThreadSummary, view: MailView) {
+  switch (view) {
+    case "all_mail": return !["SPAM", "TRASH"].some((label) => thread.labelIds.includes(label))
+    case "archive": return !["INBOX", "SENT", "DRAFT", "SPAM", "TRASH"].some((label) => thread.labelIds.includes(label))
+    case "bin": return thread.labelIds.includes("TRASH")
+    case "drafts": return thread.labelIds.includes("DRAFT")
+    case "inbox": return thread.labelIds.includes("INBOX")
+    case "sent": return thread.labelIds.includes("SENT")
+    case "spam": return thread.labelIds.includes("SPAM")
+    case "starred": return thread.starred
+    case "trash": return thread.labelIds.includes("TRASH")
+    case "unread": return thread.unread
+  }
 }
 
 export async function upsertFullMailThread(
