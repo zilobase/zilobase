@@ -45,6 +45,11 @@ offline composer can be closed safely and the latest recovery is offered by New
 message; successful Gmail draft saves, sends and explicit discards remove the
 device recovery. Gmail remains the shared cross-device draft store.
 
+Send first commits the latest Gmail draft, then holds delivery for five seconds
+with an Undo action. Closing the app during that window leaves a recoverable
+Gmail draft; Gmail delivery still uses the existing idempotent send receipt and
+RFC Message-ID recovery path after the hold expires.
+
 ## Persistence and invariants
 
 `mail_index_state` is the single account sync authority: desired/applied history IDs, bootstrap/backfill cursors, generation, lease, retry deadline, errors and committed revision live there. `gmail_account` stores credentials, connection health and watch timing only. `mail_message`, `mail_thread_index`, `mail_label` and `mail_draft` form the canonical mailbox read model. Draft versions reject stale writes from another Zilobase device.

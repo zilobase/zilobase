@@ -188,6 +188,23 @@ export function MailComposer({
     setSending(true);
     try {
       if (!sendAttempt.current) sendAttempt.current = { compose, draftId: await saveDraft() };
+      let cancelled = false;
+      const pendingToast = toast.info("Message will send in 5 seconds", {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            cancelled = true;
+            toast.success("Send cancelled");
+          },
+        },
+        duration: 5_000,
+      });
+      await new Promise((resolve) => window.setTimeout(resolve, 5_000));
+      toast.dismiss(pendingToast);
+      if (cancelled) {
+        sendAttempt.current = null;
+        return;
+      }
       const { compose: sendCompose, draftId: currentDraftId } = sendAttempt.current;
       const response = await apiFetch<MailSendResponse>(
         currentDraftId
