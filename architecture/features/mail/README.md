@@ -65,6 +65,12 @@ removes Inbox in Gmail and the local projection, and the background reminder
 worker restores Inbox at the chosen time. Schedule, cancel and fire all commit a
 mailbox revision immediately, with Gmail history retained as reconciliation.
 
+After a non-bootstrap revision catch-up, the active mail session compares each
+changed thread's latest message with its cached projection. A newly arrived,
+unread Inbox message produces a deduplicated in-app notification, or a browser
+notification while hidden when permission was already granted. Replayed
+revisions, initial cache population, drafts and sent messages do not notify.
+
 ## Persistence and invariants
 
 `mail_index_state` is the single account sync authority: desired/applied history IDs, bootstrap/backfill cursors, generation, lease, retry deadline, errors and committed revision live there. `gmail_account` stores credentials, connection health and watch timing only. `mail_message`, `mail_thread_index`, `mail_label` and `mail_draft` form the canonical mailbox read model. Draft versions reject stale writes from another Zilobase device.

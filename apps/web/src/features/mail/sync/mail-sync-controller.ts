@@ -6,6 +6,7 @@ import { isDefiniteMailMutationFailure } from "./mail-mutations";
 import { drainMailMutationOutbox } from "./mail-outbox";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import { toast } from "sonner";
 import type {
   MailFilterExpression,
   MailConnection,
@@ -136,11 +137,27 @@ export function useMailController(input: {
       return await runMailRefreshOnce(database.name, async () => {
         let state = await database.syncState.get("primary");
         if (!state) throw new Error("Mail cache identity is missing.");
+        const notifyForChanges = state.revision > 0;
+        const arrivals = new Map<string, MailThreadSummary>();
         let labels: MailLabelRecord[] = [];
         for (let page = 0; page < 100; page += 1) {
           const changes = await apiFetch<MailMailboxChanges>(
             `${mailBasePath}/changes?afterRevision=${state.revision ?? 0}&limit=100`,
           );
+          if (notifyForChanges && changes.threads.length) {
+            const existing = await database.threads.bulkGet(
+              changes.threads.map((thread) => thread.id),
+            );
+            for (const [index, thread] of changes.threads.entries()) {
+              if (
+                thread.unread &&
+                thread.labelIds.includes("INBOX") &&
+                !thread.labelIds.includes("DRAFT") &&
+                existing[index]?.latestMessageId !== thread.latestMessageId
+              )
+                arrivals.set(thread.id, thread);
+            }
+          }
           await applyMailboxSnapshot(database, changes);
           labels = changes.labels.length ? changes.labels : labels;
           state = (await database.syncState.get("primary")) ?? state;
@@ -150,6 +167,7 @@ export function useMailController(input: {
           bindingId: input.connection.bindingId,
           workspaceId: input.connection.workspaceId,
         });
+        announceMailArrivals([...arrivals.values()]);
         return { labels };
       });
     } catch (syncError) {
@@ -551,4 +569,27 @@ export function useMailController(input: {
     threads,
     updateLabel,
   };
+}
+
+function announceMailArrivals(threads: MailThreadSummary[]) {
+  const latest = threads.at(-1);
+  if (!latest) return;
+  const sender = latest.participants[0]?.name ?? latest.participants[0]?.address ?? "New mail";
+  const description = threads.length > 1 ? `${threads.length} new conversations` : sender;
+  if (
+    document.visibilityState !== "visible" &&
+    typeof Notification !== "undefined" &&
+    Notification.permission === "granted"
+  ) {
+    const notification = new Notification(latest.subject || "New message", {
+      body: description,
+      tag: `zilobase-mail-${latest.id}`,
+    });
+    notification.onclick = () => window.focus();
+    return;
+  }
+  toast.info(latest.subject || "New message", {
+    description,
+    id: `mail-arrival-${latest.id}`,
+  });
 }
