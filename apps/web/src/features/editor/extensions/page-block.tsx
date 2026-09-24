@@ -68,15 +68,15 @@ function findCachedDatabaseRowPage(
     for (const window of windows) {
       const parsed = databaseRecordWindowResponseSchema.safeParse(window);
       if (!parsed.success) continue;
-      const record = parsed.data.records.find(
+      const recordIndex = parsed.data.records.findIndex(
         (candidate) => candidate.pageId === pageId,
       );
-      if (record) {
-        return {
-          id: record.page.id,
-          metadata: record.page.metadata,
-          name: record.page.name,
-        } as PageSummary;
+      if (recordIndex !== -1) {
+        // Return the object owned by React Query rather than the copy created by
+        // Zod. useSyncExternalStore requires an unchanged store to return the
+        // same snapshot reference across reads.
+        return (window as typeof parsed.data).records[recordIndex]
+          .page as PageSummary;
       }
     }
   }
