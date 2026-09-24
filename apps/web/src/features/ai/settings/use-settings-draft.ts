@@ -274,7 +274,7 @@ export function useSettingsDraft(scope: string) {
       );
       return result;
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       setReviewOpen(false);
       current.current = result;
       setState(result);
@@ -282,12 +282,14 @@ export function useSettingsDraft(scope: string) {
       localStorage.removeItem(storageKey);
       channel.current?.postMessage("updated");
       queryClient.setQueryData(key, result);
-      void queryClient.invalidateQueries({
-        queryKey: ["workspaces", workspaceId],
-      });
-      void queryClient.invalidateQueries({
-        queryKey: agentSettingsVersionsQueryKey(key),
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["workspaces", workspaceId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: agentSettingsVersionsQueryKey(key),
+        }),
+      ]);
     },
     onError: (e) => setError(e.message),
   });

@@ -68,7 +68,7 @@ export function useCreateDatabaseAutomation(databaseId: string, dataSourceId: st
     },
     onSuccess: (automation) => {
       queryClient.setQueryData(databaseAutomationKeys.detail(databaseId, automation.id), automation)
-      void queryClient.invalidateQueries({ queryKey: databaseAutomationKeys.list(databaseId, dataSourceId) })
+      return queryClient.invalidateQueries({ queryKey: databaseAutomationKeys.list(databaseId, dataSourceId) })
     },
   })
 }
@@ -83,7 +83,7 @@ export function useUpdateDatabaseAutomation(databaseId: string, automationId: st
       ),
     onSuccess: (automation) => {
       queryClient.setQueryData(databaseAutomationKeys.detail(databaseId, automationId), automation)
-      void queryClient.invalidateQueries({ queryKey: databaseAutomationKeys.all })
+      return queryClient.invalidateQueries({ queryKey: databaseAutomationKeys.all })
     },
   })
 }

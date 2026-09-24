@@ -379,14 +379,14 @@ export function useMcpPolicyMutation<TInput extends object, TOutput>(
       },
       method,
     }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({
         queryKey: mcpWorkspacePolicyQueryKey(workspaceId),
-      })
-      void queryClient.invalidateQueries({
+      }),
+      queryClient.invalidateQueries({
         queryKey: approvedMcpServersQueryKey(workspaceId),
-      })
-    },
+      }),
+    ]),
   })
 }
 
@@ -508,12 +508,14 @@ export function useMcpConnectionMutation<TInput extends object, TOutput>(
       },
       method,
     }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({
         queryKey: mcpConnectionsQueryKey(workspaceId, scope),
-      })
-      void queryClient.invalidateQueries({ queryKey: aiAgentProfilesQueryKey(workspaceId) })
-    },
+      }),
+      queryClient.invalidateQueries({
+        queryKey: aiAgentProfilesQueryKey(workspaceId),
+      }),
+    ]),
   })
 }
 
@@ -534,12 +536,16 @@ function useAgentMutation<TInput extends object, TOutput>(
       },
       method,
     }),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: aiAgentProfilesQueryKey(workspaceId) })
-      if (agentId) void queryClient.invalidateQueries({
-        queryKey: aiAgentProfileQueryKey(workspaceId, agentId),
-      })
-    },
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: aiAgentProfilesQueryKey(workspaceId),
+      }),
+      agentId
+        ? queryClient.invalidateQueries({
+            queryKey: aiAgentProfileQueryKey(workspaceId, agentId),
+          })
+        : Promise.resolve(),
+    ]),
   })
 }
 
@@ -577,11 +583,13 @@ function useStandaloneAgentMutation<TInput extends object, TOutput>(
         method,
       })
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({
         queryKey: aiAgentProfileQueryKey(workspaceId, agentId),
-      })
-      void queryClient.invalidateQueries({ queryKey: aiAgentProfilesQueryKey(workspaceId) })
-    },
+      }),
+      queryClient.invalidateQueries({
+        queryKey: aiAgentProfilesQueryKey(workspaceId),
+      }),
+    ]),
   })
 }

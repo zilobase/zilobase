@@ -36,11 +36,10 @@ export function useCreateAiChatThread() {
         },
         body: JSON.stringify(input ?? {}),
       }),
-    onSuccess: () => {
+    onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: aiChatThreadsQueryKey(workspaceId),
-      })
-    },
+      }),
   })
 }
 
@@ -64,11 +63,10 @@ export function useRenameAiChatThread() {
           body: JSON.stringify({ title: input.title }),
         },
       ),
-    onSuccess: () => {
+    onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: aiChatThreadsQueryKey(workspaceId),
-      })
-    },
+      }),
   })
 }
 
@@ -89,11 +87,11 @@ export function useArchiveAiChatThread() {
         },
       ),
     onSuccess: (_result, threadId) => {
-      queryClient.invalidateQueries({
-        queryKey: aiChatThreadsQueryKey(workspaceId),
-      })
       queryClient.removeQueries({
         queryKey: aiChatThreadMessagesQueryKey(workspaceId, threadId),
+      })
+      return queryClient.invalidateQueries({
+        queryKey: aiChatThreadsQueryKey(workspaceId),
       })
     },
   })
@@ -119,11 +117,10 @@ export function useSetAiChatThreadPinned() {
           body: JSON.stringify({ pinned: input.pinned }),
         },
       ),
-    onSuccess: () => {
+    onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: aiChatThreadsQueryKey(workspaceId),
-      })
-    },
+      }),
   })
 }
 
@@ -188,11 +185,11 @@ export function useDeleteAiChatThread() {
         },
       ),
     onSuccess: (_result, threadId) => {
-      queryClient.invalidateQueries({
-        queryKey: aiChatThreadsQueryKey(workspaceId),
-      })
       queryClient.removeQueries({
         queryKey: aiChatThreadMessagesQueryKey(workspaceId, threadId),
+      })
+      return queryClient.invalidateQueries({
+        queryKey: aiChatThreadsQueryKey(workspaceId),
       })
     },
   })

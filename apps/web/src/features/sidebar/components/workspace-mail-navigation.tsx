@@ -121,7 +121,7 @@ export function WorkspaceMailNavigation({ workspaceId }: {
     ),
     onError: (error) => {
       toast.error(getApiErrorMessage(error))
-      void queryClient.invalidateQueries({ queryKey })
+      return queryClient.invalidateQueries({ queryKey })
     },
     onSuccess: ({ views: reordered }) => {
       queryClient.setQueryData<MailViewsBootstrap>(queryKey, (current) => current

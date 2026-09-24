@@ -291,9 +291,8 @@ export function MeetingView({
         },
       },
       {
-        onSuccess: () => {
-          void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
-        },
+        onSuccess: () =>
+          queryClient.invalidateQueries({ queryKey: meetingKeys.lists() }),
       },
     )
     setEmojiPickerOpen(false)

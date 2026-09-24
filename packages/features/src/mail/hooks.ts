@@ -97,7 +97,7 @@ export function useMailProperties(input: MailHookScope) {
       queryClient.setQueryData<MailThreadPropertyValuesResponse>(mailKeys.threadProperties(input, variables.threadId), (current) => ({
         values: [...current?.values.filter((item) => item.propertyId !== value.propertyId) ?? [], value],
       }))
-      void invalidateMailListQueries(queryClient, input)
+      return invalidateMailListQueries(queryClient, input)
     },
   })
   return {
@@ -125,7 +125,7 @@ export function useMailThreadProperties(input: MailHookScope & { threadId: strin
       queryClient.setQueryData<MailThreadPropertyValuesResponse>(queryKey, (current) => ({
         values: [...current?.values.filter((item) => item.propertyId !== value.propertyId) ?? [], value],
       }))
-      void invalidateMailListQueries(queryClient, input)
+      return invalidateMailListQueries(queryClient, input)
     },
   })
   return {
@@ -141,12 +141,12 @@ export function useMailReminders(input: MailHookScope) {
   const queryKey = mailKeys.reminders(input)
   const options = mailRemindersQueryOptions(apiFetch, input)
   const query = useQuery({ ...options, enabled: input.enabled && options.enabled })
-  const refreshMail = () => void invalidateMailListQueries(queryClient, input)
+  const refreshMail = () => invalidateMailListQueries(queryClient, input)
   const schedule = useMutation({
     mutationFn: ({ remindAt, threadId }: { remindAt: string; threadId: string }) => apiFetch<{ reminder: MailReminder }>(`${basePath}/threads/${encodeURIComponent(threadId)}/remind`, { body: JSON.stringify({ remindAt }), method: "POST" }),
     onSuccess: ({ reminder }) => {
       queryClient.setQueryData<{ reminders: MailReminder[] }>(queryKey, (current) => ({ reminders: [...current?.reminders.filter((item) => item.threadId !== reminder.threadId) ?? [], reminder] }))
-      refreshMail()
+      return refreshMail()
     },
   })
   const cancel = useMutation({
@@ -155,7 +155,7 @@ export function useMailReminders(input: MailHookScope) {
   })
   const { isPending: isAdvancing, mutate: advanceReminders } = useMutation({
     mutationFn: () => apiFetch<{ fired: MailReminder[] }>(`${basePath}/reminders/advance`, { body: "{}", method: "POST" }),
-    onSuccess: () => { void query.refetch(); refreshMail() },
+    onSuccess: () => Promise.all([query.refetch(), refreshMail()]),
   })
   const nextReminderAt = query.data?.reminders.reduce<number | null>((next, reminder) => {
     const value = new Date(reminder.remindAt).getTime()

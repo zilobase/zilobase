@@ -134,10 +134,9 @@ export function useRecordItemVisit() {
       }),
     onSuccess: (result, variables) => {
       if (result.itemKind === "agent") {
-        void queryClient.invalidateQueries({
+        return queryClient.invalidateQueries({
           queryKey: ["workspaces", variables.workspaceId, "ai-agent-profiles"],
         });
-        return;
       }
       queryClient.setQueriesData<PageNavigationPayload | undefined>(
         { queryKey: pagesQueryKey(variables.workspaceId) },

@@ -35,7 +35,7 @@ export function useCreateMeeting() {
         meetingKeys.detail(payload.meeting.id),
         payload,
       )
-      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
+      return queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
   })
 }
@@ -89,14 +89,16 @@ export function useUpdateMeeting(meetingId: string) {
         queryClient.setQueryData(meetingKeys.detail(meetingId), context.previous)
       }
     },
-    onSuccess: (payload, patch) => {
+    onSuccess: async (payload, patch) => {
       queryClient.setQueryData(meetingKeys.detail(meetingId), payload)
-      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
-      if (patch.title !== undefined && payload.meeting.notesPageId) {
-        void queryClient.invalidateQueries({
-          queryKey: pageQueryKey(payload.meeting.notesPageId),
-        })
-      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: meetingKeys.lists() }),
+        patch.title !== undefined && payload.meeting.notesPageId
+          ? queryClient.invalidateQueries({
+              queryKey: pageQueryKey(payload.meeting.notesPageId),
+            })
+          : Promise.resolve(),
+      ])
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) })
@@ -121,7 +123,7 @@ export function useMeetingLifecycle(meetingId: string) {
       }),
     onSuccess: (payload) => {
       queryClient.setQueryData(meetingKeys.detail(meetingId), payload)
-      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
+      return queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) })
@@ -141,7 +143,7 @@ export function useMeetingRecorder(meetingId: string) {
       queryClient.setQueryData(meetingKeys.detail(meetingId), {
         meeting: payload.meeting,
       })
-      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
+      return queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
   })
   const release = useMutation({
@@ -152,7 +154,7 @@ export function useMeetingRecorder(meetingId: string) {
       }),
     onSuccess: (payload) => {
       queryClient.setQueryData(meetingKeys.detail(meetingId), payload)
-      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
+      return queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
   })
   return { claim, release }
@@ -175,7 +177,7 @@ export function useGenerateMeetingSummary(meetingId: string) {
       queryClient.setQueryData<MeetingResponse>(meetingKeys.detail(meetingId), {
         meeting: payload.meeting,
       })
-      void queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
+      return queryClient.invalidateQueries({ queryKey: meetingKeys.lists() })
     },
     onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: meetingKeys.detail(meetingId) })
