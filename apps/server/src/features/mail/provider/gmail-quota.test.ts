@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 
-import { gmailQuotaBackoffMs, gmailQuotaUnits } from "./gmail-quota";
+import { gmailQuotaBackoffMs, gmailQuotaReservationMessage, gmailQuotaUnits } from "./gmail-quota";
 
 test("Gmail quota weights expensive reads and writes", () => {
   assert.equal(gmailQuotaUnits("/gmail/v1/users/me/history?startHistoryId=1", "GET"), 2);
@@ -10,6 +10,11 @@ test("Gmail quota weights expensive reads and writes", () => {
   assert.equal(gmailQuotaUnits("/gmail/v1/users/me/messages/message-1", "GET"), 20);
   assert.equal(gmailQuotaUnits("/gmail/v1/users/me/messages/send", "POST"), 100);
   assert.equal(gmailQuotaUnits("/batch/gmail/v1", "POST", 10), 400);
+});
+
+test("Gmail quota errors distinguish foreground exhaustion from the background reserve", () => {
+  assert.match(gmailQuotaReservationMessage("foreground"), /temporarily exhausted/);
+  assert.match(gmailQuotaReservationMessage("background"), /reserved for foreground/);
 });
 
 test("Gmail quota backoff uses bounded full jitter", () => {

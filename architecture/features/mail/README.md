@@ -49,6 +49,10 @@ Every edit is also checkpointed in the account-scoped IndexedDB database. An
 offline composer can be closed safely and the latest recovery is offered by New
 message; successful Gmail draft saves, sends and explicit discards remove the
 device recovery. Gmail remains the shared cross-device draft store.
+Draft identity and version are concurrency metadata rather than composition
+content, so a successful version increment cannot retrigger autosave. Closing a
+clean draft performs no provider write; retryable provider or quota failures
+leave a local recovery and do not trap the composer open.
 
 Send first commits the latest Gmail draft, then holds delivery for five seconds
 with an Undo action. Closing the app during that window leaves a recoverable

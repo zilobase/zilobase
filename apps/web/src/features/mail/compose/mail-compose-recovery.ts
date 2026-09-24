@@ -21,7 +21,7 @@ export async function loadLatestMailComposeRecovery(database: MailDatabase) {
   const record = await database.composeRecovery.orderBy("updatedAt").last();
   if (!record) return null;
   try {
-    return JSON.parse(record.value) as MailComposeSeed;
+    return { ...(JSON.parse(record.value) as MailComposeSeed), needsSave: true };
   } catch {
     await database.composeRecovery.delete(record.id);
     return null;

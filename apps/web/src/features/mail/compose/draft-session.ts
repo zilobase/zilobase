@@ -17,7 +17,7 @@ export function createDraftSession(
   return {
     save(value: MailComposeRequest) {
       // Snapshot at enqueue time; a later render must never change this write.
-      const serialized = JSON.stringify({ ...value, draftId: undefined });
+      const serialized = mailDraftContentFingerprint(value);
       return enqueue(async () => {
         if (discarded) return draftId;
         if (serialized !== saved) {
@@ -38,4 +38,12 @@ export function createDraftSession(
       });
     },
   };
+}
+
+/** Provider identity and optimistic concurrency metadata are not draft content. */
+export function mailDraftContentFingerprint(value: MailComposeRequest) {
+  const content = { ...value };
+  delete content.draftId;
+  delete content.draftVersion;
+  return JSON.stringify(content);
 }

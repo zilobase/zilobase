@@ -57,4 +57,21 @@ export function register({ assert, loadModule, test }) {
     await assert.rejects(session.save({ bodyText: "text" }), /offline/);
     assert.equal(await session.save({ bodyText: "text" }), "draft");
   });
+  test("provider draft identity and version changes do not trigger another write", async () => {
+    const { createDraftSession, mailDraftContentFingerprint } = await loadModule(
+      "/src/features/mail/compose/draft-session.ts",
+    );
+    const calls = [];
+    const session = createDraftSession("draft", async (id, value) => {
+      calls.push([id, value.draftVersion]);
+      return "draft";
+    });
+    await session.save({ bodyText: "same content", draftId: "draft", draftVersion: 1 });
+    await session.save({ bodyText: "same content", draftId: "draft", draftVersion: 2 });
+    assert.deepEqual(calls, [["draft", 1]]);
+    assert.equal(
+      mailDraftContentFingerprint({ bodyText: "same content", draftVersion: 1 }),
+      mailDraftContentFingerprint({ bodyText: "same content", draftVersion: 99 }),
+    );
+  });
 }

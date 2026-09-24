@@ -66,12 +66,18 @@ export async function reserveGmailQuota(
     budget?.blockedUntil ? budget.blockedUntil.getTime() - Date.now() : 15_000,
   );
   throw new GmailApiError(
-    "Gmail quota is temporarily reserved for foreground mail operations.",
+    gmailQuotaReservationMessage(trafficClass),
     429,
     "quota_exceeded",
     true,
     retryAfterMs,
   );
+}
+
+export function gmailQuotaReservationMessage(trafficClass: GmailTrafficClass) {
+  return trafficClass === "background"
+    ? "Gmail quota is temporarily reserved for foreground mail operations."
+    : "Gmail quota is temporarily exhausted. Try again after a short pause.";
 }
 
 export async function recordGmailQuotaFailure(

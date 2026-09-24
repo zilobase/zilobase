@@ -21,7 +21,7 @@ import {
   type MailComposeSeed,
 } from "./mail-compose";
 
-import { createDraftSession } from "./draft-session";
+import { createDraftSession, mailDraftContentFingerprint } from "./draft-session";
 import { deleteMailComposeRecovery, saveMailComposeRecovery } from "./mail-compose-recovery";
 import { MailRichEditor, mailTextToHtml } from "./mail-rich-editor";
 import type { MailDatabase } from "../storage/mail-database";
@@ -79,7 +79,6 @@ export function MailComposer({
     });
   const busy = useRef(false);
   const sendAttempt = useRef<{ compose: MailComposeRequest; draftId: string | null } | null>(null);
-  const lastSaved = useRef("");
 
   const compose = useMemo<MailComposeRequest>(
     () => ({
@@ -112,7 +111,8 @@ export function MailComposer({
       to,
     ],
   );
-  const serialized = JSON.stringify({ ...compose, draftId: undefined });
+  const serialized = mailDraftContentFingerprint(compose);
+  const lastSaved = useRef(seed.draftId && !seed.needsSave ? serialized : "");
   const hasContent = Boolean(
     to.trim() || cc.trim() || bcc.trim() || subject || bodyText || attachments.length,
   );
@@ -131,6 +131,7 @@ export function MailComposer({
 
   const saveDraft = async () => {
     if (!online || (!hasContent && !draftId) || sendAttempt.current) return draftId;
+    if (serialized === lastSaved.current) return draftId;
     setSaving(true);
     try {
       const id = await session.current!.save(compose);
@@ -146,9 +147,14 @@ export function MailComposer({
     busy.current = true;
     setSending(true);
     try {
-      if (!online && hasContent)
-        await saveMailComposeRecovery(database, operationId.current, compose);
-      await saveDraft();
+      const dirty = hasContent && serialized !== lastSaved.current;
+      if (dirty) await saveMailComposeRecovery(database, operationId.current, compose);
+      try {
+        await saveDraft();
+      } catch (error) {
+        if (!isRetryableDraftSaveFailure(error)) throw error;
+        toast.warning("Draft saved on this device. It will sync when Gmail is available.");
+      }
       onClose();
     } catch (error) {
       toast.error(getApiErrorMessage(error));
@@ -419,6 +425,12 @@ export function MailComposer({
       </footer>
     </FloatingWidget>
   );
+}
+
+function isRetryableDraftSaveFailure(error: unknown) {
+  if (!(error instanceof ApiError)) return false;
+  const body = error.body as { code?: unknown } | null;
+  return error.status === 429 || error.status >= 500 || body?.code === "quota_exceeded";
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer) {

@@ -16,6 +16,7 @@ export type MailComposeSeed = {
   bodyText?: string;
   cc?: MailAddress[];
   inReplyTo?: string;
+  needsSave?: boolean;
   references?: string[];
   subject?: string;
   threadId?: string;
